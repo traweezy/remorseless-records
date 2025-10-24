@@ -1,10 +1,11 @@
 "use client"
 
+import * as SheetPrimitive from "@radix-ui/react-dialog"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { AnimatePresence, motion, useReducedMotion, type Transition, type Variants } from "framer-motion"
+import { ShoppingBag, X } from "lucide-react"
 import { useMemo, useOptimistic, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { ShoppingBag, X } from "lucide-react"
-import { AnimatePresence, motion, useReducedMotion, type Transition, type Variants } from "framer-motion"
-import * as SheetPrimitive from "@radix-ui/react-dialog"
 
 import type { HttpTypes } from "@medusajs/types"
 
@@ -165,6 +166,9 @@ export const CartDrawer = ({ cart, open, onOpenChange }: CartDrawerProps) => {
               >
                 <div className="flex flex-1 flex-col p-0">
                   <header className="flex items-start justify-between border-b border-border/60 px-6 py-4">
+                    <VisuallyHidden>
+                      <SheetPrimitive.Title>Cart</SheetPrimitive.Title>
+                    </VisuallyHidden>
                     <div className="space-y-1 text-left">
                       <p className="flex items-center gap-2 text-lg font-semibold text-foreground">
                         <ShoppingBag className="h-5 w-5 text-accent" />
