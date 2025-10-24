@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@medusajs/test-utils": "^2.11.0",
-    "@mikro-orm/cli": "6.4.3",
+    "@mikro-orm/cli": "6.4.16",
     "@swc/core": "1.5.7",
     "@swc/jest": "^0.2.37",
     "@types/jest": "^29.5.14",
@@ -70,11 +70,5 @@
   "engines": {
     "node": ">=22.0.0 <23",
     "pnpm": ">=10.19.0"
-  },
-  "pnpm": {
-    "overrides":
-    {
-      "@mikro-orm/*": "6.4.16"
-    }
   }
 }

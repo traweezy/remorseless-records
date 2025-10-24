@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@mikro-orm/*': 6.4.16
+
 importers:
 
   .:
@@ -61,7 +64,7 @@ importers:
         version: 1.0.0-tailwindv4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@rokmohar/medusa-plugin-meilisearch':
         specifier: ^1.3.5
-        version: 1.3.5(@medusajs/admin-sdk@2.11.0)(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@medusajs/framework@2.11.0(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@types/node@22.18.12)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.12)))(@medusajs/icons@2.11.0(react@19.2.0))(@medusajs/medusa@2.11.0)(@medusajs/test-utils@2.11.0)(@medusajs/ui@4.0.24(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3))(@mikro-orm/cli@6.4.3(pg@8.16.3))(@mikro-orm/core@6.4.16)(@mikro-orm/knex@6.4.16(@mikro-orm/core@6.4.16)(pg@8.16.3))(@mikro-orm/migrations@6.4.16(@mikro-orm/core@6.4.16)(@types/node@22.18.12)(pg@8.16.3))(@mikro-orm/postgresql@6.4.16(@mikro-orm/core@6.4.16))(@tanstack/react-query@5.90.5(react@19.2.0))(awilix@8.0.1)(pg@8.16.3)
+        version: 1.3.5(@medusajs/admin-sdk@2.11.0)(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@medusajs/framework@2.11.0(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@types/node@22.18.12)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.12)))(@medusajs/icons@2.11.0(react@19.2.0))(@medusajs/medusa@2.11.0)(@medusajs/test-utils@2.11.0)(@medusajs/ui@4.0.24(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3))(@mikro-orm/cli@6.4.16(pg@8.16.3))(@mikro-orm/core@6.4.16)(@mikro-orm/knex@6.4.16(@mikro-orm/core@6.4.16)(pg@8.16.3))(@mikro-orm/migrations@6.4.16(@mikro-orm/core@6.4.16)(@types/node@22.18.12)(pg@8.16.3))(@mikro-orm/postgresql@6.4.16(@mikro-orm/core@6.4.16))(@tanstack/react-query@5.90.5(react@19.2.0))(awilix@8.0.1)(pg@8.16.3)
       awilix:
         specifier: ^8.0.1
         version: 8.0.1
@@ -94,8 +97,8 @@ importers:
         specifier: ^2.11.0
         version: 2.11.0(@medusajs/framework@2.11.0(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@types/node@22.18.12)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.12)))(@medusajs/medusa@2.11.0)
       '@mikro-orm/cli':
-        specifier: 6.4.3
-        version: 6.4.3(pg@8.16.3)
+        specifier: 6.4.16
+        version: 6.4.16(pg@8.16.3)
       '@swc/core':
         specifier: 1.5.7
         version: 1.5.7(@swc/helpers@0.5.17)
@@ -2004,37 +2007,12 @@ packages:
     engines: {node: '>= 18.12.0'}
     hasBin: true
 
-  '@mikro-orm/cli@6.4.3':
-    resolution: {integrity: sha512-DWnYNxoyMgU6L90TGBlT0eziTu6yl15ArnnFoq0kyOjp8JEMRjin+8cizSrKyQ3QiQZ5iop5fB0i9Sp+Hbgd8Q==}
-    engines: {node: '>= 18.12.0'}
-    hasBin: true
-
   '@mikro-orm/core@6.4.16':
     resolution: {integrity: sha512-BW/My1VlI0R25Eojdh0UiET8J+mEruThksGVfllEnjJQ0uwGs3mm/TbMclv0g+d7Qp4+mpzDQU4+lIo8okHYsw==}
     engines: {node: '>= 18.12.0'}
 
-  '@mikro-orm/core@6.4.3':
-    resolution: {integrity: sha512-UTaqKs1bomYtGmEEZ8sNBOmW2OqT5NcMh+pBV2iJ6WLM5MuiIEuNhDMuvvPE5gNEwUzc1HyRhUV87bRDhDIGRg==}
-    engines: {node: '>= 18.12.0'}
-
   '@mikro-orm/knex@6.4.16':
     resolution: {integrity: sha512-2xQodj3uh8maPGsLR7PZMmECtdyLutGxzzrGrrhSX2b+7v9k4MeMazTi4/627hJvivdUpuofypW5zMpw3TU1vQ==}
-    engines: {node: '>= 18.12.0'}
-    peerDependencies:
-      '@mikro-orm/core': ^6.0.0
-      better-sqlite3: '*'
-      libsql: '*'
-      mariadb: '*'
-    peerDependenciesMeta:
-      better-sqlite3:
-        optional: true
-      libsql:
-        optional: true
-      mariadb:
-        optional: true
-
-  '@mikro-orm/knex@6.4.3':
-    resolution: {integrity: sha512-gVkRD/cIn6qxk/P9nR+IufZxJwuCCdv0AtcGvShxXXvaoIrQPJYDV7HRxBOHCEyNygr6M3Fqpph1oPoT6aezTQ==}
     engines: {node: '>= 18.12.0'}
     peerDependencies:
       '@mikro-orm/core': ^6.0.0
@@ -6296,10 +6274,6 @@ packages:
     resolution: {integrity: sha512-rlBi9d8jpv9Sf1klPjNfFAuWDjKLwTIJJ/VxtoTwIR6hnZxcEOQCZg2oIL3MWBYw5GpUDKOEnND7LXTbIpQ03Q==}
     engines: {node: '>=10'}
 
-  dotenv@16.4.7:
-    resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
-    engines: {node: '>=12'}
-
   dotenv@16.5.0:
     resolution: {integrity: sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==}
     engines: {node: '>=12'}
@@ -6713,10 +6687,6 @@ packages:
   fs-extra@10.1.0:
     resolution: {integrity: sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==}
     engines: {node: '>=12'}
-
-  fs-extra@11.2.0:
-    resolution: {integrity: sha512-PmDi3uwK5nFuXh7XDTlVnS17xJS7vW36is2+w3xcv8SVxiB4NyATf4ctkVY5bkSjX0Y4nbvZCq1/EjtEyr9ktw==}
-    engines: {node: '>=14.14'}
 
   fs-extra@11.3.0:
     resolution: {integrity: sha512-Z4XaCL6dUDHfP/jT25jJKMmtxvuwbkrD1vNSMFlo9lNLY2c5FHYSQgHPRZUjAB26TpDEoW9HCOgplrdbaPV/ew==}
@@ -7719,10 +7689,6 @@ packages:
 
   mikro-orm@6.4.16:
     resolution: {integrity: sha512-a+19cRuEPEJ3qf5Vpv4HO9TAxo/I6/rP1bZT93ln8YtNzAbCrcLC766EG6upLS6Sf7OLqdq0cXs5mUN9ESQQrg==}
-    engines: {node: '>= 18.12.0'}
-
-  mikro-orm@6.4.3:
-    resolution: {integrity: sha512-xDNzmLiL4EUTMOu9CbZ2d0sNIaUdH4RzDv4oqw27+u0/FPfvZTIagd+luxx1lWWqe/vg/iNtvqr5OcNQIYYrtQ==}
     engines: {node: '>= 18.12.0'}
 
   mime-db@1.52.0:
@@ -12109,26 +12075,6 @@ snapshots:
       - supports-color
       - tedious
 
-  '@mikro-orm/cli@6.4.3(pg@8.16.3)':
-    dependencies:
-      '@jercle/yargonaut': 1.1.5
-      '@mikro-orm/core': 6.4.3
-      '@mikro-orm/knex': 6.4.3(@mikro-orm/core@6.4.3)(pg@8.16.3)
-      fs-extra: 11.2.0
-      tsconfig-paths: 4.2.0
-      yargs: 17.7.2
-    transitivePeerDependencies:
-      - better-sqlite3
-      - libsql
-      - mariadb
-      - mysql
-      - mysql2
-      - pg
-      - pg-native
-      - sqlite3
-      - supports-color
-      - tedious
-
   '@mikro-orm/core@6.4.16':
     dependencies:
       dataloader: 2.2.3
@@ -12137,16 +12083,6 @@ snapshots:
       fs-extra: 11.3.0
       globby: 11.1.0
       mikro-orm: 6.4.16
-      reflect-metadata: 0.2.2
-
-  '@mikro-orm/core@6.4.3':
-    dependencies:
-      dataloader: 2.2.3
-      dotenv: 16.4.7
-      esprima: 4.0.1
-      fs-extra: 11.2.0
-      globby: 11.1.0
-      mikro-orm: 6.4.3
       reflect-metadata: 0.2.2
 
   '@mikro-orm/knex@6.4.16(@mikro-orm/core@6.4.16)(pg@8.16.0)':
@@ -12168,21 +12104,6 @@ snapshots:
     dependencies:
       '@mikro-orm/core': 6.4.16
       fs-extra: 11.3.0
-      knex: 3.1.0(pg@8.16.3)
-      sqlstring: 2.3.3
-    transitivePeerDependencies:
-      - mysql
-      - mysql2
-      - pg
-      - pg-native
-      - sqlite3
-      - supports-color
-      - tedious
-
-  '@mikro-orm/knex@6.4.3(@mikro-orm/core@6.4.3)(pg@8.16.3)':
-    dependencies:
-      '@mikro-orm/core': 6.4.3
-      fs-extra: 11.2.0
       knex: 3.1.0(pg@8.16.3)
       sqlstring: 2.3.3
     transitivePeerDependencies:
@@ -17092,7 +17013,7 @@ snapshots:
 
   '@remix-run/router@1.13.1': {}
 
-  '@rokmohar/medusa-plugin-meilisearch@1.3.5(@medusajs/admin-sdk@2.11.0)(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@medusajs/framework@2.11.0(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@types/node@22.18.12)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.12)))(@medusajs/icons@2.11.0(react@19.2.0))(@medusajs/medusa@2.11.0)(@medusajs/test-utils@2.11.0)(@medusajs/ui@4.0.24(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3))(@mikro-orm/cli@6.4.3(pg@8.16.3))(@mikro-orm/core@6.4.16)(@mikro-orm/knex@6.4.16(@mikro-orm/core@6.4.16)(pg@8.16.3))(@mikro-orm/migrations@6.4.16(@mikro-orm/core@6.4.16)(@types/node@22.18.12)(pg@8.16.3))(@mikro-orm/postgresql@6.4.16(@mikro-orm/core@6.4.16))(@tanstack/react-query@5.90.5(react@19.2.0))(awilix@8.0.1)(pg@8.16.3)':
+  '@rokmohar/medusa-plugin-meilisearch@1.3.5(@medusajs/admin-sdk@2.11.0)(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@medusajs/framework@2.11.0(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@types/node@22.18.12)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.12)))(@medusajs/icons@2.11.0(react@19.2.0))(@medusajs/medusa@2.11.0)(@medusajs/test-utils@2.11.0)(@medusajs/ui@4.0.24(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3))(@mikro-orm/cli@6.4.16(pg@8.16.3))(@mikro-orm/core@6.4.16)(@mikro-orm/knex@6.4.16(@mikro-orm/core@6.4.16)(pg@8.16.3))(@mikro-orm/migrations@6.4.16(@mikro-orm/core@6.4.16)(@types/node@22.18.12)(pg@8.16.3))(@mikro-orm/postgresql@6.4.16(@mikro-orm/core@6.4.16))(@tanstack/react-query@5.90.5(react@19.2.0))(awilix@8.0.1)(pg@8.16.3)':
     dependencies:
       '@medusajs/admin-sdk': 2.11.0
       '@medusajs/cli': 2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12)
@@ -17101,7 +17022,7 @@ snapshots:
       '@medusajs/medusa': 2.11.0(@babel/runtime@7.28.4)(@medusajs/admin-sdk@2.11.0)(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@medusajs/framework@2.11.0(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@types/node@22.18.12)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.12)))(@medusajs/icons@2.11.0(react@19.2.0))(@medusajs/test-utils@2.11.0)(@medusajs/ui@4.0.24(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3))(@swc/core@1.5.7(@swc/helpers@0.5.17))(@types/node@22.18.12)(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(awilix@8.0.1)(posthog-node@4.18.0)(react-dom@19.2.0(react@19.2.0))(react-router-dom@6.20.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
       '@medusajs/test-utils': 2.11.0(@medusajs/framework@2.11.0(@medusajs/cli@2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12))(@types/node@22.18.12)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.12)))(@medusajs/medusa@2.11.0)
       '@medusajs/ui': 4.0.24(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
-      '@mikro-orm/cli': 6.4.3(pg@8.16.3)
+      '@mikro-orm/cli': 6.4.16(pg@8.16.3)
       '@mikro-orm/core': 6.4.16
       '@mikro-orm/knex': 6.4.16(@mikro-orm/core@6.4.16)(pg@8.16.3)
       '@mikro-orm/migrations': 6.4.16(@mikro-orm/core@6.4.16)(@types/node@22.18.12)(pg@8.16.3)
@@ -18955,8 +18876,6 @@ snapshots:
 
   dotenv@10.0.0: {}
 
-  dotenv@16.4.7: {}
-
   dotenv@16.5.0: {}
 
   dotenv@16.6.1: {}
@@ -19531,12 +19450,6 @@ snapshots:
   fs-exists-cached@1.0.0: {}
 
   fs-extra@10.1.0:
-    dependencies:
-      graceful-fs: 4.2.11
-      jsonfile: 6.2.0
-      universalify: 2.0.1
-
-  fs-extra@11.2.0:
     dependencies:
       graceful-fs: 4.2.11
       jsonfile: 6.2.0
@@ -20749,8 +20662,6 @@ snapshots:
       picomatch: 2.3.1
 
   mikro-orm@6.4.16: {}
-
-  mikro-orm@6.4.3: {}
 
   mime-db@1.52.0: {}
 
