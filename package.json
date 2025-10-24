@@ -15,5 +15,11 @@
   },
   "devDependencies": {
     "pa11y": "^6.2.3"
+  },
+  "pnpm": {
+    "overrides":
+      {
+        "@mikro-orm/*": "6.4.16"
+      }
   }
 }
