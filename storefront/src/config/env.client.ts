@@ -19,6 +19,7 @@ const rawEnv = {
   medusaPublishableKey:
     process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ??
     process.env.MEDUSA_PUBLISHABLE_KEY ??
+    process.env.MEDUSA_PUBLISHABLE_API_KEY ??
     "",
   stripePublishableKey:
     process.env.NEXT_PUBLIC_STRIPE_PK ??
