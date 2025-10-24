@@ -3,7 +3,16 @@ import {
   ContainerRegistrationKeys,
   Modules,
   ProductStatus,
+  MedusaError,
 } from "@medusajs/framework/utils";
+
+const ensure = <T>(value: T | null | undefined, message: string): T => {
+  if (value === null || value === undefined) {
+    throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, message);
+  }
+
+  return value;
+};
 import {
   createApiKeysWorkflow,
   createInventoryLevelsWorkflow,
@@ -31,12 +40,14 @@ export default async function seedDemoData({ container }: ExecArgs) {
   const countries = ["gb", "de", "dk", "se", "fr", "es", "it"];
 
   logger.info("Seeding store data...");
-  const [store] = await storeModuleService.listStores();
-  let defaultSalesChannel = await salesChannelModuleService.listSalesChannels({
+  const storeList = await storeModuleService.listStores();
+  const store = ensure(storeList[0], "Store record not found");
+
+  let salesChannels = await salesChannelModuleService.listSalesChannels({
     name: "Default Sales Channel",
   });
 
-  if (!defaultSalesChannel.length) {
+  if (!salesChannels.length) {
     // create the default sales channel
     const { result: salesChannelResult } = await createSalesChannelsWorkflow(
       container
@@ -49,8 +60,13 @@ export default async function seedDemoData({ container }: ExecArgs) {
         ],
       },
     });
-    defaultSalesChannel = salesChannelResult;
+    salesChannels = salesChannelResult;
   }
+
+  const defaultSalesChannel = ensure(
+    salesChannels[0],
+    "Default sales channel not initialized"
+  );
 
   await updateStoresWorkflow(container).run({
     input: {
@@ -65,7 +81,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
             currency_code: "usd",
           },
         ],
-        default_sales_channel_id: defaultSalesChannel[0].id,
+        default_sales_channel_id: defaultSalesChannel.id,
       },
     },
   });
@@ -82,7 +98,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
       ],
     },
   });
-  const region = regionResult[0];
+  const region = ensure(regionResult[0], "Region creation failed");
   logger.info("Finished seeding regions.");
 
   logger.info("Seeding tax regions...");
@@ -111,7 +127,10 @@ export default async function seedDemoData({ container }: ExecArgs) {
       ],
     },
   });
-  const stockLocation = stockLocationResult[0];
+  const stockLocation = ensure(
+    stockLocationResult[0],
+    "Stock location creation failed"
+  );
 
   await link.create({
     [Modules.STOCK_LOCATION]: {
@@ -142,6 +161,10 @@ export default async function seedDemoData({ container }: ExecArgs) {
     });
     shippingProfile = shippingProfileResult[0];
   }
+  const activeShippingProfile = ensure(
+    shippingProfile,
+    "Shipping profile creation failed"
+  );
 
   const fulfillmentSet = await fulfillmentModuleService.createFulfillmentSets({
     name: "European Warehouse delivery",
@@ -183,6 +206,11 @@ export default async function seedDemoData({ container }: ExecArgs) {
     ],
   });
 
+  const serviceZone = ensure(
+    fulfillmentSet.service_zones?.[0],
+    "Fulfillment service zone was not created"
+  );
+
   await link.create({
     [Modules.STOCK_LOCATION]: {
       stock_location_id: stockLocation.id,
@@ -198,8 +226,8 @@ export default async function seedDemoData({ container }: ExecArgs) {
         name: "Standard Shipping",
         price_type: "flat",
         provider_id: "manual_manual",
-        service_zone_id: fulfillmentSet.service_zones[0].id,
-        shipping_profile_id: shippingProfile.id,
+        service_zone_id: serviceZone.id,
+        shipping_profile_id: activeShippingProfile.id,
         type: {
           label: "Standard",
           description: "Ship in 2-3 days.",
@@ -236,8 +264,8 @@ export default async function seedDemoData({ container }: ExecArgs) {
         name: "Express Shipping",
         price_type: "flat",
         provider_id: "manual_manual",
-        service_zone_id: fulfillmentSet.service_zones[0].id,
-        shipping_profile_id: shippingProfile.id,
+        service_zone_id: serviceZone.id,
+        shipping_profile_id: activeShippingProfile.id,
         type: {
           label: "Express",
           description: "Ship in 24 hours.",
@@ -277,7 +305,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
   await linkSalesChannelsToStockLocationWorkflow(container).run({
     input: {
       id: stockLocation.id,
-      add: [defaultSalesChannel[0].id],
+      add: [defaultSalesChannel.id],
     },
   });
   logger.info("Finished seeding stock location data.");
@@ -296,12 +324,15 @@ export default async function seedDemoData({ container }: ExecArgs) {
       ],
     },
   });
-  const publishableApiKey = publishableApiKeyResult[0];
+  const publishableApiKey = ensure(
+    publishableApiKeyResult[0],
+    "Publishable API key creation failed"
+  );
 
   await linkSalesChannelsToApiKeyWorkflow(container).run({
     input: {
       id: publishableApiKey.id,
-      add: [defaultSalesChannel[0].id],
+      add: [defaultSalesChannel.id],
     },
   });
   logger.info("Finished seeding publishable API key data.");
@@ -346,7 +377,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
           handle: "t-shirt",
           weight: 400,
           status: ProductStatus.PUBLISHED,
-          shipping_profile_id: shippingProfile.id,
+          shipping_profile_id: activeShippingProfile.id,
           images: [
             {
               url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-front.png",
@@ -519,7 +550,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
           ],
           sales_channels: [
             {
-              id: defaultSalesChannel[0].id,
+              id: defaultSalesChannel.id,
             },
           ],
         },
@@ -533,7 +564,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
           handle: "sweatshirt",
           weight: 400,
           status: ProductStatus.PUBLISHED,
-          shipping_profile_id: shippingProfile.id,
+          shipping_profile_id: activeShippingProfile.id,
           images: [
             {
               url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatshirt-vintage-front.png",
@@ -620,7 +651,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
           ],
           sales_channels: [
             {
-              id: defaultSalesChannel[0].id,
+              id: defaultSalesChannel.id,
             },
           ],
         },
@@ -634,7 +665,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
           handle: "sweatpants",
           weight: 400,
           status: ProductStatus.PUBLISHED,
-          shipping_profile_id: shippingProfile.id,
+          shipping_profile_id: activeShippingProfile.id,
           images: [
             {
               url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatpants-gray-front.png",
@@ -721,7 +752,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
           ],
           sales_channels: [
             {
-              id: defaultSalesChannel[0].id,
+              id: defaultSalesChannel.id,
             },
           ],
         },
@@ -735,7 +766,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
           handle: "shorts",
           weight: 400,
           status: ProductStatus.PUBLISHED,
-          shipping_profile_id: shippingProfile.id,
+          shipping_profile_id: activeShippingProfile.id,
           images: [
             {
               url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/shorts-vintage-front.png",
@@ -822,7 +853,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
           ],
           sales_channels: [
             {
-              id: defaultSalesChannel[0].id,
+              id: defaultSalesChannel.id,
             },
           ],
         },

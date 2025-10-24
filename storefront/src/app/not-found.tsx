@@ -1,30 +1,30 @@
-import { ArrowUpRightMini } from "@medusajs/icons"
-import { Text } from "@medusajs/ui"
-import { Metadata } from "next"
+import type { Metadata } from "next"
 import Link from "next/link"
 
 export const metadata: Metadata = {
-  title: "404",
-  description: "Something went wrong",
+  title: "Lost in the static",
+  description: "The requested page does not exist.",
 }
 
-export default function NotFound() {
-  return (
-    <div className="flex flex-col gap-4 items-center justify-center min-h-[calc(100vh-64px)]">
-      <h1 className="text-2xl-semi text-ui-fg-base">Page not found</h1>
-      <p className="text-small-regular text-ui-fg-base">
-        The page you tried to access does not exist.
-      </p>
-      <Link
-        className="flex gap-x-1 items-center group"
-        href="/"
-      >
-        <Text className="text-ui-fg-interactive">Go to frontpage</Text>
-        <ArrowUpRightMini
-          className="group-hover:rotate-45 ease-in-out duration-150"
-          color="var(--fg-interactive)"
-        />
-      </Link>
-    </div>
-  )
-}
+const NotFound = () => (
+  <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center gap-6 px-4 text-center">
+    <span className="font-headline text-sm uppercase tracking-[0.75rem] text-muted-foreground">
+      404
+    </span>
+    <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-accent">
+      Lost in the Static
+    </h1>
+    <p className="max-w-md text-sm text-muted-foreground">
+      The signal you were chasing dissolved into noise. Return to the front page and
+      resume the assault.
+    </p>
+    <Link
+      href="/"
+      className="inline-flex items-center rounded-full border border-accent px-6 py-2 text-sm uppercase tracking-[0.3rem] text-accent transition hover:bg-accent hover:text-background"
+    >
+      Back to safety
+    </Link>
+  </div>
+)
+
+export default NotFound

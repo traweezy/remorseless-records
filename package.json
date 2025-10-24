@@ -1,0 +1,19 @@
+{
+  "name": "remorseless-records",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.19.0",
+  "engines": {
+    "node": ">=22.0.0 <23",
+    "pnpm": ">=10.19.0"
+  },
+  "scripts": {
+    "qa:lint": "pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter medusa-2.0-boilerplate-backend exec tsc --noEmit",
+    "qa:a11y": "node qa/run-pa11y.cjs",
+    "qa:lighthouse": "pnpm dlx @lhci/cli@0.12.0 autorun --config=./lighthouse/lhci.config.js",
+    "qa:ci": "pnpm run qa:lint && pnpm run qa:a11y && pnpm run qa:lighthouse"
+  },
+  "devDependencies": {
+    "pa11y": "^6.2.3"
+  }
+}

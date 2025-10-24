@@ -12,7 +12,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     } else {
       res.json({ publishableApiKey: defaultApiKey.token });
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'Unexpected error fetching publishable API key';
+    res.status(500).json({ error: message });
   }
-}
+};

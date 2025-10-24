@@ -22,6 +22,8 @@ export const isOrderPlacedTemplateData = (data: any): data is OrderPlacedTemplat
 export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
   PreviewProps: OrderPlacedPreviewProps
 } = ({ order, shippingAddress, preview = 'Your order has been placed!' }) => {
+  const orderItems = order.items ?? []
+
   return (
     <Base preview={preview}>
       <Section>
@@ -88,7 +90,7 @@ export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
             <Text style={{ fontWeight: 'bold' }}>Quantity</Text>
             <Text style={{ fontWeight: 'bold' }}>Price</Text>
           </div>
-          {order.items.map((item) => (
+          {orderItems.map((item) => (
             <div key={item.id} style={{
               display: 'flex',
               justifyContent: 'space-between',

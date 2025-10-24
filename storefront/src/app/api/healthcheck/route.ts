@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 
-export const GET = (req: NextRequest) => {
+export const GET = (_req: NextRequest) => {
   return NextResponse.json({ status: 'ok' });
 };

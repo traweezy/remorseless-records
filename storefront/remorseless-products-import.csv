@@ -1,0 +1,2 @@
+Product Id,Product Handle,Product Title,Product Subtitle,Product Description,Product Status,Product Thumbnail,Product Weight,Product Length,Product Width,Product Height,Product HS Code,Product Origin Country,Product MID Code,Product Material,Product Tags,Product Discountable,Product External Id,Variant Id,Variant Title,Variant SKU,Variant Barcode
+,test-release-cd,Test Release,Test Artist,Placeholder description for CSV sanity check.,published,,,,,,,,,,,true,test-001,,Default,TEST-001,
