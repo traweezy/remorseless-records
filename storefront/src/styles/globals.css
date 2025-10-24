@@ -1,112 +1,115 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@layer utilities {
-  /* Chrome, Safari and Opera */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+@layer base {
+  :root {
+    color-scheme: dark;
+
+    /* Greyscale foundation */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 88%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 88%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 88%;
+
+    /* Actions */
+    --primary: 0 0% 88%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 88%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+
+    /* Accents */
+    --accent: 0 75% 45%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 95%;
+
+    /* Elements */
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 75% 45%;
+    --radius: 0.5rem;
+
+    /* Hero gradients */
+    --gradient-hero: radial-gradient(circle at 50% 30%, hsl(0 100% 20%) 0%, hsl(0 0% 0%) 65%);
+    --gradient-section: linear-gradient(to bottom, hsl(0 0% 9%) 0%, transparent 100%);
+    --shadow-card: 0 20px 45px -32px hsl(0 0% 0% / 0.9);
   }
 
-  .no-scrollbar::-webkit-scrollbar-track {
-    background-color: transparent;
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+  * {
+    border-color: hsl(var(--border));
   }
 
-  input:focus ~ label,
-  input:not(:placeholder-shown) ~ label {
-    @apply -translate-y-2 text-xsmall-regular;
+  *::selection {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
   }
 
-  input:focus ~ label {
-    @apply left-0;
+  a {
+    @apply text-foreground transition-colors duration-200 ease-out;
   }
 
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus,
-  textarea:-webkit-autofill,
-  textarea:-webkit-autofill:hover,
-  textarea:-webkit-autofill:focus,
-  select:-webkit-autofill,
-  select:-webkit-autofill:hover,
-  select:-webkit-autofill:focus {
-    border: 1px solid #212121;
-    -webkit-text-fill-color: #212121;
-    -webkit-box-shadow: 0 0 0px 1000px #fff inset;
-    transition: background-color 5000s ease-in-out 0s;
+  a:hover {
+    @apply text-accent;
   }
 
-  input[type="search"]::-webkit-search-decoration,
-  input[type="search"]::-webkit-search-cancel-button,
-  input[type="search"]::-webkit-search-results-button,
-  input[type="search"]::-webkit-search-results-decoration {
-    -webkit-appearance: none;
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
-@layer components {
-  .content-container {
-    @apply max-w-[1440px] w-full mx-auto px-6;
+@layer utilities {
+  .glow-red {
+    filter: drop-shadow(0 0 24px hsl(0 100% 50% / 0.6));
   }
 
-  .contrast-btn {
-    @apply px-4 py-2 border border-black rounded-full hover:bg-black hover:text-white transition-colors duration-200 ease-in;
+  .text-glow {
+    text-shadow: 0 0 24px hsla(0, 100%, 56%, 0.75);
   }
 
-  .text-xsmall-regular {
-    @apply text-[10px] leading-4 font-normal;
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
   }
 
-  .text-small-regular {
-    @apply text-xs leading-5 font-normal;
+  .bg-gradient-section {
+    background: var(--gradient-section);
   }
 
-  .text-small-semi {
-    @apply text-xs leading-5 font-semibold;
+  .shadow-card {
+    box-shadow: var(--shadow-card);
   }
 
-  .text-base-regular {
-    @apply text-sm leading-6 font-normal;
+  .skeleton {
+    background-image: linear-gradient(90deg, hsl(0 0% 10%) 0%, hsl(0 0% 18%) 40%, hsl(0 0% 10%) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
   }
 
-  .text-base-semi {
-    @apply text-sm leading-6 font-semibold;
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
   }
 
-  .text-large-regular {
-    @apply text-base leading-6 font-normal;
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  .text-large-semi {
-    @apply text-base leading-6 font-semibold;
-  }
-
-  .text-xl-regular {
-    @apply text-2xl leading-[36px] font-normal;
-  }
-
-  .text-xl-semi {
-    @apply text-2xl leading-[36px] font-semibold;
-  }
-
-  .text-2xl-regular {
-    @apply text-[30px] leading-[48px] font-normal;
-  }
-
-  .text-2xl-semi {
-    @apply text-[30px] leading-[48px] font-semibold;
-  }
-
-  .text-3xl-regular {
-    @apply text-[32px] leading-[44px] font-normal;
-  }
-
-  .text-3xl-semi {
-    @apply text-[32px] leading-[44px] font-semibold;
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
