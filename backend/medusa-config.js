@@ -23,6 +23,7 @@ import {
   MEILISEARCH_HOST,
   MEILISEARCH_ADMIN_KEY
 } from 'lib/constants';
+import productSearchTransformer from 'lib/meilisearch/product-transformer';
 
 loadEnv(process.env.NODE_ENV, process.cwd());
 
@@ -146,13 +147,69 @@ const medusaConfig = {
           products: {
             type: 'products',
             enabled: true,
-            fields: ['id', 'title', 'description', 'handle', 'variant_sku', 'thumbnail'],
+            fields: [
+              'id',
+              'handle',
+              'title',
+              'description',
+              'thumbnail',
+              'collectionId',
+              'collectionTitle',
+              'collectionHandle',
+              'genres',
+              'format',
+              'price_amount',
+              'price_currency',
+              'price_compare_at',
+              'default_variant_id',
+              'default_variant_sku',
+              'stock_status',
+              'inventory_quantity',
+              'created_at',
+              'updated_at'
+            ],
             indexSettings: {
-              searchableAttributes: ['title', 'description', 'variant_sku'],
-              displayedAttributes: ['id', 'handle', 'title', 'description', 'variant_sku', 'thumbnail'],
-              filterableAttributes: ['id', 'handle'],
+              searchableAttributes: [
+                'title',
+                'description',
+                'collectionTitle',
+                'genres',
+                'format'
+              ],
+              displayedAttributes: [
+                'id',
+                'handle',
+                'title',
+                'description',
+                'thumbnail',
+                'collectionId',
+                'collectionTitle',
+                'collectionHandle',
+                'genres',
+                'format',
+                'price_amount',
+                'price_currency',
+                'price_compare_at',
+                'default_variant_id',
+                'default_variant_sku',
+                'stock_status',
+                'inventory_quantity',
+                'created_at',
+                'updated_at'
+              ],
+              filterableAttributes: [
+                'id',
+                'handle',
+                'genres',
+                'format',
+                'collectionId',
+                'price_currency',
+                'stock_status'
+              ],
+              sortableAttributes: ['price_amount', 'created_at']
             },
             primaryKey: 'id',
+            transformer: productSearchTransformer,
           }
         }
       }

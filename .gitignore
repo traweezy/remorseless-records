@@ -1,1 +1,13 @@
 .idea/
+node_modules/
+.medusa/
+.next/
+dist/
+coverage/
+.DS_Store
+.env
+.env.*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vscode/

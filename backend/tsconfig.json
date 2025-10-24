@@ -1,31 +1,47 @@
 {
   "compilerOptions": {
-    "target": "es2019",
+    "target": "ES2022",
+    "lib": [
+      "ES2023"
+    ],
     "allowJs": true,
     "esModuleInterop": true,
-    "module": "node16",
-    "moduleResolution": "node16",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "skipLibCheck": true,
-    "skipDefaultLibCheck": true,
     "declaration": true,
     "sourceMap": false,
     "outDir": "./.medusa/server",
     "rootDir": "./",
-    "baseUrl": ".",
+    "baseUrl": "./src",
     "paths": {
-      "*": ["./src/*"]
+      "@/*": [
+        "*"
+      ]
     },
     "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "checkJs": false
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "strict": true,
+    "useUnknownInCatchVariables": true,
+    "noImplicitOverride": true,
+    "allowSyntheticDefaultImports": true,
+    "checkJs": false,
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
   },
   "ts-node": {
     "swc": true
   },
-  "include": ["src", "medusa-config.js"],
+  "include": [
+    "src",
+    "medusa-config.js"
+  ],
   "exclude": [
     "**/__tests__",
     "**/__fixtures__",

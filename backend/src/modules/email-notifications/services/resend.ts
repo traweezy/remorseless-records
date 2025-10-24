@@ -1,7 +1,7 @@
 import { Logger, NotificationTypes } from '@medusajs/framework/types'
 import { AbstractNotificationProviderService, MedusaError } from '@medusajs/framework/utils'
-import { Resend, CreateEmailOptions } from 'resend'
-import { ReactNode } from 'react'
+import { Resend, type CreateEmailOptions } from 'resend'
+import type { ReactElement } from 'react'
 import { generateEmailTemplate } from '../templates'
 
 type InjectedDependencies = {
@@ -18,95 +18,163 @@ export interface ResendNotificationServiceOptions {
   from: string
 }
 
-type NotificationEmailOptions = Omit<
-  CreateEmailOptions,
-  'to' | 'from' | 'react' | 'html' | 'attachments'
+type NotificationEmailOptions = Partial<
+  Omit<CreateEmailOptions, 'to' | 'from' | 'react' | 'html'>
 >
 
 /**
  * Service to handle email notifications using the Resend API.
  */
 export class ResendNotificationService extends AbstractNotificationProviderService {
-  static identifier = "RESEND_NOTIFICATION_SERVICE"
-  protected config_: ResendServiceConfig // Configuration for Resend API
-  protected logger_: Logger // Logger for error and event logging
-  protected resend: Resend // Instance of the Resend API client
+  static override identifier = "RESEND_NOTIFICATION_SERVICE"
+  protected readonly resendConfig: ResendServiceConfig
+  protected readonly logger: Logger
+  private readonly resendClient: Resend
 
   constructor({ logger }: InjectedDependencies, options: ResendNotificationServiceOptions) {
     super()
-    this.config_ = {
+    this.resendConfig = {
       apiKey: options.api_key,
       from: options.from
     }
-    this.logger_ = logger
-    this.resend = new Resend(this.config_.apiKey)
+    this.logger = logger
+    this.resendClient = new Resend(this.resendConfig.apiKey)
   }
 
-  async send(
+  override async send(
     notification: NotificationTypes.ProviderSendNotificationDTO
   ): Promise<NotificationTypes.ProviderSendNotificationResultsDTO> {
     if (!notification) {
-      throw new MedusaError(MedusaError.Types.INVALID_DATA, `No notification information provided`)
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        'No notification information provided'
+      )
     }
+
     if (notification.channel === 'sms') {
-      throw new MedusaError(MedusaError.Types.INVALID_DATA, `SMS notification not supported`)
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        'SMS notification not supported'
+      )
+    }
+
+    const recipients = Array.isArray(notification.to)
+      ? notification.to.filter((value): value is string => Boolean(value))
+      : notification.to
+        ? [notification.to]
+        : []
+
+    if (recipients.length === 0) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        'No destination email specified'
+      )
     }
 
     // Generate the email content using the template
-    let emailContent: ReactNode
+    let emailContent: ReactElement
 
     try {
-      emailContent = generateEmailTemplate(notification.template, notification.data)
-    } catch (error) {
+      const rendered = generateEmailTemplate(notification.template, notification.data)
+      emailContent = rendered as ReactElement
+    } catch (error: unknown) {
       if (error instanceof MedusaError) {
-        throw error // Re-throw MedusaError for invalid template data
+        throw error
       }
+
+      const message =
+        error instanceof Error ? error.message : 'Failed to render email template.'
+
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        `Failed to generate email content for template: ${notification.template}`
+        `Failed to generate email content for template "${notification.template}": ${message}`
       )
     }
 
-    const emailOptions = notification.data.emailOptions as NotificationEmailOptions
+    const emailOptions: NotificationEmailOptions =
+      (notification.data?.emailOptions as NotificationEmailOptions | undefined) ?? {}
 
-    // Compose the message body to send via API to Resend
+    const subject = emailOptions.subject?.trim()
+    if (!subject) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        'Email notification must specify a subject'
+      )
+    }
+
+    const to: CreateEmailOptions['to'] =
+      recipients.length === 1 ? recipients[0]! : recipients
+    const attachments = mapAttachments(notification.attachments)
+
     const message: CreateEmailOptions = {
-      to: notification.to,
-      from: notification.from?.trim() ?? this.config_.from,
+      to,
+      from: notification.from?.trim() ?? this.resendConfig.from,
       react: emailContent,
-      subject: emailOptions.subject ?? 'You have a new notification',
-      headers: emailOptions.headers,
-      replyTo: emailOptions.replyTo,
-      cc: emailOptions.cc,
-      bcc: emailOptions.bcc,
-      tags: emailOptions.tags,
-      text: emailOptions.text,
-      attachments: Array.isArray(notification.attachments)
-        ? notification.attachments.map((attachment) => ({
-            content: attachment.content,
-            filename: attachment.filename,
-            content_type: attachment.content_type,
-            disposition: attachment.disposition ?? 'attachment',
-            id: attachment.id ?? undefined
-          }))
-        : undefined,
-      scheduledAt: emailOptions.scheduledAt
+      subject,
+      ...(emailOptions.headers ? { headers: emailOptions.headers } : {}),
+      ...(emailOptions.replyTo ? { replyTo: emailOptions.replyTo } : {}),
+      ...(emailOptions.cc ? { cc: emailOptions.cc } : {}),
+      ...(emailOptions.bcc ? { bcc: emailOptions.bcc } : {}),
+      ...(emailOptions.tags ? { tags: emailOptions.tags } : {}),
+      ...(emailOptions.text ? { text: emailOptions.text } : {}),
+      ...(attachments ? { attachments } : {}),
+      ...(emailOptions.scheduledAt ? { scheduledAt: emailOptions.scheduledAt } : {}),
     }
 
-    // Send the email via Resend
     try {
-      await this.resend.emails.send(message)
-      this.logger_.log(
-        `Successfully sent "${notification.template}" email to ${notification.to} via Resend`
+      await this.resendClient.emails.send(message)
+      this.logger.info(
+        `Sent "${notification.template}" email to ${recipients.join(', ')} via Resend`
       )
-      return {} // Return an empty object on success
-    } catch (error) {
-      const errorCode = error.code
-      const responseError = error.response?.body?.errors?.[0]
+      return {}
+    } catch (error: unknown) {
+      const { code, detail } = parseResendError(error)
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        `Failed to send "${notification.template}" email to ${notification.to} via Resend: ${errorCode} - ${responseError?.message ?? 'unknown error'}`
+        `Failed to send "${notification.template}" email (${code ?? 'unknown code'}): ${detail}`
       )
     }
   }
+}
+
+type ResendError = {
+  name?: string
+  code?: string
+  response?: {
+    statusCode?: number
+    body?: { errors?: Array<{ message?: string }> }
+  }
+  message?: string
+}
+
+const parseResendError = (error: unknown): { code?: string; detail: string } => {
+  if (typeof error === 'string') {
+    return { detail: error }
+  }
+
+  if (error && typeof error === 'object') {
+    const { name, code, message, response } = error as ResendError
+    const responseMessage = response?.body?.errors?.[0]?.message
+    const codeValue = code ?? name
+    return {
+      ...(codeValue ? { code: codeValue } : {}),
+      detail: responseMessage ?? message ?? 'Unknown error from Resend',
+    }
+  }
+
+  return { detail: 'Unknown error from Resend' }
+}
+
+const mapAttachments = (
+  attachments: NotificationTypes.ProviderSendNotificationDTO['attachments']
+): NonNullable<CreateEmailOptions['attachments']> | undefined => {
+  if (!Array.isArray(attachments) || attachments.length === 0) {
+    return undefined
+  }
+
+  return attachments.map((attachment) => ({
+    content: attachment.content,
+    filename: attachment.filename ?? undefined,
+    contentType: attachment.content_type ?? undefined,
+  })) as NonNullable<CreateEmailOptions['attachments']>
 }
