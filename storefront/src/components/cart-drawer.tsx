@@ -1,180 +1,203 @@
 "use client"
 
-import { useTransition, useState } from "react"
-import Link from "next/link"
-import { toast } from "sonner"
+import { useMemo, useOptimistic, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { ShoppingBag, X } from "lucide-react"
 
 import type { HttpTypes } from "@medusajs/types"
 
-import { formatAmount } from "@/lib/money"
-import { removeCartItem } from "@/lib/actions/remove-cart-item"
-import { updateCartItemQuantity } from "@/lib/actions/update-cart-item"
+import CartItem from "@/components/cart/cart-item"
+import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { Separator } from "@/components/ui/separator"
 import { startStripeCheckout } from "@/lib/actions/start-stripe-checkout"
-
-import { cn } from "@/lib/ui/cn"
-
-type CartLineItem = HttpTypes.StoreCartLineItem
+import { formatAmount } from "@/lib/money"
 
 type CartDrawerProps = {
-  cart: HttpTypes.StoreCart
+  cart: HttpTypes.StoreCart | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-const CartDrawer = ({ cart }: CartDrawerProps) => {
-  const [localItems, setLocalItems] = useState<CartLineItem[]>(cart.items ?? [])
-  const [isPending, startTransition] = useTransition()
+const currencyFromCart = (cart: HttpTypes.StoreCart | null): string =>
+  cart?.currency_code ?? "usd"
 
-  const currency = cart.currency_code
+const formatCartAmount = (cart: HttpTypes.StoreCart | null, amount: number | null | undefined) =>
+  formatAmount(currencyFromCart(cart), Number(amount ?? 0))
 
-  const subtotal = formatAmount(currency, Number(cart.subtotal ?? 0))
-  const tax = formatAmount(currency, Number(cart.tax_total ?? 0))
-  const shipping = formatAmount(currency, Number(cart.shipping_total ?? 0))
-  const total = formatAmount(currency, Number(cart.total ?? 0))
+/**
+ * CartDrawer renders the cart experience as a right-aligned Sheet with optimistic updates.
+ */
+type OptimisticAction =
+  | { type: "update"; id: string; quantity: number }
+  | { type: "remove"; id: string }
 
-  const handleQuantityChange = (lineItemId: string, quantity: number) => {
-    setLocalItems((prev) =>
-      prev.map((item) =>
-        item.id === lineItemId ? { ...item, quantity } : item
-      )
-    )
+export const CartDrawer = ({ cart, open, onOpenChange }: CartDrawerProps) => {
+  const router = useRouter()
+  const [isCheckoutPending, startCheckoutTransition] = useTransition()
 
-    startTransition(async () => {
-      try {
-        await updateCartItemQuantity(lineItemId, quantity, { redirectPath: "/cart" })
-      } catch (error) {
-        console.error(error)
-        toast.error("Failed to update quantity. Please try again.")
-      }
-    })
-  }
+  const [optimisticItems, applyOptimisticItems] = useOptimistic<
+    HttpTypes.StoreCartLineItem[],
+    OptimisticAction
+  >(cart?.items ?? [], (state, action) => {
+    switch (action.type) {
+      case "update":
+        return state.map((item) =>
+          item.id === action.id ? { ...item, quantity: action.quantity } : item
+        )
+      case "remove":
+        return state.filter((item) => item.id !== action.id)
+      default:
+        return state
+    }
+  })
 
-  const handleRemove = (lineItemId: string) => {
-    setLocalItems((prev) => prev.filter((item) => item.id !== lineItemId))
+  const currencyCode = currencyFromCart(cart)
 
-    startTransition(async () => {
-      try {
-        await removeCartItem(lineItemId, { redirectPath: "/cart" })
-        toast.success("Removed from cart")
-      } catch (error) {
-        console.error(error)
-        toast.error("Failed to remove item. Please try again.")
-      }
-    })
-  }
+  const itemCount = optimisticItems.reduce((total, item) => total + Number(item.quantity ?? 0), 0)
 
-  const handleCheckout = () => {
-    startTransition(async () => {
-      try {
-        await startStripeCheckout(cart.id)
-      } catch (error) {
-        console.error(error)
-        toast.error("Checkout failed. Please refresh and try again.")
-      }
-    })
-  }
+  const subtotal = useMemo(
+    () => formatCartAmount(cart, cart?.subtotal),
+    [cart]
+  )
+  const taxTotal = useMemo(() => formatCartAmount(cart, cart?.tax_total), [cart])
+  const shippingTotal = useMemo(() => formatCartAmount(cart, cart?.shipping_total), [cart])
+  const total = useMemo(() => formatCartAmount(cart, cart?.total), [cart])
+
+  const hasItems = optimisticItems.length > 0
 
   return (
-    <div className="flex flex-col gap-4">
-      <ul className="space-y-3">
-        {localItems.map((item) => (
-          <li
-            key={item.id}
-            className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/80 p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-headline text-xs uppercase tracking-[0.35rem] text-foreground">
-                  {item.title}
-                </p>
-                <p className="text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground">
-                  {item.variant?.title ?? "Release"}
-                </p>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-md">
+        <SheetHeader className="flex flex-row items-center justify-between px-6 py-4">
+          <div className="flex flex-col gap-1 text-left">
+            <SheetTitle className="flex items-center gap-2 text-xl font-semibold text-foreground">
+              <ShoppingBag className="h-5 w-5 text-accent" />
+              Cart ({itemCount})
+            </SheetTitle>
+            <SheetDescription className="text-sm text-muted-foreground">
+              Review your ritual stack before checkout.
+            </SheetDescription>
+          </div>
+          <SheetClose asChild>
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              aria-label="Close cart"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </SheetClose>
+        </SheetHeader>
+
+        {hasItems ? (
+          <>
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              <div className="space-y-6">
+                {optimisticItems.map((item, index) => (
+                  <CartItem
+                    key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
+                    item={item}
+                    currencyCode={currencyCode}
+                    onQuantityOptimistic={(lineItemId, nextQuantity) =>
+                      applyOptimisticItems({ type: "update", id: lineItemId, quantity: nextQuantity })
+                    }
+                    onRemoveOptimistic={(lineItemId) =>
+                      applyOptimisticItems({ type: "remove", id: lineItemId })
+                    }
+                  />
+                ))}
               </div>
-              <button
+            </div>
+
+            <div className="flex flex-col gap-4 border-t border-border/60 px-6 py-6">
+              <dl className="space-y-3 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between">
+                  <dt>Subtotal</dt>
+                  <dd className="text-foreground">{subtotal}</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt>Shipping</dt>
+                  <dd className="text-foreground">{shippingTotal}</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt>Tax</dt>
+                  <dd className="text-foreground">{taxTotal}</dd>
+                </div>
+                <Separator className="border-border/60" />
+                <div className="flex items-center justify-between text-base font-semibold text-foreground">
+                  <dt>Total</dt>
+                  <dd>{total}</dd>
+                </div>
+              </dl>
+
+              <Button
                 type="button"
-                onClick={() => handleRemove(item.id)}
-                className="text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-accent"
-              >
-                Remove
-              </button>
-            </div>
-            <div className="flex items-center justify-between">
-              <form
-                action={(formData) => {
-                  const quantity = Math.max(1, Number(formData.get("quantity")) || 1)
-                  handleQuantityChange(item.id, quantity)
+                size="lg"
+                className="h-12 w-full text-base font-semibold"
+                disabled={!cart?.id || isCheckoutPending}
+                onClick={() => {
+                  if (!cart?.id) {
+                    return
+                  }
+
+                  onOpenChange(false)
+                  startCheckoutTransition(async () => {
+                    await startStripeCheckout(cart.id)
+                  })
                 }}
-                className="flex items-center gap-2"
               >
-                <label
-                  className="text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground"
-                  htmlFor={`quantity-${item.id}`}
-                >
-                  Qty
-                </label>
-                <input
-                  id={`quantity-${item.id}`}
-                  name="quantity"
-                  defaultValue={Number(item.quantity ?? 1)}
-                  min={1}
-                  className="w-16 rounded border border-border/60 bg-background px-2 py-1 text-sm"
-                  type="number"
-                />
-                <button
-                  type="submit"
-                  className="rounded-full border border-border/60 px-3 py-1 text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-accent hover:text-accent"
-                >
-                  Update
-                </button>
-              </form>
-              <span className="text-sm font-semibold text-accent">
-                {formatAmount(
-                  currency,
-                  Number(item.total ?? item.subtotal ?? 0)
-                )}
-              </span>
+                {isCheckoutPending ? "Preparing checkout…" : "Proceed to Checkout"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="h-12 w-full text-base font-semibold"
+                onClick={() => {
+                  onOpenChange(false)
+                  router.push("/products")
+                }}
+              >
+                Continue Shopping
+              </Button>
             </div>
-          </li>
-        ))}
-      </ul>
-      <div className="rounded-xl border border-border/60 bg-background/80 p-4">
-        <dl className="space-y-1 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-          <div className="flex items-center justify-between">
-            <dt>Subtotal</dt>
-            <dd>{subtotal}</dd>
+          </>
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/60 text-muted-foreground">
+              <ShoppingBag className="h-8 w-8" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-foreground">Your cart is empty</h3>
+              <p className="text-sm text-muted-foreground">
+                Add some releases to unleash the full remorseless experience.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="h-12 w-full max-w-xs text-base font-semibold"
+              onClick={() => {
+                onOpenChange(false)
+                router.push("/products")
+              }}
+            >
+              Browse Catalog
+            </Button>
           </div>
-          <div className="flex items-center justify-between">
-            <dt>Shipping</dt>
-            <dd>{shipping}</dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt>Tax</dt>
-            <dd>{tax}</dd>
-          </div>
-          <div className="flex items-center justify-between font-semibold text-foreground">
-            <dt>Total</dt>
-            <dd>{total}</dd>
-          </div>
-        </dl>
-      </div>
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={handleCheckout}
-        className={cn(
-          "inline-flex w-full items-center justify-center rounded-full border border-accent px-6 py-3 text-xs uppercase tracking-[0.35rem] text-accent transition",
-          "hover:bg-accent hover:text-background",
-          isPending && "opacity-70"
         )}
-      >
-        {isPending ? "Preparing session…" : "Proceed to checkout"}
-      </button>
-      <Link
-        href="/products"
-        className="text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-accent"
-      >
-        Continue browsing
-      </Link>
-    </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 

@@ -1,10 +1,13 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, ShoppingCart, X } from "lucide-react"
 
+import type { HttpTypes } from "@medusajs/types"
+
+import CartDrawer from "@/components/cart-drawer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,11 +19,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
 
 type SiteHeaderShellProps = {
-  itemCount: number
-  subtotalDisplay: string | null
+  cart: HttpTypes.StoreCart | null
 }
 
 const NAV_LINKS = [
@@ -29,10 +32,10 @@ const NAV_LINKS = [
 ]
 
 const SiteHeaderShell = ({
-  itemCount,
-  subtotalDisplay,
+  cart,
 }: SiteHeaderShellProps) => {
   const pathname = usePathname()
+  const [isCartOpen, setCartOpen] = useState(false)
 
   const activeHref = useMemo(() => {
     if (!pathname) {
@@ -45,10 +48,24 @@ const SiteHeaderShell = ({
     return match?.href ?? null
   }, [pathname])
 
+  const itemCount =
+    cart?.items?.reduce((total, item) => total + Number(item.quantity ?? 0), 0) ?? 0
+
+  const subtotalDisplay = useMemo(() => {
+    if (!cart?.subtotal && !cart?.total) {
+      return null
+    }
+
+    return formatAmount(
+      cart.currency_code ?? "usd",
+      Number(cart.subtotal ?? cart.total ?? 0)
+    )
+  }, [cart?.currency_code, cart?.subtotal, cart?.total])
+
   const hasItems = itemCount > 0
   const cartLabel = hasItems
     ? subtotalDisplay
-      ? `${itemCount} · ${subtotalDisplay}`
+      ? `${itemCount} • ${subtotalDisplay}`
       : `${itemCount} items`
     : "Empty"
 
@@ -57,12 +74,12 @@ const SiteHeaderShell = ({
       <div className="container flex h-16 items-center justify-between">
         <Link
           href="/"
-          className="flex items-center gap-3 text-xs uppercase tracking-[0.35rem] text-muted-foreground transition hover:text-destructive"
+          className="flex items-center gap-3 text-sm uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-destructive"
         >
           <span className="font-bebas text-3xl text-destructive glow-red-sm">
             RR
           </span>
-          <span className="hidden font-teko text-lg text-muted-foreground sm:inline">
+          <span className="hidden font-teko text-xl text-muted-foreground sm:inline">
             Remorseless Records
           </span>
         </Link>
@@ -73,7 +90,7 @@ const SiteHeaderShell = ({
               key={link.href}
               href={link.href}
               className={cn(
-                "text-xs font-semibold uppercase tracking-[0.35rem] text-muted-foreground transition hover:text-destructive",
+                "text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-destructive",
                 activeHref === link.href && "text-destructive"
               )}
             >
@@ -83,16 +100,20 @@ const SiteHeaderShell = ({
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/cart" aria-label="View cart">
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="h-5 w-5" />
-              {hasItems ? (
-                <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center rounded-full bg-destructive text-[0.65rem] text-white">
-                  {itemCount}
-                </Badge>
-              ) : null}
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            aria-label="Open cart"
+            onClick={() => setCartOpen(true)}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {hasItems ? (
+              <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center rounded-full bg-destructive text-xs text-white">
+                {itemCount}
+              </Badge>
+            ) : null}
+          </Button>
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -114,7 +135,7 @@ const SiteHeaderShell = ({
                     <Link
                       href={link.href}
                       className={cn(
-                        "rounded-full border border-border/60 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35rem] text-muted-foreground transition hover:border-destructive hover:text-destructive",
+                        "rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive",
                         activeHref === link.href && "border-destructive text-destructive"
                       )}
                     >
@@ -125,10 +146,10 @@ const SiteHeaderShell = ({
                 <SheetClose asChild>
                   <Link
                     href="/cart"
-                    className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+                    className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
                   >
                     <span>Cart</span>
-                    <span className="rounded-full bg-destructive px-3 py-1 text-[0.6rem] text-white">
+                    <span className="rounded-full bg-destructive px-3 py-1 text-xs text-white">
                       {cartLabel}
                     </span>
                   </Link>
@@ -142,6 +163,7 @@ const SiteHeaderShell = ({
           </Sheet>
         </div>
       </div>
+      <CartDrawer cart={cart ?? null} open={isCartOpen} onOpenChange={setCartOpen} />
     </header>
   )
 }

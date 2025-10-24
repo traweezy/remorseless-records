@@ -43,11 +43,16 @@ const SheetContent = forwardRef<
     <SheetPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 flex flex-col border border-border/70 bg-background/95 p-6 shadow-glow duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in data-[state=closed]:fade-out",
-        side === "right" && "inset-y-0 right-0 h-full w-80 border-l data-[state=closed]:translate-x-full",
-        side === "left" && "inset-y-0 left-0 h-full w-80 border-r data-[state=closed]:-translate-x-full",
-        side === "top" && "top-0 inset-x-0 h-1/3 border-b data-[state=closed]:-translate-y-full",
-        side === "bottom" && "bottom-0 inset-x-0 h-1/3 border-t data-[state=closed]:translate-y-full",
+        "fixed z-50 flex flex-col border border-border/70 bg-background/95 p-6 shadow-glow transition-transform transition-opacity duration-300 ease-out data-[state=closed]:duration-200 data-[state=closed]:ease-in",
+        side === "right" &&
+          "inset-y-0 right-0 h-full w-full max-w-[448px] border-l translate-x-full data-[state=open]:translate-x-0 sm:rounded-l-2xl",
+        side === "left" &&
+          "inset-y-0 left-0 h-full w-full max-w-[448px] border-r -translate-x-full data-[state=open]:translate-x-0 sm:rounded-r-2xl",
+        side === "top" &&
+          "top-0 inset-x-0 h-1/3 border-b -translate-y-full data-[state=open]:translate-y-0",
+        side === "bottom" &&
+          "bottom-0 inset-x-0 h-1/3 border-t translate-y-full data-[state=open]:translate-y-0",
+        "data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
         className
       )}
       {...props}
