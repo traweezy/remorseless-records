@@ -186,6 +186,13 @@ export const normalizeSearchHit = (
     Boolean(inStock)
   )
 
+  const createdAt =
+    typeof hit.created_at === "string"
+      ? hit.created_at
+      : typeof hit.createdAt === "string"
+        ? hit.createdAt
+        : null
+
   return {
     id,
     handle,
@@ -195,6 +202,9 @@ export const normalizeSearchHit = (
     defaultVariant,
     genres,
     format,
+    priceAmount,
+    createdAt,
+    stockStatus,
   }
 }
 

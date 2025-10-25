@@ -101,9 +101,19 @@ export const mapStoreProductToSearchHit = (
     summary.defaultVariant?.title ??
     null
 
+  const priceAmount = summary.defaultVariant?.amount ?? null
+  const createdAt =
+    typeof product.created_at === "string"
+      ? product.created_at
+      : null
+  const stockStatus = summary.defaultVariant?.inStock ? "in_stock" : "sold_out"
+
   return {
     ...summary,
     genres,
     format: derivedFormat ?? null,
+    priceAmount,
+    createdAt,
+    stockStatus,
   }
 }
