@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useTransition, useState } from "react"
+import { useMemo } from "react"
 import { usePathname } from "next/navigation"
 
 import type { HttpTypes } from "@medusajs/types"
@@ -8,20 +8,22 @@ import type { HttpTypes } from "@medusajs/types"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProductVariantSelector from "@/components/product-variant-selector"
 import { deriveVariantOptions } from "@/lib/products/transformers"
+import { useProductDetailQuery } from "@/lib/query/products"
 
 type StoreProduct = HttpTypes.StoreProduct
 
 type ProductQuickViewProps = {
-  product: StoreProduct
+  handle: string
+  initialProduct?: StoreProduct
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-type ProductDetailResponse = {
-  product: StoreProduct
-}
+const heroImageFor = (product: StoreProduct | null): string | null => {
+  if (!product) {
+    return null
+  }
 
-const heroImageFor = (product: StoreProduct): string | null => {
   if (product.thumbnail) {
     return product.thumbnail
   }
@@ -30,64 +32,32 @@ const heroImageFor = (product: StoreProduct): string | null => {
   return image?.url ?? null
 }
 
-export const ProductQuickView = ({
-  product,
-  open,
-  onOpenChange,
-}: ProductQuickViewProps) => {
+export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }: ProductQuickViewProps) => {
   const pathname = usePathname()
-  const [loading, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-  const [detail, setDetail] = useState<StoreProduct | null>(null)
 
-  const activeProduct = detail ?? product
+  const {
+    data: detail,
+    isFetching,
+    isError,
+    refetch,
+  } = useProductDetailQuery(handle, {
+    enabled: open && Boolean(handle),
+    ...(initialProduct ? { initialData: initialProduct } : {}),
+    staleTime: 5 * 60_000,
+  })
+
+  const activeProduct = detail ?? initialProduct ?? null
   const variants = useMemo(
-    () => deriveVariantOptions(activeProduct.variants),
-    [activeProduct.variants]
+    () => deriveVariantOptions(activeProduct?.variants),
+    [activeProduct?.variants]
   )
 
   const description =
-    activeProduct.description ??
-    activeProduct.subtitle ??
+    activeProduct?.description ??
+    activeProduct?.subtitle ??
     "Full release notes drop soon. Spin now before it sells out."
 
   const heroImage = heroImageFor(activeProduct)
-
-  const fetchProduct = useCallback(() => {
-    if (!product.handle) {
-      setError("Product handle missing.")
-      return
-    }
-
-    startTransition(async () => {
-      try {
-        setError(null)
-        const response = await fetch(`/api/products/${product.handle}`, {
-          cache: "no-store",
-        })
-
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`)
-        }
-
-        const payload = (await response.json()) as ProductDetailResponse
-        setDetail(payload.product)
-      } catch (cause) {
-        console.error("Quick view fetch failed", cause)
-        setError("Unable to load product details. Please try again.")
-      }
-    })
-  }, [product.handle])
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    if (!detail && !loading) {
-      void fetchProduct()
-    }
-  }, [open, detail, loading, fetchProduct])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,9 +66,9 @@ export const ProductQuickView = ({
           <div className="space-y-6">
             <DialogHeader className="space-y-3 text-left">
               <DialogTitle className="font-bebas text-3xl uppercase tracking-[0.3rem]">
-                {activeProduct.title ?? "Release"}
+                {activeProduct?.title ?? "Loading release"}
               </DialogTitle>
-              {activeProduct.subtitle ? (
+              {activeProduct?.subtitle ? (
                 <DialogDescription className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
                   {activeProduct.subtitle}
                 </DialogDescription>
@@ -109,7 +79,7 @@ export const ProductQuickView = ({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={heroImage}
-                  alt={activeProduct.title ?? "Release artwork"}
+                  alt={activeProduct?.title ?? "Release artwork"}
                   className="h-full w-full object-cover"
                   loading="lazy"
                 />
@@ -125,20 +95,19 @@ export const ProductQuickView = ({
           </div>
 
           <div className="space-y-6">
-            {loading && !detail ? (
+            {isFetching && !detail && !initialProduct ? (
               <div className="space-y-4">
                 <div className="h-8 rounded-full skeleton" />
                 <div className="h-32 rounded-2xl skeleton" />
                 <div className="h-11 rounded-full skeleton" />
               </div>
-            ) : error ? (
+            ) : isError ? (
               <div className="space-y-4 rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive-foreground">
-                <p>{error}</p>
+                <p>Unable to load product details. Please try again.</p>
                 <button
                   type="button"
                   onClick={() => {
-                    setError(null)
-                    void fetchProduct()
+                    void refetch()
                   }}
                   className="rounded-full border border-destructive px-4 py-1 text-xs uppercase tracking-[0.3rem] text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
                 >
@@ -148,7 +117,7 @@ export const ProductQuickView = ({
             ) : (
               <ProductVariantSelector
                 variants={variants}
-                productTitle={activeProduct.title ?? "Release"}
+                productTitle={activeProduct?.title ?? "Release"}
                 redirectPath={pathname ?? "/products"}
               />
             )}
