@@ -7,13 +7,15 @@ import { Search, X } from "lucide-react"
 import ProductSearchExperience from "@/components/product-search-experience"
 import { searchProductsBrowser } from "@/lib/search/browser"
 import type { ProductSearchResponse } from "@/lib/search/search"
+import { useUIStore } from "@/lib/store/ui"
 
 type SearchModalProps = {
   children: React.ReactNode
 }
 
 const SearchModal = ({ children }: SearchModalProps) => {
-  const [open, setOpen] = useState(false)
+  const open = useUIStore((state) => state.isSearchOpen)
+  const setOpen = useUIStore((state) => state.setSearchOpen)
   const [isPending, startTransition] = useTransition()
   const [initial, setInitial] = useState<ProductSearchResponse | null>(null)
 
@@ -26,8 +28,8 @@ const SearchModal = ({ children }: SearchModalProps) => {
       try {
         const response = await searchProductsBrowser({ query: "", limit: 12 })
         setInitial(response)
-      } catch (error) {
-        console.error("Preloading search failed", error)
+      } catch (cause: unknown) {
+        console.error("Preloading search failed", cause)
       }
     })
   }, [open, initial, isPending])
@@ -56,6 +58,7 @@ const SearchModal = ({ children }: SearchModalProps) => {
               initialHits={initial.hits}
               initialFacets={initial.facets}
               initialTotal={initial.total}
+              pageSize={12}
             />
           ) : (
             (() => {

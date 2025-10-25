@@ -28,7 +28,7 @@ const FOOTER_LINKS = [
 ]
 
 const SiteFooter = () => (
-  <footer className="mt-24 border-t-4 border-accent/80 bg-background/95 py-12">
+  <footer className="relative z-20 mt-24 border-t-4 border-accent/80 bg-background py-12">
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 text-sm text-muted-foreground md:flex-row md:justify-between">
       <div className="space-y-3 max-w-sm">
         <span className="font-headline text-xs uppercase tracking-[0.45rem] text-accent">
