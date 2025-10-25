@@ -10,6 +10,10 @@ import "@/styles/globals.css"
 import { runtimeEnv } from "@/config/env"
 import SiteFooter from "@/components/site-footer"
 import SiteHeader from "@/components/site-header"
+import QueryProvider from "@/components/providers/query-provider"
+import PageTransition from "@/components/providers/page-transition"
+import SpeculationRules from "@/components/providers/speculation-rules"
+import ProximityPrefetch from "@/components/providers/proximity-prefetch"
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -102,11 +106,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
           "min-h-screen bg-background text-foreground antialiased",
         ].join(" ")}
       >
-        <div className="relative flex min-h-screen flex-col bg-background">
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </div>
+        <QueryProvider>
+          <ProximityPrefetch>
+            <div className="relative flex min-h-screen flex-col bg-background">
+              <SiteHeader />
+              <PageTransition>
+                <main className="flex-1 min-h-0">{children}</main>
+              </PageTransition>
+              <SiteFooter />
+            </div>
+          </ProximityPrefetch>
+        </QueryProvider>
+        <SpeculationRules />
       </body>
     </html>
   )
