@@ -5,26 +5,29 @@ import { headers } from "next/headers"
 import type { HttpTypes } from "@medusajs/types"
 
 import ProductVariantSelector from "@/components/product-variant-selector"
-import RelatedProductCard from "@/components/related-product-card"
+import ProductCard from "@/components/product-card"
 import {
   deriveVariantOptions,
   mapStoreProductToRelatedSummary,
 } from "@/lib/products/transformers"
-import { storeClient } from "@/lib/medusa"
+import {
+  getProductByHandle,
+  getProductsByCollection,
+  getRecentProducts,
+} from "@/lib/data/products"
 import type { RelatedProductSummary } from "@/types/product"
 
 type ProductPageProps = {
-  params: { handle: string }
+  params: { handle: string } | Promise<{ handle: string }>
 }
+
+export const revalidate = 120
 
 export const generateMetadata = async ({
   params,
 }: ProductPageProps): Promise<Metadata> => {
-  const { products } = await storeClient.product.list({
-    handle: params.handle,
-    limit: 1,
-  })
-  const product = products[0]
+  const { handle } = await params
+  const product = await getProductByHandle(handle)
 
   if (!product) {
     return {
@@ -60,11 +63,8 @@ export const generateMetadata = async ({
 }
 
 const ProductPage = async ({ params }: ProductPageProps) => {
-  const { products } = await storeClient.product.list({
-    handle: params.handle,
-    limit: 1,
-  })
-  const product = products[0]
+  const { handle } = await params
+  const product = await getProductByHandle(handle)
 
   if (!product) {
     notFound()
@@ -263,13 +263,13 @@ const ProductPage = async ({ params }: ProductPageProps) => {
               Related Assaults
             </h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              More wax pulled from nearby collections and similar sonic territory. Quick-add
-              drops straight into your ritual stack without leaving this page.
+              More wax pulled from nearby collections and similar sonic territory. Quick shop
+              surfaces variants without breaking your listening flow.
             </p>
           </header>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {relatedProducts.map((related) => (
-              <RelatedProductCard key={related.id} product={related} />
+              <ProductCard key={related.id} product={related} />
             ))}
           </div>
         </section>
@@ -311,17 +311,12 @@ const loadRelatedProducts = async (
     null
 
   if (collectionId) {
-    const { products: fromCollection } = await storeClient.product.list({
-      collection_id: collectionId,
-      limit: 8,
-    })
+    const fromCollection = await getProductsByCollection(collectionId, 8)
     appendSuggestions(fromCollection)
   }
 
   if (suggestions.length < 4) {
-    const { products: fallback } = await storeClient.product.list({
-      limit: 8,
-    })
+    const fallback = await getRecentProducts(8)
     appendSuggestions(fallback)
   }
 

@@ -6,7 +6,7 @@ import ProductCard from "@/components/product-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { storeClient } from "@/lib/medusa"
+import { getHomepageProducts } from "@/lib/data/products"
 
 const GENRE_ROUTES = [
   {
@@ -26,8 +26,10 @@ const GENRE_ROUTES = [
   },
 ]
 
+export const revalidate = 120
+
 const HomePage = async (): Promise<ReactElement> => {
-  const { products } = await storeClient.product.list({ limit: 16 })
+  const products = await getHomepageProducts()
 
   const featured = products.slice(0, 4)
   const newest = products.slice(4, 8)
