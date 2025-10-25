@@ -1,15 +1,16 @@
 "use client"
 
-import { useTransition } from "react"
+import type { HttpTypes } from "@medusajs/types"
 import Image from "next/image"
 import { Minus, Plus, Trash2 } from "lucide-react"
+import { useMemo } from "react"
 
-import type { HttpTypes } from "@medusajs/types"
-
-import { removeCartItem } from "@/lib/actions/remove-cart-item"
-import { updateCartItemQuantity } from "@/lib/actions/update-cart-item"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
+import {
+  useRemoveCartItemMutation,
+  useUpdateCartItemQuantityMutation,
+} from "@/lib/mutations/cart"
 
 type CartLineItem = HttpTypes.StoreCartLineItem
 
@@ -17,8 +18,6 @@ type CartItemProps = {
   item: CartLineItem
   currencyCode: string
   className?: string
-  onRemoveOptimistic?: (lineItemId: string) => void
-  onQuantityOptimistic?: (lineItemId: string, nextQuantity: number) => void
 }
 
 /**
@@ -29,39 +28,30 @@ export const CartItem = ({
   item,
   currencyCode,
   className,
-  onRemoveOptimistic,
-  onQuantityOptimistic,
 }: CartItemProps) => {
-  const [isPending, startTransition] = useTransition()
+  const updateMutation = useUpdateCartItemQuantityMutation()
+  const removeMutation = useRemoveCartItemMutation()
 
-  const quantity = Number(item.quantity ?? 1)
-  const totalAmount = Number(item.total ?? item.subtotal ?? 0)
+  const quantity = useMemo(() => Number(item.quantity ?? 1), [item.quantity])
+  const totalAmount = useMemo(
+    () => Number(item.total ?? item.subtotal ?? 0),
+    [item.total, item.subtotal]
+  )
 
   const handleQuantityChange = (nextQuantity: number) => {
     const normalized = Math.max(1, nextQuantity)
 
-    onQuantityOptimistic?.(item.id, normalized)
-
-    startTransition(async () => {
-      try {
-        await updateCartItemQuantity(item.id, normalized, { redirectPath: "/cart" })
-      } catch (error) {
-        console.error(error)
-      }
+    updateMutation.mutate({
+      lineItemId: item.id,
+      quantity: normalized,
     })
   }
 
   const handleRemove = () => {
-    onRemoveOptimistic?.(item.id)
-
-    startTransition(async () => {
-      try {
-        await removeCartItem(item.id, { redirectPath: "/cart" })
-      } catch (error) {
-        console.error(error)
-      }
-    })
+    removeMutation.mutate({ lineItemId: item.id })
   }
+
+  const isPending = updateMutation.isPending || removeMutation.isPending
 
   return (
     <article

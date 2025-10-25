@@ -2,74 +2,62 @@
 
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
-import { AnimatePresence, motion, useReducedMotion, type Transition, type Variants } from "framer-motion"
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Transition,
+  type Variants,
+} from "framer-motion"
 import { ShoppingBag, X } from "lucide-react"
-import { useMemo, useOptimistic, useTransition } from "react"
+import { useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
-
 import type { HttpTypes } from "@medusajs/types"
 
 import CartItem from "@/components/cart/cart-item"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { startStripeCheckout } from "@/lib/actions/start-stripe-checkout"
+import type { StoreCart } from "@/lib/query/cart"
+import { useCartQuery } from "@/lib/query/cart"
 import { formatAmount } from "@/lib/money"
 
 const MotionButton = motion(Button)
 
+const EMPTY_CART_ITEMS: HttpTypes.StoreCartLineItem[] = []
+
 type CartDrawerProps = {
-  cart: HttpTypes.StoreCart | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-const currencyFromCart = (cart: HttpTypes.StoreCart | null): string =>
+const currencyFromCart = (cart: StoreCart): string =>
   cart?.currency_code ?? "usd"
 
-const formatCartAmount = (cart: HttpTypes.StoreCart | null, amount: number | null | undefined) =>
+const formatCartAmount = (cart: StoreCart, amount: number | null | undefined) =>
   formatAmount(currencyFromCart(cart), Number(amount ?? 0))
 
-/**
- * CartDrawer renders the cart experience as a right-aligned Sheet with optimistic updates.
- */
-type OptimisticAction =
-  | { type: "update"; id: string; quantity: number }
-  | { type: "remove"; id: string }
-
-export const CartDrawer = ({ cart, open, onOpenChange }: CartDrawerProps) => {
+export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
   const router = useRouter()
   const [isCheckoutPending, startCheckoutTransition] = useTransition()
   const prefersReducedMotion = useReducedMotion()
+  const { data: cart } = useCartQuery()
+  const hydratedCart: StoreCart = cart ?? null
 
-  const [optimisticItems, applyOptimisticItems] = useOptimistic<
-    HttpTypes.StoreCartLineItem[],
-    OptimisticAction
-  >(cart?.items ?? [], (state, action) => {
-    switch (action.type) {
-      case "update":
-        return state.map((item) =>
-          item.id === action.id ? { ...item, quantity: action.quantity } : item
-        )
-      case "remove":
-        return state.filter((item) => item.id !== action.id)
-      default:
-        return state
-    }
-  })
-
-  const currencyCode = currencyFromCart(cart)
-
-  const itemCount = optimisticItems.reduce((total, item) => total + Number(item.quantity ?? 0), 0)
-
-  const subtotal = useMemo(
-    () => formatCartAmount(cart, cart?.subtotal),
-    [cart]
+  const items = hydratedCart?.items ?? EMPTY_CART_ITEMS
+  const hasItems = items.length > 0
+  const itemCount = useMemo(
+    () => items.reduce((total, item) => total + Number(item.quantity ?? 0), 0),
+    [items]
   )
-  const taxTotal = useMemo(() => formatCartAmount(cart, cart?.tax_total), [cart])
-  const shippingTotal = useMemo(() => formatCartAmount(cart, cart?.shipping_total), [cart])
-  const total = useMemo(() => formatCartAmount(cart, cart?.total), [cart])
 
-  const hasItems = optimisticItems.length > 0
+  const subtotal = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.subtotal), [hydratedCart])
+  const taxTotal = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.tax_total), [hydratedCart])
+  const shippingTotal = useMemo(
+    () => formatCartAmount(hydratedCart, hydratedCart?.shipping_total),
+    [hydratedCart]
+  )
+  const total = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.total), [hydratedCart])
 
   const easeOutExpo = [0.4, 0, 0.2, 1] as const
   const easeInSharp = [0.4, 0, 1, 1] as const
@@ -199,26 +187,13 @@ export const CartDrawer = ({ cart, open, onOpenChange }: CartDrawerProps) => {
                           variants={listVariants}
                           className="space-y-6"
                         >
-                          {optimisticItems.map((item, index) => (
+                          {items.map((item, index) => (
                             <motion.div
                               key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
                               variants={itemVariants}
                               layout
                             >
-                              <CartItem
-                                item={item}
-                                currencyCode={currencyCode}
-                                onQuantityOptimistic={(lineItemId, nextQuantity) =>
-                                  applyOptimisticItems({
-                                    type: "update",
-                                    id: lineItemId,
-                                    quantity: nextQuantity,
-                                  })
-                                }
-                                onRemoveOptimistic={(lineItemId) =>
-                                  applyOptimisticItems({ type: "remove", id: lineItemId })
-                                }
-                              />
+                              <CartItem item={item} currencyCode={currencyFromCart(hydratedCart)} />
                             </motion.div>
                           ))}
                         </motion.div>
@@ -249,17 +224,18 @@ export const CartDrawer = ({ cart, open, onOpenChange }: CartDrawerProps) => {
                           type="button"
                           size="lg"
                           className="h-12 w-full text-base font-semibold"
-                          disabled={!cart?.id || isCheckoutPending}
-                        {...checkoutInteractions}
-                        transition={checkoutTransition}
+                          disabled={!hydratedCart?.id || isCheckoutPending}
+                          {...checkoutInteractions}
+                          transition={checkoutTransition}
                           onClick={() => {
-                            if (!cart?.id) {
+                            const cartId = hydratedCart?.id
+                            if (!cartId) {
                               return
                             }
 
                             onOpenChange(false)
                             startCheckoutTransition(async () => {
-                              await startStripeCheckout(cart.id)
+                              await startStripeCheckout(cartId)
                             })
                           }}
                         >
@@ -271,8 +247,8 @@ export const CartDrawer = ({ cart, open, onOpenChange }: CartDrawerProps) => {
                           variant="outline"
                           size="lg"
                           className="h-12 w-full text-base font-semibold"
-                        {...secondaryInteractions}
-                        transition={secondaryTransition}
+                          {...secondaryInteractions}
+                          transition={secondaryTransition}
                           onClick={() => {
                             onOpenChange(false)
                             router.push("/products")
