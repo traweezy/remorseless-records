@@ -127,6 +127,11 @@ export const POST = async (
     metadata: {
       cart_id: cart.id,
     },
+    payment_intent_data: {
+      metadata: {
+        cart_id: cart.id,
+      },
+    },
   }
 
   if (cart.email) {
