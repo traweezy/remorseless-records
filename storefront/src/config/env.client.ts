@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 const clientSchema = z.object({
+  siteUrl: z.string().url(),
   medusaUrl: z.string().url(),
   medusaPublishableKey: z.string().min(1),
   stripePublishableKey: z.string().min(1),
@@ -11,6 +12,10 @@ const clientSchema = z.object({
 })
 
 const rawEnv = {
+  siteUrl:
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_BASE_URL ??
+    "https://www.remorselessrecords.com",
   medusaUrl:
     process.env.NEXT_PUBLIC_MEDUSA_URL ??
     process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??

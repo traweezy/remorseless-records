@@ -7,4 +7,5 @@ export const runtimeEnv = {
   ...clientEnv,
   ...serverEnv,
   medusaBackendUrl: serverEnv.medusaBackendUrl ?? clientEnv.medusaUrl,
+  siteUrl: clientEnv.siteUrl,
 }

@@ -33,6 +33,7 @@ const dynamicRemotePatterns: RemotePattern[] = [
   parseRemotePattern(process.env.NEXT_PUBLIC_MEDUSA_URL),
   parseRemotePattern(process.env.NEXT_PUBLIC_MEDIA_URL),
   parseRemotePattern(process.env.NEXT_PUBLIC_ASSET_HOST),
+  parseRemotePattern(process.env.NEXT_PUBLIC_CDN_HOST),
 ].filter((pattern): pattern is RemotePattern => Boolean(pattern))
 
 const nextConfig: NextConfig = {
