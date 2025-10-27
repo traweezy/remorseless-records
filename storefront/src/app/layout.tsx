@@ -7,13 +7,15 @@ import {
 } from "next/font/google"
 
 import "@/styles/globals.css"
-import { runtimeEnv } from "@/config/env"
 import SiteFooter from "@/components/site-footer"
 import SiteHeader from "@/components/site-header"
 import QueryProvider from "@/components/providers/query-provider"
 import PageTransition from "@/components/providers/page-transition"
 import SpeculationRules from "@/components/providers/speculation-rules"
 import ProximityPrefetch from "@/components/providers/proximity-prefetch"
+import JsonLd from "@/components/json-ld"
+import { siteMetadata } from "@/config/site"
+import { organizationJsonLd, webSiteJsonLd } from "@/lib/seo/structured-data"
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -41,44 +43,68 @@ const jetBrains = JetBrains_Mono({
   variable: "--font-mono",
 })
 
-const siteUrl = new URL(runtimeEnv.medusaBackendUrl)
+const siteUrl = new URL(siteMetadata.siteUrl)
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: {
-    default: "Remorseless Records",
-    template: "%s · Remorseless Records",
+    default: siteMetadata.name,
+    template: `%s · ${siteMetadata.name}`,
   },
-  description:
-    "Death. Doom. Grind. A brutal maximalist storefront for the underground heavy music scene.",
-  applicationName: "Remorseless Records",
-  keywords: [
-    "metal",
-    "death metal",
-    "doom",
-    "grindcore",
-    "vinyl",
-    "underground music",
-    "records",
-  ],
-  authors: [{ name: "Remorseless Records" }],
+  description: siteMetadata.description,
+  applicationName: siteMetadata.name,
+  category: "music",
+  keywords: siteMetadata.keywords,
+  authors: [{ name: siteMetadata.name }],
+  creator: siteMetadata.name,
+  publisher: siteMetadata.name,
+  alternates: {
+    canonical: siteMetadata.siteUrl,
+    languages: {
+      "en-US": siteMetadata.siteUrl,
+    },
+    types: {
+      "application/rss+xml": new URL(siteMetadata.rssPath, siteMetadata.siteUrl).toString(),
+    },
+  },
   openGraph: {
-    title: "Remorseless Records",
-    description:
-      "Death. Doom. Grind. A brutal maximalist storefront for the underground heavy music scene.",
-    url: siteUrl.toString(),
-    siteName: "Remorseless Records",
+    title: siteMetadata.name,
+    description: siteMetadata.description,
+    url: siteMetadata.siteUrl,
+    siteName: siteMetadata.name,
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: siteMetadata.assets.ogImage,
+        alt: `${siteMetadata.name} hero`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     site: "@remorseless_records",
     creator: "@remorseless_records",
+    title: siteMetadata.name,
+    description: siteMetadata.description,
+    images: [siteMetadata.assets.ogImage],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    "max-image-preview": "large",
+    "max-snippet": -1,
+    "max-video-preview": -1,
   },
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
+  },
+  appLinks: {
+    web: {
+      url: siteMetadata.siteUrl,
+      should_fallback: true,
+    },
   },
 }
 
@@ -118,6 +144,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
           </ProximityPrefetch>
         </QueryProvider>
         <SpeculationRules />
+        <JsonLd id="remorseless-organization" data={organizationJsonLd} />
+        <JsonLd id="remorseless-website" data={webSiteJsonLd} />
       </body>
     </html>
   )

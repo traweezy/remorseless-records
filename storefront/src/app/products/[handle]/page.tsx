@@ -1,3 +1,4 @@
+import Image from "next/image"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { headers } from "next/headers"
@@ -15,7 +16,15 @@ import {
   getProductsByCollection,
   getRecentProducts,
 } from "@/lib/data/products"
+import JsonLd from "@/components/json-ld"
+import { siteMetadata } from "@/config/site"
 import type { RelatedProductSummary } from "@/types/product"
+import {
+  buildBreadcrumbJsonLd,
+  buildMusicReleaseJsonLd,
+  buildProductJsonLd,
+  selectPrimaryVariantForJsonLd,
+} from "@/lib/seo/structured-data"
 
 type ProductPageProps = {
   params: { handle: string } | Promise<{ handle: string }>
@@ -38,26 +47,43 @@ export const generateMetadata = async ({
   const description =
     product.description ??
     product.subtitle ??
-    "Remorseless Records exclusive release."
+    siteMetadata.description
 
+  const canonical = `${siteMetadata.siteUrl}/products/${product.handle ?? handle}`
   const images =
     product.images?.map((image) => ({
       url: image.url,
       alt: product.title ?? "Release artwork",
-    })) ?? []
+    })) ?? [
+      {
+        url: siteMetadata.assets.ogImage,
+        alt: `${siteMetadata.name} hero`,
+      },
+    ]
+  const keywords = [
+    ...(product.tags?.map((tag) => tag?.value).filter(Boolean) ?? []),
+    ...siteMetadata.keywords,
+  ]
 
   return {
     title: product.title ?? "Remorseless Records Release",
     description,
+    alternates: {
+      canonical,
+    },
+    keywords,
     openGraph: {
       title: product.title ?? "Remorseless Records Release",
       description,
+      url: canonical,
+      type: "product",
       images,
     },
     twitter: {
       card: "summary_large_image",
       title: product.title ?? "Remorseless Records Release",
       description,
+      images: images.map((image) => image.url),
     },
   }
 }
@@ -72,7 +98,6 @@ const ProductPage = async ({ params }: ProductPageProps) => {
 
   const variantOptions = deriveVariantOptions(product.variants)
   const relatedProducts = await loadRelatedProducts(product)
-  const primaryVariant = product.variants?.[0] ?? null
 
   const heroImages = product.images ?? []
   const productTitle = product.title ?? "Remorseless Release"
@@ -102,38 +127,45 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   const availability = defaultVariant?.inStock
     ? "https://schema.org/InStock"
     : "https://schema.org/OutOfStock"
-  const priceValue =
-    typeof defaultVariant?.amount === "number"
-      ? (defaultVariant.amount / 100).toFixed(2)
+  const genreTags = (product.tags ?? [])
+    .map((tag) => tag?.value?.trim())
+    .filter((value): value is string => Boolean(value))
+  const metadataArtist =
+    typeof metadata?.artist === "string" && metadata.artist.trim().length
+      ? metadata.artist.trim()
       : null
-  const productImages = heroImages
-    .map((image) => image.url)
-    .filter((url): url is string => Boolean(url))
-
-  const productStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: productTitle,
-    description: productDescription,
-    image: productImages,
-    sku: primaryVariant?.sku ?? undefined,
-    brand: product.collection?.title
-      ? {
-          "@type": "Brand",
-          name: product.collection.title,
-        }
-      : undefined,
-    offers:
-      defaultVariant && priceValue
-        ? {
-            "@type": "Offer",
-            priceCurrency: (defaultVariant.currency ?? "usd").toUpperCase(),
-            price: priceValue,
-            availability,
-            url: productUrl,
-          }
-        : undefined,
-  }
+  const artistName = metadataArtist ?? product.collection?.title ?? productTitle
+  const variantForJsonLd = selectPrimaryVariantForJsonLd(product)
+  const collectionHandle =
+    (product.collection as { handle?: string } | undefined)?.handle ??
+    (product as { collection_handle?: string }).collection_handle ??
+    null
+  const productJsonLd = buildProductJsonLd({
+    product,
+    productUrl,
+    variant: variantForJsonLd,
+    availability,
+    genreTags,
+  })
+  const musicReleaseJsonLd = buildMusicReleaseJsonLd({
+    product,
+    productUrl,
+    artist: artistName,
+    tracks: tracklist,
+    genres: genreTags,
+  })
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Home", url: `${origin}/` },
+    { name: "Catalog", url: `${origin}/products` },
+    {
+      name: product.collection?.title ?? "Releases",
+      url:
+        collectionHandle != null
+          ? `${origin}/products?collection=${collectionHandle}`
+          : `${origin}/products`,
+    },
+    { name: productTitle, url: productUrl },
+  ])
 
   return (
     <div className="space-y-16 px-4 py-16">
@@ -141,14 +173,19 @@ const ProductPage = async ({ params }: ProductPageProps) => {
         <div className="flex flex-col gap-6">
           {heroImages.length ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              {heroImages.map((image) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={image.id}
-                  src={image.url}
-                  alt={productTitle}
-                  className="w-full rounded-xl border border-border/60 bg-background/60 object-cover"
-                />
+              {heroImages.map((image, index) => (
+                <div
+                  key={image.id ?? image.url ?? `image-${index}`}
+                  className="relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-background/60"
+                >
+                  <Image
+                    src={image.url ?? "/remorseless-hero-logo.png"}
+                    alt={productTitle}
+                    fill
+                    sizes="(min-width: 1024px) 420px, 50vw"
+                    className="object-cover"
+                  />
+                </div>
               ))}
             </div>
           ) : (
@@ -275,12 +312,9 @@ const ProductPage = async ({ params }: ProductPageProps) => {
         </section>
       ) : null}
 
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(productStructuredData),
-        }}
+      <JsonLd
+        id={`product-json-${product.handle ?? product.id}`}
+        data={[productJsonLd, musicReleaseJsonLd, breadcrumbJsonLd]}
       />
     </div>
   )

@@ -1,11 +1,38 @@
+import type { Metadata } from "next"
+import { headers } from "next/headers"
+
 import ProductSearchExperience from "@/components/product-search-experience"
+import JsonLd from "@/components/json-ld"
+import { siteMetadata } from "@/config/site"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { getRecentProducts } from "@/lib/data/products"
 import { searchProductsServer } from "@/lib/search/server"
 import type { ProductSearchResponse } from "@/lib/search/search"
-import { headers } from "next/headers"
+import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 
 export const revalidate = 120
+
+const catalogCanonical = `${siteMetadata.siteUrl}/products`
+
+export const metadata: Metadata = {
+  title: "Catalog",
+  description:
+    "Dig through Remorseless Records’ full catalog of doom, death, sludge, and stoner metal pressed in limited runs.",
+  alternates: {
+    canonical: catalogCanonical,
+  },
+  openGraph: {
+    url: catalogCanonical,
+    title: "Catalog · Remorseless Records",
+    description:
+      "Limited releases, micro-batch pressings, and underground metal exclusives.",
+  },
+  twitter: {
+    title: "Catalog · Remorseless Records",
+    description:
+      "Limited releases, micro-batch pressings, and underground metal exclusives.",
+  },
+}
 
 const ProductsPage = async () => {
   let initialSearch: ProductSearchResponse
@@ -36,16 +63,13 @@ const ProductsPage = async () => {
   const protocol = protocolHeader ?? (host.startsWith("localhost") ? "http" : "https")
   const origin = `${protocol}://${host}`
 
-  const catalogStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    itemListElement: initialSearch.hits.map((hit, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      url: `${origin}/products/${hit.handle}`,
+  const catalogStructuredData = buildItemListJsonLd(
+    "Remorseless Catalog",
+    initialSearch.hits.map((hit) => ({
       name: hit.title,
-    })),
-  }
+      url: `${origin}/products/${hit.handle}`,
+    }))
+  )
 
   return (
     <>
@@ -55,13 +79,7 @@ const ProductsPage = async () => {
         initialTotal={initialSearch.total}
       />
 
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(catalogStructuredData),
-        }}
-      />
+      <JsonLd id="catalog-item-list" data={catalogStructuredData} />
     </>
   )
 }

@@ -1,4 +1,4 @@
-import type { ReactElement } from "react"
+import type { Metadata, ReactElement } from "react"
 import Link from "next/link"
 
 import HeroSection from "@/components/hero-section"
@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { getHomepageProducts } from "@/lib/data/products"
+import JsonLd from "@/components/json-ld"
+import { siteMetadata } from "@/config/site"
+import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 
 const GENRE_ROUTES = [
   {
@@ -28,12 +31,46 @@ const GENRE_ROUTES = [
 
 export const revalidate = 120
 
+const homepageCanonical = siteMetadata.siteUrl
+
+export const metadata: Metadata = {
+  title: "Underground Metal Label & Store",
+  description: siteMetadata.description,
+  alternates: {
+    canonical: homepageCanonical,
+  },
+  openGraph: {
+    url: homepageCanonical,
+    title: `${siteMetadata.name} · Underground Metal Label`,
+    description: siteMetadata.description,
+    images: [
+      {
+        url: siteMetadata.assets.ogImage,
+        alt: `${siteMetadata.name} hero`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteMetadata.name} · Underground Metal Label`,
+    description: siteMetadata.description,
+    images: [siteMetadata.assets.ogImage],
+  },
+}
+
 const HomePage = async (): Promise<ReactElement> => {
   const products = await getHomepageProducts()
 
   const featured = products.slice(0, 4)
   const newest = products.slice(4, 8)
   const staff = products.slice(8, 12)
+  const featuredListJsonLd = buildItemListJsonLd(
+    "Featured Picks",
+    featured.map((product) => ({
+      name: product.title ?? "Exclusive release",
+      url: `${siteMetadata.siteUrl}/products/${product.handle ?? product.id}`,
+    }))
+  )
 
   return (
     <div className="pb-24">
@@ -147,6 +184,7 @@ const HomePage = async (): Promise<ReactElement> => {
           </div>
         </section>
       </main>
+      <JsonLd id="homepage-featured" data={featuredListJsonLd} />
     </div>
   )
 }
