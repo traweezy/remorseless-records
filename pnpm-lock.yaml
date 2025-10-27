@@ -20,6 +20,9 @@ importers:
       '@medusajs/admin-sdk':
         specifier: ^2.11.0
         version: 2.11.0
+      '@medusajs/admin-shared':
+        specifier: ^2.11.0
+        version: 2.11.0
       '@medusajs/cli':
         specifier: ^2.11.0
         version: 2.11.0(@opentelemetry/api@1.9.0)(@types/node@22.18.12)
