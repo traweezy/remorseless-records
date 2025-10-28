@@ -1,5 +1,6 @@
 import type { HttpTypes } from "@medusajs/types"
 
+import { buildProductSlugParts } from "@/lib/products/slug"
 import type {
   ProductSearchHit,
   RelatedProductSummary,
@@ -64,11 +65,15 @@ export const mapStoreProductToRelatedSummary = (
   product: HttpTypes.StoreProduct
 ): RelatedProductSummary => {
   const variants = deriveVariantOptions(product.variants)
+  const slug = buildProductSlugParts(product)
 
   return {
     id: product.id,
     handle: product.handle ?? product.id,
     title: product.title ?? "Untitled Release",
+    artist: slug.artist,
+    album: slug.album,
+    slug,
     thumbnail:
       product.thumbnail ??
       product.images?.[0]?.url ??

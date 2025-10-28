@@ -12,7 +12,7 @@ import {
   mapStoreProductToRelatedSummary,
 } from "@/lib/products/transformers"
 import {
-  getProductByHandle,
+  getProductBySlug,
   getProductsByCollection,
   getRecentProducts,
 } from "@/lib/data/products"
@@ -25,9 +25,10 @@ import {
   buildProductJsonLd,
   selectPrimaryVariantForJsonLd,
 } from "@/lib/seo/structured-data"
+import { buildProductSlugParts } from "@/lib/products/slug"
 
 type ProductPageProps = {
-  params: { handle: string } | Promise<{ handle: string }>
+  params: { artist: string; album: string } | Promise<{ artist: string; album: string }>
 }
 
 export const revalidate = 120
@@ -35,8 +36,8 @@ export const revalidate = 120
 export const generateMetadata = async ({
   params,
 }: ProductPageProps): Promise<Metadata> => {
-  const { handle } = await params
-  const product = await getProductByHandle(handle)
+  const { artist, album } = await params
+  const product = await getProductBySlug(artist, album)
 
   if (!product) {
     return {
@@ -49,7 +50,8 @@ export const generateMetadata = async ({
     product.subtitle ??
     siteMetadata.description
 
-  const canonical = `${siteMetadata.siteUrl}/products/${product.handle ?? handle}`
+  const slug = buildProductSlugParts(product)
+  const canonical = `${siteMetadata.siteUrl}/products/${slug.artistSlug}/${slug.albumSlug}`
   const images =
     product.images?.map((image) => ({
       url: image.url,
@@ -89,13 +91,14 @@ export const generateMetadata = async ({
 }
 
 const ProductPage = async ({ params }: ProductPageProps) => {
-  const { handle } = await params
-  const product = await getProductByHandle(handle)
+  const { artist, album } = await params
+  const product = await getProductBySlug(artist, album)
 
   if (!product) {
     notFound()
   }
 
+  const slug = buildProductSlugParts(product)
   const variantOptions = deriveVariantOptions(product.variants)
   const relatedProducts = await loadRelatedProducts(product)
 
@@ -122,7 +125,8 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   const protocolHeader = headerEntries["x-forwarded-proto"]
   const protocol = protocolHeader ?? (host.startsWith("localhost") ? "http" : "https")
   const origin = `${protocol}://${host}`
-  const productUrl = `${origin}/products/${product.handle}`
+  const productPath = `/products/${slug.artistSlug}/${slug.albumSlug}`
+  const productUrl = `${origin}${productPath}`
   const defaultVariant = variantOptions[0]
   const availability = defaultVariant?.inStock
     ? "https://schema.org/InStock"
@@ -223,7 +227,7 @@ const ProductPage = async ({ params }: ProductPageProps) => {
           <ProductVariantSelector
             variants={variantOptions}
             productTitle={productTitle}
-            redirectPath={`/products/${product.handle}`}
+            redirectPath={productPath}
           />
 
           <div className="space-y-4 rounded-2xl border border-border/60 bg-surface/80 p-6">
@@ -313,7 +317,7 @@ const ProductPage = async ({ params }: ProductPageProps) => {
       ) : null}
 
       <JsonLd
-        id={`product-json-${product.handle ?? product.id}`}
+        id={`product-json-${product.id}`}
         data={[productJsonLd, musicReleaseJsonLd, breadcrumbJsonLd]}
       />
     </div>

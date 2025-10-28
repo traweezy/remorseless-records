@@ -21,8 +21,9 @@ const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
 
   const products = await getAllProductHandles()
   products.forEach((product) => {
+    const productUrl = `${siteMetadata.siteUrl}/products/${product.slug.artistSlug}/${product.slug.albumSlug}`
     entries.push({
-      url: `${siteMetadata.siteUrl}/products/${product.handle}`,
+      url: productUrl,
       lastModified: product.updatedAt ? new Date(product.updatedAt) : now,
       changeFrequency: "daily",
       priority: 0.7,

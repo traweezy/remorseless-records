@@ -1,3 +1,5 @@
+import type { ProductSlug } from "@/lib/products/slug"
+
 export type VariantOption = {
   id: string
   title: string
@@ -10,6 +12,9 @@ export type RelatedProductSummary = {
   id: string
   handle: string
   title: string
+  artist: string
+  album: string
+  slug: ProductSlug
   thumbnail?: string | null
   collectionTitle?: string | null
   defaultVariant: VariantOption | null

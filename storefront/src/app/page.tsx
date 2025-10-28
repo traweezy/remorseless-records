@@ -11,6 +11,7 @@ import { getHomepageProducts } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
+import { buildProductSlugParts } from "@/lib/products/slug"
 
 const GENRE_ROUTES = [
   {
@@ -69,7 +70,10 @@ const HomePage = async (): Promise<ReactElement> => {
     "Featured Picks",
     featured.map((product) => ({
       name: product.title ?? "Exclusive release",
-      url: `${siteMetadata.siteUrl}/products/${product.handle ?? product.id}`,
+      url: (() => {
+        const slug = buildProductSlugParts(product)
+        return `${siteMetadata.siteUrl}/products/${slug.artistSlug}/${slug.albumSlug}`
+      })(),
     }))
   )
 

@@ -1,5 +1,6 @@
 import type { FacetDistribution } from "meilisearch"
 
+import { buildProductSlugParts } from "@/lib/products/slug"
 import type { ProductSearchHit, VariantOption } from "@/types/product"
 
 const asStringArray = (value: unknown): string[] => {
@@ -140,6 +141,17 @@ export const normalizeSearchHit = (
           ? hit.collection
           : null
 
+  const metadataValue =
+    typeof hit.metadata === "object" && hit.metadata && !Array.isArray(hit.metadata)
+      ? (hit.metadata as Record<string, unknown>)
+      : null
+
+  const slug = buildProductSlugParts({
+    title,
+    metadata: metadataValue,
+    collectionTitle,
+  })
+
   const genres = asStringArray(hit.genres ?? hit.genre)
   const format =
     typeof hit.format === "string"
@@ -197,6 +209,9 @@ export const normalizeSearchHit = (
     id,
     handle,
     title,
+    artist: slug.artist,
+    album: slug.album,
+    slug,
     thumbnail,
     collectionTitle,
     defaultVariant,
