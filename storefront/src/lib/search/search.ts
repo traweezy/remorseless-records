@@ -77,15 +77,15 @@ export const searchProductsWithClient = async (
   const index = client.index(PRODUCTS_INDEX)
   const filterClause = buildFilter(filters, inStockOnly)
 
-  const sortMapping: Record<ProductSortOption, string> = {
-    alphabetical: "title:asc",
+  const sortMapping: Record<ProductSortOption, string | null> = {
+    alphabetical: null,
     newest: "created_at:desc",
     "price-low": "price_amount:asc",
     "price-high": "price_amount:desc",
   }
 
-  const sortDirectives =
-    sort && sortMapping[sort] ? [sortMapping[sort]] : undefined
+  const sortDirective = sort ? sortMapping[sort] ?? null : null
+  const sortDirectives = sortDirective ? [sortDirective] : undefined
 
 const response: SearchResponse<Record<string, unknown>> =
     await index.search<Record<string, unknown>>(query ?? "", {
