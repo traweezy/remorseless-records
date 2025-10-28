@@ -10,10 +10,15 @@ if (!fs.existsSync(MEDUSA_SERVER_PATH)) {
 }
 
 // Copy pnpm-lock.yaml
-fs.copyFileSync(
-  path.join(process.cwd(), 'pnpm-lock.yaml'),
-  path.join(MEDUSA_SERVER_PATH, 'pnpm-lock.yaml')
-);
+const localLockPath = path.join(process.cwd(), 'pnpm-lock.yaml');
+const rootLockPath = path.join(process.cwd(), '..', 'pnpm-lock.yaml');
+const lockSource = fs.existsSync(localLockPath) ? localLockPath : rootLockPath;
+
+if (!fs.existsSync(lockSource)) {
+  throw new Error('pnpm-lock.yaml not found in backend or repository root.');
+}
+
+fs.copyFileSync(lockSource, path.join(MEDUSA_SERVER_PATH, 'pnpm-lock.yaml'));
 
 // Copy .env if it exists
 const envPath = path.join(process.cwd(), '.env');
@@ -28,5 +33,9 @@ if (fs.existsSync(envPath)) {
 console.log('Installing dependencies in .medusa/server...');
 execSync('pnpm i --prod --frozen-lockfile', { 
   cwd: MEDUSA_SERVER_PATH,
-  stdio: 'inherit'
+  stdio: 'inherit',
+  env: {
+    ...process.env,
+    CI: process.env.CI ?? 'true'
+  }
 });

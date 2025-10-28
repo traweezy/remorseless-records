@@ -1,4 +1,5 @@
 import fs from "node:fs/promises"
+import { existsSync } from "node:fs"
 import path from "node:path"
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
@@ -6,7 +7,9 @@ import { importProductsAsChunksWorkflow } from "@medusajs/core-flows"
 
 export default async function importProductsFromFile({
   container,
+  args = [],
 }: ExecArgs): Promise<void> {
+  console.log("[import-products] received args", args)
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const fileModuleService = container.resolve(Modules.FILE) as {
     createFiles: (file: {
@@ -14,9 +17,30 @@ export default async function importProductsFromFile({
       mimeType: string
       content: Buffer | string
     }) => Promise<{ id: string }>
+    getAsBuffer: (id: string) => Promise<Buffer>
   }
 
-  const [inputPath, providedName] = process.argv.slice(2)
+  const rawArgs = Array.isArray(args) ? args : []
+  const sanitizedArgs = rawArgs.filter((arg) => {
+    if (typeof arg !== "string") {
+      return false
+    }
+    const trimmed = arg.trim()
+    if (!trimmed.length) {
+      return false
+    }
+    return !(
+      trimmed === "./exec" ||
+      trimmed === "exec" ||
+      trimmed.endsWith("/exec")
+    )
+  })
+  logger.info(
+    `[import-products] cli argv ${JSON.stringify(rawArgs)}, sanitized ${JSON.stringify(
+      sanitizedArgs
+    )}`
+  )
+  const [inputPath, providedName] = sanitizedArgs
 
   if (!inputPath) {
     logger.error(
@@ -26,9 +50,21 @@ export default async function importProductsFromFile({
   }
 
   const absolutePath = path.resolve(process.cwd(), inputPath)
+  let csv: Buffer
+  let filename = providedName ?? path.basename(inputPath)
 
-  const csv = await fs.readFile(absolutePath)
-  const filename = providedName ?? path.basename(absolutePath)
+  if (existsSync(absolutePath)) {
+    csv = await fs.readFile(absolutePath)
+    filename = providedName ?? path.basename(absolutePath)
+  } else {
+    logger.info(
+      `[import-products] Input path ${inputPath} not found on disk, attempting to read from file provider`
+    )
+
+    csv = await fileModuleService.getAsBuffer(inputPath)
+    logger.info(`[import-products] Retrieved ${inputPath} from file provider (${csv.length} bytes)`)
+    filename = providedName ?? inputPath
+  }
 
   logger.info(
     `[import-products] Uploading ${absolutePath} as '${filename}' (${csv.length} bytes)`
