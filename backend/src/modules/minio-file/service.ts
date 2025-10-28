@@ -4,7 +4,8 @@ import {
   ProviderUploadFileDTO,
   ProviderDeleteFileDTO,
   ProviderFileResultDTO,
-  ProviderGetFileDTO
+  ProviderGetFileDTO,
+  ProviderGetPresignedUploadUrlDTO
 } from '@medusajs/framework/types';
 import { Client } from 'minio';
 import path from 'path';
@@ -163,8 +164,7 @@ class MinioFileProviderService extends AbstractFileProviderService {
     }
 
     try {
-      const parsedFilename = path.parse(file.filename)
-      const fileKey = `${parsedFilename.name}-${ulid()}${parsedFilename.ext}`
+      const fileKey = this.createFileKey(file.filename)
       const content = Buffer.from(file.content, 'binary')
 
       // Upload file with public-read access
@@ -180,13 +180,10 @@ class MinioFileProviderService extends AbstractFileProviderService {
         }
       )
 
-      // Generate URL using the endpoint and bucket
-      const url = `https://${this.minioConfig.endPoint}/${this.bucket}/${fileKey}`
-
       this.logger.info(`Successfully uploaded file ${fileKey} to MinIO bucket ${this.bucket}`)
 
       return {
-        url,
+        url: this.buildFileUrl(fileKey),
         key: fileKey
       }
     } catch (error: unknown) {
@@ -217,6 +214,47 @@ class MinioFileProviderService extends AbstractFileProviderService {
     }
   }
 
+  async getPresignedUploadUrl(
+    fileData: ProviderGetPresignedUploadUrlDTO
+  ): Promise<ProviderFileResultDTO> {
+    if (!fileData?.filename) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        'No filename provided'
+      )
+    }
+
+    const fileKey = this.createFileKey(fileData.filename)
+    const expiresInSeconds = Math.min(
+      Math.max(fileData.expiresIn ?? 300, 1),
+      7 * 24 * 60 * 60
+    )
+
+    try {
+      const url = await this.minioClient.presignedPutObject(
+        this.bucket,
+        fileKey,
+        expiresInSeconds
+      )
+
+      this.logger.info(
+        `Generated presigned upload URL for file ${fileKey} (expires in ${expiresInSeconds}s)`
+      )
+
+      return {
+        url,
+        key: fileKey
+      }
+    } catch (error: unknown) {
+      const message = getErrorMessage(error)
+      this.logger.error(`Failed to generate presigned upload URL: ${message}`)
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        `Failed to generate presigned upload URL: ${message}`
+      )
+    }
+  }
+
   override async getPresignedDownloadUrl(
     fileData: ProviderGetFileDTO
   ): Promise<string> {
@@ -243,6 +281,18 @@ class MinioFileProviderService extends AbstractFileProviderService {
         `Failed to generate presigned URL: ${message}`
       )
     }
+  }
+
+  private createFileKey(filename: string): string {
+    const parsed = path.parse(filename)
+    const baseName = parsed.name?.trim() || 'file'
+    const sanitized = baseName.replace(/[^\w\-]+/g, '-').replace(/-+/g, '-')
+    const extension = parsed.ext ?? ''
+    return `${sanitized}-${ulid()}${extension}`
+  }
+
+  private buildFileUrl(fileKey: string): string {
+    return `https://${this.minioConfig.endPoint}/${this.bucket}/${fileKey}`
   }
 }
 
