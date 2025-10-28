@@ -4,6 +4,241 @@ import { importProductsAsChunksWorkflow } from "@medusajs/core-flows";
 import { Modules } from "@medusajs/utils";
 import { parse } from "csv-parse/sync";
 
+type HeaderInstruction = {
+  sourceIndex: number;
+  targetIndex: number | null;
+  metadataKey?: string;
+};
+
+type NormalizedCsvResult = {
+  csv: string;
+  renamedColumns: Array<{ from: string; to: string }>;
+  droppedColumns: string[];
+  metadataKeys: string[];
+};
+
+const LEGACY_METADATA_COLUMN_MAP: Record<string, string> = {
+  "product collection title": "collection_title",
+  "product collection handle": "collection_handle",
+  "product type": "product_type",
+  "product profile name": "product_profile_name",
+  "product profile type": "product_profile_type",
+  "variant inventory quantity": "variant_inventory_quantity",
+};
+
+const PRICE_HEADER_REGEX = /^price\s+(.+)$/i;
+const OPTION_HEADER_REGEX = /^option\s+(\d+)\s+(name|value)$/i;
+const IMAGE_HEADER_REGEX = /^image\s+(\d+)\s+url$/i;
+
+const escapeCsvValue = (value: string): string => {
+  const stringValue = value ?? "";
+  const needsEscape = /[",\n\r]/.test(stringValue);
+  const sanitized = stringValue.replace(/"/g, '""');
+  return needsEscape ? `"${sanitized}"` : sanitized;
+};
+
+const normalizeHeaders = (
+  headers: string[]
+): {
+  normalizedHeaders: string[];
+  instructions: HeaderInstruction[];
+  metadataIndex: number;
+  renamedColumns: Array<{ from: string; to: string }>;
+  droppedColumns: string[];
+  metadataKeys: Set<string>;
+} => {
+  const normalizedHeaders: string[] = [];
+  const instructions: HeaderInstruction[] = [];
+  const renamedColumns: Array<{ from: string; to: string }> = [];
+  const droppedColumns: string[] = [];
+  const metadataKeys = new Set<string>();
+
+  let metadataIndex = -1;
+
+  headers.forEach((rawHeader, index) => {
+    const header = rawHeader?.trim() ?? "";
+    if (!header) {
+      instructions.push({ sourceIndex: index, targetIndex: null });
+      return;
+    }
+
+    const lower = header.toLowerCase();
+
+    if (LEGACY_METADATA_COLUMN_MAP[lower]) {
+      const metadataKey = LEGACY_METADATA_COLUMN_MAP[lower];
+      metadataKeys.add(metadataKey);
+      instructions.push({
+        sourceIndex: index,
+        targetIndex: null,
+        metadataKey,
+      });
+      droppedColumns.push(header);
+      return;
+    }
+
+    const priceMatch = PRICE_HEADER_REGEX.exec(header);
+    if (priceMatch?.[1]) {
+      const iso = priceMatch[1].trim();
+      const target = `Variant Price ${iso}`;
+      normalizedHeaders.push(target);
+      const targetIndex = normalizedHeaders.length - 1;
+      instructions.push({ sourceIndex: index, targetIndex });
+      renamedColumns.push({ from: header, to: target });
+      return;
+    }
+
+    const optionMatch = OPTION_HEADER_REGEX.exec(header);
+    if (optionMatch?.[1]) {
+      const optionNumber = optionMatch[1];
+      const optionSegment =
+        optionMatch[2]?.toLowerCase() === "name" ? "Name" : "Value";
+      const target = `Variant Option ${optionNumber} ${optionSegment}`;
+      normalizedHeaders.push(target);
+      const targetIndex = normalizedHeaders.length - 1;
+      instructions.push({ sourceIndex: index, targetIndex });
+      renamedColumns.push({ from: header, to: target });
+      return;
+    }
+
+    const imageMatch = IMAGE_HEADER_REGEX.exec(header);
+    if (imageMatch?.[1]) {
+      const imageNumber = imageMatch[1];
+      const target = `Product Image ${imageNumber}`;
+      normalizedHeaders.push(target);
+      const targetIndex = normalizedHeaders.length - 1;
+      instructions.push({ sourceIndex: index, targetIndex });
+      renamedColumns.push({ from: header, to: target });
+      return;
+    }
+
+    normalizedHeaders.push(header);
+    const targetIndex = normalizedHeaders.length - 1;
+    instructions.push({ sourceIndex: index, targetIndex });
+
+    if (header.toLowerCase() === "product metadata") {
+      metadataIndex = targetIndex;
+    }
+  });
+
+  if (metadataKeys.size > 0 && metadataIndex === -1) {
+    metadataIndex = normalizedHeaders.length;
+    normalizedHeaders.push("Product Metadata");
+  }
+
+  return {
+    normalizedHeaders,
+    instructions,
+    metadataIndex,
+    renamedColumns,
+    droppedColumns,
+    metadataKeys,
+  };
+};
+
+const normalizeSemicolonDelimitedCsv = (
+  csvText: string
+): NormalizedCsvResult => {
+  const records = parse(csvText, {
+    delimiter: ";",
+    relax_column_count: true,
+  }) as string[][];
+
+  if (!records.length) {
+    return {
+      csv: csvText,
+      renamedColumns: [],
+      droppedColumns: [],
+      metadataKeys: [],
+    };
+  }
+
+  const nonEmptyRecords =
+    records.length > 1
+      ? records.filter((row, idx) =>
+          idx === 0 ? true : row.some((cell) => (cell ?? "").trim().length > 0)
+        )
+      : records;
+
+  const headerRow = nonEmptyRecords[0];
+  if (!headerRow) {
+    return {
+      csv: csvText,
+      renamedColumns: [],
+      droppedColumns: [],
+      metadataKeys: [],
+    };
+  }
+  const { normalizedHeaders, instructions, metadataIndex, renamedColumns, droppedColumns, metadataKeys } =
+    normalizeHeaders(headerRow);
+
+  const metadataNamespace = "legacy_import";
+
+  const normalizedRows = nonEmptyRecords.slice(1).map((row) => {
+    const normalizedRow = new Array(normalizedHeaders.length).fill("");
+    const extraMetadata: Record<string, unknown> = {};
+
+    instructions.forEach((instruction) => {
+      const rawValue = row[instruction.sourceIndex] ?? "";
+      if (instruction.targetIndex === null) {
+        if (instruction.metadataKey && rawValue.trim().length > 0) {
+          extraMetadata[instruction.metadataKey] = rawValue;
+        }
+        return;
+      }
+
+      normalizedRow[instruction.targetIndex] = rawValue;
+    });
+
+    if (metadataIndex !== -1) {
+      const existingRaw = normalizedRow[metadataIndex];
+      let existingMetadata: Record<string, unknown> = {};
+
+      if (existingRaw && existingRaw.trim().length > 0) {
+        try {
+          existingMetadata = JSON.parse(existingRaw);
+        } catch {
+          existingMetadata = { value: existingRaw };
+        }
+      }
+
+      if (Object.keys(extraMetadata).length > 0) {
+        const legacy =
+          typeof existingMetadata[metadataNamespace] === "object" &&
+          existingMetadata[metadataNamespace] !== null &&
+          !Array.isArray(existingMetadata[metadataNamespace])
+            ? (existingMetadata[metadataNamespace] as Record<string, unknown>)
+            : {};
+
+        existingMetadata[metadataNamespace] = {
+          ...legacy,
+          ...extraMetadata,
+        };
+      }
+
+      normalizedRow[metadataIndex] =
+        Object.keys(existingMetadata).length > 0
+          ? JSON.stringify(existingMetadata)
+          : "";
+    }
+
+    return normalizedRow;
+  });
+
+  const csvLines = [
+    normalizedHeaders.map(escapeCsvValue).join(","),
+    ...normalizedRows.map((row) =>
+      row.map((value) => escapeCsvValue(value)).join(",")
+    ),
+  ];
+
+  return {
+    csv: csvLines.join("\n"),
+    renamedColumns,
+    droppedColumns,
+    metadataKeys: Array.from(metadataKeys),
+  };
+};
+
 type ImportProductsBody = {
   originalname?: string;
   original_name?: string;
@@ -128,23 +363,7 @@ export const POST = async (
         semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";");
 
       if (shouldNormalize) {
-        const records = parse(csvText, {
-          delimiter: ";",
-          relax_column_count: true,
-        }) as string[][];
-
-        const escapeValue = (value: string): string => {
-          const safe = value ?? "";
-          const sanitized = safe.replace(/"/g, '""');
-          return /[",\n\r]/.test(sanitized)
-            ? `"${sanitized}"`
-            : sanitized;
-        };
-
-        const rebuilt = records
-          .map((row) => row.map(escapeValue).join(","))
-          .join("\n")
-          .concat("\n");
+        const normalized = normalizeSemicolonDelimitedCsv(csvText);
 
         const convertedKey = `${resolvedKey.replace(
           /\.csv$/i,
@@ -153,7 +372,7 @@ export const POST = async (
         const createdFile = await fileModuleService.createFiles({
           filename: convertedKey,
           mimeType: "text/csv",
-          content: Buffer.from(rebuilt, "utf-8"),
+          content: Buffer.from(normalized.csv, "utf-8"),
         });
 
         normalizedKey = createdFile.id;
@@ -163,6 +382,18 @@ export const POST = async (
         logger.info?.(
           `[admin][products/imports] normalized CSV delimiter for ${resolvedKey} -> ${normalizedKey}`
         );
+        if (normalized.renamedColumns.length) {
+          logger.info?.(
+            `[admin][products/imports] renamed columns ${JSON.stringify(normalized.renamedColumns)}`
+          );
+        }
+        if (normalized.droppedColumns.length) {
+          logger.info?.(
+            `[admin][products/imports] stored legacy columns in metadata ${JSON.stringify(
+              normalized.droppedColumns
+            )}`
+          );
+        }
 
         try {
           if (req.body) {
