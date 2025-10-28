@@ -1,6 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework";
 import { MedusaError } from "@medusajs/framework/utils";
 import { importProductsAsChunksWorkflow } from "@medusajs/core-flows";
+import { Modules } from "@medusajs/utils";
+import { parse } from "csv-parse/sync";
 
 type ImportProductsBody = {
   originalname?: string;
@@ -85,10 +87,106 @@ export const POST = async (
     body.original_name ??
     body.filename ??
     body.fileName ??
-    body.file_key ??
-    body.fileKey ??
-    body.key ??
+    resolvedKey ??
     "products-import.csv";
+
+  const fileModuleService = (() => {
+    try {
+      return req.scope.resolve(Modules.FILE) as {
+        getAsBuffer: (id: string) => Promise<Buffer>;
+        createFiles: (file: {
+          filename: string;
+          mimeType: string;
+          content: Buffer | string;
+        }) => Promise<{ id: string }>;
+        deleteFiles: (id: string | string[]) => Promise<void>;
+      };
+    } catch (error) {
+      logger.warn?.(
+        `[admin][products/imports] unable to resolve file module: ${
+          (error as Error)?.message ?? "unknown error"
+        }`
+      );
+      return null;
+    }
+  })();
+
+  let normalizedKey = resolvedKey;
+
+  if (fileModuleService) {
+    try {
+      const originalBuffer = await fileModuleService.getAsBuffer(resolvedKey);
+      const csvText = originalBuffer.toString("utf-8");
+
+      const headerLine =
+        csvText
+          .split(/\r?\n/)
+          .find((line) => line.trim().length > 0) ?? "";
+      const semicolonColumns = headerLine.split(";").length;
+      const commaColumns = headerLine.split(",").length;
+      const shouldNormalize =
+        semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";");
+
+      if (shouldNormalize) {
+        const records = parse(csvText, {
+          delimiter: ";",
+          relax_column_count: true,
+        }) as string[][];
+
+        const escapeValue = (value: string): string => {
+          const safe = value ?? "";
+          const sanitized = safe.replace(/"/g, '""');
+          return /[",\n\r]/.test(sanitized)
+            ? `"${sanitized}"`
+            : sanitized;
+        };
+
+        const rebuilt = records
+          .map((row) => row.map(escapeValue).join(","))
+          .join("\n")
+          .concat("\n");
+
+        const convertedKey = `${resolvedKey.replace(
+          /\.csv$/i,
+          ""
+        )}-normalized.csv`;
+        const createdFile = await fileModuleService.createFiles({
+          filename: convertedKey,
+          mimeType: "text/csv",
+          content: Buffer.from(rebuilt, "utf-8"),
+        });
+
+        normalizedKey = createdFile.id;
+
+        await fileModuleService.deleteFiles(resolvedKey);
+
+        logger.info?.(
+          `[admin][products/imports] normalized CSV delimiter for ${resolvedKey} -> ${normalizedKey}`
+        );
+
+        try {
+          if (req.body) {
+            (req.body as ImportProductsBody).file_key = normalizedKey;
+          }
+          if (req.validatedBody) {
+            (req.validatedBody as ImportProductsBody).file_key = normalizedKey;
+          }
+        } catch {
+          // Body might be read-only; ignore
+        }
+      } else {
+        logger.info?.(
+          `[admin][products/imports] CSV delimiter already compatible for ${resolvedKey}`
+        );
+      }
+    } catch (error) {
+      logger.warn?.(
+        `[admin][products/imports] failed to normalize CSV delimiter: ${
+          (error as Error)?.message ?? "unknown error"
+        }`
+      );
+    }
+  }
 
   try {
     const { result, transaction } = await importProductsAsChunksWorkflow(
@@ -96,7 +194,7 @@ export const POST = async (
     ).run({
       input: {
         filename,
-        fileKey: resolvedKey,
+        fileKey: normalizedKey,
       },
     });
 
