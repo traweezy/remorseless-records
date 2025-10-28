@@ -97,6 +97,13 @@ const medusaConfig = {
       resolve: '@medusajs/notification',
       options: {
         providers: [
+          {
+            resolve: './src/modules/feed-notifications',
+            id: 'local',
+            options: {
+              channels: ['feed'],
+            },
+          },
           ...(SENDGRID_API_KEY && SENDGRID_FROM_EMAIL ? [{
             resolve: '@medusajs/notification-sendgrid',
             id: 'sendgrid',
