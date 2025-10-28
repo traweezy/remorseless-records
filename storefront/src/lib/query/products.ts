@@ -9,7 +9,11 @@ import type { QueryClient } from "@tanstack/react-query"
 import { useCallback, useRef } from "react"
 
 import { searchProductsBrowser } from "@/lib/search/browser"
-import type { ProductSearchRequest, ProductSearchResponse } from "@/lib/search/search"
+import type {
+  ProductSearchRequest,
+  ProductSearchResponse,
+  ProductSortOption,
+} from "@/lib/search/search"
 
 type StoreProduct = HttpTypes.StoreProduct
 
@@ -64,6 +68,8 @@ export type ProductSearchParams = {
   genres: string[]
   formats: string[]
   limit?: number
+  sort?: ProductSortOption
+  inStockOnly?: boolean
 }
 
 const normalizeFilters = (values: string[]) =>
@@ -74,29 +80,53 @@ export const productSearchQueryKey = ({
   genres,
   formats,
   limit = 24,
+  sort = "alphabetical",
+  inStockOnly = false,
 }: ProductSearchParams) =>
-  ["search", query.trim(), normalizeFilters(genres), normalizeFilters(formats), limit] as const
+  [
+    "search",
+    query.trim(),
+    normalizeFilters(genres),
+    normalizeFilters(formats),
+    limit,
+    sort,
+    inStockOnly ? "in-stock" : "all",
+  ] as const
 
 export const productSearchQueryOptions = ({
   query,
   genres,
   formats,
   limit = 24,
-}: ProductSearchParams) => ({
-  queryKey: productSearchQueryKey({ query, genres, formats, limit }),
-  queryFn: async (): Promise<ProductSearchResponse> => {
-    const request: ProductSearchRequest = {
+  sort,
+  inStockOnly = false,
+}: ProductSearchParams) => {
+  const sortValue: ProductSortOption = sort ?? "alphabetical"
+  return {
+    queryKey: productSearchQueryKey({
       query,
+      genres,
+      formats,
       limit,
-      filters: {
-        genres,
-        formats,
-      },
-    }
+      sort: sortValue,
+      inStockOnly,
+    }),
+    queryFn: async (): Promise<ProductSearchResponse> => {
+      const request: ProductSearchRequest = {
+        query,
+        limit,
+        filters: {
+          genres,
+          formats,
+        },
+        inStockOnly,
+        sort: sortValue,
+      }
 
-    return searchProductsBrowser(request)
-  },
-})
+      return searchProductsBrowser(request)
+    },
+  }
+}
 
 export const prefetchProductSearch = (queryClient: QueryClient, params: ProductSearchParams) =>
   queryClient.prefetchQuery(productSearchQueryOptions(params))

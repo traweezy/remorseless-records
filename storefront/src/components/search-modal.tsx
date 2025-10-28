@@ -26,7 +26,12 @@ const SearchModal = ({ children }: SearchModalProps) => {
 
     startTransition(async () => {
       try {
-        const response = await searchProductsBrowser({ query: "", limit: 12 })
+        const response = await searchProductsBrowser({
+          query: "",
+          limit: 12,
+          offset: 0,
+          sort: "alphabetical",
+        })
         setInitial(response)
       } catch (cause: unknown) {
         console.error("Preloading search failed", cause)
@@ -58,7 +63,9 @@ const SearchModal = ({ children }: SearchModalProps) => {
               initialHits={initial.hits}
               initialFacets={initial.facets}
               initialTotal={initial.total}
+              initialOffset={initial.offset ?? 0}
               pageSize={12}
+              initialSort="alphabetical"
             />
           ) : (
             (() => {

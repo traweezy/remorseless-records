@@ -3,20 +3,19 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Debouncer } from "@tanstack/pacer"
-import { useQuery } from "@tanstack/react-query"
+import { useInfiniteQuery } from "@tanstack/react-query"
+import { useWindowVirtualizer } from "@tanstack/react-virtual"
 import {
   ArrowDown01,
+  ArrowDownAZ,
   ArrowUp10,
   Check,
   ChevronDown,
   Clock,
   Search,
   SlidersHorizontal,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react"
-import { toast } from "sonner"
-
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -30,13 +29,19 @@ import { Separator } from "@/components/ui/separator"
 import ProductCard from "@/components/product-card"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 import { cn } from "@/lib/ui/cn"
-import { productSearchQueryOptions } from "@/lib/query/products"
-import type { ProductSearchResponse } from "@/lib/search/search"
+import { searchProductsBrowser } from "@/lib/search/browser"
+import type {
+  ProductSearchResponse,
+  ProductSortOption,
+} from "@/lib/search/search"
 
 const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => ({
   id: hit.id,
   handle: hit.handle,
   title: hit.title,
+  artist: hit.artist,
+  album: hit.album,
+  slug: hit.slug,
   thumbnail: hit.thumbnail ?? null,
   collectionTitle: hit.collectionTitle ?? null,
   defaultVariant: hit.defaultVariant,
@@ -51,7 +56,9 @@ type ProductSearchExperienceProps = {
   initialHits: ProductSearchHit[]
   initialFacets: SearchFacets
   initialTotal: number
+  initialOffset?: number
   pageSize?: number
+  initialSort?: ProductSortOption
 }
 
 type SearchCriteria = {
@@ -59,25 +66,56 @@ type SearchCriteria = {
   genres: string[]
   formats: string[]
   limit: number
+  inStockOnly: boolean
 }
 
-type SortOption = "featured" | "newest" | "price-low" | "price-high"
-
 const SORT_OPTIONS: Array<{
-  value: SortOption
+  value: ProductSortOption
   label: string
   helper: string
   Icon: LucideIcon
 }> = [
-  { value: "featured", label: "Featured", helper: "Staff picks & hype drops", Icon: Sparkles },
-  { value: "newest", label: "Newest", helper: "Fresh rituals first", Icon: Clock },
-  { value: "price-low", label: "Price · Low → High", helper: "Cheapest brutality", Icon: ArrowDown01 },
-  { value: "price-high", label: "Price · High → Low", helper: "Premium torment", Icon: ArrowUp10 },
+  {
+    value: "alphabetical",
+    label: "Alphabetical",
+    helper: "Name · A → Z",
+    Icon: ArrowDownAZ,
+  },
+  {
+    value: "newest",
+    label: "Newest",
+    helper: "Fresh rituals first",
+    Icon: Clock,
+  },
+  {
+    value: "price-low",
+    label: "Price · Low → High",
+    helper: "Cheapest brutality",
+    Icon: ArrowDown01,
+  },
+  {
+    value: "price-high",
+    label: "Price · High → Low",
+    helper: "Premium torment",
+    Icon: ArrowUp10,
+  },
 ]
 
-const sortResults = (results: ProductSearchHit[], sort: SortOption): ProductSearchHit[] => {
-  if (sort === "featured") {
-    return results
+const alphabeticalCollator = new Intl.Collator(undefined, {
+  sensitivity: "base",
+})
+
+const sortResults = (
+  results: ProductSearchHit[],
+  sort: ProductSortOption
+): ProductSearchHit[] => {
+  if (sort === "alphabetical") {
+    return [...results].sort((a, b) =>
+      alphabeticalCollator.compare(
+        `${a.artist ?? ""} ${a.album ?? ""}`,
+        `${b.artist ?? ""} ${b.album ?? ""}`
+      )
+    )
   }
 
   if (sort === "newest") {
@@ -159,15 +197,15 @@ const FilterSidebar = ({
             className={cn(
               "inline-flex h-5 w-10 items-center rounded-full border border-border/60 bg-background px-1 transition",
               showInStockOnly && "justify-end border-destructive bg-destructive/40"
-          )}
-        >
-          <span
-            className={cn(
-              "h-3.5 w-3.5 rounded-full bg-border transition",
-              showInStockOnly && "bg-background"
             )}
-          />
-        </span>
+          >
+            <span
+              className={cn(
+                "h-3.5 w-3.5 rounded-full bg-border transition",
+                showInStockOnly && "bg-background"
+              )}
+            />
+          </span>
         </button>
       </div>
 
@@ -178,26 +216,32 @@ const FilterSidebar = ({
             <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
           </summary>
           <div className="flex flex-wrap gap-2">
-            {formats.length ? formats.map(([format, count]) => {
-              const isActive = selectedFormats.includes(format)
-              return (
-                <button
-                  key={`format-${format}`}
-                  type="button"
-                  onClick={() => onToggleFormat(format)}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
-                    isActive
-                      ? "border-destructive bg-destructive text-background shadow-glow-sm"
-                      : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
-                  )}
-                >
-                  {format}
-                  <span className="ml-1 text-[0.55rem] text-muted-foreground/80">({count})</span>
-                </button>
-              )
-            }) : (
-              <p className="text-xs text-muted-foreground">Formats coming soon.</p>
+            {formats.length ? (
+              formats.map(([format, count]) => {
+                const isActive = selectedFormats.includes(format)
+                return (
+                  <button
+                    key={`format-${format}`}
+                    type="button"
+                    onClick={() => onToggleFormat(format)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
+                      isActive
+                        ? "border-destructive bg-destructive text-background shadow-glow-sm"
+                        : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
+                    )}
+                  >
+                    {format}
+                    <span className="ml-1 text-[0.55rem] text-muted-foreground/80">
+                      ({count})
+                    </span>
+                  </button>
+                )
+              })
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Formats coming soon.
+              </p>
             )}
           </div>
         </details>
@@ -210,26 +254,32 @@ const FilterSidebar = ({
             <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
           </summary>
           <div className="flex flex-wrap gap-2">
-            {genres.length ? genres.map(([genre, count]) => {
-              const isActive = selectedGenres.includes(genre)
-              return (
-                <button
-                  key={`genre-${genre}`}
-                  type="button"
-                  onClick={() => onToggleGenre(genre)}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
-                    isActive
-                      ? "border-destructive bg-destructive text-background shadow-glow-sm"
-                      : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
-                  )}
-                >
-                  {genre}
-                  <span className="ml-1 text-[0.55rem] text-muted-foreground/80">({count})</span>
-                </button>
-              )
-            }) : (
-              <p className="text-xs text-muted-foreground">Genres appear as catalog grows.</p>
+            {genres.length ? (
+              genres.map(([genre, count]) => {
+                const isActive = selectedGenres.includes(genre)
+                return (
+                  <button
+                    key={`genre-${genre}`}
+                    type="button"
+                    onClick={() => onToggleGenre(genre)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
+                      isActive
+                        ? "border-destructive bg-destructive text-background shadow-glow-sm"
+                        : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
+                    )}
+                  >
+                    {genre}
+                    <span className="ml-1 text-[0.55rem] text-muted-foreground/80">
+                      ({count})
+                    </span>
+                  </button>
+                )
+              })
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Genres appear as catalog grows.
+              </p>
             )}
           </div>
         </details>
@@ -242,8 +292,8 @@ const SortDropdown = ({
   value,
   onChange,
 }: {
-  value: SortOption
-  onChange: (value: SortOption) => void
+  value: ProductSortOption
+  onChange: (value: ProductSortOption) => void
 }) => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -256,7 +306,7 @@ const SortDropdown = ({
     SORT_OPTIONS.find((option) => option.value === value) ?? fallbackOption
 
   useEffect(() => {
-    const handleClick = (event: globalThis.MouseEvent) => {
+    const handleClick = (event: MouseEvent) => {
       if (!containerRef.current) {
         return
       }
@@ -267,7 +317,7 @@ const SortDropdown = ({
         setOpen(false)
       }
     }
-    const handleKeydown = (event: globalThis.KeyboardEvent) => {
+    const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false)
       }
@@ -319,20 +369,30 @@ const SortDropdown = ({
                 }}
                 className={cn(
                   "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.7rem] uppercase tracking-[0.25rem] text-muted-foreground/90 transition hover:border-destructive/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
-                  value === option.value && "border-destructive bg-destructive text-background shadow-glow-sm"
+                  value === option.value &&
+                    "border-destructive bg-destructive text-background shadow-glow-sm"
                 )}
                 role="option"
                 aria-selected={value === option.value}
               >
                 <span className="flex flex-col">
-                  <span className={cn("flex items-center gap-2 font-semibold", value === option.value ? "text-background" : "text-foreground")}>
+                  <span
+                    className={cn(
+                      "flex items-center gap-2 font-semibold",
+                      value === option.value
+                        ? "text-background"
+                        : "text-foreground"
+                    )}
+                  >
                     <option.Icon className="h-4 w-4" aria-hidden />
                     {option.label}
                   </span>
                   <span
                     className={cn(
                       "text-[0.55rem] uppercase tracking-[0.3rem]",
-                      value === option.value ? "text-background/80" : "text-muted-foreground"
+                      value === option.value
+                        ? "text-background/80"
+                        : "text-muted-foreground"
                     )}
                   >
                     {option.helper}
@@ -350,31 +410,81 @@ const SortDropdown = ({
   )
 }
 
+const ProductCardSkeleton = () => (
+  <div className="flex h-full flex-col rounded-2xl border border-border/40 bg-background/60 p-4">
+    <div className="aspect-square w-full animate-pulse rounded-xl bg-border/40" />
+    <div className="mt-4 space-y-3">
+      <div className="h-4 w-3/4 animate-pulse rounded-full bg-border/40" />
+      <div className="h-3 w-1/2 animate-pulse rounded-full bg-border/30" />
+      <div className="h-3 w-1/3 animate-pulse rounded-full bg-border/20" />
+    </div>
+  </div>
+)
+
+const useWindowVirtualizerCompat = (
+  options: Parameters<typeof useWindowVirtualizer>[0]
+) => {
+  "use no memo"
+  return useWindowVirtualizer(options)
+}
+
+const useResponsiveColumns = () => {
+  const [columns, setColumns] = useState(1)
+
+  useEffect(() => {
+    const update = () => {
+      const width = window.innerWidth
+      if (width >= 1536) {
+        setColumns(4)
+      } else if (width >= 1024) {
+        setColumns(3)
+      } else if (width >= 640) {
+        setColumns(2)
+      } else {
+        setColumns(1)
+      }
+    }
+
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
+
+  return columns
+}
+
 const ProductSearchExperience = ({
   initialHits,
   initialFacets,
   initialTotal,
+  initialOffset = 0,
   pageSize = 24,
+  initialSort = "alphabetical",
 }: ProductSearchExperienceProps) => {
   const [query, setQuery] = useState("")
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [selectedFormats, setSelectedFormats] = useState<string[]>([])
   const [showInStockOnly, setShowInStockOnly] = useState(false)
-  const [sortOption, setSortOption] = useState<SortOption>("featured")
+  const [sortOption, setSortOption] = useState<ProductSortOption>(initialSort)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [criteria, setCriteria] = useState<SearchCriteria>({
     query: "",
     genres: [],
     formats: [],
     limit: pageSize,
+    inStockOnly: false,
   })
 
-  const debouncerRef = useRef<Debouncer<(job: SearchCriteria) => void> | null>(null)
+  const debouncerRef =
+    useRef<Debouncer<(job: SearchCriteria) => void> | null>(null)
 
   useEffect(() => {
-    const debouncer = new Debouncer((job: SearchCriteria) => {
-      setCriteria(job)
-    }, { wait: 220 })
+    const debouncer = new Debouncer<(job: SearchCriteria) => void>(
+      (job: SearchCriteria) => {
+        setCriteria(job)
+      },
+      { wait: 220 }
+    )
 
     debouncerRef.current = debouncer
 
@@ -390,62 +500,178 @@ const ProductSearchExperience = ({
       genres: selectedGenres,
       formats: selectedFormats,
       limit: pageSize,
+      inStockOnly: showInStockOnly,
     })
-  }, [query, selectedGenres, selectedFormats, pageSize])
+  }, [query, selectedGenres, selectedFormats, showInStockOnly, pageSize])
 
+  const genresKey = useMemo(
+    () => [...criteria.genres].sort().join("|"),
+    [criteria.genres]
+  )
+  const formatsKey = useMemo(
+    () => [...criteria.formats].sort().join("|"),
+    [criteria.formats]
+  )
 
-  const initialResult = useMemo<ProductSearchResponse>(() => ({
-    hits: initialHits,
-    facets: initialFacets,
-    total: initialTotal,
-  }), [initialHits, initialFacets, initialTotal])
+  const initialResult = useMemo<ProductSearchResponse>(
+    () => ({
+      hits: initialHits,
+      total: initialTotal,
+      offset: initialOffset,
+      facets: initialFacets,
+    }),
+    [initialHits, initialTotal, initialOffset, initialFacets]
+  )
+
+  const initialQueryData = useMemo(
+    () => ({
+      pages: [initialResult],
+      pageParams: [initialOffset],
+    }),
+    [initialResult, initialOffset]
+  )
 
   const {
     data,
+    fetchNextPage,
+    hasNextPage,
     isFetching,
-    isError,
-    error,
-  } = useQuery({
-    ...productSearchQueryOptions(criteria),
-    initialData: initialResult,
-    placeholderData: (previous) => previous ?? initialResult,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: [
+      "catalog-search",
+      criteria.query.trim(),
+      genresKey,
+      formatsKey,
+      criteria.limit,
+      sortOption,
+      criteria.inStockOnly ? "in-stock" : "all",
+    ],
+    queryFn: async ({ pageParam = 0 }) =>
+      searchProductsBrowser({
+        query: criteria.query,
+        limit: criteria.limit,
+        offset: pageParam,
+        filters: {
+          genres: criteria.genres,
+          formats: criteria.formats,
+        },
+        sort: sortOption,
+        inStockOnly: criteria.inStockOnly,
+      }),
+    getNextPageParam: (lastPage, pages) => {
+      const loaded = pages.reduce((total, page) => total + page.hits.length, 0)
+      if (loaded >= lastPage.total) {
+        return undefined
+      }
+      return loaded
+    },
+    initialPageParam: 0,
+    initialData: initialQueryData,
+    placeholderData: (previous) => previous ?? initialQueryData,
   })
 
-  useEffect(() => {
-    if (isError) {
-      console.error("Catalog search failed", error)
-      toast.error("Unable to load search results. Please try again.")
-    }
-  }, [isError, error])
+  const pages = data?.pages ?? initialQueryData.pages
+  const facets = pages[0]?.facets ?? initialFacets
+  const totalResults = pages[0]?.total ?? 0
 
-  const facets = data?.facets ?? initialFacets
-  const baseHits = data?.hits ?? initialHits
-
-  const availabilityFilteredHits = useMemo(() => {
-    if (!showInStockOnly) {
-      return baseHits
-    }
-    return baseHits.filter((hit) => {
-      const status = hit.stockStatus ?? (hit.defaultVariant?.inStock ? "in_stock" : "sold_out")
-      return status !== "sold_out"
-    })
-  }, [baseHits, showInStockOnly])
+  const aggregatedHits = useMemo(
+    () => pages.flatMap((page) => page.hits),
+    [pages]
+  )
 
   const sortedHits = useMemo(
-    () => sortResults(availabilityFilteredHits, sortOption),
-    [availabilityFilteredHits, sortOption]
+    () => sortResults(aggregatedHits, sortOption),
+    [aggregatedHits, sortOption]
   )
 
   const mappedResults = useMemo(
-    () => sortedHits.map((hit) => mapHitToSummary(hit)),
+    () => sortedHits.map(mapHitToSummary),
     [sortedHits]
   )
 
-  const totalResults = mappedResults.length
-  const activeFiltersCount = useMemo(
-    () => selectedGenres.length + selectedFormats.length + (showInStockOnly ? 1 : 0),
-    [selectedGenres.length, selectedFormats.length, showInStockOnly]
+  const columns = useResponsiveColumns()
+  const rowEstimate = useMemo(() => {
+    if (columns >= 4) return 420
+    if (columns === 3) return 440
+    if (columns === 2) return 460
+    return 520
+  }, [columns])
+
+  const totalRowCount =
+    columns > 0 ? Math.max(Math.ceil(totalResults / columns), 1) : 1
+
+  const virtualizer = useWindowVirtualizerCompat({
+    count: totalRowCount,
+    estimateSize: () => rowEstimate,
+    overscan: 8,
+    scrollMargin: 180,
+  })
+
+  const virtualItems = virtualizer.getVirtualItems()
+
+  useEffect(() => {
+    virtualizer.measure()
+  }, [columns, rowEstimate, virtualizer])
+
+  useEffect(() => {
+    if (!virtualItems.length || !hasNextPage) {
+      return
+    }
+
+    const lastVirtualRow = virtualItems[virtualItems.length - 1]
+    if (!lastVirtualRow) {
+      return
+    }
+    const neededItems = Math.min(
+      totalResults,
+      (lastVirtualRow.index + 1) * columns
+    )
+
+    if (
+      neededItems > aggregatedHits.length &&
+      !isFetchingNextPage &&
+      hasNextPage
+    ) {
+      void fetchNextPage()
+    }
+  }, [
+    virtualItems,
+    columns,
+    totalResults,
+    aggregatedHits.length,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  ])
+
+  const criteriaKey = useMemo(
+    () =>
+      [
+        criteria.query.trim(),
+        genresKey,
+        formatsKey,
+        criteria.inStockOnly ? "in-stock" : "all",
+        sortOption,
+      ].join("|"),
+    [criteria.query, genresKey, formatsKey, criteria.inStockOnly, sortOption]
   )
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    window.scrollTo({ top: 0 })
+    virtualizer.scrollToIndex(0, { align: "start" })
+  }, [criteriaKey, virtualizer])
+
+  const totalResultsCopy = mappedResults.length
+  const activeFiltersCount =
+    selectedGenres.length +
+    selectedFormats.length +
+    (showInStockOnly ? 1 : 0) +
+    (query ? 1 : 0)
 
   const sortedGenreFacets = useMemo(
     () =>
@@ -484,6 +710,13 @@ const ProductSearchExperience = ({
     setSelectedFormats([])
     setShowInStockOnly(false)
   }
+
+  const gridTemplateStyle = useMemo(
+    () => ({
+      gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+    }),
+    [columns]
+  )
 
   return (
     <div className="bg-background pb-16">
@@ -561,7 +794,10 @@ const ProductSearchExperience = ({
                 </Sheet>
               </div>
               <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/40 bg-background/85 px-3 py-2 transition supports-[backdrop-filter]:backdrop-blur-lg focus-within:border-destructive focus-within:shadow-glow-sm">
-                <Search className="h-4 w-4 text-muted-foreground transition group-focus-within:text-destructive" aria-hidden />
+                <Search
+                  className="h-4 w-4 text-muted-foreground transition group-focus-within:text-destructive"
+                  aria-hidden
+                />
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -571,10 +807,13 @@ const ProductSearchExperience = ({
                   autoComplete="off"
                 />
               </div>
-              <SortDropdown value={sortOption} onChange={(option) => setSortOption(option)} />
+              <SortDropdown value={sortOption} onChange={setSortOption} />
             </div>
 
-            {(query || selectedGenres.length || selectedFormats.length || showInStockOnly) && (
+            {(query ||
+              selectedGenres.length ||
+              selectedFormats.length ||
+              showInStockOnly) && (
               <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
                 {query ? (
                   <button
@@ -616,24 +855,71 @@ const ProductSearchExperience = ({
                 ) : null}
               </div>
             )}
-
           </header>
 
           <section className="space-y-6 px-2 pt-4 sm:px-4 lg:px-6">
-            {isFetching ? (
+            {isFetching && !isFetchingNextPage ? (
               <div className="text-sm uppercase tracking-[0.3rem] text-muted-foreground">
                 Refreshing results…
               </div>
             ) : null}
 
-            {mappedResults.length ? (
-              <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-                {mappedResults.map((product, index) => (
-                  <ProductCard
-                    key={`${product.id}-${product.handle ?? product.id}-${index}`}
-                    product={product}
-                  />
-                ))}
+            {totalResultsCopy ? (
+              <div
+                className="relative"
+                style={{ height: virtualizer.getTotalSize() }}
+              >
+                {virtualItems.map((virtualRow) => {
+                  const rowIndex = virtualRow.index
+                  const startIndex = rowIndex * columns
+
+                  return (
+                    <div
+                      key={virtualRow.index}
+                      data-index={virtualRow.index}
+                      ref={virtualizer.measureElement}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.start}px)`,
+                        paddingBottom: 24,
+                      }}
+                    >
+                      <div
+                        className="grid gap-6"
+                        style={gridTemplateStyle}
+                      >
+                        {Array.from({ length: columns }).map((_, columnIdx) => {
+                          const globalIndex = startIndex + columnIdx
+                          const product = mappedResults[globalIndex]
+                          const shouldShowSkeleton =
+                            !product && aggregatedHits.length < totalResults
+
+                          if (product) {
+                            return (
+                              <ProductCard
+                                key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
+                                product={product}
+                              />
+                            )
+                          }
+
+                          if (shouldShowSkeleton) {
+                            return (
+                              <ProductCardSkeleton
+                                key={`skeleton-${globalIndex}`}
+                              />
+                            )
+                          }
+
+                          return <div key={`spacer-${globalIndex}`} />
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border/60 bg-background/80 p-12 text-center text-sm text-muted-foreground">

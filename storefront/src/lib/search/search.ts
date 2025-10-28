@@ -10,10 +10,19 @@ export type ProductSearchFilters = {
   formats?: string[]
 }
 
+export type ProductSortOption =
+  | "alphabetical"
+  | "newest"
+  | "price-low"
+  | "price-high"
+
 export type ProductSearchRequest = {
   query: string
   limit?: number
+  offset?: number
   filters?: ProductSearchFilters
+  sort?: ProductSortOption
+  inStockOnly?: boolean
 }
 
 export type ProductSearchResponse = {
@@ -23,27 +32,35 @@ export type ProductSearchResponse = {
     genres: FacetMap
     format: FacetMap
   }
+  offset: number
 }
 
-const buildFilter = (filters?: ProductSearchFilters): Filter | undefined => {
-  if (!filters) {
+const buildFilter = (
+  filters?: ProductSearchFilters,
+  inStockOnly?: boolean
+): Filter | undefined => {
+  if (!filters && !inStockOnly) {
     return undefined
   }
 
   const clauses: string[] = []
 
-  if (filters.genres?.length) {
+  if (filters?.genres?.length) {
     const values = filters.genres
       .map((genre) => `"${genre.replace(/"/g, '\\"')}"`)
       .join(", ")
     clauses.push(`genres IN [${values}]`)
   }
 
-  if (filters.formats?.length) {
+  if (filters?.formats?.length) {
     const values = filters.formats
       .map((format) => `"${format.replace(/"/g, '\\"')}"`)
       .join(", ")
     clauses.push(`format IN [${values}]`)
+  }
+
+  if (inStockOnly) {
+    clauses.push('(stock_status != "sold_out")')
   }
 
   if (!clauses.length) {
@@ -55,16 +72,28 @@ const buildFilter = (filters?: ProductSearchFilters): Filter | undefined => {
 
 export const searchProductsWithClient = async (
   client: MeiliSearch,
-  { query, limit = 24, filters }: ProductSearchRequest
+  { query, limit = 24, offset = 0, filters, sort, inStockOnly }: ProductSearchRequest
 ): Promise<ProductSearchResponse> => {
   const index = client.index(PRODUCTS_INDEX)
-  const filterClause = buildFilter(filters)
+  const filterClause = buildFilter(filters, inStockOnly)
 
-  const response: SearchResponse<Record<string, unknown>> =
+  const sortMapping: Record<ProductSortOption, string> = {
+    alphabetical: "title:asc",
+    newest: "created_at:desc",
+    "price-low": "price_amount:asc",
+    "price-high": "price_amount:desc",
+  }
+
+  const sortDirectives =
+    sort && sortMapping[sort] ? [sortMapping[sort]] : undefined
+
+const response: SearchResponse<Record<string, unknown>> =
     await index.search<Record<string, unknown>>(query ?? "", {
       limit,
+      offset,
       facets: ["genres", "format"],
       ...(filterClause ? { filter: filterClause } : {}),
+      ...(sortDirectives ? { sort: sortDirectives } : {}),
     })
 
   const hits = response.hits.map((hit) => normalizeSearchHit(hit))
@@ -80,6 +109,7 @@ export const searchProductsWithClient = async (
   return {
     hits,
     total,
+    offset: response.offset ?? offset ?? 0,
     facets,
   }
 }
