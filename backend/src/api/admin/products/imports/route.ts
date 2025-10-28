@@ -307,13 +307,6 @@ export const POST = async (
       }
     })() ?? console;
 
-  logger.info?.(
-    `[admin][products/imports] incoming body ${JSON.stringify(body)}`
-  );
-  logger.info?.(
-    `[admin][products/imports] headers ${JSON.stringify(req.headers)}`
-  );
-
   const resolvedKey =
     body.file_key ??
     body.fileKey ??
@@ -347,13 +340,6 @@ export const POST = async (
     // noop: validated body may be immutable
   }
 
-  logger.info?.(
-    `[admin][products/imports] resolved file key ${resolvedKey}`
-  );
-  logger.info?.(
-    `[admin][products/imports] mutated body ${JSON.stringify(req.body)}`
-  );
-
   const filename =
     body.originalname ??
     body.original_name ??
@@ -361,6 +347,10 @@ export const POST = async (
     body.fileName ??
     resolvedKey ??
     "products-import.csv";
+
+  logger.info?.(
+    `[admin][products/imports] starting import ${filename} (key=${resolvedKey})`
+  );
 
   const fileModuleService = (() => {
     try {
@@ -399,12 +389,6 @@ export const POST = async (
       const shouldNormalize =
         semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";");
 
-      logger.info?.(
-        `[admin][products/imports] delimiter check semicolons=${semicolonColumns} commas=${commaColumns} includesSemi=${csvText.includes(
-          ";"
-        )} shouldNormalize=${shouldNormalize}`
-      );
-
       if (shouldNormalize) {
         const normalized = normalizeSemicolonDelimitedCsv(csvText);
 
@@ -425,18 +409,6 @@ export const POST = async (
         logger.info?.(
           `[admin][products/imports] normalized CSV delimiter for ${resolvedKey} -> ${normalizedKey}`
         );
-        if (normalized.renamedColumns.length) {
-          logger.info?.(
-            `[admin][products/imports] renamed columns ${JSON.stringify(normalized.renamedColumns)}`
-          );
-        }
-        if (normalized.droppedColumns.length) {
-          logger.info?.(
-            `[admin][products/imports] stored legacy columns in metadata ${JSON.stringify(
-              normalized.droppedColumns
-            )}`
-          );
-        }
 
         try {
           if (req.body) {
@@ -473,11 +445,7 @@ export const POST = async (
     });
 
     logger.info?.(
-      `[admin][products/imports] workflow started ${JSON.stringify({
-        filename,
-        transactionId: transaction.transactionId,
-        summary: result,
-      })}`
+      `[admin][products/imports] workflow started for ${filename} (transaction=${transaction.transactionId})`
     );
 
     res
