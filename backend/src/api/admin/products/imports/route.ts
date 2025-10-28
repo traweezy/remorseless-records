@@ -20,6 +20,24 @@ export const POST = async (
     req.validatedBody ??
     ((req.body as ImportProductsBody | undefined) ?? {});
 
+  const logger =
+    (() => {
+      try {
+        return req.scope.resolve("logger") as {
+          info?: (...args: unknown[]) => void;
+          warn?: (...args: unknown[]) => void;
+          error?: (...args: unknown[]) => void;
+        };
+      } catch {
+        return console;
+      }
+    })() ?? console;
+
+  logger.info?.(
+    "[admin][products/imports] incoming body",
+    JSON.stringify(body)
+  );
+
   const resolvedKey =
     body.file_key ??
     body.fileKey ??
@@ -33,6 +51,11 @@ export const POST = async (
       "file_key is required to start the import. Upload the CSV first to obtain it."
     );
   }
+
+  logger.info?.(
+    "[admin][products/imports] resolved file key",
+    resolvedKey
+  );
 
   const filename =
     body.originalname ??
@@ -52,6 +75,15 @@ export const POST = async (
       fileKey: resolvedKey,
     },
   });
+
+  logger.info?.(
+    "[admin][products/imports] workflow started",
+    JSON.stringify({
+      filename,
+      transactionId: transaction.transactionId,
+      summary: result,
+    })
+  );
 
   res
     .status(202)
