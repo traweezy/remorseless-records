@@ -7,6 +7,7 @@ import {
   ProviderGetFileDTO,
   ProviderGetPresignedUploadUrlDTO
 } from '@medusajs/framework/types';
+import type { Readable } from 'stream';
 import { Client } from 'minio';
 import path from 'path';
 import { ulid } from 'ulid';
@@ -281,6 +282,57 @@ class MinioFileProviderService extends AbstractFileProviderService {
         `Failed to generate presigned URL: ${message}`
       )
     }
+  }
+
+  override async getDownloadStream(
+    fileData: ProviderGetFileDTO
+  ): Promise<Readable> {
+    if (!fileData?.fileKey) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        'No file key provided'
+      )
+    }
+
+    try {
+      return await this.minioClient.getObject(this.bucket, fileData.fileKey)
+    } catch (error: unknown) {
+      const message = getErrorMessage(error)
+      this.logger.error(`Failed to retrieve download stream for ${fileData.fileKey}: ${message}`)
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        `Failed to retrieve download stream: ${message}`
+      )
+    }
+  }
+
+  override async getAsBuffer(
+    fileData: ProviderGetFileDTO
+  ): Promise<Buffer> {
+    const stream = await this.getDownloadStream(fileData)
+
+    return await new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = []
+
+      stream.on('data', (chunk: Buffer) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+      })
+
+      stream.on('error', (error: unknown) => {
+        const message = getErrorMessage(error)
+        this.logger.error(`Failed to read buffer for ${fileData.fileKey}: ${message}`)
+        reject(
+          new MedusaError(
+            MedusaError.Types.UNEXPECTED_STATE,
+            `Failed to read file buffer: ${message}`
+          )
+        )
+      })
+
+      stream.on('end', () => {
+        resolve(Buffer.concat(chunks))
+      })
+    })
   }
 
   private createFileKey(filename: string): string {
