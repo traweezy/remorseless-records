@@ -34,8 +34,10 @@ export const POST = async (
     })() ?? console;
 
   logger.info?.(
-    "[admin][products/imports] incoming body",
-    JSON.stringify(body)
+    `[admin][products/imports] incoming body ${JSON.stringify(body)}`
+  );
+  logger.info?.(
+    `[admin][products/imports] headers ${JSON.stringify(req.headers)}`
   );
 
   const resolvedKey =
@@ -53,8 +55,7 @@ export const POST = async (
   }
 
   logger.info?.(
-    "[admin][products/imports] resolved file key",
-    resolvedKey
+    `[admin][products/imports] resolved file key ${resolvedKey}`
   );
 
   const filename =
@@ -77,12 +78,11 @@ export const POST = async (
   });
 
   logger.info?.(
-    "[admin][products/imports] workflow started",
-    JSON.stringify({
+    `[admin][products/imports] workflow started ${JSON.stringify({
       filename,
       transactionId: transaction.transactionId,
       summary: result,
-    })
+    })}`
   );
 
   res
