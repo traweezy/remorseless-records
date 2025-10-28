@@ -54,6 +54,25 @@ export const POST = async (
     );
   }
 
+  try {
+    req.body = {
+      ...(req.body ?? {}),
+      file_key: resolvedKey,
+      filename: body.filename ?? resolvedKey,
+      originalname: body.originalname ?? body.original_name,
+    } as ImportProductsBody;
+  } catch {
+    // noop: request body may be read-only
+  }
+
+  try {
+    if (req.validatedBody) {
+      (req.validatedBody as ImportProductsBody).file_key = resolvedKey;
+    }
+  } catch {
+    // noop: validated body may be immutable
+  }
+
   logger.info?.(
     `[admin][products/imports] resolved file key ${resolvedKey}`
   );
