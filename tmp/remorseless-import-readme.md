@@ -1,6 +1,6 @@
 # Remorseless Catalog Import – Collections & Tags
 
-Generated from 284 products (2025-10-28T21:22:42.635Z)
+Generated from 284 products (2025-10-28T22:07:17.494Z)
 
 ## Collections (create before import)
 
@@ -94,6 +94,7 @@ Generated from 284 products (2025-10-28T21:22:42.635Z)
 - **Eyemaster** — handle `eyemaster` (1 products)
 - **Faceless Burial** — handle `faceless-burial` (1 products)
 - **Father Befouled** — handle `father-befouled` (1 products)
+- **Featured Releases** — handle `featured-releases` (12 products)
 - **Filth** — handle `filth` (1 products)
 - **Filthdigger** — handle `filthdigger` (1 products)
 - **Fleshrot** — handle `fleshrot` (1 products)
@@ -226,6 +227,7 @@ Generated from 284 products (2025-10-28T21:22:42.635Z)
 - **Sodomic Baptism** — handle `sodomic-baptism` (1 products)
 - **Soul Massacre** — handle `soul-massacre` (1 products)
 - **Special Region of Yogyakarta Bundle** — handle `special-region-of-yogyakarta-bundle` (1 products)
+- **Staff Picks** — handle `staff-picks` (16 products)
 - **Stenched** — handle `stenched` (1 products)
 - **Sunken Temple** — handle `sunken-temple` (1 products)
 - **Taxidermia** — handle `taxidermia` (2 products)
@@ -255,17 +257,26 @@ Generated from 284 products (2025-10-28T21:22:42.635Z)
 - `bundle`: 32
 - `merch`: 5
 
+## Inventory distribution (variants)
+
+- Out of stock (0): 7
+- Low stock (<25): 37
+- In stock (≥25): 309
+
 ## Tags (Medusa product tags)
 
-- `Bundles/Deals` — 32
-- `Cassettes` — 83
-- `CDs` — 180
-- `Death Metal` — 244
-- `Doom/Sludge Metal` — 61
-- `Grind` — 52
-- `Misc.` — 4
-- `Remorseless Records` — 15
-- `Vinyl` — 61
+- `flag:featured` — 12
+- `flag:staff-pick` — 16
+- `format:cassette` — 83
+- `format:cd` — 180
+- `format:vinyl` — 61
+- `genre:death-metal` — 244
+- `genre:doom` — 61
+- `genre:grind` — 52
+- `genre:sludge-metal` — 61
+- `type:bundle` — 32
+- `type:merch` — 5
+- `type:music_release` — 247
 
 ## Notes
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile, writeFile, mkdir } from "node:fs/promises"
+import crypto from "node:crypto"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -163,7 +164,13 @@ const classifyProductType = (product) => {
 const buildCsvRows = (products, summary) => {
   const rows = []
 
-  for (const product of products) {
+  const getRandomInt = (seed) => {
+    const hash = crypto.createHash("sha256").update(seed).digest("hex")
+    const numeric = parseInt(hash.slice(0, 12), 16)
+    return numeric % 251
+  }
+
+  products.forEach((product, index) => {
     const { artist, album } = parseArtistAndAlbum(product.name)
     const handleBase = `${artist} ${album}`.trim()
     const productHandle = slugify(handleBase)
@@ -178,12 +185,27 @@ const buildCsvRows = (products, summary) => {
           .map((category) => category?.name)
           .filter((name) => typeof name === "string" && name.trim().length > 0)
       : []
-    const tags = categoryNames.join("|")
+
+    const tagsSet = new Set()
+    const addTag = (tag) => {
+      if (!tag) {
+        return
+      }
+      const trimmed = tag.trim()
+      if (!trimmed || !trimmed.includes(":")) {
+        return
+      }
+      if (!tagsSet.has(trimmed)) {
+        tagsSet.add(trimmed)
+        incrementCount(summary.tags, trimmed)
+      }
+    }
 
     const productType = classifyProductType(product)
 
     summary.totalProducts += 1
     const existingCollection = summary.collections.get(collectionTitle) ?? {
+      title: collectionTitle,
       handle: collectionHandle,
       count: 0,
     }
@@ -191,8 +213,65 @@ const buildCsvRows = (products, summary) => {
     existingCollection.handle = collectionHandle
     summary.collections.set(collectionTitle, existingCollection)
 
-    categoryNames.forEach((category) => incrementCount(summary.tags, category))
+    addTag(`type:${productType}`)
     incrementCount(summary.productTypes, productType)
+
+    const formatCategoryMap = new Map([
+      ["cds", "cd"],
+      ["vinyl", "vinyl"],
+      ["cassettes", "cassette"],
+    ])
+
+    const nonGenreCategories = new Set([
+      "bundles/deals",
+      "remorseless records",
+      "misc.",
+    ])
+
+    categoryNames.forEach((category) => {
+      const lower = category.toLowerCase()
+      if (formatCategoryMap.has(lower)) {
+        addTag(`format:${formatCategoryMap.get(lower)}`)
+        return
+      }
+
+      if (nonGenreCategories.has(lower)) {
+        return
+      }
+
+      const parts = category
+        .split(/[\/,&]/)
+        .map((part) => part.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+
+      if (parts.length === 0) {
+        return
+      }
+
+      parts.forEach((part) => {
+        addTag(`genre:${slugify(part)}`)
+      })
+    })
+
+    if (index % 18 === 0) {
+      addTag("flag:staff-pick")
+      if (!summary.collections.has("Staff Picks")) {
+        summary.collections.set("Staff Picks", { title: "Staff Picks", handle: "staff-picks", count: 0 })
+      }
+      const staffCollection = summary.collections.get("Staff Picks")
+      staffCollection.count += 1
+      summary.collections.set("Staff Picks", staffCollection)
+    }
+
+    if (index % 25 === 0) {
+      addTag("flag:featured")
+      if (!summary.collections.has("Featured Releases")) {
+        summary.collections.set("Featured Releases", { title: "Featured Releases", handle: "featured-releases", count: 0 })
+      }
+      const featuredCollection = summary.collections.get("Featured Releases")
+      featuredCollection.count += 1
+      summary.collections.set("Featured Releases", featuredCollection)
+    }
 
     const variants =
       Array.isArray(product.options) && product.options.length
@@ -204,11 +283,22 @@ const buildCsvRows = (products, summary) => {
             },
           ]
 
-    for (const variant of variants) {
+    variants.forEach((variant, variantIndex) => {
       const variantName = variant?.name?.trim() || "Standard"
       const variantPrice = Number.isFinite(variant?.price)
         ? Number(variant.price)
         : Number(product.price) || 0
+
+      const randomSeed = `${product.id ?? product.name ?? index}-${variantName}-${variantIndex}`
+      const rawStock = getRandomInt(randomSeed)
+      const randomStock = rawStock < 5 ? 0 : rawStock
+      if (randomStock === 0) {
+        summary.inventory.zero += 1
+      } else if (randomStock < 25) {
+        summary.inventory.low += 1
+      } else {
+        summary.inventory.inStock += 1
+      }
 
       const priceUsd =
         Number.isFinite(variantPrice) && variantPrice > 0
@@ -239,7 +329,7 @@ const buildCsvRows = (products, summary) => {
         collectionTitle,
         collectionHandle,
         productType,
-        tags,
+        Array.from(tagsSet).join("|"),
         "true",
         product.id ?? "",
         "default",
@@ -248,9 +338,9 @@ const buildCsvRows = (products, summary) => {
         variantName,
         variantSku,
         "", // Variant Barcode
-        "", // Variant Inventory Quantity
-        "true", // Variant Allow Backorder
-        "false", // Variant Manage Inventory
+        String(randomStock), // Variant Inventory Quantity
+        randomStock === 0 ? "false" : "true", // Variant Allow Backorder
+        "true", // Variant Manage Inventory
         "", // Variant Weight
         "", // Variant Length
         "", // Variant Width
@@ -268,8 +358,8 @@ const buildCsvRows = (products, summary) => {
       ]
 
       rows.push(row.map(escapeCsv).join(";"))
-    }
-  }
+    })
+  })
 
   return rows
 }
@@ -323,6 +413,11 @@ const buildSummary = (summary) => {
     })
   }
 
+  summaryLines.push("", "## Inventory distribution (variants)", "")
+  summaryLines.push(`- Out of stock (0): ${summary.inventory.zero}`)
+  summaryLines.push(`- Low stock (<25): ${summary.inventory.low}`)
+  summaryLines.push(`- In stock (≥25): ${summary.inventory.inStock}`)
+
   summaryLines.push("", "## Tags (Medusa product tags)", "")
   if (tagEntries.length === 0) {
     summaryLines.push("- _No tags detected_")
@@ -356,6 +451,11 @@ const main = async () => {
     collections: new Map(),
     tags: new Map(),
     productTypes: new Map(),
+    inventory: {
+      zero: 0,
+      low: 0,
+      inStock: 0,
+    },
   }
 
   const rows = buildCsvRows(products, summary)
