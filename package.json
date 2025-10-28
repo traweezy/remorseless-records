@@ -9,6 +9,7 @@
   },
   "scripts": {
     "qa:lint": "pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter medusa-2.0-boilerplate-backend exec tsc --noEmit",
+    "data:build-import": "node scripts/generate-remorseless-import.mjs",
     "qa:a11y": "node qa/run-pa11y.cjs",
     "qa:lighthouse": "pnpm dlx @lhci/cli@0.12.0 autorun --config=./lighthouse/lhci.config.js",
     "qa:ci": "pnpm run qa:lint && pnpm run qa:a11y && pnpm run qa:lighthouse"
