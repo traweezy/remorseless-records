@@ -199,8 +199,19 @@ class MinioFileProviderService extends AbstractFileProviderService {
   ): Promise<void> {
     const entries = Array.isArray(fileData) ? fileData : [fileData]
 
+    const serialized = JSON.stringify(fileData)
+    this.logger.info?.(
+      `[minio][delete] raw payload ${serialized}`
+    )
+
     const keys = entries
-      .map((entry) => this.resolveFileKey(entry))
+      .map((entry) => {
+        const resolved = this.resolveFileKey(entry)
+        this.logger.info?.(
+          `[minio][delete] resolved key ${resolved} from ${serialized}`
+        )
+        return resolved
+      })
       .filter((key): key is string => Boolean(key))
 
     if (!keys.length) {
@@ -270,6 +281,12 @@ class MinioFileProviderService extends AbstractFileProviderService {
   ): Promise<string> {
     const fileKey = this.resolveFileKey(fileData)
 
+    this.logger.info?.(
+      `[minio][download-url] payload=${JSON.stringify(
+        fileData
+      )} resolved=${fileKey}`
+    )
+
     if (!fileKey) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
@@ -300,6 +317,12 @@ class MinioFileProviderService extends AbstractFileProviderService {
   ): Promise<Readable> {
     const fileKey = this.resolveFileKey(fileData)
 
+    this.logger.info?.(
+      `[minio][download-stream] payload=${JSON.stringify(
+        fileData
+      )} resolved=${fileKey}`
+    )
+
     if (!fileKey) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
@@ -322,8 +345,11 @@ class MinioFileProviderService extends AbstractFileProviderService {
   override async getAsBuffer(
     fileData: ProviderGetFileDTO | string
   ): Promise<Buffer> {
-    const stream = await this.getDownloadStream(fileData)
     const fileKey = this.resolveFileKey(fileData)
+    this.logger.info?.(
+      `[minio][buffer] payload=${JSON.stringify(fileData)} resolved=${fileKey}`
+    )
+    const stream = await this.getDownloadStream(fileData)
 
     return await new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = []
@@ -376,6 +402,7 @@ class MinioFileProviderService extends AbstractFileProviderService {
       (fileData as ProviderGetFileDTO)?.fileKey ??
       (fileData as ProviderDeleteFileDTO)?.fileKey ??
       (fileData as unknown as { file_key?: string })?.file_key ??
+      (fileData as unknown as { key?: string })?.key ??
       null
 
     return candidate

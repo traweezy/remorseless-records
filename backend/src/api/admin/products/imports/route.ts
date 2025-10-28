@@ -76,6 +76,9 @@ export const POST = async (
   logger.info?.(
     `[admin][products/imports] resolved file key ${resolvedKey}`
   );
+  logger.info?.(
+    `[admin][products/imports] mutated body ${JSON.stringify(req.body)}`
+  );
 
   const filename =
     body.originalname ??
@@ -87,24 +90,32 @@ export const POST = async (
     body.key ??
     "products-import.csv";
 
-  const { result, transaction } = await importProductsAsChunksWorkflow(
-    req.scope
-  ).run({
-    input: {
-      filename,
-      fileKey: resolvedKey,
-    },
-  });
+  try {
+    const { result, transaction } = await importProductsAsChunksWorkflow(
+      req.scope
+    ).run({
+      input: {
+        filename,
+        fileKey: resolvedKey,
+      },
+    });
 
-  logger.info?.(
-    `[admin][products/imports] workflow started ${JSON.stringify({
-      filename,
-      transactionId: transaction.transactionId,
-      summary: result,
-    })}`
-  );
+    logger.info?.(
+      `[admin][products/imports] workflow started ${JSON.stringify({
+        filename,
+        transactionId: transaction.transactionId,
+        summary: result,
+      })}`
+    );
 
-  res
-    .status(202)
-    .json({ transaction_id: transaction.transactionId, summary: result });
+    res
+      .status(202)
+      .json({ transaction_id: transaction.transactionId, summary: result });
+  } catch (error) {
+    logger.error?.(
+      `[admin][products/imports] workflow failed ${(error as Error)?.message}`,
+      error
+    );
+    throw error;
+  }
 };
