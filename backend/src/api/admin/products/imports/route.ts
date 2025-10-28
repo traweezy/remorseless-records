@@ -171,6 +171,33 @@ const normalizeSemicolonDelimitedCsv = (
   const { normalizedHeaders, instructions, metadataIndex, renamedColumns, droppedColumns, metadataKeys } =
     normalizeHeaders(headerRow);
 
+  const handleIndex = normalizedHeaders.findIndex(
+    (header) => header.toLowerCase() === "product handle"
+  );
+
+  const normalizeHandleValue = (value: string): string => {
+    if (!value) {
+      return value;
+    }
+
+    const downcased = value
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    const slug = downcased
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+/, "")
+      .replace(/-+$/, "");
+
+    if (slug.length === 0) {
+      const fallback = downcased.replace(/[^a-z0-9]/g, "");
+      return fallback || "product";
+    }
+
+    return slug;
+  };
+
   const metadataNamespace = "legacy_import";
 
   const normalizedRows = nonEmptyRecords.slice(1).map((row) => {
@@ -188,6 +215,16 @@ const normalizeSemicolonDelimitedCsv = (
 
       normalizedRow[instruction.targetIndex] = rawValue;
     });
+
+    if (handleIndex !== -1) {
+      const originalHandle = normalizedRow[handleIndex] ?? "";
+      if (originalHandle) {
+        const slugifiedHandle = normalizeHandleValue(originalHandle);
+        if (slugifiedHandle !== originalHandle) {
+          normalizedRow[handleIndex] = slugifiedHandle;
+        }
+      }
+    }
 
     if (metadataIndex !== -1) {
       const existingRaw = normalizedRow[metadataIndex];
