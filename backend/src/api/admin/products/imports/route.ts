@@ -4,21 +4,30 @@ import { importProductsAsChunksWorkflow } from "@medusajs/core-flows";
 
 type ImportProductsBody = {
   originalname?: string;
+  original_name?: string;
   filename?: string;
+  fileName?: string;
   file_key?: string;
+  fileKey?: string;
+  key?: string;
 };
 
 export const POST = async (
   req: MedusaRequest<ImportProductsBody>,
   res: MedusaResponse
 ): Promise<void> => {
-  const body = req.validatedBody ?? {};
+  const body =
+    req.validatedBody ??
+    ((req.body as ImportProductsBody | undefined) ?? {});
 
-  if (!body.file_key && typeof body.filename === "string" && body.filename.length) {
-    body.file_key = body.filename;
-  }
+  const resolvedKey =
+    body.file_key ??
+    body.fileKey ??
+    body.key ??
+    body.filename ??
+    body.fileName;
 
-  if (!body.file_key) {
+  if (!resolvedKey) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
       "file_key is required to start the import. Upload the CSV first to obtain it."
@@ -27,8 +36,12 @@ export const POST = async (
 
   const filename =
     body.originalname ??
+    body.original_name ??
     body.filename ??
+    body.fileName ??
     body.file_key ??
+    body.fileKey ??
+    body.key ??
     "products-import.csv";
 
   const { result, transaction } = await importProductsAsChunksWorkflow(
@@ -36,7 +49,7 @@ export const POST = async (
   ).run({
     input: {
       filename,
-      fileKey: body.file_key,
+      fileKey: resolvedKey,
     },
   });
 
