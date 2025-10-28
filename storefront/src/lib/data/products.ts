@@ -40,3 +40,58 @@ export const getRecentProducts = cache(
     return products
   }
 )
+
+type ProductHandleSummary = {
+  handle: string
+  updatedAt: string | null
+}
+
+export const getAllProductHandles = cache(
+  async (): Promise<ProductHandleSummary[]> => {
+    const handles: ProductHandleSummary[] = []
+    const pageSize = 100
+    let offset = 0
+
+    // Medusa paginates products; loop until we exhaust the catalog.
+    // We request moderate batches to avoid stressing the API during build time.
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { products } = await storeClient.product.list({
+        limit: pageSize,
+        offset,
+        fields: ["id", "handle", "updated_at", "created_at"].join(","),
+        order: "created_at",
+      })
+
+      if (!products?.length) {
+        break
+      }
+
+      for (const product of products) {
+        if (!product?.handle) {
+          continue
+        }
+
+        const updatedAt =
+          (product as unknown as { updated_at?: string }).updated_at ??
+          (product as unknown as { updatedAt?: string }).updatedAt ??
+          (product as unknown as { created_at?: string }).created_at ??
+          (product as unknown as { createdAt?: string }).createdAt ??
+          null
+
+        handles.push({
+          handle: product.handle,
+          updatedAt,
+        })
+      }
+
+      if (products.length < pageSize) {
+        break
+      }
+
+      offset += products.length
+    }
+
+    return handles
+  }
+)

@@ -1,4 +1,5 @@
-import type { Metadata, ReactElement } from "react"
+import type { ReactElement } from "react"
+import type { Metadata } from "next"
 import Link from "next/link"
 
 import HeroSection from "@/components/hero-section"

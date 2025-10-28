@@ -76,7 +76,7 @@ export const generateMetadata = async ({
       title: product.title ?? "Remorseless Records Release",
       description,
       url: canonical,
-      type: "product",
+      type: "website",
       images,
     },
     twitter: {

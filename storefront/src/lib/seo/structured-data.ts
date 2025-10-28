@@ -184,7 +184,10 @@ export const buildMusicReleaseJsonLd = ({
     name: title,
     position: index + 1,
   })),
-  datePublished: product.published_at ?? product.created_at ?? undefined,
+  datePublished:
+    (product as unknown as { published_at?: string }).published_at ??
+    product.created_at ??
+    undefined,
   inLanguage: siteMetadata.defaultLocale,
   url: productUrl,
   description:

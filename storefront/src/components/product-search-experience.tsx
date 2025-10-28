@@ -247,7 +247,13 @@ const SortDropdown = ({
 }) => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const activeOption = SORT_OPTIONS.find((option) => option.value === value) ?? SORT_OPTIONS[0]
+  const fallbackOption = SORT_OPTIONS[0]
+  if (!fallbackOption) {
+    throw new Error("SORT_OPTIONS must contain at least one entry")
+  }
+
+  const activeOption =
+    SORT_OPTIONS.find((option) => option.value === value) ?? fallbackOption
 
   useEffect(() => {
     const handleClick = (event: globalThis.MouseEvent) => {
