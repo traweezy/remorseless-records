@@ -195,24 +195,33 @@ class MinioFileProviderService extends AbstractFileProviderService {
   }
 
   override async delete(
-    fileData: ProviderDeleteFileDTO
+    fileData: ProviderDeleteFileDTO | ProviderDeleteFileDTO[]
   ): Promise<void> {
-    if (!fileData?.fileKey) {
+    const entries = Array.isArray(fileData) ? fileData : [fileData]
+
+    const keys = entries
+      .map((entry) => this.resolveFileKey(entry))
+      .filter((key): key is string => Boolean(key))
+
+    if (!keys.length) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
         'No file key provided'
       )
     }
 
-    try {
-      await this.minioClient.removeObject(this.bucket, fileData.fileKey)
-      this.logger.info(`Successfully deleted file ${fileData.fileKey} from MinIO bucket ${this.bucket}`)
-    } catch (error: unknown) {
-      // Log error but don't throw if file doesn't exist
-      this.logger.warn(
-        `Failed to delete file ${fileData.fileKey}: ${getErrorMessage(error)}`
-      )
-    }
+    await Promise.all(
+      keys.map(async (fileKey) => {
+        try {
+          await this.minioClient.removeObject(this.bucket, fileKey)
+          this.logger.info(`Successfully deleted file ${fileKey} from MinIO bucket ${this.bucket}`)
+        } catch (error: unknown) {
+          this.logger.warn(
+            `Failed to delete file ${fileKey}: ${getErrorMessage(error)}`
+          )
+        }
+      })
+    )
   }
 
   async getPresignedUploadUrl(
@@ -257,9 +266,11 @@ class MinioFileProviderService extends AbstractFileProviderService {
   }
 
   override async getPresignedDownloadUrl(
-    fileData: ProviderGetFileDTO
+    fileData: ProviderGetFileDTO | string
   ): Promise<string> {
-    if (!fileData?.fileKey) {
+    const fileKey = this.resolveFileKey(fileData)
+
+    if (!fileKey) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
         'No file key provided'
@@ -269,10 +280,10 @@ class MinioFileProviderService extends AbstractFileProviderService {
     try {
       const url = await this.minioClient.presignedGetObject(
         this.bucket,
-        fileData.fileKey,
+        fileKey,
         24 * 60 * 60 // URL expires in 24 hours
       )
-      this.logger.info(`Generated presigned URL for file ${fileData.fileKey}`)
+      this.logger.info(`Generated presigned URL for file ${fileKey}`)
       return url
     } catch (error: unknown) {
       const message = getErrorMessage(error)
@@ -285,9 +296,11 @@ class MinioFileProviderService extends AbstractFileProviderService {
   }
 
   override async getDownloadStream(
-    fileData: ProviderGetFileDTO
+    fileData: ProviderGetFileDTO | string
   ): Promise<Readable> {
-    if (!fileData?.fileKey) {
+    const fileKey = this.resolveFileKey(fileData)
+
+    if (!fileKey) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
         'No file key provided'
@@ -295,10 +308,10 @@ class MinioFileProviderService extends AbstractFileProviderService {
     }
 
     try {
-      return await this.minioClient.getObject(this.bucket, fileData.fileKey)
+      return await this.minioClient.getObject(this.bucket, fileKey)
     } catch (error: unknown) {
       const message = getErrorMessage(error)
-      this.logger.error(`Failed to retrieve download stream for ${fileData.fileKey}: ${message}`)
+      this.logger.error(`Failed to retrieve download stream for ${fileKey}: ${message}`)
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
         `Failed to retrieve download stream: ${message}`
@@ -307,9 +320,10 @@ class MinioFileProviderService extends AbstractFileProviderService {
   }
 
   override async getAsBuffer(
-    fileData: ProviderGetFileDTO
+    fileData: ProviderGetFileDTO | string
   ): Promise<Buffer> {
     const stream = await this.getDownloadStream(fileData)
+    const fileKey = this.resolveFileKey(fileData)
 
     return await new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = []
@@ -320,7 +334,7 @@ class MinioFileProviderService extends AbstractFileProviderService {
 
       stream.on('error', (error: unknown) => {
         const message = getErrorMessage(error)
-        this.logger.error(`Failed to read buffer for ${fileData.fileKey}: ${message}`)
+        this.logger.error(`Failed to read buffer for ${fileKey}: ${message}`)
         reject(
           new MedusaError(
             MedusaError.Types.UNEXPECTED_STATE,
@@ -345,6 +359,26 @@ class MinioFileProviderService extends AbstractFileProviderService {
 
   private buildFileUrl(fileKey: string): string {
     return `https://${this.minioConfig.endPoint}/${this.bucket}/${fileKey}`
+  }
+
+  private resolveFileKey(
+    fileData: ProviderGetFileDTO | ProviderDeleteFileDTO | string | undefined
+  ): string | null {
+    if (!fileData) {
+      return null
+    }
+
+    if (typeof fileData === 'string') {
+      return fileData
+    }
+
+    const candidate =
+      (fileData as ProviderGetFileDTO)?.fileKey ??
+      (fileData as ProviderDeleteFileDTO)?.fileKey ??
+      (fileData as unknown as { file_key?: string })?.file_key ??
+      null
+
+    return candidate
   }
 }
 

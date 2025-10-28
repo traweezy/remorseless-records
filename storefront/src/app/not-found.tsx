@@ -15,8 +15,7 @@ const NotFound = () => (
       Lost in the Static
     </h1>
     <p className="max-w-md text-sm text-muted-foreground">
-      The signal you were chasing dissolved into noise. Return to the front page and
-      resume the assault.
+      The requested page does not exist.
     </p>
     <Link
       href="/"
