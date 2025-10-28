@@ -166,7 +166,13 @@ class MinioFileProviderService extends AbstractFileProviderService {
 
     try {
       const fileKey = this.createFileKey(file.filename)
-      const content = Buffer.from(file.content, 'binary')
+      const content =
+        Buffer.isBuffer(file.content)
+          ? file.content
+          : Buffer.from(
+              typeof file.content === 'string' ? file.content : String(file.content),
+              'utf8'
+            )
 
       // Upload file with public-read access
       await this.minioClient.putObject(

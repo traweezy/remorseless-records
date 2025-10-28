@@ -362,6 +362,12 @@ export const POST = async (
       const shouldNormalize =
         semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";");
 
+      logger.info?.(
+        `[admin][products/imports] delimiter check semicolons=${semicolonColumns} commas=${commaColumns} includesSemi=${csvText.includes(
+          ";"
+        )} shouldNormalize=${shouldNormalize}`
+      );
+
       if (shouldNormalize) {
         const normalized = normalizeSemicolonDelimitedCsv(csvText);
 
