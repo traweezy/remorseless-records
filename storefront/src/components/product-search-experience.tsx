@@ -431,29 +431,11 @@ const ProductSearchExperience = ({
   )
 
   const mappedResults = useMemo(
-    () =>
-      sortedHits.map((hit) => ({
-        ...mapHitToSummary(hit),
-      })) as DuplicatedProduct[],
+    () => sortedHits.map((hit) => mapHitToSummary(hit)),
     [sortedHits]
   )
 
-  const displayResults = useMemo(() => {
-    if (!mappedResults.length || mappedResults.length >= 20) {
-      return mappedResults
-    }
-
-    const duplicates = Array.from({ length: 10 }).flatMap((_, dupIndex) =>
-      mappedResults.map((product, productIndex) => ({
-        ...product,
-        __duplicateKey: `dup-${dupIndex}-${productIndex}`,
-      }))
-    )
-
-    return [...mappedResults, ...duplicates]
-  }, [mappedResults])
-
-  const totalResults = displayResults.length
+  const totalResults = mappedResults.length
   const activeFiltersCount = useMemo(
     () => selectedGenres.length + selectedFormats.length + (showInStockOnly ? 1 : 0),
     [selectedGenres.length, selectedFormats.length, showInStockOnly]
@@ -638,14 +620,14 @@ const ProductSearchExperience = ({
               </div>
             ) : null}
 
-            {displayResults.length ? (
+            {mappedResults.length ? (
               <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-                {displayResults.map((product, index) => {
-                  const duplicateAwareKey =
-                    (product as RelatedProductSummary & { __duplicateKey?: string })
-                      .__duplicateKey ?? `${product.id}-${product.handle ?? product.id}-${index}`
-                  return <ProductCard key={duplicateAwareKey} product={product} />
-                })}
+                {mappedResults.map((product, index) => (
+                  <ProductCard
+                    key={`${product.id}-${product.handle ?? product.id}-${index}`}
+                    product={product}
+                  />
+                ))}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border/60 bg-background/80 p-12 text-center text-sm text-muted-foreground">
@@ -661,4 +643,3 @@ const ProductSearchExperience = ({
 }
 
 export default ProductSearchExperience
-type DuplicatedProduct = RelatedProductSummary & { __duplicateKey?: string }
