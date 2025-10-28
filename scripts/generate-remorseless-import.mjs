@@ -9,11 +9,8 @@ const __dirname = dirname(__filename)
 const projectRoot = resolve(__dirname, "..")
 
 const sourceJsonPath = resolve(projectRoot, "tmp", "remorseless_products.json")
-const outputCsvPath = resolve(
-  projectRoot,
-  "storefront",
-  "remorseless-products-import.csv",
-)
+const outputCsvPath = resolve(projectRoot, "tmp", "remorseless-products-import.csv")
+const summaryOutputPath = resolve(projectRoot, "tmp", "remorseless-import-readme.md")
 
 const csvHeaders = [
   "Product Id",
@@ -126,7 +123,44 @@ const parseArtistAndAlbum = (productName) => {
   }
 }
 
-const buildCsvRows = (products) => {
+const incrementCount = (map, key) => {
+  if (!key) {
+    return
+  }
+  const previous = map.get(key) ?? 0
+  map.set(key, previous + 1)
+}
+
+const classifyProductType = (product) => {
+  const categories = Array.isArray(product?.categories)
+    ? product.categories
+        .map((category) => category?.name?.toLowerCase()?.trim())
+        .filter(Boolean)
+    : []
+
+  const name = product?.name?.toLowerCase() ?? ""
+
+  if (categories.some((category) => category.includes("bundle"))) {
+    return "bundle"
+  }
+  if (/\bbundle\b|\bdeal\b|\bbox set\b|\bpack\b/.test(name)) {
+    return "bundle"
+  }
+
+  const merchCategoryKeywords = ["misc", "merch"]
+  const merchNameKeywords = ["shirt", "hoodie", "button", "pin", "zine", "issue", "sticker", "logo", "patch"]
+
+  if (categories.some((category) => merchCategoryKeywords.some((keyword) => category.includes(keyword)))) {
+    return "merch"
+  }
+  if (merchNameKeywords.some((keyword) => name.includes(keyword))) {
+    return "merch"
+  }
+
+  return "music_release"
+}
+
+const buildCsvRows = (products, summary) => {
   const rows = []
 
   for (const product of products) {
@@ -139,10 +173,26 @@ const buildCsvRows = (products) => {
     const firstImage = product.images?.[0]?.url ?? ""
     const secondImage = product.images?.[1]?.url ?? ""
 
-    const tags =
-      Array.isArray(product.categories) && product.categories.length
-        ? product.categories.map((category) => category.name).join("|")
-        : ""
+    const categoryNames = Array.isArray(product.categories)
+      ? product.categories
+          .map((category) => category?.name)
+          .filter((name) => typeof name === "string" && name.trim().length > 0)
+      : []
+    const tags = categoryNames.join("|")
+
+    const productType = classifyProductType(product)
+
+    summary.totalProducts += 1
+    const existingCollection = summary.collections.get(collectionTitle) ?? {
+      handle: collectionHandle,
+      count: 0,
+    }
+    existingCollection.count += 1
+    existingCollection.handle = collectionHandle
+    summary.collections.set(collectionTitle, existingCollection)
+
+    categoryNames.forEach((category) => incrementCount(summary.tags, category))
+    incrementCount(summary.productTypes, productType)
 
     const variants =
       Array.isArray(product.options) && product.options.length
@@ -188,7 +238,7 @@ const buildCsvRows = (products) => {
         "", // Product Material
         collectionTitle,
         collectionHandle,
-        "Album",
+        productType,
         tags,
         "true",
         product.id ?? "",
@@ -224,18 +274,104 @@ const buildCsvRows = (products) => {
   return rows
 }
 
+const buildSummary = (summary) => {
+  const collectionEntries = Array.from(summary.collections.entries())
+    .map(([title, data]) => ({
+      title,
+      handle: data.handle,
+      count: data.count,
+    }))
+    .sort((a, b) => a.title.localeCompare(b.title))
+
+  const tagEntries = Array.from(summary.tags.entries())
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => a.tag.localeCompare(b.tag))
+
+  const preferredTypeOrder = ["music_release", "bundle", "merch"]
+  const productTypeEntries = preferredTypeOrder
+    .filter((type) => summary.productTypes.has(type))
+    .map((type) => ({ type, count: summary.productTypes.get(type) }))
+    .concat(
+      Array.from(summary.productTypes.entries())
+        .filter(([type]) => !preferredTypeOrder.includes(type))
+        .map(([type, count]) => ({ type, count })),
+    )
+
+  const summaryLines = [
+    "# Remorseless Catalog Import – Collections & Tags",
+    "",
+    `Generated from ${summary.totalProducts} products (${new Date().toISOString()})`,
+    "",
+    "## Collections (create before import)",
+    "",
+  ]
+
+  if (collectionEntries.length === 0) {
+    summaryLines.push("- _No collections detected_")
+  } else {
+    collectionEntries.forEach(({ title, handle, count }) => {
+      summaryLines.push(`- **${title}** — handle \`${handle}\` (${count} products)`)
+    })
+  }
+
+  summaryLines.push("", "## Product types", "")
+  if (productTypeEntries.length === 0) {
+    summaryLines.push("- _No product types detected_")
+  } else {
+    productTypeEntries.forEach(({ type, count }) => {
+      summaryLines.push(`- \`${type}\`: ${count}`)
+    })
+  }
+
+  summaryLines.push("", "## Tags (Medusa product tags)", "")
+  if (tagEntries.length === 0) {
+    summaryLines.push("- _No tags detected_")
+  } else {
+    tagEntries.forEach(({ tag, count }) => {
+      summaryLines.push(`- \`${tag}\` — ${count}`)
+    })
+  }
+
+  summaryLines.push(
+    "",
+    "## Notes",
+    "",
+    "- Collections are derived from artist names; create each collection before running the CSV import.",
+    "- Tags originate from the Big Cartel catalog categories and power storefront filtering.",
+    "- Product types follow this contract:",
+    "  - `music_release` – standard releases (default).",
+    "  - `bundle` – multi-product bundles or deals.",
+    "  - `merch` – non-music items (zines, buttons, apparel, etc.).",
+  )
+
+  return `${summaryLines.join("\n")}\n`
+}
+
 const main = async () => {
   const raw = await readFile(sourceJsonPath, "utf8")
   const products = JSON.parse(raw)
-  const rows = buildCsvRows(products)
+
+  const summary = {
+    totalProducts: 0,
+    collections: new Map(),
+    tags: new Map(),
+    productTypes: new Map(),
+  }
+
+  const rows = buildCsvRows(products, summary)
   const output = [csvHeaders.join(";"), ...rows].join("\n")
 
   await mkdir(dirname(outputCsvPath), { recursive: true })
   await writeFile(outputCsvPath, `${output}\n`, "utf8")
 
+  const summaryContent = buildSummary(summary)
+  await mkdir(dirname(summaryOutputPath), { recursive: true })
+  await writeFile(summaryOutputPath, summaryContent, "utf8")
+
   console.log(
-    `Generated ${rows.length} rows from ${products.length} products -> ${outputCsvPath}`,
+    `Generated ${rows.length} rows from ${products.length} source products -> ${outputCsvPath}`,
   )
+  console.log(`Summary written to ${summaryOutputPath}`)
 }
 
 main().catch((error) => {
