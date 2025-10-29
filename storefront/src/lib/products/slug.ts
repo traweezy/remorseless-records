@@ -6,6 +6,7 @@ type SlugSource = {
   title?: string | null
   metadata?: MaybeRecord
   collectionTitle?: string | null
+  handle?: string | null
 }
 
 export type ProductSlug = {
@@ -73,6 +74,31 @@ const parseArtistAlbumFromTitle = (
 const resolveMetadata = (metadata: MaybeRecord): MaybeRecord =>
   metadata && typeof metadata === "object" ? metadata : null
 
+const parseArtistAlbumFromHandle = (
+  handle: string
+): { artist: string; album: string } => {
+  const cleaned = handle.replace(/_/g, "-")
+  const parts = cleaned
+    .split("-")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+
+  const [first, ...rest] = parts
+
+  if (!first) {
+    return { artist: handle, album: handle }
+  }
+
+  if (rest.length === 0) {
+    return { artist: first, album: first }
+  }
+
+  return {
+    artist: first,
+    album: rest.join(" "),
+  }
+}
+
 export const buildProductSlugParts = (
   source: SlugSource | HttpTypes.StoreProduct
 ): ProductSlug => {
@@ -93,6 +119,11 @@ export const buildProductSlugParts = (
           ((source as HttpTypes.StoreProduct).collection as { title?: unknown } | undefined)?.title
         )
 
+  const handle =
+    "handle" in source
+      ? coerceString(source.handle)
+      : coerceString((source as { handle?: string }).handle)
+
   const metaArtist =
     coerceString(metadata?.artist) ??
     coerceString(metadata?.Artist) ??
@@ -103,12 +134,22 @@ export const buildProductSlugParts = (
     coerceString(metadata?.Album) ??
     coerceString(metadata?.release)
 
+  const metaArtistSlug = coerceString(
+    metadata?.artist_slug ?? metadata?.artistSlug ?? metadata?.artistSlug
+  )
+  const metaAlbumSlug = coerceString(
+    metadata?.album_slug ?? metadata?.albumSlug ?? metadata?.albumSlug
+  )
+
   const { artist, album } = (() => {
     if (metaArtist && metaAlbum) {
       return { artist: metaArtist, album: metaAlbum }
     }
     if (title) {
       return parseArtistAlbumFromTitle(title, collectionTitle)
+    }
+    if (handle) {
+      return parseArtistAlbumFromHandle(handle)
     }
     const fallback = collectionTitle ?? "Remorseless Records"
     return { artist: fallback, album: fallback }
@@ -117,8 +158,8 @@ export const buildProductSlugParts = (
   return {
     artist,
     album,
-    artistSlug: slugifySegment(artist),
-    albumSlug: slugifySegment(album),
+    artistSlug: metaArtistSlug ? slugifySegment(metaArtistSlug) : slugifySegment(artist),
+    albumSlug: metaAlbumSlug ? slugifySegment(metaAlbumSlug) : slugifySegment(album),
   }
 }
 
