@@ -857,7 +857,7 @@ const ProductSearchExperience = ({
             )}
           </header>
 
-          <section className="space-y-6 px-2 pt-4 sm:px-4 lg:px-6">
+          <section className="space-y-5 px-2 pt-2 sm:px-4 lg:px-6">
             {isFetching && !isFetchingNextPage ? (
               <div className="text-sm uppercase tracking-[0.3rem] text-muted-foreground">
                 Refreshing results…
