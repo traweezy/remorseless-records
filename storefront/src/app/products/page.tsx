@@ -4,8 +4,6 @@ import { headers } from "next/headers"
 import ProductSearchExperience from "@/components/product-search-experience"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
-import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
-import { getRecentProducts } from "@/lib/data/products"
 import { searchProductsServer } from "@/lib/search/server"
 import type { ProductSearchResponse } from "@/lib/search/search"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
@@ -38,27 +36,12 @@ const ProductsPage = async () => {
   let initialSearch: ProductSearchResponse
   const pageSize = 24
 
-  try {
-    initialSearch = await searchProductsServer({
-      query: "",
-      limit: pageSize,
-      offset: 0,
-      sort: "alphabetical",
-    })
-  } catch (error) {
-    console.error("Meilisearch query failed, falling back to Medusa data.", error)
-    const products = await getRecentProducts(pageSize)
-    const hits = products.map(mapStoreProductToSearchHit)
-    initialSearch = {
-      hits,
-      total: hits.length,
-      offset: 0,
-      facets: {
-        genres: {},
-        format: {},
-      },
-    }
-  }
+  initialSearch = await searchProductsServer({
+    query: "",
+    limit: pageSize,
+    offset: 0,
+    sort: "alphabetical",
+  })
 
   const headerList = await headers()
   const headerEntries = Object.fromEntries(headerList.entries()) as Record<string, string>
@@ -74,7 +57,11 @@ const ProductsPage = async () => {
     "Remorseless Catalog",
     initialSearch.hits.map((hit) => ({
       name: hit.title,
-      url: `${origin}/products/${hit.slug.artistSlug}/${hit.slug.albumSlug}`,
+      url: `${origin}/products/${
+        hit.handle?.trim()?.length
+          ? hit.handle.trim()
+          : `${hit.slug.artistSlug}-${hit.slug.albumSlug}`
+      }`,
     }))
   )
 

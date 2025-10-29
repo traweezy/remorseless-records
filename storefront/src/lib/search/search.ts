@@ -8,6 +8,8 @@ export const PRODUCTS_INDEX = "products"
 export type ProductSearchFilters = {
   genres?: string[]
   formats?: string[]
+  categories?: string[]
+  variants?: string[]
 }
 
 export type ProductSortOption =
@@ -31,6 +33,8 @@ export type ProductSearchResponse = {
   facets: {
     genres: FacetMap
     format: FacetMap
+    categories: FacetMap
+    variants: FacetMap
   }
   offset: number
 }
@@ -57,6 +61,20 @@ const buildFilter = (
       .map((format) => `"${format.replace(/"/g, '\\"')}"`)
       .join(", ")
     clauses.push(`format IN [${values}]`)
+  }
+
+  if (filters?.categories?.length) {
+    const values = filters.categories
+      .map((category) => `"${category.replace(/"/g, '\\"')}"`)
+      .join(", ")
+    clauses.push(`category_handles IN [${values}]`)
+  }
+
+  if (filters?.variants?.length) {
+    const values = filters.variants
+      .map((variant) => `"${variant.replace(/"/g, '\\"')}"`)
+      .join(", ")
+    clauses.push(`variant_titles IN [${values}]`)
   }
 
   if (inStockOnly) {
@@ -87,11 +105,11 @@ export const searchProductsWithClient = async (
   const sortDirective = sort ? sortMapping[sort] ?? null : null
   const sortDirectives = sortDirective ? [sortDirective] : undefined
 
-const response: SearchResponse<Record<string, unknown>> =
+  const response: SearchResponse<Record<string, unknown>> =
     await index.search<Record<string, unknown>>(query ?? "", {
       limit,
       offset,
-      facets: ["genres", "format"],
+      facets: ["genres", "format", "category_handles", "variant_titles"],
       ...(filterClause ? { filter: filterClause } : {}),
       ...(sortDirectives ? { sort: sortDirectives } : {}),
     })
