@@ -4,8 +4,6 @@ import type { HttpTypes } from "@medusajs/types"
 import { storeClient } from "@/lib/medusa"
 import {
   buildProductSlugParts,
-  decodeSlugSegment,
-  matchesProductSlug,
   type ProductSlug,
 } from "@/lib/products/slug"
 
@@ -30,23 +28,17 @@ export const getProductByHandle = cache(
 
 export const getProductBySlug = cache(
   async (artistSlug: string, albumSlug: string): Promise<StoreProduct | null> => {
-    const candidateHandle = `${artistSlug}-${albumSlug}`
-    const handleMatch = await getProductByHandle(candidateHandle)
-    if (handleMatch && matchesProductSlug(handleMatch, artistSlug, albumSlug)) {
-      return handleMatch
-    }
-
-    const query = `${decodeSlugSegment(artistSlug)} ${decodeSlugSegment(albumSlug)}`.trim()
-    const { products } = await storeClient.product.list({
-      q: query,
-      limit: 24,
-    })
-
-    const match = products.find((product) =>
-      matchesProductSlug(product, artistSlug, albumSlug)
+    const handles = await getAllProductHandles()
+    const match = handles.find(
+      (entry) =>
+        entry.slug.artistSlug === artistSlug && entry.slug.albumSlug === albumSlug
     )
 
-    return match ?? null
+    if (!match) {
+      return null
+    }
+
+    return getProductByHandle(match.handle)
   }
 )
 
