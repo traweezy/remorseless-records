@@ -28,6 +28,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import ProductCard from "@/components/product-card"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
+import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { cn } from "@/lib/ui/cn"
 import { searchProductsBrowser } from "@/lib/search/browser"
 import type {
@@ -42,6 +43,7 @@ const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => ({
   artist: hit.artist,
   album: hit.album,
   slug: hit.slug,
+  subtitle: hit.subtitle ?? null,
   thumbnail: hit.thumbnail ?? null,
   collectionTitle: hit.collectionTitle ?? null,
   defaultVariant: hit.defaultVariant,
@@ -50,6 +52,8 @@ const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => ({
 type SearchFacets = {
   genres: Record<string, number>
   format: Record<string, number>
+  categories: Record<string, number>
+  variants: Record<string, number>
 }
 
 type ProductSearchExperienceProps = {
@@ -64,7 +68,8 @@ type ProductSearchExperienceProps = {
 type SearchCriteria = {
   query: string
   genres: string[]
-  formats: string[]
+  categories: string[]
+  variants: string[]
   limit: number
   inStockOnly: boolean
 }
@@ -147,21 +152,27 @@ const sortResults = (
 
 const FilterSidebar = ({
   genres,
-  formats,
+  variants,
+  categories,
   selectedGenres,
-  selectedFormats,
+  selectedVariants,
+  selectedCategories,
   onToggleGenre,
-  onToggleFormat,
+  onToggleVariant,
+  onToggleCategory,
   onClear,
   showInStockOnly,
   onToggleStock,
 }: {
   genres: Array<[string, number]>
-  formats: Array<[string, number]>
+  variants: Array<[string, number]>
+  categories: Array<[string, number]>
   selectedGenres: string[]
-  selectedFormats: string[]
+  selectedVariants: string[]
+  selectedCategories: string[]
   onToggleGenre: (genre: string) => void
-  onToggleFormat: (format: string) => void
+  onToggleVariant: (variant: string) => void
+  onToggleCategory: (category: string) => void
   onClear: () => void
   showInStockOnly: boolean
   onToggleStock: () => void
@@ -212,18 +223,19 @@ const FilterSidebar = ({
       <div className="space-y-5">
         <details className="group space-y-3" open>
           <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
-            <span>Formats</span>
+            <span>Categories</span>
             <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
           </summary>
           <div className="flex flex-wrap gap-2">
-            {formats.length ? (
-              formats.map(([format, count]) => {
-                const isActive = selectedFormats.includes(format)
+            {categories.length ? (
+              categories.map(([handle, count]) => {
+                const isActive = selectedCategories.includes(handle)
+                const label = humanizeCategoryHandle(handle)
                 return (
                   <button
-                    key={`format-${format}`}
+                    key={`category-${handle}`}
                     type="button"
-                    onClick={() => onToggleFormat(format)}
+                    onClick={() => onToggleCategory(handle)}
                     className={cn(
                       "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
                       isActive
@@ -231,7 +243,7 @@ const FilterSidebar = ({
                         : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
                     )}
                   >
-                    {format}
+                    {label}
                     <span className="ml-1 text-[0.55rem] text-muted-foreground/80">
                       ({count})
                     </span>
@@ -240,7 +252,45 @@ const FilterSidebar = ({
               })
             ) : (
               <p className="text-xs text-muted-foreground">
-                Formats coming soon.
+                Categories coming soon.
+              </p>
+            )}
+          </div>
+        </details>
+
+        <Separator className="border-border/50" />
+
+        <details className="group space-y-3" open>
+          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
+            <span>Variants</span>
+            <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
+          </summary>
+          <div className="flex flex-wrap gap-2">
+            {variants.length ? (
+              variants.map(([variant, count]) => {
+                const isActive = selectedVariants.includes(variant)
+                return (
+                  <button
+                    key={`variant-${variant}`}
+                    type="button"
+                    onClick={() => onToggleVariant(variant)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
+                      isActive
+                        ? "border-destructive bg-destructive text-background shadow-glow-sm"
+                        : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
+                    )}
+                  >
+                    {variant}
+                    <span className="ml-1 text-[0.55rem] text-muted-foreground/80">
+                      ({count})
+                    </span>
+                  </button>
+                )
+              })
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Variants coming soon.
               </p>
             )}
           </div>
@@ -463,14 +513,16 @@ const ProductSearchExperience = ({
 }: ProductSearchExperienceProps) => {
   const [query, setQuery] = useState("")
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedVariants, setSelectedVariants] = useState<string[]>([])
   const [showInStockOnly, setShowInStockOnly] = useState(false)
   const [sortOption, setSortOption] = useState<ProductSortOption>(initialSort)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [criteria, setCriteria] = useState<SearchCriteria>({
     query: "",
     genres: [],
-    formats: [],
+    categories: [],
+    variants: [],
     limit: pageSize,
     inStockOnly: false,
   })
@@ -498,19 +550,31 @@ const ProductSearchExperience = ({
     debouncerRef.current?.maybeExecute({
       query,
       genres: selectedGenres,
-      formats: selectedFormats,
+      categories: selectedCategories,
+      variants: selectedVariants,
       limit: pageSize,
       inStockOnly: showInStockOnly,
     })
-  }, [query, selectedGenres, selectedFormats, showInStockOnly, pageSize])
+  }, [
+    query,
+    selectedGenres,
+    selectedCategories,
+    selectedVariants,
+    showInStockOnly,
+    pageSize,
+  ])
 
   const genresKey = useMemo(
     () => [...criteria.genres].sort().join("|"),
     [criteria.genres]
   )
-  const formatsKey = useMemo(
-    () => [...criteria.formats].sort().join("|"),
-    [criteria.formats]
+  const categoriesKey = useMemo(
+    () => [...criteria.categories].sort().join("|"),
+    [criteria.categories]
+  )
+  const variantsKey = useMemo(
+    () => [...criteria.variants].sort().join("|"),
+    [criteria.variants]
   )
 
   const initialResult = useMemo<ProductSearchResponse>(
@@ -542,7 +606,8 @@ const ProductSearchExperience = ({
       "catalog-search",
       criteria.query.trim(),
       genresKey,
-      formatsKey,
+      categoriesKey,
+      variantsKey,
       criteria.limit,
       sortOption,
       criteria.inStockOnly ? "in-stock" : "all",
@@ -554,7 +619,8 @@ const ProductSearchExperience = ({
         offset: pageParam,
         filters: {
           genres: criteria.genres,
-          formats: criteria.formats,
+          categories: criteria.categories,
+          variants: criteria.variants,
         },
         sort: sortOption,
         inStockOnly: criteria.inStockOnly,
@@ -650,11 +716,12 @@ const ProductSearchExperience = ({
       [
         criteria.query.trim(),
         genresKey,
-        formatsKey,
+        categoriesKey,
+        variantsKey,
         criteria.inStockOnly ? "in-stock" : "all",
         sortOption,
       ].join("|"),
-    [criteria.query, genresKey, formatsKey, criteria.inStockOnly, sortOption]
+    [criteria.query, genresKey, categoriesKey, variantsKey, criteria.inStockOnly, sortOption]
   )
 
   useEffect(() => {
@@ -669,7 +736,8 @@ const ProductSearchExperience = ({
   const totalResultsCopy = mappedResults.length
   const activeFiltersCount =
     selectedGenres.length +
-    selectedFormats.length +
+    selectedCategories.length +
+    selectedVariants.length +
     (showInStockOnly ? 1 : 0) +
     (query ? 1 : 0)
 
@@ -681,12 +749,20 @@ const ProductSearchExperience = ({
     [facets.genres]
   )
 
-  const sortedFormatFacets = useMemo(
+  const sortedCategoryFacets = useMemo(
     () =>
-      Object.entries(facets.format ?? {})
+      Object.entries(facets.categories ?? {})
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20),
+    [facets.categories]
+  )
+
+  const sortedVariantFacets = useMemo(
+    () =>
+      Object.entries(facets.variants ?? facets.format ?? {})
         .sort((a, b) => b[1] - a[1])
         .slice(0, 16),
-    [facets.format]
+    [facets.variants, facets.format]
   )
 
   const toggleGenre = (genre: string) => {
@@ -697,17 +773,26 @@ const ProductSearchExperience = ({
     )
   }
 
-  const toggleFormat = (format: string) => {
-    setSelectedFormats((prev) =>
-      prev.includes(format)
-        ? prev.filter((value) => value !== format)
-        : [...prev, format]
+  const toggleCategory = (category: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(category)
+        ? prev.filter((value) => value !== category)
+        : [...prev, category]
+    )
+  }
+
+  const toggleVariant = (variant: string) => {
+    setSelectedVariants((prev) =>
+      prev.includes(variant)
+        ? prev.filter((value) => value !== variant)
+        : [...prev, variant]
     )
   }
 
   const clearFilters = () => {
     setSelectedGenres([])
-    setSelectedFormats([])
+    setSelectedCategories([])
+    setSelectedVariants([])
     setShowInStockOnly(false)
   }
 
@@ -725,11 +810,14 @@ const ProductSearchExperience = ({
           <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto bg-background/90 px-4 py-5 supports-[backdrop-filter]:backdrop-blur-xl">
             <FilterSidebar
               genres={sortedGenreFacets}
-              formats={sortedFormatFacets}
+              variants={sortedVariantFacets}
+              categories={sortedCategoryFacets}
               selectedGenres={selectedGenres}
-              selectedFormats={selectedFormats}
+              selectedVariants={selectedVariants}
+              selectedCategories={selectedCategories}
               onToggleGenre={toggleGenre}
-              onToggleFormat={toggleFormat}
+              onToggleVariant={toggleVariant}
+              onToggleCategory={toggleCategory}
               onClear={clearFilters}
               showInStockOnly={showInStockOnly}
               onToggleStock={() => setShowInStockOnly((value) => !value)}
@@ -770,11 +858,14 @@ const ProductSearchExperience = ({
                     <div className="h-[calc(100vh-6.5rem)] overflow-y-auto px-6 pb-10">
                       <FilterSidebar
                         genres={sortedGenreFacets}
-                        formats={sortedFormatFacets}
+                        variants={sortedVariantFacets}
+                        categories={sortedCategoryFacets}
                         selectedGenres={selectedGenres}
-                        selectedFormats={selectedFormats}
+                        selectedVariants={selectedVariants}
+                        selectedCategories={selectedCategories}
                         onToggleGenre={toggleGenre}
-                        onToggleFormat={toggleFormat}
+                        onToggleVariant={toggleVariant}
+                        onToggleCategory={toggleCategory}
                         onClear={() => {
                           clearFilters()
                           setMobileFiltersOpen(false)
@@ -812,7 +903,8 @@ const ProductSearchExperience = ({
 
             {(query ||
               selectedGenres.length ||
-              selectedFormats.length ||
+              selectedCategories.length ||
+              selectedVariants.length ||
               showInStockOnly) && (
               <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
                 {query ? (
@@ -824,14 +916,24 @@ const ProductSearchExperience = ({
                     Query: <span className="ml-1 text-accent">{query}</span> ✕
                   </button>
                 ) : null}
-                {selectedFormats.map((format) => (
+                {selectedCategories.map((category) => (
                   <button
-                    key={`active-format-${format}`}
+                    key={`active-category-${category}`}
                     type="button"
-                    onClick={() => toggleFormat(format)}
+                    onClick={() => toggleCategory(category)}
                     className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
                   >
-                    {format} ✕
+                    {humanizeCategoryHandle(category)} ✕
+                  </button>
+                ))}
+                {selectedVariants.map((variant) => (
+                  <button
+                    key={`active-variant-${variant}`}
+                    type="button"
+                    onClick={() => toggleVariant(variant)}
+                    className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
+                  >
+                    {variant} ✕
                   </button>
                 ))}
                 {selectedGenres.map((genre) => (

@@ -70,11 +70,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const badge = resolveBadge(product)
   const thumbnail = resolveThumbnail(product)
   const initialProduct = isStoreProduct(product) ? product : undefined
-  const productHref = summary.slug
-    ? `/products/${summary.slug.artistSlug}/${summary.slug.albumSlug}`
-    : handle
-      ? `/products/${handle}`
-      : "/products"
+  const productHref = handle ? `/products/${handle}` : "/products"
   const priceLabel = summary.defaultVariant
     ? formatAmount(summary.defaultVariant.currency, summary.defaultVariant.amount)
     : null
@@ -107,7 +103,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           href={productHref}
           data-prefetch="true"
           className="block h-full focus:outline-none"
-          aria-label={`View ${summary.album ?? summary.title}`}
+          aria-label={`View ${summary.title}`}
         >
           <Card className="relative flex h-full flex-col overflow-hidden border-2 border-border/60 transition duration-300 hover:border-destructive focus-within:border-destructive">
             {badge ? (
@@ -151,10 +147,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
               <div className="flex flex-1 flex-col justify-between space-y-4 px-5 py-6">
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
-                    {summary.artist}
+                    {summary.subtitle ?? summary.artist}
                   </p>
                   <h3 className="font-bebas text-2xl uppercase tracking-[0.35rem] text-foreground">
-                    {summary.album ?? summary.title}
+                    {summary.title}
                   </h3>
                 </div>
                 <div className="text-sm font-semibold uppercase tracking-[0.3rem] text-destructive">

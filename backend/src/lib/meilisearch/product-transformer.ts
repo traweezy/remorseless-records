@@ -10,12 +10,16 @@ type SearchDocument = {
   handle: string | null
   title: string | null
   description: string | null
+  subtitle: string | null
   thumbnail: string | null
   collectionId: string | null
   collectionTitle: string | null
   collectionHandle: string | null
   genres: string[]
   format: string | null
+  category_handles: string[]
+  category_labels: string[]
+  variant_titles: string[]
   price_amount: number | null
   price_currency: string | null
   price_compare_at: number | null
@@ -51,7 +55,118 @@ const getFirstImageUrl = (product: Record<string, any>): string | null => {
   return image?.url ?? null
 }
 
-const getGenres = (tags?: Array<Record<string, any>> | null): string[] => {
+const humanizeHandle = (handle: string): string =>
+  handle
+    .split("-")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ")
+
+const TYPE_HANDLES = new Set(["music", "bundles", "merch"])
+const GENRE_HANDLES = new Set(["metal", "death", "doom", "grind", "sludge"])
+const STRUCTURAL_HANDLES = new Set(["artists", "genres"])
+
+const coerceCategoryHandle = (category: Record<string, any>): string | null => {
+  const handle = category?.handle
+  if (typeof handle === "string" && handle.trim().length) {
+    return handle.trim().toLowerCase()
+  }
+  return null
+}
+
+const coerceCategoryLabel = (
+  category: Record<string, any>,
+  defaultHandle: string
+): string => {
+  const name = category?.name
+  if (typeof name === "string" && name.trim().length) {
+    return name.trim()
+  }
+  return humanizeHandle(defaultHandle)
+}
+
+const collectCategoryLabels = (
+  categories: Array<Record<string, any>> | undefined,
+  allowedHandles: Set<string>
+): Map<string, string> => {
+  if (!categories?.length) {
+    return new Map<string, string>()
+  }
+
+  const labels = new Map<string, string>()
+  for (const category of categories) {
+    const handle = coerceCategoryHandle(category)
+    if (!handle || !allowedHandles.has(handle)) {
+      continue
+    }
+
+    const label = coerceCategoryLabel(category, handle)
+    labels.set(handle, label)
+  }
+
+  return labels
+}
+
+const collectAncestors = (category: Record<string, any> | null | undefined): Record<string, any>[] => {
+  const ancestors: Record<string, any>[] = []
+  let current: Record<string, any> | null | undefined = category
+  let guard = 0
+
+  while (current && guard < 16) {
+    ancestors.push(current)
+    current = current.parent_category ?? null
+    guard += 1
+  }
+
+  return ancestors
+}
+
+const findRootCategory = (category: Record<string, any> | null | undefined): Record<string, any> | null => {
+  const ancestors = collectAncestors(category)
+  return ancestors.length ? ancestors[ancestors.length - 1] : null
+}
+
+const shouldExcludeCategory = (category: Record<string, any> | null | undefined): boolean => {
+  const handle = coerceCategoryHandle(category)
+  if (!handle) {
+    return true
+  }
+
+  if (STRUCTURAL_HANDLES.has(handle)) {
+    return true
+  }
+
+  const root = findRootCategory(category)
+  const rootHandle = coerceCategoryHandle(root)
+  return rootHandle === "artists"
+}
+
+const collectNonArtistCategoryEntries = (
+  categories: Array<Record<string, any>> | undefined
+): Map<string, string> => {
+  if (!categories?.length) {
+    return new Map<string, string>()
+  }
+
+  const entries = new Map<string, string>()
+
+  categories.forEach((category) => {
+    if (shouldExcludeCategory(category)) {
+      return
+    }
+
+    const handle = coerceCategoryHandle(category)
+    if (!handle) {
+      return
+    }
+
+    const label = coerceCategoryLabel(category, handle)
+    entries.set(handle, label)
+  })
+
+  return entries
+}
+
+const getTagGenres = (tags?: Array<Record<string, any>> | null): string[] => {
   if (!tags?.length) {
     return []
   }
@@ -190,6 +305,37 @@ const buildSearchDocument = (product: Record<string, any>): SearchDocument => {
   const { status, quantity } = resolveStockStatus(defaultVariant)
 
   const collection = normalizedProduct.collection as Record<string, any> | undefined
+  const categories = Array.isArray(normalizedProduct.categories)
+    ? (normalizedProduct.categories as Array<Record<string, any>>)
+    : []
+
+  const typeEntries = collectCategoryLabels(categories, TYPE_HANDLES)
+  const genreEntries = collectCategoryLabels(categories, GENRE_HANDLES)
+  const nonArtistEntries = collectNonArtistCategoryEntries(categories)
+
+  const categoryTypes = Array.from(typeEntries.values())
+  const categoryGenres = Array.from(genreEntries.values())
+  const categoryHandles = Array.from(nonArtistEntries.keys())
+  const categoryLabels = Array.from(nonArtistEntries.values())
+
+  const variantTitles = Array.from(
+    new Set(
+      (normalizedProduct.variants ?? [])
+        .map((variant: Record<string, any>) => {
+          const title = toStringOrNull(variant?.title)
+          return title?.trim() ?? ""
+        })
+        .filter((title): title is string => Boolean(title))
+    )
+  )
+
+  const genres =
+    categoryGenres.length > 0 ? categoryGenres : getTagGenres(normalizedProduct.tags)
+
+  const format =
+    categoryTypes.length > 0
+      ? categoryTypes[0]
+      : findFormatOption(normalizedProduct)
 
   return {
     id: normalizedProduct.id ?? "",
@@ -199,12 +345,16 @@ const buildSearchDocument = (product: Record<string, any>): SearchDocument => {
       (normalizedProduct as Record<string, unknown>).description ??
         (normalizedProduct as Record<string, unknown>).subtitle
     ),
+    subtitle: toStringOrNull(normalizedProduct.subtitle ?? null),
     thumbnail: getFirstImageUrl(normalizedProduct),
     collectionId: collection?.id ?? null,
     collectionTitle: collection?.title ?? null,
     collectionHandle: collection?.handle ?? null,
-    genres: getGenres(normalizedProduct.tags),
-    format: findFormatOption(normalizedProduct),
+    genres,
+    format,
+    category_handles: categoryHandles,
+    category_labels: categoryLabels,
+    variant_titles: variantTitles,
     price_amount: amount,
     price_currency: currency,
     price_compare_at: compareAt ?? null,

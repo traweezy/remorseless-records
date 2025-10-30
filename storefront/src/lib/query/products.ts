@@ -66,7 +66,9 @@ export const useProductDetailPrefetch = (handle: string | null | undefined) => {
 export type ProductSearchParams = {
   query: string
   genres: string[]
-  formats: string[]
+  categories: string[]
+  variants: string[]
+  formats?: string[]
   limit?: number
   sort?: ProductSortOption
   inStockOnly?: boolean
@@ -78,7 +80,9 @@ const normalizeFilters = (values: string[]) =>
 export const productSearchQueryKey = ({
   query,
   genres,
-  formats,
+  categories,
+  variants,
+  formats = [],
   limit = 24,
   sort = "alphabetical",
   inStockOnly = false,
@@ -87,6 +91,8 @@ export const productSearchQueryKey = ({
     "search",
     query.trim(),
     normalizeFilters(genres),
+    normalizeFilters(categories),
+    normalizeFilters(variants),
     normalizeFilters(formats),
     limit,
     sort,
@@ -96,7 +102,9 @@ export const productSearchQueryKey = ({
 export const productSearchQueryOptions = ({
   query,
   genres,
-  formats,
+  categories,
+  variants,
+  formats = [],
   limit = 24,
   sort,
   inStockOnly = false,
@@ -106,6 +114,8 @@ export const productSearchQueryOptions = ({
     queryKey: productSearchQueryKey({
       query,
       genres,
+      categories,
+      variants,
       formats,
       limit,
       sort: sortValue,
@@ -117,6 +127,8 @@ export const productSearchQueryOptions = ({
         limit,
         filters: {
           genres,
+          categories,
+          variants,
           formats,
         },
         inStockOnly,

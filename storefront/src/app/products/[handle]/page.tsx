@@ -12,7 +12,7 @@ import {
   mapStoreProductToRelatedSummary,
 } from "@/lib/products/transformers"
 import {
-  getProductBySlug,
+  getProductByHandle,
   getProductsByCollection,
   getRecentProducts,
 } from "@/lib/data/products"
@@ -25,19 +25,37 @@ import {
   buildProductJsonLd,
   selectPrimaryVariantForJsonLd,
 } from "@/lib/seo/structured-data"
+import { extractProductCategoryGroups } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
 
 type ProductPageProps = {
-  params: { artist: string; album: string } | Promise<{ artist: string; album: string }>
+  params: { handle: string } | Promise<{ handle: string }>
 }
 
 export const revalidate = 120
 
+const normalizeHandle = (handle: string | null | undefined): string | null => {
+  if (typeof handle !== "string") {
+    return null
+  }
+
+  const trimmed = handle.trim()
+  return trimmed.length ? trimmed : null
+}
+
 export const generateMetadata = async ({
   params,
 }: ProductPageProps): Promise<Metadata> => {
-  const { artist, album } = await params
-  const product = await getProductBySlug(artist, album)
+  const rawParams = await params
+  const handle = normalizeHandle(rawParams.handle)
+
+  if (!handle) {
+    return {
+      title: "Product not found",
+    }
+  }
+
+  const product = await getProductByHandle(handle)
 
   if (!product) {
     return {
@@ -51,7 +69,8 @@ export const generateMetadata = async ({
     siteMetadata.description
 
   const slug = buildProductSlugParts(product)
-  const canonical = `${siteMetadata.siteUrl}/products/${slug.artistSlug}/${slug.albumSlug}`
+  const canonHandle = normalizeHandle(product.handle) ?? handle
+  const canonical = `${siteMetadata.siteUrl}/products/${canonHandle}`
   const images =
     product.images?.map((image) => ({
       url: image.url,
@@ -62,8 +81,20 @@ export const generateMetadata = async ({
         alt: `${siteMetadata.name} hero`,
       },
     ]
+
+  const categoryGroups = extractProductCategoryGroups(product.categories, {
+    excludeHandles: [slug.artistSlug, slug.albumSlug],
+  })
+  const categoryKeywords = [
+    ...categoryGroups.types.map((entry) => entry.label),
+    ...categoryGroups.genres.map((entry) => entry.label),
+  ]
+
   const keywords = [
-    ...(product.tags?.map((tag) => tag?.value).filter(Boolean) ?? []),
+    ...categoryKeywords,
+    ...(product.tags
+      ?.map((tag) => tag?.value)
+      .filter((value): value is string => Boolean(value)) ?? []),
     ...siteMetadata.keywords,
   ]
 
@@ -91,14 +122,27 @@ export const generateMetadata = async ({
 }
 
 const ProductPage = async ({ params }: ProductPageProps) => {
-  const { artist, album } = await params
-  const product = await getProductBySlug(artist, album)
+  const rawParams = await params
+  const handle = normalizeHandle(rawParams.handle)
+
+  if (!handle) {
+    notFound()
+  }
+
+  const product = await getProductByHandle(handle)
 
   if (!product) {
     notFound()
   }
 
   const slug = buildProductSlugParts(product)
+  const categoryGroups = extractProductCategoryGroups(product.categories, {
+    excludeHandles: [slug.artistSlug, slug.albumSlug],
+  })
+  const categoryChips = [
+    ...categoryGroups.types,
+    ...categoryGroups.genres,
+  ]
   const variantOptions = deriveVariantOptions(product.variants)
   const relatedProducts = await loadRelatedProducts(product)
 
@@ -125,15 +169,18 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   const protocolHeader = headerEntries["x-forwarded-proto"]
   const protocol = protocolHeader ?? (host.startsWith("localhost") ? "http" : "https")
   const origin = `${protocol}://${host}`
-  const productPath = `/products/${slug.artistSlug}/${slug.albumSlug}`
+  const productPath = `/products/${handle}`
   const productUrl = `${origin}${productPath}`
   const defaultVariant = variantOptions[0]
   const availability = defaultVariant?.inStock
     ? "https://schema.org/InStock"
     : "https://schema.org/OutOfStock"
-  const genreTags = (product.tags ?? [])
-    .map((tag) => tag?.value?.trim())
-    .filter((value): value is string => Boolean(value))
+  const genreTags =
+    categoryGroups.genres.length > 0
+      ? categoryGroups.genres.map((entry) => entry.label)
+      : (product.tags ?? [])
+          .map((tag) => tag?.value?.trim())
+          .filter((value): value is string => Boolean(value))
   const metadataArtist =
     typeof metadata?.artist === "string" && metadata.artist.trim().length
       ? metadata.artist.trim()
@@ -210,14 +257,14 @@ const ProductPage = async ({ params }: ProductPageProps) => {
                 {product.subtitle}
               </p>
             ) : null}
-            {product.tags?.length ? (
+            {categoryChips.length ? (
               <div className="flex flex-wrap items-center gap-2 pt-2">
-                {product.tags.map((tag) => (
+                {categoryChips.map((category) => (
                   <span
-                    key={tag.id ?? tag.value}
+                    key={`${category.handle}-${category.label}`}
                     className="rounded-full border border-border/50 bg-background/80 px-3 py-1 text-[0.55rem] uppercase tracking-[0.3rem] text-muted-foreground"
                   >
-                    {tag.value}
+                    {category.label}
                   </span>
                 ))}
               </div>

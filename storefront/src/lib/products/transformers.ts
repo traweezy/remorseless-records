@@ -1,5 +1,9 @@
 import type { HttpTypes } from "@medusajs/types"
 
+import {
+  extractNonArtistCategoryFacets,
+  extractProductCategoryGroups,
+} from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
 import type {
   ProductSearchHit,
@@ -74,6 +78,10 @@ export const mapStoreProductToRelatedSummary = (
     artist: slug.artist,
     album: slug.album,
     slug,
+    subtitle:
+      typeof product.subtitle === "string" && product.subtitle.trim().length
+        ? product.subtitle.trim()
+        : slug.artist,
     thumbnail:
       product.thumbnail ??
       product.images?.[0]?.url ??
@@ -87,9 +95,22 @@ export const mapStoreProductToSearchHit = (
   product: HttpTypes.StoreProduct
 ): ProductSearchHit => {
   const summary = mapStoreProductToRelatedSummary(product)
-  const genres =
-    product.tags?.map((tag) => tag.value).filter((value): value is string => Boolean(value)) ??
-    []
+  const categoryGroups = extractProductCategoryGroups(product.categories, {
+    excludeHandles: [summary.slug.artistSlug, summary.slug.albumSlug],
+  })
+  const categoryGenres = categoryGroups.genres.map((entry) => entry.label)
+  const categoryTypes = categoryGroups.types.map((entry) => entry.label)
+  const categoryFacets = extractNonArtistCategoryFacets(product.categories)
+  const categoryHandles = categoryFacets.map((entry) => entry.handle)
+  const categoryLabels = categoryFacets.map((entry) => entry.label)
+
+  const variantTitles = Array.from(
+    new Set(
+      (product.variants ?? [])
+        .map((variant) => (typeof variant?.title === "string" ? variant.title.trim() : ""))
+        .filter((title): title is string => Boolean(title))
+    )
+  )
 
   const formatOption = product.options?.find(
     (option) => option.title?.toLowerCase() === "format"
@@ -115,8 +136,15 @@ export const mapStoreProductToSearchHit = (
 
   return {
     ...summary,
-    genres,
-    format: derivedFormat ?? null,
+    genres:
+      categoryGenres.length > 0
+        ? categoryGenres
+        : product.tags?.map((tag) => tag.value).filter((value): value is string => Boolean(value)) ??
+          [],
+    categories: categoryLabels,
+    categoryHandles,
+    variantTitles,
+    format: categoryTypes[0] ?? derivedFormat ?? null,
     priceAmount,
     createdAt,
     stockStatus,

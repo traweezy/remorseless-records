@@ -1,5 +1,6 @@
 import type { FacetDistribution } from "meilisearch"
 
+import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
 import type { ProductSearchHit, VariantOption } from "@/types/product"
 
@@ -129,6 +130,13 @@ export const normalizeSearchHit = (
         ? hit.name
         : "Untitled Release"
 
+  const subtitle =
+    typeof hit.subtitle === "string"
+      ? hit.subtitle
+      : typeof hit.subTitle === "string"
+        ? hit.subTitle
+        : null
+
   const thumbnail =
     extractThumbnail(hit)
 
@@ -153,6 +161,14 @@ export const normalizeSearchHit = (
   })
 
   const genres = asStringArray(hit.genres ?? hit.genre)
+  const categoryHandles = asStringArray(
+    hit.category_handles ?? hit.categoryHandles ?? hit.categories
+  )
+  const categoryLabels =
+    Array.isArray(hit.category_labels) && hit.category_labels.length
+      ? asStringArray(hit.category_labels)
+      : categoryHandles.map(humanizeCategoryHandle)
+
   const format =
     typeof hit.format === "string"
       ? hit.format
@@ -190,6 +206,10 @@ export const normalizeSearchHit = (
           ? hit.variantId
           : null
 
+  const variantTitles = asStringArray(
+    hit.variant_titles ?? hit.variantTitles ?? hit.variants
+  )
+
   const defaultVariant = toVariantOption(
     variantId,
     priceAmount,
@@ -212,10 +232,14 @@ export const normalizeSearchHit = (
     artist: slug.artist,
     album: slug.album,
     slug,
+    subtitle,
     thumbnail,
     collectionTitle,
     defaultVariant,
     genres,
+    categories: categoryLabels,
+    categoryHandles,
+    variantTitles,
     format,
     priceAmount,
     createdAt,
@@ -246,9 +270,14 @@ const coerceFacetRecord = (
 
 export const extractFacetMaps = (
   facetDistribution: FacetDistribution | undefined
-): { genres: FacetMap; format: FacetMap } => {
+): {
+  genres: FacetMap
+  format: FacetMap
+  categories: FacetMap
+  variants: FacetMap
+} => {
   if (!facetDistribution) {
-    return { genres: {}, format: {} }
+    return { genres: {}, format: {}, categories: {}, variants: {} }
   }
 
   const genres = coerceFacetRecord(
@@ -259,5 +288,13 @@ export const extractFacetMaps = (
     facetDistribution.format ?? facetDistribution.formats
   )
 
-  return { genres, format }
+  const categories = coerceFacetRecord(
+    facetDistribution.category_handles ?? facetDistribution.categories
+  )
+
+  const variants = coerceFacetRecord(
+    facetDistribution.variant_titles ?? facetDistribution.variants
+  )
+
+  return { genres, format, categories, variants }
 }

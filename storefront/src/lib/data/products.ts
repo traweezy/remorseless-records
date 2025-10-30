@@ -26,22 +26,6 @@ export const getProductByHandle = cache(
   }
 )
 
-export const getProductBySlug = cache(
-  async (artistSlug: string, albumSlug: string): Promise<StoreProduct | null> => {
-    const handles = await getAllProductHandles()
-    const match = handles.find(
-      (entry) =>
-        entry.slug.artistSlug === artistSlug && entry.slug.albumSlug === albumSlug
-    )
-
-    if (!match) {
-      return null
-    }
-
-    return getProductByHandle(match.handle)
-  }
-)
-
 export const getProductsByCollection = cache(
   async (collectionId: string, limit = 8): Promise<StoreProduct[]> => {
     const { products } = await storeClient.product.list({

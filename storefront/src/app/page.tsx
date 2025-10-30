@@ -72,7 +72,11 @@ const HomePage = async (): Promise<ReactElement> => {
       name: product.title ?? "Exclusive release",
       url: (() => {
         const slug = buildProductSlugParts(product)
-        return `${siteMetadata.siteUrl}/products/${slug.artistSlug}/${slug.albumSlug}`
+        const handleSegment =
+          (typeof product.handle === "string" && product.handle.trim().length
+            ? product.handle.trim()
+            : null) ?? `${slug.artistSlug}-${slug.albumSlug}`
+        return `${siteMetadata.siteUrl}/products/${handleSegment}`
       })(),
     }))
   )
