@@ -59,6 +59,7 @@
     "postcss.config.ts",
     "tailwind.config.ts",
     "src",
+    "types",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

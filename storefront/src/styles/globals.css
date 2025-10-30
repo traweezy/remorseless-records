@@ -2,6 +2,151 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .product-carousel {
+    position: relative;
+    width: 100%;
+  }
+
+  .product-carousel__container {
+    position: relative;
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+
+  .product-carousel__splide {
+    width: 100%;
+  }
+
+  .product-carousel__splide .splide__track {
+    overflow: visible;
+  }
+
+  .product-carousel__splide .splide__list {
+    display: flex;
+    align-items: stretch;
+    gap: clamp(12px, 1.5vw, 20px);
+  }
+
+  .product-carousel__splide .splide__slide {
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .product-carousel__slide > div,
+  .product-carousel__splide .splide__slide > div {
+    flex: 1 1 auto;
+    height: 100%;
+  }
+
+  .product-carousel__card {
+    display: flex;
+    flex: 1 1 auto;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .product-carousel__card > * {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 100%;
+  }
+
+  .product-carousel:hover .product-carousel__arrow {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .product-carousel__arrows {
+    pointer-events: none;
+  }
+
+  .product-carousel__arrow {
+    @apply pointer-events-auto absolute top-1/2 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border/30 bg-background/80 text-foreground shadow-[0_20px_32px_-18px_hsl(0_0%_0%/0.55)] backdrop-blur-md transition duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40 sm:flex;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .product-carousel__arrow svg {
+    @apply h-5 w-5;
+  }
+
+  .product-carousel__arrow--left {
+    left: clamp(0.75rem, 1.8vw, 2.75rem);
+  }
+
+  .product-carousel__arrow--right {
+    right: clamp(0.75rem, 1.8vw, 2.75rem);
+  }
+
+  .product-card__corner {
+    position: absolute;
+    top: -0.3rem;
+    right: -0.3rem;
+    width: 12.5rem;
+    height: 12.5rem;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 45;
+  }
+
+  .product-card__corner span {
+    position: absolute;
+    top: 1.45rem;
+    right: -4.9rem;
+    display: block;
+    width: 14rem;
+    padding: 0.5rem 0;
+    background: linear-gradient(135deg, hsl(var(--destructive)) 0%, hsl(var(--accent)) 100%);
+    color: hsl(var(--destructive-foreground));
+    font-family: var(--font-headline, var(--font-sans));
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.15rem;
+    white-space: nowrap;
+    text-transform: uppercase;
+    text-align: center;
+    text-shadow: 0 6px 18px hsla(0, 0%, 0%, 0.45);
+    transform: rotate(45deg);
+    box-shadow: 0 12px 26px -18px hsl(0 0% 0% / 0.65);
+  }
+
+  .product-card__corner span::before,
+  .product-card__corner span::after {
+    content: "";
+    position: absolute;
+    bottom: -0.55rem;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0.55rem 0.55rem 0 0.55rem;
+    clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%);
+  }
+
+  .product-card__corner span::before,
+  .product-card__corner span::after {
+    content: "";
+    position: absolute;
+    bottom: -0.7rem;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0.7rem 0.7rem 0 0.7rem;
+  }
+
+  .product-card__corner span::before {
+    left: 0.38rem;
+    border-color: hsl(var(--destructive)) transparent transparent transparent;
+  }
+
+  .product-card__corner span::after {
+    right: 0.38rem;
+    border-color: hsl(var(--accent)) transparent transparent transparent;
+  }
+}
+
 @layer base {
   :root {
     color-scheme: dark;

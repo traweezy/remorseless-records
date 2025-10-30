@@ -21,20 +21,53 @@ const getCollectionByHandle = cache(
 )
 
 export const getCollectionProductsByHandle = cache(
-  async (handle: string, limit = 4): Promise<StoreProduct[]> => {
+  async (handle: string, limit?: number): Promise<StoreProduct[]> => {
     const collection = await getCollectionByHandle(handle)
     if (!collection?.id) {
       return []
     }
 
-    const { products } = await storeClient.product.list({
-      collection_id: collection.id,
-      limit,
-    })
+    const collected: StoreProduct[] = []
+    const target = typeof limit === "number" && limit > 0 ? limit : Number.POSITIVE_INFINITY
+    const pageSize = Number.isFinite(target) ? Math.min(target, 50) : 50
+    let offset = 0
 
-    return products.filter((product): product is StoreProduct =>
-      typeof product.handle === "string" && product.handle.trim().length > 0
-    )
+    // Medusa paginates collections; iterate until we load every product (or reach the caller-imposed ceiling).
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const pageLimit = Number.isFinite(target) ? Math.min(pageSize, target - collected.length) : pageSize
+      if (pageLimit <= 0) {
+        break
+      }
+
+      const { products } = await storeClient.product.list({
+        collection_id: collection.id,
+        limit: pageLimit,
+        offset,
+      })
+
+      if (!products?.length) {
+        break
+      }
+
+      const validProducts = products.filter(
+        (product): product is StoreProduct =>
+          typeof product.handle === "string" && product.handle.trim().length > 0
+      )
+      collected.push(...validProducts)
+
+      if (collected.length >= target) {
+        break
+      }
+
+      if (products.length < pageLimit) {
+        break
+      }
+
+      offset += pageLimit
+    }
+
+    return collected
   }
 )
 
