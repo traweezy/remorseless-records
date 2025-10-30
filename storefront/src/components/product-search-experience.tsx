@@ -36,18 +36,117 @@ import type {
   ProductSortOption,
 } from "@/lib/search/search"
 
-const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => ({
-  id: hit.id,
-  handle: hit.handle,
-  title: hit.title,
-  artist: hit.artist,
-  album: hit.album,
-  slug: hit.slug,
-  subtitle: hit.subtitle ?? null,
-  thumbnail: hit.thumbnail ?? null,
-  collectionTitle: hit.collectionTitle ?? null,
-  defaultVariant: hit.defaultVariant,
-})
+const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
+  ["featured", "Featured Picks"],
+  ["featured-picks", "Featured Picks"],
+  ["staff", "Staff Signals"],
+  ["staff-picks", "Staff Signals"],
+  ["staff-signals", "Staff Signals"],
+  ["new-releases", "Newest Arrivals"],
+  ["new arrivals", "Newest Arrivals"],
+  ["newest arrivals", "Newest Arrivals"],
+])
+
+const deriveCollectionTitle = (hit: ProductSearchHit): string | null => {
+  if (typeof hit.collectionTitle === "string" && hit.collectionTitle.trim().length) {
+    return hit.collectionTitle.trim()
+  }
+
+  const handleCandidates = (hit.categoryHandles ?? [])
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length)
+
+  for (const candidate of handleCandidates) {
+    for (const [key, label] of COLLECTION_PRIORITY_LABELS) {
+      if (candidate === key || candidate.includes(key)) {
+        return label
+      }
+    }
+  }
+
+  const categoryCandidates = (hit.categories ?? [])
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length)
+
+  if (!categoryCandidates.length) {
+    return null
+  }
+
+  for (const candidate of categoryCandidates) {
+    const normalized = candidate.toLowerCase()
+    for (const [key, label] of COLLECTION_PRIORITY_LABELS) {
+      if (normalized === key || normalized.includes(key)) {
+        return label
+      }
+    }
+  }
+
+  return categoryCandidates[0] ?? null
+}
+
+const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
+  const labels = new Set<string>()
+
+  const sourceArrays = [
+    hit.formats,
+    hit.variantTitles,
+    hit.format ? [hit.format] : [],
+    hit.categories,
+    hit.categoryHandles,
+  ]
+
+  sourceArrays.forEach((entries) => {
+    if (!entries) {
+      return
+    }
+    entries.forEach((entry) => {
+      if (!entry || typeof entry !== "string" || !entry.trim().length) {
+        return
+      }
+      labels.add(entry.trim())
+    })
+  })
+
+  return Array.from(labels)
+}
+
+const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => {
+  const fallbackCurrency = hit.defaultVariant?.currency ?? "usd"
+  const fallbackVariant =
+    hit.defaultVariant ??
+    (typeof hit.priceAmount === "number"
+      ? {
+          id: `search-${hit.id}`,
+          title: hit.format ?? "Variant",
+          currency: fallbackCurrency,
+          amount: hit.priceAmount,
+          inStock: (hit.stockStatus ?? "").toLowerCase() !== "sold_out",
+        }
+      : null)
+
+  return {
+    id: hit.id,
+    handle: hit.handle,
+    title: hit.title,
+    artist: hit.artist,
+    album: hit.album,
+    slug: hit.slug,
+    subtitle: hit.subtitle ?? null,
+    thumbnail: hit.thumbnail ?? null,
+    collectionTitle: deriveCollectionTitle(hit),
+    defaultVariant: fallbackVariant,
+    formats: (() => {
+      const labels = deriveFormatLabels(hit)
+      if (labels.length) {
+        return labels
+      }
+      if (fallbackVariant?.title) {
+        return [fallbackVariant.title]
+      }
+      return []
+    })(),
+  }
+}
 
 type SearchFacets = {
   genres: Record<string, number>
@@ -641,10 +740,21 @@ const ProductSearchExperience = ({
   const facets = pages[0]?.facets ?? initialFacets
   const totalResults = pages[0]?.total ?? 0
 
-  const aggregatedHits = useMemo(
-    () => pages.flatMap((page) => page.hits),
-    [pages]
-  )
+  const aggregatedHits = useMemo(() => {
+    const seen = new Set<string>()
+    const deduped: ProductSearchHit[] = []
+    pages.forEach((page) => {
+      page.hits.forEach((hit) => {
+        const key = hit.handle?.trim().toLowerCase() ?? hit.id
+        if (!key || seen.has(key)) {
+          return
+        }
+        seen.add(key)
+        deduped.push(hit)
+      })
+    })
+    return deduped
+  }, [pages])
 
   const sortedHits = useMemo(
     () => sortResults(aggregatedHits, sortOption),

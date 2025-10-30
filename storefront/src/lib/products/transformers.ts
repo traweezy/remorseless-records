@@ -75,6 +75,48 @@ export const mapStoreProductToRelatedSummary = (
       ? product.handle.trim()
       : ""
 
+  const formats = new Set<string>()
+
+  variants.forEach((variant) => {
+    if (variant.title.trim().length) {
+      formats.add(variant.title.trim())
+    }
+  })
+
+  const formatOption = product.options?.find((option) => option.title?.toLowerCase() === "format")
+  formatOption?.values?.forEach((value) => {
+    const candidate = typeof value?.value === "string" ? value.value.trim() : ""
+    if (candidate.length) {
+      formats.add(candidate)
+    }
+  })
+
+  const metadata = product.metadata as Record<string, unknown> | null | undefined
+  if (metadata) {
+    const metaCandidates = [
+      typeof metadata.format === "string" ? metadata.format : null,
+      typeof metadata.packaging === "string" ? metadata.packaging : null,
+      ...(Array.isArray(metadata.formats) ? metadata.formats : []),
+    ]
+
+    metaCandidates.forEach((entry) => {
+      if (typeof entry === "string" && entry.trim().length) {
+        formats.add(entry.trim())
+      }
+    })
+  }
+
+  const categoryGroups = extractProductCategoryGroups(product.categories, {
+    excludeHandles: [slug.artistSlug, slug.albumSlug],
+  })
+  categoryGroups.types.forEach((entry) => {
+    if (entry.label.trim().length) {
+      formats.add(entry.label.trim())
+    }
+  })
+
+  const formatted = Array.from(formats)
+
   return {
     id: product.id,
     handle,
@@ -92,6 +134,7 @@ export const mapStoreProductToRelatedSummary = (
       null,
     collectionTitle: product.collection?.title ?? null,
     defaultVariant: variants[0] ?? null,
+    formats: formatted,
   }
 }
 
@@ -138,8 +181,19 @@ export const mapStoreProductToSearchHit = (
       : null
   const stockStatus = summary.defaultVariant?.inStock ? "in_stock" : "sold_out"
 
+  const inferredFormats = new Set<string>(summary.formats)
+  categoryTypes.forEach((label) => {
+    if (label.trim().length) {
+      inferredFormats.add(label.trim())
+    }
+  })
+  if (derivedFormat) {
+    inferredFormats.add(derivedFormat)
+  }
+
   return {
     ...summary,
+    formats: Array.from(inferredFormats),
     genres:
       categoryGenres.length > 0
         ? categoryGenres

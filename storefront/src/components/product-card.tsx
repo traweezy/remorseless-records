@@ -8,10 +8,9 @@ import type { HttpTypes } from "@medusajs/types"
 import { ShoppingCart } from "lucide-react"
 
 import { ProductQuickView } from "@/components/product-quick-view"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { formatAmount } from "@/lib/money"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useProductDetailPrefetch } from "@/lib/query/products"
 import { mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
@@ -22,7 +21,114 @@ type ProductCardSource = StoreProduct | ProductSearchHit | RelatedProductSummary
 const isStoreProduct = (product: ProductCardSource): product is StoreProduct =>
   "variants" in product
 
-const resolveBadge = (product: ProductCardSource): string | null => {
+const isProductSearchHitSource = (product: ProductCardSource): product is ProductSearchHit =>
+  "variantTitles" in product && Array.isArray(product.variantTitles)
+
+const slugify = (value: string | null | undefined): string | null => {
+  if (!value || typeof value !== "string") {
+    return null
+  }
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return normalized.length ? normalized : null
+}
+
+const toStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+      .filter((entry) => Boolean(entry.length))
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => Boolean(entry.length))
+  }
+  return []
+}
+
+type RibbonCandidate = {
+  label: string
+  slug: string
+}
+
+const addCandidate = (list: RibbonCandidate[], label: string | null | undefined, slugSource?: string | null | undefined) => {
+  if (!label || !label.trim().length) {
+    return
+  }
+  const slug = slugify(slugSource ?? label)
+  if (!slug) {
+    return
+  }
+  if (list.some((candidate) => candidate.slug === slug)) {
+    return
+  }
+  list.push({ label: label.trim(), slug })
+}
+
+const COLLECTION_PRIORITY = [
+  "featured",
+  "featured-picks",
+  "featured-pressings",
+  "staff-signals",
+  "staff-picks",
+  "staff",
+  "new-releases",
+  "new-arrivals",
+  "latest",
+  "exclusive",
+] as const
+
+const resolveCollectionRibbonLabel = (
+  product: ProductCardSource,
+  summary: RelatedProductSummary
+): string | null => {
+  const candidates: RibbonCandidate[] = []
+
+  if (isStoreProduct(product)) {
+    const collection = product.collection
+    if (collection) {
+      addCandidate(candidates, typeof collection.title === "string" ? collection.title : null, collection.handle)
+    }
+
+    const metadata = product.metadata as Record<string, unknown> | null | undefined
+    if (metadata) {
+      const metadataCandidates = [
+        ...toStringArray(metadata["ribbonLabel"]),
+        ...toStringArray(metadata["collections"]),
+        ...(typeof metadata["collection"] === "string" ? [metadata["collection"] as string] : []),
+      ]
+      metadataCandidates.forEach((entry) => addCandidate(candidates, entry))
+    }
+
+    const tagCandidates =
+      product.tags
+        ?.map((tag) => (typeof tag?.value === "string" ? tag.value.trim() : ""))
+        .filter((value): value is string => Boolean(value)) ?? []
+    tagCandidates.forEach((entry) => addCandidate(candidates, entry))
+  }
+
+  addCandidate(candidates, summary.collectionTitle)
+
+  if (!candidates.length) {
+    return null
+  }
+
+  for (const priority of COLLECTION_PRIORITY) {
+    const match = candidates.find((candidate) => candidate.slug === priority || candidate.slug.startsWith(priority))
+    if (match) {
+      return match.label
+    }
+  }
+
+  return candidates[0]?.label ?? null
+}
+
+const resolveFallbackBadge = (product: ProductCardSource): string | null => {
   if (!isStoreProduct(product)) {
     return null
   }
@@ -42,6 +148,13 @@ const resolveBadge = (product: ProductCardSource): string | null => {
   }
 
   return null
+}
+
+const resolveBadge = (
+  product: ProductCardSource,
+  summary: RelatedProductSummary
+): string | null => {
+  return resolveCollectionRibbonLabel(product, summary) ?? resolveFallbackBadge(product)
 }
 
 const resolveThumbnail = (product: ProductCardSource): string | null =>
@@ -73,13 +186,50 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     }
     return null
   }
-  const badge = resolveBadge(product)
+  const badge = resolveBadge(product, summary)
   const thumbnail = resolveThumbnail(product)
   const initialProduct = isStoreProduct(product) ? product : undefined
   const productHref = handle ? `/products/${handle}` : "/products"
-  const priceLabel = summary.defaultVariant
-    ? formatAmount(summary.defaultVariant.currency, summary.defaultVariant.amount)
-    : null
+  const formatLabels = (() => {
+    const labels = new Set<string>(summary.formats.map((entry) => entry.trim()).filter(Boolean))
+
+    const addLabel = (value: string | null | undefined) => {
+      if (!value) {
+        return
+      }
+      const normalized = value.trim()
+      if (!normalized.length || normalized.toLowerCase() === "default") {
+        return
+      }
+      labels.add(normalized)
+    }
+
+    if (isStoreProduct(product)) {
+      product.variants?.forEach((variant) => addLabel(variant?.title))
+      product.options?.forEach((option) => {
+        if (option?.title?.toLowerCase() === "format") {
+          option.values?.forEach((entry) => addLabel(typeof entry?.value === "string" ? entry.value : null))
+        }
+      })
+      product.tags?.forEach((tag) => addLabel(tag?.value))
+      const metadata = product.metadata as Record<string, unknown> | null | undefined
+      if (metadata) {
+        addLabel(typeof metadata?.format === "string" ? metadata.format : null)
+        addLabel(typeof metadata?.packaging === "string" ? metadata.packaging : null)
+      }
+    } else if (isProductSearchHitSource(product)) {
+      product.variantTitles.forEach(addLabel)
+      product.categories.forEach(addLabel)
+      product.categoryHandles.forEach(addLabel)
+      addLabel(product.format)
+    }
+
+    if (!labels.size && summary.defaultVariant?.title) {
+      addLabel(summary.defaultVariant.title)
+    }
+
+    return Array.from(labels)
+  })()
 
   const prefetchProduct = useProductDetailPrefetch(handle)
 
@@ -111,17 +261,14 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           className="block h-full focus:outline-none"
           aria-label={`View ${summary.title}`}
         >
-          <Card className="relative flex h-full flex-col overflow-hidden border-2 border-border/60 transition duration-300 hover:border-destructive focus-within:border-destructive">
+          <Card className="relative flex h-full flex-col overflow-visible border-2 border-border/60 transition duration-300 hover:border-destructive focus-within:border-destructive">
             {badge ? (
-              <Badge
-                variant="destructive"
-                className="pointer-events-none absolute right-3 top-3 z-20 rotate-2 px-3 py-1 font-headline text-xs tracking-[0.35rem] shadow-glow sm:right-4 sm:top-4"
-              >
-                {badge.toUpperCase()}
-              </Badge>
+              <div className="product-card__corner" aria-label={`Collection: ${badge}`}>
+                <span>{badge.toUpperCase()}</span>
+              </div>
             ) : null}
-            <CardContent className="flex h-full flex-col p-0">
-              <div className="relative aspect-square overflow-hidden bg-card">
+            <div className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-surface/95">
+              <div className="relative z-10 aspect-square overflow-hidden bg-card">
                 {thumbnail ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -150,7 +297,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                   </Button>
                 </div>
               </div>
-              <div className="flex flex-1 flex-col justify-between space-y-4 px-5 py-6">
+              <div className="flex flex-1 flex-col justify-between px-5 py-6">
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
                     {summary.subtitle ?? summary.artist}
@@ -159,11 +306,31 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                     {summary.title}
                   </h3>
                 </div>
-                <div className="text-sm font-semibold uppercase tracking-[0.3rem] text-destructive">
-                  {priceLabel ?? "Coming soon"}
-                </div>
+                {formatLabels.length ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {Array.from(
+                      new Map(
+                        formatLabels.map((label) => {
+                          const normalized = label.trim()
+                          const display = normalized.toLowerCase().includes("bundle")
+                            ? "Bundle"
+                            : normalized
+                          return [display.toLowerCase(), display]
+                        })
+                      ).values()
+                    ).map((label) => (
+                      <Badge
+                        key={`${summary.id}-${label}`}
+                        variant="outline"
+                        className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.28rem] text-foreground"
+                      >
+                        <span className="text-center leading-none">{label.toUpperCase()}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            </CardContent>
+            </div>
           </Card>
         </Link>
 

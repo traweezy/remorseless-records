@@ -19,6 +19,7 @@ export type RelatedProductSummary = {
   thumbnail?: string | null
   collectionTitle?: string | null
   defaultVariant: VariantOption | null
+  formats: string[]
 }
 
 export type ProductSearchHit = RelatedProductSummary & {

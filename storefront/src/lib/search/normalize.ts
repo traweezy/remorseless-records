@@ -158,6 +158,19 @@ export const normalizeSearchHit = (
     collectionTitle,
   })
 
+  const formatCandidates = new Set<string>()
+
+  const addFormat = (value: string | null | undefined) => {
+    if (!value) {
+      return
+    }
+    const trimmed = value.trim()
+    if (!trimmed.length) {
+      return
+    }
+    formatCandidates.add(trimmed)
+  }
+
   const genres = asStringArray(hit.genres ?? hit.genre)
   const categoryHandles = asStringArray(
     hit.category_handles ?? hit.categoryHandles ?? hit.categories
@@ -173,6 +186,9 @@ export const normalizeSearchHit = (
       : Array.isArray(hit.formats) && typeof hit.formats[0] === "string"
         ? hit.formats[0]
         : null
+
+  categoryLabels.forEach(addFormat)
+  categoryHandles.forEach(addFormat)
 
   const priceAmount =
     parseNumber(hit.price_amount ?? hit.price ?? hit.amount) ?? null
@@ -208,6 +224,11 @@ export const normalizeSearchHit = (
     hit.variant_titles ?? hit.variantTitles ?? hit.variants
   )
 
+  variantTitles.forEach(addFormat)
+  addFormat(format ?? undefined)
+
+  const formats = Array.from(formatCandidates)
+
   const defaultVariant = toVariantOption(
     variantId,
     priceAmount,
@@ -234,6 +255,7 @@ export const normalizeSearchHit = (
     thumbnail,
     collectionTitle,
     defaultVariant,
+    formats,
     genres,
     categories: categoryLabels,
     categoryHandles,

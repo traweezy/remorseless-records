@@ -3,6 +3,7 @@ import "server-only"
 import { MeiliSearch } from "meilisearch"
 
 import { runtimeEnv } from "@/config/env"
+import { enrichSearchResponse } from "@/lib/search/enrich"
 import {
   type ProductSearchRequest,
   type ProductSearchResponse,
@@ -34,5 +35,6 @@ export const searchProductsServer = async (
   request: ProductSearchRequest
 ): Promise<ProductSearchResponse> => {
   const client = getServerClient()
-  return searchProductsWithClient(client, request)
+  const response = await searchProductsWithClient(client, request)
+  return enrichSearchResponse(response)
 }
