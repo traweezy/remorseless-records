@@ -117,11 +117,9 @@ export const normalizeSearchHit = (
     crypto.randomUUID()
 
   const handle =
-    typeof hit.handle === "string"
-      ? hit.handle
-      : typeof hit.slug === "string"
-        ? hit.slug
-        : id
+    typeof hit.handle === "string" && hit.handle.trim().length
+      ? hit.handle.trim()
+      : ""
 
   const title =
     typeof hit.title === "string"

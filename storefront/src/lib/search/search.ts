@@ -260,7 +260,9 @@ export const searchProductsWithClient = async (
       ...(sortDirectives ? { sort: sortDirectives } : {}),
     })
 
-  let hits = response.hits.map((hit) => normalizeSearchHit(hit))
+  let hits = response.hits
+    .map((hit) => normalizeSearchHit(hit))
+    .filter((hit) => hit.handle.trim().length > 0)
   if (postFilters.length) {
     hits = filterHitsClientSide(hits, postFilters)
   }

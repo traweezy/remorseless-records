@@ -70,10 +70,14 @@ export const mapStoreProductToRelatedSummary = (
 ): RelatedProductSummary => {
   const variants = deriveVariantOptions(product.variants)
   const slug = buildProductSlugParts(product)
+  const handle =
+    typeof product.handle === "string" && product.handle.trim().length
+      ? product.handle.trim()
+      : ""
 
   return {
     id: product.id,
-    handle: product.handle ?? product.id,
+    handle,
     title: product.title ?? "Untitled Release",
     artist: slug.artist,
     album: slug.album,

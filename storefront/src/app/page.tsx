@@ -7,11 +7,10 @@ import ProductCard from "@/components/product-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { getHomepageProducts } from "@/lib/data/products"
+import { getCollectionProductsByHandle } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
-import { buildProductSlugParts } from "@/lib/products/slug"
 
 const GENRE_ROUTES = [
   {
@@ -61,24 +60,19 @@ export const metadata: Metadata = {
 }
 
 const HomePage = async (): Promise<ReactElement> => {
-  const products = await getHomepageProducts()
-
-  const featured = products.slice(0, 4)
-  const newest = products.slice(4, 8)
-  const staff = products.slice(8, 12)
+  const [featured, newest, staff] = await Promise.all([
+    getCollectionProductsByHandle("featured", 4),
+    getCollectionProductsByHandle("new-releases", 4),
+    getCollectionProductsByHandle("staff-picks", 4),
+  ])
   const featuredListJsonLd = buildItemListJsonLd(
     "Featured Picks",
-    featured.map((product) => ({
-      name: product.title ?? "Exclusive release",
-      url: (() => {
-        const slug = buildProductSlugParts(product)
-        const handleSegment =
-          (typeof product.handle === "string" && product.handle.trim().length
-            ? product.handle.trim()
-            : null) ?? `${slug.artistSlug}-${slug.albumSlug}`
-        return `${siteMetadata.siteUrl}/products/${handleSegment}`
-      })(),
-    }))
+    featured
+      .filter((product) => typeof product.handle === "string" && product.handle.trim().length)
+      .map((product) => ({
+        name: product.title ?? "Exclusive release",
+        url: `${siteMetadata.siteUrl}/products/${product.handle!.trim()}`,
+      }))
   )
 
   return (

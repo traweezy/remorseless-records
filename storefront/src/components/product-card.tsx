@@ -22,9 +22,6 @@ type ProductCardSource = StoreProduct | ProductSearchHit | RelatedProductSummary
 const isStoreProduct = (product: ProductCardSource): product is StoreProduct =>
   "variants" in product
 
-const resolveHandle = (product: ProductCardSource): string =>
-  product.handle ?? product.id
-
 const resolveBadge = (product: ProductCardSource): string | null => {
   if (!isStoreProduct(product)) {
     return null
@@ -66,7 +63,16 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     ? mapStoreProductToRelatedSummary(product)
     : product
 
-  const handle = resolveHandle(product)
+  const handle = summary.handle?.trim() ?? ""
+  if (!handle.length) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        `[product-card] Skipping render for product without handle`,
+        { id: summary.id }
+      )
+    }
+    return null
+  }
   const badge = resolveBadge(product)
   const thumbnail = resolveThumbnail(product)
   const initialProduct = isStoreProduct(product) ? product : undefined

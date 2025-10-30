@@ -9,6 +9,35 @@ import {
 
 type StoreProduct = HttpTypes.StoreProduct
 
+const getCollectionByHandle = cache(
+  async (handle: string): Promise<HttpTypes.StoreCollection | null> => {
+    const { collections } = await storeClient.collection.list({
+      handle,
+      limit: 1,
+    })
+
+    return collections[0] ?? null
+  }
+)
+
+export const getCollectionProductsByHandle = cache(
+  async (handle: string, limit = 4): Promise<StoreProduct[]> => {
+    const collection = await getCollectionByHandle(handle)
+    if (!collection?.id) {
+      return []
+    }
+
+    const { products } = await storeClient.product.list({
+      collection_id: collection.id,
+      limit,
+    })
+
+    return products.filter((product): product is StoreProduct =>
+      typeof product.handle === "string" && product.handle.trim().length > 0
+    )
+  }
+)
+
 export const getHomepageProducts = cache(async (): Promise<StoreProduct[]> => {
   const { products } = await storeClient.product.list({
     limit: 16,
