@@ -12,6 +12,7 @@ const projectRoot = resolve(__dirname, "..")
 const sourceJsonPath = resolve(projectRoot, "tmp", "remorseless_products.json")
 const outputCsvPath = resolve(projectRoot, "tmp", "remorseless-products-import.csv")
 const summaryOutputPath = resolve(projectRoot, "tmp", "remorseless-import-readme.md")
+const categoryMapPath = resolve(projectRoot, "tmp", "category-map.json")
 
 const csvHeaders = [
   "Product Id",
@@ -33,6 +34,17 @@ const csvHeaders = [
   "Product Collection Handle",
   "Product Type",
   "Product Tags",
+  "Product Category 1",
+  "Product Category 2",
+  "Product Category 3",
+  "Product Category 4",
+  "Product Category 5",
+  "Product Category 6",
+  "Product Category 7",
+  "Product Category 8",
+  "Product Category 9",
+  "Product Category 10",
+  "Product Sales Channel Id",
   "Product Discountable",
   "Product External Id",
   "Product Profile Name",
@@ -59,6 +71,45 @@ const csvHeaders = [
   "Image 1 Url",
   "Image 2 Url",
 ]
+
+const defaultSalesChannelId =
+  process.env.MEDUSA_DEFAULT_SALES_CHANNEL_ID ??
+  process.env.DEFAULT_SALES_CHANNEL_ID ??
+  ""
+
+if (!defaultSalesChannelId) {
+  throw new Error(
+    "MEDUSA_DEFAULT_SALES_CHANNEL_ID (or DEFAULT_SALES_CHANNEL_ID) must be set to the default sales channel ID before running this script.",
+  )
+}
+
+const METAL_GENRE_KEYWORDS = ["metal", "doom", "death", "thrash", "grind", "sludge", "gore", "core"]
+
+const categoryMapRaw = await readFile(categoryMapPath, "utf8").catch(() => {
+  throw new Error(
+    `Category map file not found at ${categoryMapPath}. Run the category export script to generate it.`,
+  )
+})
+
+const categoryMap = JSON.parse(categoryMapRaw)
+const handleEntries = categoryMap.by_handle
+  ? Object.entries(categoryMap.by_handle).map(([handle, info]) => [handle, info.id])
+  : Object.entries(categoryMap.handles ?? {}).map(([handle, id]) => [handle, id])
+
+const categoryHandleToId = new Map(handleEntries)
+const CATEGORY_COLUMN_COUNT = 10
+
+const hasHandle = (handle) => categoryHandleToId.has(handle)
+
+const normalizeGenreName = (raw) => {
+  const cleaned = raw.replace(/metal/gi, "").trim()
+  return cleaned || raw.trim()
+}
+
+const isMetalGenre = (raw) => {
+  const words = raw.toLowerCase().split(/[^a-z0-9]+/)
+  return METAL_GENRE_KEYWORDS.some((keyword) => words.includes(keyword))
+}
 
 const slugify = (value) => {
   if (!value) {
@@ -172,13 +223,41 @@ const buildCsvRows = (products, summary) => {
 
   products.forEach((product, index) => {
     const { artist, album } = parseArtistAndAlbum(product.name)
-    const handleBase = `${artist} ${album}`.trim()
-    const productHandle = slugify(handleBase)
-    const collectionTitle = artist || "Various Artists"
-    const collectionHandle = slugify(collectionTitle) || "various-artists"
+    const productType = classifyProductType(product)
+    const categoryHandles = new Set()
+
+    if ((productType === "music_release" || productType === "bundle") && hasHandle("music")) {
+      categoryHandles.add("music")
+    }
+    if (productType === "bundle" && hasHandle("bundles")) {
+      categoryHandles.add("bundles")
+    }
+    if (productType === "merch" && hasHandle("merch")) {
+      categoryHandles.add("merch")
+    }
+
+    const makeHandle = () => {
+      const albumSlug = slugify(album)
+      const artistSlug = slugify(artist)
+      const nameSlug = slugify(product.name)
+
+      if (productType === "music_release" || productType === "bundle") {
+        const segments = [artistSlug, albumSlug || nameSlug].filter(Boolean)
+        return segments.length ? segments.join("-") : nameSlug
+      }
+
+      return nameSlug || albumSlug || artistSlug
+    }
+
+    const productHandle = makeHandle() || slugify(`product-${index + 1}`)
+    const artistHandle = slugify(artist)
     const description = (product.description ?? "").trim()
     const firstImage = product.images?.[0]?.url ?? ""
     const secondImage = product.images?.[1]?.url ?? ""
+
+    if (artistHandle && hasHandle(artistHandle)) {
+      categoryHandles.add(artistHandle)
+    }
 
     const categoryNames = Array.isArray(product.categories)
       ? product.categories
@@ -186,34 +265,8 @@ const buildCsvRows = (products, summary) => {
           .filter((name) => typeof name === "string" && name.trim().length > 0)
       : []
 
-    const tagsSet = new Set()
-    const addTag = (tag) => {
-      if (!tag) {
-        return
-      }
-      const trimmed = tag.trim()
-      if (!trimmed || !trimmed.includes(":")) {
-        return
-      }
-      if (!tagsSet.has(trimmed)) {
-        tagsSet.add(trimmed)
-        incrementCount(summary.tags, trimmed)
-      }
-    }
-
-    const productType = classifyProductType(product)
-
     summary.totalProducts += 1
-    const existingCollection = summary.collections.get(collectionTitle) ?? {
-      title: collectionTitle,
-      handle: collectionHandle,
-      count: 0,
-    }
-    existingCollection.count += 1
-    existingCollection.handle = collectionHandle
-    summary.collections.set(collectionTitle, existingCollection)
 
-    addTag(`type:${productType}`)
     incrementCount(summary.productTypes, productType)
 
     const formatCategoryMap = new Map([
@@ -231,7 +284,6 @@ const buildCsvRows = (products, summary) => {
     categoryNames.forEach((category) => {
       const lower = category.toLowerCase()
       if (formatCategoryMap.has(lower)) {
-        addTag(`format:${formatCategoryMap.get(lower)}`)
         return
       }
 
@@ -249,28 +301,20 @@ const buildCsvRows = (products, summary) => {
       }
 
       parts.forEach((part) => {
-        addTag(`genre:${slugify(part)}`)
+        const normalizedGenre = normalizeGenreName(part)
+        const genreHandle = slugify(normalizedGenre)
+        if (genreHandle && hasHandle(genreHandle)) {
+          categoryHandles.add(genreHandle)
+        }
+        if (isMetalGenre(part) && hasHandle("metal")) {
+          categoryHandles.add("metal")
+        }
       })
     })
 
-    if (index % 18 === 0) {
-      addTag("flag:staff-pick")
-      if (!summary.collections.has("Staff Picks")) {
-        summary.collections.set("Staff Picks", { title: "Staff Picks", handle: "staff-picks", count: 0 })
-      }
-      const staffCollection = summary.collections.get("Staff Picks")
-      staffCollection.count += 1
-      summary.collections.set("Staff Picks", staffCollection)
-    }
-
-    if (index % 25 === 0) {
-      addTag("flag:featured")
-      if (!summary.collections.has("Featured Releases")) {
-        summary.collections.set("Featured Releases", { title: "Featured Releases", handle: "featured-releases", count: 0 })
-      }
-      const featuredCollection = summary.collections.get("Featured Releases")
-      featuredCollection.count += 1
-      summary.collections.set("Featured Releases", featuredCollection)
+    const isPreorder = /pre[- ]?order/.test(description.toLowerCase())
+    if (isPreorder) {
+      summary.preorders += 1
     }
 
     const variants =
@@ -283,13 +327,66 @@ const buildCsvRows = (products, summary) => {
             },
           ]
 
+    const normalizeVariantName = (variantName) => {
+      const trimmed = (variantName ?? "").trim()
+      if (!trimmed) {
+        return "Standard"
+      }
+
+      const lower = trimmed.toLowerCase()
+      const baseFormat = (() => {
+        if (/\bvinyl\b/.test(lower) || /\blp\b/.test(lower) || /\b12"/.test(lower) || /\b7"/.test(lower)) {
+          return "LP"
+        }
+        if (/\bcd\b/.test(lower)) {
+          return "CD"
+        }
+        if (/\bcassette\b/.test(lower) || /\btape\b/.test(lower) || /\bmc\b/.test(lower)) {
+          return "Cassette"
+        }
+        return null
+      })()
+
+      if (!baseFormat) {
+        return trimmed
+      }
+
+      const comparableValues = [
+        (product.name ?? "").toLowerCase(),
+        artist.toLowerCase(),
+        album.toLowerCase(),
+      ].filter(Boolean)
+
+      const redundant =
+        comparableValues.some((value) => lower.includes(value)) ||
+        trimmed
+          .split(" - ")
+          .slice(-1)
+          .some((segment) => {
+            const part = segment.toLowerCase()
+            if (baseFormat === "LP") {
+              return /\blp\b/.test(part) || /\bvinyl\b/.test(part)
+            }
+            if (baseFormat === "CD") {
+              return /\bcd\b/.test(part)
+            }
+            if (baseFormat === "Cassette") {
+              return /\bcassette\b/.test(part) || /\btape\b/.test(part) || /\bmc\b/.test(part)
+            }
+            return false
+          })
+
+      return redundant ? baseFormat : trimmed
+    }
+
     variants.forEach((variant, variantIndex) => {
-      const variantName = variant?.name?.trim() || "Standard"
+      const originalVariantName = variant?.name?.trim() || "Standard"
+      const normalizedVariantName = normalizeVariantName(originalVariantName)
       const variantPrice = Number.isFinite(variant?.price)
         ? Number(variant.price)
         : Number(product.price) || 0
 
-      const randomSeed = `${product.id ?? product.name ?? index}-${variantName}-${variantIndex}`
+      const randomSeed = `${product.id ?? product.name ?? index}-${normalizedVariantName}-${variantIndex}`
       const rawStock = getRandomInt(randomSeed)
       const randomStock = rawStock < 5 ? 0 : rawStock
       if (randomStock === 0) {
@@ -305,10 +402,31 @@ const buildCsvRows = (products, summary) => {
           ? Math.round(variantPrice * 100)
           : ""
 
-      const variantSkuBase = `${handleBase} ${variantName}`.trim()
+      const variantSkuBase = `${productHandle} ${normalizedVariantName}`.trim()
       const variantSku = variantSkuBase
         ? slugify(variantSkuBase).toUpperCase()
         : ""
+
+      const categoryIds = Array.from(categoryHandles).map((handle) => {
+        const id = categoryHandleToId.get(handle)
+        if (!id) {
+          throw new Error(
+            `Missing category mapping for handle '${handle}' while processing product '${product.name}'`,
+          )
+        }
+        return id
+      })
+
+      if (categoryIds.length > CATEGORY_COLUMN_COUNT) {
+        throw new Error(
+          `Product '${product.name}' is assigned to ${categoryIds.length} categories which exceeds the supported limit (${CATEGORY_COLUMN_COUNT}).`,
+        )
+      }
+
+      const categoryCells = [
+        ...categoryIds,
+        ...Array(CATEGORY_COLUMN_COUNT - categoryIds.length).fill(""),
+      ]
 
       const row = [
         "", // Product Id
@@ -326,16 +444,18 @@ const buildCsvRows = (products, summary) => {
         "", // Product Origin Country
         "", // Product MID Code
         "", // Product Material
-        collectionTitle,
-        collectionHandle,
+        "",
+        "",
         productType,
-        Array.from(tagsSet).join("|"),
+        "",
+        ...categoryCells,
+        defaultSalesChannelId,
         "true",
         product.id ?? "",
         "default",
         "default",
         "", // Variant Id
-        variantName,
+        normalizedVariantName,
         variantSku,
         "", // Variant Barcode
         String(randomStock), // Variant Inventory Quantity
@@ -352,7 +472,7 @@ const buildCsvRows = (products, summary) => {
         "", // Price EUR
         priceUsd,
         "Format",
-        variantName,
+        normalizedVariantName,
         firstImage,
         secondImage,
       ]
@@ -365,18 +485,6 @@ const buildCsvRows = (products, summary) => {
 }
 
 const buildSummary = (summary) => {
-  const collectionEntries = Array.from(summary.collections.entries())
-    .map(([title, data]) => ({
-      title,
-      handle: data.handle,
-      count: data.count,
-    }))
-    .sort((a, b) => a.title.localeCompare(b.title))
-
-  const tagEntries = Array.from(summary.tags.entries())
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => a.tag.localeCompare(b.tag))
-
   const preferredTypeOrder = ["music_release", "bundle", "merch"]
   const productTypeEntries = preferredTypeOrder
     .filter((type) => summary.productTypes.has(type))
@@ -388,23 +496,14 @@ const buildSummary = (summary) => {
     )
 
   const summaryLines = [
-    "# Remorseless Catalog Import – Collections & Tags",
+    "# Remorseless Catalog Import – Category Snapshot",
     "",
     `Generated from ${summary.totalProducts} products (${new Date().toISOString()})`,
     "",
-    "## Collections (create before import)",
+    "## Product types",
     "",
   ]
 
-  if (collectionEntries.length === 0) {
-    summaryLines.push("- _No collections detected_")
-  } else {
-    collectionEntries.forEach(({ title, handle, count }) => {
-      summaryLines.push(`- **${title}** — handle \`${handle}\` (${count} products)`)
-    })
-  }
-
-  summaryLines.push("", "## Product types", "")
   if (productTypeEntries.length === 0) {
     summaryLines.push("- _No product types detected_")
   } else {
@@ -418,21 +517,13 @@ const buildSummary = (summary) => {
   summaryLines.push(`- Low stock (<25): ${summary.inventory.low}`)
   summaryLines.push(`- In stock (≥25): ${summary.inventory.inStock}`)
 
-  summaryLines.push("", "## Tags (Medusa product tags)", "")
-  if (tagEntries.length === 0) {
-    summaryLines.push("- _No tags detected_")
-  } else {
-    tagEntries.forEach(({ tag, count }) => {
-      summaryLines.push(`- \`${tag}\` — ${count}`)
-    })
-  }
+  summaryLines.push("", `Preorders detected: ${summary.preorders}`, "")
 
   summaryLines.push(
     "",
     "## Notes",
     "",
-    "- Collections are derived from artist names; create each collection before running the CSV import.",
-    "- Tags originate from the Big Cartel catalog categories and power storefront filtering.",
+    "- Category IDs are populated for Music, Bundles/Merch where relevant, artist buckets, genres, and the Metal parent node.",
     "- Product types follow this contract:",
     "  - `music_release` – standard releases (default).",
     "  - `bundle` – multi-product bundles or deals.",
@@ -448,9 +539,8 @@ const main = async () => {
 
   const summary = {
     totalProducts: 0,
-    collections: new Map(),
-    tags: new Map(),
     productTypes: new Map(),
+    preorders: 0,
     inventory: {
       zero: 0,
       low: 0,
