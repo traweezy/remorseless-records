@@ -1,0 +1,71 @@
+{
+  "products": {
+    "fields": [
+      "id",
+      "handle",
+      "title",
+      "description",
+      "thumbnail",
+      "collectionId",
+      "collectionTitle",
+      "collectionHandle",
+      "genres",
+      "format",
+      "price_amount",
+      "price_currency",
+      "price_compare_at",
+      "default_variant_id",
+      "default_variant_sku",
+      "inventory_quantity",
+      "stock_status",
+      "created_at",
+      "updated_at"
+    ],
+    "primaryKey": "id",
+    "indexSettings": {
+      "searchableAttributes": [
+        "title",
+        "description",
+        "collectionTitle",
+        "genres",
+        "format"
+      ],
+      "displayedAttributes": [
+        "id",
+        "handle",
+        "title",
+        "description",
+        "thumbnail",
+        "collectionId",
+        "collectionTitle",
+        "collectionHandle",
+        "genres",
+        "format",
+        "price_amount",
+        "price_currency",
+        "price_compare_at",
+        "default_variant_id",
+        "default_variant_sku",
+        "stock_status",
+        "inventory_quantity",
+        "created_at",
+        "updated_at"
+      ],
+      "filterableAttributes": [
+        "id",
+        "handle",
+        "genres",
+        "format",
+        "category_handles",
+        "variant_titles",
+        "collectionId",
+        "price_currency",
+        "stock_status"
+      ],
+      "sortableAttributes": [
+        "price_amount",
+        "created_at"
+      ]
+    }
+  }
+}

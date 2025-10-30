@@ -24,8 +24,11 @@ import {
   MEILISEARCH_ADMIN_KEY
 } from 'lib/constants';
 import productSearchTransformer from 'lib/meilisearch/product-transformer';
+import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
 
 loadEnv(process.env.NODE_ENV, process.cwd());
+
+const productIndexSettings = meilisearchSettings.products;
 
 const medusaConfig = {
   projectConfig: {
@@ -154,68 +157,7 @@ const medusaConfig = {
           products: {
             type: 'products',
             enabled: true,
-            fields: [
-              'id',
-              'handle',
-              'title',
-              'description',
-              'thumbnail',
-              'collectionId',
-              'collectionTitle',
-              'collectionHandle',
-              'genres',
-              'format',
-              'price_amount',
-              'price_currency',
-              'price_compare_at',
-              'default_variant_id',
-              'default_variant_sku',
-              'stock_status',
-              'inventory_quantity',
-              'created_at',
-              'updated_at'
-            ],
-            indexSettings: {
-              searchableAttributes: [
-                'title',
-                'description',
-                'collectionTitle',
-                'genres',
-                'format'
-              ],
-              displayedAttributes: [
-                'id',
-                'handle',
-                'title',
-                'description',
-                'thumbnail',
-                'collectionId',
-                'collectionTitle',
-                'collectionHandle',
-                'genres',
-                'format',
-                'price_amount',
-                'price_currency',
-                'price_compare_at',
-                'default_variant_id',
-                'default_variant_sku',
-                'stock_status',
-                'inventory_quantity',
-                'created_at',
-                'updated_at'
-              ],
-              filterableAttributes: [
-                'id',
-                'handle',
-                'genres',
-                'format',
-                'collectionId',
-                'price_currency',
-                'stock_status'
-              ],
-              sortableAttributes: ['price_amount', 'created_at']
-            },
-            primaryKey: 'id',
+            ...productIndexSettings,
             transformer: productSearchTransformer,
           }
         }

@@ -41,7 +41,7 @@ export default async function checkMeilisearchSync({
 
   if (productCount !== indexedCount) {
     logger.warn(
-      "[meilisearch] Counts differ. Run `pnpm --filter backend run search:rebuild` and confirm product events are reaching Meilisearch."
+      "[meilisearch] Counts differ. Run `pnpm --filter backend run search:sync` and confirm product events are reaching Meilisearch."
     )
   } else {
     logger.info("[meilisearch] Counts match. Index appears synchronized.")

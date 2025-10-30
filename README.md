@@ -253,7 +253,7 @@ Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
   ```
 - **Bootstrap the index** (re-run whenever products change in bulk):
   ```bash
-  pnpm --filter backend run search:rebuild
+  pnpm --filter backend run search:sync
   ```
 - Seed the index (example):
   ```bash
@@ -288,7 +288,7 @@ Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK
 
 - `pnpm exec eslint --ext .ts,.tsx src` and `pnpm run typecheck` (storefront) / `pnpm --filter backend exec tsc --noEmit` before commits.
 - Monorepo check shortcut: `pnpm run qa:lint` (lint + typecheck for storefront and backend).
-- Reindex search after catalog bulk changes: `pnpm --filter backend run search:rebuild` (use `pnpm --filter backend run search:check` to compare Medusa vs. Meilisearch counts).
+- Reindex search after catalog bulk changes: `pnpm --filter backend run search:sync` (use `pnpm --filter backend run search:check` to compare Medusa vs. Meilisearch counts).
 - Keyboard and screen-reader sweeps on header, Quick Shop, PDP, cart. Document in runbook checklist.
 - Lighthouse (desktop + mobile) on `/`, `/products`, `/products/[handle]`, `/cart` targeting LCP < 2.5s and A11y ≥ 95.
 - Stripe standard + 3DS test cards, confirm webhook metadata and Medusa order creation.

@@ -95,7 +95,7 @@ Document results in PR or release notes.
 Whenever product schemas or the transformer change:
 
 ```bash
-pnpm --filter backend run search:rebuild
+pnpm --filter backend run search:sync
 ```
 
 Watch backend logs for completion message:
@@ -131,7 +131,7 @@ Fill in observed counts in the release checklist.
 
 ### 3.3 Monitoring Hooks
 
-- Add log shipping or dashboard alerting around the `search:rebuild` command in CI/CD if run automatically.
+- Add log shipping or dashboard alerting around the `search:sync` command in CI/CD if run automatically.
 - For production, monitor webhook or background jobs that update products. Emit metrics (`products_indexed_total`) if integrating with a metrics stack.
 
 ---

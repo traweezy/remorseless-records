@@ -1,5 +1,5 @@
 {
-  "name": "medusa-2.0-boilerplate-backend",
+  "name": "backend",
   "version": "0.0.2",
   "description": "A Prebaked Medusa 2.0 backend",
   "author": "Rasmus Puls",
@@ -20,7 +20,9 @@
     "dev": "medusa develop",
     "email:dev": "email dev --dir=./src/modules/email-notifications/templates --port=3002",
     "search:rebuild": "medusa exec ./src/scripts/reindex-meilisearch.ts",
-    "search:check": "medusa exec ./src/scripts/check-meilisearch-sync.ts"
+    "search:check": "medusa exec ./src/scripts/check-meilisearch-sync.ts",
+    "search:sync-settings": "medusa exec ./src/scripts/sync-meilisearch-settings.ts",
+    "search:sync": "pnpm run search:sync-settings && pnpm run search:rebuild"
   },
   "dependencies": {
     "@medusajs/admin-sdk": "^2.11.0",
