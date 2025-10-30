@@ -1,7 +1,7 @@
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
-import indexSettings from "../../config/meilisearch-settings.json" assert { type: "json" }
+import indexSettings from "../../config/meilisearch-settings.json"
 
 const PRODUCTS_INDEX = "products"
 

@@ -65,7 +65,7 @@ const TYPE_HANDLES = new Set(["music", "bundles", "merch"])
 const GENRE_HANDLES = new Set(["metal", "death", "doom", "grind", "sludge"])
 const STRUCTURAL_HANDLES = new Set(["artists", "genres"])
 
-const coerceCategoryHandle = (category: Record<string, any>): string | null => {
+const coerceCategoryHandle = (category: Record<string, any> | null | undefined): string | null => {
   const handle = category?.handle
   if (typeof handle === "string" && handle.trim().length) {
     return handle.trim().toLowerCase()
@@ -74,7 +74,7 @@ const coerceCategoryHandle = (category: Record<string, any>): string | null => {
 }
 
 const coerceCategoryLabel = (
-  category: Record<string, any>,
+  category: Record<string, any> | null | undefined,
   defaultHandle: string
 ): string => {
   const name = category?.name
@@ -106,8 +106,8 @@ const collectCategoryLabels = (
   return labels
 }
 
-const collectAncestors = (category: Record<string, any> | null | undefined): Record<string, any>[] => {
-  const ancestors: Record<string, any>[] = []
+const collectAncestors = (category: Record<string, any> | null | undefined): Array<Record<string, any>> => {
+  const ancestors: Array<Record<string, any>> = []
   let current: Record<string, any> | null | undefined = category
   let guard = 0
 
@@ -122,7 +122,7 @@ const collectAncestors = (category: Record<string, any> | null | undefined): Rec
 
 const findRootCategory = (category: Record<string, any> | null | undefined): Record<string, any> | null => {
   const ancestors = collectAncestors(category)
-  return ancestors.length ? ancestors[ancestors.length - 1] : null
+  return ancestors.length ? ancestors[ancestors.length - 1] ?? null : null
 }
 
 const shouldExcludeCategory = (category: Record<string, any> | null | undefined): boolean => {
@@ -136,7 +136,7 @@ const shouldExcludeCategory = (category: Record<string, any> | null | undefined)
   }
 
   const root = findRootCategory(category)
-  const rootHandle = coerceCategoryHandle(root)
+  const rootHandle = root ? coerceCategoryHandle(root) : null
   return rootHandle === "artists"
 }
 
@@ -318,23 +318,21 @@ const buildSearchDocument = (product: Record<string, any>): SearchDocument => {
   const categoryHandles = Array.from(nonArtistEntries.keys())
   const categoryLabels = Array.from(nonArtistEntries.values())
 
-  const variantTitles = Array.from(
-    new Set(
-      (normalizedProduct.variants ?? [])
-        .map((variant: Record<string, any>) => {
-          const title = toStringOrNull(variant?.title)
-          return title?.trim() ?? ""
-        })
-        .filter((title): title is string => Boolean(title))
-    )
-  )
+  const variantTitlesSet = new Set<string>()
+  for (const variant of normalizedProduct.variants ?? []) {
+    const raw = toStringOrNull((variant as Record<string, any>)?.title)?.trim()
+    if (raw) {
+      variantTitlesSet.add(raw)
+    }
+  }
+  const variantTitles: string[] = Array.from(variantTitlesSet)
 
   const genres =
     categoryGenres.length > 0 ? categoryGenres : getTagGenres(normalizedProduct.tags)
 
   const format =
     categoryTypes.length > 0
-      ? categoryTypes[0]
+      ? categoryTypes[0] ?? null
       : findFormatOption(normalizedProduct)
 
   return {
