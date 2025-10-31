@@ -22,7 +22,8 @@
     "search:rebuild": "medusa exec ./src/scripts/reindex-meilisearch.ts",
     "search:check": "medusa exec ./src/scripts/check-meilisearch-sync.ts",
     "search:sync-settings": "medusa exec ./src/scripts/sync-meilisearch-settings.ts",
-    "search:sync": "pnpm run search:sync-settings && pnpm run search:rebuild"
+    "search:sync": "pnpm run search:sync-settings && pnpm run search:rebuild",
+    "search:prepare": "pnpm run search:sync && pnpm run search:check"
   },
   "dependencies": {
     "@medusajs/admin-sdk": "^2.11.0",
