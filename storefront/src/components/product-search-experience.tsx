@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Debouncer } from "@tanstack/pacer"
@@ -559,6 +559,7 @@ const ProductSearchExperience = ({
   const isReplacingRef = useRef(false)
   const lastSyncedParamsRef = useRef<string>("")
 
+  const [inputValue, setInputValue] = useState("")
   const [query, setQuery] = useState("")
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [selectedFormats, setSelectedFormats] = useState<string[]>([])
@@ -574,6 +575,7 @@ const ProductSearchExperience = ({
     limit: pageSize,
     inStockOnly: false,
   })
+  const [, startTransition] = useTransition()
 
   useEffect(() => {
     const paramsSnapshot = searchParams ? new URLSearchParams(searchParams.toString()) : null
@@ -604,7 +606,16 @@ const ProductSearchExperience = ({
     const shouldUpdateStock = nextStock !== showInStockOnly
     const shouldUpdateSort = nextSort !== sortOption
 
-    if (
+    const nextCriteria = {
+      query: nextQuery,
+      genres: nextGenres,
+      formats: nextFormats,
+      productTypes: nextProductTypes,
+      limit: pageSize,
+      inStockOnly: nextStock,
+    }
+
+    const shouldUpdate =
       shouldUpdateQuery ||
       shouldUpdateGenres ||
       shouldUpdateFormats ||
@@ -612,29 +623,50 @@ const ProductSearchExperience = ({
       shouldUpdateStock ||
       shouldUpdateSort ||
       !hasHydratedFromParams.current
-    ) {
-      if (shouldUpdateQuery) {
-        setQuery(nextQuery)
-      }
-      if (shouldUpdateGenres) {
-        setSelectedGenres(nextGenres)
-      }
-      if (shouldUpdateFormats) {
-        setSelectedFormats(nextFormats)
-      }
-      if (shouldUpdateProductTypes) {
-        setSelectedProductTypes(nextProductTypes)
-      }
-      if (shouldUpdateStock) {
-        setShowInStockOnly(nextStock)
-      }
-      if (shouldUpdateSort) {
-        setSortOption(nextSort)
-      }
+
+    if (shouldUpdate) {
+      startTransition(() => {
+        if (shouldUpdateQuery) {
+          setInputValue(nextQuery)
+          setQuery(nextQuery)
+        }
+        if (shouldUpdateGenres) {
+          setSelectedGenres(nextGenres)
+        }
+        if (shouldUpdateFormats) {
+          setSelectedFormats(nextFormats)
+        }
+        if (shouldUpdateProductTypes) {
+          setSelectedProductTypes(nextProductTypes)
+        }
+        if (shouldUpdateStock) {
+          setShowInStockOnly(nextStock)
+        }
+        if (shouldUpdateSort) {
+          setSortOption(nextSort)
+        }
+        setCriteria((prev) => ({
+          ...prev,
+          ...nextCriteria,
+        }))
+      })
     }
 
     hasHydratedFromParams.current = true
-  }, [searchParams, initialSort, query, selectedGenres, selectedFormats, selectedProductTypes, showInStockOnly, sortOption])
+  }, [searchParams, initialSort, query, selectedGenres, selectedFormats, selectedProductTypes, showInStockOnly, sortOption, pageSize])
+
+  const genresKey = useMemo(
+    () => [...criteria.genres].sort().join("|"),
+    [criteria.genres]
+  )
+  const formatsKey = useMemo(
+    () => [...criteria.formats].sort().join("|"),
+    [criteria.formats]
+  )
+  const productTypesKey = useMemo(
+    () => [...criteria.productTypes].sort().join("|"),
+    [criteria.productTypes]
+  )
 
   const debouncerRef =
     useRef<Debouncer<(job: SearchCriteria) => void> | null>(null)
@@ -644,7 +676,7 @@ const ProductSearchExperience = ({
       (job: SearchCriteria) => {
         setCriteria(job)
       },
-      { wait: 220 }
+      { wait: 320 }
     )
 
     debouncerRef.current = debouncer
@@ -679,26 +711,26 @@ const ProductSearchExperience = ({
     }
 
     const params = new URLSearchParams()
-    const trimmedQuery = query.trim()
+    const trimmedQuery = criteria.query.trim()
     if (trimmedQuery.length) {
       params.set("q", trimmedQuery)
     }
-    selectedGenres.forEach((value) => {
+    criteria.genres.forEach((value) => {
       if (value.trim().length) {
         params.append("genre", value)
       }
     })
-    selectedFormats.forEach((value) => {
+    criteria.formats.forEach((value) => {
       if (value.trim().length) {
         params.append("format", value)
       }
     })
-    selectedProductTypes.forEach((value) => {
+    criteria.productTypes.forEach((value) => {
       if (value.trim().length) {
         params.append("type", value)
       }
     })
-    if (showInStockOnly) {
+    if (criteria.inStockOnly) {
       params.set("stock", "1")
     }
     if (sortOption !== initialSort) {
@@ -719,31 +751,20 @@ const ProductSearchExperience = ({
 
     lastSyncedParamsRef.current = serialized
     isReplacingRef.current = true
-    router.replace(serialized ? `?${serialized}` : "", { scroll: false })
+    startTransition(() => {
+      router.replace(serialized ? `?${serialized}` : "", { scroll: false })
+    })
   }, [
-    query,
-    selectedGenres,
-    selectedFormats,
-    selectedProductTypes,
-    showInStockOnly,
+    criteria.query,
+    genresKey,
+    formatsKey,
+    productTypesKey,
+    criteria.inStockOnly,
     sortOption,
     router,
     searchParams,
     initialSort,
   ])
-
-  const genresKey = useMemo(
-    () => [...criteria.genres].sort().join("|"),
-    [criteria.genres]
-  )
-  const formatsKey = useMemo(
-    () => [...criteria.formats].sort().join("|"),
-    [criteria.formats]
-  )
-  const productTypesKey = useMemo(
-    () => [...criteria.productTypes].sort().join("|"),
-    [criteria.productTypes]
-  )
 
   const initialResult = useMemo<ProductSearchResponse>(
     () => ({
@@ -965,34 +986,48 @@ const formatProductTypeLabel = (value: string) =>
   )
 
   const toggleGenre = (genre: string) => {
-    setSelectedGenres((prev) =>
-      prev.includes(genre)
-        ? prev.filter((value) => value !== genre)
-        : [...prev, genre]
-    )
+    startTransition(() => {
+      setSelectedGenres((prev) =>
+        prev.includes(genre)
+          ? prev.filter((value) => value !== genre)
+          : [...prev, genre]
+      )
+    })
   }
 
   const toggleFormat = (formatValue: string) => {
-    setSelectedFormats((prev) =>
-      prev.includes(formatValue)
-        ? prev.filter((value) => value !== formatValue)
-        : [...prev, formatValue]
-    )
+    startTransition(() => {
+      setSelectedFormats((prev) =>
+        prev.includes(formatValue)
+          ? prev.filter((value) => value !== formatValue)
+          : [...prev, formatValue]
+      )
+    })
   }
 
   const toggleProductType = (type: string) => {
-    setSelectedProductTypes((prev) =>
-      prev.includes(type)
-        ? prev.filter((value) => value !== type)
-        : [...prev, type]
-    )
+    startTransition(() => {
+      setSelectedProductTypes((prev) =>
+        prev.includes(type)
+          ? prev.filter((value) => value !== type)
+          : [...prev, type]
+      )
+    })
   }
 
   const clearFilters = () => {
-    setSelectedGenres([])
-    setSelectedFormats([])
-    setSelectedProductTypes([])
-    setShowInStockOnly(false)
+    startTransition(() => {
+      setSelectedGenres([])
+      setSelectedFormats([])
+      setSelectedProductTypes([])
+      setShowInStockOnly(false)
+    })
+  }
+
+  const toggleStockOnly = () => {
+    startTransition(() => {
+      setShowInStockOnly((value) => !value)
+    })
   }
 
   const gridTemplateStyle = useMemo(
@@ -1019,7 +1054,7 @@ const formatProductTypeLabel = (value: string) =>
               onToggleProductType={toggleProductType}
               onClear={clearFilters}
               showInStockOnly={showInStockOnly}
-              onToggleStock={() => setShowInStockOnly((value) => !value)}
+              onToggleStock={toggleStockOnly}
             />
           </div>
         </aside>
@@ -1070,7 +1105,7 @@ const formatProductTypeLabel = (value: string) =>
                           setMobileFiltersOpen(false)
                         }}
                         showInStockOnly={showInStockOnly}
-                        onToggleStock={() => setShowInStockOnly((value) => !value)}
+                        onToggleStock={toggleStockOnly}
                       />
                       <div className="mt-8">
                         <SheetClose asChild>
@@ -1089,8 +1124,14 @@ const formatProductTypeLabel = (value: string) =>
                   aria-hidden
                 />
                 <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  value={inputValue}
+                  onChange={(event) => {
+                    const nextValue = event.target.value
+                    setInputValue(nextValue)
+                    startTransition(() => {
+                      setQuery(nextValue)
+                    })
+                  }}
                   placeholder="Seek brutality…"
                   className="h-9 flex-1 border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
                   type="search"
@@ -1106,13 +1147,18 @@ const formatProductTypeLabel = (value: string) =>
               selectedProductTypes.length ||
               showInStockOnly) && (
               <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                {query ? (
+                {inputValue ? (
                   <button
                     type="button"
-                    onClick={() => setQuery("")}
+                    onClick={() => {
+                      setInputValue("")
+                      startTransition(() => {
+                        setQuery("")
+                      })
+                    }}
                     className="rounded-full border border-destructive/60 bg-destructive/10 px-3 py-1 text-foreground transition hover:border-destructive hover:text-destructive"
                   >
-                    Query: <span className="ml-1 text-accent">{query}</span> ✕
+                    Query: <span className="ml-1 text-accent">{inputValue}</span> ✕
                   </button>
                 ) : null}
                 {selectedFormats.map((formatValue) => (
