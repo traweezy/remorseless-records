@@ -11,11 +11,13 @@ type SearchDocument = {
   title: string | null
   description: string | null
   subtitle: string | null
+  artist: string | null
   thumbnail: string | null
   collectionId: string | null
   collectionTitle: string | null
   collectionHandle: string | null
   genres: string[]
+  metalGenres: string[]
   format: string | null
   category_handles: string[]
   category_labels: string[]
@@ -30,6 +32,7 @@ type SearchDocument = {
   stock_status: "in_stock" | "low_stock" | "sold_out" | "unknown"
   created_at: string | null
   updated_at: string | null
+  product_type: string | null
   metadata: Record<string, unknown> | null
 }
 
@@ -62,6 +65,7 @@ const humanizeHandle = (handle: string): string =>
     .join(" ")
 
 const TYPE_HANDLES = new Set(["music", "bundles", "merch"])
+const METAL_ROOT_HANDLE = "metal"
 const GENRE_HANDLES = new Set(["metal", "death", "doom", "grind", "sludge"])
 const STRUCTURAL_HANDLES = new Set(["artists", "genres"])
 
@@ -164,6 +168,36 @@ const collectNonArtistCategoryEntries = (
   })
 
   return entries
+}
+
+const collectMetalGenreLabels = (
+  categories: Array<Record<string, any>> | undefined
+): string[] => {
+  if (!categories?.length) {
+    return []
+  }
+
+  const labels = new Set<string>()
+  for (const category of categories) {
+    const handle = coerceCategoryHandle(category)
+    if (!handle) {
+      continue
+    }
+
+    const ancestors = collectAncestors(category)
+    const hasMetalAncestor = ancestors.some((ancestor) =>
+      coerceCategoryHandle(ancestor) === METAL_ROOT_HANDLE
+    )
+
+    if (!hasMetalAncestor) {
+      continue
+    }
+
+    const label = coerceCategoryLabel(category, handle)
+    labels.add(label)
+  }
+
+  return Array.from(labels)
 }
 
 const getTagGenres = (tags?: Array<Record<string, any>> | null): string[] => {
@@ -317,6 +351,7 @@ const buildSearchDocument = (product: Record<string, any>): SearchDocument => {
   const categoryGenres = Array.from(genreEntries.values())
   const categoryHandles = Array.from(nonArtistEntries.keys())
   const categoryLabels = Array.from(nonArtistEntries.values())
+  const metalGenres = collectMetalGenreLabels(categories)
 
   const variantTitlesSet = new Set<string>()
   for (const variant of normalizedProduct.variants ?? []) {
@@ -329,6 +364,32 @@ const buildSearchDocument = (product: Record<string, any>): SearchDocument => {
 
   const genres =
     categoryGenres.length > 0 ? categoryGenres : getTagGenres(normalizedProduct.tags)
+  const metadata = (normalizedProduct.metadata ??
+    null) as Record<string, unknown> | null
+
+  const legacyImport = (metadata?.legacy_import ??
+    null) as Record<string, unknown> | null
+
+  const productTypeRaw =
+    (typeof legacyImport?.product_type === "string"
+      ? legacyImport.product_type
+      : null) ??
+    (typeof metadata?.product_type === "string" ? metadata.product_type : null) ??
+    null
+
+  const productType =
+    typeof productTypeRaw === "string" && productTypeRaw.trim().length
+      ? productTypeRaw.trim()
+      : null
+
+  const subtitle = toStringOrNull(normalizedProduct.subtitle ?? null)
+  const artistFromSubtitle =
+    subtitle && subtitle.trim().length ? subtitle.trim() : null
+
+  const artistFromMetadata =
+    typeof metadata?.artist === "string" && metadata.artist.trim().length
+      ? metadata.artist.trim()
+      : null
 
   const format =
     categoryTypes.length > 0
@@ -343,12 +404,14 @@ const buildSearchDocument = (product: Record<string, any>): SearchDocument => {
       (normalizedProduct as Record<string, unknown>).description ??
         (normalizedProduct as Record<string, unknown>).subtitle
     ),
-    subtitle: toStringOrNull(normalizedProduct.subtitle ?? null),
+    subtitle,
+    artist: artistFromMetadata ?? artistFromSubtitle,
     thumbnail: getFirstImageUrl(normalizedProduct),
     collectionId: collection?.id ?? null,
     collectionTitle: collection?.title ?? null,
     collectionHandle: collection?.handle ?? null,
     genres,
+    metalGenres,
     format,
     category_handles: categoryHandles,
     category_labels: categoryLabels,
@@ -369,9 +432,10 @@ const buildSearchDocument = (product: Record<string, any>): SearchDocument => {
       (normalizedProduct as Record<string, unknown>).updated_at ??
         (normalizedProduct as Record<string, unknown>).updatedAt
     ),
+    product_type: productType,
     metadata:
-      typeof normalizedProduct.metadata === "object" && normalizedProduct.metadata !== null
-        ? normalizedProduct.metadata
+      typeof metadata === "object" && metadata !== null
+        ? metadata
         : null,
   }
 }

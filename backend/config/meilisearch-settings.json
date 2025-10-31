@@ -5,11 +5,17 @@
       "handle",
       "title",
       "description",
+      "subtitle",
+      "artist",
       "thumbnail",
       "collectionId",
       "collectionTitle",
       "collectionHandle",
       "genres",
+      "metalGenres",
+      "category_handles",
+      "category_labels",
+      "variant_titles",
       "format",
       "price_amount",
       "price_currency",
@@ -19,12 +25,15 @@
       "inventory_quantity",
       "stock_status",
       "created_at",
-      "updated_at"
+      "updated_at",
+      "product_type"
     ],
     "primaryKey": "id",
     "indexSettings": {
       "searchableAttributes": [
         "title",
+        "subtitle",
+        "artist",
         "description",
         "collectionTitle",
         "genres",
@@ -35,11 +44,17 @@
         "handle",
         "title",
         "description",
+        "subtitle",
+        "artist",
         "thumbnail",
         "collectionId",
         "collectionTitle",
         "collectionHandle",
         "genres",
+        "metalGenres",
+        "category_handles",
+        "category_labels",
+        "variant_titles",
         "format",
         "price_amount",
         "price_currency",
@@ -49,7 +64,8 @@
         "stock_status",
         "inventory_quantity",
         "created_at",
-        "updated_at"
+        "updated_at",
+        "product_type"
       ],
       "filterableAttributes": [
         "id",
@@ -60,9 +76,12 @@
         "variant_titles",
         "collectionId",
         "price_currency",
-        "stock_status"
+        "stock_status",
+        "metalGenres",
+        "product_type"
       ],
       "sortableAttributes": [
+        "title",
         "price_amount",
         "created_at"
       ]
