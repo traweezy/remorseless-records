@@ -595,6 +595,8 @@ const ProductSearchExperience = ({
     if (isReplacingRef.current) {
       // Skip handling while we're replacing to avoid redundant state churn.
       isReplacingRef.current = false
+      hasHydratedFromParams.current = true
+      return
     }
 
     const nextQuery = paramsSnapshot.get("q") ?? ""
