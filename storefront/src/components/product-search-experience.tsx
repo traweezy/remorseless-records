@@ -719,7 +719,7 @@ const ProductSearchExperience = ({
 
     lastSyncedParamsRef.current = serialized
     isReplacingRef.current = true
-    router.replace(serialized ? `?${serialized}` : "?", { scroll: false })
+    router.replace(serialized ? `?${serialized}` : "", { scroll: false })
   }, [
     query,
     selectedGenres,
@@ -914,7 +914,6 @@ const ProductSearchExperience = ({
     virtualizer.scrollToIndex(0, { align: "start" })
   }, [criteriaKey, virtualizer])
 
-  const totalResultsCopy = mappedResults.length
   const activeFiltersCount =
     selectedGenres.length +
     selectedFormats.length +
@@ -922,25 +921,22 @@ const ProductSearchExperience = ({
     (showInStockOnly ? 1 : 0) +
     (query ? 1 : 0)
 
-  const genreOptions = useMemo(() => {
-    const metalEntries = Object.entries(facets.metalGenres ?? {}) as Array<[string, number]>
-    const genreEntries = Object.entries(facets.genres ?? {}) as Array<[string, number]>
-
-    const entries = metalEntries.length > 0 ? metalEntries : genreEntries
-
-    return entries
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([value, count]) => ({
-        value,
-        label: humanizeCategoryHandle(value),
-        count,
-      }))
-  }, [facets.metalGenres, facets.genres])
+  const genreOptions = useMemo(
+    () =>
+      (Object.entries(facets.metalGenres ?? {}) as Array<[string, number]>)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20)
+        .map(([value, count]) => ({
+          value,
+          label: humanizeCategoryHandle(value),
+          count,
+        })),
+    [facets.metalGenres]
+  )
 
   const formatOptions = useMemo(
     () =>
-      (Object.entries(facets.variants ?? facets.format ?? {}) as Array<[string, number]>)
+      (Object.entries(facets.variants ?? {}) as Array<[string, number]>)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 20)
         .map(([value, count]) => ({
@@ -951,10 +947,10 @@ const ProductSearchExperience = ({
     [facets.variants, facets.format]
   )
 
-  const formatProductTypeLabel = (value: string) =>
-    value
-      .replace(/[_-]+/g, " ")
-      .replace(/\b\w/g, (char) => char.toUpperCase())
+const formatProductTypeLabel = (value: string) =>
+  value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
 
   const productTypeOptions = useMemo(
     () =>
@@ -1169,7 +1165,7 @@ const ProductSearchExperience = ({
               </div>
             ) : null}
 
-            {totalResultsCopy ? (
+            {mappedResults.length ? (
               <div
                 className="relative"
                 style={{ height: virtualizer.getTotalSize() }}
