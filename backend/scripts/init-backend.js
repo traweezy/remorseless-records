@@ -17,6 +17,7 @@ const {
   seedOnce,
   reportDeploy,
 } = require('medusajs-launch-utils/src/initializeBackend')
+const { execSync } = require('child_process')
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -130,6 +131,24 @@ const initialize = async () => {
     await defaultPrepareEnvironment()
     await seedOnce()
     await reportDeploy()
+
+    try {
+      console.log('[search][prepare] Running Meilisearch sync/reindex...')
+      execSync('pnpm run search:prepare', {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
+        },
+      })
+      console.log('[search][prepare] Completed successfully.')
+    } catch (searchError) {
+      console.warn(
+        '[search][prepare] Failed to sync/rebuild Meilisearch index. The service will continue to boot. Error:',
+        searchError?.message ?? searchError
+      )
+    }
+
     console.log('Backend initialized successfully')
   } catch (error) {
     console.error('Error initializing backend:', error)
