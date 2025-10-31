@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { Debouncer } from "@tanstack/pacer"
 import { useInfiniteQuery } from "@tanstack/react-query"
@@ -35,6 +36,17 @@ import type {
   ProductSearchResponse,
   ProductSortOption,
 } from "@/lib/search/search"
+
+const arraysEqual = (a: readonly string[], b: readonly string[]): boolean => {
+  if (a.length !== b.length) {
+    return false
+  }
+
+  const sortedA = [...a].sort()
+  const sortedB = [...b].sort()
+
+  return sortedA.every((value, index) => value === sortedB[index])
+}
 
 const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
   ["featured", "Featured Picks"],
@@ -150,9 +162,11 @@ const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => {
 
 type SearchFacets = {
   genres: Record<string, number>
+  metalGenres: Record<string, number>
   format: Record<string, number>
   categories: Record<string, number>
   variants: Record<string, number>
+  productTypes: Record<string, number>
 }
 
 type ProductSearchExperienceProps = {
@@ -167,8 +181,8 @@ type ProductSearchExperienceProps = {
 type SearchCriteria = {
   query: string
   genres: string[]
-  categories: string[]
-  variants: string[]
+  formats: string[]
+  productTypes: string[]
   limit: number
   inStockOnly: boolean
 }
@@ -205,237 +219,166 @@ const SORT_OPTIONS: Array<{
   },
 ]
 
-const alphabeticalCollator = new Intl.Collator(undefined, {
-  sensitivity: "base",
-})
+type FilterOption = {
+  value: string
+  label: string
+  count: number
+}
 
-const sortResults = (
-  results: ProductSearchHit[],
-  sort: ProductSortOption
-): ProductSearchHit[] => {
-  if (sort === "alphabetical") {
-    return [...results].sort((a, b) =>
-      alphabeticalCollator.compare(
-        `${a.artist ?? ""} ${a.album ?? ""}`,
-        `${b.artist ?? ""} ${b.album ?? ""}`
-      )
-    )
+const FilterCheckboxList = ({
+  title,
+  options,
+  selected,
+  onToggle,
+}: {
+  title: string
+  options: FilterOption[]
+  selected: string[]
+  onToggle: (value: string) => void
+}) => {
+  if (!options.length) {
+    return null
   }
 
-  if (sort === "newest") {
-    return [...results].sort((a, b) => {
-      const aDate = new Date(a.createdAt ?? 0).getTime()
-      const bDate = new Date(b.createdAt ?? 0).getTime()
-      return bDate - aDate
-    })
-  }
+  return (
+    <details className="group space-y-3" open>
+      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
+        <span>{title}</span>
+        <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
+      </summary>
+      <div className="flex flex-col gap-2">
+        {options.map(({ value, label, count }) => {
+          const normalizedValue = value.trim()
+          const checked = selected.includes(normalizedValue)
+          const checkboxId = `${title.toLowerCase()}-${normalizedValue.replace(/\s+/g, "-")}`
 
-  if (sort === "price-low") {
-    return [...results].sort((a, b) => {
-      const aPrice = a.priceAmount ?? Number.POSITIVE_INFINITY
-      const bPrice = b.priceAmount ?? Number.POSITIVE_INFINITY
-      return aPrice - bPrice
-    })
-  }
-
-  if (sort === "price-high") {
-    return [...results].sort((a, b) => {
-      const aPrice = a.priceAmount ?? 0
-      const bPrice = b.priceAmount ?? 0
-      return bPrice - aPrice
-    })
-  }
-
-  return results
+          return (
+            <label
+              key={normalizedValue}
+              htmlFor={checkboxId}
+              className={cn(
+                "flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-3 py-2 text-[0.65rem] uppercase tracking-[0.25rem] transition hover:border-destructive hover:text-destructive",
+                checked && "border-destructive bg-destructive/15 text-destructive"
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  id={checkboxId}
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggle(normalizedValue)}
+                  className="h-3.5 w-3.5 rounded border-border/80 text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+                />
+                <span className="leading-none text-foreground">{label}</span>
+              </span>
+              <span className="text-[0.6rem] text-muted-foreground/80">
+                {count}
+              </span>
+            </label>
+          )
+        })}
+      </div>
+    </details>
+  )
 }
 
 const FilterSidebar = ({
   genres,
-  variants,
-  categories,
+  formats,
+  productTypes,
   selectedGenres,
-  selectedVariants,
-  selectedCategories,
+  selectedFormats,
+  selectedProductTypes,
   onToggleGenre,
-  onToggleVariant,
-  onToggleCategory,
+  onToggleFormat,
+  onToggleProductType,
   onClear,
   showInStockOnly,
   onToggleStock,
 }: {
-  genres: Array<[string, number]>
-  variants: Array<[string, number]>
-  categories: Array<[string, number]>
+  genres: FilterOption[]
+  formats: FilterOption[]
+  productTypes: FilterOption[]
   selectedGenres: string[]
-  selectedVariants: string[]
-  selectedCategories: string[]
+  selectedFormats: string[]
+  selectedProductTypes: string[]
   onToggleGenre: (genre: string) => void
-  onToggleVariant: (variant: string) => void
-  onToggleCategory: (category: string) => void
+  onToggleFormat: (format: string) => void
+  onToggleProductType: (type: string) => void
   onClear: () => void
   showInStockOnly: boolean
   onToggleStock: () => void
-}) => {
-  return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
-            Filters
-          </h2>
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-xs uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-accent"
-          >
-            Reset
-          </button>
-        </div>
+}) => (
+  <div className="space-y-6">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
+          Filters
+        </h2>
         <button
           type="button"
-          onClick={onToggleStock}
-          className={cn(
-            "flex w-full items-center justify-between rounded-full border px-4 py-2 text-xs uppercase tracking-[0.3rem] transition",
-            showInStockOnly
-              ? "border-destructive/80 bg-destructive text-background shadow-glow"
-              : "border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive"
-          )}
-          aria-pressed={showInStockOnly}
+          onClick={onClear}
+          className="text-xs uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-accent"
         >
-          <span>In stock only</span>
-          <span
-            className={cn(
-              "inline-flex h-5 w-10 items-center rounded-full border border-border/60 bg-background px-1 transition",
-              showInStockOnly && "justify-end border-destructive bg-destructive/40"
-            )}
-          >
-            <span
-              className={cn(
-                "h-3.5 w-3.5 rounded-full bg-border transition",
-                showInStockOnly && "bg-background"
-              )}
-            />
-          </span>
+          Reset
         </button>
       </div>
-
-      <div className="space-y-5">
-        <details className="group space-y-3" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
-            <span>Categories</span>
-            <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
-          </summary>
-          <div className="flex flex-wrap gap-2">
-            {categories.length ? (
-              categories.map(([handle, count]) => {
-                const isActive = selectedCategories.includes(handle)
-                const label = humanizeCategoryHandle(handle)
-                return (
-                  <button
-                    key={`category-${handle}`}
-                    type="button"
-                    onClick={() => onToggleCategory(handle)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
-                      isActive
-                        ? "border-destructive bg-destructive text-background shadow-glow-sm"
-                        : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
-                    )}
-                  >
-                    {label}
-                    <span className="ml-1 text-[0.55rem] text-muted-foreground/80">
-                      ({count})
-                    </span>
-                  </button>
-                )
-              })
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Categories coming soon.
-              </p>
+      <button
+        type="button"
+        onClick={onToggleStock}
+        className={cn(
+          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-xs uppercase tracking-[0.3rem] transition",
+          showInStockOnly
+            ? "border-destructive/80 bg-destructive text-background shadow-glow"
+            : "border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive"
+        )}
+        aria-pressed={showInStockOnly}
+      >
+        <span>In stock only</span>
+        <span
+          className={cn(
+            "inline-flex h-5 w-10 items-center rounded-full border border-border/60 bg-background px-1 transition",
+            showInStockOnly && "justify-end border-destructive bg-destructive/40"
+          )}
+        >
+          <span
+            className={cn(
+              "h-3.5 w-3.5 rounded-full bg-border transition",
+              showInStockOnly && "bg-background"
             )}
-          </div>
-        </details>
-
-        <Separator className="border-border/50" />
-
-        <details className="group space-y-3" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
-            <span>Variants</span>
-            <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
-          </summary>
-          <div className="flex flex-wrap gap-2">
-            {variants.length ? (
-              variants.map(([variant, count]) => {
-                const isActive = selectedVariants.includes(variant)
-                return (
-                  <button
-                    key={`variant-${variant}`}
-                    type="button"
-                    onClick={() => onToggleVariant(variant)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
-                      isActive
-                        ? "border-destructive bg-destructive text-background shadow-glow-sm"
-                        : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
-                    )}
-                  >
-                    {variant}
-                    <span className="ml-1 text-[0.55rem] text-muted-foreground/80">
-                      ({count})
-                    </span>
-                  </button>
-                )
-              })
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Variants coming soon.
-              </p>
-            )}
-          </div>
-        </details>
-
-        <Separator className="border-border/50" />
-
-        <details className="group space-y-3" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
-            <span>Genres</span>
-            <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
-          </summary>
-          <div className="flex flex-wrap gap-2">
-            {genres.length ? (
-              genres.map(([genre, count]) => {
-                const isActive = selectedGenres.includes(genre)
-                return (
-                  <button
-                    key={`genre-${genre}`}
-                    type="button"
-                    onClick={() => onToggleGenre(genre)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-[0.6rem] uppercase tracking-[0.3rem] transition",
-                      isActive
-                        ? "border-destructive bg-destructive text-background shadow-glow-sm"
-                        : "border-border/60 text-muted-foreground hover:border-destructive hover:text-destructive"
-                    )}
-                  >
-                    {genre}
-                    <span className="ml-1 text-[0.55rem] text-muted-foreground/80">
-                      ({count})
-                    </span>
-                  </button>
-                )
-              })
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Genres appear as catalog grows.
-              </p>
-            )}
-          </div>
-        </details>
-      </div>
+          />
+        </span>
+      </button>
     </div>
-  )
-}
+
+    <div className="space-y-5">
+      <FilterCheckboxList
+        title="Genres"
+        options={genres}
+        selected={selectedGenres}
+        onToggle={onToggleGenre}
+      />
+
+      <Separator className="border-border/50" />
+
+      <FilterCheckboxList
+        title="Formats"
+        options={formats}
+        selected={selectedFormats}
+        onToggle={onToggleFormat}
+      />
+
+      <Separator className="border-border/50" />
+
+      <FilterCheckboxList
+        title="Product Type"
+        options={productTypes}
+        selected={selectedProductTypes}
+        onToggle={onToggleProductType}
+      />
+    </div>
+  </div>
+)
 
 const SortDropdown = ({
   value,
@@ -610,21 +553,88 @@ const ProductSearchExperience = ({
   pageSize = 24,
   initialSort = "alphabetical",
 }: ProductSearchExperienceProps) => {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const hasHydratedFromParams = useRef(false)
+  const isReplacingRef = useRef(false)
+  const lastSyncedParamsRef = useRef<string>("")
+
   const [query, setQuery] = useState("")
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [selectedVariants, setSelectedVariants] = useState<string[]>([])
+  const [selectedFormats, setSelectedFormats] = useState<string[]>([])
+  const [selectedProductTypes, setSelectedProductTypes] = useState<string[]>([])
   const [showInStockOnly, setShowInStockOnly] = useState(false)
   const [sortOption, setSortOption] = useState<ProductSortOption>(initialSort)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [criteria, setCriteria] = useState<SearchCriteria>({
     query: "",
     genres: [],
-    categories: [],
-    variants: [],
+    formats: [],
+    productTypes: [],
     limit: pageSize,
     inStockOnly: false,
   })
+
+  useEffect(() => {
+    const paramsSnapshot = searchParams ? new URLSearchParams(searchParams.toString()) : null
+    if (!paramsSnapshot) {
+      hasHydratedFromParams.current = true
+      return
+    }
+
+    if (isReplacingRef.current) {
+      // Skip handling while we're replacing to avoid redundant state churn.
+      isReplacingRef.current = false
+    }
+
+    const nextQuery = paramsSnapshot.get("q") ?? ""
+    const nextGenres = paramsSnapshot.getAll("genre")
+    const nextFormats = paramsSnapshot.getAll("format")
+    const nextProductTypes = paramsSnapshot.getAll("type")
+    const nextStock = paramsSnapshot.get("stock") === "1"
+    const nextSortParam = paramsSnapshot.get("sort")
+    const nextSort = SORT_OPTIONS.some(({ value }) => value === nextSortParam)
+      ? (nextSortParam as ProductSortOption)
+      : initialSort
+
+    const shouldUpdateQuery = nextQuery !== query
+    const shouldUpdateGenres = !arraysEqual(nextGenres, selectedGenres)
+    const shouldUpdateFormats = !arraysEqual(nextFormats, selectedFormats)
+    const shouldUpdateProductTypes = !arraysEqual(nextProductTypes, selectedProductTypes)
+    const shouldUpdateStock = nextStock !== showInStockOnly
+    const shouldUpdateSort = nextSort !== sortOption
+
+    if (
+      shouldUpdateQuery ||
+      shouldUpdateGenres ||
+      shouldUpdateFormats ||
+      shouldUpdateProductTypes ||
+      shouldUpdateStock ||
+      shouldUpdateSort ||
+      !hasHydratedFromParams.current
+    ) {
+      if (shouldUpdateQuery) {
+        setQuery(nextQuery)
+      }
+      if (shouldUpdateGenres) {
+        setSelectedGenres(nextGenres)
+      }
+      if (shouldUpdateFormats) {
+        setSelectedFormats(nextFormats)
+      }
+      if (shouldUpdateProductTypes) {
+        setSelectedProductTypes(nextProductTypes)
+      }
+      if (shouldUpdateStock) {
+        setShowInStockOnly(nextStock)
+      }
+      if (shouldUpdateSort) {
+        setSortOption(nextSort)
+      }
+    }
+
+    hasHydratedFromParams.current = true
+  }, [searchParams, initialSort, query, selectedGenres, selectedFormats, selectedProductTypes, showInStockOnly, sortOption])
 
   const debouncerRef =
     useRef<Debouncer<(job: SearchCriteria) => void> | null>(null)
@@ -649,31 +659,90 @@ const ProductSearchExperience = ({
     debouncerRef.current?.maybeExecute({
       query,
       genres: selectedGenres,
-      categories: selectedCategories,
-      variants: selectedVariants,
+      formats: selectedFormats,
+      productTypes: selectedProductTypes,
       limit: pageSize,
       inStockOnly: showInStockOnly,
     })
   }, [
     query,
     selectedGenres,
-    selectedCategories,
-    selectedVariants,
+    selectedFormats,
+    selectedProductTypes,
     showInStockOnly,
     pageSize,
+  ])
+
+  useEffect(() => {
+    if (!hasHydratedFromParams.current) {
+      return
+    }
+
+    const params = new URLSearchParams()
+    const trimmedQuery = query.trim()
+    if (trimmedQuery.length) {
+      params.set("q", trimmedQuery)
+    }
+    selectedGenres.forEach((value) => {
+      if (value.trim().length) {
+        params.append("genre", value)
+      }
+    })
+    selectedFormats.forEach((value) => {
+      if (value.trim().length) {
+        params.append("format", value)
+      }
+    })
+    selectedProductTypes.forEach((value) => {
+      if (value.trim().length) {
+        params.append("type", value)
+      }
+    })
+    if (showInStockOnly) {
+      params.set("stock", "1")
+    }
+    if (sortOption !== initialSort) {
+      params.set("sort", sortOption)
+    }
+
+    const serialized = params.toString()
+    const current = searchParams?.toString() ?? ""
+
+    if (serialized === current) {
+      lastSyncedParamsRef.current = serialized
+      return
+    }
+
+    if (serialized === lastSyncedParamsRef.current) {
+      return
+    }
+
+    lastSyncedParamsRef.current = serialized
+    isReplacingRef.current = true
+    router.replace(serialized ? `?${serialized}` : "?", { scroll: false })
+  }, [
+    query,
+    selectedGenres,
+    selectedFormats,
+    selectedProductTypes,
+    showInStockOnly,
+    sortOption,
+    router,
+    searchParams,
+    initialSort,
   ])
 
   const genresKey = useMemo(
     () => [...criteria.genres].sort().join("|"),
     [criteria.genres]
   )
-  const categoriesKey = useMemo(
-    () => [...criteria.categories].sort().join("|"),
-    [criteria.categories]
+  const formatsKey = useMemo(
+    () => [...criteria.formats].sort().join("|"),
+    [criteria.formats]
   )
-  const variantsKey = useMemo(
-    () => [...criteria.variants].sort().join("|"),
-    [criteria.variants]
+  const productTypesKey = useMemo(
+    () => [...criteria.productTypes].sort().join("|"),
+    [criteria.productTypes]
   )
 
   const initialResult = useMemo<ProductSearchResponse>(
@@ -705,8 +774,8 @@ const ProductSearchExperience = ({
       "catalog-search",
       criteria.query.trim(),
       genresKey,
-      categoriesKey,
-      variantsKey,
+      formatsKey,
+      productTypesKey,
       criteria.limit,
       sortOption,
       criteria.inStockOnly ? "in-stock" : "all",
@@ -718,8 +787,8 @@ const ProductSearchExperience = ({
         offset: pageParam,
         filters: {
           genres: criteria.genres,
-          categories: criteria.categories,
-          variants: criteria.variants,
+          variants: criteria.formats,
+          productTypes: criteria.productTypes,
         },
         sort: sortOption,
         inStockOnly: criteria.inStockOnly,
@@ -756,14 +825,9 @@ const ProductSearchExperience = ({
     return deduped
   }, [pages])
 
-  const sortedHits = useMemo(
-    () => sortResults(aggregatedHits, sortOption),
-    [aggregatedHits, sortOption]
-  )
-
   const mappedResults = useMemo(
-    () => sortedHits.map(mapHitToSummary),
-    [sortedHits]
+    () => aggregatedHits.map(mapHitToSummary),
+    [aggregatedHits]
   )
 
   const columns = useResponsiveColumns()
@@ -826,12 +890,19 @@ const ProductSearchExperience = ({
       [
         criteria.query.trim(),
         genresKey,
-        categoriesKey,
-        variantsKey,
+        formatsKey,
+        productTypesKey,
         criteria.inStockOnly ? "in-stock" : "all",
         sortOption,
       ].join("|"),
-    [criteria.query, genresKey, categoriesKey, variantsKey, criteria.inStockOnly, sortOption]
+    [
+      criteria.query,
+      genresKey,
+      formatsKey,
+      productTypesKey,
+      criteria.inStockOnly,
+      sortOption,
+    ]
   )
 
   useEffect(() => {
@@ -846,33 +917,55 @@ const ProductSearchExperience = ({
   const totalResultsCopy = mappedResults.length
   const activeFiltersCount =
     selectedGenres.length +
-    selectedCategories.length +
-    selectedVariants.length +
+    selectedFormats.length +
+    selectedProductTypes.length +
     (showInStockOnly ? 1 : 0) +
     (query ? 1 : 0)
 
-  const sortedGenreFacets = useMemo(
-    () =>
-      Object.entries(facets.genres ?? {})
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 16),
-    [facets.genres]
-  )
+  const genreOptions = useMemo(() => {
+    const metalEntries = Object.entries(facets.metalGenres ?? {}) as Array<[string, number]>
+    const genreEntries = Object.entries(facets.genres ?? {}) as Array<[string, number]>
 
-  const sortedCategoryFacets = useMemo(
-    () =>
-      Object.entries(facets.categories ?? {})
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 20),
-    [facets.categories]
-  )
+    const entries = metalEntries.length > 0 ? metalEntries : genreEntries
 
-  const sortedVariantFacets = useMemo(
+    return entries
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([value, count]) => ({
+        value,
+        label: humanizeCategoryHandle(value),
+        count,
+      }))
+  }, [facets.metalGenres, facets.genres])
+
+  const formatOptions = useMemo(
     () =>
-      Object.entries(facets.variants ?? facets.format ?? {})
+      (Object.entries(facets.variants ?? facets.format ?? {}) as Array<[string, number]>)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 16),
+        .slice(0, 20)
+        .map(([value, count]) => ({
+          value,
+          label: value,
+          count,
+        })),
     [facets.variants, facets.format]
+  )
+
+  const formatProductTypeLabel = (value: string) =>
+    value
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+
+  const productTypeOptions = useMemo(
+    () =>
+      (Object.entries(facets.productTypes ?? {}) as Array<[string, number]>)
+        .sort((a, b) => b[1] - a[1])
+        .map(([value, count]) => ({
+          value,
+          label: formatProductTypeLabel(value),
+          count,
+        })),
+    [facets.productTypes]
   )
 
   const toggleGenre = (genre: string) => {
@@ -883,26 +976,26 @@ const ProductSearchExperience = ({
     )
   }
 
-  const toggleCategory = (category: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((value) => value !== category)
-        : [...prev, category]
+  const toggleFormat = (formatValue: string) => {
+    setSelectedFormats((prev) =>
+      prev.includes(formatValue)
+        ? prev.filter((value) => value !== formatValue)
+        : [...prev, formatValue]
     )
   }
 
-  const toggleVariant = (variant: string) => {
-    setSelectedVariants((prev) =>
-      prev.includes(variant)
-        ? prev.filter((value) => value !== variant)
-        : [...prev, variant]
+  const toggleProductType = (type: string) => {
+    setSelectedProductTypes((prev) =>
+      prev.includes(type)
+        ? prev.filter((value) => value !== type)
+        : [...prev, type]
     )
   }
 
   const clearFilters = () => {
     setSelectedGenres([])
-    setSelectedCategories([])
-    setSelectedVariants([])
+    setSelectedFormats([])
+    setSelectedProductTypes([])
     setShowInStockOnly(false)
   }
 
@@ -919,15 +1012,15 @@ const ProductSearchExperience = ({
         <aside className="hidden lg:block lg:w-56 lg:flex-shrink-0">
           <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto bg-background/90 px-4 py-5 supports-[backdrop-filter]:backdrop-blur-xl">
             <FilterSidebar
-              genres={sortedGenreFacets}
-              variants={sortedVariantFacets}
-              categories={sortedCategoryFacets}
+              genres={genreOptions}
+              formats={formatOptions}
+              productTypes={productTypeOptions}
               selectedGenres={selectedGenres}
-              selectedVariants={selectedVariants}
-              selectedCategories={selectedCategories}
+              selectedFormats={selectedFormats}
+              selectedProductTypes={selectedProductTypes}
               onToggleGenre={toggleGenre}
-              onToggleVariant={toggleVariant}
-              onToggleCategory={toggleCategory}
+              onToggleFormat={toggleFormat}
+              onToggleProductType={toggleProductType}
               onClear={clearFilters}
               showInStockOnly={showInStockOnly}
               onToggleStock={() => setShowInStockOnly((value) => !value)}
@@ -967,15 +1060,15 @@ const ProductSearchExperience = ({
                     </SheetHeader>
                     <div className="h-[calc(100vh-6.5rem)] overflow-y-auto px-6 pb-10">
                       <FilterSidebar
-                        genres={sortedGenreFacets}
-                        variants={sortedVariantFacets}
-                        categories={sortedCategoryFacets}
+                        genres={genreOptions}
+                        formats={formatOptions}
+                        productTypes={productTypeOptions}
                         selectedGenres={selectedGenres}
-                        selectedVariants={selectedVariants}
-                        selectedCategories={selectedCategories}
+                        selectedFormats={selectedFormats}
+                        selectedProductTypes={selectedProductTypes}
                         onToggleGenre={toggleGenre}
-                        onToggleVariant={toggleVariant}
-                        onToggleCategory={toggleCategory}
+                        onToggleFormat={toggleFormat}
+                        onToggleProductType={toggleProductType}
                         onClear={() => {
                           clearFilters()
                           setMobileFiltersOpen(false)
@@ -1013,8 +1106,8 @@ const ProductSearchExperience = ({
 
             {(query ||
               selectedGenres.length ||
-              selectedCategories.length ||
-              selectedVariants.length ||
+              selectedFormats.length ||
+              selectedProductTypes.length ||
               showInStockOnly) && (
               <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
                 {query ? (
@@ -1026,24 +1119,24 @@ const ProductSearchExperience = ({
                     Query: <span className="ml-1 text-accent">{query}</span> ✕
                   </button>
                 ) : null}
-                {selectedCategories.map((category) => (
+                {selectedFormats.map((formatValue) => (
                   <button
-                    key={`active-category-${category}`}
+                    key={`active-format-${formatValue}`}
                     type="button"
-                    onClick={() => toggleCategory(category)}
+                    onClick={() => toggleFormat(formatValue)}
                     className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
                   >
-                    {humanizeCategoryHandle(category)} ✕
+                    {formatValue} ✕
                   </button>
                 ))}
-                {selectedVariants.map((variant) => (
+                {selectedProductTypes.map((type) => (
                   <button
-                    key={`active-variant-${variant}`}
+                    key={`active-product-type-${type}`}
                     type="button"
-                    onClick={() => toggleVariant(variant)}
+                    onClick={() => toggleProductType(type)}
                     className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
                   >
-                    {variant} ✕
+                    {formatProductTypeLabel(type)} ✕
                   </button>
                 ))}
                 {selectedGenres.map((genre) => (
@@ -1053,7 +1146,7 @@ const ProductSearchExperience = ({
                     onClick={() => toggleGenre(genre)}
                     className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
                   >
-                    {genre} ✕
+                    {humanizeCategoryHandle(genre)} ✕
                   </button>
                 ))}
                 {showInStockOnly ? (
