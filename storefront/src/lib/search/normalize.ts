@@ -121,12 +121,14 @@ export const normalizeSearchHit = (
       ? hit.handle.trim()
       : ""
 
-  const title =
+  const rawTitle =
     typeof hit.title === "string"
       ? hit.title
       : typeof hit.name === "string"
         ? hit.name
-        : "Untitled Release"
+        : null
+
+  const title = rawTitle ?? "Untitled Release"
 
   const subtitle =
     typeof hit.subtitle === "string"
@@ -158,6 +160,13 @@ export const normalizeSearchHit = (
     collectionTitle,
   })
 
+  const explicitArtist =
+    typeof hit.artist === "string" && hit.artist.trim().length
+      ? hit.artist.trim()
+      : typeof metadataValue?.artist === "string" && metadataValue.artist.trim().length
+        ? (metadataValue.artist as string).trim()
+        : null
+
   const formatCandidates = new Set<string>()
 
   const addFormat = (value: string | null | undefined) => {
@@ -172,6 +181,7 @@ export const normalizeSearchHit = (
   }
 
   const genres = asStringArray(hit.genres ?? hit.genre)
+  const metalGenres = asStringArray(hit.metalGenres ?? hit.metal_genres)
   const categoryHandles = asStringArray(
     hit.category_handles ?? hit.categoryHandles ?? hit.categories
   )
@@ -244,11 +254,18 @@ export const normalizeSearchHit = (
         ? hit.createdAt
         : null
 
+  const productType =
+    typeof hit.product_type === "string"
+      ? hit.product_type
+      : typeof hit.productType === "string"
+        ? hit.productType
+        : null
+
   return {
     id,
     handle,
     title,
-    artist: slug.artist,
+    artist: explicitArtist ?? slug.artist ?? subtitle ?? title,
     album: slug.album,
     slug,
     subtitle,
@@ -257,6 +274,7 @@ export const normalizeSearchHit = (
     defaultVariant,
     formats,
     genres,
+    metalGenres,
     categories: categoryLabels,
     categoryHandles,
     variantTitles,
@@ -264,6 +282,7 @@ export const normalizeSearchHit = (
     priceAmount,
     createdAt,
     stockStatus,
+    productType,
   }
 }
 
@@ -292,16 +311,29 @@ export const extractFacetMaps = (
   facetDistribution: FacetDistribution | undefined
 ): {
   genres: FacetMap
+  metalGenres: FacetMap
   format: FacetMap
   categories: FacetMap
   variants: FacetMap
+  productTypes: FacetMap
 } => {
   if (!facetDistribution) {
-    return { genres: {}, format: {}, categories: {}, variants: {} }
+    return {
+      genres: {},
+      metalGenres: {},
+      format: {},
+      categories: {},
+      variants: {},
+      productTypes: {},
+    }
   }
 
   const genres = coerceFacetRecord(
     facetDistribution.genres ?? facetDistribution.genre
+  )
+
+  const metalGenres = coerceFacetRecord(
+    facetDistribution.metalGenres ?? facetDistribution.metal_genres
   )
 
   const format = coerceFacetRecord(
@@ -316,5 +348,9 @@ export const extractFacetMaps = (
     facetDistribution.variant_titles ?? facetDistribution.variants
   )
 
-  return { genres, format, categories, variants }
+  const productTypes = coerceFacetRecord(
+    facetDistribution.product_type ?? facetDistribution.productTypes
+  )
+
+  return { genres, metalGenres, format, categories, variants, productTypes }
 }

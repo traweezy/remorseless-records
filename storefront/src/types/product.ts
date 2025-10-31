@@ -24,6 +24,7 @@ export type RelatedProductSummary = {
 
 export type ProductSearchHit = RelatedProductSummary & {
   genres: string[]
+  metalGenres: string[]
   categories: string[]
   categoryHandles: string[]
   variantTitles: string[]
@@ -31,4 +32,5 @@ export type ProductSearchHit = RelatedProductSummary & {
   priceAmount?: number | null
   createdAt?: string | null
   stockStatus?: string | null
+  productType?: string | null
 }

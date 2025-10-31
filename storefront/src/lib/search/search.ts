@@ -10,6 +10,7 @@ export type ProductSearchFilters = {
   formats?: string[]
   categories?: string[]
   variants?: string[]
+  productTypes?: string[]
 }
 
 export type ProductSortOption =
@@ -32,15 +33,24 @@ export type ProductSearchResponse = {
   total: number
   facets: {
     genres: FacetMap
+    metalGenres: FacetMap
     format: FacetMap
     categories: FacetMap
     variants: FacetMap
+    productTypes: FacetMap
   }
   offset: number
 }
 
 type FilterDescriptor = {
-  attribute: "genres" | "format" | "category_handles" | "variant_titles" | "stock_status"
+  attribute:
+    | "genres"
+    | "metalGenres"
+    | "format"
+    | "category_handles"
+    | "variant_titles"
+    | "product_type"
+    | "stock_status"
   values?: string[]
 }
 
@@ -84,6 +94,7 @@ const buildFilter = (
   tryFilter("format", filters?.formats)
   tryFilter("category_handles", filters?.categories)
   tryFilter("variant_titles", filters?.variants)
+  tryFilter("product_type", filters?.productTypes)
 
   if (inStockOnly) {
     clauses.push('(stock_status != "sold_out")')
@@ -146,14 +157,18 @@ const computeFacetCounts = (
   hits: ProductSearchHit[]
 ): {
   genres: FacetMap
+  metalGenres: FacetMap
   format: FacetMap
   categories: FacetMap
   variants: FacetMap
+  productTypes: FacetMap
 } => {
   const genres: FacetMap = {}
+  const metalGenres: FacetMap = {}
   const format: FacetMap = {}
   const categories: FacetMap = {}
   const variants: FacetMap = {}
+  const productTypes: FacetMap = {}
 
   hits.forEach((hit) => {
     hit.genres?.forEach((genre) => {
@@ -183,6 +198,16 @@ const computeFacetCounts = (
       }
     })
 
+    hit.metalGenres?.forEach((metal) => {
+      if (!metal) {
+        return
+      }
+      const key = metal.trim()
+      if (key.length) {
+        metalGenres[key] = (metalGenres[key] ?? 0) + 1
+      }
+    })
+
     hit.variantTitles?.forEach((variant) => {
       if (!variant) {
         return
@@ -192,9 +217,14 @@ const computeFacetCounts = (
         variants[key] = (variants[key] ?? 0) + 1
       }
     })
+
+    const typeKey = hit.productType?.trim()
+    if (typeKey) {
+      productTypes[typeKey] = (productTypes[typeKey] ?? 0) + 1
+    }
   })
 
-  return { genres, format, categories, variants }
+  return { genres, metalGenres, format, categories, variants, productTypes }
 }
 
 const filterableCache = new Map<string, Set<string>>()
@@ -235,7 +265,7 @@ export const searchProductsWithClient = async (
   const { filterExpression, postFilters } = buildFilter(filters, inStockOnly, filterable)
 
   const sortMapping: Record<ProductSortOption, string | null> = {
-    alphabetical: null,
+    alphabetical: "title:asc",
     newest: "created_at:desc",
     "price-low": "price_amount:asc",
     "price-high": "price_amount:desc",
@@ -244,7 +274,7 @@ export const searchProductsWithClient = async (
   const sortDirective = sort ? sortMapping[sort] ?? null : null
   const sortDirectives = sortDirective ? [sortDirective] : undefined
 
-  const facetsToRequest: string[] = ["genres", "format"]
+  const facetsToRequest: string[] = ["genres", "metalGenres", "format", "product_type"]
   if (filterable.has("category_handles")) {
     facetsToRequest.push("category_handles")
   }
@@ -285,6 +315,9 @@ export const searchProductsWithClient = async (
     genres: Object.keys(facetsFromIndex.genres).length
       ? facetsFromIndex.genres
       : fallbackFacets.genres,
+    metalGenres: Object.keys(facetsFromIndex.metalGenres).length
+      ? facetsFromIndex.metalGenres
+      : fallbackFacets.metalGenres,
     format: Object.keys(facetsFromIndex.format).length
       ? facetsFromIndex.format
       : fallbackFacets.format,
@@ -296,6 +329,9 @@ export const searchProductsWithClient = async (
       filterable.has("variant_titles") && Object.keys(facetsFromIndex.variants).length
         ? facetsFromIndex.variants
         : fallbackFacets.variants,
+    productTypes: Object.keys(facetsFromIndex.productTypes).length
+      ? facetsFromIndex.productTypes
+      : fallbackFacets.productTypes,
   }
 
   return {

@@ -191,6 +191,13 @@ export const mapStoreProductToSearchHit = (
     inferredFormats.add(derivedFormat)
   }
 
+  const metadata = product.metadata as Record<string, unknown> | null | undefined
+  const legacyImport = metadata?.legacy_import as Record<string, unknown> | undefined
+  const productType =
+    (typeof legacyImport?.product_type === "string" ? legacyImport.product_type : undefined) ??
+    (typeof metadata?.product_type === "string" ? (metadata.product_type as string) : undefined) ??
+    null
+
   return {
     ...summary,
     formats: Array.from(inferredFormats),
@@ -199,6 +206,7 @@ export const mapStoreProductToSearchHit = (
         ? categoryGenres
         : product.tags?.map((tag) => tag.value).filter((value): value is string => Boolean(value)) ??
           [],
+    metalGenres: categoryGenres,
     categories: categoryLabels,
     categoryHandles,
     variantTitles,
@@ -206,5 +214,6 @@ export const mapStoreProductToSearchHit = (
     priceAmount,
     createdAt,
     stockStatus,
+    productType,
   }
 }
