@@ -11,12 +11,16 @@ const productRelations = [
   "collection",
   "tags",
   "images",
+  "metadata",
   "variants",
   "variants.prices",
   "variants.options",
   "variants.options.option",
   "options",
   "options.values",
+  "categories",
+  "categories.parent_category",
+  "categories.parent_category.parent_category",
 ]
 
 export default async function reindexMeilisearch({

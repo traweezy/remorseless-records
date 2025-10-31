@@ -1,6 +1,14 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react"
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Debouncer } from "@tanstack/pacer"
@@ -851,6 +859,8 @@ const ProductSearchExperience = ({
     [aggregatedHits]
   )
 
+  const deferredResults = useDeferredValue(mappedResults)
+
   const columns = useResponsiveColumns()
   const rowEstimate = useMemo(() => {
     if (columns >= 4) return 420
@@ -860,7 +870,7 @@ const ProductSearchExperience = ({
   }, [columns])
 
   const totalRowCount =
-    columns > 0 ? Math.max(Math.ceil(totalResults / columns), 1) : 1
+    columns > 0 ? Math.max(Math.ceil(deferredResults.length / columns), 1) : 1
 
   const virtualizer = useWindowVirtualizerCompat({
     count: totalRowCount,
@@ -940,7 +950,7 @@ const ProductSearchExperience = ({
     selectedFormats.length +
     selectedProductTypes.length +
     (showInStockOnly ? 1 : 0) +
-    (query ? 1 : 0)
+    (inputValue ? 1 : 0)
 
   const genreOptions = useMemo(
     () =>
@@ -968,10 +978,13 @@ const ProductSearchExperience = ({
     [facets.variants, facets.format]
   )
 
-const formatProductTypeLabel = (value: string) =>
-  value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+  const formatProductTypeLabel = useCallback(
+    (value: string) =>
+      value
+        .replace(/[_-]+/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase()),
+    []
+  )
 
   const productTypeOptions = useMemo(
     () =>
@@ -1194,7 +1207,7 @@ const formatProductTypeLabel = (value: string) =>
                 {showInStockOnly ? (
                   <button
                     type="button"
-                    onClick={() => setShowInStockOnly(false)}
+                    onClick={toggleStockOnly}
                     className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
                   >
                     In stock ✕
@@ -1211,7 +1224,7 @@ const formatProductTypeLabel = (value: string) =>
               </div>
             ) : null}
 
-            {mappedResults.length ? (
+            {deferredResults.length ? (
               <div
                 className="relative"
                 style={{ height: virtualizer.getTotalSize() }}
@@ -1240,7 +1253,7 @@ const formatProductTypeLabel = (value: string) =>
                       >
                         {Array.from({ length: columns }).map((_, columnIdx) => {
                           const globalIndex = startIndex + columnIdx
-                          const product = mappedResults[globalIndex]
+                          const product = deferredResults[globalIndex]
                           const shouldShowSkeleton =
                             !product && aggregatedHits.length < totalResults
 

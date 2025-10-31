@@ -159,6 +159,32 @@ const medusaConfig = {
             enabled: true,
             ...productIndexSettings,
             transformer: productSearchTransformer,
+            listConfig: {
+              relations: [
+                'collection',
+                'tags',
+                'images',
+                'variants',
+                'variants.prices',
+                'variants.options',
+                'variants.options.option',
+                'options',
+                'options.values',
+                'categories',
+                'categories.parent_category',
+                'categories.parent_category.parent_category'
+              ],
+              select: [
+                'id',
+                'handle',
+                'title',
+                'subtitle',
+                'description',
+                'collection_id',
+                'thumbnail',
+                'metadata'
+              ]
+            }
           }
         }
       }
