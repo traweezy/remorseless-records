@@ -135,6 +135,7 @@ export const mapStoreProductToRelatedSummary = (
     collectionTitle: product.collection?.title ?? null,
     defaultVariant: variants[0] ?? null,
     formats: formatted,
+    genres: categoryGroups.genres.map((entry) => entry.label),
   }
 }
 

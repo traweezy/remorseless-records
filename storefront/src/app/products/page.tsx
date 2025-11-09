@@ -5,8 +5,8 @@ import ProductSearchExperience from "@/components/product-search-experience"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { getCollectionProductsByHandle } from "@/lib/data/products"
-import { searchProductsServer } from "@/lib/search/server"
-import type { ProductSearchResponse } from "@/lib/search/search"
+import { getMetalGenreCategories } from "@/lib/data/categories"
+import { getFullCatalogHits } from "@/lib/catalog/all"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 
@@ -37,40 +37,31 @@ export const metadata: Metadata = {
 const ProductsPage = async () => {
   const pageSize = 36
 
-  const [initialSearch, featured, newest, staff] = await Promise.all([
-    searchProductsServer({
-      query: "",
-      limit: pageSize,
-      offset: 0,
-      sort: "alphabetical",
-    }),
+  const [catalogHits, featured, newest, staff, genreFilters] = await Promise.all([
+    getFullCatalogHits(),
     getCollectionProductsByHandle("featured"),
     getCollectionProductsByHandle("new-releases"),
     getCollectionProductsByHandle("staff-picks"),
+    getMetalGenreCategories(),
   ])
 
   const curatedHits = [...featured, ...newest, ...staff]
     .map((product) => mapStoreProductToSearchHit(product))
-  const mergedHits: ProductSearchResponse["hits"] = []
-  const seenHandles = new Set<string>()
+  const seenHandles = new Set(
+    curatedHits
+      .map((hit) => hit.handle?.trim().toLowerCase())
+      .filter((handle): handle is string => Boolean(handle))
+  )
 
-  const pushHit = (hit: ProductSearchResponse["hits"][number]) => {
-    const handleKey = hit.handle.trim().toLowerCase()
-    if (!handleKey.length || seenHandles.has(handleKey)) {
+  const combinedHits = [...curatedHits]
+  catalogHits.forEach((hit) => {
+    const handleKey = hit.handle?.trim().toLowerCase()
+    if (!handleKey || seenHandles.has(handleKey)) {
       return
     }
     seenHandles.add(handleKey)
-    mergedHits.push(hit)
-  }
-
-  curatedHits.forEach(pushHit)
-  initialSearch.hits.forEach(pushHit)
-
-  const enrichedSearch: ProductSearchResponse = {
-    ...initialSearch,
-    hits: mergedHits,
-    total: Math.max(initialSearch.total, mergedHits.length),
-  }
+    combinedHits.push(hit)
+  })
 
   const headerList = await headers()
   const headerEntries = Object.fromEntries(headerList.entries()) as Record<string, string>
@@ -84,7 +75,7 @@ const ProductsPage = async () => {
 
   const catalogStructuredData = buildItemListJsonLd(
     "Remorseless Catalog",
-    enrichedSearch.hits.map((hit) => ({
+    combinedHits.map((hit) => ({
       name: hit.title,
       url: `${origin}/products/${
         hit.handle?.trim()?.length
@@ -97,12 +88,10 @@ const ProductsPage = async () => {
   return (
     <>
       <ProductSearchExperience
-        initialHits={enrichedSearch.hits}
-        initialFacets={initialSearch.facets}
-        initialTotal={enrichedSearch.total}
-        initialOffset={initialSearch.offset}
+        initialHits={combinedHits}
         pageSize={pageSize}
         initialSort="alphabetical"
+        genreFilters={genreFilters}
       />
 
       <JsonLd id="catalog-item-list" data={catalogStructuredData} />

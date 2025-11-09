@@ -61,11 +61,9 @@ const SearchModal = ({ children }: SearchModalProps) => {
           {initial ? (
             <ProductSearchExperience
               initialHits={initial.hits}
-              initialFacets={initial.facets}
-              initialTotal={initial.total}
-              initialOffset={initial.offset ?? 0}
               pageSize={12}
               initialSort="alphabetical"
+              genreFilters={[]}
             />
           ) : (
             (() => {

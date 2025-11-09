@@ -12,8 +12,16 @@ const needsHydration = (hit: ProductSearchHit): boolean => {
   const missingVariant = !hit.defaultVariant
   const missingCollection =
     (hit.collectionTitle ?? "").toString().trim().length === 0
+  const missingGenres =
+    (!Array.isArray(hit.genres) || hit.genres.length === 0) &&
+    (!Array.isArray(hit.metalGenres) || hit.metalGenres.length === 0)
 
-  return missingFormats || missingVariant || missingCollection
+  return (
+    missingFormats ||
+    missingVariant ||
+    missingCollection ||
+    missingGenres
+  )
 }
 
 const mergeHits = (original: ProductSearchHit, fallback: ProductSearchHit): ProductSearchHit => {
@@ -31,6 +39,7 @@ const mergeHits = (original: ProductSearchHit, fallback: ProductSearchHit): Prod
     collectionTitle: mergedCollection ?? null,
     formats: mergedFormats,
     genres: original.genres.length ? original.genres : fallback.genres,
+    metalGenres: original.metalGenres.length ? original.metalGenres : fallback.metalGenres,
     categories: original.categories.length ? original.categories : fallback.categories,
     categoryHandles: original.categoryHandles.length ? original.categoryHandles : fallback.categoryHandles,
     variantTitles: original.variantTitles.length ? original.variantTitles : fallback.variantTitles,

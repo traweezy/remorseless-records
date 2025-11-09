@@ -40,7 +40,9 @@
     "@tanstack/zod-form-adapter": "^0.42.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^16.4.5",
     "framer-motion": "^12.23.24",
+    "immer": "10.0.3",
     "lucide-react": "^0.546.0",
     "meilisearch": "^0.53.0",
     "next": "^16.0.0",
@@ -51,6 +53,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "tailwind-variants": "^3.1.1",
+    "tsconfig-paths": "^4.2.0",
     "zod": "^3.23.8",
     "zustand": "^5.0.8"
   },
@@ -72,6 +75,8 @@
     "prettier": "^3.6.2",
     "tailwindcss": "^3.4.14",
     "tailwindcss-animate": "^1.0.7",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.46.2"
   }

@@ -40,6 +40,8 @@ export type ProductSearchResponse = {
     productTypes: FacetMap
   }
   offset: number
+  hasMore?: boolean
+  nextOffset?: number
 }
 
 type FilterDescriptor = {
@@ -92,7 +94,10 @@ const buildFilter = (
 
   tryFilter("genres", filters?.genres)
   tryFilter("format", filters?.formats)
-  tryFilter("category_handles", filters?.categories)
+  postFilters.push({
+    attribute: "category_handles",
+    values: normalizeValues(filters?.categories),
+  })
   tryFilter("variant_titles", filters?.variants)
   tryFilter("product_type", filters?.productTypes)
 
@@ -105,7 +110,7 @@ const buildFilter = (
   return { filterExpression, postFilters }
 }
 
-const filterHitsClientSide = (
+const filterHitsClient = (
   hits: ProductSearchHit[],
   descriptors: FilterDescriptor[]
 ): ProductSearchHit[] => {
@@ -134,7 +139,8 @@ const filterHitsClientSide = (
         }
       } else if (descriptor.attribute === "category_handles") {
         const handles = (hit.categoryHandles ?? []).map((value) => value.toLowerCase())
-        if (!handles.some((value) => target.has(value))) {
+        const handleSet = new Set(handles)
+        if (!values.every((value) => handleSet.has(value.toLowerCase()))) {
           return false
         }
       } else if (descriptor.attribute === "variant_titles") {
@@ -153,7 +159,7 @@ const filterHitsClientSide = (
   })
 }
 
-const computeFacetCounts = (
+export const computeFacetCounts = (
   hits: ProductSearchHit[]
 ): {
   genres: FacetMap
@@ -281,35 +287,75 @@ export const searchProductsWithClient = async (
   if (filterable.has("variant_titles")) {
     facetsToRequest.push("variant_titles")
   }
-  const response: SearchResponse<Record<string, unknown>> =
-    await index.search<Record<string, unknown>>(query ?? "", {
-      limit,
-      offset,
-      facets: facetsToRequest,
-      ...(filterExpression ? { filter: filterExpression } : {}),
-      ...(sortDirectives ? { sort: sortDirectives } : {}),
-    })
 
-  let hits = response.hits
-    .map((hit) => normalizeSearchHit(hit))
-    .filter((hit) => hit.handle.trim().length > 0)
-  if (postFilters.length) {
-    hits = filterHitsClientSide(hits, postFilters)
+  const batchSize = Math.max(limit, 64)
+  const filteredOffset = Math.max(0, offset ?? 0)
+  let skipFiltered = filteredOffset
+  let remainingToCollect = limit
+  let totalFiltered = 0
+  let collected: ProductSearchHit[] = []
+  let hasMore = false
+  let rawOffset = 0
+  let facetDistribution: SearchResponse<Record<string, unknown>>["facetDistribution"]
+  const maxBatches = 40
+
+  for (let batch = 0; batch < maxBatches; batch++) {
+    const response: SearchResponse<Record<string, unknown>> =
+      await index.search<Record<string, unknown>>(query ?? "", {
+        limit: batchSize,
+        offset: rawOffset,
+        facets: facetsToRequest,
+        ...(filterExpression ? { filter: filterExpression } : {}),
+        ...(sortDirectives ? { sort: sortDirectives } : {}),
+      })
+
+    if (!response.hits.length) {
+      break
+    }
+
+    if (!facetDistribution) {
+      facetDistribution = response.facetDistribution
+    }
+
+    let hits = response.hits
+      .map((hit) => normalizeSearchHit(hit))
+      .filter((hit) => hit.handle.trim().length > 0)
+
+    if (postFilters.length) {
+      hits = filterHitsClient(hits, postFilters)
+    }
+
+    totalFiltered += hits.length
+
+    if (skipFiltered >= hits.length) {
+      skipFiltered -= hits.length
+    } else {
+      const sliceStart = skipFiltered
+      const usableHits = hits.slice(sliceStart)
+      skipFiltered = 0
+
+      if (usableHits.length > remainingToCollect) {
+        hasMore = true
+      }
+
+      if (remainingToCollect > 0) {
+        const taken = usableHits.slice(0, remainingToCollect)
+        collected = collected.concat(taken)
+        remainingToCollect -= taken.length
+      }
+    }
+
+    rawOffset += response.hits.length
+
+    if (response.hits.length < batchSize) {
+      break
+    }
   }
-  const manualFilterApplied = postFilters.some((descriptor) =>
-    descriptor.attribute === "category_handles" || descriptor.attribute === "variant_titles"
-  )
 
-  const total = manualFilterApplied
-    ? hits.length
-    : typeof response.totalHits === "number"
-        ? response.totalHits
-        : typeof response.estimatedTotalHits === "number"
-          ? response.estimatedTotalHits
-          : hits.length
+  hasMore = hasMore || totalFiltered > filteredOffset + collected.length
 
-  const facetsFromIndex = extractFacetMaps(response.facetDistribution)
-  const fallbackFacets = computeFacetCounts(hits)
+  const facetsFromIndex = extractFacetMaps(facetDistribution)
+  const fallbackFacets = computeFacetCounts(collected)
 
   const facets = {
     genres: Object.keys(facetsFromIndex.genres).length
@@ -335,9 +381,11 @@ export const searchProductsWithClient = async (
   }
 
   return {
-    hits,
-    total,
-    offset: response.offset ?? offset ?? 0,
+    hits: collected,
+    total: totalFiltered,
+    offset: filteredOffset,
     facets,
+    hasMore,
+    nextOffset: filteredOffset + collected.length,
   }
 }

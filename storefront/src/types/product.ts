@@ -20,6 +20,7 @@ export type RelatedProductSummary = {
   collectionTitle?: string | null
   defaultVariant: VariantOption | null
   formats: string[]
+  genres: string[]
 }
 
 export type ProductSearchHit = RelatedProductSummary & {

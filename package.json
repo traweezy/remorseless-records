@@ -2,7 +2,7 @@
   "name": "remorseless-records",
   "private": true,
   "version": "0.0.0",
-  "packageManager": "pnpm@10.19.0+sha256.1c5f5ee59267e4e2e1bfd335f432a18dc48f9a9944094d5d2649757e725ad376",
+  "packageManager": "pnpm@10.20.0",
   "engines": {
     "node": ">=22.0.0 <26",
     "pnpm": ">=10.19.0"

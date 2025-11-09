@@ -9,6 +9,38 @@ import {
 
 type StoreProduct = HttpTypes.StoreProduct
 
+export const PRODUCT_LIST_FIELDS = [
+  "id",
+  "handle",
+  "title",
+  "subtitle",
+  "description",
+  "thumbnail",
+  "metadata",
+  "*collection",
+  "*categories",
+  "*variants",
+  "*options",
+  "*images",
+  "*tags",
+].join(",")
+
+const PRODUCT_DETAIL_FIELDS = [
+  "id",
+  "handle",
+  "title",
+  "subtitle",
+  "description",
+  "thumbnail",
+  "metadata",
+  "*collection",
+  "*categories",
+  "*variants",
+  "*options",
+  "*images",
+  "*tags",
+].join(",")
+
 const getCollectionByHandle = cache(
   async (handle: string): Promise<HttpTypes.StoreCollection | null> => {
     const { collections } = await storeClient.collection.list({
@@ -44,6 +76,7 @@ export const getCollectionProductsByHandle = cache(
         collection_id: collection.id,
         limit: pageLimit,
         offset,
+        fields: PRODUCT_LIST_FIELDS,
       })
 
       if (!products?.length) {
@@ -74,6 +107,7 @@ export const getCollectionProductsByHandle = cache(
 export const getHomepageProducts = cache(async (): Promise<StoreProduct[]> => {
   const { products } = await storeClient.product.list({
     limit: 16,
+    fields: PRODUCT_DETAIL_FIELDS,
   })
   return products
 })
@@ -83,6 +117,7 @@ export const getProductByHandle = cache(
     const { products } = await storeClient.product.list({
       handle,
       limit: 1,
+      fields: PRODUCT_DETAIL_FIELDS,
     })
     return products[0] ?? null
   }
@@ -93,6 +128,7 @@ export const getProductsByCollection = cache(
     const { products } = await storeClient.product.list({
       collection_id: collectionId,
       limit,
+      fields: PRODUCT_DETAIL_FIELDS,
     })
     return products
   }
@@ -102,6 +138,7 @@ export const getRecentProducts = cache(
   async (limit = 8): Promise<StoreProduct[]> => {
     const { products } = await storeClient.product.list({
       limit,
+      fields: PRODUCT_DETAIL_FIELDS,
     })
     return products
   }
