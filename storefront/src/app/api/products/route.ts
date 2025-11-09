@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server"
 
-import type { HttpTypes } from "@medusajs/types"
-
 import { storeClient } from "@/lib/medusa"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 

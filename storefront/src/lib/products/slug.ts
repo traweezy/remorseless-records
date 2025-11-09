@@ -50,7 +50,7 @@ const parseArtistAlbumFromTitle = (
 
   if (lastSeparator !== -1) {
     const suffix = working.slice(lastSeparator + 3).trim()
-    if (/^(cd|mc|lp|cassette|vinyl|2lp|3lp|7\"|tape|digital|bundle|box)/i.test(suffix)) {
+    if (/^(cd|mc|lp|cassette|vinyl|2lp|3lp|7"|tape|digital|bundle|box)/i.test(suffix)) {
       working = working.slice(0, lastSeparator).trim()
     }
   }
@@ -65,8 +65,11 @@ const parseArtistAlbumFromTitle = (
     }
   }
 
-  const artist = working.slice(0, firstSeparator).trim() || fallbackCollection?.trim() || working
-  const album = working.slice(firstSeparator + 3).trim() || working
+  const artistSegment = working.slice(0, firstSeparator).trim()
+  const albumSegment = working.slice(firstSeparator + 3).trim()
+
+  const artist = artistSegment.length ? artistSegment : fallbackCollection?.trim() ?? working
+  const album = albumSegment.length ? albumSegment : working
 
   return { artist, album }
 }

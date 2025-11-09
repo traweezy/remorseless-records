@@ -42,11 +42,6 @@ export const ProductCarouselSection = ({
   )
 
   const sectionRef = useRef<HTMLDivElement | null>(null)
-
-  if (!slides.length) {
-    return null
-  }
-
   useEffect(() => {
     if (typeof window === "undefined") {
       return
@@ -103,6 +98,10 @@ export const ProductCarouselSection = ({
       })
     }
   }, [slides.length])
+
+  if (!slides.length) {
+    return null
+  }
 
   return (
     <section ref={sectionRef} className="space-y-10">

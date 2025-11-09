@@ -313,9 +313,7 @@ export const searchProductsWithClient = async (
       break
     }
 
-    if (!facetDistribution) {
-      facetDistribution = response.facetDistribution
-    }
+    facetDistribution ??= response.facetDistribution
 
     let hits = response.hits
       .map((hit) => normalizeSearchHit(hit))

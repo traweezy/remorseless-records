@@ -11,6 +11,11 @@ import type {
   VariantOption,
 } from "@/types/product"
 
+const coerceRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+
 const toVariantOption = (
   variant: HttpTypes.StoreProductVariant | undefined
 ): VariantOption | null => {
@@ -91,12 +96,14 @@ export const mapStoreProductToRelatedSummary = (
     }
   })
 
-  const metadata = product.metadata as Record<string, unknown> | null | undefined
+  const metadata = coerceRecord(product.metadata)
   if (metadata) {
     const metaCandidates = [
       typeof metadata.format === "string" ? metadata.format : null,
       typeof metadata.packaging === "string" ? metadata.packaging : null,
-      ...(Array.isArray(metadata.formats) ? metadata.formats : []),
+      ...(Array.isArray(metadata.formats)
+        ? metadata.formats.filter((entry): entry is string => typeof entry === "string")
+        : []),
     ]
 
     metaCandidates.forEach((entry) => {
@@ -192,11 +199,11 @@ export const mapStoreProductToSearchHit = (
     inferredFormats.add(derivedFormat)
   }
 
-  const metadata = product.metadata as Record<string, unknown> | null | undefined
-  const legacyImport = metadata?.legacy_import as Record<string, unknown> | undefined
+  const metadata = coerceRecord(product.metadata)
+  const legacyImport = coerceRecord(metadata?.legacy_import)
   const productType =
     (typeof legacyImport?.product_type === "string" ? legacyImport.product_type : undefined) ??
-    (typeof metadata?.product_type === "string" ? (metadata.product_type as string) : undefined) ??
+    (typeof metadata?.product_type === "string" ? metadata.product_type : undefined) ??
     null
 
   return {

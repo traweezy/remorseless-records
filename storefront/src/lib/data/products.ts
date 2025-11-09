@@ -65,8 +65,7 @@ export const getCollectionProductsByHandle = cache(
     let offset = 0
 
     // Medusa paginates collections; iterate until we load every product (or reach the caller-imposed ceiling).
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    for (;;) {
       const pageLimit = Number.isFinite(target) ? Math.min(pageSize, target - collected.length) : pageSize
       if (pageLimit <= 0) {
         break
@@ -158,8 +157,7 @@ export const getAllProductHandles = cache(
 
     // Medusa paginates products; loop until we exhaust the catalog.
     // We request moderate batches to avoid stressing the API during build time.
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    for (;;) {
       const { products } = await storeClient.product.list({
         limit: pageSize,
         offset,

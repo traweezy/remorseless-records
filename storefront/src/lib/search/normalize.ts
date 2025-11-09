@@ -149,10 +149,7 @@ export const normalizeSearchHit = (
           ? hit.collection
           : null
 
-  const metadataValue =
-    typeof hit.metadata === "object" && hit.metadata && !Array.isArray(hit.metadata)
-      ? (hit.metadata as Record<string, unknown>)
-      : null
+  const metadataValue = coerceRecord(hit.metadata)
 
   const slug = buildProductSlugParts({
     title,
@@ -164,7 +161,7 @@ export const normalizeSearchHit = (
     typeof hit.artist === "string" && hit.artist.trim().length
       ? hit.artist.trim()
       : typeof metadataValue?.artist === "string" && metadataValue.artist.trim().length
-        ? (metadataValue.artist as string).trim()
+        ? metadataValue.artist.trim()
         : null
 
   const formatCandidates = new Set<string>()
@@ -354,3 +351,7 @@ export const extractFacetMaps = (
 
   return { genres, metalGenres, format, categories, variants, productTypes }
 }
+const coerceRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null

@@ -71,10 +71,13 @@ const HomePage = async (): Promise<ReactElement> => {
     "Featured Picks",
     randomizedFeatured
       .filter((product) => typeof product.handle === "string" && product.handle.trim().length)
-      .map((product) => ({
-        name: product.title ?? "Exclusive release",
-        url: `${siteMetadata.siteUrl}/products/${product.handle!.trim()}`,
-      }))
+      .map((product) => {
+        const handle = (product.handle ?? "").trim()
+        return {
+          name: product.title ?? "Exclusive release",
+          url: `${siteMetadata.siteUrl}/products/${handle}`,
+        }
+      })
   )
 
   return (

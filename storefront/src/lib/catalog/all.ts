@@ -8,8 +8,7 @@ export const getFullCatalogHits = async (): Promise<ProductSearchHit[]> => {
   const batchSize = 100
   let offset = 0
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  for (;;) {
     const { products } = await storeClient.product.list({
       limit: batchSize,
       offset,

@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 
 import { StaticNoise } from "@/components/static-noise"
 import { ParallaxSection } from "@/components/parallax-section"
@@ -20,11 +21,14 @@ export const HeroSection = () => (
 
         <div className="relative inline-block">
           <div className="absolute inset-0 blur-3xl bg-destructive/30 animate-glow-pulse" />
-          <img
+          <Image
             src="/remorseless-hero-logo.png"
             alt="Remorseless Records"
             className="relative mx-auto w-full max-w-3xl drop-shadow-[0_0_60px_hsl(0_100%_50%/0.9)]"
             draggable={false}
+            width={960}
+            height={640}
+            priority
           />
         </div>
 

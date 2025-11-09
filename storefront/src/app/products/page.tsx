@@ -35,8 +35,6 @@ export const metadata: Metadata = {
 }
 
 const ProductsPage = async () => {
-  const pageSize = 36
-
   const [catalogHits, featured, newest, staff, genreFilters] = await Promise.all([
     getFullCatalogHits(),
     getCollectionProductsByHandle("featured"),
@@ -89,7 +87,6 @@ const ProductsPage = async () => {
     <>
       <ProductSearchExperience
         initialHits={combinedHits}
-        pageSize={pageSize}
         initialSort="alphabetical"
         genreFilters={genreFilters}
       />

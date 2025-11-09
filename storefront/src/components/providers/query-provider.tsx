@@ -30,17 +30,8 @@ const createQueryClient = () =>
 
 export const QueryProvider = ({ children }: QueryProviderProps) => {
   const [queryClient] = useState(createQueryClient)
-  const [hasMounted, setHasMounted] = useState(false)
 
   useEffect(() => {
-    setHasMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!hasMounted) {
-      return
-    }
-
     const handleFocus = () => {
       focusManager.setFocused(true)
     }
@@ -62,17 +53,17 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
       window.removeEventListener("blur", handleBlur)
       document.removeEventListener("visibilitychange", handleVisibility)
     }
-  }, [hasMounted])
+  }, [])
 
   const persister = useMemo(() => {
-    if (!hasMounted) {
+    if (typeof window === "undefined") {
       return undefined
     }
 
     return createSyncStoragePersister({ storage: window.localStorage })
-  }, [hasMounted])
+  }, [])
 
-  const devtools = hasMounted && process.env.NODE_ENV !== "production"
+  const devtools = process.env.NODE_ENV !== "production"
     ? (
       <ReactQueryDevtools
         position="bottom"

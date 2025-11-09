@@ -1,6 +1,5 @@
 declare module "@splidejs/react-splide" {
   import type { ComponentType, ReactNode } from "react"
-  import type { Options } from "@splidejs/splide"
 
   export type SplideAutoScrollOptions = {
     speed?: number
@@ -11,9 +10,9 @@ declare module "@splidejs/react-splide" {
     [key: string]: unknown
   }
 
-  export type SplideOptions = Partial<Options> & {
-    autoScroll?: SplideAutoScrollOptions
+  export type SplideOptions = {
     [key: string]: unknown
+    autoScroll?: SplideAutoScrollOptions
   }
 
   export type SplideProps = {

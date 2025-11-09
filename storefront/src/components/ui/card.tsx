@@ -20,17 +20,20 @@ export const CardHeader = ({
   <div className={cn("space-y-1.5 p-6", className)} {...props} />
 )
 
-export const CardTitle = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLHeadingElement>) => (
+type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
+  children: React.ReactNode
+}
+
+export const CardTitle = ({ className, children, ...props }: CardTitleProps) => (
   <h3
     className={cn(
       "font-headline text-lg uppercase tracking-[0.4rem] text-foreground",
       className
     )}
     {...props}
-  />
+  >
+    {children}
+  </h3>
 )
 
 export const CardDescription = ({

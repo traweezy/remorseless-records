@@ -39,17 +39,6 @@ import type { ProductSortOption } from "@/lib/search/search"
 import { computeFacetCounts } from "@/lib/search/search"
 import { useCatalogStore } from "@/lib/store/catalog"
 
-const arraysEqual = (a: readonly string[], b: readonly string[]): boolean => {
-  if (a.length !== b.length) {
-    return false
-  }
-
-  const sortedA = [...a].sort()
-  const sortedB = [...b].sort()
-
-  return sortedA.every((value, index) => value === sortedB[index])
-}
-
 const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
   ["featured", "Featured Picks"],
   ["featured-picks", "Featured Picks"],
@@ -173,7 +162,6 @@ type GenreFilterSeed = {
 
 type ProductSearchExperienceProps = {
   initialHits: ProductSearchHit[]
-  pageSize?: number
   initialSort?: ProductSortOption
   genreFilters: GenreFilterSeed[]
 }
@@ -307,10 +295,15 @@ const hydrateHitsClient = async (
       return hits
     }
 
-    const payload: { hits?: ProductSearchHit[] } = await response.json()
+    const payloadRaw: unknown = await response.json()
+    const hitsFromPayload = Array.isArray(
+      (payloadRaw as { hits?: unknown[] } | null)?.hits
+    )
+      ? ((payloadRaw as { hits?: ProductSearchHit[] }).hits ?? [])
+      : []
     const hydrationMap = new Map<string, ProductSearchHit>()
 
-    payload.hits?.forEach((hit) => {
+    hitsFromPayload.forEach((hit) => {
       const handleKey = hit.handle?.trim().toLowerCase()
       if (handleKey) {
         hydrationMap.set(handleKey, hit)
@@ -671,17 +664,6 @@ const SortDropdown = ({
   )
 }
 
-const ProductCardSkeleton = () => (
-  <div className="flex h-full flex-col rounded-2xl border border-border/40 bg-background/60 p-4">
-    <div className="aspect-square w-full animate-pulse rounded-xl bg-border/40" />
-    <div className="mt-4 space-y-3">
-      <div className="h-4 w-3/4 animate-pulse rounded-full bg-border/40" />
-      <div className="h-3 w-1/2 animate-pulse rounded-full bg-border/30" />
-      <div className="h-3 w-1/3 animate-pulse rounded-full bg-border/20" />
-    </div>
-  </div>
-)
-
 const useWindowVirtualizerCompat = (
   options: Parameters<typeof useWindowVirtualizer>[0]
 ) => {
@@ -716,7 +698,6 @@ const useResponsiveColumns = () => {
 
 const ProductSearchExperience = ({
   initialHits,
-  pageSize = 48,
   initialSort = "alphabetical",
   genreFilters,
 }: ProductSearchExperienceProps) => {
@@ -807,26 +788,22 @@ const ProductSearchExperience = ({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   const [catalogHits, setCatalogHits] = useState<ProductSearchHit[]>(initialHits)
-  const [visibleCount, setVisibleCount] = useState(() =>
-    Math.min(pageSize, initialHits.length)
-  )
 
   useEffect(() => {
     setCatalogHits(initialHits)
-    setVisibleCount(Math.min(pageSize, initialHits.length))
-  }, [initialHits, pageSize])
+  }, [initialHits])
 
   useEffect(() => {
-    if (!catalogHits.length) {
+    if (!initialHits.length) {
       return
     }
-    if (!catalogHits.some(needsClientHydration)) {
+    if (!initialHits.some(needsClientHydration)) {
       return
     }
 
     let cancelled = false
     const hydrate = async () => {
-      const enriched = await hydrateHitsClient(catalogHits)
+      const enriched = await hydrateHitsClient(initialHits)
       if (!cancelled) {
         setCatalogHits(enriched)
       }
@@ -836,7 +813,7 @@ const ProductSearchExperience = ({
     return () => {
       cancelled = true
     }
-  }, [catalogHits])
+  }, [initialHits])
 
   useEffect(() => {
     if (typeof window === "undefined" || hasHydratedFromParams.current) {
@@ -910,6 +887,22 @@ const ProductSearchExperience = ({
     () => [...selectedProductTypes].sort().join("|"),
     [selectedProductTypes]
   )
+  const genreCsvValues = useMemo(
+    () => selectedGenres.map((value) => value.trim()).filter((value) => value.length),
+    [selectedGenres]
+  )
+  const artistCsvValues = useMemo(
+    () => selectedArtists.map((value) => value.trim()).filter((value) => value.length),
+    [selectedArtists]
+  )
+  const formatCsvValues = useMemo(
+    () => selectedFormats.map((value) => value.trim()).filter((value) => value.length),
+    [selectedFormats]
+  )
+  const productTypeCsvValues = useMemo(
+    () => selectedProductTypes.map((value) => value.trim()).filter((value) => value.length),
+    [selectedProductTypes]
+  )
 
   const criteriaKey = useMemo(
     () =>
@@ -941,22 +934,10 @@ const ProductSearchExperience = ({
       }
     }
 
-    setCsvParam(
-      "genre",
-      selectedGenres.map((value) => value.trim()).filter((value) => value.length)
-    )
-    setCsvParam(
-      "artist",
-      selectedArtists.map((value) => value.trim()).filter((value) => value.length)
-    )
-    setCsvParam(
-      "format",
-      selectedFormats.map((value) => value.trim()).filter((value) => value.length)
-    )
-    setCsvParam(
-      "type",
-      selectedProductTypes.map((value) => value.trim()).filter((value) => value.length)
-    )
+    setCsvParam("genre", genreCsvValues)
+    setCsvParam("artist", artistCsvValues)
+    setCsvParam("format", formatCsvValues)
+    setCsvParam("type", productTypeCsvValues)
     if (showInStockOnly) {
       params.set("stock", "1")
     }
@@ -983,6 +964,10 @@ const ProductSearchExperience = ({
     showInStockOnly,
     sortOption,
     initialSort,
+    genreCsvValues,
+    artistCsvValues,
+    formatCsvValues,
+    productTypeCsvValues,
   ])
 
   const aggregatedHits = useMemo(() => catalogHits, [catalogHits])
@@ -1147,43 +1132,6 @@ const ProductSearchExperience = ({
   }, [columns, rowEstimate, virtualizer])
 
   useEffect(() => {
-    setVisibleCount((prev) => Math.min(prev, deferredResults.length))
-  }, [deferredResults.length])
-
-  useEffect(() => {
-    const baseVisible =
-      filteredHits.length > 0 ? Math.min(pageSize, filteredHits.length) : 0
-    setVisibleCount(baseVisible)
-  }, [criteriaKey, filteredHits.length, pageSize])
-
-  useEffect(() => {
-    if (!virtualItems.length) {
-      return
-    }
-
-    const lastVirtualRow = virtualItems[virtualItems.length - 1]
-    if (!lastVirtualRow) {
-      return
-    }
-
-    const approxRendered = Math.min(
-      (lastVirtualRow.index + 1) * columns,
-      deferredResults.length
-    )
-    const remainingBeforeVisibleEnd = Math.max(visibleCount - approxRendered, 0)
-    const threshold = Math.max(columns * 2, pageSize)
-
-    if (
-      remainingBeforeVisibleEnd <= threshold &&
-      visibleCount < deferredResults.length
-    ) {
-      setVisibleCount((prev) =>
-        Math.min(deferredResults.length, prev + Math.max(pageSize, columns * 2))
-      )
-    }
-  }, [virtualItems, columns, deferredResults.length, pageSize, visibleCount])
-
-  useEffect(() => {
     if (typeof window === "undefined") {
       return
     }
@@ -1236,7 +1184,7 @@ const ProductSearchExperience = ({
           a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
       )
       .map(({ rank: _rank, ...option }) => option)
-  }, [categoryFacetCounts, normalizedGenreFilters, genreLabelByHandle])
+  }, [categoryFacetCounts, normalizedGenreFilters])
 
   const artistOptions = useMemo(
     () =>
@@ -1252,7 +1200,7 @@ const ProductSearchExperience = ({
 
   const formatOptions = useMemo(
     () =>
-      (Object.entries(catalogFacets.variants ?? {}) as Array<[string, number]>)
+      Object.entries(catalogFacets.variants ?? {})
         .sort((a, b) => b[1] - a[1])
         .slice(0, 20)
         .map(([value, count]) => ({
@@ -1273,14 +1221,14 @@ const ProductSearchExperience = ({
 
   const productTypeOptions = useMemo(
     () =>
-      (Object.entries(catalogFacets.productTypes ?? {}) as Array<[string, number]>)
+      Object.entries(catalogFacets.productTypes ?? {})
         .sort((a, b) => b[1] - a[1])
         .map(([value, count]) => ({
           value,
           label: formatProductTypeLabel(value),
           count,
         })),
-    [catalogFacets.productTypes]
+    [catalogFacets.productTypes, formatProductTypeLabel]
   )
 
   const handleToggleGenre = (genre: string) => {
@@ -1531,10 +1479,7 @@ const ProductSearchExperience = ({
                       >
                         {Array.from({ length: columns }).map((_, columnIdx) => {
                           const globalIndex = startIndex + columnIdx
-                          const isLoaded = globalIndex < visibleCount
-                          const product = isLoaded ? deferredResults[globalIndex] : undefined
-                          const shouldShowSkeleton =
-                            !product && globalIndex < deferredResults.length
+                          const product = deferredResults[globalIndex]
 
                           if (product) {
                             return (
@@ -1544,18 +1489,8 @@ const ProductSearchExperience = ({
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.2 }}
                               >
-                                <ProductCard
-                                  product={product}
-                                />
+                                <ProductCard product={product} />
                               </motion.div>
-                            )
-                          }
-
-                          if (shouldShowSkeleton) {
-                            return (
-                              <ProductCardSkeleton
-                                key={`skeleton-${globalIndex}`}
-                              />
                             )
                           }
 

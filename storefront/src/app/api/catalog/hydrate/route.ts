@@ -12,7 +12,7 @@ export const runtime = "nodejs"
 
 export async function POST(request: Request) {
   try {
-    const payload = await request.json()
+    const payload: unknown = await request.json()
     const parsed = requestSchema.safeParse(payload)
     if (!parsed.success) {
       return NextResponse.json(

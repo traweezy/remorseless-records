@@ -56,7 +56,10 @@ type RibbonCandidate = {
   slug: string
 }
 
-const addCandidate = (list: RibbonCandidate[], label: string | null | undefined, slugSource?: string | null | undefined) => {
+const coerceMetadata = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : null
+
+const addCandidate = (list: RibbonCandidate[], label: string | null | undefined, slugSource?: string | null) => {
   if (!label || !label.trim().length) {
     return
   }
@@ -97,12 +100,12 @@ const resolveCollectionRibbonLabel = (
       addCandidate(candidates, typeof collection.title === "string" ? collection.title : null, collection.handle)
     }
 
-    const metadata = product.metadata as Record<string, unknown> | null | undefined
+    const metadata = coerceMetadata(product.metadata)
     if (metadata) {
       const metadataCandidates = [
         ...toStringArray(metadata["ribbonLabel"]),
         ...toStringArray(metadata["collections"]),
-        ...(typeof metadata["collection"] === "string" ? [metadata["collection"] as string] : []),
+        ...(typeof metadata["collection"] === "string" ? [metadata["collection"]] : []),
       ]
       metadataCandidates.forEach((entry) => addCandidate(candidates, entry))
     }
@@ -118,7 +121,7 @@ const resolveCollectionRibbonLabel = (
 
   let filtered = candidates.filter((candidate) => !GENERIC_COLLECTION_SLUGS.has(candidate.slug))
   if (!filtered.length) {
-    filtered = candidates
+    filtered = []
   }
 
   if (!filtered.length) {
@@ -186,6 +189,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     : product
 
   const handle = summary.handle?.trim() ?? ""
+  const prefetchProduct = useProductDetailPrefetch(handle)
+
   if (!handle.length) {
     if (process.env.NODE_ENV !== "production") {
       console.warn(
@@ -200,7 +205,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const initialProduct = isStoreProduct(product) ? product : undefined
   const productHref = handle ? `/products/${handle}` : "/products"
   const formatLabels = (() => {
-    const labels = new Set<string>(summary.formats.map((entry) => entry.trim()).filter(Boolean))
+    const labels = new Set<string>()
 
     const addLabel = (value: string | null | undefined) => {
       if (!value) {
@@ -221,16 +226,20 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         }
       })
       product.tags?.forEach((tag) => addLabel(tag?.value))
-      const metadata = product.metadata as Record<string, unknown> | null | undefined
+      const metadata = coerceMetadata(product.metadata)
       if (metadata) {
         addLabel(typeof metadata?.format === "string" ? metadata.format : null)
         addLabel(typeof metadata?.packaging === "string" ? metadata.packaging : null)
       }
     } else if (isProductSearchHitSource(product)) {
       product.variantTitles.forEach(addLabel)
-      product.categories.forEach(addLabel)
-      product.categoryHandles.forEach(addLabel)
       addLabel(product.format)
+    } else {
+      summary.formats.forEach(addLabel)
+    }
+
+    if (!labels.size) {
+      summary.formats.forEach(addLabel)
     }
 
     if (!labels.size && summary.defaultVariant?.title) {
@@ -239,8 +248,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
     return Array.from(labels)
   })()
-
-  const prefetchProduct = useProductDetailPrefetch(handle)
 
   const triggerPrefetch = () => {
     if (!handle) {
