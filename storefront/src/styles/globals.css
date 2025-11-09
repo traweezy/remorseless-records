@@ -257,4 +257,26 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  .scrollbar-metal {
+    scrollbar-width: thin;
+    scrollbar-color: hsla(0, 0%, 40%, 0.8) transparent;
+  }
+
+  .scrollbar-metal::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-metal::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-metal::-webkit-scrollbar-thumb {
+    background: hsla(0, 0%, 40%, 0.6);
+    border-radius: 9999px;
+  }
+
+  .scrollbar-metal::-webkit-scrollbar-thumb:hover {
+    background: hsla(0, 0%, 65%, 0.85);
+  }
 }

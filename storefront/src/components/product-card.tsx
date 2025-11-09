@@ -83,6 +83,8 @@ const COLLECTION_PRIORITY = [
   "exclusive",
 ] as const
 
+const GENERIC_COLLECTION_SLUGS = new Set(["music", "metal", "genres", "artists", "bundles", "merch"])
+
 const resolveCollectionRibbonLabel = (
   product: ProductCardSource,
   summary: RelatedProductSummary
@@ -114,18 +116,25 @@ const resolveCollectionRibbonLabel = (
 
   addCandidate(candidates, summary.collectionTitle)
 
-  if (!candidates.length) {
+  let filtered = candidates.filter((candidate) => !GENERIC_COLLECTION_SLUGS.has(candidate.slug))
+  if (!filtered.length) {
+    filtered = candidates
+  }
+
+  if (!filtered.length) {
     return null
   }
 
   for (const priority of COLLECTION_PRIORITY) {
-    const match = candidates.find((candidate) => candidate.slug === priority || candidate.slug.startsWith(priority))
+    const match = filtered.find(
+      (candidate) => candidate.slug === priority || candidate.slug.startsWith(priority)
+    )
     if (match) {
       return match.label
     }
   }
 
-  return candidates[0]?.label ?? null
+  return filtered[0]?.label ?? null
 }
 
 const resolveFallbackBadge = (product: ProductCardSource): string | null => {
@@ -246,6 +255,21 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     event.preventDefault()
     event.stopPropagation()
     setQuickShopOpen(true)
+  }
+
+  if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+    if (!summary.genres.length) {
+      console.warn("[ProductCard] missing genres", {
+        handle: summary.handle,
+        sourceType: isStoreProduct(product)
+          ? "store"
+          : isProductSearchHitSource(product)
+            ? "search-hit"
+            : "summary",
+        rawGenres: isProductSearchHitSource(product) ? product.genres : undefined,
+        rawMetalGenres: isProductSearchHitSource(product) ? product.metalGenres : undefined,
+      })
+    }
   }
 
   return (

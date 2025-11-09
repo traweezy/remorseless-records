@@ -7,13 +7,8 @@ import {
   useMemo,
   useRef,
   useState,
-  useTransition,
 } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-
-import { Debouncer } from "@tanstack/pacer"
-import { useInfiniteQuery } from "@tanstack/react-query"
-import { useWindowVirtualizer } from "@tanstack/react-virtual"
+import { useWindowVirtualizer, type VirtualItem } from "@tanstack/react-virtual"
 import {
   ArrowDown01,
   ArrowDownAZ,
@@ -25,6 +20,7 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -39,11 +35,9 @@ import ProductCard from "@/components/product-card"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { cn } from "@/lib/ui/cn"
-import { searchProductsBrowser } from "@/lib/search/browser"
-import type {
-  ProductSearchResponse,
-  ProductSortOption,
-} from "@/lib/search/search"
+import type { ProductSortOption } from "@/lib/search/search"
+import { computeFacetCounts } from "@/lib/search/search"
+import { useCatalogStore } from "@/lib/store/catalog"
 
 const arraysEqual = (a: readonly string[], b: readonly string[]): boolean => {
   if (a.length !== b.length) {
@@ -130,7 +124,7 @@ const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
   return Array.from(labels)
 }
 
-const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => {
+export const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => {
   const fallbackCurrency = hit.defaultVariant?.currency ?? "usd"
   const fallbackVariant =
     hit.defaultVariant ??
@@ -165,34 +159,23 @@ const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => {
       }
       return []
     })(),
+    genres: (hit.metalGenres?.length ? hit.metalGenres : hit.genres)?.filter(
+      (entry): entry is string => Boolean(entry && entry.trim().length)
+    ) ?? [],
   }
 }
 
-type SearchFacets = {
-  genres: Record<string, number>
-  metalGenres: Record<string, number>
-  format: Record<string, number>
-  categories: Record<string, number>
-  variants: Record<string, number>
-  productTypes: Record<string, number>
+type GenreFilterSeed = {
+  handle: string
+  label: string
+  rank?: number
 }
 
 type ProductSearchExperienceProps = {
   initialHits: ProductSearchHit[]
-  initialFacets: SearchFacets
-  initialTotal: number
-  initialOffset?: number
   pageSize?: number
   initialSort?: ProductSortOption
-}
-
-type SearchCriteria = {
-  query: string
-  genres: string[]
-  formats: string[]
-  productTypes: string[]
-  limit: number
-  inStockOnly: boolean
+  genreFilters: GenreFilterSeed[]
 }
 
 const SORT_OPTIONS: Array<{
@@ -233,30 +216,173 @@ type FilterOption = {
   count: number
 }
 
+const needsClientHydration = (hit: ProductSearchHit): boolean => {
+  const handle = hit.handle?.trim()
+  if (!handle) {
+    return false
+  }
+
+  const missingGenres =
+    !Array.isArray(hit.genres) || hit.genres.length === 0
+  const missingMetalGenres =
+    !Array.isArray(hit.metalGenres) || hit.metalGenres.length === 0
+  const missingFormats =
+    !Array.isArray(hit.formats) || hit.formats.length === 0
+  const missingVariant = !hit.defaultVariant
+  const missingCollection =
+    !(hit.collectionTitle ?? "").toString().trim().length
+
+  return (
+    (missingGenres && missingMetalGenres) ||
+    missingFormats ||
+    missingVariant ||
+    missingCollection
+  )
+}
+
+const mergeHydratedHit = (
+  original: ProductSearchHit,
+  fallback: ProductSearchHit
+): ProductSearchHit => {
+  const mergedFormats = original.formats.length
+    ? original.formats
+    : fallback.formats
+  const mergedVariant = original.defaultVariant ?? fallback.defaultVariant
+  const mergedCollection =
+    original.collectionTitle && original.collectionTitle.trim().length
+      ? original.collectionTitle
+      : fallback.collectionTitle
+
+  return {
+    ...fallback,
+    ...original,
+    defaultVariant: mergedVariant,
+    collectionTitle: mergedCollection ?? null,
+    formats: mergedFormats,
+    genres: original.genres.length ? original.genres : fallback.genres,
+    metalGenres: original.metalGenres.length
+      ? original.metalGenres
+      : fallback.metalGenres,
+    categories: original.categories.length
+      ? original.categories
+      : fallback.categories,
+    categoryHandles: original.categoryHandles.length
+      ? original.categoryHandles
+      : fallback.categoryHandles,
+    variantTitles: original.variantTitles.length
+      ? original.variantTitles
+      : fallback.variantTitles,
+    format: original.format ?? fallback.format ?? null,
+    priceAmount: original.priceAmount ?? fallback.priceAmount ?? null,
+    stockStatus: original.stockStatus ?? fallback.stockStatus ?? null,
+  }
+}
+
+const hydrateHitsClient = async (
+  hits: ProductSearchHit[]
+): Promise<ProductSearchHit[]> => {
+  const handlesToHydrate = Array.from(
+    new Set(
+      hits
+        .filter(needsClientHydration)
+        .map((hit) => hit.handle?.trim().toLowerCase())
+        .filter((handle): handle is string => Boolean(handle))
+    )
+  )
+
+  if (!handlesToHydrate.length) {
+    return hits
+  }
+
+  try {
+    const response = await fetch("/api/catalog/hydrate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ handles: handlesToHydrate }),
+    })
+
+    if (!response.ok) {
+      return hits
+    }
+
+    const payload: { hits?: ProductSearchHit[] } = await response.json()
+    const hydrationMap = new Map<string, ProductSearchHit>()
+
+    payload.hits?.forEach((hit) => {
+      const handleKey = hit.handle?.trim().toLowerCase()
+      if (handleKey) {
+        hydrationMap.set(handleKey, hit)
+      }
+    })
+
+    if (!hydrationMap.size) {
+      return hits
+    }
+
+    return hits.map((hit) => {
+      const handleKey = hit.handle?.trim().toLowerCase()
+      if (!handleKey) {
+        return hit
+      }
+      const fallback = hydrationMap.get(handleKey)
+      if (!fallback) {
+        return hit
+      }
+      return mergeHydratedHit(hit, fallback)
+    })
+  } catch (error) {
+    console.error("[catalog] Client hydration failed", error)
+    return hits
+  }
+}
+
 const FilterCheckboxList = ({
   title,
   options,
   selected,
   onToggle,
+  variant = "chip",
+  normalizeValue = (value: string) => value.trim(),
+  defaultOpen = false,
 }: {
   title: string
   options: FilterOption[]
   selected: string[]
   onToggle: (value: string) => void
+  variant?: "chip" | "plain"
+  normalizeValue?: (value: string) => string
+  defaultOpen?: boolean
 }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  useEffect(() => {
+    if (defaultOpen) {
+      setIsOpen(true)
+    }
+  }, [defaultOpen])
+
   if (!options.length) {
     return null
   }
 
   return (
-    <details className="group space-y-3" open>
-      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
+    <details
+      className="group space-y-3"
+      open={isOpen}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
         <span>{title}</span>
         <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
       </summary>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         {options.map(({ value, label, count }) => {
-          const normalizedValue = value.trim()
+          const normalizedValue = normalizeValue(value)
+          if (!normalizedValue.length) {
+            return null
+          }
           const checked = selected.includes(normalizedValue)
           const checkboxId = `${title.toLowerCase()}-${normalizedValue.replace(/\s+/g, "-")}`
 
@@ -265,8 +391,13 @@ const FilterCheckboxList = ({
               key={normalizedValue}
               htmlFor={checkboxId}
               className={cn(
-                "flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-3 py-2 text-[0.65rem] uppercase tracking-[0.25rem] transition hover:border-destructive hover:text-destructive",
-                checked && "border-destructive bg-destructive/15 text-destructive"
+                "flex items-center justify-between rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.22rem] leading-relaxed text-muted-foreground transition",
+                variant === "chip"
+                  ? cn(
+                      "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
+                      checked && "border-destructive bg-destructive/20 text-destructive"
+                    )
+                  : cn("hover:text-destructive", checked && "text-destructive")
               )}
             >
               <span className="flex items-center gap-2">
@@ -275,13 +406,20 @@ const FilterCheckboxList = ({
                   type="checkbox"
                   checked={checked}
                   onChange={() => onToggle(normalizedValue)}
-                  className="h-3.5 w-3.5 rounded border-border/80 text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+                  className="peer sr-only"
                 />
-                <span className="leading-none text-foreground">{label}</span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm border border-border/60 bg-background/70 text-transparent transition peer-focus-visible:ring-2 peer-focus-visible:ring-destructive/60",
+                    checked && "border-destructive bg-destructive text-background"
+                  )}
+                >
+                  {checked ? <Check className="h-3 w-3" /> : null}
+                </span>
+                <span className="text-foreground">{label}</span>
               </span>
-              <span className="text-[0.6rem] text-muted-foreground/80">
-                {count}
-              </span>
+              <span className="text-[0.6rem] text-muted-foreground/80">{count}</span>
             </label>
           )
         })}
@@ -292,12 +430,15 @@ const FilterCheckboxList = ({
 
 const FilterSidebar = ({
   genres,
+  artists,
   formats,
   productTypes,
   selectedGenres,
+  selectedArtists,
   selectedFormats,
   selectedProductTypes,
   onToggleGenre,
+  onToggleArtist,
   onToggleFormat,
   onToggleProductType,
   onClear,
@@ -305,12 +446,15 @@ const FilterSidebar = ({
   onToggleStock,
 }: {
   genres: FilterOption[]
+  artists: FilterOption[]
   formats: FilterOption[]
   productTypes: FilterOption[]
   selectedGenres: string[]
+  selectedArtists: string[]
   selectedFormats: string[]
   selectedProductTypes: string[]
   onToggleGenre: (genre: string) => void
+  onToggleArtist: (artist: string) => void
   onToggleFormat: (format: string) => void
   onToggleProductType: (type: string) => void
   onClear: () => void
@@ -320,13 +464,13 @@ const FilterSidebar = ({
   <div className="space-y-6">
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.35rem] text-muted-foreground">
           Filters
         </h2>
         <button
           type="button"
           onClick={onClear}
-          className="text-xs uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-accent"
+          className="text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-accent"
         >
           Reset
         </button>
@@ -335,7 +479,7 @@ const FilterSidebar = ({
         type="button"
         onClick={onToggleStock}
         className={cn(
-          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-xs uppercase tracking-[0.3rem] transition",
+          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition",
           showInStockOnly
             ? "border-destructive/80 bg-destructive text-background shadow-glow"
             : "border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive"
@@ -365,6 +509,9 @@ const FilterSidebar = ({
         options={genres}
         selected={selectedGenres}
         onToggle={onToggleGenre}
+        variant="plain"
+        normalizeValue={(value) => value.trim().toLowerCase()}
+        defaultOpen={selectedGenres.length > 0}
       />
 
       <Separator className="border-border/50" />
@@ -374,6 +521,7 @@ const FilterSidebar = ({
         options={formats}
         selected={selectedFormats}
         onToggle={onToggleFormat}
+        defaultOpen={selectedFormats.length > 0}
       />
 
       <Separator className="border-border/50" />
@@ -383,6 +531,19 @@ const FilterSidebar = ({
         options={productTypes}
         selected={selectedProductTypes}
         onToggle={onToggleProductType}
+        defaultOpen={selectedProductTypes.length > 0}
+      />
+
+      <Separator className="border-border/50" />
+
+      <FilterCheckboxList
+        title="Artists"
+        options={artists}
+        selected={selectedArtists}
+        onToggle={onToggleArtist}
+        variant="plain"
+        normalizeValue={(value) => value.trim().toLowerCase()}
+        defaultOpen={selectedArtists.length > 0}
       />
     </div>
   </div>
@@ -555,192 +716,248 @@ const useResponsiveColumns = () => {
 
 const ProductSearchExperience = ({
   initialHits,
-  initialFacets,
-  initialTotal,
-  initialOffset = 0,
-  pageSize = 24,
+  pageSize = 48,
   initialSort = "alphabetical",
+  genreFilters,
 }: ProductSearchExperienceProps) => {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const hasHydratedFromParams = useRef(false)
-  const isReplacingRef = useRef(false)
-  const lastSyncedParamsRef = useRef<string>("")
+  const normalizedGenreFilters = useMemo(
+    () =>
+      genreFilters
+        .map((genre, index) => {
+          const handle = genre.handle?.trim().toLowerCase() ?? ""
+          const label = genre.label?.trim() ?? ""
+          if (!handle.length || !label.length) {
+            return null
+          }
+          const rank =
+            typeof genre.rank === "number" ? genre.rank : index
+          return { handle, label, rank }
+        })
+        .filter(
+          (
+            entry
+          ): entry is { handle: string; label: string; rank: number } =>
+            Boolean(entry)
+        )
+        .sort(
+          (a, b) =>
+            a.rank - b.rank || a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
+        ),
+    [genreFilters]
+  )
 
-  const [inputValue, setInputValue] = useState("")
-  const [query, setQuery] = useState("")
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([])
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([])
-  const [selectedProductTypes, setSelectedProductTypes] = useState<string[]>([])
-  const [showInStockOnly, setShowInStockOnly] = useState(false)
-  const [sortOption, setSortOption] = useState<ProductSortOption>(initialSort)
+  const genreLabelByHandle = useMemo(() => {
+    const map = new Map<string, string>()
+    normalizedGenreFilters.forEach((genre) => {
+      map.set(genre.handle, genre.label)
+    })
+    return map
+  }, [normalizedGenreFilters])
+
+  const getGenreLabelForHandle = useCallback(
+    (handle: string) =>
+      genreLabelByHandle.get(handle) ?? humanizeCategoryHandle(handle),
+    [genreLabelByHandle]
+  )
+
+  const resolveGenreHandle = useCallback(
+    (rawValue: string | null | undefined): string | null => {
+      if (typeof rawValue !== "string") {
+        return null
+      }
+      const trimmed = rawValue.trim()
+      if (!trimmed.length) {
+        return null
+      }
+      const normalized = trimmed.toLowerCase()
+      if (genreLabelByHandle.has(normalized)) {
+        return normalized
+      }
+      for (const [handle, label] of genreLabelByHandle.entries()) {
+        if (label.toLowerCase() === normalized) {
+          return handle
+        }
+      }
+      return normalized
+    },
+    [genreLabelByHandle]
+  )
+
+  const hasHydratedFromParams = useRef(false)
+  const lastSerializedParamsRef = useRef<string>("")
+
+  const query = useCatalogStore((state) => state.query)
+  const selectedGenres = useCatalogStore((state) => state.genres)
+  const selectedArtists = useCatalogStore((state) => state.artists)
+  const selectedFormats = useCatalogStore((state) => state.formats)
+  const selectedProductTypes = useCatalogStore((state) => state.productTypes)
+  const showInStockOnly = useCatalogStore((state) => state.showInStockOnly)
+  const sortOption = useCatalogStore((state) => state.sort)
+
+  const setQuery = useCatalogStore((state) => state.setQuery)
+  const toggleGenreFilter = useCatalogStore((state) => state.toggleGenre)
+  const toggleArtistFilter = useCatalogStore((state) => state.toggleArtist)
+  const toggleFormatFilter = useCatalogStore((state) => state.toggleFormat)
+  const toggleProductTypeFilter = useCatalogStore((state) => state.toggleProductType)
+  const toggleStockOnlyFilter = useCatalogStore((state) => state.toggleStockOnly)
+  const setSortOption = useCatalogStore((state) => state.setSort)
+  const clearFiltersStore = useCatalogStore((state) => state.clearFilters)
+  const hydrateFromParams = useCatalogStore((state) => state.hydrateFromParams)
+
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-  const [criteria, setCriteria] = useState<SearchCriteria>({
-    query: "",
-    genres: [],
-    formats: [],
-    productTypes: [],
-    limit: pageSize,
-    inStockOnly: false,
-  })
-  const [, startTransition] = useTransition()
+
+  const [catalogHits, setCatalogHits] = useState<ProductSearchHit[]>(initialHits)
+  const [visibleCount, setVisibleCount] = useState(() =>
+    Math.min(pageSize, initialHits.length)
+  )
 
   useEffect(() => {
-    const paramsSnapshot = searchParams ? new URLSearchParams(searchParams.toString()) : null
-    if (!paramsSnapshot) {
-      hasHydratedFromParams.current = true
+    setCatalogHits(initialHits)
+    setVisibleCount(Math.min(pageSize, initialHits.length))
+  }, [initialHits, pageSize])
+
+  useEffect(() => {
+    if (!catalogHits.length) {
+      return
+    }
+    if (!catalogHits.some(needsClientHydration)) {
       return
     }
 
-    if (isReplacingRef.current) {
-      // Skip handling while we're replacing to avoid redundant state churn.
-      isReplacingRef.current = false
-      hasHydratedFromParams.current = true
+    let cancelled = false
+    const hydrate = async () => {
+      const enriched = await hydrateHitsClient(catalogHits)
+      if (!cancelled) {
+        setCatalogHits(enriched)
+      }
+    }
+
+    void hydrate()
+    return () => {
+      cancelled = true
+    }
+  }, [catalogHits])
+
+  useEffect(() => {
+    if (typeof window === "undefined" || hasHydratedFromParams.current) {
       return
     }
 
-    const nextQuery = paramsSnapshot.get("q") ?? ""
-    const nextGenres = paramsSnapshot.getAll("genre")
-    const nextFormats = paramsSnapshot.getAll("format")
-    const nextProductTypes = paramsSnapshot.getAll("type")
-    const nextStock = paramsSnapshot.get("stock") === "1"
-    const nextSortParam = paramsSnapshot.get("sort")
+    const params = new URLSearchParams(window.location.search)
+    const splitCsv = (values: string[]): string[] =>
+      values
+        .flatMap((entry) => entry.split(","))
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length)
+
+    const nextQuery = params.get("q") ?? ""
+    const nextGenres = Array.from(
+      new Set(
+        splitCsv(params.getAll("genre"))
+          .map((value) => resolveGenreHandle(value))
+          .filter((value): value is string => Boolean(value))
+      )
+    )
+    const normalizeArtistHandle = (value: string | null): string | null => {
+      if (typeof value !== "string") {
+        return null
+      }
+      const trimmed = value.trim().toLowerCase()
+      return trimmed.length ? trimmed : null
+    }
+    const nextArtists = Array.from(
+      new Set(
+        splitCsv(params.getAll("artist"))
+          .map((value) => normalizeArtistHandle(value))
+          .filter((value): value is string => Boolean(value))
+      )
+    )
+    const nextFormats = splitCsv(params.getAll("format"))
+    const nextProductTypes = splitCsv(params.getAll("type"))
+    const nextStock = params.get("stock") === "1"
+    const nextSortParam = params.get("sort")
     const nextSort = SORT_OPTIONS.some(({ value }) => value === nextSortParam)
       ? (nextSortParam as ProductSortOption)
       : initialSort
 
-    const shouldUpdateQuery = nextQuery !== query
-    const shouldUpdateGenres = !arraysEqual(nextGenres, selectedGenres)
-    const shouldUpdateFormats = !arraysEqual(nextFormats, selectedFormats)
-    const shouldUpdateProductTypes = !arraysEqual(nextProductTypes, selectedProductTypes)
-    const shouldUpdateStock = nextStock !== showInStockOnly
-    const shouldUpdateSort = nextSort !== sortOption
-
-    const nextCriteria = {
+    hydrateFromParams({
       query: nextQuery,
       genres: nextGenres,
+      artists: nextArtists,
       formats: nextFormats,
       productTypes: nextProductTypes,
-      limit: pageSize,
-      inStockOnly: nextStock,
-    }
-
-    const shouldUpdate =
-      shouldUpdateQuery ||
-      shouldUpdateGenres ||
-      shouldUpdateFormats ||
-      shouldUpdateProductTypes ||
-      shouldUpdateStock ||
-      shouldUpdateSort ||
-      !hasHydratedFromParams.current
-
-    if (shouldUpdate) {
-      startTransition(() => {
-        if (shouldUpdateQuery) {
-          setInputValue(nextQuery)
-          setQuery(nextQuery)
-        }
-        if (shouldUpdateGenres) {
-          setSelectedGenres(nextGenres)
-        }
-        if (shouldUpdateFormats) {
-          setSelectedFormats(nextFormats)
-        }
-        if (shouldUpdateProductTypes) {
-          setSelectedProductTypes(nextProductTypes)
-        }
-        if (shouldUpdateStock) {
-          setShowInStockOnly(nextStock)
-        }
-        if (shouldUpdateSort) {
-          setSortOption(nextSort)
-        }
-        setCriteria((prev) => ({
-          ...prev,
-          ...nextCriteria,
-        }))
-      })
-    }
+      showInStockOnly: nextStock,
+      sort: nextSort,
+    })
 
     hasHydratedFromParams.current = true
-  }, [searchParams, initialSort, query, selectedGenres, selectedFormats, selectedProductTypes, showInStockOnly, sortOption, pageSize])
+    lastSerializedParamsRef.current = params.toString()
+  }, [hydrateFromParams, initialSort, resolveGenreHandle])
 
   const genresKey = useMemo(
-    () => [...criteria.genres].sort().join("|"),
-    [criteria.genres]
+    () => [...selectedGenres].sort().join("|"),
+    [selectedGenres]
+  )
+  const artistsKey = useMemo(
+    () => [...selectedArtists].sort().join("|"),
+    [selectedArtists]
   )
   const formatsKey = useMemo(
-    () => [...criteria.formats].sort().join("|"),
-    [criteria.formats]
+    () => [...selectedFormats].sort().join("|"),
+    [selectedFormats]
   )
   const productTypesKey = useMemo(
-    () => [...criteria.productTypes].sort().join("|"),
-    [criteria.productTypes]
+    () => [...selectedProductTypes].sort().join("|"),
+    [selectedProductTypes]
   )
 
-  const debouncerRef =
-    useRef<Debouncer<(job: SearchCriteria) => void> | null>(null)
+  const criteriaKey = useMemo(
+    () =>
+      [
+        query.trim(),
+        genresKey,
+        artistsKey,
+        formatsKey,
+        productTypesKey,
+        showInStockOnly ? "in-stock" : "all",
+        sortOption,
+      ].join("|"),
+    [query, genresKey, artistsKey, formatsKey, productTypesKey, showInStockOnly, sortOption]
+  )
 
   useEffect(() => {
-    const debouncer = new Debouncer<(job: SearchCriteria) => void>(
-      (job: SearchCriteria) => {
-        setCriteria(job)
-      },
-      { wait: 320 }
-    )
-
-    debouncerRef.current = debouncer
-
-    return () => {
-      debouncer.cancel()
-      debouncerRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    debouncerRef.current?.maybeExecute({
-      query,
-      genres: selectedGenres,
-      formats: selectedFormats,
-      productTypes: selectedProductTypes,
-      limit: pageSize,
-      inStockOnly: showInStockOnly,
-    })
-  }, [
-    query,
-    selectedGenres,
-    selectedFormats,
-    selectedProductTypes,
-    showInStockOnly,
-    pageSize,
-  ])
-
-  useEffect(() => {
-    if (!hasHydratedFromParams.current) {
+    if (typeof window === "undefined" || !hasHydratedFromParams.current) {
       return
     }
 
     const params = new URLSearchParams()
-    const trimmedQuery = criteria.query.trim()
+    const trimmedQuery = query.trim()
     if (trimmedQuery.length) {
       params.set("q", trimmedQuery)
     }
-    criteria.genres.forEach((value) => {
-      if (value.trim().length) {
-        params.append("genre", value)
+    const setCsvParam = (key: string, values: string[]) => {
+      if (values.length) {
+        params.set(key, values.join(","))
       }
-    })
-    criteria.formats.forEach((value) => {
-      if (value.trim().length) {
-        params.append("format", value)
-      }
-    })
-    criteria.productTypes.forEach((value) => {
-      if (value.trim().length) {
-        params.append("type", value)
-      }
-    })
-    if (criteria.inStockOnly) {
+    }
+
+    setCsvParam(
+      "genre",
+      selectedGenres.map((value) => value.trim()).filter((value) => value.length)
+    )
+    setCsvParam(
+      "artist",
+      selectedArtists.map((value) => value.trim()).filter((value) => value.length)
+    )
+    setCsvParam(
+      "format",
+      selectedFormats.map((value) => value.trim()).filter((value) => value.length)
+    )
+    setCsvParam(
+      "type",
+      selectedProductTypes.map((value) => value.trim()).filter((value) => value.length)
+    )
+    if (showInStockOnly) {
       params.set("stock", "1")
     }
     if (sortOption !== initialSort) {
@@ -748,121 +965,163 @@ const ProductSearchExperience = ({
     }
 
     const serialized = params.toString()
-    const current = searchParams?.toString() ?? ""
-
-    if (serialized === current) {
-      lastSyncedParamsRef.current = serialized
+    if (serialized === lastSerializedParamsRef.current) {
       return
     }
 
-    if (serialized === lastSyncedParamsRef.current) {
-      return
-    }
-
-    lastSyncedParamsRef.current = serialized
-    isReplacingRef.current = true
-    startTransition(() => {
-      router.replace(serialized ? `?${serialized}` : "", { scroll: false })
-    })
+    const nextUrl = serialized
+      ? `${window.location.pathname}?${serialized}`
+      : window.location.pathname
+    window.history.replaceState(null, "", nextUrl)
+    lastSerializedParamsRef.current = serialized
   }, [
-    criteria.query,
+    query,
     genresKey,
+    artistsKey,
     formatsKey,
     productTypesKey,
-    criteria.inStockOnly,
+    showInStockOnly,
     sortOption,
-    router,
-    searchParams,
     initialSort,
   ])
 
-  const initialResult = useMemo<ProductSearchResponse>(
-    () => ({
-      hits: initialHits,
-      total: initialTotal,
-      offset: initialOffset,
-      facets: initialFacets,
-    }),
-    [initialHits, initialTotal, initialOffset, initialFacets]
-  )
+  const aggregatedHits = useMemo(() => catalogHits, [catalogHits])
 
-  const initialQueryData = useMemo(
-    () => ({
-      pages: [initialResult],
-      pageParams: [initialOffset],
-    }),
-    [initialResult, initialOffset]
-  )
-
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: [
-      "catalog-search",
-      criteria.query.trim(),
-      genresKey,
-      formatsKey,
-      productTypesKey,
-      criteria.limit,
-      sortOption,
-      criteria.inStockOnly ? "in-stock" : "all",
-    ],
-    queryFn: async ({ pageParam = 0 }) =>
-      searchProductsBrowser({
-        query: criteria.query,
-        limit: criteria.limit,
-        offset: pageParam,
-        filters: {
-          genres: criteria.genres,
-          variants: criteria.formats,
-          productTypes: criteria.productTypes,
-        },
-        sort: sortOption,
-        inStockOnly: criteria.inStockOnly,
-      }),
-    getNextPageParam: (lastPage, pages) => {
-      const loaded = pages.reduce((total, page) => total + page.hits.length, 0)
-      if (loaded >= lastPage.total) {
-        return undefined
-      }
-      return loaded
-    },
-    initialPageParam: 0,
-    initialData: initialQueryData,
-    placeholderData: (previous) => previous ?? initialQueryData,
-  })
-
-  const pages = data?.pages ?? initialQueryData.pages
-  const facets = pages[0]?.facets ?? initialFacets
-  const totalResults = pages[0]?.total ?? 0
-
-  const aggregatedHits = useMemo(() => {
-    const seen = new Set<string>()
-    const deduped: ProductSearchHit[] = []
-    pages.forEach((page) => {
-      page.hits.forEach((hit) => {
-        const key = hit.handle?.trim().toLowerCase() ?? hit.id
-        if (!key || seen.has(key)) {
-          return
-        }
-        seen.add(key)
-        deduped.push(hit)
-      })
-    })
-    return deduped
-  }, [pages])
-
-  const mappedResults = useMemo(
-    () => aggregatedHits.map(mapHitToSummary),
+  const catalogFacets = useMemo(
+    () => computeFacetCounts(aggregatedHits),
     [aggregatedHits]
   )
 
-  const deferredResults = useDeferredValue(mappedResults)
+  const artistFacets = useMemo(() => {
+    const counts: Record<string, number> = {}
+    const labels = new Map<string, string>()
 
+    aggregatedHits.forEach((hit) => {
+      const handle =
+        hit.slug?.artistSlug?.toLowerCase() ??
+        hit.artist?.trim().toLowerCase() ??
+        null
+      if (!handle) {
+        return
+      }
+      counts[handle] = (counts[handle] ?? 0) + 1
+      if (!labels.has(handle)) {
+        labels.set(handle, hit.artist ?? humanizeCategoryHandle(handle))
+      }
+    })
+
+    return { counts, labels }
+  }, [aggregatedHits])
+
+  const filteredHits = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase()
+    const requiredGenres = selectedGenres.map((value) => value.toLowerCase())
+    const requiredArtists = selectedArtists.map((value) => value.toLowerCase())
+    const requiredFormats = selectedFormats.map((value) => value.toLowerCase())
+    const requiredProductTypes = selectedProductTypes.map((value) =>
+      value.toLowerCase()
+    )
+
+    const matches = aggregatedHits.filter((hit) => {
+      if (showInStockOnly) {
+        const inStock =
+          hit.defaultVariant?.inStock ??
+          ((hit.stockStatus ?? "").toLowerCase() !== "sold_out")
+        if (!inStock) {
+          return false
+        }
+      }
+
+      if (requiredGenres.length) {
+        const handles = (hit.categoryHandles ?? []).map((value) => value.toLowerCase())
+        const genreLabels = (hit.metalGenres ?? hit.genres ?? []).map((value) =>
+          value.toLowerCase()
+        )
+        const combined = new Set([...handles, ...genreLabels])
+        if (!requiredGenres.some((genre) => combined.has(genre))) {
+          return false
+        }
+      }
+
+      if (requiredArtists.length) {
+        const artistHandle =
+          hit.slug?.artistSlug?.toLowerCase() ??
+          hit.artist?.trim().toLowerCase() ??
+          ""
+        if (!artistHandle.length || !requiredArtists.includes(artistHandle)) {
+          return false
+        }
+      }
+
+      if (requiredFormats.length) {
+        const formats = (
+          hit.formats?.length ? hit.formats : hit.variantTitles ?? []
+        ).map((value) => value.toLowerCase())
+        if (!requiredFormats.some((format) => formats.includes(format))) {
+          return false
+        }
+      }
+
+      if (requiredProductTypes.length) {
+        const productType = hit.productType?.toLowerCase() ?? ""
+        if (!requiredProductTypes.includes(productType)) {
+          return false
+        }
+      }
+
+      if (normalizedQuery.length) {
+        const haystack = [
+          hit.title,
+          hit.artist,
+          hit.album,
+          hit.collectionTitle ?? "",
+          ...(hit.genres ?? []),
+          ...(hit.metalGenres ?? []),
+        ]
+          .join(" ")
+          .toLowerCase()
+        if (!haystack.includes(normalizedQuery)) {
+          return false
+        }
+      }
+
+      return true
+    })
+
+    const sorted = [...matches]
+    if (sortOption === "alphabetical") {
+      sorted.sort((a, b) => a.title.localeCompare(b.title))
+    } else if (sortOption === "newest") {
+      sorted.sort(
+        (a, b) =>
+          new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()
+      )
+    } else if (sortOption === "price-low") {
+      sorted.sort((a, b) => (a.priceAmount ?? Infinity) - (b.priceAmount ?? Infinity))
+    } else if (sortOption === "price-high") {
+      sorted.sort((a, b) => (b.priceAmount ?? 0) - (a.priceAmount ?? 0))
+    }
+
+    return sorted
+  }, [
+    aggregatedHits,
+    query,
+    selectedGenres,
+    selectedArtists,
+    selectedFormats,
+    selectedProductTypes,
+    showInStockOnly,
+    sortOption,
+  ])
+
+  const totalResults = filteredHits.length
+
+  const mappedResults = useMemo(
+    () => filteredHits.map(mapHitToSummary),
+    [filteredHits]
+  )
+
+  const deferredResults = useDeferredValue(mappedResults)
   const columns = useResponsiveColumns()
   const rowEstimate = useMemo(() => {
     if (columns >= 4) return 420
@@ -878,7 +1137,7 @@ const ProductSearchExperience = ({
     count: totalRowCount,
     estimateSize: () => rowEstimate,
     overscan: 8,
-    scrollMargin: 180,
+    scrollMargin: 0,
   })
 
   const virtualItems = virtualizer.getVirtualItems()
@@ -888,7 +1147,17 @@ const ProductSearchExperience = ({
   }, [columns, rowEstimate, virtualizer])
 
   useEffect(() => {
-    if (!virtualItems.length || !hasNextPage) {
+    setVisibleCount((prev) => Math.min(prev, deferredResults.length))
+  }, [deferredResults.length])
+
+  useEffect(() => {
+    const baseVisible =
+      filteredHits.length > 0 ? Math.min(pageSize, filteredHits.length) : 0
+    setVisibleCount(baseVisible)
+  }, [criteriaKey, filteredHits.length, pageSize])
+
+  useEffect(() => {
+    if (!virtualItems.length) {
       return
     }
 
@@ -896,47 +1165,23 @@ const ProductSearchExperience = ({
     if (!lastVirtualRow) {
       return
     }
-    const neededItems = Math.min(
-      totalResults,
-      (lastVirtualRow.index + 1) * columns
+
+    const approxRendered = Math.min(
+      (lastVirtualRow.index + 1) * columns,
+      deferredResults.length
     )
+    const remainingBeforeVisibleEnd = Math.max(visibleCount - approxRendered, 0)
+    const threshold = Math.max(columns * 2, pageSize)
 
     if (
-      neededItems > aggregatedHits.length &&
-      !isFetchingNextPage &&
-      hasNextPage
+      remainingBeforeVisibleEnd <= threshold &&
+      visibleCount < deferredResults.length
     ) {
-      void fetchNextPage()
+      setVisibleCount((prev) =>
+        Math.min(deferredResults.length, prev + Math.max(pageSize, columns * 2))
+      )
     }
-  }, [
-    virtualItems,
-    columns,
-    totalResults,
-    aggregatedHits.length,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  ])
-
-  const criteriaKey = useMemo(
-    () =>
-      [
-        criteria.query.trim(),
-        genresKey,
-        formatsKey,
-        productTypesKey,
-        criteria.inStockOnly ? "in-stock" : "all",
-        sortOption,
-      ].join("|"),
-    [
-      criteria.query,
-      genresKey,
-      formatsKey,
-      productTypesKey,
-      criteria.inStockOnly,
-      sortOption,
-    ]
-  )
+  }, [virtualItems, columns, deferredResults.length, pageSize, visibleCount])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -949,27 +1194,65 @@ const ProductSearchExperience = ({
 
   const activeFiltersCount =
     selectedGenres.length +
+    selectedArtists.length +
     selectedFormats.length +
     selectedProductTypes.length +
-    (showInStockOnly ? 1 : 0) +
-    (inputValue ? 1 : 0)
+    (showInStockOnly ? 1 : 0)
 
-  const genreOptions = useMemo(
+  const filterChipClass =
+    "inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.25rem] text-foreground shadow-[0_0_15px_rgba(255,0,0,0.18)] transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50"
+
+  const categoryFacetCounts = useMemo(
     () =>
-      (Object.entries(facets.metalGenres ?? {}) as Array<[string, number]>)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 20)
+      Object.entries(catalogFacets.categories ?? {}).reduce<Record<string, number>>(
+        (acc, [rawKey, rawCount]) => {
+          const key = rawKey.trim().toLowerCase()
+          if (!key.length) {
+            return acc
+          }
+          acc[key] = rawCount
+          return acc
+        },
+        {}
+      ),
+    [catalogFacets.categories]
+  )
+
+  const genreOptions = useMemo(() => {
+    type RankedOption = FilterOption & { rank: number }
+
+    const baseOptions: RankedOption[] = normalizedGenreFilters.map((genre) => ({
+      value: genre.handle,
+      label: genre.label,
+      count: categoryFacetCounts[genre.handle] ?? 0,
+      rank: genre.rank,
+    }))
+
+    return baseOptions
+      .sort(
+        (a, b) =>
+          a.rank - b.rank ||
+          b.count - a.count ||
+          a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
+      )
+      .map(({ rank: _rank, ...option }) => option)
+  }, [categoryFacetCounts, normalizedGenreFilters, genreLabelByHandle])
+
+  const artistOptions = useMemo(
+    () =>
+      Object.entries(artistFacets.counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .map(([value, count]) => ({
           value,
-          label: humanizeCategoryHandle(value),
+          label: artistFacets.labels.get(value) ?? humanizeCategoryHandle(value),
           count,
         })),
-    [facets.metalGenres]
+    [artistFacets]
   )
 
   const formatOptions = useMemo(
     () =>
-      (Object.entries(facets.variants ?? {}) as Array<[string, number]>)
+      (Object.entries(catalogFacets.variants ?? {}) as Array<[string, number]>)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 20)
         .map(([value, count]) => ({
@@ -977,7 +1260,7 @@ const ProductSearchExperience = ({
           label: value,
           count,
         })),
-    [facets.variants, facets.format]
+    [catalogFacets.variants]
   )
 
   const formatProductTypeLabel = useCallback(
@@ -990,59 +1273,52 @@ const ProductSearchExperience = ({
 
   const productTypeOptions = useMemo(
     () =>
-      (Object.entries(facets.productTypes ?? {}) as Array<[string, number]>)
+      (Object.entries(catalogFacets.productTypes ?? {}) as Array<[string, number]>)
         .sort((a, b) => b[1] - a[1])
         .map(([value, count]) => ({
           value,
           label: formatProductTypeLabel(value),
           count,
         })),
-    [facets.productTypes]
+    [catalogFacets.productTypes]
   )
 
-  const toggleGenre = (genre: string) => {
-    startTransition(() => {
-      setSelectedGenres((prev) =>
-        prev.includes(genre)
-          ? prev.filter((value) => value !== genre)
-          : [...prev, genre]
-      )
-    })
+  const handleToggleGenre = (genre: string) => {
+    const normalizedGenre = genre.trim().toLowerCase()
+    if (!normalizedGenre.length) {
+      return
+    }
+    toggleGenreFilter(normalizedGenre)
   }
 
-  const toggleFormat = (formatValue: string) => {
-    startTransition(() => {
-      setSelectedFormats((prev) =>
-        prev.includes(formatValue)
-          ? prev.filter((value) => value !== formatValue)
-          : [...prev, formatValue]
-      )
-    })
+  const handleToggleArtist = (artist: string) => {
+    const normalized = artist.trim().toLowerCase()
+    if (!normalized.length) {
+      return
+    }
+    toggleArtistFilter(normalized)
   }
 
-  const toggleProductType = (type: string) => {
-    startTransition(() => {
-      setSelectedProductTypes((prev) =>
-        prev.includes(type)
-          ? prev.filter((value) => value !== type)
-          : [...prev, type]
-      )
-    })
+  const handleToggleFormat = (formatValue: string) => {
+    if (!formatValue.trim().length) {
+      return
+    }
+    toggleFormatFilter(formatValue)
+  }
+
+  const handleToggleProductType = (type: string) => {
+    if (!type.trim().length) {
+      return
+    }
+    toggleProductTypeFilter(type)
   }
 
   const clearFilters = () => {
-    startTransition(() => {
-      setSelectedGenres([])
-      setSelectedFormats([])
-      setSelectedProductTypes([])
-      setShowInStockOnly(false)
-    })
+    clearFiltersStore()
   }
 
   const toggleStockOnly = () => {
-    startTransition(() => {
-      setShowInStockOnly((value) => !value)
-    })
+    toggleStockOnlyFilter()
   }
 
   const gridTemplateStyle = useMemo(
@@ -1052,21 +1328,26 @@ const ProductSearchExperience = ({
     [columns]
   )
 
+  const isFetching = false
+
   return (
-    <div className="bg-background pb-16">
-      <div className="container flex flex-col gap-6 px-2 py-8 sm:px-4 lg:flex-row lg:gap-8">
-        <aside className="hidden lg:block lg:w-56 lg:flex-shrink-0">
-          <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto bg-background/90 px-4 py-5 supports-[backdrop-filter]:backdrop-blur-xl">
+    <div className="bg-background pb-8">
+      <div className="container flex flex-col gap-4 px-2 pt-4 sm:px-4 lg:flex-row lg:gap-8">
+        <aside className="hidden lg:block lg:w-60 lg:flex-shrink-0">
+          <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl">
             <FilterSidebar
               genres={genreOptions}
+              artists={artistOptions}
               formats={formatOptions}
               productTypes={productTypeOptions}
               selectedGenres={selectedGenres}
+              selectedArtists={selectedArtists}
               selectedFormats={selectedFormats}
               selectedProductTypes={selectedProductTypes}
-              onToggleGenre={toggleGenre}
-              onToggleFormat={toggleFormat}
-              onToggleProductType={toggleProductType}
+              onToggleGenre={handleToggleGenre}
+              onToggleArtist={handleToggleArtist}
+              onToggleFormat={handleToggleFormat}
+              onToggleProductType={handleToggleProductType}
               onClear={clearFilters}
               showInStockOnly={showInStockOnly}
               onToggleStock={toggleStockOnly}
@@ -1075,7 +1356,7 @@ const ProductSearchExperience = ({
         </aside>
 
         <div className="flex-1 space-y-6">
-          <header className="relative sticky top-16 z-20 space-y-2 border-b border-border/40 bg-background/80 px-2 py-3 supports-[backdrop-filter]:backdrop-blur-lg sm:px-4 lg:px-6">
+          <header className="relative sticky top-14 z-20 space-y-2 border-b border-border/40 bg-background/85 px-2 py-2 supports-[backdrop-filter]:backdrop-blur-lg sm:px-4 lg:px-6">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
                 {isFetching ? "Refreshing…" : `${totalResults} results`}
@@ -1107,14 +1388,17 @@ const ProductSearchExperience = ({
                     <div className="h-[calc(100vh-6.5rem)] overflow-y-auto px-6 pb-10">
                       <FilterSidebar
                         genres={genreOptions}
+                        artists={artistOptions}
                         formats={formatOptions}
                         productTypes={productTypeOptions}
                         selectedGenres={selectedGenres}
+                        selectedArtists={selectedArtists}
                         selectedFormats={selectedFormats}
                         selectedProductTypes={selectedProductTypes}
-                        onToggleGenre={toggleGenre}
-                        onToggleFormat={toggleFormat}
-                        onToggleProductType={toggleProductType}
+                        onToggleGenre={handleToggleGenre}
+                        onToggleArtist={handleToggleArtist}
+                        onToggleFormat={handleToggleFormat}
+                        onToggleProductType={handleToggleProductType}
                         onClear={() => {
                           clearFilters()
                           setMobileFiltersOpen(false)
@@ -1139,13 +1423,9 @@ const ProductSearchExperience = ({
                   aria-hidden
                 />
                 <input
-                  value={inputValue}
+                  value={query}
                   onChange={(event) => {
-                    const nextValue = event.target.value
-                    setInputValue(nextValue)
-                    startTransition(() => {
-                      setQuery(nextValue)
-                    })
+                    setQuery(event.target.value)
                   }}
                   placeholder="Seek brutality…"
                   className="h-9 flex-1 border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
@@ -1156,32 +1436,18 @@ const ProductSearchExperience = ({
               <SortDropdown value={sortOption} onChange={setSortOption} />
             </div>
 
-            {(query ||
-              selectedGenres.length ||
+            {(selectedGenres.length ||
+              selectedArtists.length ||
               selectedFormats.length ||
               selectedProductTypes.length ||
               showInStockOnly) && (
-              <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                {inputValue ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInputValue("")
-                      startTransition(() => {
-                        setQuery("")
-                      })
-                    }}
-                    className="rounded-full border border-destructive/60 bg-destructive/10 px-3 py-1 text-foreground transition hover:border-destructive hover:text-destructive"
-                  >
-                    Query: <span className="ml-1 text-accent">{inputValue}</span> ✕
-                  </button>
-                ) : null}
+              <div className="flex flex-wrap items-center gap-2">
                 {selectedFormats.map((formatValue) => (
                   <button
                     key={`active-format-${formatValue}`}
                     type="button"
-                    onClick={() => toggleFormat(formatValue)}
-                    className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
+                    onClick={() => handleToggleFormat(formatValue)}
+                    className={filterChipClass}
                   >
                     {formatValue} ✕
                   </button>
@@ -1190,27 +1456,37 @@ const ProductSearchExperience = ({
                   <button
                     key={`active-product-type-${type}`}
                     type="button"
-                    onClick={() => toggleProductType(type)}
-                    className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
+                    onClick={() => handleToggleProductType(type)}
+                    className={filterChipClass}
                   >
                     {formatProductTypeLabel(type)} ✕
+                  </button>
+                ))}
+                {selectedArtists.map((artist) => (
+                  <button
+                    key={`active-artist-${artist}`}
+                    type="button"
+                    onClick={() => handleToggleArtist(artist)}
+                    className={filterChipClass}
+                  >
+                    {artistFacets.labels.get(artist) ?? humanizeCategoryHandle(artist)} ✕
                   </button>
                 ))}
                 {selectedGenres.map((genre) => (
                   <button
                     key={`active-genre-${genre}`}
                     type="button"
-                    onClick={() => toggleGenre(genre)}
-                    className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
+                    onClick={() => handleToggleGenre(genre)}
+                    className={filterChipClass}
                   >
-                    {humanizeCategoryHandle(genre)} ✕
+                    {getGenreLabelForHandle(genre)} ✕
                   </button>
                 ))}
                 {showInStockOnly ? (
                   <button
                     type="button"
                     onClick={toggleStockOnly}
-                    className="rounded-full border border-destructive bg-destructive px-3 py-1 text-background transition hover:opacity-90"
+                    className={filterChipClass}
                   >
                     In stock ✕
                   </button>
@@ -1220,7 +1496,7 @@ const ProductSearchExperience = ({
           </header>
 
           <section className="space-y-4 px-2 sm:px-4 lg:px-6">
-            {isFetching && !isFetchingNextPage ? (
+            {isFetching ? (
               <div className="text-sm uppercase tracking-[0.3rem] text-muted-foreground">
                 Refreshing results…
               </div>
@@ -1231,7 +1507,7 @@ const ProductSearchExperience = ({
                 className="relative"
                 style={{ height: virtualizer.getTotalSize() }}
               >
-                {virtualItems.map((virtualRow) => {
+                {virtualItems.map((virtualRow: VirtualItem) => {
                   const rowIndex = virtualRow.index
                   const startIndex = rowIndex * columns
 
@@ -1255,16 +1531,23 @@ const ProductSearchExperience = ({
                       >
                         {Array.from({ length: columns }).map((_, columnIdx) => {
                           const globalIndex = startIndex + columnIdx
-                          const product = deferredResults[globalIndex]
+                          const isLoaded = globalIndex < visibleCount
+                          const product = isLoaded ? deferredResults[globalIndex] : undefined
                           const shouldShowSkeleton =
-                            !product && aggregatedHits.length < totalResults
+                            !product && globalIndex < deferredResults.length
 
                           if (product) {
                             return (
-                              <ProductCard
+                              <motion.div
                                 key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
-                                product={product}
-                              />
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <ProductCard
+                                  product={product}
+                                />
+                              </motion.div>
                             )
                           }
 

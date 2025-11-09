@@ -143,6 +143,11 @@ const ProductPage = async ({ params }: ProductPageProps) => {
     ...categoryGroups.types,
     ...categoryGroups.genres,
   ]
+  const genreChips = Array.from(
+    new Set(
+      (categoryGroups.genres ?? []).map((entry) => entry.label).filter((label) => label.trim().length)
+    )
+  )
   const variantOptions = deriveVariantOptions(product.variants)
   const relatedProducts = await loadRelatedProducts(product)
 
@@ -265,6 +270,18 @@ const ProductPage = async ({ params }: ProductPageProps) => {
                     className="rounded-full border border-border/50 bg-background/80 px-3 py-1 text-[0.55rem] uppercase tracking-[0.3rem] text-muted-foreground"
                   >
                     {category.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {genreChips.length ? (
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                {genreChips.map((genre) => (
+                  <span
+                    key={`genre-chip-${genre}`}
+                    className="rounded-full border border-border/40 bg-background/70 px-3 py-1 text-[0.5rem] uppercase tracking-[0.28rem] text-muted-foreground"
+                  >
+                    {genre}
                   </span>
                 ))}
               </div>
