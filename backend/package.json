@@ -24,7 +24,7 @@
     "search:sync-settings": "medusa exec ./src/scripts/sync-meilisearch-settings.ts",
     "search:sync": "pnpm run search:sync-settings && pnpm run search:rebuild",
     "search:prepare": "pnpm run search:sync && pnpm run search:check",
-    "lint": "eslint --ext .ts,.tsx src"
+    "lint": "eslint --ext .ts,.tsx --max-warnings=0 src"
   },
   "dependencies": {
     "@medusajs/admin-sdk": "^2.12.1",
