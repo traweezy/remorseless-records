@@ -280,6 +280,16 @@ Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
 | Webhook signature errors | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL. |
 | React Compiler warnings | `next.config.ts` already enables `reactCompiler`. Ensure lint errors are fixed; the compiler is strict about invalid hooks usage. |
 
+## CI Pipelines
+
+We run three pipelines on push/PR (plus a weekly schedule):
+
+- **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build.
+- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, E2E tests, build, optional Lighthouse (when `QA_BASE_URL` is set or provided via dispatch inputs).
+- **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan.
+
+Actions are hardened with `step-security/harden-runner`, and Trivy ignores generated `.medusa` output. Dependency Review runs on push and PR. Keep `.env` files local (ignored by git) and rotate any secrets that were previously committed.
+
 ---
 
 ## QA & Accessibility Checklist
