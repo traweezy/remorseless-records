@@ -39,17 +39,18 @@ jobs:
   dependency-review:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    name: Dependency Review (push/PR)
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Dependency review
+      - name: Dependency Review
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: critical
 
   security:
-    name: Security & Audit
+    name: Security & Audit (detector, trivy, audit)
     runs-on: ubuntu-latest
     steps:
       - name: Harden runner
@@ -75,7 +76,7 @@ jobs:
         run: pnpm audit --prod --audit-level=moderate
 
   secrets:
-    name: Secret scan
+    name: Secret Scan (TruffleHog)
     runs-on: ubuntu-latest
     needs: security
     steps:
@@ -88,7 +89,7 @@ jobs:
           extra_args: --only-verified
 
   lint:
-    name: Lint
+    name: Lint (storefront)
     runs-on: ubuntu-latest
     needs: security
     steps:
@@ -115,7 +116,7 @@ jobs:
         run: pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src
 
   typecheck:
-    name: Typecheck
+    name: Typecheck (storefront)
     runs-on: ubuntu-latest
     needs: security
     steps:
@@ -133,7 +134,7 @@ jobs:
         run: pnpm --filter remorseless-records-storefront run typecheck
 
   unit:
-    name: Unit tests
+    name: Unit Tests (storefront)
     runs-on: ubuntu-latest
     needs: [lint, typecheck]
     steps:
@@ -151,7 +152,7 @@ jobs:
         run: pnpm --filter remorseless-records-storefront run test --if-present
 
   e2e:
-    name: E2E tests
+    name: E2E Tests (storefront)
     runs-on: ubuntu-latest
     needs: [lint, typecheck]
     steps:
@@ -171,7 +172,7 @@ jobs:
         run: pnpm --filter remorseless-records-storefront run test:e2e -- --reporter=line
 
   build:
-    name: Build
+    name: Build (storefront)
     runs-on: ubuntu-latest
     needs: [unit, e2e]
     steps:
