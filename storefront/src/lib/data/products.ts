@@ -104,42 +104,62 @@ export const getCollectionProductsByHandle = cache(
 )
 
 export const getHomepageProducts = cache(async (): Promise<StoreProduct[]> => {
-  const { products } = await storeClient.product.list({
-    limit: 16,
-    fields: PRODUCT_DETAIL_FIELDS,
-  })
-  return products
+  try {
+    const { products } = await storeClient.product.list({
+      limit: 16,
+      fields: PRODUCT_DETAIL_FIELDS,
+    })
+    return products
+  } catch (error) {
+    console.error("[getHomepageProducts] Failed to load products", error)
+    return []
+  }
 })
 
 export const getProductByHandle = cache(
   async (handle: string): Promise<StoreProduct | null> => {
-    const { products } = await storeClient.product.list({
-      handle,
-      limit: 1,
-      fields: PRODUCT_DETAIL_FIELDS,
-    })
-    return products[0] ?? null
+    try {
+      const { products } = await storeClient.product.list({
+        handle,
+        limit: 1,
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      return products[0] ?? null
+    } catch (error) {
+      console.error("[getProductByHandle] Failed to load product", error)
+      return null
+    }
   }
 )
 
 export const getProductsByCollection = cache(
   async (collectionId: string, limit = 8): Promise<StoreProduct[]> => {
-    const { products } = await storeClient.product.list({
-      collection_id: collectionId,
-      limit,
-      fields: PRODUCT_DETAIL_FIELDS,
-    })
-    return products
+    try {
+      const { products } = await storeClient.product.list({
+        collection_id: collectionId,
+        limit,
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      return products
+    } catch (error) {
+      console.error("[getProductsByCollection] Failed to load products", error)
+      return []
+    }
   }
 )
 
 export const getRecentProducts = cache(
   async (limit = 8): Promise<StoreProduct[]> => {
-    const { products } = await storeClient.product.list({
-      limit,
-      fields: PRODUCT_DETAIL_FIELDS,
-    })
-    return products
+    try {
+      const { products } = await storeClient.product.list({
+        limit,
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      return products
+    } catch (error) {
+      console.error("[getRecentProducts] Failed to load products", error)
+      return []
+    }
   }
 )
 
@@ -151,51 +171,56 @@ type ProductHandleSummary = {
 
 export const getAllProductHandles = cache(
   async (): Promise<ProductHandleSummary[]> => {
-    const handles: ProductHandleSummary[] = []
-    const pageSize = 100
-    let offset = 0
+    try {
+      const handles: ProductHandleSummary[] = []
+      const pageSize = 100
+      let offset = 0
 
-    // Medusa paginates products; loop until we exhaust the catalog.
-    // We request moderate batches to avoid stressing the API during build time.
-    for (;;) {
-      const { products } = await storeClient.product.list({
-        limit: pageSize,
-        offset,
-        order: "created_at",
-      })
+      // Medusa paginates products; loop until we exhaust the catalog.
+      // We request moderate batches to avoid stressing the API during build time.
+      for (;;) {
+        const { products } = await storeClient.product.list({
+          limit: pageSize,
+          offset,
+          order: "created_at",
+        })
 
-      if (!products?.length) {
-        break
-      }
-
-      for (const product of products) {
-        if (!product?.handle) {
-          continue
+        if (!products?.length) {
+          break
         }
 
-        const updatedAt =
-          (product as unknown as { updated_at?: string }).updated_at ??
-          (product as unknown as { updatedAt?: string }).updatedAt ??
-          (product as unknown as { created_at?: string }).created_at ??
-          (product as unknown as { createdAt?: string }).createdAt ??
-          null
+        for (const product of products) {
+          if (!product?.handle) {
+            continue
+          }
 
-        const slug = buildProductSlugParts(product)
+          const updatedAt =
+            (product as unknown as { updated_at?: string }).updated_at ??
+            (product as unknown as { updatedAt?: string }).updatedAt ??
+            (product as unknown as { created_at?: string }).created_at ??
+            (product as unknown as { createdAt?: string }).createdAt ??
+            null
 
-        handles.push({
-          handle: product.handle,
-          slug,
-          updatedAt,
-        })
+          const slug = buildProductSlugParts(product)
+
+          handles.push({
+            handle: product.handle,
+            slug,
+            updatedAt,
+          })
+        }
+
+        if (products.length < pageSize) {
+          break
+        }
+
+        offset += products.length
       }
 
-      if (products.length < pageSize) {
-        break
-      }
-
-      offset += products.length
+      return handles
+    } catch (error) {
+      console.error("[getAllProductHandles] Failed to load products", error)
+      return []
     }
-
-    return handles
   }
 )
