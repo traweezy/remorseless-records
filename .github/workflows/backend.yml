@@ -46,6 +46,8 @@ jobs:
           cache: pnpm
       - name: Enable Corepack
         run: corepack enable
+      - name: Prepare pnpm
+        run: corepack prepare pnpm@10.24.0 --activate
       - name: OSV scan (lockfile)
         run: pnpm dlx osv-scanner --lockfile pnpm-lock.yaml
       - name: Install dependencies
