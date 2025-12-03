@@ -22,7 +22,7 @@ env:
 
 jobs:
   dependency-review:
-    if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+    if: ${{ contains(['pull_request', 'pull_request_target', 'merge_group'], github.event_name) }}
     runs-on: ubuntu-latest
     name: Dependency Review (push/PR)
     permissions:
