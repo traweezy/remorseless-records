@@ -40,16 +40,14 @@ jobs:
         uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
         with:
           fail-on-critical: true
-      - name: OSV scan (lockfile)
-        uses: google/osv-scanner-action@main
-        with:
-          scan-args: "--lockfile pnpm-lock.yaml"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
       - name: Enable Corepack
         run: corepack enable
+      - name: OSV scan (lockfile)
+        run: pnpm dlx osv-scanner --lockfile pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Dependency audit
