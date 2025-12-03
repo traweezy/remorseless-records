@@ -22,8 +22,10 @@ env:
 
 jobs:
   dependency-review:
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Dependency review
@@ -97,6 +99,24 @@ jobs:
       - name: Typecheck backend
         run: pnpm --filter backend exec tsc --noEmit
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: security
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+          run_install: false
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: ESLint (backend)
+        run: pnpm --filter backend exec eslint --max-warnings=0 .
+
   unit:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -142,7 +162,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [unit]
+    needs: [unit, lint]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
