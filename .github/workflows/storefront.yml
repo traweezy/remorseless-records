@@ -219,11 +219,19 @@ jobs:
       - name: Build storefront
         run: pnpm --filter remorseless-records-storefront run build
       - name: Start storefront server
-        run: pnpm --filter remorseless-records-storefront run start -- --hostname 0.0.0.0 --port 3000 > /tmp/storefront.log 2>&1 &
+        run: |
+          pnpm --filter remorseless-records-storefront exec next start --hostname 127.0.0.1 --port 3000 > /tmp/storefront.log 2>&1 &
+          echo $! > /tmp/storefront.pid
       - name: Wait for storefront to be ready
         shell: bash
         run: |
-          pnpm dlx wait-on@7.2.0 tcp:3000 --timeout 120000 || (echo "Wait for storefront failed; tailing log" && tail -n 200 /tmp/storefront.log && exit 1)
+          pnpm dlx wait-on@7.2.0 http://127.0.0.1:3000 --timeout 120000 || (echo "Wait for storefront failed; tailing log" && tail -n 200 /tmp/storefront.log && exit 1)
+      - name: Stop storefront server
+        if: always()
+        run: |
+          if [ -f /tmp/storefront.pid ]; then
+            kill "$(cat /tmp/storefront.pid)" || true
+          fi
       - name: Run pa11y accessibility checks
         run: pnpm run qa:a11y
 
