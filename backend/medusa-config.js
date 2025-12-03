@@ -30,6 +30,7 @@ loadEnv(process.env.NODE_ENV, process.cwd());
 
 const productIndexSettings = meilisearchSettings.products;
 
+/** @type {import('@medusajs/types').ConfigModule} */
 const medusaConfig = {
   projectConfig: {
     databaseUrl: DATABASE_URL,
@@ -193,4 +194,6 @@ const medusaConfig = {
 };
 
 console.log(JSON.stringify(medusaConfig, null, 2));
-export default defineConfig(medusaConfig);
+/** @type {import('@medusajs/types').ConfigModule} */
+const config = defineConfig(medusaConfig);
+export default config;
