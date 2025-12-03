@@ -190,6 +190,8 @@ jobs:
           run_install: false
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build storefront
+        run: pnpm --filter remorseless-records-storefront run build
       - name: Install Playwright browsers
         run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps
       - name: Run Playwright E2E
