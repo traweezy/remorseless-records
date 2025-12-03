@@ -28,6 +28,10 @@ jobs:
         uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
         with:
           fail-on-critical: true
+      - name: OSV scan (lockfile)
+        uses: google/osv-scanner-action@v1
+        with:
+          scan-args: "--lockfile pnpm-lock.yaml"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
