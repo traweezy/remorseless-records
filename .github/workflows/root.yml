@@ -24,6 +24,10 @@ jobs:
     name: Security & Audit
     runs-on: ubuntu-latest
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v4
       - name: Shai-Hulud 2.0 Detector
         uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
@@ -37,6 +41,15 @@ jobs:
         with:
           version: 10.24.0
           run_install: false
+      - name: Trivy FS scan (repo)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          skip-dirs: node_modules
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Dependency audit
