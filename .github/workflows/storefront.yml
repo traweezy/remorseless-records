@@ -216,13 +216,9 @@ jobs:
         run: pnpm --filter remorseless-records-storefront run build
 
   lighthouse:
-    name: Lighthouse (external URL)
+    name: Lighthouse (local build unless URL provided)
     runs-on: ubuntu-latest
     needs: [build]
-    if: ${{ (github.event.inputs.base_url != '') || (vars.QA_BASE_URL != '') }}
-    env:
-      QA_BASE_URL: ${{ github.event.inputs.base_url != '' && github.event.inputs.base_url || vars.QA_BASE_URL || '' }}
-      QA_PRODUCT_PATH: ${{ github.event.inputs.product_path != '' && github.event.inputs.product_path || vars.QA_PRODUCT_PATH || '/products' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -234,5 +230,14 @@ jobs:
           run_install: false
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Run Lighthouse CI
+      - name: Build storefront
+        run: pnpm --filter remorseless-records-storefront run build
+      - name: Start storefront server
+        run: pnpm --filter remorseless-records-storefront run start -- --hostname 0.0.0.0 --port 3000 &
+      - name: Wait for storefront to be ready
+        run: npx wait-on http://localhost:3000
+      - name: Run Lighthouse CI (local or override URL)
+        env:
+          QA_BASE_URL: ${{ github.event.inputs.base_url != '' && github.event.inputs.base_url || vars.QA_BASE_URL || 'http://localhost:3000' }}
+          QA_PRODUCT_PATH: ${{ github.event.inputs.product_path != '' && github.event.inputs.product_path || vars.QA_PRODUCT_PATH || '/products' }}
         run: pnpm run qa:lighthouse
