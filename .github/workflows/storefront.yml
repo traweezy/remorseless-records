@@ -197,10 +197,37 @@ jobs:
       - name: Run Playwright E2E
         run: pnpm --filter remorseless-records-storefront run test:e2e -- --reporter=line
 
+  accessibility:
+    name: Accessibility (pa11y)
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, codeql, secrets]
+    env:
+      QA_BASE_URL: http://localhost:3000
+      QA_PRODUCT_PATH: /products
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+          run_install: false
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build storefront
+        run: pnpm --filter remorseless-records-storefront run build
+      - name: Start storefront server
+        run: pnpm --filter remorseless-records-storefront run start -- --hostname 0.0.0.0 --port 3000 &
+      - name: Wait for storefront to be ready
+        run: pnpm dlx wait-on@7.2.0 http://localhost:3000
+      - name: Run pa11y accessibility checks
+        run: pnpm run qa:a11y
+
   build:
     name: Build (storefront)
     runs-on: ubuntu-latest
-    needs: [unit, e2e]
+    needs: [unit, e2e, accessibility]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
