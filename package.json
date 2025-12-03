@@ -17,11 +17,5 @@
   "devDependencies": {
     "esbuild": "^0.25.12",
     "pa11y": "^6.2.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "esbuild": "^0.25.0",
-      "@mikro-orm/*": "6.4.16"
-    }
   }
 }
