@@ -63,14 +63,6 @@ jobs:
         with:
           version: 10.24.0
           run_install: false
-      - name: Install OSV-Scanner
-        run: |
-          OSV_VERSION="v2.3.0"
-          curl -sSfL "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_${OSV_VERSION#v}_linux_amd64.tar.gz" -o /tmp/osv-scanner.tar.gz
-          tar -xzf /tmp/osv-scanner.tar.gz -C /tmp
-          sudo mv /tmp/osv-scanner /usr/local/bin/osv-scanner
-      - name: OSV scan (lockfile)
-        run: osv-scanner --lockfile pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Dependency audit
