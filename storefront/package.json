@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Remorseless Records brutal maximalism storefront powered by Next.js 16 and Medusa",
-  "packageManager": "pnpm@10.19.0",
+  "packageManager": "pnpm@10.24.0",
   "engines": {
     "node": ">=22.0.0 <26",
     "pnpm": ">=10.19.0"

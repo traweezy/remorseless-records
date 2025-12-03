@@ -70,7 +70,7 @@
     "react-dom": "^19.2.1",
     "typescript": "^5.7.2"
   },
-  "packageManager": "pnpm@10.19.0",
+  "packageManager": "pnpm@10.24.0",
   "engines": {
     "node": ">=22.0.0 <26",
     "pnpm": ">=10.19.0"
