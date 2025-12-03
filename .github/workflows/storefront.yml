@@ -56,7 +56,7 @@ jobs:
         with:
           fail-on-critical: true
       - name: OSV scan (lockfile)
-        uses: google/osv-scanner-action@v1
+        uses: google/osv-scanner-action@v2.3.0
         with:
           scan-args: "--lockfile pnpm-lock.yaml"
       - uses: actions/setup-node@v4
@@ -174,10 +174,10 @@ jobs:
     name: Lighthouse (external URL)
     runs-on: ubuntu-latest
     needs: [build]
-    if: ${{ (env.QA_BASE_URL != '') || (github.event.inputs.base_url != '') }}
+    if: ${{ (github.event.inputs.base_url != '') || (vars.QA_BASE_URL != '') }}
     env:
-      QA_BASE_URL: ${{ github.event.inputs.base_url || env.QA_BASE_URL }}
-      QA_PRODUCT_PATH: ${{ github.event.inputs.product_path || env.QA_PRODUCT_PATH }}
+      QA_BASE_URL: ${{ github.event.inputs.base_url != '' && github.event.inputs.base_url || vars.QA_BASE_URL || '' }}
+      QA_PRODUCT_PATH: ${{ github.event.inputs.product_path != '' && github.event.inputs.product_path || vars.QA_PRODUCT_PATH || '/products' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

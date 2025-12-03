@@ -41,7 +41,7 @@ jobs:
         with:
           fail-on-critical: true
       - name: OSV scan (lockfile)
-        uses: google/osv-scanner-action@v1
+        uses: google/osv-scanner-action@v2.3.0
         with:
           scan-args: "--lockfile pnpm-lock.yaml"
       - uses: actions/setup-node@v4
