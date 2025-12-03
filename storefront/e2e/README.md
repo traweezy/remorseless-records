@@ -67,7 +67,7 @@ If you need to run your project with a separate database, such as sqlite, MySQL,
 Before running the test suite, make sure to start the backend server the medusa client is using. In addition, make sure to run in the nextjs template directory
 
 ```sh
-yarn build
+pnpm build
 ```
 
 so the project is built.
@@ -77,13 +77,7 @@ so the project is built.
 You can run the test suite in the base directory of the project with either
 
 ```sh
-yarn test-e2e
-```
-
-or
-
-```sh
-npm run test-e2e
+pnpm test-e2e
 ```
 
 While the test suite is running, it is configured to automatically run the nextjs template during test execution.

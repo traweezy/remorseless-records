@@ -83,10 +83,10 @@ mv .env.template .env.local
 
 ### Install dependencies
 
-Use Yarn to install all dependencies.
+Use pnpm to install all dependencies.
 
 ```shell
-yarn
+pnpm install
 ```
 
 ### Start developing
@@ -94,7 +94,7 @@ yarn
 You are now ready to start up your project.
 
 ```shell
-yarn dev
+pnpm dev
 ```
 
 ### Open the code and start customizing
@@ -150,7 +150,7 @@ The search components in this starter are developed with Algolia's `react-instan
 To do this you will need to add `algoliasearch` to the project, by running
 
 ```shell
-yarn add algoliasearch
+pnpm add algoliasearch
 ```
 
 After this you will need to switch the current MeiliSearch `SearchClient` out with a Alogolia client. To do this update `@lib/search-client`.

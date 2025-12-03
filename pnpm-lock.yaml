@@ -6,6 +6,7 @@ settings:
 
 overrides:
   esbuild: ^0.25.0
+  '@mikro-orm/*': 6.4.16
 
 importers:
 
@@ -163,14 +164,14 @@ importers:
   storefront:
     dependencies:
       '@medusajs/icons':
-        specifier: ^2.11.0
-        version: 2.11.1(react@19.2.1)
+        specifier: ^2.12.1
+        version: 2.12.1(react@19.2.1)
       '@medusajs/js-sdk':
-        specifier: ^2.11.0
-        version: 2.11.1
+        specifier: ^2.12.1
+        version: 2.12.1
       '@medusajs/types':
-        specifier: ^2.11.0
-        version: 2.11.1(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13))
+        specifier: ^2.12.1
+        version: 2.12.1(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13))
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -1610,11 +1611,6 @@ packages:
     peerDependencies:
       '@medusajs/framework': 2.12.1
 
-  '@medusajs/icons@2.11.1':
-    resolution: {integrity: sha512-XCjCIYy2ZbGQx72pk3ETFT8rSrTt1m+tuGKwIk0mSoW5uhZvnB+wZES4+s4Hcw+GeE2anIgEGe9TLk2ftk9sYA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
-
   '@medusajs/icons@2.12.1':
     resolution: {integrity: sha512-IRMygarmD7GqcOzbaVqXvVk2kxwqFyfVrOSwj5B2AB4CGWSE0metgpTKHDhRq7Ch7E1Kky0FzUvskTcQtV7JVg==}
     peerDependencies:
@@ -1631,10 +1627,6 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       '@medusajs/framework': 2.12.1
-
-  '@medusajs/js-sdk@2.11.1':
-    resolution: {integrity: sha512-E02i72vVhbEUOwMvL5jDjo0BvaRXJqLzhbaZWhTlhS9uT4HpM5BE0ZPGIO/cPLk0q2aR9/AO4rZC9EemLKFbtw==}
-    engines: {node: '>=20'}
 
   '@medusajs/js-sdk@2.12.1':
     resolution: {integrity: sha512-YR6/Bak86pksfIgRvW5jkVEWLKG5HMzHh3GtspdIpJt/I7mXVPfex0GixJ5J9gzf2TcpDpA8A3XRlGe5/j6JZA==}
@@ -1792,18 +1784,6 @@ packages:
       '@medusajs/medusa': 2.12.1
     peerDependenciesMeta:
       '@medusajs/medusa':
-        optional: true
-
-  '@medusajs/types@2.11.1':
-    resolution: {integrity: sha512-5gsqiDt5FjMXIN3Mg3d/dnuNi6v6aRCc7XP0ivma0meETmou0Yd58673HDsN2V9JTbv+TKDJl5hQC2j6riRiKA==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      ioredis: ^5.4.1
-      vite: ^5 || ^6
-    peerDependenciesMeta:
-      ioredis:
-        optional: true
-      vite:
         optional: true
 
   '@medusajs/types@2.12.1':
@@ -11214,10 +11194,6 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13))
 
-  '@medusajs/icons@2.11.1(react@19.2.1)':
-    dependencies:
-      react: 19.2.1
-
   '@medusajs/icons@2.12.1(react@18.3.1)':
     dependencies:
       react: 18.3.1
@@ -11233,11 +11209,6 @@ snapshots:
   '@medusajs/inventory@2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)))':
     dependencies:
       '@medusajs/framework': 2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13))
-
-  '@medusajs/js-sdk@2.11.1':
-    dependencies:
-      fetch-event-stream: 0.1.6
-      qs: 6.14.0
 
   '@medusajs/js-sdk@2.12.1':
     dependencies:
@@ -11498,13 +11469,6 @@ snapshots:
     transitivePeerDependencies:
       - debug
       - supports-color
-
-  '@medusajs/types@2.11.1(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13))':
-    dependencies:
-      bignumber.js: 9.3.1
-    optionalDependencies:
-      ioredis: 5.8.2
-      vite: 5.4.21(@types/node@22.18.13)
 
   '@medusajs/types@2.12.1(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13))':
     dependencies:
