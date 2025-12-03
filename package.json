@@ -15,18 +15,12 @@
     "qa:ci": "pnpm run qa:lint && pnpm run qa:a11y && pnpm run qa:lighthouse"
   },
   "devDependencies": {
+    "esbuild": "^0.25.12",
     "pa11y": "^6.2.3"
   },
   "pnpm": {
     "overrides": {
-      "@mikro-orm/*": "6.4.16",
-      "next": "16.0.7",
-      "axios": "^1.7.4",
-      "glob": "^10.5.0",
-      "esbuild": "^0.25.0",
-      "js-yaml": "^4.1.1",
-      "min-document": "2.19.1",
-      "on-headers": "1.1.0"
+      "esbuild": "^0.25.0"
     }
   }
 }
