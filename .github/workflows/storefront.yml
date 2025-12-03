@@ -1,0 +1,123 @@
+name: Storefront CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NEXT_PUBLIC_SITE_URL: http://localhost:3000
+  NEXT_PUBLIC_BASE_URL: http://localhost:3000
+  NEXT_PUBLIC_MEDUSA_URL: http://localhost:9000
+  NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+  NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_test_dummy
+  NEXT_PUBLIC_STRIPE_PK: pk_test_dummy
+  NEXT_PUBLIC_MEILI_HOST: http://localhost:7700
+  NEXT_PUBLIC_MEILI_SEARCH_KEY: searchKey
+  NEXT_PUBLIC_MEDIA_URL: http://localhost:3000/media
+  NEXT_PUBLIC_ASSET_HOST: http://localhost:3000/assets
+  MEDUSA_BACKEND_URL: http://localhost:9000
+
+jobs:
+  security:
+    name: Security & Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Shai Hulud scan
+        run: node scripts/security/shai-hulud-scan.mjs
+      - name: Dependency audit
+        run: pnpm audit --prod --audit-level=moderate
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run ESLint
+        run: pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --filter remorseless-records-storefront run typecheck
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run unit tests (if present)
+        run: pnpm --filter remorseless-records-storefront run test --if-present
+
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps
+      - name: Run Playwright E2E
+        run: pnpm --filter remorseless-records-storefront run test:e2e -- --reporter=line
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build storefront
+        run: pnpm --filter remorseless-records-storefront run build
