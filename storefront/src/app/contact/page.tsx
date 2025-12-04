@@ -58,7 +58,7 @@ const ContactPage = () => {
           </div>
 
           <aside className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
-            <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
