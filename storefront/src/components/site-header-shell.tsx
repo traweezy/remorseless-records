@@ -14,7 +14,7 @@ import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
 import { useQueryClient } from "@tanstack/react-query"
 
-const NAV_LINKS = [{ href: "/products", label: "Catalog" }]
+const NAV_LINKS = [{ href: "/catalog", label: "Catalog" }]
 
 const SiteHeaderShell = () => {
   const pathname = usePathname()
@@ -142,7 +142,7 @@ const SiteHeaderShell = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="relative text-muted-foreground hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Open cart"
             onClick={() => setCartOpen(true)}
             onPointerEnter={prefetchCart}

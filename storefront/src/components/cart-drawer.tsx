@@ -234,7 +234,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
               transition={secondaryTransition}
               onClick={() => {
                 onOpenChange(false)
-                router.push("/products")
+                router.push("/catalog")
               }}
             >
               Browse catalog
