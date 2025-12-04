@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 
 const BANDCAMP_EMBED_SRC =
@@ -9,6 +9,17 @@ const BANDCAMP_LINK = "https://remorselessrecords.bandcamp.com/album/worm-eaten-
 
 const BandcampEmbed = () => {
   const [errored, setErrored] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    // Safe client-only hydration toggle; renders placeholder on the server.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return <div className="h-[420px] w-full rounded-2xl border border-border/60 bg-background/60" />
+  }
 
   if (errored) {
     return (

@@ -1,10 +1,11 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import dynamic from "next/dynamic"
 import { Mail, Send, MessageCircle } from "lucide-react"
 
 import ContactForm from "@/components/contact/contact-form"
 import { siteMetadata } from "@/config/site"
+import BandcampEmbed from "@/components/contact/bandcamp-embed"
+import InstagramGrid from "@/components/contact/instagram-grid"
 
 const BandcampGlyph = () => (
   <svg
@@ -22,25 +23,6 @@ export const metadata: Metadata = {
   title: "Contact",
   description: "Reach Remorseless Records for releases, distro, and press. Expect fast replies.",
 }
-
-const BandcampEmbed = dynamic(() => import("@/components/contact/bandcamp-embed"), {
-  ssr: false,
-  loading: () => <div className="h-[420px] w-full rounded-2xl border border-border/60 bg-background/60" />,
-})
-
-const InstagramGrid = dynamic(() => import("@/components/contact/instagram-grid"), {
-  ssr: false,
-  loading: () => (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div
-          key={index}
-          className="h-[200px] w-full rounded-2xl border border-border/60 bg-background/60"
-        />
-      ))}
-    </div>
-  ),
-})
 
 const ContactPage = () => {
   return (

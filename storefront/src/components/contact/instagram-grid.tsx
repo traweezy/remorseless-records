@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 
 const INSTAGRAM_POSTS = [
@@ -48,8 +48,28 @@ type Props = {
 
 const InstagramGrid = ({ profileUrl }: Props) => {
   const [errored, setErrored] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    // Safe client-only hydration toggle; renders placeholder on the server.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
 
   const posts = useMemo(() => INSTAGRAM_POSTS.slice(0, 6), [])
+
+  if (!mounted) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-[200px] w-full rounded-2xl border border-border/60 bg-background/60"
+          />
+        ))}
+      </div>
+    )
+  }
 
   if (errored) {
     return (
