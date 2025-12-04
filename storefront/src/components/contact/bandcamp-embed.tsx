@@ -3,17 +3,15 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
-const DEFAULT_BANDCAMP_EMBED_SRC =
-  "https://bandcamp.com/EmbeddedPlayer/album=2916008899/size=large/bgcol=333333/linkcol=e32c14/transparent=true/"
+const DEFAULT_ALBUM_ID = "2916008899"
+const DEFAULT_ALBUM_SLUG = "samudaripen"
 
-const DEFAULT_BANDCAMP_LINK =
-  "https://remorselessrecords.bandcamp.com/album/samudaripen"
+const ALBUM_ID = process.env.NEXT_PUBLIC_BANDCAMP_ALBUM_ID ?? DEFAULT_ALBUM_ID
+const ALBUM_SLUG = process.env.NEXT_PUBLIC_BANDCAMP_ALBUM_SLUG ?? DEFAULT_ALBUM_SLUG
 
-const BANDCAMP_EMBED_SRC =
-  process.env.NEXT_PUBLIC_BANDCAMP_EMBED_SRC ?? DEFAULT_BANDCAMP_EMBED_SRC
+const BANDCAMP_EMBED_SRC = `https://bandcamp.com/EmbeddedPlayer/album=${ALBUM_ID}/size=large/bgcol=333333/linkcol=e32c14/transparent=true/`
 
-const BANDCAMP_LINK =
-  process.env.NEXT_PUBLIC_BANDCAMP_ALBUM_URL ?? DEFAULT_BANDCAMP_LINK
+const BANDCAMP_LINK = `https://remorselessrecords.bandcamp.com/album/${ALBUM_SLUG}`
 
 const BandcampEmbed = () => {
   const [errored, setErrored] = useState(false)
