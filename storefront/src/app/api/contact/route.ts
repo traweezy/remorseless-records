@@ -7,8 +7,10 @@ import { siteMetadata } from "@/config/site"
 const schema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email(),
-  subject: z.string().trim().min(3).max(160),
+  reason: z.enum(["booking", "press", "collab", "other"]),
   message: z.string().trim().min(10).max(5000),
+  newsletter: z.boolean().optional(),
+  honeypot: z.string().optional(),
 })
 
 const resendApiKey = process.env.RESEND_API_KEY
@@ -25,6 +27,10 @@ export async function POST(request: Request) {
       )
     }
 
+    if (parsed.data.honeypot && parsed.data.honeypot.trim().length) {
+      return NextResponse.json({ ok: true })
+    }
+
     if (!resendApiKey) {
       return NextResponse.json(
         { message: "Email service is not configured. Please try again later." },
@@ -33,14 +39,14 @@ export async function POST(request: Request) {
     }
 
     const resend = new Resend(resendApiKey)
-    const { name, email, subject, message } = parsed.data
+    const { name, email, reason, message, newsletter } = parsed.data
 
     await resend.emails.send({
       from: resendFrom,
       to: [siteMetadata.contact.email],
       replyTo: email,
-      subject: `[Contact] ${subject}`,
-      text: `From: ${name} <${email}>\n\n${message}`,
+      subject: `[Contact] ${reason.toUpperCase()}`,
+      text: `From: ${name} <${email}>\nReason: ${reason}\nNewsletter opt-in: ${newsletter ? "yes" : "no"}\n\n${message}`,
     })
 
     return NextResponse.json({ ok: true })

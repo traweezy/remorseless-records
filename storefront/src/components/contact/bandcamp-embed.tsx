@@ -1,0 +1,45 @@
+"use client"
+
+import { useState } from "react"
+import Link from "next/link"
+
+const BANDCAMP_EMBED_SRC =
+  "https://bandcamp.com/EmbeddedPlayer/album=1495474990/size=large/bgcol=060606/linkcol=de270f/artwork=small/transparent=true/"
+const BANDCAMP_LINK = "https://remorselessrecords.bandcamp.com/album/worm-eaten-corpse"
+
+const BandcampEmbed = () => {
+  const [errored, setErrored] = useState(false)
+
+  if (errored) {
+    return (
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
+        <p>Bandcamp player is unavailable right now.</p>
+        <Link
+          href={BANDCAMP_LINK}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
+        >
+          Open on Bandcamp
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/80">
+      <iframe
+        title="Bandcamp player"
+        style={{ border: "0", width: "100%", height: "420px" }}
+        src={BANDCAMP_EMBED_SRC}
+        seamless
+        loading="lazy"
+        onError={() => setErrored(true)}
+      >
+        <Link href={BANDCAMP_LINK}>Open on Bandcamp</Link>
+      </iframe>
+    </div>
+  )
+}
+
+export default BandcampEmbed

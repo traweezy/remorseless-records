@@ -24,7 +24,6 @@ const FOOTER_LINKS = [
     links: [
       { label: "Instagram", href: "https://www.instagram.com/remorseless_records/" },
       { label: "Bandcamp", href: "https://remorselessrecords.bandcamp.com/" },
-      { label: "Contact", href: "/contact" },
     ],
   },
 ]
