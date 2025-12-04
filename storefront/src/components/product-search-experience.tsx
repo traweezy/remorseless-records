@@ -1017,14 +1017,7 @@ const ProductSearchExperience = ({
         .filter(Boolean)
 
       const buildHaystack = (hit: ProductSearchHit) =>
-        [
-          hit.artist,
-          hit.title,
-          hit.album,
-          hit.collectionTitle ?? "",
-          ...(hit.genres ?? []),
-          ...(hit.metalGenres ?? []),
-        ]
+        [hit.artist, hit.title, hit.album]
           .map((value) => value?.toLowerCase() ?? "")
           .filter(Boolean)
           .join(" ")
