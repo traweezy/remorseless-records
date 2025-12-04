@@ -363,42 +363,50 @@ const loadRelatedProducts = async (
       .map((category) => category.handle?.trim().toLowerCase())
       .filter((handle): handle is string => Boolean(handle)) ?? []
 
-  if (suggestions.length < 8) {
-    const recent = await getRecentProducts(30)
+  const recent = await getRecentProducts(80)
 
-    const sameArtist: HttpTypes.StoreProduct[] = []
-    const genreMatches: HttpTypes.StoreProduct[] = []
-    const fallback: HttpTypes.StoreProduct[] = []
+  const sameArtist: HttpTypes.StoreProduct[] = []
+  const genreMatches: HttpTypes.StoreProduct[] = []
+  const fallback: HttpTypes.StoreProduct[] = []
 
-    recent.forEach((candidate) => {
-      if (!candidate?.id || seen.has(candidate.id) || candidate.handle === product.handle) {
+  recent.forEach((candidate) => {
+    if (!candidate?.id || seen.has(candidate.id) || candidate.handle === product.handle) {
+      return
+    }
+    const slug = buildProductSlugParts(candidate)
+    const candidateArtist = slug.artistSlug?.toLowerCase() ?? null
+    const candidateGenres =
+      candidate.categories?.map((category) => category.handle?.trim().toLowerCase()) ?? []
+
+    if (targetArtist && candidateArtist === targetArtist) {
+      sameArtist.push(candidate)
+      return
+    }
+
+    if (candidateGenres.some((handle) => handle && genreHandles.includes(handle))) {
+      genreMatches.push(candidate)
+      return
+    }
+
+    fallback.push(candidate)
+  })
+
+  // Always include all other works from the same artist.
+  sameArtist.forEach((item) => {
+    if (!item.id || seen.has(item.id) || item.handle === product.handle) {
+      return
+    }
+    seen.add(item.id)
+    suggestions.push(item)
+  })
+
+  const MAX_SUGGESTIONS = 12
+
+  const fillFromPool = (pool: HttpTypes.StoreProduct[]) => {
+    shuffle(pool).forEach((item) => {
+      if (suggestions.length >= MAX_SUGGESTIONS) {
         return
       }
-      const slug = buildProductSlugParts(candidate)
-      const candidateArtist = slug.artistSlug?.toLowerCase() ?? null
-      const candidateGenres =
-        candidate.categories?.map((category) => category.handle?.trim().toLowerCase()) ?? []
-
-      if (targetArtist && candidateArtist === targetArtist) {
-        sameArtist.push(candidate)
-        return
-      }
-
-      if (candidateGenres.some((handle) => handle && genreHandles.includes(handle))) {
-        genreMatches.push(candidate)
-        return
-      }
-
-      fallback.push(candidate)
-    })
-
-    const prioritized = [
-      ...shuffle(sameArtist),
-      ...shuffle(genreMatches),
-      ...shuffle(fallback),
-    ]
-
-    prioritized.forEach((item) => {
       if (!item.id || seen.has(item.id) || item.handle === product.handle) {
         return
       }
@@ -407,7 +415,10 @@ const loadRelatedProducts = async (
     })
   }
 
-  return suggestions.slice(0, 8)
+  fillFromPool(genreMatches)
+  fillFromPool(fallback)
+
+  return suggestions.slice(0, MAX_SUGGESTIONS)
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
