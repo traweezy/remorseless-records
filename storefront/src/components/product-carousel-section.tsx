@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useMemo, type ReactElement } from "react"
+import React, { useMemo, useRef, type ReactElement } from "react"
+type SplideNav = { go: (destination: string | number) => void }
 import type { HttpTypes } from "@medusajs/types"
 import { Splide, SplideSlide } from "@splidejs/react-splide"
 import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
@@ -36,6 +37,7 @@ export const ProductCarouselSection = ({
   description,
   products,
 }: ProductCarouselSectionProps): ReactElement | null => {
+  const splideRef = useRef<SplideNav | null>(null)
   const slides = useMemo<StoreProduct[]>(
     () => products.filter((product) => typeof product.handle === "string" && product.handle.trim().length > 0),
     [products]
@@ -63,6 +65,17 @@ export const ProductCarouselSection = ({
     return null
   }
 
+  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    const { deltaX, deltaY } = event
+    const dominantHorizontal = Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 4
+    if (!dominantHorizontal || !splideRef.current) {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    splideRef.current.go(deltaX > 0 ? "+1" : "-1")
+  }
+
   return (
     <section className="space-y-10">
       <header className="text-center">
@@ -76,7 +89,7 @@ export const ProductCarouselSection = ({
       </header>
 
       <div className="product-carousel">
-        <div className="product-carousel__container">
+        <div className="product-carousel__container" onWheel={handleWheel}>
           <Splide
             className="product-carousel__splide"
             aria-label={`${heading.leading} ${heading.highlight}`}
@@ -91,9 +104,7 @@ export const ProductCarouselSection = ({
               gap: "clamp(12px, 1.5vw, 20px)",
               pauseOnHover: true,
               pauseOnFocus: true,
-              wheel: true,
-              releaseWheel: true,
-              wheelSleep: 300,
+              wheel: false,
               arrows: slides.length > 1,
                trimSpace: false,
               classes: {
@@ -118,6 +129,12 @@ export const ProductCarouselSection = ({
             }}
             extensions={{ AutoScroll }}
             hasTrack
+            onMounted={(splide: unknown) => {
+              splideRef.current = splide as unknown as SplideNav
+            }}
+            onDestroy={() => {
+              splideRef.current = null
+            }}
           >
             {filledSlides.map((product, index) => (
               <SplideSlide
