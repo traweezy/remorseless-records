@@ -52,7 +52,7 @@ const SiteFooter = () => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="transition hover:text-accent"
+                    className="interactive rounded-md px-1 py-0.5 text-muted-foreground hover:text-foreground"
                   >
                     {link.label}
                   </Link>

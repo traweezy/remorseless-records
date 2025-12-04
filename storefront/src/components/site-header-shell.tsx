@@ -131,7 +131,7 @@ const SiteHeaderShell = () => {
                 onPointerEnter={() => prefetchRoute(link.href)}
                 onFocus={() => prefetchRoute(link.href)}
                 className={cn(
-                  "text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-destructive",
+                  "interactive rounded-full px-3 py-2 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground hover:bg-foreground/5 hover:text-destructive",
                   activeHref === link.href && "text-destructive"
                 )}
               >

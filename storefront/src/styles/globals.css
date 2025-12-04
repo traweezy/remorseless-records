@@ -148,6 +148,10 @@
     border-color: hsl(var(--accent)) transparent transparent transparent;
   }
 
+  .interactive {
+    @apply cursor-pointer transition-colors duration-150 hover:text-foreground hover:bg-foreground/5;
+  }
+
 }
 
 @layer base {
