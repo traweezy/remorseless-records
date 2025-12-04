@@ -129,7 +129,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           teko.variable,
           inter.variable,
           jetBrains.variable,
-          "min-h-screen bg-background text-foreground antialiased",
+          "min-h-screen bg-background text-foreground antialiased overflow-x-hidden",
         ].join(" ")}
       >
         <QueryProvider>

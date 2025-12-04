@@ -6,6 +6,7 @@
   .product-carousel {
     position: relative;
     width: 100%;
+    overflow: hidden;
   }
 
   .product-carousel__container {
@@ -20,7 +21,7 @@
   }
 
   .product-carousel__splide .splide__track {
-    overflow: visible;
+    overflow: hidden;
   }
 
   .product-carousel__splide .splide__list {
