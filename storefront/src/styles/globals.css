@@ -15,7 +15,7 @@
     position: relative;
     width: 100%;
     margin: 0;
-    padding-inline: clamp(8px, 2vw, 20px);
+    padding-inline: 0;
   }
 
   .product-carousel__splide {
