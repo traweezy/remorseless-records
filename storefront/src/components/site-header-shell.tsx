@@ -22,10 +22,7 @@ import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
 import { useQueryClient } from "@tanstack/react-query"
 
-const NAV_LINKS = [
-  { href: "/products", label: "Catalog" },
-  { href: "/order/confirmed", label: "Orders" },
-]
+const NAV_LINKS = [{ href: "/products", label: "Catalog" }]
 
 const SiteHeaderShell = () => {
   const pathname = usePathname()
@@ -133,25 +130,24 @@ const SiteHeaderShell = () => {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              data-prefetch="true"
-              onPointerEnter={() => prefetchRoute(link.href)}
-              onFocus={() => prefetchRoute(link.href)}
-              className={cn(
-                "text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-destructive",
-                activeHref === link.href && "text-destructive"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <nav className="hidden items-center md:flex">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                data-prefetch="true"
+                onPointerEnter={() => prefetchRoute(link.href)}
+                onFocus={() => prefetchRoute(link.href)}
+                className={cn(
+                  "text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-destructive",
+                  activeHref === link.href && "text-destructive"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
           <Button
             variant="ghost"
             size="icon"

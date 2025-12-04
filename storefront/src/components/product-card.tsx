@@ -292,7 +292,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           className="block h-full focus:outline-none"
           aria-label={`View ${summary.title}`}
         >
-          <Card className="relative flex h-full flex-col overflow-visible border-2 border-border/60 transition duration-300 hover:border-destructive focus-within:border-destructive">
+          <Card className="relative flex h-full flex-col overflow-visible border-2 border-border/60">
             {badge ? (
               <div className="product-card__corner" aria-label={`Collection: ${badge}`}>
                 <span>{badge.toUpperCase()}</span>
@@ -305,7 +305,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                   <img
                     src={thumbnail}
                     alt={summary.album ?? summary.title}
-                    className="h-full w-full transform-gpu object-cover transition-transform duration-500 ease-out group-hover:scale-105 group-hover:rotate-[1.6deg] group-focus-within:scale-105 group-focus-within:rotate-[1.6deg]"
+                    className="h-full w-full object-cover"
                     loading="lazy"
                   />
                 ) : (
@@ -313,8 +313,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                     No artwork
                   </div>
                 )}
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-background/90 via-background/70 to-background/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-within:opacity-100" />
-                <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-6 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
                   <Button
                     type="button"
                     variant="default"

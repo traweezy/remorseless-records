@@ -20,7 +20,7 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react"
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -94,8 +94,6 @@ const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
     hit.formats,
     hit.variantTitles,
     hit.format ? [hit.format] : [],
-    hit.categories,
-    hit.categoryHandles,
   ]
 
   sourceArrays.forEach((entries) => {
@@ -361,63 +359,84 @@ const FilterCheckboxList = ({
   }
 
   return (
-    <details
-      className="group space-y-3"
-      open={isOpen}
-      onToggle={(event) => setIsOpen(event.currentTarget.open)}
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex w-full cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground"
+        aria-expanded={isOpen}
+        aria-controls={`${title}-filters`}
+      >
         <span>{title}</span>
-        <ChevronDown className="h-3 w-3 transition duration-200 group-open:rotate-180" />
-      </summary>
-      <div className="flex flex-col gap-1.5">
-        {options.map(({ value, label, count }) => {
-          const normalizedValue = normalizeValue(value)
-          if (!normalizedValue.length) {
-            return null
-          }
-          const checked = selected.includes(normalizedValue)
-          const checkboxId = `${title.toLowerCase()}-${normalizedValue.replace(/\s+/g, "-")}`
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 transition duration-200",
+            isOpen && "rotate-180"
+          )}
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen ? (
+          <motion.div
+            key="content"
+            id={`${title}-filters`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1 flex flex-col gap-1.5">
+              {options.map(({ value, label, count }) => {
+                const normalizedValue = normalizeValue(value)
+                if (!normalizedValue.length) {
+                  return null
+                }
+                const checked = selected.includes(normalizedValue)
+                const checkboxId = `${title.toLowerCase()}-${normalizedValue.replace(/\s+/g, "-")}`
 
-          return (
-            <label
-              key={normalizedValue}
-              htmlFor={checkboxId}
-              className={cn(
-                "flex items-center justify-between rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.22rem] leading-relaxed text-muted-foreground transition",
-                variant === "chip"
-                  ? cn(
-                      "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
-                      checked && "border-destructive bg-destructive/20 text-destructive"
-                    )
-                  : cn("hover:text-destructive", checked && "text-destructive")
-              )}
-            >
-              <span className="flex items-center gap-2">
-                <input
-                  id={checkboxId}
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => onToggle(normalizedValue)}
-                  className="peer sr-only"
-                />
-                <span
-                  aria-hidden
-                  className={cn(
-                    "inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm border border-border/60 bg-background/70 text-transparent transition peer-focus-visible:ring-2 peer-focus-visible:ring-destructive/60",
-                    checked && "border-destructive bg-destructive text-background"
-                  )}
-                >
-                  {checked ? <Check className="h-3 w-3" /> : null}
-                </span>
-                <span className="text-foreground">{label}</span>
-              </span>
-              <span className="text-[0.6rem] text-muted-foreground/80">{count}</span>
-            </label>
-          )
-        })}
-      </div>
-    </details>
+                return (
+                  <label
+                    key={normalizedValue}
+                    htmlFor={checkboxId}
+                    className={cn(
+                      "flex items-center justify-between rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.22rem] leading-relaxed text-muted-foreground transition",
+                      variant === "chip"
+                        ? cn(
+                            "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
+                            checked && "border-destructive bg-destructive/20 text-destructive"
+                          )
+                        : cn("hover:text-destructive", checked && "text-destructive")
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <input
+                        id={checkboxId}
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => onToggle(normalizedValue)}
+                        className="peer sr-only"
+                      />
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm border border-border/60 bg-background/70 text-transparent transition peer-focus-visible:ring-2 peer-focus-visible:ring-destructive/60",
+                          checked && "border-destructive bg-destructive text-background"
+                        )}
+                      >
+                        {checked ? <Check className="h-3 w-3" /> : null}
+                      </span>
+                      <span className="text-foreground">{label}</span>
+                    </span>
+                    <span className="text-[0.6rem] text-muted-foreground/80">{count}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -524,6 +543,8 @@ const FilterSidebar = ({
         options={productTypes}
         selected={selectedProductTypes}
         onToggle={onToggleProductType}
+        variant="chip"
+        normalizeValue={(value) => value.trim().toLowerCase()}
         defaultOpen={selectedProductTypes.length > 0}
       />
 
