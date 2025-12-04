@@ -81,6 +81,15 @@ cd nextjs-starter-medusa/
 mv .env.template .env.local
 ```
 
+For the contact page embeds, also provide:
+
+```shell
+NEXT_PUBLIC_BANDCAMP_EMBED_SRC="https://bandcamp.com/EmbeddedPlayer/album=1495474990/size=large/bgcol=060606/linkcol=de270f/artwork=small/transparent=true/"
+NEXT_PUBLIC_BANDCAMP_ALBUM_URL="https://remorselessrecords.bandcamp.com/album/worm-eaten-corpse"
+```
+
+Update these two values to change the featured Bandcamp album without code changes.
+
 ### Install dependencies
 
 Use pnpm to install all dependencies.
