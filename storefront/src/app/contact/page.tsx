@@ -24,24 +24,23 @@ export const metadata: Metadata = {
 }
 
 const BandcampEmbed = dynamic(() => import("@/components/contact/bandcamp-embed"), {
+  ssr: false,
   loading: () => <div className="h-[420px] w-full rounded-2xl border border-border/60 bg-background/60" />,
 })
 
-const InstagramGrid = dynamic(
-  () => import("@/components/contact/instagram-grid"),
-  {
-    loading: () => (
-      <div className="grid gap-3 sm:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={index}
-            className="h-[200px] w-full rounded-2xl border border-border/60 bg-background/60"
-          />
-        ))}
-      </div>
-    ),
-  }
-)
+const InstagramGrid = dynamic(() => import("@/components/contact/instagram-grid"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-[200px] w-full rounded-2xl border border-border/60 bg-background/60"
+        />
+      ))}
+    </div>
+  ),
+})
 
 const ContactPage = () => {
   return (
