@@ -112,6 +112,8 @@ const SiteHeaderShell = () => {
         <Link
           href="/"
           data-prefetch="true"
+          onPointerEnter={() => prefetchRoute("/")}
+          onFocus={() => prefetchRoute("/")}
           className="flex items-center gap-3 text-sm uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-destructive"
         >
           <span className="font-bebas text-3xl text-destructive glow-red-sm">

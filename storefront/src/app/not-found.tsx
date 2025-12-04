@@ -19,6 +19,8 @@ const NotFound = () => (
     </p>
     <Link
       href="/"
+      prefetch
+      data-prefetch="true"
       className="inline-flex items-center rounded-full border border-accent px-6 py-2 text-sm uppercase tracking-[0.3rem] text-accent transition hover:bg-accent hover:text-background"
     >
       Back to safety

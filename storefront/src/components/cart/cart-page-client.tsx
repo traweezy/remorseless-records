@@ -1,7 +1,9 @@
 "use client"
 
-import { useTransition } from "react"
+import { useCallback, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 
 import CartItemsList from "@/components/cart/cart-items-list"
 import { startStripeCheckout } from "@/lib/actions/start-stripe-checkout"
@@ -34,6 +36,14 @@ const SummaryRow = ({
 const CartPageClient = () => {
   const { data: cart } = useCartQuery()
   const [isCheckingOut, startCheckoutTransition] = useTransition()
+  const router = useRouter()
+
+  const prefetchFull = useCallback(
+    (href: string) => {
+      void router.prefetch(href, { kind: PrefetchKind.FULL })
+    },
+    [router]
+  )
 
   if (!cart || !cart.items?.length) {
     return (
@@ -45,7 +55,11 @@ const CartPageClient = () => {
           No items in your ritual stack yet. Explore the catalog and add some sonic brutality.
         </p>
         <Link
-          href="/products"
+          href="/catalog"
+          prefetch
+          data-prefetch="true"
+          onPointerEnter={() => prefetchFull("/catalog")}
+          onFocus={() => prefetchFull("/catalog")}
           className="mt-8 inline-flex min-h-[48px] items-center rounded-full border border-accent px-8 text-sm font-semibold uppercase tracking-[0.3rem] text-accent transition hover:bg-accent hover:text-background"
         >
           Browse Products
@@ -115,7 +129,11 @@ const CartPageClient = () => {
             {isCheckingOut ? "Preparing checkout…" : "Proceed to Checkout"}
           </button>
           <Link
-            href="/products"
+            href="/catalog"
+            prefetch
+            data-prefetch="true"
+            onPointerEnter={() => prefetchFull("/catalog")}
+            onFocus={() => prefetchFull("/catalog")}
             className="inline-flex w-full items-center justify-center rounded-full border border-border/70 px-8 py-3 text-base font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-accent hover:text-accent"
           >
             Continue Shopping
