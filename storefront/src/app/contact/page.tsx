@@ -25,7 +25,7 @@ const ContactPage = () => {
             Drop a line
           </h1>
           <p className="max-w-3xl text-base leading-relaxed text-muted-foreground">
-            Submissions, distro inquiries, press, or support—this form goes straight to the label inbox.
+            Submissions, distro inquiries, press, or support. This form goes straight to the label inbox.
             Expect a reply within 1–2 business days.
           </p>
         </header>
