@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { Resend } from "resend"
-
-import { siteMetadata } from "@/config/site"
 
 const schema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -12,8 +9,11 @@ const schema = z.object({
   honeypot: z.string().optional(),
 })
 
-const resendApiKey = process.env.RESEND_API_KEY
-const resendFrom = process.env.RESEND_FROM ?? siteMetadata.contact.email
+const backendBase =
+  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
+  process.env.NEXT_PUBLIC_MEDUSA_URL ??
+  process.env.MEDUSA_BACKEND_URL ??
+  "http://localhost:9000"
 
 export async function POST(request: Request) {
   try {
@@ -30,23 +30,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true })
     }
 
-    if (!resendApiKey) {
+    const response = await fetch(`${backendBase}/store/contact`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(parsed.data),
+    })
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { message?: string }
       return NextResponse.json(
-        { message: "Email service is not configured. Please try again later." },
-        { status: 503 }
+        { message: payload.message ?? "Unable to send message right now." },
+        { status: 502 }
       )
     }
-
-    const resend = new Resend(resendApiKey)
-    const { name, email, reason, message } = parsed.data
-
-    await resend.emails.send({
-      from: resendFrom,
-      to: [siteMetadata.contact.email],
-      replyTo: email,
-      subject: `[Contact] ${reason.toUpperCase()}`,
-      text: `From: ${name} <${email}>\nReason: ${reason}\n\n${message}`,
-    })
 
     return NextResponse.json({ ok: true })
   } catch (error) {
