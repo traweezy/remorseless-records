@@ -35,26 +35,24 @@ export const metadata: Metadata = {
   },
 }
 
-const shuffleProducts = <T,>(items: readonly T[]): T[] => {
-  const copy = [...items]
-  if (copy.length <= 1) {
-    return copy
+const hashString = (input: string): number => {
+  let hash = 0
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i)
+    hash |= 0
   }
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const targetIndex = Math.floor(Math.random() * (index + 1))
-    if (targetIndex === index) {
-      continue
-    }
-    const current = copy[index]
-    const target = copy[targetIndex]
-    if (current === undefined || target === undefined) {
-      continue
-    }
-    copy[index] = target
-    copy[targetIndex] = current
-  }
-  return copy
+  return hash
 }
+
+const pseudoShuffle = <T extends { handle?: string | null }>(
+  items: readonly T[],
+  salt: string
+): T[] =>
+  [...items].sort((a, b) => {
+    const aKey = `${salt}:${a.handle ?? ""}`
+    const bKey = `${salt}:${b.handle ?? ""}`
+    return hashString(aKey) - hashString(bKey)
+  })
 
 const HomePage = async (): Promise<ReactElement> => {
   const [featured, newest, staff] = await Promise.all([
@@ -62,9 +60,9 @@ const HomePage = async (): Promise<ReactElement> => {
     getCollectionProductsByHandle("new-releases"),
     getCollectionProductsByHandle("staff-picks"),
   ])
-  const randomizedFeatured = shuffleProducts(featured)
-  const randomizedNewest = shuffleProducts(newest)
-  const randomizedStaff = shuffleProducts(staff)
+  const randomizedFeatured = pseudoShuffle(featured, "featured")
+  const randomizedNewest = pseudoShuffle(newest, "new-releases")
+  const randomizedStaff = pseudoShuffle(staff, "staff-picks")
   const featuredListJsonLd = buildItemListJsonLd(
     "Featured Picks",
     randomizedFeatured
