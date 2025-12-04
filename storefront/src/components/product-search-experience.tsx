@@ -363,7 +363,7 @@ const FilterCheckboxList = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
+        className="flex w-full cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground hover:bg-border/10 rounded-lg px-2 py-1"
         aria-expanded={isOpen}
         aria-controls={`${title}-filters`}
       >
@@ -598,7 +598,7 @@ const SortDropdown = ({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.28rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
+          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.28rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/60 hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
           open && "border-destructive text-destructive"
         )}
         aria-haspopup="listbox"
@@ -1323,7 +1323,7 @@ const ProductSearchExperience = ({
                   </div>
                 </Drawer>
               </div>
-              <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/40 bg-background/85 px-3 py-2 transition supports-[backdrop-filter]:backdrop-blur-lg focus-within:border-destructive focus-within:shadow-glow-sm">
+              <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/40 bg-background/85 px-3 py-2 transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/70 hover:bg-foreground/5 focus-within:border-destructive focus-within:shadow-glow-sm">
                 <Search
                   className="h-4 w-4 text-muted-foreground transition group-focus-within:text-destructive"
                   aria-hidden
@@ -1335,7 +1335,7 @@ const ProductSearchExperience = ({
                     setQuery(event.target.value)
                   }}
                   placeholder="Seek brutality…"
-                  className="h-9 flex-1 border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                  className="h-9 flex-1 border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground transition focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
                   type="search"
                   autoComplete="off"
                 />
