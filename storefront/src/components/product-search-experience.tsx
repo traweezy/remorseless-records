@@ -1421,14 +1421,11 @@ const ProductSearchExperience = ({
 
                           if (product) {
                             return (
-                              <motion.div
+                              <div
                                 key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.2 }}
                               >
                                 <ProductCard product={product} />
-                              </motion.div>
+                              </div>
                             )
                           }
 
