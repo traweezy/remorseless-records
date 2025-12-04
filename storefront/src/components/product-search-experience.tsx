@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
+import fuzzysort from "fuzzysort"
 import { Button } from "@/components/ui/button"
 import Drawer from "@/components/ui/drawer"
 import { Separator } from "@/components/ui/separator"
@@ -965,7 +966,7 @@ const ProductSearchExperience = ({
       value.toLowerCase()
     )
 
-    const matches = aggregatedHits.filter((hit) => {
+    const baseMatches = aggregatedHits.filter((hit) => {
       if (showInStockOnly) {
         const inStock =
           hit.defaultVariant?.inStock ??
@@ -1002,8 +1003,16 @@ const ProductSearchExperience = ({
         }
       }
 
-      if (normalizedQuery.length) {
-        const haystack = [
+      return true
+    })
+
+    const matches = (() => {
+      if (!normalizedQuery.length) {
+        return baseMatches
+      }
+      const targets = baseMatches.map((hit) => ({
+        hit,
+        text: [
           hit.title,
           hit.artist,
           hit.album,
@@ -1012,14 +1021,20 @@ const ProductSearchExperience = ({
           ...(hit.metalGenres ?? []),
         ]
           .join(" ")
-          .toLowerCase()
-        if (!haystack.includes(normalizedQuery)) {
-          return false
-        }
+          .toLowerCase(),
+      }))
+      const scored = targets
+        .map(({ hit, text }) => ({
+          hit,
+          score: fuzzysort.single(normalizedQuery, text)?.score ?? -Infinity,
+        }))
+        .filter((entry) => entry.score > -15000)
+        .sort((a, b) => b.score - a.score)
+      if (scored.length) {
+        return scored.map((entry) => entry.hit)
       }
-
-      return true
-    })
+      return baseMatches
+    })()
 
     const sorted = [...matches]
     if (sortOption === "title-asc") {
