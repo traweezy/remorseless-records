@@ -84,25 +84,27 @@ const HomePage = async (): Promise<ReactElement> => {
     <div className="pb-24">
       <HeroSection />
 
-      <main className="mx-auto mt-24 flex w-full max-w-[1440px] flex-col gap-24 px-0">
-        <ProductCarouselSection
-          heading={{ leading: "Featured", highlight: "Picks" }}
-          description="Curated slabs hand-picked from the vault—limited, savage, and in stock right now."
-          products={randomizedFeatured}
-        />
+      <div className="mt-24">
+        <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-24 px-4 sm:px-6">
+          <ProductCarouselSection
+            heading={{ leading: "Featured", highlight: "Picks" }}
+            description="Curated slabs hand-picked from the vault—limited, savage, and in stock right now."
+            products={randomizedFeatured}
+          />
 
-        <ProductCarouselSection
-          heading={{ leading: "Newest", highlight: "Arrivals" }}
-          description="Fresh represses and new signings—these move fast. Bookmark them or lose them forever."
-          products={randomizedNewest}
-        />
+          <ProductCarouselSection
+            heading={{ leading: "Newest", highlight: "Arrivals" }}
+            description="Fresh represses and new signings—these move fast. Bookmark them or lose them forever."
+            products={randomizedNewest}
+          />
 
-        <ProductCarouselSection
-          heading={{ leading: "Staff", highlight: "Signals" }}
-          description="Releases we can&apos;t stop looping. Tuned for the true devotees only."
-          products={randomizedStaff}
-        />
-      </main>
+          <ProductCarouselSection
+            heading={{ leading: "Staff", highlight: "Signals" }}
+            description="Releases we can&apos;t stop looping. Tuned for the true devotees only."
+            products={randomizedStaff}
+          />
+        </main>
+      </div>
       <JsonLd id="homepage-featured" data={featuredListJsonLd} />
     </div>
   )
