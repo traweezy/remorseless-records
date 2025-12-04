@@ -25,8 +25,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid contact payload",
-      parsed.error.flatten().fieldErrors
+      JSON.stringify(parsed.error.flatten().fieldErrors)
     )
   }
 
