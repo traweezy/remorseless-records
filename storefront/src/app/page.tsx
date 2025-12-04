@@ -8,8 +8,6 @@ import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 
-export const revalidate = 120
-
 const homepageCanonical = siteMetadata.siteUrl
 
 export const metadata: Metadata = {

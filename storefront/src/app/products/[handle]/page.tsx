@@ -27,8 +27,6 @@ type ProductPageProps = {
   params: { handle: string } | Promise<{ handle: string }>
 }
 
-export const revalidate = 120
-
 const normalizeHandle = (handle: string | null | undefined): string | null => {
   if (typeof handle !== "string") {
     return null

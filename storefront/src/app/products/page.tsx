@@ -10,8 +10,6 @@ import { getFullCatalogHits } from "@/lib/catalog/all"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 
-export const revalidate = 120
-
 const catalogCanonical = `${siteMetadata.siteUrl}/products`
 
 export const metadata: Metadata = {

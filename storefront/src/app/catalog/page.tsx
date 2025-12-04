@@ -3,8 +3,6 @@ import type { Metadata } from "next"
 import ProductsPage from "@/app/products/page"
 import { siteMetadata } from "@/config/site"
 
-export const revalidate = 120
-
 const catalogCanonical = `${siteMetadata.siteUrl}/catalog`
 
 export const metadata: Metadata = {
