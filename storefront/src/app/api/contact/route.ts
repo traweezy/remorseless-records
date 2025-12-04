@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
+import { runtimeEnv } from "@/config/env"
+
 const schema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email(),
@@ -9,11 +11,7 @@ const schema = z.object({
   honeypot: z.string().optional(),
 })
 
-const backendBase =
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
-  process.env.NEXT_PUBLIC_MEDUSA_URL ??
-  process.env.MEDUSA_BACKEND_URL ??
-  "http://localhost:9000"
+const backendBase = runtimeEnv.medusaBackendUrl ?? runtimeEnv.medusaUrl
 
 export async function POST(request: Request) {
   try {
@@ -30,13 +28,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true })
     }
 
-    const response = await fetch(`${backendBase}/store/contact`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(parsed.data),
-    })
+    const response = await fetch(
+      `${backendBase}/store/contact`,
+      {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
+        },
+        body: JSON.stringify(parsed.data),
+      }
+    )
 
     if (!response.ok) {
       const payload = (await response.json().catch(() => ({}))) as { message?: string }

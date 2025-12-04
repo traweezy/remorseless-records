@@ -7,10 +7,9 @@ import ProductVariantSelector from "@/components/product-variant-selector"
 import ProductGallery from "@/components/product-gallery"
 import ProductCarouselSection from "@/components/product-carousel-section"
 import { deriveVariantOptions } from "@/lib/products/transformers"
-import {
-  getProductByHandle,
-} from "@/lib/data/products"
+import { getProductByHandle } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
+import { runtimeEnv } from "@/config/env"
 import { siteMetadata } from "@/config/site"
 import {
   buildBreadcrumbJsonLd,
@@ -306,16 +305,16 @@ export default ProductPage
 const loadRelatedProducts = async (
   product: HttpTypes.StoreProduct
 ): Promise<HttpTypes.StoreProduct[]> => {
-  const backendBase =
-    process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
-    process.env.NEXT_PUBLIC_MEDUSA_URL ??
-    process.env.MEDUSA_BACKEND_URL ??
-    "http://localhost:9000"
-
   try {
     const response = await fetch(
-      `${backendBase}/store/products/${product.handle}/related`,
-      { next: { revalidate: 3600 }, cache: "force-cache" }
+      `${runtimeEnv.medusaBackendUrl}/store/products/${product.handle}/related`,
+      {
+        next: { revalidate: 3600 },
+        cache: "force-cache",
+        headers: {
+          "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
+        },
+      }
     )
     if (!response.ok) {
       throw new Error(`Failed to load related: ${response.status}`)

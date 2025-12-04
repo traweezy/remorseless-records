@@ -1,5 +1,5 @@
-import { cache } from "react"
 import type { HttpTypes } from "@medusajs/types"
+import { unstable_cache } from "next/cache"
 
 import { storeClient } from "@/lib/medusa"
 import {
@@ -41,7 +41,7 @@ const PRODUCT_DETAIL_FIELDS = [
   "*tags",
 ].join(",")
 
-const getCollectionByHandle = cache(
+const getCollectionByHandle = unstable_cache(
   async (handle: string): Promise<HttpTypes.StoreCollection | null> => {
     const { collections } = await storeClient.collection.list({
       handle,
@@ -49,10 +49,12 @@ const getCollectionByHandle = cache(
     })
 
     return collections[0] ?? null
-  }
+  },
+  ["collection-by-handle"],
+  { revalidate: 1800, tags: ["collections"] }
 )
 
-export const getCollectionProductsByHandle = cache(
+export const getCollectionProductsByHandle = unstable_cache(
   async (handle: string, limit?: number): Promise<StoreProduct[]> => {
     const collection = await getCollectionByHandle(handle)
     if (!collection?.id) {
@@ -100,23 +102,29 @@ export const getCollectionProductsByHandle = cache(
     }
 
     return collected
-  }
+  },
+  ["collection-products-by-handle"],
+  { revalidate: 900, tags: ["products", "collections"] }
 )
 
-export const getHomepageProducts = cache(async (): Promise<StoreProduct[]> => {
-  try {
-    const { products } = await storeClient.product.list({
-      limit: 16,
-      fields: PRODUCT_DETAIL_FIELDS,
-    })
-    return products
-  } catch (error) {
-    console.error("[getHomepageProducts] Failed to load products", error)
-    return []
-  }
-})
+export const getHomepageProducts = unstable_cache(
+  async (): Promise<StoreProduct[]> => {
+    try {
+      const { products } = await storeClient.product.list({
+        limit: 16,
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      return products
+    } catch (error) {
+      console.error("[getHomepageProducts] Failed to load products", error)
+      return []
+    }
+  },
+  ["homepage-products"],
+  { revalidate: 600, tags: ["products"] }
+)
 
-export const getProductByHandle = cache(
+export const getProductByHandle = unstable_cache(
   async (handle: string): Promise<StoreProduct | null> => {
     try {
       const { products } = await storeClient.product.list({
@@ -129,10 +137,12 @@ export const getProductByHandle = cache(
       console.error("[getProductByHandle] Failed to load product", error)
       return null
     }
-  }
+  },
+  ["product-by-handle"],
+  { revalidate: 300, tags: ["products"] }
 )
 
-export const getProductsByCollection = cache(
+export const getProductsByCollection = unstable_cache(
   async (collectionId: string, limit = 8): Promise<StoreProduct[]> => {
     try {
       const { products } = await storeClient.product.list({
@@ -145,10 +155,12 @@ export const getProductsByCollection = cache(
       console.error("[getProductsByCollection] Failed to load products", error)
       return []
     }
-  }
+  },
+  ["products-by-collection"],
+  { revalidate: 900, tags: ["products", "collections"] }
 )
 
-export const getRecentProducts = cache(
+export const getRecentProducts = unstable_cache(
   async (limit = 8): Promise<StoreProduct[]> => {
     try {
       const { products } = await storeClient.product.list({
@@ -160,7 +172,9 @@ export const getRecentProducts = cache(
       console.error("[getRecentProducts] Failed to load products", error)
       return []
     }
-  }
+  },
+  ["recent-products"],
+  { revalidate: 600, tags: ["products"] }
 )
 
 type ProductHandleSummary = {
@@ -169,7 +183,7 @@ type ProductHandleSummary = {
   updatedAt: string | null
 }
 
-export const getAllProductHandles = cache(
+export const getAllProductHandles = unstable_cache(
   async (): Promise<ProductHandleSummary[]> => {
     try {
       const handles: ProductHandleSummary[] = []
@@ -222,5 +236,7 @@ export const getAllProductHandles = cache(
       console.error("[getAllProductHandles] Failed to load products", error)
       return []
     }
-  }
+  },
+  ["all-product-handles"],
+  { revalidate: 1800, tags: ["products"] }
 )

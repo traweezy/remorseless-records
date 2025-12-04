@@ -1,5 +1,5 @@
-import { cache } from "react"
 import type { HttpTypes } from "@medusajs/types"
+import { unstable_cache } from "next/cache"
 
 import { storeClient } from "@/lib/medusa"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
@@ -72,39 +72,43 @@ const flattenCategoryTree = (
 const GENRES_HANDLE = "genres"
 const METAL_HANDLE = "metal"
 
-export const getMetalGenreCategories = cache(async (): Promise<GenreCategory[]> => {
-  try {
-    const { product_categories } = await storeClient.category.list({
-      include_descendants_tree: true,
-      limit: 200,
-    })
+export const getMetalGenreCategories = unstable_cache(
+  async (): Promise<GenreCategory[]> => {
+    try {
+      const { product_categories } = await storeClient.category.list({
+        include_descendants_tree: true,
+        limit: 200,
+      })
 
-    if (!product_categories?.length) {
+      if (!product_categories?.length) {
+        return []
+      }
+
+      const genresRoot = product_categories.find(
+        (category) => normalizeHandle(category.handle) === GENRES_HANDLE
+      )
+
+      if (!genresRoot?.category_children?.length) {
+        return []
+      }
+
+      const metalRoot = genresRoot.category_children.find(
+        (category) => normalizeHandle(category.handle) === METAL_HANDLE
+      )
+
+      if (!metalRoot) {
+        return []
+      }
+
+      return flattenCategoryTree(
+        metalRoot.category_children,
+        [coerceLabel(metalRoot, METAL_HANDLE)]
+      )
+    } catch (error) {
+      console.error("[getMetalGenreCategories] Failed to load categories", error)
       return []
     }
-
-    const genresRoot = product_categories.find(
-      (category) => normalizeHandle(category.handle) === GENRES_HANDLE
-    )
-
-    if (!genresRoot?.category_children?.length) {
-      return []
-    }
-
-    const metalRoot = genresRoot.category_children.find(
-      (category) => normalizeHandle(category.handle) === METAL_HANDLE
-    )
-
-    if (!metalRoot) {
-      return []
-    }
-
-    return flattenCategoryTree(
-      metalRoot.category_children,
-      [coerceLabel(metalRoot, METAL_HANDLE)]
-    )
-  } catch (error) {
-    console.error("[getMetalGenreCategories] Failed to load categories", error)
-    return []
-  }
-})
+  },
+  ["metal-genre-categories"],
+  { revalidate: 1800, tags: ["categories"] }
+)
