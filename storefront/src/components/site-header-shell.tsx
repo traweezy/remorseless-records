@@ -142,7 +142,7 @@ const SiteHeaderShell = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative"
+            className="relative hover:bg-transparent hover:text-destructive"
             aria-label="Open cart"
             onClick={() => setCartOpen(true)}
             onPointerEnter={prefetchCart}

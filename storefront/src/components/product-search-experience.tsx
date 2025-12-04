@@ -485,7 +485,7 @@ const FilterSidebar = ({
         type="button"
         onClick={onToggleStock}
         className={cn(
-          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition",
+          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition hover:border-border/60",
           showInStockOnly
             ? "border-destructive/80 bg-destructive text-background shadow-glow"
             : "border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive"
@@ -598,7 +598,7 @@ const SortDropdown = ({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.28rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/60 hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
+          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.28rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
           open && "border-destructive text-destructive"
         )}
         aria-haspopup="listbox"
@@ -630,7 +630,7 @@ const SortDropdown = ({
                   setOpen(false)
                 }}
                 className={cn(
-                  "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.75rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-destructive/40 hover:bg-border/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
+                  "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.75rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
                   value === option.value &&
                     "border-destructive bg-destructive text-background shadow-glow-sm"
                 )}
