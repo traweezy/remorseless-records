@@ -69,7 +69,7 @@ export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }:
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="h-full w-full max-w-[520px] gap-0 border-l border-border/70 bg-background/95 p-0 shadow-glow sm:rounded-l-2xl"
+        className="h-full w-full max-w-full gap-0 border-border/70 bg-background/95 p-0 shadow-glow sm:max-w-[520px] sm:border-l sm:rounded-l-2xl"
       >
         <SheetHeader className="border-b border-border/60 px-6 py-4 text-left">
           <SheetTitle className="text-xs font-headline uppercase tracking-[0.35rem] text-muted-foreground">
