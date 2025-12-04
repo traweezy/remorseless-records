@@ -5,6 +5,8 @@ import { useEffect, useMemo } from "react"
 const SUPPORTED = typeof document !== "undefined" && "speculationRules" in document
 
 const TARGETS = [
+  "/catalog",
+  "/catalog/(.*)",
   "/products",
   "/products/(.*)",
   "/cart",

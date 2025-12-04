@@ -5,7 +5,7 @@ import { getAllProductHandles } from "@/lib/data/products"
 
 const STATIC_ROUTES: Array<{ path: string; changeFrequency?: MetadataRoute.Sitemap[number]["changeFrequency"] }> = [
   { path: "/", changeFrequency: "weekly" },
-  { path: "/products", changeFrequency: "daily" },
+  { path: "/catalog", changeFrequency: "daily" },
   { path: "/cart", changeFrequency: "weekly" },
   { path: "/order/confirmed", changeFrequency: "weekly" },
 ]

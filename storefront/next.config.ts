@@ -37,6 +37,7 @@ const dynamicRemotePatterns: RemotePattern[] = [
 ].filter((pattern): pattern is RemotePattern => Boolean(pattern))
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
   reactStrictMode: true,
   images: {
     formats: ["image/avif", "image/webp"],

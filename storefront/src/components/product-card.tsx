@@ -11,6 +11,7 @@ import { ProductQuickView } from "@/components/product-quick-view"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 import { mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 
@@ -252,7 +253,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       return
     }
 
-    void router.prefetch(productHref)
+    void router.prefetch(productHref, { kind: PrefetchKind.FULL })
   }
 
   const handleQuickShop = (event: MouseEvent<HTMLButtonElement>) => {

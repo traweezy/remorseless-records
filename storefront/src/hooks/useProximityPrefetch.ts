@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 
 type Options = {
   selector?: string
@@ -51,7 +52,9 @@ export const useProximityPrefetch = (
         if (withinX && withinY) {
           seen.add(href)
           try {
-            router.prefetch(href)
+            // Force a full prefetch so the product page flight payload is warmed.
+            // Next only prefetches in production; this opts into the full fetch kind.
+            router.prefetch(href, { kind: PrefetchKind.FULL })
           } catch {
             // Ignore failures
           }

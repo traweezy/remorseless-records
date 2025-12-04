@@ -13,6 +13,7 @@ import { useCartQuery, prefetchCartQuery } from "@/lib/query/cart"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
 import { useQueryClient } from "@tanstack/react-query"
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 
 const NAV_LINKS = [{ href: "/catalog", label: "Catalog" }]
 
@@ -31,7 +32,7 @@ const SiteHeaderShell = () => {
 
   const prefetchRoute = useCallback(
     (href: string) => {
-      void router.prefetch(href)
+      void router.prefetch(href, { kind: PrefetchKind.FULL })
     },
     [router]
   )
