@@ -1011,30 +1011,49 @@ const ProductSearchExperience = ({
         return baseMatches
       }
 
+      const normalizeValue = (value: string | null | undefined) =>
+        value
+          ? value
+              .normalize("NFKD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase()
+              .trim()
+          : ""
+
       const tokens = normalizedQuery
         .split(/\s+/)
-        .map((token) => token.trim())
+        .map((token) => normalizeValue(token))
         .filter(Boolean)
 
-      const buildHaystack = (hit: ProductSearchHit) =>
-        [hit.artist, hit.title, hit.album]
-          .map((value) => value?.toLowerCase() ?? "")
+      const buildHaystacks = (hit: ProductSearchHit) => {
+        const fields = [
+          hit.artist,
+          hit.title,
+          hit.album,
+          hit.slug?.artist,
+          hit.slug?.album,
+          hit.handle,
+        ]
+        return fields
+          .map((value) => normalizeValue(value))
           .filter(Boolean)
-          .join(" ")
+      }
 
       const filtered = baseMatches.filter((hit) => {
-        const haystack = buildHaystack(hit)
-        if (!haystack.length) {
+        const haystacks = buildHaystacks(hit)
+        if (!haystacks.length) {
           return false
         }
 
-        return tokens.every((token) => {
-          if (haystack.includes(token)) {
-            return true
-          }
-          const fuzzy = fuzzysort.single(token, haystack)
-          return Boolean(fuzzy && fuzzy.score >= -180)
-        })
+        return tokens.every((token) =>
+          haystacks.some((haystack) => {
+            if (haystack.includes(token)) {
+              return true
+            }
+            const fuzzy = fuzzysort.single(token, haystack)
+            return Boolean(fuzzy && fuzzy.score >= -120)
+          })
+        )
       })
 
       return filtered
