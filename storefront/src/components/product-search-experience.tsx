@@ -1010,9 +1010,10 @@ const ProductSearchExperience = ({
       if (!normalizedQuery.length) {
         return baseMatches
       }
-      const targets = baseMatches.map((hit) => ({
-        hit,
-        text: [
+      const scored: Array<{ hit: ProductSearchHit; score: number }> = []
+
+      baseMatches.forEach((hit) => {
+        const text = [
           hit.title,
           hit.artist,
           hit.album,
@@ -1021,19 +1022,35 @@ const ProductSearchExperience = ({
           ...(hit.metalGenres ?? []),
         ]
           .join(" ")
-          .toLowerCase(),
-      }))
-      const scored = targets
-        .map(({ hit, text }) => ({
-          hit,
-          score: fuzzysort.single(normalizedQuery, text)?.score ?? -Infinity,
-        }))
-        .filter((entry) => entry.score > -15000)
-        .sort((a, b) => b.score - a.score)
+          .toLowerCase()
+
+        const result = fuzzysort.single(normalizedQuery, text)
+
+        if (result && result.score > -2000) {
+          scored.push({ hit, score: result.score })
+        }
+      })
+
       if (scored.length) {
+        scored.sort((a, b) => b.score - a.score)
         return scored.map((entry) => entry.hit)
       }
-      return baseMatches
+
+      const substringMatches = baseMatches.filter((hit) => {
+        const haystack = [
+          hit.title,
+          hit.artist,
+          hit.album,
+          hit.collectionTitle ?? "",
+          ...(hit.genres ?? []),
+          ...(hit.metalGenres ?? []),
+        ]
+          .join(" ")
+          .toLowerCase()
+        return haystack.includes(normalizedQuery)
+      })
+
+      return substringMatches
     })()
 
     const sorted = [...matches]
