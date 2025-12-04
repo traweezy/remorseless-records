@@ -8,8 +8,6 @@ const requestSchema = z.object({
   handles: z.array(z.string().min(1)).max(50),
 })
 
-export const runtime = "nodejs"
-
 export async function POST(request: Request) {
   try {
     const payload: unknown = await request.json()
