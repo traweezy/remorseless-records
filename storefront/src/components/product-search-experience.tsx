@@ -623,57 +623,66 @@ const SortDropdown = ({
         />
       </button>
 
-      {open ? (
-        <div className="absolute right-0 top-[calc(100%+0.35rem)] z-40 min-w-[260px] rounded-3xl border border-border/50 bg-background/95 p-1.5 shadow-glow supports-[backdrop-filter]:backdrop-blur-2xl">
-          <div role="listbox" className="flex flex-col gap-1">
-            {SORT_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value)
-                  focusSearch()
-                  setOpen(false)
-                }}
-                className={cn(
-                  "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.75rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
-                  value === option.value &&
-                    "border-destructive text-destructive shadow-[0_0_0_1px_rgba(255,0,0,0.25)]"
-                )}
-                role="option"
-                aria-selected={value === option.value}
-              >
-                <span className="flex flex-col">
-                  <span
-                    className={cn(
-                      "flex items-center gap-2 font-semibold",
-                      value === option.value
-                        ? "text-destructive"
-                        : "text-foreground"
-                    )}
-                  >
-                    <option.Icon className="h-4 w-4" aria-hidden />
-                    {option.label}
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            key="sort-menu"
+            initial={{ opacity: 0, y: -6, scale: 0.99 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.99 }}
+            transition={{ duration: 0.12, ease: [0.25, 0.1, 0.25, 1] }}
+            className="absolute right-0 top-[calc(100%+0.35rem)] z-40 min-w-[260px] rounded-3xl border border-border/50 bg-background/95 p-1.5 shadow-glow supports-[backdrop-filter]:backdrop-blur-2xl"
+          >
+            <div role="listbox" className="flex flex-col gap-1">
+              {SORT_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value)
+                    focusSearch()
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.75rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
+                    value === option.value &&
+                      "border-destructive text-destructive shadow-[0_0_0_1px_rgba(255,0,0,0.25)]"
+                  )}
+                  role="option"
+                  aria-selected={value === option.value}
+                >
+                  <span className="flex flex-col">
+                    <span
+                      className={cn(
+                        "flex items-center gap-2 font-semibold",
+                        value === option.value
+                          ? "text-destructive"
+                          : "text-foreground"
+                      )}
+                    >
+                      <option.Icon className="h-4 w-4" aria-hidden />
+                      {option.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[0.55rem] uppercase tracking-[0.3rem]",
+                        value === option.value
+                          ? "text-destructive/80"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {option.helper}
+                    </span>
                   </span>
-                  <span
-                    className={cn(
-                      "text-[0.55rem] uppercase tracking-[0.3rem]",
-                      value === option.value
-                        ? "text-destructive/80"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {option.helper}
-                  </span>
-                </span>
-                {value === option.value ? (
-                  <Check className="h-4 w-4 text-destructive" aria-hidden />
-                ) : null}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
+                  {value === option.value ? (
+                    <Check className="h-4 w-4 text-destructive" aria-hidden />
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   )
 }
