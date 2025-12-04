@@ -363,7 +363,7 @@ const FilterCheckboxList = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground hover:bg-border/10 rounded-lg px-2 py-1"
+        className="flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
         aria-expanded={isOpen}
         aria-controls={`${title}-filters`}
       >
@@ -400,7 +400,7 @@ const FilterCheckboxList = ({
                     key={normalizedValue}
                     htmlFor={checkboxId}
                     className={cn(
-                      "flex cursor-pointer items-center justify-between rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.22rem] leading-relaxed text-muted-foreground transition hover:bg-border/10 hover:text-foreground",
+                      "flex cursor-pointer items-center justify-between rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.22rem] leading-relaxed text-muted-foreground transition hover:text-foreground",
                       variant === "chip"
                         ? cn(
                             "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
@@ -485,7 +485,7 @@ const FilterSidebar = ({
         type="button"
         onClick={onToggleStock}
         className={cn(
-          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition hover:bg-foreground/5",
+          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition",
           showInStockOnly
             ? "border-destructive/80 bg-destructive text-background shadow-glow"
             : "border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive"
@@ -1323,7 +1323,7 @@ const ProductSearchExperience = ({
                   </div>
                 </Drawer>
               </div>
-              <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/40 bg-background/85 px-3 py-2 transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/70 hover:bg-foreground/5 focus-within:border-destructive focus-within:shadow-glow-sm">
+              <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/40 bg-background/85 px-3 py-2 transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/70 focus-within:border-destructive focus-within:shadow-glow-sm">
                 <Search
                   className="h-4 w-4 text-muted-foreground transition group-focus-within:text-destructive"
                   aria-hidden

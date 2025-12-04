@@ -150,7 +150,7 @@
   }
 
   .interactive {
-    @apply cursor-pointer transition-colors duration-150 hover:text-foreground hover:bg-foreground/5;
+    @apply cursor-pointer transition-colors duration-150 hover:text-foreground;
   }
 
 }
