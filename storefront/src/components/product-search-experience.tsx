@@ -605,8 +605,7 @@ const SortDropdown = ({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.28rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
-          open && "border-destructive text-destructive"
+          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.28rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
         )}
         aria-haspopup="listbox"
         aria-expanded={open}
