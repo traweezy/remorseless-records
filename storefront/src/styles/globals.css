@@ -9,7 +9,7 @@
     margin-left: calc(50% - 50vw);
     overflow: hidden;
     padding-inline: 0;
-    --product-card-height: clamp(420px, 52vw, 540px);
+    --product-card-height: clamp(360px, 40vw, 480px);
   }
 
   .product-carousel__container {
