@@ -123,6 +123,8 @@ jobs:
       contents: read
       security-events: write
     needs: security
+    env:
+      CODEQL_ACTION_CACHE_SALT: ${{ github.run_id }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
