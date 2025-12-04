@@ -130,7 +130,8 @@ export const ProductCarouselSection = ({
             extensions={{ AutoScroll }}
             hasTrack
             onMounted={(splide: unknown) => {
-              splideRef.current = splide as unknown as SplideNav
+              const candidate = splide as { go?: (destination: string | number) => void }
+              splideRef.current = candidate?.go ? { go: candidate.go.bind(candidate) } : null
             }}
             onDestroy={() => {
               splideRef.current = null
