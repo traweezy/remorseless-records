@@ -9,8 +9,6 @@ import ProductCarouselSection from "@/components/product-carousel-section"
 import { deriveVariantOptions } from "@/lib/products/transformers"
 import {
   getProductByHandle,
-  getProductsByCollection,
-  getRecentProducts,
 } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
@@ -308,104 +306,26 @@ export default ProductPage
 const loadRelatedProducts = async (
   product: HttpTypes.StoreProduct
 ): Promise<HttpTypes.StoreProduct[]> => {
-  const suggestions: HttpTypes.StoreProduct[] = []
-  const seen = new Set<string>([product.id])
+  const backendBase =
+    process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
+    process.env.NEXT_PUBLIC_MEDUSA_URL ??
+    process.env.MEDUSA_BACKEND_URL ??
+    "http://localhost:9000"
 
-  const appendSuggestions = (items: HttpTypes.StoreProduct[] | undefined) => {
-    items?.forEach((item) => {
-      if (!item.id || seen.has(item.id) || item.handle === product.handle) {
-        return
-      }
-
-      seen.add(item.id)
-      suggestions.push(item)
-    })
+  try {
+    const response = await fetch(
+      `${backendBase}/store/products/${product.handle}/related`,
+      { next: { revalidate: 3600 }, cache: "force-cache" }
+    )
+    if (!response.ok) {
+      throw new Error(`Failed to load related: ${response.status}`)
+    }
+    const payload = (await response.json()) as { products?: HttpTypes.StoreProduct[] }
+    return payload.products ?? []
+  } catch (error) {
+    console.error("[related] falling back to empty set", error)
+    return []
   }
-
-  const shuffle = <T,>(items: T[]): T[] => {
-    const copy = [...items]
-    for (let i = copy.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1))
-      const temp = copy[i] as T
-      copy[i] = copy[j] as T
-      copy[j] = temp
-    }
-    return copy
-  }
-
-  const productSlug = buildProductSlugParts(product)
-  const targetArtist = productSlug.artistSlug?.toLowerCase() ?? null
-  const collectionId =
-    product.collection?.id ??
-    (product as { collection_id?: string }).collection_id ??
-    null
-
-  if (collectionId) {
-    const fromCollection = await getProductsByCollection(collectionId, 8)
-    appendSuggestions(fromCollection)
-  }
-
-  const genreHandles =
-    (product.categories ?? [])
-      .map((category) => category.handle?.trim().toLowerCase())
-      .filter((handle): handle is string => Boolean(handle)) ?? []
-
-  const recent = await getRecentProducts(1000)
-
-  const sameArtist: HttpTypes.StoreProduct[] = []
-  const genreMatches: HttpTypes.StoreProduct[] = []
-  const fallback: HttpTypes.StoreProduct[] = []
-
-  recent.forEach((candidate) => {
-    if (!candidate?.id || seen.has(candidate.id) || candidate.handle === product.handle) {
-      return
-    }
-    const slug = buildProductSlugParts(candidate)
-    const candidateArtist = slug.artistSlug?.toLowerCase() ?? null
-    const candidateGenres =
-      candidate.categories?.map((category) => category.handle?.trim().toLowerCase()) ?? []
-
-    if (targetArtist && candidateArtist === targetArtist) {
-      sameArtist.push(candidate)
-      return
-    }
-
-    if (candidateGenres.some((handle) => handle && genreHandles.includes(handle))) {
-      genreMatches.push(candidate)
-      return
-    }
-
-    fallback.push(candidate)
-  })
-
-  // Always include all other works from the same artist.
-  sameArtist.forEach((item) => {
-    if (!item.id || seen.has(item.id) || item.handle === product.handle) {
-      return
-    }
-    seen.add(item.id)
-    suggestions.push(item)
-  })
-
-  const MAX_SUGGESTIONS = 12
-
-  const fillFromPool = (pool: HttpTypes.StoreProduct[]) => {
-    shuffle(pool).forEach((item) => {
-      if (suggestions.length >= MAX_SUGGESTIONS) {
-        return
-      }
-      if (!item.id || seen.has(item.id) || item.handle === product.handle) {
-        return
-      }
-      seen.add(item.id)
-      suggestions.push(item)
-    })
-  }
-
-  fillFromPool(genreMatches)
-  fillFromPool(fallback)
-
-  return suggestions.slice(0, MAX_SUGGESTIONS)
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
