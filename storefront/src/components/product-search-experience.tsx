@@ -533,6 +533,8 @@ const FilterSidebar = ({
         options={formats}
         selected={selectedFormats}
         onToggle={onToggleFormat}
+        variant="plain"
+        normalizeValue={(value) => value.trim().toLowerCase()}
         defaultOpen={selectedFormats.length > 0}
       />
 
@@ -543,7 +545,7 @@ const FilterSidebar = ({
         options={productTypes}
         selected={selectedProductTypes}
         onToggle={onToggleProductType}
-        variant="chip"
+        variant="plain"
         normalizeValue={(value) => value.trim().toLowerCase()}
         defaultOpen={selectedProductTypes.length > 0}
       />
