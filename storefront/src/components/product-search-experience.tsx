@@ -636,7 +636,7 @@ const SortDropdown = ({
                   setOpen(false)
                 }}
                 className={cn(
-                  "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.7rem] uppercase tracking-[0.25rem] text-muted-foreground/90 transition hover:border-destructive/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
+                  "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.72rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-destructive/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
                   value === option.value &&
                     "border-destructive bg-destructive text-background shadow-glow-sm"
                 )}
@@ -659,7 +659,7 @@ const SortDropdown = ({
                     className={cn(
                       "text-[0.55rem] uppercase tracking-[0.3rem]",
                       value === option.value
-                        ? "text-background/80"
+                        ? "text-background/90"
                         : "text-muted-foreground"
                     )}
                   >
