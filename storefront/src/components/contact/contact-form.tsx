@@ -175,7 +175,8 @@ const ContactForm = () => {
         <Button
           type="submit"
           disabled={disabled}
-          className="inline-flex items-center gap-2 rounded-full px-6"
+          size="sm"
+          className="inline-flex items-center gap-2 rounded-full px-4"
         >
           {status === "submitting" ? "Sending..." : "Send message"}
         </Button>
