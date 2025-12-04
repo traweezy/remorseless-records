@@ -43,7 +43,10 @@ export const HeroSection = () => (
 
         <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
           <Button asChild size="lg" className="px-10 py-6 text-lg">
-            <Link href="/products" className="inline-flex items-center">
+            <Link
+              href="/products"
+              className="inline-flex items-center text-destructive-foreground hover:text-destructive-foreground"
+            >
               VIEW CATALOG
               <ChevronRight className="ml-2 h-5 w-5" />
             </Link>
