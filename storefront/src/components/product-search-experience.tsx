@@ -1026,7 +1026,7 @@ const ProductSearchExperience = ({
 
         const result = fuzzysort.single(normalizedQuery, text)
 
-        if (result && result.score > -2000) {
+        if (result && result.score > -500) {
           scored.push({ hit, score: result.score })
         }
       })
