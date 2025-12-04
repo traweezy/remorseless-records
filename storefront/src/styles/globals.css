@@ -146,6 +146,35 @@
     right: 0.38rem;
     border-color: hsl(var(--accent)) transparent transparent transparent;
   }
+
+  .wide-rails {
+    position: relative;
+  }
+
+  @media (min-width: 1400px) {
+    .wide-rails::before,
+    .wide-rails::after {
+      content: "";
+      position: fixed;
+      top: 2.5rem;
+      bottom: 2.5rem;
+      width: min(12vw, 140px);
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 20%, hsla(0, 70%, 50%, 0.18), transparent 65%),
+        linear-gradient(to bottom, hsla(0, 0%, 100%, 0.06), transparent 40%),
+        linear-gradient(to bottom, hsla(0, 0%, 100%, 0.06), transparent 40%);
+      border-inline: 1px solid hsla(var(--border), 0.4);
+      filter: drop-shadow(0 12px 32px hsla(0, 0%, 0%, 0.35));
+    }
+
+    .wide-rails::before {
+      left: clamp(0.75rem, 4vw, 2.5rem);
+    }
+
+    .wide-rails::after {
+      right: clamp(0.75rem, 4vw, 2.5rem);
+    }
+  }
 }
 
 @layer base {

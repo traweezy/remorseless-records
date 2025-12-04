@@ -218,7 +218,7 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   ])
 
   return (
-    <div className="bg-background">
+    <div className="bg-background wide-rails">
       <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-10 px-4 pb-12 pt-10 lg:px-8">
         <section className="grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-start">
           <ProductGallery
