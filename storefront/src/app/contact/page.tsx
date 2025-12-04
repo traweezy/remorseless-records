@@ -69,24 +69,6 @@ const ContactPage = () => {
             </div>
 
             <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
-                    Social
-                  </p>
-                  <h3 className="font-headline text-base uppercase tracking-[0.25rem] text-foreground">
-                    Instagram signals
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Drop alerts, pressing photos, and live updates. Embedded preview is lazy-loaded.
-                  </p>
-                </div>
-                <MessageCircle className="h-5 w-5 text-destructive" aria-hidden />
-              </div>
-              <InstagramGrid profileUrl={siteMetadata.socials.instagram ?? "https://www.instagram.com/remorseless_records/"} />
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
@@ -101,10 +83,7 @@ const ContactPage = () => {
                 </div>
                 <Send className="h-5 w-5 text-destructive" aria-hidden />
               </div>
-              <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[#1a0b0b] via-background to-[#2a0e0e] p-4 text-sm text-muted-foreground">
-                <p className="font-semibold text-foreground">Featured: Worm-Eaten Corpse</p>
-                <p>Purulent Remains — stream it on Bandcamp while you type.</p>
-              </div>
+              <BandcampEmbed />
               <Link
                 href={siteMetadata.socials.bandcamp ?? "https://remorselessrecords.bandcamp.com/"}
                 target="_blank"
@@ -112,7 +91,32 @@ const ContactPage = () => {
                 className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
               >
                 <BandcampGlyph />
-                Open Bandcamp
+                Support us on Bandcamp
+              </Link>
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
+                    Social
+                  </p>
+                  <h3 className="font-headline text-base uppercase tracking-[0.25rem] text-foreground">
+                    Instagram signals
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Drop alerts, pressing photos, and live updates. Embedded preview is lazy-loaded.
+                  </p>
+                </div>
+                <MessageCircle className="h-5 w-5 text-destructive" aria-hidden />
+              </div>
+              <Link
+                href={siteMetadata.socials.instagram ?? "https://www.instagram.com/remorseless_records/"}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
+              >
+                View on Instagram
               </Link>
             </div>
           </aside>
@@ -122,26 +126,17 @@ const ContactPage = () => {
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
-                Listen while you write
+                Stay connected
               </p>
               <h2 className="font-headline text-lg uppercase tracking-[0.3rem] text-foreground">
-                Spin the latest assault
+                Instagram feed
               </h2>
               <p className="text-sm text-muted-foreground">
-                Drop a line while you stream our current featured release.
+                A rotating slice of recent posts. Tap to open the post directly.
               </p>
             </div>
-            <Link
-              href={siteMetadata.socials.bandcamp ?? "https://remorselessrecords.bandcamp.com/"}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
-            >
-              <BandcampGlyph />
-              Support us on Bandcamp
-            </Link>
           </div>
-          <BandcampEmbed />
+          <InstagramGrid profileUrl={siteMetadata.socials.instagram ?? "https://www.instagram.com/remorseless_records/"} />
         </section>
       </div>
     </div>
