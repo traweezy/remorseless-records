@@ -8,15 +8,7 @@ import { Menu, ShoppingCart, X } from "lucide-react"
 import CartDrawer from "@/components/cart-drawer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
+import Drawer from "@/components/ui/drawer"
 import { useCartQuery, prefetchCartQuery } from "@/lib/query/cart"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
@@ -28,6 +20,7 @@ const SiteHeaderShell = () => {
   const pathname = usePathname()
   const router = useRouter()
   const [isCartOpen, setCartOpen] = useState(false)
+  const [isMenuOpen, setMenuOpen] = useState(false)
   const [scrollProgress, setScrollProgress] = useState(0)
   const { data: cart } = useCartQuery()
   const queryClient = useQueryClient()
@@ -164,65 +157,77 @@ const SiteHeaderShell = () => {
               </Badge>
             ) : null}
           </Button>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-72">
-              <SheetHeader className="mb-6 space-y-2 text-left">
-                <SheetTitle className="font-bebas text-2xl text-destructive">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label="Open navigation"
+            onClick={() => setMenuOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <Drawer
+            open={isMenuOpen}
+            onOpenChange={setMenuOpen}
+            ariaLabel="Navigation"
+            maxWidthClassName="max-w-[360px]"
+          >
+            <div className="relative flex h-full flex-col gap-6 px-5 py-6">
+              <div className="space-y-2 text-left">
+                <p className="font-bebas text-2xl text-destructive">
                   Remorseless Records
-                </SheetTitle>
-                <SheetDescription className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+                </p>
+                <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
                   Navigate
-                </SheetDescription>
-              </SheetHeader>
+                </p>
+              </div>
               <div className="flex flex-col gap-4">
                 {NAV_LINKS.map((link) => (
-                  <SheetClose asChild key={link.href}>
-                    <Link
-                      href={link.href}
-                      data-prefetch="true"
-                      onPointerEnter={() => prefetchRoute(link.href)}
-                      onFocus={() => prefetchRoute(link.href)}
-                      className={cn(
-                        "rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive",
-                        activeHref === link.href && "border-destructive text-destructive"
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  </SheetClose>
-                ))}
-                <SheetClose asChild>
                   <Link
-                    href="/cart"
+                    key={link.href}
+                    href={link.href}
                     data-prefetch="true"
-                    onPointerEnter={() => {
-                      prefetchRoute("/cart")
-                      prefetchCart()
-                    }}
-                    onFocus={() => {
-                      prefetchRoute("/cart")
-                      prefetchCart()
-                    }}
-                    className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+                    onPointerEnter={() => prefetchRoute(link.href)}
+                    onFocus={() => prefetchRoute(link.href)}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                      "rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive",
+                      activeHref === link.href && "border-destructive text-destructive"
+                    )}
                   >
-                    <span>Cart</span>
-                    <span className="rounded-full bg-destructive px-3 py-1 text-xs text-white">
-                      {cartLabel}
-                    </span>
+                    {link.label}
                   </Link>
-                </SheetClose>
+                ))}
+                <Link
+                  href="/cart"
+                  data-prefetch="true"
+                  onPointerEnter={() => {
+                    prefetchRoute("/cart")
+                    prefetchCart()
+                  }}
+                  onFocus={() => {
+                    prefetchRoute("/cart")
+                    prefetchCart()
+                  }}
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+                >
+                  <span>Cart</span>
+                  <span className="rounded-full bg-destructive px-3 py-1 text-xs text-white">
+                    {cartLabel}
+                  </span>
+                </Link>
               </div>
-              <SheetClose className="absolute right-4 top-4 rounded-full border border-border/60 p-2 text-muted-foreground transition hover:border-destructive hover:text-destructive">
+              <button
+                type="button"
+                className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 p-2 text-muted-foreground transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label="Close navigation"
+                onClick={() => setMenuOpen(false)}
+              >
                 <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </SheetClose>
-            </SheetContent>
-          </Sheet>
+              </button>
+            </div>
+          </Drawer>
         </div>
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-border/10 shadow-[0_0_18px_hsl(0_70%_50%/0.35)]">

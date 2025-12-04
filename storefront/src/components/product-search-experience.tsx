@@ -18,18 +18,12 @@ import {
   Clock,
   Search,
   SlidersHorizontal,
+  X,
   type LucideIcon,
 } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
+import Drawer from "@/components/ui/drawer"
 import { Separator } from "@/components/ui/separator"
 import ProductCard from "@/components/product-card"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
@@ -1260,24 +1254,45 @@ const ProductSearchExperience = ({
 
             <div className="flex flex-wrap items-center gap-2">
               <div className="lg:hidden">
-                <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="inline-flex h-11 items-center gap-2 rounded-full border-border/50 px-4 text-xs uppercase tracking-[0.3rem]"
-                    >
-                      <SlidersHorizontal className="h-4 w-4" />
-                      Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[min(92vw,300px)] p-0">
-                    <SheetHeader className="px-6 pb-4 pt-6 text-left">
-                      <SheetTitle className="text-lg uppercase tracking-[0.3rem]">
-                        Filters
-                      </SheetTitle>
-                    </SheetHeader>
-                    <div className="h-[calc(100vh-6.5rem)] overflow-y-auto px-6 pb-10">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="inline-flex h-11 items-center gap-2 rounded-full border-border/50 px-4 text-xs uppercase tracking-[0.3rem]"
+                  onClick={() => setMobileFiltersOpen(true)}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
+                </Button>
+
+                <Drawer
+                  open={mobileFiltersOpen}
+                  onOpenChange={setMobileFiltersOpen}
+                  side="left"
+                  ariaLabel="Filters"
+                  maxWidthClassName="max-w-[360px]"
+                >
+                  <div className="flex h-full flex-col overflow-hidden">
+                    <header className="flex items-start justify-between border-b border-border/60 px-6 py-4">
+                      <div className="space-y-1 text-left">
+                        <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
+                          Filters
+                        </p>
+                        <p className="text-lg font-semibold uppercase tracking-[0.3rem] text-foreground">
+                          Tune your search
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        aria-label="Close filters"
+                        onClick={() => setMobileFiltersOpen(false)}
+                      >
+                        <span className="sr-only">Close filters</span>
+                        <X className="h-4 w-4" aria-hidden />
+                      </button>
+                    </header>
+
+                    <div className="flex-1 overflow-y-auto px-6 pb-10 pt-2">
                       <FilterSidebar
                         genres={genreOptions}
                         formats={formatOptions}
@@ -1295,16 +1310,18 @@ const ProductSearchExperience = ({
                         showInStockOnly={showInStockOnly}
                         onToggleStock={toggleStockOnly}
                       />
-                      <div className="mt-8">
-                        <SheetClose asChild>
-                          <Button variant="outline" className="w-full">
-                            Done
-                          </Button>
-                        </SheetClose>
-                      </div>
                     </div>
-                  </SheetContent>
-                </Sheet>
+                    <div className="border-t border-border/60 px-6 py-4">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setMobileFiltersOpen(false)}
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  </div>
+                </Drawer>
               </div>
               <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/40 bg-background/85 px-3 py-2 transition supports-[backdrop-filter]:backdrop-blur-lg focus-within:border-destructive focus-within:shadow-glow-sm">
                 <Search
