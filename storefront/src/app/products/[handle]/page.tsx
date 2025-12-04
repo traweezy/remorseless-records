@@ -5,11 +5,10 @@ import { headers } from "next/headers"
 import type { HttpTypes } from "@medusajs/types"
 
 import ProductVariantSelector from "@/components/product-variant-selector"
-import ProductCard from "@/components/product-card"
 import ProductGallery from "@/components/product-gallery"
+import ProductCarouselSection from "@/components/product-carousel-section"
 import {
   deriveVariantOptions,
-  mapStoreProductToRelatedSummary,
 } from "@/lib/products/transformers"
 import {
   getProductByHandle,
@@ -18,7 +17,6 @@ import {
 } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
-import type { RelatedProductSummary } from "@/types/product"
 import {
   buildBreadcrumbJsonLd,
   buildMusicReleaseJsonLd,
@@ -302,25 +300,11 @@ const ProductPage = async ({ params }: ProductPageProps) => {
         </section>
 
         {relatedProducts.length ? (
-          <section className="space-y-6">
-            <header className="flex flex-col gap-3">
-              <span className="font-headline text-xs uppercase tracking-[0.4rem] text-muted-foreground">
-                You Might Also Dig
-              </span>
-              <h2 className="font-display text-3xl uppercase tracking-[0.3rem] text-foreground">
-                Related Assaults
-              </h2>
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                More wax pulled from nearby collections and similar sonic territory. Quick shop
-                surfaces variants without breaking your listening flow.
-              </p>
-            </header>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {relatedProducts.map((related) => (
-                <ProductCard key={related.id} product={related} />
-              ))}
-            </div>
-          </section>
+          <ProductCarouselSection
+            heading={{ leading: "Related", highlight: "Assaults" }}
+            description="More wax from this artist and adjacent genres."
+            products={relatedProducts}
+          />
         ) : null}
       </div>
 
@@ -336,8 +320,8 @@ export default ProductPage
 
 const loadRelatedProducts = async (
   product: HttpTypes.StoreProduct
-): Promise<RelatedProductSummary[]> => {
-  const suggestions: RelatedProductSummary[] = []
+): Promise<HttpTypes.StoreProduct[]> => {
+  const suggestions: HttpTypes.StoreProduct[] = []
   const seen = new Set<string>([product.id])
 
   const appendSuggestions = (items: HttpTypes.StoreProduct[] | undefined) => {
@@ -347,7 +331,7 @@ const loadRelatedProducts = async (
       }
 
       seen.add(item.id)
-      suggestions.push(mapStoreProductToRelatedSummary(item))
+      suggestions.push(item)
     })
   }
 
@@ -361,12 +345,36 @@ const loadRelatedProducts = async (
     appendSuggestions(fromCollection)
   }
 
-  if (suggestions.length < 4) {
-    const fallback = await getRecentProducts(8)
-    appendSuggestions(fallback)
+  const genreHandles =
+    (product.categories ?? [])
+      .map((category) => category.handle?.trim().toLowerCase())
+      .filter((handle): handle is string => Boolean(handle)) ?? []
+
+  if (suggestions.length < 6) {
+    const recent = await getRecentProducts(20)
+    const genreFiltered = recent.filter((candidate) => {
+      if (!candidate.id || seen.has(candidate.id) || candidate.handle === product.handle) {
+        return false
+      }
+      const candidateHandles =
+        candidate.categories?.map((category) => category.handle?.trim().toLowerCase()) ?? []
+      return candidateHandles.some((handle) => handle && genreHandles.includes(handle))
+    })
+
+    const pool = genreFiltered.length ? genreFiltered : recent
+    for (const candidate of pool) {
+      if (!candidate?.id || seen.has(candidate.id) || candidate.handle === product.handle) {
+        continue
+      }
+      seen.add(candidate.id)
+      suggestions.push(candidate)
+      if (suggestions.length >= 12) {
+        break
+      }
+    }
   }
 
-  return suggestions.slice(0, 4)
+  return suggestions.slice(0, 8)
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
