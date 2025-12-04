@@ -4,10 +4,10 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 
 const DEFAULT_BANDCAMP_EMBED_SRC =
-  "https://bandcamp.com/EmbeddedPlayer/album=1495474990/size=large/bgcol=060606/linkcol=de270f/artwork=small/transparent=true/"
+  "https://bandcamp.com/EmbeddedPlayer/album=2916008899/size=large/bgcol=333333/linkcol=e32c14/transparent=true/"
 
 const DEFAULT_BANDCAMP_LINK =
-  "https://remorselessrecords.bandcamp.com/album/worm-eaten-corpse"
+  "https://remorselessrecords.bandcamp.com/album/samudaripen"
 
 const BANDCAMP_EMBED_SRC =
   process.env.NEXT_PUBLIC_BANDCAMP_EMBED_SRC ?? DEFAULT_BANDCAMP_EMBED_SRC
@@ -49,7 +49,14 @@ const BandcampEmbed = () => {
     <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/80">
       <iframe
         title="Bandcamp player"
-        style={{ border: "0", width: "100%", height: "420px" }}
+        style={{
+          border: "0",
+          width: "100%",
+          maxWidth: "700px",
+          height: "480px",
+          display: "block",
+          margin: "0 auto",
+        }}
         src={BANDCAMP_EMBED_SRC}
         seamless
         loading="lazy"
