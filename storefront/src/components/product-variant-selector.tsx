@@ -202,6 +202,7 @@ const ProductVariantSelector = ({
               className="h-11 w-20 rounded-full border border-border/60 bg-background/80 px-4 text-sm uppercase tracking-[0.2rem] shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-destructive"
               type="number"
               value={quantity}
+              onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => handleQuantityChange(event.target.value)}
             />
           </label>

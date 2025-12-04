@@ -4,7 +4,7 @@ import { forwardRef } from "react"
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type = "text", ...props }, ref) => (
+  ({ className, type = "text", onFocus, ...props }, ref) => (
     <input
       type={type}
       className={cn(
@@ -12,6 +12,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         className
       )}
       ref={ref}
+      onFocus={(event) => {
+        event.currentTarget.select()
+        onFocus?.(event)
+      }}
       {...props}
     />
   )
