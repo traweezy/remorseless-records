@@ -504,17 +504,17 @@ const FilterSidebar = ({
         )}
         aria-pressed={showInStockOnly}
       >
-        <span>In stock only</span>
+        <span>In stock</span>
         <span
           className={cn(
             "inline-flex h-5 w-10 items-center rounded-full border border-border/60 bg-background px-1 transition",
-            showInStockOnly && "justify-end border-destructive bg-destructive/40"
+            showInStockOnly && "justify-end border-destructive/80 bg-destructive/10"
           )}
         >
           <span
             className={cn(
               "h-3.5 w-3.5 rounded-full bg-border transition",
-              showInStockOnly && "bg-background"
+              showInStockOnly && "bg-destructive"
             )}
           />
         </span>
@@ -644,7 +644,7 @@ const SortDropdown = ({
                 className={cn(
                   "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.75rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
                   value === option.value &&
-                    "border-destructive bg-destructive text-background shadow-glow-sm"
+                    "border-destructive text-destructive shadow-[0_0_0_1px_rgba(255,0,0,0.25)]"
                 )}
                 role="option"
                 aria-selected={value === option.value}
@@ -654,7 +654,7 @@ const SortDropdown = ({
                     className={cn(
                       "flex items-center gap-2 font-semibold",
                       value === option.value
-                        ? "text-background"
+                        ? "text-destructive"
                         : "text-foreground"
                     )}
                   >
@@ -665,7 +665,7 @@ const SortDropdown = ({
                     className={cn(
                       "text-[0.55rem] uppercase tracking-[0.3rem]",
                       value === option.value
-                        ? "text-background/90"
+                        ? "text-destructive/80"
                         : "text-muted-foreground"
                     )}
                   >
@@ -673,7 +673,7 @@ const SortDropdown = ({
                   </span>
                 </span>
                 {value === option.value ? (
-                  <Check className="h-4 w-4 text-background" aria-hidden />
+                  <Check className="h-4 w-4 text-destructive" aria-hidden />
                 ) : null}
               </button>
             ))}
