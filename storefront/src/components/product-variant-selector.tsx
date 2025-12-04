@@ -120,12 +120,12 @@ const ProductVariantSelector = ({
     : null
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <h2 className="font-headline text-xs uppercase tracking-[0.4rem] text-muted-foreground">
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <h2 className="font-headline text-[0.7rem] uppercase tracking-[0.4rem] text-muted-foreground">
           Format
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2">
           {variants.length ? (
             variants.map((variant) => {
               const isSelected = variant.id === selectedVariant?.id
@@ -137,7 +137,7 @@ const ProductVariantSelector = ({
                   key={variant.id}
                   type="button"
                   className={cn(
-                    "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-4 text-left transition",
+                    "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-3.5 text-left transition",
                     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                     isSelected && !isSoldOut && "border-accent bg-accent/10",
                     isSoldOut && "cursor-not-allowed opacity-50"
@@ -171,7 +171,7 @@ const ProductVariantSelector = ({
         </div>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-border/60 bg-surface/80 p-6 shadow-elegant">
+      <div className="space-y-3 rounded-2xl border border-border/60 bg-surface/80 p-5 shadow-elegant">
         <div className="flex flex-col gap-2">
           <p className="font-headline text-xs uppercase tracking-[0.35rem] text-muted-foreground">
             Selected Format

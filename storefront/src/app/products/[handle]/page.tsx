@@ -219,8 +219,8 @@ const ProductPage = async ({ params }: ProductPageProps) => {
 
   return (
     <div className="bg-background">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-12 px-4 pb-14 pt-10 lg:px-8">
-        <section className="grid gap-8 lg:grid-cols-[1.05fr_1fr] lg:items-start">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-10 px-4 pb-12 pt-10 lg:px-8">
+        <section className="grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-start">
           <ProductGallery
             images={heroImages.map((image, index) => ({
               id: image.id ?? `image-${index}`,
@@ -230,8 +230,8 @@ const ProductPage = async ({ params }: ProductPageProps) => {
             title={productTitle}
           />
 
-          <aside className="flex flex-col gap-8 lg:sticky lg:top-20">
-            <div className="space-y-4 rounded-3xl border border-border/70 bg-surface/95 p-7 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]">
+          <aside className="flex flex-col gap-6 lg:sticky lg:top-20">
+            <div className="space-y-4 rounded-3xl border border-border/70 bg-surface/95 p-6 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]">
               <div className="space-y-2">
                 <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-foreground">
                   {productTitle}
@@ -259,7 +259,7 @@ const ProductPage = async ({ params }: ProductPageProps) => {
               />
             </div>
 
-            <div className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-7">
+            <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-6">
               <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                 Description
               </h2>
@@ -269,7 +269,7 @@ const ProductPage = async ({ params }: ProductPageProps) => {
             </div>
 
             {tracklist.length ? (
-              <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-7">
+              <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-6">
                 <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                   Tracklist
                 </h3>
