@@ -442,15 +442,12 @@ const FilterCheckboxList = ({
 
 const FilterSidebar = ({
   genres,
-  artists,
   formats,
   productTypes,
   selectedGenres,
-  selectedArtists,
   selectedFormats,
   selectedProductTypes,
   onToggleGenre,
-  onToggleArtist,
   onToggleFormat,
   onToggleProductType,
   onClear,
@@ -458,15 +455,12 @@ const FilterSidebar = ({
   onToggleStock,
 }: {
   genres: FilterOption[]
-  artists: FilterOption[]
   formats: FilterOption[]
   productTypes: FilterOption[]
   selectedGenres: string[]
-  selectedArtists: string[]
   selectedFormats: string[]
   selectedProductTypes: string[]
   onToggleGenre: (genre: string) => void
-  onToggleArtist: (artist: string) => void
   onToggleFormat: (format: string) => void
   onToggleProductType: (type: string) => void
   onClear: () => void
@@ -548,18 +542,6 @@ const FilterSidebar = ({
         variant="plain"
         normalizeValue={(value) => value.trim().toLowerCase()}
         defaultOpen={selectedProductTypes.length > 0}
-      />
-
-      <Separator className="border-border/50" />
-
-      <FilterCheckboxList
-        title="Artists"
-        options={artists}
-        selected={selectedArtists}
-        onToggle={onToggleArtist}
-        variant="plain"
-        normalizeValue={(value) => value.trim().toLowerCase()}
-        defaultOpen={selectedArtists.length > 0}
       />
     </div>
   </div>
@@ -792,7 +774,6 @@ const ProductSearchExperience = ({
 
   const query = useCatalogStore((state) => state.query)
   const selectedGenres = useCatalogStore((state) => state.genres)
-  const selectedArtists = useCatalogStore((state) => state.artists)
   const selectedFormats = useCatalogStore((state) => state.formats)
   const selectedProductTypes = useCatalogStore((state) => state.productTypes)
   const showInStockOnly = useCatalogStore((state) => state.showInStockOnly)
@@ -800,7 +781,6 @@ const ProductSearchExperience = ({
 
   const setQuery = useCatalogStore((state) => state.setQuery)
   const toggleGenreFilter = useCatalogStore((state) => state.toggleGenre)
-  const toggleArtistFilter = useCatalogStore((state) => state.toggleArtist)
   const toggleFormatFilter = useCatalogStore((state) => state.toggleFormat)
   const toggleProductTypeFilter = useCatalogStore((state) => state.toggleProductType)
   const toggleStockOnlyFilter = useCatalogStore((state) => state.toggleStockOnly)
@@ -858,20 +838,6 @@ const ProductSearchExperience = ({
           .filter((value): value is string => Boolean(value))
       )
     )
-    const normalizeArtistHandle = (value: string | null): string | null => {
-      if (typeof value !== "string") {
-        return null
-      }
-      const trimmed = value.trim().toLowerCase()
-      return trimmed.length ? trimmed : null
-    }
-    const nextArtists = Array.from(
-      new Set(
-        splitCsv(params.getAll("artist"))
-          .map((value) => normalizeArtistHandle(value))
-          .filter((value): value is string => Boolean(value))
-      )
-    )
     const nextFormats = splitCsv(params.getAll("format"))
     const nextProductTypes = splitCsv(params.getAll("type"))
     const nextStock = params.get("stock") === "1"
@@ -883,7 +849,6 @@ const ProductSearchExperience = ({
     hydrateFromParams({
       query: nextQuery,
       genres: nextGenres,
-      artists: nextArtists,
       formats: nextFormats,
       productTypes: nextProductTypes,
       showInStockOnly: nextStock,
@@ -898,10 +863,6 @@ const ProductSearchExperience = ({
     () => [...selectedGenres].sort().join("|"),
     [selectedGenres]
   )
-  const artistsKey = useMemo(
-    () => [...selectedArtists].sort().join("|"),
-    [selectedArtists]
-  )
   const formatsKey = useMemo(
     () => [...selectedFormats].sort().join("|"),
     [selectedFormats]
@@ -913,10 +874,6 @@ const ProductSearchExperience = ({
   const genreCsvValues = useMemo(
     () => selectedGenres.map((value) => value.trim()).filter((value) => value.length),
     [selectedGenres]
-  )
-  const artistCsvValues = useMemo(
-    () => selectedArtists.map((value) => value.trim()).filter((value) => value.length),
-    [selectedArtists]
   )
   const formatCsvValues = useMemo(
     () => selectedFormats.map((value) => value.trim()).filter((value) => value.length),
@@ -932,13 +889,12 @@ const ProductSearchExperience = ({
       [
         query.trim(),
         genresKey,
-        artistsKey,
         formatsKey,
         productTypesKey,
         showInStockOnly ? "in-stock" : "all",
         sortOption,
       ].join("|"),
-    [query, genresKey, artistsKey, formatsKey, productTypesKey, showInStockOnly, sortOption]
+    [query, genresKey, formatsKey, productTypesKey, showInStockOnly, sortOption]
   )
 
   useEffect(() => {
@@ -958,7 +914,6 @@ const ProductSearchExperience = ({
     }
 
     setCsvParam("genre", genreCsvValues)
-    setCsvParam("artist", artistCsvValues)
     setCsvParam("format", formatCsvValues)
     setCsvParam("type", productTypeCsvValues)
     if (showInStockOnly) {
@@ -981,14 +936,12 @@ const ProductSearchExperience = ({
   }, [
     query,
     genresKey,
-    artistsKey,
     formatsKey,
     productTypesKey,
     showInStockOnly,
     sortOption,
     initialSort,
     genreCsvValues,
-    artistCsvValues,
     formatCsvValues,
     productTypeCsvValues,
   ])
@@ -1000,31 +953,9 @@ const ProductSearchExperience = ({
     [aggregatedHits]
   )
 
-  const artistFacets = useMemo(() => {
-    const counts: Record<string, number> = {}
-    const labels = new Map<string, string>()
-
-    aggregatedHits.forEach((hit) => {
-      const handle =
-        hit.slug?.artistSlug?.toLowerCase() ??
-        hit.artist?.trim().toLowerCase() ??
-        null
-      if (!handle) {
-        return
-      }
-      counts[handle] = (counts[handle] ?? 0) + 1
-      if (!labels.has(handle)) {
-        labels.set(handle, hit.artist ?? humanizeCategoryHandle(handle))
-      }
-    })
-
-    return { counts, labels }
-  }, [aggregatedHits])
-
   const filteredHits = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
     const requiredGenres = selectedGenres.map((value) => value.toLowerCase())
-    const requiredArtists = selectedArtists.map((value) => value.toLowerCase())
     const requiredFormats = selectedFormats.map((value) => value.toLowerCase())
     const requiredProductTypes = selectedProductTypes.map((value) =>
       value.toLowerCase()
@@ -1047,16 +978,6 @@ const ProductSearchExperience = ({
         )
         const combined = new Set([...handles, ...genreLabels])
         if (!requiredGenres.some((genre) => combined.has(genre))) {
-          return false
-        }
-      }
-
-      if (requiredArtists.length) {
-        const artistHandle =
-          hit.slug?.artistSlug?.toLowerCase() ??
-          hit.artist?.trim().toLowerCase() ??
-          ""
-        if (!artistHandle.length || !requiredArtists.includes(artistHandle)) {
           return false
         }
       }
@@ -1115,7 +1036,6 @@ const ProductSearchExperience = ({
     aggregatedHits,
     query,
     selectedGenres,
-    selectedArtists,
     selectedFormats,
     selectedProductTypes,
     showInStockOnly,
@@ -1165,7 +1085,6 @@ const ProductSearchExperience = ({
 
   const activeFiltersCount =
     selectedGenres.length +
-    selectedArtists.length +
     selectedFormats.length +
     selectedProductTypes.length +
     (showInStockOnly ? 1 : 0)
@@ -1209,18 +1128,6 @@ const ProductSearchExperience = ({
       .map(({ rank: _rank, ...option }) => option)
   }, [categoryFacetCounts, normalizedGenreFilters])
 
-  const artistOptions = useMemo(
-    () =>
-      Object.entries(artistFacets.counts)
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .map(([value, count]) => ({
-          value,
-          label: artistFacets.labels.get(value) ?? humanizeCategoryHandle(value),
-          count,
-        })),
-    [artistFacets]
-  )
-
   const formatOptions = useMemo(
     () =>
       Object.entries(catalogFacets.variants ?? {})
@@ -1262,14 +1169,6 @@ const ProductSearchExperience = ({
     toggleGenreFilter(normalizedGenre)
   }
 
-  const handleToggleArtist = (artist: string) => {
-    const normalized = artist.trim().toLowerCase()
-    if (!normalized.length) {
-      return
-    }
-    toggleArtistFilter(normalized)
-  }
-
   const handleToggleFormat = (formatValue: string) => {
     if (!formatValue.trim().length) {
       return
@@ -1308,15 +1207,12 @@ const ProductSearchExperience = ({
           <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl">
             <FilterSidebar
               genres={genreOptions}
-              artists={artistOptions}
               formats={formatOptions}
               productTypes={productTypeOptions}
               selectedGenres={selectedGenres}
-              selectedArtists={selectedArtists}
               selectedFormats={selectedFormats}
               selectedProductTypes={selectedProductTypes}
               onToggleGenre={handleToggleGenre}
-              onToggleArtist={handleToggleArtist}
               onToggleFormat={handleToggleFormat}
               onToggleProductType={handleToggleProductType}
               onClear={clearFilters}
@@ -1359,15 +1255,12 @@ const ProductSearchExperience = ({
                     <div className="h-[calc(100vh-6.5rem)] overflow-y-auto px-6 pb-10">
                       <FilterSidebar
                         genres={genreOptions}
-                        artists={artistOptions}
                         formats={formatOptions}
                         productTypes={productTypeOptions}
                         selectedGenres={selectedGenres}
-                        selectedArtists={selectedArtists}
                         selectedFormats={selectedFormats}
                         selectedProductTypes={selectedProductTypes}
                         onToggleGenre={handleToggleGenre}
-                        onToggleArtist={handleToggleArtist}
                         onToggleFormat={handleToggleFormat}
                         onToggleProductType={handleToggleProductType}
                         onClear={() => {
@@ -1408,7 +1301,6 @@ const ProductSearchExperience = ({
             </div>
 
             {(selectedGenres.length ||
-              selectedArtists.length ||
               selectedFormats.length ||
               selectedProductTypes.length ||
               showInStockOnly) && (
@@ -1431,16 +1323,6 @@ const ProductSearchExperience = ({
                     className={filterChipClass}
                   >
                     {formatProductTypeLabel(type)} ✕
-                  </button>
-                ))}
-                {selectedArtists.map((artist) => (
-                  <button
-                    key={`active-artist-${artist}`}
-                    type="button"
-                    onClick={() => handleToggleArtist(artist)}
-                    className={filterChipClass}
-                  >
-                    {artistFacets.labels.get(artist) ?? humanizeCategoryHandle(artist)} ✕
                   </button>
                 ))}
                 {selectedGenres.map((genre) => (
