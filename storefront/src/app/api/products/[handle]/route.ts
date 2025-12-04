@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
-import { backendBaseUrl, withBackendHeaders } from "@/config/backend"
+import { storeClient } from "@/lib/medusa"
 
 type RouteParams = {
   params: Promise<{
@@ -24,24 +24,12 @@ export const GET = async (
   }
 
   try {
-    const response = await fetch(
-      `${backendBaseUrl}/store/products/${encodeURIComponent(handle)}`,
-      {
-        cache: "no-store",
-        headers: withBackendHeaders(),
-      }
-    )
+    const { products } = await storeClient.product.list({
+      handle,
+      limit: 1,
+    })
 
-    if (response.status === 404) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 })
-    }
-
-    if (!response.ok) {
-      throw new Error(`Upstream product fetch failed: ${response.status}`)
-    }
-
-    const payload = (await response.json()) as { product?: unknown }
-    const product = payload.product
+    const product = products[0]
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 })

@@ -1,7 +1,7 @@
 import { cache } from "react"
 import type { HttpTypes } from "@medusajs/types"
 
-import { backendBaseUrl, withBackendHeaders } from "@/config/backend"
+import { storeClient } from "@/lib/medusa"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 
 type StoreProductCategory = HttpTypes.StoreProductCategory
@@ -74,16 +74,10 @@ const METAL_HANDLE = "metal"
 
 export const getMetalGenreCategories = cache(async (): Promise<GenreCategory[]> => {
   try {
-    const response = await fetch(`${backendBaseUrl}/store/categories`, {
-      cache: "force-cache",
-      next: { revalidate: 1800 },
-      headers: withBackendHeaders(),
+    const { product_categories } = await storeClient.category.list({
+      include_descendants_tree: true,
+      limit: 200,
     })
-    if (!response.ok) {
-      throw new Error(`Failed to load categories: ${response.status}`)
-    }
-    const payload = (await response.json()) as { categories?: StoreProductCategory[] }
-    const product_categories = payload.categories ?? []
 
     if (!product_categories?.length) {
       return []

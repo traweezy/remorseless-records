@@ -1,33 +1,20 @@
-import { backendBaseUrl, withBackendHeaders } from "@/config/backend"
+import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import type { ProductSearchHit } from "@/types/product"
-import type { HttpTypes } from "@medusajs/types"
+import { storeClient } from "@/lib/medusa"
 
 export const getFullCatalogHits = async (): Promise<ProductSearchHit[]> => {
   const hits: ProductSearchHit[] = []
   const batchSize = 100
   let offset = 0
-  const isStoreProduct = (value: unknown): value is HttpTypes.StoreProduct =>
-    typeof value === "object" && value !== null && "handle" in value
 
   for (;;) {
-    const url = new URL(`${backendBaseUrl}/store/products`)
-    url.searchParams.set("limit", String(batchSize))
-    url.searchParams.set("offset", String(offset))
-    url.searchParams.set("order", "title")
-
-    const response = await fetch(url.toString(), {
-      cache: "force-cache",
-      next: { revalidate: 900 },
-      headers: withBackendHeaders(),
+    const { products } = await storeClient.product.list({
+      limit: batchSize,
+      offset,
+      order: "title",
+      fields: PRODUCT_LIST_FIELDS,
     })
-
-    if (!response.ok) {
-      break
-    }
-
-    const payload = (await response.json()) as { products?: unknown[] }
-    const products = (Array.isArray(payload.products) ? payload.products : []).filter(isStoreProduct)
 
     if (!products?.length) {
       break

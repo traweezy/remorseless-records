@@ -12,7 +12,6 @@ import {
 } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
-import { backendBaseUrl, withBackendHeaders } from "@/config/backend"
 import {
   buildBreadcrumbJsonLd,
   buildMusicReleaseJsonLd,
@@ -307,14 +306,16 @@ export default ProductPage
 const loadRelatedProducts = async (
   product: HttpTypes.StoreProduct
 ): Promise<HttpTypes.StoreProduct[]> => {
+  const backendBase =
+    process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
+    process.env.NEXT_PUBLIC_MEDUSA_URL ??
+    process.env.MEDUSA_BACKEND_URL ??
+    "http://localhost:9000"
+
   try {
     const response = await fetch(
-      `${backendBaseUrl}/store/products/${product.handle}/related`,
-      {
-        next: { revalidate: 3600 },
-        cache: "force-cache",
-        headers: withBackendHeaders(),
-      }
+      `${backendBase}/store/products/${product.handle}/related`,
+      { next: { revalidate: 3600 }, cache: "force-cache" }
     )
     if (!response.ok) {
       throw new Error(`Failed to load related: ${response.status}`)
