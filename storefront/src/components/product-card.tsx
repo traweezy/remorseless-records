@@ -11,7 +11,6 @@ import { ProductQuickView } from "@/components/product-quick-view"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useProductDetailPrefetch } from "@/lib/query/products"
 import { mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 
@@ -189,7 +188,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     : product
 
   const handle = summary.handle?.trim() ?? ""
-  const prefetchProduct = useProductDetailPrefetch(handle)
 
   if (!handle.length) {
     if (process.env.NODE_ENV !== "production") {
@@ -255,7 +253,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     }
 
     void router.prefetch(productHref)
-    prefetchProduct()
   }
 
   const handleQuickShop = (event: MouseEvent<HTMLButtonElement>) => {
@@ -289,6 +286,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         <Link
           href={productHref}
           prefetch
+          data-prefetch="true"
           className="block h-full focus:outline-none"
           aria-label={`View ${summary.title}`}
         >
