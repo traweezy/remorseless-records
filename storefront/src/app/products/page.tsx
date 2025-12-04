@@ -1,6 +1,4 @@
 import type { Metadata } from "next"
-import { headers } from "next/headers"
-
 import ProductSearchExperience from "@/components/product-search-experience"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
@@ -10,7 +8,7 @@ import { getFullCatalogHits } from "@/lib/catalog/all"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 
-const catalogCanonical = `${siteMetadata.siteUrl}/products`
+const catalogCanonical = `${siteMetadata.siteUrl}/catalog`
 
 export const metadata: Metadata = {
   title: "Catalog",
@@ -59,15 +57,7 @@ const ProductsPage = async () => {
     combinedHits.push(hit)
   })
 
-  const headerList = await headers()
-  const headerEntries = Object.fromEntries(headerList.entries()) as Record<string, string>
-  const host =
-    headerEntries["x-forwarded-host"] ??
-    headerEntries.host ??
-    "localhost:3000"
-  const protocolHeader = headerEntries["x-forwarded-proto"]
-  const protocol = protocolHeader ?? (host.startsWith("localhost") ? "http" : "https")
-  const origin = `${protocol}://${host}`
+  const origin = siteMetadata.siteUrl
 
   const catalogStructuredData = buildItemListJsonLd(
     "Remorseless Catalog",
