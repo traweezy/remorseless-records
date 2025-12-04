@@ -604,19 +604,19 @@ const SortDropdown = ({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/40 bg-background/80 px-4 text-left text-xs uppercase tracking-[0.3rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
-          open && "border-destructive/60"
+          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.28rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
+          open && "border-destructive text-destructive"
         )}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
         <span className="flex items-center gap-2 text-[0.65rem]">
-          <activeOption.Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+          <activeOption.Icon className="h-4 w-4 text-foreground" aria-hidden />
           {activeOption.label}
         </span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-muted-foreground transition duration-200",
+            "h-4 w-4 text-foreground transition duration-200",
             open && "-scale-y-100"
           )}
           aria-hidden
@@ -636,7 +636,7 @@ const SortDropdown = ({
                   setOpen(false)
                 }}
                 className={cn(
-                  "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.72rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-destructive/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
+                  "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.75rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-destructive/40 hover:bg-border/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
                   value === option.value &&
                     "border-destructive bg-destructive text-background shadow-glow-sm"
                 )}
