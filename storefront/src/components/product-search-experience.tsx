@@ -363,7 +363,7 @@ const FilterCheckboxList = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground"
+        className="flex w-full cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
         aria-expanded={isOpen}
         aria-controls={`${title}-filters`}
       >
@@ -400,7 +400,7 @@ const FilterCheckboxList = ({
                     key={normalizedValue}
                     htmlFor={checkboxId}
                     className={cn(
-                      "flex items-center justify-between rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.22rem] leading-relaxed text-muted-foreground transition",
+                      "flex cursor-pointer items-center justify-between rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.22rem] leading-relaxed text-muted-foreground transition hover:bg-border/10 hover:text-foreground",
                       variant === "chip"
                         ? cn(
                             "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
@@ -474,18 +474,18 @@ const FilterSidebar = ({
           Filters
         </h2>
         <button
-          type="button"
-          onClick={onClear}
-          className="text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-accent"
-        >
-          Reset
-        </button>
+        type="button"
+        onClick={onClear}
+        className="cursor-pointer text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
+      >
+        Reset
+      </button>
       </div>
       <button
         type="button"
         onClick={onToggleStock}
         className={cn(
-          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition",
+          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition hover:bg-foreground/5",
           showInStockOnly
             ? "border-destructive/80 bg-destructive text-background shadow-glow"
             : "border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive"

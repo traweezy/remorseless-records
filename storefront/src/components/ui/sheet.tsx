@@ -43,7 +43,7 @@ const SheetContent = forwardRef<
     <SheetPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 flex flex-col border border-border/70 bg-background/90 p-6 shadow-glow transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] supports-[backdrop-filter]:backdrop-blur-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in data-[state=closed]:fade-out",
+        "fixed z-50 flex flex-col border border-border/70 bg-background/90 p-6 shadow-glow transition-[transform,opacity] duration-300 supports-[backdrop-filter]:backdrop-blur-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in data-[state=closed]:fade-out",
         side === "right" &&
           "inset-y-0 right-0 h-full w-full max-w-[448px] border-l data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right sm:rounded-l-2xl",
         side === "left" &&
@@ -54,6 +54,9 @@ const SheetContent = forwardRef<
           "bottom-0 inset-x-0 h-1/3 border-t data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
         className
       )}
+      style={{
+        transitionTimingFunction: "cubic-bezier(0.22,1,0.36,1)",
+      }}
       {...props}
     >
       <SheetPrimitive.Close className="absolute right-4 top-4 rounded-full border border-border/60 bg-background/80 p-2 text-muted-foreground transition hover:text-destructive">

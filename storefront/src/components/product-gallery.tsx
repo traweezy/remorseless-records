@@ -45,7 +45,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
           >
             <Image
               src={active?.url ?? "/remorseless-hero-logo.png"}
-              alt={active?.alt || title}
+              alt={active?.alt ?? title}
               fill
               sizes="(min-width: 1024px) 520px, 90vw"
               className="object-cover"
@@ -70,7 +70,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
               >
                 <Image
                   src={image.url}
-                  alt={image.alt || title}
+                  alt={image.alt ?? title}
                   fill
                   sizes="96px"
                   className="object-cover"

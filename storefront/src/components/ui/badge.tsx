@@ -7,7 +7,7 @@ import { forwardRef } from "react"
 import { cn } from "@/lib/ui/cn"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.3rem] transition-colors",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.3rem] transition-colors hover:brightness-95 hover:bg-border/20",
   {
     variants: {
       variant: {

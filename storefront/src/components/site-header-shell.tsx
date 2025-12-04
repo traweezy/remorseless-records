@@ -41,9 +41,7 @@ const SiteHeaderShell = () => {
       return null
     }
 
-    const match = NAV_LINKS.find((link) =>
-      pathname.startsWith(link.href)
-    )
+    const match = NAV_LINKS.find((link) => pathname === link.href)
     return match?.href ?? null
   }, [pathname])
 
@@ -232,8 +230,11 @@ const SiteHeaderShell = () => {
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-border/10 shadow-[0_0_18px_hsl(0_70%_50%/0.35)]">
         <div
-          className="h-full rounded-full bg-destructive shadow-[0_0_25px_hsl(0_70%_50%/0.55)] transition-[width] duration-400 ease-[cubic-bezier(0.4,0.1,0,1)]"
-          style={{ width: `${scrollProgress * 100}%` }}
+          className="h-full rounded-full bg-destructive shadow-[0_0_25px_hsl(0_70%_50%/0.55)] transition-[width] duration-[400ms]"
+          style={{
+            width: `${scrollProgress * 100}%`,
+            transitionTimingFunction: "cubic-bezier(0.4,0.1,0,1)",
+          }}
         />
       </div>
       <CartDrawer open={isCartOpen} onOpenChange={setCartOpen} />
