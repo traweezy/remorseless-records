@@ -28,7 +28,6 @@ const PRODUCT_RELATIONS = [
   "images",
   "metadata",
   "variants",
-  "variants.prices",
   "variants.options",
   "variants.options.option",
   "options",

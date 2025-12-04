@@ -312,11 +312,29 @@ const loadRelatedProducts = async (
     typeof product.id === "string" ? product.id : "",
   ])
   const targetSlug = buildProductSlugParts(product)
-  const targetGenres =
+  const normalizeHandle = (value: string | null | undefined): string | null => {
+    if (!value || typeof value !== "string") {
+      return null
+    }
+    const trimmed = value.trim().toLowerCase()
+    return trimmed.length ? trimmed : null
+  }
+
+  const categoryMeta =
     product.categories
-      ?.map((category) => category?.handle?.trim().toLowerCase())
-      .filter((handle): handle is string => Boolean(handle)) ?? []
-  const genreSet = new Set(targetGenres)
+      ?.map((category) => ({
+        id: typeof category?.id === "string" ? category.id : null,
+        handle: normalizeHandle(category?.handle),
+      }))
+      .filter((entry): entry is { id: string; handle: string } => Boolean(entry.id) && Boolean(entry.handle)) ?? []
+
+  const artistCategoryIds = categoryMeta
+    .filter((entry) => entry.handle === normalizeHandle(targetSlug.artistSlug))
+    .map((entry) => entry.id)
+
+  const genreCategoryIds = categoryMeta
+    .filter((entry) => entry.handle !== normalizeHandle(targetSlug.artistSlug))
+    .map((entry) => entry.id)
 
   const add = (items: HttpTypes.StoreProduct[] | undefined, bucket: HttpTypes.StoreProduct[]) => {
     items?.forEach((item) => {
@@ -345,47 +363,31 @@ const loadRelatedProducts = async (
       add(products, related)
     }
 
-    const { products: recent } = await storeClient.product.list({
-      limit: 200,
-      order: "-created_at",
-      fields: PRODUCT_DETAIL_FIELDS,
-    })
-
-    const sameArtist: HttpTypes.StoreProduct[] = []
-    const genreMatches: HttpTypes.StoreProduct[] = []
-    const fallback: HttpTypes.StoreProduct[] = []
-
-    recent.forEach((candidate) => {
-      const handle = typeof candidate.handle === "string" ? candidate.handle.trim() : ""
-      if (!handle || seen.has(handle) || handle === product.handle) {
-        return
-      }
-      const slug = buildProductSlugParts(candidate)
-      const candidateArtist = slug.artistSlug?.toLowerCase() ?? null
-      const candidateGenres =
-        candidate.categories
-          ?.map((category) => category?.handle?.trim().toLowerCase())
-          .filter((value): value is string => Boolean(value)) ?? []
-
-      if (targetSlug.artistSlug && candidateArtist === targetSlug.artistSlug.toLowerCase()) {
-        sameArtist.push(candidate)
-        return
-      }
-
-      if (candidateGenres.some((entry) => entry && genreSet.has(entry))) {
-        genreMatches.push(candidate)
-        return
-      }
-
-      fallback.push(candidate)
-    })
-
-    add(sameArtist, related)
-    if (related.length < limit) {
-      add(genreMatches, related)
+    if (related.length < limit && artistCategoryIds.length) {
+      const { products } = await storeClient.product.list({
+        category_id: artistCategoryIds,
+        limit: limit * 3,
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      add(products, related)
     }
+
+    if (related.length < limit && genreCategoryIds.length) {
+      const { products } = await storeClient.product.list({
+        category_id: genreCategoryIds,
+        limit: limit * 3,
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      add(products, related)
+    }
+
     if (related.length < limit) {
-      add(fallback, related)
+      const { products } = await storeClient.product.list({
+        limit: limit * 2,
+        order: "-created_at",
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      add(products, related)
     }
 
     return related.slice(0, limit)
