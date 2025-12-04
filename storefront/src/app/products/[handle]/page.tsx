@@ -140,13 +140,6 @@ const ProductPage = async ({ params }: ProductPageProps) => {
     excludeHandles: [slug.artistSlug, slug.albumSlug],
   })
   const variantOptions = deriveVariantOptions(product.variants)
-  const formatChips = Array.from(
-    new Set(
-      variantOptions
-        .map((variant) => variant.title?.trim())
-        .filter((value): value is string => Boolean(value) && value.toLowerCase() !== "default")
-    )
-  )
   const genreChips = Array.from(
     new Set(
       (categoryGroups.genres ?? []).map((entry) => entry.label).filter((label) => label.trim().length)
@@ -241,23 +234,6 @@ const ProductPage = async ({ params }: ProductPageProps) => {
 
           <aside className="flex flex-col gap-8 lg:sticky lg:top-20">
             <div className="space-y-4 rounded-3xl border border-border/70 bg-surface/95 p-7 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full border border-border/60 px-3 py-1 text-[0.6rem] uppercase tracking-[0.35rem] text-muted-foreground">
-                  {product.collection?.title ?? "Limited Run"}
-                </span>
-                {formatChips.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {formatChips.map((format) => (
-                      <span
-                        key={`format-${format}`}
-                        className="rounded-full border border-border/50 bg-background/80 px-2.5 py-1 text-[0.55rem] uppercase tracking-[0.3rem] text-foreground"
-                      >
-                        {format}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
               <div className="space-y-2">
                 <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-foreground">
                   {productTitle}
