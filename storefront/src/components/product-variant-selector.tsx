@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react"
 
 import { toast } from "sonner"
 
+import { Button } from "@/components/ui/button"
 import { addToCart } from "@/lib/actions/add-to-cart"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
@@ -206,21 +207,15 @@ const ProductVariantSelector = ({
               onChange={(event) => handleQuantityChange(event.target.value)}
             />
           </label>
-          <button
+          <Button
             type="button"
+            size="lg"
+            className="flex-1 text-xs uppercase tracking-[0.35rem]"
             onClick={handleAddToCart}
             disabled={!variants.length || !selectedVariant?.inStock || isPending}
-            className={cn(
-              "inline-flex flex-1 items-center justify-center rounded-full border px-6 py-3 text-xs uppercase tracking-[0.35rem] transition",
-              selectedVariant?.inStock && variants.length
-                ? "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : "cursor-not-allowed border-border/60 text-muted-foreground",
-              (isPending || optimisticVariantId === selectedVariant?.id) &&
-                "opacity-80"
-            )}
           >
             {addButtonLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
