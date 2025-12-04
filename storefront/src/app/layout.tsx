@@ -10,7 +10,6 @@ import "@/styles/globals.css"
 import SiteFooter from "@/components/site-footer"
 import SiteHeader from "@/components/site-header"
 import QueryProvider from "@/components/providers/query-provider"
-import PageTransition from "@/components/providers/page-transition"
 import SpeculationRules from "@/components/providers/speculation-rules"
 import ProximityPrefetch from "@/components/providers/proximity-prefetch"
 import JsonLd from "@/components/json-ld"
@@ -138,9 +137,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <ProximityPrefetch>
               <div className="relative flex min-h-screen flex-col bg-background">
                 <SiteHeader />
-                <PageTransition>
-                  <main className="flex-1 min-h-0">{children}</main>
-                </PageTransition>
+                <main className="flex-1 min-h-0">{children}</main>
                 <SiteFooter />
               </div>
             </ProximityPrefetch>
