@@ -26,7 +26,12 @@ const BandcampEmbed = () => {
   }, [])
 
   if (!mounted) {
-    return <div className="h-[420px] w-full rounded-2xl border border-border/60 bg-background/60" />
+    return (
+      <div
+        className="w-full max-w-[700px] rounded-2xl border border-border/60 bg-background/60"
+        style={{ height: "clamp(360px, 55vw, 620px)", margin: "0 auto" }}
+      />
+    )
   }
 
   if (errored) {
@@ -53,7 +58,7 @@ const BandcampEmbed = () => {
           border: "0",
           width: "100%",
           maxWidth: "700px",
-          height: "480px",
+          height: "clamp(360px, 55vw, 620px)",
           display: "block",
           margin: "0 auto",
         }}

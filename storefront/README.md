@@ -84,8 +84,8 @@ mv .env.template .env.local
 For the contact page embeds, also provide:
 
 ```shell
-NEXT_PUBLIC_BANDCAMP_EMBED_SRC="https://bandcamp.com/EmbeddedPlayer/album=1495474990/size=large/bgcol=060606/linkcol=de270f/artwork=small/transparent=true/"
-NEXT_PUBLIC_BANDCAMP_ALBUM_URL="https://remorselessrecords.bandcamp.com/album/worm-eaten-corpse"
+NEXT_PUBLIC_BANDCAMP_EMBED_SRC="https://bandcamp.com/EmbeddedPlayer/album=2916008899/size=large/bgcol=333333/linkcol=e32c14/transparent=true/"
+NEXT_PUBLIC_BANDCAMP_ALBUM_URL="https://remorselessrecords.bandcamp.com/album/samudaripen"
 ```
 
 Update these two values to change the featured Bandcamp album without code changes.
