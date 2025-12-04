@@ -160,7 +160,7 @@ jobs:
   unit:
     name: Unit Tests (storefront)
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, codeql, secrets]
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -179,7 +179,7 @@ jobs:
     name: E2E Tests (storefront)
     runs-on: ubuntu-latest
     if: ${{ false }} # temporarily disabled until dedicated CI backend is available
-    needs: [lint, typecheck, codeql, secrets]
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -202,7 +202,7 @@ jobs:
     name: Accessibility (pa11y)
     runs-on: ubuntu-latest
     if: ${{ false }} # temporarily disabled until a backend is available in CI
-    needs: [lint, typecheck, codeql, secrets]
+    needs: [build]
     env:
       QA_BASE_URL: http://localhost:3000
       QA_PRODUCT_PATH: /products
@@ -239,7 +239,7 @@ jobs:
   build:
     name: Build (storefront)
     runs-on: ubuntu-latest
-    needs: [unit]
+    needs: [lint, typecheck, codeql, secrets]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
