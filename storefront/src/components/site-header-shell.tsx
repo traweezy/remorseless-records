@@ -15,7 +15,10 @@ import { cn } from "@/lib/ui/cn"
 import { useQueryClient } from "@tanstack/react-query"
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 
-const NAV_LINKS = [{ href: "/catalog", label: "Catalog" }]
+const NAV_LINKS = [
+  { href: "/catalog", label: "Catalog" },
+  { href: "/contact", label: "Contact" },
+]
 
 const SiteHeaderShell = () => {
   const pathname = usePathname()

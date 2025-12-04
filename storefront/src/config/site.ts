@@ -27,7 +27,7 @@ export const siteMetadata = {
   ],
   socials: {
     instagram: "https://www.instagram.com/remorseless_records/",
-    bandcamp: null,
+    bandcamp: "https://remorselessrecords.bandcamp.com/",
     youtube: null,
     threads: null,
   },

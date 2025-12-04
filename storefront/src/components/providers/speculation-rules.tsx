@@ -9,6 +9,10 @@ const TARGETS = [
   "/catalog/(.*)",
   "/products",
   "/products/(.*)",
+  "/contact",
+  "/about",
+  "/press",
+  "/submissions",
   "/cart",
   "/order/confirmed",
 ]

@@ -9,6 +9,7 @@ const FOOTER_LINKS = [
       { label: "About", href: "/about" },
       { label: "Submissions", href: "/submissions" },
       { label: "Press", href: "/press" },
+      { label: "Contact", href: "/contact" },
     ],
   },
   {
@@ -22,9 +23,9 @@ const FOOTER_LINKS = [
   {
     title: "Follow",
     links: [
-      { label: "Instagram", href: "https://instagram.com" },
-      { label: "Bandcamp", href: "https://bandcamp.com" },
-      { label: "Discord", href: "https://discord.gg" },
+      { label: "Instagram", href: "https://www.instagram.com/remorseless_records/" },
+      { label: "Bandcamp", href: "https://remorselessrecords.bandcamp.com/" },
+      { label: "Contact", href: "/contact" },
     ],
   },
 ]
