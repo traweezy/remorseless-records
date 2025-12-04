@@ -66,6 +66,7 @@ const ContactForm = () => {
   return (
     <form
       className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
@@ -99,7 +100,6 @@ const ContactForm = () => {
                 onChange={(event) => field.handleChange(event.target.value)}
                 onBlur={field.handleBlur}
                 className="mt-1"
-                required
                 aria-invalid={Boolean(field.state.meta.errors[0])}
               />
               {field.state.meta.errors[0] ? (
@@ -127,7 +127,6 @@ const ContactForm = () => {
                 onChange={(event) => field.handleChange(event.target.value)}
                 onBlur={field.handleBlur}
                 className="mt-1"
-                required
                 aria-invalid={Boolean(field.state.meta.errors[0])}
               />
               {field.state.meta.errors[0] ? (
@@ -155,7 +154,6 @@ const ContactForm = () => {
               onChange={(event) => field.handleChange(event.target.value as ContactFormValues["reason"])}
               onBlur={field.handleBlur}
               className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-destructive focus:ring-2 focus:ring-destructive/40"
-              required
               aria-invalid={Boolean(field.state.meta.errors[0])}
             >
               <option value="booking">Booking</option>
@@ -190,7 +188,6 @@ const ContactForm = () => {
               onBlur={field.handleBlur}
               rows={6}
               className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-destructive focus:ring-2 focus:ring-destructive/40"
-              required
               aria-invalid={Boolean(field.state.meta.errors[0])}
             />
             {field.state.meta.errors[0] ? (
