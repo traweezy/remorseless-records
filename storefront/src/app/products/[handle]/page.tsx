@@ -7,7 +7,7 @@ import ProductVariantSelector from "@/components/product-variant-selector"
 import ProductGallery from "@/components/product-gallery"
 import ProductCarouselSection from "@/components/product-carousel-section"
 import { deriveVariantOptions } from "@/lib/products/transformers"
-import { getProductByHandle } from "@/lib/data/products"
+import { getProductByHandle, PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
 import { runtimeEnv } from "@/config/env"
 import { siteMetadata } from "@/config/site"
@@ -19,6 +19,7 @@ import {
 } from "@/lib/seo/structured-data"
 import { extractProductCategoryGroups } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
+import { storeClient } from "@/lib/medusa"
 
 type ProductPageProps = {
   params: { handle: string } | Promise<{ handle: string }>
@@ -305,22 +306,59 @@ export default ProductPage
 const loadRelatedProducts = async (
   product: HttpTypes.StoreProduct
 ): Promise<HttpTypes.StoreProduct[]> => {
-  try {
-    const response = await fetch(
-      `${runtimeEnv.medusaBackendUrl}/store/products/${product.handle}/related`,
-      {
-        next: { revalidate: 3600 },
-        cache: "force-cache",
-        headers: {
-          "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
-        },
+  const limit = 12
+  const seen = new Set<string>()
+  const add = (items: HttpTypes.StoreProduct[] | undefined, bucket: HttpTypes.StoreProduct[]) => {
+    items?.forEach((item) => {
+      const handle = typeof item.handle === "string" ? item.handle.trim() : ""
+      if (!handle || seen.has(handle) || handle === product.handle) {
+        return
       }
-    )
-    if (!response.ok) {
-      throw new Error(`Failed to load related: ${response.status}`)
+      seen.add(handle)
+      bucket.push(item)
+    })
+  }
+
+  try {
+    const related: HttpTypes.StoreProduct[] = []
+    const collectionId =
+      (product as { collection_id?: string | null }).collection_id ??
+      (product.collection as { id?: string | null } | null)?.id ??
+      null
+
+    if (collectionId) {
+      const { products } = await storeClient.product.list({
+        collection_id: collectionId,
+        limit: limit * 2,
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      add(products, related)
     }
-    const payload = (await response.json()) as { products?: HttpTypes.StoreProduct[] }
-    return payload.products ?? []
+
+    const categoryIds =
+      product.categories
+        ?.map((category) => (category as { id?: string | null })?.id)
+        .filter((id): id is string => Boolean(id)) ?? []
+
+    if (related.length < limit && categoryIds.length) {
+      const { products } = await storeClient.product.list({
+        category_id: categoryIds,
+        limit: limit * 2,
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      add(products, related)
+    }
+
+    if (related.length < limit) {
+      const { products } = await storeClient.product.list({
+        limit: limit * 2,
+        order: "-created_at",
+        fields: PRODUCT_DETAIL_FIELDS,
+      })
+      add(products, related)
+    }
+
+    return related.slice(0, limit)
   } catch (error) {
     console.error("[related] falling back to empty set", error)
     return []

@@ -25,7 +25,7 @@ export const PRODUCT_LIST_FIELDS = [
   "*tags",
 ].join(",")
 
-const PRODUCT_DETAIL_FIELDS = [
+export const PRODUCT_DETAIL_FIELDS = [
   "id",
   "handle",
   "title",
