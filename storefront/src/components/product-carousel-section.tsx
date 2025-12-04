@@ -36,10 +36,28 @@ export const ProductCarouselSection = ({
   description,
   products,
 }: ProductCarouselSectionProps): ReactElement | null => {
-  const slides = useMemo(
+  const slides = useMemo<StoreProduct[]>(
     () => products.filter((product) => typeof product.handle === "string" && product.handle.trim().length > 0),
     [products]
   )
+
+  const filledSlides = useMemo<StoreProduct[]>(() => {
+    if (!slides.length) {
+      return []
+    }
+    const target = perPageByBreakpoint.default
+    if (slides.length >= target) {
+      return slides
+    }
+    const extended: StoreProduct[] = []
+    for (let index = 0; index < target; index += 1) {
+      const next = slides[index % slides.length]
+      if (next) {
+        extended.push(next)
+      }
+    }
+    return extended
+  }, [slides])
 
   const sectionRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -133,6 +151,7 @@ export const ProductCarouselSection = ({
               pauseOnFocus: true,
               wheel: false,
               arrows: slides.length > 1,
+               trimSpace: false,
               classes: {
                 arrows: "product-carousel__arrows",
                 arrow: "product-carousel__arrow",
@@ -156,8 +175,11 @@ export const ProductCarouselSection = ({
             extensions={{ AutoScroll }}
             hasTrack
           >
-            {slides.map((product) => (
-              <SplideSlide key={product.id} className="product-carousel__slide">
+            {filledSlides.map((product, index) => (
+              <SplideSlide
+                key={`${product.id ?? product.handle ?? "product"}-${index}`}
+                className="product-carousel__slide"
+              >
                 <div className="product-carousel__card">
                   <ProductCard product={product} />
                 </div>
