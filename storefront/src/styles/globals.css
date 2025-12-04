@@ -21,9 +21,11 @@
 
   .product-carousel__splide {
     width: 100%;
+    height: var(--product-card-height);
   }
 
   .product-carousel__splide .splide__track {
+    height: 100%;
     overflow: hidden;
   }
 
