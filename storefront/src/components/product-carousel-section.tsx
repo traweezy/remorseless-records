@@ -91,7 +91,9 @@ export const ProductCarouselSection = ({
               gap: "clamp(12px, 1.5vw, 20px)",
               pauseOnHover: true,
               pauseOnFocus: true,
-              wheel: false,
+              wheel: true,
+              releaseWheel: true,
+              wheelSleep: 300,
               arrows: slides.length > 1,
                trimSpace: false,
               classes: {
