@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 import { mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
+import { useProductDetailPrefetch } from "@/lib/query/products"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 
 type StoreProduct = HttpTypes.StoreProduct
@@ -183,6 +184,9 @@ type ProductCardProps = {
 export const ProductCard = ({ product }: ProductCardProps) => {
   const router = useRouter()
   const [quickShopOpen, setQuickShopOpen] = useState(false)
+  const prefetchProductDetail = useProductDetailPrefetch(
+    isStoreProduct(product) ? product.handle : product.handle
+  )
 
   const summary = isStoreProduct(product)
     ? mapStoreProductToRelatedSummary(product)
@@ -254,11 +258,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     }
 
     void router.prefetch(productHref, { kind: PrefetchKind.FULL })
+    prefetchProductDetail()
   }
 
   const handleQuickShop = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
+    prefetchProductDetail()
     setQuickShopOpen(true)
   }
 
