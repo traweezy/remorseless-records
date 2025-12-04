@@ -1,15 +1,12 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { headers } from "next/headers"
 
 import type { HttpTypes } from "@medusajs/types"
 
 import ProductVariantSelector from "@/components/product-variant-selector"
 import ProductGallery from "@/components/product-gallery"
 import ProductCarouselSection from "@/components/product-carousel-section"
-import {
-  deriveVariantOptions,
-} from "@/lib/products/transformers"
+import { deriveVariantOptions } from "@/lib/products/transformers"
 import {
   getProductByHandle,
   getProductsByCollection,
@@ -159,15 +156,7 @@ const ProductPage = async ({ params }: ProductPageProps) => {
       ? metadata.notes.trim()
       : null
 
-  const headerList = await headers()
-  const headerEntries = Object.fromEntries(headerList.entries()) as Record<string, string>
-  const host =
-    headerEntries["x-forwarded-host"] ??
-    headerEntries.host ??
-    "localhost:3000"
-  const protocolHeader = headerEntries["x-forwarded-proto"]
-  const protocol = protocolHeader ?? (host.startsWith("localhost") ? "http" : "https")
-  const origin = `${protocol}://${host}`
+  const origin = siteMetadata.siteUrl
   const productPath = `/products/${handle}`
   const productUrl = `${origin}${productPath}`
   const defaultVariant = variantOptions[0]
@@ -206,13 +195,13 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   })
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Home", url: `${origin}/` },
-    { name: "Catalog", url: `${origin}/products` },
+    { name: "Catalog", url: `${origin}/catalog` },
     {
       name: product.collection?.title ?? "Releases",
       url:
         collectionHandle != null
-          ? `${origin}/products?collection=${collectionHandle}`
-          : `${origin}/products`,
+          ? `${origin}/catalog?collection=${collectionHandle}`
+          : `${origin}/catalog`,
     },
     { name: productTitle, url: productUrl },
   ])

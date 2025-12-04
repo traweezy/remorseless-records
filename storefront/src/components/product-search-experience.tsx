@@ -1010,43 +1010,51 @@ const ProductSearchExperience = ({
       if (!normalizedQuery.length) {
         return baseMatches
       }
-      const scored: Array<{ hit: ProductSearchHit; score: number }> = []
 
-      baseMatches.forEach((hit) => {
-        const text = [
-          hit.title,
+      const targets = baseMatches.map((hit) => ({
+        hit,
+        text: [
           hit.artist,
+          hit.title,
           hit.album,
           hit.collectionTitle ?? "",
           ...(hit.genres ?? []),
           ...(hit.metalGenres ?? []),
         ]
-          .join(" ")
-          .toLowerCase()
+          .map((value) => value?.toLowerCase() ?? "")
+          .filter(Boolean)
+          .join(" "),
+      }))
 
-        const result = fuzzysort.single(normalizedQuery, text)
-
-        if (result && result.score > -500) {
-          scored.push({ hit, score: result.score })
-        }
+      const fuzzyResults = fuzzysort.go<{ hit: ProductSearchHit; text: string }>(normalizedQuery, targets, {
+        keys: ["text"],
+        threshold: -600,
+        limit: 120,
       })
+      const fuzzyHits: ProductSearchHit[] = []
+      for (const result of fuzzyResults) {
+        const candidate = (result as { obj?: { hit?: ProductSearchHit } })?.obj?.hit
+        if (candidate) {
+          fuzzyHits.push(candidate)
+        }
+      }
 
-      if (scored.length) {
-        scored.sort((a, b) => b.score - a.score)
-        return scored.map((entry) => entry.hit)
+      if (fuzzyHits.length) {
+        return fuzzyHits
       }
 
       const substringMatches = baseMatches.filter((hit) => {
         const haystack = [
-          hit.title,
           hit.artist,
+          hit.title,
           hit.album,
           hit.collectionTitle ?? "",
           ...(hit.genres ?? []),
           ...(hit.metalGenres ?? []),
         ]
+          .map((value) => value?.toLowerCase() ?? "")
+          .filter(Boolean)
           .join(" ")
-          .toLowerCase()
         return haystack.includes(normalizedQuery)
       })
 
