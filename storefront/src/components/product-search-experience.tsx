@@ -556,9 +556,11 @@ const FilterSidebar = ({
 const SortDropdown = ({
   value,
   onChange,
+  focusSearch,
 }: {
   value: ProductSortOption
   onChange: (value: ProductSortOption) => void
+  focusSearch: () => void
 }) => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -630,6 +632,7 @@ const SortDropdown = ({
                 type="button"
                 onClick={() => {
                   onChange(option.value)
+                  focusSearch()
                   setOpen(false)
                 }}
                 className={cn(
@@ -795,6 +798,7 @@ const ProductSearchExperience = ({
   const hydrateFromParams = useCatalogStore((state) => state.hydrateFromParams)
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   const [catalogHits, setCatalogHits] = useState<ProductSearchHit[]>(initialHits)
 
@@ -1169,12 +1173,21 @@ const ProductSearchExperience = ({
     [catalogFacets.productTypes, formatProductTypeLabel]
   )
 
+  const focusSearchInput = () => {
+    const input = searchInputRef.current
+    if (input) {
+      input.focus()
+      input.select()
+    }
+  }
+
   const handleToggleGenre = (genre: string) => {
     const normalizedGenre = genre.trim().toLowerCase()
     if (!normalizedGenre.length) {
       return
     }
     toggleGenreFilter(normalizedGenre)
+    focusSearchInput()
   }
 
   const handleToggleFormat = (formatValue: string) => {
@@ -1182,6 +1195,7 @@ const ProductSearchExperience = ({
       return
     }
     toggleFormatFilter(formatValue)
+    focusSearchInput()
   }
 
   const handleToggleProductType = (type: string) => {
@@ -1189,14 +1203,17 @@ const ProductSearchExperience = ({
       return
     }
     toggleProductTypeFilter(type)
+    focusSearchInput()
   }
 
   const clearFilters = () => {
     clearFiltersStore()
+    focusSearchInput()
   }
 
   const toggleStockOnly = () => {
     toggleStockOnlyFilter()
+    focusSearchInput()
   }
 
   const gridTemplateStyle = useMemo(
@@ -1295,6 +1312,7 @@ const ProductSearchExperience = ({
                   aria-hidden
                 />
                 <input
+                  ref={searchInputRef}
                   value={query}
                   onChange={(event) => {
                     setQuery(event.target.value)
@@ -1305,7 +1323,14 @@ const ProductSearchExperience = ({
                   autoComplete="off"
                 />
               </div>
-              <SortDropdown value={sortOption} onChange={setSortOption} />
+              <SortDropdown
+                value={sortOption}
+                onChange={(next) => {
+                  setSortOption(next)
+                  focusSearchInput()
+                }}
+                focusSearch={focusSearchInput}
+              />
             </div>
 
             {(selectedGenres.length ||

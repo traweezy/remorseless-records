@@ -1,4 +1,3 @@
-import Image from "next/image"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { headers } from "next/headers"
@@ -7,6 +6,7 @@ import type { HttpTypes } from "@medusajs/types"
 
 import ProductVariantSelector from "@/components/product-variant-selector"
 import ProductCard from "@/components/product-card"
+import ProductGallery from "@/components/product-gallery"
 import {
   deriveVariantOptions,
   mapStoreProductToRelatedSummary,
@@ -229,43 +229,15 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   return (
     <div className="bg-background">
       <div className="mx-auto flex max-w-6xl flex-col gap-16 px-4 pb-20 pt-14 lg:px-8">
-        <section className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-start">
-          <div className="space-y-4 overflow-hidden">
-            {heroImages.length ? (
-              <>
-                <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-border/70 bg-background/80 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.7)]">
-                  <Image
-                    src={heroImages[0]?.url ?? "/remorseless-hero-logo.png"}
-                    alt={productTitle}
-                    fill
-                    sizes="(min-width: 1024px) 520px, 90vw"
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-                {heroImages.length > 1 ? (
-                  <div className="grid grid-cols-3 gap-3">
-                    {heroImages.slice(1).map((image, index) => (
-                      <div
-                        key={image.id ?? image.url ?? `image-${index + 1}`}
-                        className="relative aspect-square overflow-hidden rounded-xl border border-border/50 bg-background/70"
-                      >
-                        <Image
-                          src={image.url ?? "/remorseless-hero-logo.png"}
-                          alt={`${productTitle} alt ${index + 1}`}
-                          fill
-                          sizes="(min-width: 1024px) 220px, 30vw"
-                          className="object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="aspect-[4/5] rounded-3xl border border-border/60 bg-background/80" />
-            )}
-          </div>
+        <section className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-start">
+          <ProductGallery
+            images={heroImages.map((image, index) => ({
+              id: image.id ?? `image-${index}`,
+              url: image.url ?? "/remorseless-hero-logo.png",
+              alt: productTitle,
+            }))}
+            title={productTitle}
+          />
 
           <aside className="flex flex-col gap-8 lg:sticky lg:top-20">
             <div className="space-y-4 rounded-3xl border border-border/70 bg-surface/95 p-7 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]">
@@ -322,49 +294,23 @@ const ProductPage = async ({ params }: ProductPageProps) => {
               </p>
             </div>
 
-            <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/90 p-7 lg:grid-cols-2 lg:gap-6">
-              {tracklist.length ? (
-                <div className="space-y-3">
-                  <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
-                    Tracklist
-                  </h3>
-                  <ol className="space-y-2 text-sm leading-relaxed text-muted-foreground">
-                    {tracklist.map((entry, index) => (
-                      <li key={`track-${index}`} className="flex items-baseline gap-3">
-                        <span className="text-xs font-mono uppercase tracking-[0.35rem] text-muted-foreground/70">
-                          {(index + 1).toString().padStart(2, "0")}
-                        </span>
-                        <span>{entry}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              ) : null}
-
-              {metadata ? (
-                <div className="space-y-3">
-                  <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
-                    Specs
-                  </h3>
-                  <ul className="space-y-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                    {Object.entries(metadata)
-                      .filter(([key]) => !["tracklist", "notes", "badge"].includes(key.toLowerCase()))
-                      .map(([key, value]) => (
-                        <li key={key} className="flex items-center justify-between gap-3">
-                          <span className="text-muted-foreground/80">{key.replace(/_/g, " ")}</span>
-                          <span className="text-foreground">
-                            {typeof value === "string"
-                              ? value
-                              : Array.isArray(value)
-                                ? value.join(", ")
-                                : JSON.stringify(value)}
-                          </span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
+            {tracklist.length ? (
+              <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-7">
+                <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+                  Tracklist
+                </h3>
+                <ol className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                  {tracklist.map((entry, index) => (
+                    <li key={`track-${index}`} className="flex items-baseline gap-3">
+                      <span className="text-xs font-mono uppercase tracking-[0.35rem] text-muted-foreground/70">
+                        {(index + 1).toString().padStart(2, "0")}
+                      </span>
+                      <span>{entry}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
 
             {linerNotes ? (
               <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-7">
