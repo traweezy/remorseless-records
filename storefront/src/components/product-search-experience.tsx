@@ -281,53 +281,64 @@ const hydrateHitsClient = async (
     return hits
   }
 
+  const hydrationMap = new Map<string, ProductSearchHit>()
+  const batchSize = 40
+  const batches: string[][] = []
+  for (let i = 0; i < handlesToHydrate.length; i += batchSize) {
+    batches.push(handlesToHydrate.slice(i, i + batchSize))
+  }
+
   try {
-    const response = await fetch("/api/catalog/hydrate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ handles: handlesToHydrate }),
-    })
+    const results = await Promise.all(
+      batches.map(async (batch) => {
+        const response = await fetch("/api/catalog/hydrate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ handles: batch }),
+        })
 
-    if (!response.ok) {
-      return hits
-    }
+        if (!response.ok) {
+          return []
+        }
 
-    const payloadRaw: unknown = await response.json()
-    const hitsFromPayload = Array.isArray(
-      (payloadRaw as { hits?: unknown[] } | null)?.hits
+        const payloadRaw: unknown = await response.json()
+        const hitsFromPayload = Array.isArray(
+          (payloadRaw as { hits?: unknown[] } | null)?.hits
+        )
+          ? ((payloadRaw as { hits?: ProductSearchHit[] }).hits ?? [])
+          : []
+        return hitsFromPayload
+      })
     )
-      ? ((payloadRaw as { hits?: ProductSearchHit[] }).hits ?? [])
-      : []
-    const hydrationMap = new Map<string, ProductSearchHit>()
 
-    hitsFromPayload.forEach((hit) => {
+    results.flat().forEach((hit) => {
       const handleKey = hit.handle?.trim().toLowerCase()
       if (handleKey) {
         hydrationMap.set(handleKey, hit)
       }
     })
-
-    if (!hydrationMap.size) {
-      return hits
-    }
-
-    return hits.map((hit) => {
-      const handleKey = hit.handle?.trim().toLowerCase()
-      if (!handleKey) {
-        return hit
-      }
-      const fallback = hydrationMap.get(handleKey)
-      if (!fallback) {
-        return hit
-      }
-      return mergeHydratedHit(hit, fallback)
-    })
   } catch (error) {
     console.error("[catalog] Client hydration failed", error)
     return hits
   }
+
+  if (!hydrationMap.size) {
+    return hits
+  }
+
+  return hits.map((hit) => {
+    const handleKey = hit.handle?.trim().toLowerCase()
+    if (!handleKey) {
+      return hit
+    }
+    const fallback = hydrationMap.get(handleKey)
+    if (!fallback) {
+      return hit
+    }
+    return mergeHydratedHit(hit, fallback)
+  })
 }
 
 const FilterCheckboxList = ({
