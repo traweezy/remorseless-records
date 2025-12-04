@@ -53,6 +53,8 @@ const SiteFooter = () => (
                 <li key={link.label}>
                   <Link
                     href={link.href}
+                    target={link.href.startsWith("http") ? "_blank" : undefined}
+                    rel={link.href.startsWith("http") ? "noreferrer" : undefined}
                     className="interactive rounded-md px-1 py-0.5 text-muted-foreground hover:text-foreground"
                   >
                     {link.label}
