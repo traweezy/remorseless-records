@@ -42,9 +42,9 @@ const ContactPage = () => {
         </header>
 
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-          <ContactForm />
+          <div className="space-y-4">
+            <ContactForm />
 
-          <aside className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
             <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">
@@ -67,7 +67,9 @@ const ContactPage = () => {
                 {siteMetadata.contact.email}
               </Link>
             </div>
+          </div>
 
+          <aside className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
             <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">
@@ -78,7 +80,7 @@ const ContactPage = () => {
                     Bandcamp
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Stream the latest featured release without waiting for an embed to load.
+                    Featured release from our Bandcamp—updated via env so we can swap albums quickly.
                   </p>
                 </div>
                 <Send className="h-5 w-5 text-destructive" aria-hidden />
@@ -95,30 +97,6 @@ const ContactPage = () => {
               </Link>
             </div>
 
-            <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
-                    Social
-                  </p>
-                  <h3 className="font-headline text-base uppercase tracking-[0.25rem] text-foreground">
-                    Instagram signals
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Drop alerts, pressing photos, and live updates. Embedded preview is lazy-loaded.
-                  </p>
-                </div>
-                <MessageCircle className="h-5 w-5 text-destructive" aria-hidden />
-              </div>
-              <Link
-                href={siteMetadata.socials.instagram ?? "https://www.instagram.com/remorseless_records/"}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
-              >
-                View on Instagram
-              </Link>
-            </div>
           </aside>
         </div>
 
@@ -132,9 +110,18 @@ const ContactPage = () => {
                 Instagram feed
               </h2>
               <p className="text-sm text-muted-foreground">
-                A rotating slice of recent posts. Tap to open the post directly.
+                Rotating slices of recent posts. Tap to jump to the profile and follow along.
               </p>
             </div>
+            <Link
+              href={siteMetadata.socials.instagram ?? "https://www.instagram.com/remorseless_records/"}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
+            >
+              View on Instagram
+              <MessageCircle className="h-4 w-4" aria-hidden />
+            </Link>
           </div>
           <InstagramGrid profileUrl={siteMetadata.socials.instagram ?? "https://www.instagram.com/remorseless_records/"} />
         </section>
