@@ -9,7 +9,6 @@ const schema = z.object({
   email: z.string().trim().email(),
   reason: z.enum(["booking", "press", "collab", "other"]),
   message: z.string().trim().min(10).max(5000),
-  newsletter: z.boolean().optional(),
   honeypot: z.string().optional(),
 })
 
@@ -39,14 +38,14 @@ export async function POST(request: Request) {
     }
 
     const resend = new Resend(resendApiKey)
-    const { name, email, reason, message, newsletter } = parsed.data
+    const { name, email, reason, message } = parsed.data
 
     await resend.emails.send({
       from: resendFrom,
       to: [siteMetadata.contact.email],
       replyTo: email,
       subject: `[Contact] ${reason.toUpperCase()}`,
-      text: `From: ${name} <${email}>\nReason: ${reason}\nNewsletter opt-in: ${newsletter ? "yes" : "no"}\n\n${message}`,
+      text: `From: ${name} <${email}>\nReason: ${reason}\n\n${message}`,
     })
 
     return NextResponse.json({ ok: true })

@@ -15,7 +15,6 @@ const contactSchema = z.object({
     errorMap: () => ({ message: "Select a reason" }),
   }),
   message: z.string().trim().min(10, "Tell us a bit more"),
-  newsletter: z.boolean().optional(),
   honeypot: z.string().optional(),
 })
 
@@ -26,7 +25,6 @@ const defaultValues: ContactFormValues = {
   email: "",
   reason: "other",
   message: "",
-  newsletter: false,
   honeypot: "",
 }
 
@@ -198,20 +196,6 @@ const ContactForm = () => {
             {field.state.meta.errors[0] ? (
               <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
             ) : null}
-          </label>
-        )}
-      </form.Field>
-
-      <form.Field name="newsletter" defaultValue={false}>
-        {(field) => (
-          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={field.state.value ?? false}
-              onChange={(event) => field.handleChange(event.target.checked)}
-              className="h-4 w-4 rounded border-border/70 bg-background text-destructive focus:ring-destructive"
-            />
-            Keep me posted on new drops and represses
           </label>
         )}
       </form.Field>
