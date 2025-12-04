@@ -493,32 +493,30 @@ const FilterSidebar = ({
         Reset
       </button>
       </div>
-      <button
-        type="button"
-        onClick={onToggleStock}
-        className={cn(
-          "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition hover:border-border/60",
-          showInStockOnly
-            ? "border-destructive/80 bg-destructive text-background shadow-glow"
-            : "border-border/50 text-foreground/80"
-        )}
-        aria-pressed={showInStockOnly}
-      >
+      <div className="flex w-full items-center justify-between rounded-full border border-border/50 bg-background/70 px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] text-foreground transition hover:border-border/60">
         <span>In stock</span>
-        <span
-          className={cn(
-            "inline-flex h-5 w-10 items-center rounded-full border border-border/60 bg-background px-1 transition",
-            showInStockOnly && "justify-end border-destructive/80 bg-destructive/10"
-          )}
-        >
+        <label className="relative inline-flex cursor-pointer items-center" aria-label="Toggle in stock only">
+          <input
+            type="checkbox"
+            className="peer sr-only"
+            checked={showInStockOnly}
+            onChange={onToggleStock}
+          />
           <span
             className={cn(
-              "h-3.5 w-3.5 rounded-full bg-border transition",
-              showInStockOnly && "bg-destructive"
+              "inline-flex h-5 w-10 items-center rounded-full border border-border/60 bg-background px-1 transition",
+              showInStockOnly && "justify-end border-destructive"
             )}
-          />
-        </span>
-      </button>
+          >
+            <span
+              className={cn(
+                "h-3.5 w-3.5 rounded-full bg-border transition",
+                showInStockOnly && "bg-destructive"
+              )}
+            />
+          </span>
+        </label>
+      </div>
     </div>
 
     <div className="space-y-5">
