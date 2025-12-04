@@ -13,6 +13,7 @@ const STATIC_ROUTES: Array<{ path: string; changeFrequency?: MetadataRoute.Sitem
   { path: "/press", changeFrequency: "monthly" },
   { path: "/contact", changeFrequency: "weekly" },
   { path: "/help/shipping", changeFrequency: "weekly" },
+  { path: "/faq", changeFrequency: "weekly" },
 ]
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => {

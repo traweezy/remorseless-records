@@ -14,7 +14,7 @@ const FOOTER_LINKS = [
   {
     title: "Support",
     links: [
-      { label: "FAQ", href: "/help" },
+      { label: "FAQ", href: "/faq" },
       { label: "Shipping & Returns", href: "/help/shipping" },
       { label: "Contact", href: "/contact" },
     ],

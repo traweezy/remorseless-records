@@ -6,12 +6,17 @@ import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { siteMetadata } from "@/config/site"
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
   email: z.string().trim().email("Valid email required"),
-  subject: z.string().trim().min(3, "Subject is required"),
+  reason: z.enum(["booking", "press", "collab", "other"], {
+    errorMap: () => ({ message: "Select a reason" }),
+  }),
   message: z.string().trim().min(10, "Tell us a bit more"),
+  newsletter: z.boolean().optional(),
+  honeypot: z.string().optional(),
 })
 
 type ContactFormValues = z.infer<typeof contactSchema>
@@ -19,8 +24,10 @@ type ContactFormValues = z.infer<typeof contactSchema>
 const defaultValues: ContactFormValues = {
   name: "",
   email: "",
-  subject: "",
+  reason: "other",
   message: "",
+  newsletter: false,
+  honeypot: "",
 }
 
 const ContactForm = () => {
@@ -30,6 +37,11 @@ const ContactForm = () => {
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
+      // simple honeypot: if filled, drop silently
+      if (value.honeypot && value.honeypot.trim().length) {
+        return
+      }
+
       setStatus("submitting")
       setErrorMessage(null)
       try {
@@ -61,6 +73,16 @@ const ContactForm = () => {
         void form.handleSubmit()
       }}
     >
+      <input
+        type="text"
+        name="company"
+        value={form.state.values.honeypot ?? ""}
+        onChange={(event) => form.setFieldValue("honeypot", event.target.value)}
+        className="hidden"
+        aria-hidden
+        tabIndex={-1}
+      />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <form.Field
           name="name"
@@ -80,6 +102,7 @@ const ContactForm = () => {
                 onBlur={field.handleBlur}
                 className="mt-1"
                 required
+                aria-invalid={Boolean(field.state.meta.errors[0])}
               />
               {field.state.meta.errors[0] ? (
                 <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
@@ -107,6 +130,7 @@ const ContactForm = () => {
                 onBlur={field.handleBlur}
                 className="mt-1"
                 required
+                aria-invalid={Boolean(field.state.meta.errors[0])}
               />
               {field.state.meta.errors[0] ? (
                 <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
@@ -117,24 +141,30 @@ const ContactForm = () => {
       </div>
 
       <form.Field
-        name="subject"
+        name="reason"
         validators={{
           onChange: ({ value }) =>
-            contactSchema.shape.subject.safeParse(value).success
+            contactSchema.shape.reason.safeParse(value).success
               ? undefined
-              : "Subject is required",
+              : "Select a reason",
         }}
       >
         {(field) => (
           <label className="block text-sm text-muted-foreground">
-            Subject
-            <Input
+            Reason
+            <select
               value={field.state.value}
-              onChange={(event) => field.handleChange(event.target.value)}
+              onChange={(event) => field.handleChange(event.target.value as ContactFormValues["reason"])}
               onBlur={field.handleBlur}
-              className="mt-1"
+              className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-destructive focus:ring-2 focus:ring-destructive/40"
               required
-            />
+              aria-invalid={Boolean(field.state.meta.errors[0])}
+            >
+              <option value="booking">Booking</option>
+              <option value="press">Press</option>
+              <option value="collab">Collab</option>
+              <option value="other">Other</option>
+            </select>
             {field.state.meta.errors[0] ? (
               <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
             ) : null}
@@ -163,6 +193,7 @@ const ContactForm = () => {
               rows={6}
               className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-destructive focus:ring-2 focus:ring-destructive/40"
               required
+              aria-invalid={Boolean(field.state.meta.errors[0])}
             />
             {field.state.meta.errors[0] ? (
               <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
@@ -171,7 +202,21 @@ const ContactForm = () => {
         )}
       </form.Field>
 
-      <div className="flex items-center gap-3">
+      <form.Field name="newsletter" defaultValue={false}>
+        {(field) => (
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={field.state.value ?? false}
+              onChange={(event) => field.handleChange(event.target.checked)}
+              className="h-4 w-4 rounded border-border/70 bg-background text-destructive focus:ring-destructive"
+            />
+            Keep me posted on new drops and represses
+          </label>
+        )}
+      </form.Field>
+
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           type="submit"
           disabled={disabled}
@@ -184,7 +229,9 @@ const ContactForm = () => {
           <span className="text-sm text-foreground">Message sent. We’ll reply soon.</span>
         ) : null}
         {status === "error" && errorMessage ? (
-          <span className="text-sm text-destructive">{errorMessage}</span>
+          <span className="text-sm text-destructive">
+            Something went wrong. Please try again or email {siteMetadata.contact.email}.
+          </span>
         ) : null}
       </div>
     </form>

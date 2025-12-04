@@ -15,6 +15,7 @@ const TARGETS = [
   "/submissions",
   "/help",
   "/help/(.*)",
+  "/faq",
   "/cart",
   "/order/confirmed",
 ]
