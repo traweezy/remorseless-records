@@ -292,7 +292,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           className="block h-full focus:outline-none"
           aria-label={`View ${summary.title}`}
         >
-          <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition hover:-translate-y-1 hover:border-border/60 hover:shadow-[0_32px_90px_-36px_rgba(255,0,0,0.45),0_18px_50px_-32px_rgba(0,0,0,0.65)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_32px_90px_-36px_rgba(255,0,0,0.45),0_18px_50px_-32px_rgba(0,0,0,0.65)]">
+          <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition hover:-translate-y-1 hover:border-border/60 hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
             {badge ? (
               <div className="product-card__corner" aria-label={`Collection: ${badge}`}>
                 <span>{badge.toUpperCase()}</span>
