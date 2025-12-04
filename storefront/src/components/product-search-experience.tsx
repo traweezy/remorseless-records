@@ -488,7 +488,7 @@ const FilterSidebar = ({
           "flex w-full items-center justify-between rounded-full border px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] transition hover:border-border/60",
           showInStockOnly
             ? "border-destructive/80 bg-destructive text-background shadow-glow"
-            : "border-border/50 text-muted-foreground hover:border-destructive hover:text-destructive"
+            : "border-border/50 text-foreground/80"
         )}
         aria-pressed={showInStockOnly}
       >

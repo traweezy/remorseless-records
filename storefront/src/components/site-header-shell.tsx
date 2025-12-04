@@ -131,7 +131,7 @@ const SiteHeaderShell = () => {
                 onPointerEnter={() => prefetchRoute(link.href)}
                 onFocus={() => prefetchRoute(link.href)}
                 className={cn(
-                  "interactive rounded-full px-3 py-2 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground hover:bg-foreground/5 hover:text-destructive",
+                  "rounded-full px-3 py-2 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   activeHref === link.href && "text-destructive"
                 )}
               >
@@ -142,7 +142,7 @@ const SiteHeaderShell = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="relative hover:bg-transparent hover:text-destructive"
+            className="relative hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Open cart"
             onClick={() => setCartOpen(true)}
             onPointerEnter={prefetchCart}
