@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useRef, type ReactElement } from "react"
+import React, { useMemo, type ReactElement } from "react"
 import type { HttpTypes } from "@medusajs/types"
 import { Splide, SplideSlide } from "@splidejs/react-splide"
 import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
@@ -59,70 +59,12 @@ export const ProductCarouselSection = ({
     return extended
   }, [slides])
 
-  const sectionRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return
-    }
-
-    const section = sectionRef.current
-    if (!section) {
-      return
-    }
-
-    const selectCards = () => Array.from(section.querySelectorAll<HTMLDivElement>(".product-carousel__card"))
-    let cards = selectCards()
-    if (!cards.length) {
-      return
-    }
-
-    const applyHeight = () => {
-      cards = selectCards()
-      if (!cards.length) {
-        return
-      }
-
-      cards.forEach((card) => {
-        card.style.height = ""
-      })
-
-      const maxHeight = Math.max(...cards.map((card) => card.getBoundingClientRect().height))
-
-      cards.forEach((card) => {
-        card.style.height = `${maxHeight}px`
-      })
-    }
-
-    applyHeight()
-
-    const resizeObserverAvailable = typeof ResizeObserver === "function"
-    const observer = resizeObserverAvailable
-      ? new ResizeObserver(() => {
-          applyHeight()
-        })
-      : null
-
-    if (observer) {
-      cards.forEach((card) => observer.observe(card))
-    }
-
-    window.addEventListener("resize", applyHeight)
-
-    return () => {
-      window.removeEventListener("resize", applyHeight)
-      observer?.disconnect()
-      cards.forEach((card) => {
-        card.style.removeProperty("height")
-      })
-    }
-  }, [slides.length])
-
   if (!slides.length) {
     return null
   }
 
   return (
-    <section ref={sectionRef} className="space-y-10">
+    <section className="space-y-10">
       <header className="text-center">
         <h2 className="font-bebas text-5xl uppercase tracking-[0.55rem] text-foreground md:text-6xl">
           {heading.leading}{" "}
