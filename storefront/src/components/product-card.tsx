@@ -288,7 +288,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       >
         <Link
           href={productHref}
-          data-prefetch="true"
+          prefetch
           className="block h-full focus:outline-none"
           aria-label={`View ${summary.title}`}
         >
