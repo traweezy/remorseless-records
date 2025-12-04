@@ -350,7 +350,7 @@ const loadRelatedProducts = async (
       .map((category) => category.handle?.trim().toLowerCase())
       .filter((handle): handle is string => Boolean(handle)) ?? []
 
-  const recent = await getRecentProducts(80)
+  const recent = await getRecentProducts(300)
 
   const sameArtist: HttpTypes.StoreProduct[] = []
   const genreMatches: HttpTypes.StoreProduct[] = []
