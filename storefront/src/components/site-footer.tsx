@@ -9,7 +9,6 @@ const FOOTER_LINKS = [
       { label: "About", href: "/about" },
       { label: "Submissions", href: "/submissions" },
       { label: "Press", href: "/press" },
-      { label: "Contact", href: "/contact" },
     ],
   },
   {
@@ -17,7 +16,7 @@ const FOOTER_LINKS = [
     links: [
       { label: "FAQ", href: "/help" },
       { label: "Shipping & Returns", href: "/help/shipping" },
-      { label: "Contact", href: "mailto:support@remorselessrecords.com" },
+      { label: "Contact", href: "/contact" },
     ],
   },
   {
