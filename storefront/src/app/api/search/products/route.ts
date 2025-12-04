@@ -11,7 +11,7 @@ const normalizeRequest = (payload: Partial<ProductSearchRequest>): ProductSearch
   const offset = typeof payload.offset === "number" && Number.isFinite(payload.offset)
     ? Math.max(0, payload.offset)
     : 0
-  const sort = payload.sort ?? "alphabetical"
+  const sort = payload.sort ?? "title-asc"
   const filters = payload.filters ?? {}
   const inStockOnly = Boolean(payload.inStockOnly)
 

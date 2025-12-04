@@ -139,16 +139,19 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   const categoryGroups = extractProductCategoryGroups(product.categories, {
     excludeHandles: [slug.artistSlug, slug.albumSlug],
   })
-  const categoryChips = [
-    ...categoryGroups.types,
-    ...categoryGroups.genres,
-  ]
+  const variantOptions = deriveVariantOptions(product.variants)
+  const formatChips = Array.from(
+    new Set(
+      variantOptions
+        .map((variant) => variant.title?.trim())
+        .filter((value): value is string => Boolean(value) && value.toLowerCase() !== "default")
+    )
+  )
   const genreChips = Array.from(
     new Set(
       (categoryGroups.genres ?? []).map((entry) => entry.label).filter((label) => label.trim().length)
     )
   )
-  const variantOptions = deriveVariantOptions(product.variants)
   const relatedProducts = await loadRelatedProducts(product)
 
   const heroImages = product.images ?? []
@@ -224,161 +227,180 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   ])
 
   return (
-    <div className="space-y-16 px-4 py-16">
-      <section className="grid gap-12 lg:grid-cols-[1.2fr_1fr]">
-        <div className="flex flex-col gap-6">
-          {heroImages.length ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {heroImages.map((image, index) => (
-                <div
-                  key={image.id ?? image.url ?? `image-${index}`}
-                  className="relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-background/60"
-                >
+    <div className="bg-background">
+      <div className="mx-auto flex max-w-6xl flex-col gap-16 px-4 pb-20 pt-14 lg:px-8">
+        <section className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-start">
+          <div className="space-y-4 overflow-hidden">
+            {heroImages.length ? (
+              <>
+                <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-border/70 bg-background/80 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.7)]">
                   <Image
-                    src={image.url ?? "/remorseless-hero-logo.png"}
+                    src={heroImages[0]?.url ?? "/remorseless-hero-logo.png"}
                     alt={productTitle}
                     fill
-                    sizes="(min-width: 1024px) 420px, 50vw"
+                    sizes="(min-width: 1024px) 520px, 90vw"
                     className="object-cover"
+                    priority
                   />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="aspect-video rounded-2xl border border-border/60 bg-background/80" />
-          )}
-        </div>
-
-        <aside className="flex flex-col gap-8">
-          <div className="space-y-3 rounded-2xl border border-border/60 bg-surface/90 p-6 shadow-elegant">
-            <span className="inline-flex items-center rounded-full border border-border/60 px-3 py-1 text-[0.6rem] uppercase tracking-[0.35rem] text-muted-foreground">
-              {product.collection?.title ?? "Limited Run"}
-            </span>
-            <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-foreground">
-              {productTitle}
-            </h1>
-            {product.subtitle ? (
-              <p className="text-sm text-muted-foreground">
-                {product.subtitle}
-              </p>
-            ) : null}
-            {categoryChips.length ? (
-              <div className="flex flex-wrap items-center gap-2 pt-2">
-                {categoryChips.map((category) => (
-                  <span
-                    key={`${category.handle}-${category.label}`}
-                    className="rounded-full border border-border/50 bg-background/80 px-3 py-1 text-[0.55rem] uppercase tracking-[0.3rem] text-muted-foreground"
-                  >
-                    {category.label}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            {genreChips.length ? (
-              <div className="flex flex-wrap items-center gap-2 pt-2">
-                {genreChips.map((genre) => (
-                  <span
-                    key={`genre-chip-${genre}`}
-                    className="rounded-full border border-border/40 bg-background/70 px-3 py-1 text-[0.5rem] uppercase tracking-[0.28rem] text-muted-foreground"
-                  >
-                    {genre}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+                {heroImages.length > 1 ? (
+                  <div className="grid grid-cols-3 gap-3">
+                    {heroImages.slice(1).map((image, index) => (
+                      <div
+                        key={image.id ?? image.url ?? `image-${index + 1}`}
+                        className="relative aspect-square overflow-hidden rounded-xl border border-border/50 bg-background/70"
+                      >
+                        <Image
+                          src={image.url ?? "/remorseless-hero-logo.png"}
+                          alt={`${productTitle} alt ${index + 1}`}
+                          fill
+                          sizes="(min-width: 1024px) 220px, 30vw"
+                          className="object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="aspect-[4/5] rounded-3xl border border-border/60 bg-background/80" />
+            )}
           </div>
 
-          <ProductVariantSelector
-            variants={variantOptions}
-            productTitle={productTitle}
-            redirectPath={productPath}
-          />
-
-          <div className="space-y-4 rounded-2xl border border-border/60 bg-surface/80 p-6">
-            <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
-              Description
-            </h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {productDescription}
-            </p>
-          </div>
-
-          {tracklist.length ? (
-            <div className="space-y-4 rounded-2xl border border-border/60 bg-surface/80 p-6">
-              <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
-                Tracklist
-              </h2>
-              <ol className="space-y-2 text-sm leading-relaxed text-muted-foreground">
-                {tracklist.map((entry, index) => (
-                  <li key={`track-${index}`} className="flex items-baseline gap-3">
-                    <span className="text-xs font-mono uppercase tracking-[0.35rem] text-muted-foreground/70">
-                      {(index + 1).toString().padStart(2, "0")}
+          <aside className="flex flex-col gap-8 lg:sticky lg:top-20">
+            <div className="space-y-4 rounded-3xl border border-border/70 bg-surface/95 p-7 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full border border-border/60 px-3 py-1 text-[0.6rem] uppercase tracking-[0.35rem] text-muted-foreground">
+                  {product.collection?.title ?? "Limited Run"}
+                </span>
+                {formatChips.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {formatChips.map((format) => (
+                      <span
+                        key={`format-${format}`}
+                        className="rounded-full border border-border/50 bg-background/80 px-2.5 py-1 text-[0.55rem] uppercase tracking-[0.3rem] text-foreground"
+                      >
+                        {format}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-foreground">
+                  {productTitle}
+                </h1>
+                {product.subtitle ? (
+                  <p className="text-sm text-muted-foreground">{product.subtitle}</p>
+                ) : null}
+              </div>
+              {genreChips.length ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {genreChips.map((genre) => (
+                    <span
+                      key={`genre-chip-${genre}`}
+                      className="rounded-full border border-border/40 bg-background/70 px-3 py-1 text-[0.55rem] uppercase tracking-[0.28rem] text-muted-foreground"
+                    >
+                      {genre}
                     </span>
-                    <span>{entry}</span>
-                  </li>
-                ))}
-              </ol>
+                  ))}
+                </div>
+              ) : null}
+              <ProductVariantSelector
+                variants={variantOptions}
+                productTitle={productTitle}
+                redirectPath={productPath}
+              />
             </div>
-          ) : null}
 
-          {linerNotes ? (
-            <div className="space-y-4 rounded-2xl border border-border/60 bg-surface/80 p-6">
+            <div className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-7">
               <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
-                Liner Notes
+                Description
               </h2>
               <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
-                {linerNotes}
+                {productDescription}
               </p>
             </div>
-          ) : null}
 
-          {metadata ? (
-            <div className="space-y-4 rounded-2xl border border-border/60 bg-surface/80 p-6">
-              <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
-                Specs
-              </h2>
-              <ul className="space-y-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                {Object.entries(metadata)
-                  .filter(([key]) => !["tracklist", "notes", "badge"].includes(key.toLowerCase()))
-                  .map(([key, value]) => (
-                    <li key={key} className="flex items-center justify-between gap-3">
-                      <span className="text-muted-foreground/80">{key.replace(/_/g, " ")}</span>
-                      <span className="text-foreground">
-                        {typeof value === "string"
-                          ? value
-                          : Array.isArray(value)
-                            ? value.join(", ")
-                            : JSON.stringify(value)}
-                      </span>
-                    </li>
-                  ))}
-              </ul>
+            <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/90 p-7 lg:grid-cols-2 lg:gap-6">
+              {tracklist.length ? (
+                <div className="space-y-3">
+                  <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+                    Tracklist
+                  </h3>
+                  <ol className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                    {tracklist.map((entry, index) => (
+                      <li key={`track-${index}`} className="flex items-baseline gap-3">
+                        <span className="text-xs font-mono uppercase tracking-[0.35rem] text-muted-foreground/70">
+                          {(index + 1).toString().padStart(2, "0")}
+                        </span>
+                        <span>{entry}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
+
+              {metadata ? (
+                <div className="space-y-3">
+                  <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+                    Specs
+                  </h3>
+                  <ul className="space-y-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+                    {Object.entries(metadata)
+                      .filter(([key]) => !["tracklist", "notes", "badge"].includes(key.toLowerCase()))
+                      .map(([key, value]) => (
+                        <li key={key} className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground/80">{key.replace(/_/g, " ")}</span>
+                          <span className="text-foreground">
+                            {typeof value === "string"
+                              ? value
+                              : Array.isArray(value)
+                                ? value.join(", ")
+                                : JSON.stringify(value)}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
-          ) : null}
-        </aside>
-      </section>
 
-      {relatedProducts.length ? (
-        <section className="space-y-6">
-          <header className="flex flex-col gap-3">
-            <span className="font-headline text-xs uppercase tracking-[0.4rem] text-muted-foreground">
-              You Might Also Dig
-            </span>
-            <h2 className="font-display text-3xl uppercase tracking-[0.3rem] text-foreground">
-              Related Assaults
-            </h2>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              More wax pulled from nearby collections and similar sonic territory. Quick shop
-              surfaces variants without breaking your listening flow.
-            </p>
-          </header>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {relatedProducts.map((related) => (
-              <ProductCard key={related.id} product={related} />
-            ))}
-          </div>
+            {linerNotes ? (
+              <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-7">
+                <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+                  Liner Notes
+                </h2>
+                <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                  {linerNotes}
+                </p>
+              </div>
+            ) : null}
+          </aside>
         </section>
-      ) : null}
+
+        {relatedProducts.length ? (
+          <section className="space-y-6">
+            <header className="flex flex-col gap-3">
+              <span className="font-headline text-xs uppercase tracking-[0.4rem] text-muted-foreground">
+                You Might Also Dig
+              </span>
+              <h2 className="font-display text-3xl uppercase tracking-[0.3rem] text-foreground">
+                Related Assaults
+              </h2>
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                More wax pulled from nearby collections and similar sonic territory. Quick shop
+                surfaces variants without breaking your listening flow.
+              </p>
+            </header>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {relatedProducts.map((related) => (
+                <ProductCard key={related.id} product={related} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
 
       <JsonLd
         id={`product-json-${product.id}`}

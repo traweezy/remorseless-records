@@ -30,7 +30,7 @@ const SearchModal = ({ children }: SearchModalProps) => {
           query: "",
           limit: 12,
           offset: 0,
-          sort: "alphabetical",
+          sort: "title-asc",
         })
         setInitial(response)
       } catch (cause: unknown) {
@@ -61,7 +61,7 @@ const SearchModal = ({ children }: SearchModalProps) => {
           {initial ? (
             <ProductSearchExperience
               initialHits={initial.hits}
-              initialSort="alphabetical"
+              initialSort="title-asc"
               genreFilters={[]}
             />
           ) : (

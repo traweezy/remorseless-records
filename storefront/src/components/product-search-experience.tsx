@@ -171,10 +171,16 @@ const SORT_OPTIONS: Array<{
   Icon: LucideIcon
 }> = [
   {
-    value: "alphabetical",
-    label: "Alphabetical",
-    helper: "Name · A → Z",
+    value: "title-asc",
+    label: "Title · A → Z",
+    helper: "Alphabetical ascending",
     Icon: ArrowDownAZ,
+  },
+  {
+    value: "title-desc",
+    label: "Title · Z → A",
+    helper: "Alphabetical descending",
+    Icon: ArrowUp10,
   },
   {
     value: "newest",
@@ -703,7 +709,7 @@ const useResponsiveColumns = () => {
 
 const ProductSearchExperience = ({
   initialHits,
-  initialSort = "alphabetical",
+  initialSort = "title-asc",
   genreFilters,
 }: ProductSearchExperienceProps) => {
   const normalizedGenreFilters = useMemo(
@@ -1018,8 +1024,10 @@ const ProductSearchExperience = ({
     })
 
     const sorted = [...matches]
-    if (sortOption === "alphabetical") {
+    if (sortOption === "title-asc") {
       sorted.sort((a, b) => a.title.localeCompare(b.title))
+    } else if (sortOption === "title-desc") {
+      sorted.sort((a, b) => b.title.localeCompare(a.title))
     } else if (sortOption === "newest") {
       sorted.sort(
         (a, b) =>

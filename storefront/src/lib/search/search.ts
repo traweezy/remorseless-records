@@ -14,7 +14,8 @@ export type ProductSearchFilters = {
 }
 
 export type ProductSortOption =
-  | "alphabetical"
+  | "title-asc"
+  | "title-desc"
   | "newest"
   | "price-low"
   | "price-high"
@@ -271,7 +272,8 @@ export const searchProductsWithClient = async (
   const { filterExpression, postFilters } = buildFilter(filters, inStockOnly, filterable)
 
   const sortMapping: Record<ProductSortOption, string | null> = {
-    alphabetical: "title:asc",
+    "title-asc": "title:asc",
+    "title-desc": "title:desc",
     newest: "created_at:desc",
     "price-low": "price_amount:asc",
     "price-high": "price_amount:desc",

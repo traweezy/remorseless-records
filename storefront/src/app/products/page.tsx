@@ -87,7 +87,7 @@ const ProductsPage = async () => {
     <>
       <ProductSearchExperience
         initialHits={combinedHits}
-        initialSort="alphabetical"
+        initialSort="title-asc"
         genreFilters={genreFilters}
       />
 

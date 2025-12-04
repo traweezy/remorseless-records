@@ -23,8 +23,10 @@ export const GET = async (request: Request) => {
       const normalized = sortParam.toLowerCase()
       if (normalized === "newest") {
         options.order = "-created_at"
-      } else if (normalized === "alphabetical") {
+      } else if (normalized === "title-asc") {
         options.order = "title"
+      } else if (normalized === "title-desc") {
+        options.order = "-title"
       }
     }
 

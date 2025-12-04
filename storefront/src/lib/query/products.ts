@@ -84,7 +84,7 @@ export const productSearchQueryKey = ({
   variants,
   formats = [],
   limit = 24,
-  sort = "alphabetical",
+  sort = "title-asc",
   inStockOnly = false,
 }: ProductSearchParams) =>
   [
@@ -109,7 +109,7 @@ export const productSearchQueryOptions = ({
   sort,
   inStockOnly = false,
 }: ProductSearchParams) => {
-  const sortValue: ProductSortOption = sort ?? "alphabetical"
+  const sortValue: ProductSortOption = sort ?? "title-asc"
   return {
     queryKey: productSearchQueryKey({
       query,

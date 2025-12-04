@@ -35,7 +35,7 @@ const initialState: FilterState = {
   formats: [],
   productTypes: [],
   showInStockOnly: false,
-  sort: "alphabetical",
+  sort: "title-asc",
 }
 
 const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
