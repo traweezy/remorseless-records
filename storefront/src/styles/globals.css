@@ -8,13 +8,14 @@
     width: 100vw;
     margin-left: calc(50% - 50vw);
     overflow: hidden;
+    padding-inline: 0;
   }
 
   .product-carousel__container {
     position: relative;
     width: 100%;
     margin: 0;
-    padding-inline: clamp(16px, 4vw, 40px);
+    padding-inline: clamp(8px, 2vw, 20px);
   }
 
   .product-carousel__splide {
