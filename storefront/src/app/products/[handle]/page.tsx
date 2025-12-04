@@ -221,7 +221,7 @@ const ProductPage = async ({ params }: ProductPageProps) => {
 
   return (
     <div className="bg-background">
-      <div className="mx-auto flex max-w-6xl flex-col gap-16 px-4 pb-20 pt-14 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-16 px-4 pb-20 pt-14 lg:px-8">
         <section className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-start">
           <ProductGallery
             images={heroImages.map((image, index) => ({
