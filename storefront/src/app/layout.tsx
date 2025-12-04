@@ -16,6 +16,7 @@ import ProximityPrefetch from "@/components/providers/proximity-prefetch"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { organizationJsonLd, webSiteJsonLd } from "@/lib/seo/structured-data"
+import { Suspense } from "react"
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -133,15 +134,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
         ].join(" ")}
       >
         <QueryProvider>
-          <ProximityPrefetch>
-            <div className="relative flex min-h-screen flex-col bg-background">
-              <SiteHeader />
-              <PageTransition>
-                <main className="flex-1 min-h-0">{children}</main>
-              </PageTransition>
-              <SiteFooter />
-            </div>
-          </ProximityPrefetch>
+          <Suspense fallback={null}>
+            <ProximityPrefetch>
+              <div className="relative flex min-h-screen flex-col bg-background">
+                <SiteHeader />
+                <PageTransition>
+                  <main className="flex-1 min-h-0">{children}</main>
+                </PageTransition>
+                <SiteFooter />
+              </div>
+            </ProximityPrefetch>
+          </Suspense>
         </QueryProvider>
         <SpeculationRules />
         <JsonLd id="remorseless-organization" data={organizationJsonLd} />

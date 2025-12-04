@@ -4,7 +4,7 @@ import type { HttpTypes } from "@medusajs/types"
 
 import { storeClient } from "@/lib/medusa"
 
-const CART_COOKIE = "rr_cart_id"
+export const CART_COOKIE = "rr_cart_id"
 
 let cachedRegionId: string | null = null
 
@@ -51,6 +51,10 @@ export const getCart = async (): Promise<HttpTypes.StoreCart | null> => {
     return null
   }
 
+  return getCartById(cartId)
+}
+
+export const getCartById = async (cartId: string): Promise<HttpTypes.StoreCart | null> => {
   try {
     const { cart } = await storeClient.cart.retrieve(cartId, {
       fields:

@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+const CURRENT_YEAR = new Date().getUTCFullYear()
+
 const FOOTER_LINKS = [
   {
     title: "Label",
@@ -38,7 +40,7 @@ const SiteFooter = () => (
           Brutal maximalism across every pressing. Limited runs, no compromises, all volume. Join the signal and never miss another drop.
         </p>
         <p className="text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground/70">
-          © {new Date().getFullYear()} Remorseless Records
+          © {CURRENT_YEAR} Remorseless Records
         </p>
       </div>
       <div className="grid gap-8 sm:grid-cols-3">

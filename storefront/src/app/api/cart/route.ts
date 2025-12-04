@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
 
-import { getCart } from "@/lib/cart"
+import type { NextRequest } from "next/server"
+import { unstable_noStore as noStore } from "next/cache"
 
-export const GET = async (): Promise<Response> => {
+import { CART_COOKIE, getCartById } from "@/lib/cart"
+
+export const GET = async (request: NextRequest): Promise<Response> => {
   try {
-    const cart = await getCart()
+    noStore()
+    const cartId = request.cookies.get(CART_COOKIE)?.value
+    const cart = cartId ? await getCartById(cartId) : null
     return NextResponse.json({ cart })
   } catch (error) {
     console.error("Failed to load cart", error)
@@ -14,4 +19,3 @@ export const GET = async (): Promise<Response> => {
     )
   }
 }
-
