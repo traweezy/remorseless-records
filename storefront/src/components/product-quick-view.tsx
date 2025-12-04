@@ -5,8 +5,14 @@ import { usePathname } from "next/navigation"
 
 import type { HttpTypes } from "@medusajs/types"
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProductVariantSelector from "@/components/product-variant-selector"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { deriveVariantOptions } from "@/lib/products/transformers"
 import { useProductDetailQuery } from "@/lib/query/products"
 
@@ -60,46 +66,48 @@ export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }:
   const heroImage = heroImageFor(activeProduct)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] w-[min(92vw,720px)] overflow-hidden bg-background/95">
-        <div className="grid gap-6 p-6 sm:grid-cols-[1.1fr_1fr] sm:gap-10 sm:p-10">
-          <div className="space-y-6">
-            <DialogHeader className="space-y-3 text-left">
-              <DialogTitle className="font-bebas text-3xl uppercase tracking-[0.3rem]">
-                {activeProduct?.title ?? "Loading release"}
-              </DialogTitle>
-              {activeProduct?.subtitle ? (
-                <DialogDescription className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                  {activeProduct.subtitle}
-                </DialogDescription>
-              ) : null}
-            </DialogHeader>
-            <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/80">
-              {heroImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={heroImage}
-                  alt={activeProduct?.title ?? "Release artwork"}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex aspect-square items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                  No artwork
-                </div>
-              )}
-            </div>
-            <p className="hidden text-xs leading-relaxed text-muted-foreground sm:block">
-              {description}
-            </p>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="h-full w-full max-w-[520px] gap-0 border-l border-border/70 bg-background/95 p-0 shadow-glow sm:rounded-l-2xl"
+      >
+        <SheetHeader className="border-b border-border/60 px-6 py-4 text-left">
+          <SheetTitle className="text-xs font-headline uppercase tracking-[0.35rem] text-muted-foreground">
+            Quick shop
+          </SheetTitle>
+          <p className="font-bebas text-3xl uppercase tracking-[0.35rem] text-foreground">
+            {activeProduct?.title ?? "Loading release"}
+          </p>
+          {activeProduct?.subtitle ? (
+            <SheetDescription className="text-[0.65rem] uppercase tracking-[0.35rem] text-muted-foreground">
+              {activeProduct.subtitle}
+            </SheetDescription>
+          ) : null}
+        </SheetHeader>
+
+        <div className="flex h-full flex-col overflow-hidden">
+          <div className="relative aspect-[4/5] w-full overflow-hidden border-b border-border/60 bg-background/80">
+            {heroImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={heroImage}
+                alt={activeProduct?.title ?? "Release artwork"}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+                No artwork
+              </div>
+            )}
           </div>
 
-          <div className="space-y-6">
+          <div className="flex-1 overflow-y-auto px-6 py-6">
             {isFetching && !detail && !initialProduct ? (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div className="h-8 rounded-full skeleton" />
-                <div className="h-32 rounded-2xl skeleton" />
-                <div className="h-11 rounded-full skeleton" />
+                <div className="h-36 rounded-2xl skeleton" />
+                <div className="h-12 rounded-full skeleton" />
               </div>
             ) : isError ? (
               <div className="space-y-4 rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive-foreground">
@@ -109,25 +117,27 @@ export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }:
                   onClick={() => {
                     void refetch()
                   }}
-                  className="rounded-full border border-destructive px-4 py-1 text-xs uppercase tracking-[0.3rem] text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+                  className="rounded-full border border-destructive px-4 py-2 text-xs uppercase tracking-[0.3rem] text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
                 >
                   Retry
                 </button>
               </div>
             ) : (
-              <ProductVariantSelector
-                variants={variants}
-                productTitle={activeProduct?.title ?? "Release"}
-                redirectPath={pathname ?? "/products"}
-              />
+              <div className="space-y-6">
+                <ProductVariantSelector
+                  variants={variants}
+                  productTitle={activeProduct?.title ?? "Release"}
+                  redirectPath={pathname ?? "/products"}
+                />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {description}
+                </p>
+              </div>
             )}
-            <p className="text-xs leading-relaxed text-muted-foreground sm:hidden">
-              {description}
-            </p>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
