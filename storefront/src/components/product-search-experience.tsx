@@ -1011,40 +1011,13 @@ const ProductSearchExperience = ({
         return baseMatches
       }
 
-      const targets = baseMatches.map((hit) => ({
-        hit,
-        text: [
-          hit.artist,
-          hit.title,
-          hit.album,
-          hit.collectionTitle ?? "",
-          ...(hit.genres ?? []),
-          ...(hit.metalGenres ?? []),
-        ]
-          .map((value) => value?.toLowerCase() ?? "")
-          .filter(Boolean)
-          .join(" "),
-      }))
+      const tokens = normalizedQuery
+        .split(/\s+/)
+        .map((token) => token.trim())
+        .filter(Boolean)
 
-      const fuzzyResults = fuzzysort.go<{ hit: ProductSearchHit; text: string }>(normalizedQuery, targets, {
-        keys: ["text"],
-        threshold: -600,
-        limit: 120,
-      })
-      const fuzzyHits: ProductSearchHit[] = []
-      for (const result of fuzzyResults) {
-        const candidate = (result as { obj?: { hit?: ProductSearchHit } })?.obj?.hit
-        if (candidate) {
-          fuzzyHits.push(candidate)
-        }
-      }
-
-      if (fuzzyHits.length) {
-        return fuzzyHits
-      }
-
-      const substringMatches = baseMatches.filter((hit) => {
-        const haystack = [
+      const buildHaystack = (hit: ProductSearchHit) =>
+        [
           hit.artist,
           hit.title,
           hit.album,
@@ -1055,10 +1028,23 @@ const ProductSearchExperience = ({
           .map((value) => value?.toLowerCase() ?? "")
           .filter(Boolean)
           .join(" ")
-        return haystack.includes(normalizedQuery)
+
+      const filtered = baseMatches.filter((hit) => {
+        const haystack = buildHaystack(hit)
+        if (!haystack.length) {
+          return false
+        }
+
+        return tokens.every((token) => {
+          if (haystack.includes(token)) {
+            return true
+          }
+          const fuzzy = fuzzysort.single(token, haystack)
+          return Boolean(fuzzy && fuzzy.score >= -180)
+        })
       })
 
-      return substringMatches
+      return filtered
     })()
 
     const sorted = [...matches]
