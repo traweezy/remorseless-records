@@ -1229,7 +1229,7 @@ const ProductSearchExperience = ({
     <div className="bg-background pb-8">
       <div className="container flex flex-col gap-4 px-2 pt-4 sm:px-4 lg:flex-row lg:gap-8">
         <aside className="hidden lg:block lg:w-60 lg:flex-shrink-0">
-          <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl">
+          <div className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl">
             <FilterSidebar
               genres={genreOptions}
               formats={formatOptions}
