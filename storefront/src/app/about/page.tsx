@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 
 import { siteMetadata } from "@/config/site"
 
@@ -35,7 +36,21 @@ const AboutPage = () => {
           <section className="space-y-6 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
             {ABOUT_PARAGRAPHS.map((para, idx) => (
               <p key={`about-${idx}`} className="text-sm leading-relaxed text-muted-foreground">
-                {para}
+                {para.includes("Contact page") ? (
+                  <>
+                    If you want to be considered for a release or want to carry Remorseless titles in
+                    your distro, reach out via the{" "}
+                    <Link
+                      href="/contact"
+                      className="text-destructive underline underline-offset-4"
+                    >
+                      Contact
+                    </Link>{" "}
+                    page. All messages get answered as quickly as possible.
+                  </>
+                ) : (
+                  para
+                )}
               </p>
             ))}
           </section>

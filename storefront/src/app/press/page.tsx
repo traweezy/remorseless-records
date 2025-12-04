@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 
 import { siteMetadata } from "@/config/site"
 
@@ -77,7 +78,11 @@ const PressPage = () => (
             for interviews, premieres, or review copies. Include your outlet, timelines, and any asset needs.
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Need images or liner notes fast? The Contact page form goes straight to the label inbox.
+            Need images or liner notes fast? The{" "}
+            <Link href="/contact" className="text-destructive underline underline-offset-4">
+              Contact
+            </Link>{" "}
+            form goes straight to the label inbox.
           </p>
         </aside>
       </div>
