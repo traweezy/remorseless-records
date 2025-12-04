@@ -1,7 +1,7 @@
 import { cache } from "react"
 import type { HttpTypes } from "@medusajs/types"
 
-import { storeClient } from "@/lib/medusa"
+import { backendBaseUrl, withBackendHeaders } from "@/config/backend"
 import {
   buildProductSlugParts,
   type ProductSlug,
@@ -25,32 +25,24 @@ export const PRODUCT_LIST_FIELDS = [
   "*tags",
 ].join(",")
 
-const PRODUCT_DETAIL_FIELDS = [
-  "id",
-  "handle",
-  "title",
-  "subtitle",
-  "description",
-  "thumbnail",
-  "metadata",
-  "*collection",
-  "*categories",
-  "*variants",
-  "*options",
-  "*images",
-  "*tags",
-].join(",")
+const backendBase = backendBaseUrl
+const buildBackendHeaders = () => withBackendHeaders()
 
-const getCollectionByHandle = cache(
-  async (handle: string): Promise<HttpTypes.StoreCollection | null> => {
-    const { collections } = await storeClient.collection.list({
-      handle,
-      limit: 1,
-    })
+const getCollectionByHandle = cache(async (handle: string): Promise<HttpTypes.StoreCollection | null> => {
+  const url = new URL(`${backendBase}/store/collections`)
+  url.searchParams.set("handle", handle)
 
-    return collections[0] ?? null
+  const response = await fetch(url.toString(), {
+    cache: "force-cache",
+    next: { revalidate: 1800 },
+    headers: buildBackendHeaders(),
+  })
+  if (!response.ok) {
+    return null
   }
-)
+  const payload = (await response.json()) as { collections?: HttpTypes.StoreCollection[] }
+  return payload.collections?.[0] ?? null
+})
 
 export const getCollectionProductsByHandle = cache(
   async (handle: string, limit?: number): Promise<StoreProduct[]> => {
@@ -71,12 +63,19 @@ export const getCollectionProductsByHandle = cache(
         break
       }
 
-      const { products } = await storeClient.product.list({
-        collection_id: collection.id,
-        limit: pageLimit,
-        offset,
-        fields: PRODUCT_LIST_FIELDS,
-      })
+      const response = await fetch(
+        `${backendBase}/store/products?collection=${collection.id}&limit=${pageLimit}&offset=${offset}`,
+        {
+          cache: "force-cache",
+          next: { revalidate: 1800 },
+          headers: buildBackendHeaders(),
+        }
+      )
+      if (!response.ok) {
+        break
+      }
+      const payload = (await response.json()) as { products?: StoreProduct[] }
+      const products = payload.products ?? []
 
       if (!products?.length) {
         break
@@ -105,11 +104,16 @@ export const getCollectionProductsByHandle = cache(
 
 export const getHomepageProducts = cache(async (): Promise<StoreProduct[]> => {
   try {
-    const { products } = await storeClient.product.list({
-      limit: 16,
-      fields: PRODUCT_DETAIL_FIELDS,
+    const response = await fetch(`${backendBase}/store/products?limit=16`, {
+      cache: "force-cache",
+      next: { revalidate: 600 },
+      headers: buildBackendHeaders(),
     })
-    return products
+    if (!response.ok) {
+      return []
+    }
+    const payload = (await response.json()) as { products?: StoreProduct[] }
+    return payload.products ?? []
   } catch (error) {
     console.error("[getHomepageProducts] Failed to load products", error)
     return []
@@ -119,12 +123,19 @@ export const getHomepageProducts = cache(async (): Promise<StoreProduct[]> => {
 export const getProductByHandle = cache(
   async (handle: string): Promise<StoreProduct | null> => {
     try {
-      const { products } = await storeClient.product.list({
-        handle,
-        limit: 1,
-        fields: PRODUCT_DETAIL_FIELDS,
-      })
-      return products[0] ?? null
+      const response = await fetch(
+        `${backendBase}/store/products/${encodeURIComponent(handle)}`,
+        {
+          cache: "force-cache",
+          next: { revalidate: 3600 },
+          headers: buildBackendHeaders(),
+        }
+      )
+      if (!response.ok) {
+        return null
+      }
+      const payload = (await response.json()) as { product?: StoreProduct }
+      return payload.product ?? null
     } catch (error) {
       console.error("[getProductByHandle] Failed to load product", error)
       return null
@@ -135,12 +146,19 @@ export const getProductByHandle = cache(
 export const getProductsByCollection = cache(
   async (collectionId: string, limit = 8): Promise<StoreProduct[]> => {
     try {
-      const { products } = await storeClient.product.list({
-        collection_id: collectionId,
-        limit,
-        fields: PRODUCT_DETAIL_FIELDS,
-      })
-      return products
+      const response = await fetch(
+        `${backendBase}/store/products?collection=${encodeURIComponent(collectionId)}&limit=${limit}`,
+        {
+          cache: "force-cache",
+          next: { revalidate: 1800 },
+          headers: buildBackendHeaders(),
+        }
+      )
+      if (!response.ok) {
+        return []
+      }
+      const payload = (await response.json()) as { products?: StoreProduct[] }
+      return payload.products ?? []
     } catch (error) {
       console.error("[getProductsByCollection] Failed to load products", error)
       return []
@@ -151,11 +169,16 @@ export const getProductsByCollection = cache(
 export const getRecentProducts = cache(
   async (limit = 8): Promise<StoreProduct[]> => {
     try {
-      const { products } = await storeClient.product.list({
-        limit,
-        fields: PRODUCT_DETAIL_FIELDS,
+      const response = await fetch(`${backendBase}/store/products?limit=${limit}`, {
+        cache: "force-cache",
+        next: { revalidate: 900 },
+        headers: buildBackendHeaders(),
       })
-      return products
+      if (!response.ok) {
+        return []
+      }
+      const payload = (await response.json()) as { products?: StoreProduct[] }
+      return payload.products ?? []
     } catch (error) {
       console.error("[getRecentProducts] Failed to load products", error)
       return []
@@ -172,52 +195,33 @@ type ProductHandleSummary = {
 export const getAllProductHandles = cache(
   async (): Promise<ProductHandleSummary[]> => {
     try {
-      const handles: ProductHandleSummary[] = []
-      const pageSize = 100
-      let offset = 0
-
-      // Medusa paginates products; loop until we exhaust the catalog.
-      // We request moderate batches to avoid stressing the API during build time.
-      for (;;) {
-        const { products } = await storeClient.product.list({
-          limit: pageSize,
-          offset,
-          order: "created_at",
-        })
-
-        if (!products?.length) {
-          break
-        }
-
-        for (const product of products) {
-          if (!product?.handle) {
-            continue
-          }
-
-          const updatedAt =
-            (product as unknown as { updated_at?: string }).updated_at ??
-            (product as unknown as { updatedAt?: string }).updatedAt ??
-            (product as unknown as { created_at?: string }).created_at ??
-            (product as unknown as { createdAt?: string }).createdAt ??
-            null
-
-          const slug = buildProductSlugParts(product)
-
-          handles.push({
-            handle: product.handle,
-            slug,
-            updatedAt,
-          })
-        }
-
-        if (products.length < pageSize) {
-          break
-        }
-
-        offset += products.length
+      const response = await fetch(`${backendBase}/store/products/handles`, {
+        cache: "force-cache",
+        next: { revalidate: 3600 },
+        headers: buildBackendHeaders(),
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to load product handles: ${response.status}`)
       }
-
+      const payload = (await response.json()) as {
+        handles?: Array<{ handle: string; updated_at?: string | null; created_at?: string | null }>
+      }
+      const handles = payload.handles ?? []
       return handles
+        .filter((entry) => typeof entry.handle === "string" && entry.handle.trim().length > 0)
+        .map((entry) => {
+          const slug = buildProductSlugParts({
+            handle: entry.handle,
+            metadata: null,
+            title: null,
+            collection: null,
+          })
+          return {
+            handle: entry.handle,
+            slug,
+            updatedAt: entry.updated_at ?? entry.created_at ?? null,
+          }
+        })
     } catch (error) {
       console.error("[getAllProductHandles] Failed to load products", error)
       return []
