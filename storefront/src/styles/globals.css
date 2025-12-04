@@ -5,15 +5,16 @@
 @layer components {
   .product-carousel {
     position: relative;
-    width: 100%;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
     overflow: hidden;
   }
 
   .product-carousel__container {
     position: relative;
     width: 100%;
-    max-width: 1440px;
-    margin: 0 auto;
+    margin: 0;
+    padding-inline: clamp(16px, 4vw, 40px);
   }
 
   .product-carousel__splide {
