@@ -30,6 +30,9 @@ const ShippingPage = () => (
             <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
               Shipping
             </h2>
+            <div className="rounded-2xl border border-border/60 bg-destructive/10 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2rem] text-destructive">
+              Free domestic shipping on all orders over $50
+            </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
               International shipping rates are calculated against current USPS rates and reflect an average cost per zone. If something looks off, contact us and we’ll recalc against your exact location.
             </p>
