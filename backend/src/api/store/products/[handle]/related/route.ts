@@ -15,6 +15,7 @@ type ProductModule = {
     filters?: Record<string, unknown>,
     config?: {
       relations?: string[]
+      select?: string[]
       skip?: number
       take?: number
       order?: Record<string, "ASC" | "DESC">
