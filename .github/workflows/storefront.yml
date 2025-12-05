@@ -202,7 +202,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Trivy FS scan (repo)
-        uses: aquasecurity/trivy-action@v0
+        uses: aquasecurity/trivy-action@v0.29.0
         with:
           scan-type: fs
           ignore-unfixed: true
