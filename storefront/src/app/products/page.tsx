@@ -83,50 +83,43 @@ const ProductsPage = async () => {
 export default ProductsPage
 
 const loadCatalogData = async () => {
-  const results: readonly [
-    PromiseSettledResult<ProductSearchHit[]>,
-    PromiseSettledResult<HttpTypes.StoreProduct[]>,
-    PromiseSettledResult<HttpTypes.StoreProduct[]>,
-    PromiseSettledResult<HttpTypes.StoreProduct[]>,
-    PromiseSettledResult<Awaited<ReturnType<typeof getMetalGenreCategories>>>
-  ] = await Promise.allSettled([
-    getFullCatalogHits(),
-    getCollectionProductsByHandle("featured"),
-    getCollectionProductsByHandle("new-releases"),
-    getCollectionProductsByHandle("staff-picks"),
-    getMetalGenreCategories(),
-  ])
-
-  const [catalogResult, featuredResult, newestResult, staffResult, genreResult] = results
-
-  function resolveOr<T>(
-    entry: PromiseSettledResult<T>,
+  async function safe<T>(
     label: string,
+    fn: () => Promise<T>,
     fallback: T
-  ): T {
-    if (entry.status === "fulfilled") {
-      return entry.value
+  ): Promise<T> {
+    try {
+      return await fn()
+    } catch (error) {
+      console.error("[ProductsPage] falling back for dataset", {
+        label,
+        reason: error instanceof Error ? error.message : error,
+      })
+      return fallback
     }
-
-    const reason: unknown =
-      entry.status === "rejected" ? entry.reason : "unknown"
-
-    console.error("[ProductsPage] falling back for dataset", {
-      label,
-      reason,
-    })
-    return fallback
   }
 
-  return [
-    resolveOr<ProductSearchHit[]>(catalogResult, "catalog", []),
-    resolveOr(featuredResult, "featured", [] as HttpTypes.StoreProduct[]),
-    resolveOr(newestResult, "new-releases", [] as HttpTypes.StoreProduct[]),
-    resolveOr(staffResult, "staff-picks", [] as HttpTypes.StoreProduct[]),
-    resolveOr(
-      genreResult,
-      "genres",
-      [] as Awaited<ReturnType<typeof getMetalGenreCategories>>
-    ),
-  ] as const
+  const catalogHits = await safe<ProductSearchHit[]>("catalog", getFullCatalogHits, [])
+  const featured = await safe<HttpTypes.StoreProduct[]>(
+    "featured",
+    () => getCollectionProductsByHandle("featured"),
+    []
+  )
+  const newest = await safe<HttpTypes.StoreProduct[]>(
+    "new-releases",
+    () => getCollectionProductsByHandle("new-releases"),
+    []
+  )
+  const staff = await safe<HttpTypes.StoreProduct[]>(
+    "staff-picks",
+    () => getCollectionProductsByHandle("staff-picks"),
+    []
+  )
+  const genreFilters = await safe<Awaited<ReturnType<typeof getMetalGenreCategories>>>(
+    "genres",
+    getMetalGenreCategories,
+    []
+  )
+
+  return [catalogHits, featured, newest, staff, genreFilters] as const
 }
