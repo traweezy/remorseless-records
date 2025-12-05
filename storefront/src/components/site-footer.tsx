@@ -58,7 +58,7 @@ const SocialIcon = ({ path }: { path?: string }) => {
       aria-hidden
       focusable="false"
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-foreground"
+      className="h-4 w-4 text-current"
       role="img"
     >
       <path d={path} fill="currentColor" />
