@@ -1,8 +1,20 @@
 import Link from "next/link"
+import { siBandcamp, siInstagram } from "simple-icons"
+
+type FooterLink = {
+  label: string
+  href: string
+  iconPath?: string
+}
+
+type FooterLinkSection = {
+  title: string
+  links: FooterLink[]
+}
 
 const CURRENT_YEAR = new Date().getUTCFullYear()
 
-const FOOTER_LINKS = [
+const FOOTER_LINKS: FooterLinkSection[] = [
   {
     title: "Label",
     links: [
@@ -22,11 +34,37 @@ const FOOTER_LINKS = [
   {
     title: "Follow",
     links: [
-      { label: "Instagram", href: "https://www.instagram.com/remorseless_records/" },
-      { label: "Bandcamp", href: "https://remorselessrecords.bandcamp.com/" },
+      {
+        label: "Instagram",
+        href: "https://www.instagram.com/remorseless_records/",
+        iconPath: siInstagram.path,
+      },
+      {
+        label: "Bandcamp",
+        href: "https://remorselessrecords.bandcamp.com/",
+        iconPath: siBandcamp.path,
+      },
     ],
   },
 ]
+
+const SocialIcon = ({ path }: { path?: string }) => {
+  if (!path) {
+    return null
+  }
+
+  return (
+    <svg
+      aria-hidden
+      focusable="false"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-foreground"
+      role="img"
+    >
+      <path d={path} fill="currentColor" />
+    </svg>
+  )
+}
 
 const SiteFooter = () => (
   <footer className="relative z-20 mt-16 border-t-4 border-accent/80 bg-background py-12">
@@ -55,8 +93,9 @@ const SiteFooter = () => (
                     href={link.href}
                     target={link.href.startsWith("http") ? "_blank" : undefined}
                     rel={link.href.startsWith("http") ? "noreferrer" : undefined}
-                    className="interactive rounded-md px-1 py-0.5 text-muted-foreground hover:text-foreground"
+                    className="interactive inline-flex items-center gap-2 rounded-md px-1 py-0.5 text-muted-foreground hover:text-foreground"
                   >
+                    <SocialIcon path={link.iconPath} />
                     {link.label}
                   </Link>
                 </li>
