@@ -19,7 +19,6 @@ import {
   Search,
   SlidersHorizontal,
   X,
-  type LucideIcon,
 } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import fuzzysort from "fuzzysort"
@@ -30,6 +29,7 @@ import ProductCard from "@/components/product-card"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { cn } from "@/lib/ui/cn"
+import { PillDropdown, type PillDropdownOption } from "@/components/ui/pill-dropdown"
 import type { ProductSortOption } from "@/lib/search/search"
 import { computeFacetCounts } from "@/lib/search/search"
 import { useCatalogStore } from "@/lib/store/catalog"
@@ -159,12 +159,7 @@ type ProductSearchExperienceProps = {
   genreFilters: GenreFilterSeed[]
 }
 
-const SORT_OPTIONS: Array<{
-  value: ProductSortOption
-  label: string
-  helper: string
-  Icon: LucideIcon
-}> = [
+const SORT_OPTIONS: Array<PillDropdownOption<ProductSortOption>> = [
   {
     value: "title-asc",
     label: "Title · A → Z",
@@ -563,127 +558,34 @@ const SortDropdown = ({
   onChange: (value: ProductSortOption) => void
   focusSearch: () => void
 }) => {
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const fallbackOption = SORT_OPTIONS[0]
-  if (!fallbackOption) {
-    throw new Error("SORT_OPTIONS must contain at least one entry")
-  }
-
-  const activeOption =
-    SORT_OPTIONS.find((option) => option.value === value) ?? fallbackOption
-
-  useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
-      if (!containerRef.current) {
-        return
-      }
-      if (!(event.target instanceof Node)) {
-        return
-      }
-      if (!containerRef.current.contains(event.target)) {
-        setOpen(false)
-      }
-    }
-    const handleKeydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false)
-      }
-    }
-
-    document.addEventListener("mousedown", handleClick)
-    document.addEventListener("keydown", handleKeydown)
-    return () => {
-      document.removeEventListener("mousedown", handleClick)
-      document.removeEventListener("keydown", handleKeydown)
-    }
-  }, [])
-
   return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className={cn(
-          "inline-flex h-11 min-w-[220px] items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.28rem] text-foreground transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
-        )}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        <span className="flex items-center gap-2 text-[0.65rem]">
-          <activeOption.Icon className="h-4 w-4 text-foreground" aria-hidden />
-          {activeOption.label}
+    <PillDropdown
+      value={value}
+      options={SORT_OPTIONS}
+      onChange={(next) => {
+        onChange(next)
+        focusSearch()
+      }}
+      renderTriggerLabel={(option) => (
+        <>
+          {option.Icon ? <option.Icon className="h-4 w-4 text-foreground" aria-hidden /> : null}
+          {option.label}
+        </>
+      )}
+      renderOptionLabel={(option) => (
+        <span className="flex flex-col text-left leading-tight">
+          <span className="flex items-center gap-2">
+            {option.Icon ? <option.Icon className="h-4 w-4 text-foreground" aria-hidden /> : null}
+            {option.label}
+          </span>
+          {option.helper ? (
+            <span className="text-[0.6rem] uppercase tracking-[0.2rem] text-muted-foreground/80">
+              {option.helper}
+            </span>
+          ) : null}
         </span>
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 text-foreground transition duration-200",
-            open && "-scale-y-100"
-          )}
-          aria-hidden
-        />
-      </button>
-
-      <AnimatePresence initial={false}>
-        {open ? (
-          <motion.div
-            key="sort-menu"
-            initial={{ opacity: 0, y: -6, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.99 }}
-            transition={{ duration: 0.12, ease: [0.25, 0.1, 0.25, 1] }}
-            className="absolute right-0 top-[calc(100%+0.35rem)] z-40 min-w-[260px] rounded-3xl border border-border/50 bg-background/95 p-1.5 shadow-glow supports-[backdrop-filter]:backdrop-blur-2xl"
-          >
-            <div role="listbox" className="flex flex-col gap-1">
-              {SORT_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(option.value)
-                    focusSearch()
-                    setOpen(false)
-                  }}
-                  className={cn(
-                    "flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-[0.75rem] uppercase tracking-[0.25rem] text-foreground transition hover:border-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive",
-                    value === option.value &&
-                      "border-destructive text-destructive shadow-[0_0_0_1px_rgba(255,0,0,0.25)]"
-                  )}
-                  role="option"
-                  aria-selected={value === option.value}
-                >
-                  <span className="flex flex-col">
-                    <span
-                      className={cn(
-                        "flex items-center gap-2 font-semibold",
-                        value === option.value
-                          ? "text-destructive"
-                          : "text-foreground"
-                      )}
-                    >
-                      <option.Icon className="h-4 w-4" aria-hidden />
-                      {option.label}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[0.55rem] uppercase tracking-[0.3rem]",
-                        value === option.value
-                          ? "text-destructive/80"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {option.helper}
-                    </span>
-                  </span>
-                  {value === option.value ? (
-                    <Check className="h-4 w-4 text-destructive" aria-hidden />
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
+      )}
+    />
   )
 }
 
@@ -1375,7 +1277,7 @@ const ProductSearchExperience = ({
                   </div>
                 </Drawer>
               </div>
-              <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/40 bg-background/85 px-3 py-2 transition supports-[backdrop-filter]:backdrop-blur-lg hover:border-border/70 focus-within:border-destructive focus-within:shadow-glow-sm">
+              <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-2 transition-[border-color,box-shadow] supports-[backdrop-filter]:backdrop-blur-lg hover:border-border focus-within:border-destructive focus-within:shadow-[0_0_0_2px_hsl(var(--destructive)/0.45)]">
                 <Search
                   className="h-4 w-4 text-muted-foreground transition group-focus-within:text-destructive"
                   aria-hidden
@@ -1387,7 +1289,7 @@ const ProductSearchExperience = ({
                     setQuery(event.target.value)
                   }}
                   placeholder="Seek brutality…"
-                  className="h-9 flex-1 border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground transition focus:border-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                  className="h-9 flex-1 appearance-none border-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/80 transition-[color] focus:border-none focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
                   type="search"
                   autoComplete="off"
                 />

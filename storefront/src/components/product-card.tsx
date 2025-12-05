@@ -297,7 +297,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           className="block h-full focus:outline-none"
           aria-label={`View ${summary.title}`}
         >
-          <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition hover:-translate-y-1 hover:border-border/60 hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
+          <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition md:hover:-translate-y-1 md:hover:border-border/60 md:hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
             {badge ? (
               <div className="product-card__corner" aria-label={`Collection: ${badge}`}>
                 <span>{badge.toUpperCase()}</span>
@@ -310,7 +310,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                   <img
                     src={thumbnail}
                     alt={summary.album ?? summary.title}
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.06] group-hover:rotate-[1.8deg] group-hover:brightness-[0.75] group-focus-within:scale-[1.06] group-focus-within:rotate-[1.8deg] group-focus-within:brightness-[0.75]"
+                    className="h-full w-full object-cover transition duration-300 md:group-hover:scale-[1.06] md:group-hover:rotate-[1.8deg] md:group-hover:brightness-[0.75] group-focus-within:scale-[1.06] group-focus-within:rotate-[1.8deg] group-focus-within:brightness-[0.75]"
                     loading="lazy"
                   />
                 ) : (
@@ -318,7 +318,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                     No artwork
                   </div>
                 )}
-                <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-6 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-6 opacity-0 transition-opacity duration-150 md:group-hover:opacity-100 group-focus-within:opacity-100">
                   <Button
                     type="button"
                     variant="default"

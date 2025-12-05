@@ -9,7 +9,6 @@ import ProductCarouselSection from "@/components/product-carousel-section"
 import { deriveVariantOptions } from "@/lib/products/transformers"
 import { getProductByHandle, PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
-import { runtimeEnv } from "@/config/env"
 import { siteMetadata } from "@/config/site"
 import {
   buildBreadcrumbJsonLd,

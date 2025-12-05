@@ -9,6 +9,33 @@ import {
 
 type StoreProduct = HttpTypes.StoreProduct
 
+const isStoreProduct = (value: unknown): value is StoreProduct => {
+  if (!value || typeof value !== "object") {
+    return false
+  }
+
+  const handle = (value as { handle?: unknown }).handle
+  return typeof handle === "string"
+}
+
+const extractProductsFromResponse = (response: unknown): StoreProduct[] => {
+  if (!response || typeof response !== "object") {
+    return []
+  }
+
+  const products = (response as { products?: unknown }).products
+  if (!Array.isArray(products)) {
+    return []
+  }
+
+  return products.filter(isStoreProduct)
+}
+
+const listProducts = async (query: HttpTypes.StoreProductListParams): Promise<StoreProduct[]> => {
+  const response = await storeClient.product.list(query)
+  return extractProductsFromResponse(response)
+}
+
 export const PRODUCT_LIST_FIELDS = [
   "id",
   "handle",
@@ -73,13 +100,12 @@ export const getCollectionProductsByHandle = unstable_cache(
         break
       }
 
-      const { products } = await storeClient.product.list({
+      const products = await listProducts({
         collection_id: collection.id,
         limit: pageLimit,
         offset,
         fields: PRODUCT_LIST_FIELDS,
-      })
-
+      } satisfies HttpTypes.StoreProductListParams)
       if (!products?.length) {
         break
       }
@@ -110,11 +136,10 @@ export const getCollectionProductsByHandle = unstable_cache(
 export const getHomepageProducts = unstable_cache(
   async (): Promise<StoreProduct[]> => {
     try {
-      const { products } = await storeClient.product.list({
+      return listProducts({
         limit: 16,
         fields: PRODUCT_DETAIL_FIELDS,
-      })
-      return products
+      } satisfies HttpTypes.StoreProductListParams)
     } catch (error) {
       console.error("[getHomepageProducts] Failed to load products", error)
       return []
@@ -127,11 +152,11 @@ export const getHomepageProducts = unstable_cache(
 export const getProductByHandle = unstable_cache(
   async (handle: string): Promise<StoreProduct | null> => {
     try {
-      const { products } = await storeClient.product.list({
+      const products = await listProducts({
         handle,
         limit: 1,
         fields: PRODUCT_DETAIL_FIELDS,
-      })
+      } satisfies HttpTypes.StoreProductListParams)
       return products[0] ?? null
     } catch (error) {
       console.error("[getProductByHandle] Failed to load product", error)
@@ -143,14 +168,13 @@ export const getProductByHandle = unstable_cache(
 )
 
 export const getProductsByCollection = unstable_cache(
-  async (collectionId: string, limit = 8): Promise<StoreProduct[]> => {
+  async (collectionId: string, limit: number = 8): Promise<StoreProduct[]> => {
     try {
-      const { products } = await storeClient.product.list({
+      return listProducts({
         collection_id: collectionId,
         limit,
         fields: PRODUCT_DETAIL_FIELDS,
-      })
-      return products
+      } satisfies HttpTypes.StoreProductListParams)
     } catch (error) {
       console.error("[getProductsByCollection] Failed to load products", error)
       return []
@@ -161,13 +185,12 @@ export const getProductsByCollection = unstable_cache(
 )
 
 export const getRecentProducts = unstable_cache(
-  async (limit = 8): Promise<StoreProduct[]> => {
+  async (limit: number = 8): Promise<StoreProduct[]> => {
     try {
-      const { products } = await storeClient.product.list({
+      return listProducts({
         limit,
         fields: PRODUCT_DETAIL_FIELDS,
-      })
-      return products
+      } satisfies HttpTypes.StoreProductListParams)
     } catch (error) {
       console.error("[getRecentProducts] Failed to load products", error)
       return []
@@ -193,12 +216,11 @@ export const getAllProductHandles = unstable_cache(
       // Medusa paginates products; loop until we exhaust the catalog.
       // We request moderate batches to avoid stressing the API during build time.
       for (;;) {
-        const { products } = await storeClient.product.list({
+        const products = await listProducts({
           limit: pageSize,
           offset,
           order: "created_at",
-        })
-
+        } satisfies HttpTypes.StoreProductListParams)
         if (!products?.length) {
           break
         }

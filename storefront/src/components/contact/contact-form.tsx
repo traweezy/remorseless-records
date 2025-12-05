@@ -6,6 +6,8 @@ import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PillDropdown, type PillDropdownOption } from "@/components/ui/pill-dropdown"
+import { cn } from "@/lib/ui/cn"
 import { siteMetadata } from "@/config/site"
 
 const contactSchema = z.object({
@@ -28,9 +30,19 @@ const defaultValues: ContactFormValues = {
   honeypot: "",
 }
 
+const fieldBaseClass =
+  "mt-1 w-full appearance-none rounded-2xl border border-border/60 bg-background/90 px-3.5 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus:border-destructive focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-destructive focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_hsl(var(--destructive)/0.55)]"
+
 const ContactForm = () => {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const reasonOptions: Array<PillDropdownOption<ContactFormValues["reason"]>> = [
+    { value: "booking", label: "Booking" },
+    { value: "press", label: "Press" },
+    { value: "collab", label: "Collab" },
+    { value: "other", label: "Other" },
+  ]
 
   const form = useForm({
     defaultValues,
@@ -145,27 +157,25 @@ const ContactForm = () => {
               ? undefined
               : "Select a reason",
         }}
-      >
-        {(field) => (
-          <label className="block text-sm text-muted-foreground">
-            Reason
-            <select
-              value={field.state.value}
-              onChange={(event) => field.handleChange(event.target.value as ContactFormValues["reason"])}
-              onBlur={field.handleBlur}
-              className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-destructive focus:ring-2 focus:ring-destructive/40"
-              aria-invalid={Boolean(field.state.meta.errors[0])}
-            >
-              <option value="booking">Booking</option>
-              <option value="press">Press</option>
-              <option value="collab">Collab</option>
-              <option value="other">Other</option>
-            </select>
-            {field.state.meta.errors[0] ? (
-              <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
-            ) : null}
-          </label>
-        )}
+        >
+          {(field) => (
+            <label className="block text-sm text-muted-foreground">
+              Reason
+              <PillDropdown
+                value={field.state.value}
+                options={reasonOptions}
+                onChange={(next) => field.handleChange(next)}
+                className="w-full"
+                buttonClassName="w-full"
+                align="start"
+                renderTriggerLabel={(option) => option.label}
+                renderOptionLabel={(option) => option.label}
+              />
+              {field.state.meta.errors[0] ? (
+                <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
+              ) : null}
+            </label>
+          )}
       </form.Field>
 
       <form.Field
@@ -187,7 +197,7 @@ const ContactForm = () => {
               }
               onBlur={field.handleBlur}
               rows={6}
-              className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-destructive focus:ring-2 focus:ring-destructive/40"
+              className={cn(fieldBaseClass, "resize-none rounded-2xl")}
               aria-invalid={Boolean(field.state.meta.errors[0])}
             />
             {field.state.meta.errors[0] ? (
