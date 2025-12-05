@@ -1,10 +1,8 @@
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
-    frontend-lint:
-      run: pnpm --filter remorseless-records-storefront run lint
-    backend-lint:
-      run: pnpm --filter backend run lint
+    qa-lint:
+      run: pnpm run qa:lint
 
 pre-push:
   parallel: false
