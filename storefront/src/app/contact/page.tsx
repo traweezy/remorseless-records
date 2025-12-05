@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   description: "Reach Remorseless Records for releases, distro, and press. Expect fast replies.",
 }
 
+// Avoid build-time prerender failures if external embeds or network hiccups occur.
+export const dynamic = "force-dynamic"
+
 const ContactPage = () => {
   const bandcampPath = siBandcamp.path
 
