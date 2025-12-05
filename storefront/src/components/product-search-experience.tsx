@@ -159,7 +159,10 @@ type ProductSearchExperienceProps = {
   genreFilters: GenreFilterSeed[]
 }
 
-const SORT_OPTIONS: Array<PillDropdownOption<ProductSortOption>> = [
+const SORT_OPTIONS: [
+  PillDropdownOption<ProductSortOption>,
+  ...Array<PillDropdownOption<ProductSortOption>>
+] = [
   {
     value: "title-asc",
     label: "Title · A → Z",

@@ -37,7 +37,10 @@ const ContactForm = () => {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const reasonOptions: Array<PillDropdownOption<ContactFormValues["reason"]>> = [
+  const reasonOptions: [
+    PillDropdownOption<ContactFormValues["reason"]>,
+    ...Array<PillDropdownOption<ContactFormValues["reason"]>>
+  ] = [
     { value: "booking", label: "Booking" },
     { value: "press", label: "Press" },
     { value: "collab", label: "Collab" },

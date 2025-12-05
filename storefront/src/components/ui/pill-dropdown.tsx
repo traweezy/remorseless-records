@@ -15,7 +15,7 @@ export type PillDropdownOption<TValue extends string> = {
 
 type PillDropdownProps<TValue extends string> = {
   value: TValue
-  options: Array<PillDropdownOption<TValue>>
+  options: [PillDropdownOption<TValue>, ...Array<PillDropdownOption<TValue>>]
   onChange: (value: TValue) => void
   className?: string
   buttonClassName?: string
@@ -39,10 +39,9 @@ export const PillDropdown = <TValue extends string>({
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  const fallback = options[0]
-  const activeOption = useMemo(
-    () => options.find((option) => option.value === value) ?? fallback,
-    [options, value, fallback]
+  const activeOption = useMemo<PillDropdownOption<TValue>>(
+    () => options.find((option) => option.value === value) ?? options[0],
+    [options, value]
   )
 
   useEffect(() => {

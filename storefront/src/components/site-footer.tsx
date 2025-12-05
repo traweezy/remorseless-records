@@ -48,7 +48,7 @@ const FOOTER_LINKS: FooterLinkSection[] = [
   },
 ]
 
-const SocialIcon = ({ path }: { path?: string }) => {
+const SocialIcon = ({ path }: { path: string | undefined }) => {
   if (!path) {
     return null
   }
