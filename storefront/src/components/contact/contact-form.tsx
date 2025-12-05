@@ -168,8 +168,6 @@ const ContactForm = () => {
                 className="w-full"
                 buttonClassName="w-full"
                 align="start"
-                renderTriggerLabel={(option) => option.label}
-                renderOptionLabel={(option) => option.label}
               />
               {field.state.meta.errors[0] ? (
                 <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>

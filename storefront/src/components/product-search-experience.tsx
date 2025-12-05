@@ -566,25 +566,6 @@ const SortDropdown = ({
         onChange(next)
         focusSearch()
       }}
-      renderTriggerLabel={(option) => (
-        <>
-          {option.Icon ? <option.Icon className="h-4 w-4 text-foreground" aria-hidden /> : null}
-          {option.label}
-        </>
-      )}
-      renderOptionLabel={(option) => (
-        <span className="flex flex-col text-left leading-tight">
-          <span className="flex items-center gap-2">
-            {option.Icon ? <option.Icon className="h-4 w-4 text-foreground" aria-hidden /> : null}
-            {option.label}
-          </span>
-          {option.helper ? (
-            <span className="text-[0.6rem] uppercase tracking-[0.2rem] text-muted-foreground/80">
-              {option.helper}
-            </span>
-          ) : null}
-        </span>
-      )}
     />
   )
 }
