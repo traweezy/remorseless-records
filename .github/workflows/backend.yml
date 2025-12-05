@@ -9,6 +9,10 @@ on:
     - cron: "0 4 * * 1"
   workflow_dispatch:
 
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/remorseless
   JWT_SECRET: dummy_jwt_secret
@@ -19,12 +23,15 @@ env:
   STORE_CORS: http://localhost:3000
   STRIPE_API_KEY: sk_test_dummy
   STRIPE_WEBHOOK_SECRET: whsec_dummy
+  NODE_ENV: test
+  CI: true
 
 jobs:
   dependency-review:
     if: ${{ contains(fromJson('["pull_request","pull_request_target","merge_group"]'), github.event_name) }}
     runs-on: ubuntu-latest
     name: Dependency Review (push/PR)
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -35,59 +42,90 @@ jobs:
           fail-on-severity: critical
 
   security:
-    name: Security & Audit (detector, trivy, audit)
+    name: Security & Audit (Shai-Hulud, pnpm audit)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@v2
         with:
+          # When you are ready, switch this to `egress-policy: block` with an allowlist.
           egress-policy: audit
+
       - uses: actions/checkout@v4
+
       - name: Shai-Hulud 2.0 Detector
         uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
         with:
           fail-on-critical: true
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node with pnpm cache
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.24.0
           run_install: false
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Dependency audit
         run: pnpm audit --prod --audit-level=moderate
 
   secrets:
     name: Secret Scan (TruffleHog)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: security
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: TruffleHog
+
+      - name: TruffleHog (verified only)
         uses: trufflesecurity/trufflehog@v3.91.2
         with:
           extra_args: --only-verified
 
   typecheck:
-    name: Typecheck (backend)
+    name: Typecheck + Trivy FS (backend)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: security
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node with pnpm cache
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v4
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10.24.0
           run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Trivy FS scan (repo)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0
         with:
           scan-type: fs
           ignore-unfixed: true
@@ -95,87 +133,140 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
           skip-dirs: node_modules
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+
       - name: Typecheck backend
         run: pnpm --filter backend exec tsc --noEmit
 
   lint:
     name: Lint (backend)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: security
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.24.0
-          run_install: false
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: ESLint (backend)
-        run: pnpm --filter backend run lint
 
-  unit:
-    name: Unit Tests (backend)
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Setup Node with pnpm cache
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v4
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10.24.0
           run_install: false
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Run unit tests (if present)
-        run: pnpm --filter backend run test --if-present
+
+      - name: ESLint (backend)
+        run: pnpm --filter backend run lint -- --max-warnings=0
 
   codeql:
-    name: CodeQL Analyze (JS/TS)
+    name: CodeQL Analyze (JS/TS, security-extended)
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: security
     permissions:
       actions: read
       contents: read
       security-events: write
-    needs: security
     env:
       CODEQL_ACTION_CACHE_SALT: ${{ github.run_id }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: javascript
+          queries: security-extended
+
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
+
+  unit:
+    name: Unit Tests (backend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [lint, typecheck, codeql, secrets]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests (if present)
+        run: pnpm --filter backend run test --if-present
+
+      # Optional: upload coverage from backend unit tests
+      # - name: Upload coverage artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: coverage-backend
+      #     path: path/to/coverage
 
   build:
     name: Build (backend)
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, codeql, secrets]
+    timeout-minutes: 30
+    # Only build if all checks and unit tests passed
+    needs: [unit]
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node with pnpm cache
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v4
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10.24.0
           run_install: false
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Build backend
         run: pnpm --filter backend run build
+
+      # Optional: upload built backend artifact for a later deploy workflow
+      # - name: Upload backend build artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: backend-build
+      #     path: path/to/backend/dist
