@@ -36,9 +36,14 @@ const dynamicRemotePatterns: RemotePattern[] = [
   parseRemotePattern(process.env.NEXT_PUBLIC_CDN_HOST),
 ].filter((pattern): pattern is RemotePattern => Boolean(pattern))
 
+const BUILD_YEAR = new Date().getUTCFullYear().toString()
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_BUILD_YEAR: BUILD_YEAR,
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

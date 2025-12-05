@@ -7,6 +7,9 @@ import { CART_COOKIE, getCartById } from "@/lib/cart"
 
 export const GET = async (request: NextRequest): Promise<Response> => {
   try {
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return NextResponse.json({ cart: null })
+    }
     noStore()
     const cartId = request.cookies.get(CART_COOKIE)?.value
     const cart = cartId ? await getCartById(cartId) : null
