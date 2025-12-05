@@ -37,7 +37,10 @@ const dynamicRemotePatterns: RemotePattern[] = [
 ].filter((pattern): pattern is RemotePattern => Boolean(pattern))
 
 const BUILD_YEAR = new Date().getUTCFullYear().toString()
-const enableReactCompiler = process.env.ENABLE_REACT_COMPILER === "true"
+const reactCompilerExplicitlyDisabled =
+  process.env.ENABLE_REACT_COMPILER === "false" ||
+  process.env.DISABLE_REACT_COMPILER === "true"
+const enableReactCompiler = !reactCompilerExplicitlyDisabled
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
