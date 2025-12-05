@@ -195,6 +195,48 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   const handle = summary.handle?.trim() ?? ""
 
+  useEffect(() => {
+    if (!handle) {
+      return
+    }
+
+    const node = cardRef.current
+    if (!node) {
+      return
+    }
+
+    const prefetch = () => {
+      prefetchProductDetail()
+    }
+
+    if (typeof window === "undefined") {
+      return
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      prefetch()
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            prefetch()
+            observer.disconnect()
+          }
+        })
+      },
+      { rootMargin: "240px" }
+    )
+
+    observer.observe(node)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [handle, prefetchProductDetail])
+
   if (!handle.length) {
     if (process.env.NODE_ENV !== "production") {
       console.warn(
@@ -268,48 +310,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     prefetchProductDetail()
     setQuickShopOpen(true)
   }
-
-  useEffect(() => {
-    if (!handle) {
-      return
-    }
-
-    const node = cardRef.current
-    if (!node) {
-      return
-    }
-
-    const prefetch = () => {
-      prefetchProductDetail()
-    }
-
-    if (typeof window === "undefined") {
-      return
-    }
-
-    if (!("IntersectionObserver" in window)) {
-      prefetch()
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            prefetch()
-            observer.disconnect()
-          }
-        })
-      },
-      { rootMargin: "240px" }
-    )
-
-    observer.observe(node)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [handle, prefetchProductDetail])
 
   if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
     if (!summary.genres.length) {
