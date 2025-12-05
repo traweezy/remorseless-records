@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import type { HttpTypes } from "@medusajs/types"
 import ProductSearchExperience from "@/components/product-search-experience"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
@@ -7,6 +8,7 @@ import { getMetalGenreCategories } from "@/lib/data/categories"
 import { getFullCatalogHits } from "@/lib/catalog/all"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
+import type { ProductSearchHit } from "@/types/product"
 
 const catalogCanonical = `${siteMetadata.siteUrl}/catalog`
 
@@ -31,13 +33,7 @@ export const metadata: Metadata = {
 }
 
 const ProductsPage = async () => {
-  const [catalogHits, featured, newest, staff, genreFilters] = await Promise.all([
-    getFullCatalogHits(),
-    getCollectionProductsByHandle("featured"),
-    getCollectionProductsByHandle("new-releases"),
-    getCollectionProductsByHandle("staff-picks"),
-    getMetalGenreCategories(),
-  ])
+  const [catalogHits, featured, newest, staff, genreFilters] = await loadCatalogData()
 
   const curatedHits = [...featured, ...newest, ...staff]
     .map((product) => mapStoreProductToSearchHit(product))
@@ -85,3 +81,52 @@ const ProductsPage = async () => {
 }
 
 export default ProductsPage
+
+const loadCatalogData = async () => {
+  const results: readonly [
+    PromiseSettledResult<ProductSearchHit[]>,
+    PromiseSettledResult<HttpTypes.StoreProduct[]>,
+    PromiseSettledResult<HttpTypes.StoreProduct[]>,
+    PromiseSettledResult<HttpTypes.StoreProduct[]>,
+    PromiseSettledResult<Awaited<ReturnType<typeof getMetalGenreCategories>>>
+  ] = await Promise.allSettled([
+    getFullCatalogHits(),
+    getCollectionProductsByHandle("featured"),
+    getCollectionProductsByHandle("new-releases"),
+    getCollectionProductsByHandle("staff-picks"),
+    getMetalGenreCategories(),
+  ])
+
+  const [catalogResult, featuredResult, newestResult, staffResult, genreResult] = results
+
+  function resolveOr<T>(
+    entry: PromiseSettledResult<T>,
+    label: string,
+    fallback: T
+  ): T {
+    if (entry.status === "fulfilled") {
+      return entry.value
+    }
+
+    const reason: unknown =
+      entry.status === "rejected" ? entry.reason : "unknown"
+
+    console.error("[ProductsPage] falling back for dataset", {
+      label,
+      reason,
+    })
+    return fallback
+  }
+
+  return [
+    resolveOr<ProductSearchHit[]>(catalogResult, "catalog", []),
+    resolveOr(featuredResult, "featured", [] as HttpTypes.StoreProduct[]),
+    resolveOr(newestResult, "new-releases", [] as HttpTypes.StoreProduct[]),
+    resolveOr(staffResult, "staff-picks", [] as HttpTypes.StoreProduct[]),
+    resolveOr(
+      genreResult,
+      "genres",
+      [] as Awaited<ReturnType<typeof getMetalGenreCategories>>
+    ),
+  ] as const
+}
