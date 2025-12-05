@@ -24,17 +24,26 @@ type ProductModule = {
 
 const PRODUCT_RELATIONS = [
   "collection",
-  "tags",
-  "images",
-  "metadata",
-  "variants",
-  "variants.options",
-  "variants.options.option",
-  "options",
-  "options.values",
   "categories",
   "categories.parent_category",
   "categories.parent_category.parent_category",
+]
+
+const PRODUCT_SELECT = [
+  "id",
+  "handle",
+  "title",
+  "metadata",
+  "collection_id",
+  "collection.id",
+  "collection.title",
+  "categories.id",
+  "categories.handle",
+  "categories.name",
+  "categories.parent_category_id",
+  "categories.parent_category.id",
+  "categories.parent_category.handle",
+  "categories.parent_category.name",
 ]
 
 type ProductSlug = {
@@ -52,6 +61,54 @@ const slugify = (value: string | null | undefined): string | null => {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
   return normalized.length ? normalized : null
+}
+
+const normalizeHandle = (value: string | null | undefined): string | null => {
+  if (typeof value !== "string") {
+    return null
+  }
+  const trimmed = value.trim().toLowerCase()
+  return trimmed.length ? trimmed : null
+}
+
+const findArtistCategory = (
+  categories: Array<{ name?: string | null; handle?: string | null; parent_category?: any }> | null | undefined
+): { name: string; handle: string } | null => {
+  if (!categories?.length) {
+    return null
+  }
+
+  for (const category of categories) {
+    let current: any | null | undefined = category
+    let hasArtistAncestor = false
+
+    while (current) {
+      const handle = normalizeHandle(current.handle)
+      if (handle === "artists") {
+        hasArtistAncestor = true
+        break
+      }
+      current = current.parent_category
+    }
+
+    if (!hasArtistAncestor) {
+      continue
+    }
+
+    const handle = normalizeHandle(category.handle)
+    if (!handle) {
+      continue
+    }
+
+    const name =
+      typeof category.name === "string" && category.name.trim().length
+        ? category.name.trim()
+        : handle
+
+    return { name, handle }
+  }
+
+  return null
 }
 
 const buildProductSlugParts = (product: StoreProduct): ProductSlug => {
@@ -91,6 +148,8 @@ const buildProductSlugParts = (product: StoreProduct): ProductSlug => {
       ? ((product.collection as { title?: unknown }).title as string)
       : null
 
+  const artistCategory = findArtistCategory(product.categories ?? null)
+
   const parseFromTitle = (): { artist: string; album: string } => {
     if (title.includes(" - ")) {
       const [maybeArtistRaw, ...rest] = title.split(" - ")
@@ -105,10 +164,11 @@ const buildProductSlugParts = (product: StoreProduct): ProductSlug => {
   }
 
   const parsedTitle = parseFromTitle()
-  const artist = metaArtist ?? parsedTitle.artist ?? "Remorseless Records"
+  const artist = metaArtist ?? artistCategory?.name ?? parsedTitle.artist ?? "Remorseless Records"
   const album = metaAlbum ?? parsedTitle.album ?? artist
 
-  const artistSlug = slugify(metaArtistSlug) ?? slugify(artist) ?? ""
+  const artistSlug =
+    slugify(metaArtistSlug) ?? slugify(artistCategory?.handle ?? artist) ?? ""
   const albumSlug = slugify(metaAlbumSlug) ?? slugify(album) ?? ""
 
   return { artistSlug, albumSlug }
@@ -124,7 +184,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
 
   const [productList] = await productModule.listAndCountProducts(
     { handle },
-    { relations: PRODUCT_RELATIONS, take: 1 }
+    { relations: PRODUCT_RELATIONS, select: PRODUCT_SELECT, take: 1 }
   )
 
   const product = productList.at(0)
@@ -152,7 +212,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
   if (collectionId) {
     const [fromCollection] = await productModule.listAndCountProducts(
       { collection_id: collectionId },
-      { relations: PRODUCT_RELATIONS, take: 16 }
+      { relations: PRODUCT_RELATIONS, select: PRODUCT_SELECT, take: 16 }
     )
     append(fromCollection)
   }
@@ -165,7 +225,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
 
   const [recent] = await productModule.listAndCountProducts(
     {},
-    { relations: PRODUCT_RELATIONS, take: 1000 }
+    { relations: PRODUCT_RELATIONS, select: PRODUCT_SELECT, take: 1000 }
   )
 
   const sameArtist: StoreProduct[] = []

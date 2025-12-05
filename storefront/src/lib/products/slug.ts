@@ -7,6 +7,7 @@ type SlugSource = {
   metadata?: MaybeRecord
   collectionTitle?: string | null
   handle?: string | null
+  categories?: MaybeRecord
 }
 
 export type ProductSlug = {
@@ -33,6 +34,60 @@ const coerceString = (value: unknown): string | null => {
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim()
   }
+  return null
+}
+
+const normalizeHandle = (value: string | null | undefined): string | null => {
+  if (typeof value !== "string") {
+    return null
+  }
+  const trimmed = value.trim().toLowerCase()
+  return trimmed.length ? trimmed : null
+}
+
+type CategoryRecord = {
+  name?: string | null
+  handle?: string | null
+  parent_category?: CategoryRecord | null
+}
+
+const hasArtistAncestor = (category: CategoryRecord | null | undefined): boolean => {
+  let current = category
+  let guard = 0
+
+  while (current && guard < 10) {
+    const handle = normalizeHandle(current.handle)
+    if (handle === "artists") {
+      return true
+    }
+    current = current.parent_category ?? null
+    guard += 1
+  }
+
+  return false
+}
+
+const selectArtistCategory = (
+  categories: CategoryRecord[] | null | undefined
+): { name: string; handle: string } | null => {
+  if (!categories?.length) {
+    return null
+  }
+
+  for (const category of categories) {
+    if (!hasArtistAncestor(category)) {
+      continue
+    }
+
+    const handle = normalizeHandle(category.handle)
+    if (!handle) {
+      continue
+    }
+
+    const name = coerceString(category.name) ?? handle
+    return { name, handle }
+  }
+
   return null
 }
 
@@ -127,6 +182,10 @@ export const buildProductSlugParts = (
       ? coerceString(source.handle)
       : coerceString((source as { handle?: string }).handle)
 
+  const categories = Array.isArray((source as { categories?: unknown }).categories)
+    ? ((source as { categories?: CategoryRecord[] | null | undefined }).categories ?? null)
+    : null
+
   const metaArtist =
     coerceString(metadata?.artist) ??
     coerceString(metadata?.Artist) ??
@@ -144,6 +203,8 @@ export const buildProductSlugParts = (
     metadata?.album_slug ?? metadata?.albumSlug ?? metadata?.albumSlug
   )
 
+  const artistCategory = selectArtistCategory(categories)
+
   const { artist, album } = (() => {
     if (metaArtist && metaAlbum) {
       return { artist: metaArtist, album: metaAlbum }
@@ -158,10 +219,12 @@ export const buildProductSlugParts = (
     return { artist: fallback, album: fallback }
   })()
 
+  const artistSlugBase = artistCategory?.handle ?? metaArtistSlug ?? artist
+
   return {
     artist,
     album,
-    artistSlug: metaArtistSlug ? slugifySegment(metaArtistSlug) : slugifySegment(artist),
+    artistSlug: slugifySegment(artistSlugBase),
     albumSlug: metaAlbumSlug ? slugifySegment(metaAlbumSlug) : slugifySegment(album),
   }
 }
