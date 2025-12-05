@@ -72,12 +72,17 @@ export const PRODUCT_DETAIL_FIELDS = [
 
 const getCollectionByHandle = unstable_cache(
   async (handle: string): Promise<HttpTypes.StoreCollection | null> => {
-    const { collections } = await storeClient.collection.list({
-      handle,
-      limit: 1,
-    })
+    try {
+      const { collections } = await storeClient.collection.list({
+        handle,
+        limit: 1,
+      })
 
-    return collections[0] ?? null
+      return collections[0] ?? null
+    } catch (error) {
+      console.error(`[getCollectionByHandle:${handle}] Failed to load collection`, error)
+      return null
+    }
   },
   ["collection-by-handle"],
   { revalidate: 1800, tags: ["collections"] }
