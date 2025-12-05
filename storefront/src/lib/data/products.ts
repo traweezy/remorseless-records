@@ -85,51 +85,56 @@ const getCollectionByHandle = unstable_cache(
 
 export const getCollectionProductsByHandle = unstable_cache(
   async (handle: string, limit?: number): Promise<StoreProduct[]> => {
-    const collection = await getCollectionByHandle(handle)
-    if (!collection?.id) {
+    try {
+      const collection = await getCollectionByHandle(handle)
+      if (!collection?.id) {
+        return []
+      }
+
+      const collected: StoreProduct[] = []
+      const target = typeof limit === "number" && limit > 0 ? limit : Number.POSITIVE_INFINITY
+      const pageSize = Number.isFinite(target) ? Math.min(target, 50) : 50
+      let offset = 0
+
+      // Medusa paginates collections; iterate until we load every product (or reach the caller-imposed ceiling).
+      for (;;) {
+        const pageLimit = Number.isFinite(target) ? Math.min(pageSize, target - collected.length) : pageSize
+        if (pageLimit <= 0) {
+          break
+        }
+
+        const products = await listProducts({
+          collection_id: collection.id,
+          limit: pageLimit,
+          offset,
+          fields: PRODUCT_LIST_FIELDS,
+        } satisfies HttpTypes.StoreProductListParams)
+        if (!products?.length) {
+          break
+        }
+
+        const validProducts = products.filter(
+          (product): product is StoreProduct =>
+            typeof product.handle === "string" && product.handle.trim().length > 0
+        )
+        collected.push(...validProducts)
+
+        if (collected.length >= target) {
+          break
+        }
+
+        if (products.length < pageLimit) {
+          break
+        }
+
+        offset += pageLimit
+      }
+
+      return collected
+    } catch (error) {
+      console.error(`[getCollectionProductsByHandle:${handle}] Failed to load`, error)
       return []
     }
-
-    const collected: StoreProduct[] = []
-    const target = typeof limit === "number" && limit > 0 ? limit : Number.POSITIVE_INFINITY
-    const pageSize = Number.isFinite(target) ? Math.min(target, 50) : 50
-    let offset = 0
-
-    // Medusa paginates collections; iterate until we load every product (or reach the caller-imposed ceiling).
-    for (;;) {
-      const pageLimit = Number.isFinite(target) ? Math.min(pageSize, target - collected.length) : pageSize
-      if (pageLimit <= 0) {
-        break
-      }
-
-      const products = await listProducts({
-        collection_id: collection.id,
-        limit: pageLimit,
-        offset,
-        fields: PRODUCT_LIST_FIELDS,
-      } satisfies HttpTypes.StoreProductListParams)
-      if (!products?.length) {
-        break
-      }
-
-      const validProducts = products.filter(
-        (product): product is StoreProduct =>
-          typeof product.handle === "string" && product.handle.trim().length > 0
-      )
-      collected.push(...validProducts)
-
-      if (collected.length >= target) {
-        break
-      }
-
-      if (products.length < pageLimit) {
-        break
-      }
-
-      offset += pageLimit
-    }
-
-    return collected
   },
   ["collection-products-by-handle"],
   { revalidate: 900, tags: ["products", "collections"] }
