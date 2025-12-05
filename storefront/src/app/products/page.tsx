@@ -12,6 +12,19 @@ import type { ProductSearchHit } from "@/types/product"
 
 const catalogCanonical = `${siteMetadata.siteUrl}/catalog`
 
+const buildCatalogItemList = (hits: ProductSearchHit[], origin: string) =>
+  buildItemListJsonLd(
+    "Remorseless Catalog",
+    hits.map((hit) => ({
+      name: hit.title,
+      url: `${origin}/products/${
+        hit.handle?.trim()?.length
+          ? hit.handle.trim()
+          : `${hit.slug.artistSlug}-${hit.slug.albumSlug}`
+      }`,
+    }))
+  )
+
 export const metadata: Metadata = {
   title: "Catalog",
   description:
@@ -33,44 +46,15 @@ export const metadata: Metadata = {
 }
 
 const ProductsPage = async () => {
-  const [catalogHits, featured, newest, staff, genreFilters] = await loadCatalogData()
-
-  const curatedHits = [...featured, ...newest, ...staff]
-    .map((product) => mapStoreProductToSearchHit(product))
-  const seenHandles = new Set(
-    curatedHits
-      .map((hit) => hit.handle?.trim().toLowerCase())
-      .filter((handle): handle is string => Boolean(handle))
-  )
-
-  const combinedHits = [...curatedHits]
-  catalogHits.forEach((hit) => {
-    const handleKey = hit.handle?.trim().toLowerCase()
-    if (!handleKey || seenHandles.has(handleKey)) {
-      return
-    }
-    seenHandles.add(handleKey)
-    combinedHits.push(hit)
-  })
-
   const origin = siteMetadata.siteUrl
+  const { hits, genreFilters } = await loadCatalogViewModel()
 
-  const catalogStructuredData = buildItemListJsonLd(
-    "Remorseless Catalog",
-    combinedHits.map((hit) => ({
-      name: hit.title,
-      url: `${origin}/products/${
-        hit.handle?.trim()?.length
-          ? hit.handle.trim()
-          : `${hit.slug.artistSlug}-${hit.slug.albumSlug}`
-      }`,
-    }))
-  )
+  const catalogStructuredData = buildCatalogItemList(hits, origin)
 
   return (
     <>
       <ProductSearchExperience
-        initialHits={combinedHits}
+        initialHits={hits}
         initialSort="title-asc"
         genreFilters={genreFilters}
       />
@@ -81,6 +65,41 @@ const ProductsPage = async () => {
 }
 
 export default ProductsPage
+
+const loadCatalogViewModel = async (): Promise<{
+  hits: ProductSearchHit[]
+  genreFilters: Awaited<ReturnType<typeof getMetalGenreCategories>>
+}> => {
+  try {
+    const [catalogHits, featured, newest, staff, loadedGenres] = await loadCatalogData()
+
+    const curatedHits = [...featured, ...newest, ...staff].map((product) =>
+      mapStoreProductToSearchHit(product)
+    )
+    const seenHandles = new Set(
+      curatedHits
+        .map((hit) => hit.handle?.trim().toLowerCase())
+        .filter((handle): handle is string => Boolean(handle))
+    )
+
+    const combinedHits = [...curatedHits]
+    catalogHits.forEach((hit) => {
+      const handleKey = hit.handle?.trim().toLowerCase()
+      if (!handleKey || seenHandles.has(handleKey)) {
+        return
+      }
+      seenHandles.add(handleKey)
+      combinedHits.push(hit)
+    })
+
+    return { hits: combinedHits, genreFilters: loadedGenres }
+  } catch (error) {
+    console.error("[ProductsPage] rendering fallback catalog view", {
+      reason: error instanceof Error ? error.message : error,
+    })
+    return { hits: [], genreFilters: [] }
+  }
+}
 
 const loadCatalogData = async () => {
   async function safe<T>(
