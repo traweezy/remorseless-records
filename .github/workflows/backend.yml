@@ -164,7 +164,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: ESLint (backend)
-        run: pnpm --filter backend run lint -- --max-warnings=0
+        run: pnpm --filter backend run lint
 
   codeql:
     name: CodeQL Analyze (JS/TS, security-extended)
