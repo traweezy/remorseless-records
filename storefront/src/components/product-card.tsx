@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, type MouseEvent } from "react"
+import { useEffect, useRef, useState, type MouseEvent } from "react"
 
 import type { HttpTypes } from "@medusajs/types"
 import { ShoppingCart } from "lucide-react"
@@ -184,6 +184,7 @@ type ProductCardProps = {
 export const ProductCard = ({ product }: ProductCardProps) => {
   const router = useRouter()
   const [quickShopOpen, setQuickShopOpen] = useState(false)
+  const cardRef = useRef<HTMLDivElement | null>(null)
   const prefetchProductDetail = useProductDetailPrefetch(
     isStoreProduct(product) ? product.handle : product.handle
   )
@@ -268,6 +269,48 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     setQuickShopOpen(true)
   }
 
+  useEffect(() => {
+    if (!handle) {
+      return
+    }
+
+    const node = cardRef.current
+    if (!node) {
+      return
+    }
+
+    const prefetch = () => {
+      prefetchProductDetail()
+    }
+
+    if (typeof window === "undefined") {
+      return
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      prefetch()
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            prefetch()
+            observer.disconnect()
+          }
+        })
+      },
+      { rootMargin: "240px" }
+    )
+
+    observer.observe(node)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [handle, prefetchProductDetail])
+
   if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
     if (!summary.genres.length) {
       console.warn("[ProductCard] missing genres", {
@@ -287,6 +330,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     <>
       <div
         className="group relative h-full"
+        ref={cardRef}
         onPointerEnter={triggerPrefetch}
         onFocusCapture={triggerPrefetch}
       >

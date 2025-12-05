@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 import { storeClient } from "@/lib/medusa"
+import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
 
 type RouteParams = {
   params: Promise<{
@@ -27,6 +28,7 @@ export const GET = async (
     const { products } = await storeClient.product.list({
       handle,
       limit: 1,
+      fields: PRODUCT_DETAIL_FIELDS,
     })
 
     const product = products[0]
