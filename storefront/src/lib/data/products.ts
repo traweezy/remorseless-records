@@ -6,7 +6,6 @@ import {
   buildProductSlugParts,
   type ProductSlug,
 } from "@/lib/products/slug"
-import { safeLogError } from "@/lib/logging"
 
 type StoreProduct = HttpTypes.StoreProduct
 
@@ -81,7 +80,7 @@ const getCollectionByHandle = unstable_cache(
 
       return collections[0] ?? null
     } catch (error) {
-      safeLogError(`[getCollectionByHandle:${handle}] Failed to load collection`, error)
+      console.error(`[getCollectionByHandle:${handle}] Failed to load collection`, error)
       return null
     }
   },
@@ -138,7 +137,7 @@ export const getCollectionProductsByHandle = unstable_cache(
 
       return collected
     } catch (error) {
-      safeLogError(`[getCollectionProductsByHandle:${handle}] Failed to load`, error)
+      console.error(`[getCollectionProductsByHandle:${handle}] Failed to load`, error)
       return []
     }
   },
@@ -154,7 +153,7 @@ export const getHomepageProducts = unstable_cache(
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)
     } catch (error) {
-      safeLogError("[getHomepageProducts] Failed to load products", error)
+      console.error("[getHomepageProducts] Failed to load products", error)
       return []
     }
   },
@@ -172,7 +171,7 @@ export const getProductByHandle = unstable_cache(
       } satisfies HttpTypes.StoreProductListParams)
       return products[0] ?? null
     } catch (error) {
-      safeLogError("[getProductByHandle] Failed to load product", error)
+      console.error("[getProductByHandle] Failed to load product", error)
       return null
     }
   },
@@ -189,7 +188,7 @@ export const getProductsByCollection = unstable_cache(
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)
     } catch (error) {
-      safeLogError("[getProductsByCollection] Failed to load products", error)
+      console.error("[getProductsByCollection] Failed to load products", error)
       return []
     }
   },
@@ -205,7 +204,7 @@ export const getRecentProducts = unstable_cache(
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)
     } catch (error) {
-      safeLogError("[getRecentProducts] Failed to load products", error)
+      console.error("[getRecentProducts] Failed to load products", error)
       return []
     }
   },
@@ -268,7 +267,7 @@ export const getAllProductHandles = unstable_cache(
 
       return handles
     } catch (error) {
-      safeLogError("[getAllProductHandles] Failed to load products", error)
+      console.error("[getAllProductHandles] Failed to load products", error)
       return []
     }
   },

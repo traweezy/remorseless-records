@@ -7,7 +7,6 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { addToCart } from "@/lib/actions/add-to-cart"
 import { formatAmount } from "@/lib/money"
-import { safeLogError } from "@/lib/logging"
 import { cn } from "@/lib/ui/cn"
 import type { VariantOption } from "@/types/product"
 
@@ -90,7 +89,7 @@ const ProductVariantSelector = ({
         })
         toast.success(`${productTitle} added to cart.`)
       } catch (error) {
-        safeLogError("Failed to add item to cart", error)
+        console.error(error)
         setOptimisticVariantId(null)
         toast.error("Failed to add to cart. Please try again.")
       }

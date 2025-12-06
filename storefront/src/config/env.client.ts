@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { safeLogError } from "@/lib/logging"
 
 const clientSchema = z.object({
   siteUrl: z.string().url(),
@@ -44,7 +43,8 @@ const rawEnv = {
 const parsed = clientSchema.safeParse(rawEnv)
 
 if (!parsed.success) {
-  safeLogError("❌ Invalid public environment variables", parsed.error.flatten().fieldErrors)
+  console.error("❌ Invalid public environment variables")
+  console.error(parsed.error.flatten().fieldErrors)
   throw new Error("Client environment variables validation failed")
 }
 

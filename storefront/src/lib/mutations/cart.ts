@@ -5,7 +5,6 @@ import { toast } from "sonner"
 
 import { removeCartItem } from "@/lib/actions/remove-cart-item"
 import { updateCartItemQuantity } from "@/lib/actions/update-cart-item"
-import { safeLogError } from "@/lib/logging"
 
 import type { StoreCart } from "../query/cart"
 import { cartQueryKey } from "../query/cart"
@@ -65,7 +64,7 @@ export const useUpdateCartItemQuantityMutation = () => {
       if (context?.previousCart !== undefined) {
         queryClient.setQueryData(cartQueryKey(), context.previousCart)
       }
-      safeLogError("Failed to update cart item quantity", error)
+      console.error("Failed to update cart item quantity", error)
       toast.error("Failed to update quantity. Please try again.")
     },
     onSuccess: (cart) => {
@@ -94,7 +93,7 @@ export const useRemoveCartItemMutation = () => {
       if (context?.previousCart !== undefined) {
         queryClient.setQueryData(cartQueryKey(), context.previousCart)
       }
-      safeLogError("Failed to remove cart item", error)
+      console.error("Failed to remove cart item", error)
       toast.error("Failed to remove item. Please try again.")
     },
     onSuccess: (cart) => {
@@ -106,3 +105,4 @@ export const useRemoveCartItemMutation = () => {
     },
   })
 }
+
