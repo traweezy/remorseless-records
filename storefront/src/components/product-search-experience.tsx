@@ -173,11 +173,12 @@ type ProductSearchExperienceProps = {
   genreFilters: GenreFilterSeed[]
 }
 
-const rowVariants = {
-  initial: { opacity: 0, y: 8 },
+const CARD_MOTION_PROPS = {
+  initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-}
+  exit: { opacity: 0, y: -4 },
+  transition: { duration: 0.15, ease: "easeOut" },
+} as const
 
 const SORT_OPTIONS: [
   PillDropdownOption<ProductSortOption>,
@@ -1428,35 +1429,28 @@ const ProductSearchExperience = ({
                           paddingBottom: columns > 2 ? 16 : 12,
                         }}
                       >
-                        <motion.div
-                          variants={rowVariants}
-                          initial="initial"
-                          animate="animate"
-                          exit="exit"
-                          transition={{ duration: 0.15, ease: "easeOut" }}
+                        <div
+                          className="grid gap-6"
+                          style={gridTemplateStyle}
                         >
-                          <div
-                            className="grid gap-6"
-                            style={gridTemplateStyle}
-                          >
-                            {Array.from({ length: columns }).map((_, columnIdx) => {
-                              const globalIndex = startIndex + columnIdx
-                              const product = deferredResults[globalIndex]
+                          {Array.from({ length: columns }).map((_, columnIdx) => {
+                            const globalIndex = startIndex + columnIdx
+                            const product = deferredResults[globalIndex]
 
-                              if (product) {
-                                return (
-                                  <div
-                                    key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
-                                  >
-                                    <ProductCard product={product} />
-                                  </div>
-                                )
-                              }
+                            if (product) {
+                              return (
+                                <motion.div
+                                  key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
+                                  {...CARD_MOTION_PROPS}
+                                >
+                                  <ProductCard product={product} />
+                                </motion.div>
+                              )
+                            }
 
-                              return <div key={`spacer-${globalIndex}`} />
-                            })}
-                          </div>
-                        </motion.div>
+                            return <div key={`spacer-${globalIndex}`} />
+                          })}
+                        </div>
                       </div>
                     )
                   })}
