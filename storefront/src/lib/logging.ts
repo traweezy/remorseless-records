@@ -25,6 +25,11 @@ export const safeLogError = (message: string, payload?: LogPayload): void => {
       process.stderr.write(line)
       return
     }
+
+    if (typeof console !== "undefined" && typeof console.log === "function") {
+      console.log(line)
+      return
+    }
   } catch {
     // Ignore logging failures entirely to avoid masking the original error.
   }
