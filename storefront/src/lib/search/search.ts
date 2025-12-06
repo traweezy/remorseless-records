@@ -1,5 +1,9 @@
 import type { FacetMap } from "@/lib/search/normalize"
-import { extractFacetMaps, normalizeSearchHit } from "@/lib/search/normalize"
+import {
+  extractFacetMaps,
+  normalizeFormatValue,
+  normalizeSearchHit,
+} from "@/lib/search/normalize"
 import type { ProductSearchHit } from "@/types/product"
 import type { Filter, Index, MeiliSearch, SearchResponse } from "meilisearch"
 
@@ -109,6 +113,18 @@ const buildFilter = (
   const filterExpression = clauses.length ? (clauses.join(" AND ") as Filter) : undefined
 
   return { filterExpression, postFilters }
+}
+
+const canonicalizeFormatFacets = (facet: FacetMap): FacetMap => {
+  const canonical: FacetMap = {}
+  Object.entries(facet).forEach(([rawKey, count]) => {
+    const normalized = normalizeFormatValue(rawKey)
+    if (!normalized) {
+      return
+    }
+    canonical[normalized] = (canonical[normalized] ?? 0) + count
+  })
+  return canonical
 }
 
 const filterHitsClient = (
@@ -364,9 +380,11 @@ export const searchProductsWithClient = async (
     metalGenres: Object.keys(facetsFromIndex.metalGenres).length
       ? facetsFromIndex.metalGenres
       : fallbackFacets.metalGenres,
-    format: Object.keys(facetsFromIndex.format).length
-      ? facetsFromIndex.format
-      : fallbackFacets.format,
+    format: canonicalizeFormatFacets(
+      Object.keys(facetsFromIndex.format).length
+        ? facetsFromIndex.format
+        : fallbackFacets.format
+    ),
     categories:
       filterable.has("category_handles") && Object.keys(facetsFromIndex.categories).length
         ? facetsFromIndex.categories

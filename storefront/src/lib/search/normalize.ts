@@ -107,7 +107,9 @@ const extractThumbnail = (hit: Record<string, unknown>): string | null => {
   return null
 }
 
-const normalizeFormatValue = (raw: string | null | undefined): string | null => {
+export const normalizeFormatValue = (
+  raw: string | null | undefined
+): string | null => {
   if (!raw || typeof raw !== "string") {
     return null
   }
