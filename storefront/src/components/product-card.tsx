@@ -15,7 +15,6 @@ import { PrefetchKind } from "next/dist/client/components/router-reducer/router-
 import { mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
 import { useProductDetailPrefetch } from "@/lib/query/products"
 import { shouldBlockPrefetch } from "@/lib/prefetch"
-import { normalizeFormatValue } from "@/lib/search/normalize"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 
 type StoreProduct = HttpTypes.StoreProduct
@@ -256,9 +255,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const initialProduct = isStoreProduct(product) ? product : undefined
   const productHref = handle ? `/products/${handle}` : "/products"
   const formatLabels = (() => {
-    const rawByCanonical = new Map<string, string>()
-    const rawOnly = new Set<string>()
-    const dedup = new Set<string>()
+    const labelsByKey = new Map<string, string>()
 
     const addLabel = (value: string | null | undefined) => {
       if (!value) {
@@ -268,14 +265,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       if (!trimmed.length || trimmed.toLowerCase() === "default") {
         return
       }
-      const normalized = normalizeFormatValue(trimmed)
-      if (normalized) {
-        if (!rawByCanonical.has(normalized)) {
-          rawByCanonical.set(normalized, trimmed)
-        }
-        return
+      const key = trimmed.toLowerCase()
+      if (!labelsByKey.has(key)) {
+        labelsByKey.set(key, trimmed)
       }
-      rawOnly.add(trimmed)
     }
 
     if (isStoreProduct(product)) {
@@ -300,28 +293,15 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       summary.formats.forEach(addLabel)
     }
 
-    if (!rawByCanonical.size && !rawOnly.size) {
+    if (!labelsByKey.size) {
       summary.formats.forEach(addLabel)
     }
 
-    if (!rawByCanonical.size && !rawOnly.size && summary.defaultVariant?.title) {
+    if (!labelsByKey.size && summary.defaultVariant?.title) {
       addLabel(summary.defaultVariant.title)
     }
 
-    const labels: string[] = []
-    const pushLabel = (label: string) => {
-      const key = label.toLowerCase()
-      if (dedup.has(key)) {
-        return
-      }
-      dedup.add(key)
-      labels.push(label)
-    }
-
-    rawByCanonical.forEach((label) => pushLabel(label))
-    rawOnly.forEach((label) => pushLabel(label))
-
-    return labels
+    return Array.from(labelsByKey.values())
   })()
 
   const triggerPrefetch = () => {
