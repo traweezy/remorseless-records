@@ -8,6 +8,7 @@ import ProductSearchExperience from "@/components/product-search-experience"
 import { searchProductsBrowser } from "@/lib/search/browser"
 import type { ProductSearchResponse } from "@/lib/search/search"
 import { useUIStore } from "@/lib/store/ui"
+import { safeLogError } from "@/lib/logging"
 
 type SearchModalProps = {
   children: React.ReactNode
@@ -34,7 +35,7 @@ const SearchModal = ({ children }: SearchModalProps) => {
         })
         setInitial(response)
       } catch (cause: unknown) {
-        console.error("Preloading search failed", cause)
+        safeLogError("Preloading search failed", cause)
       }
     })
   }, [open, initial, isPending])

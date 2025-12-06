@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { getProductByHandle } from "@/lib/data/products"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
+import { safeLogError } from "@/lib/logging"
 
 const requestSchema = z.object({
   handles: z.array(z.string().min(1)).max(50),
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       ),
     })
   } catch (error) {
-    console.error("[api/catalog/hydrate] Failed to hydrate handles", error)
+    safeLogError("[api/catalog/hydrate] Failed to hydrate handles", error)
     return NextResponse.json(
       { message: "Failed to hydrate catalog entries" },
       { status: 500 }

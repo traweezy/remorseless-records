@@ -4,6 +4,7 @@ import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import type { ProductSearchHit } from "@/types/product"
 import { storeClient } from "@/lib/medusa"
+import { safeLogError } from "@/lib/logging"
 
 export const getFullCatalogHits = unstable_cache(
   async (): Promise<ProductSearchHit[]> => {
@@ -40,7 +41,7 @@ export const getFullCatalogHits = unstable_cache(
 
       return hits
     } catch (error) {
-      console.error("[getFullCatalogHits] Failed to load catalog", error)
+      safeLogError("[getFullCatalogHits] Failed to load catalog", error)
       return []
     }
   },

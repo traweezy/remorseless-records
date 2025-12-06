@@ -33,6 +33,7 @@ import { PillDropdown, type PillDropdownOption } from "@/components/ui/pill-drop
 import type { ProductSortOption } from "@/lib/search/search"
 import { computeFacetCounts } from "@/lib/search/search"
 import { useCatalogStore } from "@/lib/store/catalog"
+import { safeLogError } from "@/lib/logging"
 
 const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
   ["featured", "Featured Picks"],
@@ -318,7 +319,7 @@ const hydrateHitsClient = async (
       }
     })
   } catch (error) {
-    console.error("[catalog] Client hydration failed", error)
+    safeLogError("[catalog] Client hydration failed", error)
     return hits
   }
 

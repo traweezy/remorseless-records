@@ -9,6 +9,7 @@ import { getFullCatalogHits } from "@/lib/catalog/all"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import type { ProductSearchHit } from "@/types/product"
+import { safeLogError } from "@/lib/logging"
 
 const catalogCanonical = `${siteMetadata.siteUrl}/catalog`
 
@@ -94,7 +95,7 @@ const loadCatalogViewModel = async (): Promise<{
 
     return { hits: combinedHits, genreFilters: loadedGenres }
   } catch (error) {
-    console.error("[ProductsPage] rendering fallback catalog view", {
+    safeLogError("[ProductsPage] rendering fallback catalog view", {
       reason: error instanceof Error ? error.message : error,
     })
     return { hits: [], genreFilters: [] }
@@ -110,7 +111,7 @@ const loadCatalogData = async () => {
     try {
       return await fn()
     } catch (error) {
-      console.error("[ProductsPage] falling back for dataset", {
+      safeLogError("[ProductsPage] falling back for dataset", {
         label,
         reason: error instanceof Error ? error.message : error,
       })

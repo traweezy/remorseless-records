@@ -19,6 +19,7 @@ import {
 import { extractProductCategoryGroups } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
 import { storeClient } from "@/lib/medusa"
+import { safeLogError } from "@/lib/logging"
 
 type ProductPageProps = {
   params: { handle: string } | Promise<{ handle: string }>
@@ -391,7 +392,7 @@ const loadRelatedProducts = async (
 
     return related.slice(0, limit)
   } catch (error) {
-    console.error("[related] falling back to empty set", error)
+    safeLogError("[related] falling back to empty set", error)
     return []
   }
 }

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { safeLogError } from "@/lib/logging"
 
 const serverSchema = z
   .object({
@@ -13,8 +14,7 @@ const parsed = serverSchema.safeParse({
 })
 
 if (!parsed.success) {
-  console.error("❌ Invalid server environment variables")
-  console.error(parsed.error.flatten().fieldErrors)
+  safeLogError("❌ Invalid server environment variables", parsed.error.flatten().fieldErrors)
   throw new Error("Server environment variables validation failed")
 }
 

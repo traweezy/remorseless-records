@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 
 import { storeClient } from "@/lib/medusa"
 import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
+import { safeLogError } from "@/lib/logging"
 
 type RouteParams = {
   params: Promise<{
@@ -39,7 +40,7 @@ export const GET = async (
 
     return NextResponse.json({ product })
   } catch (error) {
-    console.error("Failed to load product for quick shop", error)
+    safeLogError("Failed to load product for quick shop", error)
     return NextResponse.json(
       { error: "Unable to load product" },
       { status: 500 }

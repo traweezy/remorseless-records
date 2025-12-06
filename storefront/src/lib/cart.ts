@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import type { HttpTypes } from "@medusajs/types"
 
 import { storeClient } from "@/lib/medusa"
+import { safeLogError } from "@/lib/logging"
 
 export const CART_COOKIE = "rr_cart_id"
 
@@ -62,7 +63,7 @@ export const getCartById = async (cartId: string): Promise<HttpTypes.StoreCart |
     })
     return cart
   } catch (error) {
-    console.error("Failed to retrieve cart", error)
+    safeLogError("Failed to retrieve cart", error)
     return null
   }
 }

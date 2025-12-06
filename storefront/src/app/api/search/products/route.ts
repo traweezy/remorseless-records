@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { searchProductsServer } from "@/lib/search/server"
 import type { ProductSearchRequest } from "@/lib/search/search"
+import { safeLogError } from "@/lib/logging"
 
 const normalizeRequest = (payload: Partial<ProductSearchRequest>): ProductSearchRequest => {
   const query = typeof payload.query === "string" ? payload.query : ""
@@ -32,7 +33,7 @@ export const POST = async (request: Request) => {
     const response = await searchProductsServer(normalized)
     return NextResponse.json(response)
   } catch (error) {
-    console.error("/api/search/products failed", error)
+    safeLogError("/api/search/products failed", error)
     return NextResponse.json({ error: "Unable to perform search" }, { status: 500 })
   }
 }

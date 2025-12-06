@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { runtimeEnv } from "@/config/env"
+import { safeLogError } from "@/lib/logging"
 
 const schema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error("[contact] Failed to send message", error)
+    safeLogError("[contact] Failed to send message", error)
     return NextResponse.json({ message: "Unable to send message right now." }, { status: 500 })
   }
 }

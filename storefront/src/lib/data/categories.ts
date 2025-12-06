@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache"
 
 import { storeClient } from "@/lib/medusa"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
+import { safeLogError } from "@/lib/logging"
 
 type StoreProductCategory = HttpTypes.StoreProductCategory
 
@@ -105,7 +106,7 @@ export const getMetalGenreCategories = unstable_cache(
         [coerceLabel(metalRoot, METAL_HANDLE)]
       )
     } catch (error) {
-      console.error("[getMetalGenreCategories] Failed to load categories", error)
+      safeLogError("[getMetalGenreCategories] Failed to load categories", error)
       return []
     }
   },

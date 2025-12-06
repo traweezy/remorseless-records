@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { storeClient } from "@/lib/medusa"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
+import { safeLogError } from "@/lib/logging"
 
 export const GET = async (request: Request) => {
   const url = new URL(request.url)
@@ -55,7 +56,7 @@ export const GET = async (request: Request) => {
       total,
     })
   } catch (error) {
-    console.error("Product fallback endpoint failed", error)
+    safeLogError("Product fallback endpoint failed", error)
     return NextResponse.json(
       { error: "Unable to load products" },
       { status: 500 }

@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server"
 import { unstable_noStore as noStore } from "next/cache"
 
 import { CART_COOKIE, getCartById } from "@/lib/cart"
+import { safeLogError } from "@/lib/logging"
 
 export const GET = async (request: NextRequest): Promise<Response> => {
   try {
@@ -15,7 +16,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
     const cart = cartId ? await getCartById(cartId) : null
     return NextResponse.json({ cart })
   } catch (error) {
-    console.error("Failed to load cart", error)
+    safeLogError("Failed to load cart", error)
     return NextResponse.json(
       { error: "Unable to retrieve cart at this time." },
       { status: 500 }
