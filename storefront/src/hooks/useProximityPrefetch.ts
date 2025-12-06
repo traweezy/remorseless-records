@@ -18,6 +18,10 @@ export const useProximityPrefetch = (
   const router = useRouter()
 
   useEffect(() => {
+    if (typeof document === "undefined") {
+      return
+    }
+
     const seen = new Set<string>()
     let frame: number | null = null
 
@@ -27,29 +31,29 @@ export const useProximityPrefetch = (
       }
 
       frame = requestAnimationFrame(() => {
-        const target = event.target as Element | null
-        if (!target) {
+        const anchors = document.querySelectorAll<HTMLAnchorElement>(selector)
+        if (!anchors.length) {
           return
         }
 
-        const anchor = target.closest<HTMLAnchorElement>(selector)
-        if (!anchor) {
-          return
-        }
-
-        const href = anchor.getAttribute("href")
-        if (!href || seen.has(href)) {
-          return
-        }
-
-        const rect = anchor.getBoundingClientRect()
         const { clientX, clientY } = event
-        const withinX =
-          clientX >= rect.left - radius && clientX <= rect.right + radius
-        const withinY =
-          clientY >= rect.top - radius && clientY <= rect.bottom + radius
 
-        if (withinX && withinY) {
+        anchors.forEach((anchor) => {
+          const href = anchor.getAttribute("href")
+          if (!href || seen.has(href)) {
+            return
+          }
+
+          const rect = anchor.getBoundingClientRect()
+          const withinX =
+            clientX >= rect.left - radius && clientX <= rect.right + radius
+          const withinY =
+            clientY >= rect.top - radius && clientY <= rect.bottom + radius
+
+          if (!withinX || !withinY) {
+            return
+          }
+
           seen.add(href)
           try {
             // Force a full prefetch so the product page flight payload is warmed.
@@ -58,7 +62,7 @@ export const useProximityPrefetch = (
           } catch {
             // Ignore failures
           }
-        }
+        })
       })
     }
 
