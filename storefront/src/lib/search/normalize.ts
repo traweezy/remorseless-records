@@ -115,16 +115,21 @@ export const normalizeFormatValue = (
   }
 
   const value = raw.toLowerCase()
-  if (
-    value.includes("cassette") ||
-    value.includes("tape") ||
-    value.includes("shell") ||
-    value.includes("cs")
-  ) {
+  if (value.includes("cassette") || value.includes("tape") || value.includes("cs")) {
     return "Cassette"
   }
 
-  if (value.includes("vinyl") || value.includes("lp") || value.includes('"') || value.includes("12")) {
+  if (value.includes("shell")) {
+    return value.includes("cd") ? "CD" : "Cassette"
+  }
+
+  if (
+    value.includes("vinyl") ||
+    value.includes("lp") ||
+    value.includes('"') ||
+    value.includes("12") ||
+    value.includes("colored")
+  ) {
     return "Vinyl"
   }
 
