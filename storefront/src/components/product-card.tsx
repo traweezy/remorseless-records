@@ -256,8 +256,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const initialProduct = isStoreProduct(product) ? product : undefined
   const productHref = handle ? `/products/${handle}` : "/products"
   const formatLabels = (() => {
-    const canonical = new Set<string>()
-    const raw = new Set<string>()
+    const rawByCanonical = new Map<string, string>()
+    const rawOnly = new Set<string>()
+    const dedup = new Set<string>()
 
     const addLabel = (value: string | null | undefined) => {
       if (!value) {
@@ -269,17 +270,21 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       }
       const normalized = normalizeFormatValue(trimmed)
       if (normalized) {
-        canonical.add(normalized)
+        if (!rawByCanonical.has(normalized)) {
+          rawByCanonical.set(normalized, trimmed)
+        }
         return
       }
-      raw.add(trimmed)
+      rawOnly.add(trimmed)
     }
 
     if (isStoreProduct(product)) {
       product.variants?.forEach((variant) => addLabel(variant?.title))
       product.options?.forEach((option) => {
         if (option?.title?.toLowerCase() === "format") {
-          option.values?.forEach((entry) => addLabel(typeof entry?.value === "string" ? entry.value : null))
+          option.values?.forEach((entry) =>
+            addLabel(typeof entry?.value === "string" ? entry.value : null)
+          )
         }
       })
       product.tags?.forEach((tag) => addLabel(tag?.value))
@@ -295,16 +300,28 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       summary.formats.forEach(addLabel)
     }
 
-    if (!canonical.size && !raw.size) {
+    if (!rawByCanonical.size && !rawOnly.size) {
       summary.formats.forEach(addLabel)
     }
 
-    if (!canonical.size && !raw.size && summary.defaultVariant?.title) {
+    if (!rawByCanonical.size && !rawOnly.size && summary.defaultVariant?.title) {
       addLabel(summary.defaultVariant.title)
     }
 
-    const selected = canonical.size ? canonical : raw
-    return Array.from(selected)
+    const labels: string[] = []
+    const pushLabel = (label: string) => {
+      const key = label.toLowerCase()
+      if (dedup.has(key)) {
+        return
+      }
+      dedup.add(key)
+      labels.push(label)
+    }
+
+    rawByCanonical.forEach((label) => pushLabel(label))
+    rawOnly.forEach((label) => pushLabel(label))
+
+    return labels
   })()
 
   const triggerPrefetch = () => {
