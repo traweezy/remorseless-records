@@ -40,6 +40,7 @@ const BUILD_YEAR = new Date().getUTCFullYear().toString()
 const experimentalConfig: NonNullable<NextConfig["experimental"]> = {}
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_BUILD_YEAR: BUILD_YEAR,

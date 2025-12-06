@@ -10,10 +10,6 @@ import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import type { ProductSearchHit } from "@/types/product"
 
-export const dynamic = "force-dynamic"
-export const revalidate = 0
-export const fetchCache = "force-no-store"
-
 const catalogCanonical = `${siteMetadata.siteUrl}/catalog`
 
 const buildCatalogItemList = (hits: ProductSearchHit[], origin: string) =>
