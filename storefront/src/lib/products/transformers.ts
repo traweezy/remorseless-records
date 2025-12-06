@@ -5,6 +5,7 @@ import {
   extractProductCategoryGroups,
 } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
+import { normalizeFormatValue } from "@/lib/search/normalize"
 import type {
   ProductSearchHit,
   RelatedProductSummary,
@@ -15,6 +16,14 @@ const coerceRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null
+
+const addCanonicalFormat = (set: Set<string>, value: string | null | undefined) => {
+  const normalized = normalizeFormatValue(value)
+  if (!normalized) {
+    return
+  }
+  set.add(normalized)
+}
 
 const toVariantOption = (
   variant: HttpTypes.StoreProductVariant | undefined
@@ -82,18 +91,14 @@ export const mapStoreProductToRelatedSummary = (
 
   const formats = new Set<string>()
 
-  variants.forEach((variant) => {
-    if (variant.title.trim().length) {
-      formats.add(variant.title.trim())
-    }
-  })
+  variants.forEach((variant) => addCanonicalFormat(formats, variant.title))
 
-  const formatOption = product.options?.find((option) => option.title?.toLowerCase() === "format")
+  const formatOption = product.options?.find(
+    (option) => option.title?.toLowerCase() === "format"
+  )
   formatOption?.values?.forEach((value) => {
     const candidate = typeof value?.value === "string" ? value.value.trim() : ""
-    if (candidate.length) {
-      formats.add(candidate)
-    }
+    addCanonicalFormat(formats, candidate)
   })
 
   const metadata = coerceRecord(product.metadata)
@@ -106,11 +111,7 @@ export const mapStoreProductToRelatedSummary = (
         : []),
     ]
 
-    metaCandidates.forEach((entry) => {
-      if (typeof entry === "string" && entry.trim().length) {
-        formats.add(entry.trim())
-      }
-    })
+    metaCandidates.forEach((entry) => addCanonicalFormat(formats, entry))
   }
 
   const categoryGroups = extractProductCategoryGroups(product.categories, {
@@ -177,10 +178,7 @@ export const mapStoreProductToSearchHit = (
     optionValue && typeof optionValue.value === "string"
       ? optionValue.value
       : undefined
-  const derivedFormat =
-    formatValue ??
-    summary.defaultVariant?.title ??
-    null
+  const derivedFormat = formatValue ?? summary.defaultVariant?.title ?? null
 
   const priceAmount = summary.defaultVariant?.amount ?? null
   const createdAt =
@@ -189,15 +187,13 @@ export const mapStoreProductToSearchHit = (
       : null
   const stockStatus = summary.defaultVariant?.inStock ? "in_stock" : "sold_out"
 
-  const inferredFormats = new Set<string>(summary.formats)
-  categoryTypes.forEach((label) => {
-    if (label.trim().length) {
-      inferredFormats.add(label.trim())
-    }
-  })
-  if (derivedFormat) {
-    inferredFormats.add(derivedFormat)
-  }
+  const inferredFormats = new Set<string>()
+  summary.formats.forEach((fmt) => addCanonicalFormat(inferredFormats, fmt))
+  categoryTypes.forEach((label) => addCanonicalFormat(inferredFormats, label))
+  addCanonicalFormat(inferredFormats, derivedFormat)
+  variantTitles.forEach((title) => addCanonicalFormat(inferredFormats, title))
+
+  const canonicalFormat = Array.from(inferredFormats)[0] ?? null
 
   const metadata = coerceRecord(product.metadata)
   const legacyImport = coerceRecord(metadata?.legacy_import)
@@ -218,7 +214,7 @@ export const mapStoreProductToSearchHit = (
     categories: categoryLabels,
     categoryHandles,
     variantTitles,
-    format: categoryTypes[0] ?? derivedFormat ?? null,
+    format: canonicalFormat,
     priceAmount,
     createdAt,
     stockStatus,
