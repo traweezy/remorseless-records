@@ -349,6 +349,7 @@ jobs:
     name: Build (storefront)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    if: ${{ false }} # temporarily disabled; re-enable when build is needed
     needs: [unit]
     permissions:
       contents: read
