@@ -33,6 +33,11 @@ import { PillDropdown, type PillDropdownOption } from "@/components/ui/pill-drop
 import type { ProductSortOption } from "@/lib/search/search"
 import { computeFacetCounts } from "@/lib/search/search"
 import { useCatalogStore } from "@/lib/store/catalog"
+import { normalizeFormatValue as baseNormalizeFormat } from "@/lib/search/normalize"
+
+const normalizeFormatSafe = baseNormalizeFormat as (
+  value: string | null | undefined
+) => string | null
 
 const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
   ["featured", "Featured Picks"],
@@ -1081,8 +1086,28 @@ const ProductSearchExperience = ({
   const formatOptions = useMemo(
     () => {
       const ALLOWED = new Set(["Cassette", "Vinyl", "CD"])
-      return Object.entries(catalogFacets.format ?? {})
-        .filter(([value]) => ALLOWED.has(value))
+
+      const counts: Record<string, number> = {}
+
+      const increment = (value: string | null | undefined, weight = 1) => {
+        const normalized = normalizeFormatSafe(value)
+        if (typeof normalized !== "string" || !ALLOWED.has(normalized)) {
+          return
+        }
+        counts[normalized] = (counts[normalized] ?? 0) + weight
+      }
+
+      Object.entries(catalogFacets.format ?? {}).forEach(([key, count]) => {
+        increment(key, count)
+      })
+
+      aggregatedHits.forEach((hit) => {
+        increment(hit.format)
+        hit.variantTitles?.forEach((variant) => increment(variant))
+        hit.formats?.forEach((fmt) => increment(fmt))
+      })
+
+      return Object.entries(counts)
         .sort((a, b) => b[1] - a[1])
         .map(([value, count]) => ({
           value,
@@ -1090,7 +1115,7 @@ const ProductSearchExperience = ({
           count,
         }))
     },
-    [catalogFacets.format]
+    [aggregatedHits, catalogFacets.format]
   )
 
   const formatProductTypeLabel = useCallback(
