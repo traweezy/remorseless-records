@@ -5,6 +5,8 @@ import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import type { ProductSearchHit } from "@/types/product"
 import { storeClient } from "@/lib/medusa"
 
+const CATALOG_CACHE_KEY = "full-catalog-hits-v2"
+
 export const getFullCatalogHits = unstable_cache(
   async (): Promise<ProductSearchHit[]> => {
     try {
@@ -44,6 +46,6 @@ export const getFullCatalogHits = unstable_cache(
       return []
     }
   },
-  ["full-catalog-hits"],
-  { revalidate: 900, tags: ["products"] }
+  [CATALOG_CACHE_KEY],
+  { revalidate: 900, tags: ["products", CATALOG_CACHE_KEY] }
 )
