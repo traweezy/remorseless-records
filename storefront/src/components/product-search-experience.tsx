@@ -1092,40 +1092,55 @@ const ProductSearchExperience = ({
       .map(({ rank: _rank, ...option }) => option)
   }, [categoryFacetCounts, normalizedGenreFilters])
 
-  const formatOptions = useMemo(
-    () => {
-      const ALLOWED = new Set(["Cassette", "Vinyl", "CD"])
+  const formatOptions = useMemo(() => {
+    const ALLOWED = new Set(["Cassette", "Vinyl", "CD"])
+    const counts = new Map<string, Set<string>>()
 
-      const counts: Record<string, number> = {}
+    const add = (handle: string | null | undefined, value: string | null | undefined) => {
+      if (!handle) {
+        return
+      }
+      const normalized = normalizeFormatSafe(value)
+      if (typeof normalized !== "string" || !ALLOWED.has(normalized)) {
+        return
+      }
+      const bucket = counts.get(normalized) ?? new Set<string>()
+      bucket.add(handle)
+      counts.set(normalized, bucket)
+    }
 
-      const increment = (value: string | null | undefined, weight = 1) => {
-        const normalized = normalizeFormatSafe(value)
-        if (typeof normalized !== "string" || !ALLOWED.has(normalized)) {
+    aggregatedHits.forEach((hit) => {
+      const handle = hit.handle?.trim().toLowerCase()
+      if (!handle) {
+        return
+      }
+      add(handle, hit.format)
+      hit.variantTitles?.forEach((variant) => add(handle, variant))
+      hit.formats?.forEach((fmt) => add(handle, fmt))
+    })
+
+    // Fallback to facet counts if aggregated hits are empty
+    if (!counts.size && catalogFacets.format) {
+      Object.entries(catalogFacets.format).forEach(([key, count]) => {
+        const normalized = normalizeFormatSafe(key)
+        if (!normalized || !ALLOWED.has(normalized)) {
           return
         }
-        counts[normalized] = (counts[normalized] ?? 0) + weight
-      }
-
-      Object.entries(catalogFacets.format ?? {}).forEach(([key, count]) => {
-        increment(key, count)
+        const bucket = counts.get(normalized) ?? new Set<string>()
+        if (typeof count === "number" && Number.isFinite(count)) {
+          const syntheticHandles = Array.from({ length: Math.max(1, Math.trunc(count)) }).map(
+            (_, idx) => `${normalized}-${idx}`
+          )
+          syntheticHandles.forEach((handle) => bucket.add(handle))
+        }
+        counts.set(normalized, bucket)
       })
+    }
 
-      aggregatedHits.forEach((hit) => {
-        increment(hit.format)
-        hit.variantTitles?.forEach((variant) => increment(variant))
-        hit.formats?.forEach((fmt) => increment(fmt))
-      })
-
-      return Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .map(([value, count]) => ({
-          value,
-          label: value,
-          count,
-        }))
-    },
-    [aggregatedHits, catalogFacets.format]
-  )
+    return Array.from(counts.entries())
+      .map(([value, handles]) => ({ value, label: value, count: handles.size }))
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
+  }, [aggregatedHits, catalogFacets.format])
 
   const formatProductTypeLabel = useCallback(
     (value: string) =>
