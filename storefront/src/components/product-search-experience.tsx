@@ -20,7 +20,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "motion/react"
 import fuzzysort from "fuzzysort"
 import { Button } from "@/components/ui/button"
 import Drawer from "@/components/ui/drawer"
@@ -157,6 +157,12 @@ type ProductSearchExperienceProps = {
   initialHits: ProductSearchHit[]
   initialSort?: ProductSortOption
   genreFilters: GenreFilterSeed[]
+}
+
+const rowVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
 }
 
 const SORT_OPTIONS: [
@@ -1348,48 +1354,62 @@ const ProductSearchExperience = ({
                 className="relative"
                 style={{ height: virtualizer.getTotalSize() }}
               >
-                {virtualItems.map((virtualRow: VirtualItem) => {
-                  const rowIndex = virtualRow.index
-                  const startIndex = rowIndex * columns
+                <AnimatePresence initial={false}>
+                  {virtualItems.map((virtualRow: VirtualItem) => {
+                    const rowIndex = virtualRow.index
+                    const startIndex = rowIndex * columns
+                    const rowReactKey =
+                      deferredResults[startIndex]?.id ??
+                      (virtualRow as { key?: number }).key ??
+                      virtualRow.index
 
-                  return (
-                    <div
-                      key={virtualRow.index}
-                      data-index={virtualRow.index}
-                      ref={virtualizer.measureElement}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        transform: `translateY(${virtualRow.start}px)`,
-                        paddingBottom: columns > 2 ? 16 : 12,
-                      }}
-                    >
+                    return (
                       <div
-                        className="grid gap-6"
-                        style={gridTemplateStyle}
+                        key={rowReactKey}
+                        data-index={virtualRow.index}
+                        ref={virtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualRow.start}px)`,
+                          paddingBottom: columns > 2 ? 16 : 12,
+                        }}
                       >
-                        {Array.from({ length: columns }).map((_, columnIdx) => {
-                          const globalIndex = startIndex + columnIdx
-                          const product = deferredResults[globalIndex]
+                        <motion.div
+                          variants={rowVariants}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                          transition={{ duration: 0.15, ease: "easeOut" }}
+                        >
+                          <div
+                            className="grid gap-6"
+                            style={gridTemplateStyle}
+                          >
+                            {Array.from({ length: columns }).map((_, columnIdx) => {
+                              const globalIndex = startIndex + columnIdx
+                              const product = deferredResults[globalIndex]
 
-                          if (product) {
-                            return (
-                              <div
-                                key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
-                              >
-                                <ProductCard product={product} />
-                              </div>
-                            )
-                          }
+                              if (product) {
+                                return (
+                                  <div
+                                    key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
+                                  >
+                                    <ProductCard product={product} />
+                                  </div>
+                                )
+                              }
 
-                          return <div key={`spacer-${globalIndex}`} />
-                        })}
+                              return <div key={`spacer-${globalIndex}`} />
+                            })}
+                          </div>
+                        </motion.div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </AnimatePresence>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border/60 bg-background/80 p-12 text-center text-sm text-muted-foreground">
