@@ -103,24 +103,6 @@ const loadCatalogViewModel = async (): Promise<{
 }
 
 const loadCatalogData = async () => {
-  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
-  if (isBuildPhase) {
-    const emptyResult = [
-      [],
-      [],
-      [],
-      [],
-      [],
-    ] as [
-      ProductSearchHit[],
-      HttpTypes.StoreProduct[],
-      HttpTypes.StoreProduct[],
-      HttpTypes.StoreProduct[],
-      Awaited<ReturnType<typeof getMetalGenreCategories>>,
-    ]
-    return emptyResult
-  }
-
   async function safe<T>(
     label: string,
     fn: () => Promise<T>,

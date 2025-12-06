@@ -8,10 +8,6 @@ import { safeLogError } from "@/lib/logging"
 
 export const getFullCatalogHits = unstable_cache(
   async (): Promise<ProductSearchHit[]> => {
-    if (process.env.NEXT_PHASE === "phase-production-build") {
-      return []
-    }
-
     try {
       const hits: ProductSearchHit[] = []
       const batchSize = 100
