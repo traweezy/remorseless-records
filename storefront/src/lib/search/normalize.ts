@@ -107,6 +107,32 @@ const extractThumbnail = (hit: Record<string, unknown>): string | null => {
   return null
 }
 
+const normalizeFormatValue = (raw: string | null | undefined): string | null => {
+  if (!raw || typeof raw !== "string") {
+    return null
+  }
+
+  const value = raw.toLowerCase()
+  if (
+    value.includes("cassette") ||
+    value.includes("tape") ||
+    value.includes("shell") ||
+    value.includes("cs")
+  ) {
+    return "Cassette"
+  }
+
+  if (value.includes("vinyl") || value.includes("lp") || value.includes('"') || value.includes("12")) {
+    return "Vinyl"
+  }
+
+  if (value.includes("cd")) {
+    return "CD"
+  }
+
+  return null
+}
+
 export const normalizeSearchHit = (
   hit: Record<string, unknown>
 ): ProductSearchHit => {
@@ -234,13 +260,20 @@ export const normalizeSearchHit = (
   variantTitles.forEach(addFormat)
   addFormat(format ?? undefined)
 
-  const formats = Array.from(formatCandidates)
+  const normalizedFormats = Array.from(formatCandidates)
+    .map((entry) => normalizeFormatValue(entry))
+    .filter((entry): entry is NonNullable<ReturnType<typeof normalizeFormatValue>> =>
+      Boolean(entry)
+    )
+
+  const formats = Array.from(new Set(normalizedFormats))
+  const canonicalFormat = formats[0] ?? null
 
   const defaultVariant = toVariantOption(
     variantId,
     priceAmount,
     currency,
-    format,
+    canonicalFormat,
     Boolean(inStock)
   )
 
@@ -275,7 +308,7 @@ export const normalizeSearchHit = (
     categories: categoryLabels,
     categoryHandles,
     variantTitles,
-    format,
+    format: canonicalFormat,
     priceAmount,
     createdAt,
     stockStatus,

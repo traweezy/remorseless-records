@@ -1079,16 +1079,18 @@ const ProductSearchExperience = ({
   }, [categoryFacetCounts, normalizedGenreFilters])
 
   const formatOptions = useMemo(
-    () =>
-      Object.entries(catalogFacets.variants ?? {})
+    () => {
+      const ALLOWED = new Set(["Cassette", "Vinyl", "CD"])
+      return Object.entries(catalogFacets.format ?? {})
+        .filter(([value]) => ALLOWED.has(value))
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 20)
         .map(([value, count]) => ({
           value,
           label: value,
           count,
-        })),
-    [catalogFacets.variants]
+        }))
+    },
+    [catalogFacets.format]
   )
 
   const formatProductTypeLabel = useCallback(
