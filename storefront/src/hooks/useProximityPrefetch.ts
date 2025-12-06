@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
+import { shouldBlockPrefetch } from "@/lib/prefetch"
 
 type Options = {
   selector?: string
@@ -10,7 +11,7 @@ type Options = {
 }
 
 const DEFAULT_SELECTOR = "a[data-prefetch='true']"
-const DEFAULT_RADIUS = 100
+const DEFAULT_RADIUS = 220
 
 export const useProximityPrefetch = (
   { selector = DEFAULT_SELECTOR, radius = DEFAULT_RADIUS }: Options = {}
@@ -31,6 +32,10 @@ export const useProximityPrefetch = (
       }
 
       frame = requestAnimationFrame(() => {
+        if (shouldBlockPrefetch()) {
+          return
+        }
+
         const anchors = document.querySelectorAll<HTMLAnchorElement>(selector)
         if (!anchors.length) {
           return
@@ -41,6 +46,10 @@ export const useProximityPrefetch = (
         anchors.forEach((anchor) => {
           const href = anchor.getAttribute("href")
           if (!href || seen.has(href)) {
+            return
+          }
+
+          if (shouldBlockPrefetch()) {
             return
           }
 

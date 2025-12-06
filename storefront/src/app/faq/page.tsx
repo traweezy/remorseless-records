@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-
 import { siteMetadata } from "@/config/site"
+import SmartLink from "@/components/ui/smart-link"
 
 export const metadata: Metadata = {
   title: "FAQ",
@@ -46,9 +45,9 @@ const FAQPage = () => (
         </h1>
         <p className="max-w-3xl text-base leading-relaxed text-muted-foreground">
           Quick answers about shipping, returns, variants, and how to reach us. Need more?{" "}
-          <Link href="/contact" className="text-destructive underline underline-offset-4">
+          <SmartLink href="/contact" className="text-destructive underline underline-offset-4">
             Contact the label
-          </Link>
+          </SmartLink>
           .
         </p>
       </header>
@@ -83,21 +82,21 @@ const FAQPage = () => (
               {siteMetadata.contact.email}
             </a>{" "}
             or use the{" "}
-            <Link href="/contact" className="text-destructive underline underline-offset-4">
+            <SmartLink href="/contact" className="text-destructive underline underline-offset-4">
               contact form
-            </Link>
+            </SmartLink>
             . We answer within 1–2 business days.
           </p>
           <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-sm leading-relaxed text-muted-foreground">
             <p className="font-semibold text-foreground">Shipping & Returns</p>
             <p className="mt-1">
               See the{" "}
-              <Link
+              <SmartLink
                 href="/help/shipping"
                 className="text-destructive underline underline-offset-4"
               >
                 Shipping & Returns
-              </Link>{" "}
+              </SmartLink>{" "}
               page for detailed policies.
             </p>
           </div>

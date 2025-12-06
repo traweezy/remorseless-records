@@ -1,9 +1,9 @@
-import Link from "next/link"
 import Image from "next/image"
 
 import { StaticNoise } from "@/components/static-noise"
 import { ParallaxSection } from "@/components/parallax-section"
 import { Button } from "@/components/ui/button"
+import SmartLink from "@/components/ui/smart-link"
 import { ChevronRight } from "lucide-react"
 
 export const HeroSection = () => (
@@ -43,13 +43,14 @@ export const HeroSection = () => (
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4 sm:mt-12">
           <Button asChild size="lg" className="px-8 py-5 text-base sm:px-10 sm:py-6 sm:text-lg">
-            <Link
+            <SmartLink
               href="/catalog"
+              nativePrefetch
               className="inline-flex items-center text-destructive-foreground hover:text-destructive-foreground"
             >
               VIEW CATALOG
               <ChevronRight className="ml-2 h-5 w-5" />
-            </Link>
+            </SmartLink>
           </Button>
         </div>
       </div>

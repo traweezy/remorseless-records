@@ -1,5 +1,5 @@
-import Link from "next/link"
 import { siBandcamp, siInstagram } from "simple-icons"
+import SmartLink from "@/components/ui/smart-link"
 
 type FooterLink = {
   label: string
@@ -90,15 +90,26 @@ const SiteFooter = () => {
               <ul className="space-y-2 text-xs uppercase tracking-[0.3rem]">
                 {section.links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      target={link.href.startsWith("http") ? "_blank" : undefined}
-                      rel={link.href.startsWith("http") ? "noreferrer" : undefined}
-                      className="interactive inline-flex items-center gap-2 rounded-md px-1 py-0.5 text-muted-foreground hover:text-foreground"
-                    >
-                      <SocialIcon path={link.iconPath} />
-                      {link.label}
-                    </Link>
+                    {link.href.startsWith("http") ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="interactive inline-flex items-center gap-2 rounded-md px-1 py-0.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <SocialIcon path={link.iconPath} />
+                        {link.label}
+                      </a>
+                    ) : (
+                      <SmartLink
+                        href={link.href}
+                        nativePrefetch
+                        className="interactive inline-flex items-center gap-2 rounded-md px-1 py-0.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <SocialIcon path={link.iconPath} />
+                        {link.label}
+                      </SmartLink>
+                    )}
                   </li>
                 ))}
               </ul>

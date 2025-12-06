@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-
 import { siteMetadata } from "@/config/site"
+import SmartLink from "@/components/ui/smart-link"
 
 export const metadata: Metadata = {
   title: "About",
@@ -40,12 +39,12 @@ const AboutPage = () => {
                   <>
                     If you want to be considered for a release or want to carry Remorseless titles in
                     your distro, reach out via the{" "}
-                    <Link
+                    <SmartLink
                       href="/contact"
                       className="text-destructive underline underline-offset-4"
                     >
                       Contact
-                    </Link>{" "}
+                    </SmartLink>{" "}
                     page. All messages get answered as quickly as possible.
                   </>
                 ) : (

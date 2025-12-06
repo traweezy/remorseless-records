@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 
 const DEFAULT_ALBUM_ID = "2916008899"
 const DEFAULT_ALBUM_SLUG = "samudaripen"
@@ -36,14 +35,14 @@ const BandcampEmbed = () => {
     return (
       <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
         <p>Bandcamp player is unavailable right now.</p>
-        <Link
+        <a
           href={BANDCAMP_LINK}
           target="_blank"
           rel="noreferrer"
           className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
         >
           Open on Bandcamp
-        </Link>
+        </a>
       </div>
     )
   }
@@ -65,7 +64,7 @@ const BandcampEmbed = () => {
         loading="lazy"
         onError={() => setErrored(true)}
       >
-        <Link href={BANDCAMP_LINK}>Open on Bandcamp</Link>
+        <a href={BANDCAMP_LINK}>Open on Bandcamp</a>
       </iframe>
     </div>
   )

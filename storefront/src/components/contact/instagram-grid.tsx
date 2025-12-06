@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
 
 type InstagramPost = {
   url: string
@@ -91,7 +90,7 @@ const InstagramGrid = ({ profileUrl }: Props) => {
     <div className="space-y-3" aria-label="Latest posts from Instagram">
       <div className="grid gap-3 sm:grid-cols-2">
         {posts.map((post) => (
-          <Link
+          <a
             key={post.url}
             href={post.url}
             target="_blank"
@@ -108,10 +107,10 @@ const InstagramGrid = ({ profileUrl }: Props) => {
             <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent px-3 py-2 text-xs uppercase tracking-[0.25rem] text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
               View
             </div>
-          </Link>
+          </a>
         ))}
       </div>
-      <Link
+      <a
         href={profileUrl}
         target="_blank"
         rel="noreferrer"
@@ -119,7 +118,7 @@ const InstagramGrid = ({ profileUrl }: Props) => {
       >
         <InstagramGlyph />
         View on Instagram
-      </Link>
+      </a>
     </div>
   )
 }

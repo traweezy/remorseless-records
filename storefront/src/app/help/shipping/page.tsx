@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-
 import { siteMetadata } from "@/config/site"
+import SmartLink from "@/components/ui/smart-link"
 
 export const metadata: Metadata = {
   title: "Shipping & Returns",
@@ -50,9 +49,9 @@ const ShippingPage = () => (
             </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
               To start a return or refund, reach out via the{" "}
-              <Link href="/contact" className="text-destructive underline underline-offset-4">
+              <SmartLink href="/contact" className="text-destructive underline underline-offset-4">
                 Contact
-              </Link>{" "}
+              </SmartLink>{" "}
               page with your order number, photos (if damaged), and a short note.
             </p>
           </div>

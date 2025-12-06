@@ -1,15 +1,13 @@
 "use client"
 
-import { useCallback, useTransition } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
+import { useTransition } from "react"
 
 import CartItemsList from "@/components/cart/cart-items-list"
 import { startStripeCheckout } from "@/lib/actions/start-stripe-checkout"
 import { useCartQuery } from "@/lib/query/cart"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
+import SmartLink from "@/components/ui/smart-link"
 
 const SummaryRow = ({
   label,
@@ -36,14 +34,6 @@ const SummaryRow = ({
 const CartPageClient = () => {
   const { data: cart } = useCartQuery()
   const [isCheckingOut, startCheckoutTransition] = useTransition()
-  const router = useRouter()
-
-  const prefetchFull = useCallback(
-    (href: string) => {
-      void router.prefetch(href, { kind: PrefetchKind.FULL })
-    },
-    [router]
-  )
 
   if (!cart || !cart.items?.length) {
     return (
@@ -54,16 +44,13 @@ const CartPageClient = () => {
         <p className="mx-auto mt-6 max-w-lg text-lg text-muted-foreground">
           No items in your ritual stack yet. Explore the catalog and add some sonic brutality.
         </p>
-        <Link
+        <SmartLink
           href="/catalog"
-          prefetch
-          data-prefetch="true"
-          onPointerEnter={() => prefetchFull("/catalog")}
-          onFocus={() => prefetchFull("/catalog")}
+          nativePrefetch
           className="mt-8 inline-flex min-h-[48px] items-center rounded-full border border-accent px-8 text-sm font-semibold uppercase tracking-[0.3rem] text-accent transition hover:bg-accent hover:text-background"
         >
           Browse Products
-        </Link>
+        </SmartLink>
       </div>
     )
   }
@@ -128,16 +115,13 @@ const CartPageClient = () => {
           >
             {isCheckingOut ? "Preparing checkout…" : "Proceed to Checkout"}
           </button>
-          <Link
+          <SmartLink
             href="/catalog"
-            prefetch
-            data-prefetch="true"
-            onPointerEnter={() => prefetchFull("/catalog")}
-            onFocus={() => prefetchFull("/catalog")}
+            nativePrefetch
             className="inline-flex w-full items-center justify-center rounded-full border border-border/70 px-8 py-3 text-base font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-accent hover:text-accent"
           >
             Continue Shopping
-          </Link>
+          </SmartLink>
         </aside>
       </div>
     </div>

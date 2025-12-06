@@ -1,19 +1,18 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Menu, ShoppingCart, X } from "lucide-react"
 
 import CartDrawer from "@/components/cart-drawer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Drawer from "@/components/ui/drawer"
+import SmartLink from "@/components/ui/smart-link"
 import { useCartQuery, prefetchCartQuery } from "@/lib/query/cart"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
 import { useQueryClient } from "@tanstack/react-query"
-import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 
 const NAV_LINKS = [
   { href: "/catalog", label: "Catalog" },
@@ -22,7 +21,6 @@ const NAV_LINKS = [
 
 const SiteHeaderShell = () => {
   const pathname = usePathname()
-  const router = useRouter()
   const [isCartOpen, setCartOpen] = useState(false)
   const [isMenuOpen, setMenuOpen] = useState(false)
   const [scrollProgress, setScrollProgress] = useState(0)
@@ -32,13 +30,6 @@ const SiteHeaderShell = () => {
   const prefetchCart = useCallback(() => {
     void prefetchCartQuery(queryClient)
   }, [queryClient])
-
-  const prefetchRoute = useCallback(
-    (href: string) => {
-      void router.prefetch(href, { kind: PrefetchKind.FULL })
-    },
-    [router]
-  )
 
   const activeHref = useMemo(() => {
     if (!pathname) {
@@ -112,11 +103,9 @@ const SiteHeaderShell = () => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg relative">
       <div className="container flex h-16 items-center justify-between">
-        <Link
+        <SmartLink
           href="/"
-          data-prefetch="true"
-          onPointerEnter={() => prefetchRoute("/")}
-          onFocus={() => prefetchRoute("/")}
+          nativePrefetch
           className="flex items-center gap-3 text-sm uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-destructive"
         >
           <span className="font-bebas text-3xl text-destructive glow-red-sm">
@@ -125,24 +114,22 @@ const SiteHeaderShell = () => {
           <span className="hidden font-teko text-xl text-muted-foreground sm:inline">
             Remorseless Records
           </span>
-        </Link>
+        </SmartLink>
 
         <div className="flex items-center gap-4">
           <nav className="hidden items-center md:flex">
             {NAV_LINKS.map((link) => (
-              <Link
+              <SmartLink
                 key={link.href}
                 href={link.href}
-                data-prefetch="true"
-                onPointerEnter={() => prefetchRoute(link.href)}
-                onFocus={() => prefetchRoute(link.href)}
+                nativePrefetch
                 className={cn(
                   "rounded-full px-3 py-2 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   activeHref === link.href && "text-destructive"
                 )}
               >
                 {link.label}
-              </Link>
+              </SmartLink>
             ))}
           </nav>
           <Button
@@ -187,12 +174,10 @@ const SiteHeaderShell = () => {
               </div>
               <div className="flex flex-col gap-4">
                 {NAV_LINKS.map((link) => (
-                  <Link
+                  <SmartLink
                     key={link.href}
                     href={link.href}
-                    data-prefetch="true"
-                    onPointerEnter={() => prefetchRoute(link.href)}
-                    onFocus={() => prefetchRoute(link.href)}
+                    nativePrefetch
                     onClick={() => setMenuOpen(false)}
                     className={cn(
                       "rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive",
@@ -200,19 +185,13 @@ const SiteHeaderShell = () => {
                     )}
                   >
                     {link.label}
-                  </Link>
+                  </SmartLink>
                 ))}
-                <Link
+                <SmartLink
                   href="/cart"
-                  data-prefetch="true"
-                  onPointerEnter={() => {
-                    prefetchRoute("/cart")
-                    prefetchCart()
-                  }}
-                  onFocus={() => {
-                    prefetchRoute("/cart")
-                    prefetchCart()
-                  }}
+                  nativePrefetch
+                  onPointerEnter={prefetchCart}
+                  onFocus={prefetchCart}
                   onClick={() => setMenuOpen(false)}
                   className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
                 >
@@ -220,7 +199,7 @@ const SiteHeaderShell = () => {
                   <span className="rounded-full bg-destructive px-3 py-1 text-xs text-white">
                     {cartLabel}
                   </span>
-                </Link>
+                </SmartLink>
               </div>
               <button
                 type="button"

@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-
 import { siteMetadata } from "@/config/site"
+import SmartLink from "@/components/ui/smart-link"
 
 export const metadata: Metadata = {
   title: "Press",
@@ -79,9 +78,9 @@ const PressPage = () => (
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Need images or liner notes fast? The{" "}
-            <Link href="/contact" className="text-destructive underline underline-offset-4">
+            <SmartLink href="/contact" className="text-destructive underline underline-offset-4">
               Contact
-            </Link>{" "}
+            </SmartLink>{" "}
             form goes straight to the label inbox.
           </p>
         </aside>

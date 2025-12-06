@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type MouseEvent } from "react"
 
@@ -11,9 +10,11 @@ import { ProductQuickView } from "@/components/product-quick-view"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import SmartLink from "@/components/ui/smart-link"
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 import { mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
 import { useProductDetailPrefetch } from "@/lib/query/products"
+import { shouldBlockPrefetch } from "@/lib/prefetch"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 
 type StoreProduct = HttpTypes.StoreProduct
@@ -206,6 +207,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     }
 
     const prefetch = () => {
+      if (shouldBlockPrefetch()) {
+        return
+      }
       prefetchProductDetail()
     }
 
@@ -296,7 +300,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   })()
 
   const triggerPrefetch = () => {
-    if (!handle) {
+    if (!handle || shouldBlockPrefetch()) {
       return
     }
 
@@ -334,12 +338,11 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         onPointerEnter={triggerPrefetch}
         onFocusCapture={triggerPrefetch}
       >
-        <Link
+        <SmartLink
           href={productHref}
-          prefetch
-          data-prefetch="true"
           className="block h-full focus:outline-none"
           aria-label={`View ${summary.title}`}
+          preloadOffset={280}
         >
           <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition md:hover:-translate-y-1 md:hover:border-border/60 md:hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
             {badge ? (
@@ -411,7 +414,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
               </div>
             </div>
           </Card>
-        </Link>
+        </SmartLink>
 
       </div>
 

@@ -1,8 +1,8 @@
-import Link from "next/link"
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 
 import { runtimeEnv } from "@/config/env"
+import SmartLink from "@/components/ui/smart-link"
 import { cn } from "@/lib/ui/cn"
 
 export const metadata: Metadata = {
@@ -269,14 +269,15 @@ const ConfirmedPage = async ({ searchParams }: ConfirmedPageProps) => {
       </div>
 
       <div className="flex flex-col items-center gap-4">
-        <Link
+        <SmartLink
           href={primaryCta.href}
+          nativePrefetch
           className={cn(
             "inline-flex items-center rounded-full border border-accent px-6 py-2 text-sm uppercase tracking-[0.3rem] text-accent transition hover:bg-accent hover:text-background"
           )}
         >
           {primaryCta.label}
-        </Link>
+        </SmartLink>
         <p className="text-xs text-muted-foreground">
           Need help? Email us at support@remorselessrecords.com
           {supportReference ? (

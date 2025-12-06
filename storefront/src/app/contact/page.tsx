@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { siBandcamp } from "simple-icons"
 
 import ContactForm from "@/components/contact/contact-form"
@@ -48,12 +47,12 @@ const ContactPage = () => {
                   </p>
                 </div>
               </div>
-              <Link
+              <a
                 href={`mailto:${siteMetadata.contact.email}`}
                 className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
               >
                 {siteMetadata.contact.email}
-              </Link>
+              </a>
             </div>
           </div>
 
@@ -73,7 +72,7 @@ const ContactPage = () => {
                 </div>
               </div>
               <BandcampEmbed />
-              <Link
+              <a
                 href={siteMetadata.socials.bandcamp ?? "https://remorselessrecords.bandcamp.com/"}
                 target="_blank"
                 rel="noreferrer"
@@ -89,7 +88,7 @@ const ContactPage = () => {
                   <path d={bandcampPath} />
                 </svg>
                 Support us on Bandcamp
-              </Link>
+              </a>
             </div>
           </aside>
         </div>
