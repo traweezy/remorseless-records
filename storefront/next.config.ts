@@ -41,6 +41,9 @@ const reactCompilerExplicitlyDisabled =
   process.env.ENABLE_REACT_COMPILER === "false" ||
   process.env.DISABLE_REACT_COMPILER === "true"
 const enableReactCompiler = !reactCompilerExplicitlyDisabled
+const experimentalConfig = {
+  disableNetwork: process.env.NEXT_DISABLE_NETWORK === "1",
+} as unknown as NonNullable<NextConfig["experimental"]>
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -48,6 +51,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_YEAR: BUILD_YEAR,
   },
+  experimental: experimentalConfig,
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
