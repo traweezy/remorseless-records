@@ -37,13 +37,9 @@ const dynamicRemotePatterns: RemotePattern[] = [
 ].filter((pattern): pattern is RemotePattern => Boolean(pattern))
 
 const BUILD_YEAR = new Date().getUTCFullYear().toString()
-const reactCompilerExplicitlyDisabled =
-  process.env.ENABLE_REACT_COMPILER === "false" ||
-  process.env.DISABLE_REACT_COMPILER === "true"
-const enableReactCompiler = !reactCompilerExplicitlyDisabled
+const experimentalConfig: NonNullable<NextConfig["experimental"]> = {}
 
 const nextConfig: NextConfig = {
-  cacheComponents: true,
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_BUILD_YEAR: BUILD_YEAR,
@@ -70,7 +66,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  reactCompiler: enableReactCompiler ? {} : false,
+  experimental: experimentalConfig,
+  reactCompiler: true,
   turbopack: {
     root: path.resolve(currentDir, ".."),
   },
