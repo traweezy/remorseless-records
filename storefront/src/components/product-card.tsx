@@ -15,6 +15,7 @@ import { PrefetchKind } from "next/dist/client/components/router-reducer/router-
 import { mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
 import { useProductDetailPrefetch } from "@/lib/query/products"
 import { shouldBlockPrefetch } from "@/lib/prefetch"
+import { normalizeFormatValue } from "@/lib/search/normalize"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 
 type StoreProduct = HttpTypes.StoreProduct
@@ -255,17 +256,23 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const initialProduct = isStoreProduct(product) ? product : undefined
   const productHref = handle ? `/products/${handle}` : "/products"
   const formatLabels = (() => {
-    const labels = new Set<string>()
+    const canonical = new Set<string>()
+    const raw = new Set<string>()
 
     const addLabel = (value: string | null | undefined) => {
       if (!value) {
         return
       }
-      const normalized = value.trim()
-      if (!normalized.length || normalized.toLowerCase() === "default") {
+      const trimmed = value.trim()
+      if (!trimmed.length || trimmed.toLowerCase() === "default") {
         return
       }
-      labels.add(normalized)
+      const normalized = normalizeFormatValue(trimmed)
+      if (normalized) {
+        canonical.add(normalized)
+        return
+      }
+      raw.add(trimmed)
     }
 
     if (isStoreProduct(product)) {
@@ -288,15 +295,16 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       summary.formats.forEach(addLabel)
     }
 
-    if (!labels.size) {
+    if (!canonical.size && !raw.size) {
       summary.formats.forEach(addLabel)
     }
 
-    if (!labels.size && summary.defaultVariant?.title) {
+    if (!canonical.size && !raw.size && summary.defaultVariant?.title) {
       addLabel(summary.defaultVariant.title)
     }
 
-    return Array.from(labels)
+    const selected = canonical.size ? canonical : raw
+    return Array.from(selected)
   })()
 
   const triggerPrefetch = () => {

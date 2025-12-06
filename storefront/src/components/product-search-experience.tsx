@@ -88,27 +88,36 @@ const deriveCollectionTitle = (hit: ProductSearchHit): string | null => {
 }
 
 const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
-  const labels = new Set<string>()
+  const canonical = new Set<string>()
+  const raw = new Set<string>()
 
-  const sourceArrays = [
-    hit.formats,
-    hit.variantTitles,
-    hit.format ? [hit.format] : [],
-  ]
+  const add = (value: string | null | undefined) => {
+    if (!value || typeof value !== "string") {
+      return
+    }
+    const trimmed = value.trim()
+    if (!trimmed.length) {
+      return
+    }
+    const normalized = normalizeFormatSafe(trimmed)
+    if (normalized) {
+      canonical.add(normalized)
+      return
+    }
+    raw.add(trimmed)
+  }
+
+  const sourceArrays = [hit.formats, hit.variantTitles, hit.format ? [hit.format] : []]
 
   sourceArrays.forEach((entries) => {
     if (!entries) {
       return
     }
-    entries.forEach((entry) => {
-      if (!entry || typeof entry !== "string" || !entry.trim().length) {
-        return
-      }
-      labels.add(entry.trim())
-    })
+    entries.forEach(add)
   })
 
-  return Array.from(labels)
+  const preferred = canonical.size ? canonical : raw
+  return Array.from(preferred)
 }
 
 export const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => {
