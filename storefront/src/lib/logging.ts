@@ -18,17 +18,19 @@ const serialize = (payload: LogPayload): string => {
 
 export const safeLogError = (message: string, payload?: LogPayload): void => {
   try {
-    if (payload === undefined) {
-      console.error(message)
-    } else {
-      console.error(message, payload)
+    const serializedPayload = payload === undefined ? "" : ` ${serialize(payload)}`
+    const line = `${message}${serializedPayload}\n`
+
+    if (typeof process !== "undefined" && process.stderr?.write) {
+      process.stderr.write(line)
+      return
+    }
+
+    if (typeof console !== "undefined" && typeof console.log === "function") {
+      console.log(line)
+      return
     }
   } catch {
-    try {
-      const suffix = payload === undefined ? "" : ` ${serialize(payload)}`
-      process.stderr?.write?.(`${message}${suffix}\n`)
-    } catch {
-      // Ignore logging failures entirely to avoid masking the original error.
-    }
+    // Ignore logging failures entirely to avoid masking the original error.
   }
 }
