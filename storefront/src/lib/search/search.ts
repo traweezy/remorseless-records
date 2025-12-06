@@ -127,6 +127,39 @@ const canonicalizeFormatFacets = (facet: FacetMap): FacetMap => {
   return canonical
 }
 
+const buildCanonicalFormatFacet = (
+  formatFacet: FacetMap,
+  variantFacet: FacetMap | undefined,
+  hits: ProductSearchHit[]
+): FacetMap => {
+  const canonical: FacetMap = canonicalizeFormatFacets(formatFacet)
+
+  if (variantFacet) {
+    Object.entries(variantFacet).forEach(([rawKey, count]) => {
+      const normalized = normalizeFormatValue(rawKey)
+      if (!normalized) {
+        return
+      }
+      canonical[normalized] = (canonical[normalized] ?? 0) + count
+    })
+  }
+
+  hits.forEach((hit) => {
+    const add = (value: string | null | undefined) => {
+      const normalized = normalizeFormatValue(value)
+      if (!normalized) {
+        return
+      }
+      canonical[normalized] = (canonical[normalized] ?? 0) + 1
+    }
+    add(hit.format)
+    hit.variantTitles?.forEach(add)
+    hit.formats?.forEach(add)
+  })
+
+  return canonical
+}
+
 const filterHitsClient = (
   hits: ProductSearchHit[],
   descriptors: FilterDescriptor[]
@@ -373,6 +406,11 @@ export const searchProductsWithClient = async (
   const facetsFromIndex = extractFacetMaps(facetDistribution)
   const fallbackFacets = computeFacetCounts(collected)
 
+  const formatFacetSource =
+    Object.keys(facetsFromIndex.format).length > 0
+      ? facetsFromIndex.format
+      : fallbackFacets.format
+
   const facets = {
     genres: Object.keys(facetsFromIndex.genres).length
       ? facetsFromIndex.genres
@@ -380,11 +418,7 @@ export const searchProductsWithClient = async (
     metalGenres: Object.keys(facetsFromIndex.metalGenres).length
       ? facetsFromIndex.metalGenres
       : fallbackFacets.metalGenres,
-    format: canonicalizeFormatFacets(
-      Object.keys(facetsFromIndex.format).length
-        ? facetsFromIndex.format
-        : fallbackFacets.format
-    ),
+    format: buildCanonicalFormatFacet(formatFacetSource, facetsFromIndex.variants, collected),
     categories:
       filterable.has("category_handles") && Object.keys(facetsFromIndex.categories).length
         ? facetsFromIndex.categories
