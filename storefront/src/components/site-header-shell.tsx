@@ -112,21 +112,31 @@ const SiteHeaderShell = () => {
         </SmartLink>
 
         <div className="flex items-center gap-4">
-          <nav className="hidden items-center md:flex">
-            {NAV_LINKS.map((link) => (
-              <SmartLink
-                key={link.href}
-                href={link.href}
-                nativePrefetch
-                className={cn(
-                  "rounded-full px-3 py-2 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  activeHref === link.href && "text-destructive"
-                )}
-              >
-                {link.label}
-              </SmartLink>
-            ))}
-          </nav>
+          {!pathname?.startsWith("/checkout") ? (
+            <nav className="hidden items-center md:flex">
+              {NAV_LINKS.map((link) => (
+                <SmartLink
+                  key={link.href}
+                  href={link.href}
+                  nativePrefetch
+                  className={cn(
+                    "rounded-full px-3 py-2 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    activeHref === link.href && "text-destructive"
+                  )}
+                >
+                  {link.label}
+                </SmartLink>
+              ))}
+            </nav>
+          ) : (
+            <SmartLink
+              href="/cart"
+              nativePrefetch
+              className="hidden md:inline-flex items-center rounded-full border border-border/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+            >
+              Back to cart
+            </SmartLink>
+          )}
           <Button
             variant="ghost"
             size="icon"
