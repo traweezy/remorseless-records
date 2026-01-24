@@ -15,6 +15,9 @@ import {
   STORE_CORS,
   STRIPE_API_KEY,
   STRIPE_WEBHOOK_SECRET,
+  TAX_RATE_LOOKUP_API_KEY,
+  TAX_RATE_LOOKUP_MODE,
+  TAX_RATE_LOOKUP_PROVIDER,
   WORKER_MODE,
   MINIO_ENDPOINT,
   MINIO_ACCESS_KEY,
@@ -144,7 +147,24 @@ const medusaConfig = {
           },
         ],
       },
-    }] : [])
+    }] : []),
+    {
+      key: Modules.TAX,
+      resolve: '@medusajs/tax',
+      options: {
+        providers: [
+          {
+            resolve: './src/modules/tax-rate-provider',
+            id: 'rate-lookup',
+            options: {
+              provider: TAX_RATE_LOOKUP_PROVIDER,
+              apiKey: TAX_RATE_LOOKUP_API_KEY,
+              mode: TAX_RATE_LOOKUP_MODE
+            }
+          }
+        ]
+      }
+    }
   ],
   plugins: [
   ...(MEILISEARCH_HOST && MEILISEARCH_ADMIN_KEY ? [{

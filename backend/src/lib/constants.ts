@@ -85,6 +85,19 @@ export const STRIPE_API_KEY = process.env.STRIPE_API_KEY;
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 /**
+ * (required) Tax rate lookup configuration
+ */
+export const TAX_RATE_LOOKUP_PROVIDER = assertValue(
+  process.env.TAX_RATE_LOOKUP_PROVIDER,
+  'Environment variable for TAX_RATE_LOOKUP_PROVIDER is not set',
+)
+export const TAX_RATE_LOOKUP_API_KEY = assertValue(
+  process.env.TAX_RATE_LOOKUP_API_KEY,
+  'Environment variable for TAX_RATE_LOOKUP_API_KEY is not set',
+)
+export const TAX_RATE_LOOKUP_MODE = process.env.TAX_RATE_LOOKUP_MODE ?? 'zip'
+
+/**
  * (optional) Meilisearch configuration
  */
 export const MEILISEARCH_HOST = process.env.MEILISEARCH_HOST;
