@@ -7,11 +7,12 @@ const SUPPORTED = typeof document !== "undefined" && "speculationRules" in docum
 const TARGETS = [
   "/catalog",
   "/catalog/(.*)",
+  "/discography",
+  "/discography/(.*)",
   "/products",
   "/products/(.*)",
   "/contact",
   "/about",
-  "/press",
   "/submissions",
   "/help",
   "/help/(.*)",
