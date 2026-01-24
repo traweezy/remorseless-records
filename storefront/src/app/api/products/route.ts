@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 
 import { storeClient } from "@/lib/medusa"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
+import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
+import { resolveRegionId } from "@/lib/regions"
 
 export const GET = async (request: Request) => {
   const url = new URL(request.url)
@@ -14,9 +16,12 @@ export const GET = async (request: Request) => {
   const inStockOnly = inStockParam === "true"
 
   try {
+    const regionId = await resolveRegionId()
     const options: Record<string, unknown> = {
       limit: Number.isFinite(limit) && limit > 0 ? limit : 24,
       offset: Number.isFinite(offset) && offset >= 0 ? offset : 0,
+      fields: PRODUCT_LIST_FIELDS,
+      region_id: regionId,
     }
 
     if (typeof sortParam === "string") {
@@ -30,9 +35,7 @@ export const GET = async (request: Request) => {
       }
     }
 
-    const { products, count } = await storeClient.product.list({
-      ...options,
-    })
+    const { products, count } = await storeClient.product.list(options)
 
     const hits = products.map(mapStoreProductToSearchHit)
     const filteredHits = inStockOnly

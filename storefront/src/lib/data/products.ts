@@ -2,6 +2,7 @@ import type { HttpTypes } from "@medusajs/types"
 import { unstable_cache } from "next/cache"
 
 import { storeClient } from "@/lib/medusa"
+import { resolveRegionId } from "@/lib/regions"
 import {
   buildProductSlugParts,
   type ProductSlug,
@@ -32,7 +33,8 @@ const extractProductsFromResponse = (response: unknown): StoreProduct[] => {
 }
 
 const listProducts = async (query: HttpTypes.StoreProductListParams): Promise<StoreProduct[]> => {
-  const response = await storeClient.product.list(query)
+  const regionId = query.region_id ?? (await resolveRegionId())
+  const response = await storeClient.product.list({ ...query, region_id: regionId })
   return extractProductsFromResponse(response)
 }
 

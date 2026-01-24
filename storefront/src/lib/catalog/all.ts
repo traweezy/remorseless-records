@@ -4,6 +4,7 @@ import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import type { ProductSearchHit } from "@/types/product"
 import { storeClient } from "@/lib/medusa"
+import { resolveRegionId } from "@/lib/regions"
 
 const CATALOG_CACHE_KEY = "full-catalog-hits-v2"
 
@@ -14,12 +15,15 @@ export const getFullCatalogHits = unstable_cache(
       const batchSize = 100
       let offset = 0
 
+      const regionId = await resolveRegionId()
+
       for (;;) {
         const { products } = await storeClient.product.list({
           limit: batchSize,
           offset,
           order: "title",
           fields: PRODUCT_LIST_FIELDS,
+          region_id: regionId,
         })
 
         if (!products?.length) {
