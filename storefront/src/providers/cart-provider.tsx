@@ -7,6 +7,7 @@ import type { HttpTypes } from "@medusajs/types"
 import {
   addLineItem,
   addShippingMethod,
+  calculateTaxes as calculateTaxesRequest,
   completeCart as completeCartRequest,
   createCart,
   getCart,
@@ -45,6 +46,7 @@ type CartContextValue = {
     cartIdOverride?: string
   ) => Promise<HttpTypes.StoreCartShippingOptionWithServiceZone[]>
   addShippingMethod: (optionId: string) => Promise<StoreCart | null>
+  calculateTaxes: () => Promise<StoreCart | null>
   initPaymentSessions: () => Promise<{
     clientSecret: string | null
     providerId: string | null
@@ -382,6 +384,28 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     [cart?.id]
   )
 
+  const applyTaxes = useCallback(async () => {
+    const cartId = getCartId() ?? cart?.id
+    if (!cartId) {
+      return null
+    }
+
+    try {
+      const updatedCart = await calculateTaxesRequest(cartId)
+      setCart(updatedCart)
+      setError(null)
+      return updatedCart
+    } catch (mutationError) {
+      const message = resolveErrorMessage(
+        mutationError,
+        "Unable to calculate taxes."
+      )
+      setError(message)
+      toast.error(message)
+      return null
+    }
+  }, [cart?.id])
+
   const initializePaymentSessions = useCallback(async () => {
     const cartId = getCartId() ?? cart?.id
     if (!cartId) {
@@ -459,11 +483,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       setAddresses: updateAddresses,
       listShippingOptions: loadShippingOptions,
       addShippingMethod: applyShippingMethod,
+      calculateTaxes: applyTaxes,
       initPaymentSessions: initializePaymentSessions,
       completeCart: finishCart,
     }),
     [
       addItem,
+      applyTaxes,
       applyShippingMethod,
       cart,
       error,

@@ -105,6 +105,24 @@ const normalizeAddress = (address: AddressFormState): StoreCartAddressInput => {
   return normalized
 }
 
+const buildTaxKey = (
+  address: HttpTypes.StoreCartAddress | null | undefined,
+  shippingOptionId: string | null
+): string | null => {
+  if (!address || !shippingOptionId) {
+    return null
+  }
+
+  const country = address.country_code?.trim().toLowerCase()
+  const postal = address.postal_code?.trim()
+  if (!country || !postal) {
+    return null
+  }
+
+  const province = (address.province ?? "").trim().toLowerCase()
+  return `${country}:${province}:${postal}:${shippingOptionId}`
+}
+
 const validateEmail = (email: string): string | null => {
   if (!email.trim()) {
     return "Email is required."
@@ -190,6 +208,7 @@ const CheckoutPage = () => {
     setAddresses,
     listShippingOptions,
     addShippingMethod,
+    calculateTaxes,
     initPaymentSessions,
     completeCart,
   } = useCart()
@@ -207,6 +226,9 @@ const CheckoutPage = () => {
   const [isSavingContact, setIsSavingContact] = useState(false)
   const [isSavingAddress, setIsSavingAddress] = useState(false)
   const [isLoadingShipping, setIsLoadingShipping] = useState(false)
+  const [isCalculatingTaxes, setIsCalculatingTaxes] = useState(false)
+  const [taxError, setTaxError] = useState<string | null>(null)
+  const [taxKey, setTaxKey] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [stripeState, setStripeState] = useState<StripeState>({ stripe: null, elements: null })
   const [paymentError, setPaymentError] = useState<string | null>(null)
@@ -214,6 +236,11 @@ const CheckoutPage = () => {
 
   const contactComplete = Boolean(cart?.email)
   const shippingComplete = Boolean(cart?.shipping_address && cart?.shipping_methods?.length)
+  const currentTaxKey = useMemo(
+    () => buildTaxKey(cart?.shipping_address, selectedShippingOption || null),
+    [cart?.shipping_address, selectedShippingOption]
+  )
+  const hasCalculatedTaxes = Boolean(currentTaxKey && taxKey === currentTaxKey)
 
   const syncFromCart = useCallback((currentCart: HttpTypes.StoreCart, existingEmail: string) => {
     if (currentCart.email && !existingEmail) {
@@ -268,6 +295,19 @@ const CheckoutPage = () => {
     }
   }, [cart, isLoading, router])
 
+  useEffect(() => {
+    if (!currentTaxKey) {
+      setTaxKey(null)
+      setTaxError(null)
+      setIsCalculatingTaxes(false)
+      return
+    }
+
+    if (taxKey && taxKey !== currentTaxKey) {
+      setTaxError(null)
+    }
+  }, [currentTaxKey, taxKey])
+
   const loadShippingOptions = useCallback(
     async (currentCartId: string) => {
       setIsLoadingShipping(true)
@@ -299,12 +339,47 @@ const CheckoutPage = () => {
     resetPaymentState()
   }, [cart?.id, cart?.shipping_methods, cart?.total, resetPaymentState])
 
+  const runTaxCalculation = useCallback(
+    async (overrideKey?: string | null) => {
+      const cartId = cart?.id
+      const resolvedKey = overrideKey ?? currentTaxKey
+
+      if (!cartId || !resolvedKey) {
+        setTaxError("Add a shipping address and method to calculate taxes.")
+        return null
+      }
+
+      setIsCalculatingTaxes(true)
+      setTaxError(null)
+
+      try {
+        const updated = await calculateTaxes()
+
+        if (updated?.id) {
+          setTaxKey(resolvedKey)
+          return updated
+        }
+
+        setTaxError("Unable to calculate taxes. Please try again.")
+        return null
+      } catch (error) {
+        console.error("Failed to calculate taxes", error)
+        setTaxError("Unable to calculate taxes. Please try again.")
+        return null
+      } finally {
+        setIsCalculatingTaxes(false)
+      }
+    },
+    [calculateTaxes, cart?.id, currentTaxKey]
+  )
+
   const maybeInitPaymentSession = useCallback(async () => {
     const canInitPayment =
       Boolean(cart?.id) &&
       Boolean(cart?.email) &&
       Boolean(cart?.shipping_address) &&
       Boolean(cart?.shipping_methods?.length) &&
+      hasCalculatedTaxes &&
       Number(cart?.total ?? 0) > 0
 
     if (!canInitPayment || clientSecret) {
@@ -319,7 +394,7 @@ const CheckoutPage = () => {
     } catch (sessionError) {
       console.error("Failed to initialize payment session", sessionError)
     }
-  }, [cart, clientSecret, initPaymentSessions])
+  }, [cart, clientSecret, hasCalculatedTaxes, initPaymentSessions])
 
   useEffect(() => {
     void maybeInitPaymentSession()
@@ -332,7 +407,7 @@ const CheckoutPage = () => {
 
   const resolveMoney = useCallback(
     (value: number | null, fallback: string) =>
-      value && value > 0 ? formatAmount(currencyCode, value) : fallback,
+      value === null || value === undefined ? fallback : formatAmount(currencyCode, value),
     [currencyCode]
   )
 
@@ -369,20 +444,32 @@ const CheckoutPage = () => {
     setIsSavingAddress(false)
 
     if (updated?.shipping_address) {
+      setTaxKey(null)
+      setTaxError(null)
       setActiveStep("payment")
     }
   }
 
   const handleShippingSelect = useCallback(
-    (optionId: string) => {
+    async (optionId: string) => {
       setSelectedShippingOption(optionId)
-      void addShippingMethod(optionId)
+      const updatedCart = await addShippingMethod(optionId)
+      const nextKey = buildTaxKey(
+        updatedCart?.shipping_address ?? cart?.shipping_address,
+        optionId
+      )
+      await runTaxCalculation(nextKey)
     },
-    [addShippingMethod]
+    [addShippingMethod, cart?.shipping_address, runTaxCalculation]
   )
 
   const handlePlaceOrder = async () => {
     if (!cart?.id) return
+
+    if (!hasCalculatedTaxes) {
+      setTaxError("Please calculate taxes before placing your order.")
+      return
+    }
 
     setPaymentError(null)
     setIsPlacingOrder(true)
@@ -472,10 +559,9 @@ const CheckoutPage = () => {
     shippingTotal,
     cart.shipping_methods?.length ? formatAmount(currencyCode, 0) : "Calculated at next step"
   )
-  const taxEstimate = resolveMoney(
-    taxTotal,
-    cart.shipping_methods?.length ? formatAmount(currencyCode, 0) : "Estimated at next step"
-  )
+  const taxEstimate = hasCalculatedTaxes
+    ? resolveMoney(taxTotal, formatAmount(currencyCode, 0))
+    : "Estimated at next step"
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-16">
@@ -827,7 +913,10 @@ const CheckoutPage = () => {
                       ) : null}
                     </div>
                     {shippingOptions.length ? (
-                      <Select value={selectedShippingOption} onValueChange={handleShippingSelect}>
+                      <Select
+                        value={selectedShippingOption}
+                        onValueChange={(value) => void handleShippingSelect(value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select shipping" />
                         </SelectTrigger>
@@ -862,6 +951,26 @@ const CheckoutPage = () => {
                   <StepLabel label="Payment" complete={false} />
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4">
+                  {!hasCalculatedTaxes ? (
+                    <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
+                      <p>Taxes are calculated after your shipping method is selected.</p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => void runTaxCalculation()}
+                        disabled={isCalculatingTaxes || !currentTaxKey}
+                      >
+                        {isCalculatingTaxes ? "Calculating taxes..." : "Calculate taxes"}
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {taxError ? (
+                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                      {taxError}
+                    </div>
+                  ) : null}
+
                   {Number(cart?.total ?? 0) <= 0 ? (
                     <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
                       This order is free. Confirm to place it now.
@@ -888,7 +997,12 @@ const CheckoutPage = () => {
                     type="button"
                     className="w-full"
                     onClick={() => void handlePlaceOrder()}
-                    disabled={isPlacingOrder || (Number(cart?.total ?? 0) > 0 && !clientSecret)}
+                    disabled={
+                      isPlacingOrder ||
+                      isCalculatingTaxes ||
+                      !hasCalculatedTaxes ||
+                      (Number(cart?.total ?? 0) > 0 && !clientSecret)
+                    }
                   >
                     {isPlacingOrder ? "Placing order..." : "Place order"}
                   </Button>

@@ -3,7 +3,7 @@ import "server-only"
 import type { HttpTypes } from "@medusajs/types"
 
 import { siteMetadata } from "@/config/site"
-import { storeClient } from "@/lib/medusa/client"
+import { medusa, storeClient } from "@/lib/medusa/client"
 import type { StoreCartAddressInput } from "@/lib/cart/types"
 
 const CART_FIELDS = [
@@ -186,6 +186,20 @@ export const addShippingMethod = async (
   )
 
   return cart
+}
+
+export const calculateTaxes = async (
+  cartId: string
+): Promise<HttpTypes.StoreCart> => {
+  const response = await medusa.client.fetch<{ cart: HttpTypes.StoreCart }>(
+    `/store/carts/${cartId}/taxes`,
+    {
+      method: "POST",
+      query: { fields: CART_FIELDS },
+    }
+  )
+
+  return response.cart
 }
 
 const extractClientSecret = (

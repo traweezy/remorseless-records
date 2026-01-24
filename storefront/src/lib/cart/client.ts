@@ -163,6 +163,19 @@ export const addShippingMethod = async (
   return payload.cart
 }
 
+export const calculateTaxes = async (
+  cartId: string
+): Promise<StoreCart> => {
+  const payload = await requestJson<CartResponse>(
+    `/api/cart/${cartId}/taxes`,
+    {
+      method: "POST",
+    }
+  )
+
+  return payload.cart
+}
+
 export const initPaymentSessions = async (
   cartId: string,
   providerId?: string
