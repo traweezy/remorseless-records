@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo } from "react"
-import { usePathname } from "next/navigation"
 
 import { motion, useReducedMotion, type Transition } from "framer-motion"
 import { X } from "lucide-react"
@@ -35,7 +34,6 @@ const heroImageFor = (product: StoreProduct | null): string | null => {
 }
 
 export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }: ProductQuickViewProps) => {
-  const pathname = usePathname()
   const prefersReducedMotion = useReducedMotion()
 
   const {
@@ -140,7 +138,6 @@ export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }:
               <ProductVariantSelector
                 variants={variants}
                 productTitle={activeProduct?.title ?? "Release"}
-                redirectPath={pathname ?? "/products"}
               />
               <p className="text-xs leading-relaxed text-muted-foreground">
                 {description}

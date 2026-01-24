@@ -3,14 +3,11 @@
 import type { HttpTypes } from "@medusajs/types"
 import Image from "next/image"
 import { Minus, Plus, Trash2 } from "lucide-react"
-import { useMemo } from "react"
+import { useMemo, useTransition } from "react"
 
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
-import {
-  useRemoveCartItemMutation,
-  useUpdateCartItemQuantityMutation,
-} from "@/lib/mutations/cart"
+import { useCart } from "@/providers/cart-provider"
 
 type CartLineItem = HttpTypes.StoreCartLineItem
 
@@ -29,8 +26,8 @@ export const CartItem = ({
   currencyCode,
   className,
 }: CartItemProps) => {
-  const updateMutation = useUpdateCartItemQuantityMutation()
-  const removeMutation = useRemoveCartItemMutation()
+  const { updateItem, removeItem } = useCart()
+  const [isPending, startTransition] = useTransition()
 
   const quantity = useMemo(() => Number(item.quantity ?? 1), [item.quantity])
   const totalAmount = useMemo(
@@ -41,17 +38,16 @@ export const CartItem = ({
   const handleQuantityChange = (nextQuantity: number) => {
     const normalized = Math.max(1, nextQuantity)
 
-    updateMutation.mutate({
-      lineItemId: item.id,
-      quantity: normalized,
+    startTransition(() => {
+      void updateItem(item.id, normalized)
     })
   }
 
   const handleRemove = () => {
-    removeMutation.mutate({ lineItemId: item.id })
+    startTransition(() => {
+      void removeItem(item.id)
+    })
   }
-
-  const isPending = updateMutation.isPending || removeMutation.isPending
 
   return (
     <article

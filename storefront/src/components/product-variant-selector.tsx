@@ -5,21 +5,19 @@ import { useEffect, useMemo, useState, useTransition } from "react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import { addToCart } from "@/lib/actions/add-to-cart"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
+import { useCart } from "@/providers/cart-provider"
 import type { VariantOption } from "@/types/product"
 
 type ProductVariantSelectorProps = {
   variants: VariantOption[]
   productTitle: string
-  redirectPath: string
 }
 
 const ProductVariantSelector = ({
   variants,
   productTitle,
-  redirectPath,
 }: ProductVariantSelectorProps) => {
   const [selectedVariantId, setSelectedVariantId] = useState(
     variants[0]?.id ?? ""
@@ -29,6 +27,7 @@ const ProductVariantSelector = ({
     null
   )
   const [isPending, startTransition] = useTransition()
+  const { addItem } = useCart()
 
   const selectedVariant = useMemo(
     () => variants.find((variant) => variant.id === selectedVariantId) ?? null,
@@ -82,16 +81,11 @@ const ProductVariantSelector = ({
 
     startTransition(async () => {
       try {
-        await addToCart({
-          variantId: selectedVariant.id,
-          quantity,
-          redirectTo: redirectPath,
-        })
+        await addItem(selectedVariant.id, quantity)
         toast.success(`${productTitle} added to cart.`)
       } catch (error) {
         console.error(error)
         setOptimisticVariantId(null)
-        toast.error("Failed to add to cart. Please try again.")
       }
     })
   }
@@ -106,7 +100,7 @@ const ProductVariantSelector = ({
     }
 
     if (isPending) {
-      return "Adding…"
+      return "Adding..."
     }
 
     if (optimisticVariantId === selectedVariant?.id) {

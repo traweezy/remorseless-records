@@ -1,10 +1,10 @@
 "use client"
 
 import CartItem from "@/components/cart/cart-item"
-import { useCartQuery } from "@/lib/query/cart"
+import { useCart } from "@/providers/cart-provider"
 
 export const CartItemsList = () => {
-  const { data: cart } = useCartQuery()
+  const { cart } = useCart()
 
   const items = cart?.items ?? []
   const currencyCode = cart?.currency_code ?? "usd"

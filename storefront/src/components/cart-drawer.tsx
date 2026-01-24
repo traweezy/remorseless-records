@@ -10,9 +10,9 @@ import CartItem from "@/components/cart/cart-item"
 import { Button } from "@/components/ui/button"
 import Drawer from "@/components/ui/drawer"
 import { Separator } from "@/components/ui/separator"
-import { startStripeCheckout } from "@/lib/actions/start-stripe-checkout"
-import type { StoreCart } from "@/lib/query/cart"
-import { useCartQuery } from "@/lib/query/cart"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useCart } from "@/providers/cart-provider"
+import type { StoreCart } from "@/providers/cart-provider"
 import { formatAmount } from "@/lib/money"
 
 const MotionButton = motion(Button)
@@ -34,15 +34,10 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
   const router = useRouter()
   const [isCheckoutPending, startCheckoutTransition] = useTransition()
   const prefersReducedMotion = useReducedMotion()
-  const { data: cart } = useCartQuery()
-  const hydratedCart: StoreCart = cart ?? null
+  const { cart: hydratedCart, itemCount, isLoading, error } = useCart()
 
   const items = hydratedCart?.items ?? EMPTY_CART_ITEMS
   const hasItems = items.length > 0
-  const itemCount = useMemo(
-    () => items.reduce((total, item) => total + Number(item.quantity ?? 0), 0),
-    [items]
-  )
 
   const subtotal = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.subtotal), [hydratedCart])
   const taxTotal = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.tax_total), [hydratedCart])
@@ -128,23 +123,31 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
         {hasItems ? (
           <>
             <div className="flex-1 overflow-y-auto px-6 py-6">
-              <motion.div
-                key="cart-items"
-                initial="hidden"
-                animate="visible"
-                variants={listVariants}
-                className="space-y-6"
-              >
-                {items.map((item, index) => (
-                  <motion.div
-                    key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
-                    variants={itemVariants}
-                    layout
-                  >
-                    <CartItem item={item} currencyCode={currencyFromCart(hydratedCart)} />
-                  </motion.div>
-                ))}
-              </motion.div>
+              {isLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Skeleton key={`cart-skeleton-${index}`} className="h-24 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <motion.div
+                  key="cart-items"
+                  initial="hidden"
+                  animate="visible"
+                  variants={listVariants}
+                  className="space-y-6"
+                >
+                  {items.map((item, index) => (
+                    <motion.div
+                      key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
+                      variants={itemVariants}
+                      layout
+                    >
+                      <CartItem item={item} currencyCode={currencyFromCart(hydratedCart)} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
             </div>
 
             <div className="flex flex-col gap-4 border-t border-border/60 px-6 py-6">
@@ -168,6 +171,12 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
                 </div>
               </dl>
 
+              {error ? (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {error}
+                </div>
+              ) : null}
+
               <MotionButton
                 type="button"
                 size="lg"
@@ -182,8 +191,8 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
                   }
 
                   onOpenChange(false)
-                  startCheckoutTransition(async () => {
-                    await startStripeCheckout(cartId)
+                  startCheckoutTransition(() => {
+                    router.push("/checkout")
                   })
                 }}
               >
@@ -207,6 +216,12 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
               </MotionButton>
             </div>
           </>
+        ) : isLoading ? (
+          <div className="flex flex-1 flex-col gap-4 px-6 py-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={`cart-drawer-loading-${index}`} className="h-24 w-full" />
+            ))}
+          </div>
         ) : (
           <motion.div
             key="empty-cart"

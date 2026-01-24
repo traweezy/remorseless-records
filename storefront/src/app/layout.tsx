@@ -13,6 +13,7 @@ import QueryProvider from "@/components/providers/query-provider"
 import SpeculationRules from "@/components/providers/speculation-rules"
 import QuicklinkProvider from "@/components/providers/quicklink-provider"
 import ProximityPrefetch from "@/components/providers/proximity-prefetch"
+import { CartProvider } from "@/providers/cart-provider"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { organizationJsonLd, webSiteJsonLd } from "@/lib/seo/structured-data"
@@ -135,16 +136,18 @@ export default function RootLayout({ children }: RootLayoutProps) {
         ].join(" ")}
       >
         <QueryProvider>
-          <Suspense fallback={null}>
-            <QuicklinkProvider />
-            <ProximityPrefetch>
-              <div className="relative flex min-h-screen flex-col bg-background">
-                <SiteHeader />
-                <main className="flex-1 min-h-0">{children}</main>
-                <SiteFooter />
-              </div>
-            </ProximityPrefetch>
-          </Suspense>
+          <CartProvider>
+            <Suspense fallback={null}>
+              <QuicklinkProvider />
+              <ProximityPrefetch>
+                <div className="relative flex min-h-screen flex-col bg-background">
+                  <SiteHeader />
+                  <main className="flex-1 min-h-0 flex flex-col">{children}</main>
+                  <SiteFooter />
+                </div>
+              </ProximityPrefetch>
+            </Suspense>
+          </CartProvider>
         </QueryProvider>
         <SpeculationRules />
         <JsonLd id="remorseless-organization" data={organizationJsonLd} />

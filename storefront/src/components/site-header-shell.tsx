@@ -9,10 +9,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Drawer from "@/components/ui/drawer"
 import SmartLink from "@/components/ui/smart-link"
-import { useCartQuery, prefetchCartQuery } from "@/lib/query/cart"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
-import { useQueryClient } from "@tanstack/react-query"
+import { useCart } from "@/providers/cart-provider"
 
 const NAV_LINKS = [
   { href: "/catalog", label: "Catalog" },
@@ -24,12 +23,11 @@ const SiteHeaderShell = () => {
   const [isCartOpen, setCartOpen] = useState(false)
   const [isMenuOpen, setMenuOpen] = useState(false)
   const [scrollProgress, setScrollProgress] = useState(0)
-  const { data: cart } = useCartQuery()
-  const queryClient = useQueryClient()
+  const { cart, itemCount, refreshCart } = useCart()
 
   const prefetchCart = useCallback(() => {
-    void prefetchCartQuery(queryClient)
-  }, [queryClient])
+    void refreshCart({ silent: true })
+  }, [refreshCart])
 
   const activeHref = useMemo(() => {
     if (!pathname) {
@@ -39,9 +37,6 @@ const SiteHeaderShell = () => {
     const match = NAV_LINKS.find((link) => pathname === link.href)
     return match?.href ?? null
   }, [pathname])
-
-  const itemCount =
-    cart?.items?.reduce((total, item) => total + Number(item.quantity ?? 0), 0) ?? 0
 
   const subtotalDisplay = useMemo(() => {
     if (!cart?.subtotal && !cart?.total) {
@@ -57,7 +52,7 @@ const SiteHeaderShell = () => {
   const hasItems = itemCount > 0
   const cartLabel = hasItems
     ? subtotalDisplay
-      ? `${itemCount} • ${subtotalDisplay}`
+      ? `${itemCount} - ${subtotalDisplay}`
       : `${itemCount} items`
     : "Empty"
 

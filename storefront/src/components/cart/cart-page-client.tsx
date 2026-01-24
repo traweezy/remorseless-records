@@ -1,13 +1,14 @@
 "use client"
 
 import { useTransition } from "react"
+import { useRouter } from "next/navigation"
 
 import CartItemsList from "@/components/cart/cart-items-list"
-import { startStripeCheckout } from "@/lib/actions/start-stripe-checkout"
-import { useCartQuery } from "@/lib/query/cart"
+import { Skeleton } from "@/components/ui/skeleton"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
 import SmartLink from "@/components/ui/smart-link"
+import { useCart } from "@/providers/cart-provider"
 
 const SummaryRow = ({
   label,
@@ -32,8 +33,35 @@ const SummaryRow = ({
 )
 
 const CartPageClient = () => {
-  const { data: cart } = useCartQuery()
+  const { cart, isLoading, error } = useCart()
   const [isCheckingOut, startCheckoutTransition] = useTransition()
+  const router = useRouter()
+
+  if (isLoading && !cart) {
+    return (
+      <div className="container px-4 py-16 lg:py-24">
+        <div className="grid gap-12 lg:grid-cols-[1.6fr_1fr]">
+          <section className="space-y-6">
+            <Skeleton className="h-10 w-48" />
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={`cart-loading-${index}`} className="h-28 w-full" />
+              ))}
+            </div>
+          </section>
+          <aside className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-background/80 p-6 shadow-card">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={`cart-summary-${index}`} className="h-5 w-full" />
+              ))}
+            </div>
+            <Skeleton className="h-12 w-full" />
+          </aside>
+        </div>
+      </div>
+    )
+  }
 
   if (!cart || !cart.items?.length) {
     return (
@@ -66,11 +94,19 @@ const CartPageClient = () => {
               Cart
             </h1>
             <p className="text-base text-muted-foreground">
-              Review the damage before we route you to Stripe’s kill switch.
+              Review the damage before we route you to Stripe's kill switch.
             </p>
           </header>
 
-          <CartItemsList />
+          {isLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={`cart-page-skeleton-${index}`} className="h-28 w-full" />
+              ))}
+            </div>
+          ) : (
+            <CartItemsList />
+          )}
         </section>
 
         <aside className="flex h-full flex-col gap-6 rounded-2xl border border-border/60 bg-background/80 p-6 shadow-card">
@@ -99,6 +135,11 @@ const CartPageClient = () => {
               highlight
             />
           </dl>
+          {error ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          ) : null}
           <button
             type="button"
             className="mt-2 inline-flex w-full items-center justify-center rounded-full border border-accent px-8 py-3 text-base font-semibold uppercase tracking-[0.3rem] text-accent transition hover:bg-accent hover:text-background disabled:cursor-not-allowed disabled:opacity-60"
@@ -108,12 +149,12 @@ const CartPageClient = () => {
               if (!cartId) {
                 return
               }
-              startCheckoutTransition(async () => {
-                await startStripeCheckout(cartId)
+              startCheckoutTransition(() => {
+                router.push("/checkout")
               })
             }}
           >
-            {isCheckingOut ? "Preparing checkout…" : "Proceed to Checkout"}
+            {isCheckingOut ? "Preparing checkout..." : "Proceed to Checkout"}
           </button>
           <SmartLink
             href="/catalog"

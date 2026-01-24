@@ -239,7 +239,6 @@ const ProductPage = async ({ params }: ProductPageProps) => {
               <ProductVariantSelector
                 variants={variantOptions}
                 productTitle={productTitle}
-                redirectPath={productPath}
               />
             </div>
 

@@ -1,23 +1,27 @@
 import { NextResponse } from "next/server"
-
-import type { NextRequest } from "next/server"
 import { unstable_noStore as noStore } from "next/cache"
 
-import { CART_COOKIE, getCartById } from "@/lib/cart"
+import { createCart } from "@/lib/cart/api"
 
-export const GET = async (request: NextRequest): Promise<Response> => {
+export const POST = async (request: Request): Promise<Response> => {
   try {
-    if (process.env.NEXT_PHASE === "phase-production-build") {
-      return NextResponse.json({ cart: null })
-    }
     noStore()
-    const cartId = request.cookies.get(CART_COOKIE)?.value
-    const cart = cartId ? await getCartById(cartId) : null
+    const body = (await request.json().catch(() => ({}))) as unknown
+    let regionId: string | undefined
+
+    if (body && typeof body === "object" && "region_id" in body) {
+      const value = (body as { region_id?: unknown }).region_id
+      if (typeof value === "string" && value.trim()) {
+        regionId = value
+      }
+    }
+
+    const cart = await createCart(regionId)
     return NextResponse.json({ cart })
   } catch (error) {
-    console.error("Failed to load cart", error)
+    console.error("Failed to create cart", error)
     return NextResponse.json(
-      { error: "Unable to retrieve cart at this time." },
+      { error: "Unable to create a cart right now." },
       { status: 500 }
     )
   }
