@@ -85,16 +85,11 @@ export const STRIPE_API_KEY = process.env.STRIPE_API_KEY;
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 /**
- * (required) Tax rate lookup configuration
+ * (required at runtime) Tax rate lookup configuration
+ * Keep optional here so builds that don't need runtime tax calls can succeed.
  */
-export const TAX_RATE_LOOKUP_PROVIDER = assertValue(
-  process.env.TAX_RATE_LOOKUP_PROVIDER,
-  'Environment variable for TAX_RATE_LOOKUP_PROVIDER is not set',
-)
-export const TAX_RATE_LOOKUP_API_KEY = assertValue(
-  process.env.TAX_RATE_LOOKUP_API_KEY,
-  'Environment variable for TAX_RATE_LOOKUP_API_KEY is not set',
-)
+export const TAX_RATE_LOOKUP_PROVIDER = process.env.TAX_RATE_LOOKUP_PROVIDER ?? 'taxrate_io'
+export const TAX_RATE_LOOKUP_API_KEY = process.env.TAX_RATE_LOOKUP_API_KEY ?? ''
 export const TAX_RATE_LOOKUP_MODE = process.env.TAX_RATE_LOOKUP_MODE ?? 'zip'
 
 /**

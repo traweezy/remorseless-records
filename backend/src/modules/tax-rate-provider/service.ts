@@ -137,6 +137,10 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       throw new Error(`Unsupported tax provider: ${this.options_.provider}`)
     }
 
+    if (!this.options_.apiKey) {
+      throw new Error('TAX_RATE_LOOKUP_API_KEY is not set.')
+    }
+
     if (this.options_.mode && this.options_.mode !== 'zip') {
       this.logger_.warn(`Tax lookup mode "${this.options_.mode}" is not supported. Using zip lookup.`)
     }
