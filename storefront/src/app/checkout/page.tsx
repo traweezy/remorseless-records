@@ -236,11 +236,27 @@ const CheckoutPage = () => {
 
   const contactComplete = Boolean(cart?.email)
   const shippingComplete = Boolean(cart?.shipping_address && cart?.shipping_methods?.length)
+  const canOpenShipping = contactComplete
+  const canOpenPayment = shippingComplete
   const currentTaxKey = useMemo(
     () => buildTaxKey(cart?.shipping_address, selectedShippingOption || null),
     [cart?.shipping_address, selectedShippingOption]
   )
   const hasCalculatedTaxes = Boolean(currentTaxKey && taxKey === currentTaxKey)
+  const standardShippingOption = useMemo(
+    () => (shippingOptions.length === 1 ? shippingOptions[0] : null),
+    [shippingOptions]
+  )
+
+  const handleStepChange = useCallback(
+    (value: string) => {
+      if (!value) return
+      if (value === "shipping" && !canOpenShipping) return
+      if (value === "payment" && !canOpenPayment) return
+      setActiveStep(value)
+    },
+    [canOpenPayment, canOpenShipping]
+  )
 
   const syncFromCart = useCallback((currentCart: HttpTypes.StoreCart, existingEmail: string) => {
     if (currentCart.email && !existingEmail) {
@@ -446,7 +462,9 @@ const CheckoutPage = () => {
     if (updated?.shipping_address) {
       setTaxKey(null)
       setTaxError(null)
-      setActiveStep("payment")
+      if (updated?.shipping_methods?.length) {
+        setActiveStep("payment")
+      }
     }
   }
 
@@ -462,6 +480,22 @@ const CheckoutPage = () => {
     },
     [addShippingMethod, cart?.shipping_address, runTaxCalculation]
   )
+
+  useEffect(() => {
+    if (!standardShippingOption || isLoadingShipping) return
+    if (selectedShippingOption === standardShippingOption.id) return
+    if (cart?.shipping_methods?.[0]?.shipping_option_id === standardShippingOption.id) {
+      setSelectedShippingOption(standardShippingOption.id)
+      return
+    }
+    void handleShippingSelect(standardShippingOption.id)
+  }, [
+    cart?.shipping_methods,
+    handleShippingSelect,
+    isLoadingShipping,
+    selectedShippingOption,
+    standardShippingOption,
+  ])
 
   const handlePlaceOrder = async () => {
     if (!cart?.id) return
@@ -594,7 +628,7 @@ const CheckoutPage = () => {
               type="single"
               collapsible
               value={activeStep}
-              onValueChange={(value) => value && setActiveStep(value)}
+              onValueChange={handleStepChange}
               className="space-y-4"
             >
               <AccordionItem value="contact" className="border-none">
@@ -632,7 +666,10 @@ const CheckoutPage = () => {
               </AccordionItem>
 
               <AccordionItem value="shipping" className="border-none">
-                <AccordionTrigger className="rounded-2xl border border-border/60 px-4">
+                <AccordionTrigger
+                  className="rounded-2xl border border-border/60 px-4 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={!canOpenShipping}
+                >
                   <StepLabel label="Shipping" complete={shippingComplete} />
                 </AccordionTrigger>
                 <AccordionContent className="space-y-6">
@@ -912,25 +949,25 @@ const CheckoutPage = () => {
                         <span className="text-xs text-muted-foreground">Loading options...</span>
                       ) : null}
                     </div>
-                    {shippingOptions.length ? (
-                      <Select
-                        value={selectedShippingOption}
-                        onValueChange={(value) => void handleShippingSelect(value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select shipping" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {shippingOptions.map((option) => (
-                            <SelectItem key={option.id} value={option.id}>
-                              {option.name} - {formatAmount(currencyCode, Number(option.amount ?? 0))}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    {standardShippingOption ? (
+                      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
+                        <span className="font-medium text-foreground">
+                          {standardShippingOption.name}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {formatAmount(currencyCode, Number(standardShippingOption.amount ?? 0))}
+                        </span>
+                      </div>
+                    ) : cart?.shipping_methods?.length ? (
+                      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
+                        <span className="font-medium text-foreground">Standard Shipping</span>
+                        <span className="text-muted-foreground">
+                          {formatAmount(currencyCode, Number(cart.shipping_methods?.[0]?.amount ?? 0))}
+                        </span>
+                      </div>
                     ) : (
                       <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-xs text-muted-foreground">
-                        Shipping methods appear after saving your address.
+                        Shipping appears after saving your address.
                       </div>
                     )}
                   </div>
@@ -947,7 +984,10 @@ const CheckoutPage = () => {
               </AccordionItem>
 
               <AccordionItem value="payment" className="border-none">
-                <AccordionTrigger className="rounded-2xl border border-border/60 px-4">
+                <AccordionTrigger
+                  className="rounded-2xl border border-border/60 px-4 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={!canOpenPayment}
+                >
                   <StepLabel label="Payment" complete={false} />
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4">
