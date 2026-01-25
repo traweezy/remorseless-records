@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import ProductsPage from "@/app/products/page"
+import ProductsPage from "@/app/products/(catalog)/page"
 import { siteMetadata } from "@/config/site"
 
 const catalogCanonical = `${siteMetadata.siteUrl}/catalog`
