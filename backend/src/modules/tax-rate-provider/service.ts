@@ -7,8 +7,11 @@ import type {
   ShippingTaxLineDTO,
   TaxCalculationContext,
 } from '@medusajs/framework/types'
+import type { RedisClientType } from 'redis'
+import { createClient } from 'redis'
 
 import { fetchTaxRateIo } from './clients/taxrate-io'
+import { REDIS_URL } from '../../lib/constants'
 
 type TaxRateLookupProviderOptions = {
   provider: 'taxrate_io'
@@ -26,9 +29,12 @@ type CachedRate = {
   expiresAt: number
 }
 
-const CACHE_TTL_MS = 10 * 60 * 1000
+const CACHE_TTL_MS = Number(process.env.TAX_RATE_LOOKUP_CACHE_TTL_MS ?? 5 * 60 * 1000)
 const DEFAULT_TIMEOUT_MS = 8_000
 const rateCache = new Map<string, CachedRate>()
+const redisUrl = REDIS_URL?.trim()
+let redisClient: RedisClientType | null = null
+let redisConnectPromise: Promise<RedisClientType | null> | null = null
 
 const buildCacheKey = (address: TaxCalculationContext['address']): string | null => {
   const countryCode = address.country_code?.toLowerCase()
@@ -62,6 +68,44 @@ const writeCachedRate = (cacheKey: string, ratePercent: number) => {
     expiresAt: Date.now() + CACHE_TTL_MS,
   })
 }
+
+const getRedisClient = async (logger: Logger): Promise<RedisClientType | null> => {
+  if (!redisUrl) {
+    return null
+  }
+
+  if (redisClient?.isOpen) {
+    return redisClient
+  }
+
+  if (redisConnectPromise) {
+    return redisConnectPromise
+  }
+
+  const client = redisClient ?? createClient({ url: redisUrl })
+  redisClient = client
+
+  redisConnectPromise = client
+    .connect()
+    .then(() => client)
+    .catch((error) => {
+      logger.warn(`Tax cache Redis connection failed: ${(error as Error).message ?? error}`)
+      try {
+        void client.disconnect()
+      } catch {
+        // ignore disconnect errors
+      }
+      redisClient = null
+      return null
+    })
+    .finally(() => {
+      redisConnectPromise = null
+    })
+
+  return redisConnectPromise
+}
+
+const buildRedisKey = (cacheKey: string) => `taxrate:${cacheKey}`
 
 export default class TaxRateLookupProviderService implements ITaxProvider {
   static identifier = 'rate_lookup'
@@ -122,6 +166,24 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       return cached
     }
 
+    const redisClientInstance = await getRedisClient(this.logger_)
+    if (redisClientInstance) {
+      try {
+        const redisValue = await redisClientInstance.get(buildRedisKey(cacheKey))
+        if (redisValue !== null) {
+          const parsed = Number(redisValue)
+          if (Number.isFinite(parsed)) {
+            writeCachedRate(cacheKey, parsed)
+            return parsed
+          }
+        }
+      } catch (error) {
+        this.logger_.warn(
+          `Tax cache Redis lookup failed: ${(error as Error).message ?? error}`
+        )
+      }
+    }
+
     const countryCode = context.address.country_code?.toLowerCase()
     if (!countryCode) {
       return 0
@@ -156,6 +218,18 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     })
 
     writeCachedRate(cacheKey, ratePercent)
+    if (redisClientInstance) {
+      try {
+        const ttlSeconds = Math.max(1, Math.ceil(CACHE_TTL_MS / 1000))
+        await redisClientInstance.set(buildRedisKey(cacheKey), String(ratePercent), {
+          EX: ttlSeconds,
+        })
+      } catch (error) {
+        this.logger_.warn(
+          `Tax cache Redis write failed: ${(error as Error).message ?? error}`
+        )
+      }
+    }
     return ratePercent
   }
 }

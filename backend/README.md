@@ -14,6 +14,12 @@ Video instructions: https://youtu.be/PPxenu7IjGM
 - **MinIO storage** (Automatic setup when using the Railway template) - fallback to local storage.
 - **Meilisearch** (Automatic setup when using the Railway template)
 
+### tax lookup cache (optional)
+The tax rate lookup module uses an in-memory cache and can also use Redis when
+`REDIS_URL` is set. Configure the TTL via:
+
+- `TAX_RATE_LOOKUP_CACHE_TTL_MS` (default: `300000`)
+
 ### commands
 
 `cd backend/`
