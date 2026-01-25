@@ -15,6 +15,40 @@ type ProductVariantSelectorProps = {
   productTitle: string
 }
 
+const resolveMaxQuantity = (variant: VariantOption | null): number => {
+  const inventory = variant?.inventoryQuantity
+  if (typeof inventory === "number" && Number.isFinite(inventory)) {
+    return Math.max(0, Math.trunc(inventory))
+  }
+  return 99
+}
+
+const clampQuantity = (value: number, max: number) =>
+  Math.min(Math.max(value, 1), max)
+
+const resolveStockChip = (
+  variant: VariantOption
+): { label: string; tone: string } | null => {
+  if (variant.stockStatus === "sold_out") {
+    return {
+      label: "Sold out",
+      tone: "border-destructive/70 bg-destructive/20 text-destructive",
+    }
+  }
+
+  if (variant.stockStatus === "low_stock") {
+    return {
+      label:
+        variant.inventoryQuantity && variant.inventoryQuantity > 0
+          ? `Only ${variant.inventoryQuantity} left`
+          : "Low stock",
+      tone: "border-amber-400/70 bg-amber-500/15 text-amber-200",
+    }
+  }
+
+  return null
+}
+
 const ProductVariantSelector = ({
   variants,
   productTitle,
@@ -34,6 +68,12 @@ const ProductVariantSelector = ({
     [selectedVariantId, variants]
   )
 
+  const maxQuantity = useMemo(() => {
+    return resolveMaxQuantity(selectedVariant)
+  }, [selectedVariant])
+
+  const effectiveMax = Math.max(1, maxQuantity)
+
   useEffect(() => {
     if (!isPending && optimisticVariantId) {
       const timer = setTimeout(() => {
@@ -47,7 +87,10 @@ const ProductVariantSelector = ({
   }, [isPending, optimisticVariantId])
 
   const handleVariantSelect = (variantId: string) => {
+    const nextVariant = variants.find((variant) => variant.id === variantId) ?? null
+    const nextMax = Math.max(1, resolveMaxQuantity(nextVariant))
     setSelectedVariantId(variantId)
+    setQuantity((prev) => clampQuantity(prev, nextMax))
   }
 
   const handleQuantityChange = (value: string) => {
@@ -57,7 +100,7 @@ const ProductVariantSelector = ({
       return
     }
 
-    const clamped = Math.min(Math.max(parsed, 1), 99)
+    const clamped = clampQuantity(parsed, effectiveMax)
     setQuantity(clamped)
   }
 
@@ -77,11 +120,16 @@ const ProductVariantSelector = ({
       return
     }
 
+    const safeQuantity = clampQuantity(quantity, effectiveMax)
+    if (safeQuantity !== quantity) {
+      setQuantity(safeQuantity)
+    }
+
     setOptimisticVariantId(selectedVariant.id)
 
     startTransition(async () => {
       try {
-        await addItem(selectedVariant.id, quantity)
+        await addItem(selectedVariant.id, safeQuantity)
         toast.success(`${productTitle} added to cart.`)
       } catch (error) {
         console.error(error)
@@ -125,7 +173,8 @@ const ProductVariantSelector = ({
             variants.map((variant) => {
               const isSelected = variant.id === selectedVariant?.id
               const variantPrice = formatAmount(variant.currency, variant.amount)
-              const isSoldOut = !variant.inStock
+              const isSoldOut = variant.stockStatus === "sold_out"
+              const stockChip = resolveStockChip(variant)
 
               return (
                 <button
@@ -146,14 +195,16 @@ const ProductVariantSelector = ({
                   <span className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
                     {variantPrice}
                   </span>
-                  <span
-                    className={cn(
-                      "text-[0.65rem] uppercase tracking-[0.3rem]",
-                      isSoldOut ? "text-destructive" : "text-success"
-                    )}
-                  >
-                    {isSoldOut ? "Sold out" : "In stock"}
-                  </span>
+                  {stockChip ? (
+                    <span
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.3rem]",
+                        stockChip.tone
+                      )}
+                    >
+                      {stockChip.label}
+                    </span>
+                  ) : null}
                 </button>
               )
             })
@@ -191,7 +242,7 @@ const ProductVariantSelector = ({
             <input
               id="quantity"
               min={1}
-              max={99}
+              max={effectiveMax}
               inputMode="numeric"
               pattern="[0-9]*"
               className="h-11 w-20 rounded-full border border-border/60 bg-background/80 px-4 text-sm uppercase tracking-[0.2rem] shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-destructive"
