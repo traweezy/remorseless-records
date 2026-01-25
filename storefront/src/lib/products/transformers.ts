@@ -5,6 +5,7 @@ import {
   extractProductCategoryGroups,
 } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
+import { resolveVariantStockStatus, summarizeStockStatus } from "@/lib/products/stock"
 import { normalizeFormatValue } from "@/lib/search/normalize"
 import type {
   ProductSearchHit,
@@ -49,26 +50,39 @@ const toVariantOption = (
       ? ((variant as { stock_status?: string }).stock_status ?? "").toLowerCase()
       : null
 
-  const inventoryQuantity =
-    "inventory_quantity" in variant
-      ? Number(
-          (variant as { inventory_quantity?: number }).inventory_quantity ?? 0
-        )
-      : undefined
+  const inventoryQuantity = (() => {
+    if (!("inventory_quantity" in variant)) {
+      return null
+    }
+    const raw = (variant as { inventory_quantity?: number | null }).inventory_quantity
+    return typeof raw === "number" && Number.isFinite(raw) ? raw : null
+  })()
 
-  const inStock =
-    stockStatus != null
-      ? ["in_stock", "limited", "available"].includes(stockStatus)
-      : inventoryQuantity !== undefined
-        ? inventoryQuantity > 0
-        : true
+  const manageInventory =
+    "manage_inventory" in variant
+      ? Boolean((variant as { manage_inventory?: boolean }).manage_inventory)
+      : null
+
+  const allowBackorder =
+    "allow_backorder" in variant
+      ? Boolean((variant as { allow_backorder?: boolean }).allow_backorder)
+      : null
+
+  const resolvedStock = resolveVariantStockStatus({
+    inventoryQuantity,
+    manageInventory,
+    allowBackorder,
+    stockStatus,
+  })
 
   return {
     id: variant.id,
     title: variant.title ?? "Variant",
     currency,
     amount,
-    inStock,
+    inStock: resolvedStock.inStock,
+    stockStatus: resolvedStock.status,
+    inventoryQuantity,
   }
 }
 
@@ -83,6 +97,7 @@ export const mapStoreProductToRelatedSummary = (
   product: HttpTypes.StoreProduct
 ): RelatedProductSummary => {
   const variants = deriveVariantOptions(product.variants)
+  const defaultVariant = variants.find((variant) => variant.inStock) ?? variants[0] ?? null
   const slug = buildProductSlugParts(product)
   const handle =
     typeof product.handle === "string" && product.handle.trim().length
@@ -141,7 +156,7 @@ export const mapStoreProductToRelatedSummary = (
       product.images?.[0]?.url ??
       null,
     collectionTitle: product.collection?.title ?? null,
-    defaultVariant: variants[0] ?? null,
+    defaultVariant,
     formats: formatted,
     genres: categoryGroups.genres.map((entry) => entry.label),
   }
@@ -151,6 +166,7 @@ export const mapStoreProductToSearchHit = (
   product: HttpTypes.StoreProduct
 ): ProductSearchHit => {
   const summary = mapStoreProductToRelatedSummary(product)
+  const variants = deriveVariantOptions(product.variants)
   const categoryGroups = extractProductCategoryGroups(product.categories, {
     excludeHandles: [summary.slug.artistSlug, summary.slug.albumSlug],
   })
@@ -185,7 +201,7 @@ export const mapStoreProductToSearchHit = (
     typeof product.created_at === "string"
       ? product.created_at
       : null
-  const stockStatus = summary.defaultVariant?.inStock ? "in_stock" : "sold_out"
+  const stockStatus = summarizeStockStatus(variants)
 
   const inferredFormats = new Set<string>()
   summary.formats.forEach((fmt) => addCanonicalFormat(inferredFormats, fmt))

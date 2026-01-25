@@ -15,12 +15,19 @@ const needsHydration = (hit: ProductSearchHit): boolean => {
   const missingGenres =
     (!Array.isArray(hit.genres) || hit.genres.length === 0) &&
     (!Array.isArray(hit.metalGenres) || hit.metalGenres.length === 0)
+  const missingStockStatus =
+    !hit.stockStatus || hit.stockStatus === "unknown"
+  const missingInventoryQuantity =
+    hit.defaultVariant?.inventoryQuantity == null ||
+    hit.defaultVariant?.stockStatus === "unknown"
 
   return (
     missingFormats ||
     missingVariant ||
     missingCollection ||
-    missingGenres
+    missingGenres ||
+    missingStockStatus ||
+    missingInventoryQuantity
   )
 }
 
@@ -31,6 +38,10 @@ const mergeHits = (original: ProductSearchHit, fallback: ProductSearchHit): Prod
     original.collectionTitle && original.collectionTitle.trim().length
       ? original.collectionTitle
       : fallback.collectionTitle
+  const mergedStockStatus =
+    original.stockStatus && original.stockStatus !== "unknown"
+      ? original.stockStatus
+      : fallback.stockStatus ?? original.stockStatus ?? null
 
   return {
     ...fallback,
@@ -45,7 +56,7 @@ const mergeHits = (original: ProductSearchHit, fallback: ProductSearchHit): Prod
     variantTitles: original.variantTitles.length ? original.variantTitles : fallback.variantTitles,
     format: original.format ?? fallback.format ?? null,
     priceAmount: original.priceAmount ?? fallback.priceAmount ?? null,
-    stockStatus: original.stockStatus ?? fallback.stockStatus ?? null,
+    stockStatus: mergedStockStatus,
   }
 }
 

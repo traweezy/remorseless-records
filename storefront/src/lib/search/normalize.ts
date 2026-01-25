@@ -2,6 +2,7 @@ import type { FacetDistribution } from "meilisearch"
 
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
+import { resolveVariantStockStatus } from "@/lib/products/stock"
 import type { ProductSearchHit, VariantOption } from "@/types/product"
 
 const asStringArray = (value: unknown): string[] => {
@@ -53,18 +54,26 @@ const toVariantOption = (
   amount: number | null,
   currency: string,
   format: string | null,
-  inStock: boolean
+  stockStatus: string | null,
+  inventoryQuantity: number | null
 ): VariantOption | null => {
   if (!variantId || amount === null) {
     return null
   }
+
+  const resolvedStock = resolveVariantStockStatus({
+    inventoryQuantity,
+    stockStatus,
+  })
 
   return {
     id: variantId,
     title: format ?? "Variant",
     currency,
     amount,
-    inStock,
+    inStock: resolvedStock.inStock,
+    stockStatus: resolvedStock.status,
+    inventoryQuantity,
   }
 }
 
@@ -246,10 +255,18 @@ export const normalizeSearchHit = (
       ? hit.stock_status.toLowerCase()
       : null
 
-  const inStock =
-    parseBoolean(hit.in_stock) ??
-    (stockStatus ? ["in_stock", "available", "limited"].includes(stockStatus) : null) ??
-    (parseNumber(hit.inventory_quantity ?? hit.quantity) ?? 0) > 0
+  const inventoryQuantity =
+    parseNumber(hit.inventory_quantity ?? hit.quantity) ?? null
+
+  const inStockFlag = parseBoolean(hit.in_stock)
+  const derivedStatus =
+    stockStatus ??
+    (inStockFlag === true ? "in_stock" : inStockFlag === false ? "sold_out" : null)
+
+  const resolvedStock = resolveVariantStockStatus({
+    inventoryQuantity,
+    stockStatus: derivedStatus,
+  })
 
   const variantId =
     typeof hit.default_variant_id === "string"
@@ -281,7 +298,8 @@ export const normalizeSearchHit = (
     priceAmount,
     currency,
     canonicalFormat,
-    Boolean(inStock)
+    derivedStatus,
+    inventoryQuantity
   )
 
   const createdAt =
@@ -318,7 +336,7 @@ export const normalizeSearchHit = (
     format: canonicalFormat,
     priceAmount,
     createdAt,
-    stockStatus,
+    stockStatus: resolvedStock.status,
     productType,
   }
 }

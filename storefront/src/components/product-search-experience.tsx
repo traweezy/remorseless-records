@@ -122,6 +122,8 @@ const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
 
 export const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => {
   const fallbackCurrency = hit.defaultVariant?.currency ?? "usd"
+  const fallbackStockStatus = hit.stockStatus ?? "unknown"
+  const fallbackInStock = fallbackStockStatus !== "sold_out"
   const fallbackVariant =
     hit.defaultVariant ??
     (typeof hit.priceAmount === "number"
@@ -130,7 +132,9 @@ export const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary =>
           title: hit.format ?? "Variant",
           currency: fallbackCurrency,
           amount: hit.priceAmount,
-          inStock: (hit.stockStatus ?? "").toLowerCase() !== "sold_out",
+          inStock: fallbackInStock,
+          stockStatus: fallbackStockStatus,
+          inventoryQuantity: null,
         }
       : null)
 
@@ -238,11 +242,19 @@ const needsClientHydration = (hit: ProductSearchHit): boolean => {
   const missingCollection =
     !(hit.collectionTitle ?? "").toString().trim().length
 
+  const missingStockStatus =
+    !hit.stockStatus || hit.stockStatus === "unknown"
+  const missingInventoryQuantity =
+    hit.defaultVariant?.inventoryQuantity == null ||
+    hit.defaultVariant?.stockStatus === "unknown"
+
   return (
     (missingGenres && missingMetalGenres) ||
     missingFormats ||
     missingVariant ||
-    missingCollection
+    missingCollection ||
+    missingStockStatus ||
+    missingInventoryQuantity
   )
 }
 
@@ -258,6 +270,10 @@ const mergeHydratedHit = (
     original.collectionTitle && original.collectionTitle.trim().length
       ? original.collectionTitle
       : fallback.collectionTitle
+  const mergedStockStatus =
+    original.stockStatus && original.stockStatus !== "unknown"
+      ? original.stockStatus
+      : fallback.stockStatus ?? original.stockStatus ?? null
 
   return {
     ...fallback,
@@ -280,7 +296,7 @@ const mergeHydratedHit = (
       : fallback.variantTitles,
     format: original.format ?? fallback.format ?? null,
     priceAmount: original.priceAmount ?? fallback.priceAmount ?? null,
-    stockStatus: original.stockStatus ?? fallback.stockStatus ?? null,
+    stockStatus: mergedStockStatus,
   }
 }
 

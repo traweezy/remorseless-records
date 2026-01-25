@@ -11,11 +11,13 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import SmartLink from "@/components/ui/smart-link"
+import { cn } from "@/lib/ui/cn"
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
-import { mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
+import { deriveVariantOptions, mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
+import { summarizeStockStatus } from "@/lib/products/stock"
 import { useProductDetailPrefetch } from "@/lib/query/products"
 import { shouldBlockPrefetch } from "@/lib/prefetch"
-import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
+import type { ProductSearchHit, RelatedProductSummary, StockStatus } from "@/types/product"
 
 type StoreProduct = HttpTypes.StoreProduct
 type ProductCardSource = StoreProduct | ProductSearchHit | RelatedProductSummary
@@ -178,6 +180,26 @@ const resolveThumbnail = (product: ProductCardSource): string | null =>
       null
     : product.thumbnail ?? null
 
+const resolveStockBadge = (
+  status: StockStatus
+): { label: string; className: string; dim?: boolean } | null => {
+  switch (status) {
+    case "sold_out":
+      return {
+        label: "Sold out",
+        className: "border-destructive/80 bg-destructive text-destructive-foreground",
+        dim: true,
+      }
+    case "low_stock":
+      return {
+        label: "Low stock",
+        className: "border-amber-300/80 bg-amber-400 text-black",
+      }
+    default:
+      return null
+  }
+}
+
 type ProductCardProps = {
   product: ProductCardSource
 }
@@ -195,6 +217,17 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     : product
 
   const handle = summary.handle?.trim() ?? ""
+  const variantOptions = isStoreProduct(product)
+    ? deriveVariantOptions(product.variants)
+    : summary.defaultVariant
+      ? [summary.defaultVariant]
+      : []
+  const derivedStockStatus = summarizeStockStatus(variantOptions)
+  const stockStatus = isProductSearchHitSource(product) && product.stockStatus
+    ? product.stockStatus
+    : derivedStockStatus
+  const stockBadge = resolveStockBadge(stockStatus)
+  const isSoldOut = stockStatus === "sold_out"
 
   useEffect(() => {
     if (!handle) {
@@ -316,6 +349,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const handleQuickShop = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
+    if (isSoldOut) {
+      return
+    }
     prefetchProductDetail()
     setQuickShopOpen(true)
   }
@@ -355,6 +391,24 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                 <span>{badge.toUpperCase()}</span>
               </div>
             ) : null}
+            {stockBadge ? (
+              <div className="absolute left-4 top-4 z-40">
+                <span
+                  className={cn(
+                    "relative isolate inline-flex items-center rounded-full border px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.3rem] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)]",
+                    stockBadge.className
+                  )}
+                >
+                  {stockBadge.dim ? (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 rounded-full bg-black/35"
+                    />
+                  ) : null}
+                  <span className="relative z-10">{stockBadge.label}</span>
+                </span>
+              </div>
+            ) : null}
             <div className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-surface/95">
               <div className="relative z-10 aspect-square overflow-hidden bg-card">
                 {thumbnail ? (
@@ -362,7 +416,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                   <img
                     src={thumbnail}
                     alt={summary.album ?? summary.title}
-                    className="h-full w-full object-cover transition duration-300 md:group-hover:scale-[1.06] md:group-hover:rotate-[1.8deg] md:group-hover:brightness-[0.75] group-focus-within:scale-[1.06] group-focus-within:rotate-[1.8deg] group-focus-within:brightness-[0.75]"
+                    className={cn(
+                      "h-full w-full object-cover transition duration-300 md:group-hover:scale-[1.06] md:group-hover:rotate-[1.8deg] md:group-hover:brightness-[0.75] group-focus-within:scale-[1.06] group-focus-within:rotate-[1.8deg] group-focus-within:brightness-[0.75]",
+                      isSoldOut && "grayscale brightness-75"
+                    )}
                     loading="lazy"
                   />
                 ) : (
@@ -374,13 +431,17 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                   <Button
                     type="button"
                     variant="default"
-                    className="pointer-events-auto inline-flex items-center gap-2 rounded-full px-6 py-2 text-xs uppercase tracking-[0.3rem] shadow-glow focus-visible:ring-2 focus-visible:ring-destructive/70"
+                    className={cn(
+                      "pointer-events-auto inline-flex items-center gap-2 rounded-full px-6 py-2 text-xs uppercase tracking-[0.3rem] shadow-glow focus-visible:ring-2 focus-visible:ring-destructive/70",
+                      isSoldOut && "cursor-not-allowed opacity-60"
+                    )}
                     onClick={handleQuickShop}
                     onFocus={triggerPrefetch}
                     aria-label={`Quick shop ${summary.album ?? summary.title}`}
+                    disabled={isSoldOut}
                   >
                     <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                    <span>Quick shop</span>
+                    <span>{isSoldOut ? "Sold out" : "Quick shop"}</span>
                   </Button>
                 </div>
               </div>
@@ -418,6 +479,12 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                 ) : null}
               </div>
             </div>
+            {isSoldOut ? (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 z-30 rounded-[inherit] bg-black/45"
+              />
+            ) : null}
           </Card>
         </SmartLink>
 

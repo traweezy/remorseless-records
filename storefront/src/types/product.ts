@@ -1,11 +1,15 @@
 import type { ProductSlug } from "@/lib/products/slug"
 
+export type StockStatus = "in_stock" | "low_stock" | "sold_out" | "unknown"
+
 export type VariantOption = {
   id: string
   title: string
   currency: string
   amount: number
   inStock: boolean
+  stockStatus: StockStatus
+  inventoryQuantity: number | null
 }
 
 export type RelatedProductSummary = {
@@ -32,6 +36,6 @@ export type ProductSearchHit = RelatedProductSummary & {
   format?: string | null
   priceAmount?: number | null
   createdAt?: string | null
-  stockStatus?: string | null
+  stockStatus?: StockStatus | null
   productType?: string | null
 }
