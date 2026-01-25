@@ -29,6 +29,13 @@ const clampQuantity = (value: number, max: number) =>
 const resolveStockChip = (
   variant: VariantOption
 ): { label: string; tone: string } | null => {
+  if (!variant.hasPrice) {
+    return {
+      label: "Unavailable",
+      tone: "border-border/70 bg-background/60 text-muted-foreground",
+    }
+  }
+
   if (variant.stockStatus === "sold_out") {
     return {
       label: "Sold out",
@@ -53,9 +60,15 @@ const ProductVariantSelector = ({
   variants,
   productTitle,
 }: ProductVariantSelectorProps) => {
-  const [selectedVariantId, setSelectedVariantId] = useState(
-    variants[0]?.id ?? ""
-  )
+  const defaultVariantId = useMemo(() => {
+    const purchasable = variants.find((variant) => variant.inStock && variant.hasPrice)
+    if (purchasable) return purchasable.id
+    const priced = variants.find((variant) => variant.hasPrice)
+    if (priced) return priced.id
+    return variants[0]?.id ?? ""
+  }, [variants])
+
+  const [selectedVariantId, setSelectedVariantId] = useState(defaultVariantId)
   const [quantity, setQuantity] = useState(1)
   const [optimisticVariantId, setOptimisticVariantId] = useState<string | null>(
     null
@@ -63,16 +76,23 @@ const ProductVariantSelector = ({
   const [isPending, startTransition] = useTransition()
   const { addItem } = useCart()
 
+  const resolvedVariantId =
+    selectedVariantId && variants.some((variant) => variant.id === selectedVariantId)
+      ? selectedVariantId
+      : defaultVariantId
+
   const selectedVariant = useMemo(
-    () => variants.find((variant) => variant.id === selectedVariantId) ?? null,
-    [selectedVariantId, variants]
+    () => variants.find((variant) => variant.id === resolvedVariantId) ?? null,
+    [resolvedVariantId, variants]
   )
 
   const maxQuantity = useMemo(() => {
     return resolveMaxQuantity(selectedVariant)
   }, [selectedVariant])
 
+  const isPurchasable = Boolean(selectedVariant?.inStock && selectedVariant?.hasPrice)
   const effectiveMax = Math.max(1, maxQuantity)
+  const safeQuantity = isPurchasable ? clampQuantity(quantity, effectiveMax) : 1
 
   useEffect(() => {
     if (!isPending && optimisticVariantId) {
@@ -115,12 +135,16 @@ const ProductVariantSelector = ({
       return
     }
 
+    if (!selectedVariant.hasPrice) {
+      toast.error("Pricing for this format is unavailable right now.")
+      return
+    }
+
     if (!selectedVariant.inStock) {
       toast.error("That variant is currently sold out.")
       return
     }
 
-    const safeQuantity = clampQuantity(quantity, effectiveMax)
     if (safeQuantity !== quantity) {
       setQuantity(safeQuantity)
     }
@@ -133,6 +157,7 @@ const ProductVariantSelector = ({
         toast.success(`${productTitle} added to cart.`)
       } catch (error) {
         console.error(error)
+        toast.error("Unable to add this item right now.")
         setOptimisticVariantId(null)
       }
     })
@@ -141,6 +166,10 @@ const ProductVariantSelector = ({
   const addButtonLabel = (() => {
     if (!variants.length) {
       return "Coming soon"
+    }
+
+    if (!selectedVariant?.hasPrice) {
+      return "Unavailable"
     }
 
     if (!selectedVariant?.inStock) {
@@ -158,7 +187,7 @@ const ProductVariantSelector = ({
     return "Add to cart"
   })()
 
-  const priceDisplay = selectedVariant
+  const priceDisplay = selectedVariant?.hasPrice
     ? formatAmount(selectedVariant.currency, selectedVariant.amount)
     : null
 
@@ -172,8 +201,11 @@ const ProductVariantSelector = ({
           {variants.length ? (
             variants.map((variant) => {
               const isSelected = variant.id === selectedVariant?.id
-              const variantPrice = formatAmount(variant.currency, variant.amount)
+              const variantPrice = variant.hasPrice
+                ? formatAmount(variant.currency, variant.amount)
+                : "Price unavailable"
               const isSoldOut = variant.stockStatus === "sold_out"
+              const isUnavailable = !variant.hasPrice
               const stockChip = resolveStockChip(variant)
 
               return (
@@ -183,10 +215,10 @@ const ProductVariantSelector = ({
                   className={cn(
                     "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-3.5 text-left transition",
                     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                    isSelected && !isSoldOut && "border-accent bg-accent/10",
-                    isSoldOut && "cursor-not-allowed opacity-50"
+                    isSelected && !isSoldOut && !isUnavailable && "border-accent bg-accent/10",
+                    (isSoldOut || isUnavailable) && "cursor-not-allowed opacity-50"
                   )}
-                  disabled={isSoldOut}
+                  disabled={isSoldOut || isUnavailable}
                   onClick={() => handleVariantSelect(variant.id)}
                 >
                   <span className="font-headline text-sm uppercase tracking-[0.3rem] text-foreground">
@@ -230,7 +262,11 @@ const ProductVariantSelector = ({
               <span className="rounded-full border border-border/60 px-3 py-1 text-xs uppercase tracking-[0.3rem] text-accent">
                 {priceDisplay}
               </span>
-            ) : null}
+            ) : (
+              <span className="rounded-full border border-border/60 px-3 py-1 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+                Price unavailable
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-4">
@@ -247,9 +283,10 @@ const ProductVariantSelector = ({
               pattern="[0-9]*"
               className="h-11 w-20 rounded-full border border-border/60 bg-background/80 px-4 text-sm uppercase tracking-[0.2rem] shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-destructive"
               type="number"
-              value={quantity}
+              value={safeQuantity}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => handleQuantityChange(event.target.value)}
+              disabled={!isPurchasable}
             />
           </label>
           <Button
@@ -257,7 +294,7 @@ const ProductVariantSelector = ({
             size="lg"
             className="flex-1 text-xs uppercase tracking-[0.35rem]"
             onClick={handleAddToCart}
-            disabled={!variants.length || !selectedVariant?.inStock || isPending}
+            disabled={!variants.length || !isPurchasable || isPending}
           >
             {addButtonLabel}
           </Button>

@@ -7,6 +7,7 @@ export type VariantOption = {
   title: string
   currency: string
   amount: number
+  hasPrice: boolean
   inStock: boolean
   stockStatus: StockStatus
   inventoryQuantity: number | null

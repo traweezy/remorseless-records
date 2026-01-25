@@ -132,6 +132,7 @@ export const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary =>
           title: hit.format ?? "Variant",
           currency: fallbackCurrency,
           amount: hit.priceAmount,
+          hasPrice: true,
           inStock: fallbackInStock,
           stockStatus: fallbackStockStatus,
           inventoryQuantity: null,
@@ -732,11 +733,19 @@ const ProductSearchExperience = ({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
 
-  const [catalogHits, setCatalogHits] = useState<ProductSearchHit[]>(initialHits)
+  const normalizeHits = useCallback(
+    (hits: ProductSearchHit[]) =>
+      hits.filter((hit) => Boolean(hit.handle?.trim().length)),
+    []
+  )
+
+  const [catalogHits, setCatalogHits] = useState<ProductSearchHit[]>(
+    normalizeHits(initialHits)
+  )
 
   useEffect(() => {
-    setCatalogHits(initialHits)
-  }, [initialHits])
+    setCatalogHits(normalizeHits(initialHits))
+  }, [initialHits, normalizeHits])
 
   useEffect(() => {
     if (!initialHits.length) {
@@ -750,7 +759,7 @@ const ProductSearchExperience = ({
     const hydrate = async () => {
       const enriched = await hydrateHitsClient(initialHits)
       if (!cancelled) {
-        setCatalogHits(enriched)
+        setCatalogHits(normalizeHits(enriched))
       }
     }
 
@@ -758,7 +767,7 @@ const ProductSearchExperience = ({
     return () => {
       cancelled = true
     }
-  }, [initialHits])
+  }, [initialHits, normalizeHits])
 
   useEffect(() => {
     if (typeof window === "undefined" || hasHydratedFromParams.current) {
@@ -905,9 +914,11 @@ const ProductSearchExperience = ({
 
     const baseMatches = aggregatedHits.filter((hit) => {
       if (showInStockOnly) {
+        const isPriced = hit.defaultVariant?.hasPrice ?? false
         const inStock =
-          hit.defaultVariant?.inStock ??
-          ((hit.stockStatus ?? "").toLowerCase() !== "sold_out")
+          isPriced &&
+          (hit.defaultVariant?.inStock ??
+            ((hit.stockStatus ?? "").toLowerCase() !== "sold_out"))
         if (!inStock) {
           return false
         }
@@ -1069,6 +1080,8 @@ const ProductSearchExperience = ({
     selectedFormats.length +
     selectedProductTypes.length +
     (showInStockOnly ? 1 : 0)
+  const hasSearch = query.trim().length > 0
+  const hasActiveFilters = activeFiltersCount > 0
 
   const filterChipClass =
     "inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.25rem] text-foreground shadow-[0_0_15px_rgba(255,0,0,0.18)] transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50"
@@ -1178,6 +1191,41 @@ const ProductSearchExperience = ({
         })),
     [catalogFacets.productTypes, formatProductTypeLabel]
   )
+
+  useEffect(() => {
+    if (!hasHydratedFromParams.current) {
+      return
+    }
+
+    const validGenres = new Set(genreOptions.map((option) => option.value))
+    const validFormats = new Set(formatOptions.map((option) => option.value))
+    const validTypes = new Set(productTypeOptions.map((option) => option.value))
+
+    const sanitizedGenres = selectedGenres.filter((value) => validGenres.has(value))
+    const sanitizedFormats = selectedFormats.filter((value) => validFormats.has(value))
+    const sanitizedTypes = selectedProductTypes.filter((value) => validTypes.has(value))
+
+    const needsUpdate =
+      sanitizedGenres.length !== selectedGenres.length ||
+      sanitizedFormats.length !== selectedFormats.length ||
+      sanitizedTypes.length !== selectedProductTypes.length
+
+    if (needsUpdate) {
+      hydrateFromParams({
+        genres: sanitizedGenres,
+        formats: sanitizedFormats,
+        productTypes: sanitizedTypes,
+      })
+    }
+  }, [
+    formatOptions,
+    genreOptions,
+    hydrateFromParams,
+    productTypeOptions,
+    selectedFormats,
+    selectedGenres,
+    selectedProductTypes,
+  ])
 
   const focusSearchInput = () => {
     const input = searchInputRef.current
@@ -1474,8 +1522,22 @@ const ProductSearchExperience = ({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border/60 bg-background/80 p-12 text-center text-sm text-muted-foreground">
-                <p>No results matched that combination.</p>
-                <p>Try relaxing a filter or using a broader search term.</p>
+                {hasSearch || hasActiveFilters ? (
+                  <>
+                    <p>No results matched that combination.</p>
+                    <p>Try relaxing a filter or using a broader search term.</p>
+                    {hasActiveFilters ? (
+                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                        Reset filters
+                      </Button>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <p>The catalog is warming up. Check back shortly.</p>
+                    <p>We’re syncing new releases for this region.</p>
+                  </>
+                )}
               </div>
             )}
           </section>

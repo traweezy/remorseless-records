@@ -16,10 +16,16 @@ type ProductGalleryProps = {
 }
 
 const ProductGallery = ({ images, title }: ProductGalleryProps) => {
+  const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
   const sanitized = useMemo(
     () =>
-      images.filter((image) => typeof image?.url === "string" && image.url.trim().length > 0),
-    [images]
+      images.filter(
+        (image) =>
+          typeof image?.url === "string" &&
+          image.url.trim().length > 0 &&
+          !failedUrls.has(image.url)
+      ),
+    [failedUrls, images]
   )
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -30,6 +36,17 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
   }
 
   const active = sanitized[Math.min(activeIndex, sanitized.length - 1)]
+  const markFailed = (url?: string | null) => {
+    if (!url) return
+    setFailedUrls((prev) => {
+      if (prev.has(url)) {
+        return prev
+      }
+      const next = new Set(prev)
+      next.add(url)
+      return next
+    })
+  }
 
   return (
     <div className="space-y-4 overflow-hidden">
@@ -50,6 +67,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
               sizes="(min-width: 1024px) 520px, 90vw"
               className="object-cover"
               priority
+              onError={() => markFailed(active?.url)}
             />
           </motion.div>
         </AnimatePresence>
@@ -74,6 +92,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
                   fill
                   sizes="96px"
                   className="object-cover"
+                  onError={() => markFailed(image.url)}
                 />
               </button>
             )

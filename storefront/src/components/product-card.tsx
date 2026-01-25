@@ -228,6 +228,12 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     : derivedStockStatus
   const stockBadge = resolveStockBadge(stockStatus)
   const isSoldOut = stockStatus === "sold_out"
+  const hasPrice = summary.defaultVariant?.hasPrice ?? false
+  const isUnavailable = !hasPrice
+  const canQuickShop = !isSoldOut && !isUnavailable
+  const badge = resolveBadge(product, summary)
+  const thumbnail = resolveThumbnail(product)
+  const [resolvedThumbnail, setResolvedThumbnail] = useState<string | null>(thumbnail)
 
   useEffect(() => {
     if (!handle) {
@@ -283,8 +289,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     }
     return null
   }
-  const badge = resolveBadge(product, summary)
-  const thumbnail = resolveThumbnail(product)
   const initialProduct = isStoreProduct(product) ? product : undefined
   const productHref = handle ? `/products/${handle}` : "/products"
   const formatLabels = (() => {
@@ -349,7 +353,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const handleQuickShop = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
-    if (isSoldOut) {
+    if (!canQuickShop) {
       return
     }
     prefetchProductDetail()
@@ -391,7 +395,13 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                 <span>{badge.toUpperCase()}</span>
               </div>
             ) : null}
-            {stockBadge ? (
+            {isUnavailable ? (
+              <div className="absolute left-4 top-4 z-40">
+                <span className="inline-flex items-center rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.3rem] text-muted-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)]">
+                  Unavailable
+                </span>
+              </div>
+            ) : stockBadge ? (
               <div className="absolute left-4 top-4 z-40">
                 <span
                   className={cn(
@@ -411,16 +421,19 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             ) : null}
             <div className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-surface/95">
               <div className="relative z-10 aspect-square overflow-hidden bg-card">
-                {thumbnail ? (
+                {resolvedThumbnail ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={thumbnail}
+                    src={resolvedThumbnail ?? ""}
                     alt={summary.album ?? summary.title}
                     className={cn(
                       "h-full w-full object-cover transition duration-300 md:group-hover:scale-[1.06] md:group-hover:rotate-[1.8deg] md:group-hover:brightness-[0.75] group-focus-within:scale-[1.06] group-focus-within:rotate-[1.8deg] group-focus-within:brightness-[0.75]",
-                      isSoldOut && "grayscale brightness-75"
+                      (isSoldOut || isUnavailable) && "grayscale brightness-75"
                     )}
                     loading="lazy"
+                    onError={() => {
+                      setResolvedThumbnail(null)
+                    }}
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
@@ -433,15 +446,15 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                     variant="default"
                     className={cn(
                       "pointer-events-auto inline-flex items-center gap-2 rounded-full px-6 py-2 text-xs uppercase tracking-[0.3rem] shadow-glow focus-visible:ring-2 focus-visible:ring-destructive/70",
-                      isSoldOut && "cursor-not-allowed opacity-60"
+                      !canQuickShop && "cursor-not-allowed opacity-60"
                     )}
                     onClick={handleQuickShop}
                     onFocus={triggerPrefetch}
                     aria-label={`Quick shop ${summary.album ?? summary.title}`}
-                    disabled={isSoldOut}
+                    disabled={!canQuickShop}
                   >
                     <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                    <span>{isSoldOut ? "Sold out" : "Quick shop"}</span>
+                    <span>{isUnavailable ? "Unavailable" : isSoldOut ? "Sold out" : "Quick shop"}</span>
                   </Button>
                 </div>
               </div>
@@ -479,7 +492,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                 ) : null}
               </div>
             </div>
-            {isSoldOut ? (
+            {isSoldOut || isUnavailable ? (
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 z-30 rounded-[inherit] bg-black/45"

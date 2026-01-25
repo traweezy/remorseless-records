@@ -11,9 +11,11 @@ const ProductsLoading = () => (
       <div className="flex-1 space-y-8">
         <header className="sticky top-20 z-10 rounded-3xl border border-border/40 bg-background/95 px-4 py-5 shadow-card backdrop-blur supports-[backdrop-filter]:bg-background/70 lg:px-8">
           <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.4rem] text-muted-foreground">Catalog</p>
+            <p className="text-xs uppercase tracking-[0.4rem] text-muted-foreground">
+              Loading
+            </p>
             <h2 className="text-2xl font-semibold uppercase tracking-[0.3rem] text-foreground">
-              Loading releases…
+              Preparing releases…
             </h2>
           </div>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">

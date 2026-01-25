@@ -35,13 +35,16 @@ const toVariantOption = (
 
   const price = variant.calculated_price
 
-  const amount =
-    Number(
-      price?.calculated_amount ??
-        price?.calculated_amount_with_tax ??
-        price?.original_amount ??
-        0
-    ) || 0
+  const amountCandidates = [
+    price?.calculated_amount,
+    price?.calculated_amount_with_tax,
+    price?.original_amount,
+  ]
+  const resolvedAmount = amountCandidates.find(
+    (value) => typeof value === "number" && Number.isFinite(value)
+  )
+  const hasPrice = typeof resolvedAmount === "number"
+  const amount = hasPrice ? resolvedAmount : 0
 
   const currency = price?.currency_code ?? "usd"
 
@@ -80,6 +83,7 @@ const toVariantOption = (
     title: variant.title ?? "Variant",
     currency,
     amount,
+    hasPrice,
     inStock: resolvedStock.inStock,
     stockStatus: resolvedStock.status,
     inventoryQuantity,
@@ -97,7 +101,11 @@ export const mapStoreProductToRelatedSummary = (
   product: HttpTypes.StoreProduct
 ): RelatedProductSummary => {
   const variants = deriveVariantOptions(product.variants)
-  const defaultVariant = variants.find((variant) => variant.inStock) ?? variants[0] ?? null
+  const defaultVariant =
+    variants.find((variant) => variant.inStock && variant.hasPrice) ??
+    variants.find((variant) => variant.hasPrice) ??
+    variants[0] ??
+    null
   const slug = buildProductSlugParts(product)
   const handle =
     typeof product.handle === "string" && product.handle.trim().length
@@ -196,7 +204,9 @@ export const mapStoreProductToSearchHit = (
       : undefined
   const derivedFormat = formatValue ?? summary.defaultVariant?.title ?? null
 
-  const priceAmount = summary.defaultVariant?.amount ?? null
+  const priceAmount = summary.defaultVariant?.hasPrice
+    ? summary.defaultVariant.amount
+    : null
   const createdAt =
     typeof product.created_at === "string"
       ? product.created_at

@@ -154,8 +154,10 @@ const ProductPage = async ({ params }: ProductPageProps) => {
   const origin = siteMetadata.siteUrl
   const productPath = `/products/${handle}`
   const productUrl = `${origin}${productPath}`
-  const defaultVariant = variantOptions[0]
-  const availability = defaultVariant?.inStock
+  const hasPurchasableVariant = variantOptions.some(
+    (variant) => variant.inStock && variant.hasPrice
+  )
+  const availability = hasPurchasableVariant
     ? "https://schema.org/InStock"
     : "https://schema.org/OutOfStock"
   const genreTags =

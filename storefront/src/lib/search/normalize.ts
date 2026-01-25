@@ -71,6 +71,7 @@ const toVariantOption = (
     title: format ?? "Variant",
     currency,
     amount,
+    hasPrice: true,
     inStock: resolvedStock.inStock,
     stockStatus: resolvedStock.status,
     inventoryQuantity,
