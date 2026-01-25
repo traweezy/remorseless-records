@@ -6,6 +6,8 @@ import { CheckCircle2, Lock, ShoppingBag } from "lucide-react"
 import type { Stripe, StripeElements, StripePaymentElement } from "@stripe/stripe-js"
 import { loadStripe } from "@stripe/stripe-js"
 import type { HttpTypes } from "@medusajs/types"
+import { useForm } from "@tanstack/react-form"
+import { z } from "zod"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
@@ -25,23 +27,37 @@ import { useCart } from "@/providers/cart-provider"
 
 const stripePromise = loadStripe(runtimeEnv.stripePublishableKey)
 
-type AddressFormState = {
-  first_name: string
-  last_name: string
-  address_1: string
-  address_2: string
-  city: string
-  province: string
-  postal_code: string
-  country_code: string
-  phone: string
-}
-
-type FormErrors = Record<string, string>
-
 type StripeState = {
   stripe: Stripe | null
   elements: StripeElements | null
+}
+
+const emailSchema = z.string().trim().email("Enter a valid email address.")
+const addressSchema = z.object({
+  first_name: z.string().trim().min(1, "First name is required."),
+  last_name: z.string().trim().min(1, "Last name is required."),
+  address_1: z.string().trim().min(1, "Address is required."),
+  address_2: z.string().trim().optional(),
+  city: z.string().trim().min(1, "City is required."),
+  province: z.string().trim().optional(),
+  postal_code: z.string().trim().min(1, "Postal code is required."),
+  country_code: z.string().trim().min(1, "Country is required."),
+  phone: z.string().trim().optional(),
+})
+
+type AddressFormState = z.infer<typeof addressSchema>
+
+const validateField = (schema: z.ZodTypeAny, message: string) => (value: unknown) =>
+  schema.safeParse(value).success ? undefined : message
+
+const emailValidator = validateField(emailSchema, "Enter a valid email address.")
+const addressValidators = {
+  first_name: validateField(addressSchema.shape.first_name, "First name is required."),
+  last_name: validateField(addressSchema.shape.last_name, "Last name is required."),
+  address_1: validateField(addressSchema.shape.address_1, "Address is required."),
+  city: validateField(addressSchema.shape.city, "City is required."),
+  postal_code: validateField(addressSchema.shape.postal_code, "Postal code is required."),
+  country_code: validateField(addressSchema.shape.country_code, "Country is required."),
 }
 
 const DEFAULT_ADDRESS: AddressFormState = {
@@ -89,17 +105,23 @@ const normalizeAddress = (address: AddressFormState): StoreCartAddressInput => {
     last_name: address.last_name,
     address_1: address.address_1,
     city: address.city,
-    province: address.province,
     postal_code: address.postal_code,
     country_code: address.country_code,
   }
 
-  if (address.address_2.trim()) {
-    normalized.address_2 = address.address_2
+  const province = address.province?.trim()
+  if (province) {
+    normalized.province = province
   }
 
-  if (address.phone.trim()) {
-    normalized.phone = address.phone
+  const address2 = address.address_2?.trim()
+  if (address2) {
+    normalized.address_2 = address2
+  }
+
+  const phone = address.phone?.trim()
+  if (phone) {
+    normalized.phone = phone
   }
 
   return normalized
@@ -121,29 +143,6 @@ const buildTaxKey = (
 
   const province = (address.province ?? "").trim().toLowerCase()
   return `${country}:${province}:${postal}:${shippingOptionId}`
-}
-
-const validateEmail = (email: string): string | null => {
-  if (!email.trim()) {
-    return "Email is required."
-  }
-
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
-    return "Enter a valid email address."
-  }
-
-  return null
-}
-
-const validateAddress = (address: AddressFormState): FormErrors => {
-  const errors: FormErrors = {}
-  if (!address.first_name.trim()) errors.first_name = "First name is required."
-  if (!address.last_name.trim()) errors.last_name = "Last name is required."
-  if (!address.address_1.trim()) errors.address_1 = "Address is required."
-  if (!address.city.trim()) errors.city = "City is required."
-  if (!address.postal_code.trim()) errors.postal_code = "Postal code is required."
-  if (!address.country_code.trim()) errors.country_code = "Country is required."
-  return errors
 }
 
 const StripePaymentElement = ({
@@ -174,7 +173,15 @@ const StripePaymentElement = ({
         },
       })
 
-      element = elements.create("payment", { layout: "tabs" })
+      element = elements.create("payment", {
+        layout: "accordion",
+        paymentMethodOrder: ["card"],
+        wallets: {
+          applePay: "never",
+          googlePay: "never",
+          link: "never",
+        },
+      })
       element.mount(containerRef.current)
 
       if (mounted) {
@@ -214,13 +221,8 @@ const CheckoutPage = () => {
   } = useCart()
 
   const [activeStep, setActiveStep] = useState("contact")
-  const [email, setEmailState] = useState("")
-  const [contactError, setContactError] = useState<string | null>(null)
-  const [shippingAddress, setShippingAddress] = useState<AddressFormState>(DEFAULT_ADDRESS)
-  const [billingAddress, setBillingAddress] = useState<AddressFormState>(DEFAULT_ADDRESS)
-  const [billingSame, setBillingSame] = useState(true)
-  const [addressErrors, setAddressErrors] = useState<FormErrors>({})
-  const [billingErrors, setBillingErrors] = useState<FormErrors>({})
+  const [contactComplete, setContactComplete] = useState(false)
+  const [shippingSubmitted, setShippingSubmitted] = useState(false)
   const [shippingOptions, setShippingOptions] = useState<HttpTypes.StoreCartShippingOptionWithServiceZone[]>([])
   const [selectedShippingOption, setSelectedShippingOption] = useState<string>("")
   const [isSavingContact, setIsSavingContact] = useState(false)
@@ -234,15 +236,56 @@ const CheckoutPage = () => {
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
 
-  const contactComplete = Boolean(cart?.email)
-  const shippingComplete = Boolean(cart?.shipping_address && cart?.shipping_methods?.length)
-  const canOpenShipping = contactComplete
-  const canOpenPayment = shippingComplete
+  const contactForm = useForm({
+    defaultValues: {
+      email: "",
+    },
+    onSubmit: async ({ value }) => {
+      setIsSavingContact(true)
+      const updated = await setEmail(value.email.trim())
+      setIsSavingContact(false)
+
+      if (updated?.email) {
+        setContactComplete(true)
+        setActiveStep("shipping")
+      }
+    },
+  })
+
+  const shippingForm = useForm({
+    defaultValues: {
+      shipping: DEFAULT_ADDRESS,
+      billingSame: true,
+      billing: DEFAULT_ADDRESS,
+    },
+    onSubmit: async ({ value }) => {
+      setIsSavingAddress(true)
+      const updated = await setAddresses({
+        shipping_address: normalizeAddress(value.shipping),
+        billing_address: value.billingSame
+          ? normalizeAddress(value.shipping)
+          : normalizeAddress(value.billing),
+      })
+      setIsSavingAddress(false)
+
+      if (updated?.shipping_address) {
+        setShippingSubmitted(true)
+        setTaxKey(null)
+        setTaxError(null)
+      }
+    },
+  })
+
+  const billingSame = shippingForm.state.values.billingSame
+
   const currentTaxKey = useMemo(
     () => buildTaxKey(cart?.shipping_address, selectedShippingOption || null),
     [cart?.shipping_address, selectedShippingOption]
   )
   const hasCalculatedTaxes = Boolean(currentTaxKey && taxKey === currentTaxKey)
+  const shippingComplete = contactComplete && shippingSubmitted && hasCalculatedTaxes
+  const canOpenShipping = contactComplete
+  const canOpenPayment = shippingComplete
   const standardShippingOption = useMemo(
     () => (shippingOptions.length === 1 ? shippingOptions[0] : null),
     [shippingOptions]
@@ -258,52 +301,18 @@ const CheckoutPage = () => {
     [canOpenPayment, canOpenShipping]
   )
 
-  const syncFromCart = useCallback((currentCart: HttpTypes.StoreCart, existingEmail: string) => {
-    if (currentCart.email && !existingEmail) {
-      setEmailState(currentCart.email)
+  const invalidateContact = useCallback(() => {
+    if (contactComplete) {
+      setContactComplete(false)
     }
+  }, [contactComplete])
 
-    if (currentCart.shipping_address) {
-      setShippingAddress((prev) => ({
-        ...prev,
-        first_name: currentCart.shipping_address?.first_name ?? prev.first_name,
-        last_name: currentCart.shipping_address?.last_name ?? prev.last_name,
-        address_1: currentCart.shipping_address?.address_1 ?? prev.address_1,
-        address_2: currentCart.shipping_address?.address_2 ?? prev.address_2,
-        city: currentCart.shipping_address?.city ?? prev.city,
-        province: currentCart.shipping_address?.province ?? prev.province,
-        postal_code: currentCart.shipping_address?.postal_code ?? prev.postal_code,
-        country_code: currentCart.shipping_address?.country_code ?? prev.country_code,
-        phone: currentCart.shipping_address?.phone ?? prev.phone,
-      }))
-    }
-
-    if (currentCart.billing_address) {
-      setBillingSame(false)
-      setBillingAddress((prev) => ({
-        ...prev,
-        first_name: currentCart.billing_address?.first_name ?? prev.first_name,
-        last_name: currentCart.billing_address?.last_name ?? prev.last_name,
-        address_1: currentCart.billing_address?.address_1 ?? prev.address_1,
-        address_2: currentCart.billing_address?.address_2 ?? prev.address_2,
-        city: currentCart.billing_address?.city ?? prev.city,
-        province: currentCart.billing_address?.province ?? prev.province,
-        postal_code: currentCart.billing_address?.postal_code ?? prev.postal_code,
-        country_code: currentCart.billing_address?.country_code ?? prev.country_code,
-        phone: currentCart.billing_address?.phone ?? prev.phone,
-      }))
-    }
-
-    const existingOption = currentCart.shipping_methods?.[0]?.shipping_option_id
-    if (existingOption) {
-      setSelectedShippingOption(existingOption)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!cart) return
-    syncFromCart(cart, email)
-  }, [cart, email, syncFromCart])
+  const invalidateShipping = useCallback(() => {
+    if (!shippingSubmitted) return
+    setShippingSubmitted(false)
+    setTaxKey(null)
+    setTaxError(null)
+  }, [shippingSubmitted])
 
   useEffect(() => {
     if (!isLoading && (!cart || !cart.items?.length)) {
@@ -341,10 +350,10 @@ const CheckoutPage = () => {
   )
 
   useEffect(() => {
-    if (cart?.id && cart.shipping_address) {
+    if (cart?.id && cart.shipping_address && shippingSubmitted) {
       void loadShippingOptions(cart.id)
     }
-  }, [cart?.id, cart?.shipping_address, loadShippingOptions])
+  }, [cart?.id, cart?.shipping_address, loadShippingOptions, shippingSubmitted])
 
   const resetPaymentState = useCallback(() => {
     setClientSecret(null)
@@ -354,6 +363,22 @@ const CheckoutPage = () => {
   useEffect(() => {
     resetPaymentState()
   }, [cart?.id, cart?.shipping_methods, cart?.total, resetPaymentState])
+
+  useEffect(() => {
+    if (contactComplete && shippingSubmitted && hasCalculatedTaxes) {
+      setActiveStep("payment")
+    }
+  }, [contactComplete, hasCalculatedTaxes, shippingSubmitted])
+
+  useEffect(() => {
+    if (!contactComplete && activeStep !== "contact") {
+      setActiveStep("contact")
+      return
+    }
+    if (contactComplete && !shippingComplete && activeStep === "payment") {
+      setActiveStep("shipping")
+    }
+  }, [activeStep, contactComplete, shippingComplete])
 
   const runTaxCalculation = useCallback(
     async (overrideKey?: string | null) => {
@@ -392,6 +417,8 @@ const CheckoutPage = () => {
   const maybeInitPaymentSession = useCallback(async () => {
     const canInitPayment =
       Boolean(cart?.id) &&
+      contactComplete &&
+      shippingSubmitted &&
       Boolean(cart?.email) &&
       Boolean(cart?.shipping_address) &&
       Boolean(cart?.shipping_methods?.length) &&
@@ -410,7 +437,7 @@ const CheckoutPage = () => {
     } catch (sessionError) {
       console.error("Failed to initialize payment session", sessionError)
     }
-  }, [cart, clientSecret, hasCalculatedTaxes, initPaymentSessions])
+  }, [cart, clientSecret, contactComplete, hasCalculatedTaxes, initPaymentSessions, shippingSubmitted])
 
   useEffect(() => {
     void maybeInitPaymentSession()
@@ -427,47 +454,6 @@ const CheckoutPage = () => {
     [currencyCode]
   )
 
-  const handleContactSubmit = async () => {
-    const error = validateEmail(email)
-    setContactError(error)
-    if (error) return
-
-    setIsSavingContact(true)
-    const updated = await setEmail(email)
-    setIsSavingContact(false)
-
-    if (updated?.email) {
-      setActiveStep("shipping")
-    }
-  }
-
-  const handleAddressSubmit = async () => {
-    const shippingValidation = validateAddress(shippingAddress)
-    const billingValidation = billingSame ? {} : validateAddress(billingAddress)
-
-    setAddressErrors(shippingValidation)
-    setBillingErrors(billingValidation)
-
-    if (Object.keys(shippingValidation).length || Object.keys(billingValidation).length) {
-      return
-    }
-
-    setIsSavingAddress(true)
-    const updated = await setAddresses({
-      shipping_address: normalizeAddress(shippingAddress),
-      billing_address: billingSame ? normalizeAddress(shippingAddress) : normalizeAddress(billingAddress),
-    })
-    setIsSavingAddress(false)
-
-    if (updated?.shipping_address) {
-      setTaxKey(null)
-      setTaxError(null)
-      if (updated?.shipping_methods?.length) {
-        setActiveStep("payment")
-      }
-    }
-  }
-
   const handleShippingSelect = useCallback(
     async (optionId: string) => {
       setSelectedShippingOption(optionId)
@@ -482,18 +468,24 @@ const CheckoutPage = () => {
   )
 
   useEffect(() => {
+    if (!shippingSubmitted) return
     if (!standardShippingOption || isLoadingShipping) return
-    if (selectedShippingOption === standardShippingOption.id) return
+    if (selectedShippingOption === standardShippingOption.id && hasCalculatedTaxes) return
     if (cart?.shipping_methods?.[0]?.shipping_option_id === standardShippingOption.id) {
       setSelectedShippingOption(standardShippingOption.id)
+      if (!hasCalculatedTaxes) {
+        void handleShippingSelect(standardShippingOption.id)
+      }
       return
     }
     void handleShippingSelect(standardShippingOption.id)
   }, [
     cart?.shipping_methods,
     handleShippingSelect,
+    hasCalculatedTaxes,
     isLoadingShipping,
     selectedShippingOption,
+    shippingSubmitted,
     standardShippingOption,
   ])
 
@@ -501,7 +493,7 @@ const CheckoutPage = () => {
     if (!cart?.id) return
 
     if (!hasCalculatedTaxes) {
-      setTaxError("Please calculate taxes before placing your order.")
+      setTaxError("Complete shipping so taxes can be calculated before placing your order.")
       return
     }
 
@@ -589,10 +581,10 @@ const CheckoutPage = () => {
     )
   }
 
-  const shippingEstimate = resolveMoney(
-    shippingTotal,
-    cart.shipping_methods?.length ? formatAmount(currencyCode, 0) : "Calculated at next step"
-  )
+  const shippingEstimate =
+    shippingSubmitted && cart.shipping_methods?.length
+      ? resolveMoney(shippingTotal, formatAmount(currencyCode, 0))
+      : "Calculated at next step"
   const taxEstimate = hasCalculatedTaxes
     ? resolveMoney(taxTotal, formatAmount(currencyCode, 0))
     : "Estimated at next step"
@@ -636,32 +628,49 @@ const CheckoutPage = () => {
                   <StepLabel label="Contact" complete={contactComplete} />
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="checkout-email">Email</Label>
-                    <Input
-                      id="checkout-email"
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(event) => setEmailState(event.target.value)}
-                      onBlur={() => setContactError(validateEmail(email))}
-                      aria-invalid={Boolean(contactError)}
-                      aria-describedby={contactError ? "checkout-email-error" : undefined}
-                    />
-                    {contactError ? (
-                      <p id="checkout-email-error" className="text-xs text-destructive">
-                        {contactError}
-                      </p>
-                    ) : null}
-                  </div>
-                  <Button
-                    type="button"
-                    className="w-full"
-                    onClick={() => void handleContactSubmit()}
-                    disabled={isSavingContact}
+                  <form
+                    className="space-y-4"
+                    noValidate
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void contactForm.handleSubmit()
+                    }}
                   >
-                    {isSavingContact ? "Saving..." : "Continue to shipping"}
-                  </Button>
+                    <contactForm.Field
+                      name="email"
+                      validators={{
+                        onChange: ({ value }) => emailValidator(value),
+                        onSubmit: ({ value }) => emailValidator(value),
+                      }}
+                    >
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor={field.name}>Email</Label>
+                          <Input
+                            id={field.name}
+                            type="email"
+                            autoComplete="email"
+                            value={field.state.value}
+                            onChange={(event) => {
+                              field.handleChange(event.target.value)
+                              invalidateContact()
+                            }}
+                            onBlur={field.handleBlur}
+                            aria-invalid={Boolean(field.state.meta.errors[0])}
+                            aria-describedby={field.state.meta.errors[0] ? `${field.name}-error` : undefined}
+                          />
+                          {field.state.meta.errors[0] ? (
+                            <p id={`${field.name}-error`} className="text-xs text-destructive">
+                              {field.state.meta.errors[0]}
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
+                    </contactForm.Field>
+                    <Button type="submit" className="w-full" disabled={isSavingContact}>
+                      {isSavingContact ? "Saving..." : "Continue to shipping"}
+                    </Button>
+                  </form>
                 </AccordionContent>
               </AccordionItem>
 
@@ -672,314 +681,527 @@ const CheckoutPage = () => {
                 >
                   <StepLabel label="Shipping" complete={shippingComplete} />
                 </AccordionTrigger>
-                <AccordionContent className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="shipping-first-name">First name</Label>
-                      <Input
-                        id="shipping-first-name"
-                        autoComplete="given-name"
-                        value={shippingAddress.first_name}
-                        onChange={(event) =>
-                          setShippingAddress((prev) => ({ ...prev, first_name: event.target.value }))
-                        }
-                        aria-invalid={Boolean(addressErrors.first_name)}
-                      />
-                      {addressErrors.first_name ? (
-                        <p className="text-xs text-destructive">{addressErrors.first_name}</p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="shipping-last-name">Last name</Label>
-                      <Input
-                        id="shipping-last-name"
-                        autoComplete="family-name"
-                        value={shippingAddress.last_name}
-                        onChange={(event) =>
-                          setShippingAddress((prev) => ({ ...prev, last_name: event.target.value }))
-                        }
-                        aria-invalid={Boolean(addressErrors.last_name)}
-                      />
-                      {addressErrors.last_name ? (
-                        <p className="text-xs text-destructive">{addressErrors.last_name}</p>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="shipping-address">Address</Label>
-                    <Input
-                      id="shipping-address"
-                      autoComplete="shipping address-line1"
-                      value={shippingAddress.address_1}
-                      onChange={(event) =>
-                        setShippingAddress((prev) => ({ ...prev, address_1: event.target.value }))
-                      }
-                      aria-invalid={Boolean(addressErrors.address_1)}
-                    />
-                    {addressErrors.address_1 ? (
-                      <p className="text-xs text-destructive">{addressErrors.address_1}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="shipping-address-2">Apartment, suite, etc.</Label>
-                    <Input
-                      id="shipping-address-2"
-                      autoComplete="shipping address-line2"
-                      value={shippingAddress.address_2}
-                      onChange={(event) =>
-                        setShippingAddress((prev) => ({ ...prev, address_2: event.target.value }))
-                      }
-                    />
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="shipping-city">City</Label>
-                      <Input
-                        id="shipping-city"
-                        autoComplete="shipping address-level2"
-                        value={shippingAddress.city}
-                        onChange={(event) =>
-                          setShippingAddress((prev) => ({ ...prev, city: event.target.value }))
-                        }
-                        aria-invalid={Boolean(addressErrors.city)}
-                      />
-                      {addressErrors.city ? (
-                        <p className="text-xs text-destructive">{addressErrors.city}</p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="shipping-province">State / Province</Label>
-                      <Input
-                        id="shipping-province"
-                        autoComplete="shipping address-level1"
-                        value={shippingAddress.province}
-                        onChange={(event) =>
-                          setShippingAddress((prev) => ({ ...prev, province: event.target.value }))
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="shipping-postal">Postal code</Label>
-                      <Input
-                        id="shipping-postal"
-                        autoComplete="shipping postal-code"
-                        value={shippingAddress.postal_code}
-                        onChange={(event) =>
-                          setShippingAddress((prev) => ({ ...prev, postal_code: event.target.value }))
-                        }
-                        aria-invalid={Boolean(addressErrors.postal_code)}
-                      />
-                      {addressErrors.postal_code ? (
-                        <p className="text-xs text-destructive">{addressErrors.postal_code}</p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="shipping-country">Country</Label>
-                      <Select
-                        value={shippingAddress.country_code}
-                        onValueChange={(value) =>
-                          setShippingAddress((prev) => ({ ...prev, country_code: value }))
-                        }
-                      >
-                        <SelectTrigger id="shipping-country" aria-invalid={Boolean(addressErrors.country_code)}>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {countryOptions.map((country) => (
-                            <SelectItem key={country.id} value={country.code}>
-                              {country.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {addressErrors.country_code ? (
-                        <p className="text-xs text-destructive">{addressErrors.country_code}</p>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="shipping-phone">Phone</Label>
-                    <Input
-                      id="shipping-phone"
-                      type="tel"
-                      autoComplete="shipping tel"
-                      value={shippingAddress.phone}
-                      onChange={(event) =>
-                        setShippingAddress((prev) => ({ ...prev, phone: event.target.value }))
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      id="billing-same"
-                      checked={billingSame}
-                      onCheckedChange={(value) => setBillingSame(Boolean(value))}
-                    />
-                    <Label htmlFor="billing-same" className="text-xs uppercase tracking-[0.3rem]">
-                      Billing address is the same
-                    </Label>
-                  </div>
-
-                  {!billingSame ? (
-                    <div className="space-y-4 rounded-2xl border border-border/60 bg-background/70 p-4">
-                      <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                        Billing address
-                      </p>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="billing-first-name">First name</Label>
-                          <Input
-                            id="billing-first-name"
-                            autoComplete="billing given-name"
-                            value={billingAddress.first_name}
-                            onChange={(event) =>
-                              setBillingAddress((prev) => ({ ...prev, first_name: event.target.value }))
-                            }
-                            aria-invalid={Boolean(billingErrors.first_name)}
-                          />
-                          {billingErrors.first_name ? (
-                            <p className="text-xs text-destructive">{billingErrors.first_name}</p>
-                          ) : null}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="billing-last-name">Last name</Label>
-                          <Input
-                            id="billing-last-name"
-                            autoComplete="billing family-name"
-                            value={billingAddress.last_name}
-                            onChange={(event) =>
-                              setBillingAddress((prev) => ({ ...prev, last_name: event.target.value }))
-                            }
-                            aria-invalid={Boolean(billingErrors.last_name)}
-                          />
-                          {billingErrors.last_name ? (
-                            <p className="text-xs text-destructive">{billingErrors.last_name}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="billing-address">Address</Label>
-                        <Input
-                          id="billing-address"
-                          autoComplete="billing address-line1"
-                          value={billingAddress.address_1}
-                          onChange={(event) =>
-                            setBillingAddress((prev) => ({ ...prev, address_1: event.target.value }))
-                          }
-                          aria-invalid={Boolean(billingErrors.address_1)}
-                        />
-                        {billingErrors.address_1 ? (
-                          <p className="text-xs text-destructive">{billingErrors.address_1}</p>
-                        ) : null}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="billing-city">City</Label>
-                        <Input
-                          id="billing-city"
-                          autoComplete="billing address-level2"
-                          value={billingAddress.city}
-                          onChange={(event) =>
-                            setBillingAddress((prev) => ({ ...prev, city: event.target.value }))
-                          }
-                          aria-invalid={Boolean(billingErrors.city)}
-                        />
-                        {billingErrors.city ? (
-                          <p className="text-xs text-destructive">{billingErrors.city}</p>
-                        ) : null}
-                      </div>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="billing-postal">Postal code</Label>
-                          <Input
-                            id="billing-postal"
-                            autoComplete="billing postal-code"
-                            value={billingAddress.postal_code}
-                            onChange={(event) =>
-                              setBillingAddress((prev) => ({ ...prev, postal_code: event.target.value }))
-                            }
-                            aria-invalid={Boolean(billingErrors.postal_code)}
-                          />
-                          {billingErrors.postal_code ? (
-                            <p className="text-xs text-destructive">{billingErrors.postal_code}</p>
-                          ) : null}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="billing-country">Country</Label>
-                          <Select
-                            value={billingAddress.country_code}
-                            onValueChange={(value) =>
-                              setBillingAddress((prev) => ({ ...prev, country_code: value }))
-                            }
-                          >
-                            <SelectTrigger id="billing-country" aria-invalid={Boolean(billingErrors.country_code)}>
-                              <SelectValue placeholder="Select country" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {countryOptions.map((country) => (
-                                <SelectItem key={`billing-${country.id}`} value={country.code}>
-                                  {country.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {billingErrors.country_code ? (
-                            <p className="text-xs text-destructive">{billingErrors.country_code}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <Separator className="border-border/60" />
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                        Shipping method
-                      </p>
-                      {isLoadingShipping ? (
-                        <span className="text-xs text-muted-foreground">Loading options...</span>
-                      ) : null}
-                    </div>
-                    {standardShippingOption ? (
-                      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
-                        <span className="font-medium text-foreground">
-                          {standardShippingOption.name}
-                        </span>
-                        <span className="text-muted-foreground">
-                          {formatAmount(currencyCode, Number(standardShippingOption.amount ?? 0))}
-                        </span>
-                      </div>
-                    ) : cart?.shipping_methods?.length ? (
-                      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
-                        <span className="font-medium text-foreground">Standard Shipping</span>
-                        <span className="text-muted-foreground">
-                          {formatAmount(currencyCode, Number(cart.shipping_methods?.[0]?.amount ?? 0))}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-xs text-muted-foreground">
-                        Shipping appears after saving your address.
-                      </div>
-                    )}
-                  </div>
-
-                  <Button
-                    type="button"
-                    className="w-full"
-                    onClick={() => void handleAddressSubmit()}
-                    disabled={isSavingAddress}
+                <AccordionContent>
+                  <form
+                    className="space-y-6"
+                    noValidate
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void shippingForm.handleSubmit()
+                    }}
                   >
-                    {isSavingAddress ? "Saving..." : "Continue to payment"}
-                  </Button>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <shippingForm.Field
+                        name="shipping.first_name"
+                        validators={{
+                          onChange: ({ value }) => addressValidators.first_name(value),
+                          onSubmit: ({ value }) => addressValidators.first_name(value),
+                        }}
+                      >
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>First name</Label>
+                            <Input
+                              id={field.name}
+                              autoComplete="given-name"
+                              value={field.state.value}
+                              onChange={(event) => {
+                                field.handleChange(event.target.value)
+                                invalidateShipping()
+                              }}
+                              onBlur={field.handleBlur}
+                              aria-invalid={Boolean(field.state.meta.errors[0])}
+                            />
+                            {field.state.meta.errors[0] ? (
+                              <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      </shippingForm.Field>
+                      <shippingForm.Field
+                        name="shipping.last_name"
+                        validators={{
+                          onChange: ({ value }) => addressValidators.last_name(value),
+                          onSubmit: ({ value }) => addressValidators.last_name(value),
+                        }}
+                      >
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>Last name</Label>
+                            <Input
+                              id={field.name}
+                              autoComplete="family-name"
+                              value={field.state.value}
+                              onChange={(event) => {
+                                field.handleChange(event.target.value)
+                                invalidateShipping()
+                              }}
+                              onBlur={field.handleBlur}
+                              aria-invalid={Boolean(field.state.meta.errors[0])}
+                            />
+                            {field.state.meta.errors[0] ? (
+                              <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      </shippingForm.Field>
+                    </div>
+
+                    <shippingForm.Field
+                      name="shipping.address_1"
+                      validators={{
+                        onChange: ({ value }) => addressValidators.address_1(value),
+                        onSubmit: ({ value }) => addressValidators.address_1(value),
+                      }}
+                    >
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor={field.name}>Address</Label>
+                          <Input
+                            id={field.name}
+                            autoComplete="shipping address-line1"
+                            value={field.state.value}
+                            onChange={(event) => {
+                              field.handleChange(event.target.value)
+                              invalidateShipping()
+                            }}
+                            onBlur={field.handleBlur}
+                            aria-invalid={Boolean(field.state.meta.errors[0])}
+                          />
+                          {field.state.meta.errors[0] ? (
+                            <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                          ) : null}
+                        </div>
+                      )}
+                    </shippingForm.Field>
+
+                    <shippingForm.Field name="shipping.address_2">
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor={field.name}>Apartment, suite, etc.</Label>
+                          <Input
+                            id={field.name}
+                            autoComplete="shipping address-line2"
+                            value={field.state.value}
+                            onChange={(event) => {
+                              field.handleChange(event.target.value)
+                              invalidateShipping()
+                            }}
+                            onBlur={field.handleBlur}
+                          />
+                        </div>
+                      )}
+                    </shippingForm.Field>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <shippingForm.Field
+                        name="shipping.city"
+                        validators={{
+                          onChange: ({ value }) => addressValidators.city(value),
+                          onSubmit: ({ value }) => addressValidators.city(value),
+                        }}
+                      >
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>City</Label>
+                            <Input
+                              id={field.name}
+                              autoComplete="shipping address-level2"
+                              value={field.state.value}
+                              onChange={(event) => {
+                                field.handleChange(event.target.value)
+                                invalidateShipping()
+                              }}
+                              onBlur={field.handleBlur}
+                              aria-invalid={Boolean(field.state.meta.errors[0])}
+                            />
+                            {field.state.meta.errors[0] ? (
+                              <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      </shippingForm.Field>
+                      <shippingForm.Field name="shipping.province">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>State / Province</Label>
+                            <Input
+                              id={field.name}
+                              autoComplete="shipping address-level1"
+                              value={field.state.value}
+                              onChange={(event) => {
+                                field.handleChange(event.target.value)
+                                invalidateShipping()
+                              }}
+                              onBlur={field.handleBlur}
+                            />
+                          </div>
+                        )}
+                      </shippingForm.Field>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <shippingForm.Field
+                        name="shipping.postal_code"
+                        validators={{
+                          onChange: ({ value }) => addressValidators.postal_code(value),
+                          onSubmit: ({ value }) => addressValidators.postal_code(value),
+                        }}
+                      >
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>Postal code</Label>
+                            <Input
+                              id={field.name}
+                              autoComplete="shipping postal-code"
+                              value={field.state.value}
+                              onChange={(event) => {
+                                field.handleChange(event.target.value)
+                                invalidateShipping()
+                              }}
+                              onBlur={field.handleBlur}
+                              aria-invalid={Boolean(field.state.meta.errors[0])}
+                            />
+                            {field.state.meta.errors[0] ? (
+                              <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      </shippingForm.Field>
+                      <shippingForm.Field
+                        name="shipping.country_code"
+                        validators={{
+                          onChange: ({ value }) => addressValidators.country_code(value),
+                          onSubmit: ({ value }) => addressValidators.country_code(value),
+                        }}
+                      >
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor={field.name}>Country</Label>
+                            <Select
+                              value={field.state.value}
+                              onValueChange={(value) => {
+                                field.handleChange(value)
+                                invalidateShipping()
+                              }}
+                            >
+                              <SelectTrigger id={field.name} aria-invalid={Boolean(field.state.meta.errors[0])}>
+                                <SelectValue placeholder="Select country" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {countryOptions.map((country) => (
+                                  <SelectItem key={country.id} value={country.code}>
+                                    {country.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {field.state.meta.errors[0] ? (
+                              <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      </shippingForm.Field>
+                    </div>
+
+                    <shippingForm.Field name="shipping.phone">
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor={field.name}>Phone</Label>
+                          <Input
+                            id={field.name}
+                            type="tel"
+                            autoComplete="shipping tel"
+                            value={field.state.value}
+                            onChange={(event) => {
+                              field.handleChange(event.target.value)
+                              invalidateShipping()
+                            }}
+                            onBlur={field.handleBlur}
+                          />
+                        </div>
+                      )}
+                    </shippingForm.Field>
+
+                    <div className="flex items-center gap-3">
+                      <shippingForm.Field name="billingSame">
+                        {(field) => (
+                          <>
+                            <Checkbox
+                              id="billing-same"
+                              checked={field.state.value}
+                              onCheckedChange={(value) => {
+                                field.handleChange(Boolean(value))
+                                invalidateShipping()
+                              }}
+                            />
+                            <Label htmlFor="billing-same" className="text-xs uppercase tracking-[0.3rem]">
+                              Billing address is the same
+                            </Label>
+                          </>
+                        )}
+                      </shippingForm.Field>
+                    </div>
+
+                    {!billingSame ? (
+                      <div className="space-y-4 rounded-2xl border border-border/60 bg-background/70 p-4">
+                        <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+                          Billing address
+                        </p>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <shippingForm.Field
+                            name="billing.first_name"
+                            validators={{
+                              onChange: ({ value }) =>
+                                billingSame
+                                  ? undefined
+                                  : addressValidators.first_name(value),
+                              onSubmit: ({ value }) =>
+                                billingSame
+                                  ? undefined
+                                  : addressValidators.first_name(value),
+                            }}
+                          >
+                            {(field) => (
+                              <div className="space-y-2">
+                                <Label htmlFor={field.name}>First name</Label>
+                                <Input
+                                  id={field.name}
+                                  autoComplete="billing given-name"
+                                  value={field.state.value}
+                                  onChange={(event) => {
+                                    field.handleChange(event.target.value)
+                                    invalidateShipping()
+                                  }}
+                                  onBlur={field.handleBlur}
+                                  aria-invalid={Boolean(field.state.meta.errors[0])}
+                                />
+                                {field.state.meta.errors[0] ? (
+                                  <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                                ) : null}
+                              </div>
+                            )}
+                          </shippingForm.Field>
+                          <shippingForm.Field
+                            name="billing.last_name"
+                            validators={{
+                              onChange: ({ value }) =>
+                                billingSame
+                                  ? undefined
+                                  : addressValidators.last_name(value),
+                              onSubmit: ({ value }) =>
+                                billingSame
+                                  ? undefined
+                                  : addressValidators.last_name(value),
+                            }}
+                          >
+                            {(field) => (
+                              <div className="space-y-2">
+                                <Label htmlFor={field.name}>Last name</Label>
+                                <Input
+                                  id={field.name}
+                                  autoComplete="billing family-name"
+                                  value={field.state.value}
+                                  onChange={(event) => {
+                                    field.handleChange(event.target.value)
+                                    invalidateShipping()
+                                  }}
+                                  onBlur={field.handleBlur}
+                                  aria-invalid={Boolean(field.state.meta.errors[0])}
+                                />
+                                {field.state.meta.errors[0] ? (
+                                  <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                                ) : null}
+                              </div>
+                            )}
+                          </shippingForm.Field>
+                        </div>
+                        <shippingForm.Field
+                          name="billing.address_1"
+                          validators={{
+                            onChange: ({ value }) =>
+                              billingSame
+                                ? undefined
+                                : addressValidators.address_1(value),
+                            onSubmit: ({ value }) =>
+                              billingSame
+                                ? undefined
+                                : addressValidators.address_1(value),
+                          }}
+                        >
+                          {(field) => (
+                            <div className="space-y-2">
+                              <Label htmlFor={field.name}>Address</Label>
+                              <Input
+                                id={field.name}
+                                autoComplete="billing address-line1"
+                                value={field.state.value}
+                                onChange={(event) => {
+                                  field.handleChange(event.target.value)
+                                  invalidateShipping()
+                                }}
+                                onBlur={field.handleBlur}
+                                aria-invalid={Boolean(field.state.meta.errors[0])}
+                              />
+                              {field.state.meta.errors[0] ? (
+                                <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                              ) : null}
+                            </div>
+                          )}
+                        </shippingForm.Field>
+                        <shippingForm.Field
+                          name="billing.city"
+                          validators={{
+                            onChange: ({ value }) =>
+                              billingSame
+                                ? undefined
+                                : addressValidators.city(value),
+                            onSubmit: ({ value }) =>
+                              billingSame
+                                ? undefined
+                                : addressValidators.city(value),
+                          }}
+                        >
+                          {(field) => (
+                            <div className="space-y-2">
+                              <Label htmlFor={field.name}>City</Label>
+                              <Input
+                                id={field.name}
+                                autoComplete="billing address-level2"
+                                value={field.state.value}
+                                onChange={(event) => {
+                                  field.handleChange(event.target.value)
+                                  invalidateShipping()
+                                }}
+                                onBlur={field.handleBlur}
+                                aria-invalid={Boolean(field.state.meta.errors[0])}
+                              />
+                              {field.state.meta.errors[0] ? (
+                                <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                              ) : null}
+                            </div>
+                          )}
+                        </shippingForm.Field>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <shippingForm.Field
+                            name="billing.postal_code"
+                            validators={{
+                              onChange: ({ value }) =>
+                                billingSame
+                                  ? undefined
+                                  : addressValidators.postal_code(value),
+                              onSubmit: ({ value }) =>
+                                billingSame
+                                  ? undefined
+                                  : addressValidators.postal_code(value),
+                            }}
+                          >
+                            {(field) => (
+                              <div className="space-y-2">
+                                <Label htmlFor={field.name}>Postal code</Label>
+                                <Input
+                                  id={field.name}
+                                  autoComplete="billing postal-code"
+                                  value={field.state.value}
+                                  onChange={(event) => {
+                                    field.handleChange(event.target.value)
+                                    invalidateShipping()
+                                  }}
+                                  onBlur={field.handleBlur}
+                                  aria-invalid={Boolean(field.state.meta.errors[0])}
+                                />
+                                {field.state.meta.errors[0] ? (
+                                  <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                                ) : null}
+                              </div>
+                            )}
+                          </shippingForm.Field>
+                          <shippingForm.Field
+                            name="billing.country_code"
+                            validators={{
+                              onChange: ({ value }) =>
+                                billingSame
+                                  ? undefined
+                                  : addressValidators.country_code(value),
+                              onSubmit: ({ value }) =>
+                                billingSame
+                                  ? undefined
+                                  : addressValidators.country_code(value),
+                            }}
+                          >
+                            {(field) => (
+                              <div className="space-y-2">
+                                <Label htmlFor={field.name}>Country</Label>
+                                <Select
+                                  value={field.state.value}
+                                  onValueChange={(value) => {
+                                    field.handleChange(value)
+                                    invalidateShipping()
+                                  }}
+                                >
+                                  <SelectTrigger id={field.name} aria-invalid={Boolean(field.state.meta.errors[0])}>
+                                    <SelectValue placeholder="Select country" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {countryOptions.map((country) => (
+                                      <SelectItem key={`billing-${country.id}`} value={country.code}>
+                                        {country.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {field.state.meta.errors[0] ? (
+                                  <p className="text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                                ) : null}
+                              </div>
+                            )}
+                          </shippingForm.Field>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <Separator className="border-border/60" />
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+                          Shipping method
+                        </p>
+                        {isLoadingShipping ? (
+                          <span className="text-xs text-muted-foreground">Loading options...</span>
+                        ) : null}
+                      </div>
+                      {!shippingSubmitted ? (
+                        <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-xs text-muted-foreground">
+                          Shipping appears after saving your address.
+                        </div>
+                      ) : standardShippingOption ? (
+                        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
+                          <span className="font-medium text-foreground">
+                            {standardShippingOption.name}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {formatAmount(currencyCode, Number(standardShippingOption.amount ?? 0))}
+                          </span>
+                        </div>
+                      ) : cart?.shipping_methods?.length ? (
+                        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
+                          <span className="font-medium text-foreground">Standard Shipping</span>
+                          <span className="text-muted-foreground">
+                            {formatAmount(currencyCode, Number(cart.shipping_methods?.[0]?.amount ?? 0))}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-xs text-muted-foreground">
+                          Shipping appears after saving your address.
+                        </div>
+                      )}
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={isSavingAddress}>
+                      {isSavingAddress ? "Saving..." : "Continue to payment"}
+                    </Button>
+                  </form>
                 </AccordionContent>
               </AccordionItem>
 
@@ -992,16 +1214,10 @@ const CheckoutPage = () => {
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4">
                   {!hasCalculatedTaxes ? (
-                    <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
-                      <p>Taxes are calculated after your shipping method is selected.</p>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => void runTaxCalculation()}
-                        disabled={isCalculatingTaxes || !currentTaxKey}
-                      >
-                        {isCalculatingTaxes ? "Calculating taxes..." : "Calculate taxes"}
-                      </Button>
+                    <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
+                      {isCalculatingTaxes
+                        ? "Calculating taxes based on your shipping details..."
+                        : "Taxes are calculated automatically after shipping is saved."}
                     </div>
                   ) : null}
 
