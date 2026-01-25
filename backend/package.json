@@ -25,6 +25,7 @@
     "search:sync": "pnpm run search:sync-settings && pnpm run search:rebuild",
     "search:prepare": "pnpm run search:sync && pnpm run search:check",
     "shipping:update": "medusa exec ./src/scripts/update-shipping-options.ts",
+    "region:us-only": "medusa exec ./src/scripts/enforce-us-region.ts",
     "lint": "eslint --ext .ts,.tsx --max-warnings=0 src"
   },
   "dependencies": {
