@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, Lock, ShoppingBag } from "lucide-react"
-import type { Stripe, StripeElements, StripePaymentElement } from "@stripe/stripe-js"
+import type { Stripe, StripeCardElement, StripeElements } from "@stripe/stripe-js"
 import { loadStripe } from "@stripe/stripe-js"
 import type { HttpTypes } from "@medusajs/types"
 import { useForm } from "@tanstack/react-form"
@@ -30,6 +30,7 @@ const stripePromise = loadStripe(runtimeEnv.stripePublishableKey)
 type StripeState = {
   stripe: Stripe | null
   elements: StripeElements | null
+  card: StripeCardElement | null
 }
 
 const emailSchema = z.string().trim().email("Enter a valid email address.")
@@ -145,7 +146,7 @@ const buildTaxKey = (
   return `${country}:${province}:${postal}:${shippingOptionId}`
 }
 
-const StripePaymentElement = ({
+const StripeCardElement = ({
   clientSecret,
   onReady,
 }: {
@@ -156,7 +157,7 @@ const StripePaymentElement = ({
 
   useEffect(() => {
     let mounted = true
-    let element: StripePaymentElement | null = null
+    let element: StripeCardElement | null = null
 
     const mount = async () => {
       if (!containerRef.current) return
@@ -170,22 +171,36 @@ const StripePaymentElement = ({
         clientSecret,
         appearance: {
           theme: "night",
+          variables: {
+            colorText: "hsl(var(--foreground))",
+            colorDanger: "hsl(var(--destructive))",
+            fontFamily: "var(--font-sans)",
+            fontSizeBase: "15px",
+            spacingUnit: "4px",
+          },
+          rules: {
+            ".Input": {
+              backgroundColor: "hsl(var(--background))",
+              border: "1px solid hsl(var(--border))",
+              borderRadius: "16px",
+              padding: "12px 14px",
+            },
+            ".Input:focus": {
+              borderColor: "hsl(var(--accent))",
+              boxShadow: "0 0 0 2px hsl(var(--accent) / 0.3)",
+            },
+            ".Label": {
+              color: "hsl(var(--muted-foreground))",
+            },
+          },
         },
       })
 
-      element = elements.create("payment", {
-        layout: "accordion",
-        paymentMethodOrder: ["card"],
-        wallets: {
-          applePay: "never",
-          googlePay: "never",
-          link: "never",
-        },
-      })
+      element = elements.create("card")
       element.mount(containerRef.current)
 
       if (mounted) {
-        onReady({ stripe, elements })
+        onReady({ stripe, elements, card: element })
       }
     }
 
@@ -197,7 +212,7 @@ const StripePaymentElement = ({
     }
   }, [clientSecret, onReady])
 
-  return <div ref={containerRef} className="min-h-[240px]" />
+  return <div ref={containerRef} className="min-h-[220px]" />
 }
 
 const CheckoutPage = () => {
@@ -232,7 +247,7 @@ const CheckoutPage = () => {
   const [taxError, setTaxError] = useState<string | null>(null)
   const [taxKey, setTaxKey] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [stripeState, setStripeState] = useState<StripeState>({ stripe: null, elements: null })
+  const [stripeState, setStripeState] = useState<StripeState>({ stripe: null, elements: null, card: null })
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
 
@@ -357,7 +372,7 @@ const CheckoutPage = () => {
 
   const resetPaymentState = useCallback(() => {
     setClientSecret(null)
-    setStripeState({ stripe: null, elements: null })
+    setStripeState({ stripe: null, elements: null, card: null })
   }, [])
 
   useEffect(() => {
@@ -511,7 +526,7 @@ const CheckoutPage = () => {
       return
     }
 
-    if (!stripeState.stripe || !stripeState.elements) {
+    if (!stripeState.stripe || !stripeState.card || !clientSecret) {
       setPaymentError("Payment form is still loading. Please wait.")
       setIsPlacingOrder(false)
       return
@@ -519,10 +534,33 @@ const CheckoutPage = () => {
 
     const returnUrl = `${window.location.origin}/checkout/success?cart_id=${cart.id}`
 
-    const result = await stripeState.stripe.confirmPayment({
-      elements: stripeState.elements,
-      confirmParams: { return_url: returnUrl },
-      redirect: "if_required",
+    const billingSource = billingSame
+      ? shippingForm.state.values.shipping
+      : shippingForm.state.values.billing
+    const emailValue = contactForm.state.values.email.trim()
+    const phoneValue = billingSource.phone?.trim()
+    const line2Value = billingSource.address_2?.trim()
+    const stateValue = billingSource.province?.trim()
+    const billingDetails = {
+      name: `${billingSource.first_name} ${billingSource.last_name}`.trim(),
+      email: emailValue.length ? emailValue : cart.email ?? null,
+      phone: phoneValue && phoneValue.length ? phoneValue : null,
+      address: {
+        line1: billingSource.address_1,
+        line2: line2Value && line2Value.length ? line2Value : null,
+        city: billingSource.city,
+        state: stateValue && stateValue.length ? stateValue : null,
+        postal_code: billingSource.postal_code,
+        country: billingSource.country_code,
+      },
+    }
+
+    const result = await stripeState.stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: stripeState.card,
+        billing_details: billingDetails,
+      },
+      return_url: returnUrl,
     })
 
     if (result.error) {
@@ -1168,32 +1206,22 @@ const CheckoutPage = () => {
                           Shipping method
                         </p>
                         {isLoadingShipping ? (
-                          <span className="text-xs text-muted-foreground">Loading options...</span>
+                          <span className="text-xs text-muted-foreground">Loading...</span>
                         ) : null}
                       </div>
                       {!shippingSubmitted ? (
                         <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-xs text-muted-foreground">
                           Shipping appears after saving your address.
                         </div>
-                      ) : standardShippingOption ? (
-                        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
-                          <span className="font-medium text-foreground">
-                            {standardShippingOption.name}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {formatAmount(currencyCode, Number(standardShippingOption.amount ?? 0))}
-                          </span>
-                        </div>
-                      ) : cart?.shipping_methods?.length ? (
+                      ) : (
                         <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
                           <span className="font-medium text-foreground">Standard Shipping</span>
                           <span className="text-muted-foreground">
-                            {formatAmount(currencyCode, Number(cart.shipping_methods?.[0]?.amount ?? 0))}
+                            {resolveMoney(
+                              shippingTotal ?? Number(cart?.shipping_methods?.[0]?.amount ?? 0),
+                              formatAmount(currencyCode, 0)
+                            )}
                           </span>
-                        </div>
-                      ) : (
-                        <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-xs text-muted-foreground">
-                          Shipping appears after saving your address.
                         </div>
                       )}
                     </div>
@@ -1232,10 +1260,7 @@ const CheckoutPage = () => {
                       This order is free. Confirm to place it now.
                     </div>
                   ) : clientSecret ? (
-                    <StripePaymentElement
-                      clientSecret={clientSecret}
-                      onReady={setStripeState}
-                    />
+                    <StripeCardElement clientSecret={clientSecret} onReady={setStripeState} />
                   ) : (
                     <div className="space-y-3">
                       <Skeleton className="h-6 w-40" />
