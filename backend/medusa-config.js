@@ -59,6 +59,28 @@ const medusaConfig = {
   },
   modules: [
     {
+      key: Modules.FULFILLMENT,
+      resolve: '@medusajs/fulfillment',
+      options: {
+        providers: [
+          {
+            resolve: '@medusajs/fulfillment-manual',
+            id: 'manual',
+            options: {},
+          },
+          {
+            resolve: './src/modules/per-item-fulfillment',
+            id: 'standard',
+            options: {
+              baseAmount: 500,
+              additionalAmount: 50,
+              currencyCode: 'usd',
+            },
+          },
+        ],
+      },
+    },
+    {
       key: Modules.FILE,
       resolve: '@medusajs/file',
       options: {

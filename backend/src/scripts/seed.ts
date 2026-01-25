@@ -224,8 +224,8 @@ export default async function seedDemoData({ container }: ExecArgs) {
     input: [
       {
         name: "Standard Shipping",
-        price_type: "flat",
-        provider_id: "manual_manual",
+        price_type: "calculated",
+        provider_id: "per_item_standard",
         service_zone_id: serviceZone.id,
         shipping_profile_id: activeShippingProfile.id,
         type: {
@@ -233,58 +233,11 @@ export default async function seedDemoData({ container }: ExecArgs) {
           description: "Ship in 2-3 days.",
           code: "standard",
         },
-        prices: [
-          {
-            currency_code: "usd",
-            amount: 10,
-          },
-          {
-            currency_code: "eur",
-            amount: 10,
-          },
-          {
-            region_id: region.id,
-            amount: 10,
-          },
-        ],
-        rules: [
-          {
-            attribute: "enabled_in_store",
-            value: "true",
-            operator: "eq",
-          },
-          {
-            attribute: "is_return",
-            value: "false",
-            operator: "eq",
-          },
-        ],
-      },
-      {
-        name: "Express Shipping",
-        price_type: "flat",
-        provider_id: "manual_manual",
-        service_zone_id: serviceZone.id,
-        shipping_profile_id: activeShippingProfile.id,
-        type: {
-          label: "Express",
-          description: "Ship in 24 hours.",
-          code: "express",
+        data: {
+          base_amount: 500,
+          additional_amount: 50,
+          currency_code: "usd",
         },
-        prices: [
-          {
-            currency_code: "usd",
-            amount: 10,
-          },
-          {
-            currency_code: "eur",
-            amount: 10,
-          },
-          {
-            region_id: region.id,
-            amount: 10,
-          },
-        ],
         rules: [
           {
             attribute: "enabled_in_store",
