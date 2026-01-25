@@ -114,7 +114,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
   private async resolveRatePercent(context: TaxCalculationContext): Promise<number> {
     const cacheKey = buildCacheKey(context.address)
     if (!cacheKey) {
-      throw new Error('Tax calculation requires a country and postal code.')
+      return 0
     }
 
     const cached = readCachedRate(cacheKey)
@@ -123,6 +123,10 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     }
 
     const countryCode = context.address.country_code?.toLowerCase()
+    if (!countryCode) {
+      return 0
+    }
+
     if (countryCode !== 'us') {
       this.logger_.warn(`Tax lookup skipped for unsupported country: ${countryCode}`)
       return 0
@@ -130,7 +134,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
 
     const postalCode = context.address.postal_code?.trim()
     if (!postalCode) {
-      throw new Error('Tax calculation requires a postal code.')
+      return 0
     }
 
     if (this.options_.provider !== 'taxrate_io') {
