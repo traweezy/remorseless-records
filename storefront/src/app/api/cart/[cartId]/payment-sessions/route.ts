@@ -8,6 +8,7 @@ export const POST = async (
   request: NextRequest,
   { params }: { params: Promise<{ cartId: string }> }
 ): Promise<Response> => {
+  let cart: Awaited<ReturnType<typeof getCart>> | null = null
   try {
     noStore()
     const { cartId } = await params
@@ -15,8 +16,22 @@ export const POST = async (
       provider_id?: string
     }
 
-    const cart = await getCart(cartId)
+    cart = await getCart(cartId)
     const cartTotal = Number(cart.total ?? 0)
+    const LARGE_TOTAL_THRESHOLD = 1000 * 100
+
+    if (cartTotal >= LARGE_TOTAL_THRESHOLD) {
+      console.warn("[checkout] High cart total when creating payment session", {
+        cartId,
+        total: cartTotal,
+        currency: cart.currency_code ?? "usd",
+        itemCount: cart.items?.length ?? 0,
+        subtotal: cart.subtotal ?? 0,
+        taxTotal: cart.tax_total ?? 0,
+        shippingSubtotal: cart.shipping_subtotal ?? 0,
+        discountTotal: cart.discount_total ?? 0,
+      })
+    }
 
     if (cartTotal <= 0) {
       return NextResponse.json(
@@ -34,8 +49,24 @@ export const POST = async (
     return NextResponse.json(session)
   } catch (error) {
     console.error("Failed to initialize payment session", error)
+    if (cart) {
+      console.warn("[checkout] Payment session init failed", {
+        cartId: cart.id,
+        total: cart.total ?? 0,
+        currency: cart.currency_code ?? "usd",
+        itemCount: cart.items?.length ?? 0,
+        subtotal: cart.subtotal ?? 0,
+        taxTotal: cart.tax_total ?? 0,
+        shippingSubtotal: cart.shipping_subtotal ?? 0,
+        discountTotal: cart.discount_total ?? 0,
+      })
+    }
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "Unable to initialize payment session."
     return NextResponse.json(
-      { error: "Unable to initialize payment session." },
+      { error: message },
       { status: 500 }
     )
   }

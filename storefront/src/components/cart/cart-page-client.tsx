@@ -123,7 +123,10 @@ const CartPageClient = () => {
             />
             <SummaryRow
               label="Shipping"
-              value={formatAmount(currencyCode, Number(cart.shipping_total ?? 0))}
+              value={formatAmount(
+                currencyCode,
+                Number(cart.shipping_subtotal ?? cart.shipping_total ?? 0)
+              )}
             />
             <SummaryRow
               label="Tax"

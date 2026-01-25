@@ -1,7 +1,7 @@
-import CartPageClient from "@/components/cart/cart-page-client"
+import { redirect } from "next/navigation"
 
 const CartPage = () => {
-  return <CartPageClient />
+  redirect("/?cart=1")
 }
 
 export default CartPage

@@ -30,10 +30,13 @@ export const CartItem = ({
   const [isPending, startTransition] = useTransition()
 
   const quantity = useMemo(() => Number(item.quantity ?? 1), [item.quantity])
-  const totalAmount = useMemo(
-    () => Number(item.total ?? item.subtotal ?? 0),
-    [item.total, item.subtotal]
-  )
+  const totalAmount = useMemo(() => {
+    if (typeof item.subtotal === "number") {
+      return item.subtotal
+    }
+    const unitPrice = Number(item.unit_price ?? 0)
+    return unitPrice * quantity
+  }, [item.subtotal, item.unit_price, quantity])
 
   const handleQuantityChange = (nextQuantity: number) => {
     const normalized = Math.max(1, nextQuantity)

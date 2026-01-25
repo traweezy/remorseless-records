@@ -31,6 +31,7 @@ type CartContextValue = {
   subtotal: number | null
   taxTotal: number | null
   shippingTotal: number | null
+  shippingSubtotal: number | null
   discountTotal: number | null
   total: number | null
   refreshCart: (options?: { silent?: boolean }) => Promise<StoreCart | null>
@@ -458,6 +459,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       subtotal: cart?.subtotal ?? null,
       taxTotal: cart?.tax_total ?? null,
       shippingTotal: cart?.shipping_total ?? null,
+      shippingSubtotal: cart?.shipping_subtotal ?? null,
       discountTotal: cart?.discount_total ?? null,
       total: cart?.total ?? null,
     }),
@@ -473,6 +475,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       subtotal: totals.subtotal,
       taxTotal: totals.taxTotal,
       shippingTotal: totals.shippingTotal,
+      shippingSubtotal: totals.shippingSubtotal,
       discountTotal: totals.discountTotal,
       total: totals.total,
       refreshCart,

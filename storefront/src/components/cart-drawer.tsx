@@ -42,7 +42,11 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
   const subtotal = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.subtotal), [hydratedCart])
   const taxTotal = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.tax_total), [hydratedCart])
   const shippingTotal = useMemo(
-    () => formatCartAmount(hydratedCart, hydratedCart?.shipping_total),
+    () =>
+      formatCartAmount(
+        hydratedCart,
+        hydratedCart?.shipping_subtotal ?? hydratedCart?.shipping_total
+      ),
     [hydratedCart]
   )
   const total = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.total), [hydratedCart])
@@ -204,15 +208,14 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
                 variant="outline"
                 size="lg"
                 className="h-12 w-full text-base"
-                disabled={!hasItems}
                 {...secondaryInteractions}
                 transition={secondaryTransition}
                 onClick={() => {
                   onOpenChange(false)
-                  router.push("/cart")
+                  router.push("/catalog")
                 }}
               >
-                View full cart
+                Continue shopping
               </MotionButton>
             </div>
           </>

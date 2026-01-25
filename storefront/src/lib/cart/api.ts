@@ -14,6 +14,8 @@ const CART_FIELDS = [
   "total",
   "tax_total",
   "shipping_total",
+  "shipping_subtotal",
+  "shipping_tax_total",
   "discount_total",
   "*items",
   "*items.variant",

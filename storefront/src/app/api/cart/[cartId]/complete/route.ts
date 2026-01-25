@@ -15,8 +15,12 @@ export const POST = async (
     return NextResponse.json(response)
   } catch (error) {
     console.error("Failed to complete cart", error)
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "Unable to complete cart."
     return NextResponse.json(
-      { error: "Unable to complete cart." },
+      { error: message },
       { status: 500 }
     )
   }

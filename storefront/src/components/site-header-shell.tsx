@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Menu, ShoppingCart, X } from "lucide-react"
 
 import CartDrawer from "@/components/cart-drawer"
@@ -21,6 +21,8 @@ const NAV_LINKS = [
 
 const SiteHeaderShell = () => {
   const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [isCartOpen, setCartOpen] = useState(false)
   const [isMenuOpen, setMenuOpen] = useState(false)
   const [scrollProgress, setScrollProgress] = useState(0)
@@ -96,6 +98,24 @@ const SiteHeaderShell = () => {
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const shouldOpenCart = searchParams?.get("cart") === "1"
+    const stored = window.localStorage.getItem("rr.cart.open")
+    if (!shouldOpenCart && stored !== "1") {
+      return
+    }
+
+    window.localStorage.removeItem("rr.cart.open")
+    setCartOpen(true)
+
+    if (shouldOpenCart) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("cart")
+      router.replace(`${url.pathname}${url.search}${url.hash}`)
+    }
+  }, [router, searchParams])
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg relative">
       <div className="container flex h-16 items-center justify-between">
@@ -130,13 +150,13 @@ const SiteHeaderShell = () => {
               ))}
             </nav>
           ) : (
-            <SmartLink
-              href="/cart"
-              nativePrefetch
+            <button
+              type="button"
               className="hidden md:inline-flex items-center rounded-full border border-border/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+              onClick={() => setCartOpen(true)}
             >
               Back to cart
-            </SmartLink>
+            </button>
           )}
           <Button
             variant="ghost"
@@ -193,19 +213,21 @@ const SiteHeaderShell = () => {
                     {link.label}
                   </SmartLink>
                 ))}
-                <SmartLink
-                  href="/cart"
-                  nativePrefetch
+                <button
+                  type="button"
                   onPointerEnter={prefetchCart}
                   onFocus={prefetchCart}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setCartOpen(true)
+                  }}
                   className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
                 >
                   <span>Cart</span>
                   <span className="rounded-full bg-destructive px-3 py-1 text-xs text-white">
                     {cartLabel}
                   </span>
-                </SmartLink>
+                </button>
               </div>
               <button
                 type="button"

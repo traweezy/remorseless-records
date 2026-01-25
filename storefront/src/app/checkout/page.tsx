@@ -6,6 +6,7 @@ import { CheckCircle2, Lock, ShoppingBag } from "lucide-react"
 import type { Stripe, StripeCardElement, StripeElements } from "@stripe/stripe-js"
 import { loadStripe } from "@stripe/stripe-js"
 import type { HttpTypes } from "@medusajs/types"
+import Image from "next/image"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 
@@ -128,31 +129,104 @@ const normalizeAddress = (address: AddressFormState): StoreCartAddressInput => {
   return normalized
 }
 
-const buildTaxKey = (
-  address: HttpTypes.StoreCartAddress | null | undefined,
-  shippingOptionId: string | null
-): string | null => {
-  if (!address || !shippingOptionId) {
-    return null
-  }
+const normalizeSignatureValue = (value: string | null | undefined): string =>
+  (value ?? "").trim().toLowerCase()
 
-  const country = address.country_code?.trim().toLowerCase()
-  const postal = address.postal_code?.trim()
-  if (!country || !postal) {
-    return null
+const createTabId = (): string => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID()
   }
-
-  const province = (address.province ?? "").trim().toLowerCase()
-  return `${country}:${province}:${postal}:${shippingOptionId}`
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-const StripeCardElement = ({
-  clientSecret,
-  onReady,
-}: {
-  clientSecret: string
-  onReady: (state: StripeState) => void
-}) => {
+const hasAddressValues = (address: AddressSnapshotSource | null | undefined): boolean =>
+  Boolean(
+    normalizeSignatureValue(address?.first_name) ||
+      normalizeSignatureValue(address?.last_name) ||
+      normalizeSignatureValue(address?.address_1) ||
+      normalizeSignatureValue(address?.address_2) ||
+      normalizeSignatureValue(address?.city) ||
+      normalizeSignatureValue(address?.province) ||
+      normalizeSignatureValue(address?.postal_code) ||
+      normalizeSignatureValue(address?.country_code) ||
+      normalizeSignatureValue(address?.phone)
+  )
+
+type AddressSnapshotSource = {
+  first_name?: string | null | undefined
+  last_name?: string | null | undefined
+  address_1?: string | null | undefined
+  address_2?: string | null | undefined
+  city?: string | null | undefined
+  province?: string | null | undefined
+  postal_code?: string | null | undefined
+  country_code?: string | null | undefined
+  phone?: string | null | undefined
+}
+
+const buildAddressSnapshot = (address: AddressSnapshotSource | null | undefined): string =>
+  [
+    normalizeSignatureValue(address?.first_name),
+    normalizeSignatureValue(address?.last_name),
+    normalizeSignatureValue(address?.address_1),
+    normalizeSignatureValue(address?.address_2),
+    normalizeSignatureValue(address?.city),
+    normalizeSignatureValue(address?.province),
+    normalizeSignatureValue(address?.postal_code),
+    normalizeSignatureValue(address?.country_code),
+    normalizeSignatureValue(address?.phone),
+  ].join("::")
+
+const buildItemsSignature = (items: HttpTypes.StoreCartLineItem[] | null | undefined): string => {
+  if (!items?.length) {
+    return ""
+  }
+
+  return items
+    .map((item) => `${item.variant_id ?? item.id}:${Number(item.quantity ?? 0)}`)
+    .sort()
+    .join("|")
+}
+
+const buildShippingSignature = (
+  cart: HttpTypes.StoreCart | null,
+  shippingOptionId: string | null
+): string | null => {
+  if (!cart) {
+    return null
+  }
+
+  const address = cart.shipping_address
+  return [
+    cart.id,
+    normalizeSignatureValue(address?.first_name),
+    normalizeSignatureValue(address?.last_name),
+    normalizeSignatureValue(address?.address_1),
+    normalizeSignatureValue(address?.address_2),
+    normalizeSignatureValue(address?.city),
+    normalizeSignatureValue(address?.province),
+    normalizeSignatureValue(address?.postal_code),
+    normalizeSignatureValue(address?.country_code),
+    normalizeSignatureValue(address?.phone),
+    normalizeSignatureValue(shippingOptionId),
+  ].join("::")
+}
+
+const buildPaymentSignature = (
+  cart: HttpTypes.StoreCart | null,
+  shippingOptionId: string | null
+): string | null => {
+  if (!cart) {
+    return null
+  }
+
+  return [
+    buildShippingSignature(cart, shippingOptionId) ?? "",
+    normalizeSignatureValue(cart.email),
+  ].join("::")
+}
+
+const StripeCardElement = ({ onReady }: { onReady: (state: StripeState) => void }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -167,36 +241,119 @@ const StripeCardElement = ({
         return
       }
 
+      if (!mounted || !containerRef.current) {
+        return
+      }
+
+      const readThemeColor = (name: string, fallback: string) => {
+        const value = getComputedStyle(document.documentElement)
+          .getPropertyValue(name)
+          .trim()
+        if (!value) return fallback
+        if (!document.body) return fallback
+
+        const sample = document.createElement("div")
+        const token = value.startsWith("#") || value.startsWith("rgb") || value.startsWith("hsl")
+          ? value
+          : `hsl(${value})`
+        sample.style.color = token
+        document.body.appendChild(sample)
+        const computed = getComputedStyle(sample).color
+        document.body.removeChild(sample)
+        return computed || fallback
+      }
+
+      const theme = {
+        foreground: readThemeColor("--foreground", "#f1f1f1"),
+        muted: readThemeColor("--muted-foreground", "#b5b5b5"),
+        background: readThemeColor("--background", "#0f0f0f"),
+        card: readThemeColor("--card", "#151515"),
+        border: readThemeColor("--border", "#2c2c2c"),
+        accent: readThemeColor("--accent", "#d11c1c"),
+        destructive: readThemeColor("--destructive", "#ff4d4d"),
+      }
+
+      const toRgba = (color: string, alpha: number, fallback: string) => {
+        if (color.startsWith("rgba(")) return color
+        if (color.startsWith("rgb(")) {
+          return color.replace("rgb(", "rgba(").replace(")", `, ${alpha})`)
+        }
+        if (color.startsWith("#") && (color.length === 7 || color.length === 4)) {
+          const hex = color.length === 4
+            ? color
+                .slice(1)
+                .split("")
+                .map((ch) => ch + ch)
+                .join("")
+            : color.slice(1)
+          const r = parseInt(hex.slice(0, 2), 16)
+          const g = parseInt(hex.slice(2, 4), 16)
+          const b = parseInt(hex.slice(4, 6), 16)
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`
+        }
+        return fallback
+      }
+
+      const accentGlow = toRgba(theme.accent, 0.35, "rgba(209, 28, 28, 0.35)")
+
       const elements = stripe.elements({
-        clientSecret,
         appearance: {
-          theme: "night",
+          theme: "flat",
           variables: {
-            colorText: "hsl(var(--foreground))",
-            colorDanger: "hsl(var(--destructive))",
+            colorText: theme.foreground,
+            colorDanger: theme.destructive,
+            colorTextSecondary: theme.muted,
+            colorBackground: theme.background,
             fontFamily: "var(--font-sans)",
             fontSizeBase: "15px",
             spacingUnit: "4px",
           },
           rules: {
             ".Input": {
-              backgroundColor: "hsl(var(--background))",
-              border: "1px solid hsl(var(--border))",
+              backgroundColor: theme.card,
+              border: `1px solid ${theme.border}`,
               borderRadius: "16px",
               padding: "12px 14px",
             },
+            ".Input::placeholder": {
+              color: theme.muted,
+            },
             ".Input:focus": {
-              borderColor: "hsl(var(--accent))",
-              boxShadow: "0 0 0 2px hsl(var(--accent) / 0.3)",
+              borderColor: theme.accent,
+              boxShadow: `0 0 0 2px ${accentGlow}`,
             },
             ".Label": {
-              color: "hsl(var(--muted-foreground))",
+              color: theme.muted,
+              fontSize: "12px",
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
             },
           },
         },
       })
 
-      element = elements.create("card")
+      element = elements.create("card", {
+        hidePostalCode: true,
+        style: {
+          base: {
+            color: theme.foreground,
+            fontFamily: "var(--font-sans)",
+            fontSize: "15px",
+            iconColor: theme.accent,
+            "::placeholder": {
+              color: theme.muted,
+            },
+          },
+          invalid: {
+            color: theme.destructive,
+          },
+        },
+      })
+      if (!mounted || !containerRef.current) {
+        element.destroy()
+        return
+      }
+
       element.mount(containerRef.current)
 
       if (mounted) {
@@ -210,9 +367,21 @@ const StripeCardElement = ({
       mounted = false
       element?.destroy()
     }
-  }, [clientSecret, onReady])
+  }, [onReady])
 
-  return <div ref={containerRef} className="min-h-[220px]" />
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/80 p-4 shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+          Card details
+        </p>
+        <span className="text-[10px] uppercase tracking-[0.2rem] text-muted-foreground">
+          Secure via Stripe
+        </span>
+      </div>
+      <div ref={containerRef} className="mt-3 min-h-[54px]" />
+    </div>
+  )
 }
 
 const CheckoutPage = () => {
@@ -223,7 +392,7 @@ const CheckoutPage = () => {
     itemCount,
     subtotal,
     taxTotal,
-    shippingTotal,
+    shippingSubtotal,
     discountTotal,
     total,
     setEmail,
@@ -233,23 +402,43 @@ const CheckoutPage = () => {
     calculateTaxes,
     initPaymentSessions,
     completeCart,
+    refreshCart,
   } = useCart()
 
   const [activeStep, setActiveStep] = useState("contact")
   const [contactComplete, setContactComplete] = useState(false)
   const [shippingSubmitted, setShippingSubmitted] = useState(false)
-  const [shippingOptions, setShippingOptions] = useState<HttpTypes.StoreCartShippingOptionWithServiceZone[]>([])
-  const [selectedShippingOption, setSelectedShippingOption] = useState<string>("")
   const [isSavingContact, setIsSavingContact] = useState(false)
   const [isSavingAddress, setIsSavingAddress] = useState(false)
-  const [isLoadingShipping, setIsLoadingShipping] = useState(false)
+  const [isUpdatingShipping, setIsUpdatingShipping] = useState(false)
+  const [shippingError, setShippingError] = useState<string | null>(null)
   const [isCalculatingTaxes, setIsCalculatingTaxes] = useState(false)
   const [taxError, setTaxError] = useState<string | null>(null)
-  const [taxKey, setTaxKey] = useState<string | null>(null)
+  const [hasCalculatedTaxes, setHasCalculatedTaxes] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [stripeState, setStripeState] = useState<StripeState>({ stripe: null, elements: null, card: null })
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
+  const [hasReachedPayment, setHasReachedPayment] = useState(false)
+  const [savedShippingSignature, setSavedShippingSignature] = useState<string | null>(null)
+  const [savedShippingSnapshot, setSavedShippingSnapshot] = useState<string | null>(null)
+  const [hasSyncedShipping, setHasSyncedShipping] = useState(false)
+  const [savedItemsSignature, setSavedItemsSignature] = useState<string | null>(null)
+  const [savedTotalsSignature, setSavedTotalsSignature] = useState<string | null>(null)
+  const [savedEmail, setSavedEmail] = useState<string | null>(null)
+  const [cartNotice, setCartNotice] = useState<string | null>(null)
+  const checkoutTabIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const key = "rr.checkout.tab"
+    let tabId = window.sessionStorage.getItem(key)
+    if (!tabId) {
+      tabId = createTabId()
+      window.sessionStorage.setItem(key, tabId)
+    }
+    checkoutTabIdRef.current = tabId
+  }, [])
 
   const contactForm = useForm({
     defaultValues: {
@@ -262,6 +451,7 @@ const CheckoutPage = () => {
 
       if (updated?.email) {
         setContactComplete(true)
+        setSavedEmail(updated.email)
         setActiveStep("shipping")
       }
     },
@@ -274,36 +464,66 @@ const CheckoutPage = () => {
       billing: DEFAULT_ADDRESS,
     },
     onSubmit: async ({ value }) => {
-      setIsSavingAddress(true)
-      const updated = await setAddresses({
-        shipping_address: normalizeAddress(value.shipping),
-        billing_address: value.billingSame
-          ? normalizeAddress(value.shipping)
-          : normalizeAddress(value.billing),
+      const updated = await applyShippingAndTaxes({
+        addresses: {
+          shipping_address: normalizeAddress(value.shipping),
+          billing_address: value.billingSame
+            ? normalizeAddress(value.shipping)
+            : normalizeAddress(value.billing),
+        },
       })
-      setIsSavingAddress(false)
 
       if (updated?.shipping_address) {
-        setShippingSubmitted(true)
-        setTaxKey(null)
-        setTaxError(null)
+        setHasReachedPayment(true)
       }
     },
   })
 
   const billingSame = shippingForm.state.values.billingSame
 
-  const currentTaxKey = useMemo(
-    () => buildTaxKey(cart?.shipping_address, selectedShippingOption || null),
-    [cart?.shipping_address, selectedShippingOption]
+  const cartShippingHasValues = useMemo(
+    () => hasAddressValues(cart?.shipping_address),
+    [cart?.shipping_address]
   )
-  const hasCalculatedTaxes = Boolean(currentTaxKey && taxKey === currentTaxKey)
+  const formShippingSnapshot = useMemo(
+    () => buildAddressSnapshot(shippingForm.state.values.shipping),
+    [shippingForm.state.values.shipping]
+  )
+  const shippingFormDirty =
+    shippingSubmitted && Boolean(savedShippingSnapshot) && formShippingSnapshot !== savedShippingSnapshot
   const shippingComplete = contactComplete && shippingSubmitted && hasCalculatedTaxes
+  const shippingStepComplete = shippingComplete && !shippingFormDirty && hasSyncedShipping
   const canOpenShipping = contactComplete
-  const canOpenPayment = shippingComplete
-  const standardShippingOption = useMemo(
-    () => (shippingOptions.length === 1 ? shippingOptions[0] : null),
-    [shippingOptions]
+  const canOpenPayment = shippingComplete && hasSyncedShipping && !shippingFormDirty && !shippingError
+  const computedShippingSubtotal = useMemo(() => {
+    const count = Math.max(0, Math.trunc(itemCount))
+    if (count === 0) return 0
+    return 500 + Math.max(0, count - 1) * 50
+  }, [itemCount])
+  const resolvedShippingSubtotal =
+    shippingSubtotal && shippingSubtotal > 0 ? shippingSubtotal : computedShippingSubtotal
+  const resolvedShippingOptionId = cart?.shipping_methods?.[0]?.shipping_option_id ?? null
+  const itemsSignature = useMemo(
+    () => buildItemsSignature(cart?.items),
+    [cart?.items]
+  )
+  const totalsSignature = useMemo(() => {
+    if (!cart) return null
+    return [
+      String(cart.subtotal ?? 0),
+      String(cart.discount_total ?? 0),
+      String(cart.shipping_subtotal ?? 0),
+      String(cart.tax_total ?? 0),
+      String(cart.total ?? 0),
+    ].join(":")
+  }, [cart])
+  const shippingSignature = useMemo(
+    () => buildShippingSignature(cart ?? null, resolvedShippingOptionId),
+    [cart, resolvedShippingOptionId]
+  )
+  const paymentSignature = useMemo(
+    () => buildPaymentSignature(cart ?? null, resolvedShippingOptionId),
+    [cart, resolvedShippingOptionId]
   )
 
   const handleStepChange = useCallback(
@@ -312,151 +532,332 @@ const CheckoutPage = () => {
       if (value === "shipping" && !canOpenShipping) return
       if (value === "payment" && !canOpenPayment) return
       setActiveStep(value)
+      if (value === "payment") {
+        setHasReachedPayment(true)
+      }
     },
     [canOpenPayment, canOpenShipping]
+  )
+
+  const resetPaymentState = useCallback(() => {
+    setClientSecret(null)
+  }, [])
+
+  const applyShippingAndTaxes = useCallback(
+    async (options?: {
+      addresses?: {
+        shipping_address: StoreCartAddressInput
+        billing_address?: StoreCartAddressInput
+      }
+      notice?: string
+    }) => {
+      const cartId = cart?.id
+      if (!cartId) {
+        return null
+      }
+
+      if (isUpdatingShipping || isCalculatingTaxes) {
+        return null
+      }
+
+      setIsUpdatingShipping(true)
+      setTaxError(null)
+      setShippingError(null)
+      if (options?.notice) {
+        setCartNotice(options.notice)
+      }
+
+      try {
+        let updated: HttpTypes.StoreCart | null = cart
+
+        if (options?.addresses) {
+          setIsSavingAddress(true)
+          updated = await setAddresses(options.addresses)
+          setIsSavingAddress(false)
+        }
+
+        const targetCartId = updated?.id ?? cartId
+        const shippingOptions = await listShippingOptions(targetCartId)
+
+        if (shippingOptions.length !== 1) {
+          setShippingError("Shipping is temporarily unavailable. Please try again.")
+          return null
+        }
+
+        const optionId = shippingOptions[0]?.id
+        if (!optionId) {
+          setShippingError("Shipping is temporarily unavailable. Please try again.")
+          return null
+        }
+
+        updated = await addShippingMethod(optionId)
+
+        setIsCalculatingTaxes(true)
+        updated = await calculateTaxes()
+        setIsCalculatingTaxes(false)
+
+        if (!updated?.id) {
+          setTaxError("Unable to calculate taxes. Please try again.")
+          setHasCalculatedTaxes(false)
+          return null
+        }
+
+        setHasCalculatedTaxes(true)
+        setShippingSubmitted(true)
+        setSavedShippingSignature(buildShippingSignature(updated, optionId) ?? null)
+        setSavedShippingSnapshot(buildAddressSnapshot(updated.shipping_address))
+        setHasSyncedShipping(false)
+        setSavedItemsSignature(buildItemsSignature(updated.items))
+        setSavedTotalsSignature(
+          [
+            String(updated.subtotal ?? 0),
+            String(updated.discount_total ?? 0),
+            String(updated.shipping_subtotal ?? 0),
+            String(updated.tax_total ?? 0),
+            String(updated.total ?? 0),
+          ].join(":")
+        )
+        setCartNotice(null)
+        return updated
+      } catch (error) {
+        console.error("Failed to update shipping or taxes", error)
+        setShippingError("Unable to update shipping. Please try again.")
+        setHasCalculatedTaxes(false)
+        return null
+      } finally {
+        setIsSavingAddress(false)
+        setIsCalculatingTaxes(false)
+        setIsUpdatingShipping(false)
+      }
+    },
+    [
+      addShippingMethod,
+      calculateTaxes,
+      cart,
+      isCalculatingTaxes,
+      isUpdatingShipping,
+      listShippingOptions,
+      setAddresses,
+    ]
   )
 
   const invalidateContact = useCallback(() => {
     if (contactComplete) {
       setContactComplete(false)
     }
-  }, [contactComplete])
+    if (savedEmail) {
+      setSavedEmail(null)
+    }
+    setHasReachedPayment(false)
+    resetPaymentState()
+    setCartNotice(null)
+  }, [contactComplete, resetPaymentState, savedEmail])
 
   const invalidateShipping = useCallback(() => {
     if (!shippingSubmitted) return
     setShippingSubmitted(false)
-    setTaxKey(null)
     setTaxError(null)
-  }, [shippingSubmitted])
+    setShippingError(null)
+    setHasCalculatedTaxes(false)
+    setHasReachedPayment(false)
+    resetPaymentState()
+    setSavedShippingSignature(null)
+    setSavedShippingSnapshot(null)
+    setHasSyncedShipping(false)
+    setSavedItemsSignature(null)
+    setSavedTotalsSignature(null)
+    setCartNotice(null)
+  }, [resetPaymentState, shippingSubmitted])
 
   useEffect(() => {
     if (!isLoading && (!cart || !cart.items?.length)) {
-      router.replace("/cart")
+      router.replace("/catalog")
     }
   }, [cart, isLoading, router])
-
-  useEffect(() => {
-    if (!currentTaxKey) {
-      setTaxKey(null)
-      setTaxError(null)
-      setIsCalculatingTaxes(false)
-      return
-    }
-
-    if (taxKey && taxKey !== currentTaxKey) {
-      setTaxError(null)
-    }
-  }, [currentTaxKey, taxKey])
-
-  const loadShippingOptions = useCallback(
-    async (currentCartId: string) => {
-      setIsLoadingShipping(true)
-      try {
-        const options = await listShippingOptions(currentCartId)
-        setShippingOptions(options)
-      } catch (loadError) {
-        console.error("Failed to load shipping options", loadError)
-        setShippingOptions([])
-      } finally {
-        setIsLoadingShipping(false)
-      }
-    },
-    [listShippingOptions]
-  )
-
-  useEffect(() => {
-    if (cart?.id && cart.shipping_address && shippingSubmitted) {
-      void loadShippingOptions(cart.id)
-    }
-  }, [cart?.id, cart?.shipping_address, loadShippingOptions, shippingSubmitted])
-
-  const resetPaymentState = useCallback(() => {
-    setClientSecret(null)
-    setStripeState({ stripe: null, elements: null, card: null })
-  }, [])
 
   useEffect(() => {
     resetPaymentState()
   }, [cart?.id, cart?.shipping_methods, cart?.total, resetPaymentState])
 
   useEffect(() => {
-    if (contactComplete && shippingSubmitted && hasCalculatedTaxes) {
-      setActiveStep("payment")
+    if (activeStep === "payment") {
+      setHasReachedPayment(true)
     }
-  }, [contactComplete, hasCalculatedTaxes, shippingSubmitted])
+  }, [activeStep])
+
+  useEffect(() => {
+    if (!savedShippingSignature || !shippingSignature || hasSyncedShipping) {
+      return
+    }
+    if (cartShippingHasValues && resolvedShippingOptionId && shippingSignature === savedShippingSignature) {
+      setHasSyncedShipping(true)
+    }
+  }, [
+    cartShippingHasValues,
+    hasSyncedShipping,
+    resolvedShippingOptionId,
+    savedShippingSignature,
+    shippingSignature,
+  ])
+
+  useEffect(() => {
+    if (!shippingSubmitted) {
+      return
+    }
+
+    const shippingChanged =
+      hasSyncedShipping &&
+      Boolean(savedShippingSignature) &&
+      Boolean(shippingSignature) &&
+      shippingSignature !== savedShippingSignature
+    const itemsChanged =
+      Boolean(savedItemsSignature) &&
+      Boolean(itemsSignature) &&
+      itemsSignature !== savedItemsSignature
+    const totalsChanged =
+      Boolean(savedTotalsSignature) &&
+      Boolean(totalsSignature) &&
+      totalsSignature !== savedTotalsSignature
+
+    if (shippingChanged) {
+      setCartNotice("Your cart or shipping info changed. Please confirm shipping again.")
+      invalidateShipping()
+      if (activeStep === "payment") {
+        setActiveStep("shipping")
+      }
+      return
+    }
+
+    if ((itemsChanged || totalsChanged) && !isUpdatingShipping && !isCalculatingTaxes) {
+      const notice = itemsChanged
+        ? "Cart updated. Recalculating shipping and taxes."
+        : "Totals updated. Recalculating shipping and taxes."
+      setCartNotice(notice)
+      resetPaymentState()
+      setHasReachedPayment(false)
+      if (activeStep === "payment") {
+        setActiveStep("shipping")
+      }
+      void applyShippingAndTaxes({ notice })
+    }
+  }, [
+    activeStep,
+    applyShippingAndTaxes,
+    invalidateShipping,
+    isCalculatingTaxes,
+    isUpdatingShipping,
+    itemsSignature,
+    resetPaymentState,
+    savedItemsSignature,
+    savedShippingSignature,
+    savedTotalsSignature,
+    hasSyncedShipping,
+    shippingSignature,
+    shippingSubmitted,
+    totalsSignature,
+  ])
+
+  useEffect(() => {
+    if (!contactComplete) {
+      return
+    }
+    const currentEmail = normalizeSignatureValue(cart?.email)
+    if (savedEmail && currentEmail !== normalizeSignatureValue(savedEmail)) {
+      setContactComplete(false)
+      setSavedEmail(null)
+      setActiveStep("contact")
+    }
+  }, [cart?.email, contactComplete, savedEmail])
+
+  useEffect(() => {
+    if (!cart?.id || !paymentSignature) return
+    if (activeStep !== "payment") return
+    if (!shippingComplete) return
+    if (typeof window === "undefined") return
+
+    const key = `rr.checkout.${cart.id}.payment`
+    const currentTabId = checkoutTabIdRef.current ?? createTabId()
+    checkoutTabIdRef.current = currentTabId
+
+    let storedSignature: string | null = null
+    let storedTabId: string | null = null
+    const rawStored = window.localStorage.getItem(key)
+    if (rawStored) {
+      try {
+        const parsed = JSON.parse(rawStored) as { signature?: string; tabId?: string }
+        storedSignature = typeof parsed.signature === "string" ? parsed.signature : null
+        storedTabId = typeof parsed.tabId === "string" ? parsed.tabId : null
+      } catch {
+        storedSignature = null
+        storedTabId = null
+      }
+    }
+
+    if (
+      storedSignature &&
+      storedTabId &&
+      storedTabId !== currentTabId &&
+      storedSignature !== paymentSignature
+    ) {
+      setPaymentError("Cart changed in another tab. Review shipping details.")
+      invalidateShipping()
+      setActiveStep("shipping")
+      return
+    }
+
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({ signature: paymentSignature, tabId: currentTabId })
+    )
+  }, [activeStep, cart?.id, invalidateShipping, paymentSignature, shippingComplete])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const handleFocus = () => {
+      void refreshCart({ silent: true })
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refreshCart({ silent: true })
+      }
+    }
+    window.addEventListener("focus", handleFocus)
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [refreshCart])
 
   useEffect(() => {
     if (!contactComplete && activeStep !== "contact") {
       setActiveStep("contact")
       return
     }
-    if (contactComplete && !shippingComplete && activeStep === "payment") {
+    if (
+      contactComplete &&
+      !canOpenPayment &&
+      activeStep === "payment" &&
+      !isSavingAddress &&
+      !isUpdatingShipping &&
+      !isCalculatingTaxes
+    ) {
       setActiveStep("shipping")
     }
-  }, [activeStep, contactComplete, shippingComplete])
-
-  const runTaxCalculation = useCallback(
-    async (overrideKey?: string | null) => {
-      const cartId = cart?.id
-      const resolvedKey = overrideKey ?? currentTaxKey
-
-      if (!cartId || !resolvedKey) {
-        setTaxError("Add a shipping address and method to calculate taxes.")
-        return null
-      }
-
-      setIsCalculatingTaxes(true)
-      setTaxError(null)
-
-      try {
-        const updated = await calculateTaxes()
-
-        if (updated?.id) {
-          setTaxKey(resolvedKey)
-          return updated
-        }
-
-        setTaxError("Unable to calculate taxes. Please try again.")
-        return null
-      } catch (error) {
-        console.error("Failed to calculate taxes", error)
-        setTaxError("Unable to calculate taxes. Please try again.")
-        return null
-      } finally {
-        setIsCalculatingTaxes(false)
-      }
-    },
-    [calculateTaxes, cart?.id, currentTaxKey]
-  )
-
-  const maybeInitPaymentSession = useCallback(async () => {
-    const canInitPayment =
-      Boolean(cart?.id) &&
-      contactComplete &&
-      shippingSubmitted &&
-      Boolean(cart?.email) &&
-      Boolean(cart?.shipping_address) &&
-      Boolean(cart?.shipping_methods?.length) &&
-      hasCalculatedTaxes &&
-      Number(cart?.total ?? 0) > 0
-
-    if (!canInitPayment || clientSecret) {
-      return
-    }
-
-    try {
-      const session = await initPaymentSessions()
-      if (session.clientSecret) {
-        setClientSecret(session.clientSecret)
-      }
-    } catch (sessionError) {
-      console.error("Failed to initialize payment session", sessionError)
-    }
-  }, [cart, clientSecret, contactComplete, hasCalculatedTaxes, initPaymentSessions, shippingSubmitted])
+  }, [
+    activeStep,
+    canOpenPayment,
+    contactComplete,
+    isCalculatingTaxes,
+    isSavingAddress,
+    isUpdatingShipping,
+  ])
 
   useEffect(() => {
-    void maybeInitPaymentSession()
-  }, [maybeInitPaymentSession])
+    if (hasReachedPayment && canOpenPayment && activeStep !== "payment") {
+      setActiveStep("payment")
+    }
+  }, [activeStep, canOpenPayment, hasReachedPayment])
 
   const countryOptions = useMemo(() => extractCountryOptions(cart ?? null), [cart])
 
@@ -469,45 +870,10 @@ const CheckoutPage = () => {
     [currencyCode]
   )
 
-  const handleShippingSelect = useCallback(
-    async (optionId: string) => {
-      setSelectedShippingOption(optionId)
-      const updatedCart = await addShippingMethod(optionId)
-      const nextKey = buildTaxKey(
-        updatedCart?.shipping_address ?? cart?.shipping_address,
-        optionId
-      )
-      await runTaxCalculation(nextKey)
-    },
-    [addShippingMethod, cart?.shipping_address, runTaxCalculation]
-  )
-
-  useEffect(() => {
-    if (!shippingSubmitted) return
-    if (!standardShippingOption || isLoadingShipping) return
-    if (selectedShippingOption === standardShippingOption.id && hasCalculatedTaxes) return
-    if (cart?.shipping_methods?.[0]?.shipping_option_id === standardShippingOption.id) {
-      setSelectedShippingOption(standardShippingOption.id)
-      if (!hasCalculatedTaxes) {
-        void handleShippingSelect(standardShippingOption.id)
-      }
-      return
-    }
-    void handleShippingSelect(standardShippingOption.id)
-  }, [
-    cart?.shipping_methods,
-    handleShippingSelect,
-    hasCalculatedTaxes,
-    isLoadingShipping,
-    selectedShippingOption,
-    shippingSubmitted,
-    standardShippingOption,
-  ])
-
   const handlePlaceOrder = async () => {
     if (!cart?.id) return
 
-    if (!hasCalculatedTaxes) {
+    if (!hasCalculatedTaxes || shippingFormDirty || shippingError) {
       setTaxError("Complete shipping so taxes can be calculated before placing your order.")
       return
     }
@@ -526,8 +892,31 @@ const CheckoutPage = () => {
       return
     }
 
-    if (!stripeState.stripe || !stripeState.card || !clientSecret) {
+    if (!stripeState.stripe || !stripeState.card) {
       setPaymentError("Payment form is still loading. Please wait.")
+      setIsPlacingOrder(false)
+      return
+    }
+
+    let resolvedClientSecret = clientSecret
+    if (!resolvedClientSecret) {
+      try {
+        const session = await initPaymentSessions()
+        resolvedClientSecret = session.clientSecret
+        if (resolvedClientSecret) {
+          setClientSecret(resolvedClientSecret)
+          setPaymentError(null)
+        }
+      } catch (sessionError) {
+        console.error("Failed to initialize payment session", sessionError)
+        setPaymentError("Unable to initialize payment. Please try again.")
+        setIsPlacingOrder(false)
+        return
+      }
+    }
+
+    if (!resolvedClientSecret) {
+      setPaymentError("Unable to initialize payment. Please try again.")
       setIsPlacingOrder(false)
       return
     }
@@ -555,7 +944,7 @@ const CheckoutPage = () => {
       },
     }
 
-    const result = await stripeState.stripe.confirmCardPayment(clientSecret, {
+    const result = await stripeState.stripe.confirmCardPayment(resolvedClientSecret, {
       payment_method: {
         card: stripeState.card,
         billing_details: billingDetails,
@@ -564,7 +953,22 @@ const CheckoutPage = () => {
     })
 
     if (result.error) {
-      setPaymentError(result.error.message ?? "Payment failed. Please try again.")
+      const message = result.error.message ?? "Payment failed. Please try again."
+      const code = result.error.code ?? ""
+      const normalized = `${code} ${message}`.toLowerCase()
+
+      if (
+        normalized.includes("payment_intent") &&
+        (normalized.includes("expired") ||
+          normalized.includes("not found") ||
+          normalized.includes("client_secret"))
+      ) {
+        resetPaymentState()
+        setPaymentError("Payment expired. Please try again.")
+      } else {
+        setPaymentError(message)
+      }
+
       setIsPlacingOrder(false)
       return
     }
@@ -609,23 +1013,21 @@ const CheckoutPage = () => {
           Add something before starting checkout.
         </p>
         <SmartLink
-          href="/cart"
+          href="/catalog"
           nativePrefetch
           className="inline-flex min-h-[44px] items-center rounded-full border border-accent px-6 text-xs font-semibold uppercase tracking-[0.3rem] text-accent"
         >
-          Return to cart
+          Browse catalog
         </SmartLink>
       </div>
     )
   }
 
-  const shippingEstimate =
-    shippingSubmitted && cart.shipping_methods?.length
-      ? resolveMoney(shippingTotal, formatAmount(currencyCode, 0))
-      : "Calculated at next step"
-  const taxEstimate = hasCalculatedTaxes
-    ? resolveMoney(taxTotal, formatAmount(currencyCode, 0))
-    : "Estimated at next step"
+  const showSummaryCharges = hasReachedPayment && shippingComplete && !shippingFormDirty && !shippingError
+  const shippingEstimate = showSummaryCharges
+    ? resolveMoney(resolvedShippingSubtotal, formatAmount(currencyCode, 0))
+    : "-"
+  const taxEstimate = showSummaryCharges ? resolveMoney(taxTotal, formatAmount(currencyCode, 0)) : "-"
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-16">
@@ -639,7 +1041,7 @@ const CheckoutPage = () => {
           </p>
         </div>
         <SmartLink
-          href="/cart"
+          href="/?cart=1"
           nativePrefetch
           className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground hover:border-accent hover:text-accent"
         >
@@ -717,9 +1119,24 @@ const CheckoutPage = () => {
                   className="rounded-2xl border border-border/60 px-4 disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={!canOpenShipping}
                 >
-                  <StepLabel label="Shipping" complete={shippingComplete} />
+                  <StepLabel label="Shipping" complete={shippingStepComplete} />
                 </AccordionTrigger>
                 <AccordionContent>
+                  {cartNotice ? (
+                    <div className="mb-4 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent">
+                      {cartNotice}
+                    </div>
+                  ) : null}
+                  {shippingFormDirty ? (
+                    <div className="mb-4 rounded-lg border border-border/60 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+                      Update your shipping details and save to continue.
+                    </div>
+                  ) : null}
+                  {shippingError ? (
+                    <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                      {shippingError}
+                    </div>
+                  ) : null}
                   <form
                     className="space-y-6"
                     noValidate
@@ -745,7 +1162,6 @@ const CheckoutPage = () => {
                               value={field.state.value}
                               onChange={(event) => {
                                 field.handleChange(event.target.value)
-                                invalidateShipping()
                               }}
                               onBlur={field.handleBlur}
                               aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -772,7 +1188,6 @@ const CheckoutPage = () => {
                               value={field.state.value}
                               onChange={(event) => {
                                 field.handleChange(event.target.value)
-                                invalidateShipping()
                               }}
                               onBlur={field.handleBlur}
                               aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -801,7 +1216,6 @@ const CheckoutPage = () => {
                             value={field.state.value}
                             onChange={(event) => {
                               field.handleChange(event.target.value)
-                              invalidateShipping()
                             }}
                             onBlur={field.handleBlur}
                             aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -823,7 +1237,6 @@ const CheckoutPage = () => {
                             value={field.state.value}
                             onChange={(event) => {
                               field.handleChange(event.target.value)
-                              invalidateShipping()
                             }}
                             onBlur={field.handleBlur}
                           />
@@ -848,7 +1261,6 @@ const CheckoutPage = () => {
                               value={field.state.value}
                               onChange={(event) => {
                                 field.handleChange(event.target.value)
-                                invalidateShipping()
                               }}
                               onBlur={field.handleBlur}
                               aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -869,7 +1281,6 @@ const CheckoutPage = () => {
                               value={field.state.value}
                               onChange={(event) => {
                                 field.handleChange(event.target.value)
-                                invalidateShipping()
                               }}
                               onBlur={field.handleBlur}
                             />
@@ -895,7 +1306,6 @@ const CheckoutPage = () => {
                               value={field.state.value}
                               onChange={(event) => {
                                 field.handleChange(event.target.value)
-                                invalidateShipping()
                               }}
                               onBlur={field.handleBlur}
                               aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -920,7 +1330,6 @@ const CheckoutPage = () => {
                               value={field.state.value}
                               onValueChange={(value) => {
                                 field.handleChange(value)
-                                invalidateShipping()
                               }}
                             >
                               <SelectTrigger id={field.name} aria-invalid={Boolean(field.state.meta.errors[0])}>
@@ -953,7 +1362,6 @@ const CheckoutPage = () => {
                             value={field.state.value}
                             onChange={(event) => {
                               field.handleChange(event.target.value)
-                              invalidateShipping()
                             }}
                             onBlur={field.handleBlur}
                           />
@@ -970,7 +1378,6 @@ const CheckoutPage = () => {
                               checked={field.state.value}
                               onCheckedChange={(value) => {
                                 field.handleChange(Boolean(value))
-                                invalidateShipping()
                               }}
                             />
                             <Label htmlFor="billing-same" className="text-xs uppercase tracking-[0.3rem]">
@@ -1009,7 +1416,6 @@ const CheckoutPage = () => {
                                   value={field.state.value}
                                   onChange={(event) => {
                                     field.handleChange(event.target.value)
-                                    invalidateShipping()
                                   }}
                                   onBlur={field.handleBlur}
                                   aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -1042,7 +1448,6 @@ const CheckoutPage = () => {
                                   value={field.state.value}
                                   onChange={(event) => {
                                     field.handleChange(event.target.value)
-                                    invalidateShipping()
                                   }}
                                   onBlur={field.handleBlur}
                                   aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -1076,7 +1481,6 @@ const CheckoutPage = () => {
                                 value={field.state.value}
                                 onChange={(event) => {
                                   field.handleChange(event.target.value)
-                                  invalidateShipping()
                                 }}
                                 onBlur={field.handleBlur}
                                 aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -1109,7 +1513,6 @@ const CheckoutPage = () => {
                                 value={field.state.value}
                                 onChange={(event) => {
                                   field.handleChange(event.target.value)
-                                  invalidateShipping()
                                 }}
                                 onBlur={field.handleBlur}
                                 aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -1143,7 +1546,6 @@ const CheckoutPage = () => {
                                   value={field.state.value}
                                   onChange={(event) => {
                                     field.handleChange(event.target.value)
-                                    invalidateShipping()
                                   }}
                                   onBlur={field.handleBlur}
                                   aria-invalid={Boolean(field.state.meta.errors[0])}
@@ -1174,7 +1576,6 @@ const CheckoutPage = () => {
                                   value={field.state.value}
                                   onValueChange={(value) => {
                                     field.handleChange(value)
-                                    invalidateShipping()
                                   }}
                                 >
                                   <SelectTrigger id={field.name} aria-invalid={Boolean(field.state.meta.errors[0])}>
@@ -1205,28 +1606,20 @@ const CheckoutPage = () => {
                         <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
                           Shipping method
                         </p>
-                        {isLoadingShipping ? (
-                          <span className="text-xs text-muted-foreground">Loading...</span>
-                        ) : null}
                       </div>
-                      {!shippingSubmitted ? (
-                        <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-xs text-muted-foreground">
-                          Shipping appears after saving your address.
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
-                          <span className="font-medium text-foreground">Standard Shipping</span>
-                          <span className="text-muted-foreground">
-                            {resolveMoney(
-                              shippingTotal ?? Number(cart?.shipping_methods?.[0]?.amount ?? 0),
-                              formatAmount(currencyCode, 0)
-                            )}
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
+                        <span className="font-medium text-foreground">Standard Shipping</span>
+                        <span className="text-muted-foreground">
+                          {resolveMoney(resolvedShippingSubtotal, formatAmount(currencyCode, 0))}
+                        </span>
+                      </div>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={isSavingAddress}>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isSavingAddress || isUpdatingShipping || isCalculatingTaxes}
+                    >
                       {isSavingAddress ? "Saving..." : "Continue to payment"}
                     </Button>
                   </form>
@@ -1259,13 +1652,8 @@ const CheckoutPage = () => {
                     <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
                       This order is free. Confirm to place it now.
                     </div>
-                  ) : clientSecret ? (
-                    <StripeCardElement clientSecret={clientSecret} onReady={setStripeState} />
                   ) : (
-                    <div className="space-y-3">
-                      <Skeleton className="h-6 w-40" />
-                      <Skeleton className="h-40 w-full" />
-                    </div>
+                    <StripeCardElement onReady={setStripeState} />
                   )}
 
                   {paymentError ? (
@@ -1282,7 +1670,7 @@ const CheckoutPage = () => {
                       isPlacingOrder ||
                       isCalculatingTaxes ||
                       !hasCalculatedTaxes ||
-                      (Number(cart?.total ?? 0) > 0 && !clientSecret)
+                      (Number(cart?.total ?? 0) > 0 && !stripeState.card)
                     }
                   >
                     {isPlacingOrder ? "Placing order..." : "Place order"}
@@ -1307,14 +1695,37 @@ const CheckoutPage = () => {
             <div className="space-y-4">
               {cart.items?.map((item) => (
                 <div key={item.id} className="flex items-start justify-between gap-4 text-sm">
-                  <div>
-                    <p className="font-semibold text-foreground">{item.title}</p>
-                    <p className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
-                      Qty {item.quantity}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-muted">
+                      {item.thumbnail ? (
+                        <Image
+                          src={item.thumbnail}
+                          alt={item.title ?? "Order item"}
+                          fill
+                          sizes="48px"
+                          className="object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-muted-foreground">
+                          No image
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">{item.title}</p>
+                      <p className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
+                        Qty {item.quantity}
+                      </p>
+                    </div>
                   </div>
                   <p className="text-sm font-semibold text-foreground">
-                    {formatAmount(currencyCode, Number(item.total ?? item.subtotal ?? 0))}
+                    {formatAmount(
+                      currencyCode,
+                      typeof item.subtotal === "number"
+                        ? item.subtotal
+                        : Number(item.unit_price ?? 0) * Number(item.quantity ?? 0)
+                    )}
                   </p>
                 </div>
               ))}

@@ -63,7 +63,7 @@ const ConfirmedPage = async ({ searchParams }: ConfirmedPageProps) => {
   const sessionId = searchParams.session_id
 
   if (!sessionId) {
-    redirect("/cart")
+    redirect("/?cart=1")
   }
 
   const response = await fetch(
@@ -102,7 +102,7 @@ const ConfirmedPage = async ({ searchParams }: ConfirmedPageProps) => {
 
   const primaryCta =
     status === "failed" || status === "expired"
-      ? { href: "/cart", label: "Return to Cart" }
+      ? { href: "/?cart=1", label: "Return to Cart" }
       : { href: "/", label: "Continue Crate Digging" }
 
   const supportReference =
