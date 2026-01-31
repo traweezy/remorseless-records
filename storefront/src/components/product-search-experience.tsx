@@ -1281,7 +1281,7 @@ const ProductSearchExperience = ({
 
   return (
     <div className="bg-background pb-8">
-      <div className="container flex flex-col gap-4 px-2 pt-4 sm:px-4 lg:flex-row lg:gap-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pt-4 sm:px-6 lg:flex-row lg:gap-8 lg:px-8">
         <aside className="hidden lg:block lg:w-60 lg:flex-shrink-0">
           <div className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl">
             <FilterSidebar
@@ -1302,7 +1302,7 @@ const ProductSearchExperience = ({
         </aside>
 
         <div className="flex-1 space-y-6">
-          <header className="relative sticky top-14 z-20 space-y-2 border-b border-border/40 bg-background/85 px-2 py-2 supports-[backdrop-filter]:backdrop-blur-lg sm:px-4 lg:px-6">
+          <header className="relative sticky top-16 z-20 space-y-2 border-b border-border/40 bg-background/85 px-2 py-2 supports-[backdrop-filter]:backdrop-blur-lg sm:px-4 lg:px-6">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
                 {isFetching ? "Refreshing…" : `${totalResults} results`}

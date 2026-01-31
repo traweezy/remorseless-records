@@ -2,14 +2,14 @@ import Skeleton from "@/components/ui/skeleton"
 
 const ProductsLoading = () => (
   <div className="bg-background pb-16">
-    <div className="container flex flex-col gap-10 px-4 py-10 lg:flex-row lg:gap-12">
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 px-4 py-10 sm:px-6 lg:flex-row lg:gap-12 lg:px-8">
       <aside className="hidden lg:block lg:w-72 lg:flex-shrink-0">
         <div className="sticky top-24 max-h-[calc(100vh-7rem)] rounded-3xl border border-border/40 bg-background/95 px-6 py-8 text-sm text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/70">
           Preparing filters…
         </div>
       </aside>
       <div className="flex-1 space-y-8">
-        <header className="sticky top-20 z-10 rounded-3xl border border-border/40 bg-background/95 px-4 py-5 shadow-card backdrop-blur supports-[backdrop-filter]:bg-background/70 lg:px-8">
+        <header className="sticky top-16 z-10 rounded-3xl border border-border/40 bg-background/95 px-4 py-5 shadow-card backdrop-blur supports-[backdrop-filter]:bg-background/70 lg:px-8">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.4rem] text-muted-foreground">
               Loading
