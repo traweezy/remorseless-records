@@ -19,6 +19,7 @@ import {
 import { extractProductCategoryGroups } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
 import { storeClient } from "@/lib/medusa"
+import { resolveRegionId } from "@/lib/regions"
 
 type ProductPageProps = {
   params: { handle: string } | Promise<{ handle: string }>
@@ -348,6 +349,7 @@ const loadRelatedProducts = async (
   }
 
   try {
+    const regionId = await resolveRegionId()
     const related: HttpTypes.StoreProduct[] = []
     const collectionId =
       (product as { collection_id?: string | null }).collection_id ??
@@ -359,6 +361,7 @@ const loadRelatedProducts = async (
         collection_id: collectionId,
         limit: limit * 2,
         fields: PRODUCT_DETAIL_FIELDS,
+        region_id: regionId,
       })
       add(products, related)
     }
@@ -368,6 +371,7 @@ const loadRelatedProducts = async (
         category_id: artistCategoryIds,
         limit: limit * 3,
         fields: PRODUCT_DETAIL_FIELDS,
+        region_id: regionId,
       })
       add(products, related)
     }
@@ -377,6 +381,7 @@ const loadRelatedProducts = async (
         category_id: genreCategoryIds,
         limit: limit * 3,
         fields: PRODUCT_DETAIL_FIELDS,
+        region_id: regionId,
       })
       add(products, related)
     }
@@ -386,6 +391,7 @@ const loadRelatedProducts = async (
         limit: limit * 2,
         order: "-created_at",
         fields: PRODUCT_DETAIL_FIELDS,
+        region_id: regionId,
       })
       add(products, related)
     }
