@@ -186,6 +186,10 @@ const medusaConfig = {
           }
         ]
       }
+    },
+    {
+      key: "discography",
+      resolve: "./src/modules/discography",
     }
   ],
   plugins: [
