@@ -4,11 +4,20 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react"
-import { useWindowVirtualizer, type VirtualItem } from "@tanstack/react-virtual"
+import {
+  Virtualizer,
+  observeWindowOffset,
+  observeWindowRect,
+  type PartialKeys,
+  type VirtualItem,
+  type VirtualizerOptions,
+  windowScroll,
+} from "@tanstack/virtual-core"
 import {
   ArrowDown01,
   ArrowDownAZ,
@@ -612,10 +621,77 @@ const SortDropdown = ({
 }
 
 const useWindowVirtualizerCompat = (
-  options: Parameters<typeof useWindowVirtualizer>[0]
+  options: PartialKeys<
+    VirtualizerOptions<Window, Element>,
+    | "getScrollElement"
+    | "observeElementRect"
+    | "observeElementOffset"
+    | "scrollToFn"
+    | "initialOffset"
+  >
 ) => {
   "use no memo"
-  return useWindowVirtualizer(options)
+  const rerender = useState({})[1]
+  const scheduleRef = useRef(false)
+  const mountedRef = useRef(true)
+
+  const scheduleRerender = useCallback(() => {
+    if (!mountedRef.current) {
+      return
+    }
+    if (scheduleRef.current) {
+      return
+    }
+    scheduleRef.current = true
+
+    const run = () => {
+      if (!mountedRef.current) {
+        return
+      }
+      scheduleRef.current = false
+      rerender({})
+    }
+
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(run)
+      return
+    }
+
+    void Promise.resolve().then(run)
+  }, [rerender])
+
+  const resolvedOptions: VirtualizerOptions<Window, Element> = {
+    getScrollElement: () => (typeof document !== "undefined" ? window : null),
+    observeElementRect: observeWindowRect,
+    observeElementOffset: observeWindowOffset,
+    scrollToFn: windowScroll,
+    initialOffset: () => (typeof document !== "undefined" ? window.scrollY : 0),
+    ...options,
+    onChange: (instance, isScrolling) => {
+      scheduleRerender()
+      options.onChange?.(instance, isScrolling)
+    },
+  }
+
+  const [instance] = useState(
+    () => new Virtualizer<Window, Element>(resolvedOptions)
+  )
+
+  instance.setOptions(resolvedOptions)
+
+  const useIsomorphicLayoutEffect =
+    typeof window !== "undefined" ? useLayoutEffect : useEffect
+
+  useIsomorphicLayoutEffect(() => instance._didMount(), [instance])
+  useIsomorphicLayoutEffect(() => instance._willUpdate())
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  return instance
 }
 
 const useResponsiveColumns = () => {
