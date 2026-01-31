@@ -45,13 +45,30 @@ const rewriteLockfile = (source) => {
     }
   }
 
+  let importerIndent = null;
+  for (let i = importersIndex + 1; i < endIndex; i += 1) {
+    const line = lines[i];
+    if (line.trim().length === 0) {
+      continue;
+    }
+    const match = line.match(/^(\s+)\S.*:$/);
+    if (match) {
+      importerIndent = match[1];
+      break;
+    }
+  }
+
+  if (!importerIndent) {
+    return source;
+  }
+
   const blocks = new Map();
   let currentKey = null;
   let blockLines = [];
 
   for (let i = importersIndex + 1; i < endIndex; i += 1) {
     const line = lines[i];
-    const match = line.match(/^  ([^ ].*):$/);
+    const match = line.match(new RegExp(`^${importerIndent.replace(/\\s/g, '\\\\s')}([^\\s].*):$`));
     if (match) {
       if (currentKey) {
         blocks.set(currentKey, blockLines);
@@ -69,13 +86,29 @@ const rewriteLockfile = (source) => {
     blocks.set(currentKey, blockLines);
   }
 
-  const backendBlock = blocks.get('backend') ?? blocks.get('.');
+  let backendBlock = blocks.get('backend') ?? blocks.get('.');
+
+  if (!backendBlock && blocks.size > 0) {
+    let bestKey = null;
+    let bestCount = -1;
+    for (const [key, value] of blocks.entries()) {
+      const specCount = value.filter((entry) => entry.trim().startsWith('specifier:')).length;
+      if (specCount > bestCount) {
+        bestCount = specCount;
+        bestKey = key;
+      }
+    }
+    if (bestKey) {
+      backendBlock = blocks.get(bestKey);
+    }
+  }
+
   if (!backendBlock) {
     return source;
   }
 
   const normalizedBlock = backendBlock.slice();
-  normalizedBlock[0] = '  .:';
+  normalizedBlock[0] = `${importerIndent}.:`;
 
   const output = [
     ...lines.slice(0, importersIndex + 1),
