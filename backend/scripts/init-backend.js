@@ -11,7 +11,13 @@
  * can finish booting even if Meilisearch is briefly unavailable.
  */
 
-require('dotenv').config()
+try {
+  require('dotenv').config()
+} catch (error) {
+  if (error?.code !== 'MODULE_NOT_FOUND') {
+    console.warn('[env] Failed to load dotenv:', error?.message ?? error)
+  }
+}
 
 const fs = require('fs')
 const fsPromises = require('fs/promises')
