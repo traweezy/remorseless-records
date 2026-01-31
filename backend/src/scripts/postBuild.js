@@ -1,7 +1,6 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 const path = require('path');
-const yaml = require('js-yaml');
 
 const MEDUSA_SERVER_PATH = path.join(process.cwd(), '.medusa', 'server');
 const CUSTOM_INIT_SCRIPT = path.join(process.cwd(), 'scripts', 'init-backend.js');
@@ -26,23 +25,70 @@ if (!fs.existsSync(lockSource)) {
 
 const lockTarget = path.join(MEDUSA_SERVER_PATH, 'pnpm-lock.yaml');
 const rawLock = fs.readFileSync(lockSource, 'utf-8');
-let lockfile = rawLock;
 
-try {
-  const parsed = yaml.load(rawLock);
-  if (parsed && typeof parsed === 'object' && parsed.importers) {
-    const importers = parsed.importers;
-    const backendImporter = importers.backend ?? importers['.'];
-    if (backendImporter) {
-      parsed.importers = { '.': backendImporter };
-      lockfile = yaml.dump(parsed, { lineWidth: -1 });
+const rewriteLockfile = (source) => {
+  const lines = source.split(/\r?\n/);
+  const importersIndex = lines.findIndex((line) => line.trim() === 'importers:');
+  if (importersIndex === -1) {
+    return source;
+  }
+
+  let endIndex = lines.length;
+  for (let i = importersIndex + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (line.trim().length === 0) {
+      continue;
+    }
+    if (/^[^\s].*:$/.test(line)) {
+      endIndex = i;
+      break;
     }
   }
-} catch (error) {
-  console.warn('Unable to rewrite pnpm-lock.yaml importers:', error);
-}
 
-fs.writeFileSync(lockTarget, lockfile, 'utf-8');
+  const blocks = new Map();
+  let currentKey = null;
+  let blockLines = [];
+
+  for (let i = importersIndex + 1; i < endIndex; i += 1) {
+    const line = lines[i];
+    const match = line.match(/^  ([^ ].*):$/);
+    if (match) {
+      if (currentKey) {
+        blocks.set(currentKey, blockLines);
+      }
+      currentKey = match[1].trim();
+      blockLines = [line];
+      continue;
+    }
+    if (currentKey) {
+      blockLines.push(line);
+    }
+  }
+
+  if (currentKey) {
+    blocks.set(currentKey, blockLines);
+  }
+
+  const backendBlock = blocks.get('backend') ?? blocks.get('.');
+  if (!backendBlock) {
+    return source;
+  }
+
+  const normalizedBlock = backendBlock.slice();
+  normalizedBlock[0] = '  .:';
+
+  const output = [
+    ...lines.slice(0, importersIndex + 1),
+    '',
+    ...normalizedBlock,
+    '',
+    ...lines.slice(endIndex),
+  ];
+
+  return output.join('\n');
+};
+
+fs.writeFileSync(lockTarget, rewriteLockfile(rawLock), 'utf-8');
 
 // Copy .env if it exists
 const envPath = path.join(process.cwd(), '.env');
