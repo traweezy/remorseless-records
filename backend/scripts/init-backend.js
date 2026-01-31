@@ -180,15 +180,24 @@ const ensureMeilisearchAdminKey = async () => {
   process.env.MEILISEARCH_ADMIN_KEY = masterKey
 }
 
+const resolveServerRoot = () => {
+  const cwd = process.cwd()
+  const serverSuffix = path.join('.medusa', 'server')
+
+  if (cwd.endsWith(serverSuffix)) {
+    return cwd
+  }
+
+  return path.resolve(cwd, serverSuffix)
+}
+
 const resolveMedusaCliPath = () => {
+  const serverRoot = resolveServerRoot()
   const serverCli = path.resolve(
-    process.cwd(),
-    '.medusa/server/node_modules/@medusajs/cli/cli.js',
-  )
-  const localCli = path.resolve(
-    process.cwd(),
+    serverRoot,
     'node_modules/@medusajs/cli/cli.js',
   )
+  const localCli = path.resolve(process.cwd(), 'node_modules/@medusajs/cli/cli.js')
 
   if (fs.existsSync(serverCli)) {
     return serverCli
@@ -238,6 +247,11 @@ const checkIfSeeded = async () => {
   }
 }
 
+const resolveBuiltScript = (filename) => {
+  const serverRoot = resolveServerRoot()
+  return path.resolve(serverRoot, 'src', 'scripts', filename)
+}
+
 const seedDatabase = async () => {
   try {
     console.log('Running migrations...')
@@ -247,13 +261,7 @@ const seedDatabase = async () => {
     runMedusaCommand(['db:sync-links'])
 
     console.log('Running seed script...')
-    execSync('pnpm run seed', {
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
-      },
-    })
+    runMedusaCommand(['exec', resolveBuiltScript('seed.js')])
 
     const adminEmail = process.env.MEDUSA_ADMIN_EMAIL
     const adminPassword = process.env.MEDUSA_ADMIN_PASSWORD
@@ -316,13 +324,9 @@ const initialize = async () => {
 
     try {
       console.log('[search][prepare] Running Meilisearch sync/reindex...')
-      execSync('pnpm run search:prepare', {
-        stdio: 'inherit',
-        env: {
-          ...process.env,
-          FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
-        },
-      })
+      runMedusaCommand(['exec', resolveBuiltScript('sync-meilisearch-settings.js')])
+      runMedusaCommand(['exec', resolveBuiltScript('reindex-meilisearch.js')])
+      runMedusaCommand(['exec', resolveBuiltScript('check-meilisearch-sync.js')])
       console.log('[search][prepare] Completed successfully.')
     } catch (searchError) {
       console.warn(
