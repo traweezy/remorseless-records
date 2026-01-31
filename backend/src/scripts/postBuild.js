@@ -49,7 +49,7 @@ if (fs.existsSync(CUSTOM_INIT_SCRIPT)) {
 
 // Install dependencies
 console.log('Installing dependencies in .medusa/server...');
-execSync('pnpm i --prod --frozen-lockfile', { 
+execSync('pnpm i --prod --frozen-lockfile --lockfile-dir .', {
   cwd: MEDUSA_SERVER_PATH,
   stdio: 'inherit',
   env: {
