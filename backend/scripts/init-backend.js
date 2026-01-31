@@ -11,13 +11,13 @@
  * can finish booting even if Meilisearch is briefly unavailable.
  */
 
-const { appendToEnvFile } = require('medusajs-launch-utils/src/utils')
-const {
-  prepareEnvironment: defaultPrepareEnvironment,
-  seedOnce,
-  reportDeploy,
-} = require('medusajs-launch-utils/src/initializeBackend')
-const { execSync } = require('child_process')
+require('dotenv').config()
+
+const fs = require('fs')
+const fsPromises = require('fs/promises')
+const path = require('path')
+const { execSync, spawnSync } = require('child_process')
+const { Client } = require('pg')
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -31,6 +31,55 @@ const parseIntegerEnv = (name, fallback) => {
 
   const parsed = Number.parseInt(raw, 10)
   return Number.isNaN(parsed) ? fallback : parsed
+}
+
+const getEnvPaths = () => {
+  const currentDir = process.cwd()
+  const isBuiltEnv = currentDir.includes('.medusa/server')
+
+  if (isBuiltEnv) {
+    return [path.resolve(currentDir, '.env')]
+  }
+
+  return [
+    path.resolve(currentDir, '.env'),
+    path.resolve(currentDir, '.medusa/server/.env'),
+  ]
+}
+
+const appendToEnvFile = async (key, value) => {
+  const envPaths = getEnvPaths()
+
+  for (const envPath of envPaths) {
+    try {
+      let envContent = ''
+      await fsPromises.mkdir(path.dirname(envPath), { recursive: true })
+
+      try {
+        envContent = await fsPromises.readFile(envPath, 'utf-8')
+      } catch (error) {
+        if (error.code === 'ENOENT') {
+          await fsPromises.writeFile(envPath, '', 'utf-8')
+          console.log(`Created new .env file at ${envPath}`)
+        } else {
+          throw error
+        }
+      }
+
+      const keyRegex = new RegExp(`^${key}=.*$`, 'm')
+      if (keyRegex.test(envContent)) {
+        const updatedContent = envContent.replace(keyRegex, `${key}=${value}`)
+        await fsPromises.writeFile(envPath, updatedContent, 'utf-8')
+      } else {
+        const newLine = envContent.length > 0 && !envContent.endsWith('\n') ? '\n' : ''
+        await fsPromises.appendFile(envPath, `${newLine}${key}=${value}\n`)
+      }
+
+      console.log(`Successfully updated ${key} in ${envPath}`)
+    } catch (error) {
+      console.error(`Failed to update .env file at ${envPath}:`, error)
+    }
+  }
 }
 
 const fetchAdminKeyWithPatience = async (host, masterKey) => {
@@ -125,10 +174,137 @@ const ensureMeilisearchAdminKey = async () => {
   process.env.MEILISEARCH_ADMIN_KEY = masterKey
 }
 
+const resolveMedusaCliPath = () => {
+  const serverCli = path.resolve(
+    process.cwd(),
+    '.medusa/server/node_modules/@medusajs/cli/cli.js',
+  )
+  const localCli = path.resolve(
+    process.cwd(),
+    'node_modules/@medusajs/cli/cli.js',
+  )
+
+  if (fs.existsSync(serverCli)) {
+    return serverCli
+  }
+  if (fs.existsSync(localCli)) {
+    return localCli
+  }
+
+  throw new Error('Medusa CLI not found. Ensure dependencies are installed.')
+}
+
+const runMedusaCommand = (args) => {
+  const cliPath = resolveMedusaCliPath()
+  const result = spawnSync(process.execPath, [cliPath, ...args], {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
+    },
+  })
+
+  if (result.error) {
+    throw result.error
+  }
+  if (result.status !== 0) {
+    throw new Error(`Medusa CLI exited with status ${result.status}`)
+  }
+}
+
+const checkIfSeeded = async () => {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+  })
+
+  try {
+    await client.connect()
+    await client.query('SELECT 1 FROM "user" LIMIT 1;')
+    return true
+  } catch (error) {
+    if (error.message?.includes('relation "user" does not exist')) {
+      return false
+    }
+    console.error('Unexpected error checking if database is seeded:', error)
+    process.exit(1)
+  } finally {
+    await client.end()
+  }
+}
+
+const seedDatabase = async () => {
+  try {
+    console.log('Running migrations...')
+    runMedusaCommand(['db:migrate'])
+
+    console.log('Running link sync...')
+    runMedusaCommand(['db:sync-links'])
+
+    console.log('Running seed script...')
+    execSync('pnpm run seed', {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        FORCE_COLOR: process.env.FORCE_COLOR ?? '1',
+      },
+    })
+
+    const adminEmail = process.env.MEDUSA_ADMIN_EMAIL
+    const adminPassword = process.env.MEDUSA_ADMIN_PASSWORD
+    if (adminEmail && adminPassword) {
+      console.log('Creating admin user...')
+      runMedusaCommand(['user', '-e', adminEmail, '-p', adminPassword])
+    }
+
+    console.log('Database seeded and admin user created successfully.')
+  } catch (error) {
+    console.error('Failed to seed database or create admin user:', error)
+    process.exit(1)
+  }
+}
+
+const seedOnce = async () => {
+  if (process.env.MEDUSA_WORKER_MODE === 'worker') {
+    console.log('Running in worker mode, skipping database seeding.')
+    return
+  }
+
+  const isSeeded = await checkIfSeeded()
+  if (!isSeeded) {
+    console.log('Database is not seeded. Seeding now...')
+    await seedDatabase()
+  } else {
+    console.log('Database is already seeded. Skipping seeding.')
+  }
+}
+
+const reportDeploy = async () => {
+  const url = process.env.TEMPLATE_REPORTER_URL
+  if (!url) {
+    return
+  }
+
+  const payload = {
+    projectId: process.env.RAILWAY_PROJECT_ID,
+    templateId: 'medusa-2.0',
+    publicUrl: process.env.PUBLIC_URL,
+    storefrontPublishUrl: process.env.STOREFRONT_PUBLISH_URL,
+  }
+
+  try {
+    await fetch(`${url}/api/projectDeployed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch (error) {
+    console.error(`An error occurred: ${error.message}`)
+  }
+}
+
 const initialize = async () => {
   try {
     await ensureMeilisearchAdminKey()
-    await defaultPrepareEnvironment()
     await seedOnce()
     await reportDeploy()
 
