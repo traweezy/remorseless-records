@@ -39,6 +39,8 @@
     "@medusajs/medusa": "^2.12.1",
     "@medusajs/notification-sendgrid": "^2.12.1",
     "@medusajs/payment-stripe": "^2.12.1",
+    "@medusajs/icons": "^2.12.1",
+    "@medusajs/ui": "^4.0.29",
     "@medusajs/utils": "^2.12.1",
     "@medusajs/workflow-engine-redis": "^2.12.1",
     "@mikro-orm/core": "6.4.16",

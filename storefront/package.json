@@ -38,6 +38,7 @@
     "@tanstack/react-query-persist-client": "^5.90.7",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.12",
+    "@tanstack/virtual-core": "^3.13.12",
     "@tanstack/zod-form-adapter": "^0.42.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
