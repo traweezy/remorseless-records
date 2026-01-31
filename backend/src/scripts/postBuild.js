@@ -1,18 +1,21 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 const path = require('path');
+const yaml = require('js-yaml');
 
 const MEDUSA_SERVER_PATH = path.join(process.cwd(), '.medusa', 'server');
 const CUSTOM_INIT_SCRIPT = path.join(process.cwd(), 'scripts', 'init-backend.js');
 const MEDUSA_INIT_DEST = path.join(MEDUSA_SERVER_PATH, 'scripts', 'init-backend.js');
 const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
+const LOCAL_PACKAGE_JSON = path.join(process.cwd(), 'package.json');
+const ROOT_PACKAGE_JSON = path.join(process.cwd(), '..', 'package.json');
 
 // Check if .medusa/server exists - if not, build process failed
 if (!fs.existsSync(MEDUSA_SERVER_PATH)) {
   throw new Error('.medusa/server directory not found. This indicates the Medusa build process failed. Please check for build errors.');
 }
 
-// Copy pnpm-lock.yaml
+// Copy pnpm-lock.yaml (scoped to the backend importer for frozen installs)
 const localLockPath = path.join(process.cwd(), 'pnpm-lock.yaml');
 const rootLockPath = path.join(process.cwd(), '..', 'pnpm-lock.yaml');
 const lockSource = fs.existsSync(localLockPath) ? localLockPath : rootLockPath;
@@ -21,7 +24,25 @@ if (!fs.existsSync(lockSource)) {
   throw new Error('pnpm-lock.yaml not found in backend or repository root.');
 }
 
-fs.copyFileSync(lockSource, path.join(MEDUSA_SERVER_PATH, 'pnpm-lock.yaml'));
+const lockTarget = path.join(MEDUSA_SERVER_PATH, 'pnpm-lock.yaml');
+const rawLock = fs.readFileSync(lockSource, 'utf-8');
+let lockfile = rawLock;
+
+try {
+  const parsed = yaml.load(rawLock);
+  if (parsed && typeof parsed === 'object' && parsed.importers) {
+    const importers = parsed.importers;
+    const backendImporter = importers.backend ?? importers['.'];
+    if (backendImporter) {
+      parsed.importers = { '.': backendImporter };
+      lockfile = yaml.dump(parsed, { lineWidth: -1 });
+    }
+  }
+} catch (error) {
+  console.warn('Unable to rewrite pnpm-lock.yaml importers:', error);
+}
+
+fs.writeFileSync(lockTarget, lockfile, 'utf-8');
 
 // Copy .env if it exists
 const envPath = path.join(process.cwd(), '.env');
@@ -42,14 +63,34 @@ if (fs.existsSync(CUSTOM_INIT_SCRIPT)) {
     if (packageJson.scripts) {
       packageJson.scripts.ib = 'node ./scripts/init-backend.js';
       packageJson.scripts.start = 'node ./scripts/init-backend.js && medusa start --verbose';
-      fs.writeFileSync(MEDUSA_PACKAGE_JSON, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
     }
+    fs.writeFileSync(MEDUSA_PACKAGE_JSON, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
   }
+}
+
+const readOverrides = (packagePath) => {
+  if (!fs.existsSync(packagePath)) {
+    return null;
+  }
+  const content = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
+  const overrides = content?.pnpm?.overrides;
+  return overrides && typeof overrides === 'object' ? overrides : null;
+};
+
+const overrides = readOverrides(LOCAL_PACKAGE_JSON) ?? readOverrides(ROOT_PACKAGE_JSON);
+
+if (overrides && fs.existsSync(MEDUSA_PACKAGE_JSON)) {
+  const packageJson = JSON.parse(fs.readFileSync(MEDUSA_PACKAGE_JSON, 'utf-8'));
+  packageJson.pnpm = {
+    ...(packageJson.pnpm ?? {}),
+    overrides
+  };
+  fs.writeFileSync(MEDUSA_PACKAGE_JSON, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
 }
 
 // Install dependencies
 console.log('Installing dependencies in .medusa/server...');
-execSync('pnpm i --prod --frozen-lockfile --lockfile-dir .', {
+execSync('pnpm i --prod --frozen-lockfile --lockfile-dir . --ignore-workspace', {
   cwd: MEDUSA_SERVER_PATH,
   stdio: 'inherit',
   env: {
