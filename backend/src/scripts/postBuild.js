@@ -141,7 +141,8 @@ if (fs.existsSync(CUSTOM_INIT_SCRIPT)) {
     const packageJson = JSON.parse(fs.readFileSync(MEDUSA_PACKAGE_JSON, 'utf-8'));
     if (packageJson.scripts) {
       packageJson.scripts.ib = 'node ./scripts/init-backend.js';
-      packageJson.scripts.start = 'node ./scripts/init-backend.js && medusa start --verbose';
+      packageJson.scripts.start =
+        'node ./scripts/init-backend.js && node ./node_modules/@medusajs/cli/cli.js start --verbose';
     }
     fs.writeFileSync(MEDUSA_PACKAGE_JSON, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
   }

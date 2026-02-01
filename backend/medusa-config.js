@@ -25,8 +25,8 @@ import {
   MINIO_BUCKET,
   MEILISEARCH_HOST,
   MEILISEARCH_ADMIN_KEY
-} from 'lib/constants';
-import productSearchTransformer from 'lib/meilisearch/product-transformer';
+} from './src/lib/constants';
+import productSearchTransformer from './src/lib/meilisearch/product-transformer';
 import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
 
 loadEnv(process.env.NODE_ENV, process.cwd());

@@ -108,6 +108,11 @@ export const WORKER_MODE =
  * Disable Admin (default to true on Railway unless explicitly false).
  */
 const disableAdminEnv = process.env.MEDUSA_DISABLE_ADMIN
+const isRailwayEnv = Boolean(
+  process.env.RAILWAY_PROJECT_ID ||
+    process.env.RAILWAY_ENVIRONMENT ||
+    process.env.RAILWAY_ENVIRONMENT_NAME ||
+    process.env.RAILWAY_PUBLIC_DOMAIN_VALUE,
+)
 export const SHOULD_DISABLE_ADMIN =
-  disableAdminEnv === 'true' ||
-  (disableAdminEnv !== 'false' && Boolean(process.env.RAILWAY_PUBLIC_DOMAIN_VALUE))
+  disableAdminEnv === 'true' || (disableAdminEnv !== 'false' && isRailwayEnv)

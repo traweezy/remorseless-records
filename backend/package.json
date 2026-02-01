@@ -16,7 +16,7 @@
     "build": "medusa build && node src/scripts/postBuild.js",
     "seed": "node ./scripts/run-medusa.js ./src/scripts/seed.ts",
     "ib": "cd .medusa/server && node ./scripts/init-backend.js",
-    "start": "cd .medusa/server && node ./scripts/init-backend.js && medusa start --verbose",
+    "start": "cd .medusa/server && node ./scripts/init-backend.js && node ./node_modules/@medusajs/cli/cli.js start --verbose",
     "dev": "medusa develop",
     "email:dev": "email dev --dir=./src/modules/email-notifications/templates --port=3002",
     "search:rebuild": "node ./scripts/run-medusa.js ./src/scripts/reindex-meilisearch.ts",
