@@ -1,5 +1,3 @@
-"use client"
-
 const allowedTags = new Set([
   "p",
   "br",
