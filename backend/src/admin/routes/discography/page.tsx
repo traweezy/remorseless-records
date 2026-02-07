@@ -25,6 +25,21 @@ const availabilityOptions = [
 
 type DiscographyAvailability = (typeof availabilityOptions)[number]["value"]
 
+type SortField =
+  | "title"
+  | "artist"
+  | "releaseYear"
+  | "catalogNumber"
+  | "availability"
+type SortDirection = "asc" | "desc"
+
+type SortOption = {
+  value: `${SortField}:${SortDirection}`
+  label: string
+  field: SortField
+  direction: SortDirection
+}
+
 type DiscographyEntry = {
   id: string
   title: string
@@ -42,6 +57,60 @@ type DiscographyEntry = {
   createdAt?: string | null
   updatedAt?: string | null
 }
+
+const sortOptions = [
+  {
+    value: "title:asc",
+    label: "Release (A-Z)",
+    field: "title",
+    direction: "asc",
+  },
+  {
+    value: "title:desc",
+    label: "Release (Z-A)",
+    field: "title",
+    direction: "desc",
+  },
+  {
+    value: "artist:asc",
+    label: "Artist (A-Z)",
+    field: "artist",
+    direction: "asc",
+  },
+  {
+    value: "artist:desc",
+    label: "Artist (Z-A)",
+    field: "artist",
+    direction: "desc",
+  },
+  {
+    value: "releaseYear:desc",
+    label: "Year (newest)",
+    field: "releaseYear",
+    direction: "desc",
+  },
+  {
+    value: "releaseYear:asc",
+    label: "Year (oldest)",
+    field: "releaseYear",
+    direction: "asc",
+  },
+  {
+    value: "catalogNumber:asc",
+    label: "Catalog # (A-Z)",
+    field: "catalogNumber",
+    direction: "asc",
+  },
+  {
+    value: "availability:asc",
+    label: "Availability (A-Z)",
+    field: "availability",
+    direction: "asc",
+  },
+] satisfies readonly SortOption[]
+
+type SortValue = (typeof sortOptions)[number]["value"]
+type AvailabilityFilter = DiscographyAvailability | "all"
 
 type DiscographyFormState = {
   title: string
@@ -125,6 +194,12 @@ const DiscographyAdminPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formState, setFormState] = useState<DiscographyFormState>(emptyForm)
   const [customGenre, setCustomGenre] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedFormats, setSelectedFormats] = useState<string[]>([])
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([])
+  const [availabilityFilter, setAvailabilityFilter] =
+    useState<AvailabilityFilter>("all")
+  const [sortValue, setSortValue] = useState<SortValue>("title:asc")
 
   const formatOptions = useMemo(
     () => ["Vinyl", "CD", "Cassette"],
@@ -330,6 +405,43 @@ const DiscographyAdminPage = () => {
     [fetchEntries]
   )
 
+  const toggleFormatFilter = useCallback((value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return
+    }
+    setSelectedFormats((prev) => {
+      const exists = prev.some(
+        (item) => item.toLowerCase() === trimmed.toLowerCase()
+      )
+      return exists
+        ? prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
+        : [...prev, trimmed]
+    })
+  }, [])
+
+  const toggleGenreFilter = useCallback((value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return
+    }
+    setSelectedGenres((prev) => {
+      const exists = prev.some(
+        (item) => item.toLowerCase() === trimmed.toLowerCase()
+      )
+      return exists
+        ? prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
+        : [...prev, trimmed]
+    })
+  }, [])
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery("")
+    setSelectedFormats([])
+    setSelectedGenres([])
+    setAvailabilityFilter("all")
+  }, [])
+
   const availabilityLabel = useMemo(
     () =>
       availabilityOptions.reduce<Record<string, string>>((acc, option) => {
@@ -337,6 +449,154 @@ const DiscographyAdminPage = () => {
         return acc
       }, {}),
     []
+  )
+
+  const collator = useMemo(
+    () => new Intl.Collator("en", { numeric: true, sensitivity: "base" }),
+    []
+  )
+
+  const sortedEntries = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+    const activeFormats = selectedFormats.map((value) => value.toLowerCase())
+    const activeGenres = selectedGenres.map((value) => value.toLowerCase())
+
+    const matchesSearch = (entry: DiscographyEntry): boolean => {
+      if (!normalizedQuery) {
+        return true
+      }
+      const haystack = [
+        entry.title,
+        entry.artist,
+        entry.catalogNumber ?? "",
+        entry.collectionTitle ?? "",
+        entry.productHandle ?? "",
+        entry.formats.join(" "),
+        entry.genres.join(" "),
+      ]
+        .join(" ")
+        .toLowerCase()
+      return haystack.includes(normalizedQuery)
+    }
+
+    const matchesFormats = (entry: DiscographyEntry): boolean => {
+      if (!activeFormats.length) {
+        return true
+      }
+      return entry.formats.some((format) =>
+        activeFormats.includes(format.toLowerCase())
+      )
+    }
+
+    const matchesGenres = (entry: DiscographyEntry): boolean => {
+      if (!activeGenres.length) {
+        return true
+      }
+      return entry.genres.some((genre) =>
+        activeGenres.includes(genre.toLowerCase())
+      )
+    }
+
+    const matchesAvailability = (entry: DiscographyEntry): boolean => {
+      if (availabilityFilter === "all") {
+        return true
+      }
+      return entry.availability === availabilityFilter
+    }
+
+    const compareText = (left?: string | null, right?: string | null): number => {
+      if (!left && !right) {
+        return 0
+      }
+      if (!left) {
+        return 1
+      }
+      if (!right) {
+        return -1
+      }
+      return collator.compare(left, right)
+    }
+
+    const compareYear = (
+      left?: number | null,
+      right?: number | null
+    ): number => {
+      if (left == null && right == null) {
+        return 0
+      }
+      if (left == null) {
+        return 1
+      }
+      if (right == null) {
+        return -1
+      }
+      return left - right
+    }
+
+    const filtered = entries.filter(
+      (entry) =>
+        matchesSearch(entry) &&
+        matchesFormats(entry) &&
+        matchesGenres(entry) &&
+        matchesAvailability(entry)
+    )
+
+    const defaultSort = sortOptions[0]
+    if (!defaultSort) {
+      return filtered
+    }
+    const currentSort =
+      sortOptions.find((option) => option.value === sortValue) ?? defaultSort
+
+    const sorted = [...filtered].sort((left, right) => {
+      let comparison = 0
+      switch (currentSort.field) {
+        case "artist":
+          comparison = compareText(left.artist, right.artist)
+          break
+        case "releaseYear":
+          comparison = compareYear(left.releaseYear, right.releaseYear)
+          break
+        case "catalogNumber":
+          comparison = compareText(left.catalogNumber, right.catalogNumber)
+          break
+        case "availability":
+          comparison = compareText(
+            availabilityLabel[left.availability],
+            availabilityLabel[right.availability]
+          )
+          break
+        default:
+          comparison = compareText(left.title, right.title)
+          break
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.title, right.title)
+      }
+
+      return currentSort.direction === "asc" ? comparison : -comparison
+    })
+
+    return sorted
+  }, [
+    availabilityFilter,
+    availabilityLabel,
+    collator,
+    entries,
+    searchQuery,
+    selectedFormats,
+    selectedGenres,
+    sortValue,
+  ])
+
+  const hasActiveFilters = useMemo(
+    () =>
+      searchQuery.trim().length > 0 ||
+      selectedFormats.length > 0 ||
+      selectedGenres.length > 0 ||
+      availabilityFilter !== "all",
+    [availabilityFilter, searchQuery, selectedFormats, selectedGenres]
   )
 
   return (
@@ -360,6 +620,112 @@ const DiscographyAdminPage = () => {
           </Text>
         </Container>
       ) : null}
+
+      <Container className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-1 flex-col gap-2">
+            <Label htmlFor="discography-search" className="sr-only">
+              Search
+            </Label>
+            <Input
+              id="discography-search"
+              placeholder="Search releases, artists, catalog #"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(readValue(event))}
+            />
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              Showing {sortedEntries.length} of {entries.length}
+            </Text>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="discography-sort" className="sr-only">
+              Sort
+            </Label>
+            <select
+              id="discography-sort"
+              value={sortValue}
+              onChange={(event) =>
+                setSortValue(readValue(event) as SortValue)
+              }
+              className="min-h-9 rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {hasActiveFilters ? (
+              <Button type="button" variant="secondary" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              Formats
+            </Text>
+            {formatOptions.map((option) => {
+              const selected = selectedFormats.some(
+                (value) => value.toLowerCase() === option.toLowerCase()
+              )
+              return (
+                <Button
+                  key={`format-filter-${option}`}
+                  type="button"
+                  size="small"
+                  variant={selected ? "primary" : "secondary"}
+                  onClick={() => toggleFormatFilter(option)}
+                >
+                  {option}
+                </Button>
+              )
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              Genres
+            </Text>
+            {genreOptions.map((option) => {
+              const selected = selectedGenres.some(
+                (value) => value.toLowerCase() === option.toLowerCase()
+              )
+              return (
+                <Button
+                  key={`genre-filter-${option}`}
+                  type="button"
+                  size="small"
+                  variant={selected ? "primary" : "secondary"}
+                  onClick={() => toggleGenreFilter(option)}
+                >
+                  {option}
+                </Button>
+              )
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              Availability
+            </Text>
+            <select
+              value={availabilityFilter}
+              onChange={(event) =>
+                setAvailabilityFilter(readValue(event) as AvailabilityFilter)
+              }
+              className="min-h-9 rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
+            >
+              <option value="all">All</option>
+              {availabilityOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </Container>
 
       <Container className="overflow-hidden">
         <Table>
@@ -385,8 +751,8 @@ const DiscographyAdminPage = () => {
                 <Table.Cell />
                 <Table.Cell />
               </Table.Row>
-            ) : entries.length ? (
-              entries.map((entry) => (
+            ) : sortedEntries.length ? (
+              sortedEntries.map((entry) => (
                 <Table.Row key={entry.id}>
                   <Table.Cell>
                     <div className="flex flex-col gap-1">
@@ -444,7 +810,11 @@ const DiscographyAdminPage = () => {
             ) : (
               <Table.Row>
                 <Table.Cell>
-                  <Text size="small">No discography entries yet.</Text>
+                  <Text size="small">
+                    {hasActiveFilters
+                      ? "No entries match the current filters."
+                      : "No discography entries yet."}
+                  </Text>
                 </Table.Cell>
                 <Table.Cell />
                 <Table.Cell />
@@ -473,7 +843,7 @@ const DiscographyAdminPage = () => {
                 {editingId ? "Edit entry" : "New entry"}
               </FocusModal.Title>
               <FocusModal.Description className="text-ui-fg-subtle">
-                Formats and genres should be comma-separated values.
+                Select formats and genres, and add custom genres as needed.
               </FocusModal.Description>
             </div>
           </FocusModal.Header>
