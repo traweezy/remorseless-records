@@ -156,7 +156,7 @@ export const getCollectionProductsByHandle = unstable_cache(
 export const getHomepageProducts = unstable_cache(
   async (): Promise<StoreProduct[]> => {
     try {
-      return listProducts({
+      return await listProducts({
         limit: 16,
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)
@@ -190,7 +190,7 @@ export const getProductByHandle = unstable_cache(
 export const getProductsByCollection = unstable_cache(
   async (collectionId: string, limit: number = 8): Promise<StoreProduct[]> => {
     try {
-      return listProducts({
+      return await listProducts({
         collection_id: collectionId,
         limit,
         fields: PRODUCT_DETAIL_FIELDS,
@@ -207,7 +207,7 @@ export const getProductsByCollection = unstable_cache(
 export const getRecentProducts = unstable_cache(
   async (limit: number = 8): Promise<StoreProduct[]> => {
     try {
-      return listProducts({
+      return await listProducts({
         limit,
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)

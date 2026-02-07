@@ -1,8 +1,13 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { faker } from "@faker-js/faker"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { sanitizeNewsHtml } from "@/lib/news/rich-text"
 
 describe("sanitizeNewsHtml", () => {
+  beforeEach(() => {
+    faker.seed(3101)
+  })
+
   afterEach(() => {
     vi.unstubAllGlobals()
   })
@@ -12,13 +17,15 @@ describe("sanitizeNewsHtml", () => {
   })
 
   it("removes blocked tags, strips unsafe attributes, and unwraps unknown tags", () => {
+    const safeUrl = faker.internet.url()
+
     const sanitized = sanitizeNewsHtml(
       [
         '<p onclick="evil()">Intro <span>wrapped</span></p>',
         '<script>alert("xss")</script>',
         '<iframe src="https://evil.example"></iframe>',
         '<a href="javascript:alert(1)" style="color:red">unsafe</a>',
-        '<a href="https://example.com/path">safe</a>',
+        `<a href="${safeUrl}">safe</a>`,
       ].join("")
     )
 
@@ -28,7 +35,7 @@ describe("sanitizeNewsHtml", () => {
     expect(sanitized).not.toContain("onclick")
     expect(sanitized).toContain("<a>unsafe</a>")
     expect(sanitized).toContain(
-      '<a href="https://example.com/path" target="_blank" rel="noopener noreferrer">safe</a>'
+      `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">safe</a>`
     )
   })
 
