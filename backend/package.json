@@ -39,6 +39,7 @@
     "@medusajs/icons": "^2.12.1",
     "@medusajs/medusa": "^2.12.1",
     "@medusajs/notification-sendgrid": "^2.12.1",
+    "@medusajs/payment": "^2.12.1",
     "@medusajs/payment-stripe": "^2.12.1",
     "@medusajs/tax": "^2.12.1",
     "@medusajs/ui": "^4.0.29",

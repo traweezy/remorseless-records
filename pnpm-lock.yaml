@@ -63,6 +63,9 @@ importers:
       '@medusajs/notification-sendgrid':
         specifier: ^2.12.1
         version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))
+      '@medusajs/payment':
+        specifier: ^2.12.1
+        version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))(@types/node@22.18.13)
       '@medusajs/payment-stripe':
         specifier: ^2.12.1
         version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))
