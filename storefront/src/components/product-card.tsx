@@ -202,9 +202,10 @@ const resolveStockBadge = (
 
 type ProductCardProps = {
   product: ProductCardSource
+  onMediaLoad?: () => void
 }
 
-export const ProductCard = ({ product }: ProductCardProps) => {
+export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
   const router = useRouter()
   const [quickShopOpen, setQuickShopOpen] = useState(false)
   const cardRef = useRef<HTMLDivElement | null>(null)
@@ -375,6 +376,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     }
   }
 
+  const handleMediaLoad = () => {
+    onMediaLoad?.()
+  }
+
   return (
     <>
       <div
@@ -431,8 +436,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
                       (isSoldOut || isUnavailable) && "grayscale brightness-75"
                     )}
                     loading="lazy"
+                    onLoad={handleMediaLoad}
                     onError={() => {
                       setResolvedThumbnail(null)
+                      handleMediaLoad()
                     }}
                   />
                 ) : (

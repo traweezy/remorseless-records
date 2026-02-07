@@ -808,6 +808,7 @@ const ProductSearchExperience = ({
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const measureScheduledRef = useRef(false)
 
   const normalizeHits = useCallback(
     (hits: ProductSearchHit[]) =>
@@ -1150,6 +1151,25 @@ const ProductSearchExperience = ({
     window.scrollTo({ top: 0 })
     virtualizer.scrollToIndex(0, { align: "start" })
   }, [criteriaKey, virtualizer])
+
+  const scheduleVirtualizerMeasure = useCallback(() => {
+    if (measureScheduledRef.current) {
+      return
+    }
+    measureScheduledRef.current = true
+
+    const run = () => {
+      measureScheduledRef.current = false
+      virtualizer.measure()
+    }
+
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(run)
+      return
+    }
+
+    setTimeout(run, 0)
+  }, [virtualizer])
 
   const activeFiltersCount =
     selectedGenres.length +
@@ -1579,12 +1599,15 @@ const ProductSearchExperience = ({
 
                             if (product) {
                               return (
-                                <motion.div
-                                  key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
-                                  {...CARD_MOTION_PROPS}
-                                >
-                                  <ProductCard product={product} />
-                                </motion.div>
+                                  <motion.div
+                                    key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
+                                    {...CARD_MOTION_PROPS}
+                                  >
+                                  <ProductCard
+                                    product={product}
+                                    onMediaLoad={scheduleVirtualizerMeasure}
+                                  />
+                                  </motion.div>
                               )
                             }
 
