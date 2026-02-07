@@ -85,8 +85,15 @@ export const sanitizeNewsHtml = (input: string): string => {
     return ""
   }
 
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return input
+  }
+
   const parser = new DOMParser()
   const doc = parser.parseFromString(input, "text/html")
+  if (!doc.body) {
+    return ""
+  }
   walk(doc.body)
-  return doc.body.innerHTML
+  return doc.body.innerHTML ?? ""
 }
