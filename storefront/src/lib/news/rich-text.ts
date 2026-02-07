@@ -94,6 +94,6 @@ export const sanitizeNewsHtml = (input: string): string => {
   if (!doc.body) {
     return ""
   }
-  walk(doc.body)
+  Array.from(doc.body.childNodes).forEach((node) => walk(node))
   return doc.body.innerHTML ?? ""
 }
