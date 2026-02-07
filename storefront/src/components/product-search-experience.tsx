@@ -1120,12 +1120,50 @@ const ProductSearchExperience = ({
 
   const deferredResults = useDeferredValue(mappedResults)
   const columns = useResponsiveColumns()
+  const gridMeasureRef = useRef<HTMLDivElement | null>(null)
+  const [gridWidth, setGridWidth] = useState(0)
+
+  useLayoutEffect(() => {
+    const node = gridMeasureRef.current
+    if (!node) {
+      return
+    }
+
+    const update = () => {
+      setGridWidth(node.clientWidth)
+    }
+
+    update()
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", update)
+      return () => {
+        window.removeEventListener("resize", update)
+      }
+    }
+
+    const observer = new ResizeObserver(() => {
+      update()
+    })
+    observer.observe(node)
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
   const rowEstimate = useMemo(() => {
-    if (columns >= 4) return 420
-    if (columns === 3) return 440
-    if (columns === 2) return 460
-    return 520
-  }, [columns])
+    if (gridWidth > 0 && columns > 0) {
+      const gap = columns > 1 ? 24 : 0
+      const columnWidth = (gridWidth - gap * (columns - 1)) / columns
+      const estimated = columnWidth + 240
+      return Math.max(Math.round(estimated), 360)
+    }
+
+    if (columns >= 4) return 520
+    if (columns === 3) return 580
+    if (columns === 2) return 720
+    return 820
+  }, [columns, gridWidth])
 
   const totalRowCount =
     columns > 0 ? Math.max(Math.ceil(deferredResults.length / columns), 1) : 1
@@ -1567,6 +1605,7 @@ const ProductSearchExperience = ({
 
             {deferredResults.length ? (
               <div
+                ref={gridMeasureRef}
                 className="relative"
                 style={{ height: virtualizer.getTotalSize() }}
               >
