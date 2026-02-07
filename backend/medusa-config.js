@@ -190,6 +190,10 @@ const medusaConfig = {
     {
       key: "discography",
       resolve: "./src/modules/discography",
+    },
+    {
+      key: "news",
+      resolve: "./src/modules/news",
     }
   ],
   plugins: [
