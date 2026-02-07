@@ -577,20 +577,31 @@ const CheckoutPage = () => {
         }
 
         const targetCartId = updated?.id ?? cartId
-        const shippingOptions = await listShippingOptions(targetCartId)
+        const existingOptionId =
+          updated?.shipping_methods?.[0]?.shipping_option_id ?? null
+        let optionId = existingOptionId
 
-        if (shippingOptions.length !== 1) {
-          setShippingError("Shipping is temporarily unavailable. Please try again.")
-          return null
+        if (options?.addresses || !existingOptionId) {
+          const shippingOptions = await listShippingOptions(targetCartId)
+
+          if (shippingOptions.length !== 1) {
+            setShippingError("Shipping is temporarily unavailable. Please try again.")
+            return null
+          }
+
+          optionId = shippingOptions[0]?.id ?? null
+          if (!optionId) {
+            setShippingError("Shipping is temporarily unavailable. Please try again.")
+            return null
+          }
+
+          updated = await addShippingMethod(optionId)
         }
 
-        const optionId = shippingOptions[0]?.id
         if (!optionId) {
           setShippingError("Shipping is temporarily unavailable. Please try again.")
           return null
         }
-
-        updated = await addShippingMethod(optionId)
 
         setIsCalculatingTaxes(true)
         updated = await calculateTaxes()

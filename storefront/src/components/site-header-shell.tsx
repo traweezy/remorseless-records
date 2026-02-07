@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Menu, ShoppingCart, X } from "lucide-react"
 
@@ -124,8 +125,15 @@ const SiteHeaderShell = () => {
           nativePrefetch
           className="flex items-center gap-3 text-sm uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-destructive"
         >
-          <span className="font-bebas text-3xl text-destructive glow-red-sm">
-            RR
+          <span className="relative inline-flex h-10 w-10 items-center justify-center">
+            <Image
+              src="/remorseless-header-logo.png"
+              alt="Remorseless Records logo"
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain"
+              priority
+            />
           </span>
           <span className="hidden font-teko text-xl text-muted-foreground sm:inline">
             Remorseless Records
@@ -149,15 +157,7 @@ const SiteHeaderShell = () => {
                 </SmartLink>
               ))}
             </nav>
-          ) : (
-            <button
-              type="button"
-              className="hidden md:inline-flex items-center rounded-full border border-border/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
-              onClick={() => setCartOpen(true)}
-            >
-              Back to cart
-            </button>
-          )}
+          ) : null}
           <Button
             variant="ghost"
             size="icon"
