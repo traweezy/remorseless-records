@@ -9,3 +9,5 @@ pre-push:
   commands:
     qa-lint:
       run: pnpm run qa:lint
+    storefront-coverage:
+      run: pnpm run qa:storefront:coverage
