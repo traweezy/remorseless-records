@@ -1169,10 +1169,12 @@ const ProductSearchExperience = ({
     columns > 0 ? Math.max(Math.ceil(deferredResults.length / columns), 1) : 1
 
   const [, forceVirtualizerRerender] = useState(0)
+  const rowGap = columns > 2 ? 16 : 12
+  const rowHeight = rowEstimate + rowGap
 
   const virtualizer = useWindowVirtualizerCompat({
     count: totalRowCount,
-    estimateSize: () => rowEstimate,
+    estimateSize: () => rowHeight,
     overscan: 8,
     scrollMargin: 0,
   })
@@ -1182,7 +1184,7 @@ const ProductSearchExperience = ({
   useLayoutEffect(() => {
     virtualizer.measure()
     forceVirtualizerRerender((tick) => tick + 1)
-  }, [columns, rowEstimate, virtualizer, forceVirtualizerRerender])
+  }, [columns, rowHeight, virtualizer, forceVirtualizerRerender])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1622,18 +1624,19 @@ const ProductSearchExperience = ({
                       <div
                         key={rowReactKey}
                         data-index={virtualRow.index}
-                        ref={virtualizer.measureElement}
                         style={{
                           position: "absolute",
                           top: 0,
                           left: 0,
                           width: "100%",
+                          height: rowHeight,
                           transform: `translateY(${virtualRow.start}px)`,
-                          paddingBottom: columns > 2 ? 16 : 12,
+                          paddingBottom: rowGap,
+                          boxSizing: "border-box",
                         }}
                       >
                         <div
-                          className="grid gap-6"
+                          className="grid h-full gap-6"
                           style={gridTemplateStyle}
                         >
                           {Array.from({ length: columns }).map((_, columnIdx) => {
