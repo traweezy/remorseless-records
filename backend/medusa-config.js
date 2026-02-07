@@ -239,7 +239,6 @@ const medusaConfig = {
   ]
 };
 
-console.log(JSON.stringify(medusaConfig, null, 2));
 /** @type {import('@medusajs/types').ConfigModule} */
 const config = defineConfig(medusaConfig);
 export default config;
