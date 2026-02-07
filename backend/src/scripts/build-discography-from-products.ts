@@ -176,6 +176,35 @@ const findArtistCategory = (
 
 const GENRE_ROOT_HANDLES = new Set(["genres", "metal", "death", "doom", "grind", "sludge"])
 
+const DISCOGRAPHY_FORMATS = [
+  {
+    label: "Vinyl",
+    pattern:
+      /(vinyl|lp|12"|12-inch|12 inch|10"|10-inch|10 inch|7"|7-inch|7 inch|record)/i,
+  },
+  { label: "CD", pattern: /(compact disc|\bcd\b)/i },
+  { label: "Cassette", pattern: /(cassette|tape|k7)/i },
+] as const
+
+const normalizeDiscographyFormats = (formats: string[]): string[] => {
+  const found = new Set<string>()
+
+  formats.forEach((format) => {
+    const trimmed = normalizeString(format)
+    if (!trimmed) {
+      return
+    }
+    for (const entry of DISCOGRAPHY_FORMATS) {
+      if (entry.pattern.test(trimmed)) {
+        found.add(entry.label)
+        break
+      }
+    }
+  })
+
+  return DISCOGRAPHY_FORMATS.map((entry) => entry.label).filter((label) => found.has(label))
+}
+
 const extractGenres = (categories: ProductCategory[] | null | undefined): string[] => {
   if (!categories?.length) {
     return []
@@ -296,7 +325,7 @@ const extractFormats = (product: ProductRecord): string[] => {
     }
   }
 
-  return Array.from(formats.values())
+  return normalizeDiscographyFormats(Array.from(formats.values()))
 }
 
 const resolveAvailability = (product: ProductRecord): DiscographyCreatePayload["availability"] => {
