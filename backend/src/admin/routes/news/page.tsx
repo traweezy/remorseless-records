@@ -15,10 +15,11 @@ import {
   Textarea,
 } from "@medusajs/ui"
 
+import RichTextEditor from "@/admin/components/rich-text-editor"
+
 const statusOptions = [
   { value: "draft", label: "Draft" },
   { value: "published", label: "Published" },
-  { value: "scheduled", label: "Scheduled" },
   { value: "archived", label: "Archived" },
 ] as const
 
@@ -87,15 +88,12 @@ type NewsEntry = {
   publishedAt: string | null
   tags: string[]
   coverUrl: string | null
-  seoTitle: string | null
-  seoDescription: string | null
   createdAt?: string | null
   updatedAt?: string | null
 }
 
 type NewsFormState = {
   title: string
-  slug: string
   excerpt: string
   content: string
   author: string
@@ -103,8 +101,6 @@ type NewsFormState = {
   publishedAt: string
   tags: string[]
   coverUrl: string
-  seoTitle: string
-  seoDescription: string
 }
 
 type ValueChangeEvent = {
@@ -114,7 +110,6 @@ type ValueChangeEvent = {
 
 const emptyForm: NewsFormState = {
   title: "",
-  slug: "",
   excerpt: "",
   content: "",
   author: "",
@@ -122,25 +117,12 @@ const emptyForm: NewsFormState = {
   publishedAt: "",
   tags: [],
   coverUrl: "",
-  seoTitle: "",
-  seoDescription: "",
 }
 
 const readValue = (event: ValueChangeEvent): string => {
   const target = event.currentTarget ?? event.target
   const value = (target as { value?: unknown } | null)?.value
   return typeof value === "string" ? value : ""
-}
-
-const slugify = (value: string): string => {
-  const trimmed = value.trim().toLowerCase()
-  const sanitized = trimmed
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "")
-  return sanitized.length ? sanitized : "news"
 }
 
 const toDateTimeInput = (value: string | null | undefined): string => {
@@ -192,10 +174,11 @@ const NewsAdminPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formState, setFormState] = useState<NewsFormState>(emptyForm)
   const [customTag, setCustomTag] = useState("")
-  const [slugTouched, setSlugTouched] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [sortValue, setSortValue] = useState<SortValue>("published_at:desc")
+  const [adminName, setAdminName] = useState("")
+  const [uploadingCover, setUploadingCover] = useState(false)
 
   const fetchEntries = useCallback(async () => {
     setLoading(true)
@@ -223,41 +206,84 @@ const NewsAdminPage = () => {
     void fetchEntries()
   }, [fetchEntries])
 
+  useEffect(() => {
+    let isActive = true
+    const loadAdminUser = async () => {
+      try {
+        const response = await fetch("/admin/users/me", {
+          credentials: "include",
+        })
+        if (!response.ok) {
+          return
+        }
+        const payload = (await response.json()) as {
+          user?: {
+            first_name?: string | null
+            last_name?: string | null
+            email?: string | null
+          }
+        }
+        const user = payload.user
+        if (!user) {
+          return
+        }
+        const first = (user.first_name ?? "").trim()
+        const last = (user.last_name ?? "").trim()
+        const fullName = `${first} ${last}`.trim()
+        const resolvedName = fullName || (user.email ?? "").trim()
+        if (isActive && resolvedName) {
+          setAdminName(resolvedName)
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    void loadAdminUser()
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!adminName) {
+      return
+    }
+    setFormState((prev) =>
+      prev.author ? prev : { ...prev, author: adminName }
+    )
+  }, [adminName])
+
   const resetForm = useCallback(() => {
     setEditingId(null)
     setFormState(emptyForm)
     setCustomTag("")
-    setSlugTouched(false)
     setFormOpen(false)
   }, [])
 
   const openCreate = useCallback(() => {
     setEditingId(null)
-    setFormState(emptyForm)
+    setFormState({ ...emptyForm, author: adminName })
     setCustomTag("")
-    setSlugTouched(false)
     setFormOpen(true)
-  }, [])
+  }, [adminName])
 
   const openEdit = useCallback((entry: NewsEntry) => {
     setEditingId(entry.id)
     setFormState({
       title: entry.title,
-      slug: entry.slug,
       excerpt: entry.excerpt ?? "",
       content: entry.content ?? "",
-      author: entry.author ?? "",
+      author: entry.author ?? adminName,
       status: entry.status,
       publishedAt: toDateTimeInput(entry.publishedAt),
       tags: entry.tags ?? [],
       coverUrl: entry.coverUrl ?? "",
-      seoTitle: entry.seoTitle ?? "",
-      seoDescription: entry.seoDescription ?? "",
     })
     setCustomTag("")
-    setSlugTouched(true)
     setFormOpen(true)
-  }, [])
+  }, [adminName])
 
   const updateField = useCallback(
     (field: keyof NewsFormState) =>
@@ -267,21 +293,18 @@ const NewsAdminPage = () => {
     []
   )
 
-  const handleTitleChange = useCallback(
-    (value: string) => {
-      setFormState((prev) => {
-        const nextSlug = slugTouched || prev.slug.length
-          ? prev.slug
-          : slugify(value)
-        return { ...prev, title: value, slug: nextSlug }
-      })
-    },
-    [slugTouched]
-  )
+  const handleTitleChange = useCallback((value: string) => {
+    setFormState((prev) => ({ ...prev, title: value }))
+  }, [])
 
-  const handleSlugChange = useCallback((value: string) => {
-    setSlugTouched(true)
-    setFormState((prev) => ({ ...prev, slug: value }))
+  const handleStatusChange = useCallback((value: NewsStatus) => {
+    setFormState((prev) => {
+      const publishedAt =
+        value === "published" && !prev.publishedAt
+          ? toDateTimeInput(new Date().toISOString())
+          : prev.publishedAt
+      return { ...prev, status: value, publishedAt }
+    })
   }, [])
 
   const addTag = useCallback(() => {
@@ -313,7 +336,6 @@ const NewsAdminPage = () => {
     }
 
     const title = formState.title.trim()
-    const slug = formState.slug.trim() || slugify(title)
     const publishedAtRaw = formState.publishedAt.trim()
     const publishedAt = publishedAtRaw
       ? new Date(publishedAtRaw).toISOString()
@@ -321,16 +343,12 @@ const NewsAdminPage = () => {
 
     const payload = {
       title,
-      slug,
       excerpt: formState.excerpt.trim() || null,
       content: formState.content.trim(),
-      author: formState.author.trim() || null,
       status: formState.status,
       publishedAt,
       tags: normalizeList(formState.tags),
       coverUrl: formState.coverUrl.trim() || null,
-      seoTitle: formState.seoTitle.trim() || null,
-      seoDescription: formState.seoDescription.trim() || null,
     }
 
     const url = editingId ? `/admin/news/${editingId}` : "/admin/news"
@@ -355,6 +373,49 @@ const NewsAdminPage = () => {
       setError(err instanceof Error ? err.message : "Failed to save entry")
     }
   }, [editingId, fetchEntries, formState, resetForm])
+
+  const handleCoverUpload = useCallback(
+    async (event: ValueChangeEvent) => {
+      const target = event.currentTarget ?? event.target
+      const input = target as
+        | { files?: { 0?: unknown } | null; value?: string }
+        | null
+      const file = input?.files?.[0]
+      if (!file) {
+        return
+      }
+      setUploadingCover(true)
+      setError(null)
+      try {
+        const formData = new FormData()
+        formData.append("files", file as Blob)
+        const response = await fetch("/admin/uploads", {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        })
+        if (!response.ok) {
+          throw new Error("Upload failed")
+        }
+        const payload = (await response.json()) as {
+          files?: Array<{ url?: string | null }>
+        }
+        const url = payload.files?.[0]?.url
+        if (!url) {
+          throw new Error("Upload returned no file URL")
+        }
+        setFormState((prev) => ({ ...prev, coverUrl: url }))
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed")
+      } finally {
+        setUploadingCover(false)
+        if (input) {
+          input.value = ""
+        }
+      }
+    },
+    []
+  )
 
   const handleDelete = useCallback(
     async (entry: NewsEntry) => {
@@ -717,18 +778,11 @@ const NewsAdminPage = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Slug</Label>
-                <Input
-                  value={formState.slug}
-                  onChange={(event) => handleSlugChange(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
                 <Label>Status</Label>
                 <select
                   value={formState.status}
                   onChange={(event) =>
-                    updateField("status")(readValue(event) as NewsStatus)
+                    handleStatusChange(readValue(event) as NewsStatus)
                   }
                   className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
                 >
@@ -753,19 +807,32 @@ const NewsAdminPage = () => {
                 <Label>Author</Label>
                 <Input
                   value={formState.author}
-                  onChange={(event) =>
-                    updateField("author")(readValue(event))
-                  }
+                  disabled
                 />
               </div>
               <div className="space-y-2">
-                <Label>Cover image URL</Label>
-                <Input
-                  value={formState.coverUrl}
-                  onChange={(event) =>
-                    updateField("coverUrl")(readValue(event))
-                  }
-                />
+                <Label>Cover image</Label>
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverUpload}
+                    disabled={uploadingCover}
+                    className="block w-full text-sm text-ui-fg-base file:mr-3 file:rounded-md file:border-0 file:bg-ui-bg-subtle file:px-3 file:py-2 file:text-sm file:text-ui-fg-base hover:file:bg-ui-bg-base"
+                  />
+                  {formState.coverUrl ? (
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={formState.coverUrl}
+                        alt="Cover preview"
+                        className="h-16 w-16 rounded-md object-cover"
+                      />
+                      <Text size="xsmall" className="text-ui-fg-subtle">
+                        {formState.coverUrl}
+                      </Text>
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Excerpt</Label>
@@ -779,12 +846,10 @@ const NewsAdminPage = () => {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Content</Label>
-                <Textarea
+                <RichTextEditor
                   value={formState.content}
-                  onChange={(event) =>
-                    updateField("content")(readValue(event))
-                  }
-                  rows={10}
+                  onChange={updateField("content")}
+                  placeholder="Use the toolbar to style the update. Links open in a new tab on the storefront."
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -826,25 +891,6 @@ const NewsAdminPage = () => {
                     ))}
                   </div>
                 ) : null}
-              </div>
-              <div className="space-y-2">
-                <Label>SEO title</Label>
-                <Input
-                  value={formState.seoTitle}
-                  onChange={(event) =>
-                    updateField("seoTitle")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>SEO description</Label>
-                <Textarea
-                  value={formState.seoDescription}
-                  onChange={(event) =>
-                    updateField("seoDescription")(readValue(event))
-                  }
-                  rows={3}
-                />
               </div>
             </div>
           </FocusModal.Body>

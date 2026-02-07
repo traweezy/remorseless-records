@@ -13,7 +13,7 @@ const NewsEntry = model.define(
     content: model.text(),
     author: model.text().nullable(),
     status: model
-      .enum(["draft", "published", "scheduled", "archived"])
+      .enum(["draft", "published", "archived"])
       .default("draft"),
     published_at: model.dateTime().nullable(),
     tags: model.array().default([]),

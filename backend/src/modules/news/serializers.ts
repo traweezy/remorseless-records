@@ -1,7 +1,6 @@
 export const newsStatusValues = [
   "draft",
   "published",
-  "scheduled",
   "archived",
 ] as const
 

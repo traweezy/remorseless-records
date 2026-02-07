@@ -2,13 +2,20 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
-import type NewsModuleService from "@/modules/news/service"
 import {
   newsStatusValues,
   serializeNewsEntry,
 } from "@/modules/news/serializers"
-
-type NewsService = InstanceType<typeof NewsModuleService>
+import {
+  buildSeo,
+  normalizeList,
+  resolveAdminUserName,
+  resolvePublishedAt,
+  resolveUniqueSlug,
+  slugify,
+  toNullableString,
+  type NewsService,
+} from "@/api/admin/news/utils"
 
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional(),
@@ -20,63 +27,42 @@ const listQuerySchema = z.object({
 
 const entryBaseSchema = z.object({
   title: z.string().trim().min(1),
-  slug: z.string().trim().min(1).optional(),
   excerpt: z.string().trim().optional().nullable(),
   content: z.string().trim().min(1),
-  author: z.string().trim().optional().nullable(),
   status: z.enum(newsStatusValues).optional(),
   publishedAt: z.string().trim().optional().nullable(),
   tags: z.array(z.string().trim()).optional(),
   coverUrl: z.string().trim().url().optional().nullable(),
-  seoTitle: z.string().trim().optional().nullable(),
-  seoDescription: z.string().trim().optional().nullable(),
 })
 
-const slugify = (value: string): string => {
-  const trimmed = value.trim().toLowerCase()
-  const sanitized = trimmed
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "")
-  return sanitized.length ? sanitized : "news"
-}
-
-const toOptionalDate = (value: string | null | undefined): Date | null => {
-  if (!value || typeof value !== "string") {
-    return null
-  }
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-const normalizeList = (values?: string[]): string[] =>
-  (values ?? []).map((value) => value.trim()).filter((value) => value.length > 0)
-
-const toNullableString = (value: string | null | undefined): string | null =>
-  value && value.trim().length ? value.trim() : null
-
-const toEntryPayload = (input: z.infer<typeof entryBaseSchema>) => {
+const toEntryPayload = async (
+  input: z.infer<typeof entryBaseSchema>,
+  newsService: NewsService,
+  req: MedusaRequest
+) => {
   const resolvedStatus = input.status ?? "draft"
-  const parsedPublishedAt = toOptionalDate(input.publishedAt)
-  const resolvedPublishedAt =
-    resolvedStatus === "published" && !parsedPublishedAt
-      ? new Date()
-      : parsedPublishedAt
+  const baseSlug = slugify(input.title)
+  const slug = await resolveUniqueSlug(newsService, baseSlug)
+  const author = await resolveAdminUserName(req)
+  const excerpt = toNullableString(input.excerpt)
+  const content = input.content.trim()
+  const seo = buildSeo({ title: input.title, excerpt, content })
 
   return {
     title: input.title.trim(),
-    slug: toNullableString(input.slug) ?? slugify(input.title),
-    excerpt: toNullableString(input.excerpt),
-    content: input.content.trim(),
-    author: toNullableString(input.author),
+    slug,
+    excerpt,
+    content,
+    author,
     status: resolvedStatus,
-    published_at: resolvedPublishedAt,
+    published_at: resolvePublishedAt({
+      status: resolvedStatus,
+      publishedAt: input.publishedAt,
+    }),
     tags: normalizeList(input.tags),
     cover_url: toNullableString(input.coverUrl),
-    seo_title: toNullableString(input.seoTitle),
-    seo_description: toNullableString(input.seoDescription),
+    seo_title: seo.seo_title,
+    seo_description: seo.seo_description,
   }
 }
 
@@ -128,7 +114,7 @@ export const POST = async (
 
   const newsService = req.scope.resolve("news") as NewsService
   const createdResult = await newsService.createNewsEntries([
-    toEntryPayload(parsed.data),
+    await toEntryPayload(parsed.data, newsService, req),
   ])
   const created = Array.isArray(createdResult)
     ? createdResult[0]
