@@ -19,6 +19,7 @@ const ignores = [
   "next-sitemap.js",
   "postcss.config.js",
   "playwright.config.ts",
+  "vitest.config.ts",
   "coverage/**",
   "dist/**",
 ]
