@@ -1,11 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ArchiveBox, PencilSquare, Trash } from "@medusajs/icons"
 import {
   Button,
   Container,
+  FocusModal,
   Heading,
   Input,
   Label,
@@ -45,21 +46,15 @@ type DiscographyEntry = {
 type DiscographyFormState = {
   title: string
   artist: string
-  album: string
   productHandle: string
   collectionTitle: string
   catalogNumber: string
   releaseDate: string
   releaseYear: string
-  formats: string
-  genres: string
+  formats: string[]
+  genres: string[]
   availability: DiscographyAvailability
   coverUrl: string
-}
-
-type ScrollOptions = {
-  behavior?: "auto" | "smooth"
-  block?: "start" | "center" | "end" | "nearest"
 }
 
 type ValueChangeEvent = {
@@ -70,14 +65,13 @@ type ValueChangeEvent = {
 const emptyForm: DiscographyFormState = {
   title: "",
   artist: "",
-  album: "",
   productHandle: "",
   collectionTitle: "",
   catalogNumber: "",
   releaseDate: "",
   releaseYear: "",
-  formats: "",
-  genres: "",
+  formats: [],
+  genres: [],
   availability: "unknown",
   coverUrl: "",
 }
@@ -93,11 +87,11 @@ const toDateInput = (value: string | null | undefined): string => {
   return date.toISOString().slice(0, 10)
 }
 
-const normalizeList = (value: string): string[] =>
-  value
-    .split(",")
+const normalizeList = (values: string[]): string[] =>
+  values
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0)
+    .filter((value, index, array) => array.findIndex((item) => item.toLowerCase() === value.toLowerCase()) === index)
 
 const readValue = (event: ValueChangeEvent): string => {
   const target = event.currentTarget ?? event.target
@@ -130,7 +124,16 @@ const DiscographyAdminPage = () => {
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formState, setFormState] = useState<DiscographyFormState>(emptyForm)
-  const formRef = useRef<HTMLDivElement | null>(null)
+  const [customGenre, setCustomGenre] = useState("")
+
+  const formatOptions = useMemo(
+    () => ["Vinyl", "CD", "Cassette"],
+    []
+  )
+  const genreOptions = useMemo(
+    () => ["Death", "Doom", "Grind"],
+    []
+  )
 
   const fetchEntries = useCallback(async () => {
     setLoading(true)
@@ -155,25 +158,17 @@ const DiscographyAdminPage = () => {
     void fetchEntries()
   }, [fetchEntries])
 
-  useEffect(() => {
-    if (!formOpen) {
-      return
-    }
-    const node = formRef.current as unknown as
-      | { scrollIntoView?: (options?: ScrollOptions) => void }
-      | null
-    node?.scrollIntoView?.({ behavior: "smooth", block: "start" })
-  }, [formOpen])
-
   const resetForm = useCallback(() => {
     setEditingId(null)
     setFormState(emptyForm)
+    setCustomGenre("")
     setFormOpen(false)
   }, [])
 
   const openCreate = useCallback(() => {
     setEditingId(null)
     setFormState(emptyForm)
+    setCustomGenre("")
     setFormOpen(true)
   }, [])
 
@@ -182,38 +177,82 @@ const DiscographyAdminPage = () => {
     setFormState({
       title: entry.title,
       artist: entry.artist,
-      album: entry.album,
       productHandle: entry.productHandle ?? "",
       collectionTitle: entry.collectionTitle ?? "",
       catalogNumber: entry.catalogNumber ?? "",
       releaseDate: toDateInput(entry.releaseDate),
       releaseYear: entry.releaseYear ? String(entry.releaseYear) : "",
-      formats: entry.formats.join(", "),
-      genres: entry.genres.join(", "),
+      formats: entry.formats ?? [],
+      genres: entry.genres ?? [],
       availability: entry.availability,
       coverUrl: entry.coverUrl ?? "",
     })
+    setCustomGenre("")
     setFormOpen(true)
   }, [])
 
   const updateField = useCallback(
-    (field: keyof DiscographyFormState) => (value: string) => {
-      setFormState((prev) => ({ ...prev, [field]: value }))
+    (field: keyof DiscographyFormState) =>
+      (value: DiscographyFormState[typeof field]) => {
+        setFormState((prev) => ({ ...prev, [field]: value }))
+      },
+    []
+  )
+
+  const toggleValue = useCallback(
+    (field: "formats" | "genres", value: string) => {
+      const trimmed = value.trim()
+      if (!trimmed.length) {
+        return
+      }
+      setFormState((prev) => {
+        const current = prev[field]
+        const exists = current.some((item) => item.toLowerCase() === trimmed.toLowerCase())
+        const next = exists
+          ? current.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
+          : [...current, trimmed]
+        return { ...prev, [field]: next }
+      })
     },
     []
   )
 
+  const addCustomGenre = useCallback(() => {
+    const trimmed = customGenre.trim()
+    if (!trimmed) {
+      return
+    }
+    toggleValue("genres", trimmed)
+    setCustomGenre("")
+  }, [customGenre, toggleValue])
+
+  const removeGenre = useCallback((value: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      genres: prev.genres.filter((item) => item.toLowerCase() !== value.toLowerCase()),
+    }))
+  }, [])
+
+  const removeFormat = useCallback((value: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      formats: prev.formats.filter((item) => item.toLowerCase() !== value.toLowerCase()),
+    }))
+  }, [])
+
   const handleSubmit = useCallback(async () => {
     setError(null)
-    if (!formState.title.trim() || !formState.artist.trim() || !formState.album.trim()) {
-      setError("Title, artist, and album are required.")
+    if (!formState.title.trim() || !formState.artist.trim()) {
+      setError("Title and artist are required.")
       return
     }
 
+    const title = formState.title.trim()
+
     const payload = {
-      title: formState.title.trim(),
+      title,
       artist: formState.artist.trim(),
-      album: formState.album.trim(),
+      album: title,
       productHandle: formState.productHandle.trim() || null,
       collectionTitle: formState.collectionTitle.trim() || null,
       catalogNumber: formState.catalogNumber.trim() || null,
@@ -299,7 +338,9 @@ const DiscographyAdminPage = () => {
             Manage standalone discography entries (separate from products).
           </Text>
         </div>
-        <Button type="button" onClick={openCreate}>Add entry</Button>
+        <Button type="button" onClick={openCreate}>
+          Add entry
+        </Button>
       </Container>
 
       {error ? (
@@ -407,137 +448,216 @@ const DiscographyAdminPage = () => {
         </Table>
       </Container>
 
-      {formOpen ? (
-        <Container ref={formRef}>
-          <div className="flex items-center justify-between">
-            <Heading level="h2">{editingId ? "Edit entry" : "New entry"}</Heading>
-            <Button type="button" variant="secondary" onClick={resetForm}>
-              Cancel
-            </Button>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Title</Label>
-              <Input
-                value={formState.title}
-                onChange={(event) => updateField("title")(readValue(event))}
-              />
+      <FocusModal
+        open={formOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetForm()
+          }
+        }}
+      >
+        <FocusModal.Content className="max-w-4xl sm:inset-y-8 sm:inset-x-1/2 sm:-translate-x-1/2 sm:w-full">
+          <FocusModal.Header>
+            <div className="flex flex-col gap-1">
+              <FocusModal.Title>
+                {editingId ? "Edit entry" : "New entry"}
+              </FocusModal.Title>
+              <FocusModal.Description className="text-ui-fg-subtle">
+                Formats and genres should be comma-separated values.
+              </FocusModal.Description>
             </div>
-            <div className="space-y-2">
-              <Label>Artist</Label>
-              <Input
-                value={formState.artist}
-                onChange={(event) => updateField("artist")(readValue(event))}
-              />
+          </FocusModal.Header>
+          <FocusModal.Body className="overflow-y-auto px-6 py-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Release (title/album)</Label>
+                <Input
+                  value={formState.title}
+                  onChange={(event) => updateField("title")(readValue(event))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Artist</Label>
+                <Input
+                  value={formState.artist}
+                  onChange={(event) => updateField("artist")(readValue(event))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Product handle (optional)</Label>
+                <Input
+                  value={formState.productHandle}
+                  onChange={(event) =>
+                    updateField("productHandle")(readValue(event))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Collection title</Label>
+                <Input
+                  value={formState.collectionTitle}
+                  onChange={(event) =>
+                    updateField("collectionTitle")(readValue(event))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Catalog number</Label>
+                <Input
+                  value={formState.catalogNumber}
+                  onChange={(event) =>
+                    updateField("catalogNumber")(readValue(event))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Release date</Label>
+                <Input
+                  type="date"
+                  value={formState.releaseDate}
+                  onChange={(event) =>
+                    updateField("releaseDate")(readValue(event))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Release year</Label>
+                <Input
+                  type="number"
+                  value={formState.releaseYear}
+                  onChange={(event) =>
+                    updateField("releaseYear")(readValue(event))
+                  }
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Formats</Label>
+                <div className="flex flex-wrap gap-2">
+                  {formatOptions.map((option) => {
+                    const selected = formState.formats.some(
+                      (value) => value.toLowerCase() === option.toLowerCase()
+                    )
+                    return (
+                      <Button
+                        key={option}
+                        type="button"
+                        size="small"
+                        variant={selected ? "primary" : "secondary"}
+                        onClick={() => toggleValue("formats", option)}
+                      >
+                        {option}
+                      </Button>
+                    )
+                  })}
+                </div>
+                {formState.formats.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {formState.formats.map((format) => (
+                      <Button
+                        key={`format-${format}`}
+                        type="button"
+                        size="small"
+                        variant="secondary"
+                        onClick={() => removeFormat(format)}
+                      >
+                        {format} ×
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Genres</Label>
+                <div className="flex flex-wrap gap-2">
+                  {genreOptions.map((option) => {
+                    const selected = formState.genres.some(
+                      (value) => value.toLowerCase() === option.toLowerCase()
+                    )
+                    return (
+                      <Button
+                        key={option}
+                        type="button"
+                        size="small"
+                        variant={selected ? "primary" : "secondary"}
+                        onClick={() => toggleValue("genres", option)}
+                      >
+                        {option}
+                      </Button>
+                    )
+                  })}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    value={customGenre}
+                    placeholder="Add a genre…"
+                    onChange={(event) => setCustomGenre(readValue(event))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        addCustomGenre()
+                      }
+                    }}
+                    className="max-w-xs"
+                  />
+                  <Button type="button" size="small" variant="secondary" onClick={addCustomGenre}>
+                    Add genre
+                  </Button>
+                </div>
+                {formState.genres.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {formState.genres.map((genre) => (
+                      <Button
+                        key={`genre-${genre}`}
+                        type="button"
+                        size="small"
+                        variant="secondary"
+                        onClick={() => removeGenre(genre)}
+                      >
+                        {genre} ×
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label>Availability</Label>
+                <select
+                  value={formState.availability}
+                  onChange={(event) =>
+                    updateField("availability")(
+                      readValue(event) as DiscographyAvailability
+                    )
+                  }
+                  className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
+                >
+                  {availabilityOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Cover URL</Label>
+                <Input
+                  value={formState.coverUrl}
+                  onChange={(event) => updateField("coverUrl")(readValue(event))}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Album</Label>
-              <Input
-                value={formState.album}
-                onChange={(event) => updateField("album")(readValue(event))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Product handle (optional)</Label>
-              <Input
-                value={formState.productHandle}
-                onChange={(event) =>
-                  updateField("productHandle")(readValue(event))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Collection title</Label>
-              <Input
-                value={formState.collectionTitle}
-                onChange={(event) =>
-                  updateField("collectionTitle")(readValue(event))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Catalog number</Label>
-              <Input
-                value={formState.catalogNumber}
-                onChange={(event) =>
-                  updateField("catalogNumber")(readValue(event))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Release date</Label>
-              <Input
-                type="date"
-                value={formState.releaseDate}
-                onChange={(event) =>
-                  updateField("releaseDate")(readValue(event))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Release year</Label>
-              <Input
-                type="number"
-                value={formState.releaseYear}
-                onChange={(event) =>
-                  updateField("releaseYear")(readValue(event))
-                }
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Formats (comma-separated)</Label>
-              <Textarea
-                value={formState.formats}
-                onChange={(event) => updateField("formats")(readValue(event))}
-                rows={2}
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Genres (comma-separated)</Label>
-              <Textarea
-                value={formState.genres}
-                onChange={(event) => updateField("genres")(readValue(event))}
-                rows={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Availability</Label>
-              <select
-                value={formState.availability}
-                onChange={(event) =>
-                  updateField("availability")(
-                    readValue(event) as DiscographyAvailability
-                  )
-                }
-                className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-              >
-                {availabilityOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Cover URL</Label>
-              <Input
-                value={formState.coverUrl}
-                onChange={(event) => updateField("coverUrl")(readValue(event))}
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-center justify-between">
-            <Text size="small" className="text-ui-fg-subtle">
-              Formats and genres should be comma-separated values.
-            </Text>
+          </FocusModal.Body>
+          <FocusModal.Footer>
+            <FocusModal.Close asChild>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </FocusModal.Close>
             <Button type="button" onClick={handleSubmit}>
               {editingId ? "Save changes" : "Create entry"}
             </Button>
-          </div>
-        </Container>
-      ) : null}
+          </FocusModal.Footer>
+        </FocusModal.Content>
+      </FocusModal>
     </div>
   )
 }
