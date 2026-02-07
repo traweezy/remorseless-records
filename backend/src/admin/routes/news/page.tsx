@@ -15,7 +15,7 @@ import {
   Textarea,
 } from "@medusajs/ui"
 
-import RichTextEditor from "@/admin/components/rich-text-editor"
+import RichTextEditor from "../../components/rich-text-editor"
 
 const statusOptions = [
   { value: "draft", label: "Draft" },
