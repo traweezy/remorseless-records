@@ -4,6 +4,7 @@ import { memo, useMemo } from "react"
 import Image from "next/image"
 
 import { Badge } from "@/components/ui/badge"
+import SmartLink from "@/components/ui/smart-link"
 import type { NewsEntry } from "@/lib/data/news"
 
 type NewsCarouselCardProps = {
@@ -38,13 +39,18 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
     [entry.title]
   )
 
+  const detailHref = useMemo(() => `/news/${entry.slug}`, [entry.slug])
+
   const tagList = useMemo(
     () => (Array.isArray(entry.tags) ? entry.tags.filter(Boolean) : []),
     [entry.tags]
   )
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-border/50 bg-muted/10 shadow-lg shadow-black/5">
+    <SmartLink
+      href={detailHref}
+      className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border/50 bg-muted/10 shadow-lg shadow-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       <div className="relative aspect-[4/3] w-full overflow-hidden">
         {entry.coverUrl ? (
           <Image
@@ -52,7 +58,7 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
             alt={coverAlt}
             fill
             sizes="(max-width: 768px) 100vw, 33vw"
-            className="object-cover transition duration-500 ease-out hover:scale-[1.03]"
+            className="object-cover transition duration-500 ease-out group-hover:scale-[1.03]"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
@@ -82,7 +88,7 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
           </div>
         ) : null}
       </div>
-    </article>
+    </SmartLink>
   )
 })
 

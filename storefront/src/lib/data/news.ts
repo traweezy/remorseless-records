@@ -47,6 +47,10 @@ export type NewsListResponse = {
   limit: number
 }
 
+export type NewsEntryResponse = {
+  entry: NewsEntry | null
+}
+
 const normalizeText = (value: string | null | undefined): string | null => {
   if (!value) {
     return null
@@ -120,9 +124,62 @@ export const fetchNewsEntries = async ({
   }
 }
 
+export const fetchNewsEntryBySlug = async (
+  slug: string
+): Promise<NewsEntry | null> => {
+  if (!runtimeEnv.medusaBackendUrl || !runtimeEnv.medusaPublishableKey) {
+    console.error("[news] Missing Medusa configuration")
+    return null
+  }
+
+  const normalizedSlug = slug.trim()
+  if (!normalizedSlug) {
+    return null
+  }
+
+  try {
+    const url = new URL(`/store/news/${normalizedSlug}`, runtimeEnv.medusaBackendUrl)
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
+      },
+      next: { revalidate: 300, tags: ["news"] },
+    })
+
+    if (!response.ok) {
+      if (response.status !== 404) {
+        console.error("[news] Failed to fetch entry", response.status)
+      }
+      return null
+    }
+
+    const payload = (await response.json()) as { entry?: NewsApiEntry | null }
+    return payload.entry ? normalizeEntry(payload.entry) : null
+  } catch (error) {
+    console.error("[news] Failed to fetch entry", error)
+    return null
+  }
+}
+
 export const getNewsEntries = unstable_cache(
   async (): Promise<NewsListResponse> =>
     fetchNewsEntries({ limit: NEWS_PAGE_SIZE, offset: 0 }),
   ["news", "page-0"],
   { revalidate: 300, tags: ["news"] }
 )
+
+export const getNewsEntryBySlug = async (
+  slug: string
+): Promise<NewsEntry | null> => {
+  const normalizedSlug = slug.trim()
+  if (!normalizedSlug) {
+    return null
+  }
+  const cached = unstable_cache(
+    async () => fetchNewsEntryBySlug(normalizedSlug),
+    ["news", `slug-${normalizedSlug}`],
+    { revalidate: 300, tags: ["news"] }
+  )
+  return cached()
+}

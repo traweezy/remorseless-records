@@ -4,6 +4,7 @@ import { memo, useMemo } from "react"
 import Image from "next/image"
 
 import { Badge } from "@/components/ui/badge"
+import SmartLink from "@/components/ui/smart-link"
 import { cn } from "@/lib/ui/cn"
 import type { NewsEntry } from "@/lib/data/news"
 import { sanitizeNewsHtml } from "@/lib/news/rich-text"
@@ -61,6 +62,8 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
     [entry.title]
   )
 
+  const detailHref = useMemo(() => `/news/${entry.slug}`, [entry.slug])
+
   return (
     <article className="group rounded-3xl border border-border/50 bg-muted/10 p-5 shadow-lg shadow-black/5 backdrop-blur-sm md:p-8">
       <div className={layoutClassName}>
@@ -87,9 +90,11 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
               <span className="text-foreground/70">By {entry.author}</span>
             ) : null}
           </div>
-          <h2 className="font-display text-3xl uppercase tracking-[0.2rem] text-foreground">
-            {entry.title}
-          </h2>
+          <SmartLink href={detailHref} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <h2 className="font-display text-3xl uppercase tracking-[0.2rem] text-foreground">
+              {entry.title}
+            </h2>
+          </SmartLink>
           {entry.excerpt ? (
             <p className="text-sm leading-relaxed text-muted-foreground">
               {entry.excerpt}
@@ -108,6 +113,14 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
               ))}
             </div>
           ) : null}
+          <div className="pt-4">
+            <SmartLink
+              href={detailHref}
+              className="text-xs uppercase tracking-[0.3rem] text-foreground underline decoration-2 underline-offset-4"
+            >
+              Read more
+            </SmartLink>
+          </div>
         </div>
       </div>
     </article>
