@@ -425,7 +425,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
           <div className="space-y-1">
             <Label
               htmlFor="discography-search"
-              className="text-[0.7rem] uppercase tracking-[0.3rem] text-muted-foreground"
+              className="sr-only"
             >
               Search
             </Label>
@@ -433,7 +433,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
               id="discography-search"
               value={globalFilterValue}
               onChange={(event) => setGlobalFilterValue(event.target.value)}
-              placeholder="Search"
+              placeholder="SEARCH..."
               className="w-full min-w-[260px] lg:min-w-[320px]"
             />
           </div>

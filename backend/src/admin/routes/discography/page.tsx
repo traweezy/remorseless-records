@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ArchiveBox, PencilSquare, Trash } from "@medusajs/icons"
 import {
@@ -55,6 +55,11 @@ type DiscographyFormState = {
   genres: string
   availability: DiscographyAvailability
   coverUrl: string
+}
+
+type ScrollOptions = {
+  behavior?: "auto" | "smooth"
+  block?: "start" | "center" | "end" | "nearest"
 }
 
 type ValueChangeEvent = {
@@ -125,6 +130,7 @@ const DiscographyAdminPage = () => {
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formState, setFormState] = useState<DiscographyFormState>(emptyForm)
+  const formRef = useRef<HTMLDivElement | null>(null)
 
   const fetchEntries = useCallback(async () => {
     setLoading(true)
@@ -148,6 +154,16 @@ const DiscographyAdminPage = () => {
   useEffect(() => {
     void fetchEntries()
   }, [fetchEntries])
+
+  useEffect(() => {
+    if (!formOpen) {
+      return
+    }
+    const node = formRef.current as unknown as
+      | { scrollIntoView?: (options?: ScrollOptions) => void }
+      | null
+    node?.scrollIntoView?.({ behavior: "smooth", block: "start" })
+  }, [formOpen])
 
   const resetForm = useCallback(() => {
     setEditingId(null)
@@ -283,7 +299,7 @@ const DiscographyAdminPage = () => {
             Manage standalone discography entries (separate from products).
           </Text>
         </div>
-        <Button onClick={openCreate}>Add entry</Button>
+        <Button type="button" onClick={openCreate}>Add entry</Button>
       </Container>
 
       {error ? (
@@ -355,6 +371,7 @@ const DiscographyAdminPage = () => {
                   <Table.Cell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
+                        type="button"
                         size="small"
                         variant="secondary"
                         onClick={() => openEdit(entry)}
@@ -362,6 +379,7 @@ const DiscographyAdminPage = () => {
                         <PencilSquare />
                       </Button>
                       <Button
+                        type="button"
                         size="small"
                         variant="secondary"
                         onClick={() => handleDelete(entry)}
@@ -390,10 +408,10 @@ const DiscographyAdminPage = () => {
       </Container>
 
       {formOpen ? (
-        <Container>
+        <Container ref={formRef}>
           <div className="flex items-center justify-between">
             <Heading level="h2">{editingId ? "Edit entry" : "New entry"}</Heading>
-            <Button variant="secondary" onClick={resetForm}>
+            <Button type="button" variant="secondary" onClick={resetForm}>
               Cancel
             </Button>
           </div>
@@ -514,7 +532,7 @@ const DiscographyAdminPage = () => {
             <Text size="small" className="text-ui-fg-subtle">
               Formats and genres should be comma-separated values.
             </Text>
-            <Button onClick={handleSubmit}>
+            <Button type="button" onClick={handleSubmit}>
               {editingId ? "Save changes" : "Create entry"}
             </Button>
           </div>
