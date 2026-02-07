@@ -15,7 +15,7 @@ import {
   slugify,
   toNullableString,
   type NewsService,
-} from "@/api/admin/news/utils"
+} from "./utils"
 
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional(),

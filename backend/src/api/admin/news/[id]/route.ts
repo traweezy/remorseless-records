@@ -10,7 +10,7 @@ import {
   resolvePublishedAt,
   toNullableString,
   type NewsService,
-} from "@/api/admin/news/utils"
+} from "../utils"
 
 const entryUpdateSchema = z.object({
   title: z.string().trim().min(1).optional(),

@@ -1,8 +1,5 @@
 import type { MedusaRequest } from "@medusajs/framework"
-import {
-  ContainerRegistrationKeys,
-  remoteQueryObjectFromString,
-} from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, remoteQueryObjectFromString } from "@medusajs/utils"
 
 import type NewsModuleService from "@/modules/news/service"
 
