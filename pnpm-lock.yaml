@@ -51,15 +51,30 @@ importers:
       '@medusajs/draft-order':
         specifier: ^2.12.1
         version: 2.12.1(@medusajs/admin-sdk@2.12.1)(@medusajs/cli@2.12.1(@types/node@22.18.13))(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))(@medusajs/icons@2.12.1(react@19.2.1))(@medusajs/test-utils@2.12.1)(@medusajs/ui@4.0.29(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3))(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.1(react@19.2.1))(react-router-dom@6.30.3(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)
+      '@medusajs/event-bus-redis':
+        specifier: ^2.12.1
+        version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))
+      '@medusajs/file':
+        specifier: ^2.12.1
+        version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))
       '@medusajs/framework':
         specifier: ^2.12.1
         version: 2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2))
+      '@medusajs/fulfillment':
+        specifier: ^2.12.1
+        version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))
+      '@medusajs/fulfillment-manual':
+        specifier: ^2.12.1
+        version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))
       '@medusajs/icons':
         specifier: ^2.12.1
         version: 2.12.1(react@19.2.1)
       '@medusajs/medusa':
         specifier: ^2.12.1
         version: 2.12.1(@medusajs/admin-sdk@2.12.1)(@medusajs/cli@2.12.1(@types/node@22.18.13))(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))(@medusajs/icons@2.12.1(react@19.2.1))(@medusajs/test-utils@2.12.1)(@medusajs/ui@4.0.29(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3))(@swc/core@1.5.7(@swc/helpers@0.5.17))(@types/node@22.18.13)(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(awilix@8.0.1)(lightningcss@1.30.2)(picomatch@4.0.3)(posthog-node@4.18.0)(react-dom@19.2.1(react@19.2.1))(react-router-dom@6.30.3(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react@19.2.1)(tsx@4.20.6)(typescript@5.9.3)
+      '@medusajs/notification':
+        specifier: ^2.12.1
+        version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))
       '@medusajs/notification-sendgrid':
         specifier: ^2.12.1
         version: 2.12.1(@medusajs/framework@2.12.1(@medusajs/cli@2.12.1(@types/node@22.18.13))(@types/node@22.18.13)(ioredis@5.8.2)(vite@5.4.21(@types/node@22.18.13)(lightningcss@1.30.2)))
