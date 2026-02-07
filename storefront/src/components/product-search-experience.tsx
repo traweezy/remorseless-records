@@ -48,6 +48,21 @@ const normalizeFormatSafe = baseNormalizeFormat as (
   value: string | null | undefined
 ) => string | null
 
+const normalizeFormatFilterValue = (
+  value: string | null | undefined
+): string | null => {
+  if (typeof value !== "string") {
+    return null
+  }
+
+  const trimmed = value.trim()
+  if (!trimmed.length) {
+    return null
+  }
+
+  return normalizeFormatSafe(trimmed) ?? trimmed
+}
+
 const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
   ["featured", "Featured Picks"],
   ["featured-picks", "Featured Picks"],
@@ -580,7 +595,7 @@ const FilterSidebar = ({
         selected={selectedFormats}
         onToggle={onToggleFormat}
         variant="plain"
-        normalizeValue={(value) => value.trim().toLowerCase()}
+        normalizeValue={(value) => normalizeFormatFilterValue(value) ?? ""}
         defaultOpen={selectedFormats.length > 0}
       />
 
@@ -866,7 +881,13 @@ const ProductSearchExperience = ({
           .filter((value): value is string => Boolean(value))
       )
     )
-    const nextFormats = splitCsv(params.getAll("format"))
+    const nextFormats = Array.from(
+      new Set(
+        splitCsv(params.getAll("format"))
+          .map((value) => normalizeFormatFilterValue(value))
+          .filter((value): value is string => Boolean(value))
+      )
+    )
     const nextProductTypes = splitCsv(params.getAll("type"))
     const nextStock = params.get("stock") === "1"
     const nextSortParam = params.get("sort")
@@ -1338,17 +1359,30 @@ const ProductSearchExperience = ({
     }
 
     const validGenres = new Set(genreOptions.map((option) => option.value))
-    const validFormats = new Set(formatOptions.map((option) => option.value))
+    const validFormats = new Set(
+      formatOptions.map((option) => option.value.toLowerCase())
+    )
     const validTypes = new Set(productTypeOptions.map((option) => option.value))
 
     const sanitizedGenres = selectedGenres.filter((value) => validGenres.has(value))
-    const sanitizedFormats = selectedFormats.filter((value) => validFormats.has(value))
+    const sanitizedFormats = Array.from(
+      new Set(
+        selectedFormats
+          .map((value) => normalizeFormatFilterValue(value))
+          .filter((value): value is string => Boolean(value))
+          .filter((value) => validFormats.has(value.toLowerCase()))
+      )
+    )
     const sanitizedTypes = selectedProductTypes.filter((value) => validTypes.has(value))
 
+    const hasListChanged = (left: string[], right: string[]) =>
+      left.length !== right.length ||
+      left.some((entry, index) => entry !== right[index])
+
     const needsUpdate =
-      sanitizedGenres.length !== selectedGenres.length ||
-      sanitizedFormats.length !== selectedFormats.length ||
-      sanitizedTypes.length !== selectedProductTypes.length
+      hasListChanged(sanitizedGenres, selectedGenres) ||
+      hasListChanged(sanitizedFormats, selectedFormats) ||
+      hasListChanged(sanitizedTypes, selectedProductTypes)
 
     if (needsUpdate) {
       hydrateFromParams({
@@ -1385,10 +1419,11 @@ const ProductSearchExperience = ({
   }
 
   const handleToggleFormat = (formatValue: string) => {
-    if (!formatValue.trim().length) {
+    const normalizedFormat = normalizeFormatFilterValue(formatValue)
+    if (!normalizedFormat) {
       return
     }
-    toggleFormatFilter(formatValue)
+    toggleFormatFilter(normalizedFormat)
     focusSearchInput()
   }
 

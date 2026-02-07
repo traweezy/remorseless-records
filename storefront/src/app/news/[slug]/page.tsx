@@ -8,13 +8,27 @@ import { getNewsEntryBySlug } from "@/lib/data/news"
 import { sanitizeNewsHtml } from "@/lib/news/rich-text"
 
 type NewsPageProps = {
-  params: { slug: string }
+  params: { slug: string } | Promise<{ slug: string }>
+}
+
+const normalizeSlug = (slug: string | null | undefined): string | null => {
+  if (typeof slug !== "string") {
+    return null
+  }
+
+  const trimmed = slug.trim()
+  return trimmed.length ? trimmed : null
 }
 
 export const generateMetadata = async ({
   params,
 }: NewsPageProps): Promise<Metadata> => {
-  const slug = params.slug ?? ""
+  const rawParams = await params
+  const slug = normalizeSlug(rawParams.slug)
+  if (!slug) {
+    return { title: "News · Remorseless Records" }
+  }
+
   const entry = await getNewsEntryBySlug(slug)
   if (!entry) {
     return { title: "News · Remorseless Records" }
@@ -48,7 +62,13 @@ export const generateMetadata = async ({
 }
 
 const NewsDetailPage = async ({ params }: NewsPageProps) => {
-  const entry = await getNewsEntryBySlug(params.slug ?? "")
+  const rawParams = await params
+  const slug = normalizeSlug(rawParams.slug)
+  if (!slug) {
+    notFound()
+  }
+
+  const entry = await getNewsEntryBySlug(slug)
   if (!entry) {
     notFound()
   }
