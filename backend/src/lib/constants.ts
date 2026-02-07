@@ -105,14 +105,8 @@ export const WORKER_MODE =
   (process.env.MEDUSA_WORKER_MODE as 'worker' | 'server' | 'shared' | undefined) ?? 'shared'
 
 /**
- * Disable Admin (default to true on Railway unless explicitly false).
+ * Disable Admin (explicitly opt out only).
  */
 const disableAdminEnv = process.env.MEDUSA_DISABLE_ADMIN
-const isRailwayEnv = Boolean(
-  process.env.RAILWAY_PROJECT_ID ||
-    process.env.RAILWAY_ENVIRONMENT ||
-    process.env.RAILWAY_ENVIRONMENT_NAME ||
-    process.env.RAILWAY_PUBLIC_DOMAIN_VALUE,
-)
 export const SHOULD_DISABLE_ADMIN =
-  disableAdminEnv === 'true' || (disableAdminEnv !== 'false' && isRailwayEnv)
+  disableAdminEnv === 'true' || disableAdminEnv === '1'
