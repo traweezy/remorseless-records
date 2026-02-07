@@ -65,6 +65,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "assets.bigcartel.com",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
     ],
   },
   experimental: experimentalConfig,

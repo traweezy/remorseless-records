@@ -12,6 +12,7 @@ const STATIC_ROUTES: Array<{ path: string; changeFrequency?: MetadataRoute.Sitem
   { path: "/submissions", changeFrequency: "monthly" },
   { path: "/contact", changeFrequency: "weekly" },
   { path: "/discography", changeFrequency: "weekly" },
+  { path: "/news", changeFrequency: "weekly" },
   { path: "/help/shipping", changeFrequency: "weekly" },
   { path: "/faq", changeFrequency: "weekly" },
 ]

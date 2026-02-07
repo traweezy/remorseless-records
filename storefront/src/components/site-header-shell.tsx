@@ -17,6 +17,7 @@ import { useCart } from "@/providers/cart-provider"
 const NAV_LINKS = [
   { href: "/catalog", label: "Catalog" },
   { href: "/discography", label: "Discography" },
+  { href: "/news", label: "News" },
   { href: "/contact", label: "Contact" },
 ]
 

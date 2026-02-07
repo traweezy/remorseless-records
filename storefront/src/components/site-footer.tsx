@@ -19,6 +19,7 @@ const FOOTER_LINKS: FooterLinkSection[] = [
       { label: "About", href: "/about" },
       { label: "Submissions", href: "/submissions" },
       { label: "Discography", href: "/discography" },
+      { label: "News", href: "/news" },
     ],
   },
   {
