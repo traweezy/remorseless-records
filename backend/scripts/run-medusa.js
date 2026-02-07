@@ -2,12 +2,31 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const script = process.argv[2];
+const rawScript = process.argv[2];
 
-if (!script) {
+if (!rawScript) {
   console.error('Usage: node ./scripts/run-medusa.js <script>');
   process.exit(1);
 }
+
+const resolveScriptPath = (input) => {
+  const root = process.cwd();
+  const resolved = path.isAbsolute(input) ? input : path.resolve(root, input);
+
+  if (path.extname(resolved) !== '.ts') {
+    return resolved;
+  }
+
+  const scriptsRoot = path.resolve(root, 'src', 'scripts');
+  if (!resolved.startsWith(`${scriptsRoot}${path.sep}`)) {
+    return resolved;
+  }
+
+  const relativePath = path.relative(scriptsRoot, resolved).replace(/\.ts$/, '.js');
+  const builtCandidate = path.resolve(root, '.medusa', 'server', 'src', 'scripts', relativePath);
+
+  return fs.existsSync(builtCandidate) ? builtCandidate : resolved;
+};
 
 const root = process.cwd();
 const candidates = [
@@ -22,7 +41,13 @@ if (!cliPath) {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, [cliPath, 'exec', script], {
+const scriptPath = resolveScriptPath(rawScript);
+if (!fs.existsSync(scriptPath)) {
+  console.error(`Script not found at ${scriptPath}`);
+  process.exit(1);
+}
+
+const result = spawnSync(process.execPath, [cliPath, 'exec', scriptPath], {
   stdio: 'inherit',
   env: process.env
 });
