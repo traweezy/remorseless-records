@@ -29,8 +29,10 @@ const resolveScriptPath = (input) => {
 };
 
 const root = process.cwd();
+const serverRoot = path.join(root, '.medusa', 'server');
+const hasServerRoot = fs.existsSync(serverRoot);
 const candidates = [
-  path.join(root, '.medusa', 'server', 'node_modules', '@medusajs', 'cli', 'cli.js'),
+  path.join(serverRoot, 'node_modules', '@medusajs', 'cli', 'cli.js'),
   path.join(root, 'node_modules', '@medusajs', 'cli', 'cli.js')
 ];
 
@@ -47,8 +49,17 @@ if (!fs.existsSync(scriptPath)) {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, [cliPath, 'exec', scriptPath], {
+const normalizeForCwd = (targetPath) => {
+  if (hasServerRoot && targetPath.startsWith(`${serverRoot}${path.sep}`)) {
+    const relativePath = path.relative(serverRoot, targetPath);
+    return relativePath.startsWith('.') ? relativePath : `./${relativePath}`;
+  }
+  return targetPath;
+};
+
+const result = spawnSync(process.execPath, [cliPath, 'exec', normalizeForCwd(scriptPath)], {
   stdio: 'inherit',
+  cwd: hasServerRoot ? serverRoot : root,
   env: process.env
 });
 
