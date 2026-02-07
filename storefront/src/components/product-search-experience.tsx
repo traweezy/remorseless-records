@@ -1130,6 +1130,8 @@ const ProductSearchExperience = ({
   const totalRowCount =
     columns > 0 ? Math.max(Math.ceil(deferredResults.length / columns), 1) : 1
 
+  const [, forceVirtualizerRerender] = useState(0)
+
   const virtualizer = useWindowVirtualizerCompat({
     count: totalRowCount,
     estimateSize: () => rowEstimate,
@@ -1139,9 +1141,10 @@ const ProductSearchExperience = ({
 
   const virtualItems = virtualizer.getVirtualItems()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     virtualizer.measure()
-  }, [columns, rowEstimate, virtualizer])
+    forceVirtualizerRerender((tick) => tick + 1)
+  }, [columns, rowEstimate, virtualizer, forceVirtualizerRerender])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1161,6 +1164,7 @@ const ProductSearchExperience = ({
     const run = () => {
       measureScheduledRef.current = false
       virtualizer.measure()
+      forceVirtualizerRerender((tick) => tick + 1)
     }
 
     if (typeof requestAnimationFrame === "function") {
@@ -1169,7 +1173,7 @@ const ProductSearchExperience = ({
     }
 
     setTimeout(run, 0)
-  }, [virtualizer])
+  }, [virtualizer, forceVirtualizerRerender])
 
   const activeFiltersCount =
     selectedGenres.length +

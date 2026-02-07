@@ -48,6 +48,49 @@ type DiscographyApiEntry = {
   coverUrl: string | null
 }
 
+const FORMAT_PATTERNS = [
+  {
+    label: "Vinyl",
+    pattern:
+      /(vinyl|lp|12"|12-inch|12 inch|10"|10-inch|10 inch|7"|7-inch|7 inch|record)/i,
+  },
+  {
+    label: "CD",
+    pattern: /(compact disc|\bcd\b)/i,
+  },
+  {
+    label: "Cassette",
+    pattern: /(cassette|tape|k7)/i,
+  },
+] as const
+
+const normalizeFormats = (formats: string[] | null | undefined): string[] => {
+  if (!formats?.length) {
+    return []
+  }
+
+  const found = new Set<string>()
+
+  formats.forEach((raw) => {
+    if (typeof raw !== "string") {
+      return
+    }
+    const normalized = raw.trim()
+    if (!normalized.length) {
+      return
+    }
+
+    for (const { label, pattern } of FORMAT_PATTERNS) {
+      if (pattern.test(normalized)) {
+        found.add(label)
+        break
+      }
+    }
+  })
+
+  return FORMAT_PATTERNS.map(({ label }) => label).filter((label) => found.has(label))
+}
+
 const removeDiacritics = (value: string): string =>
   value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
 
@@ -112,7 +155,7 @@ const normalizeEntry = (entry: DiscographyApiEntry): DiscographyEntry => {
     catalogNumber: entry.catalogNumber ?? null,
     releaseDate: entry.releaseDate ?? null,
     releaseYear: Number.isFinite(releaseYear ?? NaN) ? releaseYear : null,
-    formats: entry.formats ?? [],
+    formats: normalizeFormats(entry.formats ?? []),
     genres: entry.genres ?? [],
     availability: entry.availability ?? "unknown",
     coverUrl: entry.coverUrl ?? null,
@@ -126,23 +169,43 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
   }
 
   try {
-    const url = new URL("/store/discography", runtimeEnv.medusaBackendUrl)
-    const response = await fetch(url.toString(), {
-      headers: {
-        "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
-      },
-      next: { revalidate: 900, tags: ["discography"] },
-    })
+    const collected: DiscographyApiEntry[] = []
+    const limit = 200
+    let offset = 0
+    let total: number | null = null
 
-    if (!response.ok) {
-      console.error("[discography] Failed to fetch entries", response.status)
-      return []
+    while (true) {
+      const url = new URL("/store/discography", runtimeEnv.medusaBackendUrl)
+      url.searchParams.set("limit", String(limit))
+      url.searchParams.set("offset", String(offset))
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
+        },
+        next: { revalidate: 900, tags: ["discography"] },
+      })
+
+      if (!response.ok) {
+        console.error("[discography] Failed to fetch entries", response.status)
+        return []
+      }
+
+      const payload = (await response.json()) as {
+        entries?: DiscographyApiEntry[]
+        count?: number
+      }
+      const entries = payload.entries ?? []
+      collected.push(...entries)
+      total = typeof payload.count === "number" ? payload.count : total
+      offset += entries.length
+
+      if (!entries.length || (total !== null && offset >= total)) {
+        break
+      }
     }
 
-    const payload = (await response.json()) as { entries?: DiscographyApiEntry[] }
-    const entries = payload.entries ?? []
-
-    return entries.map(normalizeEntry)
+    return collected.map(normalizeEntry)
   } catch (error) {
     console.error("[discography] Failed to load discography", error)
     return []

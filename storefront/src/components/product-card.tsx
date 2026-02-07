@@ -281,6 +281,49 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
     }
   }, [handle, prefetchProductDetail])
 
+  useEffect(() => {
+    if (!onMediaLoad) {
+      return
+    }
+
+    onMediaLoad()
+  }, [onMediaLoad])
+
+  useEffect(() => {
+    if (!onMediaLoad) {
+      return
+    }
+    if (typeof window === "undefined" || typeof ResizeObserver === "undefined") {
+      return
+    }
+
+    const node = cardRef.current
+    if (!node) {
+      return
+    }
+
+    let animationFrame: number | null = null
+    const observer = new ResizeObserver(() => {
+      if (animationFrame !== null) {
+        cancelAnimationFrame(animationFrame)
+      }
+
+      animationFrame = requestAnimationFrame(() => {
+        animationFrame = null
+        onMediaLoad()
+      })
+    })
+
+    observer.observe(node)
+
+    return () => {
+      if (animationFrame !== null) {
+        cancelAnimationFrame(animationFrame)
+      }
+      observer.disconnect()
+    }
+  }, [onMediaLoad])
+
   if (!handle.length) {
     if (process.env.NODE_ENV !== "production") {
       console.warn(

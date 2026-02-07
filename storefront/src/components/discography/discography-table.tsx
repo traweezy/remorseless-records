@@ -178,15 +178,9 @@ const useElementVirtualizerCompat = (
 }
 
 const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) => {
-  const [sorting, setSorting] = useState<SortingState>([{ id: "releaseYear", desc: true }])
+  const [sorting, setSorting] = useState<SortingState>([{ id: "title", desc: false }])
   const [globalFilterValue, setGlobalFilterValue] = useState("")
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-
-  const formatOptions = useMemo(() => {
-    const set = new Set<string>()
-    entries.forEach((entry) => entry.formats.forEach((format) => set.add(format)))
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [entries])
 
   const columns = useMemo(
     () => [
@@ -367,11 +361,11 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilterValue,
-  onColumnFiltersChange: setColumnFilters,
-  globalFilterFn: globalFilter,
-  getCoreRowModel: getCoreRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-  getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    globalFilterFn: globalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   })
 
   const availabilityColumn = table.getColumn("availability")
@@ -414,7 +408,9 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
   const formatDropdownOptions: [PillDropdownOption<string>, ...Array<PillDropdownOption<string>>] =
     [
       { value: "", label: "All formats" },
-      ...formatOptions.map((format) => ({ value: format, label: format })),
+      { value: "Vinyl", label: "Vinyl" },
+      { value: "CD", label: "CD" },
+      { value: "Cassette", label: "Cassette" },
     ]
 
   return (
@@ -424,7 +420,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
         className
       )}
     >
-      <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-border/30 bg-background/95 px-4 pb-3 pt-4 backdrop-blur lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+      <div className="sticky top-16 z-30 flex flex-col gap-3 border-b border-border/30 bg-background/95 px-4 pb-3 pt-4 backdrop-blur lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
         <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:gap-4">
           <div className="space-y-1">
             <Label
@@ -464,32 +460,16 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.24rem] text-muted-foreground lg:justify-end lg:items-center">
           <span className="whitespace-nowrap">
-            Showing {rows.length} of {filteredRowCount} filtered · {entries.length} total
+            Showing {filteredRowCount} filtered · {entries.length} total
           </span>
-          <div className="flex items-center gap-2 whitespace-nowrap">
-            <span>Rows</span>
-            <select
-              value={table.getState().pagination.pageSize}
-              onChange={(event) => table.setPageSize(Number(event.target.value))}
-              className="h-9 rounded-md border border-border/70 bg-background px-2 text-xs text-foreground"
-            >
-              {[10, 20, 30, 50, 100].map((pageSize) => (
-                <option key={pageSize} value={pageSize}>
-                  {pageSize}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <div ref={parentRef} className="h-full min-h-0 overflow-auto">
-            {rows.length ? (
-              <div
-                style={{ height: virtualizer.getTotalSize(), position: "relative" }}
-              >
-              <div className="hidden md:grid grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] items-center gap-5 px-5 pb-3 text-[0.65rem] uppercase tracking-[0.24rem] text-muted-foreground/80">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div ref={parentRef} className="h-full min-h-0 overflow-auto">
+          {rows.length ? (
+            <>
+              <div className="sticky top-0 z-10 hidden border-b border-border/30 bg-background/95 px-5 py-3 text-[0.65rem] uppercase tracking-[0.24rem] text-muted-foreground/80 backdrop-blur md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
                 <div className="text-left">Cover</div>
                 <SortableHeader label="Release" column={table.getColumn("title")!} />
                 <SortableHeader label="Artist" column={table.getColumn("artist")!} />
@@ -500,68 +480,72 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                 <div className="text-right">Actions</div>
               </div>
 
-              {virtualizer.getVirtualItems().map((virtualRow) => {
-                const row = rows[virtualRow.index]
-                if (!row) {
-                  return null
-                }
-                const cellById = Object.fromEntries(
-                  row.getVisibleCells().map((cell) => [cell.column.id, cell])
-                )
-                return (
-                  <div
-                    key={row.id}
-                    data-index={virtualRow.index}
-                    ref={virtualizer.measureElement}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                    className="border-b border-border/30"
-                  >
-                    <div className="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
-                      <div className="md:flex md:items-center">
-                        {cellById.cover ? flexRender(cellById.cover.column.columnDef.cell, cellById.cover.getContext()) : null}
-                      </div>
-                      <div>
-                        {cellById.title ? flexRender(cellById.title.column.columnDef.cell, cellById.title.getContext()) : null}
-                      </div>
-                      <div className="md:flex md:items-center">
-                        {cellById.artist ? flexRender(cellById.artist.column.columnDef.cell, cellById.artist.getContext()) : null}
-                      </div>
-                      <div className="md:flex md:items-center">
-                        {cellById.releaseYear
-                          ? flexRender(cellById.releaseYear.column.columnDef.cell, cellById.releaseYear.getContext())
-                          : null}
-                      </div>
-                      <div className="md:flex md:items-center">
-                        {cellById.formats
-                          ? flexRender(cellById.formats.column.columnDef.cell, cellById.formats.getContext())
-                          : null}
-                      </div>
-                      <div className="md:flex md:items-center">
-                        {cellById.catalogNumber
-                          ? flexRender(cellById.catalogNumber.column.columnDef.cell, cellById.catalogNumber.getContext())
-                          : null}
-                      </div>
-                      <div className="md:flex md:items-center">
-                        {cellById.availability
-                          ? flexRender(cellById.availability.column.columnDef.cell, cellById.availability.getContext())
-                          : null}
-                      </div>
-                      <div className="md:flex md:items-center md:justify-end">
-                        {cellById.actions
-                          ? flexRender(cellById.actions.column.columnDef.cell, cellById.actions.getContext())
-                          : null}
+              <div
+                style={{ height: virtualizer.getTotalSize(), position: "relative" }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = rows[virtualRow.index]
+                  if (!row) {
+                    return null
+                  }
+                  const cellById = Object.fromEntries(
+                    row.getVisibleCells().map((cell) => [cell.column.id, cell])
+                  )
+                  return (
+                    <div
+                      key={row.id}
+                      data-index={virtualRow.index}
+                      ref={virtualizer.measureElement}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                      className="border-b border-border/30"
+                    >
+                      <div className="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
+                        <div className="md:flex md:items-center">
+                          {cellById.cover ? flexRender(cellById.cover.column.columnDef.cell, cellById.cover.getContext()) : null}
+                        </div>
+                        <div>
+                          {cellById.title ? flexRender(cellById.title.column.columnDef.cell, cellById.title.getContext()) : null}
+                        </div>
+                        <div className="md:flex md:items-center">
+                          {cellById.artist ? flexRender(cellById.artist.column.columnDef.cell, cellById.artist.getContext()) : null}
+                        </div>
+                        <div className="md:flex md:items-center">
+                          {cellById.releaseYear
+                            ? flexRender(cellById.releaseYear.column.columnDef.cell, cellById.releaseYear.getContext())
+                            : null}
+                        </div>
+                        <div className="md:flex md:items-center">
+                          {cellById.formats
+                            ? flexRender(cellById.formats.column.columnDef.cell, cellById.formats.getContext())
+                            : null}
+                        </div>
+                        <div className="md:flex md:items-center">
+                          {cellById.catalogNumber
+                            ? flexRender(cellById.catalogNumber.column.columnDef.cell, cellById.catalogNumber.getContext())
+                            : null}
+                        </div>
+                        <div className="md:flex md:items-center">
+                          {cellById.availability
+                            ? flexRender(cellById.availability.column.columnDef.cell, cellById.availability.getContext())
+                            : null}
+                        </div>
+                        <div className="md:flex md:items-center md:justify-end">
+                          {cellById.actions
+                            ? flexRender(cellById.actions.column.columnDef.cell, cellById.actions.getContext())
+                            : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            </>
           ) : (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
               Nothing matches these filters yet. Clear filters or check back when the catalog updates.
