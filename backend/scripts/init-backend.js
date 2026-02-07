@@ -252,11 +252,18 @@ const resolveBuiltScript = (filename) => {
   return path.resolve(serverRoot, 'src', 'scripts', filename)
 }
 
+const runMigrations = () => {
+  if (process.env.MEDUSA_WORKER_MODE === 'worker') {
+    console.log('Running in worker mode, skipping database migrations.')
+    return
+  }
+
+  console.log('Running migrations...')
+  runMedusaCommand(['db:migrate'])
+}
+
 const seedDatabase = async () => {
   try {
-    console.log('Running migrations...')
-    runMedusaCommand(['db:migrate'])
-
     console.log('Running link sync...')
     runMedusaCommand(['db:sync-links'])
 
@@ -319,6 +326,7 @@ const reportDeploy = async () => {
 const initialize = async () => {
   try {
     await ensureMeilisearchAdminKey()
+    runMigrations()
     await seedOnce()
     await reportDeploy()
 
