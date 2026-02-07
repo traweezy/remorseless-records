@@ -26,8 +26,6 @@ export const metadata: Metadata = {
   },
 }
 
-export const revalidate = 300
-
 const NewsPage = async () => {
   const { entries, count } = await getNewsEntries()
 

@@ -8,8 +8,6 @@ const querySchema = z.object({
   offset: z.coerce.number().int().min(0).optional(),
 })
 
-export const revalidate = 300
-
 export const GET = async (request: Request) => {
   const { searchParams } = new URL(request.url)
   const parsed = querySchema.safeParse(Object.fromEntries(searchParams.entries()))
