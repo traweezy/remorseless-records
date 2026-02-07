@@ -248,6 +248,18 @@ const DiscographyAdminPage = () => {
     }
 
     const title = formState.title.trim()
+    const resolvedReleaseYear = (() => {
+      const dateValue = formState.releaseDate.trim()
+      if (dateValue) {
+        const parsed = new Date(dateValue)
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed.getUTCFullYear()
+        }
+      }
+      return formState.releaseYear.trim()
+        ? Number.parseInt(formState.releaseYear, 10)
+        : null
+    })()
 
     const payload = {
       title,
@@ -257,9 +269,7 @@ const DiscographyAdminPage = () => {
       collectionTitle: formState.collectionTitle.trim() || null,
       catalogNumber: formState.catalogNumber.trim() || null,
       releaseDate: formState.releaseDate.trim() || null,
-      releaseYear: formState.releaseYear.trim()
-        ? Number.parseInt(formState.releaseYear, 10)
-        : null,
+      releaseYear: resolvedReleaseYear,
       formats: normalizeList(formState.formats),
       genres: normalizeList(formState.genres),
       availability: formState.availability,
@@ -517,16 +527,6 @@ const DiscographyAdminPage = () => {
                   value={formState.releaseDate}
                   onChange={(event) =>
                     updateField("releaseDate")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Release year</Label>
-                <Input
-                  type="number"
-                  value={formState.releaseYear}
-                  onChange={(event) =>
-                    updateField("releaseYear")(readValue(event))
                   }
                 />
               </div>
