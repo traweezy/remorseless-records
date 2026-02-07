@@ -3,7 +3,9 @@ import type { Metadata } from "next"
 
 import HeroSection from "@/components/hero-section"
 import ProductCarouselSection from "@/components/product-carousel-section"
+import NewsCarouselSection from "@/components/news/news-carousel-section"
 import { getCollectionProductsByHandle } from "@/lib/data/products"
+import { getNewsEntries } from "@/lib/data/news"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
@@ -55,14 +57,16 @@ const pseudoShuffle = <T extends { handle?: string | null }>(
   })
 
 const HomePage = async (): Promise<ReactElement> => {
-  const [featured, newest, staff] = await Promise.all([
+  const [featured, newest, staff, news] = await Promise.all([
     getCollectionProductsByHandle("featured"),
     getCollectionProductsByHandle("new-releases"),
     getCollectionProductsByHandle("staff-picks"),
+    getNewsEntries(),
   ])
   const randomizedFeatured = pseudoShuffle(featured, "featured")
   const randomizedNewest = pseudoShuffle(newest, "new-releases")
   const randomizedStaff = pseudoShuffle(staff, "staff-picks")
+  const latestNews = news.entries
   const featuredListJsonLd = buildItemListJsonLd(
     "Featured Picks",
     randomizedFeatured
@@ -98,6 +102,12 @@ const HomePage = async (): Promise<ReactElement> => {
             heading={{ leading: "Staff", highlight: "Signals" }}
             description="Releases we can&apos;t stop looping. Tuned for the true devotees only."
             products={randomizedStaff}
+          />
+
+          <NewsCarouselSection
+            heading={{ leading: "Latest", highlight: "News" }}
+            description="Dispatches from the label: drops, studio notes, and archive dispatches."
+            entries={latestNews}
           />
         </main>
       </div>

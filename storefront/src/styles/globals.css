@@ -359,4 +359,55 @@
   .scrollbar-metal::-webkit-scrollbar-thumb:hover {
     background: hsla(0, 0%, 65%, 0.85);
   }
+
+  .news-richtext > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .news-richtext h2,
+  .news-richtext h3,
+  .news-richtext h4 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.2rem;
+    color: hsl(var(--foreground));
+  }
+
+  .news-richtext h2 {
+    font-size: 1.5rem;
+  }
+
+  .news-richtext h3 {
+    font-size: 1.25rem;
+  }
+
+  .news-richtext h4 {
+    font-size: 1.1rem;
+  }
+
+  .news-richtext ul,
+  .news-richtext ol {
+    padding-left: 1.25rem;
+  }
+
+  .news-richtext ul {
+    list-style: disc;
+  }
+
+  .news-richtext ol {
+    list-style: decimal;
+  }
+
+  .news-richtext blockquote {
+    border-left: 3px solid hsl(var(--border));
+    padding-left: 1rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .news-richtext a {
+    color: hsl(var(--foreground));
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
 }

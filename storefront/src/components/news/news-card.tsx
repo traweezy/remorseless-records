@@ -6,6 +6,7 @@ import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/ui/cn"
 import type { NewsEntry } from "@/lib/data/news"
+import { sanitizeNewsHtml } from "@/lib/news/rich-text"
 
 type NewsCardProps = {
   entry: NewsEntry
@@ -45,8 +46,8 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
     return dateFormatter.format(parsed)
   }, [dateFormatter, entry.createdAt, entry.publishedAt])
 
-  const paragraphs = useMemo(
-    () => entry.content.split(/\n+/).map((value) => value.trim()).filter(Boolean),
+  const sanitizedContent = useMemo(
+    () => sanitizeNewsHtml(entry.content),
     [entry.content]
   )
 
@@ -94,11 +95,10 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
               {entry.excerpt}
             </p>
           ) : null}
-          <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-            {paragraphs.map((paragraph, paragraphIndex) => (
-              <p key={`${entry.id}-paragraph-${paragraphIndex}`}>{paragraph}</p>
-            ))}
-          </div>
+          <div
+            className="news-richtext text-sm leading-relaxed text-muted-foreground"
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+          />
           {tagList.length ? (
             <div className="flex flex-wrap gap-2 pt-2">
               {tagList.map((tag) => (

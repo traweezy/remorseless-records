@@ -4,7 +4,7 @@ import { runtimeEnv } from "@/config/env"
 
 export const NEWS_PAGE_SIZE = 6
 
-export type NewsStatus = "draft" | "published" | "scheduled" | "archived"
+export type NewsStatus = "draft" | "published" | "archived"
 
 export type NewsEntry = {
   id: string
