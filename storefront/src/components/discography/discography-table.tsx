@@ -189,11 +189,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
         header: "Cover",
         size: 64,
         cell: ({ row }) => (
-          <SmartLink
-            href={row.original.productPath}
-            nativePrefetch
-            className="inline-flex items-center justify-center"
-          >
+          <div className="inline-flex items-center justify-center">
             <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-border/60 bg-muted/10 shadow-[0_12px_30px_-20px_rgba(0,0,0,0.8)]">
               {row.original.coverUrl ? (
                 <Image
@@ -209,7 +205,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                 </div>
               )}
             </div>
-          </SmartLink>
+          </div>
         ),
       }),
       columnHelper.accessor("title", {
@@ -221,18 +217,9 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
         ),
         cell: ({ row }) => (
           <div className="space-y-1">
-            <SmartLink
-              href={row.original.productPath}
-              nativePrefetch
-              className="text-sm font-semibold uppercase tracking-[0.25rem] text-foreground hover:text-destructive"
-            >
+            <span className="text-sm font-semibold uppercase tracking-[0.25rem] text-foreground">
               {row.original.title}
-            </SmartLink>
-            {row.original.collectionTitle ? (
-              <div className="text-[0.65rem] uppercase tracking-[0.28rem] text-muted-foreground/70">
-                {row.original.collectionTitle}
-              </div>
-            ) : null}
+            </span>
           </div>
         ),
       }),
