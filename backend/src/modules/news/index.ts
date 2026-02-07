@@ -2,6 +2,8 @@ import { Module } from "@medusajs/framework/utils"
 
 import NewsModuleService from "./service"
 
-export default Module("news", {
+const newsModule: unknown = Module("news", {
   service: NewsModuleService,
 })
+
+export default newsModule

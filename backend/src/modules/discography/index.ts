@@ -2,6 +2,8 @@ import { Module } from "@medusajs/framework/utils"
 
 import DiscographyModuleService from "./service"
 
-export default Module("discography", {
+const discographyModule: unknown = Module("discography", {
   service: DiscographyModuleService,
 })
+
+export default discographyModule
