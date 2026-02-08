@@ -626,7 +626,8 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
               </div>
 
               <div
-                style={{ height: virtualizer.getTotalSize(), position: "relative" }}
+                className="relative md:pt-14"
+                style={{ height: virtualizer.getTotalSize() }}
               >
                 {virtualizer.getVirtualItems().map((virtualRow) => {
                   const row = rows[virtualRow.index]
