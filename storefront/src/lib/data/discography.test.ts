@@ -51,6 +51,7 @@ describe("getDiscographyEntries", () => {
               releaseYear: null,
               formats: ["LP", "compact disc"],
               genres: [faker.music.genre()],
+              tags: ["Limited", "  repress  ", "limited"],
               availability: "in_print",
               coverUrl: faker.internet.url(),
             },
@@ -76,6 +77,7 @@ describe("getDiscographyEntries", () => {
       id,
       productPath: `/products/${productHandle}`,
       formats: ["Vinyl", "CD"],
+      tags: ["Limited", "repress"],
       releaseYear,
     })
   })
@@ -127,6 +129,10 @@ describe("getDiscographyEntries", () => {
     const medusaPublishableKey = faker.string.alphanumeric(16)
     const id = faker.string.uuid()
     const fallbackAlbum = faker.music.songName()
+    const [tagOne, tagTwo] = faker.helpers.uniqueArray(
+      () => faker.string.alpha({ length: 8 }),
+      2
+    )
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
@@ -156,6 +162,7 @@ describe("getDiscographyEntries", () => {
                 releaseYear: null,
                 formats: ["12-inch", "k7", "compact disc", faker.lorem.word()],
                 genres: [faker.music.genre()],
+                tags: [tagOne, " ", tagTwo],
                 availability: "in_print",
                 coverUrl: null,
               },
@@ -181,6 +188,7 @@ describe("getDiscographyEntries", () => {
     expect(entry?.productPath.startsWith("/products/")).toBe(true)
     expect(entry?.releaseYear).toBeNull()
     expect(entry?.formats).toEqual(["Vinyl", "CD", "Cassette"])
+    expect(entry?.tags).toEqual([tagOne, tagTwo])
     expect(entry?.slug.artist).toBe(fallbackAlbum)
     expect(entry?.slug.album).toBe(fallbackAlbum)
   })

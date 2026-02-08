@@ -21,6 +21,7 @@ export type DiscographyEntryRecord = {
   release_year: number | null
   formats: string[] | null
   genres: string[] | null
+  tags: string[] | null
   availability: DiscographyAvailability
   cover_url: string | null
   created_at?: Date | string | null
@@ -39,6 +40,7 @@ export type DiscographyEntryDTO = {
   releaseYear: number | null
   formats: string[]
   genres: string[]
+  tags: string[]
   availability: DiscographyAvailability
   coverUrl: string | null
   createdAt?: string | null
@@ -70,6 +72,7 @@ export const serializeDiscographyEntry = (
   releaseYear: entry.release_year ?? null,
   formats: entry.formats ?? [],
   genres: entry.genres ?? [],
+  tags: entry.tags ?? [],
   availability: entry.availability,
   coverUrl: entry.cover_url ?? null,
   createdAt: toIso(entry.created_at),

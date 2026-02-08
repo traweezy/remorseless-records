@@ -52,6 +52,7 @@ type DiscographyEntry = {
   releaseYear: number | null
   formats: string[]
   genres: string[]
+  tags: string[]
   availability: DiscographyAvailability
   coverUrl: string | null
   createdAt?: string | null
@@ -122,6 +123,7 @@ type DiscographyFormState = {
   releaseYear: string
   formats: string[]
   genres: string[]
+  tags: string[]
   availability: DiscographyAvailability
   coverUrl: string
 }
@@ -141,6 +143,7 @@ const emptyForm: DiscographyFormState = {
   releaseYear: "",
   formats: [],
   genres: [],
+  tags: [],
   availability: "unknown",
   coverUrl: "",
 }
@@ -194,9 +197,11 @@ const DiscographyAdminPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formState, setFormState] = useState<DiscographyFormState>(emptyForm)
   const [customGenre, setCustomGenre] = useState("")
+  const [customTag, setCustomTag] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFormats, setSelectedFormats] = useState<string[]>([])
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [availabilityFilter, setAvailabilityFilter] =
     useState<AvailabilityFilter>("all")
   const [sortValue, setSortValue] = useState<SortValue>("title:asc")
@@ -208,6 +213,17 @@ const DiscographyAdminPage = () => {
   const genreOptions = useMemo(
     () => ["Death", "Doom", "Grind"],
     []
+  )
+  const tagOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(entries.flatMap((entry) => entry.tags ?? []).map((tag) => tag.trim()))
+      )
+        .filter((tag) => tag.length > 0)
+        .sort((left, right) =>
+          left.localeCompare(right, undefined, { sensitivity: "base" })
+        ),
+    [entries]
   )
 
   const fetchEntries = useCallback(async () => {
@@ -221,7 +237,14 @@ const DiscographyAdminPage = () => {
         throw new Error(`Failed to load discography (${response.status})`)
       }
       const data = (await response.json()) as { entries: DiscographyEntry[] }
-      setEntries(data.entries ?? [])
+      setEntries(
+        (data.entries ?? []).map((entry) => ({
+          ...entry,
+          formats: entry.formats ?? [],
+          genres: entry.genres ?? [],
+          tags: entry.tags ?? [],
+        }))
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load discography")
     } finally {
@@ -237,6 +260,7 @@ const DiscographyAdminPage = () => {
     setEditingId(null)
     setFormState(emptyForm)
     setCustomGenre("")
+    setCustomTag("")
     setFormOpen(false)
   }, [])
 
@@ -244,6 +268,7 @@ const DiscographyAdminPage = () => {
     setEditingId(null)
     setFormState(emptyForm)
     setCustomGenre("")
+    setCustomTag("")
     setFormOpen(true)
   }, [])
 
@@ -259,10 +284,12 @@ const DiscographyAdminPage = () => {
       releaseYear: entry.releaseYear ? String(entry.releaseYear) : "",
       formats: entry.formats ?? [],
       genres: entry.genres ?? [],
+      tags: entry.tags ?? [],
       availability: entry.availability,
       coverUrl: entry.coverUrl ?? "",
     })
     setCustomGenre("")
+    setCustomTag("")
     setFormOpen(true)
   }, [])
 
@@ -275,7 +302,7 @@ const DiscographyAdminPage = () => {
   )
 
   const toggleValue = useCallback(
-    (field: "formats" | "genres", value: string) => {
+    (field: "formats" | "genres" | "tags", value: string) => {
       const trimmed = value.trim()
       if (!trimmed.length) {
         return
@@ -301,6 +328,15 @@ const DiscographyAdminPage = () => {
     setCustomGenre("")
   }, [customGenre, toggleValue])
 
+  const addCustomTag = useCallback(() => {
+    const trimmed = customTag.trim()
+    if (!trimmed) {
+      return
+    }
+    toggleValue("tags", trimmed)
+    setCustomTag("")
+  }, [customTag, toggleValue])
+
   const removeGenre = useCallback((value: string) => {
     setFormState((prev) => ({
       ...prev,
@@ -312,6 +348,13 @@ const DiscographyAdminPage = () => {
     setFormState((prev) => ({
       ...prev,
       formats: prev.formats.filter((item) => item.toLowerCase() !== value.toLowerCase()),
+    }))
+  }, [])
+
+  const removeTag = useCallback((value: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((item) => item.toLowerCase() !== value.toLowerCase()),
     }))
   }, [])
 
@@ -347,6 +390,7 @@ const DiscographyAdminPage = () => {
       releaseYear: resolvedReleaseYear,
       formats: normalizeList(formState.formats),
       genres: normalizeList(formState.genres),
+      tags: normalizeList(formState.tags),
       availability: formState.availability,
       coverUrl: formState.coverUrl.trim() || null,
     }
@@ -435,10 +479,26 @@ const DiscographyAdminPage = () => {
     })
   }, [])
 
+  const toggleTagFilter = useCallback((value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return
+    }
+    setSelectedTags((prev) => {
+      const exists = prev.some(
+        (item) => item.toLowerCase() === trimmed.toLowerCase()
+      )
+      return exists
+        ? prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
+        : [...prev, trimmed]
+    })
+  }, [])
+
   const clearFilters = useCallback(() => {
     setSearchQuery("")
     setSelectedFormats([])
     setSelectedGenres([])
+    setSelectedTags([])
     setAvailabilityFilter("all")
   }, [])
 
@@ -460,6 +520,7 @@ const DiscographyAdminPage = () => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
     const activeFormats = selectedFormats.map((value) => value.toLowerCase())
     const activeGenres = selectedGenres.map((value) => value.toLowerCase())
+    const activeTags = selectedTags.map((value) => value.toLowerCase())
 
     const matchesSearch = (entry: DiscographyEntry): boolean => {
       if (!normalizedQuery) {
@@ -473,6 +534,7 @@ const DiscographyAdminPage = () => {
         entry.productHandle ?? "",
         entry.formats.join(" "),
         entry.genres.join(" "),
+        entry.tags.join(" "),
       ]
         .join(" ")
         .toLowerCase()
@@ -495,6 +557,13 @@ const DiscographyAdminPage = () => {
       return entry.genres.some((genre) =>
         activeGenres.includes(genre.toLowerCase())
       )
+    }
+
+    const matchesTags = (entry: DiscographyEntry): boolean => {
+      if (!activeTags.length) {
+        return true
+      }
+      return entry.tags.some((tag) => activeTags.includes(tag.toLowerCase()))
     }
 
     const matchesAvailability = (entry: DiscographyEntry): boolean => {
@@ -538,6 +607,7 @@ const DiscographyAdminPage = () => {
         matchesSearch(entry) &&
         matchesFormats(entry) &&
         matchesGenres(entry) &&
+        matchesTags(entry) &&
         matchesAvailability(entry)
     )
 
@@ -587,6 +657,7 @@ const DiscographyAdminPage = () => {
     searchQuery,
     selectedFormats,
     selectedGenres,
+    selectedTags,
     sortValue,
   ])
 
@@ -595,8 +666,9 @@ const DiscographyAdminPage = () => {
       searchQuery.trim().length > 0 ||
       selectedFormats.length > 0 ||
       selectedGenres.length > 0 ||
+      selectedTags.length > 0 ||
       availabilityFilter !== "all",
-    [availabilityFilter, searchQuery, selectedFormats, selectedGenres]
+    [availabilityFilter, searchQuery, selectedFormats, selectedGenres, selectedTags]
   )
 
   return (
@@ -705,6 +777,29 @@ const DiscographyAdminPage = () => {
               )
             })}
           </div>
+          {tagOptions.length ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                Tags
+              </Text>
+              {tagOptions.map((option) => {
+                const selected = selectedTags.some(
+                  (value) => value.toLowerCase() === option.toLowerCase()
+                )
+                return (
+                  <Button
+                    key={`tag-filter-${option}`}
+                    type="button"
+                    size="small"
+                    variant={selected ? "primary" : "secondary"}
+                    onClick={() => toggleTagFilter(option)}
+                  >
+                    {option}
+                  </Button>
+                )
+              })}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <Text size="xsmall" className="text-ui-fg-subtle">
               Availability
@@ -735,6 +830,7 @@ const DiscographyAdminPage = () => {
               <Table.HeaderCell>Artist</Table.HeaderCell>
               <Table.HeaderCell>Year</Table.HeaderCell>
               <Table.HeaderCell>Formats</Table.HeaderCell>
+              <Table.HeaderCell>Tags</Table.HeaderCell>
               <Table.HeaderCell>Catalog #</Table.HeaderCell>
               <Table.HeaderCell>Availability</Table.HeaderCell>
               <Table.HeaderCell className="text-right">Actions</Table.HeaderCell>
@@ -744,6 +840,7 @@ const DiscographyAdminPage = () => {
             {loading ? (
               <Table.Row>
                 <Table.Cell>Loading…</Table.Cell>
+                <Table.Cell />
                 <Table.Cell />
                 <Table.Cell />
                 <Table.Cell />
@@ -775,6 +872,11 @@ const DiscographyAdminPage = () => {
                   <Table.Cell>
                     <Text size="small">
                       {entry.formats.length ? entry.formats.join(", ") : "—"}
+                    </Text>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Text size="small">
+                      {entry.tags.length ? entry.tags.join(", ") : "—"}
                     </Text>
                   </Table.Cell>
                   <Table.Cell>
@@ -822,6 +924,7 @@ const DiscographyAdminPage = () => {
                 <Table.Cell />
                 <Table.Cell />
                 <Table.Cell />
+                <Table.Cell />
               </Table.Row>
             )}
           </Table.Body>
@@ -843,7 +946,7 @@ const DiscographyAdminPage = () => {
                 {editingId ? "Edit entry" : "New entry"}
               </FocusModal.Title>
               <FocusModal.Description className="text-ui-fg-subtle">
-                Select formats and genres, and add custom genres as needed.
+                Select formats, genres, and tags, and add custom values as needed.
               </FocusModal.Description>
             </div>
           </FocusModal.Header>
@@ -984,6 +1087,61 @@ const DiscographyAdminPage = () => {
                         onClick={() => removeGenre(genre)}
                       >
                         {genre} ×
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Tags</Label>
+                {tagOptions.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {tagOptions.map((option) => {
+                      const selected = formState.tags.some(
+                        (value) => value.toLowerCase() === option.toLowerCase()
+                      )
+                      return (
+                        <Button
+                          key={`tag-option-${option}`}
+                          type="button"
+                          size="small"
+                          variant={selected ? "primary" : "secondary"}
+                          onClick={() => toggleValue("tags", option)}
+                        >
+                          {option}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    value={customTag}
+                    placeholder="Add a tag…"
+                    onChange={(event) => setCustomTag(readValue(event))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        addCustomTag()
+                      }
+                    }}
+                    className="max-w-xs"
+                  />
+                  <Button type="button" size="small" variant="secondary" onClick={addCustomTag}>
+                    Add tag
+                  </Button>
+                </div>
+                {formState.tags.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {formState.tags.map((tag) => (
+                      <Button
+                        key={`tag-${tag}`}
+                        type="button"
+                        size="small"
+                        variant="secondary"
+                        onClick={() => removeTag(tag)}
+                      >
+                        {tag} ×
                       </Button>
                     ))}
                   </div>

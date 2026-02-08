@@ -30,6 +30,7 @@ const entryBaseSchema = z.object({
   releaseYear: z.coerce.number().int().optional().nullable(),
   formats: z.array(z.string().trim()).optional(),
   genres: z.array(z.string().trim()).optional(),
+  tags: z.array(z.string().trim()).optional(),
   availability: z.enum(discographyAvailabilityValues).optional(),
   coverUrl: z.string().trim().url().optional().nullable(),
 })
@@ -59,6 +60,7 @@ const toEntryPayload = (input: z.infer<typeof entryBaseSchema>) => ({
   release_year: input.releaseYear ?? null,
   formats: normalizeList(input.formats),
   genres: normalizeList(input.genres),
+  tags: normalizeList(input.tags),
   availability: input.availability ?? "unknown",
   cover_url: toNullableString(input.coverUrl),
 })

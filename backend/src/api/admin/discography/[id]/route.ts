@@ -21,6 +21,7 @@ const entryUpdateSchema = z.object({
   releaseYear: z.coerce.number().int().optional().nullable(),
   formats: z.array(z.string().trim()).optional(),
   genres: z.array(z.string().trim()).optional(),
+  tags: z.array(z.string().trim()).optional(),
   availability: z.enum(discographyAvailabilityValues).optional(),
   coverUrl: z.string().trim().url().optional().nullable(),
 })
@@ -72,6 +73,9 @@ const toUpdatePayload = (input: z.infer<typeof entryUpdateSchema>) => {
   }
   if (input.genres !== undefined) {
     payload.genres = normalizeList(input.genres)
+  }
+  if (input.tags !== undefined) {
+    payload.tags = normalizeList(input.tags)
   }
   if (input.availability !== undefined) {
     payload.availability = input.availability

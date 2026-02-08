@@ -101,8 +101,8 @@ const globalFilter: FilterFn<DiscographyEntry> = (row, _columnId, filterValue) =
     return true
   }
 
-  const { title, artist, slug, catalogNumber } = row.original
-  const haystack = [title, artist, slug.artist, slug.album, catalogNumber ?? ""]
+  const { title, artist, slug, catalogNumber, tags } = row.original
+  const haystack = [title, artist, slug.artist, slug.album, catalogNumber ?? "", tags.join(" ")]
     .join(" ")
     .toLowerCase()
 
@@ -336,6 +336,34 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
           return formats.some((format) => format.toLowerCase() === (value as string).toLowerCase())
         },
       }),
+      columnHelper.accessor("tags", {
+        header: "Tags",
+        cell: ({ getValue }) => {
+          const tags = getValue()
+          if (!tags.length) {
+            return <span className="text-xs text-muted-foreground">—</span>
+          }
+          return (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="max-w-full rounded-full border border-border/60 px-2 py-1 text-[0.65rem] uppercase tracking-[0.2rem] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )
+        },
+        filterFn: (row, id, value) => {
+          if (!value) {
+            return true
+          }
+          const tags = row.getValue<string[]>(id)
+          return tags.some((tag) => tag.toLowerCase() === (value as string).toLowerCase())
+        },
+      }),
       columnHelper.accessor("catalogNumber", {
         header: "Catalog #",
         cell: ({ getValue }) => (
@@ -397,6 +425,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
 
   const availabilityColumn = table.getColumn("availability")
   const formatColumn = table.getColumn("formats")
+  const tagColumn = table.getColumn("tags")
 
   const handleAvailabilityChange = useCallback(
     (value: string) => availabilityColumn?.setFilterValue(value || undefined),
@@ -408,8 +437,15 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
     [formatColumn]
   )
 
+  const handleTagChange = useCallback(
+    (value: string) => tagColumn?.setFilterValue(value || undefined),
+    [tagColumn]
+  )
+
   const formatFilterValue =
     (formatColumn?.getFilterValue() as string | undefined) ?? ""
+  const tagFilterValue =
+    (tagColumn?.getFilterValue() as string | undefined) ?? ""
   const availabilityFilterValue =
     (availabilityColumn?.getFilterValue() as string | undefined) ?? ""
 
@@ -486,6 +522,26 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
       { value: "Cassette", label: "Cassette" },
     ]
 
+  const tagDropdownOptions = useMemo<
+    [PillDropdownOption<string>, ...Array<PillDropdownOption<string>>]
+  >(() => {
+    const uniqueTags = Array.from(
+      new Set(
+        entries
+          .flatMap((entry) => entry.tags ?? [])
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0)
+      )
+    ).sort((left, right) =>
+      left.localeCompare(right, undefined, { sensitivity: "base" })
+    )
+
+    return [
+      { value: "", label: "All tags" },
+      ...uniqueTags.map((tag) => ({ value: tag, label: tag })),
+    ]
+  }, [entries])
+
   return (
     <div
       className={cn(
@@ -532,6 +588,15 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
               dropdownClassName="w-full sm:min-w-[220px]"
               renderTriggerLabel={(option) => option.label}
             />
+            <PillDropdown
+              value={tagFilterValue}
+              options={tagDropdownOptions}
+              onChange={(value) => handleTagChange(value)}
+              className="w-full sm:min-w-[220px]"
+              buttonClassName="w-full sm:min-w-[220px]"
+              dropdownClassName="w-full sm:min-w-[220px]"
+              renderTriggerLabel={(option) => option.label}
+            />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.24rem] text-muted-foreground lg:justify-end lg:items-center">
@@ -546,14 +611,15 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
           {rows.length ? (
             <>
               <div
-                className="sticky z-10 hidden border-b border-border/30 bg-background/95 px-5 py-3 text-[0.68rem] uppercase tracking-[0.2rem] text-muted-foreground backdrop-blur md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5"
+                className="sticky z-10 hidden border-b border-border/30 bg-background/95 px-5 py-3 text-[0.68rem] uppercase tracking-[0.2rem] text-muted-foreground backdrop-blur md:grid md:grid-cols-[72px_1.55fr_1.05fr_0.9fr_1fr_0.95fr_0.85fr_1fr_0.9fr] md:items-center md:gap-5"
                 style={{ top: `${headerStickyTop}px` }}
               >
                 <div className="text-left">Cover</div>
                 <SortableHeader label="Release" column={table.getColumn("title")!} />
                 <SortableHeader label="Artist" column={table.getColumn("artist")!} />
                 <SortableHeader label="Release date" column={table.getColumn("releaseDate")!} />
-                <div className="text-left">Format</div>
+                <div className="text-left">Formats</div>
+                <div className="text-left">Tags</div>
                 <div className="text-left">Catalog #</div>
                 <SortableHeader label="Availability" column={table.getColumn("availability")!} />
                 <div className="text-right">Actions</div>
@@ -614,7 +680,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
 
                           <div className="mt-4 space-y-1">
                             <p className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
-                              Format
+                              Formats
                             </p>
                             {cellById.formats
                               ? flexRender(cellById.formats.column.columnDef.cell, cellById.formats.getContext())
@@ -632,6 +698,16 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                                       cellById.releaseDate.column.columnDef.cell,
                                       cellById.releaseDate.getContext()
                                     )
+                                  : null}
+                              </dd>
+                            </div>
+                            <div className="space-y-1">
+                              <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                Tags
+                              </dt>
+                              <dd>
+                                {cellById.tags
+                                  ? flexRender(cellById.tags.column.columnDef.cell, cellById.tags.getContext())
                                   : null}
                               </dd>
                             </div>
@@ -675,7 +751,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                         </div>
                       </div>
 
-                      <div className="hidden gap-4 px-5 py-5 md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
+                      <div className="hidden gap-4 px-5 py-5 md:grid md:grid-cols-[72px_1.55fr_1.05fr_0.9fr_1fr_0.95fr_0.85fr_1fr_0.9fr] md:items-center md:gap-5">
                         <div className="md:flex md:items-center">
                           {cellById.cover ? flexRender(cellById.cover.column.columnDef.cell, cellById.cover.getContext()) : null}
                         </div>
@@ -693,6 +769,11 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                         <div className="md:flex md:items-center">
                           {cellById.formats
                             ? flexRender(cellById.formats.column.columnDef.cell, cellById.formats.getContext())
+                            : null}
+                        </div>
+                        <div className="md:flex md:items-center">
+                          {cellById.tags
+                            ? flexRender(cellById.tags.column.columnDef.cell, cellById.tags.getContext())
                             : null}
                         </div>
                         <div className="md:flex md:items-center">

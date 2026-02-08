@@ -17,6 +17,7 @@ const DiscographyEntry = model.define(
     release_year: model.number().nullable(),
     formats: model.array().default([]),
     genres: model.array().default([]),
+    tags: model.array().default([]),
     availability: model
       .enum(["in_print", "out_of_print", "preorder", "digital_only", "unknown"])
       .default("unknown"),

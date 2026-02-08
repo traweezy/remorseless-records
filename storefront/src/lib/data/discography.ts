@@ -28,6 +28,7 @@ export type DiscographyEntry = {
   releaseYear: number | null
   formats: string[]
   genres: string[]
+  tags: string[]
   availability: DiscographyAvailability
   coverUrl: string | null
 }
@@ -44,6 +45,7 @@ type DiscographyApiEntry = {
   releaseYear: number | null
   formats: string[]
   genres: string[]
+  tags: string[]
   availability: DiscographyAvailability
   coverUrl: string | null
 }
@@ -89,6 +91,36 @@ const normalizeFormats = (formats: string[] | null | undefined): string[] => {
   })
 
   return FORMAT_PATTERNS.map(({ label }) => label).filter((label) => found.has(label))
+}
+
+const normalizeTags = (tags: string[] | null | undefined): string[] => {
+  if (!tags?.length) {
+    return []
+  }
+
+  const normalized: string[] = []
+  const seen = new Set<string>()
+
+  tags.forEach((raw) => {
+    if (typeof raw !== "string") {
+      return
+    }
+
+    const trimmed = raw.trim()
+    if (!trimmed.length) {
+      return
+    }
+
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) {
+      return
+    }
+
+    seen.add(key)
+    normalized.push(trimmed)
+  })
+
+  return normalized
 }
 
 const removeDiacritics = (value: string): string =>
@@ -157,6 +189,7 @@ const normalizeEntry = (entry: DiscographyApiEntry): DiscographyEntry => {
     releaseYear: Number.isFinite(releaseYear ?? NaN) ? releaseYear : null,
     formats: normalizeFormats(entry.formats ?? []),
     genres: entry.genres ?? [],
+    tags: normalizeTags(entry.tags ?? []),
     availability: entry.availability ?? "unknown",
     coverUrl: entry.coverUrl ?? null,
   }

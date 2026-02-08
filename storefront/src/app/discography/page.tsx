@@ -9,7 +9,7 @@ const canonical = `${siteMetadata.siteUrl}/discography`
 export const metadata: Metadata = {
   title: "Discography",
   description:
-    "Every Remorseless Records release—past, present, and future. Browse the full catalog with formats, years, and availability.",
+    "Every Remorseless Records release—past, present, and future. Browse the full catalog with formats, tags, years, and availability.",
   alternates: {
     canonical,
   },
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     url: canonical,
     title: "Discography · Remorseless Records",
     description:
-      "All official releases from Remorseless Records. Filter by format, year, availability, and artist.",
+      "All official releases from Remorseless Records. Filter by format, tags, year, availability, and artist.",
   },
   twitter: {
     title: "Discography · Remorseless Records",
@@ -42,7 +42,7 @@ const DiscographyPage = async () => {
             </h1>
             <p className="max-w-3xl text-base leading-relaxed text-muted-foreground">
               Every release we have put out—vinyl, tape, digital-only, and out-of-print titles.
-              Sort by year, filter formats, and jump into the store when copies are available.
+              Sort by year, filter by format and tags, and jump into the store when copies are available.
             </p>
           </div>
         </header>

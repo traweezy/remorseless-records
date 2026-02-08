@@ -77,6 +77,7 @@ type DiscographyCreatePayload = {
   release_year: number | null
   formats: string[]
   genres: string[]
+  tags: string[]
   availability: "in_print" | "out_of_print" | "preorder" | "digital_only" | "unknown"
   cover_url: string | null
 }
@@ -278,6 +279,54 @@ const extractMetadataNumber = (metadata: Record<string, unknown> | null, keys: s
   return null
 }
 
+const normalizeStringList = (values: string[]): string[] => {
+  const seen = new Set<string>()
+  const normalized: string[] = []
+
+  values.forEach((value) => {
+    const trimmed = normalizeString(value)
+    if (!trimmed) {
+      return
+    }
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) {
+      return
+    }
+    seen.add(key)
+    normalized.push(trimmed)
+  })
+
+  return normalized
+}
+
+const extractMetadataStringList = (
+  metadata: Record<string, unknown> | null,
+  keys: string[]
+): string[] => {
+  if (!metadata) {
+    return []
+  }
+
+  const values: string[] = []
+
+  keys.forEach((key) => {
+    const rawValue = metadata[key]
+    if (typeof rawValue === "string") {
+      values.push(...rawValue.split(","))
+      return
+    }
+    if (Array.isArray(rawValue)) {
+      rawValue.forEach((entry) => {
+        if (typeof entry === "string") {
+          values.push(entry)
+        }
+      })
+    }
+  })
+
+  return normalizeStringList(values)
+}
+
 const parseDate = (value: string | null | undefined): Date | null => {
   if (!value) {
     return null
@@ -439,6 +488,12 @@ const buildPayload = (product: ProductRecord): DiscographyCreatePayload | null =
 
   const formats = extractFormats(product)
   const genres = extractGenres(product.categories ?? null)
+  const tags = extractMetadataStringList(metadata, [
+    "tags",
+    "tag",
+    "keywords",
+    "styles",
+  ])
   const availability = resolveAvailability(product)
   const coverUrl =
     normalizeString(product.thumbnail) ??
@@ -456,6 +511,7 @@ const buildPayload = (product: ProductRecord): DiscographyCreatePayload | null =
     release_year: releaseYear,
     formats,
     genres,
+    tags,
     availability,
     cover_url: coverUrl,
   }
