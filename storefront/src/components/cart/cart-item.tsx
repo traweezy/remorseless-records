@@ -55,7 +55,7 @@ export const CartItem = ({
   return (
     <article
       className={cn(
-        "flex gap-4 rounded-xl border border-border/60 bg-background/90 p-4 shadow-card transition duration-150 ease-out",
+        "flex items-start gap-4 rounded-xl border border-border/60 bg-background/90 p-4 shadow-card transition duration-150 ease-out",
         isPending && "opacity-75",
         className
       )}
@@ -78,22 +78,22 @@ export const CartItem = ({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col justify-between gap-3">
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-foreground leading-tight">
+          <h3 className="line-clamp-2 break-words text-base font-semibold leading-tight text-foreground">
             {item.title}
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="truncate text-sm text-muted-foreground">
             {item.variant?.title ?? "Standard edition"}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-nowrap">
           <div className="flex items-center gap-2">
             <button
               type="button"
               aria-label="Decrease quantity"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 text-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 text-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10 sm:w-10"
               onClick={() => handleQuantityChange(quantity - 1)}
               disabled={isPending}
             >
@@ -105,7 +105,7 @@ export const CartItem = ({
             <button
               type="button"
               aria-label="Increase quantity"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 text-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 text-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10 sm:w-10"
               onClick={() => handleQuantityChange(quantity + 1)}
               disabled={isPending}
             >
@@ -113,14 +113,14 @@ export const CartItem = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-3">
             <span className="text-base font-semibold text-accent">
               {formatAmount(currencyCode, totalAmount)}
             </span>
             <button
               type="button"
               aria-label="Remove item"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10 sm:w-10"
               onClick={handleRemove}
               disabled={isPending}
             >

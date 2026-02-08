@@ -1245,7 +1245,7 @@ const ProductSearchExperience = ({
   const hasActiveFilters = activeFiltersCount > 0
 
   const filterChipClass =
-    "inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.25rem] text-foreground shadow-[0_0_15px_rgba(255,0,0,0.18)] transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50"
+    "inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16rem] text-foreground shadow-[0_0_15px_rgba(255,0,0,0.18)] transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50 sm:tracking-[0.25rem]"
 
   const categoryFacetCounts = useMemo(
     () =>
@@ -1487,12 +1487,12 @@ const ProductSearchExperience = ({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <div className="lg:hidden">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="inline-flex h-11 items-center gap-2 rounded-full border-border/50 px-4 text-xs uppercase tracking-[0.3rem]"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border-border/50 px-4 text-xs uppercase tracking-[0.3rem] sm:w-auto sm:justify-start"
                   onClick={() => setMobileFiltersOpen(true)}
                 >
                   <SlidersHorizontal className="h-4 w-4" />
@@ -1518,7 +1518,7 @@ const ProductSearchExperience = ({
                       </div>
                       <button
                         type="button"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-9"
                         aria-label="Close filters"
                         onClick={() => setMobileFiltersOpen(false)}
                       >
@@ -1558,7 +1558,7 @@ const ProductSearchExperience = ({
                   </div>
                 </Drawer>
               </div>
-              <div className="group flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-2 transition-[border-color,box-shadow] supports-[backdrop-filter]:backdrop-blur-lg hover:border-border focus-within:border-destructive focus-within:shadow-[0_0_0_2px_hsl(var(--destructive)/0.45)]">
+              <div className="group flex h-11 w-full min-w-0 items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-2 transition-[border-color,box-shadow] supports-[backdrop-filter]:backdrop-blur-lg hover:border-border focus-within:border-destructive focus-within:shadow-[0_0_0_2px_hsl(var(--destructive)/0.45)] sm:flex-1 sm:min-w-[240px]">
                 <Search
                   className="h-4 w-4 text-muted-foreground transition group-focus-within:text-destructive"
                   aria-hidden
@@ -1575,14 +1575,16 @@ const ProductSearchExperience = ({
                   autoComplete="off"
                 />
               </div>
-              <SortDropdown
-                value={sortOption}
-                onChange={(next) => {
-                  setSortOption(next)
-                  focusSearchInput()
-                }}
-                focusSearch={focusSearchInput}
-              />
+              <div className="w-full sm:w-auto sm:shrink-0">
+                <SortDropdown
+                  value={sortOption}
+                  onChange={(next) => {
+                    setSortOption(next)
+                    focusSearchInput()
+                  }}
+                  focusSearch={focusSearchInput}
+                />
+              </div>
             </div>
 
             {(selectedGenres.length ||

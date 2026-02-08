@@ -510,10 +510,10 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
               </div>
               <div className="flex flex-1 flex-col justify-between px-5 py-6">
                 <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
+                  <p className="truncate text-xs uppercase tracking-[0.35rem] text-muted-foreground">
                     {summary.subtitle ?? summary.artist}
                   </p>
-                  <h3 className="font-bebas text-2xl uppercase tracking-[0.35rem] text-foreground">
+                  <h3 className="break-words font-bebas text-2xl uppercase tracking-[0.35rem] text-foreground">
                     {summary.title}
                   </h3>
                 </div>

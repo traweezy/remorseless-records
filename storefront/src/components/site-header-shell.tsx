@@ -141,7 +141,7 @@ const SiteHeaderShell = () => {
           </span>
         </SmartLink>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {!pathname?.startsWith("/checkout") ? (
             <nav className="hidden items-center md:flex">
               {NAV_LINKS.map((link) => (
@@ -207,7 +207,7 @@ const SiteHeaderShell = () => {
                     nativePrefetch
                     onClick={() => setMenuOpen(false)}
                     className={cn(
-                      "rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive",
+                      "rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.22rem] text-muted-foreground transition hover:border-destructive hover:text-destructive sm:tracking-[0.3rem]",
                       activeHref === link.href && "border-destructive text-destructive"
                     )}
                   >
@@ -222,17 +222,17 @@ const SiteHeaderShell = () => {
                     setMenuOpen(false)
                     setCartOpen(true)
                   }}
-                  className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+                  className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.22rem] text-muted-foreground transition hover:border-destructive hover:text-destructive sm:tracking-[0.3rem]"
                 >
                   <span>Cart</span>
-                  <span className="rounded-full bg-destructive px-3 py-1 text-xs text-white">
+                  <span className="max-w-[9rem] truncate rounded-full bg-destructive px-3 py-1 text-xs text-white">
                     {cartLabel}
                   </span>
                 </button>
               </div>
               <button
                 type="button"
-                className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 p-2 text-muted-foreground transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/60 p-2 text-muted-foreground transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-9"
                 aria-label="Close navigation"
                 onClick={() => setMenuOpen(false)}
               >

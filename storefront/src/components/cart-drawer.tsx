@@ -104,7 +104,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
   return (
     <Drawer open={open} onOpenChange={onOpenChange} ariaLabel="Cart">
       <div className="flex flex-1 flex-col p-0">
-        <header className="flex items-start justify-between border-b border-border/60 px-6 py-4">
+        <header className="flex items-start justify-between border-b border-border/60 px-4 py-4 sm:px-6">
           <div className="space-y-1 text-left">
             <p className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <ShoppingBag className="h-5 w-5 text-accent" />
@@ -116,7 +116,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
           </div>
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-9"
             aria-label="Close cart"
             onClick={() => onOpenChange(false)}
           >
@@ -126,7 +126,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
 
         {hasItems ? (
           <>
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
               {isLoading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 3 }).map((_, index) => (
@@ -154,7 +154,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
               )}
             </div>
 
-            <div className="flex flex-col gap-4 border-t border-border/60 px-6 py-6">
+            <div className="flex flex-col gap-4 border-t border-border/60 px-4 py-6 sm:px-6">
               <dl className="space-y-3 text-sm text-muted-foreground">
                 <div className="flex items-center justify-between">
                   <dt>Subtotal</dt>
@@ -220,7 +220,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
             </div>
           </>
         ) : isLoading ? (
-          <div className="flex flex-1 flex-col gap-4 px-6 py-6">
+          <div className="flex flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
             {Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={`cart-drawer-loading-${index}`} className="h-24 w-full" />
             ))}
@@ -228,7 +228,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
         ) : (
           <motion.div
             key="empty-cart"
-            className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center"
+            className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center sm:px-6"
             initial={{ opacity: prefersReducedMotion ? 1 : 0, y: prefersReducedMotion ? 0 : 6 }}
             animate={{ opacity: 1, y: 0, transition: emptyStateTransition }}
             exit={{ opacity: 0, y: prefersReducedMotion ? 0 : 6, transition: emptyStateTransition }}

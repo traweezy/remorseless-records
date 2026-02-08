@@ -64,7 +64,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
               src={active?.url ?? "/remorseless-hero-logo.png"}
               alt={active?.alt ?? title}
               fill
-              sizes="(min-width: 1024px) 520px, 90vw"
+              sizes="(max-width: 639px) 100vw, (max-width: 1023px) 92vw, 520px"
               className="object-cover"
               priority
               onError={() => markFailed(active?.url)}
@@ -73,7 +73,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
         </AnimatePresence>
       </div>
       {sanitized.length > 1 ? (
-        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
           {sanitized.map((image, index) => {
             const isActive = index === activeIndex
             return (
@@ -81,7 +81,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
                 key={image.id ?? image.url ?? `thumb-${index}`}
                 type="button"
                 onClick={() => setActiveIndex(index)}
-                className={`relative aspect-square w-24 flex-shrink-0 overflow-hidden rounded-xl border ${
+                className={`relative aspect-square w-20 flex-shrink-0 overflow-hidden rounded-xl border sm:w-24 ${
                   isActive ? "border-destructive" : "border-border/50"
                 } bg-background/70 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive`}
                 aria-label={`View image ${index + 1} of ${sanitized.length}`}

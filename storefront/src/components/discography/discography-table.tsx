@@ -216,8 +216,8 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
           />
         ),
         cell: ({ row }) => (
-          <div className="space-y-1">
-            <span className="text-sm font-semibold uppercase tracking-[0.25rem] text-foreground">
+          <div className="min-w-0 space-y-1">
+            <span className="block break-words text-sm font-semibold uppercase tracking-[0.25rem] text-foreground">
               {row.original.title}
             </span>
           </div>
@@ -235,7 +235,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
             row.original.slug?.artist?.trim() ||
             row.original.artist
           return (
-            <span className="text-sm uppercase tracking-[0.24rem] text-muted-foreground">
+            <span className="block break-words text-sm uppercase tracking-[0.24rem] text-muted-foreground">
               {artist}
             </span>
           )
@@ -280,7 +280,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
               {formats.map((format) => (
                 <span
                   key={format}
-                  className="rounded-full border border-border/60 px-2 py-1 text-[0.65rem] uppercase tracking-[0.24rem] text-muted-foreground"
+                  className="max-w-full rounded-full border border-border/60 px-2 py-1 text-[0.65rem] uppercase tracking-[0.24rem] text-muted-foreground"
                 >
                   {format}
                 </span>
@@ -403,7 +403,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
   return (
     <div
       className={cn(
-        "flex h-full min-h-[16rem] flex-col rounded-3xl bg-background/85 p-0",
+        "flex h-full min-h-[16rem] flex-col overflow-x-hidden rounded-3xl bg-background/85 p-0",
         className
       )}
     >
@@ -421,26 +421,26 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
               value={globalFilterValue}
               onChange={(event) => setGlobalFilterValue(event.target.value)}
               placeholder="SEARCH..."
-              className="w-full min-w-[260px] lg:min-w-[320px]"
+              className="w-full min-w-0 sm:min-w-[260px] lg:min-w-[320px]"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2 lg:ml-4">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:ml-4 lg:w-auto">
             <PillDropdown
               value={availabilityFilterValue as DiscographyEntry["availability"] | ""}
               options={availabilityOptions}
               onChange={(value) => handleAvailabilityChange(value)}
-              className="min-w-[220px]"
-              buttonClassName="min-w-[220px]"
-              dropdownClassName="min-w-[220px]"
+              className="w-full sm:min-w-[220px]"
+              buttonClassName="w-full sm:min-w-[220px]"
+              dropdownClassName="w-full sm:min-w-[220px]"
               renderTriggerLabel={(option) => option.label}
             />
             <PillDropdown
               value={formatFilterValue}
               options={formatDropdownOptions}
               onChange={(value) => handleFormatChange(value)}
-              className="min-w-[220px]"
-              buttonClassName="min-w-[220px]"
-              dropdownClassName="min-w-[220px]"
+              className="w-full sm:min-w-[220px]"
+              buttonClassName="w-full sm:min-w-[220px]"
+              dropdownClassName="w-full sm:min-w-[220px]"
               renderTriggerLabel={(option) => option.label}
             />
           </div>

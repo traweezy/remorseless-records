@@ -14,6 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import Drawer from "@/components/ui/drawer"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -427,6 +428,7 @@ const CheckoutPage = () => {
   const [savedTotalsSignature, setSavedTotalsSignature] = useState<string | null>(null)
   const [savedEmail, setSavedEmail] = useState<string | null>(null)
   const [cartNotice, setCartNotice] = useState<string | null>(null)
+  const [isSummaryOpen, setSummaryOpen] = useState(false)
   const checkoutTabIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -1039,6 +1041,59 @@ const CheckoutPage = () => {
     ? resolveMoney(resolvedShippingSubtotal, formatAmount(currencyCode, 0))
     : "-"
   const taxEstimate = showSummaryCharges ? resolveMoney(taxTotal, formatAmount(currencyCode, 0)) : "-"
+  const summaryContent = (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        {cart.items?.map((item) => (
+          <div key={item.id} className="flex items-start justify-between gap-4 text-sm">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+                {item.thumbnail ? (
+                  <Image
+                    src={item.thumbnail}
+                    alt={item.title ?? "Order item"}
+                    fill
+                    sizes="48px"
+                    className="object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-muted-foreground">
+                    No image
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-foreground">{item.title}</p>
+                <p className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
+                  Qty {item.quantity}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm font-semibold text-foreground">
+              {formatAmount(
+                currencyCode,
+                typeof item.subtotal === "number"
+                  ? item.subtotal
+                  : Number(item.unit_price ?? 0) * Number(item.quantity ?? 0)
+              )}
+            </p>
+          </div>
+        ))}
+      </div>
+      <Separator className="border-border/60" />
+      <dl className="space-y-3">
+        <SummaryRow label="Subtotal" value={formatAmount(currencyCode, Number(subtotal ?? 0))} />
+        <SummaryRow label="Shipping" value={shippingEstimate} />
+        <SummaryRow label="Tax" value={taxEstimate} />
+        {discountTotal && discountTotal > 0 ? (
+          <SummaryRow label="Discount" value={`-${formatAmount(currencyCode, discountTotal)}`} />
+        ) : null}
+        <Separator className="border-border/60" />
+        <SummaryRow label="Total" value={formatAmount(currencyCode, summaryTotal)} />
+      </dl>
+    </div>
+  )
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-16">
@@ -1058,6 +1113,43 @@ const CheckoutPage = () => {
         >
           Back to cart
         </SmartLink>
+      </div>
+
+      <div className="lg:hidden">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => setSummaryOpen(true)}
+        >
+          Show order summary ({itemCount})
+        </Button>
+        <Drawer
+          open={isSummaryOpen}
+          onOpenChange={setSummaryOpen}
+          ariaLabel="Order summary"
+        >
+          <div className="flex h-full flex-col">
+            <header className="flex items-center justify-between border-b border-border/60 px-4 py-4">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-foreground">Order Summary</p>
+                <p className="text-sm text-muted-foreground">
+                  {itemCount} item{itemCount === 1 ? "" : "s"}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-11 px-4"
+                onClick={() => setSummaryOpen(false)}
+              >
+                Close
+              </Button>
+            </header>
+            <div className="flex-1 overflow-y-auto px-4 py-4">{summaryContent}</div>
+          </div>
+        </Drawer>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
@@ -1314,6 +1406,7 @@ const CheckoutPage = () => {
                             <Input
                               id={field.name}
                               autoComplete="shipping postal-code"
+                              inputMode="numeric"
                               value={field.state.value}
                               onChange={(event) => {
                                 field.handleChange(event.target.value)
@@ -1554,6 +1647,7 @@ const CheckoutPage = () => {
                                 <Input
                                   id={field.name}
                                   autoComplete="billing postal-code"
+                                  inputMode="numeric"
                                   value={field.state.value}
                                   onChange={(event) => {
                                     field.handleChange(event.target.value)
@@ -1697,62 +1791,12 @@ const CheckoutPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="h-fit">
+        <Card className="hidden h-fit lg:block">
           <CardHeader>
             <CardTitle>Order Summary</CardTitle>
             <CardDescription>{itemCount} item{itemCount === 1 ? "" : "s"}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              {cart.items?.map((item) => (
-                <div key={item.id} className="flex items-start justify-between gap-4 text-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-muted">
-                      {item.thumbnail ? (
-                        <Image
-                          src={item.thumbnail}
-                          alt={item.title ?? "Order item"}
-                          fill
-                          sizes="48px"
-                          className="object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-muted-foreground">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">{item.title}</p>
-                      <p className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
-                        Qty {item.quantity}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {formatAmount(
-                      currencyCode,
-                      typeof item.subtotal === "number"
-                        ? item.subtotal
-                        : Number(item.unit_price ?? 0) * Number(item.quantity ?? 0)
-                    )}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <Separator className="border-border/60" />
-            <dl className="space-y-3">
-              <SummaryRow label="Subtotal" value={formatAmount(currencyCode, Number(subtotal ?? 0))} />
-              <SummaryRow label="Shipping" value={shippingEstimate} />
-              <SummaryRow label="Tax" value={taxEstimate} />
-              {discountTotal && discountTotal > 0 ? (
-                <SummaryRow label="Discount" value={`-${formatAmount(currencyCode, discountTotal)}`} />
-              ) : null}
-              <Separator className="border-border/60" />
-              <SummaryRow label="Total" value={formatAmount(currencyCode, summaryTotal)} />
-            </dl>
-          </CardContent>
+          <CardContent>{summaryContent}</CardContent>
         </Card>
       </div>
     </div>
