@@ -108,6 +108,8 @@ const frameSrc = unique([
   "https://js.stripe.com",
   "https://hooks.stripe.com",
   "https://checkout.stripe.com",
+  "https://bandcamp.com",
+  "https://*.bandcamp.com",
 ])
 
 const cspDirectives = [

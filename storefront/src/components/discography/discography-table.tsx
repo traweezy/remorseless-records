@@ -58,6 +58,43 @@ const availabilityTone: Record<DiscographyEntry["availability"], string> = {
   unknown: "border-border/60 text-foreground bg-foreground/5",
 }
 
+const releaseDateFormatter = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+})
+
+const getReleaseTimestamp = (entry: DiscographyEntry): number | null => {
+  if (entry.releaseDate) {
+    const timestamp = Date.parse(entry.releaseDate)
+    if (Number.isFinite(timestamp)) {
+      return timestamp
+    }
+  }
+
+  if (entry.releaseYear != null) {
+    return Date.UTC(entry.releaseYear, 0, 1)
+  }
+
+  return null
+}
+
+const formatReleaseDate = (entry: DiscographyEntry): string => {
+  if (entry.releaseDate) {
+    const parsed = new Date(entry.releaseDate)
+    if (!Number.isNaN(parsed.getTime())) {
+      return releaseDateFormatter.format(parsed)
+    }
+  }
+
+  if (entry.releaseYear != null) {
+    return String(entry.releaseYear)
+  }
+
+  return "—"
+}
+
 const globalFilter: FilterFn<DiscographyEntry> = (row, _columnId, filterValue) => {
   const search = (filterValue as string | undefined)?.toLowerCase().trim()
   if (!search) {
@@ -181,6 +218,8 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
   const [sorting, setSorting] = useState<SortingState>([{ id: "title", desc: false }])
   const [globalFilterValue, setGlobalFilterValue] = useState("")
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [headerStickyTop, setHeaderStickyTop] = useState(0)
+  const filtersRef = useRef<HTMLDivElement | null>(null)
 
   const columns = useMemo(
     () => [
@@ -241,21 +280,22 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
           )
         },
       }),
-      columnHelper.accessor("releaseYear", {
+      columnHelper.accessor((row) => row.releaseDate, {
+        id: "releaseDate",
         header: ({ column }) => (
           <SortableHeader
-            label="Year"
+            label="Release date"
             column={column}
           />
         ),
-        cell: ({ getValue }) => (
-          <span className="text-xs uppercase tracking-[0.22rem] text-muted-foreground">
-            {getValue() ?? "—"}
+        cell: ({ row }) => (
+          <span className="text-xs tracking-[0.06rem] text-muted-foreground">
+            {formatReleaseDate(row.original)}
           </span>
         ),
-        sortingFn: (rowA, rowB, columnId) => {
-          const a = rowA.getValue<number | null>(columnId)
-          const b = rowB.getValue<number | null>(columnId)
+        sortingFn: (rowA, rowB) => {
+          const a = getReleaseTimestamp(rowA.original)
+          const b = getReleaseTimestamp(rowB.original)
           if (a == null && b == null) {
             return 0
           }
@@ -384,6 +424,52 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
     overscan: 8,
   })
 
+  useLayoutEffect(() => {
+    const updateHeaderStickyTop = () => {
+      const scrollElement = parentRef.current
+      const filtersElement = filtersRef.current
+
+      if (!scrollElement || !filtersElement) {
+        setHeaderStickyTop(0)
+        return
+      }
+
+      const hasInternalScroll =
+        scrollElement.scrollHeight > scrollElement.clientHeight + 1
+
+      if (hasInternalScroll) {
+        setHeaderStickyTop(0)
+        return
+      }
+
+      const globalHeaderOffset = 64
+      setHeaderStickyTop(filtersElement.offsetHeight + globalHeaderOffset)
+    }
+
+    updateHeaderStickyTop()
+
+    const scrollElement = parentRef.current
+    const filtersElement = filtersRef.current
+    const resizeObserver = new ResizeObserver(() => {
+      updateHeaderStickyTop()
+    })
+
+    if (scrollElement) {
+      resizeObserver.observe(scrollElement)
+    }
+
+    if (filtersElement) {
+      resizeObserver.observe(filtersElement)
+    }
+
+    window.addEventListener("resize", updateHeaderStickyTop)
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", updateHeaderStickyTop)
+    }
+  }, [entries.length, filteredRowCount])
+
   const availabilityOptions: [PillDropdownOption<DiscographyEntry["availability"] | "">, ...Array<PillDropdownOption<DiscographyEntry["availability"] | "">>] = [
     { value: "", label: "All availability" },
     { value: "in_print", label: "In print" },
@@ -407,7 +493,10 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
         className
       )}
     >
-      <div className="sticky top-16 z-30 flex flex-col gap-3 border-b border-border/30 bg-background/95 px-4 pb-3 pt-4 backdrop-blur lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+      <div
+        ref={filtersRef}
+        className="sticky top-16 z-30 flex flex-col gap-3 border-b border-border/30 bg-background/95 px-4 pb-3 pt-4 backdrop-blur lg:flex-row lg:flex-wrap lg:items-center lg:justify-between"
+      >
         <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:gap-4">
           <div className="space-y-1">
             <Label
@@ -456,11 +545,14 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
         <div ref={parentRef} className="h-full min-h-0 overflow-auto">
           {rows.length ? (
             <>
-              <div className="sticky top-0 z-10 hidden border-b border-border/30 bg-background/95 px-5 py-3 text-[0.68rem] uppercase tracking-[0.2rem] text-muted-foreground backdrop-blur md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
+              <div
+                className="sticky z-10 hidden border-b border-border/30 bg-background/95 px-5 py-3 text-[0.68rem] uppercase tracking-[0.2rem] text-muted-foreground backdrop-blur md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5"
+                style={{ top: `${headerStickyTop}px` }}
+              >
                 <div className="text-left">Cover</div>
                 <SortableHeader label="Release" column={table.getColumn("title")!} />
                 <SortableHeader label="Artist" column={table.getColumn("artist")!} />
-                <SortableHeader label="Year" column={table.getColumn("releaseYear")!} />
+                <SortableHeader label="Release date" column={table.getColumn("releaseDate")!} />
                 <div className="text-left">Format</div>
                 <div className="text-left">Catalog #</div>
                 <SortableHeader label="Availability" column={table.getColumn("availability")!} />
@@ -532,13 +624,13 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                           <dl className="mt-4 grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
-                                Year
+                                Release date
                               </dt>
                               <dd>
-                                {cellById.releaseYear
+                                {cellById.releaseDate
                                   ? flexRender(
-                                      cellById.releaseYear.column.columnDef.cell,
-                                      cellById.releaseYear.getContext()
+                                      cellById.releaseDate.column.columnDef.cell,
+                                      cellById.releaseDate.getContext()
                                     )
                                   : null}
                               </dd>
@@ -583,7 +675,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                         </div>
                       </div>
 
-                      <div className="hidden gap-4 px-5 py-5 md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
+                      <div className="hidden gap-4 px-5 py-5 md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.9fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
                         <div className="md:flex md:items-center">
                           {cellById.cover ? flexRender(cellById.cover.column.columnDef.cell, cellById.cover.getContext()) : null}
                         </div>
@@ -594,8 +686,8 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                           {cellById.artist ? flexRender(cellById.artist.column.columnDef.cell, cellById.artist.getContext()) : null}
                         </div>
                         <div className="md:flex md:items-center">
-                          {cellById.releaseYear
-                            ? flexRender(cellById.releaseYear.column.columnDef.cell, cellById.releaseYear.getContext())
+                          {cellById.releaseDate
+                            ? flexRender(cellById.releaseDate.column.columnDef.cell, cellById.releaseDate.getContext())
                             : null}
                         </div>
                         <div className="md:flex md:items-center">
