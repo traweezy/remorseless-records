@@ -10,15 +10,11 @@ import "@/styles/globals.css"
 import SiteFooter from "@/components/site-footer"
 import SiteHeader from "@/components/site-header"
 import QueryProvider from "@/components/providers/query-provider"
-import SpeculationRules from "@/components/providers/speculation-rules"
-import QuicklinkProvider from "@/components/providers/quicklink-provider"
-import ProximityPrefetch from "@/components/providers/proximity-prefetch"
 import { CartProvider } from "@/providers/cart-provider"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { organizationJsonLd, webSiteJsonLd } from "@/lib/seo/structured-data"
 import { Suspense } from "react"
-import Script from "next/script"
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -138,26 +134,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <QueryProvider>
           <CartProvider>
             <Suspense fallback={null}>
-              <QuicklinkProvider />
-              <ProximityPrefetch>
-                <div className="relative flex min-h-screen flex-col bg-background">
-                  <SiteHeader />
-                  <main className="flex-1 min-h-0 flex flex-col">{children}</main>
-                  <SiteFooter />
-                </div>
-              </ProximityPrefetch>
+              <div className="relative flex min-h-screen flex-col bg-background">
+                <SiteHeader />
+                <main className="flex-1 min-h-0 flex flex-col">{children}</main>
+                <SiteFooter />
+              </div>
             </Suspense>
           </CartProvider>
         </QueryProvider>
-        <SpeculationRules />
         <JsonLd id="remorseless-organization" data={organizationJsonLd} />
         <JsonLd id="remorseless-website" data={webSiteJsonLd} />
-        <Script
-          src="https://instant.page/5.2.0"
-          strategy="afterInteractive"
-          type="module"
-          integrity="sha384-NhcfmErBuYkPpF8d6WvX2jc7Rbw7QvwszFTui2k+1XUuK3qjfbHwPzYIK5FjwZIj"
-        />
       </body>
     </html>
   )

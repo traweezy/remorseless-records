@@ -2,7 +2,6 @@
 
 import Link, { type LinkProps } from "next/link"
 import { useRouter } from "next/navigation"
-import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
 import {
   useCallback,
   useEffect,
@@ -53,7 +52,7 @@ const SmartLinkComponent = (
     }
 
     prefetched.current = true
-    void Promise.resolve(router.prefetch(normalizedHref, { kind: PrefetchKind.FULL })).catch(
+    void Promise.resolve(router.prefetch(normalizedHref)).catch(
       () => {
         // ignore prefetch failures
       }

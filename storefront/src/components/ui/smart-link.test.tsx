@@ -106,7 +106,7 @@ describe("SmartLink", () => {
     fireEvent.focus(link)
 
     expect(prefetchMock).toHaveBeenCalledTimes(1)
-    expect(prefetchMock).toHaveBeenCalledWith(href, { kind: "full" })
+    expect(prefetchMock).toHaveBeenCalledWith(href)
   })
 
   it("skips prefetch when blocked or href is empty", () => {
