@@ -172,7 +172,16 @@ export default defineMiddlewares({
       },
     },
     {
-      matcher: /^\/(api\/)?webhooks\/stripe$/,
+      matcher: "/webhooks/stripe",
+      methods: ["POST"],
+      middlewares: [webhookRateLimit],
+      bodyParser: {
+        preserveRawBody: true,
+        sizeLimit: "2mb",
+      },
+    },
+    {
+      matcher: "/api/webhooks/stripe",
       methods: ["POST"],
       middlewares: [webhookRateLimit],
       bodyParser: {
@@ -182,4 +191,3 @@ export default defineMiddlewares({
     },
   ],
 })
-
