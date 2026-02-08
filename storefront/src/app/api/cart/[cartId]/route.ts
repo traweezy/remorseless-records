@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { unstable_noStore as noStore } from "next/cache"
 
 import { getCart } from "@/lib/cart/api"
+import {
+  enforceRateLimit,
+  jsonApiError,
+  jsonApiResponse,
+} from "@/lib/security/route-guards"
 
 const getErrorStatus = (error: unknown): number | null => {
   if (!error || typeof error !== "object") {
@@ -36,19 +40,25 @@ export const GET = async (
 ): Promise<Response> => {
   try {
     noStore()
-    const { cartId } = await params
-    const cart = await getCart(cartId)
-    return NextResponse.json({ cart })
-  } catch (error) {
-    const status = getErrorStatus(error)
-    if (status === 404) {
-      return NextResponse.json({ cart: null })
+    const rateLimited = enforceRateLimit(_request, {
+      key: "api:cart:get",
+      max: 180,
+      windowMs: 60_000,
+    })
+    if (rateLimited) {
+      return rateLimited
     }
 
-    console.error("Failed to retrieve cart", error)
-    return NextResponse.json(
-      { error: "Unable to retrieve cart at this time." },
-      { status: 500 }
-    )
+    const { cartId } = await params
+    const cart = await getCart(cartId)
+    return jsonApiResponse({ cart })
+  } catch (error: unknown) {
+    const status = getErrorStatus(error)
+    if (status === 404) {
+      return jsonApiResponse({ cart: null })
+    }
+
+    console.error("Failed to retrieve cart")
+    return jsonApiError("Unable to retrieve cart at this time.", 500)
   }
 }

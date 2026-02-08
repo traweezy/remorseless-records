@@ -11,7 +11,7 @@ const schema = z.object({
   reason: z.enum(["booking", "press", "collab", "other"]),
   message: z.string().trim().min(10).max(5000),
   honeypot: z.string().optional(),
-})
+}).strict()
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<void> => {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {

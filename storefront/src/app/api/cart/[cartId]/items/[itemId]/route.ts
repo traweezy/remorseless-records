@@ -1,8 +1,21 @@
-import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { unstable_noStore as noStore } from "next/cache"
+import { z } from "zod"
 
 import { removeLineItem, updateLineItem } from "@/lib/cart/api"
+import {
+  enforceRateLimit,
+  enforceTrustedOrigin,
+  jsonApiError,
+  jsonApiResponse,
+  parseJsonBody,
+} from "@/lib/security/route-guards"
+
+const updateLineItemSchema = z
+  .object({
+    quantity: z.coerce.number().int().min(0).max(100),
+  })
+  .strict()
 
 export const PATCH = async (
   request: NextRequest,
@@ -10,35 +23,39 @@ export const PATCH = async (
 ): Promise<Response> => {
   try {
     noStore()
-    const { cartId, itemId } = await params
-    const body = (await request.json()) as { quantity?: number }
-    const nextQuantity = Number(body.quantity ?? 0)
-
-    if (!Number.isFinite(nextQuantity)) {
-      return NextResponse.json(
-        { error: "quantity must be a number." },
-        { status: 400 }
-      )
+    const rateLimited = enforceRateLimit(request, {
+      key: "api:cart:item:update",
+      max: 180,
+      windowMs: 60_000,
+    })
+    if (rateLimited) {
+      return rateLimited
     }
 
+    const originCheck = enforceTrustedOrigin(request)
+    if (originCheck) {
+      return originCheck
+    }
+
+    const { cartId, itemId } = await params
+    const parsed = await parseJsonBody(request, updateLineItemSchema, {
+      maxBytes: 2 * 1024,
+    })
+    if (!parsed.ok) {
+      return parsed.response
+    }
+
+    const nextQuantity = parsed.data.quantity
     if (nextQuantity <= 0) {
       const cart = await removeLineItem(cartId, itemId)
-      return NextResponse.json({ cart })
+      return jsonApiResponse({ cart })
     }
 
-    const cart = await updateLineItem(
-      cartId,
-      itemId,
-      Math.max(1, Math.floor(nextQuantity))
-    )
-
-    return NextResponse.json({ cart })
-  } catch (error) {
-    console.error("Failed to update line item", error)
-    return NextResponse.json(
-      { error: "Unable to update cart item." },
-      { status: 500 }
-    )
+    const cart = await updateLineItem(cartId, itemId, nextQuantity)
+    return jsonApiResponse({ cart })
+  } catch {
+    console.error("Failed to update line item")
+    return jsonApiError("Unable to update cart item.", 500)
   }
 }
 
@@ -48,14 +65,25 @@ export const DELETE = async (
 ): Promise<Response> => {
   try {
     noStore()
+    const rateLimited = enforceRateLimit(_request, {
+      key: "api:cart:item:remove",
+      max: 120,
+      windowMs: 60_000,
+    })
+    if (rateLimited) {
+      return rateLimited
+    }
+
+    const originCheck = enforceTrustedOrigin(_request)
+    if (originCheck) {
+      return originCheck
+    }
+
     const { cartId, itemId } = await params
     const cart = await removeLineItem(cartId, itemId)
-    return NextResponse.json({ cart })
-  } catch (error) {
-    console.error("Failed to remove line item", error)
-    return NextResponse.json(
-      { error: "Unable to remove cart item." },
-      { status: 500 }
-    )
+    return jsonApiResponse({ cart })
+  } catch {
+    console.error("Failed to remove line item")
+    return jsonApiError("Unable to remove cart item.", 500)
   }
 }

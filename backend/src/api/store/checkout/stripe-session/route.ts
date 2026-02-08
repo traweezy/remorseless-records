@@ -6,12 +6,27 @@ import { z } from "zod"
 
 import { getStripeClient } from "../../../../lib/stripe"
 import { mergeMetadata } from "../../../../lib/metadata"
+import { STORE_CORS } from "../../../../lib/constants"
 
 const payloadSchema = z.object({
   cart_id: z.string().min(1, "cart_id is required"),
   success_url: z.string().url("success_url must be a valid URL"),
   cancel_url: z.string().url("cancel_url must be a valid URL"),
-})
+}).strict()
+
+const allowedRedirectHosts = new Set(
+  STORE_CORS.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map((origin) => {
+      try {
+        return new URL(origin).host.toLowerCase()
+      } catch {
+        return ""
+      }
+    })
+    .filter(Boolean)
+)
 
 export const POST = async (
   req: MedusaRequest,
@@ -35,6 +50,13 @@ export const POST = async (
     success_url: successUrl,
     cancel_url: cancelUrl,
   } = body.data
+
+  if (!isAllowedRedirectUrl(successUrl) || !isAllowedRedirectUrl(cancelUrl)) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "success_url and cancel_url must match an allowed storefront origin"
+    )
+  }
 
   const cartModuleService = req.scope.resolve<ICartModuleService>(Modules.CART)
 
@@ -156,3 +178,12 @@ const appendSessionPlaceholder = (url: string): string =>
   url.includes("{CHECKOUT_SESSION_ID}")
     ? url
     : `${url}${url.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`
+
+const isAllowedRedirectUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value)
+    return allowedRedirectHosts.has(url.host.toLowerCase())
+  } catch {
+    return false
+  }
+}

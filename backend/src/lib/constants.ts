@@ -4,6 +4,52 @@ import { assertValue } from 'utils/assert-value'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
+const parseOrigin = (value: string | undefined): string | null => {
+  if (!value) {
+    return null
+  }
+
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  try {
+    const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`)
+    return `${url.protocol}//${url.host}`
+  } catch {
+    return null
+  }
+}
+
+const uniqueOrigins = (values: Array<string | null>): string[] =>
+  Array.from(new Set(values.filter((value): value is string => Boolean(value))))
+
+const normalizeCorsOrigins = (
+  value: string | undefined,
+  fallbackOrigins: string[],
+  label: string
+): string => {
+  const parsed = (value ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+
+  const origins = parsed.length ? parsed : fallbackOrigins
+
+  const hasWildcard = origins.some((origin) => origin.includes("*"))
+  if (hasWildcard && !IS_DEV) {
+    throw new Error(`${label} must not contain wildcard origins in non-development environments`)
+  }
+
+  const sanitized = origins.filter((origin) => !origin.includes("*"))
+  if (!sanitized.length) {
+    throw new Error(`${label} did not resolve to any valid CORS origins`)
+  }
+
+  return Array.from(new Set(sanitized)).join(",")
+}
+
 /**
  * Is development environment
  */
@@ -30,17 +76,51 @@ export const REDIS_URL = process.env.REDIS_URL;
 /**
  * Admin CORS origins
  */
-export const ADMIN_CORS = process.env.ADMIN_CORS;
+const adminCorsFallback = uniqueOrigins([
+  "http://localhost:7000",
+  "http://localhost:7001",
+  parseOrigin(process.env.RAILWAY_SERVICE_CONSOLE_URL),
+  parseOrigin(process.env.NEXT_PUBLIC_BASE_URL),
+])
+
+export const ADMIN_CORS = normalizeCorsOrigins(
+  process.env.ADMIN_CORS,
+  adminCorsFallback,
+  "ADMIN_CORS"
+)
 
 /**
  * Auth CORS origins
  */
-export const AUTH_CORS = process.env.AUTH_CORS;
+const authCorsFallback = uniqueOrigins([
+  "http://localhost:7000",
+  "http://localhost:7001",
+  "http://localhost:3000",
+  parseOrigin(process.env.NEXT_PUBLIC_BASE_URL),
+  parseOrigin(process.env.RAILWAY_SERVICE_STOREFRONT_URL),
+])
+
+export const AUTH_CORS = normalizeCorsOrigins(
+  process.env.AUTH_CORS,
+  authCorsFallback,
+  "AUTH_CORS"
+)
 
 /**
  * Store/frontend CORS origins
  */
-export const STORE_CORS = process.env.STORE_CORS;
+const storeCorsFallback = uniqueOrigins([
+  "http://localhost:3000",
+  "http://localhost:8000",
+  parseOrigin(process.env.NEXT_PUBLIC_BASE_URL),
+  parseOrigin(process.env.RAILWAY_SERVICE_STOREFRONT_URL),
+])
+
+export const STORE_CORS = normalizeCorsOrigins(
+  process.env.STORE_CORS,
+  storeCorsFallback,
+  "STORE_CORS"
+)
 
 /**
  * JWT Secret used for signing JWT tokens

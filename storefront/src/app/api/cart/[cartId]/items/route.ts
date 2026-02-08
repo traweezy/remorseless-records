@@ -1,8 +1,22 @@
-import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { unstable_noStore as noStore } from "next/cache"
+import { z } from "zod"
 
 import { addLineItem } from "@/lib/cart/api"
+import {
+  enforceRateLimit,
+  enforceTrustedOrigin,
+  jsonApiError,
+  jsonApiResponse,
+  parseJsonBody,
+} from "@/lib/security/route-guards"
+
+const addLineItemSchema = z
+  .object({
+    variant_id: z.string().trim().min(1),
+    quantity: z.coerce.number().int().min(1).max(100).optional(),
+  })
+  .strict()
 
 export const POST = async (
   request: NextRequest,
@@ -10,27 +24,33 @@ export const POST = async (
 ): Promise<Response> => {
   try {
     noStore()
+    const rateLimited = enforceRateLimit(request, {
+      key: "api:cart:item:add",
+      max: 120,
+      windowMs: 60_000,
+    })
+    if (rateLimited) {
+      return rateLimited
+    }
+
+    const originCheck = enforceTrustedOrigin(request)
+    if (originCheck) {
+      return originCheck
+    }
+
     const { cartId } = await params
-    const body = (await request.json()) as {
-      variant_id?: string
-      quantity?: number
+    const parsed = await parseJsonBody(request, addLineItemSchema, {
+      maxBytes: 4 * 1024,
+    })
+    if (!parsed.ok) {
+      return parsed.response
     }
 
-    if (!body?.variant_id || typeof body.variant_id !== "string") {
-      return NextResponse.json(
-        { error: "variant_id is required." },
-        { status: 400 }
-      )
-    }
-
-    const quantity = Math.max(1, Math.floor(Number(body.quantity ?? 1)))
-    const cart = await addLineItem(cartId, body.variant_id, quantity)
-    return NextResponse.json({ cart })
-  } catch (error) {
-    console.error("Failed to add line item", error)
-    return NextResponse.json(
-      { error: "Unable to add item to cart." },
-      { status: 500 }
-    )
+    const quantity = parsed.data.quantity ?? 1
+    const cart = await addLineItem(cartId, parsed.data.variant_id, quantity)
+    return jsonApiResponse({ cart })
+  } catch {
+    console.error("Failed to add line item")
+    return jsonApiError("Unable to add item to cart.", 500)
   }
 }

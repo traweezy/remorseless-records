@@ -40,34 +40,26 @@ export const POST = async (
   }
 
   const rawBody = extractRawBody(req)
+  if (!rawBody) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Stripe webhook raw body is missing"
+    )
+  }
 
   let event: Stripe.Event
 
-  if (rawBody) {
-    try {
-      event = stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        stripeWebhookSecret
-      )
-    } catch {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Unable to verify Stripe webhook signature"
-      )
-    }
-  } else {
-    const body = req.body as { id?: unknown }
-    if (!body?.id || typeof body.id !== "string") {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Unable to verify Stripe webhook payload"
-      )
-    }
-
-    event = await stripe.events.retrieve(body.id, {
-      expand: ["data.object"],
-    })
+  try {
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      stripeWebhookSecret
+    )
+  } catch {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Unable to verify Stripe webhook signature"
+    )
   }
 
   const logger = getLogger(req)

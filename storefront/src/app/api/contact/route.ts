@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { runtimeEnv } from "@/config/env"
+import {
+  enforceRateLimit,
+  enforceTrustedOrigin,
+  jsonApiError,
+  jsonApiResponse,
+  parseJsonBody,
+} from "@/lib/security/route-guards"
 
 const schema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -9,23 +15,35 @@ const schema = z.object({
   reason: z.enum(["booking", "press", "collab", "other"]),
   message: z.string().trim().min(10).max(5000),
   honeypot: z.string().optional(),
-})
+}).strict()
 
 const backendBase = runtimeEnv.medusaBackendUrl ?? runtimeEnv.medusaUrl
 
 export async function POST(request: Request) {
   try {
-    const body: unknown = await request.json()
-    const parsed = schema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json(
-        { message: "Invalid request", errors: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      )
+    const rateLimited = enforceRateLimit(request, {
+      key: "api:contact",
+      max: 15,
+      windowMs: 60_000,
+    })
+    if (rateLimited) {
+      return rateLimited
+    }
+
+    const originCheck = enforceTrustedOrigin(request)
+    if (originCheck) {
+      return originCheck
+    }
+
+    const parsed = await parseJsonBody(request, schema, {
+      maxBytes: 16 * 1024,
+    })
+    if (!parsed.ok) {
+      return parsed.response
     }
 
     if (parsed.data.honeypot && parsed.data.honeypot.trim().length) {
-      return NextResponse.json({ ok: true })
+      return jsonApiResponse({ ok: true })
     }
 
     const response = await fetch(
@@ -43,15 +61,15 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const payload = (await response.json().catch(() => ({}))) as { message?: string }
-      return NextResponse.json(
+      return jsonApiResponse(
         { message: payload.message ?? "Unable to send message right now." },
         { status: 502 }
       )
     }
 
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    console.error("[contact] Failed to send message", error)
-    return NextResponse.json({ message: "Unable to send message right now." }, { status: 500 })
+    return jsonApiResponse({ ok: true })
+  } catch {
+    console.error("[contact] Failed to send message")
+    return jsonApiError("Unable to send message right now.", 500)
   }
 }

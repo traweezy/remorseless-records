@@ -1,8 +1,22 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { unstable_noStore as noStore } from "next/cache"
+import { z } from "zod"
 
 import { getCart, initiatePaymentSession } from "@/lib/cart/api"
+import {
+  enforceRateLimit,
+  enforceTrustedOrigin,
+  jsonApiError,
+  jsonApiResponse,
+  parseJsonBody,
+} from "@/lib/security/route-guards"
+
+const paymentSessionSchema = z
+  .object({
+    provider_id: z.string().trim().min(1).optional(),
+  })
+  .strict()
 
 export const POST = async (
   request: NextRequest,
@@ -11,9 +25,27 @@ export const POST = async (
   let cart: Awaited<ReturnType<typeof getCart>> | null = null
   try {
     noStore()
+    const rateLimited = enforceRateLimit(request, {
+      key: "api:cart:payment-session",
+      max: 45,
+      windowMs: 60_000,
+    })
+    if (rateLimited) {
+      return rateLimited
+    }
+
+    const originCheck = enforceTrustedOrigin(request)
+    if (originCheck) {
+      return originCheck
+    }
+
     const { cartId } = await params
-    const body = (await request.json().catch(() => ({}))) as {
-      provider_id?: string
+    const parsed = await parseJsonBody(request, paymentSessionSchema, {
+      maxBytes: 2 * 1024,
+      requireJsonContentType: false,
+    })
+    if (!parsed.ok) {
+      return parsed.response
     }
 
     cart = await getCart(cartId)
@@ -42,13 +74,13 @@ export const POST = async (
 
     const session = await initiatePaymentSession(
       cartId,
-      typeof body.provider_id === "string" ? body.provider_id : undefined,
+      parsed.data.provider_id,
       cart
     )
 
-    return NextResponse.json(session)
-  } catch (error) {
-    console.error("Failed to initialize payment session", error)
+    return jsonApiResponse(session)
+  } catch {
+    console.error("Failed to initialize payment session")
     if (cart) {
       console.warn("[checkout] Payment session init failed", {
         cartId: cart.id,
@@ -61,13 +93,6 @@ export const POST = async (
         discountTotal: cart.discount_total ?? 0,
       })
     }
-    const message =
-      error instanceof Error && error.message
-        ? error.message
-        : "Unable to initialize payment session."
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    )
+    return jsonApiError("Unable to initialize payment session.", 500)
   }
 }
