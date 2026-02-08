@@ -93,6 +93,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Gitleaks scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: TruffleHog (verified only)
         uses: trufflesecurity/trufflehog@v3.91.2
         with:
