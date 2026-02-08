@@ -170,7 +170,7 @@ const nextConfig: NextConfig = {
   experimental: experimentalConfig,
   reactCompiler: true,
   async headers() {
-    return [
+    return await Promise.resolve([
       {
         source: "/(.*)",
         headers: [
@@ -209,7 +209,7 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-    ]
+    ])
   },
   turbopack: {
     root: path.resolve(currentDir, ".."),

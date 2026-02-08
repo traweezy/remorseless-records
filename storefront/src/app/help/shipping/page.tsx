@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { siteMetadata } from "@/config/site"
 import SmartLink from "@/components/ui/smart-link"
+import { legalRoutes } from "@/config/legal"
 
 export const metadata: Metadata = {
   title: "Shipping & Returns",
@@ -38,6 +39,13 @@ const ShippingPage = () => (
             <p className="text-sm leading-relaxed text-muted-foreground">
               Orders go out in small batches with heavy packaging and hand inspection. You’ll get tracking as soon as your parcel scans.
             </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              For complete legal terms, read the{" "}
+              <SmartLink href={legalRoutes.shipping} className="text-destructive underline underline-offset-4">
+                Shipping Policy
+              </SmartLink>
+              .
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -53,6 +61,13 @@ const ShippingPage = () => (
                 Contact
               </SmartLink>{" "}
               page with your order number, photos (if damaged), and a short note.
+            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              For full terms and exclusions, read the{" "}
+              <SmartLink href={legalRoutes.returns} className="text-destructive underline underline-offset-4">
+                Returns & Refunds Policy
+              </SmartLink>
+              .
             </p>
           </div>
         </section>

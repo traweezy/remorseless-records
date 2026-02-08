@@ -31,6 +31,17 @@ const FOOTER_LINKS: FooterLinkSection[] = [
     ],
   },
   {
+    title: "Legal",
+    links: [
+      { label: "Terms", href: "/terms" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Shipping Policy", href: "/shipping" },
+      { label: "Returns Policy", href: "/returns" },
+      { label: "Accessibility", href: "/accessibility" },
+      { label: "Cookie Preferences", href: "/cookies" },
+    ],
+  },
+  {
     title: "Follow",
     links: [
       {
@@ -82,7 +93,7 @@ const SiteFooter = () => {
             © {currentYear} Remorseless Records
           </p>
         </div>
-        <div className="grid gap-8 sm:grid-cols-3">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {FOOTER_LINKS.map((section) => (
             <div key={section.title} className="space-y-3">
               <p className="font-headline text-xs uppercase tracking-[0.35rem] text-foreground">

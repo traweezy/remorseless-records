@@ -22,6 +22,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import SmartLink from "@/components/ui/smart-link"
 import { runtimeEnv } from "@/config/env"
+import { legalConfig, legalRoutes } from "@/config/legal"
 import type { StoreCartAddressInput } from "@/lib/cart/types"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
@@ -1041,6 +1042,8 @@ const CheckoutPage = () => {
     ? resolveMoney(resolvedShippingSubtotal, formatAmount(currencyCode, 0))
     : "-"
   const taxEstimate = showSummaryCharges ? resolveMoney(taxTotal, formatAmount(currencyCode, 0)) : "-"
+  const shippingLabel = showSummaryCharges ? "Shipping" : "Estimated shipping"
+  const taxLabel = showSummaryCharges ? "Tax" : "Estimated tax"
   const summaryContent = (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -1084,8 +1087,8 @@ const CheckoutPage = () => {
       <Separator className="border-border/60" />
       <dl className="space-y-3">
         <SummaryRow label="Subtotal" value={formatAmount(currencyCode, Number(subtotal ?? 0))} />
-        <SummaryRow label="Shipping" value={shippingEstimate} />
-        <SummaryRow label="Tax" value={taxEstimate} />
+        <SummaryRow label={shippingLabel} value={shippingEstimate} />
+        <SummaryRow label={taxLabel} value={taxEstimate} />
         {discountTotal && discountTotal > 0 ? (
           <SummaryRow label="Discount" value={`-${formatAmount(currencyCode, discountTotal)}`} />
         ) : null}
@@ -1767,6 +1770,64 @@ const CheckoutPage = () => {
                     </div>
                   ) : null}
 
+                  <div className="space-y-3 rounded-2xl border border-border/60 bg-background/80 p-4">
+                    <p className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
+                      Before you place your order
+                    </p>
+                    <dl className="space-y-2">
+                      <SummaryRow label="Subtotal" value={formatAmount(currencyCode, Number(subtotal ?? 0))} />
+                      <SummaryRow
+                        label={shippingLabel}
+                        value={resolveMoney(
+                          showSummaryCharges ? resolvedShippingSubtotal : null,
+                          "Pending shipping confirmation"
+                        )}
+                      />
+                      <SummaryRow
+                        label={taxLabel}
+                        value={resolveMoney(showSummaryCharges ? taxTotal : null, "Pending tax calculation")}
+                      />
+                      {discountTotal && discountTotal > 0 ? (
+                        <SummaryRow label="Discount" value={`-${formatAmount(currencyCode, discountTotal)}`} />
+                      ) : null}
+                      <Separator className="border-border/60" />
+                      <SummaryRow label="Total" value={formatAmount(currencyCode, summaryTotal)} />
+                    </dl>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Delivery estimate: {legalConfig.shipping.processingWindow} processing, then{" "}
+                      {legalConfig.shipping.domesticTransitWindow} domestic transit or{" "}
+                      {legalConfig.shipping.internationalTransitWindow} international transit.
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Returns are accepted within {legalConfig.returns.windowDays} days for eligible items. Review{" "}
+                      <SmartLink
+                        href={legalRoutes.shipping}
+                        nativePrefetch
+                        className="text-destructive underline underline-offset-4"
+                      >
+                        Shipping Policy
+                      </SmartLink>{" "}
+                      and{" "}
+                      <SmartLink
+                        href={legalRoutes.returns}
+                        nativePrefetch
+                        className="text-destructive underline underline-offset-4"
+                      >
+                        Returns & Refunds Policy
+                      </SmartLink>
+                      .
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Support:{" "}
+                      <a
+                        href={`mailto:${legalConfig.supportEmail}`}
+                        className="text-destructive underline underline-offset-4"
+                      >
+                        {legalConfig.supportEmail}
+                      </a>
+                    </p>
+                  </div>
+
                   <Button
                     type="button"
                     className="w-full"
@@ -1784,6 +1845,25 @@ const CheckoutPage = () => {
                   <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Lock className="h-3 w-3" />
                     Payments are encrypted and processed securely.
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    By placing your order, you agree to our{" "}
+                    <SmartLink href={legalRoutes.terms} nativePrefetch className="text-destructive underline underline-offset-4">
+                      Terms of Service
+                    </SmartLink>
+                    ,{" "}
+                    <SmartLink href={legalRoutes.privacy} nativePrefetch className="text-destructive underline underline-offset-4">
+                      Privacy Policy
+                    </SmartLink>
+                    ,{" "}
+                    <SmartLink href={legalRoutes.shipping} nativePrefetch className="text-destructive underline underline-offset-4">
+                      Shipping Policy
+                    </SmartLink>
+                    , and{" "}
+                    <SmartLink href={legalRoutes.returns} nativePrefetch className="text-destructive underline underline-offset-4">
+                      Returns & Refunds Policy
+                    </SmartLink>
+                    .
                   </p>
                 </AccordionContent>
               </AccordionItem>

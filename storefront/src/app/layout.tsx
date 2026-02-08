@@ -12,6 +12,8 @@ import SiteHeader from "@/components/site-header"
 import QueryProvider from "@/components/providers/query-provider"
 import { CartProvider } from "@/providers/cart-provider"
 import JsonLd from "@/components/json-ld"
+import CookieConsentBanner from "@/components/legal/cookie-consent-banner"
+import { CookieConsentProvider } from "@/components/legal/cookie-consent-provider"
 import { siteMetadata } from "@/config/site"
 import { organizationJsonLd, webSiteJsonLd } from "@/lib/seo/structured-data"
 import { Suspense } from "react"
@@ -133,13 +135,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
       >
         <QueryProvider>
           <CartProvider>
-            <Suspense fallback={null}>
-              <div className="relative flex min-h-screen flex-col bg-background">
-                <SiteHeader />
-                <main className="flex-1 min-h-0 flex flex-col">{children}</main>
-                <SiteFooter />
-              </div>
-            </Suspense>
+            <CookieConsentProvider>
+              <Suspense fallback={null}>
+                <div className="relative flex min-h-screen flex-col bg-background">
+                  <SiteHeader />
+                  <main className="flex-1 min-h-0 flex flex-col">{children}</main>
+                  <SiteFooter />
+                </div>
+              </Suspense>
+              <CookieConsentBanner />
+            </CookieConsentProvider>
           </CartProvider>
         </QueryProvider>
         <JsonLd id="remorseless-organization" data={organizationJsonLd} />
