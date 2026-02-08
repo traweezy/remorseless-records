@@ -403,7 +403,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
   return (
     <div
       className={cn(
-        "flex h-full min-h-[16rem] flex-col overflow-x-hidden rounded-3xl bg-background/85 p-0",
+        "flex h-full min-h-[16rem] flex-col rounded-3xl bg-background/85 p-0",
         className
       )}
     >
@@ -456,7 +456,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
         <div ref={parentRef} className="h-full min-h-0 overflow-auto">
           {rows.length ? (
             <>
-              <div className="sticky top-0 z-10 hidden border-b border-border/30 bg-background/95 px-5 py-3 text-[0.65rem] uppercase tracking-[0.24rem] text-muted-foreground/80 backdrop-blur md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
+              <div className="sticky top-0 z-10 hidden border-b border-border/30 bg-background/95 px-5 py-3 text-[0.68rem] uppercase tracking-[0.2rem] text-muted-foreground backdrop-blur md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
                 <div className="text-left">Cover</div>
                 <SortableHeader label="Release" column={table.getColumn("title")!} />
                 <SortableHeader label="Artist" column={table.getColumn("artist")!} />
@@ -492,7 +492,98 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
                       }}
                       className="border-b border-border/30"
                     >
-                      <div className="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
+                      <div className="px-4 py-4 md:hidden">
+                        <div className="rounded-2xl border border-border/50 bg-background/85 p-4 shadow-[0_18px_35px_-28px_rgba(0,0,0,0.75)]">
+                          <div className="flex items-start gap-3">
+                            <div className="shrink-0">
+                              {cellById.cover
+                                ? flexRender(cellById.cover.column.columnDef.cell, cellById.cover.getContext())
+                                : null}
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-3">
+                              <div className="space-y-1">
+                                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                  Release
+                                </p>
+                                {cellById.title
+                                  ? flexRender(cellById.title.column.columnDef.cell, cellById.title.getContext())
+                                  : null}
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                  Artist
+                                </p>
+                                {cellById.artist
+                                  ? flexRender(cellById.artist.column.columnDef.cell, cellById.artist.getContext())
+                                  : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 space-y-1">
+                            <p className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                              Format
+                            </p>
+                            {cellById.formats
+                              ? flexRender(cellById.formats.column.columnDef.cell, cellById.formats.getContext())
+                              : null}
+                          </div>
+
+                          <dl className="mt-4 grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                Year
+                              </dt>
+                              <dd>
+                                {cellById.releaseYear
+                                  ? flexRender(
+                                      cellById.releaseYear.column.columnDef.cell,
+                                      cellById.releaseYear.getContext()
+                                    )
+                                  : null}
+                              </dd>
+                            </div>
+                            <div className="space-y-1">
+                              <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                Catalog #
+                              </dt>
+                              <dd>
+                                {cellById.catalogNumber
+                                  ? flexRender(
+                                      cellById.catalogNumber.column.columnDef.cell,
+                                      cellById.catalogNumber.getContext()
+                                    )
+                                  : null}
+                              </dd>
+                            </div>
+                            <div className="space-y-1">
+                              <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                Availability
+                              </dt>
+                              <dd>
+                                {cellById.availability
+                                  ? flexRender(
+                                      cellById.availability.column.columnDef.cell,
+                                      cellById.availability.getContext()
+                                    )
+                                  : null}
+                              </dd>
+                            </div>
+                            <div className="space-y-1">
+                              <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                Action
+                              </dt>
+                              <dd className="pt-0.5">
+                                {cellById.actions
+                                  ? flexRender(cellById.actions.column.columnDef.cell, cellById.actions.getContext())
+                                  : null}
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </div>
+
+                      <div className="hidden gap-4 px-5 py-5 md:grid md:grid-cols-[72px_1.6fr_1.1fr_0.7fr_1fr_0.9fr_1fr_0.9fr] md:items-center md:gap-5">
                         <div className="md:flex md:items-center">
                           {cellById.cover ? flexRender(cellById.cover.column.columnDef.cell, cellById.cover.getContext()) : null}
                         </div>

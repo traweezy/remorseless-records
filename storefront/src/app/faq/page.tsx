@@ -37,7 +37,7 @@ const faqs = [
 
 const FAQPage = () => (
   <div className="bg-background">
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 px-4 pb-16 pt-12 lg:px-8">
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pb-16 pt-12 lg:gap-10 lg:px-8">
       <header className="space-y-3">
         <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">Support</p>
         <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-foreground">
@@ -52,7 +52,7 @@ const FAQPage = () => (
         </p>
       </header>
 
-      <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-8">
         <section className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
           <ul className="space-y-4">
             {faqs.map((item) => (

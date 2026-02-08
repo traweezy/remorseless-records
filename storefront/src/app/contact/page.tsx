@@ -15,7 +15,7 @@ const ContactPage = () => {
 
   return (
     <div className="bg-background">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-12 px-4 pb-16 pt-12 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pb-16 pt-12 lg:gap-12 lg:px-8">
         <header className="space-y-3">
           <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
             Contact
@@ -29,7 +29,7 @@ const ContactPage = () => {
           </p>
         </header>
 
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-8">
           <div className="space-y-4">
             <ContactForm />
 

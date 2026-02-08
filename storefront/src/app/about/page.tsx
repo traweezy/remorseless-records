@@ -18,7 +18,7 @@ const ABOUT_PARAGRAPHS = [
 const AboutPage = () => {
   return (
     <div className="bg-background">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 px-4 pb-16 pt-12 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pb-16 pt-12 lg:gap-10 lg:px-8">
         <header className="space-y-3">
           <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
             About Remorseless
@@ -31,7 +31,7 @@ const AboutPage = () => {
           </p>
         </header>
 
-        <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start lg:gap-8">
           <section className="space-y-6 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
             {ABOUT_PARAGRAPHS.map((para, idx) => (
               <p key={`about-${idx}`} className="text-sm leading-relaxed text-muted-foreground">

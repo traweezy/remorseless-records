@@ -31,7 +31,7 @@ const NewsPage = async () => {
 
   return (
     <div className="bg-background flex min-h-screen flex-col">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-10 px-4 pb-20 pt-12 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-4 pb-20 pt-12 lg:gap-10 lg:px-8">
         <header className="space-y-4">
           <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
             Newsroom
