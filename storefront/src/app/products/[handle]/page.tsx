@@ -22,7 +22,7 @@ import { storeClient } from "@/lib/medusa"
 import { resolveRegionId } from "@/lib/regions"
 
 type ProductPageProps = {
-  params: { handle: string } | Promise<{ handle: string }>
+  params: Promise<{ handle: string }>
 }
 
 const normalizeHandle = (handle: string | null | undefined): string | null => {

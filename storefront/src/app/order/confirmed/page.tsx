@@ -50,7 +50,7 @@ type OrderSummaryResponse = {
 }
 
 type ConfirmedPageProps = {
-  searchParams: { session_id?: string }
+  searchParams: Promise<{ session_id?: string }>
 }
 
 const createCurrencyFormatter = (currency: string) =>
@@ -60,7 +60,8 @@ const createCurrencyFormatter = (currency: string) =>
   })
 
 const ConfirmedPage = async ({ searchParams }: ConfirmedPageProps) => {
-  const sessionId = searchParams.session_id
+  const resolvedSearchParams = await searchParams
+  const sessionId = resolvedSearchParams.session_id
 
   if (!sessionId) {
     redirect("/?cart=1")

@@ -8,7 +8,7 @@ import { getNewsEntryBySlug } from "@/lib/data/news"
 import { sanitizeNewsHtml } from "@/lib/news/rich-text"
 
 type NewsPageProps = {
-  params: { slug: string } | Promise<{ slug: string }>
+  params: Promise<{ slug: string }>
 }
 
 const normalizeSlug = (slug: string | null | undefined): string | null => {
