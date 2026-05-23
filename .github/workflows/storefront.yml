@@ -78,7 +78,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.28.2
           run_install: false
 
       - name: Setup Node with pnpm cache
@@ -130,7 +129,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.28.2
           run_install: false
 
       - name: Setup Node with pnpm cache
@@ -191,7 +189,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.28.2
           run_install: false
 
       - name: Setup Node with pnpm cache
@@ -230,7 +227,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.28.2
           run_install: false
 
       - name: Setup Node with pnpm cache
@@ -267,7 +263,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.28.2
           run_install: false
 
       - name: Setup Node with pnpm cache
@@ -314,7 +309,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.28.2
           run_install: false
 
       - name: Setup Node with pnpm cache
@@ -364,7 +358,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.28.2
           run_install: false
 
       - name: Setup Node with pnpm cache
@@ -401,7 +394,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.28.2
           run_install: false
 
       - name: Setup Node with pnpm cache
