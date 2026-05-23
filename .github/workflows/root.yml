@@ -43,7 +43,7 @@ jobs:
         with:
           run_install: false
       - name: Trivy FS scan (repo)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           ignore-unfixed: true
