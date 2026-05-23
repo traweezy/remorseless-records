@@ -83,7 +83,7 @@ jobs:
       - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -134,7 +134,7 @@ jobs:
       - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -162,7 +162,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -194,7 +194,7 @@ jobs:
       - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -232,7 +232,7 @@ jobs:
       - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -268,7 +268,7 @@ jobs:
       - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -314,7 +314,7 @@ jobs:
       - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -363,7 +363,7 @@ jobs:
       - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -399,7 +399,7 @@ jobs:
       - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
