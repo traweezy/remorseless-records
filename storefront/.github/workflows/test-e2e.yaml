@@ -45,9 +45,11 @@ jobs:
     timeout-minutes: 20
     runs-on:
       - ubuntu-latest
+    permissions:
+      contents: read
     services:
       postgres:
-        image: postgres:latest
+        image: postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -74,7 +76,7 @@ jobs:
           --health-retries 5
 
       redis:
-        image: redis:latest
+        image: redis:7-alpine
         ports:
           - 6379:6379
         options: >-
@@ -83,12 +85,20 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+          run_install: false
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Initialize PostgreSQL
         run: |
@@ -96,13 +106,11 @@ jobs:
           psql -h localhost -U postgres -d test -c "CREATE USER ${{ env.TEST_POSTGRES_USER }} WITH PASSWORD '${{ env.TEST_POSTGRES_PASSWORD }}';"
           psql -h localhost -U postgres -d test -c "CREATE DATABASE ${{ env.TEST_POSTGRES_DATABASE }} OWNER ${{ env.TEST_POSTGRES_USER }};"
 
-      - name: Install Medusa CLI
-        run: npm install @medusajs/medusa-cli@preview -g
       - name: Setup medusa backend server
         working-directory: ../
         # https://docs.medusajs.com/cli/reference#options
         run: |
-          medusa new backend \
+          pnpm dlx @medusajs/medusa-cli@preview medusa new backend \
           -y \
           --v2 \
           --branch feat/v2 \
@@ -117,32 +125,32 @@ jobs:
 
       - name: Setup search in the backend
         working-directory: ../backend
-        run: yarn add medusa-plugin-meilisearch
+        run: pnpm add medusa-plugin-meilisearch
 
       - name: Move custom medusa config to the backend
         run: cp .github/scripts/medusa-config.js ../backend/medusa-config.js
 
       - name: Seed data from default seed file
         working-directory: ../backend
-        run: medusa seed --seed-file=data/seed.json
+        run: pnpm exec medusa seed --seed-file=data/seed.json
 
       - name: Run backend server
         working-directory: ../backend
-        run: medusa develop
+        run: pnpm exec medusa develop
 
       - name: Install packages
-        run: yarn install -y
+        run: pnpm install --frozen-lockfile
 
       - name: Install playwright
-        run: yarn playwright install --with-deps
+        run: pnpm exec playwright install --with-deps
 
       - name: Setup frontend
-        run: yarn build
+        run: pnpm run build
 
       - name: Run Tests
-        run: yarn test-e2e
+        run: pnpm run test:e2e
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: playwright-report

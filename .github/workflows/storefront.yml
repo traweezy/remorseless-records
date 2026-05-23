@@ -42,7 +42,7 @@ env:
 
 jobs:
   dependency-review:
-    if: ${{ contains(fromJson('["pull_request","pull_request_target","merge_group"]'), github.event_name) }}
+    if: ${{ contains(fromJson('["pull_request","merge_group"]'), github.event_name) }}
     runs-on: ubuntu-latest
     name: Dependency Review (push/PR)
     timeout-minutes: 10
@@ -257,7 +257,7 @@ jobs:
     name: E2E Tests (storefront, Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: ${{ false }} # enable once dedicated CI backend is available
+    if: ${{ vars.ENABLE_STOREFRONT_E2E == 'true' }}
     needs: [build]
     permissions:
       contents: read
@@ -301,7 +301,7 @@ jobs:
     name: Accessibility (pa11y)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ false }} # enable once a backend is available in CI
+    if: ${{ vars.ENABLE_STOREFRONT_A11Y == 'true' }}
     needs: [build]
     env:
       QA_BASE_URL: http://localhost:3000
@@ -354,7 +354,7 @@ jobs:
     name: Build (storefront)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ false }} # temporarily disabled; re-enable when build is needed
+    if: ${{ vars.ENABLE_STOREFRONT_BUILD == 'true' }}
     needs: [unit]
     permissions:
       contents: read
@@ -391,7 +391,7 @@ jobs:
     name: Lighthouse (local build unless URL provided)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    if: ${{ false }} # enable once a backend is available in CI
+    if: ${{ vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true' }}
     needs: [build]
     permissions:
       contents: read
@@ -421,7 +421,7 @@ jobs:
         run: pnpm --filter remorseless-records-storefront run start -- --hostname 0.0.0.0 --port 3000 &
 
       - name: Wait for storefront to be ready
-        run: npx wait-on http://localhost:3000
+        run: pnpm dlx wait-on@7.2.0 http://localhost:3000
 
       - name: Run Lighthouse CI (local or override URL)
         env:
