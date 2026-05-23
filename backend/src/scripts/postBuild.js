@@ -157,7 +157,27 @@ const readOverrides = (packagePath) => {
   return overrides && typeof overrides === 'object' ? overrides : null;
 };
 
-const overrides = readOverrides(LOCAL_PACKAGE_JSON) ?? readOverrides(ROOT_PACKAGE_JSON);
+const readPnpmConfigOverrides = () => {
+  try {
+    const output = execSync('pnpm config get overrides --json', {
+      cwd: process.cwd(),
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    if (!output || output === 'undefined') {
+      return null;
+    }
+
+    const overrides = JSON.parse(output);
+    return overrides && typeof overrides === 'object' && !Array.isArray(overrides)
+      ? overrides
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const overrides = readPnpmConfigOverrides() ?? readOverrides(LOCAL_PACKAGE_JSON) ?? readOverrides(ROOT_PACKAGE_JSON);
 
 if (overrides && fs.existsSync(MEDUSA_PACKAGE_JSON)) {
   const packageJson = JSON.parse(fs.readFileSync(MEDUSA_PACKAGE_JSON, 'utf-8'));
