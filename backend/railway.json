@@ -6,7 +6,7 @@
   },
   "deploy": {
     "preDeployCommand": null,
-    "startCommand": "pnpm run start",
+    "startCommand": "pnpm --silent run start",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 720,
     "restartPolicyType": "ON_FAILURE",
