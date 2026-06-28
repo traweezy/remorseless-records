@@ -2,6 +2,13 @@ packages:
   - backend
   - storefront
 
+onlyBuiltDependencies:
+  - "@medusajs/telemetry"
+  - "@swc/core"
+  - esbuild
+  - msgpackr-extract
+  - protobufjs
+
 overrides:
   "@mikro-orm/cli": 6.6.14
   "@mikro-orm/core": 6.6.14

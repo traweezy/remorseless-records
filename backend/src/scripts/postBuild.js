@@ -6,6 +6,7 @@ const MEDUSA_SERVER_PATH = path.join(process.cwd(), '.medusa', 'server');
 const CUSTOM_INIT_SCRIPT = path.join(process.cwd(), 'scripts', 'init-backend.js');
 const MEDUSA_INIT_DEST = path.join(MEDUSA_SERVER_PATH, 'scripts', 'init-backend.js');
 const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
+const MEDUSA_WORKSPACE_YAML = path.join(MEDUSA_SERVER_PATH, 'pnpm-workspace.yaml');
 const LOCAL_PACKAGE_JSON = path.join(process.cwd(), 'package.json');
 const ROOT_PACKAGE_JSON = path.join(process.cwd(), '..', 'package.json');
 
@@ -177,20 +178,65 @@ const readPnpmConfigOverrides = () => {
   }
 };
 
-const overrides = readPnpmConfigOverrides() ?? readOverrides(LOCAL_PACKAGE_JSON) ?? readOverrides(ROOT_PACKAGE_JSON);
+const readPnpmConfigArray = (name) => {
+  try {
+    const output = execSync(`pnpm config get ${name} --json`, {
+      cwd: process.cwd(),
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    if (!output || output === 'undefined') {
+      return [];
+    }
 
-if (overrides && fs.existsSync(MEDUSA_PACKAGE_JSON)) {
+    const values = JSON.parse(output);
+    return Array.isArray(values)
+      ? values.filter((value) => typeof value === 'string' && value.length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const yamlScalar = (value) => JSON.stringify(value);
+
+const writePnpmWorkspaceConfig = ({ onlyBuiltDependencies, overrides }) => {
+  const lines = [
+    'packages:',
+    '  - "."'
+  ];
+
+  if (onlyBuiltDependencies.length > 0) {
+    lines.push('', 'onlyBuiltDependencies:');
+    for (const dependency of onlyBuiltDependencies) {
+      lines.push(`  - ${yamlScalar(dependency)}`);
+    }
+  }
+
+  if (overrides && Object.keys(overrides).length > 0) {
+    lines.push('', 'overrides:');
+    for (const [dependency, version] of Object.entries(overrides)) {
+      lines.push(`  ${yamlScalar(dependency)}: ${yamlScalar(version)}`);
+    }
+  }
+
+  fs.writeFileSync(MEDUSA_WORKSPACE_YAML, `${lines.join('\n')}\n`, 'utf-8');
+};
+
+const overrides = readPnpmConfigOverrides() ?? readOverrides(LOCAL_PACKAGE_JSON) ?? readOverrides(ROOT_PACKAGE_JSON);
+const onlyBuiltDependencies = readPnpmConfigArray('onlyBuiltDependencies');
+
+writePnpmWorkspaceConfig({ onlyBuiltDependencies, overrides });
+
+if (fs.existsSync(MEDUSA_PACKAGE_JSON)) {
   const packageJson = JSON.parse(fs.readFileSync(MEDUSA_PACKAGE_JSON, 'utf-8'));
-  packageJson.pnpm = {
-    ...(packageJson.pnpm ?? {}),
-    overrides
-  };
+  delete packageJson.pnpm;
   fs.writeFileSync(MEDUSA_PACKAGE_JSON, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
 }
 
 // Install dependencies
 console.log('Installing dependencies in .medusa/server...');
-execSync('pnpm i --prod --frozen-lockfile --lockfile-dir . --ignore-workspace', {
+execSync('pnpm i --prod --frozen-lockfile --lockfile-dir .', {
   cwd: MEDUSA_SERVER_PATH,
   stdio: 'inherit',
   env: {
