@@ -52,6 +52,8 @@ type QueryGraph = {
   }) => Promise<{ data: Array<Record<string, unknown>> }>;
 };
 
+const PRODUCT_LOOKUP_FIELDS = ["id", "handle", "variants.id", "variants.sku"];
+
 const LEGACY_METADATA_COLUMN_MAP: Record<string, string> = {
   "product collection title": "collection_title",
   "product collection handle": "collection_handle",
@@ -417,16 +419,55 @@ const normalizeCommaDelimitedCsv = async (
   }
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph;
-  const existingProducts = await query.graph({
-    entity: "product",
-    fields: ["id", "handle", "variants.id", "variants.sku"],
-    filters: { handle: handles },
-    pagination: { take: handles.length },
-  });
+  const existingProductRows: Array<Record<string, unknown>> = [];
+  const seenProductIds = new Set<string>();
+
+  for (let index = 0; index < handles.length; index += 50) {
+    const chunk = handles.slice(index, index + 50);
+    const existingProducts = await query.graph({
+      entity: "product",
+      fields: PRODUCT_LOOKUP_FIELDS,
+      filters: { handle: { $in: chunk } },
+      pagination: { take: chunk.length },
+    });
+
+    existingProducts.data.forEach((product) => {
+      const id = nonEmptyString(product, "id");
+      if (id && seenProductIds.has(id)) {
+        return;
+      }
+      if (id) {
+        seenProductIds.add(id);
+      }
+      existingProductRows.push(product);
+    });
+  }
+
+  if (existingProductRows.length === 0 && handles.length <= 100) {
+    for (const handle of handles) {
+      const existingProducts = await query.graph({
+        entity: "product",
+        fields: PRODUCT_LOOKUP_FIELDS,
+        filters: { handle },
+        pagination: { take: 1 },
+      });
+
+      existingProducts.data.forEach((product) => {
+        const id = nonEmptyString(product, "id");
+        if (id && seenProductIds.has(id)) {
+          return;
+        }
+        if (id) {
+          seenProductIds.add(id);
+        }
+        existingProductRows.push(product);
+      });
+    }
+  }
 
   const productIdByHandle = new Map<string, string>();
   const variantIdByHandleSku = new Map<string, string>();
-  existingProducts.data.forEach((product) => {
+  existingProductRows.forEach((product) => {
     const handle = nonEmptyString(product, "handle");
     const id = nonEmptyString(product, "id");
     if (!handle || !id) {
