@@ -5,6 +5,7 @@
     "buildCommand": "pnpm run build"
   },
   "deploy": {
+    "preDeployCommand": null,
     "startCommand": "pnpm run start",
     "healthcheckPath": "/api/healthcheck",
     "restartPolicyType": "ON_FAILURE",
