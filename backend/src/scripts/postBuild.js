@@ -9,6 +9,13 @@ const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
 const MEDUSA_WORKSPACE_YAML = path.join(MEDUSA_SERVER_PATH, 'pnpm-workspace.yaml');
 const LOCAL_PACKAGE_JSON = path.join(process.cwd(), 'package.json');
 const ROOT_PACKAGE_JSON = path.join(process.cwd(), '..', 'package.json');
+const DEFAULT_ONLY_BUILT_DEPENDENCIES = [
+  '@medusajs/telemetry',
+  '@swc/core',
+  'esbuild',
+  'msgpackr-extract',
+  'protobufjs'
+];
 
 // Check if .medusa/server exists - if not, build process failed
 if (!fs.existsSync(MEDUSA_SERVER_PATH)) {
@@ -224,7 +231,10 @@ const writePnpmWorkspaceConfig = ({ onlyBuiltDependencies, overrides }) => {
 };
 
 const overrides = readPnpmConfigOverrides() ?? readOverrides(LOCAL_PACKAGE_JSON) ?? readOverrides(ROOT_PACKAGE_JSON);
-const onlyBuiltDependencies = readPnpmConfigArray('onlyBuiltDependencies');
+const onlyBuiltDependencies = Array.from(new Set([
+  ...DEFAULT_ONLY_BUILT_DEPENDENCIES,
+  ...readPnpmConfigArray('onlyBuiltDependencies')
+]));
 
 writePnpmWorkspaceConfig({ onlyBuiltDependencies, overrides });
 
