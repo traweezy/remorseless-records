@@ -39,3 +39,20 @@ export const catalogBundleFulfillmentModes = [
 export const catalogShelfModes = ["manual", "automatic", "hybrid"] as const
 
 export const catalogShelfAutomationTypes = ["none", "new_release"] as const
+
+export const catalogMediaRoles = [
+  "gallery",
+  "primary",
+  "variant",
+  "artist_photo",
+  "news_cover",
+  "open_graph",
+] as const
+
+export const catalogMediaDerivativeStatuses = [
+  "source_only",
+  "pending",
+  "processing",
+  "ready",
+  "failed",
+] as const

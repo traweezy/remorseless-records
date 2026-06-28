@@ -140,6 +140,45 @@ export const assertVariantExists = async (
   )
 }
 
+export const assertVariantBelongsToProduct = async (
+  req: MedusaRequest,
+  productId: string,
+  variantId: string
+): Promise<void> => {
+  const query = getQuery(req)
+  const result = await query.graph({
+    entity: "product_variant",
+    fields: ["id", "product_id", "product.id"],
+    filters: { id: variantId },
+    pagination: { take: 1 },
+  })
+
+  const variant = result.data.at(0)
+  if (!variant) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "Product variant not found"
+    )
+  }
+
+  const variantProductId =
+    typeof variant.product_id === "string"
+      ? variant.product_id
+      : variant.product &&
+          typeof variant.product === "object" &&
+          "id" in variant.product &&
+          typeof variant.product.id === "string"
+        ? variant.product.id
+        : null
+
+  if (variantProductId !== productId) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Product media variant must belong to the product"
+    )
+  }
+}
+
 export const createOrReuseArtist = async (
   catalogService: CatalogService,
   input: {

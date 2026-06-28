@@ -3,6 +3,8 @@ import {
   catalogBundleFulfillmentModes,
   catalogBundleInventoryModes,
   catalogBundleTypes,
+  catalogMediaDerivativeStatuses,
+  catalogMediaRoles,
   catalogReferenceKinds,
   catalogShelfAutomationTypes,
   catalogShelfModes,
@@ -32,6 +34,13 @@ export type CatalogShelfMode = (typeof catalogShelfModeValues)[number]
 export const catalogShelfAutomationTypeValues = catalogShelfAutomationTypes
 export type CatalogShelfAutomationType =
   (typeof catalogShelfAutomationTypeValues)[number]
+
+export const catalogMediaRoleValues = catalogMediaRoles
+export type CatalogMediaRole = (typeof catalogMediaRoleValues)[number]
+
+export const catalogMediaDerivativeStatusValues = catalogMediaDerivativeStatuses
+export type CatalogMediaDerivativeStatus =
+  (typeof catalogMediaDerivativeStatusValues)[number]
 
 export type JsonRecord = Record<string, unknown>
 export type JsonList = unknown[]
@@ -276,6 +285,77 @@ export type CatalogBundleComponentDTO = {
   updatedAt?: string | null
 }
 
+export type CatalogMediaAssetRecord = {
+  id: string
+  source_url: string
+  source_file_key: string | null
+  original_filename: string | null
+  mime_type: string | null
+  byte_size: number | null
+  width: number | null
+  height: number | null
+  alt_text: string | null
+  caption: string | null
+  focal_x: number | null
+  focal_y: number | null
+  crop_intent: string | null
+  derivative_status: unknown
+  derivatives: JsonRecord | null
+  metadata: JsonRecord | null
+  created_at?: Date | string | null
+  updated_at?: Date | string | null
+}
+
+export type CatalogMediaAssetDTO = {
+  id: string
+  sourceUrl: string
+  sourceFileKey: string | null
+  originalFilename: string | null
+  mimeType: string | null
+  byteSize: number | null
+  width: number | null
+  height: number | null
+  altText: string | null
+  caption: string | null
+  focalX: number | null
+  focalY: number | null
+  cropIntent: string | null
+  derivativeStatus: CatalogMediaDerivativeStatus
+  derivatives: JsonRecord
+  metadata: JsonRecord
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export type CatalogProductMediaItemRecord = {
+  id: string
+  product_id: string
+  variant_id: string | null
+  product_profile_id: string | null
+  media_asset_id: string
+  role: unknown
+  sort_order: number
+  is_primary: boolean
+  metadata: JsonRecord | null
+  created_at?: Date | string | null
+  updated_at?: Date | string | null
+}
+
+export type CatalogProductMediaItemDTO = {
+  id: string
+  productId: string
+  variantId: string | null
+  productProfileId: string | null
+  mediaAssetId: string
+  role: CatalogMediaRole
+  sortOrder: number
+  isPrimary: boolean
+  metadata: JsonRecord
+  asset?: CatalogMediaAssetDTO | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
 export type CatalogShelfRecord = {
   id: string
   handle: string
@@ -400,6 +480,20 @@ const toCatalogShelfAutomationType = (
 ): CatalogShelfAutomationType => {
   const match = catalogShelfAutomationTypeValues.find((type) => type === value)
   return match ?? "none"
+}
+
+const toCatalogMediaRole = (value: unknown): CatalogMediaRole => {
+  const match = catalogMediaRoleValues.find((role) => role === value)
+  return match ?? "gallery"
+}
+
+const toCatalogMediaDerivativeStatus = (
+  value: unknown
+): CatalogMediaDerivativeStatus => {
+  const match = catalogMediaDerivativeStatusValues.find(
+    (status) => status === value
+  )
+  return match ?? "source_only"
 }
 
 export const serializeCatalogArtist = (
@@ -536,6 +630,47 @@ export const serializeCatalogBundleComponent = (
   metadata: toRecord(component.metadata),
   createdAt: toIso(component.created_at),
   updatedAt: toIso(component.updated_at),
+})
+
+export const serializeCatalogMediaAsset = (
+  asset: CatalogMediaAssetRecord
+): CatalogMediaAssetDTO => ({
+  id: asset.id,
+  sourceUrl: asset.source_url,
+  sourceFileKey: asset.source_file_key ?? null,
+  originalFilename: asset.original_filename ?? null,
+  mimeType: asset.mime_type ?? null,
+  byteSize: asset.byte_size ?? null,
+  width: asset.width ?? null,
+  height: asset.height ?? null,
+  altText: asset.alt_text ?? null,
+  caption: asset.caption ?? null,
+  focalX: asset.focal_x ?? null,
+  focalY: asset.focal_y ?? null,
+  cropIntent: asset.crop_intent ?? null,
+  derivativeStatus: toCatalogMediaDerivativeStatus(asset.derivative_status),
+  derivatives: toRecord(asset.derivatives),
+  metadata: toRecord(asset.metadata),
+  createdAt: toIso(asset.created_at),
+  updatedAt: toIso(asset.updated_at),
+})
+
+export const serializeCatalogProductMediaItem = (
+  item: CatalogProductMediaItemRecord,
+  asset?: CatalogMediaAssetRecord | null
+): CatalogProductMediaItemDTO => ({
+  id: item.id,
+  productId: item.product_id,
+  variantId: item.variant_id ?? null,
+  productProfileId: item.product_profile_id ?? null,
+  mediaAssetId: item.media_asset_id,
+  role: toCatalogMediaRole(item.role),
+  sortOrder: item.sort_order ?? 0,
+  isPrimary: item.is_primary ?? false,
+  metadata: toRecord(item.metadata),
+  asset: asset ? serializeCatalogMediaAsset(asset) : null,
+  createdAt: toIso(item.created_at),
+  updatedAt: toIso(item.updated_at),
 })
 
 export const serializeCatalogShelf = (

@@ -201,6 +201,65 @@ type BundleResponse = {
   components: CatalogBundleComponent[]
 }
 
+type CatalogMediaAsset = {
+  id: string
+  sourceUrl: string
+  sourceFileKey: string | null
+  originalFilename: string | null
+  mimeType: string | null
+  byteSize: number | null
+  width: number | null
+  height: number | null
+  altText: string | null
+  caption: string | null
+  focalX: number | null
+  focalY: number | null
+  cropIntent: string | null
+  derivativeStatus: string
+  derivatives: JsonRecord
+  metadata: JsonRecord
+}
+
+type CatalogProductMediaItem = {
+  id: string
+  productId: string
+  variantId: string | null
+  productProfileId: string | null
+  mediaAssetId: string
+  role: string
+  sortOrder: number
+  isPrimary: boolean
+  metadata: JsonRecord
+  asset: CatalogMediaAsset | null
+}
+
+type ProductMediaResponse = {
+  productId: string
+  media: CatalogProductMediaItem[]
+}
+
+type UploadFileResponse = {
+  id?: string | null
+  url?: string | null
+  key?: string | null
+  fileKey?: string | null
+  filename?: string | null
+  originalname?: string | null
+  name?: string | null
+  mimeType?: string | null
+  mimetype?: string | null
+  size?: number | null
+}
+
+type UploadsResponse = {
+  files?: UploadFileResponse[]
+}
+
+type FileInputChangeEvent = {
+  target?: EventTarget | null
+  currentTarget?: EventTarget | null
+}
+
 type ReferenceValuesResponse = {
   values: CatalogReferenceValue[]
 }
@@ -264,6 +323,28 @@ type BundleComponentLine = {
   isRequired: boolean
 }
 
+type ProductMediaLine = {
+  key: string
+  mediaAssetId: string | null
+  variantId: string
+  sourceUrl: string
+  sourceFileKey: string
+  originalFilename: string
+  mimeType: string
+  byteSize: string
+  width: string
+  height: string
+  altText: string
+  caption: string
+  focalX: string
+  focalY: string
+  cropIntent: string
+  role: "gallery" | "primary" | "variant"
+  sortOrder: string
+  isPrimary: boolean
+  metadata: KeyValueLine[]
+}
+
 type BundleForm = {
   enabled: boolean
   bundleType: BundleType
@@ -324,6 +405,28 @@ const emptyVariantProfileForm: VariantProfileForm = {
   imageUrl: "",
   metadata: [],
 }
+
+const emptyProductMediaLine = (): ProductMediaLine => ({
+  key: key(),
+  mediaAssetId: null,
+  variantId: "",
+  sourceUrl: "",
+  sourceFileKey: "",
+  originalFilename: "",
+  mimeType: "",
+  byteSize: "",
+  width: "",
+  height: "",
+  altText: "",
+  caption: "",
+  focalX: "",
+  focalY: "",
+  cropIntent: "",
+  role: "gallery",
+  sortOrder: "0",
+  isPrimary: false,
+  metadata: [],
+})
 
 const key = (): string => Math.random().toString(36).slice(2)
 
@@ -873,6 +976,33 @@ const toBundleForm = (response: BundleResponse): BundleForm => ({
   })),
 })
 
+const toProductMediaLines = (response: ProductMediaResponse): ProductMediaLine[] =>
+  response.media.map((item, index) => ({
+    key: key(),
+    mediaAssetId: item.mediaAssetId,
+    variantId: item.variantId ?? "",
+    sourceUrl: item.asset?.sourceUrl ?? "",
+    sourceFileKey: item.asset?.sourceFileKey ?? "",
+    originalFilename: item.asset?.originalFilename ?? "",
+    mimeType: item.asset?.mimeType ?? "",
+    byteSize:
+      typeof item.asset?.byteSize === "number" ? String(item.asset.byteSize) : "",
+    width: typeof item.asset?.width === "number" ? String(item.asset.width) : "",
+    height: typeof item.asset?.height === "number" ? String(item.asset.height) : "",
+    altText: item.asset?.altText ?? "",
+    caption: item.asset?.caption ?? "",
+    focalX:
+      typeof item.asset?.focalX === "number" ? String(item.asset.focalX) : "",
+    focalY:
+      typeof item.asset?.focalY === "number" ? String(item.asset.focalY) : "",
+    cropIntent: item.asset?.cropIntent ?? "",
+    role:
+      item.role === "primary" || item.role === "variant" ? item.role : "gallery",
+    sortOrder: String(item.sortOrder ?? index),
+    isPrimary: item.isPrimary ?? false,
+    metadata: recordToLines(item.asset?.metadata),
+  }))
+
 const toVariantProfileForm = (profile: CatalogVariantProfile | null): VariantProfileForm => ({
   format: profile?.formatLabel ?? "",
   formatDetail: profile?.formatDetailLabel ?? "",
@@ -984,6 +1114,46 @@ const buildBundlePayload = (
           })
 })
 
+const parseOptionalDecimal = (value: string): number | null => {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  const parsed = Number.parseFloat(trimmed)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const buildProductMediaPayload = (media: ProductMediaLine[]) => ({
+  media: media
+    .filter((line) => line.sourceUrl.trim() || line.mediaAssetId)
+    .map((line, index) => ({
+      mediaAssetId: line.mediaAssetId,
+      sourceUrl: toNullable(line.sourceUrl),
+      sourceFileKey: toNullable(line.sourceFileKey),
+      originalFilename: toNullable(line.originalFilename),
+      mimeType: toNullable(line.mimeType),
+      byteSize: parseInteger(line.byteSize),
+      width: parseInteger(line.width),
+      height: parseInteger(line.height),
+      altText: toNullable(line.altText),
+      caption: toNullable(line.caption),
+      focalPoint:
+        line.focalX.trim() || line.focalY.trim()
+          ? {
+              x: parseOptionalDecimal(line.focalX) ?? 0.5,
+              y: parseOptionalDecimal(line.focalY) ?? 0.5,
+            }
+          : null,
+      cropIntent: toNullable(line.cropIntent),
+      role: line.isPrimary ? "primary" : line.role,
+      variantId: toNullable(line.variantId),
+      sortOrder: parseInteger(line.sortOrder) ?? index,
+      isPrimary: line.isPrimary,
+      assetMetadata: linesToRecord(line.metadata),
+      metadata: {},
+    })),
+})
+
 const buildVariantProfilePayload = (
   form: VariantProfileForm,
   variant: AdminProductVariant | undefined,
@@ -1048,6 +1218,8 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
     emptyProductProfileForm
   )
   const [bundleForm, setBundleForm] = useState<BundleForm>(emptyBundleForm)
+  const [mediaForm, setMediaForm] = useState<ProductMediaLine[]>([])
+  const [uploadingMedia, setUploadingMedia] = useState(false)
 
   const load = useCallback(async () => {
     if (!productId) {
@@ -1055,12 +1227,13 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
     }
     setLoading(true)
     try {
-      const [profile, bundle, artistList, referenceList, productList] =
+      const [profile, bundle, media, artistList, referenceList, productList] =
         await Promise.all([
           fetchJson<ProductProfileResponse>(
             `/admin/catalog/products/${productId}/profile`
           ),
           fetchJson<BundleResponse>(`/admin/catalog/products/${productId}/bundle`),
+          fetchJson<ProductMediaResponse>(`/admin/catalog/products/${productId}/media`),
           fetchJson<ArtistsResponse>("/admin/catalog/artists?limit=500"),
           fetchJson<ReferenceValuesResponse>(
             "/admin/catalog/reference-values?limit=500&active=true"
@@ -1077,6 +1250,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
       setProducts(productList.products)
       setProfileForm(toProductProfileForm(profile, artistList.artists, referenceList.values))
       setBundleForm(toBundleForm(bundle))
+      setMediaForm(toProductMediaLines(media))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load catalog profile")
     } finally {
@@ -1105,6 +1279,18 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
         .filter(Boolean)
         .join(", "),
     [profileForm.references]
+  )
+
+  const productVariants = useMemo(() => {
+    if (data?.variants?.length) {
+      return data.variants
+    }
+    return products.find((product) => product.id === productId)?.variants ?? []
+  }, [data, productId, products])
+
+  const mediaCount = useMemo(
+    () => mediaForm.filter((line) => line.sourceUrl.trim() || line.mediaAssetId).length,
+    [mediaForm]
   )
 
   const updateProfile = useCallback(
@@ -1159,6 +1345,11 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
         })
       }
 
+      await fetchJson<ProductMediaResponse>(`/admin/catalog/products/${productId}/media`, {
+        method: "PUT",
+        body: JSON.stringify(buildProductMediaPayload(mediaForm)),
+      })
+
       toast.success("Saved catalog profile")
       setOpen(false)
       await load()
@@ -1172,6 +1363,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
     bundleForm,
     bundleResponse.bundle,
     load,
+    mediaForm,
     productId,
     products,
     profileForm,
@@ -1303,6 +1495,138 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
     [bundleForm.components, updateBundle]
   )
 
+  const addMedia = useCallback(() => {
+    setMediaForm((previous) => [
+      ...previous,
+      {
+        ...emptyProductMediaLine(),
+        sortOrder: String(previous.length),
+        isPrimary: previous.length === 0,
+        role: previous.length === 0 ? "primary" : "gallery",
+      },
+    ])
+  }, [])
+
+  const updateMedia = useCallback(
+    (lineKey: string, patch: Partial<ProductMediaLine>) => {
+      setMediaForm((previous) =>
+        previous.map((line) => (line.key === lineKey ? { ...line, ...patch } : line))
+      )
+    },
+    []
+  )
+
+  const removeMedia = useCallback((lineKey: string) => {
+    setMediaForm((previous) =>
+      previous
+        .filter((line) => line.key !== lineKey)
+        .map((line, index) => ({ ...line, sortOrder: String(index) }))
+    )
+  }, [])
+
+  const setPrimaryMedia = useCallback((lineKey: string) => {
+    setMediaForm((previous) => {
+      const target = previous.find((line) => line.key === lineKey)
+      const targetScope = target?.variantId ?? ""
+
+      return previous.map((line) => {
+        if ((line.variantId ?? "") !== targetScope) {
+          return line
+        }
+
+        const isPrimary = line.key === lineKey
+        return {
+          ...line,
+          isPrimary,
+          role: isPrimary ? "primary" : line.role === "primary" ? "gallery" : line.role,
+        }
+      })
+    })
+  }, [])
+
+  const handleMediaUpload = useCallback(async (event: FileInputChangeEvent) => {
+    const input = (event.currentTarget ?? event.target) as
+      | {
+          files?: ArrayLike<File> | null
+          value?: string
+        }
+      | null
+    const files = input?.files ? Array.from(input.files) : []
+    if (!files.length) {
+      return
+    }
+
+    setUploadingMedia(true)
+    try {
+      const formData = new FormData()
+      for (const file of files) {
+        formData.append("files", file)
+      }
+
+      const response = await fetch("/admin/uploads", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      })
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(body || `Upload failed with ${response.status}`)
+      }
+
+      const payload = (await response.json()) as UploadsResponse
+      const uploadedFiles = payload.files ?? []
+      const lines: ProductMediaLine[] = uploadedFiles.map((uploaded, index) => {
+        const file = files[index]
+        const line = emptyProductMediaLine()
+        return {
+          ...line,
+          sourceUrl: uploaded.url ?? "",
+          sourceFileKey: uploaded.fileKey ?? uploaded.key ?? uploaded.id ?? "",
+          originalFilename:
+            uploaded.filename ??
+            uploaded.originalname ??
+            uploaded.name ??
+            file?.name ??
+            "",
+          mimeType: uploaded.mimeType ?? uploaded.mimetype ?? file?.type ?? "",
+          byteSize:
+            typeof uploaded.size === "number"
+              ? String(uploaded.size)
+              : typeof file?.size === "number"
+                ? String(file.size)
+                : "",
+        }
+      })
+
+      if (!lines.some((line) => line.sourceUrl.trim())) {
+        throw new Error("Upload returned no media URLs")
+      }
+
+      setMediaForm((previous) => [
+        ...previous,
+        ...lines.map((line, index) => {
+          const isFirstMedia = previous.length === 0 && index === 0
+          const role: ProductMediaLine["role"] = isFirstMedia
+            ? "primary"
+            : "gallery"
+          return {
+            ...line,
+            sortOrder: String(previous.length + index),
+            isPrimary: isFirstMedia,
+            role,
+          }
+        }),
+      ])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed")
+    } finally {
+      setUploadingMedia(false)
+      if (input) {
+        input.value = ""
+      }
+    }
+  }, [])
+
   if (!productId) {
     return null
   }
@@ -1328,6 +1652,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
           <SummaryItem label="Genres" value={genreLabels} />
           <SummaryItem label="Label" value={profileForm.label} />
           <SummaryItem label="Product type" value={profileForm.productType} />
+          <SummaryItem label="Media items" value={mediaCount ? String(mediaCount) : ""} />
         </div>
         <div className="flex flex-wrap gap-2 px-6 py-4">
           {bundleForm.enabled ? (
@@ -1341,6 +1666,11 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
             <Badge color="blue">Catalog data saved</Badge>
           ) : (
             <Badge color="orange">Catalog data incomplete</Badge>
+          )}
+          {mediaCount ? (
+            <Badge color="blue">{mediaCount} media item{mediaCount === 1 ? "" : "s"}</Badge>
+          ) : (
+            <Badge color="grey">No catalog media</Badge>
           )}
         </div>
       </Container>
@@ -1375,6 +1705,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
                 <Tabs.Trigger value="release">Release</Tabs.Trigger>
                 <Tabs.Trigger value="taxonomy">Taxonomy</Tabs.Trigger>
                 <Tabs.Trigger value="details">Details</Tabs.Trigger>
+                <Tabs.Trigger value="media">Media</Tabs.Trigger>
                 <Tabs.Trigger value="bundle">Bundle</Tabs.Trigger>
               </Tabs.List>
 
@@ -1689,6 +2020,308 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
                   lines={profileForm.metadata}
                   onChange={(lines) => updateProfile("metadata", lines)}
                 />
+              </Tabs.Content>
+
+              <Tabs.Content value="media" className="flex flex-col gap-y-6">
+                <div className="flex flex-col gap-y-4 rounded-md border border-ui-border-base p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <Heading level="h3">Media metadata</Heading>
+                      <Text size="small" className="text-ui-fg-subtle">
+                        One source file per image, with storefront metadata attached.
+                      </Text>
+                    </div>
+                    <Button
+                      type="button"
+                      size="small"
+                      variant="secondary"
+                      onClick={addMedia}
+                    >
+                      Add image URL
+                    </Button>
+                  </div>
+                  <Field label="Upload source images">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={uploadingMedia}
+                      onChange={handleMediaUpload}
+                    />
+                  </Field>
+                </div>
+
+                {mediaForm.length ? (
+                  <div className="flex flex-col gap-y-4">
+                    {mediaForm.map((line, index) => (
+                      <div
+                        key={line.key}
+                        className="flex flex-col gap-y-4 rounded-md border border-ui-border-base p-4"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="flex items-center gap-x-3">
+                            {line.sourceUrl ? (
+                              <img
+                                src={line.sourceUrl}
+                                alt=""
+                                className="size-14 rounded-md border border-ui-border-base object-cover"
+                              />
+                            ) : (
+                              <div className="size-14 rounded-md border border-ui-border-base bg-ui-bg-subtle" />
+                            )}
+                            <div>
+                              <Text weight="plus">Image {index + 1}</Text>
+                              <Text size="small" className="text-ui-fg-subtle">
+                                {line.originalFilename || line.sourceFileKey || "No source set"}
+                              </Text>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-x-2">
+                            {line.isPrimary ? <Badge color="blue">Primary</Badge> : null}
+                            <Button
+                              type="button"
+                              size="small"
+                              variant="transparent"
+                              onClick={() => removeMedia(line.key)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Field label="Source URL">
+                            <Input
+                              value={line.sourceUrl}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  sourceUrl: readFieldValue(event),
+                                })
+                              }
+                              placeholder="https://..."
+                            />
+                          </Field>
+                          <Field label="Variant linkage">
+                            <Select
+                              value={line.variantId || "__product__"}
+                              onValueChange={(value) =>
+                                updateMedia(line.key, {
+                                  variantId: value === "__product__" ? "" : value,
+                                  role:
+                                    value === "__product__"
+                                      ? line.role === "variant"
+                                        ? "gallery"
+                                        : line.role
+                                      : "variant",
+                                })
+                              }
+                            >
+                              <Select.Trigger>
+                                <Select.Value />
+                              </Select.Trigger>
+                              <Select.Content>
+                                <Select.Item value="__product__">Product gallery</Select.Item>
+                                {productVariants.map((variant) => (
+                                  <Select.Item key={variant.id} value={variant.id}>
+                                    {formatVariantOptionLabel(variant)}
+                                  </Select.Item>
+                                ))}
+                              </Select.Content>
+                            </Select>
+                          </Field>
+                          <Field label="Alt text">
+                            <Input
+                              value={line.altText}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  altText: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Caption">
+                            <Input
+                              value={line.caption}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  caption: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Role">
+                            <Select
+                              value={line.role === "primary" ? "gallery" : line.role}
+                              disabled={line.isPrimary}
+                              onValueChange={(value) =>
+                                updateMedia(line.key, {
+                                  role: value as ProductMediaLine["role"],
+                                })
+                              }
+                            >
+                              <Select.Trigger>
+                                <Select.Value />
+                              </Select.Trigger>
+                              <Select.Content>
+                                <Select.Item value="gallery">Gallery</Select.Item>
+                                <Select.Item value="variant">Variant</Select.Item>
+                              </Select.Content>
+                            </Select>
+                          </Field>
+                          <Field label="Sort order">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={line.sortOrder}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  sortOrder: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Source file key">
+                            <Input
+                              value={line.sourceFileKey}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  sourceFileKey: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Original filename">
+                            <Input
+                              value={line.originalFilename}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  originalFilename: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="MIME type">
+                            <Input
+                              value={line.mimeType}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  mimeType: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Byte size">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={line.byteSize}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  byteSize: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Width">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={line.width}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  width: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Height">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={line.height}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  height: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Focal X">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={1}
+                              step={0.01}
+                              value={line.focalX}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  focalX: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Focal Y">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={1}
+                              step={0.01}
+                              value={line.focalY}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  focalY: readFieldValue(event),
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field label="Crop intent">
+                            <Input
+                              value={line.cropIntent}
+                              onChange={(event) =>
+                                updateMedia(line.key, {
+                                  cropIntent: readFieldValue(event),
+                                })
+                              }
+                              placeholder="square, cover, detail"
+                            />
+                          </Field>
+                          <div className="flex items-center justify-between gap-x-3 rounded-md border border-ui-border-base p-4">
+                            <div>
+                              <Text weight="plus">Primary in scope</Text>
+                              <Text size="small" className="text-ui-fg-subtle">
+                                Product and each variant can have one primary image.
+                              </Text>
+                            </div>
+                            <Switch
+                              checked={line.isPrimary}
+                              onCheckedChange={(checked) =>
+                                checked
+                                  ? setPrimaryMedia(line.key)
+                                  : updateMedia(line.key, {
+                                      isPrimary: false,
+                                      role:
+                                        line.role === "primary" ? "gallery" : line.role,
+                                    })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <KeyValueEditor
+                          title="Image metadata"
+                          lines={line.metadata}
+                          onChange={(lines) =>
+                            updateMedia(line.key, { metadata: lines })
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Text size="small" className="text-ui-fg-subtle">
+                    No catalog media metadata yet.
+                  </Text>
+                )}
               </Tabs.Content>
 
               <Tabs.Content value="bundle" className="flex flex-col gap-y-6">
