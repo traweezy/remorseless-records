@@ -194,6 +194,10 @@ const medusaConfig = {
     {
       key: "news",
       resolve: "./src/modules/news",
+    },
+    {
+      key: "catalog",
+      resolve: "./src/modules/catalog",
     }
   ],
   plugins: [
