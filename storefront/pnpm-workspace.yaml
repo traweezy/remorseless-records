@@ -11,6 +11,12 @@ allowBuilds:
   puppeteer: true
   sharp: true
 
+peerDependencyRules:
+  allowedVersions:
+    "@types/react": "19"
+    react: "19"
+    react-dom: "19"
+
 overrides:
   "@mikro-orm/cli": 6.6.14
   "@mikro-orm/core": 6.6.14
@@ -19,8 +25,10 @@ overrides:
   "@mikro-orm/postgresql": 6.6.14
   "@opentelemetry/exporter-prometheus": 0.217.0
   "@opentelemetry/sdk-node": 0.217.0
+  "@aws-sdk/client-s3": ^3.1075.0
   "@isaacs/brace-expansion": ^5.0.1
   "@remix-run/router": ^1.23.2
+  "@swc/core": ^1.15.43
   "ajv@>=7.0.0 <8.18.0": ^8.20.0
   axios: ^1.15.2
   brace-expansion: ^2.0.3
@@ -28,6 +36,7 @@ overrides:
   diff: ^4.0.4
   esbuild: ^0.25.12
   fast-xml-parser: ^5.8.0
+  fdir: ^6.5.0
   follow-redirects: ^1.16.0
   flatted: ^3.4.2
   i18next-http-backend: ^3.0.5
@@ -44,6 +53,7 @@ overrides:
   "path-to-regexp@>=8.0.0 <8.4.0": ^8.4.2
   "picomatch@<2.3.2": ^2.3.2
   "picomatch@>=4.0.0 <4.0.4": ^4.0.4
+  posthog-node: ^5.38.6
   postcss: ^8.5.15
   protobufjs: ^7.6.3
   qs: ^6.15.2
