@@ -182,6 +182,7 @@ export type CatalogVariantProfileRecord = {
   format_detail_label: string | null
   display_label: string | null
   availability_status: unknown
+  preorder_allowed: boolean
   preorder_release_date: Date | string | null
   backorder_allowed: boolean
   backorder_note: string | null
@@ -201,6 +202,7 @@ export type CatalogVariantProfileDTO = {
   formatDetailLabel: string | null
   displayLabel: string | null
   availabilityStatus: CatalogAvailabilityStatus
+  preorderAllowed: boolean
   preorderReleaseDate: string | null
   backorderAllowed: boolean
   backorderNote: string | null
@@ -490,6 +492,7 @@ export const serializeCatalogVariantProfile = (
   formatDetailLabel: profile.format_detail_label ?? null,
   displayLabel: profile.display_label ?? null,
   availabilityStatus: toCatalogAvailabilityStatus(profile.availability_status),
+  preorderAllowed: profile.preorder_allowed ?? false,
   preorderReleaseDate: toIso(profile.preorder_release_date),
   backorderAllowed: profile.backorder_allowed ?? false,
   backorderNote: profile.backorder_note ?? null,

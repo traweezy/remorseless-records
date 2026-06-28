@@ -3,7 +3,6 @@ import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
 import {
-  catalogAvailabilityStatusValues,
   serializeCatalogVariantProfile,
 } from "@/modules/catalog/serializers"
 import {
@@ -33,7 +32,7 @@ const variantProfileUpsertSchema = z.object({
   formatLabel: z.string().trim().optional().nullable(),
   formatDetailLabel: z.string().trim().optional().nullable(),
   displayLabel: z.string().trim().optional().nullable(),
-  availabilityStatus: z.enum(catalogAvailabilityStatusValues).optional(),
+  preorderAllowed: z.boolean().optional(),
   preorderReleaseDate: z.string().trim().optional().nullable(),
   backorderAllowed: z.boolean().optional(),
   backorderNote: z.string().trim().optional().nullable(),
@@ -179,6 +178,7 @@ export const PUT = async (
 
   const payload: Record<string, unknown> = {
     variant_id: variantId,
+    availability_status: "available",
   }
 
   if (productProfileId !== undefined) {
@@ -199,8 +199,8 @@ export const PUT = async (
   if (parsed.data.displayLabel !== undefined) {
     payload.display_label = toNullableString(parsed.data.displayLabel)
   }
-  if (parsed.data.availabilityStatus !== undefined) {
-    payload.availability_status = parsed.data.availabilityStatus
+  if (parsed.data.preorderAllowed !== undefined) {
+    payload.preorder_allowed = parsed.data.preorderAllowed
   }
   if (parsed.data.preorderReleaseDate !== undefined) {
     payload.preorder_release_date = toOptionalDate(
