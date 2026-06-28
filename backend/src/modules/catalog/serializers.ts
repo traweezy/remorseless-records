@@ -1,5 +1,8 @@
 import {
   catalogAvailabilityStatuses,
+  catalogBundleFulfillmentModes,
+  catalogBundleInventoryModes,
+  catalogBundleTypes,
   catalogReferenceKinds,
 } from "./constants"
 
@@ -9,6 +12,17 @@ export type CatalogReferenceKind = (typeof catalogReferenceKindValues)[number]
 export const catalogAvailabilityStatusValues = catalogAvailabilityStatuses
 export type CatalogAvailabilityStatus =
   (typeof catalogAvailabilityStatusValues)[number]
+
+export const catalogBundleTypeValues = catalogBundleTypes
+export type CatalogBundleType = (typeof catalogBundleTypeValues)[number]
+
+export const catalogBundleInventoryModeValues = catalogBundleInventoryModes
+export type CatalogBundleInventoryMode =
+  (typeof catalogBundleInventoryModeValues)[number]
+
+export const catalogBundleFulfillmentModeValues = catalogBundleFulfillmentModes
+export type CatalogBundleFulfillmentMode =
+  (typeof catalogBundleFulfillmentModeValues)[number]
 
 export type JsonRecord = Record<string, unknown>
 export type JsonList = unknown[]
@@ -187,6 +201,70 @@ export type CatalogVariantProfileDTO = {
   updatedAt?: string | null
 }
 
+export type CatalogBundleProfileRecord = {
+  id: string
+  product_id: string
+  product_profile_id: string | null
+  bundle_type: unknown
+  inventory_mode: unknown
+  fulfillment_mode: unknown
+  display_title: string | null
+  description_html: string | null
+  is_active: boolean
+  metadata: JsonRecord | null
+  created_at?: Date | string | null
+  updated_at?: Date | string | null
+}
+
+export type CatalogBundleProfileDTO = {
+  id: string
+  productId: string
+  productProfileId: string | null
+  bundleType: CatalogBundleType
+  inventoryMode: CatalogBundleInventoryMode
+  fulfillmentMode: CatalogBundleFulfillmentMode
+  displayTitle: string | null
+  descriptionHtml: string | null
+  isActive: boolean
+  metadata: JsonRecord
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export type CatalogBundleComponentRecord = {
+  id: string
+  bundle_profile_id: string
+  component_product_id: string
+  component_variant_id: string | null
+  component_inventory_item_id: string | null
+  title: string | null
+  variant_title: string | null
+  sku: string | null
+  quantity: number
+  sort_order: number
+  is_required: boolean
+  metadata: JsonRecord | null
+  created_at?: Date | string | null
+  updated_at?: Date | string | null
+}
+
+export type CatalogBundleComponentDTO = {
+  id: string
+  bundleProfileId: string
+  componentProductId: string
+  componentVariantId: string | null
+  componentInventoryItemId: string | null
+  title: string | null
+  variantTitle: string | null
+  sku: string | null
+  quantity: number
+  sortOrder: number
+  isRequired: boolean
+  metadata: JsonRecord
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
 const toIso = (value: Date | string | null | undefined): string | null => {
   if (!value) {
     return null
@@ -214,6 +292,25 @@ const toCatalogAvailabilityStatus = (
 ): CatalogAvailabilityStatus => {
   const match = catalogAvailabilityStatusValues.find((status) => status === value)
   return match ?? "available"
+}
+
+const toCatalogBundleType = (value: unknown): CatalogBundleType => {
+  const match = catalogBundleTypeValues.find((type) => type === value)
+  return match ?? "fixed"
+}
+
+const toCatalogBundleInventoryMode = (
+  value: unknown
+): CatalogBundleInventoryMode => {
+  const match = catalogBundleInventoryModeValues.find((mode) => mode === value)
+  return match ?? "component_derived"
+}
+
+const toCatalogBundleFulfillmentMode = (
+  value: unknown
+): CatalogBundleFulfillmentMode => {
+  const match = catalogBundleFulfillmentModeValues.find((mode) => mode === value)
+  return match ?? "ship_components"
 }
 
 export const serializeCatalogArtist = (
@@ -313,4 +410,40 @@ export const serializeCatalogVariantProfile = (
   metadata: toRecord(profile.metadata),
   createdAt: toIso(profile.created_at),
   updatedAt: toIso(profile.updated_at),
+})
+
+export const serializeCatalogBundleProfile = (
+  profile: CatalogBundleProfileRecord
+): CatalogBundleProfileDTO => ({
+  id: profile.id,
+  productId: profile.product_id,
+  productProfileId: profile.product_profile_id ?? null,
+  bundleType: toCatalogBundleType(profile.bundle_type),
+  inventoryMode: toCatalogBundleInventoryMode(profile.inventory_mode),
+  fulfillmentMode: toCatalogBundleFulfillmentMode(profile.fulfillment_mode),
+  displayTitle: profile.display_title ?? null,
+  descriptionHtml: profile.description_html ?? null,
+  isActive: profile.is_active ?? true,
+  metadata: toRecord(profile.metadata),
+  createdAt: toIso(profile.created_at),
+  updatedAt: toIso(profile.updated_at),
+})
+
+export const serializeCatalogBundleComponent = (
+  component: CatalogBundleComponentRecord
+): CatalogBundleComponentDTO => ({
+  id: component.id,
+  bundleProfileId: component.bundle_profile_id,
+  componentProductId: component.component_product_id,
+  componentVariantId: component.component_variant_id ?? null,
+  componentInventoryItemId: component.component_inventory_item_id ?? null,
+  title: component.title ?? null,
+  variantTitle: component.variant_title ?? null,
+  sku: component.sku ?? null,
+  quantity: component.quantity ?? 1,
+  sortOrder: component.sort_order ?? 0,
+  isRequired: component.is_required ?? true,
+  metadata: toRecord(component.metadata),
+  createdAt: toIso(component.created_at),
+  updatedAt: toIso(component.updated_at),
 })

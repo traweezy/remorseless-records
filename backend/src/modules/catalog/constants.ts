@@ -10,8 +10,28 @@ export const catalogReferenceKinds = [
 
 export const catalogAvailabilityStatuses = [
   "available",
+  "in_stock",
+  "low_stock",
   "preorder",
   "backorder",
   "coming_soon",
   "sold_out",
+  "unknown",
+] as const
+
+export const catalogBundleTypes = [
+  "fixed",
+  "mystery",
+  "deal",
+  "selectable",
+] as const
+
+export const catalogBundleInventoryModes = [
+  "component_derived",
+  "manual",
+] as const
+
+export const catalogBundleFulfillmentModes = [
+  "ship_components",
+  "manual",
 ] as const
