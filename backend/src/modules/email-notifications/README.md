@@ -1,6 +1,8 @@
 # Email templates
 
-This directory contains all the email templates used in the application using `react-email`.
+This directory contains all email templates used by the application. Templates are
+plain React components rendered by Resend through `@react-email/render`, with
+local email-safe primitives in `templates/primitives.tsx`.
 
 Run the following command to start the development server:
 
@@ -8,7 +10,9 @@ Run the following command to start the development server:
 pnpm email:dev
 ```
 
-This will start a react-email server at `http://localhost:3002` where you can preview the email templates.
+This fetches the pinned React Email preview CLI on demand and starts a preview
+server at `http://localhost:3002`. The CLI is intentionally not installed as a
+backend dependency so production builds do not carry preview tooling.
 
 ## Base Template
 
@@ -48,12 +52,13 @@ To add a new email template:
 
 #### 1. Create the template component
 
-Add a new file in the templates directory, following the `react-email` component style and using the base template. For example, `new-template.tsx`:
+Add a new file in the templates directory using the shared base template and
+local primitives. For example, `new-template.tsx`:
 
 ```tsx
-import { Text } from '@react-email/components'
 import * as React from 'react'
 import { Base } from './base'
+import { Text, Link } from './primitives'
 
 export const NEW_TEMPLATE_KEY = 'new-template'
 
@@ -69,7 +74,7 @@ export const isNewTemplateData = (data: any): data is NewTemplateProps =>
 export const NewTemplate = ({ greeting, actionUrl, preview = 'You have a new message' }: NewTemplateProps) => (
   <Base preview={preview}>
     <Text>{greeting}</Text>
-    <Text>Click <a href={actionUrl}>here</a> to take action.</Text>
+    <Text>Click <Link href={actionUrl}>here</Link> to take action.</Text>
   </Base>
 )
 
@@ -146,11 +151,11 @@ await notificationModuleService.createNotifications({
 ## Additional Info & Documentation
 
 I based this module off of [@typed-dev/medusa-notification-resend](https://github.com/typed-development/medusa-notification-resend) but added
-the ability to use `react-email` templates and extended the functionality to include more Resend options. 
+the ability to send React email templates and extended the functionality to include more Resend options.
 
 In the original module, you're limited to just `subject`, `from`, `to`, the body, and the attachments. You also could
-only send HTML, which means you have to render the email body using `@react-email/render` instead of using the
-`react` email option which renders it for you.
+only send HTML, which means you have to render the email body yourself instead of using the
+`react` email option which renders it through `@react-email/render`.
 
 ### Medusa
 
@@ -159,7 +164,7 @@ only send HTML, which means you have to render the email body using `@react-emai
 
 ### React Email
 
-For more information on how to use `react-email`, refer to the official [documentation](https://react.email/)
+For more information on email rendering and preview tooling, refer to the official [React Email documentation](https://react.email/).
 
 You can also use [these example templates](https://demo.react.email/preview/magic-links/aws-verify-email) as a reference.
 

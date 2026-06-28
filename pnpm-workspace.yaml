@@ -11,6 +11,7 @@ allowBuilds:
   protobufjs: true
   puppeteer: true
   sharp: true
+  unrs-resolver: true
 
 peerDependencyRules:
   allowedVersions:

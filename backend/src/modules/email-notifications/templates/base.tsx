@@ -3,9 +3,8 @@ import {
   Body,
   Container,
   Preview,
-  Tailwind,
   Head,
-} from '@react-email/components'
+} from './primitives'
 import type { PropsWithChildren, ReactElement } from 'react'
 
 type BaseProps = {
@@ -16,12 +15,31 @@ export const Base = ({ preview, children }: PropsWithChildren<BaseProps>): React
   <Html>
     <Head />
     {preview ? <Preview>{preview}</Preview> : null}
-    <Tailwind>
-      <Body className="bg-white my-auto mx-auto font-sans px-2">
-        <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] max-w-[465px] w-full overflow-hidden">
-          <div className="max-w-full break-words">{children}</div>
-        </Container>
-      </Body>
-    </Tailwind>
+    <Body
+      style={{
+        backgroundColor: '#ffffff',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        margin: 'auto',
+        padding: '0 8px',
+      }}
+    >
+      <Container
+        style={{
+          border: '1px solid #eaeaea',
+          borderRadius: 4,
+          boxSizing: 'border-box',
+          margin: '40px auto',
+          maxWidth: 465,
+          overflow: 'hidden',
+          padding: 20,
+          width: '100%',
+        }}
+      >
+        <div style={{ maxWidth: '100%', overflowWrap: 'break-word' }}>
+          {children}
+        </div>
+      </Container>
+    </Body>
   </Html>
 )
