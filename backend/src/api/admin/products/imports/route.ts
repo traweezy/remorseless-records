@@ -1,5 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework";
-import { MedusaError } from "@medusajs/framework/utils";
+import {
+  ContainerRegistrationKeys,
+  MedusaError,
+} from "@medusajs/framework/utils";
 import { importProductsAsChunksWorkflow } from "@medusajs/core-flows";
 import { Modules } from "@medusajs/utils";
 import { parse } from "csv-parse/sync";
@@ -15,6 +18,20 @@ type NormalizedCsvResult = {
   renamedColumns: Array<{ from: string; to: string }>;
   droppedColumns: string[];
   metadataKeys: string[];
+  resolvedProducts: number;
+  resolvedVariants: number;
+};
+
+type QueryGraph = {
+  graph: (query: {
+    entity: string;
+    fields: string[];
+    filters?: Record<string, unknown>;
+    pagination?: {
+      take?: number;
+      skip?: number;
+    };
+  }) => Promise<{ data: Array<Record<string, unknown>> }>;
 };
 
 const LEGACY_METADATA_COLUMN_MAP: Record<string, string> = {
@@ -149,6 +166,8 @@ const normalizeSemicolonDelimitedCsv = (
       renamedColumns: [],
       droppedColumns: [],
       metadataKeys: [],
+      resolvedProducts: 0,
+      resolvedVariants: 0,
     };
   }
 
@@ -166,6 +185,8 @@ const normalizeSemicolonDelimitedCsv = (
       renamedColumns: [],
       droppedColumns: [],
       metadataKeys: [],
+      resolvedProducts: 0,
+      resolvedVariants: 0,
     };
   }
   const { normalizedHeaders, instructions, metadataIndex, renamedColumns, droppedColumns, metadataKeys } =
@@ -273,6 +294,176 @@ const normalizeSemicolonDelimitedCsv = (
     renamedColumns,
     droppedColumns,
     metadataKeys: Array.from(metadataKeys),
+    resolvedProducts: 0,
+    resolvedVariants: 0,
+  };
+};
+
+const csvFromRows = (headers: string[], rows: string[][]): string =>
+  [
+    headers.map(escapeCsvValue).join(","),
+    ...rows.map((row) => row.map((value) => escapeCsvValue(value)).join(",")),
+  ].join("\n");
+
+const ensureHeader = (headers: string[], rows: string[][], header: string) => {
+  const existingIndex = headers.findIndex(
+    (existing) => existing.toLowerCase() === header.toLowerCase()
+  );
+  if (existingIndex !== -1) {
+    return existingIndex;
+  }
+
+  headers.push(header);
+  rows.forEach((row) => row.push(""));
+  return headers.length - 1;
+};
+
+const nonEmptyString = (
+  value: Record<string, unknown> | undefined,
+  key: string
+): string | null => {
+  const candidate = value?.[key];
+  return typeof candidate === "string" && candidate.trim().length > 0
+    ? candidate
+    : null;
+};
+
+const normalizeCommaDelimitedCsv = async (
+  req: MedusaRequest,
+  csvText: string,
+  inherited: Pick<
+    NormalizedCsvResult,
+    "renamedColumns" | "droppedColumns" | "metadataKeys"
+  > = {
+    renamedColumns: [],
+    droppedColumns: [],
+    metadataKeys: [],
+  }
+): Promise<NormalizedCsvResult> => {
+  const records = parse(csvText, {
+    relax_column_count: true,
+  }) as string[][];
+
+  if (!records.length) {
+    return {
+      csv: csvText,
+      ...inherited,
+      resolvedProducts: 0,
+      resolvedVariants: 0,
+    };
+  }
+
+  const headers = [...(records[0] ?? [])];
+  const rows = records
+    .slice(1)
+    .filter((row) => row.some((cell) => (cell ?? "").trim().length > 0))
+    .map((row) => [...row]);
+  rows.forEach((row) => {
+    while (row.length < headers.length) {
+      row.push("");
+    }
+  });
+
+  const productIdIndex = ensureHeader(headers, rows, "Product Id");
+  const productHandleIndex = headers.findIndex(
+    (header) => header.toLowerCase() === "product handle"
+  );
+  const variantIdIndex = ensureHeader(headers, rows, "Variant Id");
+  const variantSkuIndex = headers.findIndex(
+    (header) => header.toLowerCase() === "variant sku"
+  );
+
+  if (productHandleIndex === -1) {
+    return {
+      csv: csvFromRows(headers, rows),
+      ...inherited,
+      resolvedProducts: 0,
+      resolvedVariants: 0,
+    };
+  }
+
+  const handles = Array.from(
+    new Set(
+      rows
+        .map((row) => row[productHandleIndex]?.trim())
+        .filter((handle): handle is string => !!handle)
+    )
+  );
+  if (!handles.length) {
+    return {
+      csv: csvFromRows(headers, rows),
+      ...inherited,
+      resolvedProducts: 0,
+      resolvedVariants: 0,
+    };
+  }
+
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph;
+  const existingProducts = await query.graph({
+    entity: "product",
+    fields: ["id", "handle", "variants.id", "variants.sku"],
+    filters: { handle: handles },
+    pagination: { take: handles.length },
+  });
+
+  const productIdByHandle = new Map<string, string>();
+  const variantIdByHandleSku = new Map<string, string>();
+  existingProducts.data.forEach((product) => {
+    const handle = nonEmptyString(product, "handle");
+    const id = nonEmptyString(product, "id");
+    if (!handle || !id) {
+      return;
+    }
+    productIdByHandle.set(handle, id);
+
+    const variants = product["variants"];
+    if (!Array.isArray(variants)) {
+      return;
+    }
+    variants.forEach((variant) => {
+      if (!variant || typeof variant !== "object") {
+        return;
+      }
+      const variantRecord = variant as Record<string, unknown>;
+      const sku = nonEmptyString(variantRecord, "sku");
+      const variantId = nonEmptyString(variantRecord, "id");
+      if (sku && variantId) {
+        variantIdByHandleSku.set(`${handle}\u0000${sku}`, variantId);
+      }
+    });
+  });
+
+  let resolvedProducts = 0;
+  let resolvedVariants = 0;
+  rows.forEach((row) => {
+    const handle = row[productHandleIndex]?.trim();
+    if (!handle) {
+      return;
+    }
+
+    const productId = productIdByHandle.get(handle);
+    if (productId && !row[productIdIndex]?.trim()) {
+      row[productIdIndex] = productId;
+      resolvedProducts += 1;
+    }
+
+    if (variantSkuIndex === -1 || row[variantIdIndex]?.trim()) {
+      return;
+    }
+
+    const sku = row[variantSkuIndex]?.trim();
+    const variantId = sku ? variantIdByHandleSku.get(`${handle}\u0000${sku}`) : null;
+    if (variantId) {
+      row[variantIdIndex] = variantId;
+      resolvedVariants += 1;
+    }
+  });
+
+  return {
+    csv: csvFromRows(headers, rows),
+    ...inherited,
+    resolvedProducts,
+    resolvedVariants,
   };
 };
 
@@ -389,41 +580,53 @@ export const POST = async (
       const shouldNormalize =
         semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";");
 
-      if (shouldNormalize) {
-        const normalized = normalizeSemicolonDelimitedCsv(csvText);
+      const delimiterNormalized = shouldNormalize
+        ? normalizeSemicolonDelimitedCsv(csvText)
+        : {
+            csv: csvText,
+            renamedColumns: [],
+            droppedColumns: [],
+            metadataKeys: [],
+            resolvedProducts: 0,
+            resolvedVariants: 0,
+          };
+      const normalized = await normalizeCommaDelimitedCsv(
+        req,
+        delimiterNormalized.csv,
+        delimiterNormalized
+      );
 
-        const convertedKey = `${resolvedKey.replace(
-          /\.csv$/i,
-          ""
-        )}-normalized.csv`;
-        const createdFile = await fileModuleService.createFiles({
-          filename: convertedKey,
-          mimeType: "text/csv",
-          content: Buffer.from(normalized.csv, "utf-8"),
-        });
+      const convertedKey = `${resolvedKey.replace(
+        /\.csv$/i,
+        ""
+      )}-normalized.csv`;
+      const createdFile = await fileModuleService.createFiles({
+        filename: convertedKey,
+        mimeType: "text/csv",
+        content: Buffer.from(normalized.csv, "utf-8"),
+      });
 
-        normalizedKey = createdFile.id;
+      normalizedKey = createdFile.id;
 
-        await fileModuleService.deleteFiles(resolvedKey);
+      await fileModuleService.deleteFiles(resolvedKey);
 
-        logger.info?.(
-          `[admin][products/imports] normalized CSV delimiter for ${resolvedKey} -> ${normalizedKey}`
-        );
+      logger.info?.(
+        `[admin][products/imports] normalized CSV for ${resolvedKey} -> ${normalizedKey} (delimiter=${
+          shouldNormalize ? "semicolon" : "comma"
+        }, resolvedProducts=${normalized.resolvedProducts}, resolvedVariants=${
+          normalized.resolvedVariants
+        })`
+      );
 
-        try {
-          if (req.body) {
-            (req.body as ImportProductsBody).file_key = normalizedKey;
-          }
-          if (req.validatedBody) {
-            (req.validatedBody as ImportProductsBody).file_key = normalizedKey;
-          }
-        } catch {
-          // Body might be read-only; ignore
+      try {
+        if (req.body) {
+          (req.body as ImportProductsBody).file_key = normalizedKey;
         }
-      } else {
-        logger.info?.(
-          `[admin][products/imports] CSV delimiter already compatible for ${resolvedKey}`
-        );
+        if (req.validatedBody) {
+          (req.validatedBody as ImportProductsBody).file_key = normalizedKey;
+        }
+      } catch {
+        // Body might be read-only; ignore
       }
     } catch (error) {
       logger.warn?.(
