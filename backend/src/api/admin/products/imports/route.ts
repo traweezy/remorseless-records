@@ -38,6 +38,7 @@ type ProductImportPlanSummary = {
   rows: number;
   toCreate: number;
   toUpdate: number;
+  recoveredUpdates: number;
 };
 
 type QueryGraph = {
@@ -50,6 +51,17 @@ type QueryGraph = {
       skip?: number;
     };
   }) => Promise<{ data: Array<Record<string, unknown>> }>;
+};
+
+type NormalizedProductRecord = Record<string, unknown> & {
+  handle?: string;
+  id?: string;
+  variants?: Array<Record<string, unknown> & { id?: string; sku?: string }>;
+};
+
+type NormalizedProductTree = {
+  toCreate: Record<string, NormalizedProductRecord>;
+  toUpdate: Record<string, NormalizedProductRecord>;
 };
 
 const PRODUCT_LOOKUP_FIELDS = ["id", "handle", "variants.id", "variants.sku"];
@@ -542,12 +554,60 @@ const buildImportPlan = (
     CSVNormalizer.preProcess(row, index + 1)
   );
   const normalizer = new CSVNormalizer(normalizedRows);
-  const products = normalizer.proccess();
+  const products = normalizer.proccess() as NormalizedProductTree;
   const productHandleCount = new Set(
     normalizedRows
       .map((row) => row["product handle"])
       .filter((handle): handle is string => Boolean(handle))
   ).size;
+  const productIdByHandle = new Map<string, string>();
+  const variantIdByHandleSku = new Map<string, string>();
+  const normalizedValue = (
+    row: Record<string, unknown>,
+    key: string
+  ): string => {
+    const value = row[key];
+    return typeof value === "string" ? value.trim() : "";
+  };
+
+  normalizedRows.forEach((row) => {
+    const normalizedRow = row as Record<string, unknown>;
+    const handle = normalizedValue(normalizedRow, "product handle");
+    const productId = normalizedValue(normalizedRow, "product id");
+    if (handle && productId) {
+      productIdByHandle.set(handle, productId);
+    }
+
+    const sku = normalizedValue(normalizedRow, "variant sku");
+    const variantId = normalizedValue(normalizedRow, "variant id");
+    if (handle && sku && variantId) {
+      variantIdByHandleSku.set(`${handle}\u0000${sku}`, variantId);
+    }
+  });
+
+  let recoveredUpdates = 0;
+  Object.entries(products.toCreate).forEach(([key, product]) => {
+    const handle = typeof product.handle === "string" ? product.handle : key;
+    const productId = productIdByHandle.get(handle);
+    if (!productId) {
+      return;
+    }
+
+    product.id = productId;
+    if (product.variants) {
+      product.variants = product.variants.map((variant) => {
+        const sku = typeof variant.sku === "string" ? variant.sku : "";
+        const variantId = sku
+          ? variantIdByHandleSku.get(`${handle}\u0000${sku}`)
+          : undefined;
+        return variantId ? { ...variant, id: variantId } : variant;
+      });
+    }
+
+    products.toUpdate[productId] = product;
+    delete products.toCreate[key];
+    recoveredUpdates += 1;
+  });
 
   const create = Object.values(products.toCreate).map((product) =>
     productValidators.CreateProduct.parse(product)
@@ -574,6 +634,7 @@ const buildImportPlan = (
       rows: rows.length,
       toCreate: create.length,
       toUpdate: update.length,
+      recoveredUpdates,
     },
   };
 };
@@ -749,7 +810,9 @@ export const POST = async (
         planFile.id
       }, rows=${summary.rows}, toCreate=${summary.toCreate}, toUpdate=${summary.toUpdate}, resolvedProducts=${
         normalizedSummary.resolvedProducts
-      }, resolvedVariants=${normalizedSummary.resolvedVariants})`
+      }, resolvedVariants=${
+        normalizedSummary.resolvedVariants
+      }, recoveredUpdates=${summary.recoveredUpdates})`
     );
 
     res.status(202).json({ transaction_id: planFile.id, summary });
