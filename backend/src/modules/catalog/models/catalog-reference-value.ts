@@ -1,14 +1,6 @@
 import { model } from "@medusajs/framework/utils"
 
-export const catalogReferenceKinds = [
-  "format",
-  "format_detail",
-  "genre",
-  "label",
-  "merch_type",
-  "product_type",
-  "utility_tag",
-] as const
+import { catalogReferenceKinds } from "../constants"
 
 const CatalogReferenceValue = model.define(
   {

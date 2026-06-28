@@ -1,6 +1,6 @@
 import { model } from "@medusajs/framework/utils"
 
-import { catalogReferenceKinds } from "./catalog-reference-value"
+import { catalogReferenceKinds } from "../constants"
 
 const CatalogProductReference = model.define(
   {

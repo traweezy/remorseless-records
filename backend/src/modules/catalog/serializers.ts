@@ -1,5 +1,7 @@
-import { catalogReferenceKinds } from "./models/catalog-reference-value"
-import { catalogAvailabilityStatuses } from "./models/catalog-variant-profile"
+import {
+  catalogAvailabilityStatuses,
+  catalogReferenceKinds,
+} from "./constants"
 
 export const catalogReferenceKindValues = catalogReferenceKinds
 export type CatalogReferenceKind = (typeof catalogReferenceKindValues)[number]

@@ -1,12 +1,6 @@
 import { model } from "@medusajs/framework/utils"
 
-export const catalogAvailabilityStatuses = [
-  "available",
-  "preorder",
-  "backorder",
-  "coming_soon",
-  "sold_out",
-] as const
+import { catalogAvailabilityStatuses } from "../constants"
 
 const CatalogVariantProfile = model.define(
   {

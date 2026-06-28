@@ -39,6 +39,15 @@ const parseIntegerEnv = (name, fallback) => {
   return Number.isNaN(parsed) ? fallback : parsed
 }
 
+const parseBooleanEnv = (name, fallback = false) => {
+  const raw = process.env[name]
+  if (!raw) {
+    return fallback
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(raw.trim().toLowerCase())
+}
+
 const getEnvPaths = () => {
   const currentDir = process.cwd()
   const isBuiltEnv = currentDir.includes('.medusa/server')
@@ -299,6 +308,28 @@ const seedOnce = async () => {
   }
 }
 
+const prepareSearchIfEnabled = () => {
+  if (!parseBooleanEnv('MEDUSA_SEARCH_PREPARE_ON_STARTUP')) {
+    console.log(
+      '[search][prepare] Skipping blocking Meilisearch sync/reindex during startup. Run `pnpm --filter backend run search:prepare` or set MEDUSA_SEARCH_PREPARE_ON_STARTUP=true when a blocking rebuild is required.'
+    )
+    return
+  }
+
+  try {
+    console.log('[search][prepare] Running Meilisearch sync/reindex...')
+    runMedusaCommand(['exec', resolveBuiltScript('sync-meilisearch-settings.js')])
+    runMedusaCommand(['exec', resolveBuiltScript('reindex-meilisearch.js')])
+    runMedusaCommand(['exec', resolveBuiltScript('check-meilisearch-sync.js')])
+    console.log('[search][prepare] Completed successfully.')
+  } catch (searchError) {
+    console.warn(
+      '[search][prepare] Failed to sync/rebuild Meilisearch index. The service will continue to boot. Error:',
+      searchError?.message ?? searchError
+    )
+  }
+}
+
 const reportDeploy = async () => {
   const url = process.env.TEMPLATE_REPORTER_URL
   if (!url) {
@@ -329,19 +360,7 @@ const initialize = async () => {
     runMigrations()
     await seedOnce()
     await reportDeploy()
-
-    try {
-      console.log('[search][prepare] Running Meilisearch sync/reindex...')
-      runMedusaCommand(['exec', resolveBuiltScript('sync-meilisearch-settings.js')])
-      runMedusaCommand(['exec', resolveBuiltScript('reindex-meilisearch.js')])
-      runMedusaCommand(['exec', resolveBuiltScript('check-meilisearch-sync.js')])
-      console.log('[search][prepare] Completed successfully.')
-    } catch (searchError) {
-      console.warn(
-        '[search][prepare] Failed to sync/rebuild Meilisearch index. The service will continue to boot. Error:',
-        searchError?.message ?? searchError
-      )
-    }
+    prepareSearchIfEnabled()
 
     console.log('Backend initialized successfully')
   } catch (error) {
