@@ -226,7 +226,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run unit tests (if present)
-        run: pnpm --filter backend run test --if-present
+        run: pnpm --filter backend run test
 
       # Optional: upload coverage from backend unit tests
       # - name: Upload coverage artifact
