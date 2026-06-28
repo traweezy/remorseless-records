@@ -1,6 +1,5 @@
 packages:
-  - backend
-  - storefront
+  - "."
 
 allowBuilds:
   "@medusajs/telemetry": true

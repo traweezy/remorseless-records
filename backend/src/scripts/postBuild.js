@@ -9,12 +9,15 @@ const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
 const MEDUSA_WORKSPACE_YAML = path.join(MEDUSA_SERVER_PATH, 'pnpm-workspace.yaml');
 const LOCAL_PACKAGE_JSON = path.join(process.cwd(), 'package.json');
 const ROOT_PACKAGE_JSON = path.join(process.cwd(), '..', 'package.json');
-const DEFAULT_ONLY_BUILT_DEPENDENCIES = [
+const DEFAULT_ALLOWED_BUILDS = [
   '@medusajs/telemetry',
   '@swc/core',
   'esbuild',
+  'lefthook',
   'msgpackr-extract',
-  'protobufjs'
+  'puppeteer',
+  'protobufjs',
+  'sharp'
 ];
 
 // Check if .medusa/server exists - if not, build process failed
@@ -207,16 +210,40 @@ const readPnpmConfigArray = (name) => {
 
 const yamlScalar = (value) => JSON.stringify(value);
 
-const writePnpmWorkspaceConfig = ({ onlyBuiltDependencies, overrides }) => {
+const readPnpmAllowBuilds = () => {
+  try {
+    const output = execSync('pnpm config get allowBuilds --json', {
+      cwd: process.cwd(),
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    if (!output || output === 'undefined') {
+      return [];
+    }
+
+    const values = JSON.parse(output);
+    if (!values || typeof values !== 'object' || Array.isArray(values)) {
+      return [];
+    }
+
+    return Object.entries(values)
+      .filter(([, approved]) => approved === true)
+      .map(([dependency]) => dependency);
+  } catch {
+    return [];
+  }
+};
+
+const writePnpmWorkspaceConfig = ({ allowBuilds, overrides }) => {
   const lines = [
     'packages:',
     '  - "."'
   ];
 
-  if (onlyBuiltDependencies.length > 0) {
-    lines.push('', 'onlyBuiltDependencies:');
-    for (const dependency of onlyBuiltDependencies) {
-      lines.push(`  - ${yamlScalar(dependency)}`);
+  if (allowBuilds.length > 0) {
+    lines.push('', 'allowBuilds:');
+    for (const dependency of allowBuilds) {
+      lines.push(`  ${yamlScalar(dependency)}: true`);
     }
   }
 
@@ -231,12 +258,13 @@ const writePnpmWorkspaceConfig = ({ onlyBuiltDependencies, overrides }) => {
 };
 
 const overrides = readPnpmConfigOverrides() ?? readOverrides(LOCAL_PACKAGE_JSON) ?? readOverrides(ROOT_PACKAGE_JSON);
-const onlyBuiltDependencies = Array.from(new Set([
-  ...DEFAULT_ONLY_BUILT_DEPENDENCIES,
+const allowBuilds = Array.from(new Set([
+  ...DEFAULT_ALLOWED_BUILDS,
+  ...readPnpmAllowBuilds(),
   ...readPnpmConfigArray('onlyBuiltDependencies')
 ]));
 
-writePnpmWorkspaceConfig({ onlyBuiltDependencies, overrides });
+writePnpmWorkspaceConfig({ allowBuilds, overrides });
 
 if (fs.existsSync(MEDUSA_PACKAGE_JSON)) {
   const packageJson = JSON.parse(fs.readFileSync(MEDUSA_PACKAGE_JSON, 'utf-8'));
