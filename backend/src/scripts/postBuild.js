@@ -7,6 +7,7 @@ const CUSTOM_INIT_SCRIPT = path.join(process.cwd(), 'scripts', 'init-backend.js'
 const MEDUSA_INIT_DEST = path.join(MEDUSA_SERVER_PATH, 'scripts', 'init-backend.js');
 const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
 const MEDUSA_WORKSPACE_YAML = path.join(MEDUSA_SERVER_PATH, 'pnpm-workspace.yaml');
+const MEDUSA_PATCHES_DIR = path.join(MEDUSA_SERVER_PATH, 'patches');
 const LOCAL_PACKAGE_JSON = path.join(process.cwd(), 'package.json');
 const ROOT_PACKAGE_JSON = path.join(process.cwd(), '..', 'package.json');
 const DEFAULT_ALLOWED_BUILDS = [
@@ -208,6 +209,28 @@ const readPnpmConfigArray = (name) => {
   }
 };
 
+const readPnpmPatchedDependencies = () => {
+  try {
+    const output = execSync('pnpm config get patchedDependencies --json', {
+      cwd: process.cwd(),
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    if (!output || output === 'undefined') {
+      return null;
+    }
+
+    const patchedDependencies = JSON.parse(output);
+    return patchedDependencies &&
+      typeof patchedDependencies === 'object' &&
+      !Array.isArray(patchedDependencies)
+      ? patchedDependencies
+      : null;
+  } catch {
+    return null;
+  }
+};
+
 const yamlScalar = (value) => JSON.stringify(value);
 
 const readPnpmAllowBuilds = () => {
@@ -234,7 +257,37 @@ const readPnpmAllowBuilds = () => {
   }
 };
 
-const writePnpmWorkspaceConfig = ({ allowBuilds, overrides }) => {
+const copyPatchedDependencies = (patchedDependencies) => {
+  if (!patchedDependencies || Object.keys(patchedDependencies).length === 0) {
+    return null;
+  }
+
+  fs.mkdirSync(MEDUSA_PATCHES_DIR, { recursive: true });
+
+  return Object.fromEntries(
+    Object.entries(patchedDependencies).map(([dependency, patchPath]) => {
+      if (typeof patchPath !== 'string' || patchPath.length === 0) {
+        throw new Error(`Invalid patch path for ${dependency}.`);
+      }
+
+      const sourcePath = path.isAbsolute(patchPath)
+        ? patchPath
+        : path.resolve(process.cwd(), patchPath);
+
+      if (!fs.existsSync(sourcePath)) {
+        throw new Error(`Patch file not found for ${dependency}: ${sourcePath}`);
+      }
+
+      const targetFileName = path.basename(sourcePath);
+      const targetPath = path.join(MEDUSA_PATCHES_DIR, targetFileName);
+      fs.copyFileSync(sourcePath, targetPath);
+
+      return [dependency, `patches/${targetFileName}`];
+    })
+  );
+};
+
+const writePnpmWorkspaceConfig = ({ allowBuilds, overrides, patchedDependencies }) => {
   const lines = [
     'packages:',
     '  - "."'
@@ -254,6 +307,13 @@ const writePnpmWorkspaceConfig = ({ allowBuilds, overrides }) => {
     }
   }
 
+  if (patchedDependencies && Object.keys(patchedDependencies).length > 0) {
+    lines.push('', 'patchedDependencies:');
+    for (const [dependency, patchPath] of Object.entries(patchedDependencies)) {
+      lines.push(`  ${yamlScalar(dependency)}: ${yamlScalar(patchPath)}`);
+    }
+  }
+
   fs.writeFileSync(MEDUSA_WORKSPACE_YAML, `${lines.join('\n')}\n`, 'utf-8');
 };
 
@@ -263,8 +323,9 @@ const allowBuilds = Array.from(new Set([
   ...readPnpmAllowBuilds(),
   ...readPnpmConfigArray('onlyBuiltDependencies')
 ]));
+const patchedDependencies = copyPatchedDependencies(readPnpmPatchedDependencies());
 
-writePnpmWorkspaceConfig({ allowBuilds, overrides });
+writePnpmWorkspaceConfig({ allowBuilds, overrides, patchedDependencies });
 
 if (fs.existsSync(MEDUSA_PACKAGE_JSON)) {
   const packageJson = JSON.parse(fs.readFileSync(MEDUSA_PACKAGE_JSON, 'utf-8'));

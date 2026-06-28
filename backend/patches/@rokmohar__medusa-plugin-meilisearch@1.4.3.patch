@@ -1,0 +1,35 @@
+diff --git a/.medusa/server/src/workflows/steps/upsert-option-value.js b/.medusa/server/src/workflows/steps/upsert-option-value.js
+index b6ee8ea0aea561407df51471cf6be06fe2cc703b..3ad295c9a3327ed88354e72b39f5a5c72818ef4e 100644
+--- a/.medusa/server/src/workflows/steps/upsert-option-value.js
++++ b/.medusa/server/src/workflows/steps/upsert-option-value.js
+@@ -12,7 +12,7 @@ exports.upsertOptionValueStep = (0, workflows_sdk_1.createStep)('upsert-option-v
+         fields: ['option_id'],
+         filters: { id: optionValueId },
+     });
+-    if (!optionValues.length || !optionValues[0].option_id) {
++    if (!optionValues.length || !optionValues[0]?.option_id) {
+         return new workflows_sdk_1.StepResponse({ products: [] });
+     }
+     const { data: options } = await queryService.graph({
+@@ -20,7 +20,7 @@ exports.upsertOptionValueStep = (0, workflows_sdk_1.createStep)('upsert-option-v
+         fields: ['product_id'],
+         filters: { id: optionValues[0].option_id },
+     });
+-    if (!options.length || !options[0].product_id) {
++    if (!options.length || !options[0]?.product_id) {
+         return new workflows_sdk_1.StepResponse({ products: [] });
+     }
+     const productId = options[0].product_id;
+diff --git a/.medusa/server/src/workflows/steps/upsert-option.js b/.medusa/server/src/workflows/steps/upsert-option.js
+index c1a7220f787362d607ebfa2ba93238d3a624b99d..7ba1d93b56313bd66dfb071a6afe1af7733c2711 100644
+--- a/.medusa/server/src/workflows/steps/upsert-option.js
++++ b/.medusa/server/src/workflows/steps/upsert-option.js
+@@ -12,7 +12,7 @@ exports.upsertOptionStep = (0, workflows_sdk_1.createStep)('upsert-option', asyn
+         fields: ['product_id'],
+         filters: { id: optionId },
+     });
+-    if (!options.length || !options[0].product_id) {
++    if (!options.length || !options[0]?.product_id) {
+         return new workflows_sdk_1.StepResponse({ products: [] });
+     }
+     const productId = options[0].product_id;

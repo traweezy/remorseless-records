@@ -69,3 +69,6 @@ overrides:
   "form-data@>=4.0.0 <4.0.6": ^4.0.6
   "ws@>=7.0.0 <7.5.11": ^7.5.11
   "@opentelemetry/core": ^2.8.0
+
+patchedDependencies:
+  '@rokmohar/medusa-plugin-meilisearch@1.4.3': patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
