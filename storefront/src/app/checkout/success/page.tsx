@@ -12,6 +12,20 @@ import SmartLink from "@/components/ui/smart-link"
 import { formatAmount } from "@/lib/money"
 import { useCart } from "@/providers/cart-provider"
 
+const deferEffectUpdate = (callback: () => void): (() => void) => {
+  let cancelled = false
+  const timeout = window.setTimeout(() => {
+    if (!cancelled) {
+      callback()
+    }
+  }, 0)
+
+  return () => {
+    cancelled = true
+    window.clearTimeout(timeout)
+  }
+}
+
 const CheckoutSuccessPage = () => {
   const searchParams = useSearchParams()
   const { completeCart } = useCart()
@@ -45,7 +59,9 @@ const CheckoutSuccessPage = () => {
   }, [cartId, completeCart, orderId])
 
   useEffect(() => {
-    void finalizeOrder()
+    return deferEffectUpdate(() => {
+      void finalizeOrder()
+    })
   }, [finalizeOrder])
 
   const currencyCode = order?.currency_code ?? "usd"

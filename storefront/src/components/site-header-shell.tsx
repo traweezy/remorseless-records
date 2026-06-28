@@ -14,6 +14,20 @@ import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
 
+const deferEffectUpdate = (callback: () => void): (() => void) => {
+  let cancelled = false
+  const timeout = window.setTimeout(() => {
+    if (!cancelled) {
+      callback()
+    }
+  }, 0)
+
+  return () => {
+    cancelled = true
+    window.clearTimeout(timeout)
+  }
+}
+
 const NAV_LINKS = [
   { href: "/catalog", label: "Catalog" },
   { href: "/discography", label: "Discography" },
@@ -43,16 +57,16 @@ const SiteHeaderShell = () => {
     return match?.href ?? null
   }, [pathname])
 
+  const cartCurrencyCode = cart?.currency_code ?? "usd"
+  const cartSubtotal = cart?.subtotal
+  const cartTotal = cart?.total
   const subtotalDisplay = useMemo(() => {
-    if (!cart?.subtotal && !cart?.total) {
+    if (!cartSubtotal && !cartTotal) {
       return null
     }
 
-    return formatAmount(
-      cart.currency_code ?? "usd",
-      Number(cart.subtotal ?? cart.total ?? 0)
-    )
-  }, [cart?.currency_code, cart?.subtotal, cart?.total])
+    return formatAmount(cartCurrencyCode, Number(cartSubtotal ?? cartTotal ?? 0))
+  }, [cartCurrencyCode, cartSubtotal, cartTotal])
 
   const hasItems = itemCount > 0
   const cartLabel = hasItems
@@ -109,13 +123,15 @@ const SiteHeaderShell = () => {
     }
 
     window.localStorage.removeItem("rr.cart.open")
-    setCartOpen(true)
+    const cleanup = deferEffectUpdate(() => setCartOpen(true))
 
     if (shouldOpenCart) {
       const url = new URL(window.location.href)
       url.searchParams.delete("cart")
       router.replace(`${url.pathname}${url.search}${url.hash}`)
     }
+
+    return cleanup
   }, [router, searchParams])
 
   return (

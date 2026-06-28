@@ -30,6 +30,20 @@ import { useCart } from "@/providers/cart-provider"
 
 const stripePromise = loadStripe(runtimeEnv.stripePublishableKey)
 
+const deferEffectUpdate = (callback: () => void): (() => void) => {
+  let cancelled = false
+  const timeout = window.setTimeout(() => {
+    if (!cancelled) {
+      callback()
+    }
+  }, 0)
+
+  return () => {
+    cancelled = true
+    window.clearTimeout(timeout)
+  }
+}
+
 type StripeState = {
   stripe: Stripe | null
   elements: StripeElements | null
@@ -690,22 +704,24 @@ const CheckoutPage = () => {
   }, [cart, isLoading, router])
 
   useEffect(() => {
-    resetPaymentState()
+    return deferEffectUpdate(resetPaymentState)
   }, [cart?.id, cart?.shipping_methods, cart?.total, resetPaymentState])
 
   useEffect(() => {
     if (activeStep === "payment") {
-      setHasReachedPayment(true)
+      return deferEffectUpdate(() => setHasReachedPayment(true))
     }
+    return undefined
   }, [activeStep])
 
   useEffect(() => {
     if (!savedShippingSignature || !shippingSignature || hasSyncedShipping) {
-      return
+      return undefined
     }
     if (cartShippingHasValues && resolvedShippingOptionId && shippingSignature === savedShippingSignature) {
-      setHasSyncedShipping(true)
+      return deferEffectUpdate(() => setHasSyncedShipping(true))
     }
+    return undefined
   }, [
     cartShippingHasValues,
     hasSyncedShipping,
@@ -716,44 +732,46 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (!shippingSubmitted) {
-      return
+      return undefined
     }
 
-    const shippingChanged =
-      hasSyncedShipping &&
-      Boolean(savedShippingSignature) &&
-      Boolean(shippingSignature) &&
-      shippingSignature !== savedShippingSignature
-    const itemsChanged =
-      Boolean(savedItemsSignature) &&
-      Boolean(itemsSignature) &&
-      itemsSignature !== savedItemsSignature
-    const totalsChanged =
-      Boolean(savedTotalsSignature) &&
-      Boolean(totalsSignature) &&
-      totalsSignature !== savedTotalsSignature
+    return deferEffectUpdate(() => {
+      const shippingChanged =
+        hasSyncedShipping &&
+        Boolean(savedShippingSignature) &&
+        Boolean(shippingSignature) &&
+        shippingSignature !== savedShippingSignature
+      const itemsChanged =
+        Boolean(savedItemsSignature) &&
+        Boolean(itemsSignature) &&
+        itemsSignature !== savedItemsSignature
+      const totalsChanged =
+        Boolean(savedTotalsSignature) &&
+        Boolean(totalsSignature) &&
+        totalsSignature !== savedTotalsSignature
 
-    if (shippingChanged) {
-      setCartNotice("Your cart or shipping info changed. Please confirm shipping again.")
-      invalidateShipping()
-      if (activeStep === "payment") {
-        setActiveStep("shipping")
+      if (shippingChanged) {
+        setCartNotice("Your cart or shipping info changed. Please confirm shipping again.")
+        invalidateShipping()
+        if (activeStep === "payment") {
+          setActiveStep("shipping")
+        }
+        return
       }
-      return
-    }
 
-    if ((itemsChanged || totalsChanged) && !isUpdatingShipping && !isCalculatingTaxes) {
-      const notice = itemsChanged
-        ? "Cart updated. Recalculating shipping and taxes."
-        : "Totals updated. Recalculating shipping and taxes."
-      setCartNotice(notice)
-      resetPaymentState()
-      setHasReachedPayment(false)
-      if (activeStep === "payment") {
-        setActiveStep("shipping")
+      if ((itemsChanged || totalsChanged) && !isUpdatingShipping && !isCalculatingTaxes) {
+        const notice = itemsChanged
+          ? "Cart updated. Recalculating shipping and taxes."
+          : "Totals updated. Recalculating shipping and taxes."
+        setCartNotice(notice)
+        resetPaymentState()
+        setHasReachedPayment(false)
+        if (activeStep === "payment") {
+          setActiveStep("shipping")
+        }
+        void applyShippingAndTaxes({ notice })
       }
-      void applyShippingAndTaxes({ notice })
-    }
+    })
   }, [
     activeStep,
     applyShippingAndTaxes,
@@ -773,14 +791,16 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (!contactComplete) {
-      return
+      return undefined
     }
-    const currentEmail = normalizeSignatureValue(cart?.email)
-    if (savedEmail && currentEmail !== normalizeSignatureValue(savedEmail)) {
-      setContactComplete(false)
-      setSavedEmail(null)
-      setActiveStep("contact")
-    }
+    return deferEffectUpdate(() => {
+      const currentEmail = normalizeSignatureValue(cart?.email)
+      if (savedEmail && currentEmail !== normalizeSignatureValue(savedEmail)) {
+        setContactComplete(false)
+        setSavedEmail(null)
+        setActiveStep("contact")
+      }
+    })
   }, [cart?.email, contactComplete, savedEmail])
 
   useEffect(() => {
@@ -844,20 +864,22 @@ const CheckoutPage = () => {
   }, [refreshCart])
 
   useEffect(() => {
-    if (!contactComplete && activeStep !== "contact") {
-      setActiveStep("contact")
-      return
-    }
-    if (
-      contactComplete &&
-      !canOpenPayment &&
-      activeStep === "payment" &&
-      !isSavingAddress &&
-      !isUpdatingShipping &&
-      !isCalculatingTaxes
-    ) {
-      setActiveStep("shipping")
-    }
+    return deferEffectUpdate(() => {
+      if (!contactComplete && activeStep !== "contact") {
+        setActiveStep("contact")
+        return
+      }
+      if (
+        contactComplete &&
+        !canOpenPayment &&
+        activeStep === "payment" &&
+        !isSavingAddress &&
+        !isUpdatingShipping &&
+        !isCalculatingTaxes
+      ) {
+        setActiveStep("shipping")
+      }
+    })
   }, [
     activeStep,
     canOpenPayment,
@@ -869,8 +891,9 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (hasReachedPayment && canOpenPayment && activeStep !== "payment") {
-      setActiveStep("payment")
+      return deferEffectUpdate(() => setActiveStep("payment"))
     }
+    return undefined
   }, [activeStep, canOpenPayment, hasReachedPayment])
 
   const countryOptions = useMemo(() => extractCountryOptions(cart ?? null), [cart])

@@ -57,6 +57,20 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null)
 
+const deferEffectUpdate = (callback: () => void): (() => void) => {
+  let cancelled = false
+  const timeout = window.setTimeout(() => {
+    if (!cancelled) {
+      callback()
+    }
+  }, 0)
+
+  return () => {
+    cancelled = true
+    window.clearTimeout(timeout)
+  }
+}
+
 const deriveItemCount = (cart: StoreCart): number =>
   cart?.items?.reduce(
     (total, item) => total + Number(item.quantity ?? 0),
@@ -196,7 +210,9 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   )
 
   useEffect(() => {
-    void refreshCart()
+    return deferEffectUpdate(() => {
+      void refreshCart()
+    })
   }, [refreshCart])
 
   const runMutation = useCallback(

@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import {
   createColumnHelper,
@@ -15,13 +15,8 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import {
-  Virtualizer,
-  elementScroll,
-  observeElementOffset,
-  observeElementRect,
-  type PartialKeys,
-  type VirtualizerOptions,
-} from "@tanstack/virtual-core"
+  useVirtualizer,
+} from "@tanstack/react-virtual"
 import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -145,73 +140,6 @@ const SortableHeader = ({
       )}
     </button>
   )
-}
-
-const useElementVirtualizerCompat = (
-  options: PartialKeys<
-    VirtualizerOptions<Element, Element>,
-    "observeElementRect" | "observeElementOffset" | "scrollToFn"
-  >
-) => {
-  "use no memo"
-  const rerender = useState({})[1]
-  const scheduleRef = useRef(false)
-  const mountedRef = useRef(true)
-
-  const scheduleRerender = useCallback(() => {
-    if (!mountedRef.current || scheduleRef.current) {
-      return
-    }
-
-    scheduleRef.current = true
-
-    const run = () => {
-      scheduleRef.current = false
-      if (!mountedRef.current) {
-        return
-      }
-      rerender({})
-    }
-
-    if (typeof queueMicrotask === "function") {
-      queueMicrotask(run)
-      return
-    }
-
-    void Promise.resolve().then(run)
-  }, [rerender])
-
-  const resolvedOptions: VirtualizerOptions<Element, Element> = {
-    observeElementRect,
-    observeElementOffset,
-    scrollToFn: elementScroll,
-    ...options,
-    onChange: (instance, isScrolling) => {
-      scheduleRerender()
-      options.onChange?.(instance, isScrolling)
-    },
-  }
-
-  const [instance] = useState(
-    () => new Virtualizer<Element, Element>(resolvedOptions)
-  )
-
-  instance.setOptions(resolvedOptions)
-
-  const useIsomorphicLayoutEffect =
-    typeof window !== "undefined" ? useLayoutEffect : useEffect
-
-  useIsomorphicLayoutEffect(() => instance._didMount(), [instance])
-  useIsomorphicLayoutEffect(() => instance._willUpdate())
-
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
-  return instance
 }
 
 const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) => {
@@ -453,7 +381,7 @@ const DiscographyTable = memo(({ entries, className }: DiscographyTableProps) =>
   const rows = table.getRowModel().rows
   const parentRef = useRef<HTMLDivElement | null>(null)
 
-  const virtualizer = useElementVirtualizerCompat({
+  const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 132,

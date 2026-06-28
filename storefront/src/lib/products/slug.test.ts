@@ -8,9 +8,8 @@ import {
 } from "@/lib/products/slug"
 
 const asSlugInput = (
-  source: Record<string, unknown>
-): Parameters<typeof buildProductSlugParts>[0] =>
-  source as unknown as Parameters<typeof buildProductSlugParts>[0]
+  source: Parameters<typeof buildProductSlugParts>[0]
+): Parameters<typeof buildProductSlugParts>[0] => source
 
 describe("buildProductSlugParts", () => {
   beforeEach(() => {

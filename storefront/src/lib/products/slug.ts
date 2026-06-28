@@ -2,12 +2,18 @@ import type { HttpTypes } from "@medusajs/types"
 
 type MaybeRecord = Record<string, unknown> | null | undefined
 
+type CategoryRecord = {
+  name?: unknown
+  handle?: unknown
+  parent_category?: CategoryRecord | null
+}
+
 type SlugSource = {
   title?: string | null
   metadata?: MaybeRecord
   collectionTitle?: string | null
   handle?: string | null
-  categories?: MaybeRecord
+  categories?: CategoryRecord[] | null
 }
 
 export type ProductSlug = {
@@ -37,18 +43,12 @@ const coerceString = (value: unknown): string | null => {
   return null
 }
 
-const normalizeHandle = (value: string | null | undefined): string | null => {
+const normalizeHandle = (value: unknown): string | null => {
   if (typeof value !== "string") {
     return null
   }
   const trimmed = value.trim().toLowerCase()
   return trimmed.length ? trimmed : null
-}
-
-type CategoryRecord = {
-  name?: string | null
-  handle?: string | null
-  parent_category?: CategoryRecord | null
 }
 
 const hasArtistAncestor = (category: CategoryRecord | null | undefined): boolean => {

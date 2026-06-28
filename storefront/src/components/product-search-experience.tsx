@@ -9,15 +9,7 @@ import {
   useRef,
   useState,
 } from "react"
-import {
-  Virtualizer,
-  observeWindowOffset,
-  observeWindowRect,
-  type PartialKeys,
-  type VirtualItem,
-  type VirtualizerOptions,
-  windowScroll,
-} from "@tanstack/virtual-core"
+import { type VirtualItem, useWindowVirtualizer } from "@tanstack/react-virtual"
 import {
   ArrowDown01,
   ArrowDownAZ,
@@ -44,9 +36,19 @@ import { computeFacetCounts } from "@/lib/search/search"
 import { useCatalogStore } from "@/lib/store/catalog"
 import { normalizeFormatValue as baseNormalizeFormat } from "@/lib/search/normalize"
 
-const normalizeFormatSafe = baseNormalizeFormat as (
-  value: string | null | undefined
-) => string | null
+const deferEffectUpdate = (callback: () => void): (() => void) => {
+  let cancelled = false
+  const timeout = window.setTimeout(() => {
+    if (!cancelled) {
+      callback()
+    }
+  }, 0)
+
+  return () => {
+    cancelled = true
+    window.clearTimeout(timeout)
+  }
+}
 
 const normalizeFormatFilterValue = (
   value: string | null | undefined
@@ -60,7 +62,7 @@ const normalizeFormatFilterValue = (
     return null
   }
 
-  return normalizeFormatSafe(trimmed) ?? trimmed
+  return baseNormalizeFormat(trimmed) ?? trimmed
 }
 
 const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
@@ -123,7 +125,7 @@ const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
     if (!trimmed.length) {
       return
     }
-    const normalized = normalizeFormatSafe(trimmed)
+    const normalized = baseNormalizeFormat(trimmed)
     if (normalized) {
       canonical.add(normalized)
       return
@@ -422,8 +424,9 @@ const FilterCheckboxList = ({
 
   useEffect(() => {
     if (defaultOpen) {
-      setIsOpen(true)
+      return deferEffectUpdate(() => setIsOpen(true))
     }
+    return undefined
   }, [defaultOpen])
 
   if (!options.length) {
@@ -635,80 +638,6 @@ const SortDropdown = ({
   )
 }
 
-const useWindowVirtualizerCompat = (
-  options: PartialKeys<
-    VirtualizerOptions<Window, Element>,
-    | "getScrollElement"
-    | "observeElementRect"
-    | "observeElementOffset"
-    | "scrollToFn"
-    | "initialOffset"
-  >
-) => {
-  "use no memo"
-  const rerender = useState({})[1]
-  const scheduleRef = useRef(false)
-  const mountedRef = useRef(true)
-
-  const scheduleRerender = useCallback(() => {
-    if (!mountedRef.current) {
-      return
-    }
-    if (scheduleRef.current) {
-      return
-    }
-    scheduleRef.current = true
-
-    const run = () => {
-      if (!mountedRef.current) {
-        return
-      }
-      scheduleRef.current = false
-      rerender({})
-    }
-
-    if (typeof queueMicrotask === "function") {
-      queueMicrotask(run)
-      return
-    }
-
-    void Promise.resolve().then(run)
-  }, [rerender])
-
-  const resolvedOptions: VirtualizerOptions<Window, Element> = {
-    getScrollElement: () => (typeof document !== "undefined" ? window : null),
-    observeElementRect: observeWindowRect,
-    observeElementOffset: observeWindowOffset,
-    scrollToFn: windowScroll,
-    initialOffset: () => (typeof document !== "undefined" ? window.scrollY : 0),
-    ...options,
-    onChange: (instance, isScrolling) => {
-      scheduleRerender()
-      options.onChange?.(instance, isScrolling)
-    },
-  }
-
-  const [instance] = useState(
-    () => new Virtualizer<Window, Element>(resolvedOptions)
-  )
-
-  instance.setOptions(resolvedOptions)
-
-  const useIsomorphicLayoutEffect =
-    typeof window !== "undefined" ? useLayoutEffect : useEffect
-
-  useIsomorphicLayoutEffect(() => instance._didMount(), [instance])
-  useIsomorphicLayoutEffect(() => instance._willUpdate())
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
-  return instance
-}
-
 const useResponsiveColumns = () => {
   const [columns, setColumns] = useState(1)
 
@@ -836,7 +765,7 @@ const ProductSearchExperience = ({
   )
 
   useEffect(() => {
-    setCatalogHits(normalizeHits(initialHits))
+    return deferEffectUpdate(() => setCatalogHits(normalizeHits(initialHits)))
   }, [initialHits, normalizeHits])
 
   useEffect(() => {
@@ -1193,7 +1122,7 @@ const ProductSearchExperience = ({
   const rowGap = columns > 2 ? 16 : 12
   const rowHeight = rowEstimate + rowGap
 
-  const virtualizer = useWindowVirtualizerCompat({
+  const virtualizer = useWindowVirtualizer({
     count: totalRowCount,
     estimateSize: () => rowHeight,
     overscan: 8,
@@ -1204,7 +1133,12 @@ const ProductSearchExperience = ({
 
   useLayoutEffect(() => {
     virtualizer.measure()
-    forceVirtualizerRerender((tick) => tick + 1)
+    const frame = requestAnimationFrame(() => {
+      forceVirtualizerRerender((tick) => tick + 1)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+    }
   }, [columns, rowHeight, virtualizer, forceVirtualizerRerender])
 
   useEffect(() => {
@@ -1291,7 +1225,7 @@ const ProductSearchExperience = ({
       if (!handle) {
         return
       }
-      const normalized = normalizeFormatSafe(value)
+      const normalized = baseNormalizeFormat(value)
       if (typeof normalized !== "string" || !ALLOWED.has(normalized)) {
         return
       }
@@ -1313,7 +1247,7 @@ const ProductSearchExperience = ({
     // Fallback to facet counts if aggregated hits are empty
     if (!counts.size && catalogFacets.format) {
       Object.entries(catalogFacets.format).forEach(([key, count]) => {
-        const normalized = normalizeFormatSafe(key)
+        const normalized = baseNormalizeFormat(key)
         if (!normalized || !ALLOWED.has(normalized)) {
           return
         }
