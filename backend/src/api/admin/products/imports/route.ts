@@ -1,10 +1,15 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework";
+import type {
+  CreateProductWorkflowInputDTO,
+  UpdateProductWorkflowInputDTO,
+} from "@medusajs/framework/types";
 import {
+  CSVNormalizer,
   ContainerRegistrationKeys,
   MedusaError,
   Modules,
+  productValidators,
 } from "@medusajs/framework/utils";
-import { importProductsWorkflow } from "@medusajs/core-flows";
 import { parse } from "csv-parse/sync";
 
 type HeaderInstruction = {
@@ -20,6 +25,18 @@ type NormalizedCsvResult = {
   metadataKeys: string[];
   resolvedProducts: number;
   resolvedVariants: number;
+};
+
+type ProductImportPlan = {
+  filename: string;
+  generatedAt: string;
+  create: CreateProductWorkflowInputDTO[];
+  update: UpdateProductWorkflowInputDTO[];
+};
+
+type ProductImportPlanSummary = {
+  toCreate: number;
+  toUpdate: number;
 };
 
 type QueryGraph = {
@@ -467,6 +484,45 @@ const normalizeCommaDelimitedCsv = async (
   };
 };
 
+const buildImportPlan = (
+  filename: string,
+  csvText: string
+): {
+  plan: ProductImportPlan;
+  summary: ProductImportPlanSummary;
+} => {
+  const rows = parse(csvText, {
+    columns: true,
+    skip_empty_lines: true,
+  }) as Array<Record<string, string>>;
+
+  const normalizedRows = rows.map((row, index) =>
+    CSVNormalizer.preProcess(row, index + 1)
+  );
+  const normalizer = new CSVNormalizer(normalizedRows);
+  const products = normalizer.proccess();
+
+  const create = Object.values(products.toCreate).map((product) =>
+    productValidators.CreateProduct.parse(product)
+  ) as CreateProductWorkflowInputDTO[];
+  const update = Object.values(products.toUpdate).map((product) =>
+    productValidators.UpdateProduct.parse(product)
+  ) as UpdateProductWorkflowInputDTO[];
+
+  return {
+    plan: {
+      filename,
+      generatedAt: new Date().toISOString(),
+      create,
+      update,
+    },
+    summary: {
+      toCreate: create.length,
+      toUpdate: update.length,
+    },
+  };
+};
+
 type ImportProductsBody = {
   originalname?: string;
   original_name?: string;
@@ -546,6 +602,11 @@ export const POST = async (
   const fileModuleService = (() => {
     try {
       return req.scope.resolve(Modules.FILE) as {
+        createFiles: (input: {
+          filename: string;
+          content: string;
+          mimeType: string;
+        }) => Promise<{ id: string; url: string }>;
         getAsBuffer: (id: string) => Promise<Buffer>;
         deleteFiles: (id: string | string[]) => Promise<void>;
       };
@@ -567,6 +628,7 @@ export const POST = async (
   }
 
   let importCsvText: string;
+  let normalizedSummary: NormalizedCsvResult;
 
   try {
     const originalBuffer = await fileModuleService.getAsBuffer(resolvedKey);
@@ -598,8 +660,7 @@ export const POST = async (
     );
 
     importCsvText = normalized.csv;
-
-    await fileModuleService.deleteFiles(resolvedKey);
+    normalizedSummary = normalized;
 
     logger.info?.(
       `[admin][products/imports] normalized CSV for ${resolvedKey} (delimiter=${
@@ -619,23 +680,27 @@ export const POST = async (
   }
 
   try {
-    const { result, transaction } = await importProductsWorkflow(req.scope).run({
-      input: {
-        filename,
-        fileContent: importCsvText,
-      },
+    const { plan, summary } = buildImportPlan(filename, importCsvText);
+    const planFile = await fileModuleService.createFiles({
+      filename: `${filename.replace(/\.csv$/i, "")}-import-plan.json`,
+      content: JSON.stringify(plan),
+      mimeType: "application/json",
     });
 
+    await fileModuleService.deleteFiles(resolvedKey);
+
     logger.info?.(
-      `[admin][products/imports] workflow started for ${filename} (transaction=${transaction.transactionId})`
+      `[admin][products/imports] import plan created for ${filename} (transaction=${
+        planFile.id
+      }, toCreate=${summary.toCreate}, toUpdate=${summary.toUpdate}, resolvedProducts=${
+        normalizedSummary.resolvedProducts
+      }, resolvedVariants=${normalizedSummary.resolvedVariants})`
     );
 
-    res
-      .status(202)
-      .json({ transaction_id: transaction.transactionId, summary: result });
+    res.status(202).json({ transaction_id: planFile.id, summary });
   } catch (error) {
     logger.error?.(
-      `[admin][products/imports] workflow failed ${(error as Error)?.message}`,
+      `[admin][products/imports] import plan failed ${(error as Error)?.message}`,
       error
     );
     throw error;
