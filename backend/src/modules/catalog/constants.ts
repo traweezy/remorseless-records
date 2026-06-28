@@ -35,3 +35,7 @@ export const catalogBundleFulfillmentModes = [
   "ship_components",
   "manual",
 ] as const
+
+export const catalogShelfModes = ["manual", "automatic", "hybrid"] as const
+
+export const catalogShelfAutomationTypes = ["none", "new_release"] as const

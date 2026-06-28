@@ -4,6 +4,8 @@ import {
   catalogBundleInventoryModes,
   catalogBundleTypes,
   catalogReferenceKinds,
+  catalogShelfAutomationTypes,
+  catalogShelfModes,
 } from "./constants"
 
 export const catalogReferenceKindValues = catalogReferenceKinds
@@ -23,6 +25,13 @@ export type CatalogBundleInventoryMode =
 export const catalogBundleFulfillmentModeValues = catalogBundleFulfillmentModes
 export type CatalogBundleFulfillmentMode =
   (typeof catalogBundleFulfillmentModeValues)[number]
+
+export const catalogShelfModeValues = catalogShelfModes
+export type CatalogShelfMode = (typeof catalogShelfModeValues)[number]
+
+export const catalogShelfAutomationTypeValues = catalogShelfAutomationTypes
+export type CatalogShelfAutomationType =
+  (typeof catalogShelfAutomationTypeValues)[number]
 
 export type JsonRecord = Record<string, unknown>
 export type JsonList = unknown[]
@@ -265,6 +274,72 @@ export type CatalogBundleComponentDTO = {
   updatedAt?: string | null
 }
 
+export type CatalogShelfRecord = {
+  id: string
+  handle: string
+  title: string
+  description: string | null
+  mode: unknown
+  automation_type: unknown
+  show_ribbon: boolean
+  ribbon_label: string | null
+  ribbon_priority: number
+  product_limit: number | null
+  starts_at: Date | string | null
+  ends_at: Date | string | null
+  is_active: boolean
+  metadata: JsonRecord | null
+  created_at?: Date | string | null
+  updated_at?: Date | string | null
+}
+
+export type CatalogShelfDTO = {
+  id: string
+  handle: string
+  title: string
+  description: string | null
+  mode: CatalogShelfMode
+  automationType: CatalogShelfAutomationType
+  showRibbon: boolean
+  ribbonLabel: string | null
+  ribbonPriority: number
+  productLimit: number | null
+  startsAt: string | null
+  endsAt: string | null
+  isActive: boolean
+  metadata: JsonRecord
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export type CatalogShelfProductRecord = {
+  id: string
+  shelf_id: string
+  product_id: string
+  product_profile_id: string | null
+  sort_order: number
+  is_pinned: boolean
+  starts_at: Date | string | null
+  ends_at: Date | string | null
+  metadata: JsonRecord | null
+  created_at?: Date | string | null
+  updated_at?: Date | string | null
+}
+
+export type CatalogShelfProductDTO = {
+  id: string
+  shelfId: string
+  productId: string
+  productProfileId: string | null
+  sortOrder: number
+  isPinned: boolean
+  startsAt: string | null
+  endsAt: string | null
+  metadata: JsonRecord
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
 const toIso = (value: Date | string | null | undefined): string | null => {
   if (!value) {
     return null
@@ -311,6 +386,18 @@ const toCatalogBundleFulfillmentMode = (
 ): CatalogBundleFulfillmentMode => {
   const match = catalogBundleFulfillmentModeValues.find((mode) => mode === value)
   return match ?? "ship_components"
+}
+
+const toCatalogShelfMode = (value: unknown): CatalogShelfMode => {
+  const match = catalogShelfModeValues.find((mode) => mode === value)
+  return match ?? "manual"
+}
+
+const toCatalogShelfAutomationType = (
+  value: unknown
+): CatalogShelfAutomationType => {
+  const match = catalogShelfAutomationTypeValues.find((type) => type === value)
+  return match ?? "none"
 }
 
 export const serializeCatalogArtist = (
@@ -446,4 +533,41 @@ export const serializeCatalogBundleComponent = (
   metadata: toRecord(component.metadata),
   createdAt: toIso(component.created_at),
   updatedAt: toIso(component.updated_at),
+})
+
+export const serializeCatalogShelf = (
+  shelf: CatalogShelfRecord
+): CatalogShelfDTO => ({
+  id: shelf.id,
+  handle: shelf.handle,
+  title: shelf.title,
+  description: shelf.description ?? null,
+  mode: toCatalogShelfMode(shelf.mode),
+  automationType: toCatalogShelfAutomationType(shelf.automation_type),
+  showRibbon: shelf.show_ribbon ?? false,
+  ribbonLabel: shelf.ribbon_label ?? null,
+  ribbonPriority: shelf.ribbon_priority ?? 100,
+  productLimit: shelf.product_limit ?? null,
+  startsAt: toIso(shelf.starts_at),
+  endsAt: toIso(shelf.ends_at),
+  isActive: shelf.is_active ?? true,
+  metadata: toRecord(shelf.metadata),
+  createdAt: toIso(shelf.created_at),
+  updatedAt: toIso(shelf.updated_at),
+})
+
+export const serializeCatalogShelfProduct = (
+  shelfProduct: CatalogShelfProductRecord
+): CatalogShelfProductDTO => ({
+  id: shelfProduct.id,
+  shelfId: shelfProduct.shelf_id,
+  productId: shelfProduct.product_id,
+  productProfileId: shelfProduct.product_profile_id ?? null,
+  sortOrder: shelfProduct.sort_order ?? 0,
+  isPinned: shelfProduct.is_pinned ?? false,
+  startsAt: toIso(shelfProduct.starts_at),
+  endsAt: toIso(shelfProduct.ends_at),
+  metadata: toRecord(shelfProduct.metadata),
+  createdAt: toIso(shelfProduct.created_at),
+  updatedAt: toIso(shelfProduct.updated_at),
 })

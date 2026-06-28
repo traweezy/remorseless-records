@@ -7,6 +7,8 @@ import CatalogProductArtist from "./models/catalog-product-artist"
 import CatalogProductProfile from "./models/catalog-product-profile"
 import CatalogProductReference from "./models/catalog-product-reference"
 import CatalogReferenceValue from "./models/catalog-reference-value"
+import CatalogShelf from "./models/catalog-shelf"
+import CatalogShelfProduct from "./models/catalog-shelf-product"
 import CatalogVariantProfile from "./models/catalog-variant-profile"
 
 class CatalogModuleService extends MedusaService({
@@ -18,6 +20,8 @@ class CatalogModuleService extends MedusaService({
   CatalogProductArtist,
   CatalogProductReference,
   CatalogVariantProfile,
+  CatalogShelf,
+  CatalogShelfProduct,
 }) {}
 
 export default CatalogModuleService
