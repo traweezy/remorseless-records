@@ -2,9 +2,9 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework";
 import {
   ContainerRegistrationKeys,
   MedusaError,
+  Modules,
 } from "@medusajs/framework/utils";
-import { importProductsAsChunksWorkflow } from "@medusajs/core-flows";
-import { Modules } from "@medusajs/utils";
+import { importProductsWorkflow } from "@medusajs/core-flows";
 import { parse } from "csv-parse/sync";
 
 type HeaderInstruction = {
@@ -547,11 +547,6 @@ export const POST = async (
     try {
       return req.scope.resolve(Modules.FILE) as {
         getAsBuffer: (id: string) => Promise<Buffer>;
-        createFiles: (file: {
-          filename: string;
-          mimeType: string;
-          content: Buffer | string;
-        }) => Promise<{ id: string }>;
         deleteFiles: (id: string | string[]) => Promise<void>;
       };
     } catch (error) {
@@ -564,86 +559,70 @@ export const POST = async (
     }
   })();
 
-  let normalizedKey = resolvedKey;
+  if (!fileModuleService) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "The file module is required to import products from an uploaded CSV."
+    );
+  }
 
-  if (fileModuleService) {
-    try {
-      const originalBuffer = await fileModuleService.getAsBuffer(resolvedKey);
-      const csvText = originalBuffer.toString("utf-8");
+  let importCsvText: string;
 
-      const headerLine =
-        csvText
-          .split(/\r?\n/)
-          .find((line) => line.trim().length > 0) ?? "";
-      const semicolonColumns = headerLine.split(";").length;
-      const commaColumns = headerLine.split(",").length;
-      const shouldNormalize =
-        semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";");
+  try {
+    const originalBuffer = await fileModuleService.getAsBuffer(resolvedKey);
+    const csvText = originalBuffer.toString("utf-8");
 
-      const delimiterNormalized = shouldNormalize
-        ? normalizeSemicolonDelimitedCsv(csvText)
-        : {
-            csv: csvText,
-            renamedColumns: [],
-            droppedColumns: [],
-            metadataKeys: [],
-            resolvedProducts: 0,
-            resolvedVariants: 0,
-          };
-      const normalized = await normalizeCommaDelimitedCsv(
-        req,
-        delimiterNormalized.csv,
-        delimiterNormalized
-      );
+    const headerLine =
+      csvText
+        .split(/\r?\n/)
+        .find((line) => line.trim().length > 0) ?? "";
+    const semicolonColumns = headerLine.split(";").length;
+    const commaColumns = headerLine.split(",").length;
+    const shouldNormalize =
+      semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";");
 
-      const convertedKey = `${resolvedKey.replace(
-        /\.csv$/i,
-        ""
-      )}-normalized.csv`;
-      const createdFile = await fileModuleService.createFiles({
-        filename: convertedKey,
-        mimeType: "text/csv",
-        content: Buffer.from(normalized.csv, "utf-8"),
-      });
+    const delimiterNormalized = shouldNormalize
+      ? normalizeSemicolonDelimitedCsv(csvText)
+      : {
+          csv: csvText,
+          renamedColumns: [],
+          droppedColumns: [],
+          metadataKeys: [],
+          resolvedProducts: 0,
+          resolvedVariants: 0,
+        };
+    const normalized = await normalizeCommaDelimitedCsv(
+      req,
+      delimiterNormalized.csv,
+      delimiterNormalized
+    );
 
-      normalizedKey = createdFile.id;
+    importCsvText = normalized.csv;
 
-      await fileModuleService.deleteFiles(resolvedKey);
+    await fileModuleService.deleteFiles(resolvedKey);
 
-      logger.info?.(
-        `[admin][products/imports] normalized CSV for ${resolvedKey} -> ${normalizedKey} (delimiter=${
-          shouldNormalize ? "semicolon" : "comma"
-        }, resolvedProducts=${normalized.resolvedProducts}, resolvedVariants=${
-          normalized.resolvedVariants
-        })`
-      );
-
-      try {
-        if (req.body) {
-          (req.body as ImportProductsBody).file_key = normalizedKey;
-        }
-        if (req.validatedBody) {
-          (req.validatedBody as ImportProductsBody).file_key = normalizedKey;
-        }
-      } catch {
-        // Body might be read-only; ignore
-      }
-    } catch (error) {
-      logger.warn?.(
-        `[admin][products/imports] failed to normalize CSV delimiter: ${
-          (error as Error)?.message ?? "unknown error"
-        }`
-      );
-    }
+    logger.info?.(
+      `[admin][products/imports] normalized CSV for ${resolvedKey} (delimiter=${
+        shouldNormalize ? "semicolon" : "comma"
+      }, resolvedProducts=${normalized.resolvedProducts}, resolvedVariants=${
+        normalized.resolvedVariants
+      })`
+    );
+  } catch (error) {
+    logger.error?.(
+      `[admin][products/imports] failed to prepare uploaded CSV: ${
+        (error as Error)?.message ?? "unknown error"
+      }`,
+      error
+    );
+    throw error;
   }
 
   try {
-    const { result, transaction } = await importProductsAsChunksWorkflow(
-      req.scope
-    ).run({
+    const { result, transaction } = await importProductsWorkflow(req.scope).run({
       input: {
         filename,
-        fileKey: normalizedKey,
+        fileContent: importCsvText,
       },
     });
 
