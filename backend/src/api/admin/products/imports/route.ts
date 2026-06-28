@@ -35,6 +35,7 @@ type ProductImportPlan = {
 };
 
 type ProductImportPlanSummary = {
+  rows: number;
   toCreate: number;
   toUpdate: number;
 };
@@ -501,6 +502,11 @@ const buildImportPlan = (
   );
   const normalizer = new CSVNormalizer(normalizedRows);
   const products = normalizer.proccess();
+  const productHandleCount = new Set(
+    normalizedRows
+      .map((row) => row["product handle"])
+      .filter((handle): handle is string => Boolean(handle))
+  ).size;
 
   const create = Object.values(products.toCreate).map((product) =>
     productValidators.CreateProduct.parse(product)
@@ -508,6 +514,13 @@ const buildImportPlan = (
   const update = Object.values(products.toUpdate).map((product) =>
     productValidators.UpdateProduct.parse(product)
   ) as UpdateProductWorkflowInputDTO[];
+
+  if (rows.length > 0 && create.length + update.length === 0) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      `CSV import did not produce product records (rows=${rows.length}, productHandles=${productHandleCount}).`
+    );
+  }
 
   return {
     plan: {
@@ -517,6 +530,7 @@ const buildImportPlan = (
       update,
     },
     summary: {
+      rows: rows.length,
       toCreate: create.length,
       toUpdate: update.length,
     },
@@ -692,7 +706,7 @@ export const POST = async (
     logger.info?.(
       `[admin][products/imports] import plan created for ${filename} (transaction=${
         planFile.id
-      }, toCreate=${summary.toCreate}, toUpdate=${summary.toUpdate}, resolvedProducts=${
+      }, rows=${summary.rows}, toCreate=${summary.toCreate}, toUpdate=${summary.toUpdate}, resolvedProducts=${
         normalizedSummary.resolvedProducts
       }, resolvedVariants=${normalizedSummary.resolvedVariants})`
     );

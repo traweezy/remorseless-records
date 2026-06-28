@@ -166,13 +166,7 @@ class MinioFileProviderService extends AbstractFileProviderService {
 
     try {
       const fileKey = this.createFileKey(file.filename)
-      const content =
-        Buffer.isBuffer(file.content)
-          ? file.content
-          : Buffer.from(
-              typeof file.content === 'string' ? file.content : String(file.content),
-              'utf8'
-            )
+      const content = decodeProviderContent(file.content)
 
       // Upload file with public-read access
       await this.minioClient.putObject(
@@ -396,3 +390,30 @@ export default MinioFileProviderService
 
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error'
+
+const decodeProviderContent = (content: unknown): Buffer => {
+  if (Buffer.isBuffer(content)) {
+    return content
+  }
+
+  if (content instanceof ArrayBuffer) {
+    return Buffer.from(content)
+  }
+
+  if (ArrayBuffer.isView(content)) {
+    return Buffer.from(content.buffer, content.byteOffset, content.byteLength)
+  }
+
+  const stringContent = typeof content === 'string' ? content : String(content)
+
+  try {
+    const decoded = Buffer.from(stringContent, 'base64')
+    if (decoded.toString('base64') === stringContent) {
+      return decoded
+    }
+  } catch {
+    // Fall back to UTF-8 below.
+  }
+
+  return Buffer.from(stringContent, 'utf8')
+}
