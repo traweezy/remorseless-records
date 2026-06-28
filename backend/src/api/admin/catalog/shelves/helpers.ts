@@ -6,6 +6,8 @@ import {
   catalogShelfAutomationTypeValues,
   catalogShelfModeValues,
   type CatalogShelfAutomationType,
+  type CatalogShelfProductRecord,
+  type CatalogShelfRecord,
   serializeCatalogShelf,
   serializeCatalogShelfProduct,
 } from "@/modules/catalog/serializers"
@@ -49,6 +51,118 @@ export const shelfUpsertSchema = z.object({
 export type ShelfUpsertInput = z.infer<typeof shelfUpsertSchema>
 export type ShelfProductInput = z.infer<typeof shelfProductInputSchema>
 
+type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
+type CatalogServiceMethods = Record<string, CatalogServiceMethod | undefined>
+type ServiceQueryConfig = {
+  skip?: number
+  take?: number
+  order?: Record<string, "ASC" | "DESC">
+}
+
+const callCatalogService = async <T>(
+  catalogService: CatalogService,
+  candidates: readonly string[],
+  args: unknown[]
+): Promise<T> => {
+  const methods = catalogService as unknown as CatalogServiceMethods
+  const methodName = candidates.find(
+    (candidate) => typeof methods[candidate] === "function"
+  )
+  const method = methodName ? methods[methodName] : undefined
+
+  if (!method) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      `Catalog service is missing ${candidates.join(" or ")}`
+    )
+  }
+
+  return (await method.apply(catalogService, args)) as T
+}
+
+export const listCatalogShelves = async (
+  catalogService: CatalogService,
+  filters: Record<string, unknown>,
+  config?: ServiceQueryConfig
+): Promise<CatalogShelfRecord[]> =>
+  callCatalogService<CatalogShelfRecord[]>(
+    catalogService,
+    ["listCatalogShelves", "listCatalogShelfs"],
+    config ? [filters, config] : [filters]
+  )
+
+export const listAndCountCatalogShelves = async (
+  catalogService: CatalogService,
+  filters: Record<string, unknown>,
+  config?: ServiceQueryConfig
+): Promise<[CatalogShelfRecord[], number]> =>
+  callCatalogService<[CatalogShelfRecord[], number]>(
+    catalogService,
+    ["listAndCountCatalogShelves", "listAndCountCatalogShelfs"],
+    config ? [filters, config] : [filters]
+  )
+
+const createCatalogShelves = async (
+  catalogService: CatalogService,
+  payloads: Record<string, unknown>[]
+): Promise<CatalogShelfRecord | CatalogShelfRecord[]> =>
+  callCatalogService<CatalogShelfRecord | CatalogShelfRecord[]>(
+    catalogService,
+    ["createCatalogShelves", "createCatalogShelfs"],
+    [payloads]
+  )
+
+const updateCatalogShelves = async (
+  catalogService: CatalogService,
+  payloads: Record<string, unknown>[]
+): Promise<CatalogShelfRecord | CatalogShelfRecord[]> =>
+  callCatalogService<CatalogShelfRecord | CatalogShelfRecord[]>(
+    catalogService,
+    ["updateCatalogShelves", "updateCatalogShelfs"],
+    [payloads]
+  )
+
+const deleteCatalogShelves = async (
+  catalogService: CatalogService,
+  id: string
+): Promise<void> =>
+  callCatalogService<void>(
+    catalogService,
+    ["deleteCatalogShelves", "deleteCatalogShelfs"],
+    [id]
+  )
+
+const listCatalogShelfProducts = async (
+  catalogService: CatalogService,
+  filters: Record<string, unknown>,
+  config?: ServiceQueryConfig
+): Promise<CatalogShelfProductRecord[]> =>
+  callCatalogService<CatalogShelfProductRecord[]>(
+    catalogService,
+    ["listCatalogShelfProducts"],
+    config ? [filters, config] : [filters]
+  )
+
+const createCatalogShelfProducts = async (
+  catalogService: CatalogService,
+  payloads: Record<string, unknown>[]
+): Promise<CatalogShelfProductRecord | CatalogShelfProductRecord[]> =>
+  callCatalogService<CatalogShelfProductRecord | CatalogShelfProductRecord[]>(
+    catalogService,
+    ["createCatalogShelfProducts"],
+    [payloads]
+  )
+
+const deleteCatalogShelfProducts = async (
+  catalogService: CatalogService,
+  ids: string[]
+): Promise<void> =>
+  callCatalogService<void>(
+    catalogService,
+    ["deleteCatalogShelfProducts"],
+    [ids]
+  )
+
 export const resolveShelf = async (
   catalogService: CatalogService,
   id: string
@@ -71,7 +185,9 @@ export const resolveUniqueShelfHandle = async (
   let suffix = 1
 
   while (suffix < 50) {
-    const existing = await catalogService.listCatalogShelfs({ handle: candidate })
+    const existing = await listCatalogShelves(catalogService, {
+      handle: candidate,
+    })
     const collision = existing.find((shelf) => shelf.id !== excludeId)
     if (!collision) {
       return candidate
@@ -87,7 +203,8 @@ export const loadShelfProducts = async (
   catalogService: CatalogService,
   shelfId: string
 ) => {
-  const products = await catalogService.listCatalogShelfProducts(
+  const products = await listCatalogShelfProducts(
+    catalogService,
     { shelf_id: shelfId },
     { order: { sort_order: "ASC" } }
   )
@@ -145,12 +262,12 @@ export const replaceShelfProducts = async (
 ): Promise<void> => {
   await resolveShelf(catalogService, shelfId)
   const seen = new Set<string>()
-  const existing = await catalogService.listCatalogShelfProducts({
+  const existing = await listCatalogShelfProducts(catalogService, {
     shelf_id: shelfId,
   })
   const ids = existing.map((product) => product.id)
   if (ids.length) {
-    await catalogService.deleteCatalogShelfProducts(ids)
+    await deleteCatalogShelfProducts(catalogService, ids)
   }
 
   const payloads = []
@@ -181,7 +298,7 @@ export const replaceShelfProducts = async (
   }
 
   if (payloads.length) {
-    await catalogService.createCatalogShelfProducts(payloads)
+    await createCatalogShelfProducts(catalogService, payloads)
   }
 }
 
@@ -265,8 +382,8 @@ export const upsertShelf = async (
   }
 
   const savedResult = existing
-    ? await catalogService.updateCatalogShelfs([{ id: existing.id, ...payload }])
-    : await catalogService.createCatalogShelfs([payload])
+    ? await updateCatalogShelves(catalogService, [{ id: existing.id, ...payload }])
+    : await createCatalogShelves(catalogService, [payload])
   const saved = firstResult(savedResult)
   if (!saved) {
     throw new MedusaError(
@@ -291,10 +408,10 @@ export const deleteShelf = async (
   id: string
 ): Promise<void> => {
   await resolveShelf(catalogService, id)
-  const products = await catalogService.listCatalogShelfProducts({ shelf_id: id })
+  const products = await listCatalogShelfProducts(catalogService, { shelf_id: id })
   const productIds = products.map((product) => product.id)
   if (productIds.length) {
-    await catalogService.deleteCatalogShelfProducts(productIds)
+    await deleteCatalogShelfProducts(catalogService, productIds)
   }
-  await catalogService.deleteCatalogShelfs(id)
+  await deleteCatalogShelves(catalogService, id)
 }

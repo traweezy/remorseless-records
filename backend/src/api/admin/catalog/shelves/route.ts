@@ -8,7 +8,12 @@ import {
   serializeCatalogShelf,
 } from "@/modules/catalog/serializers"
 import type { CatalogService } from "../utils"
-import { loadShelfProducts, shelfUpsertSchema, upsertShelf } from "./helpers"
+import {
+  listAndCountCatalogShelves,
+  loadShelfProducts,
+  shelfUpsertSchema,
+  upsertShelf,
+} from "./helpers"
 
 const shelfListQuerySchema = z.object({
   handle: z.string().trim().optional(),
@@ -52,7 +57,8 @@ export const GET = async (
 
   const take = limit ?? 100
   const skip = offset ?? 0
-  const [shelves, count] = await catalogService.listAndCountCatalogShelfs(
+  const [shelves, count] = await listAndCountCatalogShelves(
+    catalogService,
     filters,
     {
       skip,
