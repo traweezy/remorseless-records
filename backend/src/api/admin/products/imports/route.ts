@@ -25,6 +25,8 @@ type NormalizedCsvResult = {
   metadataKeys: string[];
   resolvedProducts: number;
   resolvedVariants: number;
+  resolvedProductIds?: Array<{ handle: string; id: string }>;
+  resolvedVariantIds?: Array<{ handle: string; sku: string; id: string }>;
 };
 
 type ProductImportPlan = {
@@ -535,12 +537,25 @@ const normalizeCommaDelimitedCsv = async (
     ...inherited,
     resolvedProducts,
     resolvedVariants,
+    resolvedProductIds: Array.from(productIdByHandle.entries()).map(
+      ([handle, id]) => ({ handle, id })
+    ),
+    resolvedVariantIds: Array.from(variantIdByHandleSku.entries()).flatMap(
+      ([compoundKey, id]) => {
+        const [handle, sku] = compoundKey.split("\u0000");
+        return handle && sku ? [{ handle, sku, id }] : [];
+      }
+    ),
   };
 };
 
 const buildImportPlan = (
   filename: string,
-  csvText: string
+  csvText: string,
+  resolvedIds?: Pick<
+    NormalizedCsvResult,
+    "resolvedProductIds" | "resolvedVariantIds"
+  >
 ): {
   plan: ProductImportPlan;
   summary: ProductImportPlanSummary;
@@ -582,6 +597,16 @@ const buildImportPlan = (
     const variantId = normalizedValue(normalizedRow, "variant id");
     if (handle && sku && variantId) {
       variantIdByHandleSku.set(`${handle}\u0000${sku}`, variantId);
+    }
+  });
+  resolvedIds?.resolvedProductIds?.forEach(({ handle, id }) => {
+    if (handle && id && !productIdByHandle.has(handle)) {
+      productIdByHandle.set(handle, id);
+    }
+  });
+  resolvedIds?.resolvedVariantIds?.forEach(({ handle, sku, id }) => {
+    if (handle && sku && id && !variantIdByHandleSku.has(`${handle}\u0000${sku}`)) {
+      variantIdByHandleSku.set(`${handle}\u0000${sku}`, id);
     }
   });
 
@@ -796,7 +821,11 @@ export const POST = async (
   }
 
   try {
-    const { plan, summary } = buildImportPlan(filename, importCsvText);
+    const { plan, summary } = buildImportPlan(
+      filename,
+      importCsvText,
+      normalizedSummary
+    );
     const planFile = await fileModuleService.createFiles({
       filename: `${filename.replace(/\.csv$/i, "")}-import-plan.json`,
       content: JSON.stringify(plan),
