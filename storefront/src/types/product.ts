@@ -29,6 +29,7 @@ export type RelatedProductSummary = {
 }
 
 export type ProductSearchHit = RelatedProductSummary & {
+  status?: string | null
   genres: string[]
   metalGenres: string[]
   categories: string[]

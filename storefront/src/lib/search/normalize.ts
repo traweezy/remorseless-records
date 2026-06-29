@@ -174,6 +174,10 @@ export const normalizeSearchHit = (
         : null
 
   const title = rawTitle ?? "Untitled Release"
+  const status =
+    typeof hit.status === "string" && hit.status.trim().length
+      ? hit.status.trim().toLowerCase()
+      : null
 
   const subtitle =
     typeof hit.subtitle === "string"
@@ -360,6 +364,7 @@ export const normalizeSearchHit = (
   return {
     id,
     handle,
+    status,
     title,
     artist: explicitArtist ?? artistNames[0] ?? slug.artist ?? subtitle ?? title,
     artistNames,

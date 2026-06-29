@@ -66,6 +66,7 @@ type FilterDescriptor = {
     | "category_handles"
     | "variant_titles"
     | "product_type"
+    | "status"
     | "stock_status"
     | "availability_states"
     | "price_range"
@@ -92,6 +93,12 @@ const buildFilter = (
 } => {
   const clauses: string[] = []
   const postFilters: FilterDescriptor[] = []
+
+  if (filterable.has("status")) {
+    clauses.push('status = "published"')
+  } else {
+    postFilters.push({ attribute: "status", values: ["published"] })
+  }
 
   const tryFilter = (
     attribute: FilterDescriptor["attribute"],
@@ -272,6 +279,11 @@ const filterHitsClient = (
         }
       } else if (descriptor.attribute === "stock_status") {
         const status = hit.stockStatus?.toLowerCase() ?? ""
+        if (!target.has(status)) {
+          return false
+        }
+      } else if (descriptor.attribute === "status") {
+        const status = hit.status?.toLowerCase() ?? "published"
         if (!target.has(status)) {
           return false
         }

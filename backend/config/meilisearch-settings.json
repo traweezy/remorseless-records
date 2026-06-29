@@ -3,6 +3,7 @@
     "fields": [
       "id",
       "handle",
+      "status",
       "title",
       "description",
       "subtitle",
@@ -45,6 +46,7 @@
       "displayedAttributes": [
         "id",
         "handle",
+        "status",
         "title",
         "title_sort",
         "release_title",
@@ -106,6 +108,7 @@
       "filterableAttributes": [
         "id",
         "handle",
+        "status",
         "genres",
         "metalGenres",
         "format",

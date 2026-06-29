@@ -61,6 +61,7 @@ type MediaSearchDocument = {
 export type SearchDocument = {
   id: string
   handle: string | null
+  status: string | null
   title: string | null
   title_sort: string | null
   release_title: string | null
@@ -831,6 +832,7 @@ export const buildSearchDocument = (
   return {
     id: toStringOrNull(normalizedProduct.id) ?? "",
     handle: toStringOrNull(normalizedProduct.handle),
+    status: toStringOrNull(normalizedProduct.status),
     title: toStringOrNull(normalizedProduct.title),
     title_sort: (releaseTitle ?? toStringOrNull(normalizedProduct.title))?.toLowerCase() ?? null,
     release_title: releaseTitle,

@@ -132,6 +132,7 @@ describe("searchProductsWithClient", () => {
           "category_handles",
           "variant_titles",
           "product_type",
+          "status",
           "availability_states",
           "price_min",
           "price_max",
@@ -187,7 +188,7 @@ describe("searchProductsWithClient", () => {
         "variant_titles",
       ],
       filter:
-        'genres IN ["Doom"] AND formats IN ["Vinyl"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 1000 AND price_min <= 3000 AND (stock_status != "sold_out")',
+        'status = "published" AND genres IN ["Doom"] AND formats IN ["Vinyl"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 1000 AND price_min <= 3000 AND (stock_status != "sold_out")',
       sort: ["price_amount:asc"],
     })
     expect(response.total).toBe(1)
@@ -304,6 +305,32 @@ describe("searchProductsWithClient", () => {
     expect(response.total).toBe(1)
     expect(response.hits.map((hit) => hit.handle)).toEqual(["match"])
     expect(response.facets.availabilityStates).toEqual({ preorder: 1 })
+  })
+
+  it("filters draft search hits when status is not filterable", async () => {
+    const index: MockIndex = {
+      uid: "products-status-postfilter",
+      getSettings: vi.fn().mockResolvedValue({
+        filterableAttributes: [],
+      }),
+      search: vi.fn().mockResolvedValue({
+        hits: [
+          makeHit({ handle: "published-record", status: "published" }),
+          makeHit({ handle: "draft-record", status: "draft" }),
+        ],
+        facetDistribution: undefined,
+      }),
+    }
+
+    const response = await searchProductsWithClient(makeClient(index), {
+      query: "",
+      limit: 24,
+    })
+
+    expect(
+      (index.search.mock.calls[0]?.[1] as { filter?: unknown } | undefined)?.filter
+    ).toBeUndefined()
+    expect(response.hits.map((hit) => hit.handle)).toEqual(["published-record"])
   })
 
   it("builds server-side min-only and max-only price filters", async () => {
