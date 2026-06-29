@@ -56,6 +56,9 @@ describe("computeFacetCounts", () => {
       categoryHandles: ["vinyl"],
       variantTitles: ["LP"],
       format: "Vinyl",
+      availabilityStates: ["in_stock"],
+      stockStatuses: ["in_stock"],
+      bundleType: "fixed",
       productType: "album",
     } satisfies ProductSearchHit
 
@@ -66,6 +69,50 @@ describe("computeFacetCounts", () => {
       categories: { vinyl: 1 },
       variants: { LP: 1 },
       productTypes: { album: 1 },
+      availabilityStates: { in_stock: 1 },
+      stockStatuses: { in_stock: 1 },
+      bundleTypes: { fixed: 1 },
+    })
+  })
+
+  it("ignores blank facet values", () => {
+    const hit = {
+      id: "1",
+      handle: "release-1",
+      title: "Release",
+      artist: "Artist",
+      album: "Album",
+      slug: {
+        artist: "Artist",
+        album: "Album",
+        artistSlug: "artist",
+        albumSlug: "album",
+      },
+      subtitle: null,
+      defaultVariant: null,
+      formats: [],
+      genres: ["", "  "],
+      metalGenres: ["", "  "],
+      categories: [],
+      categoryHandles: ["", "  "],
+      variantTitles: ["", "  "],
+      format: "  ",
+      availabilityStates: ["", "  "],
+      stockStatuses: ["unknown"],
+      bundleType: "  ",
+      productType: "  ",
+    } satisfies ProductSearchHit
+
+    expect(computeFacetCounts([hit])).toEqual({
+      genres: {},
+      metalGenres: {},
+      format: {},
+      categories: {},
+      variants: {},
+      productTypes: {},
+      availabilityStates: {},
+      stockStatuses: { unknown: 1 },
+      bundleTypes: {},
     })
   })
 })
@@ -81,20 +128,26 @@ describe("searchProductsWithClient", () => {
       getSettings: vi.fn().mockResolvedValue({
         filterableAttributes: [
           "genres",
-          "format",
+          "formats",
           "category_handles",
           "variant_titles",
           "product_type",
+          "availability_states",
+          "price_min",
+          "price_max",
         ],
       }),
       search: vi.fn().mockResolvedValue({
         hits: [makeHit()],
         facetDistribution: {
           genres: { Doom: 1 },
-          format: { LP: 1 },
+          formats: { LP: 1 },
           category_handles: { doom: 1 },
           variant_titles: { LP: 1 },
           product_type: { album: 1 },
+          availability_states: { in_stock: 1 },
+          stock_statuses: { in_stock: 1 },
+          bundle_type: { fixed: 1 },
         },
       }),
     }
@@ -111,6 +164,8 @@ describe("searchProductsWithClient", () => {
         categories: ["doom"],
         variants: ["LP"],
         productTypes: ["album"],
+        availability: ["in_stock"],
+        price: { min: 1000, max: 3000 },
       },
     })
 
@@ -119,9 +174,20 @@ describe("searchProductsWithClient", () => {
     expect(index.search).toHaveBeenCalledWith("doom", {
       limit: 64,
       offset: 0,
-      facets: ["genres", "metalGenres", "format", "product_type", "category_handles", "variant_titles"],
+      facets: [
+        "genres",
+        "metalGenres",
+        "formats",
+        "format",
+        "product_type",
+        "availability_states",
+        "stock_statuses",
+        "bundle_type",
+        "category_handles",
+        "variant_titles",
+      ],
       filter:
-        'genres IN ["Doom"] AND format IN ["Vinyl"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND (stock_status != "sold_out")',
+        'genres IN ["Doom"] AND formats IN ["Vinyl"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 1000 AND price_min <= 3000 AND (stock_status != "sold_out")',
       sort: ["price_amount:asc"],
     })
     expect(response.total).toBe(1)
@@ -176,6 +242,119 @@ describe("searchProductsWithClient", () => {
     expect(response.total).toBe(1)
     expect(response.hits).toHaveLength(1)
     expect(response.hits[0]?.handle).toBe("match")
+  })
+
+  it("post-filters availability and price ranges when they are not filterable", async () => {
+    const index: MockIndex = {
+      uid: "products-postfilter-price-availability",
+      getSettings: vi.fn().mockResolvedValue({
+        filterableAttributes: [],
+      }),
+      search: vi.fn().mockResolvedValue({
+        hits: [
+          makeHit({
+            handle: "match",
+            availability_states: ["preorder"],
+            price_min: 1200,
+            price_max: 2000,
+          }),
+          makeHit({
+            handle: "wrong-availability",
+            availability_states: ["in_stock"],
+            price_min: 1200,
+            price_max: 2000,
+          }),
+          makeHit({
+            handle: "too-cheap",
+            availability_states: ["preorder"],
+            price_min: 500,
+            price_max: 900,
+          }),
+          makeHit({
+            handle: "too-expensive",
+            availability_states: ["preorder"],
+            price_min: 2600,
+            price_max: 3200,
+          }),
+          makeHit({
+            handle: "missing-price",
+            availability_states: ["preorder"],
+            price_amount: null,
+            price_min: null,
+            price_max: null,
+          }),
+        ],
+        facetDistribution: undefined,
+      }),
+    }
+
+    const response = await searchProductsWithClient(makeClient(index), {
+      query: "preorder",
+      limit: 24,
+      filters: {
+        availability: ["preorder"],
+        price: { min: 1000, max: 2500 },
+      },
+    })
+
+    expect(index.search).toHaveBeenCalledTimes(1)
+    expect(
+      (index.search.mock.calls[0]?.[1] as { filter?: unknown } | undefined)?.filter
+    ).toBeUndefined()
+    expect(response.total).toBe(1)
+    expect(response.hits.map((hit) => hit.handle)).toEqual(["match"])
+    expect(response.facets.availabilityStates).toEqual({ preorder: 1 })
+  })
+
+  it("builds server-side min-only and max-only price filters", async () => {
+    const minIndex: MockIndex = {
+      uid: "products-price-min-filter",
+      getSettings: vi.fn().mockResolvedValue({
+        filterableAttributes: ["price_min", "price_max", 123, { attribute: 123 }],
+      }),
+      search: vi.fn().mockResolvedValue({
+        hits: [makeHit({ price_min: 1000, price_max: 1500 })],
+        facetDistribution: undefined,
+      }),
+    }
+    const maxIndex: MockIndex = {
+      uid: "products-price-max-filter",
+      getSettings: vi.fn().mockResolvedValue({
+        filterableAttributes: ["price_min", "price_max"],
+      }),
+      search: vi.fn().mockResolvedValue({
+        hits: [makeHit({ price_min: 1000, price_max: 1500 })],
+        facetDistribution: undefined,
+      }),
+    }
+
+    await searchProductsWithClient(makeClient(minIndex), {
+      query: "",
+      limit: 1,
+      filters: {
+        price: { min: 1000 },
+      },
+    })
+    await searchProductsWithClient(makeClient(maxIndex), {
+      query: "",
+      limit: 1,
+      filters: {
+        price: { max: 2000 },
+      },
+    })
+
+    expect(minIndex.search).toHaveBeenCalledWith(
+      "",
+      expect.objectContaining({
+        filter: "price_max >= 1000",
+      })
+    )
+    expect(maxIndex.search).toHaveBeenCalledWith(
+      "",
+      expect.objectContaining({
+        filter: "price_min <= 2000",
+      })
+    )
   })
 
   it("paginates across batches and reports hasMore/nextOffset", async () => {
@@ -279,6 +458,9 @@ describe("searchProductsWithClient", () => {
         categories: {},
         variants: {},
         productTypes: {},
+        availabilityStates: {},
+        stockStatuses: {},
+        bundleTypes: {},
       },
     })
   })

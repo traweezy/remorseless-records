@@ -99,6 +99,9 @@ describe("product query helpers", () => {
         categories: {},
         variants: {},
         productTypes: {},
+        availabilityStates: {},
+        stockStatuses: {},
+        bundleTypes: {},
       },
     }
     mockedSearchProductsBrowser.mockResolvedValue(response)

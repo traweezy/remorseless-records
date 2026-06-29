@@ -29,21 +29,55 @@ const searchRequestSchema = z
         categories: z.array(z.string().trim().min(1).max(160)).max(40).optional(),
         variants: z.array(z.string().trim().min(1).max(160)).max(40).optional(),
         productTypes: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+        availability: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+        price: z
+          .object({
+            min: z.coerce.number().int().min(0).max(1_000_000).optional(),
+            max: z.coerce.number().int().min(0).max(1_000_000).optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .optional(),
   })
   .strict()
+  .superRefine((value, ctx) => {
+    const min = value.filters?.price?.min
+    const max = value.filters?.price?.max
+    if (
+      typeof min === "number" &&
+      typeof max === "number" &&
+      min > max
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["filters", "price"],
+        message: "Minimum price cannot be greater than maximum price",
+      })
+    }
+  })
 
 const sanitizeFilters = (
   filters: z.infer<typeof searchRequestSchema>["filters"]
 ): ProductSearchRequest["filters"] => {
+  const price =
+    filters?.price &&
+    (typeof filters.price.min === "number" || typeof filters.price.max === "number")
+      ? {
+          ...(typeof filters.price.min === "number" ? { min: filters.price.min } : {}),
+          ...(typeof filters.price.max === "number" ? { max: filters.price.max } : {}),
+        }
+      : undefined
+
   const sanitized: ProductSearchFilters = {
     ...(filters?.genres?.length ? { genres: filters.genres } : {}),
     ...(filters?.formats?.length ? { formats: filters.formats } : {}),
     ...(filters?.categories?.length ? { categories: filters.categories } : {}),
     ...(filters?.variants?.length ? { variants: filters.variants } : {}),
     ...(filters?.productTypes?.length ? { productTypes: filters.productTypes } : {}),
+    ...(filters?.availability?.length ? { availability: filters.availability } : {}),
+    ...(price ? { price } : {}),
   }
 
   const hasAnyFilters =
@@ -51,7 +85,9 @@ const sanitizeFilters = (
     Boolean(sanitized.formats?.length) ||
     Boolean(sanitized.categories?.length) ||
     Boolean(sanitized.variants?.length) ||
-    Boolean(sanitized.productTypes?.length)
+    Boolean(sanitized.productTypes?.length) ||
+    Boolean(sanitized.availability?.length) ||
+    Boolean(sanitized.price)
 
   return hasAnyFilters ? sanitized : undefined
 }

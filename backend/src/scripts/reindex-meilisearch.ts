@@ -40,7 +40,8 @@ export default async function reindexMeilisearch({
     addDocuments: (
       indexKey: string,
       documents: unknown[],
-      language?: string
+      type?: string,
+      options?: Record<string, unknown>
     ) => Promise<unknown>
   }
 
@@ -87,7 +88,9 @@ export default async function reindexMeilisearch({
       break
     }
 
-    await meilisearch.addDocuments(PRODUCTS_INDEX, products)
+    await meilisearch.addDocuments(PRODUCTS_INDEX, products, "products", {
+      container,
+    })
     offset += products.length
     totalIndexed += products.length
   }

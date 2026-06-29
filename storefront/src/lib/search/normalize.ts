@@ -3,7 +3,7 @@ import type { FacetDistribution } from "meilisearch"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
 import { resolveVariantStockStatus } from "@/lib/products/stock"
-import type { ProductSearchHit, VariantOption } from "@/types/product"
+import type { ProductSearchHit, StockStatus, VariantOption } from "@/types/product"
 
 const asStringArray = (value: unknown): string[] => {
   if (!value) {
@@ -12,7 +12,7 @@ const asStringArray = (value: unknown): string[] => {
 
   if (Array.isArray(value)) {
     return value
-      .map((entry) => (typeof entry === "string" ? entry : null))
+      .map((entry) => (typeof entry === "string" ? entry.trim() : null))
       .filter((entry): entry is string => Boolean(entry))
   }
 
@@ -48,6 +48,8 @@ const parseBoolean = (value: unknown): boolean | null => {
 
   return null
 }
+
+const unique = (values: string[]): string[] => Array.from(new Set(values))
 
 const toVariantOption = (
   variantId: string | null,
@@ -200,6 +202,8 @@ export const normalizeSearchHit = (
     collectionTitle,
   })
 
+  const artistNames = asStringArray(hit.artist_names ?? hit.artistNames)
+
   const explicitArtist =
     typeof hit.artist === "string" && hit.artist.trim().length
       ? hit.artist.trim()
@@ -237,11 +241,16 @@ export const normalizeSearchHit = (
         ? hit.formats[0]
         : null
 
+  const explicitFormats = asStringArray(hit.formats)
+  explicitFormats.forEach(addFormat)
+
   categoryLabels.forEach(addFormat)
   categoryHandles.forEach(addFormat)
 
   const priceAmount =
     parseNumber(hit.price_amount ?? hit.price ?? hit.amount) ?? null
+  const priceMin = parseNumber(hit.price_min ?? hit.priceMin) ?? priceAmount
+  const priceMax = parseNumber(hit.price_max ?? hit.priceMax) ?? priceAmount
   const currency =
     typeof hit.price_currency === "string"
       ? hit.price_currency
@@ -291,8 +300,10 @@ export const normalizeSearchHit = (
       Boolean(entry)
     )
 
-  const formats = Array.from(new Set(normalizedFormats))
+  const formats = unique(normalizedFormats)
   const canonicalFormat = formats[0] ?? null
+
+  const formatDetails = asStringArray(hit.format_details ?? hit.formatDetails)
 
   const defaultVariant = toVariantOption(
     variantId,
@@ -310,6 +321,16 @@ export const normalizeSearchHit = (
         ? hit.createdAt
         : null
 
+  const releaseDate =
+    typeof hit.release_date === "string"
+      ? hit.release_date
+      : typeof hit.releaseDate === "string"
+        ? hit.releaseDate
+        : null
+
+  const releaseYear =
+    parseNumber(hit.release_year ?? hit.releaseYear)
+
   const productType =
     typeof hit.product_type === "string"
       ? hit.product_type
@@ -317,11 +338,31 @@ export const normalizeSearchHit = (
         ? hit.productType
         : null
 
+  const productTypeLabel =
+    typeof hit.product_type_label === "string"
+      ? hit.product_type_label
+      : typeof hit.productTypeLabel === "string"
+        ? hit.productTypeLabel
+        : null
+
+  const availabilityStates = asStringArray(
+    hit.availability_states ?? hit.availabilityStates
+  )
+  const stockStatuses = asStringArray(
+    hit.stock_statuses ?? hit.stockStatuses
+  ).filter((entry): entry is StockStatus =>
+    entry === "in_stock" ||
+    entry === "low_stock" ||
+    entry === "sold_out" ||
+    entry === "unknown"
+  )
+
   return {
     id,
     handle,
     title,
-    artist: explicitArtist ?? slug.artist ?? subtitle ?? title,
+    artist: explicitArtist ?? artistNames[0] ?? slug.artist ?? subtitle ?? title,
+    artistNames,
     album: slug.album,
     slug,
     subtitle,
@@ -334,11 +375,46 @@ export const normalizeSearchHit = (
     categories: categoryLabels,
     categoryHandles,
     variantTitles,
+    label:
+      typeof hit.label === "string" && hit.label.trim().length
+        ? hit.label.trim()
+        : null,
+    utilityTags: asStringArray(hit.utility_tags ?? hit.utilityTags),
+    searchKeywords: asStringArray(hit.search_keywords ?? hit.searchKeywords),
     format: canonicalFormat,
+    formatDetails,
     priceAmount,
+    priceMin,
+    priceMax,
     createdAt,
+    releaseDate,
+    releaseYear,
     stockStatus: resolvedStock.status,
+    stockStatuses,
+    availabilityStates,
+    preorderAllowed: parseBoolean(hit.preorder_allowed ?? hit.preorderAllowed) ?? false,
+    backorderAllowed: parseBoolean(hit.backorder_allowed ?? hit.backorderAllowed) ?? false,
     productType,
+    productTypeLabel,
+    bundleType:
+      typeof hit.bundle_type === "string"
+        ? hit.bundle_type
+        : typeof hit.bundleType === "string"
+          ? hit.bundleType
+          : null,
+    bundleSummary:
+      typeof hit.bundle_summary === "string"
+        ? hit.bundle_summary
+        : typeof hit.bundleSummary === "string"
+          ? hit.bundleSummary
+          : null,
+    ribbonLabel:
+      typeof hit.ribbon_label === "string"
+        ? hit.ribbon_label
+        : typeof hit.ribbonLabel === "string"
+          ? hit.ribbonLabel
+          : null,
+    ribbonPriority: parseNumber(hit.ribbon_priority ?? hit.ribbonPriority),
   }
 }
 
@@ -372,6 +448,9 @@ export const extractFacetMaps = (
   categories: FacetMap
   variants: FacetMap
   productTypes: FacetMap
+  availabilityStates: FacetMap
+  stockStatuses: FacetMap
+  bundleTypes: FacetMap
 } => {
   if (!facetDistribution) {
     return {
@@ -381,6 +460,9 @@ export const extractFacetMaps = (
       categories: {},
       variants: {},
       productTypes: {},
+      availabilityStates: {},
+      stockStatuses: {},
+      bundleTypes: {},
     }
   }
 
@@ -408,7 +490,29 @@ export const extractFacetMaps = (
     facetDistribution.product_type ?? facetDistribution.productTypes
   )
 
-  return { genres, metalGenres, format, categories, variants, productTypes }
+  const availabilityStates = coerceFacetRecord(
+    facetDistribution.availability_states ?? facetDistribution.availabilityStates
+  )
+
+  const stockStatuses = coerceFacetRecord(
+    facetDistribution.stock_statuses ?? facetDistribution.stockStatuses
+  )
+
+  const bundleTypes = coerceFacetRecord(
+    facetDistribution.bundle_type ?? facetDistribution.bundleTypes
+  )
+
+  return {
+    genres,
+    metalGenres,
+    format,
+    categories,
+    variants,
+    productTypes,
+    availabilityStates,
+    stockStatuses,
+    bundleTypes,
+  }
 }
 const coerceRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)

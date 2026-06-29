@@ -79,6 +79,9 @@ const makeResponse = (hits: ProductSearchHit[]): ProductSearchResponse => ({
     categories: {},
     variants: {},
     productTypes: {},
+    availabilityStates: {},
+    stockStatuses: {},
+    bundleTypes: {},
   },
 })
 

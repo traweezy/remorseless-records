@@ -15,6 +15,11 @@ export type ProductSearchFilters = {
   categories?: string[]
   variants?: string[]
   productTypes?: string[]
+  availability?: string[]
+  price?: {
+    min?: number
+    max?: number
+  }
 }
 
 export type ProductSortOption =
@@ -43,6 +48,9 @@ export type ProductSearchResponse = {
     categories: FacetMap
     variants: FacetMap
     productTypes: FacetMap
+    availabilityStates: FacetMap
+    stockStatuses: FacetMap
+    bundleTypes: FacetMap
   }
   offset: number
   hasMore?: boolean
@@ -54,11 +62,18 @@ type FilterDescriptor = {
     | "genres"
     | "metalGenres"
     | "format"
+    | "formats"
     | "category_handles"
     | "variant_titles"
     | "product_type"
     | "stock_status"
+    | "availability_states"
+    | "price_range"
   values?: string[]
+  price?: {
+    min?: number
+    max?: number
+  }
 }
 
 const normalizeValues = (values: string[] | undefined): string[] =>
@@ -98,13 +113,45 @@ const buildFilter = (
   }
 
   tryFilter("genres", filters?.genres)
-  tryFilter("format", filters?.formats)
+  tryFilter("formats", filters?.formats)
   postFilters.push({
     attribute: "category_handles",
     values: normalizeValues(filters?.categories),
   })
   tryFilter("variant_titles", filters?.variants)
   tryFilter("product_type", filters?.productTypes)
+  tryFilter("availability_states", filters?.availability)
+
+  const minPrice =
+    typeof filters?.price?.min === "number" && Number.isFinite(filters.price.min)
+      ? filters.price.min
+      : undefined
+  const maxPrice =
+    typeof filters?.price?.max === "number" && Number.isFinite(filters.price.max)
+      ? filters.price.max
+      : undefined
+  const canFilterPrice =
+    filterable.has("price_min") && filterable.has("price_max")
+
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    if (canFilterPrice) {
+      if (minPrice !== undefined) {
+        clauses.push(`price_max >= ${minPrice}`)
+      }
+      if (maxPrice !== undefined) {
+        clauses.push(`price_min <= ${maxPrice}`)
+      }
+    } else {
+      const price: NonNullable<FilterDescriptor["price"]> = {
+        ...(minPrice !== undefined ? { min: minPrice } : {}),
+        ...(maxPrice !== undefined ? { max: maxPrice } : {}),
+      }
+      postFilters.push({
+        attribute: "price_range",
+        price,
+      })
+    }
+  }
 
   if (inStockOnly) {
     clauses.push('(stock_status != "sold_out")')
@@ -170,6 +217,23 @@ const filterHitsClient = (
 
   return hits.filter((hit) => {
     for (const descriptor of descriptors) {
+      if (descriptor.attribute === "price_range") {
+        const min = descriptor.price?.min
+        const max = descriptor.price?.max
+        const low = hit.priceMin ?? hit.priceAmount ?? null
+        const high = hit.priceMax ?? hit.priceAmount ?? null
+        if (low === null || high === null) {
+          return false
+        }
+        if (min !== undefined && high < min) {
+          return false
+        }
+        if (max !== undefined && low > max) {
+          return false
+        }
+        continue
+      }
+
       const values = normalizeValues(descriptor.values)
       if (!values.length) {
         continue
@@ -182,9 +246,17 @@ const filterHitsClient = (
         if (!genres.some((value) => target.has(value))) {
           return false
         }
-      } else if (descriptor.attribute === "format") {
-        const format = hit.format?.toLowerCase() ?? ""
-        if (!target.has(format)) {
+      } else if (
+        descriptor.attribute === "format" ||
+        descriptor.attribute === "formats"
+      ) {
+        const formats = [
+          hit.format,
+          ...(hit.formats ?? []),
+        ]
+          .map((value) => value?.toLowerCase())
+          .filter((value): value is string => Boolean(value))
+        if (!formats.some((format) => target.has(format))) {
           return false
         }
       } else if (descriptor.attribute === "category_handles") {
@@ -203,6 +275,11 @@ const filterHitsClient = (
         if (!target.has(status)) {
           return false
         }
+      } else if (descriptor.attribute === "availability_states") {
+        const states = (hit.availabilityStates ?? []).map((value) => value.toLowerCase())
+        if (!states.some((value) => target.has(value))) {
+          return false
+        }
       }
     }
     return true
@@ -218,6 +295,9 @@ export const computeFacetCounts = (
   categories: FacetMap
   variants: FacetMap
   productTypes: FacetMap
+  availabilityStates: FacetMap
+  stockStatuses: FacetMap
+  bundleTypes: FacetMap
 } => {
   const genres: FacetMap = {}
   const metalGenres: FacetMap = {}
@@ -225,6 +305,9 @@ export const computeFacetCounts = (
   const categories: FacetMap = {}
   const variants: FacetMap = {}
   const productTypes: FacetMap = {}
+  const availabilityStates: FacetMap = {}
+  const stockStatuses: FacetMap = {}
+  const bundleTypes: FacetMap = {}
 
   hits.forEach((hit) => {
     hit.genres?.forEach((genre) => {
@@ -278,9 +361,38 @@ export const computeFacetCounts = (
     if (typeKey) {
       productTypes[typeKey] = (productTypes[typeKey] ?? 0) + 1
     }
+
+    hit.availabilityStates?.forEach((state) => {
+      const key = state.trim()
+      if (key.length) {
+        availabilityStates[key] = (availabilityStates[key] ?? 0) + 1
+      }
+    })
+
+    hit.stockStatuses?.forEach((state) => {
+      const key = state.trim()
+      if (key.length) {
+        stockStatuses[key] = (stockStatuses[key] ?? 0) + 1
+      }
+    })
+
+    const bundleTypeKey = hit.bundleType?.trim()
+    if (bundleTypeKey) {
+      bundleTypes[bundleTypeKey] = (bundleTypes[bundleTypeKey] ?? 0) + 1
+    }
   })
 
-  return { genres, metalGenres, format, categories, variants, productTypes }
+  return {
+    genres,
+    metalGenres,
+    format,
+    categories,
+    variants,
+    productTypes,
+    availabilityStates,
+    stockStatuses,
+    bundleTypes,
+  }
 }
 
 const filterableCache = new Map<string, Set<string>>()
@@ -331,7 +443,16 @@ export const searchProductsWithClient = async (
   const sortDirective = sort ? sortMapping[sort] ?? null : null
   const sortDirectives = sortDirective ? [sortDirective] : undefined
 
-  const facetsToRequest: string[] = ["genres", "metalGenres", "format", "product_type"]
+  const facetsToRequest: string[] = [
+    "genres",
+    "metalGenres",
+    "formats",
+    "format",
+    "product_type",
+    "availability_states",
+    "stock_statuses",
+    "bundle_type",
+  ]
   if (filterable.has("category_handles")) {
     facetsToRequest.push("category_handles")
   }
@@ -430,6 +551,15 @@ export const searchProductsWithClient = async (
     productTypes: Object.keys(facetsFromIndex.productTypes).length
       ? facetsFromIndex.productTypes
       : fallbackFacets.productTypes,
+    availabilityStates: Object.keys(facetsFromIndex.availabilityStates).length
+      ? facetsFromIndex.availabilityStates
+      : fallbackFacets.availabilityStates,
+    stockStatuses: Object.keys(facetsFromIndex.stockStatuses).length
+      ? facetsFromIndex.stockStatuses
+      : fallbackFacets.stockStatuses,
+    bundleTypes: Object.keys(facetsFromIndex.bundleTypes).length
+      ? facetsFromIndex.bundleTypes
+      : fallbackFacets.bundleTypes,
   }
 
   return {

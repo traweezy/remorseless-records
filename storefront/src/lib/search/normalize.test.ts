@@ -44,13 +44,30 @@ describe("normalizeSearchHit", () => {
       category_labels: ["Vinyl", "Artists"],
       variant_titles: ["LP", "CD", ""],
       format: "LP",
+      formats: ["vinyl", "compact disc"],
+      format_details: ["black vinyl"],
       price_amount: "2499",
+      price_min: "1599",
+      price_max: "2499",
       currency_code: "usd",
       stock_status: "IN_STOCK",
+      stock_statuses: ["in_stock", "low_stock"],
+      availability_states: ["preorder", "in_stock"],
       inventory_quantity: "2",
       default_variant_id: "variant-1",
       createdAt: "2025-01-01T00:00:00.000Z",
+      release_date: "2025-02-01T00:00:00.000Z",
+      release_year: 2025,
       productType: "album",
+      product_type_label: "Album",
+      label: "Remorseless Records",
+      utility_tags: ["Staff Pick"],
+      search_keywords: ["cosmic death"],
+      preorder_allowed: true,
+      bundle_type: "fixed",
+      bundle_summary: "Includes two records",
+      ribbon_label: "New Release",
+      ribbon_priority: 5,
     })
 
     expect(normalized.handle).toBe("hidden-history")
@@ -59,7 +76,7 @@ describe("normalizeSearchHit", () => {
     expect(normalized.stockStatus).toBe("low_stock")
     expect(normalized.formats).toEqual(["Vinyl", "CD"])
     expect(normalized.format).toBe("Vinyl")
-    expect(normalized.genres).toEqual(["Death Metal", " "])
+    expect(normalized.genres).toEqual(["Death Metal"])
     expect(normalized.metalGenres).toEqual(["death", "progressive"])
     expect(normalized.defaultVariant).toEqual({
       id: "variant-1",
@@ -72,7 +89,21 @@ describe("normalizeSearchHit", () => {
       inventoryQuantity: 2,
     })
     expect(normalized.createdAt).toBe("2025-01-01T00:00:00.000Z")
+    expect(normalized.releaseDate).toBe("2025-02-01T00:00:00.000Z")
+    expect(normalized.releaseYear).toBe(2025)
     expect(normalized.productType).toBe("album")
+    expect(normalized.productTypeLabel).toBe("Album")
+    expect(normalized.label).toBe("Remorseless Records")
+    expect(normalized.formatDetails).toEqual(["black vinyl"])
+    expect(normalized.priceMin).toBe(1599)
+    expect(normalized.priceMax).toBe(2499)
+    expect(normalized.stockStatuses).toEqual(["in_stock", "low_stock"])
+    expect(normalized.availabilityStates).toEqual(["preorder", "in_stock"])
+    expect(normalized.preorderAllowed).toBe(true)
+    expect(normalized.bundleType).toBe("fixed")
+    expect(normalized.bundleSummary).toBe("Includes two records")
+    expect(normalized.ribbonLabel).toBe("New Release")
+    expect(normalized.ribbonPriority).toBe(5)
   })
 
   it("falls back across aliases and string coercions", () => {
@@ -181,10 +212,13 @@ describe("extractFacetMaps", () => {
       genres: {},
       metalGenres: {},
       format: {},
-      categories: {},
-      variants: {},
-      productTypes: {},
-    })
+        categories: {},
+        variants: {},
+        productTypes: {},
+        availabilityStates: {},
+        stockStatuses: {},
+        bundleTypes: {},
+      })
   })
 
   it("parses facet aliases and ignores invalid counts", () => {
@@ -196,6 +230,9 @@ describe("extractFacetMaps", () => {
         categories: { doom: "5" },
         variants: { CD: "2" },
         productTypes: { album: 6 },
+        availability_states: { preorder: 2 },
+        stock_statuses: { in_stock: 4 },
+        bundle_type: { fixed: 1 },
       } as unknown as NonNullable<Parameters<typeof extractFacetMaps>[0]>
     )
 
@@ -206,6 +243,9 @@ describe("extractFacetMaps", () => {
       categories: { doom: 5 },
       variants: { CD: 2 },
       productTypes: { album: 6 },
+      availabilityStates: { preorder: 2 },
+      stockStatuses: { in_stock: 4 },
+      bundleTypes: { fixed: 1 },
     })
   })
 
@@ -217,6 +257,9 @@ describe("extractFacetMaps", () => {
         category_handles: 30,
         variant_titles: 40,
         product_type: 50,
+        availability_states: 60,
+        stock_statuses: 70,
+        bundle_type: 80,
       } as unknown as NonNullable<Parameters<typeof extractFacetMaps>[0]>
     )
 
@@ -227,6 +270,9 @@ describe("extractFacetMaps", () => {
       categories: {},
       variants: {},
       productTypes: {},
+      availabilityStates: {},
+      stockStatuses: {},
+      bundleTypes: {},
     })
   })
 })

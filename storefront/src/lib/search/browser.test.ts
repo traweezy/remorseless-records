@@ -31,6 +31,9 @@ describe("searchProductsBrowser", () => {
         categories: {},
         variants: {},
         productTypes: {},
+        availabilityStates: {},
+        stockStatuses: {},
+        bundleTypes: {},
       },
     }
     vi.mocked(getBrowserSearchClient).mockReturnValue(client)
