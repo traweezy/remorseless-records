@@ -119,12 +119,24 @@ describe("buildSearchDocument", () => {
             label: "Staff Pick",
             value: "staff-pick",
           },
+          {
+            id: "format_vinyl",
+            kind: "format",
+            label: "Vinyl",
+            value: "vinyl",
+          },
+          {
+            id: "format_detail_black",
+            kind: "format_detail",
+            label: "Black",
+            value: "black",
+          },
         ],
         variantProfiles: [
           {
             variant_id: "var_lp",
-            format_label: "Vinyl",
-            format_detail_label: "Black",
+            format_id: "format_vinyl",
+            format_detail_id: "format_detail_black",
             display_label: "Vinyl - Black",
             availability_status: "preorder",
             preorder_allowed: true,

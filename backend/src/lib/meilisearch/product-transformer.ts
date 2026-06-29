@@ -558,6 +558,14 @@ const resolveReferenceValue = (
   return facts?.referenceValues?.find((value) => toStringOrNull(value.id) === id) ?? null
 }
 
+const resolveReferenceLabel = (
+  facts: CatalogSearchFacts | undefined,
+  id: string | null | undefined
+): string | null => {
+  const value = resolveReferenceValue(facts, id)
+  return toStringOrNull(value?.label ?? value?.value)
+}
+
 const referenceLabelsByKind = (
   facts: CatalogSearchFacts | undefined,
   kind: string
@@ -626,6 +634,14 @@ const mapVariantDocument = (
   const profile = variantProfileFor(facts, toStringOrNull(variant.id))
   const { amount, currency } = pickPrice(variant)
   const { status, quantity } = resolveStockStatus(variant)
+  const format = resolveReferenceLabel(
+    facts,
+    toStringOrNull(profile?.format_id ?? profile?.formatId)
+  )
+  const formatDetail = resolveReferenceLabel(
+    facts,
+    toStringOrNull(profile?.format_detail_id ?? profile?.formatDetailId)
+  )
   const availabilityStatus =
     toStringOrNull(profile?.availability_status) ??
     (profile?.preorder_allowed ? "preorder" : null) ??
@@ -636,12 +652,19 @@ const mapVariantDocument = (
     id: toStringOrNull(variant.id) ?? "",
     title: toStringOrNull(variant.title),
     sku: toStringOrNull(variant.sku),
-    format: toStringOrNull(profile?.format_label) ?? toStringOrNull(variant.title),
-    format_detail: toStringOrNull(profile?.format_detail_label),
+    format:
+      toStringOrNull(profile?.format_label ?? profile?.formatLabel) ??
+      format ??
+      toStringOrNull(variant.title),
+    format_detail:
+      toStringOrNull(profile?.format_detail_label ?? profile?.formatDetailLabel) ??
+      formatDetail,
     display_label:
-      toStringOrNull(profile?.display_label) ??
-      toStringOrNull(profile?.format_detail_label) ??
-      toStringOrNull(profile?.format_label) ??
+      toStringOrNull(profile?.display_label ?? profile?.displayLabel) ??
+      toStringOrNull(profile?.format_detail_label ?? profile?.formatDetailLabel) ??
+      formatDetail ??
+      toStringOrNull(profile?.format_label ?? profile?.formatLabel) ??
+      format ??
       toStringOrNull(variant.title),
     price_amount: amount,
     price_currency: currency,
@@ -996,8 +1019,8 @@ const loadCatalogFacts = async (
       toStringOrNull(profile?.product_type_id),
       ...references.map((reference) => toStringOrNull(reference.reference_value_id)),
       ...variantProfiles.flatMap((profile) => [
-        toStringOrNull(profile.format_id),
-        toStringOrNull(profile.format_detail_id),
+        toStringOrNull(profile.format_id ?? profile.formatId),
+        toStringOrNull(profile.format_detail_id ?? profile.formatDetailId),
       ]),
     ])
     const mediaAssetIds = unique(
