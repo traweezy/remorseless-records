@@ -4,6 +4,8 @@ import {
   Modules,
 } from "@medusajs/framework/utils"
 
+import { resolveMeilisearchService } from "./meilisearch-service"
+
 const PRODUCTS_INDEX = "products"
 const BATCH_SIZE = 100
 
@@ -28,14 +30,7 @@ export default async function reindexMeilisearch({
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
 
-  if (!container.hasRegistration("meilisearchService")) {
-    logger.warn(
-      "[meilisearch] Plugin is not configured. Skipping reindex operation."
-    )
-    return
-  }
-
-  const meilisearch = container.resolve("meilisearchService") as {
+  const meilisearch = resolveMeilisearchService<{
     deleteAllDocuments: (indexKey: string) => Promise<unknown>
     addDocuments: (
       indexKey: string,
@@ -43,7 +38,7 @@ export default async function reindexMeilisearch({
       type?: string,
       options?: Record<string, unknown>
     ) => Promise<unknown>
-  }
+  }>(container)
 
   const productModuleService = container.resolve(Modules.PRODUCT) as {
     listAndCountProducts: (

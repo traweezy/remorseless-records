@@ -1,6 +1,8 @@
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
+import { resolveMeilisearchService } from "./meilisearch-service"
+
 const PRODUCTS_INDEX = "products"
 
 export default async function checkMeilisearchSync({
@@ -8,18 +10,11 @@ export default async function checkMeilisearchSync({
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
 
-  if (!container.hasRegistration("meilisearchService")) {
-    logger.warn(
-      "[meilisearch] Plugin is not configured. Cannot verify search index."
-    )
-    return
-  }
-
-  const meilisearch = container.resolve("meilisearchService") as {
+  const meilisearch = resolveMeilisearchService<{
     getIndex: (indexKey: string) => {
       getStats: () => Promise<{ numberOfDocuments: number }>
     }
-  }
+  }>(container)
 
   const productModuleService = container.resolve(Modules.PRODUCT) as {
     listAndCountProducts: (

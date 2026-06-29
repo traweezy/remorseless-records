@@ -2,6 +2,7 @@ import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import indexSettings from "../../config/meilisearch-settings.json"
+import { resolveMeilisearchService } from "./meilisearch-service"
 
 const PRODUCTS_INDEX = "products"
 
@@ -46,14 +47,7 @@ export default async function syncMeilisearchSettings({
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
 
-  if (!container.hasRegistration("meilisearchService")) {
-    logger.warn(
-      "[meilisearch] Plugin is not configured. Skipping settings synchronization."
-    )
-    return
-  }
-
-  const meilisearch = container.resolve("meilisearchService") as MeilisearchService
+  const meilisearch = resolveMeilisearchService<MeilisearchService>(container)
   const productConfig = indexSettings.products
 
   if (!productConfig) {
