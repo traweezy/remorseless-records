@@ -29,15 +29,19 @@ const CookieConsentBanner = () => {
           </p>
           <p className="text-sm leading-relaxed text-white">
             We only use strictly necessary cookies by default. You can accept
-            all, reject non-essential, or customize your choices. Read our{" "}
+            all, reject non-essential, or customize your choices.
+          </p>
+          <nav
+            aria-label="Cookie policies"
+            className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"
+          >
             <SmartLink
               href="/privacy"
               nativePrefetch
               className="text-destructive underline underline-offset-4"
             >
               Privacy Policy
-            </SmartLink>{" "}
-            and{" "}
+            </SmartLink>
             <SmartLink
               href="/cookies"
               nativePrefetch
@@ -45,8 +49,7 @@ const CookieConsentBanner = () => {
             >
               Cookie Policy
             </SmartLink>
-            .
-          </p>
+          </nav>
         </div>
 
         <div className="relative z-10 flex flex-wrap gap-2">

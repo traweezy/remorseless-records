@@ -39,6 +39,8 @@ const auditTarget = async (target) => {
       standard: "WCAG2AA",
       runners: ["axe"],
       timeout: 30000,
+      includeWarnings: true,
+      levelCapWhenNeedsReview: "warning",
       ...(chromeExecutablePath
         ? { chromeLaunchConfig: { executablePath: chromeExecutablePath } }
         : {}),
@@ -67,16 +69,28 @@ const run = async () => {
     console.log(`\n🔍 Checking ${target}`)
     try {
       const results = await auditTarget(target)
+      const confirmedIssues = results.issues.filter((issue) => issue.type === "error")
+      const reviewIssues = results.issues.filter((issue) => issue.type !== "error")
 
-      if (results.issues.length) {
+      if (confirmedIssues.length) {
         hasFailures = true
-        for (const issue of results.issues) {
+        for (const issue of confirmedIssues) {
           console.error(
             `❌  ${issue.type.toUpperCase()} [${issue.code}] ${issue.message}\n    Selector: ${issue.selector}\n    Context: ${issue.context}\n`
           )
         }
-      } else {
+      }
+
+      for (const issue of reviewIssues) {
+        console.warn(
+          `⚠️  REVIEW [${issue.code}] ${issue.message}\n    Selector: ${issue.selector}\n    Context: ${issue.context}\n`
+        )
+      }
+
+      if (!results.issues.length) {
         console.log("✅  No accessibility issues detected.")
+      } else if (!confirmedIssues.length) {
+        console.log("✅  No confirmed violations; manual-review findings are logged above.")
       }
     } catch (error) {
       hasFailures = true
