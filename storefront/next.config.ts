@@ -14,7 +14,8 @@ const parseRemotePattern = (value?: string | null): RemotePattern | null => {
   try {
     const url = new URL(value.startsWith("http") ? value : `https://${value}`)
     const pattern: RemotePattern = {
-      protocol: (url.protocol.replace(":", "") as RemotePattern["protocol"]) ?? "https",
+      protocol:
+        (url.protocol.replace(":", "") as RemotePattern["protocol"]) ?? "https",
       hostname: url.hostname,
     }
     if (url.port) {
@@ -97,11 +98,7 @@ const scriptSrc = unique([
 
 const styleSrc = ["'self'", "'unsafe-inline'"]
 
-const connectSrc = unique([
-  "'self'",
-  ...dynamicOrigins,
-  ...stripeOrigins,
-])
+const connectSrc = unique(["'self'", ...dynamicOrigins, ...stripeOrigins])
 
 const frameSrc = unique([
   "'self'",
@@ -126,7 +123,9 @@ const cspDirectives = [
   "object-src 'none'",
   "manifest-src 'self'",
   "worker-src 'self' blob:",
-  ...(isProduction ? ["upgrade-insecure-requests", "block-all-mixed-content"] : []),
+  ...(isProduction
+    ? ["upgrade-insecure-requests", "block-all-mixed-content"]
+    : []),
 ]
 
 const contentSecurityPolicy = cspDirectives.join("; ")
@@ -169,6 +168,35 @@ const nextConfig: NextConfig = {
   },
   experimental: experimentalConfig,
   reactCompiler: true,
+  async redirects() {
+    return await Promise.resolve([
+      {
+        source: "/products",
+        destination: "/catalog",
+        permanent: true,
+      },
+      {
+        source: "/products/music-release-:slug",
+        destination: "/music-release/:slug",
+        permanent: true,
+      },
+      {
+        source: "/products/fixed-bundle-:slug",
+        destination: "/bundle/:slug",
+        permanent: true,
+      },
+      {
+        source: "/products/mystery-bundle-:slug",
+        destination: "/bundle/:slug",
+        permanent: true,
+      },
+      {
+        source: "/products/merch-:slug",
+        destination: "/merch/:slug",
+        permanent: true,
+      },
+    ])
+  },
   async headers() {
     return await Promise.resolve([
       {

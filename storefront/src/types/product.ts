@@ -56,6 +56,7 @@ export type ProductSearchHit = RelatedProductSummary & {
   productTypeLabel?: string | null
   bundleType?: string | null
   bundleSummary?: string | null
+  bundleComponentCount?: number | null
   ribbonLabel?: string | null
   ribbonPriority?: number | null
 }

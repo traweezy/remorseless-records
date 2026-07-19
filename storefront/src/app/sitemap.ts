@@ -2,8 +2,12 @@ import type { MetadataRoute } from "next"
 
 import { siteMetadata } from "@/config/site"
 import { getAllProductHandles } from "@/lib/data/products"
+import { buildPublicProductPath } from "@/lib/products/routes"
 
-const STATIC_ROUTES: Array<{ path: string; changeFrequency?: MetadataRoute.Sitemap[number]["changeFrequency"] }> = [
+const STATIC_ROUTES: Array<{
+  path: string
+  changeFrequency?: MetadataRoute.Sitemap[number]["changeFrequency"]
+}> = [
   { path: "/", changeFrequency: "weekly" },
   { path: "/catalog", changeFrequency: "daily" },
   { path: "/cart", changeFrequency: "weekly" },
@@ -34,11 +38,10 @@ const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
 
   const products = await getAllProductHandles()
   products.forEach((product) => {
-    const pathSegment =
-      product.handle?.trim()?.length
-        ? product.handle.trim()
-        : `${product.slug.artistSlug}-${product.slug.albumSlug}`
-    const productUrl = `${siteMetadata.siteUrl}/products/${pathSegment}`
+    const fallbackHandle = `${product.slug.artistSlug}-${product.slug.albumSlug}`
+    const productUrl = `${siteMetadata.siteUrl}${buildPublicProductPath({
+      handle: product.handle?.trim() || fallbackHandle,
+    })}`
     entries.push({
       url: productUrl,
       lastModified: product.updatedAt ? new Date(product.updatedAt) : now,

@@ -13,6 +13,7 @@ import type { VariantOption } from "@/types/product"
 type ProductVariantSelectorProps = {
   variants: VariantOption[]
   productTitle: string
+  availabilityNoticeByVariantId?: Readonly<Record<string, string>>
 }
 
 const resolveMaxQuantity = (variant: VariantOption | null): number => {
@@ -59,9 +60,12 @@ const resolveStockChip = (
 const ProductVariantSelector = ({
   variants,
   productTitle,
+  availabilityNoticeByVariantId = {},
 }: ProductVariantSelectorProps) => {
   const defaultVariantId = useMemo(() => {
-    const purchasable = variants.find((variant) => variant.inStock && variant.hasPrice)
+    const purchasable = variants.find(
+      (variant) => variant.inStock && variant.hasPrice
+    )
     if (purchasable) return purchasable.id
     const priced = variants.find((variant) => variant.hasPrice)
     if (priced) return priced.id
@@ -77,7 +81,8 @@ const ProductVariantSelector = ({
   const { addItem } = useCart()
 
   const resolvedVariantId =
-    selectedVariantId && variants.some((variant) => variant.id === selectedVariantId)
+    selectedVariantId &&
+    variants.some((variant) => variant.id === selectedVariantId)
       ? selectedVariantId
       : defaultVariantId
 
@@ -90,7 +95,9 @@ const ProductVariantSelector = ({
     return resolveMaxQuantity(selectedVariant)
   }, [selectedVariant])
 
-  const isPurchasable = Boolean(selectedVariant?.inStock && selectedVariant?.hasPrice)
+  const isPurchasable = Boolean(
+    selectedVariant?.inStock && selectedVariant?.hasPrice
+  )
   const effectiveMax = Math.max(1, maxQuantity)
   const safeQuantity = isPurchasable ? clampQuantity(quantity, effectiveMax) : 1
 
@@ -107,7 +114,8 @@ const ProductVariantSelector = ({
   }, [isPending, optimisticVariantId])
 
   const handleVariantSelect = (variantId: string) => {
-    const nextVariant = variants.find((variant) => variant.id === variantId) ?? null
+    const nextVariant =
+      variants.find((variant) => variant.id === variantId) ?? null
     const nextMax = Math.max(1, resolveMaxQuantity(nextVariant))
     setSelectedVariantId(variantId)
     setQuantity((prev) => clampQuantity(prev, nextMax))
@@ -190,6 +198,9 @@ const ProductVariantSelector = ({
   const priceDisplay = selectedVariant?.hasPrice
     ? formatAmount(selectedVariant.currency, selectedVariant.amount)
     : null
+  const availabilityNotice = selectedVariant
+    ? availabilityNoticeByVariantId[selectedVariant.id]
+    : undefined
 
   return (
     <div className="space-y-4">
@@ -215,8 +226,12 @@ const ProductVariantSelector = ({
                   className={cn(
                     "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-3.5 text-left transition",
                     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                    isSelected && !isSoldOut && !isUnavailable && "border-accent bg-accent/10",
-                    (isSoldOut || isUnavailable) && "cursor-not-allowed opacity-50"
+                    isSelected &&
+                      !isSoldOut &&
+                      !isUnavailable &&
+                      "border-accent bg-accent/10",
+                    (isSoldOut || isUnavailable) &&
+                      "cursor-not-allowed opacity-50"
                   )}
                   disabled={isSoldOut || isUnavailable}
                   onClick={() => handleVariantSelect(variant.id)}
@@ -242,8 +257,8 @@ const ProductVariantSelector = ({
             })
           ) : (
             <div className="rounded-2xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground">
-              All formats are currently in production. Join the newsletter to be alerted when
-              the next pressing drops.
+              All formats are currently in production. Join the newsletter to be
+              alerted when the next pressing drops.
             </div>
           )}
         </div>
@@ -299,6 +314,16 @@ const ProductVariantSelector = ({
             {addButtonLabel}
           </Button>
         </div>
+        {availabilityNotice ? (
+          <p
+            className="text-sm leading-relaxed text-amber-200"
+            role="status"
+            aria-live="polite"
+          >
+            {availabilityNotice} Choose another available format or check back
+            later.
+          </p>
+        ) : null}
       </div>
     </div>
   )

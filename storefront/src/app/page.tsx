@@ -9,6 +9,7 @@ import { getNewsEntries } from "@/lib/data/news"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
+import { buildPublicProductPath } from "@/lib/products/routes"
 
 const homepageCanonical = siteMetadata.siteUrl
 
@@ -70,12 +71,15 @@ const HomePage = async (): Promise<ReactElement> => {
   const featuredListJsonLd = buildItemListJsonLd(
     "Featured Picks",
     randomizedFeatured
-      .filter((product) => typeof product.handle === "string" && product.handle.trim().length)
+      .filter(
+        (product) =>
+          typeof product.handle === "string" && product.handle.trim().length
+      )
       .map((product) => {
         const handle = (product.handle ?? "").trim()
         return {
           name: product.title ?? "Exclusive release",
-          url: `${siteMetadata.siteUrl}/products/${handle}`,
+          url: `${siteMetadata.siteUrl}${buildPublicProductPath({ handle })}`,
         }
       })
   )
@@ -100,7 +104,7 @@ const HomePage = async (): Promise<ReactElement> => {
 
           <ProductCarouselSection
             heading={{ leading: "Staff", highlight: "Signals" }}
-            description="Releases we can&apos;t stop looping. Tuned for the true devotees only."
+            description="Releases we can't stop looping. Tuned for the true devotees only."
             products={randomizedStaff}
           />
 

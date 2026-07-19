@@ -49,7 +49,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
   }
 
   return (
-    <div className="space-y-4 overflow-hidden">
+    <div className="min-w-0 space-y-4 overflow-hidden">
       <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-border/70 bg-background/80 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.7)]">
         <AnimatePresence mode="wait">
           <motion.div

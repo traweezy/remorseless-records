@@ -8,6 +8,7 @@ import { getMetalGenreCategories } from "@/lib/data/categories"
 import { getFullCatalogHits } from "@/lib/catalog/all"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
+import { buildPublicProductPath } from "@/lib/products/routes"
 import type { ProductSearchHit } from "@/types/product"
 
 const catalogCanonical = `${siteMetadata.siteUrl}/catalog`
@@ -17,11 +18,11 @@ const buildCatalogItemList = (hits: ProductSearchHit[], origin: string) =>
     "Remorseless Catalog",
     hits.map((hit) => ({
       name: hit.title,
-      url: `${origin}/products/${
-        hit.handle?.trim()?.length
-          ? hit.handle.trim()
-          : `${hit.slug.artistSlug}-${hit.slug.albumSlug}`
-      }`,
+      url: `${origin}${buildPublicProductPath({
+        handle:
+          hit.handle?.trim() || `${hit.slug.artistSlug}-${hit.slug.albumSlug}`,
+        productType: hit.productType,
+      })}`,
     }))
   )
 
@@ -71,7 +72,8 @@ const loadCatalogViewModel = async (): Promise<{
   genreFilters: Awaited<ReturnType<typeof getMetalGenreCategories>>
 }> => {
   try {
-    const [catalogHits, featured, newest, staff, loadedGenres] = await loadCatalogData()
+    const [catalogHits, featured, newest, staff, loadedGenres] =
+      await loadCatalogData()
 
     const curatedHits = [...featured, ...newest, ...staff].map((product) =>
       mapStoreProductToSearchHit(product)
@@ -118,7 +120,11 @@ const loadCatalogData = async () => {
     }
   }
 
-  const catalogHits = await safe<ProductSearchHit[]>("catalog", getFullCatalogHits, [])
+  const catalogHits = await safe<ProductSearchHit[]>(
+    "catalog",
+    getFullCatalogHits,
+    []
+  )
   const featured = await safe<HttpTypes.StoreProduct[]>(
     "featured",
     () => getCollectionProductsByHandle("featured"),
@@ -134,11 +140,9 @@ const loadCatalogData = async () => {
     () => getCollectionProductsByHandle("staff-picks"),
     []
   )
-  const genreFilters = await safe<Awaited<ReturnType<typeof getMetalGenreCategories>>>(
-    "genres",
-    getMetalGenreCategories,
-    []
-  )
+  const genreFilters = await safe<
+    Awaited<ReturnType<typeof getMetalGenreCategories>>
+  >("genres", getMetalGenreCategories, [])
 
   return [catalogHits, featured, newest, staff, genreFilters] as const
 }

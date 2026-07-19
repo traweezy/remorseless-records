@@ -18,7 +18,9 @@ describe("getDiscographyEntries", () => {
     const artist = faker.person.lastName()
     const album = faker.music.songName()
     const title = `${artist} - ${album}`
-    const productHandle = faker.helpers.slugify(`${artist}-${album}`).toLowerCase()
+    const productHandle = faker.helpers
+      .slugify(`${artist}-${album}`)
+      .toLowerCase()
     const releaseDate = faker.date.past().toISOString()
     const releaseYear = new Date(releaseDate).getUTCFullYear()
 
@@ -38,33 +40,33 @@ describe("getDiscographyEntries", () => {
         ok: true,
         json: () =>
           Promise.resolve({
-          entries: [
-            {
-              id,
-              title,
-              artist,
-              album,
-              productHandle,
-              collectionTitle: faker.company.name(),
-              catalogNumber: faker.string.alphanumeric(6).toUpperCase(),
-              releaseDate,
-              releaseYear: null,
-              formats: ["LP", "compact disc"],
-              genres: [faker.music.genre()],
-              tags: ["Limited", "  repress  ", "limited"],
-              availability: "in_print",
-              coverUrl: faker.internet.url(),
-            },
-          ],
-          count: 1,
+            entries: [
+              {
+                id,
+                title,
+                artist,
+                album,
+                productHandle,
+                collectionTitle: faker.company.name(),
+                catalogNumber: faker.string.alphanumeric(6).toUpperCase(),
+                releaseDate,
+                releaseYear: null,
+                formats: ["LP", "compact disc"],
+                genres: [faker.music.genre()],
+                tags: ["Limited", "  repress  ", "limited"],
+                availability: "in_print",
+                coverUrl: faker.internet.url(),
+              },
+            ],
+            count: 1,
           }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
           Promise.resolve({
-          entries: [],
-          count: 1,
+            entries: [],
+            count: 1,
           }),
       } as Response)
 
@@ -75,7 +77,7 @@ describe("getDiscographyEntries", () => {
     expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({
       id,
-      productPath: `/products/${productHandle}`,
+      productPath: "/music-release/reinger-bad-girls",
       formats: ["Vinyl", "CD"],
       tags: ["Limited", "repress"],
       releaseYear,
@@ -83,7 +85,9 @@ describe("getDiscographyEntries", () => {
   })
 
   it("returns empty entries when config is missing", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
@@ -113,7 +117,9 @@ describe("getDiscographyEntries", () => {
       },
     }))
 
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: faker.number.int({ min: 400, max: 599 }),
@@ -185,7 +191,7 @@ describe("getDiscographyEntries", () => {
     const entry = entries[0]
     expect(entry?.id).toBe(id)
     expect(entry?.productHandle).toBeNull()
-    expect(entry?.productPath.startsWith("/products/")).toBe(true)
+    expect(entry?.productPath.startsWith("/music-release/")).toBe(true)
     expect(entry?.releaseYear).toBeNull()
     expect(entry?.formats).toEqual(["Vinyl", "CD", "Cassette"])
     expect(entry?.tags).toEqual([tagOne, tagTwo])

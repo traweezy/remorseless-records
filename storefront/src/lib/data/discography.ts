@@ -1,13 +1,10 @@
 import { unstable_cache } from "next/cache"
 
 import { runtimeEnv } from "@/config/env"
+import { buildPublicProductPath } from "@/lib/products/routes"
 
 export type DiscographyAvailability =
-  | "in_print"
-  | "out_of_print"
-  | "preorder"
-  | "digital_only"
-  | "unknown"
+  "in_print" | "out_of_print" | "preorder" | "digital_only" | "unknown"
 
 export type DiscographyEntry = {
   id: string
@@ -90,7 +87,9 @@ const normalizeFormats = (formats: string[] | null | undefined): string[] => {
     }
   })
 
-  return FORMAT_PATTERNS.map(({ label }) => label).filter((label) => found.has(label))
+  return FORMAT_PATTERNS.map(({ label }) => label).filter((label) =>
+    found.has(label)
+  )
 }
 
 const normalizeTags = (tags: string[] | null | undefined): string[] => {
@@ -167,9 +166,11 @@ const normalizeEntry = (entry: DiscographyApiEntry): DiscographyEntry => {
   const slug = buildSlugParts(entry.artist, entry.album)
   const trimmedHandle = entry.productHandle?.trim() ?? ""
   const productHandle = trimmedHandle !== "" ? trimmedHandle : null
-  const productPath = productHandle
-    ? `/products/${productHandle}`
-    : `/products/${slug.artistSlug}-${slug.albumSlug}`
+  const productPath = buildPublicProductPath({
+    handle:
+      productHandle ?? `music-release-${slug.artistSlug}-${slug.albumSlug}`,
+    productType: "Music release",
+  })
 
   const releaseYear =
     entry.releaseYear ??

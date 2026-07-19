@@ -13,11 +13,22 @@ import { Badge } from "@/components/ui/badge"
 import SmartLink from "@/components/ui/smart-link"
 import { cn } from "@/lib/ui/cn"
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
-import { deriveVariantOptions, mapStoreProductToRelatedSummary } from "@/lib/products/transformers"
+import {
+  deriveVariantOptions,
+  mapStoreProductToRelatedSummary,
+} from "@/lib/products/transformers"
 import { summarizeStockStatus } from "@/lib/products/stock"
+import {
+  buildPublicProductPath,
+  resolvePublicProductRouteType,
+} from "@/lib/products/routes"
 import { useProductDetailPrefetch } from "@/lib/query/products"
 import { shouldBlockPrefetch } from "@/lib/prefetch"
-import type { ProductSearchHit, RelatedProductSummary, StockStatus } from "@/types/product"
+import type {
+  ProductSearchHit,
+  RelatedProductSummary,
+  StockStatus,
+} from "@/types/product"
 
 type StoreProduct = HttpTypes.StoreProduct
 type ProductCardSource = StoreProduct | ProductSearchHit | RelatedProductSummary
@@ -25,7 +36,9 @@ type ProductCardSource = StoreProduct | ProductSearchHit | RelatedProductSummary
 const isStoreProduct = (product: ProductCardSource): product is StoreProduct =>
   "variants" in product
 
-const isProductSearchHitSource = (product: ProductCardSource): product is ProductSearchHit =>
+const isProductSearchHitSource = (
+  product: ProductCardSource
+): product is ProductSearchHit =>
   "variantTitles" in product && Array.isArray(product.variantTitles)
 
 const slugify = (value: string | null | undefined): string | null => {
@@ -63,7 +76,11 @@ type RibbonCandidate = {
 const coerceMetadata = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : null
 
-const addCandidate = (list: RibbonCandidate[], label: string | null | undefined, slugSource?: string | null) => {
+const addCandidate = (
+  list: RibbonCandidate[],
+  label: string | null | undefined,
+  slugSource?: string | null
+) => {
   if (!label || !label.trim().length) {
     return
   }
@@ -90,7 +107,14 @@ const COLLECTION_PRIORITY = [
   "exclusive",
 ] as const
 
-const GENERIC_COLLECTION_SLUGS = new Set(["music", "metal", "genres", "artists", "bundles", "merch"])
+const GENERIC_COLLECTION_SLUGS = new Set([
+  "music",
+  "metal",
+  "genres",
+  "artists",
+  "bundles",
+  "merch",
+])
 
 const resolveCollectionRibbonLabel = (
   product: ProductCardSource,
@@ -101,7 +125,11 @@ const resolveCollectionRibbonLabel = (
   if (isStoreProduct(product)) {
     const collection = product.collection
     if (collection) {
-      addCandidate(candidates, typeof collection.title === "string" ? collection.title : null, collection.handle)
+      addCandidate(
+        candidates,
+        typeof collection.title === "string" ? collection.title : null,
+        collection.handle
+      )
     }
 
     const metadata = coerceMetadata(product.metadata)
@@ -109,7 +137,9 @@ const resolveCollectionRibbonLabel = (
       const metadataCandidates = [
         ...toStringArray(metadata["ribbonLabel"]),
         ...toStringArray(metadata["collections"]),
-        ...(typeof metadata["collection"] === "string" ? [metadata["collection"]] : []),
+        ...(typeof metadata["collection"] === "string"
+          ? [metadata["collection"]]
+          : []),
       ]
       metadataCandidates.forEach((entry) => addCandidate(candidates, entry))
     }
@@ -123,7 +153,9 @@ const resolveCollectionRibbonLabel = (
 
   addCandidate(candidates, summary.collectionTitle)
 
-  let filtered = candidates.filter((candidate) => !GENERIC_COLLECTION_SLUGS.has(candidate.slug))
+  let filtered = candidates.filter(
+    (candidate) => !GENERIC_COLLECTION_SLUGS.has(candidate.slug)
+  )
   if (!filtered.length) {
     filtered = []
   }
@@ -134,7 +166,8 @@ const resolveCollectionRibbonLabel = (
 
   for (const priority of COLLECTION_PRIORITY) {
     const match = filtered.find(
-      (candidate) => candidate.slug === priority || candidate.slug.startsWith(priority)
+      (candidate) =>
+        candidate.slug === priority || candidate.slug.startsWith(priority)
     )
     if (match) {
       return match.label
@@ -149,12 +182,15 @@ const resolveFallbackBadge = (product: ProductCardSource): string | null => {
     return null
   }
 
-  const badge = typeof product.metadata?.badge === "string" ? product.metadata.badge : null
+  const badge =
+    typeof product.metadata?.badge === "string" ? product.metadata.badge : null
   if (badge) {
     return badge
   }
 
-  const tagLabel = product.tags?.find((tag) => tag?.value && tag.value.toLowerCase().includes("limited"))
+  const tagLabel = product.tags?.find(
+    (tag) => tag?.value && tag.value.toLowerCase().includes("limited")
+  )
   if (tagLabel) {
     return "Limited"
   }
@@ -170,15 +206,18 @@ const resolveBadge = (
   product: ProductCardSource,
   summary: RelatedProductSummary
 ): string | null => {
-  return resolveCollectionRibbonLabel(product, summary) ?? resolveFallbackBadge(product)
+  return (
+    resolveCollectionRibbonLabel(product, summary) ??
+    resolveFallbackBadge(product)
+  )
 }
 
 const resolveThumbnail = (product: ProductCardSource): string | null =>
   isStoreProduct(product)
-    ? product.thumbnail ??
+    ? (product.thumbnail ??
       product.images?.find((image) => typeof image?.url === "string")?.url ??
-      null
-    : product.thumbnail ?? null
+      null)
+    : (product.thumbnail ?? null)
 
 const resolveStockBadge = (
   status: StockStatus
@@ -187,7 +226,8 @@ const resolveStockBadge = (
     case "sold_out":
       return {
         label: "Sold out",
-        className: "border-destructive/80 bg-destructive text-destructive-foreground",
+        className:
+          "border-destructive/80 bg-destructive text-destructive-foreground",
         dim: true,
       }
     case "low_stock":
@@ -224,9 +264,10 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
       ? [summary.defaultVariant]
       : []
   const derivedStockStatus = summarizeStockStatus(variantOptions)
-  const stockStatus = isProductSearchHitSource(product) && product.stockStatus
-    ? product.stockStatus
-    : derivedStockStatus
+  const stockStatus =
+    isProductSearchHitSource(product) && product.stockStatus
+      ? product.stockStatus
+      : derivedStockStatus
   const stockBadge = resolveStockBadge(stockStatus)
   const isSoldOut = stockStatus === "sold_out"
   const hasPrice = summary.defaultVariant?.hasPrice ?? false
@@ -234,7 +275,9 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
   const canQuickShop = !isSoldOut && !isUnavailable
   const badge = resolveBadge(product, summary)
   const thumbnail = resolveThumbnail(product)
-  const [resolvedThumbnail, setResolvedThumbnail] = useState<string | null>(thumbnail)
+  const [resolvedThumbnail, setResolvedThumbnail] = useState<string | null>(
+    thumbnail
+  )
 
   useEffect(() => {
     if (!handle) {
@@ -293,7 +336,10 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
     if (!onMediaLoad) {
       return
     }
-    if (typeof window === "undefined" || typeof ResizeObserver === "undefined") {
+    if (
+      typeof window === "undefined" ||
+      typeof ResizeObserver === "undefined"
+    ) {
       return
     }
 
@@ -334,7 +380,18 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
     return null
   }
   const initialProduct = isStoreProduct(product) ? product : undefined
-  const productHref = handle ? `/products/${handle}` : "/products"
+  const productType = isProductSearchHitSource(product)
+    ? product.productType
+    : isStoreProduct(product) &&
+        typeof product.metadata?.product_type === "string"
+      ? product.metadata.product_type
+      : null
+  const productHref = buildPublicProductPath({ handle, productType })
+  const isBundle =
+    resolvePublicProductRouteType({ handle, productType }) === "bundle"
+  const bundleComponentCount = isProductSearchHitSource(product)
+    ? product.bundleComponentCount
+    : null
   const formatLabels = (() => {
     const labelsByKey = new Map<string, string>()
 
@@ -365,7 +422,9 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
       const metadata = coerceMetadata(product.metadata)
       if (metadata) {
         addLabel(typeof metadata?.format === "string" ? metadata.format : null)
-        addLabel(typeof metadata?.packaging === "string" ? metadata.packaging : null)
+        addLabel(
+          typeof metadata?.packaging === "string" ? metadata.packaging : null
+        )
       }
     } else if (isProductSearchHitSource(product)) {
       product.variantTitles.forEach(addLabel)
@@ -413,8 +472,12 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
           : isProductSearchHitSource(product)
             ? "search-hit"
             : "summary",
-        rawGenres: isProductSearchHitSource(product) ? product.genres : undefined,
-        rawMetalGenres: isProductSearchHitSource(product) ? product.metalGenres : undefined,
+        rawGenres: isProductSearchHitSource(product)
+          ? product.genres
+          : undefined,
+        rawMetalGenres: isProductSearchHitSource(product)
+          ? product.metalGenres
+          : undefined,
       })
     }
   }
@@ -439,7 +502,10 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
         >
           <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition md:hover:-translate-y-1 md:hover:border-border/60 md:hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
             {badge ? (
-              <div className="product-card__corner" aria-label={`Collection: ${badge}`}>
+              <div
+                className="product-card__corner"
+                aria-label={`Collection: ${badge}`}
+              >
                 <span>{badge.toUpperCase()}</span>
               </div>
             ) : null}
@@ -464,6 +530,16 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
                     />
                   ) : null}
                   <span className="relative z-10">{stockBadge.label}</span>
+                </span>
+              </div>
+            ) : null}
+            {isBundle && bundleComponentCount && bundleComponentCount > 0 ? (
+              <div className="absolute right-4 top-4 z-40">
+                <span
+                  className="inline-flex items-center rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.22rem] text-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)]"
+                  aria-label={`${bundleComponentCount} items in this bundle`}
+                >
+                  {bundleComponentCount} items
                 </span>
               </div>
             ) : null}
@@ -504,7 +580,13 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
                     disabled={!canQuickShop}
                   >
                     <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                    <span>{isUnavailable ? "Unavailable" : isSoldOut ? "Sold out" : "Quick shop"}</span>
+                    <span>
+                      {isUnavailable
+                        ? "Unavailable"
+                        : isSoldOut
+                          ? "Sold out"
+                          : "Quick shop"}
+                    </span>
                   </Button>
                 </div>
               </div>
@@ -523,7 +605,9 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
                       new Map(
                         formatLabels.map((label) => {
                           const normalized = label.trim()
-                          const display = normalized.toLowerCase().includes("bundle")
+                          const display = normalized
+                            .toLowerCase()
+                            .includes("bundle")
                             ? "Bundle"
                             : normalized
                           return [display.toLowerCase(), display]
@@ -535,7 +619,9 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
                         variant="outline"
                         className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.28rem] text-foreground"
                       >
-                        <span className="text-center leading-none">{label.toUpperCase()}</span>
+                        <span className="text-center leading-none">
+                          {label.toUpperCase()}
+                        </span>
                       </Badge>
                     ))}
                   </div>
@@ -550,7 +636,6 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
             ) : null}
           </Card>
         </SmartLink>
-
       </div>
 
       <ProductQuickView

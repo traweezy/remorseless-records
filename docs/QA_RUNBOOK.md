@@ -14,20 +14,40 @@ This document outlines repeatable steps for validating Remorseless Records befor
 1. Start backend + storefront with production-like data.
 2. Using only the keyboard:
    - Tab through global header (Nav → Quick Shop triggers → Cart). Verify focus ring and skip no elements.
-   - On `/products`, open a Quick Shop modal and change variants; ensure focus is trapped and `Esc` closes it.
-   - On `/products/[handle]`, confirm variant selector is keyboard-operable (arrow keys + Enter) and “Add to cart” updates toast.
+   - On `/catalog`, open a Quick Shop modal and change variants; ensure focus is trapped and `Esc` closes it.
+   - On a typed product detail route (`/music-release/[slug]`, `/bundle/[slug]`, or `/merch/[slug]`), confirm the variant selector is keyboard-operable and “Add to cart” updates the toast.
+   - On `/bundle/[slug]`, confirm the fixed composition remains visible when an item is sold out, the card/detail sold-out indicators are textual, and the affected bundle variant cannot be added.
    - On `/cart`, adjust quantities and submit checkout.
 3. Launch VoiceOver (macOS) or NVDA (Windows):
    - Read the product page, ensuring variant options announce the selected state.
    - Verify Quick Shop modal announces title, description, and product image alt text.
 
-### 1.2 Lighthouse Baseline
+### 1.2 Mobile Device Rendering
+
+Do not use a resized desktop viewport as mobile validation. Run the real browser
+surface with Chrome device emulation so the user agent, device scale factor,
+touch input, mobile viewport, and safe-area behavior match a phone.
+
+1. Validate at least the `Pixel 7` and `iPhone 15 Pro` Chrome device profiles.
+2. Check `/`, `/catalog`, a representative route for each typed product family,
+   and `/cart`.
+3. Confirm the document width matches the viewport width (`scrollWidth ===
+   clientWidth`); intentional carousels must clip or scroll within their own
+   container instead of widening the page.
+4. Confirm the app bar spans the viewport, content remains inside its side
+   gutters, long product titles wrap, and every control remains touchable.
+5. Capture and inspect a real rendered screenshot for each changed mobile
+   surface before sign-off.
+
+### 1.3 Lighthouse Baseline
 
 Run Lighthouse (Chrome DevTools or CLI) for both Desktop and Mobile on:
 
 - `/`
-- `/products`
-- `/products/{handle}`
+- `/catalog`
+- `/music-release/{slug}`
+- `/bundle/{slug}`
+- `/merch/{slug}`
 - `/cart`
 
 Target metrics:
@@ -41,7 +61,7 @@ Target metrics:
 
 Capture JSON reports and stash in CI artifacts (or note scores in PR description). Investigate regressions immediately.
 
-### 1.3 Automated Checks
+### 1.4 Automated Checks
 
 ```bash
 # Static analysis and type safety

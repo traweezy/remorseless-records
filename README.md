@@ -300,9 +300,9 @@ Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK
 - Monorepo check shortcut: `pnpm run qa:lint` (lint + typecheck for storefront and backend).
 - Reindex search after catalog bulk changes: `pnpm --filter backend run search:sync` (use `pnpm --filter backend run search:check` to compare Medusa vs. Meilisearch counts).
 - Keyboard and screen-reader sweeps on header, Quick Shop, PDP, cart. Document in runbook checklist.
-- Lighthouse (desktop + mobile) on `/`, `/products`, `/products/[handle]`, `/cart` targeting LCP < 2.5s and A11y ≥ 95.
+- Lighthouse (desktop + mobile) on `/`, `/catalog`, a typed detail route (`/music-release/{slug}`, `/bundle/{slug}`, or `/merch/{slug}`), and `/cart` targeting LCP < 2.5s and A11y ≥ 95.
 - Stripe standard + 3DS test cards, confirm webhook metadata and Medusa order creation.
-- Automated bundle: `QA_BASE_URL=<deployed url> pnpm run qa:ci` (runs lint/typecheck, pa11y axe audits, and Lighthouse assertions). Optional overrides: `QA_PRODUCT_PATH=/products/{handle}`, `QA_EXTRA_URLS=/custom`.
+- Automated bundle: `QA_BASE_URL=<deployed url> pnpm run qa:ci` (runs lint/typecheck, pa11y axe audits, and Lighthouse assertions). Optional overrides: `QA_PRODUCT_PATH=/music-release/{slug}`, `QA_EXTRA_URLS=/custom`.
 
 ### Support
 

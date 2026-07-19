@@ -3,7 +3,11 @@ import type { FacetDistribution } from "meilisearch"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
 import { resolveVariantStockStatus } from "@/lib/products/stock"
-import type { ProductSearchHit, StockStatus, VariantOption } from "@/types/product"
+import type {
+  ProductSearchHit,
+  StockStatus,
+  VariantOption,
+} from "@/types/product"
 
 const asStringArray = (value: unknown): string[] => {
   if (!value) {
@@ -17,7 +21,10 @@ const asStringArray = (value: unknown): string[] => {
   }
 
   if (typeof value === "string") {
-    return value.split(",").map((entry) => entry.trim()).filter(Boolean)
+    return value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
   }
 
   return []
@@ -127,7 +134,11 @@ export const normalizeFormatValue = (
   }
 
   const value = raw.toLowerCase()
-  if (value.includes("cassette") || value.includes("tape") || value.includes("cs")) {
+  if (
+    value.includes("cassette") ||
+    value.includes("tape") ||
+    value.includes("cs")
+  ) {
     return "Cassette"
   }
 
@@ -186,8 +197,7 @@ export const normalizeSearchHit = (
         ? hit.subTitle
         : null
 
-  const thumbnail =
-    extractThumbnail(hit)
+  const thumbnail = extractThumbnail(hit)
 
   const collectionTitle =
     typeof hit.collectionTitle === "string"
@@ -211,7 +221,8 @@ export const normalizeSearchHit = (
   const explicitArtist =
     typeof hit.artist === "string" && hit.artist.trim().length
       ? hit.artist.trim()
-      : typeof metadataValue?.artist === "string" && metadataValue.artist.trim().length
+      : typeof metadataValue?.artist === "string" &&
+          metadataValue.artist.trim().length
         ? metadataValue.artist.trim()
         : null
 
@@ -265,9 +276,7 @@ export const normalizeSearchHit = (
           : "usd"
 
   const stockStatus =
-    typeof hit.stock_status === "string"
-      ? hit.stock_status.toLowerCase()
-      : null
+    typeof hit.stock_status === "string" ? hit.stock_status.toLowerCase() : null
 
   const inventoryQuantity =
     parseNumber(hit.inventory_quantity ?? hit.quantity) ?? null
@@ -275,7 +284,11 @@ export const normalizeSearchHit = (
   const inStockFlag = parseBoolean(hit.in_stock)
   const derivedStatus =
     stockStatus ??
-    (inStockFlag === true ? "in_stock" : inStockFlag === false ? "sold_out" : null)
+    (inStockFlag === true
+      ? "in_stock"
+      : inStockFlag === false
+        ? "sold_out"
+        : null)
 
   const resolvedStock = resolveVariantStockStatus({
     inventoryQuantity,
@@ -300,8 +313,9 @@ export const normalizeSearchHit = (
 
   const normalizedFormats = Array.from(formatCandidates)
     .map((entry) => normalizeFormatValue(entry))
-    .filter((entry): entry is NonNullable<ReturnType<typeof normalizeFormatValue>> =>
-      Boolean(entry)
+    .filter(
+      (entry): entry is NonNullable<ReturnType<typeof normalizeFormatValue>> =>
+        Boolean(entry)
     )
 
   const formats = unique(normalizedFormats)
@@ -332,8 +346,7 @@ export const normalizeSearchHit = (
         ? hit.releaseDate
         : null
 
-  const releaseYear =
-    parseNumber(hit.release_year ?? hit.releaseYear)
+  const releaseYear = parseNumber(hit.release_year ?? hit.releaseYear)
 
   const productType =
     typeof hit.product_type === "string"
@@ -354,11 +367,12 @@ export const normalizeSearchHit = (
   )
   const stockStatuses = asStringArray(
     hit.stock_statuses ?? hit.stockStatuses
-  ).filter((entry): entry is StockStatus =>
-    entry === "in_stock" ||
-    entry === "low_stock" ||
-    entry === "sold_out" ||
-    entry === "unknown"
+  ).filter(
+    (entry): entry is StockStatus =>
+      entry === "in_stock" ||
+      entry === "low_stock" ||
+      entry === "sold_out" ||
+      entry === "unknown"
   )
 
   return {
@@ -366,7 +380,8 @@ export const normalizeSearchHit = (
     handle,
     status,
     title,
-    artist: explicitArtist ?? artistNames[0] ?? slug.artist ?? subtitle ?? title,
+    artist:
+      explicitArtist ?? artistNames[0] ?? slug.artist ?? subtitle ?? title,
     artistNames,
     album: slug.album,
     slug,
@@ -397,8 +412,10 @@ export const normalizeSearchHit = (
     stockStatus: resolvedStock.status,
     stockStatuses,
     availabilityStates,
-    preorderAllowed: parseBoolean(hit.preorder_allowed ?? hit.preorderAllowed) ?? false,
-    backorderAllowed: parseBoolean(hit.backorder_allowed ?? hit.backorderAllowed) ?? false,
+    preorderAllowed:
+      parseBoolean(hit.preorder_allowed ?? hit.preorderAllowed) ?? false,
+    backorderAllowed:
+      parseBoolean(hit.backorder_allowed ?? hit.backorderAllowed) ?? false,
     productType,
     productTypeLabel,
     bundleType:
@@ -413,6 +430,9 @@ export const normalizeSearchHit = (
         : typeof hit.bundleSummary === "string"
           ? hit.bundleSummary
           : null,
+    bundleComponentCount: parseNumber(
+      hit.bundle_component_count ?? hit.bundleComponentCount
+    ),
     ribbonLabel:
       typeof hit.ribbon_label === "string"
         ? hit.ribbon_label
@@ -432,16 +452,13 @@ const coerceFacetRecord = (
     return {}
   }
 
-  return Object.entries(value).reduce<FacetMap>(
-    (acc, [key, count]) => {
-      const parsed = parseNumber(count)
-      if (parsed !== null) {
-        acc[key] = parsed
-      }
-      return acc
-    },
-    {}
-  )
+  return Object.entries(value).reduce<FacetMap>((acc, [key, count]) => {
+    const parsed = parseNumber(count)
+    if (parsed !== null) {
+      acc[key] = parsed
+    }
+    return acc
+  }, {})
 }
 
 export const extractFacetMaps = (
@@ -496,7 +513,8 @@ export const extractFacetMaps = (
   )
 
   const availabilityStates = coerceFacetRecord(
-    facetDistribution.availability_states ?? facetDistribution.availabilityStates
+    facetDistribution.availability_states ??
+      facetDistribution.availabilityStates
   )
 
   const stockStatuses = coerceFacetRecord(
