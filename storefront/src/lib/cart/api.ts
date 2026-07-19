@@ -32,7 +32,9 @@ const CART_FIELDS = [
   "*region.countries",
 ].join(",")
 
-export const createCart = async (regionId?: string): Promise<HttpTypes.StoreCart> => {
+export const createCart = async (
+  regionId?: string
+): Promise<HttpTypes.StoreCart> => {
   const resolvedRegionId = regionId ?? (await resolveRegionId())
   const { cart } = await storeClient.cart.create(
     { region_id: resolvedRegionId },
@@ -42,8 +44,30 @@ export const createCart = async (regionId?: string): Promise<HttpTypes.StoreCart
 }
 
 export const getCart = async (cartId: string): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await storeClient.cart.retrieve(cartId, { fields: CART_FIELDS })
+  const { cart } = await storeClient.cart.retrieve(cartId, {
+    fields: CART_FIELDS,
+  })
   return cart
+}
+
+const reconcileBundleVariant = async (
+  variantId: string,
+  quantity: number
+): Promise<void> => {
+  await medusa.client.fetch("/store/catalog/bundles/reconcile", {
+    method: "POST",
+    body: {
+      variantId,
+      quantity,
+    },
+  })
+}
+
+const reconcileCartBundles = async (cartId: string): Promise<void> => {
+  await medusa.client.fetch("/store/catalog/bundles/reconcile", {
+    method: "POST",
+    body: { cartId },
+  })
 }
 
 export const addLineItem = async (
@@ -51,6 +75,7 @@ export const addLineItem = async (
   variantId: string,
   quantity: number
 ): Promise<HttpTypes.StoreCart> => {
+  await reconcileBundleVariant(variantId, quantity)
   const { cart } = await storeClient.cart.createLineItem(
     cartId,
     { variant_id: variantId, quantity },
@@ -65,6 +90,11 @@ export const updateLineItem = async (
   lineItemId: string,
   quantity: number
 ): Promise<HttpTypes.StoreCart> => {
+  const currentCart = await getCart(cartId)
+  const currentItem = currentCart.items?.find((item) => item.id === lineItemId)
+  if (currentItem?.variant_id) {
+    await reconcileBundleVariant(currentItem.variant_id, quantity)
+  }
   const { cart } = await storeClient.cart.updateLineItem(
     cartId,
     lineItemId,
@@ -79,11 +109,9 @@ export const removeLineItem = async (
   cartId: string,
   lineItemId: string
 ): Promise<HttpTypes.StoreCart> => {
-  const response = await storeClient.cart.deleteLineItem(
-    cartId,
-    lineItemId,
-    { fields: CART_FIELDS }
-  )
+  const response = await storeClient.cart.deleteLineItem(cartId, lineItemId, {
+    fields: CART_FIELDS,
+  })
 
   const parent = response.parent
   if (!parent) {
@@ -202,17 +230,16 @@ export const initiatePaymentSession = async (
     throw new Error("No Stripe payment provider is configured for this region")
   }
 
-  const { payment_collection } = await storeClient.payment.initiatePaymentSession(
-    cart,
-    {
+  const { payment_collection } =
+    await storeClient.payment.initiatePaymentSession(cart, {
       provider_id: resolvedProvider.id,
-    }
-  )
+    })
 
   const paymentSession =
     payment_collection.payment_sessions?.find(
       (session) =>
-        session.provider_id === resolvedProvider.id && session.status === "pending"
+        session.provider_id === resolvedProvider.id &&
+        session.status === "pending"
     ) ??
     payment_collection.payment_sessions?.find(
       (session) => session.provider_id === resolvedProvider.id
@@ -228,5 +255,7 @@ export const initiatePaymentSession = async (
 
 export const completeCart = async (
   cartId: string
-): Promise<HttpTypes.StoreCompleteCartResponse> =>
-  storeClient.cart.complete(cartId)
+): Promise<HttpTypes.StoreCompleteCartResponse> => {
+  await reconcileCartBundles(cartId)
+  return storeClient.cart.complete(cartId)
+}
