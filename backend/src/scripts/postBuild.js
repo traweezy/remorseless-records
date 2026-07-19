@@ -9,7 +9,12 @@ const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
 const MEDUSA_WORKSPACE_YAML = path.join(MEDUSA_SERVER_PATH, 'pnpm-workspace.yaml');
 const MEDUSA_PATCHES_DIR = path.join(MEDUSA_SERVER_PATH, 'patches');
 const LOCAL_PACKAGE_JSON = path.join(process.cwd(), 'package.json');
-const ROOT_PACKAGE_JSON = path.join(process.cwd(), '..', 'package.json');
+const REPOSITORY_ROOT = path.resolve(process.cwd(), '..');
+const ROOT_PACKAGE_JSON = path.join(REPOSITORY_ROOT, 'package.json');
+const ROOT_WORKSPACE_YAML = path.join(REPOSITORY_ROOT, 'pnpm-workspace.yaml');
+const PNPM_CONFIG_CWD = fs.existsSync(ROOT_WORKSPACE_YAML)
+  ? REPOSITORY_ROOT
+  : process.cwd();
 const DEFAULT_ALLOWED_BUILDS = [
   '@medusajs/telemetry',
   '@swc/core',
@@ -172,7 +177,7 @@ const readOverrides = (packagePath) => {
 const readPnpmConfigOverrides = () => {
   try {
     const output = execSync('pnpm config get overrides --json', {
-      cwd: process.cwd(),
+      cwd: PNPM_CONFIG_CWD,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe']
     }).trim();
@@ -192,7 +197,7 @@ const readPnpmConfigOverrides = () => {
 const readPnpmConfigArray = (name) => {
   try {
     const output = execSync(`pnpm config get ${name} --json`, {
-      cwd: process.cwd(),
+      cwd: PNPM_CONFIG_CWD,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe']
     }).trim();
@@ -212,7 +217,7 @@ const readPnpmConfigArray = (name) => {
 const readPnpmPatchedDependencies = () => {
   try {
     const output = execSync('pnpm config get patchedDependencies --json', {
-      cwd: process.cwd(),
+      cwd: PNPM_CONFIG_CWD,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe']
     }).trim();
@@ -236,7 +241,7 @@ const yamlScalar = (value) => JSON.stringify(value);
 const readPnpmAllowBuilds = () => {
   try {
     const output = execSync('pnpm config get allowBuilds --json', {
-      cwd: process.cwd(),
+      cwd: PNPM_CONFIG_CWD,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe']
     }).trim();
@@ -272,7 +277,7 @@ const copyPatchedDependencies = (patchedDependencies) => {
 
       const sourcePath = path.isAbsolute(patchPath)
         ? patchPath
-        : path.resolve(process.cwd(), patchPath);
+        : path.resolve(PNPM_CONFIG_CWD, patchPath);
 
       if (!fs.existsSync(sourcePath)) {
         throw new Error(`Patch file not found for ${dependency}: ${sourcePath}`);
