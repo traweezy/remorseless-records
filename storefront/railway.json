@@ -2,11 +2,11 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "pnpm run build"
+    "buildCommand": "pnpm --filter remorseless-records-storefront run build"
   },
   "deploy": {
     "preDeployCommand": null,
-    "startCommand": "pnpm run start",
+    "startCommand": "pnpm --filter remorseless-records-storefront run start",
     "healthcheckPath": "/api/healthcheck",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10

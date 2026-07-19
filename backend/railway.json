@@ -2,11 +2,11 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "pnpm run build"
+    "buildCommand": "pnpm --filter backend run build"
   },
   "deploy": {
     "preDeployCommand": null,
-    "startCommand": "pnpm --silent run start",
+    "startCommand": "pnpm --filter backend --silent run start",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 720,
     "restartPolicyType": "ON_FAILURE",
