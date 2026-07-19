@@ -20,14 +20,14 @@ const CookieConsentBanner = () => {
     <aside
       aria-label="Cookie consent"
       aria-live="polite"
-      className="pointer-events-auto fixed inset-x-0 bottom-0 z-[100] isolate max-h-dvh overflow-y-auto overscroll-contain border-t border-border/70 bg-background shadow-[0_-16px_40px_-28px_rgba(0,0,0,0.85)]"
+      className="pointer-events-auto fixed inset-x-0 bottom-0 z-[100] max-h-dvh overflow-y-auto overscroll-contain border-t border-border/70 bg-black text-white shadow-[0_-16px_40px_-28px_rgba(0,0,0,0.85)]"
     >
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-4 lg:px-8">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
             Cookie settings
           </p>
-          <p className="text-sm leading-relaxed text-foreground">
+          <p className="text-sm leading-relaxed text-white">
             We only use strictly necessary cookies by default. You can accept
             all, reject non-essential, or customize your choices. Read our{" "}
             <SmartLink
