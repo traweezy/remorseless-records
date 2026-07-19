@@ -19,6 +19,7 @@ peerDependencyRules:
     react-dom: "19"
 
 overrides:
+  "@babel/core": 7.29.7
   "@mikro-orm/cli": 6.6.14
   "@mikro-orm/core": 6.6.14
   "@mikro-orm/knex": 6.6.14
@@ -43,12 +44,14 @@ overrides:
   i18next-http-backend: ^3.0.5
   immutable: ^3.8.3
   js-cookie: ^3.0.7
+  json-2-csv: 5.5.11
   "js-yaml@<=4.1.1": ^4.2.0
   jws: 3.2.3
   lodash: ^4.18.1
   "minimatch@<3.1.4": ^3.1.4
   "minimatch@>=9.0.0 <9.0.7": ^9.0.7
   "minimatch@>=10.0.0 <10.2.3": ^10.2.5
+  morgan: 1.11.0
   multer: ^2.2.0
   "path-to-regexp@<0.1.13": 0.1.13
   "path-to-regexp@>=8.0.0 <8.4.0": ^8.4.2
