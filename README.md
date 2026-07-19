@@ -285,10 +285,10 @@ Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
 We run three pipelines on push/PR (plus a weekly schedule):
 
 - **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build.
-- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, E2E tests, build, optional Lighthouse (when `QA_BASE_URL` is set or provided via dispatch inputs).
+- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, and a mandatory direct-to-`main` release gate containing a production build, non-destructive Pixel/iPhone Playwright smoke tests, pa11y, and Lighthouse. Pull requests can opt into the browser gates with repository variables.
 - **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan.
 
-Actions are hardened with `step-security/harden-runner`, and Trivy ignores generated `.medusa` output. Dependency Review runs on push and PR. Keep `.env` files local (ignored by git) and rotate any secrets that were previously committed.
+Actions are hardened with `step-security/harden-runner`, and Trivy ignores generated `.medusa` output. Dependency Review runs when a pull request supplies a base/head diff. Keep `.env` files local (ignored by git) and rotate any secrets that were previously committed.
 
 ---
 

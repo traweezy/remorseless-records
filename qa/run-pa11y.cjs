@@ -1,19 +1,22 @@
 const pa11y = require("pa11y")
 
 const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:3000"
+const chromeExecutablePath =
+  process.env.PA11Y_CHROME_EXECUTABLE_PATH ?? process.env.CHROME_PATH
 const productPath = process.env.QA_PRODUCT_PATH ?? "/products"
 const extraUrls = process.env.QA_EXTRA_URLS
   ? process.env.QA_EXTRA_URLS.split(",").map((entry) => entry.trim()).filter(Boolean)
   : []
+const configuredPaths = process.env.QA_PATHS
+  ? process.env.QA_PATHS.split(",").map((entry) => entry.trim()).filter(Boolean)
+  : []
 
 const targetPaths = Array.from(
-  new Set([
-    "/",
-    "/products",
-    productPath,
-    "/cart",
-    ...extraUrls,
-  ])
+  new Set(
+    configuredPaths.length
+      ? [...configuredPaths, ...extraUrls]
+      : ["/", "/products", productPath, "/cart", ...extraUrls]
+  )
 )
 
 const toUrl = (path) => {
@@ -40,6 +43,9 @@ const run = async () => {
         standard: "WCAG2AA",
         runners: ["axe"],
         timeout: 30000,
+        ...(chromeExecutablePath
+          ? { chromeLaunchConfig: { executablePath: chromeExecutablePath } }
+          : {}),
       })
 
       if (results.issues.length) {

@@ -49,7 +49,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
         with:
@@ -68,7 +68,7 @@ jobs:
           # When you are comfortable, change to `egress-policy: block` to hard-enforce. 
           egress-policy: audit
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Shai-Hulud 2.0 Detector
         uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
@@ -76,12 +76,12 @@ jobs:
           fail-on-critical: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       - name: Setup Node with pnpm cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -102,12 +102,12 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Gitleaks scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -124,15 +124,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       - name: Setup Node with pnpm cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -157,10 +157,10 @@ jobs:
       CODEQL_ACTION_CACHE_SALT: ${{ github.run_id }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
 
@@ -184,15 +184,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       - name: Setup Node with pnpm cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -222,15 +222,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       - name: Setup Node with pnpm cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -244,29 +244,31 @@ jobs:
 
       - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-storefront
           path: storefront/coverage/unit
 
   e2e:
-    name: E2E Tests (storefront, Playwright)
+    name: Browser Smoke (storefront, Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: ${{ vars.ENABLE_STOREFRONT_E2E == 'true' }}
+    if: ${{ github.event_name == 'push' || vars.ENABLE_STOREFRONT_E2E == 'true' }}
     needs: [build]
+    env:
+      NEXT_PUBLIC_BASE_URL: http://127.0.0.1:3000
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       - name: Setup Node with pnpm cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -279,15 +281,15 @@ jobs:
         run: pnpm --filter remorseless-records-storefront run build
 
       - name: Install Playwright browsers
-        run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps
+        run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps chromium
 
-      - name: Run Playwright E2E
-        run: pnpm --filter remorseless-records-storefront run test:e2e -- --reporter=line
+      - name: Run non-destructive Playwright smoke tests
+        run: pnpm --filter remorseless-records-storefront run test:e2e -- --config=playwright.ci.config.ts
 
       # Optional: store Playwright artifacts (screenshots/videos) when failures happen.
       # - name: Upload Playwright artifacts
       #   if: failure()
-      #   uses: actions/upload-artifact@v4
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: playwright-artifacts
       #     path: path/to/playwright-artifacts
@@ -296,23 +298,24 @@ jobs:
     name: Accessibility (pa11y)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ vars.ENABLE_STOREFRONT_A11Y == 'true' }}
+    if: ${{ github.event_name == 'push' || vars.ENABLE_STOREFRONT_A11Y == 'true' }}
     needs: [build]
     env:
-      QA_BASE_URL: http://localhost:3000
+      QA_BASE_URL: http://127.0.0.1:3000
       QA_PRODUCT_PATH: /products
+      QA_PATHS: /about,/accessibility,/cookies,/terms
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       - name: Setup Node with pnpm cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -324,15 +327,24 @@ jobs:
       - name: Build storefront
         run: pnpm --filter remorseless-records-storefront run build
 
+      - name: Resolve Chrome for pa11y
+        run: |
+          chrome_path="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          test -n "$chrome_path"
+          echo "PA11Y_CHROME_EXECUTABLE_PATH=$chrome_path" >> "$GITHUB_ENV"
+
       - name: Start storefront server
         run: |
-          pnpm --filter remorseless-records-storefront exec next start --hostname 127.0.0.1 --port 3000 > /tmp/storefront.log 2>&1 &
+          pnpm --filter remorseless-records-storefront run start --hostname 127.0.0.1 --port 3000 > /tmp/storefront.log 2>&1 &
           echo $! > /tmp/storefront.pid
 
       - name: Wait for storefront to be ready
         shell: bash
         run: |
           pnpm dlx wait-on@7.2.0 http://127.0.0.1:3000 --timeout 120000 || (echo "Wait for storefront failed; tailing log" && tail -n 200 /tmp/storefront.log && exit 1)
+
+      - name: Run pa11y accessibility checks
+        run: pnpm run qa:a11y
 
       - name: Stop storefront server
         if: always()
@@ -341,27 +353,24 @@ jobs:
             kill "$(cat /tmp/storefront.pid)" || true
           fi
 
-      - name: Run pa11y accessibility checks
-        run: pnpm run qa:a11y
-
   build:
     name: Build (storefront)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ vars.ENABLE_STOREFRONT_BUILD == 'true' }}
+    if: ${{ github.event_name == 'push' || vars.ENABLE_STOREFRONT_BUILD == 'true' }}
     needs: [unit]
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       - name: Setup Node with pnpm cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -375,7 +384,7 @@ jobs:
 
       # Optional: upload build artifact for deploy workflows to consume.
       # - name: Upload build artifact
-      #   uses: actions/upload-artifact@v4
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: storefront-build
       #     path: apps/remorseless-records-storefront/.next
@@ -384,20 +393,20 @@ jobs:
     name: Lighthouse (local build unless URL provided)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    if: ${{ vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true' }}
+    if: ${{ github.event_name == 'push' || vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true' }}
     needs: [build]
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       - name: Setup Node with pnpm cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -409,14 +418,30 @@ jobs:
       - name: Build storefront
         run: pnpm --filter remorseless-records-storefront run build
 
+      - name: Resolve Chrome for Lighthouse
+        run: |
+          chrome_path="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          test -n "$chrome_path"
+          echo "CHROME_PATH=$chrome_path" >> "$GITHUB_ENV"
+
       - name: Start storefront server
-        run: pnpm --filter remorseless-records-storefront run start -- --hostname 0.0.0.0 --port 3000 &
+        run: |
+          pnpm --filter remorseless-records-storefront run start --hostname 127.0.0.1 --port 3000 > /tmp/storefront-lighthouse.log 2>&1 &
+          echo $! > /tmp/storefront-lighthouse.pid
 
       - name: Wait for storefront to be ready
-        run: pnpm dlx wait-on@7.2.0 http://localhost:3000
+        run: pnpm dlx wait-on@7.2.0 http://127.0.0.1:3000 --timeout 120000
 
       - name: Run Lighthouse CI (local or override URL)
         env:
-          QA_BASE_URL: ${{ github.event.inputs.base_url != '' && github.event.inputs.base_url || vars.QA_BASE_URL || 'http://localhost:3000' }}
+          QA_BASE_URL: ${{ github.event.inputs.base_url != '' && github.event.inputs.base_url || vars.QA_BASE_URL || 'http://127.0.0.1:3000' }}
           QA_PRODUCT_PATH: ${{ github.event.inputs.product_path != '' && github.event.inputs.product_path || vars.QA_PRODUCT_PATH || '/products' }}
+          QA_PATHS: /about,/accessibility,/cookies,/terms
         run: pnpm run qa:lighthouse
+
+      - name: Stop storefront server
+        if: always()
+        run: |
+          if [ -f /tmp/storefront-lighthouse.pid ]; then
+            kill "$(cat /tmp/storefront-lighthouse.pid)" || true
+          fi

@@ -8,6 +8,11 @@ This document outlines repeatable steps for validating Remorseless Records befor
 
 > Quick automation: `QA_BASE_URL=http://127.0.0.1:3000 pnpm run qa:ci`
 > (runs lint/typecheck, pa11y axe audits, Lighthouse assertions). Use the manual steps below to investigate failures.
+> Set `QA_PATHS=/about,/accessibility` to replace the default dynamic route set
+> when a deterministic, backend-independent local sweep is required.
+> If Chrome is not discoverable on `PATH`, set `PA11Y_CHROME_EXECUTABLE_PATH`
+> for pa11y and `CHROME_PATH` for Lighthouse to a sandbox-capable Chrome binary.
+> Do not disable the browser sandbox to make a host pass.
 
 ### 1.1 Keyboard / Screen-reader
 

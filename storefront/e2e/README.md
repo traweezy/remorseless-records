@@ -1,6 +1,13 @@
 # About
 
-This folder contains an end to end testing suite written with playwright checking all of the main functionality provided by this template. Note it assumes you are using a postgres database on the backend and have configured a test database. This is required because the tests will **drop and recreate the test database** in order to ensure replicability between test runs.
+This folder contains two Playwright surfaces:
+
+- `ci/` contains non-destructive browser smoke tests used by direct pushes to
+  `main`. They run with `playwright.ci.config.ts`, use real Pixel 7 and iPhone 15
+  Pro device emulation, and never seed or reset a database.
+- The remaining template suite exercises authenticated commerce flows. It
+  requires a dedicated PostgreSQL test database and **drops and recreates that
+  test database** to keep runs reproducible.
 
 This test suite was built off of using the [medusa-starter-default](https://github.com/medusajs/medusa-starter-default) repository with the seed data from `data/seed.json`.
 
@@ -23,7 +30,7 @@ and configuring the `.env` file from there. There are more details below about w
 In order to run these tests, make sure playwright and a playwright-enabled browser is installed. You can do this by running
 
 ```sh
-npx playwright install
+pnpm exec playwright install chromium
 ```
 
 ## Database
@@ -74,10 +81,17 @@ so the project is built.
 
 ## Calling the tests
 
-You can run the test suite in the base directory of the project with either
+Run the non-destructive CI smoke suite after building:
 
 ```sh
-pnpm test-e2e
+pnpm run test:e2e -- --config=playwright.ci.config.ts
+```
+
+Only run the database-reset suite after configuring the dedicated test database
+described above:
+
+```sh
+pnpm run test:e2e
 ```
 
 While the test suite is running, it is configured to automatically run the nextjs template during test execution.
