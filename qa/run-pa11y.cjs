@@ -10,6 +10,7 @@ const extraUrls = process.env.QA_EXTRA_URLS
 const configuredPaths = process.env.QA_PATHS
   ? process.env.QA_PATHS.split(",").map((entry) => entry.trim()).filter(Boolean)
   : []
+const MAX_FRAMEWORK_ERROR_ATTEMPTS = 2
 
 const targetPaths = Array.from(
   new Set(
@@ -29,6 +30,32 @@ const toUrl = (path) => {
   }
 }
 
+const isFrameworkErrorDocument = (results) =>
+  results.issues.some((issue) => issue.selector === "#__next_error__")
+
+const auditTarget = async (target) => {
+  for (let attempt = 1; attempt <= MAX_FRAMEWORK_ERROR_ATTEMPTS; attempt += 1) {
+    const results = await pa11y(target, {
+      standard: "WCAG2AA",
+      runners: ["axe"],
+      timeout: 30000,
+      ...(chromeExecutablePath
+        ? { chromeLaunchConfig: { executablePath: chromeExecutablePath } }
+        : {}),
+    })
+
+    if (!isFrameworkErrorDocument(results) || attempt === MAX_FRAMEWORK_ERROR_ATTEMPTS) {
+      return results
+    }
+
+    console.warn(
+      `Next.js returned its transient error document for ${target}; retrying accessibility audit once.`
+    )
+  }
+
+  throw new Error(`Accessibility audit did not return results for ${target}`)
+}
+
 const run = async () => {
   let hasFailures = false
 
@@ -39,14 +66,7 @@ const run = async () => {
     const target = toUrl(path)
     console.log(`\n🔍 Checking ${target}`)
     try {
-      const results = await pa11y(target, {
-        standard: "WCAG2AA",
-        runners: ["axe"],
-        timeout: 30000,
-        ...(chromeExecutablePath
-          ? { chromeLaunchConfig: { executablePath: chromeExecutablePath } }
-          : {}),
-      })
+      const results = await auditTarget(target)
 
       if (results.issues.length) {
         hasFailures = true

@@ -27,7 +27,7 @@ const CookieConsentBanner = () => {
           <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
             Cookie settings
           </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-foreground">
             We only use strictly necessary cookies by default. You can accept
             all, reject non-essential, or customize your choices. Read our{" "}
             <SmartLink
