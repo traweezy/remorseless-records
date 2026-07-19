@@ -121,7 +121,7 @@ export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }:
               <div className="h-12 rounded-full skeleton" />
             </motion.div>
           ) : isError ? (
-            <div className="space-y-4 rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive-foreground">
+            <div className="space-y-4 rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-foreground">
               <p>Unable to load product details. Please try again.</p>
               <button
                 type="button"

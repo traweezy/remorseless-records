@@ -89,7 +89,7 @@ const SiteFooter = () => {
           <p className="text-[0.7rem] leading-snug">
             Brutal maximalism across every pressing. Limited runs, no compromises, all volume. Join the signal and never miss another drop.
           </p>
-          <p className="text-[0.58rem] uppercase tracking-[0.2rem] text-muted-foreground/70">
+          <p className="text-[0.58rem] uppercase tracking-[0.2rem] text-muted-foreground">
             © {currentYear} Remorseless Records
           </p>
         </div>

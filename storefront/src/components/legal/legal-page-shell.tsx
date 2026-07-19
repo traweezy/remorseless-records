@@ -33,7 +33,10 @@ const LegalPageShell = ({
           {children}
         </section>
         {aside ? (
-          <aside className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
+          <aside
+            aria-label={`${title} supporting information`}
+            className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]"
+          >
             {aside}
           </aside>
         ) : null}
@@ -43,4 +46,3 @@ const LegalPageShell = ({
 )
 
 export default LegalPageShell
-

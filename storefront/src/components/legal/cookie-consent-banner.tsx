@@ -18,6 +18,7 @@ const CookieConsentBanner = () => {
 
   return (
     <aside
+      aria-label="Cookie consent"
       aria-live="polite"
       className="pointer-events-auto fixed inset-x-0 bottom-0 z-[100] isolate max-h-dvh overflow-y-auto overscroll-contain border-t border-border/70 bg-background/95 shadow-[0_-16px_40px_-28px_rgba(0,0,0,0.85)] backdrop-blur"
     >

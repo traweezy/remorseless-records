@@ -229,15 +229,15 @@
     --muted-foreground: 0 0% 65%;
 
     /* Accents */
-    --accent: 0 75% 45%;
-    --accent-foreground: 0 0% 95%;
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 95%;
+    --accent: 0 88% 60%;
+    --accent-foreground: 0 0% 7%;
+    --destructive: 0 88% 60%;
+    --destructive-foreground: 0 0% 7%;
 
     /* Elements */
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 0 75% 45%;
+    --ring: 0 88% 60%;
     --radius: 0.5rem;
 
     /* Hero gradients */

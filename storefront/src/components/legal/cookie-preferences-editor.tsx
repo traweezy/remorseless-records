@@ -17,11 +17,17 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
     <div className={cn("space-y-4", className)}>
       <div className="space-y-3 rounded-2xl border border-border/60 bg-background/85 p-4">
         <div className="flex items-start gap-3">
-          <Checkbox id="cookies-necessary" checked disabled aria-readonly />
+          <Checkbox
+            checked
+            disabled
+            aria-label="Strictly necessary cookies"
+            aria-readonly
+            className="h-6 w-6"
+          />
           <div className="space-y-1">
-            <label htmlFor="cookies-necessary" className="text-sm font-semibold text-foreground">
+            <p className="text-sm font-semibold text-foreground">
               Strictly necessary cookies
-            </label>
+            </p>
             <p className="text-xs text-muted-foreground">
               Required for cart, checkout, and security controls. These cannot be disabled.
             </p>
@@ -30,8 +36,9 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
 
         <div className="flex items-start gap-3">
           <Checkbox
-            id="cookies-analytics"
+            aria-label="Analytics cookies"
             checked={preferences.analytics}
+            className="h-6 w-6"
             onCheckedChange={(value) => {
               saveSelection({
                 analytics: Boolean(value),
@@ -40,9 +47,9 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
             }}
           />
           <div className="space-y-1">
-            <label htmlFor="cookies-analytics" className="text-sm font-semibold text-foreground">
+            <p className="text-sm font-semibold text-foreground">
               Analytics cookies
-            </label>
+            </p>
             <p className="text-xs text-muted-foreground">
               Helps us understand site usage trends and performance bottlenecks.
             </p>
@@ -51,8 +58,9 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
 
         <div className="flex items-start gap-3">
           <Checkbox
-            id="cookies-marketing"
+            aria-label="Marketing cookies"
             checked={preferences.marketing}
+            className="h-6 w-6"
             onCheckedChange={(value) => {
               saveSelection({
                 analytics: preferences.analytics,
@@ -61,9 +69,9 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
             }}
           />
           <div className="space-y-1">
-            <label htmlFor="cookies-marketing" className="text-sm font-semibold text-foreground">
+            <p className="text-sm font-semibold text-foreground">
               Marketing cookies
-            </label>
+            </p>
             <p className="text-xs text-muted-foreground">
               Supports campaign attribution and promotional message relevance.
             </p>
