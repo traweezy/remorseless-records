@@ -22,6 +22,7 @@ import (
 
 const (
 	defaultSourcePath          = "tmp/remorseless_current_products.jsonl"
+	defaultCurrentURLsPath     = "tmp/remorseless_current_product_urls.txt"
 	defaultCleanedCsvPath      = "tmp/phase6-cleaned-source.csv"
 	defaultUploaderCsvPath     = "tmp/phase6-uploader-ready.csv"
 	defaultNormalizedJsonPath  = "tmp/phase6-normalized-products.json"
@@ -37,22 +38,230 @@ const (
 	defaultPreorderStock       = 50
 	defaultManualBundleStock   = 10
 	phase6ImportMetadataSchema = "remorseless_phase6_import_v1"
+	privateYogyakartaKitHandle = "internal-inventory-special-region-yogyakarta-numbered-kit"
+	privateYogyakartaKitSKU    = "INTERNAL_SPECIAL_REGION_YOGYAKARTA_NUMBERED_KIT"
 )
 
 var (
-	formatSuffixRegex     = regexp.MustCompile(`(?i)\s*-\s*((?:[234]?\s*(?:lp|cd)|mc|cassette|tape|vinyl|dvd|7"|12"|boxset|bundle|cd bundle|ep bundle|3lp|3cd)(?:\s*,\s*(?:[234]?\s*(?:lp|cd)|mc|cassette|tape|vinyl|dvd|7"|12"|boxset|bundle|cd bundle|ep bundle|3lp|3cd))*)\s*$`)
+	formatSuffixRegex     = regexp.MustCompile(`(?i)\s*-\s*((?:[234]?\s*(?:lp|cd)\s*box\s*set|[234]?\s*(?:lp|cd)|mc|cassette|tape|vinyl|dvd|7"|12"|boxset|bundle|cd bundle|ep bundle|3lp|3cd)(?:\s*,\s*(?:[234]?\s*(?:lp|cd)\s*box\s*set|[234]?\s*(?:lp|cd)|mc|cassette|tape|vinyl|dvd|7"|12"|boxset|bundle|cd bundle|ep bundle|3lp|3cd))*)\s*$`)
 	firstTitleSplitRegex  = regexp.MustCompile(`\s+-\s*`)
 	preorderRegex         = regexp.MustCompile(`(?i)\bpre[-\s]?order\b`)
 	backorderRegex        = regexp.MustCompile(`(?i)\bback[-\s]?order\b`)
-	multiWaySplitRegex    = regexp.MustCompile(`(?i)\b([234])[-\s]?way\s+split\b`)
-	bundleRegex           = regexp.MustCompile(`(?i)\b(bundle|bundles|deal|box\s*set|boxset|pack)\b`)
+	bundleRegex           = regexp.MustCompile(`(?i)\b(bundle|bundles|deal|pack)\b`)
 	mysteryBundleRegex    = regexp.MustCompile(`(?i)\bmystery\b`)
 	discographyRegex      = regexp.MustCompile(`(?i)\bdiscography\b`)
+	multiUnitFormatRegex  = regexp.MustCompile(`(?i)^([2-9][0-9]*)\s*(cd|lp)(?:\s*(box\s*set))?$`)
 	htmlTagRegex          = regexp.MustCompile(`<[^>]+>`)
 	whitespaceRegex       = regexp.MustCompile(`\s+`)
 	explicitMonthDayRegex = regexp.MustCompile(`(?i)\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?\b`)
 	endOfMonthRegex       = regexp.MustCompile(`(?i)\bend\s+of\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b`)
+	latinSlugReplacer     = strings.NewReplacer(
+		"à", "a", "á", "a", "â", "a", "ã", "a", "ä", "a", "å", "a", "æ", "ae",
+		"ç", "c",
+		"è", "e", "é", "e", "ê", "e", "ë", "e",
+		"ì", "i", "í", "i", "î", "i", "ï", "i",
+		"ð", "d",
+		"ñ", "n",
+		"ò", "o", "ó", "o", "ô", "o", "õ", "o", "ö", "o", "ø", "o", "œ", "oe",
+		"ù", "u", "ú", "u", "û", "u", "ü", "u",
+		"ý", "y", "ÿ", "y",
+		"þ", "th", "ß", "ss", "ł", "l",
+	)
+	reviewedPriceEstimates = map[string]reviewedPriceEstimate{
+		"107775027|CD": {
+			PriceUSDCents: 1000,
+			Basis:         "Closest short-run goregrind CD peers are $9-$11; use the midpoint.",
+		},
+		"107775027|Cassette": {
+			PriceUSDCents: 800,
+			Basis:         "Comparable CD/cassette releases commonly price the cassette $2-$4 below the CD; current cassette median is $8.",
+		},
+		"110427429|Vinyl": {
+			PriceUSDCents: 2000,
+			Basis:         "Nearby November 2024 death-metal LP listings are $18-$23; use $20 for the standard LP.",
+		},
+		"110427654|Cassette": {
+			PriceUSDCents: 800,
+			Basis:         "Comparable death-metal demo cassettes cluster at $8-$10; use the current cassette median.",
+		},
+		"110427654|Vinyl": {
+			PriceUSDCents: 2000,
+			Basis:         "Comparable death-metal demo LPs cluster at $20-$23; use the conservative end for this demo reissue.",
+		},
+		"111176526|CD": {
+			PriceUSDCents: 1200,
+			Basis:         "Brodequin's Methods of Execution CD in the same listing series is $12.",
+		},
+		"111176538|CD": {
+			PriceUSDCents: 1200,
+			Basis:         "Brodequin's Methods of Execution CD in the same listing series is $12.",
+		},
+		"111176724|CD": {
+			PriceUSDCents: 2000,
+			Basis:         "Comparable 2CD anthologies and complete-recording sets are $18-$20; this 31-track set includes a 20-page booklet.",
+		},
+		"111176733|CD": {
+			PriceUSDCents: 1300,
+			Basis:         "A cached Remorseless listing supports $13 for this slipcase CD.",
+		},
+		"111176748|CD": {
+			PriceUSDCents: 1200,
+			Basis:         "Malevolent Creation's adjacent In Cold Blood and The Fine Art of Murder CD listings are both $12.",
+		},
+		"113743212|CD": {
+			PriceUSDCents: 1300,
+			Basis:         "The closest June 2025 death-metal CD listings in the same source batch cluster at $12-$13.",
+		},
+		"113743365|CD": {
+			PriceUSDCents: 1300,
+			Basis:         "Adjacent June 2025 special-edition death-metal CDs are $13, including both neighboring source listings.",
+		},
+	}
+	reviewedBundleDefinitions = map[string]reviewedBundleDefinition{
+		"fixed-bundle-blunt-knife-castration-3-cd-bundle": {
+			Artists: []string{"Blunt Knife Castration"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-blunt-knife-castration-chewed-up-and-spat-out", DisplayTitle: "Blunt Knife Castration — Chewed Up and Spat Out", FormatLabel: "CD"},
+				{ProductHandle: "music-release-blunt-knife-castration-live-fast-die-slow", DisplayTitle: "Blunt Knife Castration — Live Fast Die Slow", FormatLabel: "CD"},
+				{ProductHandle: "music-release-blunt-knife-castration-blood-oil", DisplayTitle: "Blunt Knife Castration — Blood & Oil", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-concrete-winds-discography-bundle-3lp-3cd": {
+			Artists: []string{"Concrete Winds"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-concrete-winds-concrete-winds", DisplayTitle: "Concrete Winds — Concrete Winds", FormatMappings: cdAndVinylBundleMappings()},
+				{ProductHandle: "music-release-concrete-winds-nerve-butcherer", DisplayTitle: "Concrete Winds — Nerve Butcherer", FormatMappings: cdAndVinylBundleMappings()},
+				{ProductHandle: "music-release-concrete-winds-primitive-force", DisplayTitle: "Concrete Winds — Primitive Force", FormatMappings: cdAndVinylBundleMappings()},
+			},
+		},
+		"fixed-bundle-cultus-sanguine-2-cd-bundle": {
+			Artists: []string{"Cultus Sanguine"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-cultus-sanguine-shadow-s-blood", DisplayTitle: "Cultus Sanguine — Shadow's Blood", FormatLabel: "CD"},
+				{ProductHandle: "music-release-cultus-sanguine-the-sum-of-all-fears", DisplayTitle: "Cultus Sanguine — The Sum of All Fears", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-death-thrash-attack": {
+			Artists: []string{"Savage Ruins", "Force of Darkness", "Sijjin"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-savage-ruins-world-in-wrath", DisplayTitle: "Savage Ruins — World in Wrath", FormatLabel: "CD"},
+				{ProductHandle: "music-release-force-of-darkness-heritage-of-dark-incantations", DisplayTitle: "Force of Darkness — Heritage of Dark Incantations", FormatLabel: "CD"},
+				{ProductHandle: "music-release-sijjin-helljjin-combat", DisplayTitle: "Sijjin — Helljjin Combat", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-demo-tape-bundle": {
+			Artists: []string{"Ritual Execution", "Taxidermia", "Envoys", "Jagadjagal"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-ritual-execution-demo-2024", DisplayTitle: "Ritual Execution — Demo 2024", FormatLabel: "Cassette"},
+				{ProductHandle: "music-release-taxidermia-demo-2023", DisplayTitle: "Taxidermia — Demo 2023", FormatLabel: "Cassette", FormatDetails: []string{"White Shell", "Red Shell"}, SelectionMode: "any"},
+				{ProductHandle: "music-release-envoys-glimpse-beyond-the-veil", DisplayTitle: "Envoys — Glimpse Beyond the Veil", FormatLabel: "Cassette"},
+				{ProductHandle: "music-release-jagadjagal-demo-mmxxiv", DisplayTitle: "Jagadjagal — Demo MMXXIV", FormatLabel: "Cassette"},
+			},
+		},
+		"fixed-bundle-devoured-death-bundle": {
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "merch-devoured-death-5", DisplayTitle: "Devoured Death #5", FormatLabel: "Standard"},
+				{ProductHandle: "merch-devoured-death-666", DisplayTitle: "Devoured Death #666", FormatLabel: "Standard"},
+				{ProductHandle: "merch-devoured-death-7", DisplayTitle: "Devoured Death #7", FormatLabel: "Standard"},
+			},
+		},
+		"fixed-bundle-ectoplasma-2-ep-bundle": {
+			Artists: []string{"Ectoplasma"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-ectoplasma-skeletal-lifeforms", DisplayTitle: "Ectoplasma — Skeletal Lifeforms", FormatLabel: "CD"},
+				{ProductHandle: "music-release-ectoplasma-cryogenically-revived", DisplayTitle: "Ectoplasma — Cryogenically Revived", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-fulci-discography-bundle": {
+			Artists: []string{"Fulci"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-fulci-opening-the-gates-of-hell", DisplayTitle: "Fulci — Opening the Gates of Hell", FormatLabel: "CD"},
+				{ProductHandle: "music-release-fulci-tropical-sun", DisplayTitle: "Fulci — Tropical Sun", FormatLabel: "CD"},
+				{ProductHandle: "music-release-fulci-exhumed-information", DisplayTitle: "Fulci — Exhumed Information", FormatLabel: "CD"},
+				{ProductHandle: "music-release-fulci-duck-face-killings", DisplayTitle: "Fulci — Duck Face Killings", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-houwitser-cd-bundle": {
+			Artists: []string{"Houwitser"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-houwitser-rage-inside-the-womb", DisplayTitle: "Houwitser — Rage Inside the Womb", FormatLabel: "CD"},
+				{ProductHandle: "music-release-houwitser-damage-assessment", DisplayTitle: "Houwitser — Damage Assessment", FormatLabel: "CD"},
+				{ProductHandle: "music-release-houwitser-sentinel-beast", DisplayTitle: "Houwitser — Sentinel Beast", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-old-school-tape-bundle": {
+			Artists: []string{"Masacre", "Wombbath", "Utumno"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-masacre-barbarie-y-sangre-en-memoria-de-cristo", DisplayTitle: "Masacre — Barbarie y Sangre en Memoria de Cristo", FormatLabel: "Cassette"},
+				{ProductHandle: "music-release-wombbath-brutal-mights-several-shapes", DisplayTitle: "Wombbath — Brutal Mights / Several Shapes", FormatLabel: "Cassette"},
+				{ProductHandle: "music-release-utumno-across-the-horizon", DisplayTitle: "Utumno — Across the Horizon", FormatLabel: "Cassette"},
+			},
+		},
+		"fixed-bundle-pissgrave-discography-bundle": {
+			Artists: []string{"Pissgrave"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-pissgrave-suicide-euphoria", DisplayTitle: "Pissgrave — Suicide Euphoria", FormatLabel: "CD"},
+				{ProductHandle: "music-release-pissgrave-posthumous-humiliation", DisplayTitle: "Pissgrave — Posthumous Humiliation", FormatLabel: "CD"},
+				{ProductHandle: "music-release-pissgrave-malignant-worthlessness", DisplayTitle: "Pissgrave — Malignant Worthlessness", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-repugnance-complete-works-bundle": {
+			Artists: []string{"Repugnance"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-repugnance-perpetual-deviousness-vol-1", DisplayTitle: "Repugnance — Perpetual Deviousness Vol. 1", FormatLabel: "CD"},
+				{ProductHandle: "music-release-repugnance-perpetual-deviousness-vol-2", DisplayTitle: "Repugnance — Perpetual Deviousness Vol. 2", FormatLabel: "CD"},
+				{ProductHandle: "music-release-repugnance-retrieving-dead-bodies", DisplayTitle: "Repugnance — Retrieving Dead Bodies", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-siamese-brutalism-bundle": {
+			Artists: []string{"Reincarnated", "Savage Deity", "Oldskull", "Smallpox Aroma"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-reincarnated-of-bootes-void-death-spell", DisplayTitle: "Reincarnated — Of Boötes Void Death Spell", FormatLabel: "CD"},
+				{ProductHandle: "music-release-savage-deity-decade-of-savagery", DisplayTitle: "Savage Deity — Decade of Savagery", FormatLabel: "CD"},
+				{ProductHandle: "music-release-oldskull-nether-hollow-of-no-return", DisplayTitle: "Oldskull — Nether Hollow of No Return", FormatLabel: "CD"},
+				{ProductHandle: "music-release-smallpox-aroma-festering-embryos-of-logical-corruption", DisplayTitle: "Smallpox Aroma — Festering Embryos of Logical Corruption", FormatLabel: "CD"},
+			},
+		},
+		"fixed-bundle-special-region-of-yogyakarta-bundle": {
+			Artists:              []string{"Jagadjagal", "Drain Death"},
+			IncludedPackageItems: []string{"Numbered drawstring bag", "Stickers", "Pin", "Download codes"},
+			Components: []reviewedBundleComponentDefinition{
+				{ProductHandle: "music-release-jagadjagal-demo-mmxxiv", DisplayTitle: "Jagadjagal — Demo MMXXIV", FormatLabel: "Cassette"},
+				{ProductHandle: "music-release-drain-death-merciless-of-doom", DisplayTitle: "Drain Death — Merciless Of Doom", FormatLabel: "Cassette"},
+				{ProductHandle: privateYogyakartaKitHandle, DisplayTitle: "Numbered drawstring bag kit", FormatLabel: "Standard", ComponentKind: "private_inventory_kit"},
+			},
+		},
+	}
 )
+
+type reviewedPriceEstimate struct {
+	PriceUSDCents int
+	Basis         string
+}
+
+type reviewedBundleDefinition struct {
+	Artists              []string
+	IncludedPackageItems []string
+	Components           []reviewedBundleComponentDefinition
+}
+
+type reviewedBundleComponentDefinition struct {
+	ProductHandle     string
+	DisplayTitle      string
+	FormatLabel       string
+	FormatDetails     []string
+	BundleFormatLabel string
+	SelectionMode     string
+	ComponentKind     string
+	FormatMappings    []reviewedBundleFormatMapping
+}
+
+type reviewedBundleFormatMapping struct {
+	ComponentFormatLabel   string
+	ComponentFormatDetails []string
+	BundleFormatLabel      string
+	SelectionMode          string
+}
 
 type sourceRecord struct {
 	Line                  int
@@ -174,31 +383,54 @@ type normalizedProduct struct {
 }
 
 type bundlePlan struct {
-	BundleType          string                     `json:"bundle_type"`
-	InventoryMode       string                     `json:"inventory_mode"`
-	FulfillmentMode     string                     `json:"fulfillment_mode"`
-	ComponentCandidates []bundleComponentCandidate `json:"component_candidates,omitempty"`
-	RequiresReview      bool                       `json:"requires_review"`
-	ReviewReason        string                     `json:"review_reason,omitempty"`
+	BundleType           string                     `json:"bundle_type"`
+	InventoryMode        string                     `json:"inventory_mode"`
+	FulfillmentMode      string                     `json:"fulfillment_mode"`
+	IncludedPackageItems []string                   `json:"included_package_items,omitempty"`
+	ComponentCandidates  []bundleComponentCandidate `json:"component_candidates,omitempty"`
+	RequiresReview       bool                       `json:"requires_review"`
+	ReviewReason         string                     `json:"review_reason,omitempty"`
 }
 
 type bundleComponentCandidate struct {
-	Handle   string `json:"handle"`
-	Title    string `json:"title"`
-	Artist   string `json:"artist,omitempty"`
-	Quantity int    `json:"quantity"`
+	Handle               string                          `json:"handle"`
+	Title                string                          `json:"title"`
+	Artist               string                          `json:"artist,omitempty"`
+	Quantity             int                             `json:"quantity"`
+	FormatLabel          string                          `json:"format_label,omitempty"`
+	FormatDetails        []string                        `json:"format_details,omitempty"`
+	BundleFormatLabel    string                          `json:"bundle_format_label,omitempty"`
+	ComponentVariantSKUs []string                        `json:"component_variant_skus,omitempty"`
+	BundleVariantSKUs    []string                        `json:"bundle_variant_skus,omitempty"`
+	SelectionMode        string                          `json:"selection_mode"`
+	ComponentKind        string                          `json:"component_kind"`
+	VariantMappings      []bundleComponentVariantMapping `json:"variant_mappings"`
+	mappingDefinitions   []reviewedBundleFormatMapping
+}
+
+type bundleComponentVariantMapping struct {
+	BundleVariantSKUs    []string `json:"bundle_variant_skus"`
+	ComponentVariantSKUs []string `json:"component_variant_skus"`
+	SelectionMode        string   `json:"selection_mode"`
 }
 
 type importPreview struct {
 	GeneratedAt                   string            `json:"generated_at"`
 	SourcePath                    string            `json:"source_path"`
+	CurrentURLsPath               string            `json:"current_urls_path"`
+	SalesChannelID                string            `json:"sales_channel_id,omitempty"`
 	SourceProductCount            int               `json:"source_product_count"`
+	CurrentListingCount           int               `json:"current_listing_count"`
+	ExcludedUnlistedSourceCount   int               `json:"excluded_unlisted_source_count"`
 	NormalizedProductCount        int               `json:"normalized_product_count"`
 	UploaderRowCount              int               `json:"uploader_row_count"`
 	VariantCount                  int               `json:"variant_count"`
 	BundleCount                   int               `json:"bundle_count"`
 	FixedBundleCount              int               `json:"fixed_bundle_count"`
 	MysteryBundleCount            int               `json:"mystery_bundle_count"`
+	ReviewedFixedBundleCount      int               `json:"reviewed_fixed_bundle_count"`
+	BundleComponentCount          int               `json:"bundle_component_requirement_count"`
+	InternalInventoryProductCount int               `json:"internal_inventory_product_count"`
 	MerchCount                    int               `json:"merch_count"`
 	MusicReleaseCount             int               `json:"music_release_count"`
 	ArtistCount                   int               `json:"artist_count"`
@@ -209,6 +441,7 @@ type importPreview struct {
 	LowInventoryVariantCount      int               `json:"low_inventory_variant_count"`
 	PreorderProductCount          int               `json:"preorder_product_count"`
 	BackorderEligibleVariantCount int               `json:"backorder_eligible_variant_count"`
+	ReviewedPriceEstimateCount    int               `json:"reviewed_price_estimate_variant_count"`
 	SeedInventoryTotal            int               `json:"seed_inventory_total"`
 	AmbiguityCount                int               `json:"ambiguity_count"`
 	AmbiguityCounts               map[string]int    `json:"ambiguity_counts"`
@@ -305,17 +538,24 @@ type catalogBundleProfile struct {
 }
 
 type catalogBundleComponent struct {
-	BundleHandle           string `json:"bundle_handle"`
-	ComponentProductHandle string `json:"component_product_handle"`
-	Title                  string `json:"title"`
-	Quantity               int    `json:"quantity"`
-	SortOrder              int    `json:"sort_order"`
-	IsRequired             bool   `json:"is_required"`
-	NeedsResolution        bool   `json:"needs_resolution"`
+	BundleHandle           string                          `json:"bundle_handle"`
+	ComponentProductHandle string                          `json:"component_product_handle"`
+	ComponentVariantSKUs   []string                        `json:"component_variant_skus"`
+	BundleVariantSKUs      []string                        `json:"bundle_variant_skus"`
+	Title                  string                          `json:"title"`
+	Quantity               int                             `json:"quantity"`
+	SortOrder              int                             `json:"sort_order"`
+	IsRequired             bool                            `json:"is_required"`
+	SelectionMode          string                          `json:"selection_mode"`
+	ComponentKind          string                          `json:"component_kind"`
+	VariantMappings        []bundleComponentVariantMapping `json:"variant_mappings"`
+	NeedsResolution        bool                            `json:"needs_resolution"`
+	Metadata               map[string]any                  `json:"metadata"`
 }
 
 func main() {
 	sourcePath := flag.String("source", defaultSourcePath, "source JSONL scrape path")
+	currentURLsPath := flag.String("current-urls", defaultCurrentURLsPath, "current live product URL list")
 	cleanedCsvPath := flag.String("cleaned-csv", defaultCleanedCsvPath, "normalized review CSV output path")
 	uploaderCsvPath := flag.String("uploader-csv", defaultUploaderCsvPath, "Medusa uploader CSV output path")
 	normalizedJsonPath := flag.String("normalized-json", defaultNormalizedJsonPath, "normalized product JSON output path")
@@ -329,12 +569,26 @@ func main() {
 
 	records, err := readSourceRecords(*sourcePath)
 	must(err)
+	currentURLs, err := readLineSet(*currentURLsPath)
+	must(err)
+	if len(currentURLs) == 0 {
+		must(fmt.Errorf("current product URL list %s is empty", *currentURLsPath))
+	}
+	records, excludedUnlistedSourceCount, err := filterCurrentSourceRecords(records, currentURLs)
+	must(err)
 	products, err := normalizeProducts(records)
 	must(err)
 	ensureUniqueHandles(products)
 	ensureUniqueSKUs(products)
 
-	preview := buildPreview(*sourcePath, products, *defaultSalesChannelID)
+	preview := buildPreview(
+		*sourcePath,
+		*currentURLsPath,
+		currentURLs,
+		excludedUnlistedSourceCount,
+		products,
+		*defaultSalesChannelID,
+	)
 	paths := map[string]string{
 		"cleaned_source_csv": *cleanedCsvPath,
 		"uploader_csv":       *uploaderCsvPath,
@@ -407,6 +661,59 @@ func readSourceRecords(path string) ([]sourceRecord, error) {
 	return records, nil
 }
 
+func readLineSet(path string) (map[string]bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	values := map[string]bool{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		value := strings.TrimSpace(scanner.Text())
+		if value != "" {
+			values[value] = true
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+func filterCurrentSourceRecords(
+	records []sourceRecord,
+	currentURLs map[string]bool,
+) ([]sourceRecord, int, error) {
+	filtered := make([]sourceRecord, 0, len(currentURLs))
+	foundURLs := map[string]bool{}
+	for _, record := range records {
+		if !currentURLs[record.DetailURL] {
+			continue
+		}
+		filtered = append(filtered, record)
+		foundURLs[record.DetailURL] = true
+	}
+
+	missingURLs := make([]string, 0)
+	for currentURL := range currentURLs {
+		if !foundURLs[currentURL] {
+			missingURLs = append(missingURLs, currentURL)
+		}
+	}
+	if len(missingURLs) > 0 {
+		sort.Strings(missingURLs)
+		return nil, 0, fmt.Errorf(
+			"current URL list contains %d products missing from source data; first missing URL: %s",
+			len(missingURLs),
+			missingURLs[0],
+		)
+	}
+
+	return filtered, len(records) - len(filtered), nil
+}
+
 func sourceRecordFromRaw(line int, raw map[string]any) (sourceRecord, error) {
 	record := sourceRecord{Line: line}
 	var bc bigCartelProduct
@@ -450,6 +757,7 @@ func normalizeProducts(records []sourceRecord) ([]normalizedProduct, error) {
 	for _, record := range records {
 		identity := parseIdentity(record)
 		productType := classifyProductType(record, identity)
+		identity = identityForProductType(identity, productType)
 		key := productGroupingKey(productType, identity, record)
 		product := groups[key]
 		if product == nil {
@@ -460,7 +768,7 @@ func normalizeProducts(records []sourceRecord) ([]normalizedProduct, error) {
 				Handle:           slugify(key, "product"),
 				Title:            displayProductTitle(productType, identity, record),
 				ProductType:      productType,
-				Status:           productStatus(productType, identity),
+				Status:           productStatus(identity),
 				Label:            defaultLabel,
 				Artists:          identity.ArtistNames,
 				Genres:           genresFromCategories(record.Categories),
@@ -484,12 +792,6 @@ func normalizeProducts(records []sourceRecord) ([]normalizedProduct, error) {
 			if product.ReleaseDate != "" {
 				if year := releaseYear(product.ReleaseDate); year > 0 {
 					product.ReleaseYear = year
-				}
-			}
-			if product.ProductType == "fixed_bundle" || product.ProductType == "mystery_bundle" {
-				product.Bundle = buildBundlePlan(product, records)
-				if product.Bundle.RequiresReview {
-					product.AmbiguityCodes = appendUnique(product.AmbiguityCodes, "bundle_component_review")
 				}
 			}
 			groups[key] = product
@@ -525,14 +827,26 @@ func normalizeProducts(records []sourceRecord) ([]normalizedProduct, error) {
 		product.SourceCategories = stableUnique(product.SourceCategories)
 		product.AmbiguityCodes = stableUnique(product.AmbiguityCodes)
 		product.Variants = dedupeVariants(product.Variants)
-		if contains(product.AmbiguityCodes, "missing_or_zero_price") {
+		if product.ProductType == "fixed_bundle" || product.ProductType == "mystery_bundle" {
+			product.Bundle = buildBundlePlan(product, records)
+			if product.Bundle.RequiresReview {
+				product.AmbiguityCodes = appendUnique(product.AmbiguityCodes, "bundle_component_review")
+			}
+		}
+		if len(product.AmbiguityCodes) > 0 {
 			product.Status = "draft"
+		} else {
+			product.Status = "published"
 		}
 		products = append(products, *product)
 	}
+	products = appendPrivateBundleInventoryProducts(products)
 	sort.SliceStable(products, func(i, j int) bool {
 		return products[i].Handle < products[j].Handle
 	})
+	if err := resolveReviewedBundleVariants(products); err != nil {
+		return nil, err
+	}
 	return products, nil
 }
 
@@ -567,9 +881,18 @@ func parseIdentity(record sourceRecord) parsedIdentity {
 		identity.AmbiguityCodes = append(identity.AmbiguityCodes, "title_fallback_to_product_name")
 		identity.Confidence = "low"
 	}
-	if multiWaySplitRegex.MatchString(name) {
-		identity.AmbiguityCodes = append(identity.AmbiguityCodes, "multiway_split_treated_as_bundle")
+	return identity
+}
+
+func identityForProductType(identity parsedIdentity, productType string) parsedIdentity {
+	if productType == "music_release" {
+		return identity
 	}
+	identity.AmbiguityCodes = withoutStrings(
+		identity.AmbiguityCodes,
+		"missing_artist_title_separator",
+		"artist_missing",
+	)
 	return identity
 }
 
@@ -591,8 +914,11 @@ func classifyProductType(record sourceRecord, identity parsedIdentity) string {
 	if mysteryBundleRegex.MatchString(name) {
 		return "mystery_bundle"
 	}
-	if strings.Contains(categories, "bundles/deals") || bundleRegex.MatchString(name) || multiWaySplitRegex.MatchString(name) {
+	if strings.Contains(categories, "bundles/deals") || bundleRegex.MatchString(name) {
 		return "fixed_bundle"
+	}
+	if identity.FormatSuffix != "" && len(identity.ArtistNames) > 0 {
+		return "music_release"
 	}
 	if looksLikeMerch(record) {
 		return "merch"
@@ -638,8 +964,8 @@ func displayProductTitle(productType string, identity parsedIdentity, record sou
 	return identity.ReleaseTitle
 }
 
-func productStatus(productType string, identity parsedIdentity) string {
-	if productType == "fixed_bundle" || len(identity.AmbiguityCodes) > 0 {
+func productStatus(identity parsedIdentity) string {
+	if len(identity.AmbiguityCodes) > 0 {
 		return "draft"
 	}
 	return "published"
@@ -648,24 +974,61 @@ func productStatus(productType string, identity parsedIdentity) string {
 func variantsFromRecord(record sourceRecord, product *normalizedProduct, identity parsedIdentity, productType string) []normalizedVariant {
 	options := record.Options
 	if len(options) == 0 {
-		options = []sourceOption{{
-			ID:      json.RawMessage(`"standard"`),
-			Name:    firstNonEmptyString(identity.FormatSuffix, "Standard"),
-			Price:   firstNonZeroFloat(record.DefaultPrice, record.Price),
-			SoldOut: isSourceSoldOut(record),
-		}}
+		formatNames := []string{firstNonEmptyString(identity.FormatSuffix, "Standard")}
+		if strings.Contains(identity.FormatSuffix, ",") {
+			formatNames = nil
+			for _, rawFormat := range strings.Split(identity.FormatSuffix, ",") {
+				if formatName := normalizeSpaces(rawFormat); formatName != "" {
+					formatNames = append(formatNames, formatName)
+				}
+			}
+		}
+		options = make([]sourceOption, 0, len(formatNames))
+		for index, formatName := range formatNames {
+			options = append(options, sourceOption{
+				ID:      json.RawMessage(strconv.Quote(fmt.Sprintf("synthetic-%d", index))),
+				Name:    formatName,
+				Price:   firstNonZeroFloat(record.DefaultPrice, record.Price),
+				SoldOut: isSourceSoldOut(record),
+			})
+		}
 	}
 	preorder := preorderRegex.MatchString(record.Description)
 	backorder := backorderRegex.MatchString(record.Description)
 	releaseDate := preorderReleaseDate(record)
 	var variants []normalizedVariant
 	for index, option := range options {
-		format, detail, display := normalizeVariantFormat(option.Name, identity.FormatSuffix, productType, len(options))
+		formatSource := option.Name
+		if identity.FormatSuffix != "" && strings.EqualFold(normalizeSpaces(option.Name), normalizeSpaces(record.ProductName)) {
+			formatSource = identity.FormatSuffix
+		}
+		format, detail, display := normalizeVariantFormat(formatSource, identity.FormatSuffix, productType, len(options))
 		price := firstNonZeroFloat(option.Price, record.DefaultPrice, record.Price)
 		priceCents := int(price*100 + 0.5)
+		priceEstimate, hasReviewedPriceEstimate := reviewedPriceEstimateFor(record.ProductID, format)
+		if priceCents <= 0 && hasReviewedPriceEstimate {
+			priceCents = priceEstimate.PriceUSDCents
+		}
 		low := option.IsLowInventory || option.IsAlmostSoldOut
 		stock := seededInventory(option.SoldOut, low, preorder, productType)
 		sku := buildSKU(product.Handle, display, record.ProductID, index)
+		variantMetadata := map[string]any{
+			"schema":                  phase6ImportMetadataSchema,
+			"source_product_id":       record.ProductID,
+			"source_option_id":        rawIDToString(option.ID),
+			"source_option_name":      normalizeSpaces(option.Name),
+			"source_sold_out":         option.SoldOut,
+			"source_low_inventory":    low,
+			"seed_inventory_quantity": stock,
+		}
+		if priceCents > 0 && hasReviewedPriceEstimate && price <= 0 {
+			variantMetadata["price_source"] = "reviewed_estimate"
+			variantMetadata["price_estimate_basis"] = priceEstimate.Basis
+			variantMetadata["price_reviewed_at"] = "2026-07-19"
+		}
+		if productType == "fixed_bundle" {
+			variantMetadata["inventory_mode"] = "component_derived"
+		}
 		variant := normalizedVariant{
 			SourceProductID:     record.ProductID,
 			SourceOptionID:      rawIDToString(option.ID),
@@ -684,15 +1047,7 @@ func variantsFromRecord(record sourceRecord, product *normalizedProduct, identit
 			PreorderReleaseDate: releaseDate,
 			BackorderAllowed:    backorder,
 			ImageURL:            firstString(product.Images),
-			Metadata: map[string]any{
-				"schema":                  phase6ImportMetadataSchema,
-				"source_product_id":       record.ProductID,
-				"source_option_id":        rawIDToString(option.ID),
-				"source_option_name":      normalizeSpaces(option.Name),
-				"source_sold_out":         option.SoldOut,
-				"source_low_inventory":    low,
-				"seed_inventory_quantity": stock,
-			},
+			Metadata:            variantMetadata,
 		}
 		if backorder {
 			variant.BackorderNote = "Eligible for client-managed backorder after import review."
@@ -708,6 +1063,11 @@ func variantsFromRecord(record sourceRecord, product *normalizedProduct, identit
 		variants = append(variants, variant)
 	}
 	return variants
+}
+
+func reviewedPriceEstimateFor(sourceProductID string, formatLabel string) (reviewedPriceEstimate, bool) {
+	estimate, ok := reviewedPriceEstimates[sourceProductID+"|"+formatLabel]
+	return estimate, ok
 }
 
 func normalizeVariantFormat(optionName string, suffix string, productType string, optionCount int) (string, string, string) {
@@ -731,11 +1091,18 @@ func normalizeVariantFormat(optionName string, suffix string, productType string
 		format = "Bundle"
 	}
 	if format != "Standard" {
-		detail = source
-		for _, token := range []string{"Vinyl", "vinyl", "LP", "lp", "CD", "cd", "Cassette", "cassette", "MC", "mc", "Tape", "tape", "DVD", "dvd", "Bundle", "bundle"} {
-			detail = strings.ReplaceAll(detail, token, "")
+		if match := multiUnitFormatRegex.FindStringSubmatch(source); len(match) == 4 {
+			detail = strings.ToUpper(match[1] + match[2])
+			if match[3] != "" {
+				detail += " Boxset"
+			}
+		} else {
+			detail = source
+			for _, token := range []string{"Vinyl", "vinyl", "LP", "lp", "CD", "cd", "Cassette", "cassette", "MC", "mc", "Tape", "tape", "DVD", "dvd", "Bundle", "bundle"} {
+				detail = strings.ReplaceAll(detail, token, "")
+			}
+			detail = normalizeSpaces(strings.Trim(detail, "-, "))
 		}
-		detail = normalizeSpaces(strings.Trim(detail, "-, "))
 	}
 	display := format
 	if optionCount > 1 && detail != "" {
@@ -752,6 +1119,9 @@ func normalizeVariantFormat(optionName string, suffix string, productType string
 }
 
 func seededInventory(soldOut bool, low bool, preorder bool, productType string) int {
+	if productType == "fixed_bundle" {
+		return 0
+	}
 	if soldOut {
 		return 0
 	}
@@ -779,7 +1149,46 @@ func buildBundlePlan(product *normalizedProduct, records []sourceRecord) *bundle
 		plan.BundleType = "mystery"
 		plan.InventoryMode = "manual"
 		plan.FulfillmentMode = "manual"
-		plan.ReviewReason = "Mystery bundles are client-managed and intentionally have no fixed component list."
+		plan.RequiresReview = false
+		plan.ReviewReason = ""
+		return plan
+	}
+	if reviewed, ok := reviewedBundleDefinitions[product.Handle]; ok {
+		plan.RequiresReview = false
+		plan.ReviewReason = ""
+		plan.IncludedPackageItems = append([]string{}, reviewed.IncludedPackageItems...)
+		product.Artists = append([]string{}, reviewed.Artists...)
+		product.SearchKeywords = stableUnique(append(product.SearchKeywords, reviewed.Artists...))
+		for _, component := range reviewed.Components {
+			selectionMode := firstNonEmptyString(component.SelectionMode, "exact")
+			componentKind := firstNonEmptyString(component.ComponentKind, "product_variant")
+			mappingDefinitions := append([]reviewedBundleFormatMapping{}, component.FormatMappings...)
+			if len(mappingDefinitions) == 0 {
+				mappingDefinitions = []reviewedBundleFormatMapping{
+					{
+						ComponentFormatLabel:   component.FormatLabel,
+						ComponentFormatDetails: append([]string{}, component.FormatDetails...),
+						BundleFormatLabel:      component.BundleFormatLabel,
+						SelectionMode:          selectionMode,
+					},
+				}
+			}
+			if len(mappingDefinitions) > 1 {
+				selectionMode = "by_bundle_variant"
+			}
+			plan.ComponentCandidates = append(plan.ComponentCandidates, bundleComponentCandidate{
+				Handle:             component.ProductHandle,
+				Title:              component.DisplayTitle,
+				Artist:             artistFromBundleDisplayTitle(component.DisplayTitle),
+				Quantity:           1,
+				FormatLabel:        component.FormatLabel,
+				FormatDetails:      append([]string{}, component.FormatDetails...),
+				BundleFormatLabel:  component.BundleFormatLabel,
+				SelectionMode:      selectionMode,
+				ComponentKind:      componentKind,
+				mappingDefinitions: mappingDefinitions,
+			})
+		}
 		return plan
 	}
 	if discographyRegex.MatchString(strings.Join(product.SourceNames, " ")) && len(product.Artists) == 1 {
@@ -790,10 +1199,12 @@ func buildBundlePlan(product *normalizedProduct, records []sourceRecord) *bundle
 			if len(id.ArtistNames) == 1 && strings.EqualFold(id.ArtistNames[0], artist) && !bundleRegex.MatchString(record.ProductName) {
 				handle := slugify(productGroupingKey("music_release", id, record), "product")
 				candidates = append(candidates, bundleComponentCandidate{
-					Handle:   handle,
-					Title:    id.ReleaseTitle,
-					Artist:   artist,
-					Quantity: 1,
+					Handle:        handle,
+					Title:         id.ReleaseTitle,
+					Artist:        artist,
+					Quantity:      1,
+					SelectionMode: "unresolved",
+					ComponentKind: "product_variant",
 				})
 			}
 		}
@@ -803,6 +1214,152 @@ func buildBundlePlan(product *normalizedProduct, records []sourceRecord) *bundle
 		}
 	}
 	return plan
+}
+
+func artistFromBundleDisplayTitle(value string) string {
+	parts := strings.SplitN(value, " — ", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+	return parts[0]
+}
+
+func cdAndVinylBundleMappings() []reviewedBundleFormatMapping {
+	return []reviewedBundleFormatMapping{
+		{ComponentFormatLabel: "CD", BundleFormatLabel: "CD", SelectionMode: "exact"},
+		{ComponentFormatLabel: "Vinyl", BundleFormatLabel: "Vinyl", SelectionMode: "exact"},
+	}
+}
+
+func appendPrivateBundleInventoryProducts(products []normalizedProduct) []normalizedProduct {
+	needsYogyakartaKit := false
+	for _, product := range products {
+		if product.Handle == "fixed-bundle-special-region-of-yogyakarta-bundle" {
+			needsYogyakartaKit = true
+		}
+		if product.Handle == privateYogyakartaKitHandle {
+			return products
+		}
+	}
+	if !needsYogyakartaKit {
+		return products
+	}
+
+	description := "Private inventory-only component for the numbered drawstring bag and package extras. Enter the verified remaining kit quantity before enabling bundle purchase."
+	return append(products, normalizedProduct{
+		SourceProductIDs: []string{},
+		SourceURLs:       []string{},
+		SourceNames:      []string{"Internal inventory: Special Region of Yogyakarta numbered kit"},
+		Handle:           privateYogyakartaKitHandle,
+		Title:            "Special Region of Yogyakarta numbered bag kit",
+		ProductType:      "merch",
+		Status:           "draft",
+		Label:            defaultLabel,
+		Artists:          []string{},
+		Genres:           []string{},
+		UtilityTags:      []string{"Internal inventory component"},
+		SearchKeywords:   []string{},
+		DescriptionText:  description,
+		DescriptionHTML:  "<p>" + html.EscapeString(description) + "</p>",
+		Images:           []string{},
+		Variants: []normalizedVariant{
+			{
+				SourceOptionName: "Numbered bag kit",
+				DisplayLabel:     "Numbered bag kit",
+				FormatLabel:      "Standard",
+				SKU:              privateYogyakartaKitSKU,
+				PriceUSDCents:    0,
+				SourceSoldOut:    true,
+				SeedInventory:    0,
+				ManageInventory:  true,
+				AllowBackorder:   false,
+				PreorderAllowed:  false,
+				BackorderAllowed: false,
+				Metadata: map[string]any{
+					"schema":                  phase6ImportMetadataSchema,
+					"internal_inventory_only": true,
+					"inventory_count_status":  "unknown",
+					"seed_inventory_quantity": 0,
+				},
+			},
+		},
+		SourceCategories: []string{},
+		Identity: parsedIdentity{
+			ReleaseTitle: "Special Region of Yogyakarta numbered bag kit",
+			Confidence:   "reviewed",
+		},
+		Metadata: map[string]any{
+			"schema":                  phase6ImportMetadataSchema,
+			"source":                  "reviewed_private_inventory_component",
+			"internal_inventory_only": true,
+			"publicly_visible":        false,
+		},
+	})
+}
+
+func resolveReviewedBundleVariants(products []normalizedProduct) error {
+	byHandle := make(map[string]*normalizedProduct, len(products))
+	for index := range products {
+		byHandle[products[index].Handle] = &products[index]
+	}
+
+	for productIndex := range products {
+		bundleProduct := &products[productIndex]
+		if bundleProduct.Bundle == nil || bundleProduct.Bundle.RequiresReview {
+			continue
+		}
+		for componentIndex := range bundleProduct.Bundle.ComponentCandidates {
+			candidate := &bundleProduct.Bundle.ComponentCandidates[componentIndex]
+			componentProduct, ok := byHandle[candidate.Handle]
+			if !ok {
+				return fmt.Errorf("reviewed bundle %s references missing component %s", bundleProduct.Handle, candidate.Handle)
+			}
+			for _, mappingDefinition := range candidate.mappingDefinitions {
+				componentVariantSKUs := matchingVariantSKUs(*componentProduct, mappingDefinition.ComponentFormatLabel, mappingDefinition.ComponentFormatDetails)
+				if len(componentVariantSKUs) == 0 {
+					return fmt.Errorf("reviewed bundle %s component %s has no %s variant matching %v", bundleProduct.Handle, candidate.Handle, mappingDefinition.ComponentFormatLabel, mappingDefinition.ComponentFormatDetails)
+				}
+				selectionMode := firstNonEmptyString(mappingDefinition.SelectionMode, "exact")
+				if selectionMode == "exact" && len(componentVariantSKUs) != 1 {
+					return fmt.Errorf("reviewed bundle %s component %s expected one exact variant, found %d", bundleProduct.Handle, candidate.Handle, len(componentVariantSKUs))
+				}
+				bundleVariantSKUs := matchingVariantSKUs(*bundleProduct, mappingDefinition.BundleFormatLabel, nil)
+				if len(bundleVariantSKUs) == 0 {
+					return fmt.Errorf("reviewed bundle %s has no bundle variant for format %s", bundleProduct.Handle, mappingDefinition.BundleFormatLabel)
+				}
+				candidate.ComponentVariantSKUs = appendUnique(candidate.ComponentVariantSKUs, componentVariantSKUs...)
+				candidate.BundleVariantSKUs = appendUnique(candidate.BundleVariantSKUs, bundleVariantSKUs...)
+				candidate.VariantMappings = append(candidate.VariantMappings, bundleComponentVariantMapping{
+					BundleVariantSKUs:    bundleVariantSKUs,
+					ComponentVariantSKUs: componentVariantSKUs,
+					SelectionMode:        selectionMode,
+				})
+			}
+		}
+	}
+	return nil
+}
+
+func matchingVariantSKUs(product normalizedProduct, formatLabel string, prioritizedDetails []string) []string {
+	if len(prioritizedDetails) > 0 {
+		var matches []string
+		for _, detail := range prioritizedDetails {
+			for _, variant := range product.Variants {
+				if strings.EqualFold(variant.FormatLabel, formatLabel) && strings.EqualFold(variant.FormatDetailLabel, detail) {
+					matches = append(matches, variant.SKU)
+				}
+			}
+		}
+		return matches
+	}
+
+	var matches []string
+	for _, variant := range product.Variants {
+		if formatLabel == "" || strings.EqualFold(variant.FormatLabel, formatLabel) {
+			matches = append(matches, variant.SKU)
+		}
+	}
+	return matches
 }
 
 func genresFromCategories(categories []sourceCategory) []string {
@@ -990,7 +1547,7 @@ func writeCleanedSourceCSV(path string, products []normalizedProduct) error {
 					variant.DisplayLabel,
 					variant.FormatLabel,
 					variant.FormatDetailLabel,
-					strconv.Itoa(variant.PriceUSDCents),
+					positiveIntString(variant.PriceUSDCents),
 					strconv.FormatBool(variant.SourceSoldOut),
 					strconv.Itoa(variant.SeedInventory),
 					strconv.FormatBool(variant.PreorderAllowed),
@@ -1048,6 +1605,16 @@ func writeUploaderCSV(path string, products []normalizedProduct, salesChannelID 
 	return writeCSV(path, headers, func(w *csv.Writer) error {
 		for _, product := range products {
 			for _, variant := range product.Variants {
+				externalID := ""
+				productSalesChannelID := salesChannelID
+				discountable := "true"
+				if len(product.SourceProductIDs) > 0 {
+					externalID = "bigcartel:" + strings.Join(product.SourceProductIDs, ",")
+				}
+				if product.Metadata["internal_inventory_only"] == true {
+					productSalesChannelID = ""
+					discountable = "false"
+				}
 				productMetadata := map[string]any{
 					"catalog_import": map[string]any{
 						"schema":             phase6ImportMetadataSchema,
@@ -1074,18 +1641,18 @@ func writeUploaderCSV(path string, products []normalizedProduct, salesChannelID 
 					"",
 					product.Status,
 					product.DescriptionText,
-					"bigcartel:" + strings.Join(product.SourceProductIDs, ","),
+					externalID,
 					firstString(product.Images),
-					"true",
+					discountable,
 					mustJSON(productMetadata),
-					salesChannelID,
+					productSalesChannelID,
 					"",
 					variant.DisplayLabel,
 					variant.SKU,
 					"true",
 					strings.ToLower(strconv.FormatBool(variant.AllowBackorder)),
 					mustJSON(variantMetadata),
-					strconv.Itoa(variant.PriceUSDCents),
+					positiveIntString(variant.PriceUSDCents),
 					"Format",
 					variant.DisplayLabel,
 				}
@@ -1113,6 +1680,12 @@ func writeInventoryCSV(path string, products []normalizedProduct) error {
 		for _, product := range products {
 			for _, variant := range product.Variants {
 				note := "Stock quantity is a deterministic staging seed because BigCartel scrape exposes sold_out/low flags, not exact inventory amount."
+				if product.ProductType == "fixed_bundle" {
+					note = "Fixed bundles have no independent stock seed; availability must be derived from the reviewed component variant mappings."
+				}
+				if variant.Metadata["internal_inventory_only"] == true {
+					note = "Private bundle-kit inventory starts at zero because the remaining physical kit count is unknown; enter a verified count before enabling bundle purchase."
+				}
 				row := []string{
 					product.Handle,
 					variant.SKU,
@@ -1165,6 +1738,7 @@ func buildCatalogArtifact(products []normalizedProduct) catalogArtifact {
 		Notes: []string{
 			"Product and variant IDs are intentionally not present before CSV import; apply code must resolve by product handle and variant SKU after the Medusa import completes.",
 			"Inventory quantities are staged separately because Medusa 2.17.1 product CSV import does not accept stock quantity columns.",
+			"Reviewed bundle components include exact component and bundle variant SKUs. Selection mode any consumes exactly one eligible component variant in listed priority order.",
 		},
 	}
 	addRef := func(kind string, label string) {
@@ -1261,19 +1835,31 @@ func buildCatalogArtifact(products []normalizedProduct) catalogArtifact {
 				RequiresReview:  product.Bundle.RequiresReview,
 				ReviewReason:    product.Bundle.ReviewReason,
 				Metadata: map[string]any{
-					"schema":               phase6ImportMetadataSchema,
-					"component_candidates": product.Bundle.ComponentCandidates,
+					"schema":                 phase6ImportMetadataSchema,
+					"component_candidates":   product.Bundle.ComponentCandidates,
+					"included_package_items": product.Bundle.IncludedPackageItems,
 				},
 			})
 			for index, candidate := range product.Bundle.ComponentCandidates {
 				artifact.BundleComponents = append(artifact.BundleComponents, catalogBundleComponent{
 					BundleHandle:           product.Handle,
 					ComponentProductHandle: candidate.Handle,
+					ComponentVariantSKUs:   candidate.ComponentVariantSKUs,
+					BundleVariantSKUs:      candidate.BundleVariantSKUs,
 					Title:                  candidate.Title,
 					Quantity:               candidate.Quantity,
 					SortOrder:              index,
 					IsRequired:             true,
-					NeedsResolution:        true,
+					SelectionMode:          candidate.SelectionMode,
+					ComponentKind:          candidate.ComponentKind,
+					VariantMappings:        candidate.VariantMappings,
+					NeedsResolution:        product.Bundle.RequiresReview,
+					Metadata: map[string]any{
+						"schema":              phase6ImportMetadataSchema,
+						"format_label":        candidate.FormatLabel,
+						"format_details":      candidate.FormatDetails,
+						"bundle_format_label": candidate.BundleFormatLabel,
+					},
 				})
 			}
 		}
@@ -1296,19 +1882,30 @@ func buildCatalogArtifact(products []normalizedProduct) catalogArtifact {
 	return artifact
 }
 
-func buildPreview(sourcePath string, products []normalizedProduct, salesChannelID string) importPreview {
+func buildPreview(
+	sourcePath string,
+	currentURLsPath string,
+	currentURLs map[string]bool,
+	excludedUnlistedSourceCount int,
+	products []normalizedProduct,
+	salesChannelID string,
+) importPreview {
 	artistSet := map[string]bool{}
 	genreSet := map[string]bool{}
 	tagSet := map[string]bool{}
 	imageSet := map[string]bool{}
 	ambiguityCounts := map[string]int{}
 	preview := importPreview{
-		GeneratedAt:     time.Now().UTC().Format(time.RFC3339),
-		SourcePath:      sourcePath,
-		AmbiguityCounts: ambiguityCounts,
-		HeaderContract:  uploaderHeaders(maxImageCount(products)),
-		OutputFiles:     map[string]string{},
-		SHA256:          map[string]string{},
+		GeneratedAt:                 time.Now().UTC().Format(time.RFC3339),
+		SourcePath:                  sourcePath,
+		CurrentURLsPath:             currentURLsPath,
+		SalesChannelID:              salesChannelID,
+		CurrentListingCount:         len(currentURLs),
+		ExcludedUnlistedSourceCount: excludedUnlistedSourceCount,
+		AmbiguityCounts:             ambiguityCounts,
+		HeaderContract:              uploaderHeaders(maxImageCount(products)),
+		OutputFiles:                 map[string]string{},
+		SHA256:                      map[string]string{},
 	}
 	if salesChannelID == "" {
 		preview.Warnings = append(preview.Warnings, "MEDUSA_DEFAULT_SALES_CHANNEL_ID was not set; Product Sales Channel 1 cells are blank in the uploader CSV.")
@@ -1316,6 +1913,9 @@ func buildPreview(sourcePath string, products []normalizedProduct, salesChannelI
 	for _, product := range products {
 		preview.NormalizedProductCount++
 		preview.SourceProductCount += len(product.SourceProductIDs)
+		if product.Metadata["internal_inventory_only"] == true {
+			preview.InternalInventoryProductCount++
+		}
 		switch product.ProductType {
 		case "music_release":
 			preview.MusicReleaseCount++
@@ -1324,6 +1924,10 @@ func buildPreview(sourcePath string, products []normalizedProduct, salesChannelI
 		case "fixed_bundle":
 			preview.BundleCount++
 			preview.FixedBundleCount++
+			if product.Bundle != nil && !product.Bundle.RequiresReview {
+				preview.ReviewedFixedBundleCount++
+				preview.BundleComponentCount += len(product.Bundle.ComponentCandidates)
+			}
 		case "mystery_bundle":
 			preview.BundleCount++
 			preview.MysteryBundleCount++
@@ -1362,6 +1966,9 @@ func buildPreview(sourcePath string, products []normalizedProduct, salesChannelI
 			if variant.BackorderAllowed {
 				preview.BackorderEligibleVariantCount++
 			}
+			if variant.Metadata["price_source"] == "reviewed_estimate" {
+				preview.ReviewedPriceEstimateCount++
+			}
 			for _, code := range variant.AmbiguityCodes {
 				ambiguityCounts[code]++
 			}
@@ -1383,6 +1990,7 @@ func writeContractMarkdown(path string, preview importPreview) error {
 	b.WriteString("- Multiline descriptions and JSON metadata are quoted by the CSV writer.\n")
 	b.WriteString("- One CSV row represents one Medusa product variant. Rows are grouped by `Product Handle`.\n")
 	b.WriteString("- Handles and SKUs are stable idempotency keys for this migration pass.\n")
+	b.WriteString("- Only products present in the current live URL list are emitted. Unlisted source rows are excluded from every import artifact.\n")
 	b.WriteString("- The CSV intentionally uses only Medusa 2.17.1 chunked-import headers accepted by `CSVNormalizer`.\n")
 	b.WriteString("- Inventory quantities are not in the product CSV because Medusa 2.17.1 rejects unknown stock quantity headers. Use `phase6-inventory-levels.csv` after resolving imported variant IDs and the staging stock location.\n")
 	b.WriteString("- Catalog profile, artists, genres, media metadata, variant profile, and bundle semantics are in `phase6-catalog-upserts.json`; apply code must resolve products by handle and variants by SKU after CSV import.\n\n")
@@ -1393,20 +2001,38 @@ func writeContractMarkdown(path string, preview importPreview) error {
 		b.WriteString("`\n")
 	}
 	b.WriteString("\n## Counts\n\n")
+	b.WriteString(fmt.Sprintf("- Current live listings: %d\n", preview.CurrentListingCount))
+	b.WriteString(fmt.Sprintf("- Unlisted source rows excluded: %d\n", preview.ExcludedUnlistedSourceCount))
 	b.WriteString(fmt.Sprintf("- Products: %d\n", preview.NormalizedProductCount))
 	b.WriteString(fmt.Sprintf("- Variants/uploader rows: %d\n", preview.VariantCount))
 	b.WriteString(fmt.Sprintf("- Bundles: %d fixed, %d mystery\n", preview.FixedBundleCount, preview.MysteryBundleCount))
+	b.WriteString(fmt.Sprintf("- Reviewed fixed bundles: %d with %d component requirements\n", preview.ReviewedFixedBundleCount, preview.BundleComponentCount))
+	b.WriteString(fmt.Sprintf("- Private inventory-only products: %d\n", preview.InternalInventoryProductCount))
 	b.WriteString(fmt.Sprintf("- Artists: %d\n", preview.ArtistCount))
 	b.WriteString(fmt.Sprintf("- Genres: %d\n", preview.GenreCount))
 	b.WriteString(fmt.Sprintf("- Unique image URLs: %d\n", preview.MediaURLCount))
 	b.WriteString(fmt.Sprintf("- Ambiguous products: %d\n", preview.AmbiguityCount))
+	b.WriteString(fmt.Sprintf("- Variants using reviewed price estimates: %d\n", preview.ReviewedPriceEstimateCount))
+	if preview.SalesChannelID != "" {
+		b.WriteString(fmt.Sprintf("- Staging sales channel: `%s`\n", preview.SalesChannelID))
+	}
 	b.WriteString("\n## Stock Seed Policy\n\n")
 	b.WriteString("- Source scrape exposes `sold_out`, `isLowInventory`, and `isAlmostSoldOut`, not exact BigCartel stock counts.\n")
+	b.WriteString("- Fixed bundle variants seed no independent stock; their availability comes only from the reviewed component mappings.\n")
 	b.WriteString("- Sold-out variants seed `0`.\n")
 	b.WriteString("- Low/almost-sold-out variants seed `2`.\n")
 	b.WriteString("- Normal variants seed `20`.\n")
 	b.WriteString("- Preorder variants seed `50` when a release date can be parsed.\n")
 	b.WriteString("- Mystery bundles seed `10` because they are client-managed manual bundles.\n\n")
+	b.WriteString("## Reviewed Price Estimates\n\n")
+	b.WriteString("- Explicit reviewed estimates are used only when the source listing has no positive price. A future positive source price automatically takes precedence.\n")
+	b.WriteString("- Estimated variants retain `price_source`, `price_estimate_basis`, and `price_reviewed_at` provenance in variant metadata.\n")
+	b.WriteString("- A reviewed estimate resolves the price ambiguity only; a source-sold-out variant still seeds zero inventory and remains unavailable for purchase.\n\n")
+	b.WriteString("## Reviewed Bundle Mappings\n\n")
+	b.WriteString("- Reviewed fixed bundles contain deterministic component product handles, eligible component variant SKUs, applicable bundle variant SKUs, quantities, and exact/any selection semantics.\n")
+	b.WriteString("- Sold-out components remain mapped. They make the applicable bundle variant unavailable instead of disappearing from its contents.\n")
+	b.WriteString("- The Special Region of Yogyakarta numbered package uses a hidden inventory-only product seeded at zero until the physical remaining-kit count is verified.\n")
+	b.WriteString("- Package extras such as the numbered bag, stickers, pin, and download codes remain bundle display metadata; the private kit inventory component supplies the stock limit.\n\n")
 	b.WriteString("## External References\n\n")
 	b.WriteString("- Medusa product import user guide: https://docs.medusajs.com/user-guide/products/import\n")
 	b.WriteString("- Medusa product module guide: https://docs.medusajs.com/resources/commerce-modules/product\n")
@@ -1666,6 +2292,20 @@ func contains(values []string, target string) bool {
 	return false
 }
 
+func withoutStrings(values []string, excluded ...string) []string {
+	excludedSet := map[string]bool{}
+	for _, value := range excluded {
+		excludedSet[value] = true
+	}
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if !excludedSet[value] {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
 func appendUnique(base []string, values ...string) []string {
 	return stableUnique(append(base, values...))
 }
@@ -1679,7 +2319,7 @@ func stripHTML(value string) string {
 }
 
 func slugify(value string, fallback string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
+	value = latinSlugReplacer.Replace(strings.ToLower(strings.TrimSpace(value)))
 	var b strings.Builder
 	lastDash := false
 	for _, r := range value {
@@ -1716,6 +2356,13 @@ func firstString(values []string) string {
 		return ""
 	}
 	return values[0]
+}
+
+func positiveIntString(value int) string {
+	if value <= 0 {
+		return ""
+	}
+	return strconv.Itoa(value)
 }
 
 func productTypeLabel(value string) string {
