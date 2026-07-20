@@ -287,7 +287,7 @@ jobs:
           echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$chrome_path" >> "$GITHUB_ENV"
 
       - name: Run non-destructive Playwright smoke tests
-        run: pnpm --filter remorseless-records-storefront run test:e2e -- --config=playwright.ci.config.ts
+        run: pnpm --filter remorseless-records-storefront run test:e2e --config=playwright.ci.config.ts
 
       # Optional: store Playwright artifacts (screenshots/videos) when failures happen.
       # - name: Upload Playwright artifacts
