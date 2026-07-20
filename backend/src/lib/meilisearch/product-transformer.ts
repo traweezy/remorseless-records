@@ -1,3 +1,8 @@
+import {
+  ContainerRegistrationKeys,
+  getTotalVariantAvailability,
+} from "@medusajs/framework/utils"
+
 type DefaultTransformer = (
   product: Record<string, unknown>,
   options?: TransformerOptions
@@ -522,15 +527,19 @@ const resolveStockStatus = (variant: DynamicRecord | null): {
     return { status: "in_stock", quantity }
   }
 
-  if ((quantity ?? 0) <= 0) {
-    return { status: "sold_out", quantity: quantity ?? 0 }
+  if (quantity === null || !Number.isFinite(quantity)) {
+    return { status: "unknown", quantity: null }
   }
 
-  if ((quantity ?? 0) < 5) {
-    return { status: "low_stock", quantity: quantity ?? 0 }
+  if (quantity <= 0) {
+    return { status: "sold_out", quantity }
   }
 
-  return { status: "in_stock", quantity: quantity ?? 0 }
+  if (quantity < 5) {
+    return { status: "low_stock", quantity }
+  }
+
+  return { status: "in_stock", quantity }
 }
 
 const aggregateStockStatus = (
@@ -1060,14 +1069,69 @@ const loadCatalogFacts = async (
   }
 }
 
+const loadVariantAvailability = async (
+  product: DynamicRecord,
+  options?: TransformerOptions
+): Promise<Record<string, number | null>> => {
+  const container = options?.container
+  if (!container) {
+    return {}
+  }
+
+  const variantIds = toRecordList(product.variants)
+    .map((variant) => toStringOrNull(variant.id))
+    .filter((id): id is string => Boolean(id))
+  if (!variantIds.length) {
+    return {}
+  }
+
+  try {
+    const query = container.resolve(ContainerRegistrationKeys.QUERY) as Parameters<
+      typeof getTotalVariantAvailability
+    >[0]
+    const availability = await getTotalVariantAvailability(query, {
+      variant_ids: variantIds,
+    })
+
+    return Object.fromEntries(
+      variantIds.map((variantId) => [
+        variantId,
+        availability[variantId]?.availability ?? null,
+      ])
+    )
+  } catch {
+    return {}
+  }
+}
+
+const mergeVariantAvailability = (
+  product: DynamicRecord,
+  availability: Record<string, number | null>
+): DynamicRecord => ({
+  ...product,
+  variants: toRecordList(product.variants).map((variant) => {
+    const variantId = toStringOrNull(variant.id)
+    const quantity = variantId ? availability[variantId] : null
+    return typeof quantity === "number"
+      ? { ...variant, inventory_quantity: quantity }
+      : variant
+  }),
+})
+
 const productSearchTransformer = async (
   product: Record<string, unknown>,
   defaultTransformer: DefaultTransformer,
   options?: TransformerOptions
 ): Promise<SearchDocument> => {
   const transformed = (await defaultTransformer(product, options)) as DynamicRecord
-  const catalogFacts = await loadCatalogFacts(transformed, options)
-  return buildSearchDocument(transformed, catalogFacts)
+  const [catalogFacts, availability] = await Promise.all([
+    loadCatalogFacts(transformed, options),
+    loadVariantAvailability(transformed, options),
+  ])
+  return buildSearchDocument(
+    mergeVariantAvailability(transformed, availability),
+    catalogFacts
+  )
 }
 
 export default productSearchTransformer

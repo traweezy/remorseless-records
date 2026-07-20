@@ -1,4 +1,6 @@
-import { buildSearchDocument } from "./product-transformer"
+import productSearchTransformer, {
+  buildSearchDocument,
+} from "./product-transformer"
 
 describe("buildSearchDocument", () => {
   it("builds a catalog-aware search document from product and catalog facts", () => {
@@ -257,5 +259,89 @@ describe("buildSearchDocument", () => {
     expect(document.label).toBe("Remorseless Records")
     expect(document.price_amount).toBe(900)
     expect(document.stock_status).toBe("sold_out")
+  })
+
+  it("loads linked inventory before deriving search stock state", async () => {
+    const query = {
+      graph: jest.fn().mockResolvedValue({
+        data: [
+          {
+            variant_id: "var_available",
+            required_quantity: 1,
+            inventory: {
+              location_levels: [{ location_id: "loc_1", available_quantity: 12 }],
+            },
+          },
+          {
+            variant_id: "var_sold_out",
+            required_quantity: 1,
+            inventory: {
+              location_levels: [{ location_id: "loc_1", available_quantity: 0 }],
+            },
+          },
+        ],
+      }),
+    }
+    const product = {
+      id: "prod_inventory",
+      handle: "inventory-aware-product",
+      title: "Inventory-aware product",
+      variants: [
+        {
+          id: "var_available",
+          title: "CD",
+          manage_inventory: true,
+          prices: [{ amount: 1200, currency_code: "usd" }],
+        },
+        {
+          id: "var_sold_out",
+          title: "Cassette",
+          manage_inventory: true,
+          prices: [{ amount: 900, currency_code: "usd" }],
+        },
+      ],
+    }
+
+    const document = await productSearchTransformer(
+      product,
+      async (value) => value,
+      {
+        container: {
+          hasRegistration: (key) => key !== "catalog",
+          resolve: () => query,
+        },
+      }
+    )
+
+    expect(query.graph).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entity: "product_variant_inventory_items",
+        filters: { variant_id: ["var_available", "var_sold_out"] },
+      }),
+      expect.any(Object)
+    )
+    expect(document.stock_status).toBe("in_stock")
+    expect(document.stock_statuses).toEqual(["in_stock", "sold_out"])
+    expect(document.default_variant_id).toBe("var_available")
+    expect(document.inventory_quantity).toBe(12)
+  })
+
+  it("does not treat missing managed inventory data as sold out", () => {
+    const document = buildSearchDocument({
+      id: "prod_unknown_inventory",
+      handle: "unknown-inventory-product",
+      title: "Unknown inventory product",
+      variants: [
+        {
+          id: "var_unknown",
+          title: "CD",
+          manage_inventory: true,
+          prices: [{ amount: 1200, currency_code: "usd" }],
+        },
+      ],
+    })
+
+    expect(document.stock_status).toBe("unknown")
+    expect(document.inventory_quantity).toBeNull()
   })
 })

@@ -5,6 +5,40 @@ import { resolveMeilisearchService } from "./meilisearch-service"
 
 const PRODUCTS_INDEX = "products"
 
+type CatalogReadModelIntegrity = {
+  contradictoryStockCount: number
+  unknownStockCount: number
+}
+
+export const assertCatalogReadModelIntegrity = ({
+  contradictoryStockCount,
+  unknownStockCount,
+}: CatalogReadModelIntegrity): void => {
+  if (contradictoryStockCount > 0) {
+    throw new Error(
+      `[meilisearch] ${contradictoryStockCount} published product(s) are marked sold out while also reporting available variants.`
+    )
+  }
+  if (unknownStockCount > 0) {
+    throw new Error(
+      `[meilisearch] ${unknownStockCount} published product(s) have unknown stock after a full reindex.`
+    )
+  }
+}
+
+const searchCount = async (
+  index: {
+    search: (
+      query: string,
+      options: Record<string, unknown>
+    ) => Promise<{ estimatedTotalHits?: number; totalHits?: number }>
+  },
+  filter: string
+): Promise<number> => {
+  const result = await index.search("", { limit: 0, filter })
+  return result.estimatedTotalHits ?? result.totalHits ?? 0
+}
+
 export default async function checkMeilisearchSync({
   container,
 }: ExecArgs): Promise<void> {
@@ -13,6 +47,10 @@ export default async function checkMeilisearchSync({
   const meilisearch = resolveMeilisearchService<{
     getIndex: (indexKey: string) => {
       getStats: () => Promise<{ numberOfDocuments: number }>
+      search: (
+        query: string,
+        options: Record<string, unknown>
+      ) => Promise<{ estimatedTotalHits?: number; totalHits?: number }>
     }
   }>(container)
 
@@ -27,7 +65,8 @@ export default async function checkMeilisearchSync({
     take: 0,
   })
 
-  const stats = await meilisearch.getIndex(PRODUCTS_INDEX).getStats()
+  const index = meilisearch.getIndex(PRODUCTS_INDEX)
+  const stats = await index.getStats()
   const indexedCount = stats.numberOfDocuments ?? 0
 
   logger.info(
@@ -41,4 +80,18 @@ export default async function checkMeilisearchSync({
   } else {
     logger.info("[meilisearch] Counts match. Index appears synchronized.")
   }
+
+  const [contradictoryStockCount, unknownStockCount] = await Promise.all([
+    searchCount(
+      index,
+      'status = "published" AND stock_status = "sold_out" AND availability_states = "available"'
+    ),
+    searchCount(index, 'status = "published" AND stock_status = "unknown"'),
+  ])
+
+  assertCatalogReadModelIntegrity({
+    contradictoryStockCount,
+    unknownStockCount,
+  })
+  logger.info("[meilisearch] Published stock-state invariants pass.")
 }
