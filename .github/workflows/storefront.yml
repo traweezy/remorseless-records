@@ -280,8 +280,11 @@ jobs:
       - name: Build storefront
         run: pnpm --filter remorseless-records-storefront run build
 
-      - name: Install Playwright browsers
-        run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps chromium
+      - name: Resolve Chrome for Playwright
+        run: |
+          chrome_path="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          test -n "$chrome_path"
+          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$chrome_path" >> "$GITHUB_ENV"
 
       - name: Run non-destructive Playwright smoke tests
         run: pnpm --filter remorseless-records-storefront run test:e2e -- --config=playwright.ci.config.ts
