@@ -31,14 +31,14 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 
 - **Backend**: Medusa core services plus Stripe Checkout session endpoint, webhook handler, Resend-powered notifications, Meilisearch sync helpers.
 - **Storefront**: Next 16 App Router with React Compiler enabled, brutal UI spec, Stripe Checkout redirect, Meilisearch-powered search, variant selectors, optimistic cart updates.
-- **Package management**: `pnpm` via Corepack. Node 22.11.0 enforced through `.nvmrc`.
+- **Package management**: `pnpm` via Corepack. Node 26.2.0 enforced through `.nvmrc`.
 
 ## Prerequisites
 
 | Tool        | Version / Notes                                              |
 |-------------|--------------------------------------------------------------|
-| Node.js     | 22.11.0 (via `.nvmrc`)                                       |
-| pnpm        | 10.19.x (Corepack-managed)                                   |
+| Node.js     | 26.2.0 (via `.nvmrc`)                                        |
+| pnpm        | 11.9.0 (Corepack-managed)                                    |
 | PostgreSQL  | 14+ (Railway provisioned or local)                           |
 | Redis       | optional-local; Medusa will fall back to in-memory if absent |
 | Stripe CLI  | optional but recommended for webhook testing                 |
@@ -58,7 +58,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
    ```bash
    nvm use              # respects .nvmrc
    corepack enable pnpm
-   pnpm --version       # should report 10.19.x
+   pnpm --version       # should report 11.9.0
    ```
 
 3. **Install dependencies**
@@ -274,7 +274,7 @@ Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
 
 | Symptom | Resolution |
 |---------|------------|
-| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 22). Warning occurs on newer runtimes; stick to Node 22 for dev/build parity. |
+| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.2.0. |
 | Storefront shows empty cart despite items | Cart cookies scoped to domain. When using Railway URLs, ensure `NEXT_PUBLIC_MEDUSA_URL` points to same origin or configure CORS. |
 | Search results empty | Confirm Meilisearch index name (`products`), API keys, and that documents exist. Backend fallback logs to console when Meili query fails. |
 | Webhook signature errors | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL. |
