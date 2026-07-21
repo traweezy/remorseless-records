@@ -33,17 +33,19 @@ overrides:
   "@remix-run/router": ^1.23.2
   "@swc/core": ^1.15.43
   "ajv@>=7.0.0 <8.18.0": ^8.20.0
-  axios: ^1.15.2
-  brace-expansion: ^2.0.3
+  axios: ^1.18.0
+  "body-parser@<1.20.6": ^1.20.6
+  brace-expansion: ^2.1.2
   devalue: ^5.8.1
   diff: ^4.0.4
   esbuild: ^0.25.12
   fast-xml-parser: ^5.8.0
+  fast-uri: ^3.1.4
   fdir: ^6.5.0
   follow-redirects: ^1.16.0
   flatted: ^3.4.2
   i18next-http-backend: ^3.0.5
-  immutable: ^3.8.3
+  immutable: ^4.3.9
   js-cookie: ^3.0.7
   json-2-csv: 5.5.11
   "js-yaml@<=4.1.1": ^4.2.0
@@ -60,12 +62,13 @@ overrides:
   "picomatch@>=4.0.0 <4.0.4": ^4.0.4
   posthog-node: ^5.38.6
   postcss: ^8.5.15
-  protobufjs: ^7.6.3
+  protobufjs: ^7.6.5
   qs: ^6.15.2
   react-router: ^6.30.4
   react-router-dom: ^6.30.4
   rollup: ^4.60.4
   semver: ^7.5.2
+  sharp: ^0.35.0
   tmp: 0.2.7
   "undici@>=7.0.0 <7.28.0": ^7.28.0
   uuid: ^11.1.1
@@ -73,7 +76,8 @@ overrides:
   "vite@>=7.0.0 <=7.3.1": ^7.3.2
   "form-data@>=4.0.0 <4.0.6": ^4.0.6
   "ws@>=7.0.0 <7.5.11": ^7.5.11
-  "@opentelemetry/core": ^2.8.0
+  "@opentelemetry/core": 2.9.0
+  "@opentelemetry/propagator-jaeger": 2.9.0
 
 patchedDependencies:
   '@rokmohar/medusa-plugin-meilisearch@1.4.3': patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
