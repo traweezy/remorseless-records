@@ -259,6 +259,7 @@ describe("buildSearchDocument", () => {
     expect(document.label).toBe("Remorseless Records")
     expect(document.price_amount).toBe(900)
     expect(document.stock_status).toBe("sold_out")
+    expect(document.availability_states).toEqual(["sold_out"])
   })
 
   it("loads linked inventory before deriving search stock state", async () => {

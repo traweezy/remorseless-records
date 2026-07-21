@@ -695,7 +695,13 @@ const resolveAvailabilityStates = (
   const states = new Set<string>()
   variants.forEach((variant) => {
     states.add(variant.stock_status)
-    states.add(variant.availability_status)
+    if (
+      ["preorder", "backorder", "coming_soon"].includes(
+        variant.availability_status
+      )
+    ) {
+      states.add(variant.availability_status)
+    }
     if (variant.preorder_allowed) {
       states.add("preorder")
     }

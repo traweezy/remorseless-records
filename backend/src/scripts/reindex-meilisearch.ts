@@ -8,6 +8,47 @@ import { resolveMeilisearchService } from "./meilisearch-service"
 
 const PRODUCTS_INDEX = "products"
 const BATCH_SIZE = 100
+const TASK_TIMEOUT_MS = 120_000
+
+type EnqueuedTask = {
+  taskUid: number
+}
+
+type CompletedTask = {
+  status: string
+  error?: unknown
+}
+
+type SearchIndex = {
+  tasks: {
+    waitForTask: (
+      task: EnqueuedTask,
+      options: { timeout: number; interval: number }
+    ) => Promise<CompletedTask>
+  }
+}
+
+export const assertTaskSucceeded = (
+  task: CompletedTask,
+  operation: string
+): void => {
+  if (task.status !== "succeeded") {
+    const detail = task.error ? `: ${JSON.stringify(task.error)}` : ""
+    throw new Error(`[meilisearch] ${operation} ${task.status}${detail}`)
+  }
+}
+
+const waitForTask = async (
+  index: SearchIndex,
+  task: EnqueuedTask,
+  operation: string
+): Promise<void> => {
+  const completed = await index.tasks.waitForTask(task, {
+    timeout: TASK_TIMEOUT_MS,
+    interval: 100,
+  })
+  assertTaskSucceeded(completed, operation)
+}
 
 const productRelations = [
   "collection",
@@ -31,13 +72,14 @@ export default async function reindexMeilisearch({
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
 
   const meilisearch = resolveMeilisearchService<{
-    deleteAllDocuments: (indexKey: string) => Promise<unknown>
+    getIndex: (indexKey: string) => SearchIndex
+    deleteAllDocuments: (indexKey: string) => Promise<EnqueuedTask>
     addDocuments: (
       indexKey: string,
       documents: unknown[],
       type?: string,
       options?: Record<string, unknown>
-    ) => Promise<unknown>
+    ) => Promise<EnqueuedTask>
   }>(container)
 
   const productModuleService = container.resolve(Modules.PRODUCT) as {
@@ -53,13 +95,9 @@ export default async function reindexMeilisearch({
 
   logger.info("[meilisearch] Rebuilding product index…")
 
-  await meilisearch.deleteAllDocuments(PRODUCTS_INDEX).catch((error) => {
-    const message =
-      error instanceof Error ? error.message : String(error ?? "unknown error")
-    logger.warn(
-      `[meilisearch] Failed to clear existing documents before reindexing: ${message}`
-    )
-  })
+  const index = meilisearch.getIndex(PRODUCTS_INDEX)
+  const deleteTask = await meilisearch.deleteAllDocuments(PRODUCTS_INDEX)
+  await waitForTask(index, deleteTask, "document deletion")
 
   let offset = 0
   let totalIndexed = 0
@@ -83,9 +121,13 @@ export default async function reindexMeilisearch({
       break
     }
 
-    await meilisearch.addDocuments(PRODUCTS_INDEX, products, "products", {
-      container,
-    })
+    const addTask = await meilisearch.addDocuments(
+      PRODUCTS_INDEX,
+      products,
+      "products",
+      { container }
+    )
+    await waitForTask(index, addTask, `batch at offset ${offset}`)
     offset += products.length
     totalIndexed += products.length
   }
