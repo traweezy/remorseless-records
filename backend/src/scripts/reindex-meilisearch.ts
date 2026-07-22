@@ -66,14 +66,16 @@ const productRelations = [
   "categories.parent_category.parent_category",
 ]
 
-export default async function reindexMeilisearch({
+export const upsertAllProductDocuments = async ({
   container,
-}: ExecArgs): Promise<void> {
+  reason,
+}: {
+  container: ExecArgs["container"]
+  reason: string
+}): Promise<number> => {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-
   const meilisearch = resolveMeilisearchService<{
     getIndex: (indexKey: string) => SearchIndex
-    deleteAllDocuments: (indexKey: string) => Promise<EnqueuedTask>
     addDocuments: (
       indexKey: string,
       documents: unknown[],
@@ -81,7 +83,6 @@ export default async function reindexMeilisearch({
       options?: Record<string, unknown>
     ) => Promise<EnqueuedTask>
   }>(container)
-
   const productModuleService = container.resolve(Modules.PRODUCT) as {
     listAndCountProducts: (
       filters?: Record<string, unknown>,
@@ -92,19 +93,13 @@ export default async function reindexMeilisearch({
       }
     ) => Promise<[unknown[], number]>
   }
-
-  logger.info("[meilisearch] Rebuilding product index…")
-
   const index = meilisearch.getIndex(PRODUCTS_INDEX)
-  const deleteTask = await meilisearch.deleteAllDocuments(PRODUCTS_INDEX)
-  await waitForTask(index, deleteTask, "document deletion")
-
   let offset = 0
   let totalIndexed = 0
-  let total = 0
 
+  logger.info(`[meilisearch] Synchronizing product documents (${reason})…`)
   while (true) {
-    const [products, count] = await productModuleService.listAndCountProducts(
+    const [products] = await productModuleService.listAndCountProducts(
       {},
       {
         relations: productRelations,
@@ -112,11 +107,6 @@ export default async function reindexMeilisearch({
         take: BATCH_SIZE,
       }
     )
-
-    if (!total) {
-      total = count ?? 0
-    }
-
     if (!products.length) {
       break
     }
@@ -133,6 +123,32 @@ export default async function reindexMeilisearch({
   }
 
   logger.info(
-    `[meilisearch] Indexed ${totalIndexed} product(s) into '${PRODUCTS_INDEX}'`
+    `[meilisearch] Synchronized ${totalIndexed} product(s) (${reason})`
   )
+  return totalIndexed
+}
+
+export default async function reindexMeilisearch({
+  container,
+}: ExecArgs): Promise<void> {
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+
+  const meilisearch = resolveMeilisearchService<{
+    getIndex: (indexKey: string) => SearchIndex
+    deleteAllDocuments: (indexKey: string) => Promise<EnqueuedTask>
+    addDocuments: (
+      indexKey: string,
+      documents: unknown[],
+      type?: string,
+      options?: Record<string, unknown>
+    ) => Promise<EnqueuedTask>
+  }>(container)
+
+  logger.info("[meilisearch] Rebuilding product index…")
+
+  const index = meilisearch.getIndex(PRODUCTS_INDEX)
+  const deleteTask = await meilisearch.deleteAllDocuments(PRODUCTS_INDEX)
+  await waitForTask(index, deleteTask, "document deletion")
+
+  await upsertAllProductDocuments({ container, reason: "full rebuild" })
 }

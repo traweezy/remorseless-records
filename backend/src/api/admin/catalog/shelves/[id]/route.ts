@@ -9,6 +9,7 @@ import {
   shelfUpsertSchema,
   upsertShelf,
 } from "../helpers"
+import { emitCatalogShelfChanged } from "../events"
 
 const getShelfId = (req: MedusaRequest): string => {
   const id = req.params.id
@@ -50,6 +51,7 @@ export const PUT = async (
     parsed.data,
     getShelfId(req)
   )
+  await emitCatalogShelfChanged(req, result.body.shelf.id)
   res.status(result.status).json(result.body)
 }
 
@@ -58,6 +60,8 @@ export const DELETE = async (
   res: MedusaResponse
 ): Promise<void> => {
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  await deleteShelf(catalogService, getShelfId(req))
+  const shelfId = getShelfId(req)
+  await deleteShelf(catalogService, shelfId)
+  await emitCatalogShelfChanged(req, shelfId)
   res.sendStatus(204)
 }

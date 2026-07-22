@@ -3,6 +3,12 @@ import {
   getTotalVariantAvailability,
 } from "@medusajs/framework/utils"
 
+import {
+  isCatalogShelfActive,
+  isNewReleaseCandidate,
+  isScheduledRecordActive,
+} from "../catalog/shelves"
+
 type DefaultTransformer = (
   product: Record<string, unknown>,
   options?: TransformerOptions
@@ -839,9 +845,26 @@ export const buildSearchDocument = (
   ])
   const thumbnail = media.find((entry) => entry.is_primary)?.url ?? imageUrls[0] ?? null
 
-  const activeShelves = (facts?.shelves ?? []).filter(
-    (shelf) => shelf.is_active !== false
+  const activeMembershipShelfIds = new Set(
+    (facts?.shelfProducts ?? [])
+      .filter((membership) => isScheduledRecordActive(membership))
+      .map((membership) => toStringOrNull(membership.shelf_id))
+      .filter((id): id is string => Boolean(id))
   )
+  const activeShelves = (facts?.shelves ?? []).filter((shelf) => {
+    if (!isCatalogShelfActive(shelf)) {
+      return false
+    }
+    const shelfId = toStringOrNull(shelf.id)
+    const isAutomaticNewRelease =
+      (shelf.mode === "automatic" || shelf.mode === "hybrid") &&
+      shelf.automation_type === "new_release"
+    return (
+      isAutomaticNewRelease ||
+      !facts?.shelfProducts ||
+      (shelfId !== null && activeMembershipShelfIds.has(shelfId))
+    )
+  })
   const ribbonShelf =
     activeShelves
       .filter((shelf) => toBoolean(shelf.show_ribbon))
@@ -957,6 +980,36 @@ const safeList = async (
   return Array.isArray(result) ? result : []
 }
 
+let automaticShelfCache = new WeakMap<
+  object,
+  { expiresAt: number; shelves: Promise<DynamicRecord[]> }
+>()
+
+export const clearAutomaticShelfCache = (): void => {
+  automaticShelfCache = new WeakMap()
+}
+
+const loadAutomaticShelves = (
+  catalogService: DynamicRecord
+): Promise<DynamicRecord[]> => {
+  const cacheKey = catalogService as object
+  const now = Date.now()
+  const cached = automaticShelfCache.get(cacheKey)
+  if (cached && cached.expiresAt > now) {
+    return cached.shelves
+  }
+
+  const shelves = safeList(catalogService, "listCatalogShelfs", {
+    is_active: true,
+    automation_type: "new_release",
+  })
+  automaticShelfCache.set(cacheKey, {
+    expiresAt: now + 30_000,
+    shelves,
+  })
+  return shelves
+}
+
 const loadCatalogFacts = async (
   product: DynamicRecord,
   options?: TransformerOptions
@@ -1045,7 +1098,7 @@ const loadCatalogFacts = async (
       shelfProducts.map((item) => toStringOrNull(item.shelf_id))
     )
 
-    const [referenceValues, mediaAssets, shelves] = await Promise.all([
+    const [referenceValues, mediaAssets, linkedShelves, automaticShelves] = await Promise.all([
       referenceIds.length
         ? safeList(catalogService, "listCatalogReferenceValues", { id: referenceIds })
         : Promise.resolve([]),
@@ -1053,9 +1106,27 @@ const loadCatalogFacts = async (
         ? safeList(catalogService, "listCatalogMediaAssets", { id: mediaAssetIds })
         : Promise.resolve([]),
       shelfIds.length
-        ? safeList(catalogService, "listCatalogShelves", { id: shelfIds })
+        ? safeList(catalogService, "listCatalogShelfs", { id: shelfIds })
         : Promise.resolve([]),
+      loadAutomaticShelves(catalogService),
     ])
+    const eligibleAutomaticShelves = automaticShelves.filter(
+      (shelf) =>
+        (shelf.mode === "automatic" || shelf.mode === "hybrid") &&
+        isNewReleaseCandidate({
+          shelf,
+          releaseDate: profile?.release_date,
+          createdAt: product.created_at ?? product.createdAt,
+        })
+    )
+    const shelves = Array.from(
+      new Map(
+        [...linkedShelves, ...eligibleAutomaticShelves].flatMap((shelf) => {
+          const id = toStringOrNull(shelf.id)
+          return id ? [[id, shelf] as const] : []
+        })
+      ).values()
+    )
 
     return {
       profile,

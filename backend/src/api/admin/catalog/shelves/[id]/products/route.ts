@@ -9,6 +9,7 @@ import {
   resolveShelf,
   shelfProductInputSchema,
 } from "../../helpers"
+import { emitCatalogShelfChanged } from "../../events"
 
 const shelfProductsSchema = z.object({
   products: z.array(shelfProductInputSchema).max(200),
@@ -53,6 +54,7 @@ export const PUT = async (
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const shelf = await resolveShelf(catalogService, getShelfId(req))
   await replaceShelfProducts(req, catalogService, shelf.id, parsed.data.products)
+  await emitCatalogShelfChanged(req, shelf.id)
   res.status(200).json({
     shelfId: shelf.id,
     products: await loadShelfProducts(catalogService, shelf.id),

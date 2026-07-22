@@ -14,6 +14,7 @@ import {
   shelfUpsertSchema,
   upsertShelf,
 } from "./helpers"
+import { emitCatalogShelfChanged } from "./events"
 
 const shelfListQuerySchema = z.object({
   handle: z.string().trim().optional(),
@@ -95,5 +96,6 @@ export const POST = async (
 
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const result = await upsertShelf(req, catalogService, parsed.data)
+  await emitCatalogShelfChanged(req, result.body.shelf.id)
   res.status(result.status).json(result.body)
 }
