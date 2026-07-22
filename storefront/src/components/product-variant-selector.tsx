@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { formatAmount } from "@/lib/money"
+import { resolveStockChip } from "@/lib/products/stock-presentation"
 import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
 import type { VariantOption } from "@/types/product"
@@ -26,36 +27,6 @@ const resolveMaxQuantity = (variant: VariantOption | null): number => {
 
 const clampQuantity = (value: number, max: number) =>
   Math.min(Math.max(value, 1), max)
-
-const resolveStockChip = (
-  variant: VariantOption
-): { label: string; tone: string } | null => {
-  if (!variant.hasPrice) {
-    return {
-      label: "Unavailable",
-      tone: "border-border/70 bg-background/60 text-muted-foreground",
-    }
-  }
-
-  if (variant.stockStatus === "sold_out") {
-    return {
-      label: "Sold out",
-      tone: "border-destructive/70 bg-destructive/20 text-destructive",
-    }
-  }
-
-  if (variant.stockStatus === "low_stock") {
-    return {
-      label:
-        variant.inventoryQuantity && variant.inventoryQuantity > 0
-          ? `Only ${variant.inventoryQuantity} left`
-          : "Low stock",
-      tone: "border-amber-400/70 bg-amber-500/15 text-amber-200",
-    }
-  }
-
-  return null
-}
 
 const ProductVariantSelector = ({
   variants,
