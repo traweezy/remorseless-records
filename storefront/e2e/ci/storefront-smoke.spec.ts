@@ -1,5 +1,37 @@
 import { expect, test } from "@playwright/test"
 
+test("homepage hydrates every curated shelf without client errors", async ({
+  page,
+}) => {
+  const pageErrors: string[] = []
+  page.on("pageerror", (error) => pageErrors.push(error.message))
+
+  const response = await page.goto("/", { waitUntil: "domcontentloaded" })
+  expect(response?.status()).toBeLessThan(400)
+
+  for (const heading of [
+    "Featured Picks",
+    "Newest Arrivals",
+    "Staff Signals",
+    "Latest News",
+  ]) {
+    await expect(
+      page.getByRole("heading", { name: heading, exact: true }).first()
+    ).toBeVisible()
+  }
+
+  await page.waitForTimeout(500)
+  expect(pageErrors).toEqual([])
+
+  const metrics = await page.evaluate(() => ({
+    viewportWidth: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    bodyWidth: document.body.scrollWidth,
+  }))
+  expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth)
+  expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.viewportWidth)
+})
+
 const routes = [
   "/about",
   "/accessibility",

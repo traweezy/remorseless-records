@@ -43,7 +43,6 @@ export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }:
     refetch,
   } = useProductDetailQuery(handle, {
     enabled: open && Boolean(handle),
-    ...(initialProduct ? { initialData: initialProduct } : {}),
     staleTime: 5 * 60_000,
   })
 
