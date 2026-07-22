@@ -220,6 +220,41 @@ export const getRecentProducts = unstable_cache(
   { revalidate: 600, tags: ["products"] }
 )
 
+export const getProductsByIds = async (
+  productIds: readonly string[]
+): Promise<StoreProduct[]> => {
+  const ids = Array.from(
+    new Set(productIds.map((id) => id.trim()).filter(Boolean))
+  ).slice(0, 50)
+  if (!ids.length) {
+    return []
+  }
+
+  const cached = unstable_cache(
+    async (): Promise<StoreProduct[]> => {
+      try {
+        const products = await listProducts({
+          id: ids,
+          limit: ids.length,
+          fields: PRODUCT_LIST_FIELDS,
+        } satisfies HttpTypes.StoreProductListParams)
+        const byId = new Map(products.map((product) => [product.id, product]))
+        return ids.flatMap((id) => {
+          const product = byId.get(id)
+          return product ? [product] : []
+        })
+      } catch (error) {
+        console.error("[getProductsByIds] Failed to load products", error)
+        return []
+      }
+    },
+    ["products-by-ids", ...ids],
+    { revalidate: 60, tags: ["products", "catalog-shelves"] }
+  )
+
+  return cached()
+}
+
 type ProductHandleSummary = {
   handle: string
   slug: ProductSlug

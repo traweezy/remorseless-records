@@ -116,11 +116,15 @@ const GENERIC_COLLECTION_SLUGS = new Set([
   "merch",
 ])
 
-const resolveCollectionRibbonLabel = (
+export const resolveCollectionRibbonLabel = (
   product: ProductCardSource,
   summary: RelatedProductSummary
 ): string | null => {
   const candidates: RibbonCandidate[] = []
+
+  if (isProductSearchHitSource(product)) {
+    addCandidate(candidates, product.ribbonLabel)
+  }
 
   if (isStoreProduct(product)) {
     const collection = product.collection

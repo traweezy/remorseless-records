@@ -56,6 +56,7 @@
   "include": [
     "next-env.d.ts",
     "next.config.ts",
+    "playwright.ci.config.ts",
     "postcss.config.ts",
     "tailwind.config.ts",
     "src",

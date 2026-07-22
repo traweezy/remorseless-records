@@ -281,4 +281,37 @@ describe("products data layer", () => {
       })
     )
   })
+
+  it("loads product ids once and restores the requested order", async () => {
+    const regionId = faker.string.uuid()
+    const firstId = faker.string.uuid()
+    const secondId = faker.string.uuid()
+    const list = vi.fn().mockResolvedValue({
+      products: [
+        { id: firstId, handle: "first" },
+        { id: secondId, handle: "second" },
+      ],
+    })
+
+    vi.doMock("next/cache", () => ({
+      unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
+    }))
+    vi.doMock("@/lib/medusa", () => ({
+      storeClient: {
+        product: { list },
+        collection: { list: vi.fn() },
+      },
+    }))
+    vi.doMock("@/lib/regions", () => ({
+      resolveRegionId: vi.fn().mockResolvedValue(regionId),
+    }))
+
+    const { getProductsByIds } = await import("@/lib/data/products")
+    const products = await getProductsByIds([secondId, firstId, secondId])
+
+    expect(products.map((product) => product.id)).toEqual([secondId, firstId])
+    expect(list).toHaveBeenCalledWith(
+      expect.objectContaining({ id: [secondId, firstId], limit: 2 })
+    )
+  })
 })

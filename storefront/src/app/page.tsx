@@ -4,7 +4,7 @@ import type { Metadata } from "next"
 import HeroSection from "@/components/hero-section"
 import ProductCarouselSection from "@/components/product-carousel-section"
 import NewsCarouselSection from "@/components/news/news-carousel-section"
-import { getCollectionProductsByHandle } from "@/lib/data/products"
+import { getHomepageShelves } from "@/lib/data/shelves"
 import { getNewsEntries } from "@/lib/data/news"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
@@ -38,39 +38,29 @@ export const metadata: Metadata = {
   },
 }
 
-const hashString = (input: string): number => {
-  let hash = 0
-  for (let i = 0; i < input.length; i += 1) {
-    hash = (hash << 5) - hash + input.charCodeAt(i)
-    hash |= 0
+const splitHeading = (title: string): { leading: string; highlight: string } => {
+  const words = title.trim().split(/\s+/).filter(Boolean)
+  if (words.length < 2) {
+    return { leading: title.trim(), highlight: "" }
   }
-  return hash
+  return {
+    leading: words.slice(0, -1).join(" "),
+    highlight: words.at(-1) ?? "",
+  }
 }
 
-const pseudoShuffle = <T extends { handle?: string | null }>(
-  items: readonly T[],
-  salt: string
-): T[] =>
-  [...items].sort((a, b) => {
-    const aKey = `${salt}:${a.handle ?? ""}`
-    const bKey = `${salt}:${b.handle ?? ""}`
-    return hashString(aKey) - hashString(bKey)
-  })
-
 const HomePage = async (): Promise<ReactElement> => {
-  const [featured, newest, staff, news] = await Promise.all([
-    getCollectionProductsByHandle("featured"),
-    getCollectionProductsByHandle("new-releases"),
-    getCollectionProductsByHandle("staff-picks"),
+  const [shelves, news] = await Promise.all([
+    getHomepageShelves(),
     getNewsEntries(),
   ])
-  const randomizedFeatured = pseudoShuffle(featured, "featured")
-  const randomizedNewest = pseudoShuffle(newest, "new-releases")
-  const randomizedStaff = pseudoShuffle(staff, "staff-picks")
+  const featured = shelves.featured
+  const newest = shelves["new-releases"]
+  const staff = shelves["staff-picks"]
   const latestNews = news.entries
   const featuredListJsonLd = buildItemListJsonLd(
-    "Featured Picks",
-    randomizedFeatured
+    featured.title,
+    featured.products
       .filter(
         (product) =>
           typeof product.handle === "string" && product.handle.trim().length
@@ -91,21 +81,21 @@ const HomePage = async (): Promise<ReactElement> => {
       <div className="mt-24">
         <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-24 px-4 sm:px-6">
           <ProductCarouselSection
-            heading={{ leading: "Featured", highlight: "Picks" }}
-            description="Curated slabs hand-picked from the vault—limited, savage, and in stock right now."
-            products={randomizedFeatured}
+            heading={splitHeading(featured.title)}
+            description={featured.description}
+            products={featured.products}
           />
 
           <ProductCarouselSection
-            heading={{ leading: "Newest", highlight: "Arrivals" }}
-            description="Fresh represses and new signings—these move fast. Bookmark them or lose them forever."
-            products={randomizedNewest}
+            heading={splitHeading(newest.title)}
+            description={newest.description}
+            products={newest.products}
           />
 
           <ProductCarouselSection
-            heading={{ leading: "Staff", highlight: "Signals" }}
-            description="Releases we can't stop looping. Tuned for the true devotees only."
-            products={randomizedStaff}
+            heading={splitHeading(staff.title)}
+            description={staff.description}
+            products={staff.products}
           />
 
           <NewsCarouselSection
