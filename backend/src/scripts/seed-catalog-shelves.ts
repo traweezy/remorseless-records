@@ -8,6 +8,8 @@ import {
 import type CatalogModuleService from "@/modules/catalog/service"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
+type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
+type CatalogServiceMethods = Record<string, CatalogServiceMethod | undefined>
 type ProductCollection = { id: string; handle?: string | null }
 type ProductSummary = { id: string }
 type ProductService = {
@@ -72,6 +74,22 @@ const shelfSeeds = [
 const first = <T>(value: T | T[]): T | undefined =>
   Array.isArray(value) ? value[0] : value
 
+const callCatalogService = async <T>(
+  catalogService: CatalogService,
+  candidates: readonly string[],
+  args: unknown[]
+): Promise<T> => {
+  const methods = catalogService as unknown as CatalogServiceMethods
+  const methodName = candidates.find(
+    (candidate) => typeof methods[candidate] === "function"
+  )
+  const method = methodName ? methods[methodName] : undefined
+  if (!method) {
+    throw new Error(`Catalog service is missing ${candidates.join(" or ")}`)
+  }
+  return (await method.apply(catalogService, args)) as T
+}
+
 export default async function seedCatalogShelves({
   container,
 }: ExecArgs): Promise<void> {
@@ -80,30 +98,38 @@ export default async function seedCatalogShelves({
   const productService = container.resolve(Modules.PRODUCT) as ProductService
 
   for (const seed of shelfSeeds) {
-    const existing = await catalogService.listCatalogShelfs({
-      handle: seed.handle,
-    })
+    const existing = await callCatalogService<Array<{ id: string }>>(
+      catalogService,
+      ["listCatalogShelves", "listCatalogShelfs"],
+      [{ handle: seed.handle }]
+    )
     if (existing.length) {
       logger.info(`[catalog-shelves] Kept existing '${seed.handle}' shelf.`)
       continue
     }
 
     const created = first(
-      await catalogService.createCatalogShelfs([
-        {
-          handle: seed.handle,
-          title: seed.title,
-          description: seed.description,
-          mode: seed.mode,
-          automation_type: seed.automation_type,
-          show_ribbon: seed.show_ribbon,
-          ribbon_label: seed.ribbon_label,
-          ribbon_priority: seed.ribbon_priority,
-          product_limit: seed.product_limit,
-          is_active: seed.is_active,
-          metadata: seed.metadata,
-        },
-      ])
+      await callCatalogService<Array<{ id: string }> | { id: string }>(
+        catalogService,
+        ["createCatalogShelves", "createCatalogShelfs"],
+        [
+          [
+            {
+              handle: seed.handle,
+              title: seed.title,
+              description: seed.description,
+              mode: seed.mode,
+              automation_type: seed.automation_type,
+              show_ribbon: seed.show_ribbon,
+              ribbon_label: seed.ribbon_label,
+              ribbon_priority: seed.ribbon_priority,
+              product_limit: seed.product_limit,
+              is_active: seed.is_active,
+              metadata: seed.metadata,
+            },
+          ],
+        ]
+      )
     )
     if (!created) {
       throw new Error(`Unable to create '${seed.handle}' catalog shelf`)

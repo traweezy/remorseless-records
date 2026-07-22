@@ -21,6 +21,8 @@ import {
 } from "@/modules/catalog/serializers"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
+type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
+type CatalogServiceMethods = Record<string, CatalogServiceMethod | undefined>
 type QueryGraph = {
   graph: (query: {
     entity: string
@@ -62,6 +64,22 @@ const toTimestamp = (value: unknown): number => {
 const toString = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 
+const callCatalogService = async <T>(
+  catalogService: CatalogService,
+  candidates: readonly string[],
+  args: unknown[]
+): Promise<T> => {
+  const methods = catalogService as unknown as CatalogServiceMethods
+  const methodName = candidates.find(
+    (candidate) => typeof methods[candidate] === "function"
+  )
+  const method = methodName ? methods[methodName] : undefined
+  if (!method) {
+    throw new Error(`Catalog service is missing ${candidates.join(" or ")}`)
+  }
+  return (await method.apply(catalogService, args)) as T
+}
+
 export const GET = async (
   req: MedusaStoreRequest,
   res: MedusaResponse
@@ -75,13 +93,17 @@ export const GET = async (
     shelfFilters.handle = handles
   }
 
-  const [shelves] = (await catalogService.listAndCountCatalogShelfs(
-    shelfFilters,
-    {
-      take: 50,
-      order: { ribbon_priority: "ASC", created_at: "ASC" },
-    }
-  )) as [CatalogShelfRecord[], number]
+  const [shelves] = await callCatalogService<[CatalogShelfRecord[], number]>(
+    catalogService,
+    ["listAndCountCatalogShelves", "listAndCountCatalogShelfs"],
+    [
+      shelfFilters,
+      {
+        take: 50,
+        order: { ribbon_priority: "ASC", created_at: "ASC" },
+      },
+    ]
+  )
   const activeShelves = shelves.filter((shelf) => {
     const startsAt = toTimestamp(shelf.starts_at)
     const endsAt = toTimestamp(shelf.ends_at)

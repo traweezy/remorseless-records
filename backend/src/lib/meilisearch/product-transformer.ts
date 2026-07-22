@@ -999,7 +999,7 @@ const loadAutomaticShelves = (
     return cached.shelves
   }
 
-  const shelves = safeList(catalogService, "listCatalogShelfs", {
+  const shelves = safeList(catalogService, "listCatalogShelves", {
     is_active: true,
     automation_type: "new_release",
   })
@@ -1106,7 +1106,7 @@ const loadCatalogFacts = async (
         ? safeList(catalogService, "listCatalogMediaAssets", { id: mediaAssetIds })
         : Promise.resolve([]),
       shelfIds.length
-        ? safeList(catalogService, "listCatalogShelfs", { id: shelfIds })
+        ? safeList(catalogService, "listCatalogShelves", { id: shelfIds })
         : Promise.resolve([]),
       loadAutomaticShelves(catalogService),
     ])
