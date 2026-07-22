@@ -29,6 +29,7 @@
     "news:seed": "node ./scripts/run-medusa.js ./src/scripts/seed-news.ts",
     "catalog:shelves:seed": "node ./scripts/run-medusa.js ./src/scripts/seed-catalog-shelves.ts",
     "catalog:options:repair": "node ./scripts/run-medusa.js ./src/scripts/repair-duplicate-product-options.ts",
+    "catalog:options:orphans:repair": "node ./scripts/run-medusa.js ./src/scripts/repair-orphan-product-options.ts",
     "shipping:update": "node ./scripts/run-medusa.js ./src/scripts/update-shipping-options.ts",
     "region:us-only": "node ./scripts/run-medusa.js ./src/scripts/enforce-us-region.ts",
     "test": "jest --runInBand --passWithNoTests",
