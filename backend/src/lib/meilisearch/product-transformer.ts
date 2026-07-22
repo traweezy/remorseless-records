@@ -4,6 +4,7 @@ import {
 } from "@medusajs/framework/utils"
 
 import {
+  getCatalogSourceCreatedAt,
   isCatalogShelfActive,
   isNewReleaseCandidate,
   isScheduledRecordActive,
@@ -749,6 +750,7 @@ export const buildSearchDocument = (
   const catalogImport = getCatalogImport(metadata)
   const legacyImport = toRecord(metadata?.legacy_import)
   const profile = facts?.profile ?? null
+  const sourceCreatedAt = getCatalogSourceCreatedAt(profile?.metadata)
 
   const referenceGenres = referenceLabelsByKind(facts, "genre")
   const utilityTags = unique([
@@ -949,7 +951,9 @@ export const buildSearchDocument = (
     backorder_allowed: variantDocuments.some((variant) => variant.backorder_allowed),
     release_date: releaseDate,
     release_year: releaseYear,
-    created_at: toIsoOrNull(normalizedProduct.created_at ?? normalizedProduct.createdAt),
+    created_at:
+      sourceCreatedAt ??
+      toIsoOrNull(normalizedProduct.created_at ?? normalizedProduct.createdAt),
     updated_at: toIsoOrNull(normalizedProduct.updated_at ?? normalizedProduct.updatedAt),
     product_type: productType,
     product_type_label: productTypeLabel,
@@ -1116,7 +1120,10 @@ const loadCatalogFacts = async (
         isNewReleaseCandidate({
           shelf,
           releaseDate: profile?.release_date,
-          createdAt: product.created_at ?? product.createdAt,
+          createdAt:
+            getCatalogSourceCreatedAt(profile?.metadata) ??
+            product.created_at ??
+            product.createdAt,
         })
     )
     const shelves = Array.from(

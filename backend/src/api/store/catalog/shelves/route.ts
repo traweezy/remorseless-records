@@ -9,6 +9,7 @@ import {
 import { z } from "zod"
 
 import {
+  getCatalogSourceCreatedAt,
   isNewReleaseCandidate,
   resolveShelfProductIds,
 } from "@/lib/catalog/shelves"
@@ -171,16 +172,22 @@ export const GET = async (
         isNewReleaseCandidate({
           shelf,
           releaseDate: profile.release_date,
-          createdAt: productCreatedAt.get(profile.product_id),
+          createdAt:
+            getCatalogSourceCreatedAt(profile.metadata) ??
+            productCreatedAt.get(profile.product_id),
           now,
         })
       )
       .sort((left, right) => {
         const leftDate = toTimestamp(
-          left.release_date ?? productCreatedAt.get(left.product_id)
+          left.release_date ??
+            getCatalogSourceCreatedAt(left.metadata) ??
+            productCreatedAt.get(left.product_id)
         )
         const rightDate = toTimestamp(
-          right.release_date ?? productCreatedAt.get(right.product_id)
+          right.release_date ??
+            getCatalogSourceCreatedAt(right.metadata) ??
+            productCreatedAt.get(right.product_id)
         )
         return rightDate - leftDate || left.product_id.localeCompare(right.product_id)
       })

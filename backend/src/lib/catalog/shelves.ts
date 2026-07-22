@@ -51,6 +51,17 @@ const toProductId = (value: ResolvableShelfProduct): string | null => {
 const unique = (values: readonly string[]): string[] =>
   Array.from(new Set(values))
 
+export const getCatalogSourceCreatedAt = (metadata: unknown): string | null => {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null
+  }
+  const record = metadata as Record<string, unknown>
+  const sourceCreatedAt = toDate(
+    record.source_created_at ?? record.sourceCreatedAt
+  )
+  return sourceCreatedAt?.toISOString() ?? null
+}
+
 export const isScheduledRecordActive = (
   value: ScheduledRecord,
   now: Date = new Date()

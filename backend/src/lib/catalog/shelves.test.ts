@@ -1,4 +1,5 @@
 import {
+  getCatalogSourceCreatedAt,
   getNewReleaseLookbackDays,
   isCatalogShelfActive,
   isNewReleaseCandidate,
@@ -112,5 +113,15 @@ describe("catalog shelf resolution", () => {
         now,
       })
     ).toBe(false)
+  })
+
+  it("normalizes source creation dates for imported catalog products", () => {
+    expect(
+      getCatalogSourceCreatedAt({
+        source_created_at: "2026-07-10T12:30:00-04:00",
+      })
+    ).toBe("2026-07-10T16:30:00.000Z")
+    expect(getCatalogSourceCreatedAt({ source_created_at: "invalid" })).toBeNull()
+    expect(getCatalogSourceCreatedAt(null)).toBeNull()
   })
 })

@@ -76,6 +76,9 @@ describe("buildSearchDocument", () => {
           release_year: 2026,
           description_html: "<p>Catalog <em>description</em></p>",
           search_keywords: ["bleak", "funeral"],
+          metadata: {
+            source_created_at: "2025-12-15T10:00:00.000Z",
+          },
         },
         artists: [
           {
@@ -223,6 +226,7 @@ describe("buildSearchDocument", () => {
       shelf_handles: ["staff-picks"],
       ribbon_label: "Staff Pick",
       ribbon_priority: 10,
+      created_at: "2025-12-15T10:00:00.000Z",
     })
     expect(document.description_text).toBe("Catalog description")
     expect(document.variants).toHaveLength(2)
