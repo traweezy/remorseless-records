@@ -74,7 +74,6 @@
   .product-carousel__splide .splide__list {
     display: flex;
     align-items: stretch;
-    gap: clamp(12px, 1.5vw, 20px);
     height: 100%;
   }
 

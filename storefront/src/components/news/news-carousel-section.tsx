@@ -3,7 +3,6 @@
 import { useMemo, useRef, type ReactElement } from "react"
 type SplideNav = { go: (destination: string | number) => void }
 import { Splide, SplideSlide } from "@splidejs/react-splide"
-import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
 
 import NewsCarouselCard from "@/components/news/news-carousel-card"
 import type { NewsEntry } from "@/lib/data/news"
@@ -116,14 +115,7 @@ export const NewsCarouselSection = ({
                 1200: { perPage: perPageByBreakpoint["1200"] },
                 768: { perPage: perPageByBreakpoint["768"] },
               },
-              autoScroll: {
-                speed: 0.45,
-                autoStart: true,
-                pauseOnHover: true,
-                pauseOnFocus: true,
-              },
             }}
-            extensions={{ AutoScroll }}
             hasTrack
             onMounted={(splide: unknown) => {
               const candidate = splide as {

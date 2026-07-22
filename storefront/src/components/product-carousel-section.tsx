@@ -4,7 +4,6 @@ import React, { useMemo, useRef, type ReactElement } from "react"
 type SplideNav = { go: (destination: string | number) => void }
 import type { HttpTypes } from "@medusajs/types"
 import { Splide, SplideSlide } from "@splidejs/react-splide"
-import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
 
 import ProductCard from "@/components/product-card"
 
@@ -39,7 +38,11 @@ export const ProductCarouselSection = ({
 }: ProductCarouselSectionProps): ReactElement | null => {
   const splideRef = useRef<SplideNav | null>(null)
   const slides = useMemo<StoreProduct[]>(
-    () => products.filter((product) => typeof product.handle === "string" && product.handle.trim().length > 0),
+    () =>
+      products.filter(
+        (product) =>
+          typeof product.handle === "string" && product.handle.trim().length > 0
+      ),
     [products]
   )
 
@@ -67,7 +70,8 @@ export const ProductCarouselSection = ({
 
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     const { deltaX, deltaY } = event
-    const dominantHorizontal = Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 4
+    const dominantHorizontal =
+      Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 4
     if (!dominantHorizontal || !splideRef.current) {
       return
     }
@@ -106,7 +110,7 @@ export const ProductCarouselSection = ({
               pauseOnFocus: true,
               wheel: false,
               arrows: slides.length > 1,
-               trimSpace: false,
+              trimSpace: false,
               classes: {
                 arrows: "product-carousel__arrows",
                 arrow: "product-carousel__arrow",
@@ -120,18 +124,15 @@ export const ProductCarouselSection = ({
                 768: { perPage: perPageByBreakpoint["768"] },
                 640: { perPage: perPageByBreakpoint["640"] },
               },
-              autoScroll: {
-                speed: 0.6,
-                autoStart: true,
-                pauseOnHover: true,
-                pauseOnFocus: true,
-              },
             }}
-            extensions={{ AutoScroll }}
             hasTrack
             onMounted={(splide: unknown) => {
-              const candidate = splide as { go?: (destination: string | number) => void }
-              splideRef.current = candidate?.go ? { go: candidate.go.bind(candidate) } : null
+              const candidate = splide as {
+                go?: (destination: string | number) => void
+              }
+              splideRef.current = candidate?.go
+                ? { go: candidate.go.bind(candidate) }
+                : null
             }}
             onDestroy={() => {
               splideRef.current = null

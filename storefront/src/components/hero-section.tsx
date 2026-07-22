@@ -33,7 +33,10 @@ export const HeroSection = () => (
         </div>
 
         <div className="space-y-4 sm:space-y-6">
-          <p className="font-bebas text-3xl tracking-[0.32rem] text-accent drop-shadow-[0_0_25px_hsl(0_100%_50%/0.75)] sm:text-4xl sm:tracking-[0.4rem] md:text-6xl md:tracking-[0.6rem] lg:text-7xl lg:tracking-[0.75rem]">
+          <p
+            data-testid="hero-tagline"
+            className="whitespace-nowrap font-bebas text-[clamp(1.5rem,6.6vw,1.875rem)] tracking-[0.18rem] text-accent drop-shadow-[0_0_25px_hsl(0_100%_50%/0.75)] sm:text-4xl sm:tracking-[0.4rem] md:text-6xl md:tracking-[0.6rem] lg:text-7xl lg:tracking-[0.75rem]"
+          >
             DEATH.&nbsp;DOOM.&nbsp;GRIND.
           </p>
           <p className="font-teko text-xl font-semibold uppercase tracking-[0.35rem] text-muted-foreground sm:text-2xl sm:tracking-[0.4rem] md:text-3xl md:tracking-[0.5rem]">
@@ -42,7 +45,11 @@ export const HeroSection = () => (
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4 sm:mt-12">
-          <Button asChild size="lg" className="px-8 py-5 text-base sm:px-10 sm:py-6 sm:text-lg">
+          <Button
+            asChild
+            size="lg"
+            className="px-8 py-5 text-base sm:px-10 sm:py-6 sm:text-lg"
+          >
             <SmartLink
               href="/catalog"
               nativePrefetch

@@ -27,20 +27,50 @@ test("homepage hydrates every curated shelf without client errors", async ({
     viewportWidth: window.innerWidth,
     documentWidth: document.documentElement.scrollWidth,
     bodyWidth: document.body.scrollWidth,
+    activeCardContentLeft: Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".product-carousel__splide .splide__slide.is-active"
+      )
+    ).map((slide) => {
+      const content = slide.querySelector<HTMLElement>(
+        ".product-carousel__card > *"
+      )
+      return content?.getBoundingClientRect().left ?? Number.NEGATIVE_INFINITY
+    }),
+    carouselListGaps: Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".product-carousel__splide .splide__list"
+      )
+    ).map((list) => window.getComputedStyle(list).columnGap),
+    heroTaglines: Array.from(
+      document.querySelectorAll<HTMLElement>('[data-testid="hero-tagline"]')
+    )
+      .map((tagline) => tagline.getBoundingClientRect())
+      .filter((bounds) => bounds.width > 0)
+      .map((bounds) => ({ left: bounds.left, right: bounds.right })),
   }))
   expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth)
   expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.viewportWidth)
+  expect(metrics.activeCardContentLeft.length).toBeGreaterThan(0)
+  for (const contentLeft of metrics.activeCardContentLeft) {
+    expect(contentLeft).toBeGreaterThanOrEqual(-1)
+  }
+  for (const gap of metrics.carouselListGaps) {
+    expect(gap === "normal" || gap === "0px").toBe(true)
+  }
+  expect(metrics.heroTaglines.length).toBeGreaterThan(0)
+  for (const tagline of metrics.heroTaglines) {
+    expect(tagline.left).toBeGreaterThanOrEqual(0)
+    expect(tagline.right).toBeLessThanOrEqual(metrics.viewportWidth)
+  }
 })
 
-const routes = [
-  "/about",
-  "/accessibility",
-  "/cookies",
-  "/terms",
-] as const
+const routes = ["/about", "/accessibility", "/cookies", "/terms"] as const
 
 for (const path of routes) {
-  test(`${path} stays within the emulated mobile viewport`, async ({ page }) => {
+  test(`${path} stays within the emulated mobile viewport`, async ({
+    page,
+  }) => {
     const response = await page.goto(path, { waitUntil: "networkidle" })
     expect(response?.status()).toBeLessThan(400)
 
