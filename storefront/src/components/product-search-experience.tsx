@@ -1302,6 +1302,7 @@ const ProductSearchExperience = ({
                   side="left"
                   ariaLabel="Filters"
                   maxWidthClassName="max-w-[360px]"
+                  panelClassName="bg-background"
                 >
                   <div className="flex h-full flex-col overflow-hidden">
                     <header className="flex items-start justify-between border-b border-border/60 px-6 py-4">
