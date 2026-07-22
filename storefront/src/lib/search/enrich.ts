@@ -10,13 +10,7 @@ const needsHydration = (hit: ProductSearchHit): boolean => {
 
   const missingFormats = !Array.isArray(hit.formats) || hit.formats.length === 0
   const missingVariant = !hit.defaultVariant
-  const missingCollection =
-    (hit.collectionTitle ?? "").toString().trim().length === 0
-  const missingGenres =
-    (!Array.isArray(hit.genres) || hit.genres.length === 0) &&
-    (!Array.isArray(hit.metalGenres) || hit.metalGenres.length === 0)
-  const missingStockStatus =
-    !hit.stockStatus || hit.stockStatus === "unknown"
+  const missingStockStatus = !hit.stockStatus || hit.stockStatus === "unknown"
   const missingInventoryQuantity =
     hit.defaultVariant?.inventoryQuantity == null ||
     hit.defaultVariant?.stockStatus === "unknown"
@@ -24,15 +18,18 @@ const needsHydration = (hit: ProductSearchHit): boolean => {
   return (
     missingFormats ||
     missingVariant ||
-    missingCollection ||
-    missingGenres ||
     missingStockStatus ||
     missingInventoryQuantity
   )
 }
 
-const mergeHits = (original: ProductSearchHit, fallback: ProductSearchHit): ProductSearchHit => {
-  const mergedFormats = original.formats.length ? original.formats : fallback.formats
+const mergeHits = (
+  original: ProductSearchHit,
+  fallback: ProductSearchHit
+): ProductSearchHit => {
+  const mergedFormats = original.formats.length
+    ? original.formats
+    : fallback.formats
   const mergedVariant = original.defaultVariant ?? fallback.defaultVariant
   const mergedCollection =
     original.collectionTitle && original.collectionTitle.trim().length
@@ -41,7 +38,7 @@ const mergeHits = (original: ProductSearchHit, fallback: ProductSearchHit): Prod
   const mergedStockStatus =
     original.stockStatus && original.stockStatus !== "unknown"
       ? original.stockStatus
-      : fallback.stockStatus ?? original.stockStatus ?? null
+      : (fallback.stockStatus ?? original.stockStatus ?? null)
 
   return {
     ...fallback,
@@ -50,10 +47,18 @@ const mergeHits = (original: ProductSearchHit, fallback: ProductSearchHit): Prod
     collectionTitle: mergedCollection ?? null,
     formats: mergedFormats,
     genres: original.genres.length ? original.genres : fallback.genres,
-    metalGenres: original.metalGenres.length ? original.metalGenres : fallback.metalGenres,
-    categories: original.categories.length ? original.categories : fallback.categories,
-    categoryHandles: original.categoryHandles.length ? original.categoryHandles : fallback.categoryHandles,
-    variantTitles: original.variantTitles.length ? original.variantTitles : fallback.variantTitles,
+    metalGenres: original.metalGenres.length
+      ? original.metalGenres
+      : fallback.metalGenres,
+    categories: original.categories.length
+      ? original.categories
+      : fallback.categories,
+    categoryHandles: original.categoryHandles.length
+      ? original.categoryHandles
+      : fallback.categoryHandles,
+    variantTitles: original.variantTitles.length
+      ? original.variantTitles
+      : fallback.variantTitles,
     format: original.format ?? fallback.format ?? null,
     priceAmount: original.priceAmount ?? fallback.priceAmount ?? null,
     stockStatus: mergedStockStatus,

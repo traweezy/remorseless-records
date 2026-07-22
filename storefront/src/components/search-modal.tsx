@@ -60,7 +60,7 @@ const SearchModal = ({ children }: SearchModalProps) => {
 
           {initial ? (
             <ProductSearchExperience
-              initialHits={initial.hits}
+              initialResponse={initial}
               initialSort="title-asc"
               genreFilters={[]}
             />
@@ -68,17 +68,17 @@ const SearchModal = ({ children }: SearchModalProps) => {
             (() => {
               const skeletonKeys = ["one", "two", "three", "four"]
               return (
-            <div className="grid gap-4">
-              <div className="h-10 rounded-full skeleton" />
-              <div className="grid gap-3 sm:grid-cols-2">
-                {skeletonKeys.map((key) => (
-                  <div
-                    key={`search-skeleton-${key}`}
-                    className="h-32 rounded-2xl border border-border/60 bg-background/60 skeleton"
-                  />
-                ))}
-              </div>
-            </div>
+                <div className="grid gap-4">
+                  <div className="h-10 rounded-full skeleton" />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {skeletonKeys.map((key) => (
+                      <div
+                        key={`search-skeleton-${key}`}
+                        className="h-32 rounded-2xl border border-border/60 bg-background/60 skeleton"
+                      />
+                    ))}
+                  </div>
+                </div>
               )
             })()
           )}

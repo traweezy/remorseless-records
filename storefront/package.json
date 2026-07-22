@@ -47,7 +47,6 @@
     "clsx": "^2.1.1",
     "dotenv": "^16.4.5",
     "framer-motion": "^12.23.24",
-    "fuzzysort": "^2.0.4",
     "immer": "10.0.3",
     "lucide-react": "^0.546.0",
     "meilisearch": "^0.53.0",

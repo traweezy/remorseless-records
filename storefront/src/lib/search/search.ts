@@ -8,6 +8,7 @@ import type { ProductSearchHit } from "@/types/product"
 import type { Filter, Index, MeiliSearch, SearchResponse } from "meilisearch"
 
 export const PRODUCTS_INDEX = "products"
+export const CATALOG_PAGE_SIZE = 60
 
 export type ProductSearchFilters = {
   genres?: string[]
@@ -121,20 +122,31 @@ const buildFilter = (
 
   tryFilter("genres", filters?.genres)
   tryFilter("formats", filters?.formats)
-  postFilters.push({
-    attribute: "category_handles",
-    values: normalizeValues(filters?.categories),
-  })
+  const categoryValues = normalizeValues(filters?.categories)
+  if (categoryValues.length) {
+    if (filterable.has("category_handles")) {
+      categoryValues.forEach((value) => {
+        clauses.push(`category_handles = "${value.replace(/"/g, '\\"')}"`)
+      })
+    } else {
+      postFilters.push({
+        attribute: "category_handles",
+        values: categoryValues,
+      })
+    }
+  }
   tryFilter("variant_titles", filters?.variants)
   tryFilter("product_type", filters?.productTypes)
   tryFilter("availability_states", filters?.availability)
 
   const minPrice =
-    typeof filters?.price?.min === "number" && Number.isFinite(filters.price.min)
+    typeof filters?.price?.min === "number" &&
+    Number.isFinite(filters.price.min)
       ? filters.price.min
       : undefined
   const maxPrice =
-    typeof filters?.price?.max === "number" && Number.isFinite(filters.price.max)
+    typeof filters?.price?.max === "number" &&
+    Number.isFinite(filters.price.max)
       ? filters.price.max
       : undefined
   const canFilterPrice =
@@ -161,10 +173,19 @@ const buildFilter = (
   }
 
   if (inStockOnly) {
-    clauses.push('(stock_status != "sold_out")')
+    if (filterable.has("stock_status")) {
+      clauses.push('(stock_status != "sold_out")')
+    } else {
+      postFilters.push({
+        attribute: "stock_status",
+        values: ["in_stock", "low_stock"],
+      })
+    }
   }
 
-  const filterExpression = clauses.length ? (clauses.join(" AND ") as Filter) : undefined
+  const filterExpression = clauses.length
+    ? (clauses.join(" AND ") as Filter)
+    : undefined
 
   return { filterExpression, postFilters }
 }
@@ -257,23 +278,24 @@ const filterHitsClient = (
         descriptor.attribute === "format" ||
         descriptor.attribute === "formats"
       ) {
-        const formats = [
-          hit.format,
-          ...(hit.formats ?? []),
-        ]
+        const formats = [hit.format, ...(hit.formats ?? [])]
           .map((value) => value?.toLowerCase())
           .filter((value): value is string => Boolean(value))
         if (!formats.some((format) => target.has(format))) {
           return false
         }
       } else if (descriptor.attribute === "category_handles") {
-        const handles = (hit.categoryHandles ?? []).map((value) => value.toLowerCase())
+        const handles = (hit.categoryHandles ?? []).map((value) =>
+          value.toLowerCase()
+        )
         const handleSet = new Set(handles)
         if (!values.every((value) => handleSet.has(value.toLowerCase()))) {
           return false
         }
       } else if (descriptor.attribute === "variant_titles") {
-        const variants = (hit.variantTitles ?? []).map((value) => value.toLowerCase())
+        const variants = (hit.variantTitles ?? []).map((value) =>
+          value.toLowerCase()
+        )
         if (!variants.some((value) => target.has(value))) {
           return false
         }
@@ -288,7 +310,9 @@ const filterHitsClient = (
           return false
         }
       } else if (descriptor.attribute === "availability_states") {
-        const states = (hit.availabilityStates ?? []).map((value) => value.toLowerCase())
+        const states = (hit.availabilityStates ?? []).map((value) =>
+          value.toLowerCase()
+        )
         if (!states.some((value) => target.has(value))) {
           return false
         }
@@ -438,11 +462,22 @@ const ensureFilterableAttributes = async (
 
 export const searchProductsWithClient = async (
   client: MeiliSearch,
-  { query, limit = 24, offset = 0, filters, sort, inStockOnly }: ProductSearchRequest
+  {
+    query,
+    limit = 24,
+    offset = 0,
+    filters,
+    sort,
+    inStockOnly,
+  }: ProductSearchRequest
 ): Promise<ProductSearchResponse> => {
   const index = client.index(PRODUCTS_INDEX)
   const filterable = await ensureFilterableAttributes(index)
-  const { filterExpression, postFilters } = buildFilter(filters, inStockOnly, filterable)
+  const { filterExpression, postFilters } = buildFilter(
+    filters,
+    inStockOnly,
+    filterable
+  )
 
   const sortMapping: Record<ProductSortOption, string | null> = {
     "title-asc": "title:asc",
@@ -452,7 +487,7 @@ export const searchProductsWithClient = async (
     "price-high": "price_amount:desc",
   }
 
-  const sortDirective = sort ? sortMapping[sort] ?? null : null
+  const sortDirective = sort ? (sortMapping[sort] ?? null) : null
   const sortDirectives = sortDirective ? [sortDirective] : undefined
 
   const facetsToRequest: string[] = [
@@ -472,15 +507,100 @@ export const searchProductsWithClient = async (
     facetsToRequest.push("variant_titles")
   }
 
-  const batchSize = Math.max(limit, 64)
-  const filteredOffset = Math.max(0, offset ?? 0)
+  const buildFacets = (
+    facetDistribution: SearchResponse<
+      Record<string, unknown>
+    >["facetDistribution"],
+    hits: ProductSearchHit[]
+  ): ProductSearchResponse["facets"] => {
+    const facetsFromIndex = extractFacetMaps(facetDistribution)
+    const fallbackFacets = computeFacetCounts(hits)
+
+    const formatFacetSource =
+      Object.keys(facetsFromIndex.format).length > 0
+        ? facetsFromIndex.format
+        : fallbackFacets.format
+
+    return {
+      genres: Object.keys(facetsFromIndex.genres).length
+        ? facetsFromIndex.genres
+        : fallbackFacets.genres,
+      metalGenres: Object.keys(facetsFromIndex.metalGenres).length
+        ? facetsFromIndex.metalGenres
+        : fallbackFacets.metalGenres,
+      format: buildCanonicalFormatFacet(
+        formatFacetSource,
+        facetsFromIndex.variants,
+        hits
+      ),
+      categories:
+        filterable.has("category_handles") &&
+        Object.keys(facetsFromIndex.categories).length
+          ? facetsFromIndex.categories
+          : fallbackFacets.categories,
+      variants:
+        filterable.has("variant_titles") &&
+        Object.keys(facetsFromIndex.variants).length
+          ? facetsFromIndex.variants
+          : fallbackFacets.variants,
+      productTypes: Object.keys(facetsFromIndex.productTypes).length
+        ? facetsFromIndex.productTypes
+        : fallbackFacets.productTypes,
+      availabilityStates: Object.keys(facetsFromIndex.availabilityStates).length
+        ? facetsFromIndex.availabilityStates
+        : fallbackFacets.availabilityStates,
+      stockStatuses: Object.keys(facetsFromIndex.stockStatuses).length
+        ? facetsFromIndex.stockStatuses
+        : fallbackFacets.stockStatuses,
+      bundleTypes: Object.keys(facetsFromIndex.bundleTypes).length
+        ? facetsFromIndex.bundleTypes
+        : fallbackFacets.bundleTypes,
+    }
+  }
+
+  const requestedLimit = Math.max(0, Math.trunc(limit))
+  const requestedOffset = Math.max(0, Math.trunc(offset ?? 0))
+
+  if (!postFilters.length) {
+    const response = await index.search<Record<string, unknown>>(query ?? "", {
+      limit: requestedLimit,
+      offset: requestedOffset,
+      facets: facetsToRequest,
+      ...(filterExpression ? { filter: filterExpression } : {}),
+      ...(sortDirectives ? { sort: sortDirectives } : {}),
+    })
+    const hits = response.hits
+      .map((hit) => normalizeSearchHit(hit))
+      .filter((hit) => hit.handle.trim().length > 0)
+      .slice(0, requestedLimit)
+    const estimatedTotal = response.estimatedTotalHits
+    const total =
+      typeof estimatedTotal === "number" && Number.isFinite(estimatedTotal)
+        ? Math.max(0, Math.trunc(estimatedTotal))
+        : requestedOffset + hits.length
+    const nextOffset = requestedOffset + hits.length
+
+    return {
+      hits,
+      total,
+      offset: requestedOffset,
+      facets: buildFacets(response.facetDistribution, hits),
+      hasMore: nextOffset < total,
+      nextOffset,
+    }
+  }
+
+  const batchSize = Math.max(requestedLimit, 64)
+  const filteredOffset = requestedOffset
   let skipFiltered = filteredOffset
-  let remainingToCollect = limit
+  let remainingToCollect = requestedLimit
   let totalFiltered = 0
   let collected: ProductSearchHit[] = []
   let hasMore = false
   let rawOffset = 0
-  let facetDistribution: SearchResponse<Record<string, unknown>>["facetDistribution"]
+  let facetDistribution: SearchResponse<
+    Record<string, unknown>
+  >["facetDistribution"]
   const maxBatches = 40
 
   for (let batch = 0; batch < maxBatches; batch++) {
@@ -536,49 +656,11 @@ export const searchProductsWithClient = async (
 
   hasMore = hasMore || totalFiltered > filteredOffset + collected.length
 
-  const facetsFromIndex = extractFacetMaps(facetDistribution)
-  const fallbackFacets = computeFacetCounts(collected)
-
-  const formatFacetSource =
-    Object.keys(facetsFromIndex.format).length > 0
-      ? facetsFromIndex.format
-      : fallbackFacets.format
-
-  const facets = {
-    genres: Object.keys(facetsFromIndex.genres).length
-      ? facetsFromIndex.genres
-      : fallbackFacets.genres,
-    metalGenres: Object.keys(facetsFromIndex.metalGenres).length
-      ? facetsFromIndex.metalGenres
-      : fallbackFacets.metalGenres,
-    format: buildCanonicalFormatFacet(formatFacetSource, facetsFromIndex.variants, collected),
-    categories:
-      filterable.has("category_handles") && Object.keys(facetsFromIndex.categories).length
-        ? facetsFromIndex.categories
-        : fallbackFacets.categories,
-    variants:
-      filterable.has("variant_titles") && Object.keys(facetsFromIndex.variants).length
-        ? facetsFromIndex.variants
-        : fallbackFacets.variants,
-    productTypes: Object.keys(facetsFromIndex.productTypes).length
-      ? facetsFromIndex.productTypes
-      : fallbackFacets.productTypes,
-    availabilityStates: Object.keys(facetsFromIndex.availabilityStates).length
-      ? facetsFromIndex.availabilityStates
-      : fallbackFacets.availabilityStates,
-    stockStatuses: Object.keys(facetsFromIndex.stockStatuses).length
-      ? facetsFromIndex.stockStatuses
-      : fallbackFacets.stockStatuses,
-    bundleTypes: Object.keys(facetsFromIndex.bundleTypes).length
-      ? facetsFromIndex.bundleTypes
-      : fallbackFacets.bundleTypes,
-  }
-
   return {
     hits: collected,
     total: totalFiltered,
     offset: filteredOffset,
-    facets,
+    facets: buildFacets(facetDistribution, collected),
     hasMore,
     nextOffset: filteredOffset + collected.length,
   }

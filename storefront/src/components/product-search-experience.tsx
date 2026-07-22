@@ -4,11 +4,14 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react"
+import { Debouncer } from "@tanstack/pacer"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { type VirtualItem, useWindowVirtualizer } from "@tanstack/react-virtual"
 import {
   ArrowDown01,
@@ -22,7 +25,6 @@ import {
   X,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
-import fuzzysort from "fuzzysort"
 import { Button } from "@/components/ui/button"
 import Drawer from "@/components/ui/drawer"
 import { Separator } from "@/components/ui/separator"
@@ -30,9 +32,17 @@ import ProductCard from "@/components/product-card"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { cn } from "@/lib/ui/cn"
-import { PillDropdown, type PillDropdownOption } from "@/components/ui/pill-dropdown"
-import type { ProductSortOption } from "@/lib/search/search"
-import { computeFacetCounts } from "@/lib/search/search"
+import {
+  PillDropdown,
+  type PillDropdownOption,
+} from "@/components/ui/pill-dropdown"
+import {
+  CATALOG_PAGE_SIZE,
+  type ProductSearchRequest,
+  type ProductSearchResponse,
+  type ProductSortOption,
+} from "@/lib/search/search"
+import { searchProductsBrowser } from "@/lib/search/browser"
 import { useCatalogStore } from "@/lib/store/catalog"
 import { normalizeFormatValue as baseNormalizeFormat } from "@/lib/search/normalize"
 
@@ -76,8 +86,23 @@ const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
   ["newest arrivals", "Newest Arrivals"],
 ])
 
+const PRODUCT_TYPE_LABELS = new Map<string, string>([
+  ["music-release", "Music Releases"],
+  ["music_release", "Music Releases"],
+  ["merch", "Merchandise"],
+  ["fixed-bundle", "Fixed Bundles"],
+  ["fixed_bundle", "Fixed Bundles"],
+  ["mystery-bundle", "Mystery Bundles"],
+  ["mystery_bundle", "Mystery Bundles"],
+])
+
+const CATALOG_SKELETON_KEYS = ["one", "two", "three", "four", "five", "six"]
+
 const deriveCollectionTitle = (hit: ProductSearchHit): string | null => {
-  if (typeof hit.collectionTitle === "string" && hit.collectionTitle.trim().length) {
+  if (
+    typeof hit.collectionTitle === "string" &&
+    hit.collectionTitle.trim().length
+  ) {
     return hit.collectionTitle.trim()
   }
 
@@ -133,7 +158,11 @@ const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
     raw.add(trimmed)
   }
 
-  const sourceArrays = [hit.formats, hit.variantTitles, hit.format ? [hit.format] : []]
+  const sourceArrays = [
+    hit.formats,
+    hit.variantTitles,
+    hit.format ? [hit.format] : [],
+  ]
 
   sourceArrays.forEach((entries) => {
     if (!entries) {
@@ -146,7 +175,9 @@ const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
   return Array.from(preferred)
 }
 
-export const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary => {
+export const mapHitToSummary = (
+  hit: ProductSearchHit
+): RelatedProductSummary => {
   const fallbackCurrency = hit.defaultVariant?.currency ?? "usd"
   const fallbackStockStatus = hit.stockStatus ?? "unknown"
   const fallbackInStock = fallbackStockStatus !== "sold_out"
@@ -186,9 +217,10 @@ export const mapHitToSummary = (hit: ProductSearchHit): RelatedProductSummary =>
       }
       return []
     })(),
-    genres: (hit.metalGenres?.length ? hit.metalGenres : hit.genres)?.filter(
-      (entry): entry is string => Boolean(entry && entry.trim().length)
-    ) ?? [],
+    genres:
+      (hit.metalGenres?.length ? hit.metalGenres : hit.genres)?.filter(
+        (entry): entry is string => Boolean(entry && entry.trim().length)
+      ) ?? [],
   }
 }
 
@@ -199,7 +231,7 @@ type GenreFilterSeed = {
 }
 
 type ProductSearchExperienceProps = {
-  initialHits: ProductSearchHit[]
+  initialResponse: ProductSearchResponse
   initialSort?: ProductSortOption
   genreFilters: GenreFilterSeed[]
 }
@@ -213,7 +245,7 @@ const CARD_MOTION_PROPS = {
 
 const SORT_OPTIONS: [
   PillDropdownOption<ProductSortOption>,
-  ...Array<PillDropdownOption<ProductSortOption>>
+  ...Array<PillDropdownOption<ProductSortOption>>,
 ] = [
   {
     value: "title-asc",
@@ -253,157 +285,8 @@ type FilterOption = {
   count: number
 }
 
-const needsClientHydration = (hit: ProductSearchHit): boolean => {
-  const handle = hit.handle?.trim()
-  if (!handle) {
-    return false
-  }
-
-  const missingGenres =
-    !Array.isArray(hit.genres) || hit.genres.length === 0
-  const missingMetalGenres =
-    !Array.isArray(hit.metalGenres) || hit.metalGenres.length === 0
-  const missingFormats =
-    !Array.isArray(hit.formats) || hit.formats.length === 0
-  const missingVariant = !hit.defaultVariant
-  const missingCollection =
-    !(hit.collectionTitle ?? "").toString().trim().length
-
-  const missingStockStatus =
-    !hit.stockStatus || hit.stockStatus === "unknown"
-  const missingInventoryQuantity =
-    hit.defaultVariant?.inventoryQuantity == null ||
-    hit.defaultVariant?.stockStatus === "unknown"
-
-  return (
-    (missingGenres && missingMetalGenres) ||
-    missingFormats ||
-    missingVariant ||
-    missingCollection ||
-    missingStockStatus ||
-    missingInventoryQuantity
-  )
-}
-
-const mergeHydratedHit = (
-  original: ProductSearchHit,
-  fallback: ProductSearchHit
-): ProductSearchHit => {
-  const mergedFormats = original.formats.length
-    ? original.formats
-    : fallback.formats
-  const mergedVariant = original.defaultVariant ?? fallback.defaultVariant
-  const mergedCollection =
-    original.collectionTitle && original.collectionTitle.trim().length
-      ? original.collectionTitle
-      : fallback.collectionTitle
-  const mergedStockStatus =
-    original.stockStatus && original.stockStatus !== "unknown"
-      ? original.stockStatus
-      : fallback.stockStatus ?? original.stockStatus ?? null
-
-  return {
-    ...fallback,
-    ...original,
-    defaultVariant: mergedVariant,
-    collectionTitle: mergedCollection ?? null,
-    formats: mergedFormats,
-    genres: original.genres.length ? original.genres : fallback.genres,
-    metalGenres: original.metalGenres.length
-      ? original.metalGenres
-      : fallback.metalGenres,
-    categories: original.categories.length
-      ? original.categories
-      : fallback.categories,
-    categoryHandles: original.categoryHandles.length
-      ? original.categoryHandles
-      : fallback.categoryHandles,
-    variantTitles: original.variantTitles.length
-      ? original.variantTitles
-      : fallback.variantTitles,
-    format: original.format ?? fallback.format ?? null,
-    priceAmount: original.priceAmount ?? fallback.priceAmount ?? null,
-    stockStatus: mergedStockStatus,
-  }
-}
-
-const hydrateHitsClient = async (
-  hits: ProductSearchHit[]
-): Promise<ProductSearchHit[]> => {
-  const handlesToHydrate = Array.from(
-    new Set(
-      hits
-        .filter(needsClientHydration)
-        .map((hit) => hit.handle?.trim().toLowerCase())
-        .filter((handle): handle is string => Boolean(handle))
-    )
-  )
-
-  if (!handlesToHydrate.length) {
-    return hits
-  }
-
-  const hydrationMap = new Map<string, ProductSearchHit>()
-  const batchSize = 40
-  const batches: string[][] = []
-  for (let i = 0; i < handlesToHydrate.length; i += batchSize) {
-    batches.push(handlesToHydrate.slice(i, i + batchSize))
-  }
-
-  try {
-    const results = await Promise.all(
-      batches.map(async (batch) => {
-        const response = await fetch("/api/catalog/hydrate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ handles: batch }),
-        })
-
-        if (!response.ok) {
-          return []
-        }
-
-        const payloadRaw: unknown = await response.json()
-        const hitsFromPayload = Array.isArray(
-          (payloadRaw as { hits?: unknown[] } | null)?.hits
-        )
-          ? ((payloadRaw as { hits?: ProductSearchHit[] }).hits ?? [])
-          : []
-        return hitsFromPayload
-      })
-    )
-
-    results.flat().forEach((hit) => {
-      const handleKey = hit.handle?.trim().toLowerCase()
-      if (handleKey) {
-        hydrationMap.set(handleKey, hit)
-      }
-    })
-  } catch (error) {
-    console.error("[catalog] Client hydration failed", error)
-    return hits
-  }
-
-  if (!hydrationMap.size) {
-    return hits
-  }
-
-  return hits.map((hit) => {
-    const handleKey = hit.handle?.trim().toLowerCase()
-    if (!handleKey) {
-      return hit
-    }
-    const fallback = hydrationMap.get(handleKey)
-    if (!fallback) {
-      return hit
-    }
-    return mergeHydratedHit(hit, fallback)
-  })
-}
-
 const FilterCheckboxList = ({
+  idPrefix,
   title,
   options,
   selected,
@@ -412,6 +295,7 @@ const FilterCheckboxList = ({
   normalizeValue = (value: string) => value.trim(),
   defaultOpen = false,
 }: {
+  idPrefix: string
   title: string
   options: FilterOption[]
   selected: string[]
@@ -421,6 +305,12 @@ const FilterCheckboxList = ({
   defaultOpen?: boolean
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const titleId = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+  const controlsId = `${idPrefix}-${titleId}-filters`
 
   useEffect(() => {
     if (defaultOpen) {
@@ -440,7 +330,7 @@ const FilterCheckboxList = ({
         onClick={() => setIsOpen((prev) => !prev)}
         className="flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
         aria-expanded={isOpen}
-        aria-controls={`${title}-filters`}
+        aria-controls={controlsId}
       >
         <span>{title}</span>
         <ChevronDown
@@ -454,7 +344,7 @@ const FilterCheckboxList = ({
         {isOpen ? (
           <motion.div
             key="content"
-            id={`${title}-filters`}
+            id={controlsId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -468,7 +358,11 @@ const FilterCheckboxList = ({
                   return null
                 }
                 const checked = selected.includes(normalizedValue)
-                const checkboxId = `${title.toLowerCase()}-${normalizedValue.replace(/\s+/g, "-")}`
+                const valueId = normalizedValue
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, "-")
+                  .replace(/^-|-$/g, "")
+                const checkboxId = `${idPrefix}-${titleId}-${valueId}`
 
                 return (
                   <label
@@ -479,9 +373,13 @@ const FilterCheckboxList = ({
                       variant === "chip"
                         ? cn(
                             "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
-                            checked && "border-destructive bg-destructive/20 text-destructive"
+                            checked &&
+                              "border-destructive bg-destructive/20 text-destructive"
                           )
-                        : cn("hover:text-destructive", checked && "text-destructive")
+                        : cn(
+                            "hover:text-destructive",
+                            checked && "text-destructive"
+                          )
                     )}
                   >
                     <span className="flex items-center gap-2">
@@ -496,14 +394,17 @@ const FilterCheckboxList = ({
                         aria-hidden
                         className={cn(
                           "inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm border border-border/60 bg-background/70 text-transparent transition peer-focus-visible:ring-2 peer-focus-visible:ring-destructive/60",
-                          checked && "border-destructive bg-destructive text-background"
+                          checked &&
+                            "border-destructive bg-destructive text-background"
                         )}
                       >
                         {checked ? <Check className="h-3 w-3" /> : null}
                       </span>
                       <span className="text-foreground">{label}</span>
                     </span>
-                    <span className="text-[0.6rem] text-muted-foreground/80">{count}</span>
+                    <span className="text-[0.6rem] text-muted-foreground/80">
+                      {count}
+                    </span>
                   </label>
                 )
               })}
@@ -516,6 +417,7 @@ const FilterCheckboxList = ({
 }
 
 const FilterSidebar = ({
+  idPrefix,
   genres,
   formats,
   productTypes,
@@ -529,6 +431,7 @@ const FilterSidebar = ({
   showInStockOnly,
   onToggleStock,
 }: {
+  idPrefix: string
   genres: FilterOption[]
   formats: FilterOption[]
   productTypes: FilterOption[]
@@ -549,12 +452,12 @@ const FilterSidebar = ({
           Filters
         </h2>
         <button
-        type="button"
-        onClick={onClear}
-        className="cursor-pointer text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
-      >
-        Reset
-      </button>
+          type="button"
+          onClick={onClear}
+          className="cursor-pointer text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
+        >
+          Reset
+        </button>
       </div>
       <button
         type="button"
@@ -581,6 +484,20 @@ const FilterSidebar = ({
 
     <div className="space-y-5">
       <FilterCheckboxList
+        idPrefix={idPrefix}
+        title="Product Types"
+        options={productTypes}
+        selected={selectedProductTypes}
+        onToggle={onToggleProductType}
+        variant="plain"
+        normalizeValue={(value) => value.trim().toLowerCase()}
+        defaultOpen
+      />
+
+      <Separator className="border-border/50" />
+
+      <FilterCheckboxList
+        idPrefix={idPrefix}
         title="Genres"
         options={genres}
         selected={selectedGenres}
@@ -593,6 +510,7 @@ const FilterSidebar = ({
       <Separator className="border-border/50" />
 
       <FilterCheckboxList
+        idPrefix={idPrefix}
         title="Formats"
         options={formats}
         selected={selectedFormats}
@@ -600,18 +518,6 @@ const FilterSidebar = ({
         variant="plain"
         normalizeValue={(value) => normalizeFormatFilterValue(value) ?? ""}
         defaultOpen={selectedFormats.length > 0}
-      />
-
-      <Separator className="border-border/50" />
-
-      <FilterCheckboxList
-        title="Product Type"
-        options={productTypes}
-        selected={selectedProductTypes}
-        onToggle={onToggleProductType}
-        variant="plain"
-        normalizeValue={(value) => value.trim().toLowerCase()}
-        defaultOpen={selectedProductTypes.length > 0}
       />
     </div>
   </div>
@@ -664,10 +570,11 @@ const useResponsiveColumns = () => {
 }
 
 const ProductSearchExperience = ({
-  initialHits,
+  initialResponse,
   initialSort = "title-asc",
   genreFilters,
 }: ProductSearchExperienceProps) => {
+  const filterInstanceId = useId().replace(/:/g, "")
   const normalizedGenreFilters = useMemo(
     () =>
       genreFilters
@@ -677,19 +584,17 @@ const ProductSearchExperience = ({
           if (!handle.length || !label.length) {
             return null
           }
-          const rank =
-            typeof genre.rank === "number" ? genre.rank : index
+          const rank = typeof genre.rank === "number" ? genre.rank : index
           return { handle, label, rank }
         })
         .filter(
-          (
-            entry
-          ): entry is { handle: string; label: string; rank: number } =>
+          (entry): entry is { handle: string; label: string; rank: number } =>
             Boolean(entry)
         )
         .sort(
           (a, b) =>
-            a.rank - b.rank || a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
+            a.rank - b.rank ||
+            a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
         ),
     [genreFilters]
   )
@@ -744,51 +649,34 @@ const ProductSearchExperience = ({
   const setQuery = useCatalogStore((state) => state.setQuery)
   const toggleGenreFilter = useCatalogStore((state) => state.toggleGenre)
   const toggleFormatFilter = useCatalogStore((state) => state.toggleFormat)
-  const toggleProductTypeFilter = useCatalogStore((state) => state.toggleProductType)
-  const toggleStockOnlyFilter = useCatalogStore((state) => state.toggleStockOnly)
+  const toggleProductTypeFilter = useCatalogStore(
+    (state) => state.toggleProductType
+  )
+  const toggleStockOnlyFilter = useCatalogStore(
+    (state) => state.toggleStockOnly
+  )
   const setSortOption = useCatalogStore((state) => state.setSort)
   const clearFiltersStore = useCatalogStore((state) => state.clearFilters)
   const hydrateFromParams = useCatalogStore((state) => state.hydrateFromParams)
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [pacedQuery, setPacedQuery] = useState("")
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const measureScheduledRef = useRef(false)
-
-  const normalizeHits = useCallback(
-    (hits: ProductSearchHit[]) =>
-      hits.filter((hit) => Boolean(hit.handle?.trim().length)),
+  const queryDebouncer = useMemo(
+    () =>
+      new Debouncer((value: string) => setPacedQuery(value), {
+        key: "catalog-search-query",
+        wait: 250,
+      }),
     []
   )
 
-  const [catalogHits, setCatalogHits] = useState<ProductSearchHit[]>(
-    normalizeHits(initialHits)
-  )
+  useEffect(() => () => queryDebouncer.cancel(), [queryDebouncer])
 
   useEffect(() => {
-    return deferEffectUpdate(() => setCatalogHits(normalizeHits(initialHits)))
-  }, [initialHits, normalizeHits])
-
-  useEffect(() => {
-    if (!initialHits.length) {
-      return
-    }
-    if (!initialHits.some(needsClientHydration)) {
-      return
-    }
-
-    let cancelled = false
-    const hydrate = async () => {
-      const enriched = await hydrateHitsClient(initialHits)
-      if (!cancelled) {
-        setCatalogHits(normalizeHits(enriched))
-      }
-    }
-
-    void hydrate()
-    return () => {
-      cancelled = true
-    }
-  }, [initialHits, normalizeHits])
+    queryDebouncer.maybeExecute(query.trim())
+  }, [query, queryDebouncer])
 
   useEffect(() => {
     if (typeof window === "undefined" || hasHydratedFromParams.current) {
@@ -850,29 +738,45 @@ const ProductSearchExperience = ({
     [selectedProductTypes]
   )
   const genreCsvValues = useMemo(
-    () => selectedGenres.map((value) => value.trim()).filter((value) => value.length),
+    () =>
+      selectedGenres
+        .map((value) => value.trim())
+        .filter((value) => value.length),
     [selectedGenres]
   )
   const formatCsvValues = useMemo(
-    () => selectedFormats.map((value) => value.trim()).filter((value) => value.length),
+    () =>
+      selectedFormats
+        .map((value) => value.trim())
+        .filter((value) => value.length),
     [selectedFormats]
   )
   const productTypeCsvValues = useMemo(
-    () => selectedProductTypes.map((value) => value.trim()).filter((value) => value.length),
+    () =>
+      selectedProductTypes
+        .map((value) => value.trim())
+        .filter((value) => value.length),
     [selectedProductTypes]
   )
 
   const criteriaKey = useMemo(
     () =>
       [
-        query.trim(),
+        pacedQuery,
         genresKey,
         formatsKey,
         productTypesKey,
         showInStockOnly ? "in-stock" : "all",
         sortOption,
       ].join("|"),
-    [query, genresKey, formatsKey, productTypesKey, showInStockOnly, sortOption]
+    [
+      pacedQuery,
+      genresKey,
+      formatsKey,
+      productTypesKey,
+      showInStockOnly,
+      sortOption,
+    ]
   )
 
   useEffect(() => {
@@ -924,148 +828,90 @@ const ProductSearchExperience = ({
     productTypeCsvValues,
   ])
 
-  const aggregatedHits = useMemo(() => catalogHits, [catalogHits])
+  const searchFilters = useMemo<ProductSearchRequest["filters"]>(() => {
+    const filters = {
+      ...(selectedGenres.length ? { categories: selectedGenres } : {}),
+      ...(selectedFormats.length ? { formats: selectedFormats } : {}),
+      ...(selectedProductTypes.length
+        ? { productTypes: selectedProductTypes }
+        : {}),
+    }
+    return Object.keys(filters).length ? filters : undefined
+  }, [selectedFormats, selectedGenres, selectedProductTypes])
 
-  const catalogFacets = useMemo(
-    () => computeFacetCounts(aggregatedHits),
-    [aggregatedHits]
+  const searchRequest = useMemo<ProductSearchRequest>(
+    () => ({
+      query: pacedQuery,
+      limit: CATALOG_PAGE_SIZE,
+      offset: 0,
+      sort: sortOption,
+      inStockOnly: showInStockOnly,
+      ...(searchFilters ? { filters: searchFilters } : {}),
+    }),
+    [pacedQuery, searchFilters, showInStockOnly, sortOption]
   )
 
-  const filteredHits = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-    const requiredGenres = selectedGenres.map((value) => value.toLowerCase())
-    const requiredFormats = selectedFormats.map((value) => value.toLowerCase())
-    const requiredProductTypes = selectedProductTypes.map((value) =>
-      value.toLowerCase()
-    )
+  const isInitialSearch =
+    !pacedQuery.length &&
+    !selectedGenres.length &&
+    !selectedFormats.length &&
+    !selectedProductTypes.length &&
+    !showInStockOnly &&
+    sortOption === initialSort
 
-    const baseMatches = aggregatedHits.filter((hit) => {
-      if (showInStockOnly) {
-        const isPriced = hit.defaultVariant?.hasPrice ?? false
-        const inStock =
-          isPriced &&
-          (hit.defaultVariant?.inStock ??
-            ((hit.stockStatus ?? "").toLowerCase() !== "sold_out"))
-        if (!inStock) {
+  const searchQuery = useInfiniteQuery({
+    queryKey: [
+      "catalog-products",
+      pacedQuery,
+      genresKey,
+      formatsKey,
+      productTypesKey,
+      showInStockOnly,
+      sortOption,
+    ],
+    queryFn: ({ pageParam, signal }) =>
+      searchProductsBrowser(
+        { ...searchRequest, offset: pageParam },
+        { signal }
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore &&
+      typeof lastPage.nextOffset === "number" &&
+      lastPage.nextOffset > lastPage.offset
+        ? lastPage.nextOffset
+        : undefined,
+    ...(isInitialSearch
+      ? { initialData: { pages: [initialResponse], pageParams: [0] } }
+      : {}),
+    staleTime: 60_000,
+    retry: 1,
+  })
+
+  const searchPages = useMemo(
+    () => searchQuery.data?.pages ?? (isInitialSearch ? [initialResponse] : []),
+    [initialResponse, isInitialSearch, searchQuery.data?.pages]
+  )
+  const activeResponse = searchPages[0]
+  const catalogFacets = activeResponse?.facets ?? initialResponse.facets
+  const totalResults = activeResponse?.total ?? 0
+  const aggregatedHits = useMemo(() => {
+    const seenHandles = new Set<string>()
+    return searchPages.flatMap((page) =>
+      page.hits.filter((hit) => {
+        const handle = hit.handle?.trim().toLowerCase()
+        if (!handle || seenHandles.has(handle)) {
           return false
         }
-      }
-
-      if (requiredGenres.length) {
-        const handles = (hit.categoryHandles ?? []).map((value) => value.toLowerCase())
-        const genreLabels = (hit.metalGenres ?? hit.genres ?? []).map((value) =>
-          value.toLowerCase()
-        )
-        const combined = new Set([...handles, ...genreLabels])
-        if (!requiredGenres.some((genre) => combined.has(genre))) {
-          return false
-        }
-      }
-
-      if (requiredFormats.length) {
-        const formats = (
-          hit.formats?.length ? hit.formats : hit.variantTitles ?? []
-        ).map((value) => value.toLowerCase())
-        if (!requiredFormats.some((format) => formats.includes(format))) {
-          return false
-        }
-      }
-
-      if (requiredProductTypes.length) {
-        const productType = hit.productType?.toLowerCase() ?? ""
-        if (!requiredProductTypes.includes(productType)) {
-          return false
-        }
-      }
-
-      return true
-    })
-
-    const matches = (() => {
-      if (!normalizedQuery.length) {
-        return baseMatches
-      }
-
-      const normalizeValue = (value: string | null | undefined) =>
-        value
-          ? value
-              .normalize("NFKD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .toLowerCase()
-              .trim()
-          : ""
-
-      const tokens = normalizedQuery
-        .split(/\s+/)
-        .map((token) => normalizeValue(token))
-        .filter(Boolean)
-
-      const buildHaystacks = (hit: ProductSearchHit) => {
-        const fields = [
-          hit.artist,
-          hit.title,
-          hit.album,
-          hit.slug?.artist,
-          hit.slug?.album,
-          hit.handle,
-        ]
-        return fields
-          .map((value) => normalizeValue(value))
-          .filter(Boolean)
-      }
-
-      const filtered = baseMatches.filter((hit) => {
-        const haystacks = buildHaystacks(hit)
-        if (!haystacks.length) {
-          return false
-        }
-
-        return tokens.every((token) =>
-          haystacks.some((haystack) => {
-            if (haystack.includes(token)) {
-              return true
-            }
-            const fuzzy = fuzzysort.single(token, haystack)
-            return Boolean(fuzzy && fuzzy.score >= -120)
-          })
-        )
+        seenHandles.add(handle)
+        return true
       })
-
-      return filtered
-    })()
-
-    const sorted = [...matches]
-    if (sortOption === "title-asc") {
-      sorted.sort((a, b) => a.title.localeCompare(b.title))
-    } else if (sortOption === "title-desc") {
-      sorted.sort((a, b) => b.title.localeCompare(a.title))
-    } else if (sortOption === "newest") {
-      sorted.sort(
-        (a, b) =>
-          new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()
-      )
-    } else if (sortOption === "price-low") {
-      sorted.sort((a, b) => (a.priceAmount ?? Infinity) - (b.priceAmount ?? Infinity))
-    } else if (sortOption === "price-high") {
-      sorted.sort((a, b) => (b.priceAmount ?? 0) - (a.priceAmount ?? 0))
-    }
-
-    return sorted
-  }, [
-    aggregatedHits,
-    query,
-    selectedGenres,
-    selectedFormats,
-    selectedProductTypes,
-    showInStockOnly,
-    sortOption,
-  ])
-
-  const totalResults = filteredHits.length
+    )
+  }, [searchPages])
 
   const mappedResults = useMemo(
-    () => filteredHits.map(mapHitToSummary),
-    [filteredHits]
+    () => aggregatedHits.map(mapHitToSummary),
+    [aggregatedHits]
   )
 
   const deferredResults = useDeferredValue(mappedResults)
@@ -1183,17 +1029,16 @@ const ProductSearchExperience = ({
 
   const categoryFacetCounts = useMemo(
     () =>
-      Object.entries(catalogFacets.categories ?? {}).reduce<Record<string, number>>(
-        (acc, [rawKey, rawCount]) => {
-          const key = rawKey.trim().toLowerCase()
-          if (!key.length) {
-            return acc
-          }
-          acc[key] = rawCount
+      Object.entries(catalogFacets.categories ?? {}).reduce<
+        Record<string, number>
+      >((acc, [rawKey, rawCount]) => {
+        const key = rawKey.trim().toLowerCase()
+        if (!key.length) {
           return acc
-        },
-        {}
-      ),
+        }
+        acc[key] = rawCount
+        return acc
+      }, {}),
     [catalogFacets.categories]
   )
 
@@ -1221,7 +1066,10 @@ const ProductSearchExperience = ({
     const ALLOWED = new Set(["Cassette", "Vinyl", "CD"])
     const counts = new Map<string, Set<string>>()
 
-    const add = (handle: string | null | undefined, value: string | null | undefined) => {
+    const add = (
+      handle: string | null | undefined,
+      value: string | null | undefined
+    ) => {
       if (!handle) {
         return
       }
@@ -1253,9 +1101,9 @@ const ProductSearchExperience = ({
         }
         const bucket = counts.get(normalized) ?? new Set<string>()
         if (typeof count === "number" && Number.isFinite(count)) {
-          const syntheticHandles = Array.from({ length: Math.max(1, Math.trunc(count)) }).map(
-            (_, idx) => `${normalized}-${idx}`
-          )
+          const syntheticHandles = Array.from({
+            length: Math.max(1, Math.trunc(count)),
+          }).map((_, idx) => `${normalized}-${idx}`)
           syntheticHandles.forEach((handle) => bucket.add(handle))
         }
         counts.set(normalized, bucket)
@@ -1267,13 +1115,15 @@ const ProductSearchExperience = ({
       .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
   }, [aggregatedHits, catalogFacets.format])
 
-  const formatProductTypeLabel = useCallback(
-    (value: string) =>
-      value
+  const formatProductTypeLabel = useCallback((value: string) => {
+    const normalized = value.trim().toLowerCase()
+    return (
+      PRODUCT_TYPE_LABELS.get(normalized) ??
+      normalized
         .replace(/[_-]+/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase()),
-    []
-  )
+        .replace(/\b\w/g, (char) => char.toUpperCase())
+    )
+  }, [])
 
   const productTypeOptions = useMemo(
     () =>
@@ -1298,7 +1148,9 @@ const ProductSearchExperience = ({
     )
     const validTypes = new Set(productTypeOptions.map((option) => option.value))
 
-    const sanitizedGenres = selectedGenres.filter((value) => validGenres.has(value))
+    const sanitizedGenres = selectedGenres.filter((value) =>
+      validGenres.has(value)
+    )
     const sanitizedFormats = Array.from(
       new Set(
         selectedFormats
@@ -1307,7 +1159,9 @@ const ProductSearchExperience = ({
           .filter((value) => validFormats.has(value.toLowerCase()))
       )
     )
-    const sanitizedTypes = selectedProductTypes.filter((value) => validTypes.has(value))
+    const sanitizedTypes = selectedProductTypes.filter((value) =>
+      validTypes.has(value)
+    )
 
     const hasListChanged = (left: string[], right: string[]) =>
       left.length !== right.length ||
@@ -1386,7 +1240,15 @@ const ProductSearchExperience = ({
     [columns]
   )
 
-  const isFetching = false
+  const isFetching = searchQuery.isFetching && !searchQuery.isFetchingNextPage
+  const fetchNextPage = searchQuery.fetchNextPage
+  const refetchSearch = searchQuery.refetch
+  const handleLoadMore = useCallback(() => {
+    void fetchNextPage()
+  }, [fetchNextPage])
+  const handleRetrySearch = useCallback(() => {
+    void refetchSearch()
+  }, [refetchSearch])
 
   return (
     <div className="bg-background pb-8">
@@ -1394,6 +1256,7 @@ const ProductSearchExperience = ({
         <aside className="hidden lg:block lg:w-60 lg:flex-shrink-0">
           <div className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl">
             <FilterSidebar
+              idPrefix={`${filterInstanceId}-desktop`}
               genres={genreOptions}
               formats={formatOptions}
               productTypes={productTypeOptions}
@@ -1463,6 +1326,7 @@ const ProductSearchExperience = ({
 
                     <div className="flex-1 overflow-y-auto px-6 pb-10 pt-2">
                       <FilterSidebar
+                        idPrefix={`${filterInstanceId}-mobile`}
                         genres={genreOptions}
                         formats={formatOptions}
                         productTypes={productTypeOptions}
@@ -1570,80 +1434,135 @@ const ProductSearchExperience = ({
           </header>
 
           <section className="space-y-4 px-2 sm:px-4 lg:px-6">
-            {isFetching ? (
+            {isFetching && deferredResults.length ? (
               <div className="text-sm uppercase tracking-[0.3rem] text-muted-foreground">
                 Refreshing results…
               </div>
             ) : null}
 
-            {deferredResults.length ? (
+            {isFetching && !deferredResults.length ? (
               <div
-                ref={gridMeasureRef}
-                className="relative"
-                style={{ height: virtualizer.getTotalSize() }}
+                className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+                role="status"
+                aria-label="Loading catalog results"
               >
-                <AnimatePresence initial={false}>
-                  {virtualItems.map((virtualRow: VirtualItem) => {
-                    const rowIndex = virtualRow.index
-                    const startIndex = rowIndex * columns
-                    const rowReactKey =
-                      deferredResults[startIndex]?.id ??
-                      (virtualRow as { key?: number }).key ??
-                      virtualRow.index
-
-                    return (
-                      <div
-                        key={rowReactKey}
-                        data-index={virtualRow.index}
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          width: "100%",
-                          height: rowHeight,
-                          transform: `translateY(${virtualRow.start}px)`,
-                          paddingBottom: rowGap,
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        <div
-                          className="grid h-full gap-6"
-                          style={gridTemplateStyle}
-                        >
-                          {Array.from({ length: columns }).map((_, columnIdx) => {
-                            const globalIndex = startIndex + columnIdx
-                            const product = deferredResults[globalIndex]
-
-                            if (product) {
-                              return (
-                                  <motion.div
-                                    key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
-                                    {...CARD_MOTION_PROPS}
-                                  >
-                                  <ProductCard
-                                    product={product}
-                                    onMediaLoad={scheduleVirtualizerMeasure}
-                                  />
-                                  </motion.div>
-                              )
-                            }
-
-                            return <div key={`spacer-${globalIndex}`} />
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </AnimatePresence>
+                {CATALOG_SKELETON_KEYS.map((key) => (
+                  <div key={key} className="space-y-4" aria-hidden="true">
+                    <div className="aspect-square rounded-2xl skeleton" />
+                    <div className="h-5 w-4/5 rounded-full skeleton" />
+                    <div className="h-4 w-2/5 rounded-full skeleton" />
+                  </div>
+                ))}
+                <span className="sr-only">Loading catalog results…</span>
               </div>
+            ) : deferredResults.length ? (
+              <>
+                <div
+                  ref={gridMeasureRef}
+                  className="relative"
+                  style={{ height: virtualizer.getTotalSize() }}
+                >
+                  <AnimatePresence initial={false}>
+                    {virtualItems.map((virtualRow: VirtualItem) => {
+                      const rowIndex = virtualRow.index
+                      const startIndex = rowIndex * columns
+                      const rowReactKey =
+                        deferredResults[startIndex]?.id ??
+                        (virtualRow as { key?: number }).key ??
+                        virtualRow.index
+
+                      return (
+                        <div
+                          key={rowReactKey}
+                          data-index={virtualRow.index}
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            height: rowHeight,
+                            transform: `translateY(${virtualRow.start}px)`,
+                            paddingBottom: rowGap,
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <div
+                            className="grid h-full gap-6"
+                            style={gridTemplateStyle}
+                          >
+                            {Array.from({ length: columns }).map(
+                              (_, columnIdx) => {
+                                const globalIndex = startIndex + columnIdx
+                                const product = deferredResults[globalIndex]
+
+                                if (product) {
+                                  return (
+                                    <motion.div
+                                      key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
+                                      {...CARD_MOTION_PROPS}
+                                    >
+                                      <ProductCard
+                                        product={product}
+                                        onMediaLoad={scheduleVirtualizerMeasure}
+                                      />
+                                    </motion.div>
+                                  )
+                                }
+
+                                return <div key={`spacer-${globalIndex}`} />
+                              }
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </AnimatePresence>
+                </div>
+
+                <div className="flex flex-col items-center gap-3 pb-8 pt-2">
+                  <p
+                    className="text-xs uppercase tracking-[0.25rem] text-muted-foreground"
+                    aria-live="polite"
+                  >
+                    Showing {deferredResults.length} of {totalResults}
+                  </p>
+                  {searchQuery.hasNextPage ? (
+                    <Button
+                      variant="outline"
+                      onClick={handleLoadMore}
+                      disabled={searchQuery.isFetchingNextPage}
+                    >
+                      {searchQuery.isFetchingNextPage
+                        ? "Loading more…"
+                        : "Load more"}
+                    </Button>
+                  ) : null}
+                </div>
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border/60 bg-background/80 p-12 text-center text-sm text-muted-foreground">
-                {hasSearch || hasActiveFilters ? (
+                {searchQuery.isError ? (
+                  <>
+                    <p>Search is temporarily unavailable.</p>
+                    <p>Your filters are preserved. Try the request again.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetrySearch}
+                    >
+                      Retry search
+                    </Button>
+                  </>
+                ) : hasSearch || hasActiveFilters ? (
                   <>
                     <p>No results matched that combination.</p>
                     <p>Try relaxing a filter or using a broader search term.</p>
                     {hasActiveFilters ? (
-                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearFilters}
+                      >
                         Reset filters
                       </Button>
                     ) : null}

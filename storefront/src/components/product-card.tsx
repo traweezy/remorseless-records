@@ -468,7 +468,11 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
   }
 
   if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
-    if (!summary.genres.length) {
+    if (
+      isProductSearchHitSource(product) &&
+      product.productType === "music-release" &&
+      !summary.genres.length
+    ) {
       console.warn("[ProductCard] missing genres", {
         handle: summary.handle,
         sourceType: isStoreProduct(product)

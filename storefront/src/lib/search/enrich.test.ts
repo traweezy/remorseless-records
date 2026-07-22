@@ -40,7 +40,9 @@ const makeVariant = (
   ...overrides,
 })
 
-const makeHit = (overrides: Partial<ProductSearchHit> = {}): ProductSearchHit => {
+const makeHit = (
+  overrides: Partial<ProductSearchHit> = {}
+): ProductSearchHit => {
   const token = faker.string.alphanumeric(8).toLowerCase()
   return {
     id: faker.string.uuid(),
@@ -94,6 +96,24 @@ describe("enrichSearchResponse", () => {
 
   it("returns the same response when no hits require hydration", async () => {
     const response = makeResponse([makeHit()])
+
+    const result = await enrichSearchResponse(response)
+
+    expect(result).toBe(response)
+    expect(mockedGetProductByHandle).not.toHaveBeenCalled()
+  })
+
+  it("does not hydrate merchandise solely for missing music metadata", async () => {
+    const response = makeResponse([
+      makeHit({
+        collectionTitle: null,
+        genres: [],
+        metalGenres: [],
+        categories: [],
+        categoryHandles: [],
+        productType: "merch",
+      }),
+    ])
 
     const result = await enrichSearchResponse(response)
 
@@ -188,7 +208,12 @@ describe("enrichSearchResponse", () => {
       stockStatus: "unknown",
     })
 
-    const response = makeResponse([incomplete, preserveStatus, unmatched, emptyHandle])
+    const response = makeResponse([
+      incomplete,
+      preserveStatus,
+      unmatched,
+      emptyHandle,
+    ])
     const result = await enrichSearchResponse(response)
 
     expect(mockedGetProductByHandle).toHaveBeenCalledTimes(2)

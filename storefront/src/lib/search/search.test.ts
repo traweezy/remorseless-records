@@ -29,9 +29,10 @@ const makeHit = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const makeClient = (index: MockIndex) => ({
-  index: vi.fn().mockReturnValue(index),
-}) as never
+const makeClient = (index: MockIndex) =>
+  ({
+    index: vi.fn().mockReturnValue(index),
+  }) as never
 
 describe("computeFacetCounts", () => {
   it("counts genres, formats, categories, variants, and product types", () => {
@@ -134,12 +135,14 @@ describe("searchProductsWithClient", () => {
           "product_type",
           "status",
           "availability_states",
+          "stock_status",
           "price_min",
           "price_max",
         ],
       }),
       search: vi.fn().mockResolvedValue({
         hits: [makeHit()],
+        estimatedTotalHits: 1,
         facetDistribution: {
           genres: { Doom: 1 },
           formats: { LP: 1 },
@@ -173,7 +176,7 @@ describe("searchProductsWithClient", () => {
     expect(index.getSettings).toHaveBeenCalledTimes(1)
     expect(index.search).toHaveBeenCalledTimes(1)
     expect(index.search).toHaveBeenCalledWith("doom", {
-      limit: 64,
+      limit: 24,
       offset: 0,
       facets: [
         "genres",
@@ -188,7 +191,7 @@ describe("searchProductsWithClient", () => {
         "variant_titles",
       ],
       filter:
-        'status = "published" AND genres IN ["Doom"] AND formats IN ["Vinyl"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 1000 AND price_min <= 3000 AND (stock_status != "sold_out")',
+        'status = "published" AND genres IN ["Doom"] AND formats IN ["Vinyl"] AND category_handles = "doom" AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 1000 AND price_min <= 3000 AND (stock_status != "sold_out")',
       sort: ["price_amount:asc"],
     })
     expect(response.total).toBe(1)
@@ -300,7 +303,8 @@ describe("searchProductsWithClient", () => {
 
     expect(index.search).toHaveBeenCalledTimes(1)
     expect(
-      (index.search.mock.calls[0]?.[1] as { filter?: unknown } | undefined)?.filter
+      (index.search.mock.calls[0]?.[1] as { filter?: unknown } | undefined)
+        ?.filter
     ).toBeUndefined()
     expect(response.total).toBe(1)
     expect(response.hits.map((hit) => hit.handle)).toEqual(["match"])
@@ -328,7 +332,8 @@ describe("searchProductsWithClient", () => {
     })
 
     expect(
-      (index.search.mock.calls[0]?.[1] as { filter?: unknown } | undefined)?.filter
+      (index.search.mock.calls[0]?.[1] as { filter?: unknown } | undefined)
+        ?.filter
     ).toBeUndefined()
     expect(response.hits.map((hit) => hit.handle)).toEqual(["published-record"])
   })
@@ -337,7 +342,12 @@ describe("searchProductsWithClient", () => {
     const minIndex: MockIndex = {
       uid: "products-price-min-filter",
       getSettings: vi.fn().mockResolvedValue({
-        filterableAttributes: ["price_min", "price_max", 123, { attribute: 123 }],
+        filterableAttributes: [
+          "price_min",
+          "price_max",
+          123,
+          { attribute: 123 },
+        ],
       }),
       search: vi.fn().mockResolvedValue({
         hits: [makeHit({ price_min: 1000, price_max: 1500 })],
