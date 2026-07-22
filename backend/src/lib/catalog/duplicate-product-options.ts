@@ -10,6 +10,10 @@ export type DuplicateProductOptionRow = {
 export type DuplicateProductOptionRepair = {
   deleteIds: string[]
   productCount: number
+  targets: Array<{
+    deleteIds: string[]
+    productId: string
+  }>
 }
 
 const normalizedValues = (values: string[]): string[] =>
@@ -31,6 +35,7 @@ export const selectSafeDuplicateProductOptions = (
   })
 
   const deleteIds: string[] = []
+  const deleteIdsByProduct = new Map<string, string[]>()
   groups.forEach((group) => {
     const reference = group[0]
     if (!reference || group.length !== 2) {
@@ -66,10 +71,17 @@ export const selectSafeDuplicateProductOptions = (
       )
     }
     deleteIds.push(duplicateId)
+    const productDeleteIds = deleteIdsByProduct.get(reference.productId) ?? []
+    productDeleteIds.push(duplicateId)
+    deleteIdsByProduct.set(reference.productId, productDeleteIds)
   })
 
   return {
     deleteIds: Array.from(new Set(deleteIds)),
-    productCount: groups.size,
+    productCount: deleteIdsByProduct.size,
+    targets: Array.from(deleteIdsByProduct, ([productId, targetDeleteIds]) => ({
+      deleteIds: Array.from(new Set(targetDeleteIds)),
+      productId,
+    })),
   }
 }

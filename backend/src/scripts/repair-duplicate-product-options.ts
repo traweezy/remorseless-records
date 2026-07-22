@@ -1,4 +1,7 @@
-import { deleteProductOptionsWorkflow } from "@medusajs/core-flows"
+import {
+  deleteProductOptionsWorkflow,
+  updateProductsWorkflow,
+} from "@medusajs/core-flows"
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import type { Knex } from "@mikro-orm/knex"
@@ -69,6 +72,51 @@ const loadAuditRows = async (database: Knex): Promise<DuplicateProductOptionRow[
   }))
 }
 
+type ProductOptionLinkRow = {
+  option_id: string
+  product_id: string
+}
+
+const loadActiveProductOptionIds = async (
+  database: Knex,
+  productIds: string[]
+): Promise<Map<string, string[]>> => {
+  const rows = await database<ProductOptionLinkRow>(
+    "product_product_option as product_option_link"
+  )
+    .join(
+      "product_option",
+      "product_option.id",
+      "product_option_link.product_option_id"
+    )
+    .whereIn("product_option_link.product_id", productIds)
+    .whereNull("product_option_link.deleted_at")
+    .whereNull("product_option.deleted_at")
+    .select({
+      option_id: "product_option_link.product_option_id",
+      product_id: "product_option_link.product_id",
+    })
+
+  const optionIdsByProduct = new Map<string, string[]>()
+  rows.forEach((row) => {
+    const optionIds = optionIdsByProduct.get(row.product_id) ?? []
+    optionIds.push(row.option_id)
+    optionIdsByProduct.set(row.product_id, optionIds)
+  })
+  return optionIdsByProduct
+}
+
+const countActiveOptions = async (
+  database: Knex,
+  optionIds: string[]
+): Promise<number> => {
+  const result = await database("product_option")
+    .whereIn("id", optionIds)
+    .whereNull("deleted_at")
+    .count<{ count: string | number }[]>("id as count")
+  return Number(result[0]?.count ?? 0)
+}
+
 export default async function repairDuplicateProductOptions({
   container,
 }: ExecArgs): Promise<void> {
@@ -87,8 +135,37 @@ export default async function repairDuplicateProductOptions({
     return
   }
 
-  for (let index = 0; index < repair.deleteIds.length; index += BATCH_SIZE) {
-    const ids = repair.deleteIds.slice(index, index + BATCH_SIZE)
+  for (let index = 0; index < repair.targets.length; index += BATCH_SIZE) {
+    const targets = repair.targets.slice(index, index + BATCH_SIZE)
+    const productIds = targets.map(({ productId }) => productId)
+    const optionIdsByProduct = await loadActiveProductOptionIds(
+      database,
+      productIds
+    )
+    const products = targets.map(({ deleteIds, productId }) => {
+      const currentOptionIds = optionIdsByProduct.get(productId)
+      if (!currentOptionIds) {
+        throw new Error(
+          `[catalog-options] ${productId} has no active product options to repair.`
+        )
+      }
+      const deleteIdSet = new Set(deleteIds)
+      if (deleteIds.some((id) => !currentOptionIds.includes(id))) {
+        throw new Error(
+          `[catalog-options] ${productId} no longer owns every duplicate option selected for repair.`
+        )
+      }
+      const optionIds = currentOptionIds.filter((id) => !deleteIdSet.has(id))
+      if (optionIds.length === 0) {
+        throw new Error(
+          `[catalog-options] ${productId} would have no options after repair.`
+        )
+      }
+      return { id: productId, option_ids: optionIds }
+    })
+    const ids = targets.flatMap(({ deleteIds }) => deleteIds)
+
+    await updateProductsWorkflow(container).run({ input: { products } })
     await deleteProductOptionsWorkflow(container).run({ input: { ids } })
     logger.info(
       `[catalog-options] Removed batch ${Math.floor(index / BATCH_SIZE) + 1} (${ids.length} option(s)).`
@@ -101,6 +178,15 @@ export default async function repairDuplicateProductOptions({
   if (remaining.deleteIds.length > 0) {
     throw new Error(
       `[catalog-options] ${remaining.deleteIds.length} duplicate option(s) remain after repair.`
+    )
+  }
+  const activeDeletedOptionCount = await countActiveOptions(
+    database,
+    repair.deleteIds
+  )
+  if (activeDeletedOptionCount > 0) {
+    throw new Error(
+      `[catalog-options] ${activeDeletedOptionCount} repaired option(s) remain active.`
     )
   }
   logger.info("[catalog-options] Duplicate product option audit passes.")

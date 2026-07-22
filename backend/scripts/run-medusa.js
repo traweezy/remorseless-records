@@ -1,11 +1,13 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { buildForwardedArgs } = require('./run-medusa-arguments');
 
 const rawScript = process.argv[2];
+const rawScriptArgs = process.argv.slice(3);
 
 if (!rawScript) {
-  console.error('Usage: node ./scripts/run-medusa.js <script>');
+  console.error('Usage: node ./scripts/run-medusa.js <script> [-- <args...>]');
   process.exit(1);
 }
 
@@ -57,7 +59,13 @@ const normalizeForCwd = (targetPath) => {
   return targetPath;
 };
 
-const result = spawnSync(process.execPath, [cliPath, 'exec', normalizeForCwd(scriptPath)], {
+const forwardedArgs = buildForwardedArgs(rawScriptArgs);
+const result = spawnSync(process.execPath, [
+  cliPath,
+  'exec',
+  normalizeForCwd(scriptPath),
+  ...forwardedArgs
+], {
   stdio: 'inherit',
   cwd: hasServerRoot ? serverRoot : root,
   env: process.env

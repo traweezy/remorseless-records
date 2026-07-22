@@ -21,7 +21,59 @@ describe("duplicate product option repair", () => {
           variantCount: 0,
         },
       ])
-    ).toEqual({ deleteIds: ["opt_unlinked"], productCount: 1 })
+    ).toEqual({
+      deleteIds: ["opt_unlinked"],
+      productCount: 1,
+      targets: [{ deleteIds: ["opt_unlinked"], productId: "prod_1" }],
+    })
+  })
+
+  it("groups multiple safe duplicate titles into one product update", () => {
+    expect(
+      selectSafeDuplicateProductOptions([
+        {
+          productId: "prod_1",
+          handle: "artist-album",
+          title: "Format",
+          optionId: "opt_format_linked",
+          values: ["CD"],
+          variantCount: 1,
+        },
+        {
+          productId: "prod_1",
+          handle: "artist-album",
+          title: "Format",
+          optionId: "opt_format_unlinked",
+          values: ["CD"],
+          variantCount: 0,
+        },
+        {
+          productId: "prod_1",
+          handle: "artist-album",
+          title: "Edition",
+          optionId: "opt_edition_linked",
+          values: ["Standard"],
+          variantCount: 1,
+        },
+        {
+          productId: "prod_1",
+          handle: "artist-album",
+          title: "Edition",
+          optionId: "opt_edition_unlinked",
+          values: ["Standard"],
+          variantCount: 0,
+        },
+      ])
+    ).toEqual({
+      deleteIds: ["opt_format_unlinked", "opt_edition_unlinked"],
+      productCount: 1,
+      targets: [
+        {
+          deleteIds: ["opt_format_unlinked", "opt_edition_unlinked"],
+          productId: "prod_1",
+        },
+      ],
+    })
   })
 
   it("rejects duplicate options when both are variant-linked", () => {
