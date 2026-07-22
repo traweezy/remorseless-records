@@ -27,6 +27,17 @@ type NormalizedCsvResult = {
   resolvedVariants: number;
   resolvedProductIds?: Array<{ handle: string; id: string }>;
   resolvedVariantIds?: Array<{ handle: string; sku: string; id: string }>;
+  resolvedProductOptions?: Array<{
+    handle: string;
+    options: ResolvedProductOption[];
+  }>;
+};
+
+export type ResolvedProductOption = {
+  id: string;
+  title: string;
+  values: string[];
+  createdAt: string;
 };
 
 type ProductImportPlan = {
@@ -58,6 +69,8 @@ type QueryGraph = {
 type NormalizedProductRecord = Record<string, unknown> & {
   handle?: string;
   id?: string;
+  option_ids?: string[];
+  options?: Array<Record<string, unknown>>;
   variants?: Array<Record<string, unknown> & { id?: string; sku?: string }>;
 };
 
@@ -66,7 +79,66 @@ type NormalizedProductTree = {
   toUpdate: Record<string, NormalizedProductRecord>;
 };
 
-const PRODUCT_LOOKUP_FIELDS = ["id", "handle", "variants.id", "variants.sku"];
+const PRODUCT_LOOKUP_FIELDS = [
+  "id",
+  "handle",
+  "options.id",
+  "options.title",
+  "options.created_at",
+  "options.values.value",
+  "variants.id",
+  "variants.sku",
+];
+
+const normalizedOptionValue = (value: unknown): string =>
+  typeof value === "string" ? value.trim().toLocaleLowerCase("en-US") : "";
+
+export const reuseResolvedProductOptions = (
+  product: NormalizedProductRecord,
+  existingOptions: ResolvedProductOption[]
+): void => {
+  if (!product.options?.length || !existingOptions.length) {
+    return;
+  }
+
+  const optionIds = product.options.map((option) => {
+    const title = nonEmptyString(option, "title");
+    if (!title) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        `Product ${product.handle ?? product.id ?? "unknown"} has an option without a title.`
+      );
+    }
+
+    const values = Array.isArray(option["values"])
+      ? option["values"]
+          .map(normalizedOptionValue)
+          .filter((value) => value.length > 0)
+      : [];
+    const titleKey = normalizedOptionValue(title);
+    const candidates = existingOptions
+      .filter((candidate) => normalizedOptionValue(candidate.title) === titleKey)
+      .filter((candidate) => {
+        const candidateValues = new Set(
+          candidate.values.map(normalizedOptionValue)
+        );
+        return values.every((value) => candidateValues.has(value));
+      })
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    const candidate = candidates[0];
+
+    if (!candidate) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        `Product ${product.handle ?? product.id ?? "unknown"} imports option ${title} with values that do not match an existing option. Add the option/value in Admin before rerunning the import.`
+      );
+    }
+    return candidate.id;
+  });
+
+  product.option_ids = Array.from(new Set(optionIds));
+  delete product.options;
+};
 
 const LEGACY_METADATA_COLUMN_MAP: Record<string, string> = {
   "product collection title": "collection_title",
@@ -481,6 +553,7 @@ const normalizeCommaDelimitedCsv = async (
 
   const productIdByHandle = new Map<string, string>();
   const variantIdByHandleSku = new Map<string, string>();
+  const productOptionsByHandle = new Map<string, ResolvedProductOption[]>();
   existingProductRows.forEach((product) => {
     const handle = nonEmptyString(product, "handle");
     const id = nonEmptyString(product, "id");
@@ -488,6 +561,44 @@ const normalizeCommaDelimitedCsv = async (
       return;
     }
     productIdByHandle.set(handle, id);
+
+    const options = product["options"];
+    if (Array.isArray(options)) {
+      const resolvedOptions = options.flatMap((option) => {
+        if (!option || typeof option !== "object") {
+          return [];
+        }
+        const optionRecord = option as Record<string, unknown>;
+        const optionId = nonEmptyString(optionRecord, "id");
+        const title = nonEmptyString(optionRecord, "title");
+        if (!optionId || !title) {
+          return [];
+        }
+        const optionValues = Array.isArray(optionRecord["values"])
+          ? optionRecord["values"].flatMap((value) => {
+              if (!value || typeof value !== "object") {
+                return [];
+              }
+              const resolved = nonEmptyString(
+                value as Record<string, unknown>,
+                "value"
+              );
+              return resolved ? [resolved] : [];
+            })
+          : [];
+        return [
+          {
+            id: optionId,
+            title,
+            values: optionValues,
+            createdAt: nonEmptyString(optionRecord, "created_at") ?? "",
+          },
+        ];
+      });
+      if (resolvedOptions.length) {
+        productOptionsByHandle.set(handle, resolvedOptions);
+      }
+    }
 
     const variants = product["variants"];
     if (!Array.isArray(variants)) {
@@ -546,6 +657,9 @@ const normalizeCommaDelimitedCsv = async (
         return handle && sku ? [{ handle, sku, id }] : [];
       }
     ),
+    resolvedProductOptions: Array.from(productOptionsByHandle.entries()).map(
+      ([handle, options]) => ({ handle, options })
+    ),
   };
 };
 
@@ -554,7 +668,9 @@ const buildImportPlan = (
   csvText: string,
   resolvedIds?: Pick<
     NormalizedCsvResult,
-    "resolvedProductIds" | "resolvedVariantIds"
+    | "resolvedProductIds"
+    | "resolvedVariantIds"
+    | "resolvedProductOptions"
   >
 ): {
   plan: ProductImportPlan;
@@ -577,6 +693,12 @@ const buildImportPlan = (
   ).size;
   const productIdByHandle = new Map<string, string>();
   const variantIdByHandleSku = new Map<string, string>();
+  const productOptionsByHandle = new Map(
+    resolvedIds?.resolvedProductOptions?.map(({ handle, options }) => [
+      handle,
+      options,
+    ]) ?? []
+  );
   const normalizedValue = (
     row: Record<string, unknown>,
     key: string
@@ -632,6 +754,14 @@ const buildImportPlan = (
     products.toUpdate[productId] = product;
     delete products.toCreate[key];
     recoveredUpdates += 1;
+  });
+
+  Object.values(products.toUpdate).forEach((product) => {
+    const handle = typeof product.handle === "string" ? product.handle : "";
+    const existingOptions = productOptionsByHandle.get(handle);
+    if (existingOptions) {
+      reuseResolvedProductOptions(product, existingOptions);
+    }
   });
 
   const create = Object.values(products.toCreate).map((product) =>
