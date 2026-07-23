@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 
+import { Button } from "@/components/ui/button"
+
 type InstagramPost = {
   url: string
   alt: string
@@ -71,7 +73,10 @@ const InstagramGrid = ({ profileUrl }: Props) => {
     setPosts(shuffled.slice(0, 6))
   }, [])
 
-  const skeletonItems = useMemo(() => Array.from({ length: 4 }, (_, index) => index), [])
+  const skeletonItems = useMemo(
+    () => Array.from({ length: 4 }, (_, index) => index),
+    []
+  )
 
   if (!mounted) {
     return (
@@ -110,15 +115,12 @@ const InstagramGrid = ({ profileUrl }: Props) => {
           </a>
         ))}
       </div>
-      <a
-        href={profileUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
-      >
-        <InstagramGlyph />
-        View on Instagram
-      </a>
+      <Button asChild variant="outlined" size="compact" className="w-fit gap-2">
+        <a href={profileUrl} target="_blank" rel="noreferrer">
+          <InstagramGlyph />
+          View on Instagram
+        </a>
+      </Button>
     </div>
   )
 }

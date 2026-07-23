@@ -32,4 +32,26 @@ describe("Button", () => {
     expect(link).toHaveAttribute("href", "/catalog")
     expect(link).toHaveClass("inline-flex")
   })
+
+  it("shares filled and outlined call-to-action variants", () => {
+    render(
+      <>
+        <Button type="button" variant="filled">
+          Filled action
+        </Button>
+        <Button type="button" variant="outlined">
+          Outlined action
+        </Button>
+      </>
+    )
+
+    expect(screen.getByRole("button", { name: "Filled action" })).toHaveClass(
+      "bg-destructive",
+      "text-destructive-foreground"
+    )
+    expect(screen.getByRole("button", { name: "Outlined action" })).toHaveClass(
+      "border-destructive/70",
+      "text-destructive"
+    )
+  })
 })

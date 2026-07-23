@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react"
 
+import { Button } from "@/components/ui/button"
+
 const DEFAULT_ALBUM_ID = "2916008899"
 const DEFAULT_ALBUM_SLUG = "samudaripen"
 
 const ALBUM_ID = process.env.NEXT_PUBLIC_BANDCAMP_ALBUM_ID ?? DEFAULT_ALBUM_ID
-const ALBUM_SLUG = process.env.NEXT_PUBLIC_BANDCAMP_ALBUM_SLUG ?? DEFAULT_ALBUM_SLUG
+const ALBUM_SLUG =
+  process.env.NEXT_PUBLIC_BANDCAMP_ALBUM_SLUG ?? DEFAULT_ALBUM_SLUG
 
 const BANDCAMP_EMBED_SRC = `https://bandcamp.com/EmbeddedPlayer/album=${ALBUM_ID}/size=large/bgcol=333333/linkcol=e32c14/transparent=true/`
 
@@ -35,14 +38,11 @@ const BandcampEmbed = () => {
     return (
       <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
         <p>Bandcamp player is unavailable right now.</p>
-        <a
-          href={BANDCAMP_LINK}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
-        >
-          Open on Bandcamp
-        </a>
+        <Button asChild variant="outlined" size="compact" className="w-fit">
+          <a href={BANDCAMP_LINK} target="_blank" rel="noreferrer">
+            Open on Bandcamp
+          </a>
+        </Button>
       </div>
     )
   }

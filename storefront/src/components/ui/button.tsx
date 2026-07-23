@@ -5,13 +5,20 @@ import { forwardRef } from "react"
 
 import { cn } from "@/lib/ui/cn"
 
+const filledButtonClasses =
+  "bg-destructive text-destructive-foreground shadow-[0_10px_30px_-20px_hsla(0,70%,50%,0.75)] hover:bg-destructive/60 hover:shadow-[0_16px_40px_-22px_hsla(0,70%,50%,0.85)]"
+
+const outlinedButtonClasses =
+  "border border-destructive/70 bg-transparent text-destructive hover:border-destructive hover:bg-destructive/10 hover:text-foreground"
+
 const buttonVariants = cva(
   "inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold uppercase tracking-[0.3rem] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ring-offset-background active:translate-y-[1px]",
   {
     variants: {
       variant: {
-        default:
-          "bg-destructive text-destructive-foreground shadow-[0_10px_30px_-20px_hsla(0,70%,50%,0.75)] hover:bg-destructive/60 hover:shadow-[0_16px_40px_-22px_hsla(0,70%,50%,0.85)]",
+        filled: filledButtonClasses,
+        outlined: outlinedButtonClasses,
+        default: filledButtonClasses,
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/65",
         ghost:
@@ -23,12 +30,13 @@ const buttonVariants = cva(
       size: {
         default: "h-11 px-6",
         sm: "h-9 px-4 text-[0.55rem]",
+        compact: "h-9 px-4 text-xs tracking-[0.25rem]",
         lg: "h-12 px-8 text-base",
         icon: "h-11 w-11",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "filled",
       size: "default",
     },
   }

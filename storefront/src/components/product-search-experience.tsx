@@ -664,13 +664,13 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                   {error}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="submit" variant="outline" size="sm">
+                  <Button type="submit" variant="filled" size="compact">
                     Apply
                   </Button>
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
+                    variant="outlined"
+                    size="compact"
                     onClick={handleClear}
                     disabled={!draftMin.length && !draftMax.length}
                   >
@@ -739,27 +739,23 @@ const FilterSidebar = ({
           Reset
         </button>
       </div>
-      <button
+      <Button
         type="button"
         onClick={onToggleStock}
-        className="flex w-full items-center justify-between rounded-full border border-border/40 bg-background/70 px-4 py-2 text-[0.65rem] uppercase tracking-[0.3rem] text-foreground transition hover:border-border/60 focus-visible:outline-none focus-visible:ring-0"
+        variant={showInStockOnly ? "filled" : "outlined"}
+        size="default"
+        className="w-full justify-between px-4 text-[0.65rem]"
+        aria-pressed={showInStockOnly}
       >
         <span className="select-none">In stock</span>
-        <span
+        <Check
           className={cn(
-            "inline-flex h-5 w-10 items-center rounded-full border border-border/60 bg-background px-1 transition",
-            showInStockOnly && "justify-end border-destructive"
+            "h-4 w-4 transition-opacity",
+            showInStockOnly ? "opacity-100" : "opacity-0"
           )}
           aria-hidden
-        >
-          <span
-            className={cn(
-              "h-3.5 w-3.5 rounded-full bg-border transition",
-              showInStockOnly && "bg-destructive"
-            )}
-          />
-        </span>
-      </button>
+        />
+      </Button>
     </div>
 
     <div className="space-y-5">

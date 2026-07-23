@@ -3,11 +3,13 @@ import { siBandcamp } from "simple-icons"
 
 import ContactForm from "@/components/contact/contact-form"
 import BandcampEmbed from "@/components/contact/bandcamp-embed"
+import { Button } from "@/components/ui/button"
 import { siteMetadata } from "@/config/site"
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Reach Remorseless Records for releases, distro, and press. Expect fast replies.",
+  description:
+    "Reach Remorseless Records for releases, distro, and press. Expect fast replies.",
 }
 
 const ContactPage = () => {
@@ -24,8 +26,9 @@ const ContactPage = () => {
             Drop a line
           </h1>
           <p className="max-w-3xl text-base leading-relaxed text-muted-foreground">
-            Submissions, distro inquiries, press, or support. This form goes straight to the label inbox.
-            Expect a reply within 1–2 business days.
+            Submissions, distro inquiries, press, or support. This form goes
+            straight to the label inbox. Expect a reply within 1–2 business
+            days.
           </p>
         </header>
 
@@ -43,16 +46,21 @@ const ContactPage = () => {
                     Email the label
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Goes straight to the inbox we actually monitor. Replies within 1–2 business days.
+                    Goes straight to the inbox we actually monitor. Replies
+                    within 1–2 business days.
                   </p>
                 </div>
               </div>
-              <a
-                href={`mailto:${siteMetadata.contact.email}`}
-                className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
+              <Button
+                asChild
+                variant="outlined"
+                size="compact"
+                className="w-fit"
               >
-                {siteMetadata.contact.email}
-              </a>
+                <a href={`mailto:${siteMetadata.contact.email}`}>
+                  {siteMetadata.contact.email}
+                </a>
+              </Button>
             </div>
           </div>
 
@@ -67,28 +75,38 @@ const ContactPage = () => {
                     Bandcamp
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Featured release from our Bandcamp. Stream while you write and follow the label.
+                    Featured release from our Bandcamp. Stream while you write
+                    and follow the label.
                   </p>
                 </div>
               </div>
               <BandcampEmbed />
-              <a
-                href={siteMetadata.socials.bandcamp ?? "https://remorselessrecords.bandcamp.com/"}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/70 px-4 py-2 text-xs uppercase tracking-[0.25rem] text-destructive transition hover:border-destructive hover:text-foreground"
+              <Button
+                asChild
+                variant="outlined"
+                size="compact"
+                className="w-fit gap-2"
               >
-                <svg
-                  aria-hidden="true"
-                  role="img"
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="currentColor"
+                <a
+                  href={
+                    siteMetadata.socials.bandcamp ??
+                    "https://remorselessrecords.bandcamp.com/"
+                  }
+                  target="_blank"
+                  rel="noreferrer"
                 >
-                  <path d={bandcampPath} />
-                </svg>
-                Support us on Bandcamp
-              </a>
+                  <svg
+                    aria-hidden="true"
+                    role="img"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="currentColor"
+                  >
+                    <path d={bandcampPath} />
+                  </svg>
+                  Support us on Bandcamp
+                </a>
+              </Button>
             </div>
           </aside>
         </div>

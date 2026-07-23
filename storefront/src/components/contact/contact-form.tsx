@@ -6,7 +6,10 @@ import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { PillDropdown, type PillDropdownOption } from "@/components/ui/pill-dropdown"
+import {
+  PillDropdown,
+  type PillDropdownOption,
+} from "@/components/ui/pill-dropdown"
 import { cn } from "@/lib/ui/cn"
 import { siteMetadata } from "@/config/site"
 
@@ -34,12 +37,14 @@ const fieldBaseClass =
   "mt-1 w-full appearance-none rounded-2xl border border-border/60 bg-background/90 px-3.5 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus:border-destructive focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-destructive focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_hsl(var(--destructive)/0.55)]"
 
 const ContactForm = () => {
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle")
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const reasonOptions: [
     PillDropdownOption<ContactFormValues["reason"]>,
-    ...Array<PillDropdownOption<ContactFormValues["reason"]>>
+    ...Array<PillDropdownOption<ContactFormValues["reason"]>>,
   ] = [
     { value: "booking", label: "Booking" },
     { value: "press", label: "Press" },
@@ -71,7 +76,9 @@ const ContactForm = () => {
         form.reset()
       } catch (error) {
         setStatus("error")
-        setErrorMessage(error instanceof Error ? error.message : "Unable to send message")
+        setErrorMessage(
+          error instanceof Error ? error.message : "Unable to send message"
+        )
       }
     },
   })
@@ -118,7 +125,9 @@ const ContactForm = () => {
                 aria-invalid={Boolean(field.state.meta.errors[0])}
               />
               {field.state.meta.errors[0] ? (
-                <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                <p className="mt-1 text-xs text-destructive">
+                  {field.state.meta.errors[0]}
+                </p>
               ) : null}
             </label>
           )}
@@ -145,7 +154,9 @@ const ContactForm = () => {
                 aria-invalid={Boolean(field.state.meta.errors[0])}
               />
               {field.state.meta.errors[0] ? (
-                <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                <p className="mt-1 text-xs text-destructive">
+                  {field.state.meta.errors[0]}
+                </p>
               ) : null}
             </label>
           )}
@@ -160,23 +171,25 @@ const ContactForm = () => {
               ? undefined
               : "Select a reason",
         }}
-        >
-          {(field) => (
-            <label className="block text-sm text-muted-foreground">
-              Reason
-              <PillDropdown
-                value={field.state.value}
-                options={reasonOptions}
-                onChange={(next) => field.handleChange(next)}
-                className="w-full"
-                buttonClassName="w-full"
-                align="start"
-              />
-              {field.state.meta.errors[0] ? (
-                <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
-              ) : null}
-            </label>
-          )}
+      >
+        {(field) => (
+          <label className="block text-sm text-muted-foreground">
+            Reason
+            <PillDropdown
+              value={field.state.value}
+              options={reasonOptions}
+              onChange={(next) => field.handleChange(next)}
+              className="w-full"
+              buttonClassName="w-full"
+              align="start"
+            />
+            {field.state.meta.errors[0] ? (
+              <p className="mt-1 text-xs text-destructive">
+                {field.state.meta.errors[0]}
+              </p>
+            ) : null}
+          </label>
+        )}
       </form.Field>
 
       <form.Field
@@ -202,7 +215,9 @@ const ContactForm = () => {
               aria-invalid={Boolean(field.state.meta.errors[0])}
             />
             {field.state.meta.errors[0] ? (
-              <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
+              <p className="mt-1 text-xs text-destructive">
+                {field.state.meta.errors[0]}
+              </p>
             ) : null}
           </label>
         )}
@@ -212,17 +227,21 @@ const ContactForm = () => {
         <Button
           type="submit"
           disabled={disabled}
-          size="sm"
-          className="inline-flex items-center gap-2 rounded-full px-4"
+          variant="filled"
+          size="compact"
+          className="gap-2"
         >
           {status === "submitting" ? "Sending..." : "Send message"}
         </Button>
         {status === "success" ? (
-          <span className="text-sm text-foreground">Message sent. We’ll reply soon.</span>
+          <span className="text-sm text-foreground">
+            Message sent. We’ll reply soon.
+          </span>
         ) : null}
         {status === "error" && errorMessage ? (
           <span className="text-sm text-destructive">
-            Something went wrong. Please try again or email {siteMetadata.contact.email}.
+            Something went wrong. Please try again or email{" "}
+            {siteMetadata.contact.email}.
           </span>
         ) : null}
       </div>

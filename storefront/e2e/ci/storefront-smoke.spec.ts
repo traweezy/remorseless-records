@@ -330,6 +330,14 @@ test("catalog filters stay stable and combine predictably", async ({
   const drawer = page.getByRole("dialog", { name: "Filters" })
   await expect(drawer).toBeVisible()
 
+  const inStockButton = drawer.getByRole("button", { name: "In stock" })
+  await expect(inStockButton).toHaveAttribute("aria-pressed", "false")
+  await expect(inStockButton).toHaveClass(/border-destructive\/70/)
+  await inStockButton.click()
+  await expect(inStockButton).toHaveAttribute("aria-pressed", "true")
+  await expect(inStockButton).toHaveClass(/bg-destructive/)
+  await inStockButton.click()
+
   const merchandise = drawer.getByRole("checkbox", {
     name: /^Merchandise/,
   })
@@ -378,6 +386,12 @@ test("catalog filters stay stable and combine predictably", async ({
   await expect(maximumPriceInput).toHaveValue("55")
   await maximumPriceInput.fill("20")
   await expect(maximumPriceSlider).toHaveAttribute("aria-valuenow", "2000")
+  await expect(drawer.getByRole("button", { name: "Apply" })).toHaveClass(
+    /bg-destructive/
+  )
+  await expect(drawer.getByRole("button", { name: "Clear" })).toHaveClass(
+    /border-destructive\/70/
+  )
   await expectVisibleInteractivePointers(page)
   await drawer.getByRole("button", { name: "Apply" }).click()
   await expect(
