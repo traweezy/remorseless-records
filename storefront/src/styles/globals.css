@@ -153,7 +153,11 @@
     display: block;
     width: 14rem;
     padding: 0.5rem 0;
-    background: linear-gradient(135deg, hsl(var(--destructive)) 0%, hsl(var(--accent)) 100%);
+    background: linear-gradient(
+      135deg,
+      hsl(var(--destructive)) 0%,
+      hsl(var(--accent)) 100%
+    );
     color: hsl(var(--destructive-foreground));
     font-family: var(--font-headline, var(--font-sans));
     font-size: 0.64rem;
@@ -203,7 +207,6 @@
   .interactive {
     @apply cursor-pointer transition-colors duration-150 hover:text-foreground;
   }
-
 }
 
 @layer base {
@@ -240,8 +243,16 @@
     --radius: 0.5rem;
 
     /* Hero gradients */
-    --gradient-hero: radial-gradient(circle at 50% 30%, hsl(0 100% 20%) 0%, hsl(0 0% 0%) 65%);
-    --gradient-section: linear-gradient(to bottom, hsl(0 0% 9%) 0%, transparent 100%);
+    --gradient-hero: radial-gradient(
+      circle at 50% 30%,
+      hsl(0 100% 20%) 0%,
+      hsl(0 0% 0%) 65%
+    );
+    --gradient-section: linear-gradient(
+      to bottom,
+      hsl(0 0% 9%) 0%,
+      transparent 100%
+    );
     --shadow-card: 0 20px 45px -32px hsl(0 0% 0% / 0.9);
     --shadow-elegant: 0 28px 60px -42px rgba(0, 0, 0, 0.8);
   }
@@ -249,7 +260,9 @@
   body {
     @apply min-h-screen bg-background text-foreground antialiased;
     font-family: var(--font-sans), system-ui, sans-serif;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
   }
 
   * {
@@ -267,6 +280,70 @@
 
   a:hover {
     @apply text-accent;
+  }
+
+  :is(
+      a[href],
+      button,
+      summary,
+      select,
+      [role="button"],
+      [role="link"],
+      [role="option"],
+      [role="menuitem"],
+      [role="tab"],
+      [role="checkbox"],
+      [role="radio"],
+      [role="switch"],
+      label[for],
+      label:has(
+        input:is(
+          [type="button"],
+          [type="submit"],
+          [type="reset"],
+          [type="checkbox"],
+          [type="radio"],
+          [type="range"],
+          [type="file"],
+          [type="color"]
+        )
+      ),
+      input:is(
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        [type="checkbox"],
+        [type="radio"],
+        [type="range"],
+        [type="file"],
+        [type="color"]
+      )
+    ):not(:disabled):not([aria-disabled="true"]):not([data-disabled]) {
+    cursor: pointer;
+  }
+
+  :is(button, select, input):disabled,
+  :is(
+    [role="button"],
+    [role="link"],
+    [role="option"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"]
+  )[aria-disabled="true"],
+  :is(
+    [role="button"],
+    [role="link"],
+    [role="option"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"]
+  )[data-disabled] {
+    cursor: not-allowed;
   }
 
   :focus-visible {
@@ -296,7 +373,12 @@
   }
 
   .skeleton {
-    background-image: linear-gradient(90deg, hsl(0 0% 10%) 0%, hsl(0 0% 18%) 40%, hsl(0 0% 10%) 100%);
+    background-image: linear-gradient(
+      90deg,
+      hsl(0 0% 10%) 0%,
+      hsl(0 0% 18%) 40%,
+      hsl(0 0% 10%) 100%
+    );
     background-size: 200% 100%;
     animation: shimmer 1.6s ease-in-out infinite;
   }

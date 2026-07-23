@@ -17,7 +17,7 @@ const SelectTrigger = React.forwardRef<
   <Select.Trigger
     ref={ref}
     className={cn(
-      "flex h-11 w-full items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm",
+      "flex h-11 w-full cursor-pointer items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm",
       "ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
       "disabled:cursor-not-allowed disabled:opacity-50",
       className
@@ -39,7 +39,7 @@ const SelectScrollUpButton = React.forwardRef<
   <Select.ScrollUpButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center py-1 text-muted-foreground",
+      "flex cursor-pointer items-center justify-center py-1 text-muted-foreground",
       className
     )}
     {...props}
@@ -56,7 +56,7 @@ const SelectScrollDownButton = React.forwardRef<
   <Select.ScrollDownButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center py-1 text-muted-foreground",
+      "flex cursor-pointer items-center justify-center py-1 text-muted-foreground",
       className
     )}
     {...props}
@@ -86,7 +86,8 @@ const SelectContent = React.forwardRef<
       <Select.Viewport
         className={cn(
           "p-1",
-          position === "popper" && "h-[var(--radix-select-trigger-height)] w-full"
+          position === "popper" &&
+            "h-[var(--radix-select-trigger-height)] w-full"
         )}
       >
         {children}
@@ -103,7 +104,10 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <Select.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-xs font-semibold text-muted-foreground", className)}
+    className={cn(
+      "px-2 py-1.5 text-xs font-semibold text-muted-foreground",
+      className
+    )}
     {...props}
   />
 ))
@@ -116,7 +120,7 @@ const SelectItem = React.forwardRef<
   <Select.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
+      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
       "focus:bg-accent/10 focus:text-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}

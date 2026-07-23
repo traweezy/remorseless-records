@@ -347,9 +347,6 @@ const FilterCheckboxList = ({
             className="overflow-hidden"
           >
             <div className="mt-1 flex flex-col gap-1.5">
-              <p className="px-2 pb-1 text-[0.62rem] leading-relaxed text-muted-foreground/80">
-                Catalog totals · select more than one to match any
-              </p>
               {options.map(({ value, label, count }) => {
                 const normalizedValue = normalizeValue(value)
                 if (!normalizedValue.length) {

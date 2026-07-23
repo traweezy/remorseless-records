@@ -15,6 +15,8 @@ describe("Button", () => {
 
     const button = screen.getByRole("button", { name: label })
     expect(button).toHaveClass("inline-flex")
+    expect(button).toHaveClass("cursor-pointer")
+    expect(button).toHaveClass("disabled:cursor-not-allowed")
     expect(button).toHaveClass("rounded-full")
   })
 

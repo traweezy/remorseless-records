@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
 import type {
   ProductSearchRequest,
@@ -121,6 +121,68 @@ const createPaginationFixture = (
   nextOffset: Math.min(offset + limit, 461),
 })
 
+const interactivePointerSelector = [
+  'a[href]:not([aria-disabled="true"])',
+  'button:not(:disabled):not([aria-disabled="true"])',
+  "summary",
+  "select:not(:disabled)",
+  '[role="button"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  '[role="link"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  '[role="option"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  '[role="menuitem"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  '[role="tab"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  '[role="checkbox"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  '[role="radio"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  '[role="switch"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  "label[for]",
+  'input:not(:disabled):is([type="button"],[type="submit"],[type="reset"],[type="checkbox"],[type="radio"],[type="range"],[type="file"],[type="color"])',
+].join(",")
+
+const expectVisibleInteractivePointers = async (page: Page): Promise<void> => {
+  const offenders = await page
+    .locator(interactivePointerSelector)
+    .evaluateAll((nodes) =>
+      nodes.flatMap((node) => {
+        const element = node as HTMLElement
+        const bounds = element.getBoundingClientRect()
+        const style = window.getComputedStyle(element)
+        const clipped =
+          style.clip !== "auto" ||
+          (style.clipPath !== "none" && style.clipPath !== "")
+
+        if (
+          bounds.width <= 0 ||
+          bounds.height <= 0 ||
+          clipped ||
+          style.display === "none" ||
+          style.visibility === "hidden" ||
+          style.pointerEvents === "none" ||
+          style.cursor === "pointer"
+        ) {
+          return []
+        }
+
+        return [
+          {
+            tag: element.tagName.toLowerCase(),
+            role: element.getAttribute("role"),
+            label: (
+              element.getAttribute("aria-label") ??
+              element.textContent ??
+              ""
+            )
+              .trim()
+              .replace(/\s+/g, " ")
+              .slice(0, 100),
+            cursor: style.cursor,
+          },
+        ]
+      })
+    )
+
+  expect(offenders).toEqual([])
+}
+
 test("homepage hydrates every curated shelf without client errors", async ({
   page,
 }) => {
@@ -184,6 +246,47 @@ test("homepage hydrates every curated shelf without client errors", async ({
     expect(tagline.left).toBeGreaterThanOrEqual(0)
     expect(tagline.right).toBeLessThanOrEqual(metrics.viewportWidth)
   }
+})
+
+test("visible interactive controls consistently use pointer cursors", async ({
+  page,
+}) => {
+  await page.goto("/", { waitUntil: "networkidle" })
+  await expectVisibleInteractivePointers(page)
+
+  const rejectCookies = page.getByRole("button", {
+    name: "Reject non-essential",
+  })
+  if (await rejectCookies.isVisible()) {
+    await rejectCookies.click()
+  }
+
+  const openNavigation = page.getByRole("button", {
+    name: "Open navigation",
+  })
+  if (await openNavigation.isVisible()) {
+    await openNavigation.click()
+    await expectVisibleInteractivePointers(page)
+    await page.getByRole("button", { name: "Close navigation" }).click()
+  }
+
+  await page.goto("/catalog", { waitUntil: "networkidle" })
+  await expectVisibleInteractivePointers(page)
+  await page.getByRole("button", { name: "Title · A → Z" }).click()
+  await expectVisibleInteractivePointers(page)
+  await page.keyboard.press("Escape")
+
+  await page.goto("/discography", { waitUntil: "networkidle" })
+  await expectVisibleInteractivePointers(page)
+  await page.getByRole("button", { name: "All availability" }).click()
+  await expectVisibleInteractivePointers(page)
+  await page.keyboard.press("Escape")
+
+  await page.goto("/contact", { waitUntil: "networkidle" })
+  await expectVisibleInteractivePointers(page)
+
+  await page.goto("/cookies", { waitUntil: "networkidle" })
+  await expectVisibleInteractivePointers(page)
 })
 
 test("catalog filters stay stable and combine predictably", async ({
