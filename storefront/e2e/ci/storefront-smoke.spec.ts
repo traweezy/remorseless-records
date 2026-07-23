@@ -134,6 +134,7 @@ const interactivePointerSelector = [
   '[role="checkbox"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
   '[role="radio"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
   '[role="switch"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
+  '[role="slider"]:not(:disabled):not([aria-disabled="true"]):not([data-disabled])',
   "label[for]",
   'input:not(:disabled):is([type="button"],[type="submit"],[type="reset"],[type="checkbox"],[type="radio"],[type="range"],[type="file"],[type="color"])',
 ].join(",")
@@ -361,9 +362,23 @@ test("catalog filters stay stable and combine predictably", async ({
   await drawer.getByText("CD", { exact: true }).click()
 
   await drawer.getByRole("button", { name: "Price" }).click()
-  await drawer
-    .getByRole("spinbutton", { name: "Maximum price in dollars" })
-    .fill("20")
+  const minimumPriceSlider = drawer.getByRole("slider", {
+    name: "Minimum price",
+  })
+  const maximumPriceSlider = drawer.getByRole("slider", {
+    name: "Maximum price",
+  })
+  await expect(minimumPriceSlider).toHaveAttribute("aria-valuenow", "100")
+  await expect(maximumPriceSlider).toHaveAttribute("aria-valuenow", "5600")
+  const maximumPriceInput = drawer.getByRole("spinbutton", {
+    name: "Maximum price in dollars",
+  })
+  await maximumPriceSlider.focus()
+  await maximumPriceSlider.press("ArrowLeft")
+  await expect(maximumPriceInput).toHaveValue("55")
+  await maximumPriceInput.fill("20")
+  await expect(maximumPriceSlider).toHaveAttribute("aria-valuenow", "2000")
+  await expectVisibleInteractivePointers(page)
   await drawer.getByRole("button", { name: "Apply" }).click()
   await expect(
     drawer.getByRole("button", { name: /Show [1-9]\d* results/ })

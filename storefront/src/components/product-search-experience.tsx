@@ -17,6 +17,7 @@ import {
 import { Debouncer } from "@tanstack/pacer"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { type VirtualItem, useWindowVirtualizer } from "@tanstack/react-virtual"
+import { Slider } from "radix-ui"
 import {
   ArrowDown01,
   ArrowDownAZ,
@@ -432,6 +433,9 @@ const parsePriceInput = (value: string): number | null => {
     : Number.NaN
 }
 
+const clampPrice = (amount: number, minimum: number, maximum: number): number =>
+  Math.min(Math.max(amount, minimum), maximum)
+
 type PriceRangeFilterProps = {
   idPrefix: string
   bounds: CatalogPriceRange | null
@@ -448,19 +452,50 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
     const [draftMax, setDraftMax] = useState(priceInputValue(max))
     const [error, setError] = useState<string | null>(null)
     const errorId = `${idPrefix}-price-error`
+    const sliderMinimum = bounds?.min ?? 0
+    const sliderMaximum = Math.max(bounds?.max ?? sliderMinimum, sliderMinimum)
+    const sliderStep = sliderMaximum - sliderMinimum >= 100 ? 100 : 1
+    const sliderValues = useMemo<[number, number]>(() => {
+      const parsedMinimum = parsePriceInput(draftMin)
+      const parsedMaximum = parsePriceInput(draftMax)
+      const nextMinimum =
+        parsedMinimum !== null && Number.isFinite(parsedMinimum)
+          ? clampPrice(parsedMinimum, sliderMinimum, sliderMaximum)
+          : sliderMinimum
+      const nextMaximum =
+        parsedMaximum !== null && Number.isFinite(parsedMaximum)
+          ? clampPrice(parsedMaximum, sliderMinimum, sliderMaximum)
+          : sliderMaximum
+
+      return nextMinimum <= nextMaximum
+        ? [nextMinimum, nextMaximum]
+        : [nextMaximum, nextMaximum]
+    }, [draftMax, draftMin, sliderMaximum, sliderMinimum])
 
     const handleToggle = useCallback(() => {
       setIsOpen((current) => !current)
     }, [])
+    const handleSliderChange = useCallback((values: number[]) => {
+      const nextMinimum = values[0]
+      const nextMaximum = values[1]
+      if (nextMinimum === undefined || nextMaximum === undefined) {
+        return
+      }
+      setDraftMin(priceInputValue(nextMinimum))
+      setDraftMax(priceInputValue(nextMaximum))
+      setError(null)
+    }, [])
     const handleMinimumChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
         setDraftMin(event.target.value)
+        setError(null)
       },
       []
     )
     const handleMaximumChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
         setDraftMax(event.target.value)
+        setError(null)
       },
       []
     )
@@ -527,11 +562,56 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
               transition={{ duration: 0.18, ease: "easeInOut" }}
               className="overflow-hidden"
             >
-              <form className="space-y-3 px-2" onSubmit={handleSubmit}>
-                <p className="text-[0.62rem] leading-relaxed text-muted-foreground/80">
-                  Catalog range {formatPrice(bounds.min, bounds.currency)}–
-                  {formatPrice(bounds.max, bounds.currency)}
-                </p>
+              <form className="space-y-4 px-2" onSubmit={handleSubmit}>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-xs font-semibold tabular-nums">
+                    <output
+                      className="rounded-full border border-border/70 bg-background px-3 py-1.5 text-foreground"
+                      aria-label="Selected minimum price"
+                    >
+                      {formatPrice(sliderValues[0], bounds.currency)}
+                    </output>
+                    <span
+                      className="h-px min-w-4 flex-1 bg-border/70"
+                      aria-hidden
+                    />
+                    <output
+                      className="rounded-full border border-border/70 bg-background px-3 py-1.5 text-foreground"
+                      aria-label="Selected maximum price"
+                    >
+                      {formatPrice(sliderValues[1], bounds.currency)}
+                    </output>
+                  </div>
+                  <Slider.Root
+                    className="relative flex min-h-11 w-full touch-none select-none items-center"
+                    value={sliderValues}
+                    min={sliderMinimum}
+                    max={sliderMaximum}
+                    step={sliderStep}
+                    minStepsBetweenThumbs={0}
+                    onValueChange={handleSliderChange}
+                  >
+                    <Slider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-border/70">
+                      <Slider.Range className="absolute h-full bg-destructive" />
+                    </Slider.Track>
+                    <Slider.Thumb
+                      className="block h-7 w-7 cursor-pointer rounded-full border-2 border-destructive bg-background shadow-md transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background active:cursor-grabbing motion-reduce:transition-none"
+                      aria-label="Minimum price"
+                      aria-valuetext={formatPrice(
+                        sliderValues[0],
+                        bounds.currency
+                      )}
+                    />
+                    <Slider.Thumb
+                      className="block h-7 w-7 cursor-pointer rounded-full border-2 border-destructive bg-background shadow-md transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background active:cursor-grabbing motion-reduce:transition-none"
+                      aria-label="Maximum price"
+                      aria-valuetext={formatPrice(
+                        sliderValues[1],
+                        bounds.currency
+                      )}
+                    />
+                  </Slider.Root>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground">
                     <span>Minimum</span>
@@ -544,7 +624,9 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                         className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
                         inputMode="decimal"
                         type="number"
-                        min="0"
+                        min={sliderMinimum / 100}
+                        max={sliderMaximum / 100}
+                        placeholder={priceInputValue(sliderMinimum)}
                         step="0.01"
                         aria-label="Minimum price in dollars"
                         aria-invalid={Boolean(error)}
@@ -563,7 +645,9 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                         className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
                         inputMode="decimal"
                         type="number"
-                        min="0"
+                        min={sliderMinimum / 100}
+                        max={sliderMaximum / 100}
+                        placeholder={priceInputValue(sliderMaximum)}
                         step="0.01"
                         aria-label="Maximum price in dollars"
                         aria-invalid={Boolean(error)}
