@@ -28,7 +28,7 @@ export const shelfProductInputSchema = z.object({
   isPinned: z.boolean().optional(),
   startsAt: z.string().trim().optional().nullable(),
   endsAt: z.string().trim().optional().nullable(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const shelfUpsertSchema = z.object({
@@ -44,7 +44,7 @@ export const shelfUpsertSchema = z.object({
   startsAt: z.string().trim().optional().nullable(),
   endsAt: z.string().trim().optional().nullable(),
   isActive: z.boolean().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   products: z.array(shelfProductInputSchema).max(200).optional(),
 })
 

@@ -26,7 +26,7 @@ const artistCreateSchema = z.object({
   imageUrl: z.string().trim().url().optional().nullable(),
   bio: z.string().trim().optional().nullable(),
   location: z.string().trim().optional().nullable(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const GET = async (

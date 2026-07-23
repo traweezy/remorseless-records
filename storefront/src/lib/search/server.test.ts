@@ -18,7 +18,7 @@ describe("searchProductsServer", () => {
     const query = faker.word.noun()
     const hitId = faker.string.uuid()
 
-    class MeiliSearchMock {
+    class MeilisearchMock {
       constructor(config: Record<string, unknown>) {
         ctorSpy(config)
       }
@@ -51,7 +51,7 @@ describe("searchProductsServer", () => {
       },
     })
 
-    vi.doMock("meilisearch", () => ({ MeiliSearch: MeiliSearchMock }))
+    vi.doMock("meilisearch", () => ({ Meilisearch: MeilisearchMock }))
     vi.doMock("@/config/env", () => ({
       runtimeEnv: {
         meiliHost,
@@ -79,7 +79,7 @@ describe("searchProductsServer", () => {
   })
 
   it("throws when server meilisearch config is missing", async () => {
-    vi.doMock("meilisearch", () => ({ MeiliSearch: vi.fn() }))
+    vi.doMock("meilisearch", () => ({ Meilisearch: vi.fn() }))
     vi.doMock("@/config/env", () => ({
       runtimeEnv: {
         meiliHost: "",

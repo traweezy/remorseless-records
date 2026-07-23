@@ -33,7 +33,7 @@ const referenceCreateSchema = z.object({
   description: z.string().trim().optional().nullable(),
   rank: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const GET = async (

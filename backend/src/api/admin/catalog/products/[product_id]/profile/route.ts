@@ -29,14 +29,14 @@ const referenceInputSchema = z.object({
   label: z.string().trim().optional().nullable(),
   value: z.string().trim().optional().nullable(),
   sortOrder: z.number().int().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 const namedReferenceInputSchema = z.object({
   referenceValueId: z.string().trim().optional().nullable(),
   label: z.string().trim().optional().nullable(),
   value: z.string().trim().optional().nullable(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 const artistInputSchema = z.object({
@@ -45,7 +45,7 @@ const artistInputSchema = z.object({
   displayName: z.string().trim().optional().nullable(),
   role: z.string().trim().optional(),
   sortOrder: z.number().int().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 const profileUpsertSchema = z.object({
@@ -59,10 +59,10 @@ const profileUpsertSchema = z.object({
   descriptionHtml: z.string().optional().nullable(),
   searchKeywords: z.array(z.string().trim()).optional(),
   tracklist: z.array(z.unknown()).optional(),
-  credits: z.record(z.unknown()).optional(),
-  pressingNotes: z.record(z.unknown()).optional(),
-  merchDetails: z.record(z.unknown()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  credits: z.record(z.string(), z.unknown()).optional(),
+  pressingNotes: z.record(z.string(), z.unknown()).optional(),
+  merchDetails: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   artists: z.array(artistInputSchema).optional(),
   references: z.array(referenceInputSchema).optional(),
 })

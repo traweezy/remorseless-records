@@ -1,6 +1,6 @@
 import "server-only"
 
-import { MeiliSearch } from "meilisearch"
+import { Meilisearch } from "meilisearch"
 
 import { runtimeEnv } from "@/config/env"
 import { enrichSearchResponse } from "@/lib/search/enrich"
@@ -10,9 +10,9 @@ import {
   searchProductsWithClient,
 } from "@/lib/search/search"
 
-let serverClient: MeiliSearch | null = null
+let serverClient: Meilisearch | null = null
 
-const getServerClient = (): MeiliSearch => {
+const getServerClient = (): Meilisearch => {
   if (serverClient) {
     return serverClient
   }
@@ -23,7 +23,7 @@ const getServerClient = (): MeiliSearch => {
     )
   }
 
-  serverClient = new MeiliSearch({
+  serverClient = new Meilisearch({
     host: runtimeEnv.meiliHost,
     apiKey: runtimeEnv.meiliSearchKey,
   })

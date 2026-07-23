@@ -6,7 +6,10 @@ import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { PillDropdown, type PillDropdownOption } from "@/components/ui/pill-dropdown"
+import {
+  PillDropdown,
+  type PillDropdownOption,
+} from "@/components/ui/pill-dropdown"
 import { cn } from "@/lib/ui/cn"
 import { siteMetadata } from "@/config/site"
 
@@ -15,7 +18,7 @@ const privacyRequestSchema = z
     name: z.string().trim().min(2, "Name is required"),
     email: z.string().trim().email("Valid email required"),
     requestType: z.enum(["access", "delete", "correct", "optout", "other"], {
-      errorMap: () => ({ message: "Select a request type" }),
+      error: "Select a request type",
     }),
     details: z.string().trim().min(10, "Please provide more detail"),
     orderId: z.string().trim().max(120).optional(),
@@ -38,12 +41,14 @@ const fieldBaseClass =
   "mt-1 w-full appearance-none rounded-2xl border border-border/60 bg-background/90 px-3.5 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus:border-destructive focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-destructive focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_hsl(var(--destructive)/0.55)]"
 
 const PrivacyRequestForm = () => {
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle")
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const requestTypeOptions: [
     PillDropdownOption<PrivacyRequestValues["requestType"]>,
-    ...Array<PillDropdownOption<PrivacyRequestValues["requestType"]>>
+    ...Array<PillDropdownOption<PrivacyRequestValues["requestType"]>>,
   ] = [
     { value: "access", label: "Access data" },
     { value: "delete", label: "Delete data" },
@@ -74,14 +79,18 @@ const PrivacyRequestForm = () => {
             message?: string
             error?: string
           }
-          throw new Error(payload.message ?? payload.error ?? "Unable to submit request")
+          throw new Error(
+            payload.message ?? payload.error ?? "Unable to submit request"
+          )
         }
 
         setStatus("success")
         form.reset()
       } catch (error) {
         setStatus("error")
-        setErrorMessage(error instanceof Error ? error.message : "Unable to submit request")
+        setErrorMessage(
+          error instanceof Error ? error.message : "Unable to submit request"
+        )
       }
     },
   })
@@ -112,11 +121,16 @@ const PrivacyRequestForm = () => {
           name="name"
           validators={{
             onChange: ({ value }) =>
-              privacyRequestSchema.shape.name.safeParse(value).success ? undefined : "Name is required",
+              privacyRequestSchema.shape.name.safeParse(value).success
+                ? undefined
+                : "Name is required",
           }}
         >
           {(field) => (
-            <label htmlFor={field.name} className="block text-sm text-muted-foreground">
+            <label
+              htmlFor={field.name}
+              className="block text-sm text-muted-foreground"
+            >
               Name
               <Input
                 id={field.name}
@@ -127,7 +141,9 @@ const PrivacyRequestForm = () => {
                 aria-invalid={Boolean(field.state.meta.errors[0])}
               />
               {field.state.meta.errors[0] ? (
-                <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                <p className="mt-1 text-xs text-destructive">
+                  {field.state.meta.errors[0]}
+                </p>
               ) : null}
             </label>
           )}
@@ -137,11 +153,16 @@ const PrivacyRequestForm = () => {
           name="email"
           validators={{
             onChange: ({ value }) =>
-              privacyRequestSchema.shape.email.safeParse(value).success ? undefined : "Valid email required",
+              privacyRequestSchema.shape.email.safeParse(value).success
+                ? undefined
+                : "Valid email required",
           }}
         >
           {(field) => (
-            <label htmlFor={field.name} className="block text-sm text-muted-foreground">
+            <label
+              htmlFor={field.name}
+              className="block text-sm text-muted-foreground"
+            >
               Email
               <Input
                 id={field.name}
@@ -153,7 +174,9 @@ const PrivacyRequestForm = () => {
                 aria-invalid={Boolean(field.state.meta.errors[0])}
               />
               {field.state.meta.errors[0] ? (
-                <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
+                <p className="mt-1 text-xs text-destructive">
+                  {field.state.meta.errors[0]}
+                </p>
               ) : null}
             </label>
           )}
@@ -181,7 +204,9 @@ const PrivacyRequestForm = () => {
               align="start"
             />
             {field.state.meta.errors[0] ? (
-              <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
+              <p className="mt-1 text-xs text-destructive">
+                {field.state.meta.errors[0]}
+              </p>
             ) : null}
           </div>
         )}
@@ -189,7 +214,10 @@ const PrivacyRequestForm = () => {
 
       <form.Field name="orderId">
         {(field) => (
-          <label htmlFor={field.name} className="block text-sm text-muted-foreground">
+          <label
+            htmlFor={field.name}
+            className="block text-sm text-muted-foreground"
+          >
             Order ID (optional)
             <Input
               id={field.name}
@@ -212,7 +240,10 @@ const PrivacyRequestForm = () => {
         }}
       >
         {(field) => (
-          <label htmlFor={field.name} className="block text-sm text-muted-foreground">
+          <label
+            htmlFor={field.name}
+            className="block text-sm text-muted-foreground"
+          >
             Details
             <textarea
               id={field.name}
@@ -226,24 +257,34 @@ const PrivacyRequestForm = () => {
               aria-invalid={Boolean(field.state.meta.errors[0])}
             />
             {field.state.meta.errors[0] ? (
-              <p className="mt-1 text-xs text-destructive">{field.state.meta.errors[0]}</p>
+              <p className="mt-1 text-xs text-destructive">
+                {field.state.meta.errors[0]}
+              </p>
             ) : null}
           </label>
         )}
       </form.Field>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={disabled} size="sm" className="inline-flex items-center gap-2 rounded-full px-4">
+        <Button
+          type="submit"
+          disabled={disabled}
+          variant="filled"
+          size="sm"
+          className="inline-flex items-center gap-2 rounded-full px-4"
+        >
           {status === "submitting" ? "Submitting..." : "Submit privacy request"}
         </Button>
         {status === "success" ? (
           <span className="text-sm text-foreground">
-            Request submitted. We respond from {siteMetadata.contact.email} within 5 business days.
+            Request submitted. We respond from {siteMetadata.contact.email}{" "}
+            within 5 business days.
           </span>
         ) : null}
         {status === "error" && errorMessage ? (
           <span className="text-sm text-destructive">
-            Something went wrong. Please try again or email {siteMetadata.contact.email}.
+            Something went wrong. Please try again or email{" "}
+            {siteMetadata.contact.email}.
           </span>
         ) : null}
       </div>

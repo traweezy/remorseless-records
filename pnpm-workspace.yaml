@@ -28,17 +28,17 @@ overrides:
   "@mikro-orm/postgresql": 6.6.14
   "@opentelemetry/exporter-prometheus": 0.217.0
   "@opentelemetry/sdk-node": 0.217.0
-  "@aws-sdk/client-s3": ^3.1075.0
+  "@aws-sdk/client-s3": ^3.1093.0
   "@isaacs/brace-expansion": ^5.0.1
   "@remix-run/router": ^1.23.2
-  "@swc/core": ^1.15.43
+  "@swc/core": ^1.15.46
   "ajv@>=7.0.0 <8.18.0": ^8.20.0
   axios: ^1.18.0
   "body-parser@<1.20.6": ^1.20.6
   brace-expansion: ^2.1.2
   devalue: ^5.8.1
   diff: ^4.0.4
-  esbuild: ^0.25.12
+  esbuild: ^0.28.1
   fast-xml-parser: ^5.8.0
   fast-uri: ^3.1.4
   fdir: ^6.5.0
@@ -60,12 +60,12 @@ overrides:
   "path-to-regexp@>=8.0.0 <8.4.0": ^8.4.2
   "picomatch@<2.3.2": ^2.3.2
   "picomatch@>=4.0.0 <4.0.4": ^4.0.4
-  posthog-node: ^5.38.6
+  posthog-node: ^5.46.0
   postcss: ^8.5.15
   protobufjs: ^7.6.5
   qs: ^6.15.2
-  react-router: ^6.30.4
-  react-router-dom: ^6.30.4
+  react-router: 7.18.1
+  react-router-dom: 7.18.1
   rollup: ^4.60.4
   semver: ^7.5.2
   sharp: ^0.35.0
@@ -81,3 +81,4 @@ overrides:
 
 patchedDependencies:
   '@rokmohar/medusa-plugin-meilisearch@1.4.3': patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
+  react-router-dom@7.18.1: patches/react-router-dom.patch

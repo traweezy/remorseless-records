@@ -39,14 +39,14 @@ export const productMediaInputSchema = z.object({
   focalPoint: focalPointSchema.optional().nullable(),
   cropIntent: z.string().trim().optional().nullable(),
   derivativeStatus: z.enum(catalogMediaDerivativeStatusValues).optional(),
-  derivatives: z.record(z.unknown()).optional(),
-  assetMetadata: z.record(z.unknown()).optional(),
+  derivatives: z.record(z.string(), z.unknown()).optional(),
+  assetMetadata: z.record(z.string(), z.unknown()).optional(),
   role: z.enum(catalogMediaRoleValues).optional(),
   variantId: z.string().trim().optional().nullable(),
   productProfileId: z.string().trim().optional().nullable(),
   sortOrder: z.number().int().min(0).optional(),
   isPrimary: z.boolean().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const productMediaReplaceSchema = z.object({

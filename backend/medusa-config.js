@@ -56,6 +56,17 @@ const medusaConfig = {
   admin: {
     backendUrl: BACKEND_URL,
     disable: SHOULD_DISABLE_ADMIN,
+    vite: () => ({
+      build: {
+        target: [
+          "es2020",
+          "edge88",
+          "firefox78",
+          "chrome87",
+          "safari14.1",
+        ],
+      },
+    }),
   },
   modules: [
     {

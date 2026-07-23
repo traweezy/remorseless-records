@@ -19,7 +19,7 @@ const namedReferenceInputSchema = z.object({
   referenceValueId: z.string().trim().optional().nullable(),
   label: z.string().trim().optional().nullable(),
   value: z.string().trim().optional().nullable(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 const variantProfileUpsertSchema = z.object({
@@ -37,7 +37,7 @@ const variantProfileUpsertSchema = z.object({
   backorderAllowed: z.boolean().optional(),
   backorderNote: z.string().trim().optional().nullable(),
   imageUrl: z.string().trim().url().optional().nullable(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 const resolveVariantProfile = async (

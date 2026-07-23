@@ -32,7 +32,7 @@ export const bundleComponentInputSchema = z.object({
   quantity: z.number().int().min(1).optional(),
   sortOrder: z.number().int().optional(),
   isRequired: z.boolean().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const bundleUpsertSchema = z.object({
@@ -43,7 +43,7 @@ export const bundleUpsertSchema = z.object({
   displayTitle: z.string().trim().optional().nullable(),
   descriptionHtml: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   components: z.array(bundleComponentInputSchema).max(100).optional(),
 });
 

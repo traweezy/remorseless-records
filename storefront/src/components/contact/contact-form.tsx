@@ -17,7 +17,7 @@ const contactSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
   email: z.string().trim().email("Valid email required"),
   reason: z.enum(["booking", "press", "collab", "other"], {
-    errorMap: () => ({ message: "Select a reason" }),
+    error: "Select a reason",
   }),
   message: z.string().trim().min(10, "Tell us a bit more"),
   honeypot: z.string().optional(),

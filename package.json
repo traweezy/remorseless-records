@@ -19,8 +19,8 @@
   },
   "devDependencies": {
     "@lhci/cli": "0.15.1",
-    "esbuild": "^0.25.12",
-    "lefthook": "^1.7.11",
+    "esbuild": "^0.28.1",
+    "lefthook": "^2.1.10",
     "pa11y": "^9.1.1"
   }
 }

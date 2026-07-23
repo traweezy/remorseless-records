@@ -5,7 +5,7 @@ import {
   normalizeSearchHit,
 } from "@/lib/search/normalize"
 import type { ProductSearchHit } from "@/types/product"
-import type { Filter, Index, MeiliSearch, SearchResponse } from "meilisearch"
+import type { Filter, Index, Meilisearch, SearchResponse } from "meilisearch"
 
 export const PRODUCTS_INDEX = "products"
 export const CATALOG_PAGE_SIZE = 60
@@ -490,7 +490,7 @@ const ensureFilterableAttributes = async (
 }
 
 export const searchProductsWithClient = async (
-  client: MeiliSearch,
+  client: Meilisearch,
   {
     query,
     limit = 24,
