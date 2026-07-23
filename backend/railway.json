@@ -5,7 +5,9 @@
     "buildCommand": "pnpm --filter backend run build"
   },
   "deploy": {
-    "preDeployCommand": null,
+    "preDeployCommand": [
+      "pnpm --filter backend run search:prepare"
+    ],
     "startCommand": "pnpm --filter backend --silent run start",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 720,
