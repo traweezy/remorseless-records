@@ -1,5 +1,98 @@
 import { expect, test } from "@playwright/test"
 
+import type {
+  ProductSearchRequest,
+  ProductSearchResponse,
+} from "@/lib/search/search"
+
+const catalogSearchFixture: ProductSearchResponse = {
+  hits: [
+    {
+      id: "prod_ci_pathologist",
+      handle: "music-release-pathologist-pathological-decomposition",
+      title: "Pathological Decomposition",
+      artist: "Pathologist",
+      album: "Pathological Decomposition",
+      slug: {
+        artist: "Pathologist",
+        album: "Pathological Decomposition",
+        artistSlug: "pathologist",
+        albumSlug: "pathological-decomposition",
+      },
+      subtitle: null,
+      thumbnail: null,
+      collectionTitle: null,
+      defaultVariant: {
+        id: "variant_ci_pathologist_cd",
+        title: "CD",
+        currency: "usd",
+        amount: 1_500,
+        hasPrice: true,
+        inStock: true,
+        stockStatus: "in_stock",
+        inventoryQuantity: 10,
+      },
+      formats: ["CD"],
+      genres: ["Death Metal", "Grind"],
+      metalGenres: ["Death Metal", "Grind"],
+      categories: [],
+      categoryHandles: [],
+      variantTitles: ["CD"],
+      artistNames: ["Pathologist"],
+      format: "CD",
+      priceAmount: 1_500,
+      priceMin: 1_500,
+      priceMax: 1_500,
+      stockStatus: "in_stock",
+      productType: "music-release",
+      status: "published",
+    },
+  ],
+  total: 1,
+  offset: 0,
+  facets: {
+    genres: { "Death Metal": 1, Grind: 1 },
+    metalGenres: { "Death Metal": 1, Grind: 1 },
+    format: { CD: 1 },
+    categories: {},
+    variants: { CD: 1 },
+    productTypes: { "music-release": 1 },
+    availabilityStates: { in_stock: 1 },
+    stockStatuses: { in_stock: 1 },
+    bundleTypes: {},
+  },
+  hasMore: false,
+  nextOffset: 1,
+}
+
+const catalogFilterFixtures: Record<string, unknown> = {
+  "/api/catalog/filters/product-types": {
+    options: [
+      { value: "music-release", label: "Music Releases", count: 442 },
+      { value: "merch", label: "Merchandise", count: 4 },
+      { value: "fixed-bundle", label: "Fixed Bundles", count: 14 },
+      { value: "mystery-bundle", label: "Mystery Bundles", count: 1 },
+    ],
+  },
+  "/api/catalog/filters/genres": {
+    options: [
+      { value: "death-metal", label: "Death Metal", count: 379 },
+      { value: "grind", label: "Grind", count: 64 },
+    ],
+  },
+  "/api/catalog/filters/formats": {
+    options: [
+      { value: "Vinyl", label: "Vinyl", count: 125 },
+      { value: "CD", label: "CD", count: 281 },
+      { value: "Cassette", label: "Cassette", count: 131 },
+      { value: "DVD", label: "DVD", count: 1 },
+    ],
+  },
+  "/api/catalog/filters/price-range": {
+    range: { min: 100, max: 5_600, currency: "usd" },
+  },
+}
+
 test("homepage hydrates every curated shelf without client errors", async ({
   page,
 }) => {
@@ -68,6 +161,31 @@ test("homepage hydrates every curated shelf without client errors", async ({
 test("catalog filters stay stable and combine predictably", async ({
   page,
 }) => {
+  const searchRequests: ProductSearchRequest[] = []
+  await page.route("**/api/catalog/filters/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname
+    const fixture = catalogFilterFixtures[pathname]
+    if (!fixture) {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(fixture),
+    })
+  })
+  await page.route("**/api/search/products", async (route) => {
+    searchRequests.push(
+      route.request().postDataJSON() as ProductSearchRequest
+    )
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(catalogSearchFixture),
+    })
+  })
+
   const response = await page.goto("/catalog", { waitUntil: "networkidle" })
   expect(response?.status()).toBeLessThan(400)
 
@@ -126,6 +244,18 @@ test("catalog filters stay stable and combine predictably", async ({
   await expect(page).toHaveURL(/genre=death-metal%2Cgrind/)
   await expect(page).toHaveURL(/format=CD/)
   await expect(page).toHaveURL(/maxPrice=20/)
+  await expect
+    .poll(() =>
+      searchRequests.some(
+        (request) =>
+          request.filters?.genres?.includes("Death Metal") &&
+          request.filters.genres.includes("Grind") &&
+          request.filters.formats?.includes("CD") &&
+          request.filters.productTypes?.includes("music-release") &&
+          request.filters.price?.max === 2_000
+      )
+    )
+    .toBe(true)
 
   const metrics = await page.evaluate(() => {
     const dialog = document
