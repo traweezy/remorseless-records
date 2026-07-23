@@ -24,6 +24,7 @@ import {
   Check,
   ChevronDown,
   Clock,
+  LoaderCircle,
   Search,
   SlidersHorizontal,
   X,
@@ -1211,6 +1212,8 @@ const ProductSearchExperience = ({
   const deferredResults = useDeferredValue(mappedResults)
   const columns = useResponsiveColumns()
   const gridMeasureRef = useRef<HTMLDivElement | null>(null)
+  const paginationSentinelRef = useRef<HTMLDivElement | null>(null)
+  const lastAutoRequestedResultCountRef = useRef<number | null>(null)
   const [gridWidth, setGridWidth] = useState(0)
 
   useLayoutEffect(() => {
@@ -1388,12 +1391,60 @@ const ProductSearchExperience = ({
   const isFetching = searchQuery.isFetching && !searchQuery.isFetchingNextPage
   const fetchNextPage = searchQuery.fetchNextPage
   const refetchSearch = searchQuery.refetch
-  const handleLoadMore = useCallback(() => {
+  const handleRetryNextPage = useCallback(() => {
     void fetchNextPage()
   }, [fetchNextPage])
   const handleRetrySearch = useCallback(() => {
     void refetchSearch()
   }, [refetchSearch])
+
+  useEffect(() => {
+    lastAutoRequestedResultCountRef.current = null
+  }, [criteriaKey])
+
+  useEffect(() => {
+    const sentinel = paginationSentinelRef.current
+    if (
+      !sentinel ||
+      !searchQuery.hasNextPage ||
+      searchQuery.isFetchingNextPage ||
+      searchQuery.isFetchNextPageError ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) {
+          return
+        }
+
+        const renderedResultCount = deferredResults.length
+        if (lastAutoRequestedResultCountRef.current === renderedResultCount) {
+          return
+        }
+
+        lastAutoRequestedResultCountRef.current = renderedResultCount
+        void fetchNextPage()
+      },
+      {
+        rootMargin: "0px 0px 1200px 0px",
+        threshold: 0,
+      }
+    )
+
+    observer.observe(sentinel)
+    return () => {
+      observer.disconnect()
+    }
+  }, [
+    deferredResults.length,
+    fetchNextPage,
+    searchQuery.hasNextPage,
+    searchQuery.isFetchNextPageError,
+    searchQuery.isFetchingNextPage,
+  ])
 
   return (
     <div className="bg-background pb-8">
@@ -1708,24 +1759,48 @@ const ProductSearchExperience = ({
                   </AnimatePresence>
                 </div>
 
-                <div className="flex flex-col items-center gap-3 pb-8 pt-2">
-                  <p
-                    className="text-xs uppercase tracking-[0.25rem] text-muted-foreground"
-                    aria-live="polite"
-                  >
+                <div
+                  ref={paginationSentinelRef}
+                  className="flex min-h-24 flex-col items-center justify-center gap-3 pb-8 pt-2 text-center"
+                  aria-busy={searchQuery.isFetchingNextPage}
+                  aria-live="polite"
+                >
+                  <p className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
                     Showing {deferredResults.length} of {totalResults}
                   </p>
-                  {searchQuery.hasNextPage ? (
-                    <Button
-                      variant="outline"
-                      onClick={handleLoadMore}
-                      disabled={searchQuery.isFetchingNextPage}
+                  {searchQuery.isFetchNextPageError ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Couldn&apos;t load more products.
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={handleRetryNextPage}
+                        disabled={searchQuery.isFetchingNextPage}
+                      >
+                        Try again
+                      </Button>
+                    </>
+                  ) : searchQuery.isFetchingNextPage ? (
+                    <p
+                      className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground"
+                      role="status"
                     >
-                      {searchQuery.isFetchingNextPage
-                        ? "Loading more…"
-                        : "Load more"}
-                    </Button>
-                  ) : null}
+                      <LoaderCircle
+                        className="h-4 w-4 motion-safe:animate-spin"
+                        aria-hidden
+                      />
+                      Loading more products…
+                    </p>
+                  ) : searchQuery.hasNextPage ? (
+                    <p className="sr-only">
+                      More products load automatically as you continue browsing.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      All available products are shown.
+                    </p>
+                  )}
                 </div>
               </>
             ) : (

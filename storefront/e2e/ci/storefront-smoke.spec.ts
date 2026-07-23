@@ -93,6 +93,34 @@ const catalogFilterFixtures: Record<string, unknown> = {
   },
 }
 
+const createPaginationFixture = (
+  offset: number,
+  limit: number
+): ProductSearchResponse => ({
+  ...catalogSearchFixture,
+  hits: Array.from({ length: limit }, (_, index) => {
+    const sequence = offset + index + 1
+    const baseHit = catalogSearchFixture.hits[0]
+
+    return {
+      ...baseHit,
+      id: `prod_ci_pagination_${sequence}`,
+      handle: `music-release-ci-pagination-${sequence}`,
+      title: `Pagination Test ${sequence}`,
+      album: `Pagination Test ${sequence}`,
+      slug: {
+        ...baseHit.slug,
+        album: `Pagination Test ${sequence}`,
+        albumSlug: `pagination-test-${sequence}`,
+      },
+    }
+  }),
+  total: 461,
+  offset,
+  hasMore: offset + limit < 461,
+  nextOffset: Math.min(offset + limit, 461),
+})
+
 test("homepage hydrates every curated shelf without client errors", async ({
   page,
 }) => {
@@ -176,9 +204,7 @@ test("catalog filters stay stable and combine predictably", async ({
     })
   })
   await page.route("**/api/search/products", async (route) => {
-    searchRequests.push(
-      route.request().postDataJSON() as ProductSearchRequest
-    )
+    searchRequests.push(route.request().postDataJSON() as ProductSearchRequest)
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -288,6 +314,45 @@ test("catalog filters stay stable and combine predictably", async ({
   expect(clearBounds?.height).toBeGreaterThanOrEqual(44)
   await clearSearch.click()
   await expect(search).toHaveValue("")
+})
+
+test("catalog loads the next result window before the end is reached", async ({
+  page,
+}) => {
+  const searchRequests: ProductSearchRequest[] = []
+
+  await page.route("**/api/search/products", async (route) => {
+    const request = route.request().postDataJSON() as ProductSearchRequest
+    searchRequests.push(request)
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        createPaginationFixture(request.offset ?? 0, request.limit ?? 60)
+      ),
+    })
+  })
+
+  const response = await page.goto("/catalog", { waitUntil: "networkidle" })
+  expect(response?.status()).toBeLessThan(400)
+
+  const rejectCookies = page.getByRole("button", {
+    name: "Reject non-essential",
+  })
+  if (await rejectCookies.isVisible()) {
+    await rejectCookies.click()
+  }
+
+  await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0)
+
+  const loadedCount = page.getByText("Showing 60 of 461")
+  await loadedCount.scrollIntoViewIfNeeded()
+
+  await expect
+    .poll(() => searchRequests.some((request) => request.offset === 60))
+    .toBe(true)
+  await expect(page.getByText("Showing 120 of 461")).toBeVisible()
 })
 
 const routes = ["/about", "/accessibility", "/cookies", "/terms"] as const
