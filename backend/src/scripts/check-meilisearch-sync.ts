@@ -1,5 +1,9 @@
 import type { ExecArgs } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import {
+  ContainerRegistrationKeys,
+  Modules,
+  ProductStatus,
+} from "@medusajs/framework/utils"
 
 import { resolveMeilisearchService } from "./meilisearch-service"
 
@@ -7,13 +11,20 @@ const PRODUCTS_INDEX = "products"
 
 type CatalogReadModelIntegrity = {
   contradictoryStockCount: number
+  nonPublishedCount: number
   unknownStockCount: number
 }
 
 export const assertCatalogReadModelIntegrity = ({
   contradictoryStockCount,
+  nonPublishedCount,
   unknownStockCount,
 }: CatalogReadModelIntegrity): void => {
+  if (nonPublishedCount > 0) {
+    throw new Error(
+      `[meilisearch] ${nonPublishedCount} non-published product(s) are exposed in the catalog index.`
+    )
+  }
   if (contradictoryStockCount > 0) {
     throw new Error(
       `[meilisearch] ${contradictoryStockCount} published product(s) are marked sold out while also reporting available variants.`
@@ -22,6 +33,20 @@ export const assertCatalogReadModelIntegrity = ({
   if (unknownStockCount > 0) {
     throw new Error(
       `[meilisearch] ${unknownStockCount} published product(s) have unknown stock after a full reindex.`
+    )
+  }
+}
+
+export const assertPublishedProductParity = ({
+  indexedCount,
+  publishedProductCount,
+}: {
+  indexedCount: number
+  publishedProductCount: number
+}): void => {
+  if (publishedProductCount !== indexedCount) {
+    throw new Error(
+      `[meilisearch] Published product count in Medusa (${publishedProductCount}) does not match indexed documents (${indexedCount}).`
     )
   }
 }
@@ -61,36 +86,36 @@ export default async function checkMeilisearchSync({
     ) => Promise<[unknown[], number]>
   }
 
-  const [, productCount] = await productModuleService.listAndCountProducts({}, {
-    take: 0,
-  })
+  const [, publishedProductCount] =
+    await productModuleService.listAndCountProducts(
+      { status: ProductStatus.PUBLISHED },
+      { take: 0 }
+    )
 
   const index = meilisearch.getIndex(PRODUCTS_INDEX)
   const stats = await index.getStats()
   const indexedCount = stats.numberOfDocuments ?? 0
 
   logger.info(
-    `[meilisearch] Product count in Medusa: ${productCount}. Indexed documents: ${indexedCount}.`
+    `[meilisearch] Published product count in Medusa: ${publishedProductCount}. Indexed documents: ${indexedCount}.`
   )
 
-  if (productCount !== indexedCount) {
-    logger.warn(
-      "[meilisearch] Counts differ. Run `pnpm --filter backend run search:sync` and confirm product events are reaching Meilisearch."
-    )
-  } else {
-    logger.info("[meilisearch] Counts match. Index appears synchronized.")
-  }
+  assertPublishedProductParity({ indexedCount, publishedProductCount })
+  logger.info("[meilisearch] Published counts match. Index is synchronized.")
 
-  const [contradictoryStockCount, unknownStockCount] = await Promise.all([
-    searchCount(
-      index,
-      'status = "published" AND stock_status = "sold_out" AND availability_states = "available"'
-    ),
-    searchCount(index, 'status = "published" AND stock_status = "unknown"'),
-  ])
+  const [contradictoryStockCount, nonPublishedCount, unknownStockCount] =
+    await Promise.all([
+      searchCount(
+        index,
+        'status = "published" AND stock_status = "sold_out" AND availability_states = "available"'
+      ),
+      searchCount(index, 'status != "published"'),
+      searchCount(index, 'status = "published" AND stock_status = "unknown"'),
+    ])
 
   assertCatalogReadModelIntegrity({
     contradictoryStockCount,
+    nonPublishedCount,
     unknownStockCount,
   })
   logger.info("[meilisearch] Published stock-state invariants pass.")

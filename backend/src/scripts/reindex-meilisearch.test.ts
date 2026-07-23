@@ -67,6 +67,7 @@ describe("assertTaskSucceeded", () => {
     expect(graph).toHaveBeenNthCalledWith(1, {
       entity: "product",
       fields: ["id", "variants.prices.*"],
+      filters: { status: "published" },
       pagination: { skip: 0, take: 100 },
     })
     expect(addDocuments).toHaveBeenCalledWith(

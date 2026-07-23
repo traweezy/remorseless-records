@@ -1,5 +1,8 @@
 import type { ExecArgs } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import {
+  ContainerRegistrationKeys,
+  ProductStatus,
+} from "@medusajs/framework/utils"
 
 import { resolveMeilisearchService } from "./meilisearch-service"
 
@@ -85,6 +88,7 @@ export const upsertAllProductDocuments = async ({
     const { data: products } = await query.graph({
       entity: "product",
       fields: productFields,
+      filters: { status: ProductStatus.PUBLISHED },
       pagination: { skip: offset, take: BATCH_SIZE },
     })
     if (!products.length) {
