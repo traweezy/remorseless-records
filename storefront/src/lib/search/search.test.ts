@@ -178,6 +178,12 @@ describe("searchProductsWithClient", () => {
     expect(index.search).toHaveBeenCalledWith("doom", {
       limit: 24,
       offset: 0,
+      attributesToSearchOn: [
+        "title",
+        "release_title",
+        "artist_names",
+        "artist",
+      ],
       facets: [
         "genres",
         "metalGenres",

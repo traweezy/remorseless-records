@@ -21,7 +21,11 @@ const makeProduct = (overrides: Partial<StoreProduct> = {}): StoreProduct =>
     created_at: "2025-01-01T00:00:00.000Z",
     categories: [
       { handle: "genres", name: "Genres" },
-      { handle: "death", name: "Death Metal", parent_category: { handle: "genres" } },
+      {
+        handle: "death",
+        name: "Death Metal",
+        parent_category: { handle: "genres" },
+      },
       { handle: "music", name: "Music" },
       { handle: "vinyl", name: "Vinyl", parent_category: { handle: "music" } },
     ],
@@ -78,6 +82,32 @@ describe("product transformers", () => {
     })
   })
 
+  it("marks imported low-stock placeholders as ineligible for badges", () => {
+    const product = makeProduct({
+      variants: [
+        {
+          id: "variant_seeded",
+          title: "CD",
+          calculated_price: {
+            calculated_amount: 1_200,
+            currency_code: "usd",
+          },
+          inventory_quantity: 2,
+          manage_inventory: true,
+          metadata: {
+            source_low_inventory: true,
+            seed_inventory_quantity: 2,
+          },
+        },
+      ] as unknown as StoreProduct["variants"],
+    })
+
+    expect(deriveVariantOptions(product.variants)[0]).toMatchObject({
+      stockStatus: "low_stock",
+      lowStockBadgeEligible: false,
+    })
+  })
+
   it("maps product to related summary", () => {
     const summary = mapStoreProductToRelatedSummary(makeProduct())
     expect(summary).toMatchObject({
@@ -99,6 +129,8 @@ describe("product transformers", () => {
     expect(hit.categoryHandles).toContain("death")
     expect(hit.productType).toBe("album")
     expect(hit.stockStatus).toBe("low_stock")
+    expect(hit.priceMin).toBe(1_599)
+    expect(hit.priceMax).toBe(2_999)
   })
 
   it("handles sparse products without variants", () => {

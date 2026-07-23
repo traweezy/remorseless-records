@@ -9,6 +9,7 @@ import {
   isNewReleaseCandidate,
   isScheduledRecordActive,
 } from "../catalog/shelves"
+import { LOW_STOCK_THRESHOLD } from "../catalog/stock"
 
 type DefaultTransformer = (
   product: Record<string, unknown>,
@@ -52,6 +53,7 @@ type VariantSearchDocument = {
   price_currency: string | null
   inventory_quantity: number | null
   stock_status: SearchStockStatus
+  low_stock_badge_eligible: boolean
   availability_status: string
   preorder_allowed: boolean
   preorder_release_date: string | null
@@ -112,6 +114,7 @@ export type SearchDocument = {
   default_variant_title: string | null
   default_variant_sku: string | null
   inventory_quantity: number | null
+  low_stock_badge_eligible: boolean
   stock_status: SearchStockStatus
   stock_statuses: SearchStockStatus[]
   availability_states: string[]
@@ -542,11 +545,35 @@ const resolveStockStatus = (variant: DynamicRecord | null): {
     return { status: "sold_out", quantity }
   }
 
-  if (quantity < 5) {
+  if (quantity <= LOW_STOCK_THRESHOLD) {
     return { status: "low_stock", quantity }
   }
 
   return { status: "in_stock", quantity }
+}
+
+const isLowStockBadgeEligible = (
+  variant: DynamicRecord,
+  status: SearchStockStatus,
+  quantity: number | null
+): boolean => {
+  if (status !== "low_stock") {
+    return true
+  }
+
+  const metadata = toRecord(variant.metadata)
+  const countStatus = toStringOrNull(metadata?.inventory_count_status)
+  if (countStatus === "verified") {
+    return true
+  }
+
+  const seededQuantity = toNumberOrNull(metadata?.seed_inventory_quantity)
+  const isImportedEstimate =
+    toBoolean(metadata?.source_low_inventory) &&
+    seededQuantity !== null &&
+    quantity === seededQuantity
+
+  return !isImportedEstimate && countStatus !== "unknown"
 }
 
 const aggregateStockStatus = (
@@ -686,6 +713,11 @@ const mapVariantDocument = (
     price_currency: currency,
     inventory_quantity: quantity,
     stock_status: status,
+    low_stock_badge_eligible: isLowStockBadgeEligible(
+      variant,
+      status,
+      quantity
+    ),
     availability_status: availabilityStatus,
     preorder_allowed: toBoolean(profile?.preorder_allowed),
     preorder_release_date: toIsoOrNull(profile?.preorder_release_date),
@@ -820,6 +852,10 @@ export const buildSearchDocument = (
     variantDocuments.map((variant) => variant.stock_status)
   ) as SearchStockStatus[]
   const stockStatus = aggregateStockStatus(stockStatuses)
+  const lowStockBadgeEligible = variantDocuments.some(
+    (variant) =>
+      variant.stock_status === "low_stock" && variant.low_stock_badge_eligible
+  )
 
   const priceAmounts = variantDocuments
     .map((variant) => variant.price_amount)
@@ -944,6 +980,7 @@ export const buildSearchDocument = (
     default_variant_title: defaultVariantDocument?.title ?? null,
     default_variant_sku: defaultVariantDocument?.sku ?? null,
     inventory_quantity: defaultVariantDocument?.inventory_quantity ?? null,
+    low_stock_badge_eligible: lowStockBadgeEligible,
     stock_status: stockStatus,
     stock_statuses: stockStatuses,
     availability_states: availabilityStates,

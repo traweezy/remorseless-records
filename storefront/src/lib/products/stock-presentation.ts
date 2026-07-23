@@ -20,7 +20,10 @@ export const resolveStockChip = (variant: VariantOption): StockChip | null => {
     }
   }
 
-  if (variant.stockStatus === "low_stock") {
+  if (
+    variant.stockStatus === "low_stock" &&
+    variant.lowStockBadgeEligible !== false
+  ) {
     return {
       label: "Low stock",
       tone: "border-amber-400/70 bg-amber-500/15 text-amber-200",

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 
 import {
   LOW_STOCK_THRESHOLD,
+  isLowStockBadgeEligible,
   resolveVariantStockStatus,
   summarizeStockStatus,
 } from "@/lib/products/stock"
@@ -18,12 +19,16 @@ describe("resolveVariantStockStatus", () => {
       inStock: false,
     })
 
-    expect(resolveVariantStockStatus({ inventoryQuantity: LOW_STOCK_THRESHOLD })).toEqual({
+    expect(
+      resolveVariantStockStatus({ inventoryQuantity: LOW_STOCK_THRESHOLD })
+    ).toEqual({
       status: "low_stock",
       inStock: true,
     })
 
-    expect(resolveVariantStockStatus({ inventoryQuantity: LOW_STOCK_THRESHOLD + 1 })).toEqual({
+    expect(
+      resolveVariantStockStatus({ inventoryQuantity: LOW_STOCK_THRESHOLD + 1 })
+    ).toEqual({
       status: "in_stock",
       inStock: true,
     })
@@ -76,6 +81,33 @@ describe("resolveVariantStockStatus", () => {
   })
 })
 
+describe("isLowStockBadgeEligible", () => {
+  it("suppresses imported qualitative placeholders but keeps verified counts", () => {
+    expect(
+      isLowStockBadgeEligible({
+        inventoryQuantity: 2,
+        stockStatus: "low_stock",
+        metadata: {
+          source_low_inventory: true,
+          seed_inventory_quantity: 2,
+        },
+      })
+    ).toBe(false)
+
+    expect(
+      isLowStockBadgeEligible({
+        inventoryQuantity: 2,
+        stockStatus: "low_stock",
+        metadata: {
+          source_low_inventory: true,
+          seed_inventory_quantity: 2,
+          inventory_count_status: "verified",
+        },
+      })
+    ).toBe(true)
+  })
+})
+
 describe("summarizeStockStatus", () => {
   beforeEach(() => {
     faker.seed(303)
@@ -116,7 +148,10 @@ describe("summarizeStockStatus", () => {
 
   it("ignores unknown entries when they are the only statuses", () => {
     expect(
-      summarizeStockStatus([{ stockStatus: "unknown" }, { stockStatus: "unknown" }])
+      summarizeStockStatus([
+        { stockStatus: "unknown" },
+        { stockStatus: "unknown" },
+      ])
     ).toBe("unknown")
   })
 })

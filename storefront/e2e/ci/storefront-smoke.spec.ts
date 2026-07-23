@@ -109,12 +109,23 @@ test("catalog filters stay stable and combine predictably", async ({
 
   await drawer.getByRole("button", { name: "Formats" }).click()
   await expect(drawer.getByRole("checkbox", { name: /^DVD/ })).toBeVisible()
+  await drawer.getByText("Merchandise", { exact: true }).click()
+  await drawer.getByText("Music Releases", { exact: true }).click()
+  await drawer.getByText("CD", { exact: true }).click()
+
+  await drawer.getByRole("button", { name: "Price" }).click()
+  await drawer
+    .getByRole("spinbutton", { name: "Maximum price in dollars" })
+    .fill("20")
+  await drawer.getByRole("button", { name: "Apply" }).click()
   await expect(
-    drawer.getByRole("button", { name: /Show \d+ results/ })
+    drawer.getByRole("button", { name: /Show [1-9]\d* results/ })
   ).toBeVisible()
 
-  await expect(page).toHaveURL(/type=merch/)
+  await expect(page).toHaveURL(/type=music-release/)
   await expect(page).toHaveURL(/genre=death-metal%2Cgrind/)
+  await expect(page).toHaveURL(/format=CD/)
+  await expect(page).toHaveURL(/maxPrice=20/)
 
   const metrics = await page.evaluate(() => {
     const dialog = document
@@ -132,6 +143,21 @@ test("catalog filters stay stable and combine predictably", async ({
   expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.viewportWidth)
   expect(metrics.dialogLeft).toBeGreaterThanOrEqual(0)
   expect(metrics.dialogRight).toBeLessThanOrEqual(metrics.viewportWidth)
+
+  await drawer.getByRole("button", { name: /Show [1-9]\d* results/ }).click()
+  const search = page.getByRole("searchbox", {
+    name: "Search catalog by product or artist name",
+  })
+  await search.fill("Pathologist")
+  const clearSearch = page.getByRole("button", {
+    name: "Clear catalog search",
+  })
+  await expect(clearSearch).toBeVisible()
+  const clearBounds = await clearSearch.boundingBox()
+  expect(clearBounds?.width).toBeGreaterThanOrEqual(44)
+  expect(clearBounds?.height).toBeGreaterThanOrEqual(44)
+  await clearSearch.click()
+  await expect(search).toHaveValue("")
 })
 
 const routes = ["/about", "/accessibility", "/cookies", "/terms"] as const

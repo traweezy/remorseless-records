@@ -266,6 +266,51 @@ describe("buildSearchDocument", () => {
     expect(document.availability_states).toEqual(["sold_out"])
   })
 
+  it("uses five as the verified low-stock threshold and hides import placeholders", () => {
+    const document = buildSearchDocument({
+      id: "prod_stock_threshold",
+      handle: "stock-threshold",
+      title: "Stock threshold",
+      variants: [
+        {
+          id: "var_verified",
+          title: "Vinyl",
+          manage_inventory: true,
+          inventory_quantity: 5,
+          metadata: { inventory_count_status: "verified" },
+          prices: [{ amount: 2_000, currency_code: "usd" }],
+        },
+        {
+          id: "var_imported",
+          title: "CD",
+          manage_inventory: true,
+          inventory_quantity: 2,
+          metadata: {
+            source_low_inventory: true,
+            seed_inventory_quantity: 2,
+          },
+          prices: [{ amount: 1_000, currency_code: "usd" }],
+        },
+      ],
+    })
+
+    expect(document.variants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "var_verified",
+          stock_status: "low_stock",
+          low_stock_badge_eligible: true,
+        }),
+        expect.objectContaining({
+          id: "var_imported",
+          stock_status: "low_stock",
+          low_stock_badge_eligible: false,
+        }),
+      ])
+    )
+    expect(document.low_stock_badge_eligible).toBe(true)
+  })
+
   it("loads linked inventory before deriving search stock state", async () => {
     const query = {
       graph: jest.fn().mockResolvedValue({

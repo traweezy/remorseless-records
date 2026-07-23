@@ -52,6 +52,7 @@ describe("normalizeSearchHit", () => {
       price_max: "2499",
       currency_code: "usd",
       stock_status: "IN_STOCK",
+      low_stock_badge_eligible: false,
       stock_statuses: ["in_stock", "low_stock"],
       availability_states: ["preorder", "in_stock"],
       inventory_quantity: "2",
@@ -88,6 +89,7 @@ describe("normalizeSearchHit", () => {
       inStock: true,
       stockStatus: "low_stock",
       inventoryQuantity: 2,
+      lowStockBadgeEligible: false,
     })
     expect(normalized.createdAt).toBe("2025-01-01T00:00:00.000Z")
     expect(normalized.releaseDate).toBe("2025-02-01T00:00:00.000Z")
@@ -99,6 +101,7 @@ describe("normalizeSearchHit", () => {
     expect(normalized.priceMin).toBe(1599)
     expect(normalized.priceMax).toBe(2499)
     expect(normalized.stockStatuses).toEqual(["in_stock", "low_stock"])
+    expect(normalized.lowStockBadgeEligible).toBe(false)
     expect(normalized.availabilityStates).toEqual(["preorder", "in_stock"])
     expect(normalized.preorderAllowed).toBe(true)
     expect(normalized.bundleType).toBe("fixed")
@@ -173,7 +176,9 @@ describe("normalizeSearchHit", () => {
       images: ["https://cdn.example.com/string-image.jpg"],
     })
 
-    expect(normalized.thumbnail).toBe("https://cdn.example.com/string-image.jpg")
+    expect(normalized.thumbnail).toBe(
+      "https://cdn.example.com/string-image.jpg"
+    )
   })
 
   it("returns a null thumbnail when no image fields are usable", () => {
@@ -213,29 +218,27 @@ describe("extractFacetMaps", () => {
       genres: {},
       metalGenres: {},
       format: {},
-        categories: {},
-        variants: {},
-        productTypes: {},
-        availabilityStates: {},
-        stockStatuses: {},
-        bundleTypes: {},
-      })
+      categories: {},
+      variants: {},
+      productTypes: {},
+      availabilityStates: {},
+      stockStatuses: {},
+      bundleTypes: {},
+    })
   })
 
   it("parses facet aliases and ignores invalid counts", () => {
-    const facets = extractFacetMaps(
-      {
-        genre: { black: "3", invalid: "NaN" },
-        metal_genres: { death: 2 },
-        formats: { LP: "4", poster: "nope" },
-        categories: { doom: "5" },
-        variants: { CD: "2" },
-        productTypes: { album: 6 },
-        availability_states: { preorder: 2 },
-        stock_statuses: { in_stock: 4 },
-        bundle_type: { fixed: 1 },
-      } as unknown as NonNullable<Parameters<typeof extractFacetMaps>[0]>
-    )
+    const facets = extractFacetMaps({
+      genre: { black: "3", invalid: "NaN" },
+      metal_genres: { death: 2 },
+      formats: { LP: "4", poster: "nope" },
+      categories: { doom: "5" },
+      variants: { CD: "2" },
+      productTypes: { album: 6 },
+      availability_states: { preorder: 2 },
+      stock_statuses: { in_stock: 4 },
+      bundle_type: { fixed: 1 },
+    } as unknown as NonNullable<Parameters<typeof extractFacetMaps>[0]>)
 
     expect(facets).toEqual({
       genres: { black: 3 },
@@ -251,18 +254,16 @@ describe("extractFacetMaps", () => {
   })
 
   it("treats non-object facet entries as empty maps", () => {
-    const facets = extractFacetMaps(
-      {
-        genres: 10,
-        format: 20,
-        category_handles: 30,
-        variant_titles: 40,
-        product_type: 50,
-        availability_states: 60,
-        stock_statuses: 70,
-        bundle_type: 80,
-      } as unknown as NonNullable<Parameters<typeof extractFacetMaps>[0]>
-    )
+    const facets = extractFacetMaps({
+      genres: 10,
+      format: 20,
+      category_handles: 30,
+      variant_titles: 40,
+      product_type: 50,
+      availability_states: 60,
+      stock_statuses: 70,
+      bundle_type: 80,
+    } as unknown as NonNullable<Parameters<typeof extractFacetMaps>[0]>)
 
     expect(facets).toEqual({
       genres: {},

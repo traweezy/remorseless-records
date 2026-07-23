@@ -1,4 +1,7 @@
-import { useStoreWithEqualityFn, createWithEqualityFn } from "zustand/traditional"
+import {
+  useStoreWithEqualityFn,
+  createWithEqualityFn,
+} from "zustand/traditional"
 import { shallow } from "zustand/shallow"
 import { immer } from "zustand/middleware/immer"
 import { devtools } from "zustand/middleware"
@@ -10,6 +13,8 @@ type FilterState = {
   artists: string[]
   formats: string[]
   productTypes: string[]
+  priceMin: number | null
+  priceMax: number | null
   showInStockOnly: boolean
   sort: ProductSortOption
 }
@@ -20,6 +25,7 @@ type FilterActions = {
   toggleArtist: (artist: string) => void
   toggleFormat: (value: string) => void
   toggleProductType: (value: string) => void
+  setPriceRange: (min: number | null, max: number | null) => void
   toggleStockOnly: () => void
   setSort: (value: ProductSortOption) => void
   clearFilters: () => void
@@ -34,6 +40,8 @@ const initialState: FilterState = {
   artists: [],
   formats: [],
   productTypes: [],
+  priceMin: null,
+  priceMax: null,
   showInStockOnly: false,
   sort: "title-asc",
 }
@@ -51,7 +59,9 @@ const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
           const normalized = handle.trim().toLowerCase()
           if (!normalized.length) return
           if (state.genres.includes(normalized)) {
-            state.genres = state.genres.filter((entry: string) => entry !== normalized)
+            state.genres = state.genres.filter(
+              (entry: string) => entry !== normalized
+            )
           } else {
             state.genres.push(normalized)
           }
@@ -61,7 +71,9 @@ const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
           const normalized = artist.trim().toLowerCase()
           if (!normalized.length) return
           if (state.artists.includes(normalized)) {
-            state.artists = state.artists.filter((entry: string) => entry !== normalized)
+            state.artists = state.artists.filter(
+              (entry: string) => entry !== normalized
+            )
           } else {
             state.artists.push(normalized)
           }
@@ -69,7 +81,9 @@ const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
       toggleFormat: (value) =>
         set((state) => {
           if (state.formats.includes(value)) {
-            state.formats = state.formats.filter((entry: string) => entry !== value)
+            state.formats = state.formats.filter(
+              (entry: string) => entry !== value
+            )
           } else {
             state.formats.push(value)
           }
@@ -77,10 +91,23 @@ const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
       toggleProductType: (value) =>
         set((state) => {
           if (state.productTypes.includes(value)) {
-            state.productTypes = state.productTypes.filter((entry: string) => entry !== value)
+            state.productTypes = state.productTypes.filter(
+              (entry: string) => entry !== value
+            )
           } else {
             state.productTypes.push(value)
           }
+        }),
+      setPriceRange: (min, max) =>
+        set((state) => {
+          state.priceMin =
+            typeof min === "number" && Number.isFinite(min)
+              ? Math.max(0, Math.trunc(min))
+              : null
+          state.priceMax =
+            typeof max === "number" && Number.isFinite(max)
+              ? Math.max(0, Math.trunc(max))
+              : null
         }),
       toggleStockOnly: () =>
         set((state) => {
@@ -96,6 +123,8 @@ const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
           state.artists = []
           state.formats = []
           state.productTypes = []
+          state.priceMin = null
+          state.priceMax = null
           state.showInStockOnly = false
         }),
       hydrateFromParams: (params) =>
@@ -105,6 +134,12 @@ const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
           state.artists = params.artists ?? state.artists
           state.formats = params.formats ?? state.formats
           state.productTypes = params.productTypes ?? state.productTypes
+          if (params.priceMin !== undefined) {
+            state.priceMin = params.priceMin
+          }
+          if (params.priceMax !== undefined) {
+            state.priceMax = params.priceMax
+          }
           state.showInStockOnly =
             params.showInStockOnly ?? state.showInStockOnly
           state.sort = params.sort ?? state.sort
@@ -115,7 +150,7 @@ const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
 
 type SelectorFn<T> = (state: CatalogStoreState) => T
 
-export const useCatalogStore = <T,>(
+export const useCatalogStore = <T>(
   selector: SelectorFn<T>,
   equalityFn = shallow
 ): T => useStoreWithEqualityFn(catalogStoreBase, selector, equalityFn)

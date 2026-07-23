@@ -4,6 +4,7 @@ import type {
   CatalogFilterKind,
   CatalogFilterOption,
   CatalogFilterOptionsResponse,
+  CatalogPriceRangeResponse,
 } from "@/lib/catalog/filters"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -46,4 +47,40 @@ export const fetchCatalogFilterOptions = async (
     )
   }
   return { options: parseFilterOptions(await response.json()) }
+}
+
+export const fetchCatalogPriceRange = async (options?: {
+  signal?: AbortSignal
+}): Promise<CatalogPriceRangeResponse> => {
+  const response = await fetch("/api/catalog/filters/price-range", {
+    headers: { Accept: "application/json" },
+    ...(options?.signal ? { signal: options.signal } : {}),
+  })
+  if (!response.ok) {
+    throw new Error(
+      `Catalog price range failed with status ${response.status}.`
+    )
+  }
+
+  const payload: unknown = await response.json()
+  if (!isRecord(payload) || !isRecord(payload.range)) {
+    throw new Error("Catalog price range returned an invalid response.")
+  }
+
+  const { min, max, currency } = payload.range
+  if (
+    typeof min !== "number" ||
+    !Number.isFinite(min) ||
+    typeof max !== "number" ||
+    !Number.isFinite(max) ||
+    max < min ||
+    typeof currency !== "string" ||
+    !currency.trim().length
+  ) {
+    throw new Error("Catalog price range returned invalid values.")
+  }
+
+  return {
+    range: { min, max, currency: currency.trim().toLowerCase() },
+  }
 }

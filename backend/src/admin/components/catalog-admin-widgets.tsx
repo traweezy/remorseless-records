@@ -19,6 +19,7 @@ import {
   Textarea,
   toast,
 } from "@medusajs/ui"
+import { LOW_STOCK_THRESHOLD } from "../../lib/catalog/stock"
 
 import RichTextEditor from "./rich-text-editor"
 
@@ -734,7 +735,7 @@ const deriveVariantCustomerState = (input: {
 
   if (quantity > 0) {
     return {
-      label: quantity <= 3 ? "Low stock" : "In stock",
+      label: quantity <= LOW_STOCK_THRESHOLD ? "Low stock" : "In stock",
       description: `${quantity} available through native inventory.`,
     }
   }

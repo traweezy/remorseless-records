@@ -5,8 +5,10 @@ import { unstable_cache } from "next/cache"
 import { getFullCatalogHits } from "@/lib/catalog/all"
 import {
   buildCatalogFilterDefinitions,
+  buildCatalogPriceRange,
   type CatalogFilterDefinitions,
   type CatalogFilterOption,
+  type CatalogPriceRange,
 } from "@/lib/catalog/filters"
 import { getMetalGenreCategories } from "@/lib/data/categories"
 import { searchProductsServer } from "@/lib/search/server"
@@ -65,6 +67,19 @@ export const getCatalogFormatOptions = unstable_cache(
   { revalidate: 900, tags: ["products", "catalog-format-options-v1"] }
 )
 
+export const getCatalogPriceRange = unstable_cache(
+  async (): Promise<CatalogPriceRange> => {
+    const hits = await getFullCatalogHits()
+    const range = buildCatalogPriceRange(hits)
+    if (!range) {
+      throw new Error("The public catalog has no priced products")
+    }
+    return range
+  },
+  ["catalog-price-range-v1"],
+  { revalidate: 900, tags: ["products", "catalog-price-range-v1"] }
+)
+
 const getGlobalSearchDefinitions = unstable_cache(
   loadGlobalSearchDefinitions,
   ["catalog-search-filter-options-v1"],
@@ -82,29 +97,38 @@ export const getCatalogProductTypeOptions = async (): Promise<
   CatalogFilterOption[]
 > => (await getGlobalSearchDefinitions()).productTypes
 
-export const getCatalogFilterDefinitions = async (): Promise<CatalogFilterDefinitions> => {
-  const [formatResult, searchResult] = await Promise.allSettled([
-    getCatalogFormatOptions(),
-    getGlobalSearchDefinitions(),
-  ])
+export const getCatalogFilterDefinitions =
+  async (): Promise<CatalogFilterDefinitions> => {
+    const [formatResult, priceResult, searchResult] = await Promise.allSettled([
+      getCatalogFormatOptions(),
+      getCatalogPriceRange(),
+      getGlobalSearchDefinitions(),
+    ])
 
-  if (formatResult.status === "rejected") {
-    console.error("[getCatalogFilterDefinitions] Format definitions failed", {
-      reason: describeError(formatResult.reason as unknown),
-    })
-  }
-  if (searchResult.status === "rejected") {
-    console.error("[getCatalogFilterDefinitions] Search definitions failed", {
-      reason: describeError(searchResult.reason as unknown),
-    })
-  }
+    if (formatResult.status === "rejected") {
+      console.error("[getCatalogFilterDefinitions] Format definitions failed", {
+        reason: describeError(formatResult.reason as unknown),
+      })
+    }
+    if (searchResult.status === "rejected") {
+      console.error("[getCatalogFilterDefinitions] Search definitions failed", {
+        reason: describeError(searchResult.reason as unknown),
+      })
+    }
+    if (priceResult.status === "rejected") {
+      console.error("[getCatalogFilterDefinitions] Price range failed", {
+        reason: describeError(priceResult.reason as unknown),
+      })
+    }
 
-  return {
-    formats: formatResult.status === "fulfilled" ? formatResult.value : [],
-    genres: searchResult.status === "fulfilled" ? searchResult.value.genres : [],
-    productTypes:
-      searchResult.status === "fulfilled"
-        ? searchResult.value.productTypes
-        : [],
+    return {
+      formats: formatResult.status === "fulfilled" ? formatResult.value : [],
+      genres:
+        searchResult.status === "fulfilled" ? searchResult.value.genres : [],
+      productTypes:
+        searchResult.status === "fulfilled"
+          ? searchResult.value.productTypes
+          : [],
+      priceRange: priceResult.status === "fulfilled" ? priceResult.value : null,
+    }
   }
-}

@@ -42,11 +42,23 @@ describe("buildCatalogFilterDefinitions", () => {
           variantTitles: ["12-inch vinyl", "CD"],
           categoryHandles: ["death-metal"],
           productType: "music_release",
+          priceAmount: 2_500,
+          defaultVariant: {
+            id: "vinyl",
+            title: "Vinyl",
+            currency: "usd",
+            amount: 2_500,
+            hasPrice: true,
+            inStock: true,
+            stockStatus: "in_stock",
+            inventoryQuantity: 10,
+          },
         }),
         makeHit("dvd-release", {
           variantTitles: ["DVD"],
           categoryHandles: ["doom-metal"],
           productType: "music-release",
+          priceAmount: 1_000,
         }),
         makeHit("shirt", {
           categoryHandles: ["death-metal"],
@@ -73,6 +85,11 @@ describe("buildCatalogFilterDefinitions", () => {
       { value: "music-release", label: "Music Releases", count: 2 },
       { value: "merch", label: "Merchandise", count: 1 },
     ])
+    expect(definitions.priceRange).toEqual({
+      min: 1_000,
+      max: 2_500,
+      currency: "usd",
+    })
   })
 
   it("uses customer-facing product type labels", () => {
@@ -102,5 +119,6 @@ describe("buildCatalogFilterDefinitions", () => {
       { value: "music-release", label: "Music Releases", count: 10 },
       { value: "merch", label: "Merchandise", count: 2 },
     ])
+    expect(definitions.priceRange).toBeNull()
   })
 })

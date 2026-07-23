@@ -15,7 +15,17 @@ const makeHit = (): ProductSearchHit => ({
     albumSlug: "album",
   },
   subtitle: null,
-  defaultVariant: null,
+  defaultVariant: {
+    id: "variant",
+    title: "CD",
+    currency: "usd",
+    amount: 1_200,
+    hasPrice: true,
+    inStock: true,
+    stockStatus: "in_stock",
+    inventoryQuantity: 10,
+  },
+  priceAmount: 1_200,
   formats: ["CD"],
   genres: [],
   metalGenres: [],
@@ -55,9 +65,11 @@ const mockDependencies = ({
     getFullCatalogHits: vi.fn().mockResolvedValue(hits),
   }))
   vi.doMock("@/lib/data/categories", () => ({
-    getMetalGenreCategories: vi.fn().mockResolvedValue([
-      { handle: "death-metal", label: "Death Metal", rank: 0 },
-    ]),
+    getMetalGenreCategories: vi
+      .fn()
+      .mockResolvedValue([
+        { handle: "death-metal", label: "Death Metal", rank: 0 },
+      ]),
   }))
   vi.doMock("@/lib/search/server", () => ({ searchProductsServer }))
   return searchProductsServer
@@ -76,6 +88,7 @@ describe("catalog filter server loaders", () => {
       getCatalogFilterDefinitions,
       getCatalogFormatOptions,
       getCatalogGenreOptions,
+      getCatalogPriceRange,
       getCatalogProductTypeOptions,
     } = await import("@/lib/catalog/filters.server")
 
@@ -89,15 +102,19 @@ describe("catalog filter server loaders", () => {
       { value: "music-release", label: "Music Releases", count: 10 },
       { value: "merch", label: "Merchandise", count: 2 },
     ])
+    await expect(getCatalogPriceRange()).resolves.toEqual({
+      min: 1_200,
+      max: 1_200,
+      currency: "usd",
+    })
     await expect(getCatalogFilterDefinitions()).resolves.toEqual({
       formats: [{ value: "CD", label: "CD", count: 1 }],
-      genres: [
-        { value: "death-metal", label: "Death Metal", count: 12 },
-      ],
+      genres: [{ value: "death-metal", label: "Death Metal", count: 12 }],
       productTypes: [
         { value: "music-release", label: "Music Releases", count: 10 },
         { value: "merch", label: "Merchandise", count: 2 },
       ],
+      priceRange: { min: 1_200, max: 1_200, currency: "usd" },
     })
   })
 
@@ -138,7 +155,8 @@ describe("catalog filter server loaders", () => {
       formats: [],
       genres: [],
       productTypes: [],
+      priceRange: null,
     })
-    expect(consoleError).toHaveBeenCalledTimes(2)
+    expect(consoleError).toHaveBeenCalledTimes(3)
   })
 })

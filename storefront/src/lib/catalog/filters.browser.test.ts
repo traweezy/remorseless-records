@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { fetchCatalogFilterOptions } from "@/lib/catalog/filters.browser"
+import {
+  fetchCatalogFilterOptions,
+  fetchCatalogPriceRange,
+} from "@/lib/catalog/filters.browser"
 
 describe("fetchCatalogFilterOptions", () => {
   beforeEach(() => {
@@ -27,7 +30,9 @@ describe("fetchCatalogFilterOptions", () => {
 
   it("rejects failed and malformed endpoint responses", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
-    fetchMock.mockResolvedValueOnce(new Response("unavailable", { status: 503 }))
+    fetchMock.mockResolvedValueOnce(
+      new Response("unavailable", { status: 503 })
+    )
     await expect(fetchCatalogFilterOptions("genres")).rejects.toThrow(
       "status 503"
     )
@@ -40,5 +45,25 @@ describe("fetchCatalogFilterOptions", () => {
     await expect(fetchCatalogFilterOptions("formats")).rejects.toThrow(
       "invalid option"
     )
+  })
+
+  it("loads and validates the dedicated price range endpoint", async () => {
+    const payload = { range: { min: 100, max: 5_600, currency: "usd" } }
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }))
+
+    await expect(fetchCatalogPriceRange()).resolves.toEqual(payload)
+    expect(fetchMock).toHaveBeenCalledWith("/api/catalog/filters/price-range", {
+      headers: { Accept: "application/json" },
+    })
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ range: { min: 5_600, max: 100, currency: "usd" } }),
+        { status: 200 }
+      )
+    )
+    await expect(fetchCatalogPriceRange()).rejects.toThrow("invalid values")
   })
 })

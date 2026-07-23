@@ -9,6 +9,12 @@ import type { Filter, Index, MeiliSearch, SearchResponse } from "meilisearch"
 
 export const PRODUCTS_INDEX = "products"
 export const CATALOG_PAGE_SIZE = 60
+export const CATALOG_SEARCH_ATTRIBUTES = [
+  "title",
+  "release_title",
+  "artist_names",
+  "artist",
+] as const
 
 export type ProductSearchFilters = {
   genres?: string[]
@@ -588,6 +594,7 @@ export const searchProductsWithClient = async (
     const response = await index.search<Record<string, unknown>>(query ?? "", {
       limit: requestedLimit,
       offset: requestedOffset,
+      attributesToSearchOn: [...CATALOG_SEARCH_ATTRIBUTES],
       facets: facetsToRequest,
       ...(filterExpression ? { filter: filterExpression } : {}),
       ...(sortDirectives ? { sort: sortDirectives } : {}),
@@ -631,6 +638,7 @@ export const searchProductsWithClient = async (
       await index.search<Record<string, unknown>>(query ?? "", {
         limit: batchSize,
         offset: rawOffset,
+        attributesToSearchOn: [...CATALOG_SEARCH_ATTRIBUTES],
         facets: facetsToRequest,
         ...(filterExpression ? { filter: filterExpression } : {}),
         ...(sortDirectives ? { sort: sortDirectives } : {}),

@@ -2,7 +2,11 @@ import type { StockStatus } from "@/types/product"
 
 export const LOW_STOCK_THRESHOLD = 5
 
-const normalizeStockStatus = (value: string | null | undefined): StockStatus | null => {
+type InventoryMetadata = Record<string, unknown> | null | undefined
+
+const normalizeStockStatus = (
+  value: string | null | undefined
+): StockStatus | null => {
   if (!value) {
     return null
   }
@@ -14,7 +18,11 @@ const normalizeStockStatus = (value: string | null | undefined): StockStatus | n
   if (["low_stock", "low", "limited", "scarce"].includes(normalized)) {
     return "low_stock"
   }
-  if (["sold_out", "out_of_stock", "out-of-stock", "oos", "unavailable"].includes(normalized)) {
+  if (
+    ["sold_out", "out_of_stock", "out-of-stock", "oos", "unavailable"].includes(
+      normalized
+    )
+  ) {
     return "sold_out"
   }
 
@@ -28,6 +36,33 @@ export type VariantStockInput = {
   stockStatus?: string | null
 }
 
+export const isLowStockBadgeEligible = ({
+  inventoryQuantity,
+  stockStatus,
+  metadata,
+}: {
+  inventoryQuantity: number | null
+  stockStatus: StockStatus
+  metadata?: InventoryMetadata
+}): boolean => {
+  if (stockStatus !== "low_stock") {
+    return true
+  }
+
+  if (metadata?.inventory_count_status === "verified") {
+    return true
+  }
+
+  const seededQuantity = metadata?.seed_inventory_quantity
+  const isImportedEstimate =
+    metadata?.source_low_inventory === true &&
+    typeof seededQuantity === "number" &&
+    Number.isFinite(seededQuantity) &&
+    inventoryQuantity === seededQuantity
+
+  return !isImportedEstimate && metadata?.inventory_count_status !== "unknown"
+}
+
 export const resolveVariantStockStatus = ({
   inventoryQuantity,
   manageInventory,
@@ -35,9 +70,10 @@ export const resolveVariantStockStatus = ({
   stockStatus,
 }: VariantStockInput): { status: StockStatus; inStock: boolean } => {
   const normalizedStatus = normalizeStockStatus(stockStatus)
-  const quantity = typeof inventoryQuantity === "number" && Number.isFinite(inventoryQuantity)
-    ? inventoryQuantity
-    : null
+  const quantity =
+    typeof inventoryQuantity === "number" && Number.isFinite(inventoryQuantity)
+      ? inventoryQuantity
+      : null
 
   if (quantity !== null) {
     if (quantity <= 0) {
@@ -72,13 +108,16 @@ export type StockSummaryInput = {
   inStock?: boolean
 }
 
-export const summarizeStockStatus = (variants: StockSummaryInput[]): StockStatus => {
+export const summarizeStockStatus = (
+  variants: StockSummaryInput[]
+): StockStatus => {
   if (!variants.length) {
     return "unknown"
   }
 
-  const statuses = variants.map((variant) =>
-    variant.stockStatus ?? (variant.inStock ? "in_stock" : "sold_out")
+  const statuses = variants.map(
+    (variant) =>
+      variant.stockStatus ?? (variant.inStock ? "in_stock" : "sold_out")
   )
   const normalized = statuses.filter((status) => status !== "unknown")
 

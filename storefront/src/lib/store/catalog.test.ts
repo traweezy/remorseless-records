@@ -11,6 +11,8 @@ const resetStore = () => {
     artists: [],
     formats: [],
     productTypes: [],
+    priceMin: null,
+    priceMax: null,
     showInStockOnly: false,
     sort: "title-asc",
   }))
@@ -54,12 +56,15 @@ describe("catalogStore", () => {
     catalogStore.getState().toggleFormat(format)
     catalogStore.getState().toggleProductType(productType)
     catalogStore.getState().toggleStockOnly()
+    catalogStore.getState().setPriceRange(1_000.9, 3_000.2)
     catalogStore.getState().setSort(sort)
 
     expect(catalogStore.getState()).toMatchObject({
       query,
       formats: [format],
       productTypes: [productType],
+      priceMin: 1_000,
+      priceMax: 3_000,
       showInStockOnly: true,
       sort,
     })
@@ -75,6 +80,8 @@ describe("catalogStore", () => {
       artists: [],
       formats: [],
       productTypes: [],
+      priceMin: null,
+      priceMax: null,
       showInStockOnly: false,
       query,
       sort,
@@ -93,6 +100,8 @@ describe("catalogStore", () => {
       formats: [format],
       showInStockOnly: true,
       sort: "price-high",
+      priceMin: 500,
+      priceMax: null,
     })
 
     expect(catalogStore.getState()).toMatchObject({
@@ -101,6 +110,8 @@ describe("catalogStore", () => {
       formats: [format],
       showInStockOnly: true,
       sort: "price-high",
+      priceMin: 500,
+      priceMax: null,
     })
   })
 })

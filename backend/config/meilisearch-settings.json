@@ -27,21 +27,10 @@
     "primaryKey": "id",
     "indexSettings": {
       "searchableAttributes": [
-        "artist_names",
-        "artist",
-        "release_title",
         "title",
-        "search_keywords",
-        "description_text",
-        "label",
-        "genres",
-        "metalGenres",
-        "formats",
-        "format_details",
-        "variant_titles",
-        "utility_tags",
-        "bundle_summary",
-        "collectionTitle"
+        "release_title",
+        "artist_names",
+        "artist"
       ],
       "displayedAttributes": [
         "id",
@@ -88,6 +77,7 @@
         "stock_statuses",
         "availability_states",
         "inventory_quantity",
+        "low_stock_badge_eligible",
         "preorder_allowed",
         "backorder_allowed",
         "release_date",

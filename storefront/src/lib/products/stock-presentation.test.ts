@@ -18,12 +18,21 @@ const makeVariant = (
 })
 
 describe("resolveStockChip", () => {
-  it("does not present seeded low-stock quantities as physical counts", () => {
+  it("shows low-stock state only for eligible verified counts", () => {
     expect(
       resolveStockChip(
         makeVariant({ stockStatus: "low_stock", inventoryQuantity: 2 })
       )
     ).toMatchObject({ label: "Low stock" })
+    expect(
+      resolveStockChip(
+        makeVariant({
+          stockStatus: "low_stock",
+          inventoryQuantity: 2,
+          lowStockBadgeEligible: false,
+        })
+      )
+    ).toBeNull()
   })
 
   it("labels sold-out and unpriced variants", () => {

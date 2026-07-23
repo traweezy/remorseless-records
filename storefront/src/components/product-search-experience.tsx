@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  memo,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -9,6 +10,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
+  type FocusEvent,
+  type FormEvent,
 } from "react"
 import { Debouncer } from "@tanstack/pacer"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
@@ -45,11 +49,15 @@ import {
 import { searchProductsBrowser } from "@/lib/search/browser"
 import { useCatalogStore } from "@/lib/store/catalog"
 import { normalizeFormatValue as baseNormalizeFormat } from "@/lib/search/normalize"
-import { fetchCatalogFilterOptions } from "@/lib/catalog/filters.browser"
+import {
+  fetchCatalogFilterOptions,
+  fetchCatalogPriceRange,
+} from "@/lib/catalog/filters.browser"
 import {
   formatProductTypeLabel,
   type CatalogFilterDefinitions,
   type CatalogFilterOption,
+  type CatalogPriceRange,
 } from "@/lib/catalog/filters"
 
 const deferEffectUpdate = (callback: () => void): (() => void) => {
@@ -406,17 +414,213 @@ const FilterCheckboxList = ({
   )
 }
 
+const formatPrice = (amount: number, currency: string): string =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    maximumFractionDigits: amount % 100 === 0 ? 0 : 2,
+  }).format(amount / 100)
+
+const priceInputValue = (amount: number | null): string =>
+  amount === null ? "" : String(amount / 100)
+
+const parsePriceInput = (value: string): number | null => {
+  if (!value.trim().length) {
+    return null
+  }
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0
+    ? Math.round(parsed * 100)
+    : Number.NaN
+}
+
+type PriceRangeFilterProps = {
+  idPrefix: string
+  bounds: CatalogPriceRange | null
+  min: number | null
+  max: number | null
+  onApply: (min: number | null, max: number | null) => void
+}
+
+const PriceRangeFilter = memo<PriceRangeFilterProps>(
+  ({ idPrefix, bounds, min, max, onApply }) => {
+    const controlsId = `${idPrefix}-price-filters`
+    const [isOpen, setIsOpen] = useState(min !== null || max !== null)
+    const [draftMin, setDraftMin] = useState(priceInputValue(min))
+    const [draftMax, setDraftMax] = useState(priceInputValue(max))
+    const [error, setError] = useState<string | null>(null)
+    const errorId = `${idPrefix}-price-error`
+
+    const handleToggle = useCallback(() => {
+      setIsOpen((current) => !current)
+    }, [])
+    const handleMinimumChange = useCallback(
+      (event: ChangeEvent<HTMLInputElement>) => {
+        setDraftMin(event.target.value)
+      },
+      []
+    )
+    const handleMaximumChange = useCallback(
+      (event: ChangeEvent<HTMLInputElement>) => {
+        setDraftMax(event.target.value)
+      },
+      []
+    )
+    const handleInputFocus = useCallback(
+      (event: FocusEvent<HTMLInputElement>) => {
+        event.currentTarget.select()
+      },
+      []
+    )
+    const handleSubmit = useCallback(
+      (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        const nextMin = parsePriceInput(draftMin)
+        const nextMax = parsePriceInput(draftMax)
+        if (
+          Number.isNaN(nextMin) ||
+          Number.isNaN(nextMax) ||
+          (nextMin !== null && nextMax !== null && nextMin > nextMax)
+        ) {
+          setError("Enter a valid minimum and maximum price.")
+          return
+        }
+        setError(null)
+        onApply(nextMin, nextMax)
+      },
+      [draftMax, draftMin, onApply]
+    )
+    const handleClear = useCallback(() => {
+      setDraftMin("")
+      setDraftMax("")
+      setError(null)
+      onApply(null, null)
+    }, [onApply])
+
+    if (!bounds) {
+      return null
+    }
+
+    return (
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
+          aria-expanded={isOpen}
+          aria-controls={controlsId}
+        >
+          <span>Price</span>
+          <ChevronDown
+            className={cn(
+              "h-3 w-3 transition duration-200",
+              isOpen && "rotate-180"
+            )}
+            aria-hidden
+          />
+        </button>
+        <AnimatePresence initial={false}>
+          {isOpen ? (
+            <motion.div
+              id={controlsId}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <form className="space-y-3 px-2" onSubmit={handleSubmit}>
+                <p className="text-[0.62rem] leading-relaxed text-muted-foreground/80">
+                  Catalog range {formatPrice(bounds.min, bounds.currency)}–
+                  {formatPrice(bounds.max, bounds.currency)}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground">
+                    <span>Minimum</span>
+                    <span className="flex min-h-11 items-center rounded-lg border border-border/70 bg-background px-3 focus-within:border-destructive">
+                      <span aria-hidden>$</span>
+                      <input
+                        value={draftMin}
+                        onChange={handleMinimumChange}
+                        onFocus={handleInputFocus}
+                        className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
+                        inputMode="decimal"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        aria-label="Minimum price in dollars"
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={error ? errorId : undefined}
+                      />
+                    </span>
+                  </label>
+                  <label className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground">
+                    <span>Maximum</span>
+                    <span className="flex min-h-11 items-center rounded-lg border border-border/70 bg-background px-3 focus-within:border-destructive">
+                      <span aria-hidden>$</span>
+                      <input
+                        value={draftMax}
+                        onChange={handleMaximumChange}
+                        onFocus={handleInputFocus}
+                        className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
+                        inputMode="decimal"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        aria-label="Maximum price in dollars"
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={error ? errorId : undefined}
+                      />
+                    </span>
+                  </label>
+                </div>
+                <p
+                  id={errorId}
+                  className="min-h-4 text-[0.62rem] text-destructive"
+                  aria-live="polite"
+                >
+                  {error}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="submit" variant="outline" size="sm">
+                    Apply
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClear}
+                    disabled={!draftMin.length && !draftMax.length}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+    )
+  }
+)
+
+PriceRangeFilter.displayName = "PriceRangeFilter"
+
 const FilterSidebar = ({
   idPrefix,
   genres,
   formats,
   productTypes,
+  priceRange,
   selectedGenres,
   selectedFormats,
   selectedProductTypes,
+  selectedPriceMin,
+  selectedPriceMax,
   onToggleGenre,
   onToggleFormat,
   onToggleProductType,
+  onApplyPrice,
   onClear,
   showInStockOnly,
   onToggleStock,
@@ -425,12 +629,16 @@ const FilterSidebar = ({
   genres: FilterOption[]
   formats: FilterOption[]
   productTypes: FilterOption[]
+  priceRange: CatalogPriceRange | null
   selectedGenres: string[]
   selectedFormats: string[]
   selectedProductTypes: string[]
+  selectedPriceMin: number | null
+  selectedPriceMax: number | null
   onToggleGenre: (genre: string) => void
   onToggleFormat: (format: string) => void
   onToggleProductType: (type: string) => void
+  onApplyPrice: (min: number | null, max: number | null) => void
   onClear: () => void
   showInStockOnly: boolean
   onToggleStock: () => void
@@ -509,6 +717,17 @@ const FilterSidebar = ({
         normalizeValue={(value) => normalizeFormatFilterValue(value) ?? ""}
         defaultOpen={selectedFormats.length > 0}
       />
+
+      <Separator className="border-border/50" />
+
+      <PriceRangeFilter
+        key={`${selectedPriceMin ?? "any"}-${selectedPriceMax ?? "any"}`}
+        idPrefix={idPrefix}
+        bounds={priceRange}
+        min={selectedPriceMin}
+        max={selectedPriceMax}
+        onApply={onApplyPrice}
+      />
     </div>
   </div>
 )
@@ -521,11 +740,7 @@ const SortDropdown = ({
   onChange: (value: ProductSortOption) => void
 }) => {
   return (
-    <PillDropdown
-      value={value}
-      options={SORT_OPTIONS}
-      onChange={onChange}
-    />
+    <PillDropdown value={value} options={SORT_OPTIONS} onChange={onChange} />
   )
 }
 
@@ -561,6 +776,7 @@ const ProductSearchExperience = ({
     genres: [],
     formats: [],
     productTypes: [],
+    priceRange: null,
   },
 }: ProductSearchExperienceProps) => {
   const filterInstanceId = useId().replace(/:/g, "")
@@ -589,6 +805,16 @@ const ProductSearchExperience = ({
     staleTime: 15 * 60_000,
     retry: 1,
   })
+  const priceRangeQuery = useQuery({
+    queryKey: ["catalog-filter-options", "price-range"],
+    queryFn: ({ signal }) => fetchCatalogPriceRange({ signal }),
+    initialData: initialFilterDefinitions.priceRange
+      ? { range: initialFilterDefinitions.priceRange }
+      : undefined,
+    initialDataUpdatedAt: 0,
+    staleTime: 15 * 60_000,
+    retry: 1,
+  })
   const normalizedGenreFilters = useMemo(
     () =>
       genreDefinitionsQuery.data.options
@@ -608,8 +834,7 @@ const ProductSearchExperience = ({
             label: string
             rank: number
             count: number
-          } =>
-            Boolean(entry)
+          } => Boolean(entry)
         )
         .sort(
           (a, b) =>
@@ -663,6 +888,8 @@ const ProductSearchExperience = ({
   const selectedGenres = useCatalogStore((state) => state.genres)
   const selectedFormats = useCatalogStore((state) => state.formats)
   const selectedProductTypes = useCatalogStore((state) => state.productTypes)
+  const selectedPriceMin = useCatalogStore((state) => state.priceMin)
+  const selectedPriceMax = useCatalogStore((state) => state.priceMax)
   const showInStockOnly = useCatalogStore((state) => state.showInStockOnly)
   const sortOption = useCatalogStore((state) => state.sort)
 
@@ -675,6 +902,10 @@ const ProductSearchExperience = ({
   const toggleStockOnlyFilter = useCatalogStore(
     (state) => state.toggleStockOnly
   )
+  const setPriceRange = useCatalogStore((state) => state.setPriceRange)
+  const handleClearPrice = useCallback(() => {
+    setPriceRange(null, null)
+  }, [setPriceRange])
   const setSortOption = useCatalogStore((state) => state.setSort)
   const clearFiltersStore = useCatalogStore((state) => state.clearFilters)
   const hydrateFromParams = useCatalogStore((state) => state.hydrateFromParams)
@@ -725,6 +956,17 @@ const ProductSearchExperience = ({
       )
     )
     const nextProductTypes = splitCsv(params.getAll("type"))
+    const parsePriceParam = (value: string | null): number | null => {
+      if (value === null || !value.trim().length) {
+        return null
+      }
+      const parsed = Number(value)
+      return Number.isFinite(parsed) && parsed >= 0
+        ? Math.round(parsed * 100)
+        : null
+    }
+    const nextPriceMin = parsePriceParam(params.get("minPrice"))
+    const nextPriceMax = parsePriceParam(params.get("maxPrice"))
     const nextStock = params.get("stock") === "1"
     const nextSortParam = params.get("sort")
     const nextSort = SORT_OPTIONS.some(({ value }) => value === nextSortParam)
@@ -736,6 +978,8 @@ const ProductSearchExperience = ({
       genres: nextGenres,
       formats: nextFormats,
       productTypes: nextProductTypes,
+      priceMin: nextPriceMin,
+      priceMax: nextPriceMax,
       showInStockOnly: nextStock,
       sort: nextSort,
     })
@@ -756,6 +1000,7 @@ const ProductSearchExperience = ({
     () => [...selectedProductTypes].sort().join("|"),
     [selectedProductTypes]
   )
+  const priceKey = `${selectedPriceMin ?? ""}-${selectedPriceMax ?? ""}`
   const genreCsvValues = useMemo(
     () =>
       selectedGenres
@@ -785,6 +1030,7 @@ const ProductSearchExperience = ({
         genresKey,
         formatsKey,
         productTypesKey,
+        priceKey,
         showInStockOnly ? "in-stock" : "all",
         sortOption,
       ].join("|"),
@@ -793,6 +1039,7 @@ const ProductSearchExperience = ({
       genresKey,
       formatsKey,
       productTypesKey,
+      priceKey,
       showInStockOnly,
       sortOption,
     ]
@@ -817,6 +1064,12 @@ const ProductSearchExperience = ({
     setCsvParam("genre", genreCsvValues)
     setCsvParam("format", formatCsvValues)
     setCsvParam("type", productTypeCsvValues)
+    if (selectedPriceMin !== null) {
+      params.set("minPrice", String(selectedPriceMin / 100))
+    }
+    if (selectedPriceMax !== null) {
+      params.set("maxPrice", String(selectedPriceMax / 100))
+    }
     if (showInStockOnly) {
       params.set("stock", "1")
     }
@@ -839,12 +1092,15 @@ const ProductSearchExperience = ({
     genresKey,
     formatsKey,
     productTypesKey,
+    priceKey,
     showInStockOnly,
     sortOption,
     initialSort,
     genreCsvValues,
     formatCsvValues,
     productTypeCsvValues,
+    selectedPriceMin,
+    selectedPriceMax,
   ])
 
   const searchFilters = useMemo<ProductSearchRequest["filters"]>(() => {
@@ -856,6 +1112,14 @@ const ProductSearchExperience = ({
       ...(selectedProductTypes.length
         ? { productTypes: selectedProductTypes }
         : {}),
+      ...(selectedPriceMin !== null || selectedPriceMax !== null
+        ? {
+            price: {
+              ...(selectedPriceMin !== null ? { min: selectedPriceMin } : {}),
+              ...(selectedPriceMax !== null ? { max: selectedPriceMax } : {}),
+            },
+          }
+        : {}),
     }
     return Object.keys(filters).length ? filters : undefined
   }, [
@@ -863,6 +1127,8 @@ const ProductSearchExperience = ({
     selectedFormats,
     selectedGenres,
     selectedProductTypes,
+    selectedPriceMin,
+    selectedPriceMax,
   ])
 
   const searchRequest = useMemo<ProductSearchRequest>(
@@ -882,6 +1148,8 @@ const ProductSearchExperience = ({
     !selectedGenres.length &&
     !selectedFormats.length &&
     !selectedProductTypes.length &&
+    selectedPriceMin === null &&
+    selectedPriceMax === null &&
     !showInStockOnly &&
     sortOption === initialSort
 
@@ -892,6 +1160,7 @@ const ProductSearchExperience = ({
       genresKey,
       formatsKey,
       productTypesKey,
+      priceKey,
       showInStockOnly,
       sortOption,
     ],
@@ -1045,6 +1314,7 @@ const ProductSearchExperience = ({
     selectedGenres.length +
     selectedFormats.length +
     selectedProductTypes.length +
+    (selectedPriceMin !== null || selectedPriceMax !== null ? 1 : 0) +
     (showInStockOnly ? 1 : 0)
   const hasSearch = query.trim().length > 0
   const hasActiveFilters = activeFiltersCount > 0
@@ -1074,6 +1344,8 @@ const ProductSearchExperience = ({
 
   const formatOptions = formatDefinitionsQuery.data.options
   const productTypeOptions = productTypeDefinitionsQuery.data.options
+  const priceRange =
+    priceRangeQuery.data?.range ?? initialFilterDefinitions.priceRange
 
   const handleToggleGenre = (genre: string) => {
     const normalizedGenre = genre.trim().toLowerCase()
@@ -1133,12 +1405,16 @@ const ProductSearchExperience = ({
               genres={genreOptions}
               formats={formatOptions}
               productTypes={productTypeOptions}
+              priceRange={priceRange}
               selectedGenres={selectedGenres}
               selectedFormats={selectedFormats}
               selectedProductTypes={selectedProductTypes}
+              selectedPriceMin={selectedPriceMin}
+              selectedPriceMax={selectedPriceMax}
               onToggleGenre={handleToggleGenre}
               onToggleFormat={handleToggleFormat}
               onToggleProductType={handleToggleProductType}
+              onApplyPrice={setPriceRange}
               onClear={clearFilters}
               showInStockOnly={showInStockOnly}
               onToggleStock={toggleStockOnly}
@@ -1204,12 +1480,16 @@ const ProductSearchExperience = ({
                         genres={genreOptions}
                         formats={formatOptions}
                         productTypes={productTypeOptions}
+                        priceRange={priceRange}
                         selectedGenres={selectedGenres}
                         selectedFormats={selectedFormats}
                         selectedProductTypes={selectedProductTypes}
+                        selectedPriceMin={selectedPriceMin}
+                        selectedPriceMax={selectedPriceMax}
                         onToggleGenre={handleToggleGenre}
                         onToggleFormat={handleToggleFormat}
                         onToggleProductType={handleToggleProductType}
+                        onApplyPrice={setPriceRange}
                         onClear={() => {
                           clearFilters()
                           setMobileFiltersOpen(false)
@@ -1233,7 +1513,7 @@ const ProductSearchExperience = ({
                   </div>
                 </Drawer>
               </div>
-              <div className="group flex h-11 w-full min-w-0 items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-2 transition-[border-color,box-shadow] supports-[backdrop-filter]:backdrop-blur-lg hover:border-border focus-within:border-destructive focus-within:shadow-[0_0_0_2px_hsl(var(--destructive)/0.45)] sm:flex-1 sm:min-w-[240px]">
+              <div className="group flex h-11 w-full min-w-0 items-center gap-2 rounded-full border border-border/60 bg-background/90 pl-3 pr-0 transition-[border-color,box-shadow] supports-[backdrop-filter]:backdrop-blur-lg hover:border-border focus-within:border-destructive focus-within:shadow-[0_0_0_2px_hsl(var(--destructive)/0.45)] sm:flex-1 sm:min-w-[240px]">
                 <Search
                   className="h-4 w-4 text-muted-foreground transition group-focus-within:text-destructive"
                   aria-hidden
@@ -1243,23 +1523,37 @@ const ProductSearchExperience = ({
                   onChange={(event) => {
                     setQuery(event.target.value)
                   }}
-                  placeholder="Seek brutality…"
+                  placeholder="Search products and artists…"
                   className="h-9 flex-1 appearance-none border-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/80 transition-[color] focus:border-none focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                  type="search"
+                  type="text"
+                  role="searchbox"
+                  aria-label="Search catalog by product or artist name"
                   autoComplete="off"
                 />
+                {query.length ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/60"
+                    aria-label="Clear catalog search"
+                    title="Clear search"
+                  >
+                    <X className="h-5 w-5" aria-hidden />
+                  </button>
+                ) : (
+                  <span className="w-3 shrink-0" aria-hidden />
+                )}
               </div>
               <div className="w-full sm:w-auto sm:shrink-0">
-                <SortDropdown
-                  value={sortOption}
-                  onChange={setSortOption}
-                />
+                <SortDropdown value={sortOption} onChange={setSortOption} />
               </div>
             </div>
 
             {(selectedGenres.length ||
               selectedFormats.length ||
               selectedProductTypes.length ||
+              selectedPriceMin !== null ||
+              selectedPriceMax !== null ||
               showInStockOnly) && (
               <div className="flex flex-wrap items-center gap-2">
                 {selectedFormats.map((formatValue) => (
@@ -1292,6 +1586,29 @@ const ProductSearchExperience = ({
                     {getGenreLabelForHandle(genre)} ✕
                   </button>
                 ))}
+                {selectedPriceMin !== null || selectedPriceMax !== null ? (
+                  <button
+                    type="button"
+                    onClick={handleClearPrice}
+                    className={filterChipClass}
+                  >
+                    Price{" "}
+                    {selectedPriceMin !== null
+                      ? formatPrice(
+                          selectedPriceMin,
+                          priceRange?.currency ?? "usd"
+                        )
+                      : "Any"}
+                    –
+                    {selectedPriceMax !== null
+                      ? formatPrice(
+                          selectedPriceMax,
+                          priceRange?.currency ?? "usd"
+                        )
+                      : "Any"}{" "}
+                    ✕
+                  </button>
+                ) : null}
                 {showInStockOnly ? (
                   <button
                     type="button"

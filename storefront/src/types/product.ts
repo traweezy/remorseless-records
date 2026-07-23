@@ -11,6 +11,7 @@ export type VariantOption = {
   inStock: boolean
   stockStatus: StockStatus
   inventoryQuantity: number | null
+  lowStockBadgeEligible?: boolean
 }
 
 export type RelatedProductSummary = {
@@ -48,6 +49,7 @@ export type ProductSearchHit = RelatedProductSummary & {
   releaseDate?: string | null
   releaseYear?: number | null
   stockStatus?: StockStatus | null
+  lowStockBadgeEligible?: boolean
   stockStatuses?: StockStatus[]
   availabilityStates?: string[]
   preorderAllowed?: boolean

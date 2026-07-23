@@ -5,7 +5,11 @@ import {
   extractProductCategoryGroups,
 } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
-import { resolveVariantStockStatus, summarizeStockStatus } from "@/lib/products/stock"
+import {
+  isLowStockBadgeEligible,
+  resolveVariantStockStatus,
+  summarizeStockStatus,
+} from "@/lib/products/stock"
 import { normalizeFormatValue } from "@/lib/search/normalize"
 import type {
   ProductSearchHit,
@@ -18,7 +22,10 @@ const coerceRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null
 
-const addCanonicalFormat = (set: Set<string>, value: string | null | undefined) => {
+const addCanonicalFormat = (
+  set: Set<string>,
+  value: string | null | undefined
+) => {
   const normalized = normalizeFormatValue(value)
   if (!normalized) {
     return
@@ -50,14 +57,17 @@ const toVariantOption = (
 
   const stockStatus =
     typeof (variant as { stock_status?: unknown }).stock_status === "string"
-      ? ((variant as { stock_status?: string }).stock_status ?? "").toLowerCase()
+      ? (
+          (variant as { stock_status?: string }).stock_status ?? ""
+        ).toLowerCase()
       : null
 
   const inventoryQuantity = (() => {
     if (!("inventory_quantity" in variant)) {
       return null
     }
-    const raw = (variant as { inventory_quantity?: number | null }).inventory_quantity
+    const raw = (variant as { inventory_quantity?: number | null })
+      .inventory_quantity
     return typeof raw === "number" && Number.isFinite(raw) ? raw : null
   })()
 
@@ -77,6 +87,7 @@ const toVariantOption = (
     allowBackorder,
     stockStatus,
   })
+  const metadata = coerceRecord((variant as { metadata?: unknown }).metadata)
 
   return {
     id: variant.id,
@@ -87,6 +98,11 @@ const toVariantOption = (
     inStock: resolvedStock.inStock,
     stockStatus: resolvedStock.status,
     inventoryQuantity,
+    lowStockBadgeEligible: isLowStockBadgeEligible({
+      inventoryQuantity,
+      stockStatus: resolvedStock.status,
+      metadata,
+    }),
   }
 }
 
@@ -130,7 +146,9 @@ export const mapStoreProductToRelatedSummary = (
       typeof metadata.format === "string" ? metadata.format : null,
       typeof metadata.packaging === "string" ? metadata.packaging : null,
       ...(Array.isArray(metadata.formats)
-        ? metadata.formats.filter((entry): entry is string => typeof entry === "string")
+        ? metadata.formats.filter(
+            (entry): entry is string => typeof entry === "string"
+          )
         : []),
     ]
 
@@ -159,10 +177,7 @@ export const mapStoreProductToRelatedSummary = (
       typeof product.subtitle === "string" && product.subtitle.trim().length
         ? product.subtitle.trim()
         : slug.artist,
-    thumbnail:
-      product.thumbnail ??
-      product.images?.[0]?.url ??
-      null,
+    thumbnail: product.thumbnail ?? product.images?.[0]?.url ?? null,
     collectionTitle: product.collection?.title ?? null,
     defaultVariant,
     formats: formatted,
@@ -187,7 +202,9 @@ export const mapStoreProductToSearchHit = (
   const variantTitles = Array.from(
     new Set(
       (product.variants ?? [])
-        .map((variant) => (typeof variant?.title === "string" ? variant.title.trim() : ""))
+        .map((variant) =>
+          typeof variant?.title === "string" ? variant.title.trim() : ""
+        )
         .filter((title): title is string => Boolean(title))
     )
   )
@@ -207,10 +224,13 @@ export const mapStoreProductToSearchHit = (
   const priceAmount = summary.defaultVariant?.hasPrice
     ? summary.defaultVariant.amount
     : null
+  const pricedAmounts = variants
+    .filter((variant) => variant.hasPrice)
+    .map((variant) => variant.amount)
+  const priceMin = pricedAmounts.length ? Math.min(...pricedAmounts) : null
+  const priceMax = pricedAmounts.length ? Math.max(...pricedAmounts) : null
   const createdAt =
-    typeof product.created_at === "string"
-      ? product.created_at
-      : null
+    typeof product.created_at === "string" ? product.created_at : null
   const stockStatus = summarizeStockStatus(variants)
 
   const inferredFormats = new Set<string>()
@@ -224,8 +244,12 @@ export const mapStoreProductToSearchHit = (
   const metadata = coerceRecord(product.metadata)
   const legacyImport = coerceRecord(metadata?.legacy_import)
   const productType =
-    (typeof legacyImport?.product_type === "string" ? legacyImport.product_type : undefined) ??
-    (typeof metadata?.product_type === "string" ? metadata.product_type : undefined) ??
+    (typeof legacyImport?.product_type === "string"
+      ? legacyImport.product_type
+      : undefined) ??
+    (typeof metadata?.product_type === "string"
+      ? metadata.product_type
+      : undefined) ??
     null
 
   return {
@@ -234,14 +258,17 @@ export const mapStoreProductToSearchHit = (
     genres:
       categoryGenres.length > 0
         ? categoryGenres
-        : product.tags?.map((tag) => tag.value).filter((value): value is string => Boolean(value)) ??
-          [],
+        : (product.tags
+            ?.map((tag) => tag.value)
+            .filter((value): value is string => Boolean(value)) ?? []),
     metalGenres: categoryGenres,
     categories: categoryLabels,
     categoryHandles,
     variantTitles,
     format: canonicalFormat,
     priceAmount,
+    priceMin,
+    priceMax,
     createdAt,
     stockStatus,
     productType,

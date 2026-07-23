@@ -224,7 +224,8 @@ const resolveThumbnail = (product: ProductCardSource): string | null =>
     : (product.thumbnail ?? null)
 
 const resolveStockBadge = (
-  status: StockStatus
+  status: StockStatus,
+  lowStockBadgeEligible: boolean
 ): { label: string; className: string; dim?: boolean } | null => {
   switch (status) {
     case "sold_out":
@@ -235,6 +236,9 @@ const resolveStockBadge = (
         dim: true,
       }
     case "low_stock":
+      if (!lowStockBadgeEligible) {
+        return null
+      }
       return {
         label: "Low stock",
         className: "border-amber-300/80 bg-amber-400 text-black",
@@ -272,7 +276,14 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
     isProductSearchHitSource(product) && product.stockStatus
       ? product.stockStatus
       : derivedStockStatus
-  const stockBadge = resolveStockBadge(stockStatus)
+  const lowStockBadgeEligible = isProductSearchHitSource(product)
+    ? product.lowStockBadgeEligible !== false
+    : variantOptions.some(
+        (variant) =>
+          variant.stockStatus === "low_stock" &&
+          variant.lowStockBadgeEligible !== false
+      )
+  const stockBadge = resolveStockBadge(stockStatus, lowStockBadgeEligible)
   const isSoldOut = stockStatus === "sold_out"
   const hasPrice = summary.defaultVariant?.hasPrice ?? false
   const isUnavailable = !hasPrice

@@ -11,10 +11,21 @@ export type CatalogFilterOptionsResponse = {
   options: CatalogFilterOption[]
 }
 
+export type CatalogPriceRange = {
+  min: number
+  max: number
+  currency: string
+}
+
+export type CatalogPriceRangeResponse = {
+  range: CatalogPriceRange
+}
+
 export type CatalogFilterDefinitions = {
   genres: CatalogFilterOption[]
   formats: CatalogFilterOption[]
   productTypes: CatalogFilterOption[]
+  priceRange: CatalogPriceRange | null
 }
 
 export type CatalogGenreSeed = {
@@ -29,6 +40,33 @@ export type CatalogFilterFacetSource = {
 }
 
 export type CatalogFilterKind = "formats" | "genres" | "product-types"
+
+export const buildCatalogPriceRange = (
+  hits: ProductSearchHit[]
+): CatalogPriceRange | null => {
+  const amounts = hits.flatMap((hit) => {
+    const low = hit.priceMin ?? hit.priceAmount ?? hit.defaultVariant?.amount
+    const high = hit.priceMax ?? hit.priceAmount ?? hit.defaultVariant?.amount
+    return [low, high].filter(
+      (amount): amount is number =>
+        typeof amount === "number" && Number.isFinite(amount) && amount >= 0
+    )
+  })
+
+  if (!amounts.length) {
+    return null
+  }
+
+  const currency =
+    hits.find((hit) => hit.defaultVariant?.currency)?.defaultVariant
+      ?.currency ?? "usd"
+
+  return {
+    min: Math.min(...amounts),
+    max: Math.max(...amounts),
+    currency: currency.toLowerCase(),
+  }
+}
 
 const FORMAT_ORDER = new Map([
   ["Vinyl", 0],
@@ -102,7 +140,9 @@ const productFormats = (hit: ProductSearchHit): Set<string> => {
   return formats
 }
 
-const buildFormatOptions = (hits: ProductSearchHit[]): CatalogFilterOption[] => {
+const buildFormatOptions = (
+  hits: ProductSearchHit[]
+): CatalogFilterOption[] => {
   const counts = new Map<string, number>()
   hits.forEach((hit) => {
     productFormats(hit).forEach((format) => {
@@ -241,9 +281,7 @@ const buildProductTypeOptions = (
       count: counts.get(value) ?? 0,
     }
   }).filter(({ count }) => count > 0)
-  const configuredValues = new Set<string>(
-    configured.map(({ value }) => value)
-  )
+  const configuredValues = new Set<string>(configured.map(({ value }) => value))
   const additional = Array.from(counts, ([value, count]) => ({
     value,
     label: formatProductTypeLabel(value),
@@ -263,4 +301,5 @@ export const buildCatalogFilterDefinitions = (
   genres: buildGenreOptions(hits, genreSeeds, facets?.genres),
   formats: buildFormatOptions(hits),
   productTypes: buildProductTypeOptions(hits, facets?.productTypes),
+  priceRange: buildCatalogPriceRange(hits),
 })

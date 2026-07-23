@@ -64,7 +64,8 @@ const toVariantOption = (
   currency: string,
   format: string | null,
   stockStatus: string | null,
-  inventoryQuantity: number | null
+  inventoryQuantity: number | null,
+  lowStockBadgeEligible?: boolean
 ): VariantOption | null => {
   if (!variantId || amount === null) {
     return null
@@ -84,6 +85,9 @@ const toVariantOption = (
     inStock: resolvedStock.inStock,
     stockStatus: resolvedStock.status,
     inventoryQuantity,
+    ...(typeof lowStockBadgeEligible === "boolean"
+      ? { lowStockBadgeEligible }
+      : {}),
   }
 }
 
@@ -283,6 +287,9 @@ export const normalizeSearchHit = (
 
   const inventoryQuantity =
     parseNumber(hit.inventory_quantity ?? hit.quantity) ?? null
+  const lowStockBadgeEligible = parseBoolean(
+    hit.low_stock_badge_eligible ?? hit.lowStockBadgeEligible
+  )
 
   const inStockFlag = parseBoolean(hit.in_stock)
   const derivedStatus =
@@ -332,7 +339,8 @@ export const normalizeSearchHit = (
     currency,
     canonicalFormat,
     derivedStatus,
-    inventoryQuantity
+    inventoryQuantity,
+    lowStockBadgeEligible ?? undefined
   )
 
   const createdAt =
@@ -413,6 +421,9 @@ export const normalizeSearchHit = (
     releaseDate,
     releaseYear,
     stockStatus: resolvedStock.status,
+    ...(typeof lowStockBadgeEligible === "boolean"
+      ? { lowStockBadgeEligible }
+      : {}),
     stockStatuses,
     availabilityStates,
     preorderAllowed:
