@@ -51,7 +51,7 @@
     "lucide-react": "^0.546.0",
     "meilisearch": "^0.53.0",
     "motion": "^12.23.25",
-    "next": "^16.2.6",
+    "next": "^16.2.11",
     "quicklink": "^3.0.1",
     "radix-ui": "^1.4.3",
     "react": "^19.2.1",
@@ -68,7 +68,7 @@
   "devDependencies": {
     "@eslint/js": "^9.38.0",
     "@faker-js/faker": "^10.3.0",
-    "@next/eslint-plugin-next": "^16.2.6",
+    "@next/eslint-plugin-next": "^16.2.11",
     "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.3.1",
     "@testing-library/jest-dom": "^6.9.1",
