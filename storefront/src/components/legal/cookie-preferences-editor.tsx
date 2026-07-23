@@ -10,8 +10,12 @@ type CookiePreferencesEditorProps = {
   onSave?: () => void
 }
 
-const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorProps) => {
-  const { preferences, saveSelection, acceptAll, rejectNonEssential } = useCookieConsent()
+const CookiePreferencesEditor = ({
+  className,
+  onSave,
+}: CookiePreferencesEditorProps) => {
+  const { preferences, saveSelection, acceptAll, rejectNonEssential } =
+    useCookieConsent()
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -29,7 +33,8 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
               Strictly necessary cookies
             </p>
             <p className="text-xs text-muted-foreground">
-              Required for cart, checkout, and security controls. These cannot be disabled.
+              Required for cart, checkout, and security controls. These cannot
+              be disabled.
             </p>
           </div>
         </div>
@@ -83,7 +88,7 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="outlined"
           onClick={() => {
             rejectNonEssential()
             onSave?.()
@@ -94,7 +99,7 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
         <Button
           type="button"
           size="sm"
-          variant="ghost"
+          variant="filled"
           onClick={() => {
             acceptAll()
             onSave?.()
@@ -103,7 +108,9 @@ const CookiePreferencesEditor = ({ className, onSave }: CookiePreferencesEditorP
           Accept all
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Preference changes are saved immediately.</p>
+      <p className="text-xs text-muted-foreground">
+        Preference changes are saved immediately.
+      </p>
     </div>
   )
 }

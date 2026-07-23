@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, ChevronDown } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/ui/cn"
 
 export type PillDropdownOption<TValue extends string> = {
@@ -71,9 +72,14 @@ export const PillDropdown = <TValue extends string>({
   }, [])
 
   return (
-    <div ref={containerRef} className={cn("relative w-full sm:w-auto", className)}>
-      <button
+    <div
+      ref={containerRef}
+      className={cn("relative w-full sm:w-auto", className)}
+    >
+      <Button
         type="button"
+        variant="outlined"
+        size="auto"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
           "inline-flex h-11 w-full min-w-0 appearance-none items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.22rem] text-foreground outline-none transition-[border-color,box-shadow,color] supports-[backdrop-filter]:backdrop-blur-lg hover:border-border focus:border-destructive focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-destructive focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_hsl(var(--destructive)/0.55)] sm:min-w-[220px] sm:tracking-[0.28rem]",
@@ -83,22 +89,28 @@ export const PillDropdown = <TValue extends string>({
         aria-expanded={open}
       >
         <span className="flex items-center gap-2 text-[0.65rem]">
-          {renderTriggerLabel
-            ? renderTriggerLabel(activeOption)
-            : (
-              <>
-                {activeOption.Icon ? (
-                  <activeOption.Icon className="h-4 w-4 text-foreground" aria-hidden />
-                ) : null}
-                {activeOption.label}
-              </>
-            )}
+          {renderTriggerLabel ? (
+            renderTriggerLabel(activeOption)
+          ) : (
+            <>
+              {activeOption.Icon ? (
+                <activeOption.Icon
+                  className="h-4 w-4 text-foreground"
+                  aria-hidden
+                />
+              ) : null}
+              {activeOption.label}
+            </>
+          )}
         </span>
         <ChevronDown
-          className={cn("h-4 w-4 text-foreground transition duration-200", open && "-scale-y-100")}
+          className={cn(
+            "h-4 w-4 text-foreground transition duration-200",
+            open && "-scale-y-100"
+          )}
           aria-hidden
         />
-      </button>
+      </Button>
 
       <AnimatePresence initial={false}>
         {open ? (
@@ -116,9 +128,11 @@ export const PillDropdown = <TValue extends string>({
           >
             <div role="listbox" className="flex flex-col gap-1">
               {options.map((option) => (
-                <button
+                <Button
                   key={option.value}
                   type="button"
+                  variant="unstyled"
+                  size="auto"
                   onClick={() => {
                     onChange(option.value)
                     setOpen(false)
@@ -135,11 +149,17 @@ export const PillDropdown = <TValue extends string>({
                     <span
                       className={cn(
                         "flex items-center gap-2 font-semibold",
-                        value === option.value ? "text-destructive" : "text-foreground"
+                        value === option.value
+                          ? "text-destructive"
+                          : "text-foreground"
                       )}
                     >
-                      {option.Icon ? <option.Icon className="h-4 w-4" aria-hidden /> : null}
-                      {renderOptionLabel ? renderOptionLabel(option) : option.label}
+                      {option.Icon ? (
+                        <option.Icon className="h-4 w-4" aria-hidden />
+                      ) : null}
+                      {renderOptionLabel
+                        ? renderOptionLabel(option)
+                        : option.label}
                     </span>
                     {option.helper ? (
                       <span
@@ -154,8 +174,10 @@ export const PillDropdown = <TValue extends string>({
                       </span>
                     ) : null}
                   </span>
-                  {value === option.value ? <Check className="h-4 w-4 text-destructive" aria-hidden /> : null}
-                </button>
+                  {value === option.value ? (
+                    <Check className="h-4 w-4 text-destructive" aria-hidden />
+                  ) : null}
+                </Button>
               ))}
             </div>
           </motion.div>

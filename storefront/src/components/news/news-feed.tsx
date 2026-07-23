@@ -167,7 +167,7 @@ const NewsFeed = memo<NewsFeedProps>(
         {!canAutoLoad && hasMore ? (
           <Button
             type="button"
-            variant="outline"
+            variant="outlined"
             className="self-center"
             onClick={handleManualLoad}
             disabled={loading}

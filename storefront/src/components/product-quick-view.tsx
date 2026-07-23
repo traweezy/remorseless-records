@@ -7,6 +7,7 @@ import { X } from "lucide-react"
 import type { HttpTypes } from "@medusajs/types"
 
 import ProductVariantSelector from "@/components/product-variant-selector"
+import { Button } from "@/components/ui/button"
 import Drawer from "@/components/ui/drawer"
 import { deriveVariantOptions } from "@/lib/products/transformers"
 import { useProductDetailQuery } from "@/lib/query/products"
@@ -33,7 +34,12 @@ const heroImageFor = (product: StoreProduct | null): string | null => {
   return image?.url ?? null
 }
 
-export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }: ProductQuickViewProps) => {
+export const ProductQuickView = ({
+  handle,
+  initialProduct,
+  open,
+  onOpenChange,
+}: ProductQuickViewProps) => {
   const prefersReducedMotion = useReducedMotion()
 
   const {
@@ -81,14 +87,16 @@ export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }:
               </p>
             ) : null}
           </div>
-          <button
+          <Button
             type="button"
+            variant="outlined"
+            size="icon"
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Close quick shop"
             onClick={() => onOpenChange(false)}
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </header>
 
         <div className="relative aspect-[4/5] w-full overflow-hidden border-b border-border/60 bg-background/80">
@@ -122,15 +130,17 @@ export const ProductQuickView = ({ handle, initialProduct, open, onOpenChange }:
           ) : isError ? (
             <div className="space-y-4 rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-foreground">
               <p>Unable to load product details. Please try again.</p>
-              <button
+              <Button
                 type="button"
+                variant="outlined"
+                size="auto"
                 onClick={() => {
                   void refetch()
                 }}
                 className="rounded-full border border-destructive px-4 py-2 text-xs uppercase tracking-[0.3rem] text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
               >
                 Retry
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="space-y-6">

@@ -588,7 +588,7 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
                 <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-6 opacity-0 transition-opacity duration-150 md:group-hover:opacity-100 group-focus-within:opacity-100">
                   <Button
                     type="button"
-                    variant="default"
+                    variant="filled"
                     className={cn(
                       "pointer-events-auto inline-flex items-center gap-2 rounded-full px-6 py-2 text-xs uppercase tracking-[0.3rem] shadow-glow focus-visible:ring-2 focus-visible:ring-destructive/70",
                       !canQuickShop && "cursor-not-allowed opacity-60"

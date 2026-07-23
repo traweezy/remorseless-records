@@ -1,3 +1,5 @@
+"use client"
+
 import { Slot } from "@radix-ui/react-slot"
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
@@ -26,6 +28,8 @@ const buttonVariants = cva(
         outline:
           "border border-border bg-transparent text-foreground hover:border-destructive hover:text-destructive hover:bg-destructive/10",
         muted: "bg-muted text-muted-foreground hover:bg-muted/60",
+        unstyled:
+          "whitespace-normal rounded-none bg-transparent text-inherit font-normal normal-case tracking-normal shadow-none hover:bg-transparent active:translate-y-0",
       },
       size: {
         default: "h-11 px-6",
@@ -33,6 +37,7 @@ const buttonVariants = cva(
         compact: "h-9 px-4 text-xs tracking-[0.25rem]",
         lg: "h-12 px-8 text-base",
         icon: "h-11 w-11",
+        auto: "",
       },
     },
     defaultVariants: {

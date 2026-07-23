@@ -448,6 +448,81 @@ test("catalog filters stay stable and combine predictably", async ({
   await expect(search).toHaveValue("")
 })
 
+test("desktop filters preserve position while results refresh", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.route("**/api/catalog/filters/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname
+    const fixture = catalogFilterFixtures[pathname]
+    if (!fixture) {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(fixture),
+    })
+  })
+  await page.route("**/api/search/products", async (route) => {
+    const request = route.request().postDataJSON() as ProductSearchRequest
+    if (request.filters?.productTypes?.includes("music-release")) {
+      await new Promise((resolve) => setTimeout(resolve, 800))
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(createPaginationFixture(0, request.limit)),
+    })
+  })
+
+  await page.goto("/catalog", { waitUntil: "networkidle" })
+  const rejectCookies = page.getByRole("button", {
+    name: "Reject non-essential",
+  })
+  if (await rejectCookies.isVisible()) {
+    await rejectCookies.click()
+  }
+
+  const sidebar = page.getByTestId("catalog-desktop-filters")
+  await expect(sidebar).toBeVisible()
+  await page.evaluate(() => window.scrollTo({ top: 600 }))
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(600)
+
+  const readLayout = () =>
+    page.evaluate(() => {
+      const filters = document.querySelector<HTMLElement>(
+        '[data-testid="catalog-desktop-filters"]'
+      )
+      return {
+        documentHeight: document.documentElement.scrollHeight,
+        sidebarTop: filters?.getBoundingClientRect().top ?? null,
+        windowScrollY: window.scrollY,
+      }
+    })
+
+  const before = await readLayout()
+  const musicReleases = page.getByRole("checkbox", {
+    name: /^Music Releases/,
+  })
+  await page.getByText("Music Releases", { exact: true }).click()
+  await expect(musicReleases).toBeChecked()
+  await expect(page.getByText("Refreshing…", { exact: true })).toBeVisible()
+
+  const during = await readLayout()
+  expect(during.windowScrollY).toBe(before.windowScrollY)
+  expect(during.sidebarTop).toBe(before.sidebarTop)
+  expect(during.documentHeight).toBeGreaterThanOrEqual(
+    before.documentHeight * 0.95
+  )
+
+  await expect(page.getByText("Refreshing…", { exact: true })).toBeHidden()
+  const after = await readLayout()
+  expect(after.windowScrollY).toBe(before.windowScrollY)
+  expect(after.sidebarTop).toBe(before.sidebarTop)
+})
+
 test("catalog loads the next result window before the end is reached", async ({
   page,
 }) => {

@@ -47,6 +47,7 @@ export const HeroSection = () => (
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4 sm:mt-12">
           <Button
             asChild
+            variant="filled"
             size="lg"
             className="px-8 py-5 text-base sm:px-10 sm:py-6 sm:text-lg"
           >

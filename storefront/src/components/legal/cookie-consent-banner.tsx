@@ -53,13 +53,13 @@ const CookieConsentBanner = () => {
         </div>
 
         <div className="relative z-10 flex flex-wrap gap-2">
-          <Button type="button" size="sm" onClick={acceptAll}>
+          <Button type="button" size="sm" variant="filled" onClick={acceptAll}>
             Accept all
           </Button>
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="outlined"
             onClick={rejectNonEssential}
           >
             Reject non-essential
@@ -67,7 +67,7 @@ const CookieConsentBanner = () => {
           <Button
             type="button"
             size="sm"
-            variant="ghost"
+            variant="outlined"
             onClick={() => setShowManage((value) => !value)}
           >
             {showManage ? "Hide preferences" : "Manage preferences"}

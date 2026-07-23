@@ -54,4 +54,25 @@ describe("Button", () => {
       "text-destructive"
     )
   })
+
+  it("preserves custom control dimensions with the auto size", () => {
+    render(
+      <Button
+        type="button"
+        variant="unstyled"
+        size="auto"
+        className="h-7 w-20 px-1"
+      >
+        Custom control
+      </Button>
+    )
+
+    const button = screen.getByRole("button", { name: "Custom control" })
+    expect(button).toHaveClass(
+      "h-7",
+      "w-20",
+      "px-1"
+    )
+    expect(button).not.toHaveClass("h-11", "px-6")
+  })
 })

@@ -15,7 +15,11 @@ import {
   type FormEvent,
 } from "react"
 import { Debouncer } from "@tanstack/pacer"
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query"
 import { type VirtualItem, useWindowVirtualizer } from "@tanstack/react-virtual"
 import { Slider } from "radix-ui"
 import {
@@ -321,8 +325,10 @@ const FilterCheckboxList = ({
 
   return (
     <div className="space-y-3">
-      <button
+      <Button
         type="button"
+        variant="unstyled"
+        size="auto"
         onClick={() => setIsOpen((prev) => !prev)}
         className="flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
         aria-expanded={isOpen}
@@ -335,7 +341,7 @@ const FilterCheckboxList = ({
             isOpen && "rotate-180"
           )}
         />
-      </button>
+      </Button>
       <AnimatePresence initial={false}>
         {isOpen ? (
           <motion.div
@@ -536,8 +542,10 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
 
     return (
       <div className="space-y-3">
-        <button
+        <Button
           type="button"
+          variant="unstyled"
+          size="auto"
           onClick={handleToggle}
           className="flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
           aria-expanded={isOpen}
@@ -551,7 +559,7 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
             )}
             aria-hidden
           />
-        </button>
+        </Button>
         <AnimatePresence initial={false}>
           {isOpen ? (
             <motion.div
@@ -731,13 +739,15 @@ const FilterSidebar = ({
         <h2 className="text-xs font-semibold uppercase tracking-[0.35rem] text-muted-foreground">
           Filters
         </h2>
-        <button
+        <Button
           type="button"
+          variant="unstyled"
+          size="auto"
           onClick={onClear}
           className="cursor-pointer text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
         >
           Reset
-        </button>
+        </Button>
       </div>
       <Button
         type="button"
@@ -1257,6 +1267,7 @@ const ProductSearchExperience = ({
     ...(isInitialSearch
       ? { initialData: { pages: [initialResponse], pageParams: [0] } }
       : {}),
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
     retry: 1,
   })
@@ -1360,15 +1371,6 @@ const ProductSearchExperience = ({
       cancelAnimationFrame(frame)
     }
   }, [columns, rowHeight, virtualizer, forceVirtualizerRerender])
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return
-    }
-
-    window.scrollTo({ top: 0 })
-    virtualizer.scrollToIndex(0, { align: "start" })
-  }, [criteriaKey, virtualizer])
 
   const scheduleVirtualizerMeasure = useCallback(() => {
     if (measureScheduledRef.current) {
@@ -1527,7 +1529,10 @@ const ProductSearchExperience = ({
     <div className="bg-background pb-8">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pt-4 sm:px-6 lg:flex-row lg:gap-8 lg:px-8">
         <aside className="hidden lg:block lg:w-60 lg:flex-shrink-0">
-          <div className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl">
+          <div
+            className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl"
+            data-testid="catalog-desktop-filters"
+          >
             <FilterSidebar
               idPrefix={`${filterInstanceId}-desktop`}
               genres={genreOptions}
@@ -1553,7 +1558,10 @@ const ProductSearchExperience = ({
         <div className="flex-1 space-y-6">
           <header className="relative sticky top-16 z-20 space-y-2 border-b border-border/40 bg-background/85 px-2 py-2 supports-[backdrop-filter]:backdrop-blur-lg sm:px-4 lg:px-6">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+              <p
+                className="text-xs uppercase tracking-[0.3rem] text-muted-foreground"
+                aria-live="polite"
+              >
                 {isFetching ? "Refreshing…" : `${totalResults} results`}
               </p>
               <p className="hidden text-[0.65rem] uppercase tracking-[0.35rem] text-muted-foreground/80 sm:block">
@@ -1564,7 +1572,7 @@ const ProductSearchExperience = ({
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <div className="lg:hidden">
                 <Button
-                  variant="outline"
+                  variant="outlined"
                   size="sm"
                   className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border-border/50 px-4 text-xs uppercase tracking-[0.3rem] sm:w-auto sm:justify-start"
                   onClick={() => setMobileFiltersOpen(true)}
@@ -1591,15 +1599,17 @@ const ProductSearchExperience = ({
                           Tune your search
                         </p>
                       </div>
-                      <button
+                      <Button
                         type="button"
+                        variant="outlined"
+                        size="icon"
                         className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-9"
                         aria-label="Close filters"
                         onClick={() => setMobileFiltersOpen(false)}
                       >
                         <span className="sr-only">Close filters</span>
                         <X className="h-4 w-4" aria-hidden />
-                      </button>
+                      </Button>
                     </header>
 
                     <div className="flex-1 overflow-y-auto px-6 pb-10 pt-2">
@@ -1628,7 +1638,7 @@ const ProductSearchExperience = ({
                     </div>
                     <div className="border-t border-border/60 px-6 py-4">
                       <Button
-                        variant="outline"
+                        variant="outlined"
                         className="w-full"
                         onClick={() => setMobileFiltersOpen(false)}
                         disabled={isFetching}
@@ -1659,15 +1669,17 @@ const ProductSearchExperience = ({
                   autoComplete="off"
                 />
                 {query.length ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="unstyled"
+                    size="auto"
                     onClick={() => setQuery("")}
                     className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/60"
                     aria-label="Clear catalog search"
                     title="Clear search"
                   >
                     <X className="h-5 w-5" aria-hidden />
-                  </button>
+                  </Button>
                 ) : (
                   <span className="w-3 shrink-0" aria-hidden />
                 )}
@@ -1685,38 +1697,46 @@ const ProductSearchExperience = ({
               showInStockOnly) && (
               <div className="flex flex-wrap items-center gap-2">
                 {selectedFormats.map((formatValue) => (
-                  <button
+                  <Button
                     key={`active-format-${formatValue}`}
                     type="button"
+                    variant="outlined"
+                    size="auto"
                     onClick={() => handleToggleFormat(formatValue)}
                     className={filterChipClass}
                   >
                     {formatValue} ✕
-                  </button>
+                  </Button>
                 ))}
                 {selectedProductTypes.map((type) => (
-                  <button
+                  <Button
                     key={`active-product-type-${type}`}
                     type="button"
+                    variant="outlined"
+                    size="auto"
                     onClick={() => handleToggleProductType(type)}
                     className={filterChipClass}
                   >
                     {formatProductTypeLabel(type)} ✕
-                  </button>
+                  </Button>
                 ))}
                 {selectedGenres.map((genre) => (
-                  <button
+                  <Button
                     key={`active-genre-${genre}`}
                     type="button"
+                    variant="outlined"
+                    size="auto"
                     onClick={() => handleToggleGenre(genre)}
                     className={filterChipClass}
                   >
                     {getGenreLabelForHandle(genre)} ✕
-                  </button>
+                  </Button>
                 ))}
                 {selectedPriceMin !== null || selectedPriceMax !== null ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="outlined"
+                    size="auto"
                     onClick={handleClearPrice}
                     className={filterChipClass}
                   >
@@ -1735,28 +1755,24 @@ const ProductSearchExperience = ({
                         )
                       : "Any"}{" "}
                     ✕
-                  </button>
+                  </Button>
                 ) : null}
                 {showInStockOnly ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="outlined"
+                    size="auto"
                     onClick={toggleStockOnly}
                     className={filterChipClass}
                   >
                     In stock ✕
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             )}
           </header>
 
           <section className="space-y-4 px-2 sm:px-4 lg:px-6">
-            {isFetching && deferredResults.length ? (
-              <div className="text-sm uppercase tracking-[0.3rem] text-muted-foreground">
-                Refreshing results…
-              </div>
-            ) : null}
-
             {isFetching && !deferredResults.length ? (
               <div
                 className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
@@ -1851,7 +1867,7 @@ const ProductSearchExperience = ({
                         Couldn&apos;t load more products.
                       </p>
                       <Button
-                        variant="outline"
+                        variant="outlined"
                         onClick={handleRetryNextPage}
                         disabled={searchQuery.isFetchingNextPage}
                       >
@@ -1887,7 +1903,7 @@ const ProductSearchExperience = ({
                     <p>Search is temporarily unavailable.</p>
                     <p>Your filters are preserved. Try the request again.</p>
                     <Button
-                      variant="outline"
+                      variant="outlined"
                       size="sm"
                       onClick={handleRetrySearch}
                     >
@@ -1900,7 +1916,7 @@ const ProductSearchExperience = ({
                     <p>Try relaxing a filter or using a broader search term.</p>
                     {hasActiveFilters ? (
                       <Button
-                        variant="outline"
+                        variant="outlined"
                         size="sm"
                         onClick={clearFilters}
                       >

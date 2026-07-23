@@ -65,7 +65,10 @@ const SiteHeaderShell = () => {
       return null
     }
 
-    return formatAmount(cartCurrencyCode, Number(cartSubtotal ?? cartTotal ?? 0))
+    return formatAmount(
+      cartCurrencyCode,
+      Number(cartSubtotal ?? cartTotal ?? 0)
+    )
   }, [cartCurrencyCode, cartSubtotal, cartTotal])
 
   const hasItems = itemCount > 0
@@ -86,9 +89,12 @@ const SiteHeaderShell = () => {
 
     const handleScroll = () => {
       const scrollTop = window.scrollY
-      const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight
+      const scrollableHeight =
+        document.documentElement.scrollHeight - window.innerHeight
       const progress =
-        scrollableHeight <= 0 ? 0 : Math.min(1, Math.max(0, scrollTop / scrollableHeight))
+        scrollableHeight <= 0
+          ? 0
+          : Math.min(1, Math.max(0, scrollTop / scrollableHeight))
       latestProgress.value = progress
       animationFrame ??= window.requestAnimationFrame(updateProgress)
     }
@@ -224,7 +230,8 @@ const SiteHeaderShell = () => {
                     onClick={() => setMenuOpen(false)}
                     className={cn(
                       "rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.22rem] text-muted-foreground transition hover:border-destructive hover:text-destructive sm:tracking-[0.3rem]",
-                      activeHref === link.href && "border-destructive text-destructive"
+                      activeHref === link.href &&
+                        "border-destructive text-destructive"
                     )}
                   >
                     {link.label}
@@ -246,14 +253,16 @@ const SiteHeaderShell = () => {
                   </span>
                 </button>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="outlined"
+                size="icon"
                 className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/60 p-2 text-muted-foreground transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-9"
                 aria-label="Close navigation"
                 onClick={() => setMenuOpen(false)}
               >
                 <X className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </Drawer>
         </div>

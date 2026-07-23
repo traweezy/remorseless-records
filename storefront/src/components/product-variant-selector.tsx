@@ -191,9 +191,11 @@ const ProductVariantSelector = ({
               const stockChip = resolveStockChip(variant)
 
               return (
-                <button
+                <Button
                   key={variant.id}
                   type="button"
+                  variant="unstyled"
+                  size="auto"
                   className={cn(
                     "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-3.5 text-left transition",
                     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -223,7 +225,7 @@ const ProductVariantSelector = ({
                       {stockChip.label}
                     </span>
                   ) : null}
-                </button>
+                </Button>
               )
             })
           ) : (

@@ -4,6 +4,8 @@ import { useMemo, useState } from "react"
 import Image from "next/image"
 import { AnimatePresence, motion } from "framer-motion"
 
+import { Button } from "@/components/ui/button"
+
 type GalleryImage = {
   id?: string | null
   url: string
@@ -77,9 +79,11 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
           {sanitized.map((image, index) => {
             const isActive = index === activeIndex
             return (
-              <button
+              <Button
                 key={image.id ?? image.url ?? `thumb-${index}`}
                 type="button"
+                variant="unstyled"
+                size="auto"
                 onClick={() => setActiveIndex(index)}
                 className={`relative aspect-square w-20 flex-shrink-0 overflow-hidden rounded-xl border sm:w-24 ${
                   isActive ? "border-destructive" : "border-border/50"
@@ -94,7 +98,7 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
                   className="object-cover"
                   onError={() => markFailed(image.url)}
                 />
-              </button>
+              </Button>
             )
           })}
         </div>
