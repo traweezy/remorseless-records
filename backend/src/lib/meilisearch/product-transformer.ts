@@ -555,13 +555,15 @@ const resolveStockStatus = (variant: DynamicRecord | null): {
 const isLowStockBadgeEligible = (
   variant: DynamicRecord,
   status: SearchStockStatus,
-  quantity: number | null
+  quantity: number | null,
+  profile?: DynamicRecord | null
 ): boolean => {
   if (status !== "low_stock") {
     return true
   }
 
-  const metadata = toRecord(variant.metadata)
+  const metadata =
+    toRecord(profile?.metadata) ?? toRecord(variant.metadata)
   const countStatus = toStringOrNull(metadata?.inventory_count_status)
   if (countStatus === "verified") {
     return true
@@ -716,7 +718,8 @@ const mapVariantDocument = (
     low_stock_badge_eligible: isLowStockBadgeEligible(
       variant,
       status,
-      quantity
+      quantity,
+      profile
     ),
     availability_status: availabilityStatus,
     preorder_allowed: toBoolean(profile?.preorder_allowed),

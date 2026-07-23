@@ -311,6 +311,45 @@ describe("buildSearchDocument", () => {
     expect(document.low_stock_badge_eligible).toBe(true)
   })
 
+  it("reads imported stock confidence from catalog variant profiles", () => {
+    const document = buildSearchDocument(
+      {
+        id: "prod_profile_stock",
+        handle: "profile-stock",
+        title: "Profile stock",
+        variants: [
+          {
+            id: "var_profile_stock",
+            title: "CD",
+            manage_inventory: true,
+            inventory_quantity: 2,
+            prices: [{ amount: 1_000, currency_code: "usd" }],
+          },
+        ],
+      },
+      {
+        variantProfiles: [
+          {
+            variant_id: "var_profile_stock",
+            metadata: {
+              source_low_inventory: true,
+              seed_inventory_quantity: 2,
+            },
+          },
+        ],
+      }
+    )
+
+    expect(document.variants).toEqual([
+      expect.objectContaining({
+        id: "var_profile_stock",
+        stock_status: "low_stock",
+        low_stock_badge_eligible: false,
+      }),
+    ])
+    expect(document.low_stock_badge_eligible).toBe(false)
+  })
+
   it("loads linked inventory before deriving search stock state", async () => {
     const query = {
       graph: jest.fn().mockResolvedValue({

@@ -1,8 +1,5 @@
 import type { ExecArgs } from "@medusajs/framework/types"
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { resolveMeilisearchService } from "./meilisearch-service"
 
@@ -28,6 +25,15 @@ type SearchIndex = {
   }
 }
 
+type QueryGraph = {
+  graph: (input: {
+    entity: string
+    fields: string[]
+    filters?: Record<string, unknown>
+    pagination?: { skip?: number; take?: number }
+  }) => Promise<{ data: Array<Record<string, unknown>> }>
+}
+
 export const assertTaskSucceeded = (
   task: CompletedTask,
   operation: string
@@ -50,22 +56,6 @@ const waitForTask = async (
   assertTaskSucceeded(completed, operation)
 }
 
-const productRelations = [
-  "collection",
-  "tags",
-  "images",
-  "metadata",
-  "variants",
-  "variants.prices",
-  "variants.options",
-  "variants.options.option",
-  "options",
-  "options.values",
-  "categories",
-  "categories.parent_category",
-  "categories.parent_category.parent_category",
-]
-
 export const upsertAllProductDocuments = async ({
   container,
   reason,
@@ -76,6 +66,7 @@ export const upsertAllProductDocuments = async ({
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const meilisearch = resolveMeilisearchService<{
     getIndex: (indexKey: string) => SearchIndex
+    getFieldsForType: (type: string) => Promise<string[]>
     addDocuments: (
       indexKey: string,
       documents: unknown[],
@@ -83,30 +74,19 @@ export const upsertAllProductDocuments = async ({
       options?: Record<string, unknown>
     ) => Promise<EnqueuedTask>
   }>(container)
-  const productModuleService = container.resolve(Modules.PRODUCT) as {
-    listAndCountProducts: (
-      filters?: Record<string, unknown>,
-      config?: {
-        relations?: string[]
-        skip?: number
-        take?: number
-      }
-    ) => Promise<[unknown[], number]>
-  }
+  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  const productFields = await meilisearch.getFieldsForType(PRODUCTS_INDEX)
   const index = meilisearch.getIndex(PRODUCTS_INDEX)
   let offset = 0
   let totalIndexed = 0
 
   logger.info(`[meilisearch] Synchronizing product documents (${reason})…`)
   while (true) {
-    const [products] = await productModuleService.listAndCountProducts(
-      {},
-      {
-        relations: productRelations,
-        skip: offset,
-        take: BATCH_SIZE,
-      }
-    )
+    const { data: products } = await query.graph({
+      entity: "product",
+      fields: productFields,
+      pagination: { skip: offset, take: BATCH_SIZE },
+    })
     if (!products.length) {
       break
     }
