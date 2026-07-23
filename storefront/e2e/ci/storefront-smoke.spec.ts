@@ -65,6 +65,75 @@ test("homepage hydrates every curated shelf without client errors", async ({
   }
 })
 
+test("catalog filters stay stable and combine predictably", async ({
+  page,
+}) => {
+  const response = await page.goto("/catalog", { waitUntil: "networkidle" })
+  expect(response?.status()).toBeLessThan(400)
+
+  const rejectCookies = page.getByRole("button", {
+    name: "Reject non-essential",
+  })
+  if (await rejectCookies.isVisible()) {
+    await rejectCookies.click()
+  }
+
+  await page.getByRole("button", { name: /^Filters/ }).click()
+  const drawer = page.getByRole("dialog", { name: "Filters" })
+  await expect(drawer).toBeVisible()
+
+  const merchandise = drawer.getByRole("checkbox", {
+    name: /^Merchandise/,
+  })
+  await expect(merchandise).toBeVisible()
+  await drawer.getByText("Merchandise", { exact: true }).click()
+  await expect(merchandise).toBeChecked()
+
+  for (const productType of [
+    "Music Releases",
+    "Fixed Bundles",
+    "Mystery Bundles",
+  ]) {
+    await expect(
+      drawer.getByRole("checkbox", { name: new RegExp(`^${productType}`) })
+    ).toBeVisible()
+  }
+
+  await drawer.getByRole("button", { name: "Genres" }).click()
+  const deathMetal = drawer.getByRole("checkbox", { name: /^Death Metal/ })
+  const grind = drawer.getByRole("checkbox", { name: /^Grind/ })
+  await drawer.getByText("Death Metal", { exact: true }).click()
+  await drawer.getByText("Grind", { exact: true }).click()
+  await expect(deathMetal).toBeChecked()
+  await expect(grind).toBeChecked()
+
+  await drawer.getByRole("button", { name: "Formats" }).click()
+  await expect(drawer.getByRole("checkbox", { name: /^DVD/ })).toBeVisible()
+  await expect(
+    drawer.getByRole("button", { name: /Show \d+ results/ })
+  ).toBeVisible()
+
+  await expect(page).toHaveURL(/type=merch/)
+  await expect(page).toHaveURL(/genre=death-metal%2Cgrind/)
+
+  const metrics = await page.evaluate(() => {
+    const dialog = document
+      .querySelector<HTMLElement>('[role="dialog"]')
+      ?.getBoundingClientRect()
+    return {
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      dialogLeft: dialog?.left ?? Number.NEGATIVE_INFINITY,
+      dialogRight: dialog?.right ?? Number.POSITIVE_INFINITY,
+    }
+  })
+  expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth)
+  expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.viewportWidth)
+  expect(metrics.dialogLeft).toBeGreaterThanOrEqual(0)
+  expect(metrics.dialogRight).toBeLessThanOrEqual(metrics.viewportWidth)
+})
+
 const routes = ["/about", "/accessibility", "/cookies", "/terms"] as const
 
 for (const path of routes) {

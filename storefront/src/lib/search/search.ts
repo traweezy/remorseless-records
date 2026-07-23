@@ -121,13 +121,31 @@ const buildFilter = (
   }
 
   tryFilter("genres", filters?.genres)
-  tryFilter("formats", filters?.formats)
+  const formatValues = normalizeValues(filters?.formats)
+  if (formatValues.length) {
+    const escaped = formatValues
+      .map((value) => `"${value.replace(/"/g, '\\"')}"`)
+      .join(", ")
+    const formatAttributes = ["formats", "format", "variant_titles"].filter(
+      (attribute) => filterable.has(attribute)
+    )
+    if (formatAttributes.length) {
+      clauses.push(
+        `(${formatAttributes
+          .map((attribute) => `${attribute} IN [${escaped}]`)
+          .join(" OR ")})`
+      )
+    } else {
+      postFilters.push({ attribute: "formats", values: formatValues })
+    }
+  }
   const categoryValues = normalizeValues(filters?.categories)
   if (categoryValues.length) {
     if (filterable.has("category_handles")) {
-      categoryValues.forEach((value) => {
-        clauses.push(`category_handles = "${value.replace(/"/g, '\\"')}"`)
-      })
+      const escaped = categoryValues
+        .map((value) => `"${value.replace(/"/g, '\\"')}"`)
+        .join(", ")
+      clauses.push(`category_handles IN [${escaped}]`)
     } else {
       postFilters.push({
         attribute: "category_handles",
@@ -278,8 +296,13 @@ const filterHitsClient = (
         descriptor.attribute === "format" ||
         descriptor.attribute === "formats"
       ) {
-        const formats = [hit.format, ...(hit.formats ?? [])]
-          .map((value) => value?.toLowerCase())
+        const formats = [
+          hit.format,
+          hit.defaultVariant?.title,
+          ...(hit.formats ?? []),
+          ...(hit.variantTitles ?? []),
+        ]
+          .map((value) => normalizeFormatValue(value)?.toLowerCase())
           .filter((value): value is string => Boolean(value))
         if (!formats.some((format) => target.has(format))) {
           return false
@@ -289,7 +312,7 @@ const filterHitsClient = (
           value.toLowerCase()
         )
         const handleSet = new Set(handles)
-        if (!values.every((value) => handleSet.has(value.toLowerCase()))) {
+        if (!values.some((value) => handleSet.has(value.toLowerCase()))) {
           return false
         }
       } else if (descriptor.attribute === "variant_titles") {

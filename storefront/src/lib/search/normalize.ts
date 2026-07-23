@@ -134,6 +134,9 @@ export const normalizeFormatValue = (
   }
 
   const value = raw.toLowerCase()
+  if (value.includes("dvd")) {
+    return "DVD"
+  }
   if (
     value.includes("cassette") ||
     value.includes("tape") ||

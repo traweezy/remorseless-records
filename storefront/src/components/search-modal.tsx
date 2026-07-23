@@ -62,7 +62,6 @@ const SearchModal = ({ children }: SearchModalProps) => {
             <ProductSearchExperience
               initialResponse={initial}
               initialSort="title-asc"
-              genreFilters={[]}
             />
           ) : (
             (() => {

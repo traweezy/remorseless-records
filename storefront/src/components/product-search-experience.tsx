@@ -11,7 +11,7 @@ import {
   useState,
 } from "react"
 import { Debouncer } from "@tanstack/pacer"
-import { useInfiniteQuery } from "@tanstack/react-query"
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { type VirtualItem, useWindowVirtualizer } from "@tanstack/react-virtual"
 import {
   ArrowDown01,
@@ -45,6 +45,12 @@ import {
 import { searchProductsBrowser } from "@/lib/search/browser"
 import { useCatalogStore } from "@/lib/store/catalog"
 import { normalizeFormatValue as baseNormalizeFormat } from "@/lib/search/normalize"
+import { fetchCatalogFilterOptions } from "@/lib/catalog/filters.browser"
+import {
+  formatProductTypeLabel,
+  type CatalogFilterDefinitions,
+  type CatalogFilterOption,
+} from "@/lib/catalog/filters"
 
 const deferEffectUpdate = (callback: () => void): (() => void) => {
   let cancelled = false
@@ -84,16 +90,6 @@ const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
   ["new-releases", "Newest Arrivals"],
   ["new arrivals", "Newest Arrivals"],
   ["newest arrivals", "Newest Arrivals"],
-])
-
-const PRODUCT_TYPE_LABELS = new Map<string, string>([
-  ["music-release", "Music Releases"],
-  ["music_release", "Music Releases"],
-  ["merch", "Merchandise"],
-  ["fixed-bundle", "Fixed Bundles"],
-  ["fixed_bundle", "Fixed Bundles"],
-  ["mystery-bundle", "Mystery Bundles"],
-  ["mystery_bundle", "Mystery Bundles"],
 ])
 
 const CATALOG_SKELETON_KEYS = ["one", "two", "three", "four", "five", "six"]
@@ -224,16 +220,10 @@ export const mapHitToSummary = (
   }
 }
 
-type GenreFilterSeed = {
-  handle: string
-  label: string
-  rank?: number
-}
-
 type ProductSearchExperienceProps = {
   initialResponse: ProductSearchResponse
   initialSort?: ProductSortOption
-  genreFilters: GenreFilterSeed[]
+  initialFilterDefinitions?: CatalogFilterDefinitions
 }
 
 const CARD_MOTION_PROPS = {
@@ -279,11 +269,7 @@ const SORT_OPTIONS: [
   },
 ]
 
-type FilterOption = {
-  value: string
-  label: string
-  count: number
-}
+type FilterOption = CatalogFilterOption
 
 const FilterCheckboxList = ({
   idPrefix,
@@ -352,6 +338,9 @@ const FilterCheckboxList = ({
             className="overflow-hidden"
           >
             <div className="mt-1 flex flex-col gap-1.5">
+              <p className="px-2 pb-1 text-[0.62rem] leading-relaxed text-muted-foreground/80">
+                Catalog totals · select more than one to match any
+              </p>
               {options.map(({ value, label, count }) => {
                 const normalizedValue = normalizeValue(value)
                 if (!normalizedValue.length) {
@@ -369,7 +358,7 @@ const FilterCheckboxList = ({
                     key={normalizedValue}
                     htmlFor={checkboxId}
                     className={cn(
-                      "flex cursor-pointer items-center justify-between rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.22rem] leading-relaxed text-muted-foreground transition hover:text-foreground",
+                      "flex cursor-pointer items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.18rem] leading-relaxed text-muted-foreground transition hover:text-foreground",
                       variant === "chip"
                         ? cn(
                             "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
@@ -382,7 +371,7 @@ const FilterCheckboxList = ({
                           )
                     )}
                   >
-                    <span className="flex items-center gap-2">
+                    <span className="flex min-w-0 flex-1 items-center gap-2">
                       <input
                         id={checkboxId}
                         type="checkbox"
@@ -400,9 +389,10 @@ const FilterCheckboxList = ({
                       >
                         {checked ? <Check className="h-3 w-3" /> : null}
                       </span>
-                      <span className="text-foreground">{label}</span>
+                      <span className="min-w-0 text-foreground">{label}</span>
                     </span>
-                    <span className="text-[0.6rem] text-muted-foreground/80">
+                    <span className="shrink-0 tabular-nums text-[0.6rem] text-muted-foreground/80">
+                      <span className="sr-only">Catalog total: </span>
                       {count}
                     </span>
                   </label>
@@ -526,20 +516,15 @@ const FilterSidebar = ({
 const SortDropdown = ({
   value,
   onChange,
-  focusSearch,
 }: {
   value: ProductSortOption
   onChange: (value: ProductSortOption) => void
-  focusSearch: () => void
 }) => {
   return (
     <PillDropdown
       value={value}
       options={SORT_OPTIONS}
-      onChange={(next) => {
-        onChange(next)
-        focusSearch()
-      }}
+      onChange={onChange}
     />
   )
 }
@@ -572,23 +557,58 @@ const useResponsiveColumns = () => {
 const ProductSearchExperience = ({
   initialResponse,
   initialSort = "title-asc",
-  genreFilters,
+  initialFilterDefinitions = {
+    genres: [],
+    formats: [],
+    productTypes: [],
+  },
 }: ProductSearchExperienceProps) => {
   const filterInstanceId = useId().replace(/:/g, "")
+  const genreDefinitionsQuery = useQuery({
+    queryKey: ["catalog-filter-options", "genres"],
+    queryFn: ({ signal }) => fetchCatalogFilterOptions("genres", { signal }),
+    initialData: { options: initialFilterDefinitions.genres },
+    initialDataUpdatedAt: 0,
+    staleTime: 15 * 60_000,
+    retry: 1,
+  })
+  const formatDefinitionsQuery = useQuery({
+    queryKey: ["catalog-filter-options", "formats"],
+    queryFn: ({ signal }) => fetchCatalogFilterOptions("formats", { signal }),
+    initialData: { options: initialFilterDefinitions.formats },
+    initialDataUpdatedAt: 0,
+    staleTime: 15 * 60_000,
+    retry: 1,
+  })
+  const productTypeDefinitionsQuery = useQuery({
+    queryKey: ["catalog-filter-options", "product-types"],
+    queryFn: ({ signal }) =>
+      fetchCatalogFilterOptions("product-types", { signal }),
+    initialData: { options: initialFilterDefinitions.productTypes },
+    initialDataUpdatedAt: 0,
+    staleTime: 15 * 60_000,
+    retry: 1,
+  })
   const normalizedGenreFilters = useMemo(
     () =>
-      genreFilters
+      genreDefinitionsQuery.data.options
         .map((genre, index) => {
-          const handle = genre.handle?.trim().toLowerCase() ?? ""
+          const handle = genre.value?.trim().toLowerCase() ?? ""
           const label = genre.label?.trim() ?? ""
           if (!handle.length || !label.length) {
             return null
           }
-          const rank = typeof genre.rank === "number" ? genre.rank : index
-          return { handle, label, rank }
+          return { handle, label, rank: index, count: genre.count }
         })
         .filter(
-          (entry): entry is { handle: string; label: string; rank: number } =>
+          (
+            entry
+          ): entry is {
+            handle: string
+            label: string
+            rank: number
+            count: number
+          } =>
             Boolean(entry)
         )
         .sort(
@@ -596,7 +616,7 @@ const ProductSearchExperience = ({
             a.rank - b.rank ||
             a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
         ),
-    [genreFilters]
+    [genreDefinitionsQuery.data.options]
   )
 
   const genreLabelByHandle = useMemo(() => {
@@ -661,7 +681,6 @@ const ProductSearchExperience = ({
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [pacedQuery, setPacedQuery] = useState("")
-  const searchInputRef = useRef<HTMLInputElement | null>(null)
   const measureScheduledRef = useRef(false)
   const queryDebouncer = useMemo(
     () =>
@@ -830,14 +849,21 @@ const ProductSearchExperience = ({
 
   const searchFilters = useMemo<ProductSearchRequest["filters"]>(() => {
     const filters = {
-      ...(selectedGenres.length ? { categories: selectedGenres } : {}),
+      ...(selectedGenres.length
+        ? { genres: selectedGenres.map(getGenreLabelForHandle) }
+        : {}),
       ...(selectedFormats.length ? { formats: selectedFormats } : {}),
       ...(selectedProductTypes.length
         ? { productTypes: selectedProductTypes }
         : {}),
     }
     return Object.keys(filters).length ? filters : undefined
-  }, [selectedFormats, selectedGenres, selectedProductTypes])
+  }, [
+    getGenreLabelForHandle,
+    selectedFormats,
+    selectedGenres,
+    selectedProductTypes,
+  ])
 
   const searchRequest = useMemo<ProductSearchRequest>(
     () => ({
@@ -893,7 +919,6 @@ const ProductSearchExperience = ({
     [initialResponse, isInitialSearch, searchQuery.data?.pages]
   )
   const activeResponse = searchPages[0]
-  const catalogFacets = activeResponse?.facets ?? initialResponse.facets
   const totalResults = activeResponse?.total ?? 0
   const aggregatedHits = useMemo(() => {
     const seenHandles = new Set<string>()
@@ -1027,28 +1052,13 @@ const ProductSearchExperience = ({
   const filterChipClass =
     "inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16rem] text-foreground shadow-[0_0_15px_rgba(255,0,0,0.18)] transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50 sm:tracking-[0.25rem]"
 
-  const categoryFacetCounts = useMemo(
-    () =>
-      Object.entries(catalogFacets.categories ?? {}).reduce<
-        Record<string, number>
-      >((acc, [rawKey, rawCount]) => {
-        const key = rawKey.trim().toLowerCase()
-        if (!key.length) {
-          return acc
-        }
-        acc[key] = rawCount
-        return acc
-      }, {}),
-    [catalogFacets.categories]
-  )
-
   const genreOptions = useMemo(() => {
     type RankedOption = FilterOption & { rank: number }
 
     const baseOptions: RankedOption[] = normalizedGenreFilters.map((genre) => ({
       value: genre.handle,
       label: genre.label,
-      count: categoryFacetCounts[genre.handle] ?? 0,
+      count: genre.count,
       rank: genre.rank,
     }))
 
@@ -1060,142 +1070,10 @@ const ProductSearchExperience = ({
           a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
       )
       .map(({ rank: _rank, ...option }) => option)
-  }, [categoryFacetCounts, normalizedGenreFilters])
+  }, [normalizedGenreFilters])
 
-  const formatOptions = useMemo(() => {
-    const ALLOWED = new Set(["Cassette", "Vinyl", "CD"])
-    const counts = new Map<string, Set<string>>()
-
-    const add = (
-      handle: string | null | undefined,
-      value: string | null | undefined
-    ) => {
-      if (!handle) {
-        return
-      }
-      const normalized = baseNormalizeFormat(value)
-      if (typeof normalized !== "string" || !ALLOWED.has(normalized)) {
-        return
-      }
-      const bucket = counts.get(normalized) ?? new Set<string>()
-      bucket.add(handle)
-      counts.set(normalized, bucket)
-    }
-
-    aggregatedHits.forEach((hit) => {
-      const handle = hit.handle?.trim().toLowerCase()
-      if (!handle) {
-        return
-      }
-      add(handle, hit.format)
-      hit.variantTitles?.forEach((variant) => add(handle, variant))
-      hit.formats?.forEach((fmt) => add(handle, fmt))
-    })
-
-    // Fallback to facet counts if aggregated hits are empty
-    if (!counts.size && catalogFacets.format) {
-      Object.entries(catalogFacets.format).forEach(([key, count]) => {
-        const normalized = baseNormalizeFormat(key)
-        if (!normalized || !ALLOWED.has(normalized)) {
-          return
-        }
-        const bucket = counts.get(normalized) ?? new Set<string>()
-        if (typeof count === "number" && Number.isFinite(count)) {
-          const syntheticHandles = Array.from({
-            length: Math.max(1, Math.trunc(count)),
-          }).map((_, idx) => `${normalized}-${idx}`)
-          syntheticHandles.forEach((handle) => bucket.add(handle))
-        }
-        counts.set(normalized, bucket)
-      })
-    }
-
-    return Array.from(counts.entries())
-      .map(([value, handles]) => ({ value, label: value, count: handles.size }))
-      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
-  }, [aggregatedHits, catalogFacets.format])
-
-  const formatProductTypeLabel = useCallback((value: string) => {
-    const normalized = value.trim().toLowerCase()
-    return (
-      PRODUCT_TYPE_LABELS.get(normalized) ??
-      normalized
-        .replace(/[_-]+/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase())
-    )
-  }, [])
-
-  const productTypeOptions = useMemo(
-    () =>
-      Object.entries(catalogFacets.productTypes ?? {})
-        .sort((a, b) => b[1] - a[1])
-        .map(([value, count]) => ({
-          value,
-          label: formatProductTypeLabel(value),
-          count,
-        })),
-    [catalogFacets.productTypes, formatProductTypeLabel]
-  )
-
-  useEffect(() => {
-    if (!hasHydratedFromParams.current) {
-      return
-    }
-
-    const validGenres = new Set(genreOptions.map((option) => option.value))
-    const validFormats = new Set(
-      formatOptions.map((option) => option.value.toLowerCase())
-    )
-    const validTypes = new Set(productTypeOptions.map((option) => option.value))
-
-    const sanitizedGenres = selectedGenres.filter((value) =>
-      validGenres.has(value)
-    )
-    const sanitizedFormats = Array.from(
-      new Set(
-        selectedFormats
-          .map((value) => normalizeFormatFilterValue(value))
-          .filter((value): value is string => Boolean(value))
-          .filter((value) => validFormats.has(value.toLowerCase()))
-      )
-    )
-    const sanitizedTypes = selectedProductTypes.filter((value) =>
-      validTypes.has(value)
-    )
-
-    const hasListChanged = (left: string[], right: string[]) =>
-      left.length !== right.length ||
-      left.some((entry, index) => entry !== right[index])
-
-    const needsUpdate =
-      hasListChanged(sanitizedGenres, selectedGenres) ||
-      hasListChanged(sanitizedFormats, selectedFormats) ||
-      hasListChanged(sanitizedTypes, selectedProductTypes)
-
-    if (needsUpdate) {
-      hydrateFromParams({
-        genres: sanitizedGenres,
-        formats: sanitizedFormats,
-        productTypes: sanitizedTypes,
-      })
-    }
-  }, [
-    formatOptions,
-    genreOptions,
-    hydrateFromParams,
-    productTypeOptions,
-    selectedFormats,
-    selectedGenres,
-    selectedProductTypes,
-  ])
-
-  const focusSearchInput = () => {
-    const input = searchInputRef.current
-    if (input) {
-      input.focus()
-      input.select()
-    }
-  }
+  const formatOptions = formatDefinitionsQuery.data.options
+  const productTypeOptions = productTypeDefinitionsQuery.data.options
 
   const handleToggleGenre = (genre: string) => {
     const normalizedGenre = genre.trim().toLowerCase()
@@ -1203,7 +1081,6 @@ const ProductSearchExperience = ({
       return
     }
     toggleGenreFilter(normalizedGenre)
-    focusSearchInput()
   }
 
   const handleToggleFormat = (formatValue: string) => {
@@ -1212,7 +1089,6 @@ const ProductSearchExperience = ({
       return
     }
     toggleFormatFilter(normalizedFormat)
-    focusSearchInput()
   }
 
   const handleToggleProductType = (type: string) => {
@@ -1220,17 +1096,14 @@ const ProductSearchExperience = ({
       return
     }
     toggleProductTypeFilter(type)
-    focusSearchInput()
   }
 
   const clearFilters = () => {
     clearFiltersStore()
-    focusSearchInput()
   }
 
   const toggleStockOnly = () => {
     toggleStockOnlyFilter()
-    focusSearchInput()
   }
 
   const gridTemplateStyle = useMemo(
@@ -1350,8 +1223,11 @@ const ProductSearchExperience = ({
                         variant="outline"
                         className="w-full"
                         onClick={() => setMobileFiltersOpen(false)}
+                        disabled={isFetching}
                       >
-                        Done
+                        {isFetching
+                          ? "Updating results…"
+                          : `Show ${totalResults} results`}
                       </Button>
                     </div>
                   </div>
@@ -1363,7 +1239,6 @@ const ProductSearchExperience = ({
                   aria-hidden
                 />
                 <input
-                  ref={searchInputRef}
                   value={query}
                   onChange={(event) => {
                     setQuery(event.target.value)
@@ -1377,11 +1252,7 @@ const ProductSearchExperience = ({
               <div className="w-full sm:w-auto sm:shrink-0">
                 <SortDropdown
                   value={sortOption}
-                  onChange={(next) => {
-                    setSortOption(next)
-                    focusSearchInput()
-                  }}
-                  focusSearch={focusSearchInput}
+                  onChange={setSortOption}
                 />
               </div>
             </div>

@@ -165,7 +165,7 @@ describe("searchProductsWithClient", () => {
       filters: {
         genres: ["Doom"],
         formats: ["Vinyl"],
-        categories: ["doom"],
+        categories: ["doom", "grind"],
         variants: ["LP"],
         productTypes: ["album"],
         availability: ["in_stock"],
@@ -191,7 +191,7 @@ describe("searchProductsWithClient", () => {
         "variant_titles",
       ],
       filter:
-        'status = "published" AND genres IN ["Doom"] AND formats IN ["Vinyl"] AND category_handles = "doom" AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 1000 AND price_min <= 3000 AND (stock_status != "sold_out")',
+        'status = "published" AND genres IN ["Doom"] AND (formats IN ["Vinyl"] OR variant_titles IN ["Vinyl"]) AND category_handles IN ["doom", "grind"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 1000 AND price_min <= 3000 AND (stock_status != "sold_out")',
       sort: ["price_amount:asc"],
     })
     expect(response.total).toBe(1)
@@ -502,7 +502,7 @@ describe("searchProductsWithClient", () => {
     })
   })
 
-  it("post-filters category handles and canonicalizes format facets", async () => {
+  it("OR-filters category handles and canonicalizes format facets", async () => {
     const index: MockIndex = {
       uid: "products-canonical-facets",
       getSettings: vi.fn().mockResolvedValue({
@@ -519,7 +519,7 @@ describe("searchProductsWithClient", () => {
           }),
           makeHit({
             handle: "wrong-category",
-            category_handles: ["doom"],
+            category_handles: ["black-metal"],
             format: "CD",
           }),
         ],

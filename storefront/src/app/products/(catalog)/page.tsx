@@ -2,8 +2,12 @@ import type { Metadata } from "next"
 import ProductSearchExperience from "@/components/product-search-experience"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
-import { getMetalGenreCategories } from "@/lib/data/categories"
 import { getFullCatalogHits } from "@/lib/catalog/all"
+import {
+  type CatalogFilterDefinitions,
+  buildCatalogFilterDefinitions,
+} from "@/lib/catalog/filters"
+import { getCatalogFilterDefinitions } from "@/lib/catalog/filters.server"
 import { buildItemListJsonLd } from "@/lib/seo/structured-data"
 import { buildPublicProductPath } from "@/lib/products/routes"
 import { searchProductsServer } from "@/lib/search/server"
@@ -51,7 +55,7 @@ export const metadata: Metadata = {
 
 const ProductsPage = async () => {
   const origin = siteMetadata.siteUrl
-  const { initialResponse, genreFilters } = await loadCatalogViewModel()
+  const { initialResponse, filterDefinitions } = await loadCatalogViewModel()
 
   const catalogStructuredData = buildCatalogItemList(
     initialResponse.hits,
@@ -63,7 +67,7 @@ const ProductsPage = async () => {
       <ProductSearchExperience
         initialResponse={initialResponse}
         initialSort="title-asc"
-        genreFilters={genreFilters}
+        initialFilterDefinitions={filterDefinitions}
       />
 
       <JsonLd id="catalog-item-list" data={catalogStructuredData} />
@@ -75,13 +79,13 @@ export default ProductsPage
 
 const loadCatalogViewModel = async (): Promise<{
   initialResponse: ProductSearchResponse
-  genreFilters: Awaited<ReturnType<typeof getMetalGenreCategories>>
+  filterDefinitions: CatalogFilterDefinitions
 }> => {
-  const [initialResponse, genreFilters] = await Promise.all([
+  const [initialResponse, filterDefinitions] = await Promise.all([
     loadInitialSearchResponse(),
-    loadGenreFilters(),
+    loadFilterDefinitions(),
   ])
-  return { initialResponse, genreFilters }
+  return { initialResponse, filterDefinitions }
 }
 
 const loadInitialSearchResponse = async (): Promise<ProductSearchResponse> => {
@@ -110,15 +114,13 @@ const loadInitialSearchResponse = async (): Promise<ProductSearchResponse> => {
   }
 }
 
-const loadGenreFilters = async (): Promise<
-  Awaited<ReturnType<typeof getMetalGenreCategories>>
-> => {
+const loadFilterDefinitions = async (): Promise<CatalogFilterDefinitions> => {
   try {
-    return await getMetalGenreCategories()
+    return await getCatalogFilterDefinitions()
   } catch (error) {
-    console.error("[ProductsPage] falling back without genre filters", {
+    console.error("[ProductsPage] falling back without filter definitions", {
       reason: error instanceof Error ? error.message : error,
     })
-    return []
+    return buildCatalogFilterDefinitions([], [])
   }
 }

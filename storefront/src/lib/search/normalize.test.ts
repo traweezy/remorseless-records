@@ -14,6 +14,7 @@ describe("normalizeFormatValue", () => {
     expect(normalizeFormatValue("clear shell tape")).toBe("Cassette")
     expect(normalizeFormatValue('12" vinyl')).toBe("Vinyl")
     expect(normalizeFormatValue("compact cd")).toBe("CD")
+    expect(normalizeFormatValue("limited DVD")).toBe("DVD")
   })
 
   it("returns null for unknown format values", () => {
