@@ -1,0 +1,16 @@
+title = "Remorseless Records Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Ignore deterministic cart-cookie signing keys used only by unit tests"
+condition = "AND"
+regexTarget = "secret"
+regexes = [
+  '''^(0123456789abcdef0123456789abcdef|abcdef0123456789abcdef0123456789|fedcba9876543210fedcba9876543210)$''',
+]
+paths = ['''^storefront/src/lib/cart/cookie\.test\.ts$''']
