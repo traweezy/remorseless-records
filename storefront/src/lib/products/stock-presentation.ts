@@ -5,6 +5,18 @@ export type StockChip = {
   tone: "default" | "danger" | "warning"
 }
 
+const resolveLowStockLabel = (inventoryQuantity: number | null): string => {
+  if (
+    typeof inventoryQuantity !== "number" ||
+    !Number.isSafeInteger(inventoryQuantity) ||
+    inventoryQuantity <= 0
+  ) {
+    return "Low stock"
+  }
+
+  return `Only ${inventoryQuantity} left`
+}
+
 export const resolveStockChip = (variant: VariantOption): StockChip | null => {
   if (!variant.hasPrice) {
     return {
@@ -25,7 +37,7 @@ export const resolveStockChip = (variant: VariantOption): StockChip | null => {
     variant.lowStockBadgeEligible !== false
   ) {
     return {
-      label: "Low stock",
+      label: resolveLowStockLabel(variant.inventoryQuantity),
       tone: "warning",
     }
   }

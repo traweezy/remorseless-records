@@ -169,9 +169,6 @@ const ProductVariantSelector = ({
     return "Add to cart"
   })()
 
-  const priceDisplay = selectedVariant?.hasPrice
-    ? formatAmount(selectedVariant.currency, selectedVariant.amount)
-    : null
   const availabilityNotice = selectedVariant
     ? availabilityNoticeByVariantId[selectedVariant.id]
     : undefined
@@ -240,20 +237,9 @@ const ProductVariantSelector = ({
           <p className="font-headline text-xs uppercase tracking-[0.35rem] text-muted-foreground">
             Selected Format
           </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="font-display text-3xl uppercase tracking-[0.3rem] text-foreground">
-              {selectedVariant?.title ?? "None"}
-            </span>
-            {priceDisplay ? (
-              <Badge variant="accent" className="px-3 py-1 text-xs">
-                {priceDisplay}
-              </Badge>
-            ) : (
-              <Badge variant="default" className="px-3 py-1 text-xs">
-                Price unavailable
-              </Badge>
-            )}
-          </div>
+          <span className="font-display text-3xl uppercase tracking-[0.3rem] text-foreground">
+            {selectedVariant?.title ?? "None"}
+          </span>
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <label

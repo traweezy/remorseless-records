@@ -18,12 +18,22 @@ const makeVariant = (
 })
 
 describe("resolveStockChip", () => {
-  it("shows low-stock state only for eligible verified counts", () => {
-    expect(
-      resolveStockChip(
-        makeVariant({ stockStatus: "low_stock", inventoryQuantity: 2 })
-      )
-    ).toMatchObject({ label: "Low stock" })
+  it.each([
+    [1, "Only 1 left"],
+    [2, "Only 2 left"],
+    [5, "Only 5 left"],
+  ])(
+    "shows the exact eligible low-stock count for %i item(s)",
+    (count, label) => {
+      expect(
+        resolveStockChip(
+          makeVariant({ stockStatus: "low_stock", inventoryQuantity: count })
+        )
+      ).toMatchObject({ label })
+    }
+  )
+
+  it("omits ineligible low-stock estimates", () => {
     expect(
       resolveStockChip(
         makeVariant({
@@ -33,6 +43,17 @@ describe("resolveStockChip", () => {
         })
       )
     ).toBeNull()
+  })
+
+  it("uses a generic label when a low-stock count is unavailable", () => {
+    expect(
+      resolveStockChip(
+        makeVariant({
+          stockStatus: "low_stock",
+          inventoryQuantity: null,
+        })
+      )
+    ).toMatchObject({ label: "Low stock" })
   })
 
   it("labels sold-out and unpriced variants", () => {

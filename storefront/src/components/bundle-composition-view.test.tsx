@@ -21,8 +21,8 @@ const variants: VariantOption[] = [
     amount: 3_300,
     hasPrice: true,
     inStock: true,
-    stockStatus: "in_stock",
-    inventoryQuantity: 10,
+    stockStatus: "low_stock",
+    inventoryQuantity: 2,
   },
   {
     id: "variant_lp",
@@ -31,8 +31,8 @@ const variants: VariantOption[] = [
     amount: 5_600,
     hasPrice: true,
     inStock: true,
-    stockStatus: "in_stock",
-    inventoryQuantity: 10,
+    stockStatus: "low_stock",
+    inventoryQuantity: 1,
   },
 ]
 
@@ -92,6 +92,10 @@ describe("BundleComposition", () => {
     expect(screen.getByText("3CD", { exact: true })).toBeInTheDocument()
     expect(screen.queryByText("3LP", { exact: true })).not.toBeInTheDocument()
     expect(screen.getByText("In stock", { exact: true })).toBeInTheDocument()
+    expect(screen.getByText("Only 2 left", { exact: true })).toBeInTheDocument()
+    expect(screen.getByText("Only 1 left", { exact: true })).toBeInTheDocument()
+    expect(screen.getAllByText("$33.00", { exact: true })).toHaveLength(1)
+    expect(screen.getAllByText("$56.00", { exact: true })).toHaveLength(1)
 
     fireEvent.click(
       screen.getByRole("button", {
