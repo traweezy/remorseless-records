@@ -3,6 +3,7 @@ const pa11y = require("pa11y")
 const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:3000"
 const chromeExecutablePath =
   process.env.PA11Y_CHROME_EXECUTABLE_PATH ?? process.env.CHROME_PATH
+const disableChromeSandbox = process.env.PA11Y_CHROME_NO_SANDBOX === "1"
 const productPath = process.env.QA_PRODUCT_PATH ?? "/products"
 const extraUrls = process.env.QA_EXTRA_URLS
   ? process.env.QA_EXTRA_URLS.split(",").map((entry) => entry.trim()).filter(Boolean)
@@ -42,7 +43,14 @@ const auditTarget = async (target) => {
       includeWarnings: true,
       levelCapWhenNeedsReview: "warning",
       ...(chromeExecutablePath
-        ? { chromeLaunchConfig: { executablePath: chromeExecutablePath } }
+        ? {
+            chromeLaunchConfig: {
+              executablePath: chromeExecutablePath,
+              ...(disableChromeSandbox
+                ? { args: ["--no-sandbox", "--disable-setuid-sandbox"] }
+                : {}),
+            },
+          }
         : {}),
     })
 

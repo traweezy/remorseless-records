@@ -1,21 +1,24 @@
 "use client"
 
-import { motion, useReducedMotion, type Transition, type Variants } from "framer-motion"
-import { ShoppingBag, X } from "lucide-react"
-import { useMemo, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import type { HttpTypes } from "@medusajs/types"
+import { ShoppingBag } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { memo, useCallback, useTransition } from "react"
+import { toast } from "sonner"
 
 import CartItem from "@/components/cart/cart-item"
 import { Button } from "@/components/ui/button"
-import Drawer from "@/components/ui/drawer"
+import Drawer, {
+  DrawerCloseButton,
+  DrawerHeader,
+  DrawerHeading,
+  DrawerTitle,
+} from "@/components/ui/drawer"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatAmount } from "@/lib/money"
 import { useCart } from "@/providers/cart-provider"
 import type { StoreCart } from "@/providers/cart-provider"
-import { formatAmount } from "@/lib/money"
-
-const MotionButton = motion(Button)
 
 const EMPTY_CART_ITEMS: HttpTypes.StoreCartLineItem[] = []
 
@@ -27,241 +30,273 @@ type CartDrawerProps = {
 const currencyFromCart = (cart: StoreCart): string =>
   cart?.currency_code ?? "usd"
 
-const formatCartAmount = (cart: StoreCart, amount: number | null | undefined) =>
-  formatAmount(currencyFromCart(cart), Number(amount ?? 0))
+const formattedAmount = (
+  cart: StoreCart,
+  amount: number | null | undefined
+): string | null =>
+  typeof amount === "number"
+    ? formatAmount(currencyFromCart(cart), amount)
+    : null
 
-export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
+export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
   const router = useRouter()
   const [isCheckoutPending, startCheckoutTransition] = useTransition()
-  const prefersReducedMotion = useReducedMotion()
-  const { cart: hydratedCart, itemCount, isLoading, error } = useCart()
+  const {
+    addItem,
+    cart,
+    error,
+    isLoading,
+    isMutating,
+    itemCount,
+    refreshCart,
+    removeItem,
+  } = useCart()
 
-  const items = hydratedCart?.items ?? EMPTY_CART_ITEMS
+  const items = cart?.items ?? EMPTY_CART_ITEMS
   const hasItems = items.length > 0
+  const subtotal = formattedAmount(cart, cart?.subtotal)
+  const hasShippingMethod = Boolean(cart?.shipping_methods?.length)
+  const shipping = hasShippingMethod
+    ? formattedAmount(cart, cart?.shipping_subtotal ?? cart?.shipping_total)
+    : null
+  const hasTaxAddress = Boolean(cart?.shipping_address?.country_code)
+  const tax = hasTaxAddress ? formattedAmount(cart, cart?.tax_total) : null
+  const discount =
+    typeof cart?.discount_total === "number" && cart.discount_total > 0
+      ? formattedAmount(cart, cart.discount_total)
+      : null
+  const currentTotal = formattedAmount(cart, cart?.total) ?? subtotal
+  const totalsAreFinal = Boolean(shipping && tax)
 
-  const subtotal = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.subtotal), [hydratedCart])
-  const taxTotal = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.tax_total), [hydratedCart])
-  const shippingTotal = useMemo(
-    () =>
-      formatCartAmount(
-        hydratedCart,
-        hydratedCart?.shipping_subtotal ?? hydratedCart?.shipping_total
-      ),
-    [hydratedCart]
+  const handleRemove = useCallback(
+    async (item: HttpTypes.StoreCartLineItem) => {
+      await removeItem(item.id)
+
+      const variantId = item.variant_id
+      const quantity = Number(item.quantity ?? 1)
+      const title = item.product_title ?? item.title
+      toast(`${title} removed from cart.`, {
+        ...(variantId
+          ? {
+              action: {
+                label: "Undo",
+                onClick: () => {
+                  void addItem(variantId, quantity).catch(() => {
+                    toast.error(
+                      "This item could not be restored. Check its current availability."
+                    )
+                  })
+                },
+              },
+            }
+          : {}),
+        duration: 5_000,
+      })
+    },
+    [addItem, removeItem]
   )
-  const total = useMemo(() => formatCartAmount(hydratedCart, hydratedCart?.total), [hydratedCart])
 
-  const easeOutExpo = [0.4, 0, 0.2, 1] as const
+  const goToCatalog = useCallback(() => {
+    onOpenChange(false)
+    router.push("/catalog")
+  }, [onOpenChange, router])
 
-  const listVariants: Variants = {
-    hidden: {},
-    visible: {
-      transition: {
-        staggerChildren: prefersReducedMotion ? 0 : 0.05,
-        delayChildren: prefersReducedMotion ? 0 : 0.1,
-      },
-    },
-  }
-
-  const itemVariants: Variants = {
-    hidden: {
-      opacity: prefersReducedMotion ? 1 : 0,
-      x: prefersReducedMotion ? 0 : 20,
-    },
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: { duration: 0.3, ease: easeOutExpo },
-    },
-  }
-
-  const checkoutTransition: Transition = prefersReducedMotion
-    ? { duration: 0.15, ease: easeOutExpo }
-    : { type: "spring", stiffness: 400, damping: 17 }
-
-  const secondaryTransition: Transition = prefersReducedMotion
-    ? { duration: 0.12, ease: easeOutExpo }
-    : { type: "spring", stiffness: 320, damping: 20 }
-
-  const emptyStateTransition: Transition = prefersReducedMotion
-    ? { duration: 0.15, ease: easeOutExpo }
-    : { type: "spring", stiffness: 360, damping: 18 }
-
-  const checkoutInteractions = prefersReducedMotion
-    ? {}
-    : {
-        whileHover: { scale: 1.02 },
-        whileTap: { scale: 0.98 },
-      }
-
-  const secondaryInteractions = prefersReducedMotion
-    ? {}
-    : {
-        whileHover: { scale: 1.01 },
-        whileTap: { scale: 0.99 },
-      }
+  const goToCheckout = useCallback(() => {
+    if (!cart?.id || isMutating) {
+      return
+    }
+    onOpenChange(false)
+    startCheckoutTransition(() => {
+      router.push("/checkout")
+    })
+  }, [cart?.id, isMutating, onOpenChange, router])
+  const retryCart = useCallback(() => {
+    void refreshCart()
+  }, [refreshCart])
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} ariaLabel="Cart">
-      <div className="flex flex-1 flex-col p-0">
-        <header className="flex items-start justify-between border-b border-border/60 px-4 py-4 sm:px-6">
-          <div className="space-y-1 text-left">
-            <p className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <ShoppingBag className="h-5 w-5 text-accent" />
-              Cart ({itemCount})
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      ariaLabel="Shopping cart"
+      maxWidthClassName="max-w-[32rem]"
+      panelClassName="min-w-0"
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DrawerHeader className="px-4 py-4 sm:px-6">
+          <DrawerHeading>
+            <DrawerTitle className="flex items-center gap-2 text-2xl tracking-[0.24rem] sm:text-3xl">
+              <ShoppingBag className="h-5 w-5 text-accent" aria-hidden />
+              Cart
+            </DrawerTitle>
+            <p
+              className="text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              {itemCount
+                ? `${itemCount} item${itemCount === 1 ? "" : "s"}`
+                : "No items yet"}
             </p>
-            <p className="text-sm text-muted-foreground">
-              Review your ritual stack before checkout.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-9"
-            aria-label="Close cart"
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </header>
+          </DrawerHeading>
+          <DrawerCloseButton label="Close cart" />
+        </DrawerHeader>
 
-        {hasItems ? (
+        {isLoading && !cart ? (
+          <div
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 py-6 sm:px-6"
+            aria-label="Loading cart"
+          >
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton
+                key={`cart-drawer-loading-${index}`}
+                className="h-32 w-full shrink-0 rounded-xl"
+              />
+            ))}
+          </div>
+        ) : hasItems ? (
           <>
-            <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-              {isLoading ? (
-                <div className="space-y-4">
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <Skeleton key={`cart-skeleton-${index}`} className="h-24 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <motion.div
-                  key="cart-items"
-                  initial="hidden"
-                  animate="visible"
-                  variants={listVariants}
-                  className="space-y-6"
-                >
-                  {items.map((item, index) => (
-                    <motion.div
-                      key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
-                      variants={itemVariants}
-                      layout
-                    >
-                      <CartItem item={item} currencyCode={currencyFromCart(hydratedCart)} />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
+              <div className="space-y-4">
+                {items.map((item, index) => (
+                  <CartItem
+                    key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
+                    item={item}
+                    currencyCode={currencyFromCart(cart)}
+                    onRemove={handleRemove}
+                  />
+                ))}
+              </div>
             </div>
 
-            <div className="flex flex-col gap-4 border-t border-border/60 px-4 py-6 sm:px-6">
-              <dl className="space-y-3 text-sm text-muted-foreground">
-                <div className="flex items-center justify-between">
+            <div className="shrink-0 space-y-4 border-t border-border/60 bg-background/98 px-4 py-5 sm:px-6">
+              <dl className="space-y-2.5 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between gap-4">
                   <dt>Subtotal</dt>
-                  <dd className="text-foreground">{subtotal}</dd>
+                  <dd className="text-foreground">{subtotal ?? "—"}</dd>
                 </div>
-                <div className="flex items-center justify-between">
+                {discount ? (
+                  <div className="flex items-center justify-between gap-4 text-emerald-300">
+                    <dt>Discount</dt>
+                    <dd>−{discount}</dd>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-4">
                   <dt>Shipping</dt>
-                  <dd className="text-foreground">{shippingTotal}</dd>
+                  <dd className="text-right text-foreground">
+                    {shipping ?? "Calculated at checkout"}
+                  </dd>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <dt>Tax</dt>
-                  <dd className="text-foreground">{taxTotal}</dd>
+                  <dd className="text-right text-foreground">
+                    {tax ?? "Calculated at checkout"}
+                  </dd>
                 </div>
                 <Separator className="border-border/60" />
-                <div className="flex items-center justify-between text-base font-semibold text-foreground">
-                  <dt>Total</dt>
-                  <dd>{total}</dd>
+                <div className="flex items-center justify-between gap-4 text-base font-semibold text-foreground">
+                  <dt>{totalsAreFinal ? "Total" : "Current total"}</dt>
+                  <dd>{currentTotal ?? "—"}</dd>
                 </div>
               </dl>
 
+              {!totalsAreFinal ? (
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Shipping and tax are confirmed after you enter your address.
+                </p>
+              ) : null}
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Availability is rechecked before purchase; cart items are not
+                reserved.
+              </p>
+
               {error ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                  {error}
+                <div
+                  className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  <p>{error}</p>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="compact"
+                    onClick={retryCart}
+                    disabled={isLoading}
+                  >
+                    Retry
+                  </Button>
                 </div>
               ) : null}
 
-              <MotionButton
-                type="button"
-                size="lg"
-                className="h-12 w-full text-base font-semibold"
-                disabled={!hydratedCart?.id || isCheckoutPending}
-                {...checkoutInteractions}
-                transition={checkoutTransition}
-                onClick={() => {
-                  const cartId = hydratedCart?.id
-                  if (!cartId) {
-                    return
+              <div className="grid gap-3">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="h-12 w-full text-sm"
+                  disabled={
+                    !cart?.id || isLoading || isMutating || isCheckoutPending
                   }
-
-                  onOpenChange(false)
-                  startCheckoutTransition(() => {
-                    router.push("/checkout")
-                  })
-                }}
-              >
-                Checkout
-              </MotionButton>
-
-              <MotionButton
-                type="button"
-                variant="outline"
-                size="lg"
-                className="h-12 w-full text-base"
-                {...secondaryInteractions}
-                transition={secondaryTransition}
-                onClick={() => {
-                  onOpenChange(false)
-                  router.push("/catalog")
-                }}
-              >
-                Continue shopping
-              </MotionButton>
+                  onClick={goToCheckout}
+                >
+                  {isCheckoutPending ? "Opening checkout…" : "Checkout"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="lg"
+                  className="h-12 w-full text-sm"
+                  onClick={goToCatalog}
+                >
+                  Continue shopping
+                </Button>
+              </div>
             </div>
           </>
-        ) : isLoading ? (
-          <div className="flex flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={`cart-drawer-loading-${index}`} className="h-24 w-full" />
-            ))}
-          </div>
         ) : (
-          <motion.div
-            key="empty-cart"
-            className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center sm:px-6"
-            initial={{ opacity: prefersReducedMotion ? 1 : 0, y: prefersReducedMotion ? 0 : 6 }}
-            animate={{ opacity: 1, y: 0, transition: emptyStateTransition }}
-            exit={{ opacity: 0, y: prefersReducedMotion ? 0 : 6, transition: emptyStateTransition }}
-          >
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-6 py-10 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/70 bg-background/80 shadow-glow">
-              <ShoppingBag className="h-7 w-7 text-muted-foreground" />
+              <ShoppingBag
+                className="h-7 w-7 text-muted-foreground"
+                aria-hidden
+              />
             </div>
-            <div className="space-y-2">
+            <div className="max-w-sm space-y-2">
               <p className="text-lg font-semibold text-foreground">
                 Your cart is empty
               </p>
-              <p className="text-sm text-muted-foreground">
-                Summon something brutal to begin your ritual.
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Browse the catalog and choose a format to get started.
               </p>
             </div>
-            <MotionButton
-              type="button"
-              size="lg"
-              className="mt-2"
-              {...secondaryInteractions}
-              transition={secondaryTransition}
-              onClick={() => {
-                onOpenChange(false)
-                router.push("/catalog")
-              }}
-            >
-              Browse catalog
-            </MotionButton>
-          </motion.div>
+            {error ? (
+              <div
+                className="max-w-sm rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                role="alert"
+              >
+                {error}
+              </div>
+            ) : null}
+            <div className="flex w-full max-w-xs flex-col gap-3">
+              {error ? (
+                <Button
+                  type="button"
+                  variant="outlined"
+                  onClick={retryCart}
+                  disabled={isLoading}
+                >
+                  Retry cart
+                </Button>
+              ) : null}
+              <Button type="button" size="lg" onClick={goToCatalog}>
+                Browse catalog
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </Drawer>
   )
-}
+})
+CartDrawer.displayName = "CartDrawer"
 
 export default CartDrawer

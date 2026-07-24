@@ -227,14 +227,13 @@ const resolveThumbnail = (product: ProductCardSource): string | null =>
 const resolveStockBadge = (
   status: StockStatus,
   lowStockBadgeEligible: boolean
-): { label: string; className: string; dim?: boolean } | null => {
+): { label: string; className: string } | null => {
   switch (status) {
     case "sold_out":
       return {
         label: "Sold out",
         className:
           "border-destructive/80 bg-destructive text-destructive-foreground",
-        dim: true,
       }
     case "low_stock":
       if (!lowStockBadgeEligible) {
@@ -542,12 +541,6 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
                     stockBadge.className
                   )}
                 >
-                  {stockBadge.dim ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-0 rounded-full bg-black/35"
-                    />
-                  ) : null}
                   <span className="relative z-10">{stockBadge.label}</span>
                 </span>
               </div>

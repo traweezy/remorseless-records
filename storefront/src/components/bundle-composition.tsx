@@ -1,6 +1,7 @@
 "use client"
 
-import { Badge, type BadgeProps } from "@/components/ui/badge"
+import BundleAvailabilityBadge from "@/components/bundle-availability-badge"
+import { Badge } from "@/components/ui/badge"
 import { Card, cardVariants } from "@/components/ui/card"
 import { useProductVariantSelection } from "@/components/providers/product-variant-selection-provider"
 import SmartLink from "@/components/ui/smart-link"
@@ -8,31 +9,12 @@ import { buildPublicProductPath } from "@/lib/products/routes"
 import {
   buildBundleItemPresentation,
   hasUnavailableBundleComponents,
-  type BundleItemAvailabilityStatus,
 } from "@/lib/products/bundle-availability"
 import { cn } from "@/lib/ui/cn"
 import type { BundleComposition as BundleCompositionData } from "@/types/bundle"
 
 type BundleCompositionProps = {
   bundle: BundleCompositionData
-}
-
-const itemStatuses: Record<
-  BundleItemAvailabilityStatus,
-  { label: string; variant: BadgeProps["variant"] }
-> = {
-  in_stock: {
-    label: "In stock",
-    variant: "success",
-  },
-  sold_out: {
-    label: "Sold out",
-    variant: "danger",
-  },
-  unknown: {
-    label: "Availability unknown",
-    variant: "default",
-  },
 }
 
 const BundleComposition = ({ bundle }: BundleCompositionProps) => {
@@ -80,7 +62,6 @@ const BundleComposition = ({ bundle }: BundleCompositionProps) => {
             item,
             selectedVariantId
           )
-          const status = itemStatuses[presentation.status]
           const content = (
             <span className="min-w-0">
               <span className="block font-headline text-sm uppercase tracking-[0.2rem] text-foreground">
@@ -112,12 +93,7 @@ const BundleComposition = ({ bundle }: BundleCompositionProps) => {
                 ) : (
                   content
                 )}
-                <Badge
-                  variant={status.variant}
-                  className="px-2.5 py-1 tracking-[0.22rem]"
-                >
-                  {status.label}
-                </Badge>
+                <BundleAvailabilityBadge status={presentation.status} />
               </Card>
             </li>
           )

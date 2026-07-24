@@ -290,6 +290,139 @@ test("visible interactive controls consistently use pointer cursors", async ({
   await expectVisibleInteractivePointers(page)
 })
 
+test("cart drawer stays usable and contained on mobile devices", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/api/cart", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue()
+      return
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        cart: {
+          id: "cart_ci_mobile",
+          currency_code: "usd",
+          subtotal: 3_600,
+          total: 3_600,
+          items: [
+            {
+              id: "cali_ci_mobile",
+              title: "Pathological Decomposition",
+              product_title: "Pathological Decomposition",
+              product_handle:
+                "music-release-pathologist-pathological-decomposition",
+              variant_id: "variant_ci_pathologist_lp",
+              variant_title: "LP",
+              quantity: 2,
+              unit_price: 1_800,
+              subtotal: 3_600,
+              thumbnail: null,
+              variant: {
+                id: "variant_ci_pathologist_lp",
+                title: "LP",
+                manage_inventory: true,
+                allow_backorder: false,
+                inventory_quantity: 3,
+              },
+              product: {
+                id: "prod_ci_pathologist",
+                handle: "music-release-pathologist-pathological-decomposition",
+                metadata: {
+                  artist_names: ["Pathologist"],
+                  catalog_import: {
+                    product_type: "music_release",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      }),
+    })
+  })
+
+  await page.goto("/", { waitUntil: "networkidle" })
+  const rejectCookies = page.getByRole("button", {
+    name: "Reject non-essential",
+  })
+  if (await rejectCookies.isVisible()) {
+    await rejectCookies.click()
+  }
+
+  await page.getByRole("button", { name: "Open cart" }).click()
+  const drawer = page.getByRole("dialog", { name: "Shopping cart" })
+  await expect(drawer).toBeVisible()
+  await expect(drawer.getByText("Pathologist", { exact: true })).toBeVisible()
+  await expect(drawer.getByText("Only 3 available")).toBeVisible()
+  await expect(drawer.getByText("Current total")).toBeVisible()
+  await expect(drawer.getByText("Calculated at checkout")).toHaveCount(2)
+  await expect(drawer.getByRole("button", { name: "Checkout" })).toBeEnabled()
+  await expectVisibleInteractivePointers(page)
+
+  const viewportWidth =
+    page.viewportSize()?.width ?? (await page.evaluate(() => window.innerWidth))
+  await expect
+    .poll(
+      () => drawer.evaluate((dialog) => dialog.getBoundingClientRect().right),
+      {
+        message: "drawer opening animation should settle inside the viewport",
+      }
+    )
+    .toBeLessThanOrEqual(viewportWidth)
+
+  const layout = await drawer.evaluate((dialog) => {
+    const checkout = Array.from(
+      dialog.querySelectorAll<HTMLButtonElement>("button")
+    ).find((button) => button.textContent?.trim() === "Checkout")
+    const bounds = dialog.getBoundingClientRect()
+    const checkoutBounds = checkout?.getBoundingClientRect()
+    const controls = Array.from(
+      dialog.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]")
+    )
+      .filter((element) => {
+        const rect = element.getBoundingClientRect()
+        return rect.width > 0 && rect.height > 0
+      })
+      .map((element) => {
+        const rect = element.getBoundingClientRect()
+        return { width: rect.width, height: rect.height }
+      })
+
+    return {
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      documentWidth: document.documentElement.scrollWidth,
+      drawerLeft: bounds.left,
+      drawerRight: bounds.right,
+      drawerWidth: bounds.width,
+      checkoutBottom: checkoutBounds?.bottom ?? Number.POSITIVE_INFINITY,
+      controls,
+    }
+  })
+
+  expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth)
+  expect(layout.drawerLeft).toBeGreaterThanOrEqual(0)
+  expect(layout.drawerRight).toBeLessThanOrEqual(layout.viewportWidth)
+  expect(layout.drawerWidth).toBeLessThanOrEqual(layout.viewportWidth)
+  expect(layout.checkoutBottom).toBeLessThanOrEqual(layout.viewportHeight)
+  expect(layout.controls.length).toBeGreaterThan(0)
+  for (const control of layout.controls) {
+    expect(control.width).toBeGreaterThanOrEqual(24)
+    expect(control.height).toBeGreaterThanOrEqual(24)
+  }
+
+  const deviceName = testInfo.project.name
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+  await page.screenshot({
+    path: `/tmp/remorseless-cart-drawer-${deviceName}.png`,
+  })
+})
+
 test("catalog filters stay stable and combine predictably", async ({
   page,
 }) => {
