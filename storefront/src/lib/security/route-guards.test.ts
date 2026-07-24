@@ -91,16 +91,33 @@ describe("route guards", () => {
     process.env.NEXT_PUBLIC_SITE_URL = `https://${trustedHost}`
     process.env.NEXT_PUBLIC_BASE_URL = `https://${faker.internet.domainName().toLowerCase()}`
 
-    const request = createRequest(`https://${faker.internet.domainName().toLowerCase()}/api/contact`, {
-      headers: {
-        origin: `https://${trustedHost}`,
-      },
-    })
+    const request = createRequest(
+      `https://${faker.internet.domainName().toLowerCase()}/api/contact`,
+      {
+        headers: {
+          origin: `https://${trustedHost}`,
+        },
+      }
+    )
 
     expect(enforceTrustedOrigin(request)).toBeNull()
   })
 
-  it("does not block when origin or referer headers are missing", async () => {
+  it("does not trust a client-supplied forwarded host", async () => {
+    const { enforceTrustedOrigin } = await import("@/lib/security/route-guards")
+    const trustedHost = faker.internet.domainName().toLowerCase()
+    const attackerHost = faker.internet.domainName().toLowerCase()
+    const request = createRequest(`https://${trustedHost}/api/cart`, {
+      headers: {
+        origin: `https://${attackerHost}`,
+        "x-forwarded-host": attackerHost,
+      },
+    })
+
+    expect(enforceTrustedOrigin(request)?.status).toBe(403)
+  })
+
+  it("blocks mutations when both origin and referer are missing", async () => {
     const { enforceTrustedOrigin } = await import("@/lib/security/route-guards")
     const host = faker.internet.domainName().toLowerCase()
     const request = createRequest(`https://${host}/api/contact`, {
@@ -109,7 +126,29 @@ describe("route guards", () => {
       },
     })
 
-    expect(enforceTrustedOrigin(request)).toBeNull()
+    const response = enforceTrustedOrigin(request)
+    expect(response?.status).toBe(403)
+    await expect(response?.json()).resolves.toEqual({
+      error: "Request source is required.",
+    })
+  })
+
+  it("blocks browser-declared cross-site mutations", async () => {
+    const { enforceTrustedOrigin } = await import("@/lib/security/route-guards")
+    const host = faker.internet.domainName().toLowerCase()
+    const request = createRequest(`https://${host}/api/contact`, {
+      headers: {
+        origin: `https://${host}`,
+        "sec-fetch-site": "cross-site",
+        "x-forwarded-host": host,
+      },
+    })
+
+    const response = enforceTrustedOrigin(request)
+    expect(response?.status).toBe(403)
+    await expect(response?.json()).resolves.toEqual({
+      error: "Cross-site requests are not allowed.",
+    })
   })
 
   it("applies per-ip rate limiting and includes retry-after", async () => {
@@ -147,10 +186,18 @@ describe("route guards", () => {
       },
     })
     expect(
-      enforceRateLimit(realIpRequest, { key, max: 1, windowMs: faker.number.int({ min: 1000, max: 5000 }) })
+      enforceRateLimit(realIpRequest, {
+        key,
+        max: 1,
+        windowMs: faker.number.int({ min: 1000, max: 5000 }),
+      })
     ).toBeNull()
     expect(
-      enforceRateLimit(realIpRequest, { key, max: 1, windowMs: faker.number.int({ min: 1000, max: 5000 }) })?.status
+      enforceRateLimit(realIpRequest, {
+        key,
+        max: 1,
+        windowMs: faker.number.int({ min: 1000, max: 5000 }),
+      })?.status
     ).toBe(429)
 
     const cfIpRequest = createRequest(faker.internet.url(), {
@@ -214,9 +261,37 @@ describe("route guards", () => {
       body,
     })
 
-    const result = await parseJsonBody(request, z.object({ value: z.string() }), {
-      maxBytes: body.length,
+    const result = await parseJsonBody(
+      request,
+      z.object({ value: z.string() }),
+      {
+        maxBytes: body.length,
+      }
+    )
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.response.status).toBe(413)
+    }
+  })
+
+  it("enforces the byte limit when content-length is absent", async () => {
+    const { parseJsonBody } = await import("@/lib/security/route-guards")
+    const body = JSON.stringify({ value: faker.string.alphanumeric(128) })
+    const request = createRequest(faker.internet.url(), {
+      headers: {
+        "content-type": "application/json",
+      },
+      body,
     })
+
+    const result = await parseJsonBody(
+      request,
+      z.object({ value: z.string() }),
+      {
+        maxBytes: 32,
+      }
+    )
 
     expect(result.ok).toBe(false)
     if (!result.ok) {
@@ -269,7 +344,8 @@ describe("route guards", () => {
   })
 
   it("parses valid json and preserves no-store semantics", async () => {
-    const { jsonApiError, jsonApiResponse, parseJsonBody } = await import("@/lib/security/route-guards")
+    const { jsonApiError, jsonApiResponse, parseJsonBody } =
+      await import("@/lib/security/route-guards")
     const schema = z.object({
       at: z.string().datetime(),
       amount: z.number().int().min(1),

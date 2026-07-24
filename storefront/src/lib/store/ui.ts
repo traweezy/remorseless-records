@@ -3,6 +3,8 @@ import { useStoreWithEqualityFn } from "zustand/traditional"
 import { shallow } from "zustand/shallow"
 
 export type UIStoreState = {
+  isCartOpen: boolean
+  setCartOpen: (open: boolean) => void
   isSearchOpen: boolean
   setSearchOpen: (open: boolean) => void
   isMenuOpen: boolean
@@ -10,6 +12,11 @@ export type UIStoreState = {
 }
 
 const uiStoreBase = createStore<UIStoreState>()((set) => ({
+  isCartOpen: false,
+  setCartOpen: (open: boolean) =>
+    set((state) =>
+      state.isCartOpen === open ? state : { ...state, isCartOpen: open }
+    ),
   isSearchOpen: false,
   setSearchOpen: (open: boolean) =>
     set((state) =>
@@ -22,7 +29,7 @@ const uiStoreBase = createStore<UIStoreState>()((set) => ({
     ),
 }))
 
-export const useUIStore = <T,>(selector: (state: UIStoreState) => T): T =>
+export const useUIStore = <T>(selector: (state: UIStoreState) => T): T =>
   useStoreWithEqualityFn(uiStoreBase, selector, shallow)
 
 export const uiStore = uiStoreBase

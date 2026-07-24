@@ -1,51 +1,73 @@
+import type { NextRequest } from "next/server"
 import { unstable_noStore as noStore } from "next/cache"
-import { z } from "zod"
 
-import { createCart } from "@/lib/cart/api"
+import { getCart } from "@/lib/cart/api"
 import {
-  enforceRateLimit,
+  clearCartCookie,
+  readCartCookie,
+  setCartCookie,
+} from "@/lib/cart/cookie"
+import { mapCartError } from "@/lib/cart/errors"
+import { enforceCartRateLimit } from "@/lib/security/cart-rate-limit"
+import {
   enforceTrustedOrigin,
-  jsonApiError,
+  jsonApiProblem,
   jsonApiResponse,
-  parseJsonBody,
 } from "@/lib/security/route-guards"
 
-const createCartSchema = z
-  .object({
-    region_id: z.string().trim().min(1).optional(),
+export const GET = async (request: NextRequest): Promise<Response> => {
+  noStore()
+  const rateLimited = await enforceCartRateLimit(request, {
+    key: "api:cart:get",
+    max: 180,
+    windowMs: 60_000,
   })
-  .strict()
-
-export const POST = async (request: Request): Promise<Response> => {
-  try {
-    noStore()
-    const rateLimited = enforceRateLimit(request, {
-      key: "api:cart:create",
-      max: 60,
-      windowMs: 60_000,
-    })
-    if (rateLimited) {
-      return rateLimited
-    }
-
-    const originCheck = enforceTrustedOrigin(request)
-    if (originCheck) {
-      return originCheck
-    }
-
-    const parsed = await parseJsonBody(request, createCartSchema, {
-      maxBytes: 2 * 1024,
-      requireJsonContentType: false,
-    })
-    if (!parsed.ok) {
-      return parsed.response
-    }
-
-    const regionId = parsed.data.region_id
-    const cart = await createCart(regionId)
-    return jsonApiResponse({ cart })
-  } catch {
-    console.error("Failed to create cart")
-    return jsonApiError("Unable to create a cart right now.", 500)
+  if (rateLimited) {
+    return rateLimited
   }
+
+  const cookie = readCartCookie(request)
+  if (cookie.status !== "valid") {
+    const response = jsonApiResponse({ cart: null })
+    return cookie.status === "invalid" ? clearCartCookie(response) : response
+  }
+
+  try {
+    const cart = await getCart(cookie.cartId)
+    const response = jsonApiResponse({ cart })
+    return cookie.needsRotation ? setCartCookie(response, cart.id) : response
+  } catch (error: unknown) {
+    const problem = mapCartError(
+      error,
+      "Unable to retrieve the cart right now."
+    )
+    if (problem.status === 404) {
+      return clearCartCookie(jsonApiResponse({ cart: null }))
+    }
+
+    console.error("Failed to retrieve cart", { code: problem.code })
+    return jsonApiProblem({
+      ...problem,
+      instance: request.nextUrl.pathname,
+    })
+  }
+}
+
+export const DELETE = async (request: NextRequest): Promise<Response> => {
+  noStore()
+  const rateLimited = await enforceCartRateLimit(request, {
+    key: "api:cart:clear",
+    max: 30,
+    windowMs: 60_000,
+  })
+  if (rateLimited) {
+    return rateLimited
+  }
+
+  const originCheck = enforceTrustedOrigin(request)
+  if (originCheck) {
+    return originCheck
+  }
+
+  return clearCartCookie(jsonApiResponse({ cart: null }))
 }

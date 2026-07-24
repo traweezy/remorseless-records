@@ -10,6 +10,7 @@ import { useProductVariantSelection } from "@/components/providers/product-varia
 import { formatAmount } from "@/lib/money"
 import { resolveDefaultVariantId } from "@/lib/products/variant-selection"
 import { resolveStockChip } from "@/lib/products/stock-presentation"
+import { useUIStore } from "@/lib/store/ui"
 import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
 import type { VariantOption } from "@/types/product"
@@ -50,6 +51,7 @@ const ProductVariantSelector = ({
   )
   const [isPending, startTransition] = useTransition()
   const { addItem } = useCart()
+  const setCartOpen = useUIStore((state) => state.setCartOpen)
 
   const requestedVariantId =
     variantSelection?.selectedVariantId ?? localSelectedVariantId
@@ -136,6 +138,7 @@ const ProductVariantSelector = ({
     startTransition(async () => {
       try {
         await addItem(selectedVariant.id, safeQuantity)
+        setCartOpen(true)
         toast.success(`${productTitle} added to cart.`)
       } catch (error) {
         console.error(error)

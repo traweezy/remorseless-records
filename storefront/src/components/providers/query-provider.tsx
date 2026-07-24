@@ -1,6 +1,11 @@
 "use client"
 
-import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query"
+import {
+  QueryClient,
+  QueryClientProvider,
+  defaultShouldDehydrateQuery,
+  focusManager,
+} from "@tanstack/react-query"
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import type { ReactNode } from "react"
@@ -63,15 +68,14 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
     return createSyncStoragePersister({ storage: window.localStorage })
   }, [])
 
-  const devtools = process.env.NODE_ENV !== "production"
-    ? (
+  const devtools =
+    process.env.NODE_ENV !== "production" ? (
       <ReactQueryDevtools
         position="bottom"
         buttonPosition="bottom-right"
         initialIsOpen={false}
       />
-    )
-    : null
+    ) : null
 
   if (!persister) {
     return (
@@ -83,7 +87,16 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
   }
 
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) =>
+            query.meta?.persist !== false && defaultShouldDehydrateQuery(query),
+        },
+      }}
+    >
       {children}
       {devtools}
     </PersistQueryClientProvider>

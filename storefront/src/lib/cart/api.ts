@@ -19,7 +19,11 @@ const CART_FIELDS = [
   "discount_total",
   "*items",
   "*items.variant",
+  "items.variant.inventory_quantity",
   "items.variant.calculated_price",
+  "items.product.id",
+  "items.product.handle",
+  "items.product.metadata",
   "items.thumbnail",
   "*shipping_address",
   "*billing_address",
@@ -32,21 +36,37 @@ const CART_FIELDS = [
   "*region.countries",
 ].join(",")
 
+const CART_UPSTREAM_TIMEOUT_MS = 8_000
+
+const cartRequest = <T>(
+  path: string,
+  init?: Omit<Parameters<typeof medusa.client.fetch<T>>[1], "signal">
+): Promise<T> =>
+  medusa.client.fetch<T>(path, {
+    ...init,
+    signal: AbortSignal.timeout(CART_UPSTREAM_TIMEOUT_MS),
+  })
+
 export const createCart = async (
   regionId?: string
 ): Promise<HttpTypes.StoreCart> => {
   const resolvedRegionId = regionId ?? (await resolveRegionId())
-  const { cart } = await storeClient.cart.create(
-    { region_id: resolvedRegionId },
-    { fields: CART_FIELDS }
+  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+    "/store/carts",
+    {
+      method: "POST",
+      body: { region_id: resolvedRegionId },
+      query: { fields: CART_FIELDS },
+    }
   )
   return cart
 }
 
 export const getCart = async (cartId: string): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await storeClient.cart.retrieve(cartId, {
-    fields: CART_FIELDS,
-  })
+  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+    `/store/carts/${cartId}`,
+    { query: { fields: CART_FIELDS } }
+  )
   return cart
 }
 
@@ -55,10 +75,13 @@ export const addLineItem = async (
   variantId: string,
   quantity: number
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await storeClient.cart.createLineItem(
-    cartId,
-    { variant_id: variantId, quantity },
-    { fields: CART_FIELDS }
+  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+    `/store/carts/${cartId}/line-items`,
+    {
+      method: "POST",
+      body: { variant_id: variantId, quantity },
+      query: { fields: CART_FIELDS },
+    }
   )
 
   return cart
@@ -69,11 +92,13 @@ export const updateLineItem = async (
   lineItemId: string,
   quantity: number
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await storeClient.cart.updateLineItem(
-    cartId,
-    lineItemId,
-    { quantity },
-    { fields: CART_FIELDS }
+  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+    `/store/carts/${cartId}/line-items/${lineItemId}`,
+    {
+      method: "POST",
+      body: { quantity },
+      query: { fields: CART_FIELDS },
+    }
   )
 
   return cart
@@ -83,9 +108,13 @@ export const removeLineItem = async (
   cartId: string,
   lineItemId: string
 ): Promise<HttpTypes.StoreCart> => {
-  const response = await storeClient.cart.deleteLineItem(cartId, lineItemId, {
-    fields: CART_FIELDS,
-  })
+  const response = await cartRequest<HttpTypes.StoreLineItemDeleteResponse>(
+    `/store/carts/${cartId}/line-items/${lineItemId}`,
+    {
+      method: "DELETE",
+      query: { fields: CART_FIELDS },
+    }
+  )
 
   const parent = response.parent
   if (!parent) {

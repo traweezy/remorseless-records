@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import Drawer, { DrawerCloseButton } from "@/components/ui/drawer"
 import SmartLink from "@/components/ui/smart-link"
 import { formatAmount } from "@/lib/money"
+import { useUIStore } from "@/lib/store/ui"
 import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
 
@@ -39,9 +40,12 @@ const SiteHeaderShell = () => {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [isCartOpen, setCartOpen] = useState(false)
   const [isMenuOpen, setMenuOpen] = useState(false)
   const [scrollProgress, setScrollProgress] = useState(0)
+  const { isCartOpen, setCartOpen } = useUIStore((state) => ({
+    isCartOpen: state.isCartOpen,
+    setCartOpen: state.setCartOpen,
+  }))
   const { cart, itemCount, refreshCart } = useCart()
 
   const prefetchCart = useCallback(() => {
@@ -123,12 +127,10 @@ const SiteHeaderShell = () => {
   useEffect(() => {
     if (typeof window === "undefined") return
     const shouldOpenCart = searchParams?.get("cart") === "1"
-    const stored = window.localStorage.getItem("rr.cart.open")
-    if (!shouldOpenCart && stored !== "1") {
+    if (!shouldOpenCart) {
       return
     }
 
-    window.localStorage.removeItem("rr.cart.open")
     const cleanup = deferEffectUpdate(() => setCartOpen(true))
 
     if (shouldOpenCart) {
@@ -138,7 +140,7 @@ const SiteHeaderShell = () => {
     }
 
     return cleanup
-  }, [router, searchParams])
+  }, [router, searchParams, setCartOpen])
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg relative">
