@@ -261,16 +261,9 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                     {productTitle}
                   </h1>
                   {isMusicRelease && artistDisplay ? (
-                    <dl className="pt-1">
-                      <div className="space-y-1">
-                        <dt className="font-headline text-[0.6rem] uppercase tracking-[0.3rem] text-destructive">
-                          Artist
-                        </dt>
-                        <dd className="break-words font-headline text-base uppercase tracking-[0.18rem] text-foreground">
-                          {artistDisplay}
-                        </dd>
-                      </div>
-                    </dl>
+                    <p className="break-words pt-1 font-headline text-base uppercase tracking-[0.18rem] text-foreground">
+                      {artistDisplay}
+                    </p>
                   ) : null}
                   {product.subtitle ? (
                     <p className="text-sm text-muted-foreground">

@@ -175,72 +175,64 @@ const ProductVariantSelector = ({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <h2 className="font-headline text-[0.7rem] uppercase tracking-[0.4rem] text-muted-foreground">
-          Format
-        </h2>
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          {variants.length ? (
-            variants.map((variant) => {
-              const isSelected = variant.id === selectedVariant?.id
-              const variantPrice = variant.hasPrice
-                ? formatAmount(variant.currency, variant.amount)
-                : "Price unavailable"
-              const isSoldOut = variant.stockStatus === "sold_out"
-              const isUnavailable = !variant.hasPrice
-              const stockChip = resolveStockChip(variant)
+      <div
+        className="grid gap-2.5 sm:grid-cols-2"
+        role="group"
+        aria-label="Available formats"
+      >
+        {variants.length ? (
+          variants.map((variant) => {
+            const isSelected = variant.id === selectedVariant?.id
+            const variantPrice = variant.hasPrice
+              ? formatAmount(variant.currency, variant.amount)
+              : "Price unavailable"
+            const isSoldOut = variant.stockStatus === "sold_out"
+            const isUnavailable = !variant.hasPrice
+            const stockChip = resolveStockChip(variant)
 
-              return (
-                <Button
-                  key={variant.id}
-                  type="button"
-                  variant="unstyled"
-                  size="auto"
-                  className={cn(
-                    "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-3.5 text-left transition",
-                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                    isSelected &&
-                      !isSoldOut &&
-                      !isUnavailable &&
-                      "border-accent bg-accent/10",
-                    (isSoldOut || isUnavailable) &&
-                      "cursor-not-allowed opacity-50"
-                  )}
-                  disabled={isSoldOut || isUnavailable}
-                  onClick={() => handleVariantSelect(variant.id)}
-                >
-                  <span className="font-headline text-sm uppercase tracking-[0.3rem] text-foreground">
-                    {variant.title}
-                  </span>
-                  <span className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
-                    {variantPrice}
-                  </span>
-                  {stockChip ? (
-                    <Badge variant={stockChip.tone} className="px-2.5 py-1">
-                      {stockChip.label}
-                    </Badge>
-                  ) : null}
-                </Button>
-              )
-            })
-          ) : (
-            <div className="rounded-2xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground">
-              All formats are currently in production. Join the newsletter to be
-              alerted when the next pressing drops.
-            </div>
-          )}
-        </div>
+            return (
+              <Button
+                key={variant.id}
+                type="button"
+                variant="unstyled"
+                size="auto"
+                className={cn(
+                  "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-3.5 text-left transition",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                  isSelected &&
+                    !isSoldOut &&
+                    !isUnavailable &&
+                    "border-accent bg-accent/10",
+                  (isSoldOut || isUnavailable) &&
+                    "cursor-not-allowed opacity-50"
+                )}
+                aria-pressed={isSelected}
+                disabled={isSoldOut || isUnavailable}
+                onClick={() => handleVariantSelect(variant.id)}
+              >
+                <span className="font-headline text-sm uppercase tracking-[0.3rem] text-foreground">
+                  {variant.title}
+                </span>
+                <span className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
+                  {variantPrice}
+                </span>
+                {stockChip ? (
+                  <Badge variant={stockChip.tone} className="px-2.5 py-1">
+                    {stockChip.label}
+                  </Badge>
+                ) : null}
+              </Button>
+            )
+          })
+        ) : (
+          <div className="rounded-2xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground sm:col-span-2">
+            All formats are currently in production. Join the newsletter to be
+            alerted when the next pressing drops.
+          </div>
+        )}
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-border/60 bg-surface/80 p-5 shadow-elegant">
-        <div className="flex flex-col gap-2">
-          <p className="font-headline text-xs uppercase tracking-[0.35rem] text-muted-foreground">
-            Selected Format
-          </p>
-          <span className="font-display text-3xl uppercase tracking-[0.3rem] text-foreground">
-            {selectedVariant?.title ?? "None"}
-          </span>
-        </div>
+      <div className="space-y-3 border-t border-border/60 pt-4">
         <div className="flex flex-wrap items-center gap-4">
           <label
             className="flex items-center gap-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground"

@@ -83,9 +83,12 @@ describe("ProductQuickView", () => {
     )
 
     const quickShop = screen.getByRole("dialog", { name: "Quick shop" })
-    const selectedFormat = within(quickShop).getByText("Selected Format", {
-      exact: true,
-    }).parentElement
+    const cdFormat = within(quickShop).getByRole("button", {
+      name: /3CD Bundle/i,
+    })
+    const lpFormat = within(quickShop).getByRole("button", {
+      name: /3LP Bundle/i,
+    })
 
     expect(
       within(quickShop).getAllByText("$33.00", { exact: true })
@@ -99,14 +102,18 @@ describe("ProductQuickView", () => {
     expect(
       within(quickShop).getByText("Only 1 left", { exact: true })
     ).toBeInTheDocument()
-    expect(selectedFormat).toHaveTextContent("3CD Bundle")
-    expect(selectedFormat).not.toHaveTextContent("$33.00")
+    expect(
+      within(quickShop).queryByText("Selected Format", { exact: true })
+    ).not.toBeInTheDocument()
+    expect(
+      within(quickShop).queryByText("Format", { exact: true })
+    ).not.toBeInTheDocument()
+    expect(cdFormat).toHaveAttribute("aria-pressed", "true")
+    expect(lpFormat).toHaveAttribute("aria-pressed", "false")
 
-    fireEvent.click(
-      within(quickShop).getByRole("button", { name: /3LP Bundle/i })
-    )
+    fireEvent.click(lpFormat)
 
-    expect(selectedFormat).toHaveTextContent("3LP Bundle")
-    expect(selectedFormat).not.toHaveTextContent("$56.00")
+    expect(cdFormat).toHaveAttribute("aria-pressed", "false")
+    expect(lpFormat).toHaveAttribute("aria-pressed", "true")
   })
 })
