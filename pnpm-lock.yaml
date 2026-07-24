@@ -20,7 +20,8 @@ overrides:
   ajv@>=7.0.0 <8.18.0: ^8.20.0
   axios: ^1.18.0
   body-parser@<1.20.6: ^1.20.6
-  brace-expansion: ^2.1.2
+  minimatch@<10.0.0>brace-expansion: 2.1.2
+  minimatch@>=10.0.0>brace-expansion: 5.0.8
   devalue: ^5.8.1
   diff: ^4.0.4
   esbuild: ^0.28.1
@@ -69,6 +70,7 @@ packageExtensionsChecksum: sha256-LDDVnlLDLpCpQG3Vs12l+jXDTD/rs5l4qYfp4nrVqYM=
 patchedDependencies:
   '@remix-run/router@1.23.3': cba02de04f5a5945f782a22652c0c6f20c7ad475ef713b567f9ad611c3dc4f60
   '@rokmohar/medusa-plugin-meilisearch@1.4.3': cf9d879ce3e7d0ef5b3d4cc4207d53a5629d93bdb141423df6d9c56f044cec1e
+  brace-expansion@2.1.2: c05dbee068d9e0548c3eba09edf41b63368dd5471cf4c57cd963bf8f8decb977
   react-router-dom@6.30.4: b68c27113138b12cb3983d1999ab34dcddcd39b2631b472795f2644c2b8c91af
 
 importers:
@@ -352,6 +354,9 @@ importers:
       react-dom:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
+      redis:
+        specifier: 6.1.0
+        version: 6.1.0(@opentelemetry/api@1.9.1)
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
@@ -5382,6 +5387,10 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
+  balanced-match@4.0.4:
+    resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
+    engines: {node: 18 || 20 || >=22}
+
   bare-events@2.9.1:
     resolution: {integrity: sha512-Z0oHEHAFDZkffN8Qc39zNZjQlMDkPJRyyyZieU1VH7u8c5S+qHZ2S8ixdKIAxEjfHO7FJxXmJWgteOghVanIsg==}
     peerDependencies:
@@ -5468,6 +5477,10 @@ packages:
 
   brace-expansion@2.1.2:
     resolution: {integrity: sha512-w5JZcKgdhDOgOwm8H+KgbosopHMuGcl6qbulwjtz3SM7I7P3yW1eAjzMPLrIE+NQ9vjgANKHWeMHnrT0OXW1oA==}
+
+  brace-expansion@5.0.8:
+    resolution: {integrity: sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg==}
+    engines: {node: 20 || >=22}
 
   braces@3.0.3:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
@@ -15611,6 +15624,8 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
+  balanced-match@4.0.4: {}
+
   bare-events@2.9.1: {}
 
   bare-fs@4.7.4:
@@ -15704,9 +15719,13 @@ snapshots:
       widest-line: 3.1.0
       wrap-ansi: 7.0.0
 
-  brace-expansion@2.1.2:
+  brace-expansion@2.1.2(patch_hash=c05dbee068d9e0548c3eba09edf41b63368dd5471cf4c57cd963bf8f8decb977):
     dependencies:
       balanced-match: 1.0.2
+
+  brace-expansion@5.0.8:
+    dependencies:
+      balanced-match: 4.0.4
 
   braces@3.0.3:
     dependencies:
@@ -18388,15 +18407,15 @@ snapshots:
 
   minimatch@10.2.5:
     dependencies:
-      brace-expansion: 2.1.2
+      brace-expansion: 5.0.8
 
   minimatch@3.1.5:
     dependencies:
-      brace-expansion: 2.1.2
+      brace-expansion: 2.1.2(patch_hash=c05dbee068d9e0548c3eba09edf41b63368dd5471cf4c57cd963bf8f8decb977)
 
   minimatch@9.0.9:
     dependencies:
-      brace-expansion: 2.1.2
+      brace-expansion: 2.1.2(patch_hash=c05dbee068d9e0548c3eba09edf41b63368dd5471cf4c57cd963bf8f8decb977)
 
   minimist@1.2.8: {}
 
