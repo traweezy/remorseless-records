@@ -32,7 +32,7 @@ jobs:
           egress-policy: audit
       - uses: actions/checkout@v7
       - name: Shai-Hulud 2.0 Detector
-        uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
+        uses: gensecaihq/Shai-Hulud-2.0-Detector@v2.1.0
         with:
           fail-on-critical: true
       - uses: actions/setup-node@v7
