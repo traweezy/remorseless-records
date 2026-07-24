@@ -50,32 +50,11 @@ export const getCart = async (cartId: string): Promise<HttpTypes.StoreCart> => {
   return cart
 }
 
-const reconcileBundleVariant = async (
-  variantId: string,
-  quantity: number
-): Promise<void> => {
-  await medusa.client.fetch("/store/catalog/bundles/reconcile", {
-    method: "POST",
-    body: {
-      variantId,
-      quantity,
-    },
-  })
-}
-
-const reconcileCartBundles = async (cartId: string): Promise<void> => {
-  await medusa.client.fetch("/store/catalog/bundles/reconcile", {
-    method: "POST",
-    body: { cartId },
-  })
-}
-
 export const addLineItem = async (
   cartId: string,
   variantId: string,
   quantity: number
 ): Promise<HttpTypes.StoreCart> => {
-  await reconcileBundleVariant(variantId, quantity)
   const { cart } = await storeClient.cart.createLineItem(
     cartId,
     { variant_id: variantId, quantity },
@@ -90,11 +69,6 @@ export const updateLineItem = async (
   lineItemId: string,
   quantity: number
 ): Promise<HttpTypes.StoreCart> => {
-  const currentCart = await getCart(cartId)
-  const currentItem = currentCart.items?.find((item) => item.id === lineItemId)
-  if (currentItem?.variant_id) {
-    await reconcileBundleVariant(currentItem.variant_id, quantity)
-  }
   const { cart } = await storeClient.cart.updateLineItem(
     cartId,
     lineItemId,
@@ -255,7 +229,5 @@ export const initiatePaymentSession = async (
 
 export const completeCart = async (
   cartId: string
-): Promise<HttpTypes.StoreCompleteCartResponse> => {
-  await reconcileCartBundles(cartId)
-  return storeClient.cart.complete(cartId)
-}
+): Promise<HttpTypes.StoreCompleteCartResponse> =>
+  storeClient.cart.complete(cartId)

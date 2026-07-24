@@ -162,14 +162,6 @@ export default defineMiddlewares({
       middlewares: [strictStoreMutationRateLimit, enforceStoreOrigin],
     },
     {
-      matcher: "/store/catalog/bundles/reconcile",
-      methods: ["POST"],
-      middlewares: [strictStoreMutationRateLimit, enforceStoreOrigin],
-      bodyParser: {
-        sizeLimit: "4kb",
-      },
-    },
-    {
       matcher: /^\/store\/catalog\/products\/[^/]+\/bundle$/,
       methods: ["GET"],
       middlewares: [catalogReadRateLimit],

@@ -215,7 +215,7 @@ export const GET = async (
       });
       const available =
         mapping.selectionMode === "any"
-          ? options.some((option) => option.available)
+          ? (options[0]?.available ?? false)
           : options.every((option) => option.available);
       if (!available) {
         unavailableMappingCount += 1;

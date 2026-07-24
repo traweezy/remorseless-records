@@ -74,7 +74,7 @@ describe("bundle inventory planning", () => {
     ]);
   });
 
-  it("selects the first alternative that can satisfy the requested quantity", () => {
+  it("keeps the first alternative deterministic across cart inventory states", () => {
     const components = [
       component({
         quantity: 2,
@@ -93,19 +93,17 @@ describe("bundle inventory planning", () => {
       buildBundleVariantInventoryPlan({
         bundleVariantIds: ["bundle"],
         components,
-        availabilityByVariantId: { white: 3, red: 8 },
-        requestedQuantityByBundleVariantId: { bundle: 2 },
       }),
     ).toEqual([
       {
         bundleVariantId: "bundle",
-        links: [{ inventoryItemId: "red-item", requiredQuantity: 2 }],
-        selectedAlternativeVariantIds: ["red"],
+        links: [{ inventoryItemId: "white-item", requiredQuantity: 2 }],
+        selectedAlternativeVariantIds: ["white"],
       },
     ]);
   });
 
-  it("keeps the preferred alternative linked when every option is unavailable", () => {
+  it("keeps the preferred alternative linked without an inventory snapshot", () => {
     const components = [
       component({
         metadata: resolvedMapping({
@@ -123,7 +121,6 @@ describe("bundle inventory planning", () => {
       buildBundleVariantInventoryPlan({
         bundleVariantIds: ["bundle"],
         components,
-        availabilityByVariantId: { white: 0, red: 0 },
       })[0],
     ).toEqual({
       bundleVariantId: "bundle",

@@ -1,15 +1,12 @@
 import type { MedusaRequest } from "@medusajs/framework/http";
 import {
   ContainerRegistrationKeys,
-  getTotalVariantAvailability,
-  getVariantAvailability,
   MedusaError,
   Modules,
 } from "@medusajs/framework/utils";
 
 type JsonRecord = Record<string, unknown>;
 type MedusaContainer = MedusaRequest["scope"];
-type VariantAvailabilityQuery = Parameters<typeof getVariantAvailability>[0];
 
 type CatalogBundleProfileRecord = {
   id: string;
@@ -86,17 +83,6 @@ export type BundleVariantInventoryPlan = {
 type BuildPlanInput = {
   bundleVariantIds: string[];
   components: CatalogBundleComponentRecord[];
-  availabilityByVariantId?: Readonly<Record<string, number | null | undefined>>;
-  requestedQuantityByBundleVariantId?: Readonly<
-    Record<string, number | undefined>
-  >;
-};
-
-type SyncOptions = {
-  salesChannelId?: string | null;
-  requestedQuantityByBundleVariantId?: Readonly<
-    Record<string, number | undefined>
-  >;
 };
 
 const isRecord = (value: unknown): value is JsonRecord =>
@@ -198,20 +184,16 @@ const fallbackMapping = (
 
 const selectComponentVariants = (
   mapping: ResolvedVariantMapping,
-  requiredQuantity: number,
-  availabilityByVariantId: Readonly<Record<string, number | null | undefined>>,
 ): ResolvedComponentVariant[] => {
   if (mapping.selectionMode === "exact") {
     return mapping.componentVariants;
   }
 
-  const selected =
-    mapping.componentVariants.find((variant) => {
-      const availability = availabilityByVariantId[variant.variantId];
-      return (
-        typeof availability === "number" && availability >= requiredQuantity
-      );
-    }) ?? mapping.componentVariants[0];
+  // Inventory-kit links are global catalog state. An "any" mapping is treated
+  // as an ordered legacy preference until the alternatives are modeled as
+  // explicit bundle variants. A cart request must never switch this link based
+  // on one shopper's requested quantity or the inventory snapshot it observed.
+  const selected = mapping.componentVariants[0];
 
   return selected ? [selected] : [];
 };
@@ -219,13 +201,8 @@ const selectComponentVariants = (
 export const buildBundleVariantInventoryPlan = ({
   bundleVariantIds,
   components,
-  availabilityByVariantId = {},
-  requestedQuantityByBundleVariantId = {},
 }: BuildPlanInput): BundleVariantInventoryPlan[] =>
   bundleVariantIds.map((bundleVariantId) => {
-    const requestedQuantity = asPositiveInteger(
-      requestedQuantityByBundleVariantId[bundleVariantId],
-    );
     const quantitiesByInventoryItemId = new Map<string, number>();
     const selectedAlternativeVariantIds: string[] = [];
 
@@ -243,11 +220,7 @@ export const buildBundleVariantInventoryPlan = ({
       ).filter((mapping) => mapping.bundleVariantIds.includes(bundleVariantId));
 
       applicableMappings.forEach((mapping) => {
-        const selected = selectComponentVariants(
-          mapping,
-          componentQuantity * requestedQuantity,
-          availabilityByVariantId,
-        );
+        const selected = selectComponentVariants(mapping);
         selected.forEach((variant) => {
           quantitiesByInventoryItemId.set(
             variant.inventoryItemId,
@@ -273,29 +246,6 @@ export const buildBundleVariantInventoryPlan = ({
       selectedAlternativeVariantIds,
     };
   });
-
-const collectMappedVariantIds = (
-  components: CatalogBundleComponentRecord[],
-): string[] =>
-  Array.from(
-    new Set(
-      components.flatMap((component) =>
-        parseResolvedVariantMappings(component).flatMap((mapping) =>
-          mapping.componentVariants.map((variant) => variant.variantId),
-        ),
-      ),
-    ),
-  );
-
-const toAvailabilityMap = (
-  availability: Record<string, { availability: number | null }>,
-): Record<string, number | null> =>
-  Object.fromEntries(
-    Object.entries(availability).map(([variantId, value]) => [
-      variantId,
-      value.availability,
-    ]),
-  );
 
 const buildRemoteLink = (
   variantId: string,
@@ -380,7 +330,6 @@ const readBundleVariants = async (
 export const syncComponentDerivedBundleInventory = async (
   container: MedusaContainer,
   productId: string,
-  options: SyncOptions = {},
 ): Promise<BundleVariantInventoryPlan[]> => {
   const catalogService = container.resolve("catalog") as CatalogService;
   const profiles = await catalogService.listCatalogBundleProfiles({
@@ -412,36 +361,9 @@ export const syncComponentDerivedBundleInventory = async (
     );
   }
 
-  const mappedVariantIds = collectMappedVariantIds(components);
-  const query = container.resolve(
-    ContainerRegistrationKeys.QUERY,
-  ) as QueryGraph;
-  const availabilityByVariantId = mappedVariantIds.length
-    ? toAvailabilityMap(
-        options.salesChannelId
-          ? await getVariantAvailability(query as VariantAvailabilityQuery, {
-              variant_ids: mappedVariantIds,
-              sales_channel_id: options.salesChannelId,
-            })
-          : await getTotalVariantAvailability(
-              query as VariantAvailabilityQuery,
-              {
-                variant_ids: mappedVariantIds,
-              },
-            ),
-      )
-    : {};
-
   const plan = buildBundleVariantInventoryPlan({
     bundleVariantIds: bundleVariants.map((variant) => variant.id),
     components,
-    availabilityByVariantId,
-    ...(options.requestedQuantityByBundleVariantId
-      ? {
-          requestedQuantityByBundleVariantId:
-            options.requestedQuantityByBundleVariantId,
-        }
-      : {}),
   });
   if (plan.some((variant) => !variant.links.length)) {
     throw new MedusaError(
@@ -507,104 +429,4 @@ export const syncComponentDerivedBundleInventory = async (
     );
   }
   return plan;
-};
-
-const loadVariantProductIds = async (
-  query: QueryGraph,
-  variantIds: string[],
-): Promise<Record<string, string>> => {
-  if (!variantIds.length) {
-    return {};
-  }
-  const result = await query.graph({
-    entity: "product_variant",
-    fields: ["id", "product_id", "product.id"],
-    filters: { id: variantIds },
-  });
-
-  return Object.fromEntries(
-    result.data.flatMap((variant) => {
-      const variantId = asString(variant.id);
-      const nestedProduct = isRecord(variant.product) ? variant.product : null;
-      const productId =
-        asString(variant.product_id) ?? asString(nestedProduct?.id);
-      return variantId && productId ? [[variantId, productId]] : [];
-    }),
-  );
-};
-
-export const reconcileBundleVariants = async (
-  container: MedusaContainer,
-  input: {
-    salesChannelId: string;
-    quantitiesByVariantId: Readonly<Record<string, number | undefined>>;
-  },
-): Promise<BundleVariantInventoryPlan[]> => {
-  const variantIds = Object.keys(input.quantitiesByVariantId);
-  const query = container.resolve(
-    ContainerRegistrationKeys.QUERY,
-  ) as QueryGraph;
-  const productIdByVariantId = await loadVariantProductIds(query, variantIds);
-  const quantitiesByProductId = new Map<string, Record<string, number>>();
-
-  variantIds.forEach((variantId) => {
-    const productId = productIdByVariantId[variantId];
-    if (!productId) {
-      return;
-    }
-    const productQuantities = quantitiesByProductId.get(productId) ?? {};
-    productQuantities[variantId] = asPositiveInteger(
-      input.quantitiesByVariantId[variantId],
-    );
-    quantitiesByProductId.set(productId, productQuantities);
-  });
-
-  const plans: BundleVariantInventoryPlan[] = [];
-  for (const [
-    productId,
-    requestedQuantityByBundleVariantId,
-  ] of quantitiesByProductId) {
-    plans.push(
-      ...(await syncComponentDerivedBundleInventory(container, productId, {
-        salesChannelId: input.salesChannelId,
-        requestedQuantityByBundleVariantId,
-      })),
-    );
-  }
-  return plans;
-};
-
-export const reconcileCartBundles = async (
-  container: MedusaContainer,
-  input: { cartId: string; salesChannelId: string },
-): Promise<BundleVariantInventoryPlan[]> => {
-  const query = container.resolve(
-    ContainerRegistrationKeys.QUERY,
-  ) as QueryGraph;
-  const result = await query.graph({
-    entity: "cart",
-    fields: ["id", "items.variant_id", "items.quantity"],
-    filters: { id: input.cartId },
-    pagination: { take: 1 },
-  });
-  const cart = result.data[0];
-  if (!cart) {
-    throw new MedusaError(MedusaError.Types.NOT_FOUND, "Cart not found");
-  }
-  const items = Array.isArray(cart.items) ? cart.items : [];
-  const quantitiesByVariantId: Record<string, number> = {};
-  items.forEach((rawItem) => {
-    if (!isRecord(rawItem)) {
-      return;
-    }
-    const variantId = asString(rawItem.variant_id);
-    if (variantId) {
-      quantitiesByVariantId[variantId] = asPositiveInteger(rawItem.quantity);
-    }
-  });
-
-  return reconcileBundleVariants(container, {
-    salesChannelId: input.salesChannelId,
-    quantitiesByVariantId,
-  });
 };
