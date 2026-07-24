@@ -3,18 +3,23 @@
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
 import { Slot as SlotPrimitive } from "radix-ui"
-import { forwardRef } from "react"
+import {
+  forwardRef,
+  type MouseEventHandler,
+  type PointerEventHandler,
+  type SyntheticEvent,
+} from "react"
 
 import { cn } from "@/lib/ui/cn"
 
 const filledButtonClasses =
-  "bg-destructive text-destructive-foreground shadow-[0_10px_30px_-20px_hsla(0,70%,50%,0.75)] hover:bg-destructive/60 hover:shadow-[0_16px_40px_-22px_hsla(0,70%,50%,0.85)]"
+  "bg-destructive text-destructive-foreground shadow-[0_10px_30px_-20px_hsla(0,70%,50%,0.75)] [&:not([data-disabled=true]):hover]:bg-destructive/60 [&:not([data-disabled=true]):hover]:shadow-[0_16px_40px_-22px_hsla(0,70%,50%,0.85)]"
 
 const outlinedButtonClasses =
-  "border border-destructive/70 bg-transparent text-destructive hover:border-destructive hover:bg-destructive/10 hover:text-foreground"
+  "border border-destructive/70 bg-transparent text-destructive [&:not([data-disabled=true]):hover]:border-destructive [&:not([data-disabled=true]):hover]:bg-destructive/10 [&:not([data-disabled=true]):hover]:text-foreground"
 
 const buttonVariants = cva(
-  "inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold uppercase tracking-[0.3rem] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ring-offset-background active:translate-y-[1px]",
+  "inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold uppercase tracking-[0.3rem] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 ring-offset-background [&:not([data-disabled=true]):active]:translate-y-[1px]",
   {
     variants: {
       variant: {
@@ -22,14 +27,15 @@ const buttonVariants = cva(
         outlined: outlinedButtonClasses,
         default: filledButtonClasses,
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/65",
+          "bg-secondary text-secondary-foreground [&:not([data-disabled=true]):hover]:bg-secondary/65",
         ghost:
-          "bg-transparent text-foreground hover:bg-foreground/15 hover:text-foreground/90",
+          "bg-transparent text-foreground [&:not([data-disabled=true]):hover]:bg-foreground/15 [&:not([data-disabled=true]):hover]:text-foreground/90",
         outline:
-          "border border-border bg-transparent text-foreground hover:border-destructive hover:text-destructive hover:bg-destructive/10",
-        muted: "bg-muted text-muted-foreground hover:bg-muted/60",
+          "border border-border bg-transparent text-foreground [&:not([data-disabled=true]):hover]:border-destructive [&:not([data-disabled=true]):hover]:bg-destructive/10 [&:not([data-disabled=true]):hover]:text-destructive",
+        muted:
+          "bg-muted text-muted-foreground [&:not([data-disabled=true]):hover]:bg-muted/60",
         unstyled:
-          "whitespace-normal rounded-none bg-transparent text-inherit font-normal normal-case tracking-normal shadow-none hover:bg-transparent active:translate-y-0",
+          "whitespace-normal rounded-none bg-transparent text-inherit font-normal normal-case tracking-normal shadow-none [&:not([data-disabled=true]):hover]:bg-transparent active:translate-y-0",
       },
       size: {
         default: "h-11 px-6",
@@ -47,6 +53,12 @@ const buttonVariants = cva(
   }
 )
 
+const blockDisabledInteraction = (event: SyntheticEvent): void => {
+  event.preventDefault()
+  event.stopPropagation()
+  event.nativeEvent.stopImmediatePropagation()
+}
+
 export interface ButtonProps
   extends
     React.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -55,13 +67,54 @@ export interface ButtonProps
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      disabled = false,
+      tabIndex,
+      onClickCapture,
+      onPointerDownCapture,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? SlotPrimitive.Root : "button"
+    const ariaDisabled = props["aria-disabled"]
+    const isDisabled =
+      disabled || ariaDisabled === true || ariaDisabled === "true"
+    const handleClickCapture: MouseEventHandler<HTMLButtonElement> = (
+      event
+    ) => {
+      if (isDisabled) {
+        blockDisabledInteraction(event)
+        return
+      }
+      onClickCapture?.(event)
+    }
+    const handlePointerDownCapture: PointerEventHandler<HTMLButtonElement> = (
+      event
+    ) => {
+      if (isDisabled) {
+        blockDisabledInteraction(event)
+        return
+      }
+      onPointerDownCapture?.(event)
+    }
+
     return (
       <Comp
+        {...props}
         className={cn(buttonVariants({ variant, size }), className)}
         ref={ref}
-        {...props}
+        data-disabled={isDisabled ? "true" : undefined}
+        aria-disabled={isDisabled ? true : ariaDisabled}
+        tabIndex={asChild && isDisabled ? -1 : tabIndex}
+        onClickCapture={handleClickCapture}
+        onPointerDownCapture={handlePointerDownCapture}
+        {...(!asChild ? { disabled: isDisabled } : {})}
       />
     )
   }

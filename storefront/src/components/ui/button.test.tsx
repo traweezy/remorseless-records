@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker"
-import { render, screen } from "@testing-library/react"
-import { beforeEach, describe, expect, it } from "vitest"
+import { fireEvent, render, screen } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { Button } from "@/components/ui/button"
 
@@ -16,7 +16,7 @@ describe("Button", () => {
     const button = screen.getByRole("button", { name: label })
     expect(button).toHaveClass("inline-flex")
     expect(button).toHaveClass("cursor-pointer")
-    expect(button).toHaveClass("disabled:cursor-not-allowed")
+    expect(button).toHaveClass("data-[disabled=true]:cursor-not-allowed")
     expect(button).toHaveClass("rounded-full")
   })
 
@@ -31,6 +31,56 @@ describe("Button", () => {
     const link = screen.getByRole("link", { name: label })
     expect(link).toHaveAttribute("href", "/catalog")
     expect(link).toHaveClass("inline-flex")
+  })
+
+  it("keeps native disabled buttons inert", () => {
+    const handleClick = vi.fn()
+    render(
+      <Button type="button" disabled onClick={handleClick}>
+        Unavailable action
+      </Button>
+    )
+
+    const button = screen.getByRole("button", {
+      name: "Unavailable action",
+    })
+    fireEvent.pointerDown(button)
+    fireEvent.click(button)
+
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute("aria-disabled", "true")
+    expect(button).toHaveAttribute("data-disabled", "true")
+    expect(handleClick).not.toHaveBeenCalled()
+  })
+
+  it("makes disabled child links unfocusable and non-interactive", () => {
+    const handleButtonClick = vi.fn()
+    const handleLinkClick = vi.fn()
+    const handleParentClick = vi.fn()
+
+    document.addEventListener("click", handleParentClick)
+    render(
+      <Button asChild disabled onClick={handleButtonClick}>
+        <a href="/catalog" onClick={handleLinkClick}>
+          Disabled catalog link
+        </a>
+      </Button>
+    )
+
+    const link = screen.getByRole("link", {
+      name: "Disabled catalog link",
+    })
+    fireEvent.pointerDown(link)
+    fireEvent.click(link)
+    document.removeEventListener("click", handleParentClick)
+
+    expect(link).toHaveAttribute("href", "/catalog")
+    expect(link).toHaveAttribute("aria-disabled", "true")
+    expect(link).toHaveAttribute("data-disabled", "true")
+    expect(link).toHaveAttribute("tabindex", "-1")
+    expect(handleButtonClick).not.toHaveBeenCalled()
+    expect(handleLinkClick).not.toHaveBeenCalled()
+    expect(handleParentClick).not.toHaveBeenCalled()
   })
 
   it("shares filled and outlined call-to-action variants", () => {
@@ -68,11 +118,7 @@ describe("Button", () => {
     )
 
     const button = screen.getByRole("button", { name: "Custom control" })
-    expect(button).toHaveClass(
-      "h-7",
-      "w-20",
-      "px-1"
-    )
+    expect(button).toHaveClass("h-7", "w-20", "px-1")
     expect(button).not.toHaveClass("h-11", "px-6")
   })
 })
