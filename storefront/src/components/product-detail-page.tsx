@@ -22,7 +22,10 @@ import {
   selectPrimaryVariantForJsonLd,
 } from "@/lib/seo/structured-data"
 import { extractProductCategoryGroups } from "@/lib/products/categories"
-import { buildProductSlugParts } from "@/lib/products/slug"
+import {
+  buildProductSlugParts,
+  extractProductArtistNames,
+} from "@/lib/products/slug"
 import {
   buildPublicProductPath,
   resolvePublicProductRouteType,
@@ -147,8 +150,11 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
         .filter((label) => label.trim().length)
     )
   )
-  const isBundle =
-    resolvePublicProductRouteType({ handle: product.handle }) === "bundle"
+  const productRouteType = resolvePublicProductRouteType({
+    handle: product.handle,
+  })
+  const isBundle = productRouteType === "bundle"
+  const isMusicRelease = productRouteType === "music-release"
   const [relatedProducts, bundleComposition] = await Promise.all([
     loadRelatedProducts(product),
     isBundle && product.handle
@@ -161,6 +167,8 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
 
   const heroImages = product.images ?? []
   const productTitle = product.title ?? "Remorseless Release"
+  const artistNames = extractProductArtistNames(product)
+  const artistDisplay = artistNames.join(" / ")
   const productDescription =
     product.description ??
     "Full release notes, tracklists, and variant breakdowns are on the way."
@@ -190,11 +198,8 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
       : (product.tags ?? [])
           .map((tag) => tag?.value?.trim())
           .filter((value): value is string => Boolean(value))
-  const metadataArtist =
-    typeof metadata?.artist === "string" && metadata.artist.trim().length
-      ? metadata.artist.trim()
-      : null
-  const artistName = metadataArtist ?? product.collection?.title ?? productTitle
+  const artistName =
+    artistNames[0] ?? product.collection?.title ?? slug.artist ?? productTitle
   const variantForJsonLd = selectPrimaryVariantForJsonLd(product)
   const collectionHandle =
     (product.collection as { handle?: string } | undefined)?.handle ??
@@ -249,6 +254,18 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                 <h1 className="break-words font-display text-4xl uppercase tracking-[0.2rem] text-foreground sm:text-5xl sm:tracking-[0.3rem]">
                   {productTitle}
                 </h1>
+                {isMusicRelease && artistDisplay ? (
+                  <dl className="pt-1">
+                    <div className="space-y-1">
+                      <dt className="font-headline text-[0.6rem] uppercase tracking-[0.3rem] text-destructive">
+                        Artist
+                      </dt>
+                      <dd className="break-words font-headline text-base uppercase tracking-[0.18rem] text-foreground">
+                        {artistDisplay}
+                      </dd>
+                    </div>
+                  </dl>
+                ) : null}
                 {product.subtitle ? (
                   <p className="text-sm text-muted-foreground">
                     {product.subtitle}

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 import {
   buildProductSlugParts,
   decodeSlugSegment,
+  extractProductArtistNames,
   matchesProductSlug,
 } from "@/lib/products/slug"
 
@@ -35,6 +36,75 @@ describe("buildProductSlugParts", () => {
       artistSlug: "bjorrk",
       albumSlug: "debut-1993",
     })
+  })
+
+  it("uses ordered catalog import artists for titles without an artist prefix", () => {
+    const source = asSlugInput({
+      title: "...from Dead Horizon to Dead Horizon",
+      metadata: {
+        catalog_import: {
+          artists: ["Obscene", "Guest Artist", "obscene", " ", 42],
+        },
+      },
+    })
+
+    expect(extractProductArtistNames(source)).toEqual([
+      "Obscene",
+      "Guest Artist",
+    ])
+    expect(buildProductSlugParts(source)).toEqual({
+      artist: "Obscene",
+      album: "...from Dead Horizon to Dead Horizon",
+      artistSlug: "obscene",
+      albumSlug: "from-dead-horizon-to-dead-horizon",
+    })
+  })
+
+  it("extracts artist names from structured records and categories", () => {
+    const fromRecords = asSlugInput({
+      title: "Split Release",
+      metadata: {
+        artist_names: [
+          { display_name: "Primary Artist" },
+          { name: "Second Artist" },
+        ],
+      },
+    })
+    const fromCategory = asSlugInput({
+      title: "Unprefixed Release",
+      categories: [
+        {
+          name: "Category Artist",
+          handle: "category-artist",
+          parent_category: {
+            handle: "artists",
+          },
+        },
+      ],
+    })
+
+    expect(extractProductArtistNames(fromRecords)).toEqual([
+      "Primary Artist",
+      "Second Artist",
+    ])
+    expect(extractProductArtistNames(fromCategory)).toEqual(["Category Artist"])
+  })
+
+  it("only infers an artist from a title when it is distinguishable", () => {
+    expect(
+      extractProductArtistNames(
+        asSlugInput({
+          title: "Portal - Vexovoid",
+        })
+      )
+    ).toEqual(["Portal"])
+    expect(
+      extractProductArtistNames(
+        asSlugInput({
+          title: "Vexovoid",
+        })
+      )
+    ).toEqual([])
   })
 
   it("parses artist/album from title and removes format suffixes", () => {
@@ -204,6 +274,8 @@ describe("matchesProductSlug", () => {
 
 describe("decodeSlugSegment", () => {
   it("converts hyphenated slug segments into human readable values", () => {
-    expect(decodeSlugSegment("blackened-death-metal")).toBe("blackened death metal")
+    expect(decodeSlugSegment("blackened-death-metal")).toBe(
+      "blackened death metal"
+    )
   })
 })

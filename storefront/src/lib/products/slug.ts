@@ -43,6 +43,63 @@ const coerceString = (value: unknown): string | null => {
   return null
 }
 
+const coerceRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+
+const coerceArtistName = (value: unknown): string | null => {
+  const directName = coerceString(value)
+  if (directName) {
+    return directName
+  }
+
+  const record = coerceRecord(value)
+  return record
+    ? coerceString(record.display_name ?? record.displayName ?? record.name)
+    : null
+}
+
+const coerceArtistNames = (value: unknown): string[] => {
+  const values = Array.isArray(value) ? value : [value]
+  const seen = new Set<string>()
+
+  return values.reduce<string[]>((names, entry) => {
+    const name = coerceArtistName(entry)
+    const normalizedName = name?.toLocaleLowerCase()
+
+    if (!name || !normalizedName || seen.has(normalizedName)) {
+      return names
+    }
+
+    seen.add(normalizedName)
+    names.push(name)
+    return names
+  }, [])
+}
+
+const extractMetadataArtistNames = (metadata: MaybeRecord): string[] => {
+  const catalogImport = coerceRecord(metadata?.catalog_import)
+  const sources = [
+    metadata?.artist_names,
+    metadata?.artistNames,
+    metadata?.artists,
+    catalogImport?.artists,
+    metadata?.artist,
+    metadata?.Artist,
+    metadata?.artist_name,
+  ]
+
+  for (const source of sources) {
+    const names = coerceArtistNames(source)
+    if (names.length > 0) {
+      return names
+    }
+  }
+
+  return []
+}
+
 const normalizeHandle = (value: unknown): string | null => {
   if (typeof value !== "string") {
     return null
@@ -51,7 +108,9 @@ const normalizeHandle = (value: unknown): string | null => {
   return trimmed.length ? trimmed : null
 }
 
-const hasArtistAncestor = (category: CategoryRecord | null | undefined): boolean => {
+const hasArtistAncestor = (
+  category: CategoryRecord | null | undefined
+): boolean => {
   let current = category
   let guard = 0
 
@@ -105,7 +164,11 @@ const parseArtistAlbumFromTitle = (
 
   if (lastSeparator !== -1) {
     const suffix = working.slice(lastSeparator + 3).trim()
-    if (/^(cd|mc|lp|cassette|vinyl|2lp|3lp|7"|tape|digital|bundle|box)/i.test(suffix)) {
+    if (
+      /^(cd|mc|lp|cassette|vinyl|2lp|3lp|7"|tape|digital|bundle|box)/i.test(
+        suffix
+      )
+    ) {
       working = working.slice(0, lastSeparator).trim()
     }
   }
@@ -123,7 +186,9 @@ const parseArtistAlbumFromTitle = (
   const artistSegment = working.slice(0, firstSeparator).trim()
   const albumSegment = working.slice(firstSeparator + 3).trim()
 
-  const artist = artistSegment.length ? artistSegment : fallbackCollection?.trim() ?? working
+  const artist = artistSegment.length
+    ? artistSegment
+    : (fallbackCollection?.trim() ?? working)
   const album = albumSegment.length ? albumSegment : working
 
   return { artist, album }
@@ -174,7 +239,10 @@ export const buildProductSlugParts = (
     "collectionTitle" in source
       ? coerceString(source.collectionTitle)
       : coerceString(
-          ((source as HttpTypes.StoreProduct).collection as { title?: unknown } | undefined)?.title
+          (
+            (source as HttpTypes.StoreProduct).collection as
+              { title?: unknown } | undefined
+          )?.title
         )
 
   const handle =
@@ -182,14 +250,14 @@ export const buildProductSlugParts = (
       ? coerceString(source.handle)
       : coerceString((source as { handle?: string }).handle)
 
-  const categories = Array.isArray((source as { categories?: unknown }).categories)
-    ? ((source as { categories?: CategoryRecord[] | null | undefined }).categories ?? null)
+  const categories = Array.isArray(
+    (source as { categories?: unknown }).categories
+  )
+    ? ((source as { categories?: CategoryRecord[] | null | undefined })
+        .categories ?? null)
     : null
 
-  const metaArtist =
-    coerceString(metadata?.artist) ??
-    coerceString(metadata?.Artist) ??
-    coerceString(metadata?.artist_name)
+  const metaArtist = extractMetadataArtistNames(metadata)[0] ?? null
 
   const metaAlbum =
     coerceString(metadata?.album) ??
@@ -205,10 +273,7 @@ export const buildProductSlugParts = (
 
   const artistCategory = selectArtistCategory(categories)
 
-  const { artist, album } = (() => {
-    if (metaArtist && metaAlbum) {
-      return { artist: metaArtist, album: metaAlbum }
-    }
+  const parsedTitle = (() => {
     if (title) {
       return parseArtistAlbumFromTitle(title, collectionTitle)
     }
@@ -218,6 +283,8 @@ export const buildProductSlugParts = (
     const fallback = collectionTitle ?? "Remorseless Records"
     return { artist: fallback, album: fallback }
   })()
+  const artist = metaArtist ?? artistCategory?.name ?? parsedTitle.artist
+  const album = metaAlbum ?? parsedTitle.album
 
   const artistSlugBase = artistCategory?.handle ?? metaArtistSlug ?? artist
 
@@ -225,8 +292,53 @@ export const buildProductSlugParts = (
     artist,
     album,
     artistSlug: slugifySegment(artistSlugBase),
-    albumSlug: metaAlbumSlug ? slugifySegment(metaAlbumSlug) : slugifySegment(album),
+    albumSlug: metaAlbumSlug
+      ? slugifySegment(metaAlbumSlug)
+      : slugifySegment(album),
   }
+}
+
+export const extractProductArtistNames = (
+  source: SlugSource | HttpTypes.StoreProduct
+): string[] => {
+  const metadata = resolveMetadata(source.metadata)
+  const metadataArtistNames = extractMetadataArtistNames(metadata)
+
+  if (metadataArtistNames.length > 0) {
+    return metadataArtistNames
+  }
+
+  const categories = Array.isArray(
+    (source as { categories?: unknown }).categories
+  )
+    ? ((source as { categories?: CategoryRecord[] | null | undefined })
+        .categories ?? null)
+    : null
+  const artistCategory = selectArtistCategory(categories)
+
+  if (artistCategory) {
+    return [artistCategory.name]
+  }
+
+  const title = coerceString(source.title)
+  if (!title) {
+    return []
+  }
+
+  const collectionTitle =
+    "collectionTitle" in source
+      ? coerceString(source.collectionTitle)
+      : coerceString(
+          (
+            (source as HttpTypes.StoreProduct).collection as
+              { title?: unknown } | undefined
+          )?.title
+        )
+  const parsedArtist = parseArtistAlbumFromTitle(title, collectionTitle).artist
+
+  return parsedArtist.toLocaleLowerCase() === title.toLocaleLowerCase()
+    ? []
+    : [parsedArtist]
 }
 
 export const matchesProductSlug = (
