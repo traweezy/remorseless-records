@@ -10,12 +10,41 @@ allowBuilds:
   protobufjs: true
   puppeteer: true
   sharp: true
+  unrs-resolver: true
 
-peerDependencyRules:
-  allowedVersions:
-    "@types/react": "19"
-    react: "19"
-    react-dom: "19"
+resolvePeersFromWorkspaceRoot: false
+
+packageExtensions:
+  "@medusajs/icons@2.18.0":
+    peerDependencies:
+      "@types/react": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+  "@medusajs/ui@4.2.0":
+    peerDependencies:
+      "@types/react": "*"
+      "@types/react-dom": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+      "@types/react-dom":
+        optional: true
+  "lucide-react@1.25.0":
+    peerDependencies:
+      "@types/react": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+  "next@16.2.11":
+    peerDependencies:
+      "@types/react": "*"
+      "@types/react-dom": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+      "@types/react-dom":
+        optional: true
 
 overrides:
   "@babel/core": 7.29.7
@@ -26,22 +55,22 @@ overrides:
   "@mikro-orm/postgresql": 6.6.14
   "@opentelemetry/exporter-prometheus": 0.217.0
   "@opentelemetry/sdk-node": 0.217.0
-  "@aws-sdk/client-s3": ^3.1075.0
+  "@aws-sdk/client-s3": ^3.1093.0
   "@isaacs/brace-expansion": ^5.0.1
-  "@remix-run/router": ^1.23.2
-  "@swc/core": ^1.15.43
+  "@remix-run/router": 1.23.3
+  "@swc/core": ^1.15.46
   "ajv@>=7.0.0 <8.18.0": ^8.20.0
-  axios: ^1.15.2
-  brace-expansion: ^2.0.3
+  axios: ^1.18.0
+  brace-expansion: ^2.1.2
   devalue: ^5.8.1
   diff: ^4.0.4
-  esbuild: ^0.25.12
+  esbuild: ^0.28.1
   fast-xml-parser: ^5.8.0
   fdir: ^6.5.0
   follow-redirects: ^1.16.0
   flatted: ^3.4.2
   i18next-http-backend: ^3.0.5
-  immutable: ^3.8.3
+  immutable: ^4.3.9
   js-cookie: ^3.0.7
   json-2-csv: 5.5.11
   "js-yaml@<=4.1.1": ^4.2.0
@@ -56,18 +85,26 @@ overrides:
   "path-to-regexp@>=8.0.0 <8.4.0": ^8.4.2
   "picomatch@<2.3.2": ^2.3.2
   "picomatch@>=4.0.0 <4.0.4": ^4.0.4
-  posthog-node: ^5.38.6
+  posthog-node: ^5.46.0
   postcss: ^8.5.15
-  protobufjs: ^7.6.3
+  protobufjs: ^7.6.5
   qs: ^6.15.2
-  react-router: ^6.30.4
-  react-router-dom: ^6.30.4
+  react-router: 6.30.4
+  react-router-dom: 6.30.4
   rollup: ^4.60.4
   semver: ^7.5.2
+  sharp: ^0.35.0
+  tmp: 0.2.7
   "undici@>=7.0.0 <7.28.0": ^7.28.0
   uuid: ^11.1.1
   "vite@<=6.4.2": ^6.4.3
   "vite@>=7.0.0 <=7.3.1": ^7.3.2
   "form-data@>=4.0.0 <4.0.6": ^4.0.6
   "ws@>=7.0.0 <7.5.11": ^7.5.11
-  "@opentelemetry/core": ^2.8.0
+  "@opentelemetry/core": 2.9.0
+  "@opentelemetry/propagator-jaeger": 2.9.0
+
+minimumReleaseAgeExclude:
+  - "@medusajs/icons@2.18.0"
+  - "@medusajs/js-sdk@2.18.0"
+  - "@medusajs/types@2.18.0"

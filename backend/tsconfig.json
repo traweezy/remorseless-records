@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "ES2023"
-    ],
+    "lib": ["ES2023"],
     "allowJs": true,
     "esModuleInterop": true,
     "module": "NodeNext",
@@ -15,11 +13,8 @@
     "sourceMap": false,
     "outDir": "./.medusa/server",
     "rootDir": "./",
-    "baseUrl": "./src",
     "paths": {
-      "@/*": [
-        "*"
-      ]
+      "@/*": ["./src/*"]
     },
     "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
@@ -31,17 +26,12 @@
     "noImplicitOverride": true,
     "allowSyntheticDefaultImports": true,
     "checkJs": false,
-    "typeRoots": [
-      "./node_modules/@types"
-    ]
+    "typeRoots": ["./node_modules/@types"]
   },
   "ts-node": {
     "swc": true
   },
-  "include": [
-    "src",
-    "medusa-config.js"
-  ],
+  "include": ["src", "medusa-config.js"],
   "exclude": [
     "**/__tests__",
     "**/__fixtures__",

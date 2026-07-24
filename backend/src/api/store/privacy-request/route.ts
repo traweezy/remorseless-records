@@ -17,7 +17,10 @@ const schema = z
   })
   .strict()
 
-export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<void> => {
+export const POST = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+): Promise<void> => {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
@@ -29,7 +32,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      JSON.stringify(parsed.error.flatten().fieldErrors)
+      JSON.stringify(z.flattenError(parsed.error).fieldErrors)
     )
   }
 
@@ -41,7 +44,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
   const requestId = randomUUID()
   const timestamp = new Date().toISOString()
   const { name, email, requestType, details, orderId } = parsed.data
-  const orderLine = orderId?.trim().length ? `Order ID: ${orderId}` : "Order ID: (not provided)"
+  const orderLine = orderId?.trim().length
+    ? `Order ID: ${orderId}`
+    : "Order ID: (not provided)"
 
   const resend = new Resend(RESEND_API_KEY)
   await resend.emails.send({

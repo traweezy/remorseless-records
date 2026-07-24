@@ -6,17 +6,17 @@ import type {
   ShippingTaxCalculationLine,
   ShippingTaxLineDTO,
   TaxCalculationContext,
-} from '@medusajs/framework/types'
-import type { RedisClientType } from 'redis'
-import { createClient } from 'redis'
+} from "@medusajs/framework/types"
+import type { RedisClientType } from "redis"
+import { createClient } from "redis"
 
-import { fetchTaxRateIo } from './clients/taxrate-io'
-import { REDIS_URL } from '../../lib/constants'
+import { fetchTaxRateIo } from "./clients/taxrate-io"
+import { REDIS_URL } from "../../lib/constants"
 
 type TaxRateLookupProviderOptions = {
-  provider: 'taxrate_io'
+  provider: "taxrate_io"
   apiKey: string
-  mode?: 'zip' | 'address'
+  mode?: "zip" | "address"
   timeoutMs?: number
 }
 
@@ -29,14 +29,24 @@ type CachedRate = {
   expiresAt: number
 }
 
-const CACHE_TTL_MS = Number(process.env.TAX_RATE_LOOKUP_CACHE_TTL_MS ?? 5 * 60 * 1000)
+const CACHE_TTL_MS = Number(
+  process.env.TAX_RATE_LOOKUP_CACHE_TTL_MS ?? 5 * 60 * 1000
+)
 const DEFAULT_TIMEOUT_MS = 8_000
 const rateCache = new Map<string, CachedRate>()
 const redisUrl = REDIS_URL?.trim()
 let redisClient: RedisClientType | null = null
 let redisConnectPromise: Promise<RedisClientType | null> | null = null
 
-const buildCacheKey = (address: TaxCalculationContext['address']): string | null => {
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
+
+const redisReconnectStrategy = (retries: number): false | number =>
+  retries >= 3 ? false : Math.min(100 * 2 ** retries, 1_000)
+
+const buildCacheKey = (
+  address: TaxCalculationContext["address"]
+): string | null => {
   const countryCode = address.country_code?.toLowerCase()
   const postalCode = address.postal_code?.trim()
 
@@ -44,7 +54,7 @@ const buildCacheKey = (address: TaxCalculationContext['address']): string | null
     return null
   }
 
-  const provinceCode = address.province_code?.toLowerCase() ?? ''
+  const provinceCode = address.province_code?.toLowerCase() ?? ""
   return `${countryCode}:${provinceCode}:${postalCode}`
 }
 
@@ -69,7 +79,9 @@ const writeCachedRate = (cacheKey: string, ratePercent: number) => {
   })
 }
 
-const getRedisClient = async (logger: Logger): Promise<RedisClientType | null> => {
+const getRedisClient = async (
+  logger: Logger
+): Promise<RedisClientType | null> => {
   if (!redisUrl) {
     return null
   }
@@ -82,18 +94,29 @@ const getRedisClient = async (logger: Logger): Promise<RedisClientType | null> =
     return redisConnectPromise
   }
 
-  const client = redisClient ?? createClient({ url: redisUrl })
+  const client =
+    redisClient ??
+    createClient({
+      url: redisUrl,
+      RESP: 3,
+      socket: {
+        connectTimeout: 2_000,
+        reconnectStrategy: redisReconnectStrategy,
+      },
+    }).on("error", (error) => {
+      logger.warn(`Tax cache Redis client error: ${errorMessage(error)}`)
+    })
   redisClient = client
 
   redisConnectPromise = client
     .connect()
     .then(() => client)
     .catch((error) => {
-      logger.warn(`Tax cache Redis connection failed: ${(error as Error).message ?? error}`)
+      logger.warn(`Tax cache Redis connection failed: ${errorMessage(error)}`)
       try {
-        void client.disconnect()
+        client.destroy()
       } catch {
-        // ignore disconnect errors
+        // Ignore destroy errors while degrading to the in-memory cache.
       }
       redisClient = null
       return null
@@ -108,11 +131,14 @@ const getRedisClient = async (logger: Logger): Promise<RedisClientType | null> =
 const buildRedisKey = (cacheKey: string) => `taxrate:${cacheKey}`
 
 export default class TaxRateLookupProviderService implements ITaxProvider {
-  static identifier = 'rate_lookup'
+  static identifier = "rate_lookup"
   protected logger_: Logger
   protected options_: TaxRateLookupProviderOptions
 
-  constructor({ logger }: InjectedDependencies, options: TaxRateLookupProviderOptions) {
+  constructor(
+    { logger }: InjectedDependencies,
+    options: TaxRateLookupProviderOptions
+  ) {
     this.logger_ = logger
     this.options_ = options
   }
@@ -133,8 +159,8 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     }
 
     const providerId = this.getIdentifier()
-    const name = 'Sales tax'
-    const code = 'sales_tax'
+    const name = "Sales tax"
+    const code = "sales_tax"
 
     const itemTaxLines: ItemTaxLineDTO[] = itemLines.map((line) => ({
       line_item_id: line.line_item.id,
@@ -144,18 +170,22 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       provider_id: providerId,
     }))
 
-    const shippingTaxLines: ShippingTaxLineDTO[] = shippingLines.map((line) => ({
-      shipping_line_id: line.shipping_line.id,
-      rate: ratePercent,
-      name,
-      code,
-      provider_id: providerId,
-    }))
+    const shippingTaxLines: ShippingTaxLineDTO[] = shippingLines.map(
+      (line) => ({
+        shipping_line_id: line.shipping_line.id,
+        rate: ratePercent,
+        name,
+        code,
+        provider_id: providerId,
+      })
+    )
 
     return [...itemTaxLines, ...shippingTaxLines]
   }
 
-  private async resolveRatePercent(context: TaxCalculationContext): Promise<number> {
+  private async resolveRatePercent(
+    context: TaxCalculationContext
+  ): Promise<number> {
     const cacheKey = buildCacheKey(context.address)
     if (!cacheKey) {
       return 0
@@ -169,7 +199,9 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     const redisClientInstance = await getRedisClient(this.logger_)
     if (redisClientInstance) {
       try {
-        const redisValue = await redisClientInstance.get(buildRedisKey(cacheKey))
+        const redisValue = await redisClientInstance.get(
+          buildRedisKey(cacheKey)
+        )
         if (redisValue !== null) {
           const parsed = Number(redisValue)
           if (Number.isFinite(parsed)) {
@@ -179,7 +211,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         }
       } catch (error) {
         this.logger_.warn(
-          `Tax cache Redis lookup failed: ${(error as Error).message ?? error}`
+          `Tax cache Redis lookup failed: ${errorMessage(error)}`
         )
       }
     }
@@ -189,8 +221,10 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       return 0
     }
 
-    if (countryCode !== 'us') {
-      this.logger_.warn(`Tax lookup skipped for unsupported country: ${countryCode}`)
+    if (countryCode !== "us") {
+      this.logger_.warn(
+        `Tax lookup skipped for unsupported country: ${countryCode}`
+      )
       return 0
     }
 
@@ -199,16 +233,18 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       return 0
     }
 
-    if (this.options_.provider !== 'taxrate_io') {
+    if (this.options_.provider !== "taxrate_io") {
       throw new Error(`Unsupported tax provider: ${this.options_.provider}`)
     }
 
     if (!this.options_.apiKey) {
-      throw new Error('TAX_RATE_LOOKUP_API_KEY is not set.')
+      throw new Error("TAX_RATE_LOOKUP_API_KEY is not set.")
     }
 
-    if (this.options_.mode && this.options_.mode !== 'zip') {
-      this.logger_.warn(`Tax lookup mode "${this.options_.mode}" is not supported. Using zip lookup.`)
+    if (this.options_.mode && this.options_.mode !== "zip") {
+      this.logger_.warn(
+        `Tax lookup mode "${this.options_.mode}" is not supported. Using zip lookup.`
+      )
     }
 
     const ratePercent = await fetchTaxRateIo({
@@ -221,12 +257,16 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     if (redisClientInstance) {
       try {
         const ttlSeconds = Math.max(1, Math.ceil(CACHE_TTL_MS / 1000))
-        await redisClientInstance.set(buildRedisKey(cacheKey), String(ratePercent), {
-          EX: ttlSeconds,
-        })
+        await redisClientInstance.set(
+          buildRedisKey(cacheKey),
+          String(ratePercent),
+          {
+            EX: ttlSeconds,
+          }
+        )
       } catch (error) {
         this.logger_.warn(
-          `Tax cache Redis write failed: ${(error as Error).message ?? error}`
+          `Tax cache Redis write failed: ${errorMessage(error)}`
         )
       }
     }

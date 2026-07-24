@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test"
+import { config as loadEnv } from "dotenv"
 import path from "path"
-import "dotenv/config.js"
+
+loadEnv({ quiet: true })
 
 export const STORAGE_STATE = path.join(__dirname, "playwright/.auth/user.json")
 
@@ -70,8 +72,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-     command: "pnpm run start",
-     url: process.env.NEXT_PUBLIC_BASE_URL,
-  //   reuseExistingServer: !process.env.CI,
+    command: "pnpm run start",
+    url: process.env.NEXT_PUBLIC_BASE_URL,
+    //   reuseExistingServer: !process.env.CI,
   },
 })

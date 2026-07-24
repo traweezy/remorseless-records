@@ -214,6 +214,44 @@ const readPnpmConfigArray = (name) => {
   }
 };
 
+const readPnpmConfigObject = (name) => {
+  try {
+    const output = execSync(`pnpm config get ${name} --json`, {
+      cwd: PNPM_CONFIG_CWD,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    if (!output || output === 'undefined') {
+      return null;
+    }
+
+    const value = JSON.parse(output);
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const readPnpmConfigBoolean = (name, fallback) => {
+  try {
+    const output = execSync(`pnpm config get ${name} --json`, {
+      cwd: PNPM_CONFIG_CWD,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    if (!output || output === 'undefined') {
+      return fallback;
+    }
+
+    const value = JSON.parse(output);
+    return typeof value === 'boolean' ? value : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const readPnpmPatchedDependencies = () => {
   try {
     const output = execSync('pnpm config get patchedDependencies --json', {
@@ -237,6 +275,20 @@ const readPnpmPatchedDependencies = () => {
 };
 
 const yamlScalar = (value) => JSON.stringify(value);
+
+const appendYamlMapping = (lines, mapping, indent = 0) => {
+  const prefix = ' '.repeat(indent);
+
+  for (const [key, value] of Object.entries(mapping)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      lines.push(`${prefix}${yamlScalar(key)}:`);
+      appendYamlMapping(lines, value, indent + 2);
+      continue;
+    }
+
+    lines.push(`${prefix}${yamlScalar(key)}: ${yamlScalar(value)}`);
+  }
+};
 
 const readPnpmAllowBuilds = () => {
   try {
@@ -292,11 +344,36 @@ const copyPatchedDependencies = (patchedDependencies) => {
   );
 };
 
-const writePnpmWorkspaceConfig = ({ allowBuilds, overrides, patchedDependencies }) => {
+const writePnpmWorkspaceConfig = ({
+  allowBuilds,
+  hoistPattern,
+  minimumReleaseAgeExclude,
+  overrides,
+  packageExtensions,
+  resolvePeersFromWorkspaceRoot,
+  patchedDependencies
+}) => {
   const lines = [
     'packages:',
     '  - "."'
   ];
+
+  if (hoistPattern.length > 0) {
+    lines.push('', 'hoistPattern:');
+    for (const pattern of hoistPattern) {
+      lines.push(`  - ${yamlScalar(pattern)}`);
+    }
+  }
+
+  lines.push(
+    '',
+    `resolvePeersFromWorkspaceRoot: ${yamlScalar(resolvePeersFromWorkspaceRoot)}`
+  );
+
+  if (packageExtensions && Object.keys(packageExtensions).length > 0) {
+    lines.push('', 'packageExtensions:');
+    appendYamlMapping(lines, packageExtensions, 2);
+  }
 
   if (allowBuilds.length > 0) {
     lines.push('', 'allowBuilds:');
@@ -309,6 +386,13 @@ const writePnpmWorkspaceConfig = ({ allowBuilds, overrides, patchedDependencies 
     lines.push('', 'overrides:');
     for (const [dependency, version] of Object.entries(overrides)) {
       lines.push(`  ${yamlScalar(dependency)}: ${yamlScalar(version)}`);
+    }
+  }
+
+  if (minimumReleaseAgeExclude.length > 0) {
+    lines.push('', 'minimumReleaseAgeExclude:');
+    for (const dependency of minimumReleaseAgeExclude) {
+      lines.push(`  - ${yamlScalar(dependency)}`);
     }
   }
 
@@ -328,9 +412,26 @@ const allowBuilds = Array.from(new Set([
   ...readPnpmAllowBuilds(),
   ...readPnpmConfigArray('onlyBuiltDependencies')
 ]));
+const minimumReleaseAgeExclude = Array.from(
+  new Set(readPnpmConfigArray('minimumReleaseAgeExclude'))
+);
+const hoistPattern = readPnpmConfigArray('hoistPattern');
+const packageExtensions = readPnpmConfigObject('packageExtensions');
+const resolvePeersFromWorkspaceRoot = readPnpmConfigBoolean(
+  'resolvePeersFromWorkspaceRoot',
+  true
+);
 const patchedDependencies = copyPatchedDependencies(readPnpmPatchedDependencies());
 
-writePnpmWorkspaceConfig({ allowBuilds, overrides, patchedDependencies });
+writePnpmWorkspaceConfig({
+  allowBuilds,
+  hoistPattern,
+  minimumReleaseAgeExclude,
+  overrides,
+  packageExtensions,
+  resolvePeersFromWorkspaceRoot,
+  patchedDependencies
+});
 
 if (fs.existsSync(MEDUSA_PACKAGE_JSON)) {
   const packageJson = JSON.parse(fs.readFileSync(MEDUSA_PACKAGE_JSON, 'utf-8'));

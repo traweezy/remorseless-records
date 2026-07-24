@@ -1,6 +1,8 @@
-import "dotenv/config"
+import { config as loadEnv } from "dotenv"
 
 import { searchProductsServer } from "@/lib/search/server"
+
+loadEnv({ quiet: true })
 
 const run = async () => {
   const result = await searchProductsServer({

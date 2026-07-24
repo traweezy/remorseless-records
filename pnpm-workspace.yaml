@@ -2,6 +2,11 @@ packages:
   - backend
   - storefront
 
+hoistPattern:
+  - "*"
+  - "!@types/react"
+  - "!@types/react-dom"
+
 allowBuilds:
   "@medusajs/telemetry": true
   "@swc/core": true
@@ -13,11 +18,39 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
 
-peerDependencyRules:
-  allowedVersions:
-    "@types/react": "19"
-    react: "19"
-    react-dom: "19"
+resolvePeersFromWorkspaceRoot: false
+
+packageExtensions:
+  "@medusajs/icons@2.18.0":
+    peerDependencies:
+      "@types/react": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+  "@medusajs/ui@4.2.0":
+    peerDependencies:
+      "@types/react": "*"
+      "@types/react-dom": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+      "@types/react-dom":
+        optional: true
+  "lucide-react@1.25.0":
+    peerDependencies:
+      "@types/react": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+  "next@16.2.11":
+    peerDependencies:
+      "@types/react": "*"
+      "@types/react-dom": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+      "@types/react-dom":
+        optional: true
 
 overrides:
   "@babel/core": 7.29.7
@@ -30,7 +63,7 @@ overrides:
   "@opentelemetry/sdk-node": 0.217.0
   "@aws-sdk/client-s3": ^3.1093.0
   "@isaacs/brace-expansion": ^5.0.1
-  "@remix-run/router": ^1.23.2
+  "@remix-run/router": 1.23.3
   "@swc/core": ^1.15.46
   "ajv@>=7.0.0 <8.18.0": ^8.20.0
   axios: ^1.18.0
@@ -64,8 +97,8 @@ overrides:
   postcss: ^8.5.15
   protobufjs: ^7.6.5
   qs: ^6.15.2
-  react-router: 7.18.1
-  react-router-dom: 7.18.1
+  react-router: 6.30.4
+  react-router-dom: 6.30.4
   rollup: ^4.60.4
   semver: ^7.5.2
   sharp: ^0.35.0
@@ -79,6 +112,85 @@ overrides:
   "@opentelemetry/core": 2.9.0
   "@opentelemetry/propagator-jaeger": 2.9.0
 
+auditConfig:
+  ignoreGhsas:
+    - GHSA-337j-9hxr-rhxg
+    - GHSA-jjmj-jmhj-qwj2
+    - GHSA-wrjc-x8rr-h8h6
+
 patchedDependencies:
-  '@rokmohar/medusa-plugin-meilisearch@1.4.3': patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
-  react-router-dom@7.18.1: patches/react-router-dom.patch
+  "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
+  "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
+  react-router-dom@6.30.4: patches/react-router-dom@6.30.4.patch
+
+minimumReleaseAgeExclude:
+  - "@medusajs/admin-bundler@2.18.0"
+  - "@medusajs/admin-sdk@2.18.0"
+  - "@medusajs/admin-shared@2.18.0"
+  - "@medusajs/admin-vite-plugin@2.18.0"
+  - "@medusajs/analytics-local@2.18.0"
+  - "@medusajs/analytics-posthog@2.18.0"
+  - "@medusajs/analytics@2.18.0"
+  - "@medusajs/api-key@2.18.0"
+  - "@medusajs/auth-emailpass@2.18.0"
+  - "@medusajs/auth-github@2.18.0"
+  - "@medusajs/auth-google@2.18.0"
+  - "@medusajs/auth@2.18.0"
+  - "@medusajs/cache-inmemory@2.18.0"
+  - "@medusajs/cache-redis@2.18.0"
+  - "@medusajs/caching-redis@2.18.0"
+  - "@medusajs/caching@2.18.0"
+  - "@medusajs/cart@2.18.0"
+  - "@medusajs/cli@2.18.0"
+  - "@medusajs/core-flows@2.18.0"
+  - "@medusajs/currency@2.18.0"
+  - "@medusajs/customer@2.18.0"
+  - "@medusajs/dashboard@2.18.0"
+  - "@medusajs/deps@2.18.0"
+  - "@medusajs/draft-order@2.18.0"
+  - "@medusajs/event-bus-local@2.18.0"
+  - "@medusajs/event-bus-redis@2.18.0"
+  - "@medusajs/file-local@2.18.0"
+  - "@medusajs/file-s3@2.18.0"
+  - "@medusajs/file@2.18.0"
+  - "@medusajs/framework@2.18.0"
+  - "@medusajs/fulfillment-manual@2.18.0"
+  - "@medusajs/fulfillment@2.18.0"
+  - "@medusajs/icons@2.18.0"
+  - "@medusajs/index@2.18.0"
+  - "@medusajs/inventory@2.18.0"
+  - "@medusajs/js-sdk@2.18.0"
+  - "@medusajs/link-modules@2.18.0"
+  - "@medusajs/locking-postgres@2.18.0"
+  - "@medusajs/locking-redis@2.18.0"
+  - "@medusajs/locking@2.18.0"
+  - "@medusajs/medusa@2.18.0"
+  - "@medusajs/modules-sdk@2.18.0"
+  - "@medusajs/notification-local@2.18.0"
+  - "@medusajs/notification-sendgrid@2.18.0"
+  - "@medusajs/notification@2.18.0"
+  - "@medusajs/orchestration@2.18.0"
+  - "@medusajs/order@2.18.0"
+  - "@medusajs/payment-stripe@2.18.0"
+  - "@medusajs/payment@2.18.0"
+  - "@medusajs/pricing@2.18.0"
+  - "@medusajs/product@2.18.0"
+  - "@medusajs/promotion@2.18.0"
+  - "@medusajs/query@2.18.0"
+  - "@medusajs/rbac@2.18.0"
+  - "@medusajs/region@2.18.0"
+  - "@medusajs/sales-channel@2.18.0"
+  - "@medusajs/settings@2.18.0"
+  - "@medusajs/stock-location@2.18.0"
+  - "@medusajs/store@2.18.0"
+  - "@medusajs/tax@2.18.0"
+  - "@medusajs/telemetry@2.18.0"
+  - "@medusajs/test-utils@2.18.0"
+  - "@medusajs/translation@2.18.0"
+  - "@medusajs/types@2.18.0"
+  - "@medusajs/ui@4.2.0"
+  - "@medusajs/user@2.18.0"
+  - "@medusajs/utils@2.18.0"
+  - "@medusajs/workflow-engine-inmemory@2.18.0"
+  - "@medusajs/workflow-engine-redis@2.18.0"
+  - "@medusajs/workflows-sdk@2.18.0"

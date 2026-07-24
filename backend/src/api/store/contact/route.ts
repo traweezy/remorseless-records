@@ -5,15 +5,20 @@ import { z } from "zod"
 
 import { RESEND_API_KEY, RESEND_FROM_EMAIL } from "../../../lib/constants"
 
-const schema = z.object({
-  name: z.string().trim().min(2).max(120),
-  email: z.string().trim().email(),
-  reason: z.enum(["booking", "press", "collab", "other"]),
-  message: z.string().trim().min(10).max(5000),
-  honeypot: z.string().optional(),
-}).strict()
+const schema = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    email: z.string().trim().email(),
+    reason: z.enum(["booking", "press", "collab", "other"]),
+    message: z.string().trim().min(10).max(5000),
+    honeypot: z.string().optional(),
+  })
+  .strict()
 
-export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<void> => {
+export const POST = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+): Promise<void> => {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
@@ -25,7 +30,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      JSON.stringify(parsed.error.flatten().fieldErrors)
+      JSON.stringify(z.flattenError(parsed.error).fieldErrors)
     )
   }
 

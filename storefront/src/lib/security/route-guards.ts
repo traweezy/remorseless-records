@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import type { z } from "zod"
+import { z } from "zod"
 
 type RateLimitPolicy = {
   key: string
@@ -214,10 +214,7 @@ export const parseJsonBody = async <T>(
   } catch {
     return {
       ok: false,
-      response: jsonNoStore(
-        { error: "Malformed JSON body." },
-        { status: 400 }
-      ),
+      response: jsonNoStore({ error: "Malformed JSON body." }, { status: 400 }),
     }
   }
 
@@ -228,7 +225,7 @@ export const parseJsonBody = async <T>(
       response: jsonNoStore(
         {
           error: "Invalid request body.",
-          fields: parsed.error.flatten().fieldErrors,
+          fields: z.flattenError(parsed.error).fieldErrors,
         },
         { status: 400 }
       ),
@@ -238,13 +235,8 @@ export const parseJsonBody = async <T>(
   return { ok: true, data: parsed.data }
 }
 
-export const jsonApiError = (
-  message: string,
-  status: number
-): Response => jsonNoStore({ error: message }, { status })
+export const jsonApiError = (message: string, status: number): Response =>
+  jsonNoStore({ error: message }, { status })
 
-export const jsonApiResponse = <T>(
-  body: T,
-  init?: ResponseInit
-): Response => jsonNoStore(body, init)
-
+export const jsonApiResponse = <T>(body: T, init?: ResponseInit): Response =>
+  jsonNoStore(body, init)
