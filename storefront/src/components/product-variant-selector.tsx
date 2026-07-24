@@ -6,7 +6,9 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useProductVariantSelection } from "@/components/providers/product-variant-selection-provider"
 import { formatAmount } from "@/lib/money"
+import { resolveDefaultVariantId } from "@/lib/products/variant-selection"
 import { resolveStockChip } from "@/lib/products/stock-presentation"
 import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
@@ -34,17 +36,14 @@ const ProductVariantSelector = ({
   productTitle,
   availabilityNoticeByVariantId = {},
 }: ProductVariantSelectorProps) => {
-  const defaultVariantId = useMemo(() => {
-    const purchasable = variants.find(
-      (variant) => variant.inStock && variant.hasPrice
-    )
-    if (purchasable) return purchasable.id
-    const priced = variants.find((variant) => variant.hasPrice)
-    if (priced) return priced.id
-    return variants[0]?.id ?? ""
-  }, [variants])
+  const defaultVariantId = useMemo(
+    () => resolveDefaultVariantId(variants),
+    [variants]
+  )
 
-  const [selectedVariantId, setSelectedVariantId] = useState(defaultVariantId)
+  const variantSelection = useProductVariantSelection()
+  const [localSelectedVariantId, setLocalSelectedVariantId] =
+    useState(defaultVariantId)
   const [quantity, setQuantity] = useState(1)
   const [optimisticVariantId, setOptimisticVariantId] = useState<string | null>(
     null
@@ -52,10 +51,12 @@ const ProductVariantSelector = ({
   const [isPending, startTransition] = useTransition()
   const { addItem } = useCart()
 
+  const requestedVariantId =
+    variantSelection?.selectedVariantId ?? localSelectedVariantId
   const resolvedVariantId =
-    selectedVariantId &&
-    variants.some((variant) => variant.id === selectedVariantId)
-      ? selectedVariantId
+    requestedVariantId &&
+    variants.some((variant) => variant.id === requestedVariantId)
+      ? requestedVariantId
       : defaultVariantId
 
   const selectedVariant = useMemo(
@@ -89,7 +90,8 @@ const ProductVariantSelector = ({
     const nextVariant =
       variants.find((variant) => variant.id === variantId) ?? null
     const nextMax = Math.max(1, resolveMaxQuantity(nextVariant))
-    setSelectedVariantId(variantId)
+    setLocalSelectedVariantId(variantId)
+    variantSelection?.selectVariant(variantId)
     setQuantity((prev) => clampQuantity(prev, nextMax))
   }
 

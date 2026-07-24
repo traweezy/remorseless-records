@@ -6,9 +6,8 @@ import type { HttpTypes } from "@medusajs/types"
 import ProductVariantSelector from "@/components/product-variant-selector"
 import ProductGallery from "@/components/product-gallery"
 import ProductCarouselSection from "@/components/product-carousel-section"
-import BundleComposition, {
-  buildBundleAvailabilityNotices,
-} from "@/components/bundle-composition"
+import BundleComposition from "@/components/bundle-composition"
+import { ProductVariantSelectionProvider } from "@/components/providers/product-variant-selection-provider"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { deriveVariantOptions } from "@/lib/products/transformers"
@@ -33,6 +32,8 @@ import {
 import { storeClient } from "@/lib/medusa"
 import { resolveRegionId } from "@/lib/regions"
 import { getBundleComposition } from "@/lib/data/bundles"
+import { buildBundleAvailabilityNotices } from "@/lib/products/bundle-availability"
+import { resolveDefaultVariantId } from "@/lib/products/variant-selection"
 
 export type ProductDetailPageProps = {
   params: Promise<{ handle: string }>
@@ -164,6 +165,7 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
   const bundleAvailabilityNotices = bundleComposition
     ? buildBundleAvailabilityNotices(bundleComposition)
     : {}
+  const defaultVariantId = resolveDefaultVariantId(variantOptions)
 
   const heroImages = product.images ?? []
   const productTitle = product.title ?? "Remorseless Release"
@@ -246,55 +248,60 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
           />
 
           <aside className="min-w-0 flex flex-col gap-6 lg:sticky lg:top-20">
-            <Card
-              variant="panel"
-              className="space-y-4 bg-surface/95 p-6 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]"
+            <ProductVariantSelectionProvider
+              key={product.id}
+              initialVariantId={defaultVariantId}
             >
-              <div className="space-y-2">
-                <h1 className="break-words font-display text-4xl uppercase tracking-[0.2rem] text-foreground sm:text-5xl sm:tracking-[0.3rem]">
-                  {productTitle}
-                </h1>
-                {isMusicRelease && artistDisplay ? (
-                  <dl className="pt-1">
-                    <div className="space-y-1">
-                      <dt className="font-headline text-[0.6rem] uppercase tracking-[0.3rem] text-destructive">
-                        Artist
-                      </dt>
-                      <dd className="break-words font-headline text-base uppercase tracking-[0.18rem] text-foreground">
-                        {artistDisplay}
-                      </dd>
-                    </div>
-                  </dl>
-                ) : null}
-                {product.subtitle ? (
-                  <p className="text-sm text-muted-foreground">
-                    {product.subtitle}
-                  </p>
-                ) : null}
-              </div>
-              {genreChips.length ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  {genreChips.map((genre) => (
-                    <Badge
-                      key={`genre-chip-${genre}`}
-                      variant="outline"
-                      className="border-border/40 bg-background/70 px-3 py-1 text-[0.55rem] tracking-[0.28rem]"
-                    >
-                      {genre}
-                    </Badge>
-                  ))}
+              <Card
+                variant="panel"
+                className="space-y-4 bg-surface/95 p-6 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]"
+              >
+                <div className="space-y-2">
+                  <h1 className="break-words font-display text-4xl uppercase tracking-[0.2rem] text-foreground sm:text-5xl sm:tracking-[0.3rem]">
+                    {productTitle}
+                  </h1>
+                  {isMusicRelease && artistDisplay ? (
+                    <dl className="pt-1">
+                      <div className="space-y-1">
+                        <dt className="font-headline text-[0.6rem] uppercase tracking-[0.3rem] text-destructive">
+                          Artist
+                        </dt>
+                        <dd className="break-words font-headline text-base uppercase tracking-[0.18rem] text-foreground">
+                          {artistDisplay}
+                        </dd>
+                      </div>
+                    </dl>
+                  ) : null}
+                  {product.subtitle ? (
+                    <p className="text-sm text-muted-foreground">
+                      {product.subtitle}
+                    </p>
+                  ) : null}
                 </div>
-              ) : null}
-              <ProductVariantSelector
-                variants={variantOptions}
-                productTitle={productTitle}
-                availabilityNoticeByVariantId={bundleAvailabilityNotices}
-              />
-            </Card>
+                {genreChips.length ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {genreChips.map((genre) => (
+                      <Badge
+                        key={`genre-chip-${genre}`}
+                        variant="outline"
+                        className="border-border/40 bg-background/70 px-3 py-1 text-[0.55rem] tracking-[0.28rem]"
+                      >
+                        {genre}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+                <ProductVariantSelector
+                  variants={variantOptions}
+                  productTitle={productTitle}
+                  availabilityNoticeByVariantId={bundleAvailabilityNotices}
+                />
+              </Card>
 
-            {bundleComposition ? (
-              <BundleComposition bundle={bundleComposition} />
-            ) : null}
+              {bundleComposition ? (
+                <BundleComposition bundle={bundleComposition} />
+              ) : null}
+            </ProductVariantSelectionProvider>
 
             <Card variant="panel" className="space-y-3 p-6 shadow-none">
               <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
