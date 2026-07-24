@@ -1,17 +1,43 @@
+import type { VariantProps } from "class-variance-authority"
+import { cva } from "class-variance-authority"
+import type { ComponentPropsWithoutRef, ElementType } from "react"
+
 import { cn } from "@/lib/ui/cn"
 
-export const Card = ({
+const cardVariants = cva("border transition-colors", {
+  variants: {
+    variant: {
+      default: "rounded-3xl border-border/70 bg-surface/80 shadow-card",
+      panel:
+        "rounded-3xl border-border/70 bg-surface/90 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]",
+      inset: "rounded-2xl border-border/60 bg-background/80 shadow-none",
+      subtle: "rounded-2xl border-border/60 bg-background/65 shadow-none",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+})
+
+type CardOwnProps = VariantProps<typeof cardVariants> & {
+  className?: string
+}
+
+export type CardProps<TElement extends ElementType = "div"> = CardOwnProps & {
+  as?: TElement
+} & Omit<ComponentPropsWithoutRef<TElement>, keyof CardOwnProps | "as">
+
+export const Card = <TElement extends ElementType = "div">({
+  as,
   className,
+  variant,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "rounded-3xl border border-border/70 bg-surface/80 shadow-card transition-colors",
-      className
-    )}
-    {...props}
-  />
-)
+}: CardProps<TElement>) => {
+  const Comp = as ?? "div"
+  return (
+    <Comp className={cn(cardVariants({ variant }), className)} {...props} />
+  )
+}
 
 export const CardHeader = ({
   className,
@@ -24,7 +50,11 @@ type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
   children: React.ReactNode
 }
 
-export const CardTitle = ({ className, children, ...props }: CardTitleProps) => (
+export const CardTitle = ({
+  className,
+  children,
+  ...props
+}: CardTitleProps) => (
   <h3
     className={cn(
       "font-headline text-lg uppercase tracking-[0.4rem] text-foreground",
@@ -56,3 +86,5 @@ export const CardFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn("flex items-center p-6 pt-0", className)} {...props} />
 )
+
+export { cardVariants }

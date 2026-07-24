@@ -9,6 +9,8 @@ import ProductCarouselSection from "@/components/product-carousel-section"
 import BundleComposition, {
   buildBundleAvailabilityNotices,
 } from "@/components/bundle-composition"
+import { Badge } from "@/components/ui/badge"
+import { Card } from "@/components/ui/card"
 import { deriveVariantOptions } from "@/lib/products/transformers"
 import { getProductByHandle, PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
 import JsonLd from "@/components/json-ld"
@@ -239,7 +241,10 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
           />
 
           <aside className="min-w-0 flex flex-col gap-6 lg:sticky lg:top-20">
-            <div className="space-y-4 rounded-3xl border border-border/70 bg-surface/95 p-6 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]">
+            <Card
+              variant="panel"
+              className="space-y-4 bg-surface/95 p-6 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]"
+            >
               <div className="space-y-2">
                 <h1 className="break-words font-display text-4xl uppercase tracking-[0.2rem] text-foreground sm:text-5xl sm:tracking-[0.3rem]">
                   {productTitle}
@@ -253,12 +258,13 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
               {genreChips.length ? (
                 <div className="flex flex-wrap items-center gap-2">
                   {genreChips.map((genre) => (
-                    <span
+                    <Badge
                       key={`genre-chip-${genre}`}
-                      className="rounded-full border border-border/40 bg-background/70 px-3 py-1 text-[0.55rem] uppercase tracking-[0.28rem] text-muted-foreground"
+                      variant="outline"
+                      className="border-border/40 bg-background/70 px-3 py-1 text-[0.55rem] tracking-[0.28rem]"
                     >
                       {genre}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               ) : null}
@@ -267,23 +273,23 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                 productTitle={productTitle}
                 availabilityNoticeByVariantId={bundleAvailabilityNotices}
               />
-            </div>
+            </Card>
 
             {bundleComposition ? (
               <BundleComposition bundle={bundleComposition} />
             ) : null}
 
-            <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-6">
+            <Card variant="panel" className="space-y-3 p-6 shadow-none">
               <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                 Description
               </h2>
               <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                 {productDescription}
               </p>
-            </div>
+            </Card>
 
             {tracklist.length ? (
-              <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-6">
+              <Card variant="panel" className="space-y-3 p-6 shadow-none">
                 <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                   Tracklist
                 </h3>
@@ -300,18 +306,18 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                     </li>
                   ))}
                 </ol>
-              </div>
+              </Card>
             ) : null}
 
             {linerNotes ? (
-              <div className="space-y-3 rounded-3xl border border-border/70 bg-surface/90 p-7">
+              <Card variant="panel" className="space-y-3 p-7 shadow-none">
                 <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                   Liner Notes
                 </h2>
                 <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                   {linerNotes}
                 </p>
-              </div>
+              </Card>
             ) : null}
           </aside>
         </section>

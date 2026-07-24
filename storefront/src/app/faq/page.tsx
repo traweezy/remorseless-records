@@ -1,4 +1,17 @@
 import type { Metadata } from "next"
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { Card } from "@/components/ui/card"
+import {
+  PageContentGrid,
+  PageHeader,
+  PageShell,
+} from "@/components/ui/page-shell"
 import { siteMetadata } from "@/config/site"
 import SmartLink from "@/components/ui/smart-link"
 
@@ -36,74 +49,92 @@ const faqs = [
 ]
 
 const FAQPage = () => (
-  <div className="bg-background">
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pb-16 pt-12 lg:gap-10 lg:px-8">
-      <header className="space-y-3">
-        <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">Support</p>
-        <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-foreground">
-          Frequently asked questions
-        </h1>
-        <p className="max-w-3xl text-base leading-relaxed text-muted-foreground">
-          Quick answers about shipping, returns, variants, and how to reach us. Need more?{" "}
-          <SmartLink href="/contact" className="text-destructive underline underline-offset-4">
+  <PageShell>
+    <PageHeader
+      eyebrow="Support"
+      title="Frequently asked questions"
+      description={
+        <>
+          Quick answers about shipping, returns, variants, and how to reach us.
+          Need more?{" "}
+          <SmartLink
+            href="/contact"
+            className="text-destructive underline underline-offset-4"
+          >
             Contact the label
           </SmartLink>
           .
-        </p>
-      </header>
+        </>
+      }
+    />
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-8">
-        <section className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
-          <ul className="space-y-4">
-            {faqs.map((item) => (
-              <li
-                key={item.q}
-                className="rounded-2xl border border-border/60 bg-background/85 px-4 py-4"
+    <PageContentGrid>
+      <Card as="section" variant="panel" className="p-6">
+        <Accordion
+          type="multiple"
+          defaultValue={faqs.map((item) => item.q)}
+          className="space-y-4"
+        >
+          {faqs.map((item) => (
+            <AccordionItem
+              key={item.q}
+              value={item.q}
+              className="rounded-2xl border border-border/60 bg-background/85 px-4"
+            >
+              <AccordionTrigger
+                headingLevel="h2"
+                className="text-sm font-semibold uppercase tracking-[0.28rem] text-foreground"
               >
-                <p className="text-sm font-semibold uppercase tracking-[0.28rem] text-foreground">
-                  {item.q}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+                {item.q}
+              </AccordionTrigger>
+              <AccordionContent className="pt-0 text-sm leading-relaxed text-muted-foreground">
+                {item.a}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </Card>
 
-        <aside className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
-          <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
-            Still need help?
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Email{" "}
-            <a
-              href={`mailto:${siteMetadata.contact.email}`}
+      <Card as="aside" variant="panel" className="space-y-4 p-6">
+        <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+          Still need help?
+        </h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Email{" "}
+          <a
+            href={`mailto:${siteMetadata.contact.email}`}
+            className="text-destructive underline underline-offset-4"
+          >
+            {siteMetadata.contact.email}
+          </a>{" "}
+          or use the{" "}
+          <SmartLink
+            href="/contact"
+            className="text-destructive underline underline-offset-4"
+          >
+            contact form
+          </SmartLink>
+          . We answer within 1–2 business days.
+        </p>
+        <Card
+          variant="inset"
+          className="p-4 text-sm leading-relaxed text-muted-foreground"
+        >
+          <p className="font-semibold text-foreground">Shipping & Returns</p>
+          <p className="mt-1">
+            See the{" "}
+            <SmartLink
+              href="/help/shipping"
               className="text-destructive underline underline-offset-4"
             >
-              {siteMetadata.contact.email}
-            </a>{" "}
-            or use the{" "}
-            <SmartLink href="/contact" className="text-destructive underline underline-offset-4">
-              contact form
-            </SmartLink>
-            . We answer within 1–2 business days.
+              Shipping & Returns
+            </SmartLink>{" "}
+            page for detailed policies.
           </p>
-          <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-sm leading-relaxed text-muted-foreground">
-            <p className="font-semibold text-foreground">Shipping & Returns</p>
-            <p className="mt-1">
-              See the{" "}
-              <SmartLink
-                href="/help/shipping"
-                className="text-destructive underline underline-offset-4"
-              >
-                Shipping & Returns
-              </SmartLink>{" "}
-              page for detailed policies.
-            </p>
-          </div>
-        </aside>
-      </div>
-    </div>
-  </div>
+        </Card>
+      </Card>
+    </PageContentGrid>
+  </PageShell>
 )
 
 export default FAQPage

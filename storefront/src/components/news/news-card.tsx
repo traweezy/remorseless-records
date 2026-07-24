@@ -4,6 +4,8 @@ import { memo, useMemo } from "react"
 import Image from "next/image"
 
 import { Badge } from "@/components/ui/badge"
+import { Card } from "@/components/ui/card"
+import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import SmartLink from "@/components/ui/smart-link"
 import { cn } from "@/lib/ui/cn"
 import type { NewsEntry } from "@/lib/data/news"
@@ -57,15 +59,15 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
     [entry.tags]
   )
 
-  const coverAlt = useMemo(
-    () => `${entry.title} cover artwork`,
-    [entry.title]
-  )
+  const coverAlt = useMemo(() => `${entry.title} cover artwork`, [entry.title])
 
   const detailHref = useMemo(() => `/news/${entry.slug}`, [entry.slug])
 
   return (
-    <article className="group rounded-3xl border border-border/50 bg-muted/10 p-5 shadow-lg shadow-black/5 backdrop-blur-sm md:p-8">
+    <Card
+      as="article"
+      className="group border-border/50 bg-muted/10 p-5 shadow-lg shadow-black/5 backdrop-blur-sm md:p-8"
+    >
       <div className={layoutClassName}>
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-border/50 bg-muted md:w-5/12">
           {entry.coverUrl ? (
@@ -78,9 +80,7 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
               priority={index < 2}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-              No image
-            </div>
+            <MediaPlaceholder />
           )}
         </div>
         <div className="flex flex-1 flex-col gap-4">
@@ -90,7 +90,10 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
               <span className="text-foreground/70">By {entry.author}</span>
             ) : null}
           </div>
-          <SmartLink href={detailHref} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <SmartLink
+            href={detailHref}
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <h2 className="font-display text-3xl uppercase tracking-[0.2rem] text-foreground">
               {entry.title}
             </h2>
@@ -107,7 +110,11 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
           {tagList.length ? (
             <div className="flex flex-wrap gap-2 pt-2">
               {tagList.map((tag) => (
-                <Badge key={tag} variant="secondary" className="uppercase tracking-[0.2rem]">
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="uppercase tracking-[0.2rem]"
+                >
                   {tag}
                 </Badge>
               ))}
@@ -123,7 +130,7 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
           </div>
         </div>
       </div>
-    </article>
+    </Card>
   )
 })
 

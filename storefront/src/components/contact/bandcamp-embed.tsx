@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react"
 
+import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
 const DEFAULT_ALBUM_ID = "2916008899"
 const DEFAULT_ALBUM_SLUG = "samudaripen"
@@ -36,19 +38,19 @@ const BandcampEmbed = () => {
 
   if (errored) {
     return (
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm text-muted-foreground">
+      <Alert className="flex flex-col gap-3 p-4 text-muted-foreground">
         <p>Bandcamp player is unavailable right now.</p>
         <Button asChild variant="outlined" size="compact" className="w-fit">
           <a href={BANDCAMP_LINK} target="_blank" rel="noreferrer">
             Open on Bandcamp
           </a>
         </Button>
-      </div>
+      </Alert>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/80">
+    <Card variant="inset" className="overflow-hidden">
       <iframe
         title="Bandcamp player"
         style={{
@@ -66,7 +68,7 @@ const BandcampEmbed = () => {
       >
         <a href={BANDCAMP_LINK}>Open on Bandcamp</a>
       </iframe>
-    </div>
+    </Card>
   )
 }
 

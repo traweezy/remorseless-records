@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Menu, ShoppingCart, X } from "lucide-react"
+import { Menu, ShoppingCart } from "lucide-react"
 
 import CartDrawer from "@/components/cart-drawer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import Drawer from "@/components/ui/drawer"
+import Drawer, { DrawerCloseButton } from "@/components/ui/drawer"
 import SmartLink from "@/components/ui/smart-link"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
@@ -253,16 +253,10 @@ const SiteHeaderShell = () => {
                   </span>
                 </button>
               </div>
-              <Button
-                type="button"
-                variant="outlined"
-                size="icon"
-                className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/60 p-2 text-muted-foreground transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-9"
-                aria-label="Close navigation"
-                onClick={() => setMenuOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <DrawerCloseButton
+                className="absolute right-4 top-4 border-border/60 hover:border-destructive hover:text-destructive focus-visible:ring-destructive"
+                label="Close navigation"
+              />
             </div>
           </Drawer>
         </div>

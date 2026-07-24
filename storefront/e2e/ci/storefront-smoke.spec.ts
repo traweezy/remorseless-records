@@ -273,13 +273,13 @@ test("visible interactive controls consistently use pointer cursors", async ({
 
   await page.goto("/catalog", { waitUntil: "networkidle" })
   await expectVisibleInteractivePointers(page)
-  await page.getByRole("button", { name: "Title · A → Z" }).click()
+  await page.getByRole("combobox", { name: "Sort products" }).click()
   await expectVisibleInteractivePointers(page)
   await page.keyboard.press("Escape")
 
   await page.goto("/discography", { waitUntil: "networkidle" })
   await expectVisibleInteractivePointers(page)
-  await page.getByRole("button", { name: "All availability" }).click()
+  await page.getByRole("combobox", { name: "Availability" }).click()
   await expectVisibleInteractivePointers(page)
   await page.keyboard.press("Escape")
 

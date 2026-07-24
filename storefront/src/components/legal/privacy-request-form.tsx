@@ -5,12 +5,20 @@ import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
+import { HoneypotField } from "@/components/ui/honeypot-field"
 import { Input } from "@/components/ui/input"
 import {
   PillDropdown,
   type PillDropdownOption,
 } from "@/components/ui/pill-dropdown"
-import { cn } from "@/lib/ui/cn"
+import { Textarea } from "@/components/ui/textarea"
 import { siteMetadata } from "@/config/site"
 
 const privacyRequestSchema = z
@@ -36,9 +44,6 @@ const defaultValues: PrivacyRequestValues = {
   orderId: "",
   honeypot: "",
 }
-
-const fieldBaseClass =
-  "mt-1 w-full appearance-none rounded-2xl border border-border/60 bg-background/90 px-3.5 py-2.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus:border-destructive focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-destructive focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_hsl(var(--destructive)/0.55)]"
 
 const PrivacyRequestForm = () => {
   const [status, setStatus] = useState<
@@ -98,25 +103,22 @@ const PrivacyRequestForm = () => {
   const disabled = useMemo(() => status === "submitting", [status])
 
   return (
-    <form
-      className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]"
+    <Card
+      as="form"
+      variant="panel"
+      className="space-y-4 p-6"
       noValidate
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
       }}
     >
-      <input
-        type="text"
-        name="company"
+      <HoneypotField
         value={form.state.values.honeypot ?? ""}
-        onChange={(event) => form.setFieldValue("honeypot", event.target.value)}
-        className="hidden"
-        aria-hidden
-        tabIndex={-1}
+        onChange={(value) => form.setFieldValue("honeypot", value)}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <FieldGroup className="sm:grid-cols-2">
         <form.Field
           name="name"
           validators={{
@@ -126,27 +128,24 @@ const PrivacyRequestForm = () => {
                 : "Name is required",
           }}
         >
-          {(field) => (
-            <label
-              htmlFor={field.name}
-              className="block text-sm text-muted-foreground"
-            >
-              Name
-              <Input
-                id={field.name}
-                value={field.state.value}
-                onChange={(event) => field.handleChange(event.target.value)}
-                onBlur={field.handleBlur}
-                className="mt-1"
-                aria-invalid={Boolean(field.state.meta.errors[0])}
-              />
-              {field.state.meta.errors[0] ? (
-                <p className="mt-1 text-xs text-destructive">
-                  {field.state.meta.errors[0]}
-                </p>
-              ) : null}
-            </label>
-          )}
+          {(field) => {
+            const error = field.state.meta.errors[0]
+            const errorId = `${field.name}-error`
+            return (
+              <Field>
+                <FieldLabel htmlFor={field.name}>Name</FieldLabel>
+                <Input
+                  id={field.name}
+                  value={field.state.value}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  onBlur={field.handleBlur}
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? errorId : undefined}
+                />
+                <FieldError id={errorId}>{error}</FieldError>
+              </Field>
+            )
+          }}
         </form.Field>
 
         <form.Field
@@ -158,30 +157,27 @@ const PrivacyRequestForm = () => {
                 : "Valid email required",
           }}
         >
-          {(field) => (
-            <label
-              htmlFor={field.name}
-              className="block text-sm text-muted-foreground"
-            >
-              Email
-              <Input
-                id={field.name}
-                type="email"
-                value={field.state.value}
-                onChange={(event) => field.handleChange(event.target.value)}
-                onBlur={field.handleBlur}
-                className="mt-1"
-                aria-invalid={Boolean(field.state.meta.errors[0])}
-              />
-              {field.state.meta.errors[0] ? (
-                <p className="mt-1 text-xs text-destructive">
-                  {field.state.meta.errors[0]}
-                </p>
-              ) : null}
-            </label>
-          )}
+          {(field) => {
+            const error = field.state.meta.errors[0]
+            const errorId = `${field.name}-error`
+            return (
+              <Field>
+                <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                <Input
+                  id={field.name}
+                  type="email"
+                  value={field.state.value}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  onBlur={field.handleBlur}
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? errorId : undefined}
+                />
+                <FieldError id={errorId}>{error}</FieldError>
+              </Field>
+            )
+          }}
         </form.Field>
-      </div>
+      </FieldGroup>
 
       <form.Field
         name="requestType"
@@ -192,41 +188,40 @@ const PrivacyRequestForm = () => {
               : "Select a request type",
         }}
       >
-        {(field) => (
-          <div className="block text-sm text-muted-foreground">
-            <p className="mb-1">Request type</p>
-            <PillDropdown
-              value={field.state.value}
-              options={requestTypeOptions}
-              onChange={(next) => field.handleChange(next)}
-              className="w-full"
-              buttonClassName="w-full"
-              align="start"
-            />
-            {field.state.meta.errors[0] ? (
-              <p className="mt-1 text-xs text-destructive">
-                {field.state.meta.errors[0]}
-              </p>
-            ) : null}
-          </div>
-        )}
+        {(field) => {
+          const error = field.state.meta.errors[0]
+          const errorId = `${field.name}-error`
+          return (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Request type</FieldLabel>
+              <PillDropdown
+                triggerId={field.name}
+                value={field.state.value}
+                options={requestTypeOptions}
+                onChange={(next) => field.handleChange(next)}
+                className="w-full"
+                buttonClassName="w-full"
+                align="start"
+                invalid={Boolean(error)}
+                {...(error ? { ariaDescribedBy: errorId } : {})}
+              />
+              <FieldError id={errorId}>{error}</FieldError>
+            </Field>
+          )
+        }}
       </form.Field>
 
       <form.Field name="orderId">
         {(field) => (
-          <label
-            htmlFor={field.name}
-            className="block text-sm text-muted-foreground"
-          >
-            Order ID (optional)
+          <Field>
+            <FieldLabel htmlFor={field.name}>Order ID (optional)</FieldLabel>
             <Input
               id={field.name}
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               onBlur={field.handleBlur}
-              className="mt-1"
             />
-          </label>
+          </Field>
         )}
       </form.Field>
 
@@ -239,30 +234,26 @@ const PrivacyRequestForm = () => {
               : "Please provide more detail",
         }}
       >
-        {(field) => (
-          <label
-            htmlFor={field.name}
-            className="block text-sm text-muted-foreground"
-          >
-            Details
-            <textarea
-              id={field.name}
-              value={field.state.value}
-              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
-                field.handleChange(event.target.value)
-              }
-              onBlur={field.handleBlur}
-              rows={5}
-              className={cn(fieldBaseClass, "resize-none rounded-2xl")}
-              aria-invalid={Boolean(field.state.meta.errors[0])}
-            />
-            {field.state.meta.errors[0] ? (
-              <p className="mt-1 text-xs text-destructive">
-                {field.state.meta.errors[0]}
-              </p>
-            ) : null}
-          </label>
-        )}
+        {(field) => {
+          const error = field.state.meta.errors[0]
+          const errorId = `${field.name}-error`
+          return (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Details</FieldLabel>
+              <Textarea
+                id={field.name}
+                value={field.state.value}
+                onChange={(event) => field.handleChange(event.target.value)}
+                onBlur={field.handleBlur}
+                rows={5}
+                className="resize-none"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? errorId : undefined}
+              />
+              <FieldError id={errorId}>{error}</FieldError>
+            </Field>
+          )
+        }}
       </form.Field>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -288,7 +279,7 @@ const PrivacyRequestForm = () => {
           </span>
         ) : null}
       </div>
-    </form>
+    </Card>
   )
 }
 

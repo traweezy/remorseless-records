@@ -1,3 +1,5 @@
+import { Badge, type BadgeProps } from "@/components/ui/badge"
+import { Card, cardVariants } from "@/components/ui/card"
 import SmartLink from "@/components/ui/smart-link"
 import { buildPublicProductPath } from "@/lib/products/routes"
 import { cn } from "@/lib/ui/cn"
@@ -12,23 +14,23 @@ type BundleCompositionProps = {
 
 const resolveItemStatus = (
   item: BundleCompositionItem
-): { label: string; className: string } => {
+): { label: string; variant: BadgeProps["variant"] } => {
   const mappings = item.availabilityByBundleVariant
   if (mappings.length && mappings.every((mapping) => !mapping.available)) {
     return {
       label: "Sold out",
-      className: "border-destructive/70 bg-destructive/20 text-destructive",
+      variant: "danger",
     }
   }
   if (mappings.some((mapping) => !mapping.available)) {
     return {
       label: "Some formats sold out",
-      className: "border-amber-400/70 bg-amber-500/15 text-amber-200",
+      variant: "warning",
     }
   }
   return {
     label: "In stock",
-    className: "border-emerald-400/60 bg-emerald-500/15 text-emerald-200",
+    variant: "success",
   }
 }
 
@@ -59,7 +61,7 @@ export const buildBundleAvailabilityNotices = (
 
 const BundleComposition = ({ bundle }: BundleCompositionProps) => (
   <section
-    className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6"
+    className={cn(cardVariants({ variant: "panel" }), "space-y-4 p-6")}
     aria-labelledby="bundle-composition-heading"
   >
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -77,13 +79,14 @@ const BundleComposition = ({ bundle }: BundleCompositionProps) => (
         </p>
       </div>
       {bundle.hasUnavailableComponents ? (
-        <span
-          className="rounded-full border border-amber-400/70 bg-amber-500/15 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.22rem] text-amber-200"
+        <Badge
+          variant="warning"
+          className="px-3 py-1 text-[0.65rem] tracking-[0.22rem]"
           role="status"
           aria-live="polite"
         >
           Includes sold-out items
-        </span>
+        </Badge>
       ) : null}
     </div>
 
@@ -109,28 +112,28 @@ const BundleComposition = ({ bundle }: BundleCompositionProps) => (
           </span>
         )
         return (
-          <li
-            key={item.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/65 p-4"
-          >
-            {item.product.handle ? (
-              <SmartLink
-                href={buildPublicProductPath({ handle: item.product.handle })}
-                className="min-w-0 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-              >
-                {content}
-              </SmartLink>
-            ) : (
-              content
-            )}
-            <span
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.22rem]",
-                status.className
-              )}
+          <li key={item.id}>
+            <Card
+              variant="subtle"
+              className="flex flex-wrap items-center justify-between gap-3 p-4"
             >
-              {status.label}
-            </span>
+              {item.product.handle ? (
+                <SmartLink
+                  href={buildPublicProductPath({ handle: item.product.handle })}
+                  className="min-w-0 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                >
+                  {content}
+                </SmartLink>
+              ) : (
+                content
+              )}
+              <Badge
+                variant={status.variant}
+                className="px-2.5 py-1 tracking-[0.22rem]"
+              >
+                {status.label}
+              </Badge>
+            </Card>
           </li>
         )
       })}

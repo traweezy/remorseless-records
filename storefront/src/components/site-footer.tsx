@@ -58,6 +58,9 @@ const FOOTER_LINKS: FooterLinkSection[] = [
   },
 ]
 
+const footerLinkClassName =
+  "interactive -mx-1 inline-flex min-h-6 items-center gap-1.5 rounded-md px-1 py-1.5 text-muted-foreground hover:text-foreground"
+
 const SocialIcon = ({ path }: { path: string | undefined }) => {
   if (!path) {
     return null
@@ -87,7 +90,9 @@ const SiteFooter = () => {
             Remorseless Records
           </span>
           <p className="text-[0.7rem] leading-snug">
-            Brutal maximalism across every pressing. Limited runs, no compromises, all volume. Join the signal and never miss another drop.
+            Brutal maximalism across every pressing. Limited runs, no
+            compromises, all volume. Join the signal and never miss another
+            drop.
           </p>
           <p className="text-[0.58rem] uppercase tracking-[0.2rem] text-muted-foreground">
             © {currentYear} Remorseless Records
@@ -107,7 +112,7 @@ const SiteFooter = () => {
                         href={link.href}
                         target="_blank"
                         rel="noreferrer"
-                        className="interactive inline-flex items-center gap-1.5 rounded-md px-0.5 py-0 text-muted-foreground hover:text-foreground"
+                        className={footerLinkClassName}
                       >
                         <SocialIcon path={link.iconPath} />
                         {link.label}
@@ -116,7 +121,7 @@ const SiteFooter = () => {
                       <SmartLink
                         href={link.href}
                         nativePrefetch
-                        className="interactive inline-flex items-center gap-1.5 rounded-md px-0.5 py-0 text-muted-foreground hover:text-foreground"
+                        className={footerLinkClassName}
                       >
                         <SocialIcon path={link.iconPath} />
                         {link.label}

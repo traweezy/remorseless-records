@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+
+import { Button } from "@/components/ui/button"
 import SmartLink from "@/components/ui/smart-link"
 
 export const metadata: Metadata = {
@@ -17,13 +19,11 @@ const NotFound = () => (
     <p className="max-w-md text-sm text-muted-foreground">
       The requested page does not exist.
     </p>
-    <SmartLink
-      href="/"
-      nativePrefetch
-      className="inline-flex items-center rounded-full border border-accent px-6 py-2 text-sm uppercase tracking-[0.3rem] text-accent transition hover:bg-accent hover:text-background"
-    >
-      Back to safety
-    </SmartLink>
+    <Button asChild variant="outlined" size="compact">
+      <SmartLink href="/" nativePrefetch>
+        Back to safety
+      </SmartLink>
+    </Button>
   </div>
 )
 

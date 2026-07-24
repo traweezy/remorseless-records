@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react"
 
 import { toast } from "sonner"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatAmount } from "@/lib/money"
 import { resolveStockChip } from "@/lib/products/stock-presentation"
@@ -216,14 +217,9 @@ const ProductVariantSelector = ({
                     {variantPrice}
                   </span>
                   {stockChip ? (
-                    <span
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.3rem]",
-                        stockChip.tone
-                      )}
-                    >
+                    <Badge variant={stockChip.tone} className="px-2.5 py-1">
                       {stockChip.label}
-                    </span>
+                    </Badge>
                   ) : null}
                 </Button>
               )
@@ -247,13 +243,13 @@ const ProductVariantSelector = ({
               {selectedVariant?.title ?? "None"}
             </span>
             {priceDisplay ? (
-              <span className="rounded-full border border-border/60 px-3 py-1 text-xs uppercase tracking-[0.3rem] text-accent">
+              <Badge variant="accent" className="px-3 py-1 text-xs">
                 {priceDisplay}
-              </span>
+              </Badge>
             ) : (
-              <span className="rounded-full border border-border/60 px-3 py-1 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+              <Badge variant="default" className="px-3 py-1 text-xs">
                 Price unavailable
-              </span>
+              </Badge>
             )}
           </div>
         </div>

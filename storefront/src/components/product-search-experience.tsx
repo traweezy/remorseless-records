@@ -21,7 +21,6 @@ import {
   useQuery,
 } from "@tanstack/react-query"
 import { type VirtualItem, useWindowVirtualizer } from "@tanstack/react-virtual"
-import { Slider } from "radix-ui"
 import {
   ArrowDown01,
   ArrowDownAZ,
@@ -36,8 +35,23 @@ import {
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@/components/ui/button"
-import Drawer from "@/components/ui/drawer"
+import { Checkbox } from "@/components/ui/checkbox"
+import Drawer, {
+  DrawerCloseButton,
+  DrawerEyebrow,
+  DrawerHeader,
+  DrawerHeading,
+  DrawerTitle,
+} from "@/components/ui/drawer"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { Empty } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
+import { Slider } from "@/components/ui/slider"
 import ProductCard from "@/components/product-card"
 import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
@@ -385,23 +399,13 @@ const FilterCheckboxList = ({
                     )}
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-2">
-                      <input
+                      <Checkbox
                         id={checkboxId}
-                        type="checkbox"
                         checked={checked}
-                        onChange={() => onToggle(normalizedValue)}
-                        className="peer sr-only"
+                        onCheckedChange={() => onToggle(normalizedValue)}
+                        size="compact"
+                        className="border-border/60 bg-background/70 data-[state=checked]:border-destructive data-[state=checked]:bg-destructive focus-visible:ring-destructive/60"
                       />
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm border border-border/60 bg-background/70 text-transparent transition peer-focus-visible:ring-2 peer-focus-visible:ring-destructive/60",
-                          checked &&
-                            "border-destructive bg-destructive text-background"
-                        )}
-                      >
-                        {checked ? <Check className="h-3 w-3" /> : null}
-                      </span>
                       <span className="min-w-0 text-foreground">{label}</span>
                     </span>
                     <span className="shrink-0 tabular-nums text-[0.6rem] text-muted-foreground/80">
@@ -590,42 +594,29 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                       {formatPrice(sliderValues[1], bounds.currency)}
                     </output>
                   </div>
-                  <Slider.Root
-                    className="relative flex min-h-11 w-full touch-none select-none items-center"
+                  <Slider
                     value={sliderValues}
                     min={sliderMinimum}
                     max={sliderMaximum}
                     step={sliderStep}
                     minStepsBetweenThumbs={0}
                     onValueChange={handleSliderChange}
-                  >
-                    <Slider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-border/70">
-                      <Slider.Range className="absolute h-full bg-destructive" />
-                    </Slider.Track>
-                    <Slider.Thumb
-                      className="block h-7 w-7 cursor-pointer rounded-full border-2 border-destructive bg-background shadow-md transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background active:cursor-grabbing motion-reduce:transition-none"
-                      aria-label="Minimum price"
-                      aria-valuetext={formatPrice(
-                        sliderValues[0],
-                        bounds.currency
-                      )}
-                    />
-                    <Slider.Thumb
-                      className="block h-7 w-7 cursor-pointer rounded-full border-2 border-destructive bg-background shadow-md transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background active:cursor-grabbing motion-reduce:transition-none"
-                      aria-label="Maximum price"
-                      aria-valuetext={formatPrice(
-                        sliderValues[1],
-                        bounds.currency
-                      )}
-                    />
-                  </Slider.Root>
+                    thumbLabels={["Minimum price", "Maximum price"]}
+                    getValueText={(value) =>
+                      formatPrice(value, bounds.currency)
+                    }
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <label className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground">
+                  <label
+                    htmlFor={`${idPrefix}-price-minimum`}
+                    className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground"
+                  >
                     <span>Minimum</span>
-                    <span className="flex min-h-11 items-center rounded-lg border border-border/70 bg-background px-3 focus-within:border-destructive">
-                      <span aria-hidden>$</span>
-                      <input
+                    <InputGroup className="min-h-11 rounded-lg border-border/70 bg-background px-3 shadow-none">
+                      <InputGroupAddon aria-hidden>$</InputGroupAddon>
+                      <InputGroupInput
+                        id={`${idPrefix}-price-minimum`}
                         value={draftMin}
                         onChange={handleMinimumChange}
                         onFocus={handleInputFocus}
@@ -640,13 +631,17 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                         aria-invalid={Boolean(error)}
                         aria-describedby={error ? errorId : undefined}
                       />
-                    </span>
+                    </InputGroup>
                   </label>
-                  <label className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground">
+                  <label
+                    htmlFor={`${idPrefix}-price-maximum`}
+                    className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground"
+                  >
                     <span>Maximum</span>
-                    <span className="flex min-h-11 items-center rounded-lg border border-border/70 bg-background px-3 focus-within:border-destructive">
-                      <span aria-hidden>$</span>
-                      <input
+                    <InputGroup className="min-h-11 rounded-lg border-border/70 bg-background px-3 shadow-none">
+                      <InputGroupAddon aria-hidden>$</InputGroupAddon>
+                      <InputGroupInput
+                        id={`${idPrefix}-price-maximum`}
                         value={draftMax}
                         onChange={handleMaximumChange}
                         onFocus={handleInputFocus}
@@ -661,7 +656,7 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                         aria-invalid={Boolean(error)}
                         aria-describedby={error ? errorId : undefined}
                       />
-                    </span>
+                    </InputGroup>
                   </label>
                 </div>
                 <p
@@ -828,7 +823,12 @@ const SortDropdown = ({
   onChange: (value: ProductSortOption) => void
 }) => {
   return (
-    <PillDropdown value={value} options={SORT_OPTIONS} onChange={onChange} />
+    <PillDropdown
+      value={value}
+      options={SORT_OPTIONS}
+      onChange={onChange}
+      ariaLabel="Sort products"
+    />
   )
 }
 
@@ -1590,27 +1590,15 @@ const ProductSearchExperience = ({
                   panelClassName="bg-background"
                 >
                   <div className="flex h-full flex-col overflow-hidden">
-                    <header className="flex items-start justify-between border-b border-border/60 px-6 py-4">
-                      <div className="space-y-1 text-left">
-                        <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
-                          Filters
-                        </p>
-                        <p className="text-lg font-semibold uppercase tracking-[0.3rem] text-foreground">
+                    <DrawerHeader>
+                      <DrawerHeading>
+                        <DrawerEyebrow>Filters</DrawerEyebrow>
+                        <DrawerTitle className="font-sans text-lg font-semibold tracking-[0.3rem]">
                           Tune your search
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        size="icon"
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-9 sm:w-9"
-                        aria-label="Close filters"
-                        onClick={() => setMobileFiltersOpen(false)}
-                      >
-                        <span className="sr-only">Close filters</span>
-                        <X className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </header>
+                        </DrawerTitle>
+                      </DrawerHeading>
+                      <DrawerCloseButton label="Close filters" />
+                    </DrawerHeader>
 
                     <div className="flex-1 overflow-y-auto px-6 pb-10 pt-2">
                       <FilterSidebar
@@ -1651,12 +1639,11 @@ const ProductSearchExperience = ({
                   </div>
                 </Drawer>
               </div>
-              <div className="group flex h-11 w-full min-w-0 items-center gap-2 rounded-full border border-border/60 bg-background/90 pl-3 pr-0 transition-[border-color,box-shadow] supports-[backdrop-filter]:backdrop-blur-lg hover:border-border focus-within:border-destructive focus-within:shadow-[0_0_0_2px_hsl(var(--destructive)/0.45)] sm:flex-1 sm:min-w-[240px]">
-                <Search
-                  className="h-4 w-4 text-muted-foreground transition group-focus-within:text-destructive"
-                  aria-hidden
-                />
-                <input
+              <InputGroup className="h-11 gap-2 pl-3 pr-0 sm:min-w-[240px] sm:flex-1">
+                <InputGroupAddon>
+                  <Search className="h-4 w-4" aria-hidden />
+                </InputGroupAddon>
+                <InputGroupInput
                   value={query}
                   onChange={(event) => {
                     setQuery(event.target.value)
@@ -1669,21 +1656,19 @@ const ProductSearchExperience = ({
                   autoComplete="off"
                 />
                 {query.length ? (
-                  <Button
+                  <InputGroupButton
                     type="button"
-                    variant="unstyled"
-                    size="auto"
                     onClick={() => setQuery("")}
-                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/60"
+                    className="h-11 w-11 rounded-full focus-visible:ring-destructive/60"
                     aria-label="Clear catalog search"
                     title="Clear search"
                   >
                     <X className="h-5 w-5" aria-hidden />
-                  </Button>
+                  </InputGroupButton>
                 ) : (
                   <span className="w-3 shrink-0" aria-hidden />
                 )}
-              </div>
+              </InputGroup>
               <div className="w-full sm:w-auto sm:shrink-0">
                 <SortDropdown value={sortOption} onChange={setSortOption} />
               </div>
@@ -1897,7 +1882,7 @@ const ProductSearchExperience = ({
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-border/60 bg-background/80 p-12 text-center text-sm text-muted-foreground">
+              <Empty>
                 {searchQuery.isError ? (
                   <>
                     <p>Search is temporarily unavailable.</p>
@@ -1930,7 +1915,7 @@ const ProductSearchExperience = ({
                     <p>We’re syncing new releases for this region.</p>
                   </>
                 )}
-              </div>
+              </Empty>
             )}
           </section>
         </div>

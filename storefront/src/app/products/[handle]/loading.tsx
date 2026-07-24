@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/card"
 import Skeleton from "@/components/ui/skeleton"
 
 const ProductDetailLoading = () => (
@@ -8,7 +9,10 @@ const ProductDetailLoading = () => (
           <Skeleton key={index} className="aspect-square w-full rounded-2xl" />
         ))}
       </div>
-      <div className="space-y-4 rounded-2xl border border-border/50 bg-surface/80 p-6">
+      <Card
+        variant="inset"
+        className="space-y-4 border-border/50 bg-surface/80 p-6"
+      >
         <Skeleton className="h-8 w-2/3 rounded-pill" />
         <Skeleton className="h-4 w-1/2 rounded-pill" />
         <Skeleton className="h-24 w-full rounded-xl" />
@@ -17,14 +21,17 @@ const ProductDetailLoading = () => (
             <Skeleton key={index} className="h-10 w-full rounded-pill" />
           ))}
         </div>
-      </div>
+      </Card>
     </div>
-    <div className="space-y-4 rounded-2xl border border-border/50 bg-surface/80 p-6">
+    <Card
+      variant="inset"
+      className="space-y-4 border-border/50 bg-surface/80 p-6"
+    >
       <Skeleton className="h-6 w-40 rounded-pill" />
       <Skeleton className="h-4 w-full rounded-md" />
       <Skeleton className="h-4 w-5/6 rounded-md" />
       <Skeleton className="h-4 w-2/3 rounded-md" />
-    </div>
+    </Card>
   </div>
 )
 

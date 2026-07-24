@@ -2,21 +2,21 @@ import type { VariantOption } from "@/types/product"
 
 export type StockChip = {
   label: string
-  tone: string
+  tone: "default" | "danger" | "warning"
 }
 
 export const resolveStockChip = (variant: VariantOption): StockChip | null => {
   if (!variant.hasPrice) {
     return {
       label: "Unavailable",
-      tone: "border-border/70 bg-background/60 text-muted-foreground",
+      tone: "default",
     }
   }
 
   if (variant.stockStatus === "sold_out") {
     return {
       label: "Sold out",
-      tone: "border-destructive/70 bg-destructive/20 text-destructive",
+      tone: "danger",
     }
   }
 
@@ -26,7 +26,7 @@ export const resolveStockChip = (variant: VariantOption): StockChip | null => {
   ) {
     return {
       label: "Low stock",
-      tone: "border-amber-400/70 bg-amber-500/15 text-amber-200",
+      tone: "warning",
     }
   }
 

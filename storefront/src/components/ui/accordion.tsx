@@ -8,6 +8,8 @@ import { cn } from "@/lib/ui/cn"
 
 const AccordionRoot = Accordion.Root
 
+type AccordionHeadingLevel = "h2" | "h3" | "h4" | "h5" | "h6"
+
 const AccordionItem = React.forwardRef<
   React.ElementRef<typeof Accordion.Item>,
   React.ComponentPropsWithoutRef<typeof Accordion.Item>
@@ -20,25 +22,36 @@ const AccordionItem = React.forwardRef<
 ))
 AccordionItem.displayName = "AccordionItem"
 
+type AccordionTriggerProps = React.ComponentPropsWithoutRef<
+  typeof Accordion.Trigger
+> & {
+  headingLevel?: AccordionHeadingLevel
+}
+
 const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof Accordion.Trigger>,
-  React.ComponentPropsWithoutRef<typeof Accordion.Trigger>
->(({ className, children, ...props }, ref) => (
-  <Accordion.Header className="flex">
-    <Accordion.Trigger
-      ref={ref}
-      className={cn(
-        "flex flex-1 items-center justify-between py-4 text-left text-sm font-semibold transition hover:text-foreground",
-        "[&[data-state=open]>svg]:rotate-180",
-        className
-      )}
-      {...props}
-    >
-      <span className="flex items-center gap-3">{children}</span>
-      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
-    </Accordion.Trigger>
-  </Accordion.Header>
-))
+  AccordionTriggerProps
+>(({ className, children, headingLevel = "h3", ...props }, ref) => {
+  const Heading = headingLevel
+  return (
+    <Accordion.Header asChild>
+      <Heading className="flex">
+        <Accordion.Trigger
+          ref={ref}
+          className={cn(
+            "flex flex-1 items-center justify-between py-4 text-left text-sm font-semibold transition hover:text-foreground",
+            "[&[data-state=open]>svg]:rotate-180",
+            className
+          )}
+          {...props}
+        >
+          <span className="flex items-center gap-3">{children}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+        </Accordion.Trigger>
+      </Heading>
+    </Accordion.Header>
+  )
+})
 AccordionTrigger.displayName = "AccordionTrigger"
 
 const AccordionContent = React.forwardRef<
@@ -55,4 +68,9 @@ const AccordionContent = React.forwardRef<
 ))
 AccordionContent.displayName = "AccordionContent"
 
-export { AccordionRoot as Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+export {
+  AccordionRoot as Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+}

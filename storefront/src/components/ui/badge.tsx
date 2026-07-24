@@ -12,10 +12,14 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "border-border bg-background/70 text-muted-foreground",
-        destructive: "border-destructive bg-destructive text-destructive-foreground",
-        accent: "border-destructive bg-destructive/15 text-destructive",
+        destructive:
+          "border-destructive bg-destructive text-destructive-foreground",
+        danger: "border-destructive/70 bg-destructive/20 text-foreground",
+        accent: "border-destructive bg-destructive/15 text-foreground",
         secondary: "border-border/70 bg-surface text-foreground",
         outline: "border-border text-muted-foreground",
+        warning: "border-amber-400/70 bg-amber-500/15 text-amber-200",
+        success: "border-emerald-400/60 bg-emerald-500/15 text-emerald-200",
       },
     },
     defaultVariants: {
@@ -25,7 +29,8 @@ const badgeVariants = cva(
 )
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {}
 
 export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
@@ -38,3 +43,5 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
   )
 )
 Badge.displayName = "Badge"
+
+export { badgeVariants }

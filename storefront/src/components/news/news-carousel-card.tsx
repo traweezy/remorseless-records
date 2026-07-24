@@ -4,6 +4,8 @@ import { memo, useMemo } from "react"
 import Image from "next/image"
 
 import { Badge } from "@/components/ui/badge"
+import { Card } from "@/components/ui/card"
+import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import SmartLink from "@/components/ui/smart-link"
 import type { NewsEntry } from "@/lib/data/news"
 
@@ -34,10 +36,7 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
     return dateFormatter.format(parsed)
   }, [dateFormatter, entry.createdAt, entry.publishedAt])
 
-  const coverAlt = useMemo(
-    () => `${entry.title} cover artwork`,
-    [entry.title]
-  )
+  const coverAlt = useMemo(() => `${entry.title} cover artwork`, [entry.title])
 
   const detailHref = useMemo(() => `/news/${entry.slug}`, [entry.slug])
 
@@ -47,9 +46,10 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
   )
 
   return (
-    <SmartLink
+    <Card
+      as={SmartLink}
       href={detailHref}
-      className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border/50 bg-muted/10 shadow-lg shadow-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex h-full flex-col overflow-hidden border-border/50 bg-muted/10 shadow-lg shadow-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden">
         {entry.coverUrl ? (
@@ -61,9 +61,7 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
             className="object-cover transition duration-500 ease-out group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-            No image
-          </div>
+          <MediaPlaceholder />
         )}
       </div>
       <div className="flex flex-1 flex-col gap-3 p-5">
@@ -81,14 +79,18 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
         {tagList.length ? (
           <div className="mt-auto flex flex-wrap gap-2 pt-2">
             {tagList.map((tag) => (
-              <Badge key={tag} variant="secondary" className="uppercase tracking-[0.2rem]">
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="uppercase tracking-[0.2rem]"
+              >
                 {tag}
               </Badge>
             ))}
           </div>
         ) : null}
       </div>
-    </SmartLink>
+    </Card>
   )
 })
 

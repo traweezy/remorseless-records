@@ -5,6 +5,7 @@ import Image from "next/image"
 import { AnimatePresence, motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
+import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 
 type GalleryImage = {
   id?: string | null
@@ -33,7 +34,11 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
 
   if (!sanitized.length) {
     return (
-      <div className="aspect-[4/5] rounded-3xl border border-border/60 bg-background/80" />
+      <MediaPlaceholder
+        label="Artwork unavailable"
+        showIcon
+        className="aspect-[4/5] rounded-3xl border border-border/60 bg-background/80"
+      />
     )
   }
 

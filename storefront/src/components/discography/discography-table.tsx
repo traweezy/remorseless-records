@@ -527,11 +527,11 @@ const DiscographyTable = memo(
               <PillDropdown
                 value={
                   availabilityFilterValue as
-                    | DiscographyEntry["availability"]
-                    | ""
+                    DiscographyEntry["availability"] | ""
                 }
                 options={availabilityOptions}
                 onChange={(value) => handleAvailabilityChange(value)}
+                ariaLabel="Availability"
                 className="w-full sm:min-w-[220px]"
                 buttonClassName="w-full sm:min-w-[220px]"
                 dropdownClassName="w-full sm:min-w-[220px]"
@@ -541,6 +541,7 @@ const DiscographyTable = memo(
                 value={formatFilterValue}
                 options={formatDropdownOptions}
                 onChange={(value) => handleFormatChange(value)}
+                ariaLabel="Format"
                 className="w-full sm:min-w-[220px]"
                 buttonClassName="w-full sm:min-w-[220px]"
                 dropdownClassName="w-full sm:min-w-[220px]"
@@ -550,6 +551,7 @@ const DiscographyTable = memo(
                 value={tagFilterValue}
                 options={tagDropdownOptions}
                 onChange={(value) => handleTagChange(value)}
+                ariaLabel="Tag"
                 className="w-full sm:min-w-[220px]"
                 buttonClassName="w-full sm:min-w-[220px]"
                 dropdownClassName="w-full sm:min-w-[220px]"

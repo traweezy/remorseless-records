@@ -3,6 +3,7 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
+import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import { siteMetadata } from "@/config/site"
 import { getNewsEntryBySlug } from "@/lib/data/news"
 import { sanitizeNewsHtml } from "@/lib/news/rich-text"
@@ -37,9 +38,7 @@ export const generateMetadata = async ({
   const canonical = `${siteMetadata.siteUrl}/news/${entry.slug}`
   const title = entry.seoTitle ?? `${entry.title} · Remorseless Records`
   const description =
-    entry.seoDescription ??
-    entry.excerpt ??
-    "Dispatches from the label."
+    entry.seoDescription ?? entry.excerpt ?? "Dispatches from the label."
 
   return {
     title,
@@ -121,9 +120,7 @@ const NewsDetailPage = async ({ params }: NewsPageProps) => {
                 priority
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                No image
-              </div>
+              <MediaPlaceholder />
             )}
           </div>
 
@@ -135,7 +132,11 @@ const NewsDetailPage = async ({ params }: NewsPageProps) => {
           {entry.tags.length ? (
             <div className="flex flex-wrap gap-2 pt-4">
               {entry.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="uppercase tracking-[0.2rem]">
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="uppercase tracking-[0.2rem]"
+                >
                   {tag}
                 </Badge>
               ))}

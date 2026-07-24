@@ -1,9 +1,10 @@
 "use client"
 
-import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
+import { Dialog as DialogPrimitive } from "radix-ui"
 import { forwardRef } from "react"
 
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/ui/cn"
 
 const Dialog = DialogPrimitive.Root
@@ -27,35 +28,65 @@ const DialogOverlay = forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+type DialogContentProps = React.ComponentPropsWithoutRef<
+  typeof DialogPrimitive.Content
+> & {
+  showCloseButton?: boolean
+  closeLabel?: string
+}
+
 const DialogContent = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-  <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border/70 bg-background/95 shadow-glow duration-150 data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out",
-        className
-      )}
-      {...props}
-    >
-      <DialogPrimitive.Close className="absolute right-6 top-6 rounded-full border border-border/60 bg-background/80 p-2 text-muted-foreground transition hover:text-destructive">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-      {children}
-    </DialogPrimitive.Content>
-  </DialogPortal>
-))
+  DialogContentProps
+>(
+  (
+    {
+      className,
+      children,
+      showCloseButton = true,
+      closeLabel = "Close",
+      ...props
+    },
+    ref
+  ) => (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border/70 bg-background/95 shadow-glow duration-150 data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out",
+          className
+        )}
+        {...props}
+      >
+        {showCloseButton ? (
+          <DialogPrimitive.Close asChild>
+            <Button
+              type="button"
+              variant="outlined"
+              size="icon"
+              className="absolute right-4 top-4 h-11 w-11 border-border/60 bg-background/80 text-muted-foreground hover:text-destructive sm:right-6 sm:top-6"
+              aria-label={closeLabel}
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </Button>
+          </DialogPrimitive.Close>
+        ) : null}
+        {children}
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  )
+)
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("space-y-2 text-center sm:text-left", className)} {...props} />
+  <div
+    className={cn("space-y-2 text-center sm:text-left", className)}
+    {...props}
+  />
 )
 
 const DialogTitle = forwardRef<

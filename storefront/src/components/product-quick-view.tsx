@@ -3,12 +3,19 @@
 import { useMemo } from "react"
 
 import { motion, useReducedMotion, type Transition } from "framer-motion"
-import { X } from "lucide-react"
 import type { HttpTypes } from "@medusajs/types"
 
 import ProductVariantSelector from "@/components/product-variant-selector"
+import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import Drawer from "@/components/ui/drawer"
+import Drawer, {
+  DrawerCloseButton,
+  DrawerEyebrow,
+  DrawerHeader,
+  DrawerHeading,
+  DrawerTitle,
+} from "@/components/ui/drawer"
+import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import { deriveVariantOptions } from "@/lib/products/transformers"
 import { useProductDetailQuery } from "@/lib/query/products"
 
@@ -73,31 +80,20 @@ export const ProductQuickView = ({
   return (
     <Drawer open={open} onOpenChange={onOpenChange} ariaLabel="Quick shop">
       <div className="flex h-full flex-col overflow-hidden">
-        <header className="flex items-start justify-between border-b border-border/60 px-6 py-4">
-          <div className="space-y-1 text-left">
-            <p className="text-xs font-headline uppercase tracking-[0.35rem] text-muted-foreground">
-              Quick shop
-            </p>
-            <p className="font-bebas text-3xl uppercase tracking-[0.35rem] text-foreground">
+        <DrawerHeader>
+          <DrawerHeading>
+            <DrawerEyebrow>Quick shop</DrawerEyebrow>
+            <DrawerTitle>
               {activeProduct?.title ?? "Loading release"}
-            </p>
+            </DrawerTitle>
             {activeProduct?.subtitle ? (
               <p className="text-[0.65rem] uppercase tracking-[0.35rem] text-muted-foreground">
                 {activeProduct.subtitle}
               </p>
             ) : null}
-          </div>
-          <Button
-            type="button"
-            variant="outlined"
-            size="icon"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="Close quick shop"
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </header>
+          </DrawerHeading>
+          <DrawerCloseButton label="Close quick shop" />
+        </DrawerHeader>
 
         <div className="relative aspect-[4/5] w-full overflow-hidden border-b border-border/60 bg-background/80">
           {heroImage ? (
@@ -109,9 +105,7 @@ export const ProductQuickView = ({
               loading="lazy"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-              No artwork
-            </div>
+            <MediaPlaceholder label="No artwork" />
           )}
         </div>
 
@@ -128,7 +122,7 @@ export const ProductQuickView = ({
               <div className="h-12 rounded-full skeleton" />
             </motion.div>
           ) : isError ? (
-            <div className="space-y-4 rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-foreground">
+            <Alert variant="destructive" className="space-y-4 p-6">
               <p>Unable to load product details. Please try again.</p>
               <Button
                 type="button"
@@ -141,7 +135,7 @@ export const ProductQuickView = ({
               >
                 Retry
               </Button>
-            </div>
+            </Alert>
           ) : (
             <div className="space-y-6">
               <ProductVariantSelector

@@ -10,6 +10,7 @@ import { ProductQuickView } from "@/components/product-quick-view"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import SmartLink from "@/components/ui/smart-link"
 import { cn } from "@/lib/ui/cn"
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types"
@@ -516,7 +517,6 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
         <SmartLink
           href={productHref}
           className="block h-full focus:outline-none"
-          aria-label={`View ${summary.title}`}
           preloadOffset={280}
         >
           <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition md:hover:-translate-y-1 md:hover:border-border/60 md:hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
@@ -581,9 +581,7 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
                     }}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3rem] text-muted-foreground">
-                    No artwork
-                  </div>
+                  <MediaPlaceholder label="No artwork" />
                 )}
                 <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-6 opacity-0 transition-opacity duration-150 md:group-hover:opacity-100 group-focus-within:opacity-100">
                   <Button

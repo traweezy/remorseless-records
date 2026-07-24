@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useCookieConsent } from "@/components/legal/cookie-consent-provider"
 import { cn } from "@/lib/ui/cn"
@@ -19,7 +20,7 @@ const CookiePreferencesEditor = ({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="space-y-3 rounded-2xl border border-border/60 bg-background/85 p-4">
+      <Card variant="inset" className="space-y-3 bg-background/85 p-4">
         <div className="flex items-start gap-3">
           <Checkbox
             checked
@@ -82,7 +83,7 @@ const CookiePreferencesEditor = ({
             </p>
           </div>
         </div>
-      </div>
+      </Card>
 
       <div className="flex flex-wrap gap-2">
         <Button

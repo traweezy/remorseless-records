@@ -1,4 +1,11 @@
 import type { Metadata } from "next"
+
+import { Card } from "@/components/ui/card"
+import {
+  PageContentGrid,
+  PageHeader,
+  PageShell,
+} from "@/components/ui/page-shell"
 import { siteMetadata } from "@/config/site"
 import SmartLink from "@/components/ui/smart-link"
 
@@ -17,74 +24,78 @@ const ABOUT_PARAGRAPHS = [
 
 const AboutPage = () => {
   return (
-    <div className="bg-background">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pb-16 pt-12 lg:gap-10 lg:px-8">
-        <header className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
-            About Remorseless
-          </p>
-          <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-foreground">
-            Death. Doom. Grind.
-          </h1>
-          <p className="max-w-3xl text-base leading-relaxed text-muted-foreground">
-            {siteMetadata.description}
-          </p>
-        </header>
+    <PageShell>
+      <PageHeader
+        eyebrow="About Remorseless"
+        title="Death. Doom. Grind."
+        description={siteMetadata.description}
+      />
 
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start lg:gap-8">
-          <section className="space-y-6 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
-            {ABOUT_PARAGRAPHS.map((para, idx) => (
-              <p key={`about-${idx}`} className="text-sm leading-relaxed text-muted-foreground">
-                {para.includes("Contact page") ? (
-                  <>
-                    If you want to be considered for a release or want to carry Remorseless titles in
-                    your distro, reach out via the{" "}
-                    <SmartLink
-                      href="/contact"
-                      className="text-destructive underline underline-offset-4"
-                    >
-                      Contact
-                    </SmartLink>{" "}
-                    page. All messages get answered as quickly as possible.
-                  </>
-                ) : (
-                  para
-                )}
-              </p>
-            ))}
-          </section>
+      <PageContentGrid className="lg:grid-cols-[1.15fr_0.85fr]">
+        <Card as="section" variant="panel" className="space-y-6 p-6">
+          {ABOUT_PARAGRAPHS.map((para, idx) => (
+            <p
+              key={`about-${idx}`}
+              className="text-sm leading-relaxed text-muted-foreground"
+            >
+              {para.includes("Contact page") ? (
+                <>
+                  If you want to be considered for a release or want to carry
+                  Remorseless titles in your distro, reach out via the{" "}
+                  <SmartLink
+                    href="/contact"
+                    className="text-destructive underline underline-offset-4"
+                  >
+                    Contact
+                  </SmartLink>{" "}
+                  page. All messages get answered as quickly as possible.
+                </>
+              ) : (
+                para
+              )}
+            </p>
+          ))}
+        </Card>
 
-          <aside className="space-y-4 rounded-3xl border border-border/70 bg-surface/90 p-6 shadow-[0_28px_60px_-42px_rgba(0,0,0,0.8)]">
-            <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
-              Quick facts
-            </h2>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              <li className="flex items-start gap-3">
-                <span className="mt-1 h-2 w-2 rounded-full bg-destructive" aria-hidden />
-                <div>
-                  <p className="font-semibold text-foreground">Founded</p>
-                  <p>2024, Stamford, CT — proudly DIY.</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-1 h-2 w-2 rounded-full bg-destructive" aria-hidden />
-                <div>
-                  <p className="font-semibold text-foreground">Formats</p>
-                  <p>Micro-batch vinyl, cassettes, limited merch drops.</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-1 h-2 w-2 rounded-full bg-destructive" aria-hidden />
-                <div>
-                  <p className="font-semibold text-foreground">Promise</p>
-                  <p>Vetted releases only — no compromises, no fillers.</p>
-                </div>
-              </li>
-            </ul>
-          </aside>
-        </div>
-      </div>
-    </div>
+        <Card as="aside" variant="panel" className="space-y-4 p-6">
+          <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+            Quick facts
+          </h2>
+          <ul className="space-y-3 text-sm text-muted-foreground">
+            <li className="flex items-start gap-3">
+              <span
+                className="mt-1 h-2 w-2 rounded-full bg-destructive"
+                aria-hidden
+              />
+              <div>
+                <p className="font-semibold text-foreground">Founded</p>
+                <p>2024, Stamford, CT — proudly DIY.</p>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span
+                className="mt-1 h-2 w-2 rounded-full bg-destructive"
+                aria-hidden
+              />
+              <div>
+                <p className="font-semibold text-foreground">Formats</p>
+                <p>Micro-batch vinyl, cassettes, limited merch drops.</p>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span
+                className="mt-1 h-2 w-2 rounded-full bg-destructive"
+                aria-hidden
+              />
+              <div>
+                <p className="font-semibold text-foreground">Promise</p>
+                <p>Vetted releases only — no compromises, no fillers.</p>
+              </div>
+            </li>
+          </ul>
+        </Card>
+      </PageContentGrid>
+    </PageShell>
   )
 }
 

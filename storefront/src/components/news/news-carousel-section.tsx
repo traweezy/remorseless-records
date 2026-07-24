@@ -1,10 +1,15 @@
 "use client"
 
 import { useMemo, useRef, type ReactElement } from "react"
-type SplideNav = { go: (destination: string | number) => void }
 import { Splide, SplideSlide } from "@splidejs/react-splide"
 
 import NewsCarouselCard from "@/components/news/news-carousel-card"
+import {
+  getCarouselNavigation,
+  normalizeCarouselSlideRoles,
+  type CarouselNavigation,
+} from "@/components/ui/carousel"
+import { SectionHeading } from "@/components/ui/section-heading"
 import type { NewsEntry } from "@/lib/data/news"
 
 import "@splidejs/react-splide/css"
@@ -32,7 +37,7 @@ export const NewsCarouselSection = ({
   description,
   entries,
 }: NewsCarouselSectionProps): ReactElement | null => {
-  const splideRef = useRef<SplideNav | null>(null)
+  const splideRef = useRef<CarouselNavigation | null>(null)
 
   const slides = useMemo<NewsEntry[]>(
     () => entries.filter((entry) => entry.status === "published"),
@@ -75,15 +80,11 @@ export const NewsCarouselSection = ({
 
   return (
     <section className="space-y-10">
-      <header className="text-center">
-        <h2 className="font-bebas text-5xl uppercase tracking-[0.55rem] text-foreground md:text-6xl">
-          {heading.leading}{" "}
-          <span className="text-destructive">{heading.highlight}</span>
-        </h2>
-        <p className="mt-3 text-base text-muted-foreground md:text-lg">
-          {description}
-        </p>
-      </header>
+      <SectionHeading
+        leading={heading.leading}
+        highlight={heading.highlight}
+        description={description}
+      />
 
       <div className="product-carousel">
         <div className="product-carousel__container" onWheel={handleWheel}>
@@ -118,12 +119,8 @@ export const NewsCarouselSection = ({
             }}
             hasTrack
             onMounted={(splide: unknown) => {
-              const candidate = splide as {
-                go?: (destination: string | number) => void
-              }
-              splideRef.current = candidate?.go
-                ? { go: candidate.go.bind(candidate) }
-                : null
+              normalizeCarouselSlideRoles(splide)
+              splideRef.current = getCarouselNavigation(splide)
             }}
             onDestroy={() => {
               splideRef.current = null

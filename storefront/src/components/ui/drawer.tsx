@@ -1,7 +1,15 @@
-import * as SheetPrimitive from "@radix-ui/react-dialog"
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
-import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion"
+"use client"
 
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Transition,
+} from "framer-motion"
+import { X } from "lucide-react"
+import { Dialog as SheetPrimitive, VisuallyHidden } from "radix-ui"
+
+import { Button, type ButtonProps } from "@/components/ui/button"
 import { cn } from "@/lib/ui/cn"
 
 type DrawerProps = {
@@ -54,7 +62,10 @@ const Drawer = ({
           <SheetPrimitive.Portal forceMount>
             <SheetPrimitive.Overlay asChild forceMount>
               <motion.div
-                className={cn("fixed inset-0 z-40 bg-black/80 backdrop-blur-sm", overlayClassName)}
+                className={cn(
+                  "fixed inset-0 z-40 bg-black/80 backdrop-blur-sm",
+                  overlayClassName
+                )}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -85,9 +96,9 @@ const Drawer = ({
                 }}
               >
                 {ariaLabel ? (
-                  <VisuallyHidden>
+                  <VisuallyHidden.Root>
                     <SheetPrimitive.Title>{ariaLabel}</SheetPrimitive.Title>
-                  </VisuallyHidden>
+                  </VisuallyHidden.Root>
                 ) : null}
                 {children}
               </motion.aside>
@@ -98,5 +109,80 @@ const Drawer = ({
     </SheetPrimitive.Root>
   )
 }
+
+export const DrawerHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLElement>) => (
+  <header
+    className={cn(
+      "flex items-start justify-between gap-4 border-b border-border/60 px-6 py-4",
+      className
+    )}
+    {...props}
+  />
+)
+
+export const DrawerHeading = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("space-y-1 text-left", className)} {...props} />
+)
+
+export const DrawerEyebrow = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLParagraphElement>) => (
+  <p
+    className={cn(
+      "text-xs font-headline uppercase tracking-[0.35rem] text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+)
+
+export const DrawerTitle = ({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement>) => (
+  <h2
+    className={cn(
+      "font-bebas text-3xl uppercase tracking-[0.35rem] text-foreground",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </h2>
+)
+
+type DrawerCloseButtonProps = Omit<ButtonProps, "children"> & {
+  label?: string
+}
+
+export const DrawerCloseButton = ({
+  className,
+  label = "Close drawer",
+  ...props
+}: DrawerCloseButtonProps) => (
+  <SheetPrimitive.Close asChild>
+    <Button
+      type="button"
+      variant="outlined"
+      size="icon"
+      className={cn(
+        "h-11 w-11 shrink-0 border-border/70 text-muted-foreground hover:border-accent hover:text-accent sm:h-9 sm:w-9",
+        className
+      )}
+      aria-label={label}
+      {...props}
+    >
+      <X className="h-4 w-4" aria-hidden />
+    </Button>
+  </SheetPrimitive.Close>
+)
 
 export default Drawer

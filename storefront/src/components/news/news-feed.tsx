@@ -3,8 +3,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import NewsCard from "@/components/news/news-card"
+import { NewsCardSkeleton } from "@/components/news/news-card-skeleton"
+import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Empty, EmptyDescription } from "@/components/ui/empty"
 import { NEWS_PAGE_SIZE, type NewsEntry } from "@/lib/data/news"
 
 type NewsFeedProps = {
@@ -110,21 +112,7 @@ const NewsFeed = memo<NewsFeedProps>(
     const skeletons = useMemo(
       () =>
         Array.from({ length: 2 }, (_, index) => (
-          <div
-            key={`news-skeleton-${index}`}
-            className="rounded-3xl border border-border/40 bg-muted/5 p-5 md:p-8"
-          >
-            <div className="flex flex-col gap-6 md:flex-row md:gap-10">
-              <Skeleton className="aspect-[4/3] w-full rounded-2xl md:w-5/12" />
-              <div className="flex flex-1 flex-col gap-4">
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-10 w-2/3" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-11/12" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            </div>
-          </div>
+          <NewsCardSkeleton key={`news-skeleton-${index}`} />
         )),
       []
     )
@@ -143,9 +131,11 @@ const NewsFeed = memo<NewsFeedProps>(
       }
 
       return (
-        <div className="rounded-3xl border border-border/50 bg-muted/10 p-10 text-center text-sm text-muted-foreground">
-          No news entries yet. Check back soon for new releases and updates.
-        </div>
+        <Empty className="rounded-3xl border-border/50 bg-muted/10 p-10">
+          <EmptyDescription>
+            No news entries yet. Check back soon for new releases and updates.
+          </EmptyDescription>
+        </Empty>
       )
     }, [entries.length, loading])
 
@@ -159,9 +149,9 @@ const NewsFeed = memo<NewsFeedProps>(
         {loading ? skeletons : null}
         {emptyState}
         {error ? (
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          <Alert variant="destructive" className="p-4 text-destructive">
             {error}
-          </div>
+          </Alert>
         ) : null}
         <div ref={sentinelRef} />
         {!canAutoLoad && hasMore ? (

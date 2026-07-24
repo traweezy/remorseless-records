@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
 type InstagramPost = {
   url: string
@@ -95,12 +96,14 @@ const InstagramGrid = ({ profileUrl }: Props) => {
     <div className="space-y-3" aria-label="Latest posts from Instagram">
       <div className="grid gap-3 sm:grid-cols-2">
         {posts.map((post) => (
-          <a
+          <Card
             key={post.url}
+            as="a"
+            variant="inset"
             href={post.url}
             target="_blank"
             rel="noreferrer"
-            className="group relative block overflow-hidden rounded-2xl border border-border/60 bg-background/80"
+            className="group relative block overflow-hidden"
           >
             <Image
               src={post.img}
@@ -112,7 +115,7 @@ const InstagramGrid = ({ profileUrl }: Props) => {
             <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent px-3 py-2 text-xs uppercase tracking-[0.25rem] text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
               View
             </div>
-          </a>
+          </Card>
         ))}
       </div>
       <Button asChild variant="outlined" size="compact" className="w-fit gap-2">
