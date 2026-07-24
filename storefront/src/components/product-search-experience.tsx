@@ -79,6 +79,7 @@ import {
   type CatalogFilterOption,
   type CatalogPriceRange,
 } from "@/lib/catalog/filters"
+import { useCatalogFilterExitReset } from "@/hooks/use-catalog-filter-exit-reset"
 
 const deferEffectUpdate = (callback: () => void): (() => void) => {
   let cancelled = false
@@ -867,6 +868,8 @@ const ProductSearchExperience = ({
     priceRange: null,
   },
 }: ProductSearchExperienceProps) => {
+  useCatalogFilterExitReset()
+
   const filterInstanceId = useId().replace(/:/g, "")
   const genreDefinitionsQuery = useQuery({
     queryKey: ["catalog-filter-options", "genres"],
