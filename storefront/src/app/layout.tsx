@@ -1,12 +1,8 @@
 import type { Metadata, Viewport } from "next"
-import {
-  Bebas_Neue,
-  Inter,
-  JetBrains_Mono,
-  Teko,
-} from "next/font/google"
+import { Bebas_Neue, Inter, JetBrains_Mono, Teko } from "next/font/google"
 
 import "@/styles/globals.css"
+import BackToTopButton from "@/components/back-to-top-button"
 import SiteFooter from "@/components/site-footer"
 import SiteHeader from "@/components/site-header"
 import QueryProvider from "@/components/providers/query-provider"
@@ -65,7 +61,10 @@ export const metadata: Metadata = {
       "en-US": siteMetadata.siteUrl,
     },
     types: {
-      "application/rss+xml": new URL(siteMetadata.rssPath, siteMetadata.siteUrl).toString(),
+      "application/rss+xml": new URL(
+        siteMetadata.rssPath,
+        siteMetadata.siteUrl
+      ).toString(),
     },
   },
   openGraph: {
@@ -139,8 +138,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <Suspense fallback={null}>
                 <div className="relative flex min-h-screen flex-col bg-background">
                   <SiteHeader />
-                  <main className="flex-1 min-h-0 flex flex-col">{children}</main>
+                  <main
+                    id="main-content"
+                    tabIndex={-1}
+                    className="flex-1 min-h-0 flex flex-col"
+                  >
+                    {children}
+                  </main>
                   <SiteFooter />
+                  <BackToTopButton />
                 </div>
               </Suspense>
               <CookieConsentBanner />
