@@ -31,14 +31,14 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 
 - **Backend**: Medusa core services plus Stripe Checkout session endpoint, webhook handler, Resend-powered notifications, Meilisearch sync helpers.
 - **Storefront**: Next 16 App Router with React Compiler enabled, brutal UI spec, Stripe Checkout redirect, Meilisearch-powered search, variant selectors, optimistic cart updates.
-- **Package management**: `pnpm` via Corepack. Node 26.2.0 enforced through `.nvmrc`.
+- **Package management**: `pnpm` 11.17.0. Node 26.5.0 is enforced through `.nvmrc`.
 
 ## Prerequisites
 
 | Tool        | Version / Notes                                              |
-|-------------|--------------------------------------------------------------|
-| Node.js     | 26.2.0 (via `.nvmrc`)                                        |
-| pnpm        | 11.9.0 (Corepack-managed)                                    |
+| ----------- | ------------------------------------------------------------ |
+| Node.js     | 26.5.0 (via `.nvmrc`)                                        |
+| pnpm        | 11.17.0                                                      |
 | PostgreSQL  | 14+ (Railway provisioned or local)                           |
 | Redis       | optional-local; Medusa will fall back to in-memory if absent |
 | Stripe CLI  | optional but recommended for webhook testing                 |
@@ -49,19 +49,22 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 ## Repository Setup
 
 1. **Clone and enter the repo**
+
    ```bash
    git clone git@github.com:traweezy/remorseless-records.git
    cd remorseless-records
    ```
 
 2. **Match toolchain**
+
    ```bash
    nvm use              # respects .nvmrc
-   corepack enable pnpm
-   pnpm --version       # should report 11.9.0
+   npm install --global pnpm@11.17.0
+   pnpm --version       # should report 11.17.0
    ```
 
 3. **Install dependencies**
+
    ```bash
    pnpm install         # installs workspace deps for backend + storefront
    ```
@@ -83,18 +86,18 @@ cp .env.template .env
 
 Key variables (non-empty values required for full functionality):
 
-| Variable                 | Notes                                                                                  |
-|--------------------------|----------------------------------------------------------------------------------------|
-| `DATABASE_URL`           | PostgreSQL connection string                                                           |
-| `REDIS_URL`              | Optional. When omitted, Medusa uses in-memory cache                                    |
-| `STRIPE_API_KEY`         | Stripe secret key (*sk\_...*)                                                           |
-| `STRIPE_WEBHOOK_SECRET`  | From Stripe CLI or dashboard endpoint for `/api/webhooks/stripe`                       |
-| `BACKEND_PUBLIC_URL`     | External URL used in webhooks (e.g., `http://localhost:9000`)                          |
-| `RESEND_API_KEY`         | Optional; required for transactional mail                                              |
-| `MEILISEARCH_HOST`       | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                          |
-| `MEILISEARCH_ADMIN_KEY`  | Corresponding admin/master key                                                         |
-| `JWT_SECRET`, `COOKIE_SECRET` | Medusa auth secrets (high entropy)                                               |
-| `MINIO_*`                | Optional. Railway template populates these for object storage                          |
+| Variable                      | Notes                                                            |
+| ----------------------------- | ---------------------------------------------------------------- |
+| `DATABASE_URL`                | PostgreSQL connection string                                     |
+| `REDIS_URL`                   | Optional. When omitted, Medusa uses in-memory cache              |
+| `STRIPE_API_KEY`              | Stripe secret key (_sk\_..._)                                    |
+| `STRIPE_WEBHOOK_SECRET`       | From Stripe CLI or dashboard endpoint for `/api/webhooks/stripe` |
+| `BACKEND_PUBLIC_URL`          | External URL used in webhooks (e.g., `http://localhost:9000`)    |
+| `RESEND_API_KEY`              | Optional; required for transactional mail                        |
+| `MEILISEARCH_HOST`            | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`    |
+| `MEILISEARCH_ADMIN_KEY`       | Corresponding admin/master key                                   |
+| `JWT_SECRET`, `COOKIE_SECRET` | Medusa auth secrets (high entropy)                               |
+| `MINIO_*`                     | Optional. Railway template populates these for object storage    |
 
 ### Storefront (`storefront/.env.local`)
 
@@ -105,15 +108,17 @@ cp .env.local.template .env.local
 
 Required values:
 
-| Variable                              | Description                                                                      |
-|---------------------------------------|----------------------------------------------------------------------------------|
-| `NEXT_PUBLIC_MEDUSA_URL`             | Public Medusa Base URL (e.g., `http://localhost:9000`)                           |
-| `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` | Publishable API key created in Medusa (Admin > Settings > API Keys)              |
-| `NEXT_PUBLIC_STRIPE_PK`              | Stripe publishable key (*pk\_...*)                                               |
-| `NEXT_PUBLIC_MEILI_HOST`             | Meilisearch host (match backend)                                                 |
-| `NEXT_PUBLIC_MEILI_SEARCH_KEY`       | Meili search-only key (never commit admin keys)                                  |
-| `NEXT_PUBLIC_MEDIA_URL` / `NEXT_PUBLIC_ASSET_HOST` | Optional CDN overrides                                     |
-| `MEDUSA_BACKEND_URL`                 | (server-only) override when the backend runs on a different domain               |
+| Variable                                           | Description                                                               |
+| -------------------------------------------------- | ------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`                             | Canonical storefront URL (e.g., `http://localhost:3000`)                  |
+| `NEXT_PUBLIC_BASE_URL`                             | Local/Playwright storefront URL; keep aligned with `NEXT_PUBLIC_SITE_URL` |
+| `NEXT_PUBLIC_MEDUSA_URL`                           | Public Medusa Base URL (e.g., `http://localhost:9000`)                    |
+| `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`               | Publishable API key created in Medusa (Admin > Settings > API Keys)       |
+| `NEXT_PUBLIC_STRIPE_PK`                            | Stripe publishable key (_pk\_..._)                                        |
+| `NEXT_PUBLIC_MEILI_HOST`                           | Meilisearch host (match backend)                                          |
+| `NEXT_PUBLIC_MEILI_SEARCH_KEY`                     | Meili search-only key (never commit admin keys)                           |
+| `NEXT_PUBLIC_MEDIA_URL` / `NEXT_PUBLIC_ASSET_HOST` | Optional CDN overrides                                                    |
+| `MEDUSA_BACKEND_URL`                               | (server-only) override when the backend runs on a different domain        |
 
 ### Example local `.env`
 
@@ -132,6 +137,8 @@ RESEND_API_KEY=re_a1b2c3...
 
 ```dotenv
 # storefront/.env.local
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 NEXT_PUBLIC_MEDUSA_URL=http://localhost:9000
 NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_medusa_public_client
 NEXT_PUBLIC_STRIPE_PK=pk_test_...
@@ -150,6 +157,7 @@ MEDUSA_BACKEND_URL=http://localhost:9000
    pnpm ib                 # runs migrations + seeds required system data
    ```
 4. **Start Medusa**
+
    ```bash
    pnpm dev                # listens on http://localhost:9000
    ```
@@ -183,12 +191,14 @@ MEDUSA_BACKEND_URL=http://localhost:9000
 To mirror staging settings locally:
 
 1. **Install Railway CLI**
+
    ```bash
    pnpm dlx @railway/cli@latest login
    railway link   # choose the project/service for backend
    ```
 
 2. **Pull backend variables**
+
    ```bash
    cd backend
    railway variables --service backend > .env.railway
@@ -196,12 +206,14 @@ To mirror staging settings locally:
    ```
 
 3. **Pull storefront variables**
+
    ```bash
    cd storefront
    railway variables --service storefront > .env.local.railway
    ```
 
 4. **Recommended approach**: source the Railway file when starting services to avoid committing secrets.
+
    ```bash
    cd backend
    set -o allexport
@@ -272,13 +284,13 @@ Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
 
 ## Troubleshooting
 
-| Symptom | Resolution |
-|---------|------------|
-| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.2.0. |
-| Storefront shows empty cart despite items | Cart cookies scoped to domain. When using Railway URLs, ensure `NEXT_PUBLIC_MEDUSA_URL` points to same origin or configure CORS. |
-| Search results empty | Confirm Meilisearch index name (`products`), API keys, and that documents exist. Backend fallback logs to console when Meili query fails. |
-| Webhook signature errors | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL. |
-| React Compiler warnings | `next.config.ts` already enables `reactCompiler`. Ensure lint errors are fixed; the compiler is strict about invalid hooks usage. |
+| Symptom                                        | Resolution                                                                                                                                |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.5.0.                                                    |
+| Storefront shows empty cart despite items      | Cart cookies scoped to domain. When using Railway URLs, ensure `NEXT_PUBLIC_MEDUSA_URL` points to same origin or configure CORS.          |
+| Search results empty                           | Confirm Meilisearch index name (`products`), API keys, and that documents exist. Backend fallback logs to console when Meili query fails. |
+| Webhook signature errors                       | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL.              |
+| React Compiler warnings                        | `next.config.ts` already enables `reactCompiler`. Ensure lint errors are fixed; the compiler is strict about invalid hooks usage.         |
 
 ## CI Pipelines
 

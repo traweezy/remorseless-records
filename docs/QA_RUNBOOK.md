@@ -37,7 +37,7 @@ touch input, mobile viewport, and safe-area behavior match a phone.
 2. Check `/`, `/catalog`, a representative route for each typed product family,
    and `/cart`.
 3. Confirm the document width matches the viewport width (`scrollWidth ===
-   clientWidth`); intentional carousels must clip or scroll within their own
+clientWidth`); intentional carousels must clip or scroll within their own
    container instead of widening the page.
 4. Confirm the app bar spans the viewport, content remains inside its side
    gutters, long product titles wrap, and every control remains touchable.
@@ -57,12 +57,12 @@ Run Lighthouse (Chrome DevTools or CLI) for both Desktop and Mobile on:
 
 Target metrics:
 
-| Metric | Desktop | Mobile |
-|--------|---------|--------|
-| Performance | ≥ 90 | ≥ 85 |
-| LCP | < 2.5s | < 2.5s |
-| Accessibility | ≥ 95 | ≥ 95 |
-| Best Practices | ≥ 95 | ≥ 95 |
+| Metric         | Desktop | Mobile |
+| -------------- | ------- | ------ |
+| Performance    | ≥ 90    | ≥ 85   |
+| LCP            | < 2.5s  | < 2.5s |
+| Accessibility  | ≥ 95    | ≥ 95   |
+| Best Practices | ≥ 95    | ≥ 95   |
 
 Capture JSON reports and stash in CI artifacts (or note scores in PR description). Investigate regressions immediately.
 
@@ -74,7 +74,7 @@ pnpm exec eslint --ext .ts,.tsx src
 pnpm run typecheck
 
 # Backend type safety (ensures transformers stay in sync)
-pnpm --filter medusa-2.0-boilerplate-backend exec tsc --noEmit
+pnpm --filter backend exec tsc --noEmit
 ```
 
 ---
@@ -95,12 +95,12 @@ Record the webhook secret printed by the CLI and mirror it in `.env`.
 
 ### 2.2 Test Cards
 
-| Scenario | Card | Expected |
-|----------|------|----------|
-| Standard payment | `4242 4242 4242 4242` | Checkout completes → Medusa order created |
-| 3DS challenge | `4000 0027 6000 3184` | 3DS modal appears, confirm success |
-| Insufficient funds | `4000 0000 0000 9995` | Stripe declines, storefront shows error |
-| Refund flow | Run successful payment above, then trigger refund in Medusa admin/dashboard and confirm Stripe + order status update |
+| Scenario           | Card                                                                                                                 | Expected                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Standard payment   | `4242 4242 4242 4242`                                                                                                | Checkout completes → Medusa order created |
+| 3DS challenge      | `4000 0027 6000 3184`                                                                                                | 3DS modal appears, confirm success        |
+| Insufficient funds | `4000 0000 0000 9995`                                                                                                | Stripe declines, storefront shows error   |
+| Refund flow        | Run successful payment above, then trigger refund in Medusa admin/dashboard and confirm Stripe + order status update |
 
 For each run:
 
