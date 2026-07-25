@@ -1,9 +1,11 @@
-import { MathBN } from "@medusajs/framework/utils";
+import { BigNumber, MathBN } from "@medusajs/framework/utils";
 import type { BigNumberInput } from "@medusajs/framework/types";
 
 const CHECKOUT_CURRENCY = "usd";
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe";
-const USD_DECIMAL_PLACES = 2;
+const USD_MINOR_UNIT_MULTIPLIER = 100;
+const STRIPE_MIN_USD_AMOUNT = 50;
+const STRIPE_MAX_AMOUNT = 99_999_999;
 
 const PROCESSABLE_PAYMENT_STATUSES = new Set([
   "pending",
@@ -70,21 +72,37 @@ const moneyValue = (
 ): ReturnType<typeof MathBN.convert> => {
   try {
     const amount = MathBN.convert(value as BigNumberInput);
-    if (
-      !amount.isFinite() ||
-      amount.isNegative() ||
-      (amount.decimalPlaces() ?? Number.POSITIVE_INFINITY) >
-        USD_DECIMAL_PLACES
-    ) {
+    if (!amount.isFinite() || amount.isNegative()) {
       throw new Error("invalid");
     }
     return amount;
   } catch {
     throw new CheckoutPaymentValidationError(
       "checkout_money_invalid",
-      `${name} must be a non-negative USD amount with at most two decimal places.`,
+      `${name} must be a finite, non-negative USD amount.`,
     );
   }
+};
+
+const payableUsdMinorUnits = (
+  amount: ReturnType<typeof MathBN.convert>,
+  name: string,
+): number => {
+  const multiplied = new BigNumber(
+    MathBN.mult(amount, USD_MINOR_UNIT_MULTIPLIER),
+  ).numeric;
+  const minorUnits = Math.round(multiplied);
+  if (
+    !Number.isSafeInteger(minorUnits) ||
+    minorUnits < STRIPE_MIN_USD_AMOUNT ||
+    minorUnits > STRIPE_MAX_AMOUNT
+  ) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_money_invalid",
+      `${name} is outside Stripe's supported USD amount range.`,
+    );
+  }
+  return minorUnits;
 };
 
 const amountFrom = (record: UnknownRecord, name: string) =>
@@ -230,6 +248,24 @@ export const validateCheckoutPayment = (
     throw new CheckoutPaymentValidationError(
       "checkout_payment_amount_mismatch",
       "The payment session amount does not match the cart total.",
+    );
+  }
+
+  const paymentIntent = asRecord(paymentSession.data);
+  const intentAmount = Number(paymentIntent?.amount);
+  if (
+    !Number.isSafeInteger(intentAmount) ||
+    intentAmount !== payableUsdMinorUnits(total, "Cart total")
+  ) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_payment_amount_mismatch",
+      "The Stripe PaymentIntent amount does not match the payable cart total.",
+    );
+  }
+  if (normalizedString(paymentIntent?.currency) !== currencyCode) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_payment_currency_mismatch",
+      "The Stripe PaymentIntent currency does not match the cart.",
     );
   }
 

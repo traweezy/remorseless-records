@@ -27,7 +27,11 @@ const cartFixture = (
           currency_code: "usd",
           provider_id: "pp_stripe_stripe",
           status: "pending",
-          data: { client_secret: "pi_test_secret_test" },
+          data: {
+            amount: 2499,
+            client_secret: "pi_test_secret_test",
+            currency: "usd",
+          },
         },
       ],
     },
@@ -62,6 +66,22 @@ describe("checkout payment preparation", () => {
     expect(reusablePreparedPayment(cart)).toBeNull()
   })
 
+  it("uses the official provider's cent rounding for taxable totals", () => {
+    const cart = cartFixture({ total: 23.8975 })
+    cart.payment_collection!.amount = 23.8975
+    cart.payment_collection!.payment_sessions![0]!.amount = 23.8975
+    cart.payment_collection!.payment_sessions![0]!.data = {
+      amount: 2390,
+      client_secret: "pi_test_secret_test",
+      currency: "usd",
+    }
+
+    expect(reusablePreparedPayment(cart)).toEqual({
+      clientSecret: "pi_test_secret_test",
+      status: "pending",
+    })
+  })
+
   it("allows a missing collection to be initialized", () => {
     const cart = cartFixture()
     delete cart.payment_collection
@@ -88,6 +108,18 @@ describe("checkout payment preparation", () => {
         cart.payment_collection!.payment_sessions![0]!.currency_code = "eur"
       },
     ],
+    [
+      "PaymentIntent amount",
+      (cart: HttpTypes.StoreCart) => {
+        cart.payment_collection!.payment_sessions![0]!.data.amount = 2500
+      },
+    ],
+    [
+      "PaymentIntent currency",
+      (cart: HttpTypes.StoreCart) => {
+        cart.payment_collection!.payment_sessions![0]!.data.currency = "eur"
+      },
+    ],
   ] as const)("rejects a stale %s", (_label, mutate) => {
     const cart = cartFixture()
     mutate(cart)
@@ -97,10 +129,24 @@ describe("checkout payment preparation", () => {
 
   it("rejects a session without a client secret", () => {
     const cart = cartFixture()
-    cart.payment_collection!.payment_sessions![0]!.data = {}
+    cart.payment_collection!.payment_sessions![0]!.data = {
+      amount: 2499,
+      currency: "usd",
+    }
 
     expectCode(() => reusablePreparedPayment(cart), "payment_not_configured")
   })
+
+  it.each([0.001, 0.49, 1_000_000])(
+    "rejects a positive total outside Stripe's USD range: %p",
+    (total) => {
+      const cart = cartFixture({ total })
+      cart.payment_collection!.amount = total
+      cart.payment_collection!.payment_sessions![0]!.amount = total
+
+      expectCode(() => reusablePreparedPayment(cart), "payment_session_stale")
+    }
+  )
 
   it("does not silently replace an authorized or captured payment", () => {
     for (const status of ["authorized", "captured"] as const) {

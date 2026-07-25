@@ -31,6 +31,10 @@ const validCart = () => ({
         currency_code: "usd",
         provider_id: "pp_stripe_stripe",
         status: "pending",
+        data: {
+          amount: 2499,
+          currency: "usd",
+        },
       },
     ],
   },
@@ -71,6 +75,29 @@ describe("checkout payment validation", () => {
     });
   });
 
+  it("accepts raw tax precision when Stripe matches the rounded cents", () => {
+    const cart = validCart();
+    cart.total = 23.8975;
+    cart.raw_total = { value: "23.8975", precision: 20 };
+    cart.payment_collection.amount = 23.8975;
+    cart.payment_collection.raw_amount = {
+      value: "23.8975",
+      precision: 20,
+    };
+    cart.payment_collection.payment_sessions[0]!.amount = 23.8975;
+    cart.payment_collection.payment_sessions[0]!.raw_amount = {
+      value: "23.8975",
+      precision: 20,
+    };
+    cart.payment_collection.payment_sessions[0]!.data.amount = 2390;
+
+    expect(validateCheckoutPayment(cart)).toEqual({
+      currencyCode: "usd",
+      paymentSessionStatus: "pending",
+      total: "23.8975",
+    });
+  });
+
   it.each([
     ["cart amount", (cart: ReturnType<typeof validCart>) => {
       cart.raw_total = { value: "25", precision: 20 };
@@ -97,6 +124,20 @@ describe("checkout payment validation", () => {
   it("rejects a currency mismatch", () => {
     const cart = validCart();
     cart.payment_collection.payment_sessions[0]!.currency_code = "eur";
+
+    expectCode(cart, "checkout_payment_currency_mismatch");
+  });
+
+  it("rejects a mismatched Stripe PaymentIntent amount", () => {
+    const cart = validCart();
+    cart.payment_collection.payment_sessions[0]!.data.amount = 2500;
+
+    expectCode(cart, "checkout_payment_amount_mismatch");
+  });
+
+  it("rejects a mismatched Stripe PaymentIntent currency", () => {
+    const cart = validCart();
+    cart.payment_collection.payment_sessions[0]!.data.currency = "eur";
 
     expectCode(cart, "checkout_payment_currency_mismatch");
   });
@@ -150,7 +191,6 @@ describe("checkout payment validation", () => {
     Number.NaN,
     Number.POSITIVE_INFINITY,
     -1,
-    24.999,
     "not-money",
   ])("rejects invalid money value %p", (amount) => {
     const cart = validCart();
@@ -158,4 +198,22 @@ describe("checkout payment validation", () => {
 
     expectCode(cart, "checkout_money_invalid");
   });
+
+  it.each(["0.001", "0.49", "1000000"])(
+    "rejects a positive total outside Stripe's USD range: %s",
+    (amount) => {
+      const cart = validCart();
+      cart.raw_total = { value: amount, precision: 20 };
+      cart.payment_collection.raw_amount = {
+        value: amount,
+        precision: 20,
+      };
+      cart.payment_collection.payment_sessions[0]!.raw_amount = {
+        value: amount,
+        precision: 20,
+      };
+
+      expectCode(cart, "checkout_money_invalid");
+    },
+  );
 });

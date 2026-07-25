@@ -54,14 +54,11 @@ const amount = (value: unknown, name: string): number => {
   }
 
   const parsed = Number(value)
-  if (
-    !Number.isFinite(parsed) ||
-    parsed < 0 ||
-    Math.round(parsed * 100) / 100 !== parsed
-  ) {
+  if (!Number.isFinite(parsed) || parsed < 0) {
     throw new CheckoutProjectionError(`${name} is not a valid USD amount`)
   }
-  return parsed
+  const roundingGuard = Number.EPSILON * Math.max(1, parsed)
+  return Math.round((parsed + roundingGuard) * 100) / 100
 }
 
 const canonicalAmount = (value: unknown, name: string): string =>

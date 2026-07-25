@@ -112,11 +112,12 @@ billing ZIP. These numbers are entered only in Stripe's Payment Element.
 | Processing error   | `4000 0000 0000 0119` | Recoverable error or reconciliation; never duplicate      |
 | Invalid number     | `4242 4242 4242 4241` | Inline validation before payment                          |
 
-For every paid attempt, compare the exact major-unit amount in the product,
-cart, checkout summary, Medusa cart, Medusa order, confirmation receipt, and
-email. Compare Stripe's corresponding minor-unit amount after converting once
-at the provider boundary. Do not infer correctness from formatted strings
-alone.
+For every paid attempt, compare Medusa's exact raw major-unit amounts across
+the cart, payment collection, payment session, and order. Tax calculation may
+legitimately produce sub-cent precision. The customer-facing summary, receipt,
+and email must show the cent-rounded payable amount, while Stripe must contain
+the corresponding exact integer-cent amount produced once at the official
+provider boundary. Do not infer correctness from formatted strings alone.
 
 Repeat success with:
 
@@ -185,10 +186,11 @@ An amount mismatch is a stop-ship invariant failure.
 1. Stop new checkout entry in the affected environment.
 2. Keep webhook, recovery, confirmation, and reconciliation available for
    in-flight attempts.
-3. Compare cart total, payment collection amount, payment session amount, and
-   currencies from Medusa's major-unit records.
+3. Compare the exact raw cart total, payment collection amount, payment session
+   amount, and currencies from Medusa's major-unit records.
 4. Confirm no browser code performs cents conversion.
-5. Confirm the official provider is the only minor-unit boundary.
+5. Confirm the official provider is the only minor-unit boundary and its
+   rounded integer amount exactly matches the Stripe PaymentIntent.
 6. Run the monetary audit and review its manifest; do not run apply mode during
    incident diagnosis.
 7. Re-enable checkout only after contract tests and a disposable sandbox order

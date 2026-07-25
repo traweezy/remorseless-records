@@ -126,7 +126,9 @@ For each run:
 
 1. Create cart with ≥1 item.
 2. Complete Contact, Delivery address, and an authoritative Delivery method.
-3. Confirm the Payment Element amount matches the Medusa cart exactly.
+3. Confirm the Payment Element amount matches the customer-payable cent total.
+   Medusa's raw taxable total may retain additional precision; Stripe's integer
+   amount must equal the official provider's single rounded conversion.
 4. Complete the payment and ensure `/checkout/confirmation` shows only after
    a linked completed Medusa order exists.
 5. Verify the cart cookie clears and the short-lived receipt cookie is HttpOnly

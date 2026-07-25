@@ -38,9 +38,11 @@ creation and payment authorization.
   complete-cart workflow. Medusa's official Stripe webhook processes the
   authoritative payment events that inform those completion paths.
 - The `completeCartWorkflow.validate` hook rejects non-USD, non-finite,
-  over-precision, non-Stripe, duplicate-session, amount-mismatch, and
-  currency-mismatch states using the same locked cart snapshot that Medusa uses
-  to create the order.
+  negative, out-of-Stripe-range, non-Stripe, duplicate-session,
+  amount-mismatch, and currency-mismatch states using the same locked cart
+  snapshot that Medusa uses to create the order. Raw Medusa amounts must match
+  exactly; legitimate sub-cent tax precision is rounded once by the official
+  provider and checked against Stripe's integer PaymentIntent amount.
 - Positive totals require exactly one processable `pp_stripe_stripe` payment
   session. Zero totals never create a Stripe PaymentIntent.
 - Automatic capture is enabled for the ordinary stocked-goods flow after the

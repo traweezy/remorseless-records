@@ -398,8 +398,12 @@ the new total and reviews it.
 
 The backend also installs a hook inside Medusa's locked complete-cart workflow.
 For a positive USD total it requires exactly one official Stripe session and
-checks the cart, payment collection, and payment session currencies and amounts
-for an exact major-unit match. A zero-dollar order bypasses Stripe entirely.
+checks the raw cart, payment collection, and payment session currencies and
+major-unit amounts for an exact match. It separately verifies that Stripe's
+PaymentIntent is the exact integer-cent amount produced by the official
+provider's one-time USD rounding. This preserves legitimate sub-cent tax
+precision without allowing the charged amount to drift. A zero-dollar order
+bypasses Stripe entirely.
 
 ### Payment methods and card-data boundary
 

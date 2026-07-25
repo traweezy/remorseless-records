@@ -111,6 +111,18 @@ describe("checkout projection", () => {
     ).toBe("pi_test_secret_test")
   })
 
+  it("rounds raw tax precision to the customer-payable cent projection", () => {
+    const cart = cartFixture({
+      tax_total: 1.8975,
+      total: 23.8975,
+    })
+
+    expect(createCheckoutProjection(cart).cart.totals).toMatchObject({
+      taxTotal: 1.9,
+      total: 23.9,
+    })
+  })
+
   it.each([
     [
       "needs_contact",
@@ -229,7 +241,7 @@ describe("checkout projection", () => {
     )
   })
 
-  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, 19.999])(
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1])(
     "fails closed for invalid total %p",
     (total) => {
       expect(() => createCheckoutProjection(cartFixture({ total }))).toThrow(

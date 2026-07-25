@@ -3,6 +3,8 @@ import "server-only"
 import type { HttpTypes } from "@medusajs/types"
 
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe"
+const STRIPE_MIN_USD_AMOUNT = 50
+const STRIPE_MAX_USD_AMOUNT = 99_999_999
 const REUSABLE_PAYMENT_STATUSES = new Set(["pending", "requires_more"])
 const FINALIZING_PAYMENT_STATUSES = new Set(["authorized", "captured"])
 const COMPLETABLE_PAYMENT_STATUSES = new Set([
@@ -34,19 +36,63 @@ export class CheckoutPaymentError extends Error {
 const normalizedCurrency = (value: unknown): string =>
   typeof value === "string" ? value.trim().toLowerCase() : ""
 
-const exactUsdAmount = (value: unknown, name: string): number => {
+const usdAmount = (value: unknown, name: string): number => {
   const parsed = Number(value)
-  if (
-    !Number.isFinite(parsed) ||
-    parsed < 0 ||
-    Math.round(parsed * 100) / 100 !== parsed
-  ) {
+  if (!Number.isFinite(parsed) || parsed < 0) {
     throw new CheckoutPaymentError(
       "payment_session_stale",
       `${name} is not a valid USD amount.`
     )
   }
   return parsed
+}
+
+const payableUsdMinorUnits = (value: number, name: string): number => {
+  const roundingGuard = Number.EPSILON * Math.max(1, value)
+  const minorUnits = Math.round((value + roundingGuard) * 100)
+  if (
+    !Number.isSafeInteger(minorUnits) ||
+    minorUnits < STRIPE_MIN_USD_AMOUNT ||
+    minorUnits > STRIPE_MAX_USD_AMOUNT
+  ) {
+    throw new CheckoutPaymentError(
+      "payment_session_stale",
+      `${name} is outside Stripe's supported USD amount range.`
+    )
+  }
+  return minorUnits
+}
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null
+
+const assertStripeIntentAmount = (
+  session: HttpTypes.StorePaymentSession,
+  total: number
+): void => {
+  const data = asRecord(session.data)
+  const intentAmount = Number(data?.amount)
+  const intentCurrency =
+    typeof data?.currency === "string"
+      ? data.currency.trim().toLowerCase()
+      : ""
+  if (
+    !Number.isSafeInteger(intentAmount) ||
+    intentAmount !== payableUsdMinorUnits(total, "Cart total")
+  ) {
+    throw new CheckoutPaymentError(
+      "payment_session_stale",
+      "The Stripe PaymentIntent amount changed."
+    )
+  }
+  if (intentCurrency !== "usd") {
+    throw new CheckoutPaymentError(
+      "payment_session_stale",
+      "The Stripe PaymentIntent currency changed."
+    )
+  }
 }
 
 const clientSecretFrom = (
@@ -74,7 +120,7 @@ export const paymentNeedsFinalization = (cart: HttpTypes.StoreCart): boolean =>
 export const reusablePreparedPayment = (
   cart: HttpTypes.StoreCart
 ): PreparedPayment | null => {
-  const total = exactUsdAmount(cart.total, "Cart total")
+  const total = usdAmount(cart.total, "Cart total")
   if (total === 0) {
     return null
   }
@@ -96,8 +142,7 @@ export const reusablePreparedPayment = (
     )
   }
   if (
-    exactUsdAmount(paymentCollection.amount, "Payment collection amount") !==
-    total
+    usdAmount(paymentCollection.amount, "Payment collection amount") !== total
   ) {
     throw new CheckoutPaymentError(
       "payment_session_stale",
@@ -128,12 +173,13 @@ export const reusablePreparedPayment = (
       "The payment session currency changed."
     )
   }
-  if (exactUsdAmount(session.amount, "Payment session amount") !== total) {
+  if (usdAmount(session.amount, "Payment session amount") !== total) {
     throw new CheckoutPaymentError(
       "payment_session_stale",
       "The payment session amount changed."
     )
   }
+  assertStripeIntentAmount(session, total)
   const clientSecret = clientSecretFrom(session)
   if (!clientSecret) {
     throw new CheckoutPaymentError(
@@ -170,7 +216,7 @@ export const assertPreparedPayment = (
 export const assertCompletablePayment = (
   cart: HttpTypes.StoreCart
 ): { status: string } => {
-  const total = exactUsdAmount(cart.total, "Cart total")
+  const total = usdAmount(cart.total, "Cart total")
   if (total <= 0) {
     throw new CheckoutPaymentError(
       "payment_session_stale",
@@ -198,8 +244,7 @@ export const assertCompletablePayment = (
     )
   }
   if (
-    exactUsdAmount(paymentCollection.amount, "Payment collection amount") !==
-    total
+    usdAmount(paymentCollection.amount, "Payment collection amount") !== total
   ) {
     throw new CheckoutPaymentError(
       "payment_session_stale",
@@ -230,12 +275,13 @@ export const assertCompletablePayment = (
       "The payment session currency changed."
     )
   }
-  if (exactUsdAmount(session.amount, "Payment session amount") !== total) {
+  if (usdAmount(session.amount, "Payment session amount") !== total) {
     throw new CheckoutPaymentError(
       "payment_session_stale",
       "The payment session amount changed."
     )
   }
+  assertStripeIntentAmount(session, total)
 
   return { status: session.status }
 }
