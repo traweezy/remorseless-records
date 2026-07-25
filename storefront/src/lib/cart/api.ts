@@ -181,13 +181,56 @@ export const setCartAddresses = async (
 
 export const listShippingOptions = async (
   cartId: string
-): Promise<HttpTypes.StoreShippingOptionListResponse> =>
-  cartRequest<HttpTypes.StoreShippingOptionListResponse>(
+): Promise<HttpTypes.StoreShippingOptionListResponse> => {
+  const response = await cartRequest<HttpTypes.StoreShippingOptionListResponse>(
     "/store/shipping-options",
     {
       query: { cart_id: cartId },
     }
   )
+
+  const resolved = await Promise.allSettled(
+    (response.shipping_options ?? []).map(async (option) => {
+      if (option.price_type !== "calculated") {
+        return option
+      }
+
+      const calculated =
+        await cartRequest<HttpTypes.StoreShippingOptionResponse>(
+          `/store/shipping-options/${option.id}/calculate`,
+          {
+            method: "POST",
+            body: { cart_id: cartId, data: {} },
+          }
+        )
+
+      return {
+        ...option,
+        amount: calculated.shipping_option.amount,
+      }
+    })
+  )
+  const failures = resolved.filter((result) => result.status === "rejected")
+  if (failures.length) {
+    console.warn(
+      `Shipping price calculation failed for ${failures.length} option(s).`
+    )
+  }
+
+  return {
+    ...response,
+    shipping_options: resolved.flatMap((result) => {
+      if (result.status !== "fulfilled") {
+        return []
+      }
+      return typeof result.value.amount === "number" &&
+        Number.isFinite(result.value.amount) &&
+        result.value.amount >= 0
+        ? [result.value]
+        : []
+    }),
+  }
+}
 
 export const addShippingMethod = async (
   cartId: string,

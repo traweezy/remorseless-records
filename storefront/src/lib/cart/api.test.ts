@@ -26,6 +26,7 @@ import {
   addLineItem,
   createCart,
   getCart,
+  listShippingOptions,
   removeLineItem,
   updateLineItem,
 } from "@/lib/cart/api"
@@ -108,5 +109,79 @@ describe("cart Medusa boundary", () => {
       (medusaMocks.fetch.mock.calls[2]?.[1] as { signal?: unknown } | undefined)
         ?.signal
     ).toBeInstanceOf(AbortSignal)
+  })
+
+  it("resolves calculated shipping prices through the provider boundary", async () => {
+    medusaMocks.fetch.mockImplementation((path: string) => {
+      if (path === "/store/shipping-options") {
+        return Promise.resolve({
+          shipping_options: [
+            {
+              id: "so_flat",
+              name: "Flat",
+              price_type: "flat_rate",
+              amount: 7,
+            },
+            {
+              id: "so_calculated",
+              name: "Calculated",
+              price_type: "calculated",
+              amount: null,
+              insufficient_inventory: false,
+            },
+            {
+              id: "so_failed",
+              name: "Failed",
+              price_type: "calculated",
+              amount: null,
+              insufficient_inventory: false,
+            },
+          ],
+          count: 3,
+          limit: 20,
+          offset: 0,
+        })
+      }
+      if (path === "/store/shipping-options/so_calculated/calculate") {
+        return Promise.resolve({
+          shipping_option: {
+            id: "so_calculated",
+            amount: 5.5,
+            calculated_price: {
+              calculated_amount: 5.5,
+              is_calculated_price_tax_inclusive: false,
+            },
+            is_tax_inclusive: false,
+          },
+        })
+      }
+      if (path === "/store/shipping-options/so_failed/calculate") {
+        return Promise.reject(new Error("provider unavailable"))
+      }
+      return Promise.reject(new Error(`Unexpected request: ${path}`))
+    })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+
+    await expect(listShippingOptions(cartFixture.id)).resolves.toMatchObject({
+      shipping_options: [
+        { id: "so_flat", amount: 7 },
+        {
+          id: "so_calculated",
+          amount: 5.5,
+          insufficient_inventory: false,
+        },
+      ],
+    })
+    expect(medusaMocks.fetch).toHaveBeenCalledWith(
+      "/store/shipping-options/so_calculated/calculate",
+      expect.objectContaining({
+        method: "POST",
+        body: { cart_id: cartFixture.id, data: {} },
+      })
+    )
+    expect(warn).toHaveBeenCalledWith(
+      "Shipping price calculation failed for 1 option(s)."
+    )
+    warn.mockRestore()
   })
 })

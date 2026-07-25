@@ -147,6 +147,9 @@ when aggregate inventory appears positive.
 `pnpm run shipping:update` repairs this association without changing any stock
 count. It enables the calculated per-item provider at `HQ`, scopes its service
 zone to the United States, and updates the location's existing shipping option.
+The storefront follows Medusa's two-step calculated-rate contract: it first
+lists eligible options and then calls the provider-backed calculate endpoint
+for each calculated option before displaying or selecting it.
 Set `SHIPPING_STOCK_LOCATION_NAME` only when an environment intentionally uses
 a different canonical location. The command fails instead of guessing when the
 location is absent or ambiguous. See
