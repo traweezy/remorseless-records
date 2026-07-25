@@ -96,7 +96,7 @@ Apply mode is intentionally difficult to invoke accidentally. It requires the
 exact count and fingerprint from an approved dry run:
 
 ```bash
-pnpm --filter backend run money:migrate-major -- \
+pnpm --filter backend run money:migrate-major \
   --apply \
   --expected-count=<reviewed-count> \
   --expected-manifest-sha256=<reviewed-sha256>

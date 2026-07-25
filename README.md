@@ -399,7 +399,7 @@ Apply only after reviewing that exact output and receiving explicit approval:
 
 ```bash
 railway run --service Postgres --environment staging \
-  pnpm --filter backend run money:migrate-major -- \
+  pnpm --filter backend run money:migrate-major \
   --apply \
   --expected-count=<reviewed-count> \
   --expected-manifest-sha256=<reviewed-sha256>
