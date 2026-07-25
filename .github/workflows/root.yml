@@ -69,6 +69,6 @@ jobs:
       - name: Gitleaks scan
         uses: ./.github/actions/gitleaks
       - name: TruffleHog
-        uses: trufflesecurity/trufflehog@v3.95.9
+        uses: trufflesecurity/trufflehog@v3.96.0
         with:
           extra_args: --only-verified
