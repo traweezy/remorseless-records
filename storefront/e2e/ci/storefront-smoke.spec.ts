@@ -213,6 +213,8 @@ const expectVisibleInteractivePointers = async (page: Page): Promise<void> => {
 test("homepage hydrates every curated shelf without client errors", async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" })
+
   const pageErrors: string[] = []
   page.on("pageerror", (error) => pageErrors.push(error.message))
 
@@ -229,6 +231,10 @@ test("homepage hydrates every curated shelf without client errors", async ({
       page.getByRole("heading", { name: heading, exact: true }).first()
     ).toBeVisible()
   }
+
+  await expect(
+    page.getByRole("button", { name: /^Play .+ carousel$/ })
+  ).toHaveCount(4)
 
   await page.waitForTimeout(500)
   expect(pageErrors).toEqual([])
