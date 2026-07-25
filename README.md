@@ -5,6 +5,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 ## Contents
 
 - [Architecture](#architecture)
+- [Shopping Cart: Plain-English Guide](#shopping-cart-plain-english-guide)
 - [Prerequisites](#prerequisites)
 - [Repository Setup](#repository-setup)
 - [Environment Variables](#environment-variables)
@@ -32,6 +33,315 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 - **Backend**: Medusa core services plus Stripe Checkout session endpoint, webhook handler, Resend-powered notifications, Meilisearch sync helpers.
 - **Storefront**: Next 16 App Router with React Compiler enabled, brutal UI spec, Stripe Checkout redirect, Meilisearch-powered search, variant selectors, optimistic cart updates.
 - **Package management**: `pnpm` 11.17.0. Node 26.5.0 is enforced through `.nvmrc`.
+
+## Shopping Cart: Plain-English Guide
+
+The cart looks like a drawer that slides in from the right, but several parts of
+the application cooperate behind it. The browser provides immediate feedback,
+the storefront server protects the cart identity and validates every request,
+Medusa remains the authority for products, prices, and inventory, PostgreSQL
+stores the cart, and Redis prevents separate server processes from changing or
+cleaning up the same cart at the same time.
+
+This section explains that system without assuming prior knowledge of Medusa,
+Redis, cookies, background jobs, or cart expiration.
+
+### The terms used below
+
+| Term                       | Plain-English meaning                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Storefront**             | The website a shopper sees. It is the Next.js application in `storefront/`.                                                                                   |
+| **Cart drawer**            | The side panel containing the cart. There is deliberately no separate cart experience to maintain; the legacy `/cart` URL opens the same drawer.              |
+| **Storefront API / BFF**   | A small server-side layer inside the storefront. “BFF” means “backend for frontend.” The browser talks to it instead of talking directly to Medusa.           |
+| **Medusa**                 | The commerce backend. It decides whether a variant exists, what it costs, how much stock is available, and whether a cart change is valid.                    |
+| **PostgreSQL**             | The durable database where Medusa stores carts and line items. Closing a tab does not delete these records.                                                   |
+| **Cookie**                 | A small value the browser sends back to the storefront. This cart cookie contains only a protected reference to the server-side cart, not products or prices. |
+| **Redis**                  | A fast shared coordination service. It lets every running storefront/backend instance agree on retries, rate limits, and locks.                               |
+| **TTL / retention window** | A time limit after which inactive data may expire. TTL means “time to live.”                                                                                  |
+| **Soft delete**            | Marking a record as deleted through Medusa instead of issuing an unsafe direct database deletion.                                                             |
+| **Idempotency**            | Making a retry produce the same result instead of adding the same item twice.                                                                                 |
+| **Lock**                   | A short-lived “one worker at a time” claim around a specific operation or cart.                                                                               |
+
+### How the pieces fit together
+
+```text
+Shopper clicks Add, changes quantity, or removes an item
+  |
+  v
+React cart provider
+  - shows immediate/optimistic feedback
+  - keeps tabs on the same browser in sync
+  |
+  v
+Same-origin Next.js cart API
+  - validates the request
+  - reads/writes the signed cart cookie
+  - applies rate limits and idempotency
+  |
+  +----> Redis
+  |      - shared retry records
+  |      - shared rate limits
+  |      - distributed locks
+  |
+  v
+Medusa Store Cart API
+  - authoritative product, price, and inventory checks
+  |
+  v
+PostgreSQL
+  - durable cart and line-item records
+```
+
+The browser is never trusted to set a price, claim stock, or choose a database
+cart ID. It asks the storefront server to perform an action, and the server asks
+Medusa for the authoritative result. That result replaces the browser's
+temporary optimistic state.
+
+### What a shopper experiences
+
+#### Browsing without buying
+
+Opening the website does **not** create a cart. A cart is created lazily only
+after the first valid add request. This avoids filling the database with empty
+carts from visitors and bots who never add anything.
+
+#### Adding an item
+
+1. The selected button changes to `Adding…`.
+2. The storefront validates the request and sends it to Medusa.
+3. Medusa rechecks the exact variant, current price, inventory, and cart state.
+4. On success, the button says `Added` for about two seconds and the header
+   badge updates.
+5. The drawer stays closed so adding an item does not interrupt shopping.
+
+This works for music releases, merchandise, fixed bundles, and mystery bundles.
+Unavailable variants are rejected instead of creating an invalid line item.
+
+#### Reviewing the drawer
+
+The drawer shows the format or merchandise option that was actually selected,
+bundle contents that match that selection, quantity controls, current line
+totals, subtotal, and inventory status. Shipping and tax say “Calculated at
+checkout” because the cart does not yet know the shopper's address or selected
+shipping method.
+
+Items in a cart are **not reserved**. Availability is checked again whenever the
+cart changes and later at checkout. This prevents a forgotten cart from holding
+inventory indefinitely.
+
+#### Changing quantity or removing an item
+
+Quantity changes and removals update immediately in the drawer. This is called
+an **optimistic update**: the interface shows the expected outcome while the
+server request is running. If Medusa rejects the change, the previous cart is
+restored and an accessible error message explains what happened.
+
+- Decreasing quantity `1` removes that line.
+- The server enforces a maximum quantity of `100` per line.
+- A removed line can be restored with `Undo` for eight seconds.
+- Removing the final line clears the old browser cookie.
+- Undoing that final removal creates a fresh server cart rather than reviving an
+  empty stale cart.
+
+#### Reloading, returning later, and using multiple tabs
+
+The signed cookie allows a valid non-empty cart to be restored after a reload or
+browser restart. Successful changes are also announced through a browser
+`BroadcastChannel`, so another open tab refetches the authoritative cart rather
+than drifting out of date.
+
+A missing, malformed, tampered, completed, deleted, or empty cart is treated as
+no cart. The stale cookie is cleared quietly and the shopper can start again.
+
+### Cart cookie and 30-day browser lifetime
+
+The cookie is named `rr_cart_v1`. It contains a signed, opaque Medusa cart
+reference. It does not contain line items, prices, payment information, or
+customer details.
+
+The cookie is:
+
+- `HttpOnly`, so browser JavaScript cannot read it;
+- `Secure` in production, so it is sent only over HTTPS;
+- `SameSite=Lax`, which limits cross-site sending without breaking normal
+  navigation;
+- cryptographically signed, so changing the cart ID invalidates it;
+- compatible with a previous signing secret during planned secret rotation.
+
+The cookie expires 30 days after the last **successful item mutation**. Adding,
+changing, or removing an item refreshes the 30-day period when the resulting
+cart still contains items. Merely viewing the cart does not keep it alive
+forever.
+
+No cart ID is stored in `localStorage`. A server-only cookie is harder for
+injected browser JavaScript to steal, and it keeps cart identity handling in one
+auditable place.
+
+### The 37-day backend retention job
+
+Cookie expiration removes the browser's pointer, but it does not itself remove
+the database record. A daily Medusa job therefore soft-deletes old abandoned
+anonymous carts.
+
+The two windows intentionally differ:
+
+```text
+Day 0                    Day 30                         Day 37+
+last successful change  browser cookie expires        backend cleanup eligible
+|-----------------------|------------------------------|
+ active cart window          7-day safety grace
+```
+
+The seven-day grace helps avoid deleting a cart at the exact boundary where a
+browser cookie or delayed request may still be in flight.
+
+The job runs daily at `04:17 UTC` (`17 4 * * *`) and is disabled unless
+`ANONYMOUS_CART_RETENTION_ENABLED=true` is set. A cart is eligible only when all
+of the following are true:
+
+- it has no customer account;
+- it has no email address;
+- it has not been completed into an order;
+- its `updated_at` timestamp is older than the configured retention cutoff.
+
+The cleanup reads at most 250 candidates at a time, soft-deletes in batches of
+100, and stops at the configured per-run cap (1,000 by default; hard maximum
+10,000). Before each batch is deleted, it obtains locks and reads the records
+again. That final check protects a cart that became active, gained an email, or
+was claimed by a customer while cleanup was already running.
+
+The relevant settings are:
+
+| Variable                                 | Purpose                                                          | Safe default |
+| ---------------------------------------- | ---------------------------------------------------------------- | ------------ |
+| `ANONYMOUS_CART_RETENTION_ENABLED`       | Explicitly enables the cleanup job for an environment.           | `false`      |
+| `ANONYMOUS_CART_RETENTION_DAYS`          | Minimum inactive age before cleanup. Allowed range: 37–365 days. | `37`         |
+| `ANONYMOUS_CART_RETENTION_MAX_DELETIONS` | Safety cap per daily run. Allowed range: 1–10,000 carts.         | `1000`       |
+
+Staging currently uses the 37-day window and 1,000-cart cap. Before it was
+enabled, a read-only count confirmed that no existing anonymous incomplete carts
+were already beyond the cutoff.
+
+### Why Redis and distributed locks matter
+
+Railway may run more than one application process, and a process may restart at
+any time. Memory inside one process cannot coordinate with another process.
+Redis provides the shared state needed for the following protections:
+
+- **Idempotent mutations:** each browser mutation sends a UUID request key. A
+  matching retry returns the stored successful response instead of adding or
+  updating twice. Completed results live for 10 minutes.
+- **In-flight protection:** a mutation owns a 30-second processing claim. A
+  duplicate waits up to eight seconds for the first result; if it is still
+  running, the API returns a retryable conflict rather than guessing.
+- **Shared rate limits:** cart traffic is limited across all storefront
+  instances, not independently inside each process.
+- **Retention locks:** only one cleanup job runs at a time, and candidate carts
+  are locked while their eligibility is rechecked and deleted.
+- **Medusa coordination:** the backend uses Medusa's official Redis locking
+  provider when `REDIS_URL` is configured.
+
+Production cart mutations fail safely with `503 Service Unavailable` if the
+shared Redis protection is unavailable. That is preferable to silently risking
+duplicate additions or inconsistent writes. Read-only cart requests can use a
+small local rate-limit fallback because they do not change data.
+
+See Medusa's
+[locking module documentation](https://docs.medusajs.com/resources/infrastructure-modules/locking)
+for the underlying distributed-lock concept.
+
+### Validation, errors, and security boundaries
+
+Every cart write is validated at the storefront boundary before it reaches
+Medusa:
+
+- request bodies have small size limits;
+- product variant and line-item IDs must match the expected Medusa ID format;
+- quantities must be whole numbers in the allowed range;
+- unknown input fields are rejected rather than ignored;
+- Medusa calls have an eight-second timeout;
+- inventory conflicts and missing carts are returned as typed, safe errors;
+- rate-limited requests include retry guidance;
+- logs use request IDs and durations without printing cookie secrets, raw cart
+  IDs, or cart contents.
+
+The storefront maps failures to meaningful HTTP statuses such as `404` for a
+cart that no longer exists, `409` for a conflicting in-flight mutation, `422`
+for an invalid or unavailable item, `429` for rate limiting, and `504` for an
+upstream timeout. The drawer turns those responses into useful shopper-facing
+feedback and restores optimistic state when necessary.
+
+### What this cart work deliberately does not do
+
+This phase changed the cart only. It did **not** redesign checkout, create
+payment sessions, modify Stripe, collect shipping addresses, calculate final
+tax, or complete orders. The drawer's checkout button only hands the current
+Medusa cart to the existing `/checkout` flow. Checkout and payment behavior
+should be audited as a separate project.
+
+### Where the implementation lives
+
+| Area                                        | Main files                                                                                                                                                     |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Drawer UI and line items                    | [`storefront/src/components/cart-drawer.tsx`](storefront/src/components/cart-drawer.tsx), [`storefront/src/components/cart/`](storefront/src/components/cart/) |
+| Browser state, optimistic updates, tab sync | [`storefront/src/providers/cart-provider.tsx`](storefront/src/providers/cart-provider.tsx)                                                                     |
+| Same-origin cart API routes                 | [`storefront/src/app/api/cart/`](storefront/src/app/api/cart/)                                                                                                 |
+| Cookie, Medusa client, idempotency, errors  | [`storefront/src/lib/cart/`](storefront/src/lib/cart/)                                                                                                         |
+| Shared cart rate limits                     | [`storefront/src/lib/security/cart-rate-limit.ts`](storefront/src/lib/security/cart-rate-limit.ts)                                                             |
+| Retention rules and tests                   | [`backend/src/lib/cart-retention.ts`](backend/src/lib/cart-retention.ts)                                                                                       |
+| Daily retention scheduler                   | [`backend/src/jobs/remove-expired-anonymous-carts.ts`](backend/src/jobs/remove-expired-anonymous-carts.ts)                                                     |
+
+### Operating and troubleshooting the cart
+
+1. Configure `REDIS_URL` for every deployed storefront/backend instance.
+2. On backend startup, confirm the log reports a connection for the
+   `locking-redis` provider.
+3. Keep retention disabled in a new environment until a read-only database
+   count confirms the number of eligible carts.
+4. Enable retention explicitly with the three variables above.
+5. Watch for `Anonymous cart retention completed` in the daily backend logs. Its
+   summary includes the cutoff, number scanned, number protected by email,
+   number deleted, and whether the safety cap was reached.
+6. If cleanup behaves unexpectedly, set
+   `ANONYMOUS_CART_RETENTION_ENABLED=false`. This prevents future cleanup runs;
+   it does not hard-delete or rewrite existing records.
+
+Common cart diagnostics:
+
+| Symptom                        | What to check                                                                                                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| An item cannot be added        | Confirm the chosen Medusa variant is published, priced for the active region/currency, and has inventory.                                                                          |
+| A valid cart disappears        | Check whether it is empty/completed, whether `rr_cart_v1` is present for the storefront domain, and whether the signing secret was rotated without preserving the previous secret. |
+| Writes return `503`            | Check the storefront Redis connection first; mutating routes intentionally fail closed without shared idempotency/rate-limit state.                                                |
+| Writes return `409` briefly    | Another request with the same idempotency key is still running. Respect `Retry-After` and retry.                                                                                   |
+| Tabs appear briefly different  | Confirm `BroadcastChannel` is available, then inspect the follow-up `GET /api/cart`; the server response is authoritative.                                                         |
+| Cleanup never deletes anything | Confirm the feature flag, cutoff, schedule, Redis locking provider, and that candidates truly have no customer, email, or completion timestamp.                                    |
+
+### How the rebuilt cart was verified
+
+The initial staging release was verified on July 24, 2026. This is a record of
+the release evidence, not a substitute for running the current CI suite after
+future changes.
+
+- Storefront: 64 test files, 300 tests, and aggregate coverage of 93.16%
+  statements, 85.11% branches, 94.01% functions, and 93.12% lines.
+- Backend: 11 test suites and 45 tests.
+- Production builds completed for both workspaces.
+- Twenty-two Playwright cart journeys ran on Pixel 7 and iPhone 15 Pro device
+  profiles.
+- Automated accessibility checks passed with enforced pa11y and Lighthouse
+  thresholds.
+- Real browser screenshots were inspected at mobile sizes to confirm the drawer,
+  header badge, feedback, empty state, and long-content behavior do not overflow
+  the app bar.
+- Manual staging smoke tests covered add/reload, repeat-add merging, music,
+  merchandise, fixed bundles, mystery bundles, quantity changes, simultaneous
+  tabs, remove/Undo, final-item removal, tampered cookies, sold-out/low-stock
+  rejections, and a visitor who returns after leaving the store.
+- The smoke test confirmed cart activity made no checkout, payment-session, or
+  Stripe requests.
+- Backend, storefront, and root GitHub CI passed, and the final Railway staging
+  backend/storefront deployments both reported `SUCCESS`.
 
 ## Prerequisites
 
@@ -86,21 +396,21 @@ cp .env.template .env
 
 Key variables (non-empty values required for full functionality):
 
-| Variable                                 | Notes                                                            |
-| ---------------------------------------- | ---------------------------------------------------------------- |
-| `DATABASE_URL`                           | PostgreSQL connection string                                     |
-| `REDIS_URL`                              | Optional; powers distributed events, workflows, and cart locks   |
-| `STRIPE_API_KEY`                         | Stripe secret key (_sk\_..._)                                    |
-| `STRIPE_WEBHOOK_SECRET`                  | From Stripe CLI or dashboard endpoint for `/api/webhooks/stripe` |
-| `BACKEND_PUBLIC_URL`                     | External URL used in webhooks (e.g., `http://localhost:9000`)    |
-| `RESEND_API_KEY`                         | Optional; required for transactional mail                        |
-| `MEILISEARCH_HOST`                       | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`    |
-| `MEILISEARCH_ADMIN_KEY`                  | Corresponding admin/master key                                   |
-| `JWT_SECRET`, `COOKIE_SECRET`            | Medusa auth secrets (high entropy)                               |
-| `MINIO_*`                                | Optional. Railway template populates these for object storage    |
-| `ANONYMOUS_CART_RETENTION_ENABLED`       | Enables daily anonymous-cart soft deletion (default `false`)     |
-| `ANONYMOUS_CART_RETENTION_DAYS`          | Inactivity retention; minimum/default `37` days                  |
-| `ANONYMOUS_CART_RETENTION_MAX_DELETIONS` | Per-run safety cap; default `1000`                               |
+| Variable                                 | Notes                                                                        |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `DATABASE_URL`                           | PostgreSQL connection string                                                 |
+| `REDIS_URL`                              | Required when deployed; powers distributed events, workflows, and cart locks |
+| `STRIPE_API_KEY`                         | Stripe secret key (_sk\_..._)                                                |
+| `STRIPE_WEBHOOK_SECRET`                  | From Stripe CLI or dashboard endpoint for `/api/webhooks/stripe`             |
+| `BACKEND_PUBLIC_URL`                     | External URL used in webhooks (e.g., `http://localhost:9000`)                |
+| `RESEND_API_KEY`                         | Optional; required for transactional mail                                    |
+| `MEILISEARCH_HOST`                       | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
+| `MEILISEARCH_ADMIN_KEY`                  | Corresponding admin/master key                                               |
+| `JWT_SECRET`, `COOKIE_SECRET`            | Medusa auth secrets (high entropy)                                           |
+| `MINIO_*`                                | Optional. Railway template populates these for object storage                |
+| `ANONYMOUS_CART_RETENTION_ENABLED`       | Enables daily anonymous-cart soft deletion (default `false`)                 |
+| `ANONYMOUS_CART_RETENTION_DAYS`          | Inactivity retention; minimum/default `37` days                              |
+| `ANONYMOUS_CART_RETENTION_MAX_DELETIONS` | Per-run safety cap; default `1000`                                           |
 
 ### Storefront (`storefront/.env.local`)
 
@@ -122,6 +432,9 @@ Required values:
 | `NEXT_PUBLIC_MEILI_SEARCH_KEY`                     | Meili search-only key (never commit admin keys)                           |
 | `NEXT_PUBLIC_MEDIA_URL` / `NEXT_PUBLIC_ASSET_HOST` | Optional CDN overrides                                                    |
 | `MEDUSA_BACKEND_URL`                               | (server-only) override when the backend runs on a different domain        |
+| `REDIS_URL`                                        | Server-only Redis connection used for cart retries and shared rate limits |
+| `CART_COOKIE_SECRET`                               | Server-only signing secret; use at least 32 random characters             |
+| `CART_COOKIE_SECRET_PREVIOUS`                      | Optional former signing secret used only during a planned rotation        |
 
 ### Example local `.env`
 
@@ -290,7 +603,7 @@ Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
 | Symptom                                        | Resolution                                                                                                                                |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.5.0.                                                    |
-| Storefront shows empty cart despite items      | Cart cookies scoped to domain. When using Railway URLs, ensure `NEXT_PUBLIC_MEDUSA_URL` points to same origin or configure CORS.          |
+| Storefront shows empty cart despite items      | Check `rr_cart_v1` for the storefront domain, the cart-signing secret/previous secret, and the same-origin `/api/cart` response.          |
 | Search results empty                           | Confirm Meilisearch index name (`products`), API keys, and that documents exist. Backend fallback logs to console when Meili query fails. |
 | Webhook signature errors                       | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL.              |
 | React Compiler warnings                        | `next.config.ts` already enables `reactCompiler`. Ensure lint errors are fixed; the compiler is strict about invalid hooks usage.         |
@@ -315,7 +628,7 @@ Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK
 - Monorepo check shortcut: `pnpm run qa:lint` (lint + typecheck for storefront and backend).
 - Reindex search after catalog bulk changes: `pnpm --filter backend run search:sync` (use `pnpm --filter backend run search:check` to compare Medusa vs. Meilisearch counts).
 - Keyboard and screen-reader sweeps on header, Quick Shop, PDP, cart. Document in runbook checklist.
-- Lighthouse (desktop + mobile) on `/`, `/catalog`, a typed detail route (`/music-release/{slug}`, `/bundle/{slug}`, or `/merch/{slug}`), and `/cart` targeting LCP < 2.5s and A11y ≥ 95.
+- Lighthouse (desktop + mobile) on `/`, `/catalog`, a typed detail route (`/music-release/{slug}`, `/bundle/{slug}`, or `/merch/{slug}`), and the legacy `/cart` drawer entry targeting LCP < 2.5s and A11y ≥ 95. Exercise the drawer interactions separately in Playwright.
 - Stripe standard + 3DS test cards, confirm webhook metadata and Medusa order creation.
 - Automated bundle: `QA_BASE_URL=<deployed url> pnpm run qa:ci` (runs lint/typecheck, pa11y axe audits, and Lighthouse assertions). Optional overrides: `QA_PRODUCT_PATH=/music-release/{slug}`, `QA_EXTRA_URLS=/custom`.
 
