@@ -36,7 +36,7 @@ The function receives as a parameter an object having a `container` property, wh
 To run the custom CLI script, run the `exec` command:
 
 ```bash
-npx medusa exec ./src/scripts/my-script.ts
+pnpm exec medusa exec ./src/scripts/my-script.ts
 ```
 
 ---
@@ -60,5 +60,63 @@ export default async function myScript ({
 Then, pass the arguments in the `exec` command after the file path:
 
 ```bash
-npx medusa exec ./src/scripts/my-script.ts arg1 arg2
+pnpm exec medusa exec ./src/scripts/my-script.ts arg1 arg2
 ```
+
+## Monetary-unit audit and guarded migration
+
+Run the checkout monetary-unit audit before any Medusa v2 major-unit
+migration from the monorepo root:
+
+```bash
+pnpm --filter backend run money:audit
+```
+
+The command connects only to PostgreSQL, opens a read-only transaction, and
+inventories active product prices, incomplete-cart amounts,
+calculated-shipping configuration, and shipping-option prices. It does not
+bootstrap Redis, object storage, Medusa plugins, or the HTTP application. It
+also verifies Medusa's numeric and
+`raw_amount` representations agree, refuses to pass when transactional or
+discount records need manual review, and prints a SHA-256 fingerprint of the
+exact migration candidate set.
+
+The audit never changes data. A passing result is evidence for a separately
+reviewed migration; it does not authorize or apply that migration. It prints
+the proposed conversion count and a SHA-256 fingerprint for the exact reviewed
+record set.
+
+The migration command is also a dry run unless `--apply` is present:
+
+```bash
+pnpm --filter backend run money:migrate-major
+```
+
+Apply mode is intentionally difficult to invoke accidentally. It requires the
+exact count and fingerprint from an approved dry run:
+
+```bash
+pnpm --filter backend run money:migrate-major -- \
+  --apply \
+  --expected-count=<reviewed-count> \
+  --expected-manifest-sha256=<reviewed-sha256>
+```
+
+Apply mode repeats the audit under table locks in one PostgreSQL transaction.
+It converts legacy active-product, active incomplete-cart, and calculated
+shipping amounts to major units; preserves fixed shipping prices already in
+major units; writes a region migration marker; and verifies every post-migration
+amount before commit. A mismatch or blocker rolls the transaction back. Once
+the marker says `major`, a second apply is rejected rather than dividing values
+again.
+
+When running from a workstation against Railway, use the Postgres service so
+the public proxy URL is injected without printing credentials:
+
+```bash
+railway run --service Postgres --environment staging \
+  pnpm --filter backend run money:audit
+```
+
+After a successful apply, rerun the audit and rebuild Meilisearch. Never reuse
+one environment's count or fingerprint in another environment.

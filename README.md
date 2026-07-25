@@ -6,6 +6,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 
 - [Architecture](#architecture)
 - [Shopping Cart: Plain-English Guide](#shopping-cart-plain-english-guide)
+- [Money and Price Units](#money-and-price-units)
 - [Prerequisites](#prerequisites)
 - [Repository Setup](#repository-setup)
 - [Environment Variables](#environment-variables)
@@ -343,6 +344,74 @@ future changes.
 - Backend, storefront, and root GitHub CI passed, and the final Railway staging
   backend/storefront deployments both reported `SUCCESS`.
 
+## Money and Price Units
+
+Medusa v2 uses **major currency units** throughout its commerce model. In plain
+English, a 23-dollar record is stored and returned as `23`, not `2300`. This
+single convention applies to product prices, cart lines, shipping, taxes,
+totals, Meilisearch documents, admin inputs, storefront filters, and formatted
+prices.
+
+Stripe is the deliberate exception at the external boundary. Stripe's API
+represents USD amounts in the smallest currency unit, so the same 23-dollar
+amount is sent to or received from Stripe as `2300`. Conversion belongs only in
+the Stripe adapter/provider. The browser must never multiply prices, and
+Medusa/PostgreSQL values must never be divided merely for display.
+
+| Boundary                         | Example for USD 23.00 | Rule                                                         |
+| -------------------------------- | --------------------- | ------------------------------------------------------------ |
+| Medusa, PostgreSQL, search, UI   | `23`                  | Major units are the application-wide source of truth.        |
+| Stripe request/response payloads | `2300`                | Convert once at the explicitly named Stripe boundary.        |
+| Source-review import artifact    | `2300` cents          | Kept as source evidence; uploader output converts to `23.00`. |
+
+### Why a guarded migration exists
+
+Older catalog records were imported using cents even though Medusa v2 expects
+major units. The checkout migration includes a one-time, PostgreSQL-only tool
+that corrects those legacy values without starting Medusa, Redis, object
+storage, search, or payment code.
+
+The tool has two modes:
+
+1. A read-only audit inventories every in-scope amount, compares Medusa's
+   numeric and raw representations, identifies records that require manual
+   review, and fingerprints the exact candidate set with SHA-256.
+2. Apply mode requires both the reviewed row count and fingerprint. It locks
+   the relevant tables, repeats the audit inside one transaction, refuses any
+   changed dataset, converts only the approved rows, marks the region as using
+   major units, verifies every resulting value, and commits. Any failed check
+   rolls the entire transaction back.
+
+Existing fixed shipping-option prices that are already valid major-unit values
+are preserved. Active incomplete-cart prices and calculated-shipping
+configuration are converted with the catalog so a restored cart cannot mix old
+and new units. The migration refuses to run when order, payment, capture,
+refund, adjustment, or promotion data would need a business-specific decision.
+
+Run the read-only audit from the monorepo root:
+
+```bash
+railway run --service Postgres --environment staging \
+  pnpm --filter backend run money:audit
+```
+
+Apply only after reviewing that exact output and receiving explicit approval:
+
+```bash
+railway run --service Postgres --environment staging \
+  pnpm --filter backend run money:migrate-major -- \
+  --apply \
+  --expected-count=<reviewed-count> \
+  --expected-manifest-sha256=<reviewed-sha256>
+```
+
+After applying, run the audit again. A healthy result reports `mode: "major"`,
+zero proposed conversions, no blockers, and no raw-value mismatches. Rebuild
+Meilisearch next so indexed prices match PostgreSQL, then smoke-test catalog,
+cart, shipping, tax, and payment totals. Do not reuse a staging fingerprint in
+another environment. A database restore is the rollback path for an already
+committed conversion.
+
 ## Prerequisites
 
 | Tool        | Version / Notes                                              |
@@ -589,7 +658,7 @@ Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
     -X POST http://127.0.0.1:7700/indexes/products/documents \
     -H 'Authorization: Bearer masterKey' \
     -H 'Content-Type: application/json' \
-  -d '[{ "id": "prod_123", "title": "Demo", "handle": "demo", "price": 2500, "genres": ["doom"], "format": "vinyl" }]'
+  -d '[{ "id": "prod_123", "title": "Demo", "handle": "demo", "price": 25, "genres": ["doom"], "format": "vinyl" }]'
   ```
 
 ## Email (Resend)
