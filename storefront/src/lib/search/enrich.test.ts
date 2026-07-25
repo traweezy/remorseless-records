@@ -32,7 +32,7 @@ const makeVariant = (
   id: faker.string.uuid(),
   title: "Variant",
   currency: "usd",
-  amount: 1999,
+  amount: 19.99,
   hasPrice: true,
   inStock: true,
   stockStatus: "in_stock",
@@ -62,7 +62,7 @@ const makeHit = (
     categoryHandles: ["music"],
     variantTitles: ["CD"],
     format: "CD",
-    priceAmount: 1999,
+    priceAmount: 19.99,
     createdAt: "2025-01-01T00:00:00.000Z",
     stockStatus: "in_stock",
     productType: "album",
@@ -167,7 +167,7 @@ describe("enrichSearchResponse", () => {
       categoryHandles: ["doom"],
       variantTitles: ["MC"],
       format: "Cassette",
-      priceAmount: 2499,
+      priceAmount: 24.99,
       stockStatus: "in_stock",
     })
 
@@ -240,7 +240,7 @@ describe("enrichSearchResponse", () => {
       categoryHandles: ["doom"],
       variantTitles: ["MC"],
       format: "Cassette",
-      priceAmount: 2499,
+      priceAmount: 24.99,
       stockStatus: "in_stock",
     })
 
@@ -285,7 +285,7 @@ describe("enrichSearchResponse", () => {
       categoryHandles: ["original-category"],
       variantTitles: ["Original Variant"],
       format: "Vinyl",
-      priceAmount: 1111,
+      priceAmount: 11.11,
       stockStatus: "sold_out",
     })
 
@@ -302,7 +302,7 @@ describe("enrichSearchResponse", () => {
       categoryHandles: ["fallback-category"],
       variantTitles: ["Fallback Variant"],
       format: "Cassette",
-      priceAmount: 2222,
+      priceAmount: 22.22,
       stockStatus: "in_stock",
     })
 
@@ -321,7 +321,7 @@ describe("enrichSearchResponse", () => {
       categoryHandles: ["original-category"],
       variantTitles: ["Original Variant"],
       format: "Vinyl",
-      priceAmount: 1111,
+      priceAmount: 11.11,
       stockStatus: "sold_out",
     })
   })

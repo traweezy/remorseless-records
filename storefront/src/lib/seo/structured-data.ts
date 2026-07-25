@@ -237,7 +237,7 @@ export const selectPrimaryVariantForJsonLd = (product: StoreProduct): VariantJso
 
   return {
     sku: variant.sku ?? variant.id ?? undefined,
-    price: amount != null ? (amount / 100).toFixed(2) : null,
+    price: amount != null ? amount.toFixed(2) : null,
     currency,
   }
 }

@@ -102,11 +102,11 @@ const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(
         set((state) => {
           state.priceMin =
             typeof min === "number" && Number.isFinite(min)
-              ? Math.max(0, Math.trunc(min))
+              ? Math.round(Math.max(0, min) * 100) / 100
               : null
           state.priceMax =
             typeof max === "number" && Number.isFinite(max)
-              ? Math.max(0, Math.trunc(max))
+              ? Math.round(Math.max(0, max) * 100) / 100
               : null
         }),
       toggleStockOnly: () =>

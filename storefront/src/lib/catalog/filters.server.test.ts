@@ -19,13 +19,13 @@ const makeHit = (): ProductSearchHit => ({
     id: "variant",
     title: "CD",
     currency: "usd",
-    amount: 1_200,
+    amount: 12,
     hasPrice: true,
     inStock: true,
     stockStatus: "in_stock",
     inventoryQuantity: 10,
   },
-  priceAmount: 1_200,
+  priceAmount: 12,
   formats: ["CD"],
   genres: [],
   metalGenres: [],
@@ -103,8 +103,8 @@ describe("catalog filter server loaders", () => {
       { value: "merch", label: "Merchandise", count: 2 },
     ])
     await expect(getCatalogPriceRange()).resolves.toEqual({
-      min: 1_200,
-      max: 1_200,
+      min: 12,
+      max: 12,
       currency: "usd",
     })
     await expect(getCatalogFilterDefinitions()).resolves.toEqual({
@@ -114,7 +114,7 @@ describe("catalog filter server loaders", () => {
         { value: "music-release", label: "Music Releases", count: 10 },
         { value: "merch", label: "Merchandise", count: 2 },
       ],
-      priceRange: { min: 1_200, max: 1_200, currency: "usd" },
+      priceRange: { min: 12, max: 12, currency: "usd" },
     })
   })
 

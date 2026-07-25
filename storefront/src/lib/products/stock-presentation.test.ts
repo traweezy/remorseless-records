@@ -9,7 +9,7 @@ const makeVariant = (
   id: "variant-1",
   title: "LP",
   currency: "usd",
-  amount: 2_000,
+  amount: 20,
   hasPrice: true,
   inStock: true,
   stockStatus: "in_stock",

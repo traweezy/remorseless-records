@@ -83,8 +83,8 @@ const medusaConfig = {
             resolve: './src/modules/per-item-fulfillment',
             id: 'standard',
             options: {
-              baseAmount: 500,
-              additionalAmount: 50,
+              baseAmount: 5,
+              additionalAmount: 0.5,
               currencyCode: 'usd',
             },
           },

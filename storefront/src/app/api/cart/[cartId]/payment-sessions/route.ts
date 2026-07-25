@@ -50,7 +50,7 @@ export const POST = async (
 
     cart = await getCart(cartId)
     const cartTotal = Number(cart.total ?? 0)
-    const LARGE_TOTAL_THRESHOLD = 1000 * 100
+    const LARGE_TOTAL_THRESHOLD = 1_000
 
     if (cartTotal >= LARGE_TOTAL_THRESHOLD) {
       console.warn("[checkout] High cart total when creating payment session", {

@@ -25,7 +25,7 @@ const makeHit = (overrides: Record<string, unknown> = {}) => ({
   format: "LP",
   stock_status: "in_stock",
   default_variant_id: "variant-1",
-  price_amount: 2500,
+  price_amount: 25,
   ...overrides,
 })
 
@@ -169,7 +169,7 @@ describe("searchProductsWithClient", () => {
         variants: ["LP"],
         productTypes: ["album"],
         availability: ["in_stock"],
-        price: { min: 1000, max: 3000 },
+        price: { min: 10, max: 30 },
       },
     })
 
@@ -197,7 +197,7 @@ describe("searchProductsWithClient", () => {
         "variant_titles",
       ],
       filter:
-        'status = "published" AND genres IN ["Doom"] AND (formats IN ["Vinyl"] OR variant_titles IN ["Vinyl"]) AND category_handles IN ["doom", "grind"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 1000 AND price_min <= 3000 AND (stock_status != "sold_out")',
+        'status = "published" AND genres IN ["Doom"] AND (formats IN ["Vinyl"] OR variant_titles IN ["Vinyl"]) AND category_handles IN ["doom", "grind"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 10 AND price_min <= 30 AND (stock_status != "sold_out")',
       sort: ["price_amount:asc"],
     })
     expect(response.total).toBe(1)
@@ -265,26 +265,26 @@ describe("searchProductsWithClient", () => {
           makeHit({
             handle: "match",
             availability_states: ["preorder"],
-            price_min: 1200,
-            price_max: 2000,
+            price_min: 12,
+            price_max: 20,
           }),
           makeHit({
             handle: "wrong-availability",
             availability_states: ["in_stock"],
-            price_min: 1200,
-            price_max: 2000,
+            price_min: 12,
+            price_max: 20,
           }),
           makeHit({
             handle: "too-cheap",
             availability_states: ["preorder"],
-            price_min: 500,
-            price_max: 900,
+            price_min: 5,
+            price_max: 9,
           }),
           makeHit({
             handle: "too-expensive",
             availability_states: ["preorder"],
-            price_min: 2600,
-            price_max: 3200,
+            price_min: 26,
+            price_max: 32,
           }),
           makeHit({
             handle: "missing-price",
@@ -303,7 +303,7 @@ describe("searchProductsWithClient", () => {
       limit: 24,
       filters: {
         availability: ["preorder"],
-        price: { min: 1000, max: 2500 },
+        price: { min: 10, max: 25 },
       },
     })
 
@@ -356,7 +356,7 @@ describe("searchProductsWithClient", () => {
         ],
       }),
       search: vi.fn().mockResolvedValue({
-        hits: [makeHit({ price_min: 1000, price_max: 1500 })],
+        hits: [makeHit({ price_min: 10, price_max: 15 })],
         facetDistribution: undefined,
       }),
     }
@@ -366,7 +366,7 @@ describe("searchProductsWithClient", () => {
         filterableAttributes: ["price_min", "price_max"],
       }),
       search: vi.fn().mockResolvedValue({
-        hits: [makeHit({ price_min: 1000, price_max: 1500 })],
+        hits: [makeHit({ price_min: 10, price_max: 15 })],
         facetDistribution: undefined,
       }),
     }
@@ -375,27 +375,27 @@ describe("searchProductsWithClient", () => {
       query: "",
       limit: 1,
       filters: {
-        price: { min: 1000 },
+        price: { min: 10 },
       },
     })
     await searchProductsWithClient(makeClient(maxIndex), {
       query: "",
       limit: 1,
       filters: {
-        price: { max: 2000 },
+        price: { max: 20 },
       },
     })
 
     expect(minIndex.search).toHaveBeenCalledWith(
       "",
       expect.objectContaining({
-        filter: "price_max >= 1000",
+        filter: "price_max >= 10",
       })
     )
     expect(maxIndex.search).toHaveBeenCalledWith(
       "",
       expect.objectContaining({
-        filter: "price_min <= 2000",
+        filter: "price_min <= 20",
       })
     )
   })

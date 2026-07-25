@@ -53,7 +53,7 @@ describe("buildSearchDocument", () => {
             sku: "LP-1",
             manage_inventory: true,
             inventory_quantity: 2,
-            prices: [{ amount: 2500, currency_code: "usd" }],
+            prices: [{ amount: 25, currency_code: "usd" }],
           },
           {
             id: "var_cd",
@@ -61,7 +61,7 @@ describe("buildSearchDocument", () => {
             sku: "CD-1",
             manage_inventory: true,
             inventory_quantity: 0,
-            prices: [{ amount: 1200, currency_code: "usd" }],
+            prices: [{ amount: 12, currency_code: "usd" }],
           },
         ],
       },
@@ -210,8 +210,8 @@ describe("buildSearchDocument", () => {
       format: "LP",
       formats: ["LP", "CD", "Vinyl"],
       format_details: ["Black"],
-      price_min: 1200,
-      price_max: 2500,
+      price_min: 12,
+      price_max: 25,
       stock_status: "low_stock",
       availability_states: expect.arrayContaining([
         "low_stock",
@@ -252,7 +252,7 @@ describe("buildSearchDocument", () => {
           title: "Cassette",
           manage_inventory: true,
           inventory_quantity: 0,
-          prices: [{ amount: 900, currency_code: "usd" }],
+          prices: [{ amount: 9, currency_code: "usd" }],
         },
       ],
     })
@@ -261,7 +261,7 @@ describe("buildSearchDocument", () => {
     expect(document.genres).toEqual(["Grind"])
     expect(document.product_type).toBe("release")
     expect(document.label).toBe("Remorseless Records")
-    expect(document.price_amount).toBe(900)
+    expect(document.price_amount).toBe(9)
     expect(document.stock_status).toBe("sold_out")
     expect(document.availability_states).toEqual(["sold_out"])
   })
@@ -278,7 +278,7 @@ describe("buildSearchDocument", () => {
           manage_inventory: true,
           inventory_quantity: 5,
           metadata: { inventory_count_status: "verified" },
-          prices: [{ amount: 2_000, currency_code: "usd" }],
+          prices: [{ amount: 20, currency_code: "usd" }],
         },
         {
           id: "var_imported",
@@ -289,7 +289,7 @@ describe("buildSearchDocument", () => {
             source_low_inventory: true,
             seed_inventory_quantity: 2,
           },
-          prices: [{ amount: 1_000, currency_code: "usd" }],
+          prices: [{ amount: 10, currency_code: "usd" }],
         },
       ],
     })
@@ -323,7 +323,7 @@ describe("buildSearchDocument", () => {
             title: "CD",
             manage_inventory: true,
             inventory_quantity: 2,
-            prices: [{ amount: 1_000, currency_code: "usd" }],
+            prices: [{ amount: 10, currency_code: "usd" }],
           },
         ],
       },
@@ -380,13 +380,13 @@ describe("buildSearchDocument", () => {
           id: "var_available",
           title: "CD",
           manage_inventory: true,
-          prices: [{ amount: 1200, currency_code: "usd" }],
+          prices: [{ amount: 12, currency_code: "usd" }],
         },
         {
           id: "var_sold_out",
           title: "Cassette",
           manage_inventory: true,
-          prices: [{ amount: 900, currency_code: "usd" }],
+          prices: [{ amount: 9, currency_code: "usd" }],
         },
       ],
     }
@@ -425,7 +425,7 @@ describe("buildSearchDocument", () => {
           id: "var_unknown",
           title: "CD",
           manage_inventory: true,
-          prices: [{ amount: 1200, currency_code: "usd" }],
+          prices: [{ amount: 12, currency_code: "usd" }],
         },
       ],
     })

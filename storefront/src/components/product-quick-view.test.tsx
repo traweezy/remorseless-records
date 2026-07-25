@@ -35,7 +35,7 @@ const product = {
       id: "variant_cd",
       title: "3CD Bundle",
       calculated_price: {
-        calculated_amount: 3_300,
+        calculated_amount: 33,
         currency_code: "usd",
       },
       inventory_quantity: 2,
@@ -49,7 +49,7 @@ const product = {
       id: "variant_lp",
       title: "3LP Bundle",
       calculated_price: {
-        calculated_amount: 5_600,
+        calculated_amount: 56,
         currency_code: "usd",
       },
       inventory_quantity: 1,

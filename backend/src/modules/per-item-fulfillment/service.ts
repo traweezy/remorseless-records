@@ -28,8 +28,8 @@ type ShippingOptionData = {
   currency_code?: string
 }
 
-const DEFAULT_BASE_AMOUNT = 500
-const DEFAULT_ADDITIONAL_AMOUNT = 50
+const DEFAULT_BASE_AMOUNT = 5
+const DEFAULT_ADDITIONAL_AMOUNT = 0.5
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -44,13 +44,37 @@ const toNumber = (value: unknown): number | null => {
   return null
 }
 
-const resolveAmount = (value: unknown, fallback: number): number => {
+const roundToCurrencyPrecision = (value: number): number =>
+  Math.round(value * 100) / 100
+
+export const resolveShippingAmount = (
+  value: unknown,
+  fallback: number
+): number => {
   const parsed = toNumber(value)
   if (parsed === null) {
     return fallback
   }
 
-  return Math.max(0, Math.round(parsed))
+  return Math.max(0, roundToCurrencyPrecision(parsed))
+}
+
+export const calculatePerItemShippingAmount = ({
+  additionalAmount,
+  baseAmount,
+  itemCount,
+}: {
+  additionalAmount: number
+  baseAmount: number
+  itemCount: number
+}): number => {
+  const totalQuantity = Math.max(0, Math.trunc(itemCount))
+  if (totalQuantity === 0) {
+    return 0
+  }
+  return roundToCurrencyPrecision(
+    baseAmount + Math.max(0, totalQuantity - 1) * additionalAmount
+  )
 }
 
 export default class PerItemFulfillmentService extends AbstractFulfillmentProviderService {
@@ -87,8 +111,11 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
   }
 
   override async validateOption(data: Record<string, unknown>): Promise<boolean> {
-    const base = resolveAmount((data as ShippingOptionData).base_amount, DEFAULT_BASE_AMOUNT)
-    const additional = resolveAmount(
+    const base = resolveShippingAmount(
+      (data as ShippingOptionData).base_amount,
+      DEFAULT_BASE_AMOUNT
+    )
+    const additional = resolveShippingAmount(
       (data as ShippingOptionData).additional_amount,
       DEFAULT_ADDITIONAL_AMOUNT
     )
@@ -105,11 +132,11 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
     _data: CalculateShippingOptionPriceDTO['data'],
     context: CalculateShippingOptionPriceDTO['context']
   ): Promise<CalculatedShippingOptionPrice> {
-    const baseAmount = resolveAmount(
+    const baseAmount = resolveShippingAmount(
       (optionData as ShippingOptionData).base_amount,
       this.options_.baseAmount ?? DEFAULT_BASE_AMOUNT
     )
-    const additionalAmount = resolveAmount(
+    const additionalAmount = resolveShippingAmount(
       (optionData as ShippingOptionData).additional_amount,
       this.options_.additionalAmount ?? DEFAULT_ADDITIONAL_AMOUNT
     )
@@ -118,10 +145,11 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
       ? context.items.reduce((total, item) => total + Number(item?.quantity ?? 0), 0)
       : 0
 
-    const totalQuantity = Math.max(0, Math.trunc(itemCount))
-    const calculated = totalQuantity > 0
-      ? baseAmount + Math.max(0, totalQuantity - 1) * additionalAmount
-      : 0
+    const calculated = calculatePerItemShippingAmount({
+      additionalAmount,
+      baseAmount,
+      itemCount,
+    })
 
     const currencyCode =
       typeof context.currency_code === 'string' ? context.currency_code : null

@@ -42,12 +42,12 @@ describe("buildCatalogFilterDefinitions", () => {
           variantTitles: ["12-inch vinyl", "CD"],
           categoryHandles: ["death-metal"],
           productType: "music_release",
-          priceAmount: 2_500,
+          priceAmount: 25,
           defaultVariant: {
             id: "vinyl",
             title: "Vinyl",
             currency: "usd",
-            amount: 2_500,
+            amount: 25,
             hasPrice: true,
             inStock: true,
             stockStatus: "in_stock",
@@ -58,7 +58,7 @@ describe("buildCatalogFilterDefinitions", () => {
           variantTitles: ["DVD"],
           categoryHandles: ["doom-metal"],
           productType: "music-release",
-          priceAmount: 1_000,
+          priceAmount: 10,
         }),
         makeHit("shirt", {
           categoryHandles: ["death-metal"],
@@ -86,8 +86,8 @@ describe("buildCatalogFilterDefinitions", () => {
       { value: "merch", label: "Merchandise", count: 1 },
     ])
     expect(definitions.priceRange).toEqual({
-      min: 1_000,
-      max: 2_500,
+      min: 10,
+      max: 25,
       currency: "usd",
     })
   })

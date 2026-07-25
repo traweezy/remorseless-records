@@ -468,7 +468,7 @@ const formatCurrency = (amount: number | null | undefined): string => {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(amount / 100)
+  }).format(amount)
 }
 
 const getVariantOptionLabel = (variant: AdminVariant): string => {
@@ -1156,7 +1156,8 @@ const ProductAuthoringPage = memo(() => {
         createForm.formatDetail.trim() ||
         createForm.format.trim() ||
         "Default"
-      const amount = Math.round(Number.parseFloat(createForm.priceUsd || "0") * 100)
+      const amount =
+        Math.round(Number.parseFloat(createForm.priceUsd || "0") * 100) / 100
       if (Number.isNaN(amount) || amount < 0) {
         throw new Error("Price must be a valid amount.")
       }

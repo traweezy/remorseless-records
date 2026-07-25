@@ -7,6 +7,7 @@ import { z } from "zod"
 import { getStripeClient } from "../../../../lib/stripe"
 import { mergeMetadata } from "../../../../lib/metadata"
 import { STORE_CORS } from "../../../../lib/constants"
+import { toStripeMinorUnit } from "../../../../lib/money/stripe-units"
 
 const payloadSchema = z.object({
   cart_id: z.string().min(1, "cart_id is required"),
@@ -78,6 +79,12 @@ export const POST = async (
       `Cart ${cartId} is missing currency_code`
     )
   }
+  if (currency !== "usd") {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      `Cart ${cartId} uses unsupported checkout currency ${currency}`
+    )
+  }
 
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
     cart.items?.map((item) => {
@@ -101,7 +108,7 @@ export const POST = async (
       return {
         price_data: {
           currency,
-          unit_amount: Math.round(unitPrice),
+          unit_amount: toStripeMinorUnit(unitPrice, currency),
           product_data: {
             name: item.title ?? "Item",
             metadata: {
@@ -118,7 +125,7 @@ export const POST = async (
     lineItems.push({
       price_data: {
         currency,
-        unit_amount: Math.round(shippingTotal),
+        unit_amount: toStripeMinorUnit(shippingTotal, currency),
         product_data: {
           name: "Shipping",
           metadata: {

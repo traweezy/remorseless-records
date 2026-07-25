@@ -62,9 +62,9 @@ const lineItemFixture = (
     variant_id: variantId,
     title: `Product ${variantId}`,
     quantity,
-    unit_price: 2_000,
-    subtotal: 2_000 * quantity,
-    total: 2_000 * quantity,
+    unit_price: 20,
+    subtotal: 20 * quantity,
+    total: 20 * quantity,
   }) as HttpTypes.StoreCartLineItem
 
 const deferred = <T,>() => {

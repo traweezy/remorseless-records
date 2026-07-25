@@ -25,6 +25,7 @@ import { runtimeEnv } from "@/config/env"
 import { legalConfig, legalRoutes } from "@/config/legal"
 import type { StoreCartAddressInput } from "@/lib/cart/types"
 import { formatAmount } from "@/lib/money"
+import { estimateStandardShippingAmount } from "@/lib/shipping/estimate"
 import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
 
@@ -513,9 +514,7 @@ const CheckoutPage = () => {
   const canOpenShipping = contactComplete
   const canOpenPayment = shippingComplete && hasSyncedShipping && !shippingFormDirty && !shippingError
   const computedShippingSubtotal = useMemo(() => {
-    const count = Math.max(0, Math.trunc(itemCount))
-    if (count === 0) return 0
-    return 500 + Math.max(0, count - 1) * 50
+    return estimateStandardShippingAmount(itemCount)
   }, [itemCount])
   const resolvedShippingSubtotal =
     shippingSubtotal && shippingSubtotal > 0 ? shippingSubtotal : computedShippingSubtotal

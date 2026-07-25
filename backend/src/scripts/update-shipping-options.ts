@@ -8,8 +8,8 @@ const STANDARD_NAME = 'Standard Shipping'
 const EXPRESS_NAME = 'Express Shipping'
 const PROVIDER_ID = 'per_item_standard'
 
-const BASE_AMOUNT = 500
-const ADDITIONAL_AMOUNT = 50
+const BASE_AMOUNT = 5
+const ADDITIONAL_AMOUNT = 0.5
 const CURRENCY_CODE = 'usd'
 
 type ShippingOption = {

@@ -1652,7 +1652,7 @@ func writeUploaderCSV(path string, products []normalizedProduct, salesChannelID 
 					"true",
 					strings.ToLower(strconv.FormatBool(variant.AllowBackorder)),
 					mustJSON(variantMetadata),
-					positiveIntString(variant.PriceUSDCents),
+					positiveMoneyStringFromCents(variant.PriceUSDCents),
 					"Format",
 					variant.DisplayLabel,
 				}
@@ -2363,6 +2363,13 @@ func positiveIntString(value int) string {
 		return ""
 	}
 	return strconv.Itoa(value)
+}
+
+func positiveMoneyStringFromCents(value int) string {
+	if value <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d.%02d", value/100, value%100)
 }
 
 func productTypeLabel(value string) string {

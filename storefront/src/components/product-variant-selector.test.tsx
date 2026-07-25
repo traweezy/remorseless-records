@@ -21,7 +21,7 @@ const variant: VariantOption = {
   id: "variant_cd",
   title: "CD",
   currency: "usd",
-  amount: 2_400,
+  amount: 24,
   hasPrice: true,
   inStock: true,
   stockStatus: "in_stock",

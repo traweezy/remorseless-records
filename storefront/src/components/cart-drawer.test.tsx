@@ -67,16 +67,16 @@ const cartFixture = (): HttpTypes.StoreCart =>
   ({
     id: "cart_active",
     currency_code: "usd",
-    subtotal: 2_400,
-    total: 2_400,
+    subtotal: 24,
+    total: 24,
     items: [
       {
         id: "cali_01ABC",
         title: "Test pressing",
         variant_id: "variant_01ABC",
         quantity: 1,
-        unit_price: 2_400,
-        subtotal: 2_400,
+        unit_price: 24,
+        subtotal: 24,
       },
     ],
   }) as HttpTypes.StoreCart

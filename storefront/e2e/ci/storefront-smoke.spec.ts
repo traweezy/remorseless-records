@@ -26,7 +26,7 @@ const catalogSearchFixture: ProductSearchResponse = {
         id: "variant_ci_pathologist_cd",
         title: "CD",
         currency: "usd",
-        amount: 1_500,
+        amount: 15,
         hasPrice: true,
         inStock: true,
         stockStatus: "in_stock",
@@ -40,9 +40,9 @@ const catalogSearchFixture: ProductSearchResponse = {
       variantTitles: ["CD"],
       artistNames: ["Pathologist"],
       format: "CD",
-      priceAmount: 1_500,
-      priceMin: 1_500,
-      priceMax: 1_500,
+      priceAmount: 15,
+      priceMin: 15,
+      priceMax: 15,
       stockStatus: "in_stock",
       productType: "music-release",
       status: "published",
@@ -106,7 +106,7 @@ const productDetailFixture = {
       id: "variant_ci_pathologist_cd",
       title: "CD",
       calculated_price: {
-        calculated_amount: 1_500,
+        calculated_amount: 15,
         currency_code: "usd",
       },
       inventory_quantity: 10,
@@ -339,8 +339,8 @@ test("cart drawer stays usable and contained on mobile devices", async ({
     variant_id: "variant_ci_pathologist_lp",
     variant_title: "LP",
     quantity: 2,
-    unit_price: 1_800,
-    subtotal: 3_600,
+    unit_price: 18,
+    subtotal: 36,
     thumbnail: null,
     variant: {
       id: "variant_ci_pathologist_lp",
@@ -515,8 +515,8 @@ test("adding from quick shop confirms in place without opening the cart", async 
     variant_id: "variant_ci_pathologist_cd",
     variant_title: "CD",
     quantity: 1,
-    unit_price: 1_500,
-    subtotal: 1_500,
+    unit_price: 15,
+    subtotal: 15,
     thumbnail: null,
   }
 
@@ -566,8 +566,8 @@ test("adding from quick shop confirms in place without opening the cart", async 
     activeCart = {
       id: "cart_ci_added",
       currency_code: "usd",
-      subtotal: 1_500,
-      total: 1_500,
+      subtotal: 15,
+      total: 15,
       items: [cartItem],
     }
     await route.fulfill({

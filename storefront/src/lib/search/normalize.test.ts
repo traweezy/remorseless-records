@@ -47,9 +47,9 @@ describe("normalizeSearchHit", () => {
       format: "LP",
       formats: ["vinyl", "compact disc"],
       format_details: ["black vinyl"],
-      price_amount: "2499",
-      price_min: "1599",
-      price_max: "2499",
+      price_amount: "24.99",
+      price_min: "15.99",
+      price_max: "24.99",
       currency_code: "usd",
       stock_status: "IN_STOCK",
       low_stock_badge_eligible: false,
@@ -84,7 +84,7 @@ describe("normalizeSearchHit", () => {
       id: "variant-1",
       title: "Vinyl",
       currency: "usd",
-      amount: 2499,
+      amount: 24.99,
       hasPrice: true,
       inStock: true,
       stockStatus: "low_stock",
@@ -98,8 +98,8 @@ describe("normalizeSearchHit", () => {
     expect(normalized.productTypeLabel).toBe("Album")
     expect(normalized.label).toBe("Remorseless Records")
     expect(normalized.formatDetails).toEqual(["black vinyl"])
-    expect(normalized.priceMin).toBe(1599)
-    expect(normalized.priceMax).toBe(2499)
+    expect(normalized.priceMin).toBe(15.99)
+    expect(normalized.priceMax).toBe(24.99)
     expect(normalized.stockStatuses).toEqual(["in_stock", "low_stock"])
     expect(normalized.lowStockBadgeEligible).toBe(false)
     expect(normalized.availabilityStates).toEqual(["preorder", "in_stock"])
@@ -123,7 +123,7 @@ describe("normalizeSearchHit", () => {
       categories: "cassette, underground",
       variants: "mc,tape",
       formats: ["shell"],
-      amount: "1399",
+      amount: "13.99",
       price_currency: "eur",
       in_stock: "false",
       variant_id: "variant-2",
@@ -143,7 +143,7 @@ describe("normalizeSearchHit", () => {
     expect(normalized.stockStatus).toBe("sold_out")
     expect(normalized.formats).toEqual(["Cassette"])
     expect(normalized.defaultVariant?.currency).toBe("eur")
-    expect(normalized.defaultVariant?.amount).toBe(1399)
+    expect(normalized.defaultVariant?.amount).toBe(13.99)
     expect(normalized.defaultVariant?.stockStatus).toBe("sold_out")
     expect(normalized.createdAt).toBe("2024-01-01T00:00:00.000Z")
     expect(normalized.productType).toBe("cassette")
@@ -200,7 +200,7 @@ describe("normalizeSearchHit", () => {
       artist: "Explicit Artist",
       category_handles: ["vinyl"],
       variantId: "variant-id-alias",
-      amount: 1599,
+      amount: 15.99,
       currency: "cad",
       in_stock: "true",
       format: "vinyl",

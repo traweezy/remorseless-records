@@ -234,8 +234,8 @@ export default async function seedDemoData({ container }: ExecArgs) {
           code: "standard",
         },
         data: {
-          base_amount: 500,
-          additional_amount: 50,
+          base_amount: 5,
+          additional_amount: 0.5,
           currency_code: "usd",
         },
         rules: [

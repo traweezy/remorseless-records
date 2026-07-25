@@ -216,10 +216,10 @@ const ConfirmedPage = async ({ searchParams }: ConfirmedPageProps) => {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-foreground">
-                        {formatMoney?.format(item.total / 100)}
+                        {formatMoney?.format(item.total)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatMoney?.format(item.unit_price / 100)} each
+                        {formatMoney?.format(item.unit_price)} each
                       </p>
                     </div>
                   </li>
@@ -231,27 +231,27 @@ const ConfirmedPage = async ({ searchParams }: ConfirmedPageProps) => {
               <dl className="mt-4 space-y-2 text-sm">
                 <SummaryRow
                   label="Subtotal"
-                  value={formatMoney?.format(order.subtotal / 100) ?? ""}
+                  value={formatMoney?.format(order.subtotal) ?? ""}
                 />
                 <SummaryRow
                   label="Shipping"
-                  value={formatMoney?.format(order.shipping_total / 100) ?? ""}
+                  value={formatMoney?.format(order.shipping_total) ?? ""}
                 />
                 <SummaryRow
                   label="Tax"
-                  value={formatMoney?.format(order.tax_total / 100) ?? ""}
+                  value={formatMoney?.format(order.tax_total) ?? ""}
                 />
                 {order.discount_total > 0 ? (
                   <SummaryRow
                     label="Discounts"
                     value={`- ${
-                      formatMoney?.format(order.discount_total / 100) ?? ""
+                      formatMoney?.format(order.discount_total) ?? ""
                     }`}
                   />
                 ) : null}
                 <SummaryRow
                   label="Total"
-                  value={formatMoney?.format(order.total / 100) ?? ""}
+                  value={formatMoney?.format(order.total) ?? ""}
                   highlight
                 />
               </dl>

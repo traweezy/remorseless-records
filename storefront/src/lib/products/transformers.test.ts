@@ -40,7 +40,7 @@ const makeProduct = (overrides: Partial<StoreProduct> = {}): StoreProduct =>
         id: "variant_lp",
         title: "LP",
         calculated_price: {
-          calculated_amount: 2999,
+          calculated_amount: 29.99,
           currency_code: "usd",
         },
         inventory_quantity: 3,
@@ -51,7 +51,7 @@ const makeProduct = (overrides: Partial<StoreProduct> = {}): StoreProduct =>
         id: "variant_cd",
         title: "CD",
         calculated_price: {
-          calculated_amount: 1599,
+          calculated_amount: 15.99,
           currency_code: "usd",
         },
         inventory_quantity: 20,
@@ -89,7 +89,7 @@ describe("product transformers", () => {
           id: "variant_seeded",
           title: "CD",
           calculated_price: {
-            calculated_amount: 1_200,
+            calculated_amount: 12,
             currency_code: "usd",
           },
           inventory_quantity: 2,
@@ -129,8 +129,8 @@ describe("product transformers", () => {
     expect(hit.categoryHandles).toContain("death")
     expect(hit.productType).toBe("album")
     expect(hit.stockStatus).toBe("low_stock")
-    expect(hit.priceMin).toBe(1_599)
-    expect(hit.priceMax).toBe(2_999)
+    expect(hit.priceMin).toBe(15.99)
+    expect(hit.priceMax).toBe(29.99)
   })
 
   it("handles sparse products without variants", () => {

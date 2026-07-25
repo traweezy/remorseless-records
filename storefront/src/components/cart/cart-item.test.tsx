@@ -45,8 +45,8 @@ const lineItemFixture = (
     product_handle: "music-release-test-artist-test-pressing",
     variant_id: "variant_01ABC",
     variant_title: "LP",
-    unit_price: 2_400,
-    subtotal: 2_400,
+    unit_price: 24,
+    subtotal: 24,
     variant: {
       id: "variant_01ABC",
       title: "LP",
@@ -91,7 +91,7 @@ describe("CartItem", () => {
       <CartItem
         item={lineItemFixture({
           quantity: 3,
-          subtotal: 7_200,
+          subtotal: 72,
         })}
         currencyCode="usd"
       />
@@ -200,7 +200,7 @@ describe("CartItem", () => {
 
   it("uses the explicit remove action when supplied by the drawer", async () => {
     const onRemove = vi.fn().mockResolvedValue(undefined)
-    const item = lineItemFixture({ quantity: 2, subtotal: 4_800 })
+    const item = lineItemFixture({ quantity: 2, subtotal: 48 })
     render(<CartItem item={item} currencyCode="usd" onRemove={onRemove} />)
 
     fireEvent.click(

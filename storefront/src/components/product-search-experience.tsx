@@ -427,11 +427,11 @@ const formatPrice = (amount: number, currency: string): string =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
-    maximumFractionDigits: amount % 100 === 0 ? 0 : 2,
-  }).format(amount / 100)
+    maximumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  }).format(amount)
 
 const priceInputValue = (amount: number | null): string =>
-  amount === null ? "" : String(amount / 100)
+  amount === null ? "" : String(amount)
 
 const parsePriceInput = (value: string): number | null => {
   if (!value.trim().length) {
@@ -439,7 +439,7 @@ const parsePriceInput = (value: string): number | null => {
   }
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed >= 0
-    ? Math.round(parsed * 100)
+    ? Math.round(parsed * 100) / 100
     : Number.NaN
 }
 
@@ -464,7 +464,7 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
     const errorId = `${idPrefix}-price-error`
     const sliderMinimum = bounds?.min ?? 0
     const sliderMaximum = Math.max(bounds?.max ?? sliderMinimum, sliderMinimum)
-    const sliderStep = sliderMaximum - sliderMinimum >= 100 ? 100 : 1
+    const sliderStep = sliderMaximum - sliderMinimum >= 1 ? 1 : 0.01
     const sliderValues = useMemo<[number, number]>(() => {
       const parsedMinimum = parsePriceInput(draftMin)
       const parsedMaximum = parsePriceInput(draftMax)
@@ -623,8 +623,8 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                         className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
                         inputMode="decimal"
                         type="number"
-                        min={sliderMinimum / 100}
-                        max={sliderMaximum / 100}
+                        min={sliderMinimum}
+                        max={sliderMaximum}
                         placeholder={priceInputValue(sliderMinimum)}
                         step="0.01"
                         aria-label="Minimum price in dollars"
@@ -648,8 +648,8 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                         className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
                         inputMode="decimal"
                         type="number"
-                        min={sliderMinimum / 100}
-                        max={sliderMaximum / 100}
+                        min={sliderMinimum}
+                        max={sliderMaximum}
                         placeholder={priceInputValue(sliderMaximum)}
                         step="0.01"
                         aria-label="Maximum price in dollars"
@@ -1050,7 +1050,7 @@ const ProductSearchExperience = ({
       }
       const parsed = Number(value)
       return Number.isFinite(parsed) && parsed >= 0
-        ? Math.round(parsed * 100)
+        ? Math.round(parsed * 100) / 100
         : null
     }
     const nextPriceMin = parsePriceParam(params.get("minPrice"))
@@ -1153,10 +1153,10 @@ const ProductSearchExperience = ({
     setCsvParam("format", formatCsvValues)
     setCsvParam("type", productTypeCsvValues)
     if (selectedPriceMin !== null) {
-      params.set("minPrice", String(selectedPriceMin / 100))
+      params.set("minPrice", String(selectedPriceMin))
     }
     if (selectedPriceMax !== null) {
-      params.set("maxPrice", String(selectedPriceMax / 100))
+      params.set("maxPrice", String(selectedPriceMax))
     }
     if (showInStockOnly) {
       params.set("stock", "1")

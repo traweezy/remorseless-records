@@ -10,7 +10,7 @@ const buildVariant = (
   id,
   title: id,
   currency: "usd",
-  amount: 1_000,
+  amount: 10,
   hasPrice: true,
   inStock: true,
   stockStatus: "in_stock",

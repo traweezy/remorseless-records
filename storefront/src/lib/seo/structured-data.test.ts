@@ -97,8 +97,8 @@ describe("structured data helpers", () => {
       selectPrimaryVariantForJsonLd,
     } = await import("@/lib/seo/structured-data")
 
-    const amount = faker.number.int({ min: 1200, max: 4000 })
-    const originalAmount = amount + faker.number.int({ min: 100, max: 500 })
+    const amount = faker.number.int({ min: 12, max: 40 })
+    const originalAmount = amount + faker.number.int({ min: 1, max: 5 })
     const handle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
     const variantSku = faker.string.alphanumeric(8).toUpperCase()
     const product = {
@@ -144,7 +144,7 @@ describe("structured data helpers", () => {
 
     expect(variant).toEqual({
       sku: variantSku,
-      price: (amount / 100).toFixed(2),
+      price: amount.toFixed(2),
       currency: "USD",
     })
     expect(productJsonLd).toMatchObject({
@@ -205,7 +205,7 @@ describe("structured data helpers", () => {
       "@/lib/seo/structured-data"
     )
 
-    const amount = faker.number.int({ min: 1000, max: 9999 })
+    const amount = faker.number.int({ min: 10, max: 99 })
     const product = {
       variants: [
         {
@@ -225,7 +225,7 @@ describe("structured data helpers", () => {
     const variant = selectPrimaryVariantForJsonLd(product)
     expect(typeof variant?.sku).toBe("string")
     expect(variant).toMatchObject({
-      price: (amount / 100).toFixed(2),
+      price: amount.toFixed(2),
       currency: "EUR",
     })
   })

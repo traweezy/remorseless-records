@@ -8,18 +8,22 @@ describe("formatAmount", () => {
     faker.seed(101)
   })
 
-  it("formats cents using Intl currency formatting", () => {
-    const cents = faker.number.int({ min: 1_000, max: 99_999 })
+  it("formats major units using Intl currency formatting", () => {
+    const amount = faker.number.float({
+      min: 10,
+      max: 999.99,
+      fractionDigits: 2,
+    })
     const expected = new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-    }).format(cents / 100)
+    }).format(amount)
 
-    expect(formatAmount("USD", cents)).toBe(expected)
+    expect(formatAmount("USD", amount)).toBe(expected)
   })
 
   it("handles zero and negative values", () => {
     expect(formatAmount("USD", 0)).toBe("$0.00")
-    expect(formatAmount("USD", -250)).toBe("-$2.50")
+    expect(formatAmount("USD", -2.5)).toBe("-$2.50")
   })
 })
