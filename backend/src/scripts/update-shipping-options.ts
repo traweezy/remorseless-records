@@ -3,6 +3,7 @@ import {
   ContainerRegistrationKeys,
   Modules,
 } from '@medusajs/framework/utils'
+import { updateProductsWorkflow } from '@medusajs/medusa/core-flows'
 
 const STANDARD_NAME = 'Standard Shipping'
 const EXPRESS_NAME = 'Express Shipping'
@@ -32,12 +33,19 @@ type StockLocation = {
   }> | null
 }
 
+type Product = {
+  id: string
+  is_giftcard?: boolean | null
+  shipping_profile?: { id: string } | null
+}
+
 type QueryGraph = {
-  graph: (input: {
+  graph: <T>(input: {
     entity: string
     fields: string[]
     filters: Record<string, unknown>
-  }) => Promise<{ data: StockLocation[] }>
+    pagination?: { skip: number; take: number }
+  }) => Promise<{ data: T[] }>
 }
 
 export default async function updateShippingOptions({
@@ -51,6 +59,9 @@ export default async function updateShippingOptions({
     ContainerRegistrationKeys.QUERY
   ) as QueryGraph
   const fulfillmentModuleService = container.resolve(Modules.FULFILLMENT) as {
+    listShippingProfiles: (
+      filters?: Record<string, unknown>
+    ) => Promise<Array<{ id: string }>>
     listShippingOptions: (
       filters?: Record<string, unknown>,
       config?: { relations?: string[] }
@@ -69,7 +80,7 @@ export default async function updateShippingOptions({
   const stockLocationName =
     process.env.SHIPPING_STOCK_LOCATION_NAME?.trim() ||
     DEFAULT_STOCK_LOCATION_NAME
-  const { data: stockLocations } = await query.graph({
+  const { data: stockLocations } = await query.graph<StockLocation>({
     entity: 'stock_location',
     fields: [
       'id',
@@ -134,6 +145,50 @@ export default async function updateShippingOptions({
       ],
     })
   }
+
+  const shippingProfiles =
+    await fulfillmentModuleService.listShippingProfiles({
+      type: 'default',
+    })
+  if (shippingProfiles.length !== 1 || !shippingProfiles[0]) {
+    throw new Error(
+      `[shipping] Expected one default shipping profile, found ${shippingProfiles.length}.`
+    )
+  }
+
+  const shippingProfileId = shippingProfiles[0].id
+  const pageSize = 100
+  let skip = 0
+  let repairedProductCount = 0
+  while (true) {
+    const { data: products } = await query.graph<Product>({
+      entity: 'product',
+      fields: ['id', 'is_giftcard', 'shipping_profile.id'],
+      filters: { status: 'published' },
+      pagination: { skip, take: pageSize },
+    })
+    const missingProfile = products.filter(
+      (product) => !product.is_giftcard && !product.shipping_profile?.id
+    )
+    if (missingProfile.length) {
+      await updateProductsWorkflow(container).run({
+        input: {
+          products: missingProfile.map((product) => ({
+            id: product.id,
+            shipping_profile_id: shippingProfileId,
+          })),
+        },
+      })
+      repairedProductCount += missingProfile.length
+    }
+    if (products.length < pageSize) {
+      break
+    }
+    skip += pageSize
+  }
+  logger.info(
+    `[shipping] Linked ${repairedProductCount} published physical product(s) to the default shipping profile.`
+  )
 
   const options = await fulfillmentModuleService.listShippingOptions({}, {
     relations: ['type'],

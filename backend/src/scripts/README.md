@@ -143,8 +143,10 @@ SHIPPING_STOCK_LOCATION_NAME="Warehouse A" \
 It fails closed if the name is missing or ambiguous. For the selected location
 it enables the `per_item_standard` provider, narrows its service zones to the
 United States, converts its single shipping option to calculated Standard
-Shipping (`$5` plus `$0.50` per additional unit), and removes legacy Express
-options. It never moves inventory or changes stocked/reserved quantities.
+Shipping (`$5` plus `$0.50` per additional unit), links published non-gift-card
+products missing a shipping profile to the one default profile, and removes
+legacy Express options. It never moves inventory or changes stocked/reserved
+quantities.
 
 Afterward, validate a real addressed cart through
 `GET /store/shipping-options?cart_id=...`: the selected option must have

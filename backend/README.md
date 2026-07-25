@@ -146,7 +146,9 @@ when aggregate inventory appears positive.
 
 `pnpm run shipping:update` repairs this association without changing any stock
 count. It enables the calculated per-item provider at `HQ`, scopes its service
-zone to the United States, and updates the location's existing shipping option.
+zone to the United States, updates the location's existing shipping option, and
+links imported published physical products that are missing Medusa's default
+shipping profile.
 The storefront follows Medusa's two-step calculated-rate contract: it first
 lists eligible options and then calls the provider-backed calculate endpoint
 for each calculated option before displaying or selecting it.

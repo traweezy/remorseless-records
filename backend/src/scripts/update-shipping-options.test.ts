@@ -3,10 +3,35 @@ import {
   Modules,
 } from '@medusajs/framework/utils'
 
+const mockUpdateProductsRun = jest.fn()
+
+jest.mock('@medusajs/medusa/core-flows', () => ({
+  updateProductsWorkflow: jest.fn(() => ({
+    run: mockUpdateProductsRun,
+  })),
+}))
+
 import updateShippingOptions from './update-shipping-options'
 
 const createHarness = ({
   providerLinked = false,
+  products = [
+    {
+      id: 'prod_unprofiled',
+      is_giftcard: false,
+      shipping_profile: null,
+    },
+    {
+      id: 'prod_profiled',
+      is_giftcard: false,
+      shipping_profile: { id: 'sp_default' },
+    },
+    {
+      id: 'prod_giftcard',
+      is_giftcard: true,
+      shipping_profile: null,
+    },
+  ],
   stockLocations = [
     {
       id: 'sloc_hq',
@@ -22,17 +47,26 @@ const createHarness = ({
   ],
 }: {
   providerLinked?: boolean
+  products?: unknown[]
   stockLocations?: unknown[]
 } = {}) => {
-  const graph = jest.fn().mockResolvedValue({
-    data: providerLinked
-      ? [
-          {
-            ...(stockLocations[0] as Record<string, unknown>),
-            fulfillment_providers: [{ id: 'per_item_standard' }],
-          },
-        ]
-      : stockLocations,
+  const graph = jest.fn().mockImplementation(({ entity }: { entity: string }) => {
+    if (entity === 'stock_location') {
+      return Promise.resolve({
+        data: providerLinked
+          ? [
+              {
+                ...(stockLocations[0] as Record<string, unknown>),
+                fulfillment_providers: [{ id: 'per_item_standard' }],
+              },
+            ]
+          : stockLocations,
+      })
+    }
+    if (entity === 'product') {
+      return Promise.resolve({ data: products })
+    }
+    return Promise.reject(new Error(`Unexpected entity: ${entity}`))
   })
   const create = jest.fn().mockResolvedValue(undefined)
   const updateServiceZones = jest.fn().mockResolvedValue(undefined)
@@ -73,6 +107,9 @@ const createHarness = ({
       if (key === Modules.FULFILLMENT) {
         return {
           deleteShippingOptions,
+          listShippingProfiles: jest
+            .fn()
+            .mockResolvedValue([{ id: 'sp_default' }]),
           listShippingOptions,
           updateServiceZones,
           updateShippingOptions,
@@ -93,6 +130,11 @@ const createHarness = ({
 }
 
 describe('updateShippingOptions', () => {
+  beforeEach(() => {
+    mockUpdateProductsRun.mockReset()
+    mockUpdateProductsRun.mockResolvedValue(undefined)
+  })
+
   it('moves the storefront contract to the configured inventory location', async () => {
     const harness = createHarness()
 
@@ -120,6 +162,16 @@ describe('updateShippingOptions', () => {
     })
     expect(harness.updateServiceZones).toHaveBeenCalledWith('serzo_hq', {
       geo_zones: [{ type: 'country', country_code: 'us' }],
+    })
+    expect(mockUpdateProductsRun).toHaveBeenCalledWith({
+      input: {
+        products: [
+          {
+            id: 'prod_unprofiled',
+            shipping_profile_id: 'sp_default',
+          },
+        ],
+      },
     })
     expect(harness.updateShippingOptions).toHaveBeenCalledWith('so_hq', {
       name: 'Standard Shipping',
