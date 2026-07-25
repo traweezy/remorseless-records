@@ -13,7 +13,8 @@ const cartFixture = (
     id: "cart_test",
     currency_code: "usd",
     email: "buyer@example.test",
-    subtotal: 19.99,
+    subtotal: 24.99,
+    item_subtotal: 19.99,
     discount_total: 0,
     shipping_subtotal: 5,
     shipping_total: 5,
@@ -123,6 +124,14 @@ describe("checkout projection", () => {
     })
   })
 
+  it("shows the merchandise subtotal separately from shipping", () => {
+    expect(createCheckoutProjection(cartFixture()).cart.totals).toMatchObject({
+      subtotal: 19.99,
+      shippingTotal: 5,
+      total: 26.99,
+    })
+  })
+
   it.each([
     [
       "needs_contact",
@@ -203,7 +212,8 @@ describe("checkout projection", () => {
         cart.items![0]!.quantity = 2
         cart.items![0]!.subtotal = 39.98
         cart.items![0]!.total = 41.58
-        cart.subtotal = 39.98
+        cart.item_subtotal = 39.98
+        cart.subtotal = 44.98
         cart.total = 46.98
       },
     ],

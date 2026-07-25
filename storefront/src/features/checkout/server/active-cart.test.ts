@@ -33,6 +33,7 @@ const cartFixture = (
     currency_code: "usd",
     email: "",
     subtotal: 19.99,
+    item_subtotal: 19.99,
     discount_total: 0,
     shipping_total: 0,
     tax_total: 0,

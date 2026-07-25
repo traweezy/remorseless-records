@@ -17,7 +17,8 @@ const order = {
   created_at: "2026-07-25T16:00:00.000Z",
   email: "buyer@example.test",
   currency_code: "usd",
-  subtotal: 19.99,
+  subtotal: 24.99,
+  item_subtotal: 19.99,
   discount_total: 0,
   shipping_total: 5,
   tax_total: 1.75,
@@ -65,12 +66,18 @@ describe("order receipt projection", () => {
     expect(path).toBe("/store/orders/order_01K123ABC")
     expect(options.method).toBe("GET")
     expect(options.query.fields).toContain("*items")
+    expect(options.query.fields).toContain("item_subtotal")
     expect(options.signal).toBeInstanceOf(AbortSignal)
     expect(receipt).toMatchObject({
       orderNumber: "1042",
       email: "buyer@example.test",
       deliveryMethod: "Standard",
-      totals: { total: 26.74, currencyCode: "usd" },
+      totals: {
+        subtotal: 19.99,
+        shippingTotal: 5,
+        total: 26.74,
+        currencyCode: "usd",
+      },
     })
     expect(receipt).not.toHaveProperty("id")
     expect(JSON.stringify(receipt)).not.toContain("order_01K123ABC")

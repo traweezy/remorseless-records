@@ -155,7 +155,7 @@ const totalsFrom = (cart: HttpTypes.StoreCart): CheckoutTotals => {
 
   return {
     currencyCode,
-    subtotal: amount(cart.subtotal, "Cart subtotal"),
+    subtotal: amount(cart.item_subtotal, "Cart item subtotal"),
     discountTotal: amount(cart.discount_total, "Cart discount total"),
     shippingTotal: amount(
       cart.shipping_total ?? cart.shipping_subtotal,
@@ -309,7 +309,7 @@ const revisionFor = (cart: HttpTypes.StoreCart): string => {
         ),
       })),
     totals: {
-      subtotal: canonicalAmount(cart.subtotal, "Cart subtotal"),
+      subtotal: canonicalAmount(cart.item_subtotal, "Cart item subtotal"),
       discountTotal: canonicalAmount(
         cart.discount_total,
         "Cart discount total"

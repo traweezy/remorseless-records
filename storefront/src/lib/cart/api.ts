@@ -15,6 +15,7 @@ const CART_FIELDS = [
   "updated_at",
   "currency_code",
   "subtotal",
+  "item_subtotal",
   "total",
   "tax_total",
   "shipping_total",

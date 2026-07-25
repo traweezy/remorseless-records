@@ -12,6 +12,7 @@ const ORDER_RECEIPT_FIELDS = [
   "email",
   "currency_code",
   "subtotal",
+  "item_subtotal",
   "discount_total",
   "shipping_total",
   "tax_total",
@@ -108,7 +109,7 @@ const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
       deliveryMethodNames.length > 0 ? deliveryMethodNames.join(", ") : null,
     totals: {
       currencyCode,
-      subtotal: finiteAmount(order.subtotal),
+      subtotal: finiteAmount(order.item_subtotal),
       discountTotal: finiteAmount(order.discount_total),
       shippingTotal: finiteAmount(order.shipping_total),
       taxTotal: finiteAmount(order.tax_total),
