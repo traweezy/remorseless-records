@@ -310,6 +310,66 @@ Rollback must never restore two payment authorities.
 6. Reconcile all authorized/captured states and verify aggregate zero before
    disabling the safety net.
 
+## July 25, 2026 staging evidence
+
+Scope: Railway `staging` only at checkout implementation commit `d71d87f`.
+Production was not queried, changed, deployed, or charged.
+
+Environment and infrastructure:
+
+- backend and publishable Stripe keys were confirmed test-mode keys;
+- the Payment Method Configuration was test mode and the official Medusa
+  webhook was configured for the four supported PaymentIntent events;
+- backend deployment `2b294d12-e1aa-4f7e-93e7-55cd14c6eded` and storefront
+  deployment `d72e07ca-b7df-4b10-96d6-372db254bbc1` both reported `SUCCESS` for
+  the exact commit;
+- Root CI `30173393762`, Backend CI `30173393796`, and Storefront CI
+  `30173393771` all passed for the same commit; and
+- the storefront suite passed 89 files and 475 tests with 93.35% statement,
+  85.35% branch, 94.18% function, and 93.32% line coverage. Lint, strict
+  typecheck, and the production build also passed.
+
+Payment and lifecycle results:
+
+- official test PaymentMethods passed for success, required 3DS, generic
+  decline, insufficient funds, expired card, incorrect CVC, and processing
+  error;
+- the successful PaymentIntent produced staging order `#2`; one of two
+  concurrent complete requests returned the authoritative order while the
+  duplicate failed closed, with no second order or charge;
+- the receipt matched the payable cents, the cart cleared, and the 30-minute
+  receipt grant was HttpOnly and scoped to `/api/checkout/confirmation`;
+- the 3DS server-side scenario reached `requires_action` with Stripe's hosted
+  next action and no order; every decline retained the cart and created no
+  receipt or order;
+- an invalid card number failed inline in the real Payment Element before any
+  payment request; and
+- the displayed example reconciled exactly as `$22.00 + $5.00 + $2.33 =
+  $29.33`, using pre-tax item/shipping subtotals beside aggregate tax.
+
+Storefront and device results:
+
+- music release at quantity two, merchandise, fixed bundle, and mystery bundle
+  each added, appeared in the cart, and reached checkout;
+- sold-out music-release and fixed-bundle detail controls were disabled;
+- a Chrome Pixel 7 device profile reported a 412-pixel body, document, and
+  viewport with no horizontal overflow or page errors; and
+- the real headed browser was captured with Flameshot and visually inspected;
+  Stripe fields, totals, app bar, and summary were rendered and contained.
+
+Stripe blocks reliable scripted submission through its hosted browser Element.
+The supported split is therefore browser validation for UI, inline errors,
+and recovery, with official Stripe test PaymentMethods for payment outcomes.
+See [Stripe automated testing](https://docs.stripe.com/automated-testing) and
+[Stripe test PaymentMethods](https://docs.stripe.com/testing?testing-method=payment-methods).
+An automation-blocked confirmation must not be recorded as an application
+failure or bypassed with real card data.
+
+Staging currently has one canonical calculated Standard Shipping option. A
+fake second option was not created merely to satisfy a test. Zero-total
+behavior remains contract-tested but was not exercised by mutating catalog
+prices in staging.
+
 ## Release evidence checklist
 
 - [ ] Environment is staging and every Stripe object is test mode.

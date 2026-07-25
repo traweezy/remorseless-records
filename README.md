@@ -488,6 +488,42 @@ The full test and incident procedures are in
 [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK.md) and
 [`docs/CHECKOUT_OPERATIONS.md`](docs/CHECKOUT_OPERATIONS.md).
 
+### Checkout staging verification
+
+The rebuilt checkout was verified in Stripe test mode on July 25, 2026 at
+commit `d71d87f`. No production key, object, deployment, or traffic was used.
+The verification included:
+
+- Stripe test-mode keys and Payment Method Configuration, plus the official
+  signed Medusa Stripe webhook;
+- one successful disposable order, concurrent completion requests, cart
+  clearing, a path-scoped HttpOnly receipt grant, and cent-rounded receipt
+  agreement;
+- server-side Stripe test PaymentMethods for 3DS, generic decline,
+  insufficient funds, expired card, incorrect CVC, and processing error;
+- real Payment Element inline invalid-number handling in the browser;
+- music release quantity two, merchandise, fixed bundle, and mystery bundle
+  catalog-to-checkout journeys, plus disabled sold-out music and bundle
+  controls;
+- a Chrome Pixel 7 device profile with a 412-pixel document and viewport,
+  reduced motion, no page errors, and no horizontal overflow; and
+- a real headed desktop browser screenshot, inspected independently of DOM and
+  Playwright snapshots.
+
+The checkout example reconciled the rows visibly: `$22.00` item subtotal +
+`$5.00` pre-tax shipping + `$2.33` tax = `$29.33` total. Medusa's documented
+pre-tax `item_subtotal`, `shipping_subtotal`, and `discount_subtotal` fields are
+used beside the aggregate tax row so shipping tax is not displayed twice.
+
+Stripe deliberately restricts browser automation of the hosted Payment
+Element. Accordingly, UI layout/validation/recovery is tested in the browser,
+while successful and failed payment outcomes are tested with Stripe's official
+test PaymentMethods at the server boundary. This follows
+[Stripe's automated-testing guidance](https://docs.stripe.com/automated-testing)
+and avoids treating an automation-blocked client confirmation as a customer
+failure. Full evidence and the repeatable matrix are recorded in the two
+runbooks linked above.
+
 ## Money and Price Units
 
 Medusa v2 uses **major currency units** throughout its commerce model. In plain

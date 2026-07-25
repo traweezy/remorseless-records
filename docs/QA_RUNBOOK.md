@@ -158,6 +158,57 @@ say not to pay again and route through recovery. See
 [`CHECKOUT_OPERATIONS.md`](CHECKOUT_OPERATIONS.md) for exact incident and
 rollback procedures.
 
+### 2.4 Browser automation boundary
+
+Do not attempt to make Stripe's hosted Payment Element accept scripted card
+submission by weakening browser security, exposing secrets, or using real card
+data. Stripe's
+[official automated-testing guidance](https://docs.stripe.com/automated-testing)
+states that frontend card-entry automation is restricted.
+
+Split the matrix at the card-data boundary:
+
+- Use the real Payment Element in headed and device-emulated browsers to verify
+  rendering, focus, inline validation, disabled submission, recovery copy,
+  responsive containment, and reduced motion.
+- Use Stripe's
+  [official test PaymentMethods](https://docs.stripe.com/testing?testing-method=payment-methods)
+  through the test-mode server boundary for success, 3DS next-action,
+  declines, and processing errors.
+- Use application unit/integration tests for safe Stripe error mapping,
+  duplicate completion, response loss, return-query stripping, two-tab
+  revision conflicts, and receipt TTL.
+
+An automated browser may produce an ambiguous client error while its
+PaymentIntent remains `requires_payment_method` with no last payment error.
+That is an automation restriction, not proof of a customer-path failure. The
+application must still fail conservatively into recovery and tell the shopper
+not to pay again.
+
+### 2.5 Last verified staging matrix
+
+On July 25, 2026, commit `d71d87f` passed:
+
+- real Payment Element invalid-number validation;
+- official test PaymentMethods for success, required 3DS, generic decline,
+  insufficient funds, expired card, incorrect CVC, and processing error;
+- concurrent completion with exactly one authoritative order, cart clearing,
+  and path-scoped receipt-cookie validation;
+- music release quantity two, merchandise, fixed bundle, and mystery bundle
+  add/cart/checkout journeys;
+- disabled sold-out music-release and fixed-bundle controls;
+- Chrome Pixel 7 emulation at 412 CSS pixels with no horizontal overflow or
+  page errors; and
+- a real headed-browser Flameshot inspection of the live Stripe fields and
+  reconciled order summary.
+
+The disposable success created staging order `#2`. The canonical staging
+shipping configuration currently exposes one calculated Standard Shipping
+option. Zero-total handling remained contract-tested because no suitable
+zero-total staging product existed and catalog prices were not mutated for QA.
+See `CHECKOUT_OPERATIONS.md` for CI, deployment, coverage, and arithmetic
+evidence.
+
 ---
 
 ## 3. Meilisearch Observability & Sync
