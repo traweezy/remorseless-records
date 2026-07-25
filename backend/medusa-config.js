@@ -211,6 +211,7 @@ const medusaConfig = {
               automaticPaymentMethods: true,
               paymentMethodConfiguration:
                 STRIPE_PAYMENT_METHOD_CONFIGURATION,
+              paymentDescription: 'Remorseless Records order',
               asyncPaymentMethodTypes: [],
             },
           },

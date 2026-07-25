@@ -210,6 +210,9 @@ importers:
       resend:
         specifier: 6.18.0
         version: 6.18.0(@react-email/render@2.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+      stripe:
+        specifier: ^22.3.2
+        version: 22.3.2(@types/node@26.1.1)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@swc/core@1.15.46(@swc/helpers@0.5.23))(@types/node@26.1.1)(typescript@5.9.3)
@@ -9230,6 +9233,15 @@ packages:
     engines: {node: '>=16'}
     peerDependencies:
       '@types/node': '>=16'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
+  stripe@22.3.2:
+    resolution: {integrity: sha512-O13QOvgEIQvDlTy6Ubb5kB980wpbhmoZNsgCXKILjCMZS67f+bW+6w99k3gnSi/N1lkryoj1WYdpGT5Wc5edjg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -20226,6 +20238,10 @@ snapshots:
   stripe@19.1.0(@types/node@26.1.1):
     dependencies:
       qs: 6.15.3
+    optionalDependencies:
+      '@types/node': 26.1.1
+
+  stripe@22.3.2(@types/node@26.1.1):
     optionalDependencies:
       '@types/node': 26.1.1
 

@@ -2,8 +2,9 @@ import "server-only"
 
 import type { HttpTypes } from "@medusajs/types"
 
-import { medusa } from "@/lib/medusa/client"
+import { stripePaymentSessionData } from "@/lib/cart/stripe-payment-data"
 import type { StoreCartAddressInput } from "@/lib/cart/types"
+import { medusa } from "@/lib/medusa/client"
 import { resolveRegionId } from "@/lib/regions"
 
 const CART_FIELDS = [
@@ -330,6 +331,7 @@ export const initiatePaymentSession = async (
         method: "POST",
         body: {
           provider_id: resolvedProvider.id,
+          data: stripePaymentSessionData(cart),
         },
       }
     )
