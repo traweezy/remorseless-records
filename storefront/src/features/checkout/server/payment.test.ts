@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   CheckoutPaymentError,
+  assertCompletablePayment,
   assertPreparedPayment,
   paymentNeedsFinalization,
   reusablePreparedPayment,
@@ -106,6 +107,42 @@ describe("checkout payment preparation", () => {
       expect(paymentNeedsFinalization(cart)).toBe(true)
       expectCode(() => assertPreparedPayment(cart), "payment_result_unknown")
     }
+  })
+
+  it.each([
+    "pending",
+    "requires_more",
+    "authorized",
+    "captured",
+    "pending_authorization",
+  ] as const)("accepts one exact %s session for cart completion", (status) => {
+    const cart = cartFixture()
+    cart.payment_collection!.payment_sessions![0]!.status = status
+
+    expect(assertCompletablePayment(cart)).toEqual({ status })
+  })
+
+  it("rejects completion with more than one processable Stripe session", () => {
+    const cart = cartFixture()
+    cart.payment_collection!.payment_sessions!.push({
+      ...cart.payment_collection!.payment_sessions![0]!,
+      id: "payses_duplicate",
+    })
+
+    expectCode(
+      () => assertCompletablePayment(cart),
+      "payment_session_stale"
+    )
+  })
+
+  it("rejects a non-Stripe session for completion", () => {
+    const cart = cartFixture()
+    cart.payment_collection!.payment_sessions![0]!.provider_id = "pp_other"
+
+    expectCode(
+      () => assertCompletablePayment(cart),
+      "payment_session_stale"
+    )
   })
 
   it("rejects multiple reusable sessions", () => {

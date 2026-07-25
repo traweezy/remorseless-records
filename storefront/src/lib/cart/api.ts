@@ -2,7 +2,7 @@ import "server-only"
 
 import type { HttpTypes } from "@medusajs/types"
 
-import { medusa, storeClient } from "@/lib/medusa/client"
+import { medusa } from "@/lib/medusa/client"
 import type { StoreCartAddressInput } from "@/lib/cart/types"
 import { resolveRegionId } from "@/lib/regions"
 
@@ -45,15 +45,17 @@ const CART_FIELDS = [
 ].join(",")
 
 const CART_UPSTREAM_TIMEOUT_MS = 8_000
+const CART_COMPLETION_TIMEOUT_MS = 20_000
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe"
 
 const cartRequest = <T>(
   path: string,
-  init?: Omit<Parameters<typeof medusa.client.fetch<T>>[1], "signal">
+  init?: Omit<Parameters<typeof medusa.client.fetch<T>>[1], "signal">,
+  timeoutMs = CART_UPSTREAM_TIMEOUT_MS
 ): Promise<T> =>
   medusa.client.fetch<T>(path, {
     ...init,
-    signal: AbortSignal.timeout(CART_UPSTREAM_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   })
 
 export const createCart = async (
@@ -308,4 +310,8 @@ export const initiatePaymentSession = async (
 export const completeCart = async (
   cartId: string
 ): Promise<HttpTypes.StoreCompleteCartResponse> =>
-  storeClient.cart.complete(cartId)
+  cartRequest<HttpTypes.StoreCompleteCartResponse>(
+    `/store/carts/${cartId}/complete`,
+    { method: "POST" },
+    CART_COMPLETION_TIMEOUT_MS
+  )

@@ -16,11 +16,12 @@ import {
 } from "@/features/checkout/server/payment"
 import { createCheckoutProjection } from "@/features/checkout/server/projection"
 import {
-  addShippingMethod,
-  calculateTaxes,
+  CheckoutRevalidationError,
+  revalidateShippingAndTaxes,
+} from "@/features/checkout/server/revalidate"
+import {
   getCart,
   initiatePaymentSession,
-  listShippingOptions,
 } from "@/lib/cart/api"
 import {
   jsonApiProblem,
@@ -92,35 +93,9 @@ export const POST = async (request: NextRequest): Promise<Response> => {
       )
     }
 
-    const selectedOptionId =
-      active.value.cart.shipping_methods?.[0]?.shipping_option_id
-    if (!selectedOptionId) {
-      return jsonApiProblem({
-        status: 409,
-        code: "shipping_changed",
-        title: "Choose a delivery method",
-        detail: "Select an available delivery method before payment.",
-        instance: request.nextUrl.pathname,
-      })
-    }
-
-    const available = await listShippingOptions(active.value.cart.id)
-    const selected = available.shipping_options?.find(
-      (option) =>
-        option.id === selectedOptionId && !option.insufficient_inventory
+    const recalculatedCart = await revalidateShippingAndTaxes(
+      active.value.cart
     )
-    if (!selected) {
-      return jsonApiProblem({
-        status: 409,
-        code: "shipping_changed",
-        title: "Delivery method changed",
-        detail: "Choose an available delivery method before payment.",
-        instance: request.nextUrl.pathname,
-      })
-    }
-
-    await addShippingMethod(active.value.cart.id, selected.id)
-    const recalculatedCart = await calculateTaxes(active.value.cart.id)
     const recalculatedProjection =
       createCheckoutProjection(recalculatedCart)
     if (recalculatedProjection.revision !== parsed.data.revision) {
@@ -154,6 +129,15 @@ export const POST = async (request: NextRequest): Promise<Response> => {
       { includeClientSecret: true }
     )
   } catch (error: unknown) {
+    if (error instanceof CheckoutRevalidationError) {
+      return jsonApiProblem({
+        status: 409,
+        code: error.code,
+        title: "Delivery method changed",
+        detail: error.message,
+        instance: request.nextUrl.pathname,
+      })
+    }
     if (error instanceof CheckoutPaymentError) {
       return paymentProblem(request, error)
     }

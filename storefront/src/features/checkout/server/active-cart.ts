@@ -25,6 +25,13 @@ export type ActiveCheckoutCartResult =
   | { ok: true; value: ActiveCheckoutCart }
   | { ok: false; response: Response }
 
+export type CheckoutCartIdentityResult =
+  | {
+      ok: true
+      value: { cartId: string; needsCookieRotation: boolean }
+    }
+  | { ok: false; response: Response }
+
 const problem = (
   request: NextRequest,
   input: {
@@ -42,34 +49,22 @@ const problem = (
 export const resolveActiveCheckoutCart = async (
   request: NextRequest
 ): Promise<ActiveCheckoutCartResult> => {
-  const cookie = readCartCookie(request)
-  if (cookie.status !== "valid") {
-    const response = problem(request, {
-      status: 404,
-      code: "cart_missing",
-      title: "Cart not found",
-      detail: "Add an item to your cart before starting checkout.",
-    })
-    return {
-      ok: false,
-      response:
-        cookie.status === "invalid" ? clearCartCookie(response) : response,
-    }
+  const identity = resolveCheckoutCartIdentity(request)
+  if (!identity.ok) {
+    return identity
   }
 
   try {
-    const cart = await getCart(cookie.cartId)
+    const cart = await getCart(identity.value.cartId)
     if (cart.completed_at) {
       return {
         ok: false,
-        response: clearCartCookie(
-          problem(request, {
-            status: 409,
-            code: "cart_completed",
-            title: "Cart already completed",
-            detail: "This cart has already been submitted.",
-          })
-        ),
+        response: problem(request, {
+          status: 409,
+          code: "cart_completed",
+          title: "Cart already completed",
+          detail: "This cart has already been submitted.",
+        }),
       }
     }
     if (!cart.items?.length) {
@@ -89,7 +84,7 @@ export const resolveActiveCheckoutCart = async (
       ok: true,
       value: {
         cart,
-        needsCookieRotation: cookie.needsRotation,
+        needsCookieRotation: identity.value.needsCookieRotation,
       },
     }
   } catch (error: unknown) {
@@ -105,6 +100,33 @@ export const resolveActiveCheckoutCart = async (
       ok: false,
       response: mapped.status === 404 ? clearCartCookie(response) : response,
     }
+  }
+}
+
+export const resolveCheckoutCartIdentity = (
+  request: NextRequest
+): CheckoutCartIdentityResult => {
+  const cookie = readCartCookie(request)
+  if (cookie.status !== "valid") {
+    const response = problem(request, {
+      status: 404,
+      code: "cart_missing",
+      title: "Cart not found",
+      detail: "Add an item to your cart before starting checkout.",
+    })
+    return {
+      ok: false,
+      response:
+        cookie.status === "invalid" ? clearCartCookie(response) : response,
+    }
+  }
+
+  return {
+    ok: true,
+    value: {
+      cartId: cookie.cartId,
+      needsCookieRotation: cookie.needsRotation,
+    },
   }
 }
 

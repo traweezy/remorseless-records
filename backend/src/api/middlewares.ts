@@ -142,6 +142,12 @@ const checkoutRateLimit = createRateLimitMiddleware({
   windowMs: 60_000,
 });
 
+const checkoutStatusRateLimit = createRateLimitMiddleware({
+  key: "store:checkout-status",
+  max: 600,
+  windowMs: 60_000,
+});
+
 const contactRateLimit = createRateLimitMiddleware({
   key: "store:contact",
   max: 15,
@@ -172,6 +178,14 @@ export default defineMiddlewares({
       middlewares: [checkoutRateLimit, enforceStoreOrigin],
       bodyParser: {
         sizeLimit: "8kb",
+      },
+    },
+    {
+      matcher: "/store/checkout/status",
+      methods: ["POST"],
+      middlewares: [checkoutStatusRateLimit],
+      bodyParser: {
+        sizeLimit: "2kb",
       },
     },
     {

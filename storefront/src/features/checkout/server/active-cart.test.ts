@@ -17,6 +17,7 @@ vi.mock("@/lib/cart/cookie", () => cookieMocks)
 import {
   checkoutProjectionResponse,
   resolveActiveCheckoutCart,
+  resolveCheckoutCartIdentity,
 } from "@/features/checkout/server/active-cart"
 
 const request = () =>
@@ -79,6 +80,20 @@ describe("active checkout cart identity", () => {
     expect(cartApiMocks.getCart).toHaveBeenCalledWith("cart_signed")
   })
 
+  it("resolves signed identity without an upstream lookup", () => {
+    cookieMocks.readCartCookie.mockReturnValue({
+      status: "valid",
+      cartId: "cart_signed",
+      needsRotation: true,
+    })
+
+    expect(resolveCheckoutCartIdentity(request())).toEqual({
+      ok: true,
+      value: { cartId: "cart_signed", needsCookieRotation: true },
+    })
+    expect(cartApiMocks.getCart).not.toHaveBeenCalled()
+  })
+
   it.each(["missing", "invalid"] as const)(
     "rejects a %s cookie without an upstream lookup",
     async (status) => {
@@ -103,20 +118,33 @@ describe("active checkout cart identity", () => {
     }
   )
 
-  it.each([
-    ["completed", cartFixture({ completed_at: "2026-07-25T00:00:00.000Z" })],
-    ["empty", cartFixture({ items: [] })],
-  ])("clears a %s checkout cart", async (label, cart) => {
+  it("keeps completed identity available for authoritative recovery", async () => {
     cookieMocks.readCartCookie.mockReturnValue({
       status: "valid",
       cartId: "cart_signed",
       needsRotation: false,
     })
-    cartApiMocks.getCart.mockResolvedValue(cart)
+    cartApiMocks.getCart.mockResolvedValue(
+      cartFixture({ completed_at: "2026-07-25T00:00:00.000Z" })
+    )
 
     const result = await resolveActiveCheckoutCart(request())
 
-    expect(result.ok, label).toBe(false)
+    expect(result.ok).toBe(false)
+    expect(cookieMocks.clearCartCookie).not.toHaveBeenCalled()
+  })
+
+  it("clears an empty checkout cart", async () => {
+    cookieMocks.readCartCookie.mockReturnValue({
+      status: "valid",
+      cartId: "cart_signed",
+      needsRotation: false,
+    })
+    cartApiMocks.getCart.mockResolvedValue(cartFixture({ items: [] }))
+
+    const result = await resolveActiveCheckoutCart(request())
+
+    expect(result.ok).toBe(false)
     expect(cookieMocks.clearCartCookie).toHaveBeenCalledOnce()
   })
 
