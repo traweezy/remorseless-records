@@ -28,6 +28,9 @@ The tax rate lookup module uses an in-memory cache and can also use Redis when
 The daily `remove-expired-anonymous-carts` job uses Medusa's Locking Module and
 soft-deletes only incomplete carts that have no customer or email association.
 It is disabled by default so each deployed environment must opt in explicitly.
+When `REDIS_URL` is configured, Medusa uses its Redis locking provider so the
+job remains single-run across backend replicas; local environments without
+Redis retain Medusa's in-memory fallback.
 
 - `ANONYMOUS_CART_RETENTION_ENABLED` (default: `false`)
 - `ANONYMOUS_CART_RETENTION_DAYS` (default/minimum: `37`)

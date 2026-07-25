@@ -89,7 +89,7 @@ Key variables (non-empty values required for full functionality):
 | Variable                                 | Notes                                                            |
 | ---------------------------------------- | ---------------------------------------------------------------- |
 | `DATABASE_URL`                           | PostgreSQL connection string                                     |
-| `REDIS_URL`                              | Optional. When omitted, Medusa uses in-memory cache              |
+| `REDIS_URL`                              | Optional; powers distributed events, workflows, and cart locks   |
 | `STRIPE_API_KEY`                         | Stripe secret key (_sk\_..._)                                    |
 | `STRIPE_WEBHOOK_SECRET`                  | From Stripe CLI or dashboard endpoint for `/api/webhooks/stripe` |
 | `BACKEND_PUBLIC_URL`                     | External URL used in webhooks (e.g., `http://localhost:9000`)    |
