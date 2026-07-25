@@ -69,6 +69,23 @@ describe("internal checkout status", () => {
     ).resolves.toEqual({ state })
   })
 
+  it("confirms only a linked order whose cart is completed", async () => {
+    const query = queryFor({
+      orderId: "order_01K123ABC",
+      cart: {
+        id: "cart_01K123ABC",
+        completed_at: "2026-07-25T17:00:00.000Z",
+      },
+    })
+
+    await expect(
+      resolveInternalCheckoutStatus(query, "cart_01K123ABC"),
+    ).resolves.toEqual({
+      state: "order_confirmed",
+      orderId: "order_01K123ABC",
+    })
+  })
+
   it("ignores sessions from other payment providers", async () => {
     const query = queryFor({
       cart: {

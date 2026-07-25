@@ -23,6 +23,7 @@ env:
   STORE_CORS: http://localhost:3000
   STRIPE_API_KEY: sk_test_dummy
   STRIPE_WEBHOOK_SECRET: whsec_dummy
+  STRIPE_PAYMENT_METHOD_CONFIGURATION: pmc_test_dummy
   NODE_ENV: test
   CI: true
 

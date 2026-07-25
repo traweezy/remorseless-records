@@ -114,9 +114,7 @@ export const checkoutShippingMethodSchema = z
 
 export const checkoutRevisionSchema = z
   .object({
-    revision: z
-      .string()
-      .regex(/^v1\.[A-Za-z0-9_-]{43}$/),
+    revision: z.string().regex(/^v1\.[A-Za-z0-9_-]{43}$/),
   })
   .strict()
 

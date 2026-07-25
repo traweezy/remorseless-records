@@ -16,6 +16,7 @@ const statusMocks = vi.hoisted(() => {
 })
 const receiptMocks = vi.hoisted(() => ({
   readReceiptGrant: vi.fn(),
+  setReceiptGrant: vi.fn(),
 }))
 const responseMocks = vi.hoisted(() => ({
   checkoutStateResponse: vi.fn(),
@@ -25,19 +26,10 @@ const cookieMocks = vi.hoisted(() => ({
 }))
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }))
-vi.mock(
-  "@/features/checkout/server/active-cart",
-  () => activeCartMocks
-)
+vi.mock("@/features/checkout/server/active-cart", () => activeCartMocks)
 vi.mock("@/features/checkout/server/guards", () => guardMocks)
-vi.mock(
-  "@/features/checkout/server/internal-status-client",
-  () => statusMocks
-)
-vi.mock(
-  "@/features/checkout/server/receipt-grant",
-  () => receiptMocks
-)
+vi.mock("@/features/checkout/server/internal-status-client", () => statusMocks)
+vi.mock("@/features/checkout/server/receipt-grant", () => receiptMocks)
 vi.mock("@/features/checkout/server/responses", () => responseMocks)
 vi.mock("@/lib/cart/cookie", () => cookieMocks)
 
@@ -58,6 +50,9 @@ describe("GET /api/checkout/status", () => {
     vi.clearAllMocks()
     guardMocks.guardCheckoutRead.mockResolvedValue(null)
     receiptMocks.readReceiptGrant.mockReturnValue(null)
+    receiptMocks.setReceiptGrant.mockImplementation(
+      (response: Response) => response
+    )
     activeCartMocks.resolveCheckoutCartIdentity.mockReturnValue({
       ok: true,
       value: { cartId: "cart_signed", needsCookieRotation: false },
@@ -83,9 +78,7 @@ describe("GET /api/checkout/status", () => {
     expect(responseMocks.checkoutStateResponse).toHaveBeenCalledWith(
       "order_confirmed"
     )
-    expect(
-      activeCartMocks.resolveCheckoutCartIdentity
-    ).not.toHaveBeenCalled()
+    expect(activeCartMocks.resolveCheckoutCartIdentity).not.toHaveBeenCalled()
     expect(statusMocks.fetchInternalCheckoutStatus).not.toHaveBeenCalled()
   })
 
@@ -100,6 +93,25 @@ describe("GET /api/checkout/status", () => {
     await expect(response.json()).resolves.toEqual({
       checkout: { state: "finalizing_order" },
     })
+  })
+
+  it("turns authoritative backend completion into a signed receipt grant", async () => {
+    statusMocks.fetchInternalCheckoutStatus.mockResolvedValue({
+      state: "order_confirmed",
+      orderId: "order_01K123ABC",
+    })
+
+    const response = await GET(request())
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      checkout: { state: "order_confirmed" },
+    })
+    expect(receiptMocks.setReceiptGrant).toHaveBeenCalledWith(
+      expect.any(Response),
+      "order_01K123ABC"
+    )
+    expect(cookieMocks.clearCartCookie).toHaveBeenCalledOnce()
   })
 
   it.each([

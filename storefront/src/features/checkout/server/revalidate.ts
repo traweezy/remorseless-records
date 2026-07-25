@@ -29,8 +29,7 @@ export const revalidateShippingAndTaxes = async (
 
   const available = await listShippingOptions(cart.id)
   const selected = available.shipping_options?.find(
-    (option) =>
-      option.id === selectedOptionId && !option.insufficient_inventory
+    (option) => option.id === selectedOptionId && !option.insufficient_inventory
   )
   if (!selected) {
     throw new CheckoutRevalidationError(

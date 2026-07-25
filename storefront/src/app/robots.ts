@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next"
 
 import { siteMetadata } from "@/config/site"
 
-const DISALLOWED_PATHS = ["/cart", "/checkout", "/order/confirmed", "/account", "/api"]
+const DISALLOWED_PATHS = ["/cart", "/checkout", "/account", "/api"]
 
 const robots = (): MetadataRoute.Robots => ({
   rules: [

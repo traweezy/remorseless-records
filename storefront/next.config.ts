@@ -77,7 +77,6 @@ const stripeOrigins = [
   "https://hooks.stripe.com",
   "https://m.stripe.network",
   "https://q.stripe.com",
-  "https://checkout.stripe.com",
 ]
 
 const imageOrigins = unique([
@@ -104,7 +103,6 @@ const frameSrc = unique([
   "'self'",
   "https://js.stripe.com",
   "https://hooks.stripe.com",
-  "https://checkout.stripe.com",
   "https://bandcamp.com",
   "https://*.bandcamp.com",
 ])
@@ -119,7 +117,7 @@ const cspDirectives = [
   `frame-src ${frameSrc.join(" ")}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self' https://checkout.stripe.com",
+  "form-action 'self'",
   "object-src 'none'",
   "manifest-src 'self'",
   "worker-src 'self' blob:",
@@ -221,7 +219,7 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value:
-              "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
+              'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(self "https://js.stripe.com" "https://hooks.stripe.com"), usb=()',
           },
           {
             key: "Cross-Origin-Opener-Policy",

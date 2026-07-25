@@ -2,15 +2,14 @@ import { describe, expect, it } from "vitest"
 
 import {
   CHECKOUT_RECEIPT_COOKIE_NAME,
+  CHECKOUT_RECEIPT_COOKIE_PATH,
   CHECKOUT_RECEIPT_TTL_SECONDS,
   createReceiptGrant,
   verifyReceiptGrant,
 } from "@/features/checkout/server/receipt-grant"
 
 const secret = ["unit", "test", "receipt", "key"].join("-").repeat(2)
-const alternateSecret = ["alternate", "unit", "test", "key"]
-  .join("-")
-  .repeat(2)
+const alternateSecret = ["alternate", "unit", "test", "key"].join("-").repeat(2)
 const now = 1_800_000_000
 
 describe("checkout receipt grant", () => {
@@ -29,7 +28,8 @@ describe("checkout receipt grant", () => {
     ["tampered payload", (token: string) => token.replace("v1.", "v1.e")],
     [
       "tampered signature",
-      (token: string) => `${token.slice(0, -1)}${token.endsWith("A") ? "B" : "A"}`,
+      (token: string) =>
+        `${token.slice(0, -1)}${token.endsWith("A") ? "B" : "A"}`,
     ],
   ])("rejects a %s", (_label, tamper) => {
     const token = createReceiptGrant("order_01K123ABC", secret, now)
@@ -40,9 +40,7 @@ describe("checkout receipt grant", () => {
   it("rejects a grant signed with another secret", () => {
     const token = createReceiptGrant("order_01K123ABC", secret, now)
 
-    expect(
-      verifyReceiptGrant(token, alternateSecret, now)
-    ).toBeNull()
+    expect(verifyReceiptGrant(token, alternateSecret, now)).toBeNull()
   })
 
   it("rejects an expired grant", () => {
@@ -62,5 +60,6 @@ describe("checkout receipt grant", () => {
 
   it("uses a versioned, host-only cookie name", () => {
     expect(CHECKOUT_RECEIPT_COOKIE_NAME).toBe("rr_checkout_receipt_v1")
+    expect(CHECKOUT_RECEIPT_COOKIE_PATH).toBe("/api/checkout/confirmation")
   })
 })

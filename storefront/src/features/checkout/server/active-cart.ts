@@ -11,10 +11,7 @@ import {
   setCartCookie,
 } from "@/lib/cart/cookie"
 import { mapCartError } from "@/lib/cart/errors"
-import {
-  jsonApiProblem,
-  jsonApiResponse,
-} from "@/lib/security/route-guards"
+import { jsonApiProblem, jsonApiResponse } from "@/lib/security/route-guards"
 
 export type ActiveCheckoutCart = {
   cart: HttpTypes.StoreCart
@@ -22,8 +19,7 @@ export type ActiveCheckoutCart = {
 }
 
 export type ActiveCheckoutCartResult =
-  | { ok: true; value: ActiveCheckoutCart }
-  | { ok: false; response: Response }
+  { ok: true; value: ActiveCheckoutCart } | { ok: false; response: Response }
 
 export type CheckoutCartIdentityResult =
   | {

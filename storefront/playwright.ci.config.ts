@@ -19,6 +19,11 @@ export default defineConfig({
   },
   projects: [
     {
+      name: "Desktop Chrome checkout",
+      grep: /checkout remains accessible/,
+      use: { ...devices["Desktop Chrome"], browserName: "chromium" },
+    },
+    {
       name: "Pixel 7",
       use: { ...devices["Pixel 7"], browserName: "chromium" },
     },

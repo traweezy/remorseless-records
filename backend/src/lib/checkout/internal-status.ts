@@ -1,13 +1,17 @@
 export type InternalCheckoutStatus =
-  {
-    state:
-      | "cart_active"
-      | "cart_missing"
-      | "finalizing_order"
-      | "payment_action_required"
-      | "payment_failed"
-      | "payment_processing"
-  }
+  | {
+      state:
+        | "cart_active"
+        | "cart_missing"
+        | "finalizing_order"
+        | "payment_action_required"
+        | "payment_failed"
+        | "payment_processing"
+    }
+  | {
+      state: "order_confirmed"
+      orderId: string
+    }
 
 export type CheckoutStatusQueryGraph = {
   graph: (query: {
@@ -68,6 +72,10 @@ export const resolveInternalCheckoutStatus = async (
   ])
 
   const orderId = text(orderLinkResult.data[0]?.order_id)
+  const cart = cartResult.data[0]
+  if (orderId && cart?.completed_at) {
+    return { state: "order_confirmed", orderId }
+  }
   if (orderId) {
     // Medusa writes this link before payment authorization and before its
     // complete-cart workflow finishes. It proves that an order attempt exists,
@@ -76,7 +84,6 @@ export const resolveInternalCheckoutStatus = async (
     return { state: "finalizing_order" }
   }
 
-  const cart = cartResult.data[0]
   if (!cart) {
     return { state: "cart_missing" }
   }

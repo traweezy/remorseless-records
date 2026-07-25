@@ -18,7 +18,5 @@ export const GET = async (request: NextRequest): Promise<Response> => {
   }
 
   const active = await resolveActiveCheckoutCart(request)
-  return active.ok
-    ? checkoutProjectionResponse(active.value)
-    : active.response
+  return active.ok ? checkoutProjectionResponse(active.value) : active.response
 }

@@ -70,33 +70,36 @@ describe("checkout payment preparation", () => {
   })
 
   it.each([
-    ["collection amount", (cart: HttpTypes.StoreCart) => {
-      cart.payment_collection!.amount = 25
-    }],
-    ["session amount", (cart: HttpTypes.StoreCart) => {
-      cart.payment_collection!.payment_sessions![0]!.amount = 25
-    }],
-    ["session currency", (cart: HttpTypes.StoreCart) => {
-      cart.payment_collection!.payment_sessions![0]!.currency_code = "eur"
-    }],
+    [
+      "collection amount",
+      (cart: HttpTypes.StoreCart) => {
+        cart.payment_collection!.amount = 25
+      },
+    ],
+    [
+      "session amount",
+      (cart: HttpTypes.StoreCart) => {
+        cart.payment_collection!.payment_sessions![0]!.amount = 25
+      },
+    ],
+    [
+      "session currency",
+      (cart: HttpTypes.StoreCart) => {
+        cart.payment_collection!.payment_sessions![0]!.currency_code = "eur"
+      },
+    ],
   ] as const)("rejects a stale %s", (_label, mutate) => {
     const cart = cartFixture()
     mutate(cart)
 
-    expectCode(
-      () => reusablePreparedPayment(cart),
-      "payment_session_stale"
-    )
+    expectCode(() => reusablePreparedPayment(cart), "payment_session_stale")
   })
 
   it("rejects a session without a client secret", () => {
     const cart = cartFixture()
     cart.payment_collection!.payment_sessions![0]!.data = {}
 
-    expectCode(
-      () => reusablePreparedPayment(cart),
-      "payment_not_configured"
-    )
+    expectCode(() => reusablePreparedPayment(cart), "payment_not_configured")
   })
 
   it("does not silently replace an authorized or captured payment", () => {
@@ -129,20 +132,14 @@ describe("checkout payment preparation", () => {
       id: "payses_duplicate",
     })
 
-    expectCode(
-      () => assertCompletablePayment(cart),
-      "payment_session_stale"
-    )
+    expectCode(() => assertCompletablePayment(cart), "payment_session_stale")
   })
 
   it("rejects a non-Stripe session for completion", () => {
     const cart = cartFixture()
     cart.payment_collection!.payment_sessions![0]!.provider_id = "pp_other"
 
-    expectCode(
-      () => assertCompletablePayment(cart),
-      "payment_session_stale"
-    )
+    expectCode(() => assertCompletablePayment(cart), "payment_session_stale")
   })
 
   it("rejects multiple reusable sessions", () => {
@@ -152,9 +149,6 @@ describe("checkout payment preparation", () => {
       id: "payses_duplicate",
     })
 
-    expectCode(
-      () => reusablePreparedPayment(cart),
-      "payment_session_stale"
-    )
+    expectCode(() => reusablePreparedPayment(cart), "payment_session_stale")
   })
 })

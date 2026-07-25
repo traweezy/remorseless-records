@@ -9,6 +9,7 @@ import { checkoutServerEnv } from "@/config/env.checkout.server"
 
 export const CHECKOUT_RECEIPT_COOKIE_NAME = "rr_checkout_receipt_v1"
 export const CHECKOUT_RECEIPT_TTL_SECONDS = 30 * 60
+export const CHECKOUT_RECEIPT_COOKIE_PATH = "/api/checkout/confirmation"
 
 const TOKEN_VERSION = "v1"
 const ORDER_ID_PATTERN = /^order_[A-Za-z0-9]+$/
@@ -111,8 +112,8 @@ export const verifyReceiptGrant = (
       !Number.isSafeInteger(payload.exp) ||
       (payload.iat as number) <= 0 ||
       (payload.exp as number) <= (payload.iat as number) ||
-      (payload.exp as number) > (payload.iat as number) +
-        CHECKOUT_RECEIPT_TTL_SECONDS ||
+      (payload.exp as number) >
+        (payload.iat as number) + CHECKOUT_RECEIPT_TTL_SECONDS ||
       nowSeconds < (payload.iat as number) - 30 ||
       nowSeconds >= (payload.exp as number)
     ) {
@@ -139,7 +140,7 @@ const cookieOptions = {
   httpOnly: true,
   sameSite: "lax" as const,
   secure: process.env.NODE_ENV === "production",
-  path: "/",
+  path: CHECKOUT_RECEIPT_COOKIE_PATH,
   priority: "high" as const,
 }
 

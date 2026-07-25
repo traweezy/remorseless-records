@@ -1,23 +1,18 @@
 import type { NextRequest } from "next/server"
 import { unstable_noStore as noStore } from "next/cache"
 
-import {
-  resolveCheckoutCartIdentity,
-} from "@/features/checkout/server/active-cart"
+import { resolveCheckoutCartIdentity } from "@/features/checkout/server/active-cart"
 import {
   CheckoutStatusUnavailableError,
   fetchInternalCheckoutStatus,
 } from "@/features/checkout/server/internal-status-client"
 import {
   readReceiptGrant,
+  setReceiptGrant,
 } from "@/features/checkout/server/receipt-grant"
-import {
-  checkoutStateResponse,
-} from "@/features/checkout/server/responses"
+import { checkoutStateResponse } from "@/features/checkout/server/responses"
 import { clearCartCookie } from "@/lib/cart/cookie"
-import {
-  jsonApiProblem,
-} from "@/lib/security/route-guards"
+import { jsonApiProblem } from "@/lib/security/route-guards"
 import { guardCheckoutRead } from "@/features/checkout/server/guards"
 
 export const GET = async (request: NextRequest): Promise<Response> => {
@@ -42,6 +37,14 @@ export const GET = async (request: NextRequest): Promise<Response> => {
     }
 
     const status = await fetchInternalCheckoutStatus(identity.value.cartId)
+    if (status.state === "order_confirmed") {
+      return clearCartCookie(
+        setReceiptGrant(
+          checkoutStateResponse("order_confirmed"),
+          status.orderId
+        )
+      )
+    }
     const response = checkoutStateResponse(status.state)
     return status.state === "cart_missing"
       ? clearCartCookie(response)

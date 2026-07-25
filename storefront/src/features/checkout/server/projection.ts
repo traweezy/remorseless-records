@@ -34,9 +34,7 @@ export class CheckoutProjectionError extends Error {
 }
 
 const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object"
-    ? (value as UnknownRecord)
-    : null
+  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
 
 const text = (value: unknown): string =>
   typeof value === "string" ? value.trim() : ""
@@ -115,9 +113,7 @@ const addressFrom = (value: unknown): CheckoutAddress | null => {
   }
 }
 
-const lineItemsFrom = (
-  items: HttpTypes.StoreCart["items"]
-): CheckoutItem[] =>
+const lineItemsFrom = (items: HttpTypes.StoreCart["items"]): CheckoutItem[] =>
   (items ?? []).map((item) => {
     const product = asRecord(item.product)
     const productTitle = text(item.product_title) || text(product?.title)
@@ -150,10 +146,7 @@ const shippingMethodFrom = (
     id: method.id,
     name: text(method.name) || "Shipping",
     optionId: method.shipping_option_id,
-    amount: amount(
-      method.subtotal ?? method.amount,
-      "Shipping method amount"
-    ),
+    amount: amount(method.subtotal ?? method.amount, "Shipping method amount"),
   }
 }
 
@@ -286,10 +279,7 @@ const revisionFor = (cart: HttpTypes.StoreCart): string => {
         adjustments: sortCanonical(
           sortableRecords(item.adjustments).map((adjustment) => ({
             code: text(adjustment.code),
-            amount: canonicalAmount(
-              adjustment.amount,
-              "Cart item adjustment"
-            ),
+            amount: canonicalAmount(adjustment.amount, "Cart item adjustment"),
           }))
         ),
       })),
@@ -317,10 +307,7 @@ const revisionFor = (cart: HttpTypes.StoreCart): string => {
         adjustments: sortCanonical(
           sortableRecords(method.adjustments).map((adjustment) => ({
             code: text(adjustment.code),
-            amount: canonicalAmount(
-              adjustment.amount,
-              "Shipping adjustment"
-            ),
+            amount: canonicalAmount(adjustment.amount, "Shipping adjustment"),
           }))
         ),
       })),

@@ -8,18 +8,26 @@ import { createCheckoutStatusProof } from "@/features/checkout/server/internal-s
 
 const CHECKOUT_STATUS_TIMEOUT_MS = 5_000
 
-const statusSchema = z
-  .object({
-    state: z.enum([
-      "cart_active",
-      "cart_missing",
-      "finalizing_order",
-      "payment_action_required",
-      "payment_failed",
-      "payment_processing",
-    ]),
-  })
-  .strict()
+const statusSchema = z.discriminatedUnion("state", [
+  z
+    .object({
+      state: z.enum([
+        "cart_active",
+        "cart_missing",
+        "finalizing_order",
+        "payment_action_required",
+        "payment_failed",
+        "payment_processing",
+      ]),
+    })
+    .strict(),
+  z
+    .object({
+      state: z.literal("order_confirmed"),
+      orderId: z.string().regex(/^order_[A-Za-z0-9]+$/),
+    })
+    .strict(),
+])
 
 export type InternalCheckoutStatus = z.infer<typeof statusSchema>
 

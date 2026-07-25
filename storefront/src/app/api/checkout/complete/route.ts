@@ -19,10 +19,7 @@ import {
 } from "@/features/checkout/server/revalidate"
 import { orderConfirmedResponse } from "@/features/checkout/server/responses"
 import { completeCart, getCart } from "@/lib/cart/api"
-import {
-  jsonApiProblem,
-  parseJsonBody,
-} from "@/lib/security/route-guards"
+import { jsonApiProblem, parseJsonBody } from "@/lib/security/route-guards"
 import { guardCheckoutMutation } from "@/features/checkout/server/guards"
 
 const checkoutChanged = (
@@ -58,6 +55,11 @@ const recoverUncertainCompletion = async (
 ): Promise<Response> => {
   try {
     const status = await fetchInternalCheckoutStatus(cartId)
+    if (status.state === "order_confirmed") {
+      return orderConfirmedResponse({
+        orderId: status.orderId,
+      })
+    }
     if (
       status.state === "finalizing_order" ||
       status.state === "payment_processing" ||

@@ -19,10 +19,7 @@ const cartApiMocks = vi.hoisted(() => ({
 }))
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }))
-vi.mock(
-  "@/features/checkout/server/active-cart",
-  () => activeCartMocks
-)
+vi.mock("@/features/checkout/server/active-cart", () => activeCartMocks)
 vi.mock("@/features/checkout/server/guards", () => guardMocks)
 vi.mock("@/lib/cart/api", () => cartApiMocks)
 
@@ -72,9 +69,7 @@ describe("semantic checkout routes", () => {
   })
 
   it("loads checkout through signed server identity", async () => {
-    const response = await getCheckout(
-      request("/api/checkout", "GET")
-    )
+    const response = await getCheckout(request("/api/checkout", "GET"))
 
     expect(response.status).toBe(200)
     expect(activeCartMocks.resolveActiveCheckoutCart).toHaveBeenCalledOnce()

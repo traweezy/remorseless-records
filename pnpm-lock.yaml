@@ -209,9 +209,6 @@ importers:
       resend:
         specifier: 6.18.0
         version: 6.18.0(@react-email/render@2.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      stripe:
-        specifier: ^22.3.2
-        version: 22.3.2(@types/node@26.1.1)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@swc/core@1.15.46(@swc/helpers@0.5.23))(@types/node@26.1.1)(typescript@5.9.3)
@@ -288,6 +285,9 @@ importers:
       '@splidejs/splide-extension-auto-scroll':
         specifier: ^0.5.3
         version: 0.5.3
+      '@stripe/react-stripe-js':
+        specifier: ^6.8.0
+        version: 6.8.0(@stripe/stripe-js@9.12.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@stripe/stripe-js':
         specifier: ^9.12.0
         version: 9.12.0
@@ -4275,6 +4275,13 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@stripe/react-stripe-js@6.8.0':
+    resolution: {integrity: sha512-nRrPkos00CmUeqXHxtJkXmSbl9/6ybGI4jVebzsiA6QaE5A4iw9dn1C4hUx2tBmQQV2e6pm2aLkPYov4hdta2w==}
+    peerDependencies:
+      '@stripe/stripe-js': '>=9.5.0 <10.0.0'
+      react: '>=16.8.0 <20.0.0'
+      react-dom: '>=16.8.0 <20.0.0'
 
   '@stripe/stripe-js@9.12.0':
     resolution: {integrity: sha512-wCUYZNYo7E/6B3Rv2i/g/Rmj2mTiOX6HEwWYUWUuNUKwEhzTo/SXuQ1IoNo3mknWIHUQyqdakv1Nl2SiYPrCrw==}
@@ -9157,15 +9164,6 @@ packages:
     engines: {node: '>=16'}
     peerDependencies:
       '@types/node': '>=16'
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-
-  stripe@22.3.2:
-    resolution: {integrity: sha512-O13QOvgEIQvDlTy6Ubb5kB980wpbhmoZNsgCXKILjCMZS67f+bW+6w99k3gnSi/N1lkryoj1WYdpGT5Wc5edjg==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@types/node': '>=18'
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -14531,6 +14529,13 @@ snapshots:
   '@stablelib/base64@1.0.1': {}
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@stripe/react-stripe-js@6.8.0(@stripe/stripe-js@9.12.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      '@stripe/stripe-js': 9.12.0
+      prop-types: 15.8.1
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
 
   '@stripe/stripe-js@9.12.0': {}
 
@@ -20021,10 +20026,6 @@ snapshots:
   stripe@19.1.0(@types/node@26.1.1):
     dependencies:
       qs: 6.15.3
-    optionalDependencies:
-      '@types/node': 26.1.1
-
-  stripe@22.3.2(@types/node@26.1.1):
     optionalDependencies:
       '@types/node': 26.1.1
 

@@ -53,24 +53,12 @@ const cartApiMocks = vi.hoisted(() => ({
 }))
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }))
-vi.mock(
-  "@/features/checkout/server/active-cart",
-  () => activeCartMocks
-)
+vi.mock("@/features/checkout/server/active-cart", () => activeCartMocks)
 vi.mock("@/features/checkout/server/guards", () => guardMocks)
-vi.mock(
-  "@/features/checkout/server/internal-status-client",
-  () => statusMocks
-)
+vi.mock("@/features/checkout/server/internal-status-client", () => statusMocks)
 vi.mock("@/features/checkout/server/payment", () => paymentMocks)
-vi.mock(
-  "@/features/checkout/server/projection",
-  () => projectionMocks
-)
-vi.mock(
-  "@/features/checkout/server/revalidate",
-  () => revalidationMocks
-)
+vi.mock("@/features/checkout/server/projection", () => projectionMocks)
+vi.mock("@/features/checkout/server/revalidate", () => revalidationMocks)
 vi.mock("@/features/checkout/server/responses", () => responseMocks)
 vi.mock("@/lib/cart/api", () => cartApiMocks)
 
@@ -91,10 +79,7 @@ const cartFixture = (
     ...overrides,
   }) as HttpTypes.StoreCart
 
-const projection = (
-  nextRevision = revision,
-  total = 24.99
-) => ({
+const projection = (nextRevision = revision, total = 24.99) => ({
   revision: nextRevision,
   cart: { totals: { total } },
 })
@@ -164,9 +149,7 @@ describe("POST /api/checkout/complete", () => {
       code: "checkout_changed",
       checkout: { revision: changedRevision },
     })
-    expect(
-      revalidationMocks.revalidateShippingAndTaxes
-    ).not.toHaveBeenCalled()
+    expect(revalidationMocks.revalidateShippingAndTaxes).not.toHaveBeenCalled()
     expect(cartApiMocks.completeCart).not.toHaveBeenCalled()
   })
 
@@ -232,6 +215,23 @@ describe("POST /api/checkout/complete", () => {
     expect(responseMocks.orderConfirmedResponse).not.toHaveBeenCalled()
   })
 
+  it("recovers a lost response after Medusa authoritatively completes", async () => {
+    cartApiMocks.completeCart.mockRejectedValue(
+      new DOMException("Timed out", "TimeoutError")
+    )
+    statusMocks.fetchInternalCheckoutStatus.mockResolvedValue({
+      state: "order_confirmed",
+      orderId: "order_01K123ABC",
+    })
+
+    const response = await POST(request())
+
+    expect(response.status).toBe(200)
+    expect(responseMocks.orderConfirmedResponse).toHaveBeenCalledWith({
+      orderId: "order_01K123ABC",
+    })
+  })
+
   it("does not resubmit while an uncertain completion is still running", async () => {
     cartApiMocks.completeCart.mockRejectedValue(new Error("connection reset"))
     statusMocks.fetchInternalCheckoutStatus.mockResolvedValue({
@@ -273,9 +273,7 @@ describe("POST /api/checkout/complete", () => {
   })
 
   it("rejects caller-supplied cart identity", async () => {
-    const response = await POST(
-      request({ revision, cart_id: "cart_attacker" })
-    )
+    const response = await POST(request({ revision, cart_id: "cart_attacker" }))
 
     expect(response.status).toBe(400)
     expect(cartApiMocks.getCart).not.toHaveBeenCalled()

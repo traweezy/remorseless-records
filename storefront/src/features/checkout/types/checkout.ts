@@ -66,7 +66,7 @@ export type CheckoutPayment = {
 }
 
 export type CheckoutConfirmation = {
-  orderNumber: string
+  orderNumber: string | null
 } | null
 
 export type CheckoutProjection = {
@@ -111,6 +111,32 @@ export type CheckoutProblem = {
   status: number
   detail: string
   code: CheckoutProblemCode
-  instance?: string
-  checkout?: CheckoutProjection
+  instance?: string | undefined
+  checkout?: CheckoutProjection | undefined
+}
+
+export type CheckoutReceipt = {
+  orderNumber: string | null
+  placedAt: string
+  email: string
+  items: Array<{
+    id: string
+    title: string
+    variantTitle: string | null
+    thumbnail: string | null
+    quantity: number
+    total: number
+  }>
+  deliveryAddress: {
+    firstName: string
+    lastName: string
+    address1: string
+    address2: string | null
+    city: string
+    province: string
+    postalCode: string
+    countryCode: string
+  } | null
+  deliveryMethod: string | null
+  totals: CheckoutTotals
 }

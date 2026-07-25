@@ -54,9 +54,7 @@ const cartFixture = (
         subtotal: 5,
         tax_total: 0.4,
         total: 5.4,
-        tax_lines: [
-          { id: "casmtax_b", code: "US", rate: 8, total: 0.4 },
-        ],
+        tax_lines: [{ id: "casmtax_b", code: "US", rate: 8, total: 0.4 }],
         adjustments: [],
       },
     ],
@@ -114,15 +112,24 @@ describe("checkout projection", () => {
   })
 
   it.each([
-    ["needs_contact", (cart: HttpTypes.StoreCart) => {
-      cart.email = ""
-    }],
-    ["needs_address", (cart: HttpTypes.StoreCart) => {
-      cart.shipping_address!.postal_code = ""
-    }],
-    ["needs_shipping", (cart: HttpTypes.StoreCart) => {
-      cart.shipping_methods = []
-    }],
+    [
+      "needs_contact",
+      (cart: HttpTypes.StoreCart) => {
+        cart.email = ""
+      },
+    ],
+    [
+      "needs_address",
+      (cart: HttpTypes.StoreCart) => {
+        cart.shipping_address!.postal_code = ""
+      },
+    ],
+    [
+      "needs_shipping",
+      (cart: HttpTypes.StoreCart) => {
+        cart.shipping_methods = []
+      },
+    ],
   ] as const)("derives %s from authoritative cart state", (state, mutate) => {
     const cart = cartFixture()
     mutate(cart)
@@ -169,8 +176,7 @@ describe("checkout projection", () => {
     const original = cartFixture()
     const regenerated = cartFixture()
     regenerated.shipping_methods![0]!.id = "casm_regenerated"
-    regenerated.shipping_methods![0]!.tax_lines![0]!.id =
-      "casmtax_regenerated"
+    regenerated.shipping_methods![0]!.tax_lines![0]!.id = "casmtax_regenerated"
     regenerated.items![0]!.tax_lines![0]!.id = "calitax_regenerated"
 
     expect(createCheckoutProjection(regenerated).revision).toBe(
@@ -179,28 +185,40 @@ describe("checkout projection", () => {
   })
 
   it.each([
-    ["quantity", (cart: HttpTypes.StoreCart) => {
-      cart.items![0]!.quantity = 2
-      cart.items![0]!.subtotal = 39.98
-      cart.items![0]!.total = 41.58
-      cart.subtotal = 39.98
-      cart.total = 46.98
-    }],
-    ["shipping", (cart: HttpTypes.StoreCart) => {
-      cart.shipping_methods![0]!.subtotal = 6
-      cart.shipping_methods![0]!.amount = 6
-      cart.shipping_methods![0]!.total = 6.4
-      cart.shipping_subtotal = 6
-      cart.shipping_total = 6
-      cart.total = 27.99
-    }],
-    ["tax", (cart: HttpTypes.StoreCart) => {
-      cart.tax_total = 2.01
-      cart.total = 27
-    }],
-    ["address", (cart: HttpTypes.StoreCart) => {
-      cart.shipping_address!.postal_code = "10001"
-    }],
+    [
+      "quantity",
+      (cart: HttpTypes.StoreCart) => {
+        cart.items![0]!.quantity = 2
+        cart.items![0]!.subtotal = 39.98
+        cart.items![0]!.total = 41.58
+        cart.subtotal = 39.98
+        cart.total = 46.98
+      },
+    ],
+    [
+      "shipping",
+      (cart: HttpTypes.StoreCart) => {
+        cart.shipping_methods![0]!.subtotal = 6
+        cart.shipping_methods![0]!.amount = 6
+        cart.shipping_methods![0]!.total = 6.4
+        cart.shipping_subtotal = 6
+        cart.shipping_total = 6
+        cart.total = 27.99
+      },
+    ],
+    [
+      "tax",
+      (cart: HttpTypes.StoreCart) => {
+        cart.tax_total = 2.01
+        cart.total = 27
+      },
+    ],
+    [
+      "address",
+      (cart: HttpTypes.StoreCart) => {
+        cart.shipping_address!.postal_code = "10001"
+      },
+    ],
   ] as const)("changes the revision when %s changes", (_label, mutate) => {
     const original = cartFixture()
     const changed = cartFixture()

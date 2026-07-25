@@ -38,14 +38,14 @@ const CookieConsentBanner = () => {
             <SmartLink
               href="/privacy"
               nativePrefetch
-              className="text-destructive underline underline-offset-4"
+              className="inline-flex min-h-6 items-center text-destructive underline underline-offset-4"
             >
               Privacy Policy
             </SmartLink>
             <SmartLink
               href="/cookies"
               nativePrefetch
-              className="text-destructive underline underline-offset-4"
+              className="inline-flex min-h-6 items-center text-destructive underline underline-offset-4"
             >
               Cookie Policy
             </SmartLink>

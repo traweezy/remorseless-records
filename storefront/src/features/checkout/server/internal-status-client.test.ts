@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const envMocks = vi.hoisted(() => {
-  const checkoutBffSecret = ["bff", "unit", "test", "key"]
-    .join("-")
-    .repeat(2)
+  const checkoutBffSecret = ["bff", "unit", "test", "key"].join("-").repeat(2)
 
   return {
     checkoutBffSecret,
@@ -32,8 +30,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals()
-  envMocks.checkoutServerEnv.checkoutBffSecret =
-    envMocks.checkoutBffSecret
+  envMocks.checkoutServerEnv.checkoutBffSecret = envMocks.checkoutBffSecret
 })
 
 describe("internal checkout status client", () => {
@@ -72,15 +69,16 @@ describe("internal checkout status client", () => {
       },
     })
     const headers = new Headers(init?.headers)
-    expect(headers.get("x-rr-checkout-proof")).toMatch(
-      /^[A-Za-z0-9_-]{43}$/
-    )
+    expect(headers.get("x-rr-checkout-proof")).toMatch(/^[A-Za-z0-9_-]{43}$/)
     expect(init?.signal).toBeInstanceOf(AbortSignal)
   })
 
   it.each([
     ["upstream error", () => Promise.reject(new Error("offline"))],
-    ["upstream status", () => Promise.resolve(new Response(null, { status: 503 }))],
+    [
+      "upstream status",
+      () => Promise.resolve(new Response(null, { status: 503 })),
+    ],
     [
       "invalid response",
       () => Promise.resolve(Response.json({ state: "not-a-real-state" })),
@@ -98,9 +96,9 @@ describe("internal checkout status client", () => {
     const fetchMock = vi.fn()
     vi.stubGlobal("fetch", fetchMock)
 
-    await expect(
-      fetchInternalCheckoutStatus("cart_01K123ABC")
-    ).rejects.toThrow("Checkout recovery is not configured")
+    await expect(fetchInternalCheckoutStatus("cart_01K123ABC")).rejects.toThrow(
+      "Checkout recovery is not configured"
+    )
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

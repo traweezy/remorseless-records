@@ -19,6 +19,7 @@ type RateLimitBucket = {
 };
 
 const buckets = new Map<string, RateLimitBucket>();
+const MAX_RATE_LIMIT_BUCKETS = 10_000;
 
 const allowedStoreOriginHosts = new Set(
   STORE_CORS.split(",")
@@ -64,6 +65,19 @@ const createRateLimitMiddleware =
     const current = buckets.get(key);
 
     if (!current || current.resetAt <= now) {
+      if (buckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+        for (const [bucketKey, bucket] of buckets) {
+          if (bucket.resetAt <= now) {
+            buckets.delete(bucketKey);
+          }
+        }
+        if (buckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+          const oldestKey = buckets.keys().next().value;
+          if (typeof oldestKey === "string") {
+            buckets.delete(oldestKey);
+          }
+        }
+      }
       buckets.set(key, {
         count: 1,
         resetAt: now + rule.windowMs,
@@ -136,12 +150,6 @@ const catalogReadRateLimit = createRateLimitMiddleware({
   windowMs: 60_000,
 });
 
-const checkoutRateLimit = createRateLimitMiddleware({
-  key: "store:checkout",
-  max: 40,
-  windowMs: 60_000,
-});
-
 const checkoutStatusRateLimit = createRateLimitMiddleware({
   key: "store:checkout-status",
   max: 600,
@@ -151,12 +159,6 @@ const checkoutStatusRateLimit = createRateLimitMiddleware({
 const contactRateLimit = createRateLimitMiddleware({
   key: "store:contact",
   max: 15,
-  windowMs: 60_000,
-});
-
-const webhookRateLimit = createRateLimitMiddleware({
-  key: "stripe:webhook",
-  max: 120,
   windowMs: 60_000,
 });
 
@@ -173,14 +175,6 @@ export default defineMiddlewares({
       middlewares: [catalogReadRateLimit],
     },
     {
-      matcher: "/store/checkout/stripe-session",
-      methods: ["POST"],
-      middlewares: [checkoutRateLimit, enforceStoreOrigin],
-      bodyParser: {
-        sizeLimit: "8kb",
-      },
-    },
-    {
       matcher: "/store/checkout/status",
       methods: ["POST"],
       middlewares: [checkoutStatusRateLimit],
@@ -194,24 +188,6 @@ export default defineMiddlewares({
       middlewares: [contactRateLimit, enforceStoreOrigin],
       bodyParser: {
         sizeLimit: "16kb",
-      },
-    },
-    {
-      matcher: "/webhooks/stripe",
-      methods: ["POST"],
-      middlewares: [webhookRateLimit],
-      bodyParser: {
-        preserveRawBody: true,
-        sizeLimit: "2mb",
-      },
-    },
-    {
-      matcher: "/api/webhooks/stripe",
-      methods: ["POST"],
-      middlewares: [webhookRateLimit],
-      bodyParser: {
-        preserveRawBody: true,
-        sizeLimit: "2mb",
       },
     },
   ],

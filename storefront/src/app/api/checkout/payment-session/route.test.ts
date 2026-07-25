@@ -26,10 +26,7 @@ const cartApiMocks = vi.hoisted(() => ({
 }))
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }))
-vi.mock(
-  "@/features/checkout/server/active-cart",
-  () => activeCartMocks
-)
+vi.mock("@/features/checkout/server/active-cart", () => activeCartMocks)
 vi.mock("@/features/checkout/server/guards", () => guardMocks)
 vi.mock("@/features/checkout/server/payment", async (importOriginal) => ({
   ...(await importOriginal<
@@ -37,10 +34,7 @@ vi.mock("@/features/checkout/server/payment", async (importOriginal) => ({
   >()),
   ...paymentMocks,
 }))
-vi.mock(
-  "@/features/checkout/server/projection",
-  () => projectionMocks
-)
+vi.mock("@/features/checkout/server/projection", () => projectionMocks)
 vi.mock("@/lib/cart/api", () => cartApiMocks)
 
 import { POST } from "@/app/api/checkout/payment-session/route"
@@ -118,9 +112,7 @@ describe("POST /api/checkout/payment-session", () => {
       status: "pending",
     })
     cartApiMocks.listShippingOptions.mockResolvedValue({
-      shipping_options: [
-        { id: "so_standard", insufficient_inventory: false },
-      ],
+      shipping_options: [{ id: "so_standard", insufficient_inventory: false }],
     })
     cartApiMocks.addShippingMethod.mockResolvedValue(cart)
     cartApiMocks.calculateTaxes.mockResolvedValue(cart)
@@ -147,9 +139,7 @@ describe("POST /api/checkout/payment-session", () => {
     const response = await POST(request())
 
     expect(response.status).toBe(200)
-    expect(cartApiMocks.listShippingOptions).toHaveBeenCalledWith(
-      "cart_signed"
-    )
+    expect(cartApiMocks.listShippingOptions).toHaveBeenCalledWith("cart_signed")
     expect(cartApiMocks.addShippingMethod).toHaveBeenCalledWith(
       "cart_signed",
       "so_standard"
@@ -157,9 +147,7 @@ describe("POST /api/checkout/payment-session", () => {
     expect(cartApiMocks.calculateTaxes).toHaveBeenCalledWith("cart_signed")
     expect(cartApiMocks.initiatePaymentSession).not.toHaveBeenCalled()
     expect(paymentMocks.assertPreparedPayment).toHaveBeenCalledWith(cart)
-    expect(
-      activeCartMocks.checkoutProjectionResponse
-    ).toHaveBeenCalledWith(
+    expect(activeCartMocks.checkoutProjectionResponse).toHaveBeenCalledWith(
       expect.objectContaining({ cart }),
       { includeClientSecret: true }
     )
@@ -227,13 +215,9 @@ describe("POST /api/checkout/payment-session", () => {
   })
 
   it("rejects malformed and caller-expanded inputs", async () => {
-    const response = await POST(
-      request({ revision, cart_id: "cart_attacker" })
-    )
+    const response = await POST(request({ revision, cart_id: "cart_attacker" }))
 
     expect(response.status).toBe(400)
-    expect(
-      activeCartMocks.resolveActiveCheckoutCart
-    ).not.toHaveBeenCalled()
+    expect(activeCartMocks.resolveActiveCheckoutCart).not.toHaveBeenCalled()
   })
 })

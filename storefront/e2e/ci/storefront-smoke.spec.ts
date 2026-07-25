@@ -210,6 +210,47 @@ const expectVisibleInteractivePointers = async (page: Page): Promise<void> => {
   expect(offenders).toEqual([])
 }
 
+const expectVisibleInteractiveTargets = async (page: Page): Promise<void> => {
+  const offenders = await page
+    .locator(
+      "button:not(:disabled), a[href], input:not([type=hidden]):not(:disabled), [role=radio]"
+    )
+    .evaluateAll((nodes) =>
+      nodes.flatMap((node) => {
+        const element = node as HTMLElement
+        const rect = element.getBoundingClientRect()
+        const style = window.getComputedStyle(element)
+        if (
+          rect.width <= 0 ||
+          rect.height <= 0 ||
+          style.display === "none" ||
+          style.visibility === "hidden" ||
+          style.opacity === "0" ||
+          style.pointerEvents === "none" ||
+          (rect.width >= 24 && rect.height >= 24)
+        ) {
+          return []
+        }
+
+        return [
+          {
+            height: rect.height,
+            label:
+              element.getAttribute("aria-label") ??
+              element.textContent?.trim().replace(/\s+/g, " ").slice(0, 80) ??
+              "",
+            role: element.getAttribute("role"),
+            tag: element.tagName.toLowerCase(),
+            type: element.getAttribute("type"),
+            width: rect.width,
+          },
+        ]
+      })
+    )
+
+  expect(offenders).toEqual([])
+}
+
 test("homepage hydrates every curated shelf without client errors", async ({
   page,
 }) => {
@@ -928,3 +969,332 @@ for (const path of routes) {
     expect(metrics.mainRight).toBeLessThanOrEqual(metrics.viewportWidth)
   })
 }
+
+test("checkout remains accessible and contained with device emulation", async ({
+  page,
+}, testInfo) => {
+  const revisions = {
+    contact: `v1.${"b".repeat(43)}`,
+    delivery: `v1.${"c".repeat(43)}`,
+    initial: `v1.${"a".repeat(43)}`,
+    shipping: `v1.${"d".repeat(43)}`,
+  }
+  let checkoutStep: "contact" | "delivery" | "initial" | "shipping" = "initial"
+
+  const address = {
+    firstName: "Ada",
+    lastName: "Lovelace",
+    address1: "123 Test Street",
+    address2: null,
+    city: "Phoenix",
+    province: "AZ",
+    postalCode: "85001",
+    countryCode: "us",
+    phone: null,
+  } as const
+  const checkout = () => {
+    const hasContact = checkoutStep !== "initial"
+    const hasDelivery =
+      checkoutStep === "delivery" || checkoutStep === "shipping"
+    const hasShipping = checkoutStep === "shipping"
+    return {
+      state: !hasContact
+        ? "needs_contact"
+        : !hasDelivery
+          ? "needs_address"
+          : !hasShipping
+            ? "needs_shipping"
+            : "ready_for_payment",
+      revision: revisions[checkoutStep],
+      cart: {
+        items: [
+          {
+            id: "cali_checkout_mobile",
+            productHandle:
+              "music-release-pathologist-pathological-decomposition",
+            productTitle: "Pathological Decomposition",
+            quantity: 1,
+            subtotal: 20,
+            thumbnail: null,
+            unitPrice: 20,
+            variantTitle: "LP",
+          },
+        ],
+        totals: {
+          currencyCode: "usd",
+          subtotal: 20,
+          discountTotal: 0,
+          shippingTotal: hasShipping ? 5 : 0,
+          taxTotal: hasShipping ? 1.5 : 0,
+          total: hasShipping ? 26.5 : 20,
+        },
+        contact: hasContact ? { email: "buyer@example.test" } : null,
+        deliveryAddress: hasDelivery ? address : null,
+        shippingMethod: hasShipping
+          ? {
+              id: "casm_standard",
+              name: "Standard",
+              optionId: "so_standard",
+              amount: 5,
+            }
+          : null,
+      },
+      payment: {
+        provider: null,
+        clientSecret: null,
+        status: null,
+        canRestart: false,
+      },
+      confirmation: null,
+    }
+  }
+
+  await page.route("**/api/cart", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        cart: {
+          id: "cart_checkout_mobile",
+          currency_code: "usd",
+          subtotal: 20,
+          total: 20,
+          items: [],
+        },
+      }),
+    })
+  })
+  await page.route("**/api/checkout{,/**}", async (route) => {
+    const request = route.request()
+    const pathname = new URL(request.url()).pathname
+    const method = request.method()
+
+    if (pathname === "/api/checkout" && method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ checkout: checkout() }),
+      })
+      return
+    }
+    if (pathname === "/api/checkout/contact" && method === "PUT") {
+      checkoutStep = "contact"
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ checkout: checkout() }),
+      })
+      return
+    }
+    if (pathname === "/api/checkout/delivery-address" && method === "PUT") {
+      checkoutStep = "delivery"
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ checkout: checkout() }),
+      })
+      return
+    }
+    if (pathname === "/api/checkout/shipping-options" && method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          shippingOptions: [
+            {
+              id: "so_standard",
+              name: "Standard",
+              description: "Tracked delivery",
+              amount: 5,
+              currencyCode: "usd",
+              insufficientInventory: false,
+            },
+            {
+              id: "so_express",
+              name: "Express",
+              description: "Faster tracked delivery",
+              amount: 12,
+              currencyCode: "usd",
+              insufficientInventory: false,
+            },
+          ],
+        }),
+      })
+      return
+    }
+    if (pathname === "/api/checkout/shipping-method" && method === "PUT") {
+      checkoutStep = "shipping"
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ checkout: checkout() }),
+      })
+      return
+    }
+    if (pathname === "/api/checkout/payment-session" && method === "POST") {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/problem+json",
+        body: JSON.stringify({
+          type: "https://remorselessrecords.com/problems/payment-not-configured",
+          title: "Payment is temporarily unavailable",
+          status: 503,
+          detail: "Secure payment could not be prepared. Try again.",
+          code: "payment_not_configured",
+          instance: pathname,
+        }),
+      })
+      return
+    }
+
+    await route.fulfill({ status: 404, body: "Unexpected checkout request" })
+  })
+
+  const response = await page.goto("/checkout", {
+    waitUntil: "networkidle",
+  })
+  expect(response?.status()).toBeLessThan(400)
+
+  const rejectCookies = page.getByRole("button", {
+    name: "Reject non-essential",
+  })
+  if (await rejectCookies.isVisible()) {
+    await rejectCookies.click()
+  }
+
+  await expect(
+    page.getByRole("heading", { name: "Finish your order" })
+  ).toBeVisible()
+  await page.getByRole("button", { name: "Continue to delivery" }).click()
+  await expect(page.getByLabel("Email address")).toBeFocused()
+  await page.getByLabel("Email address").fill("buyer@example.test")
+  await page.getByRole("button", { name: "Continue to delivery" }).click()
+
+  await page
+    .getByRole("button", { name: "Continue to delivery method" })
+    .click()
+  const addressErrors = page.getByRole("alert", {
+    name: "Check your delivery address",
+  })
+  await expect(addressErrors).toBeFocused()
+  await expect(
+    addressErrors.getByRole("button", { name: /ZIP code:/ })
+  ).toBeVisible()
+
+  await page.getByLabel("First name").fill("Ada")
+  await page.getByLabel("Last name").fill("Lovelace")
+  await page.getByLabel("Street address").fill("123 Test Street")
+  await page.getByLabel("City").fill("Phoenix")
+  await page.getByRole("combobox", { name: "State" }).click()
+  await page.getByRole("option", { name: "Arizona" }).click()
+  await page.getByLabel("ZIP code").fill("85001")
+  await page
+    .getByRole("button", { name: "Continue to delivery method" })
+    .click()
+
+  await page.getByRole("radio", { name: /Standard/ }).click()
+  await page.getByRole("button", { name: "Continue to payment" }).click()
+  await expect(
+    page.getByText("Secure payment could not be prepared. Try again.")
+  ).toBeVisible()
+
+  await expectVisibleInteractivePointers(page)
+  const layout = await page.evaluate(() => {
+    return {
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      touchPoints: navigator.maxTouchPoints,
+    }
+  })
+
+  if (testInfo.project.name === "Desktop Chrome checkout") {
+    expect(layout.touchPoints).toBe(0)
+  } else {
+    expect(layout.touchPoints).toBeGreaterThan(0)
+  }
+  expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth)
+  expect(layout.bodyWidth).toBeLessThanOrEqual(layout.viewportWidth)
+  await expectVisibleInteractiveTargets(page)
+
+  const deviceName = testInfo.project.name
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+  await page.screenshot({
+    path: `/tmp/remorseless-checkout-${deviceName}.png`,
+    fullPage: true,
+  })
+})
+
+test("checkout remains accessible after confirmation", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/api/checkout/confirmation", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        receipt: {
+          orderNumber: "1042",
+          placedAt: "2026-07-25T16:30:00.000Z",
+          email: "buyer@example.test",
+          items: [
+            {
+              id: "item_checkout_confirmation",
+              title: "Pathological Decomposition",
+              variantTitle: "LP",
+              thumbnail: null,
+              quantity: 1,
+              total: 20,
+            },
+          ],
+          deliveryAddress: {
+            firstName: "Ada",
+            lastName: "Lovelace",
+            address1: "123 Test Street",
+            address2: null,
+            city: "Phoenix",
+            province: "AZ",
+            postalCode: "85001",
+            countryCode: "US",
+          },
+          deliveryMethod: "Standard",
+          totals: {
+            currencyCode: "usd",
+            subtotal: 20,
+            discountTotal: 0,
+            shippingTotal: 5,
+            taxTotal: 1.5,
+            total: 26.5,
+          },
+        },
+      }),
+    })
+  })
+
+  const response = await page.goto("/checkout/confirmation", {
+    waitUntil: "networkidle",
+  })
+  expect(response?.status()).toBeLessThan(400)
+  await expect(page.getByRole("heading", { name: "Thank you" })).toBeVisible()
+  await expect(page.getByText("Order #1042", { exact: false })).toBeVisible()
+  await expect(page.getByText("$26.50", { exact: true })).toBeVisible()
+  await expectVisibleInteractivePointers(page)
+  await expectVisibleInteractiveTargets(page)
+
+  const layout = await page.evaluate(() => ({
+    viewportWidth: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    bodyWidth: document.body.scrollWidth,
+  }))
+  expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth)
+  expect(layout.bodyWidth).toBeLessThanOrEqual(layout.viewportWidth)
+
+  const deviceName = testInfo.project.name
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+  await page.screenshot({
+    path: `/tmp/remorseless-checkout-confirmation-${deviceName}.png`,
+    fullPage: true,
+  })
+})

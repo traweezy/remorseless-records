@@ -19,14 +19,8 @@ import {
   CheckoutRevalidationError,
   revalidateShippingAndTaxes,
 } from "@/features/checkout/server/revalidate"
-import {
-  getCart,
-  initiatePaymentSession,
-} from "@/lib/cart/api"
-import {
-  jsonApiProblem,
-  parseJsonBody,
-} from "@/lib/security/route-guards"
+import { getCart, initiatePaymentSession } from "@/lib/cart/api"
+import { jsonApiProblem, parseJsonBody } from "@/lib/security/route-guards"
 
 const checkoutChanged = (
   request: NextRequest,
@@ -93,11 +87,8 @@ export const POST = async (request: NextRequest): Promise<Response> => {
       )
     }
 
-    const recalculatedCart = await revalidateShippingAndTaxes(
-      active.value.cart
-    )
-    const recalculatedProjection =
-      createCheckoutProjection(recalculatedCart)
+    const recalculatedCart = await revalidateShippingAndTaxes(active.value.cart)
+    const recalculatedProjection = createCheckoutProjection(recalculatedCart)
     if (recalculatedProjection.revision !== parsed.data.revision) {
       return checkoutChanged(request, recalculatedProjection)
     }

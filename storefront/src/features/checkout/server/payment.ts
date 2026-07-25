@@ -24,10 +24,7 @@ export class CheckoutPaymentError extends Error {
     | "payment_result_unknown"
     | "payment_session_stale"
 
-  constructor(
-    code: CheckoutPaymentError["code"],
-    message: string
-  ) {
+  constructor(code: CheckoutPaymentError["code"], message: string) {
     super(message)
     this.name = "CheckoutPaymentError"
     this.code = code
@@ -69,9 +66,7 @@ const stripeSessions = (
     (session) => session.provider_id === STRIPE_PROVIDER_ID
   )
 
-export const paymentNeedsFinalization = (
-  cart: HttpTypes.StoreCart
-): boolean =>
+export const paymentNeedsFinalization = (cart: HttpTypes.StoreCart): boolean =>
   stripeSessions(cart).some((session) =>
     FINALIZING_PAYMENT_STATUSES.has(session.status)
   )

@@ -27,9 +27,7 @@ describe("checkout shipping and tax revalidation", () => {
   it("persists an eligible selection before recalculating tax", async () => {
     const recalculated = { ...cart, total: 24.99 }
     cartApiMocks.listShippingOptions.mockResolvedValue({
-      shipping_options: [
-        { id: "so_standard", insufficient_inventory: false },
-      ],
+      shipping_options: [{ id: "so_standard", insufficient_inventory: false }],
     })
     cartApiMocks.addShippingMethod.mockResolvedValue(cart)
     cartApiMocks.calculateTaxes.mockResolvedValue(recalculated)
