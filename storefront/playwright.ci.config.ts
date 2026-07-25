@@ -8,6 +8,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: true,
   retries: 1,
+  retryStrategy: "isolated",
   workers: 1,
   reporter: "line",
   outputDir: "test-results/ci",
