@@ -86,18 +86,21 @@ cp .env.template .env
 
 Key variables (non-empty values required for full functionality):
 
-| Variable                      | Notes                                                            |
-| ----------------------------- | ---------------------------------------------------------------- |
-| `DATABASE_URL`                | PostgreSQL connection string                                     |
-| `REDIS_URL`                   | Optional. When omitted, Medusa uses in-memory cache              |
-| `STRIPE_API_KEY`              | Stripe secret key (_sk\_..._)                                    |
-| `STRIPE_WEBHOOK_SECRET`       | From Stripe CLI or dashboard endpoint for `/api/webhooks/stripe` |
-| `BACKEND_PUBLIC_URL`          | External URL used in webhooks (e.g., `http://localhost:9000`)    |
-| `RESEND_API_KEY`              | Optional; required for transactional mail                        |
-| `MEILISEARCH_HOST`            | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`    |
-| `MEILISEARCH_ADMIN_KEY`       | Corresponding admin/master key                                   |
-| `JWT_SECRET`, `COOKIE_SECRET` | Medusa auth secrets (high entropy)                               |
-| `MINIO_*`                     | Optional. Railway template populates these for object storage    |
+| Variable                                 | Notes                                                            |
+| ---------------------------------------- | ---------------------------------------------------------------- |
+| `DATABASE_URL`                           | PostgreSQL connection string                                     |
+| `REDIS_URL`                              | Optional. When omitted, Medusa uses in-memory cache              |
+| `STRIPE_API_KEY`                         | Stripe secret key (_sk\_..._)                                    |
+| `STRIPE_WEBHOOK_SECRET`                  | From Stripe CLI or dashboard endpoint for `/api/webhooks/stripe` |
+| `BACKEND_PUBLIC_URL`                     | External URL used in webhooks (e.g., `http://localhost:9000`)    |
+| `RESEND_API_KEY`                         | Optional; required for transactional mail                        |
+| `MEILISEARCH_HOST`                       | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`    |
+| `MEILISEARCH_ADMIN_KEY`                  | Corresponding admin/master key                                   |
+| `JWT_SECRET`, `COOKIE_SECRET`            | Medusa auth secrets (high entropy)                               |
+| `MINIO_*`                                | Optional. Railway template populates these for object storage    |
+| `ANONYMOUS_CART_RETENTION_ENABLED`       | Enables daily anonymous-cart soft deletion (default `false`)     |
+| `ANONYMOUS_CART_RETENTION_DAYS`          | Inactivity retention; minimum/default `37` days                  |
+| `ANONYMOUS_CART_RETENTION_MAX_DELETIONS` | Per-run safety cap; default `1000`                               |
 
 ### Storefront (`storefront/.env.local`)
 
