@@ -3,7 +3,15 @@
 import type { HttpTypes } from "@medusajs/types"
 import { Minus, Plus, Trash2 } from "lucide-react"
 import Image from "next/image"
-import { memo, useCallback, useMemo, useTransition } from "react"
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react"
 
 import CartBundleDetails from "@/components/cart/cart-bundle-details"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +27,7 @@ import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
 
 type CartLineItem = HttpTypes.StoreCartLineItem
+const MAX_CART_QUANTITY = 100
 
 type CartItemProps = {
   item: CartLineItem
@@ -70,9 +79,14 @@ const productClass = (item: CartLineItem): string | null => {
 export const CartItem = memo<CartItemProps>(
   ({ item, currencyCode, className, onRemove }) => {
     const { updateItem, removeItem } = useCart()
-    const [isPending, startTransition] = useTransition()
+    const [isRemovePending, startRemoveTransition] = useTransition()
+    const [isQuantityUpdating, setIsQuantityUpdating] = useState(false)
 
     const quantity = useMemo(() => Number(item.quantity ?? 1), [item.quantity])
+    const [displayQuantity, setDisplayQuantity] = useState(quantity)
+    const authoritativeQuantityRef = useRef(quantity)
+    const desiredQuantityRef = useRef(quantity)
+    const isFlushingQuantityRef = useRef(false)
     const maxQuantity = useMemo(() => availableQuantity(item), [item])
     const title = item.product_title ?? item.title
     const variantTitle = readableVariantTitle(item)
@@ -98,35 +112,79 @@ export const CartItem = memo<CartItemProps>(
       ? buildPublicProductPath({ handle: item.product_handle })
       : null
     const totalAmount =
-      typeof item.subtotal === "number"
+      !isQuantityUpdating && typeof item.subtotal === "number"
         ? item.subtotal
-        : Number(item.unit_price ?? 0) * quantity
-    const atMaximum = typeof maxQuantity === "number" && quantity >= maxQuantity
+        : Number(item.unit_price ?? 0) * displayQuantity
+    const maximumAllowedQuantity =
+      typeof maxQuantity === "number"
+        ? Math.min(maxQuantity, MAX_CART_QUANTITY)
+        : MAX_CART_QUANTITY
+    const atMaximum = displayQuantity >= maximumAllowedQuantity
     const lowStock =
       typeof maxQuantity === "number" && maxQuantity > 0 && maxQuantity <= 5
     const isFixedBundle = itemProductClass === "fixed_bundle"
     const isMysteryBundle = itemProductClass === "mystery_bundle"
+    const isBusy = isQuantityUpdating || isRemovePending
 
-    const changeQuantity = useCallback(
-      (nextQuantity: number) => {
-        startTransition(async () => {
-          try {
-            await updateItem(item.id, Math.max(0, nextQuantity))
-          } catch {
-            // The provider restores authoritative state and announces the error.
+    useEffect(() => {
+      authoritativeQuantityRef.current = quantity
+      if (!isFlushingQuantityRef.current) {
+        desiredQuantityRef.current = quantity
+        setDisplayQuantity(quantity)
+      }
+    }, [quantity])
+
+    const flushQuantityChanges = useCallback(async () => {
+      if (isFlushingQuantityRef.current) {
+        return
+      }
+
+      isFlushingQuantityRef.current = true
+      setIsQuantityUpdating(true)
+      try {
+        for (;;) {
+          const targetQuantity = desiredQuantityRef.current
+          await updateItem(item.id, targetQuantity)
+          authoritativeQuantityRef.current = targetQuantity
+          if (desiredQuantityRef.current === targetQuantity) {
+            break
           }
-        })
+        }
+      } catch {
+        const restoredQuantity = authoritativeQuantityRef.current
+        desiredQuantityRef.current = restoredQuantity
+        setDisplayQuantity(restoredQuantity)
+        // The provider restores authoritative state and announces the error.
+      } finally {
+        isFlushingQuantityRef.current = false
+        setIsQuantityUpdating(false)
+      }
+    }, [item.id, updateItem])
+
+    const changeQuantityBy = useCallback(
+      (delta: number) => {
+        const nextQuantity = Math.min(
+          maximumAllowedQuantity,
+          Math.max(0, desiredQuantityRef.current + delta)
+        )
+        if (nextQuantity === desiredQuantityRef.current) {
+          return
+        }
+
+        desiredQuantityRef.current = nextQuantity
+        setDisplayQuantity(nextQuantity)
+        void flushQuantityChanges()
       },
-      [item.id, updateItem]
+      [flushQuantityChanges, maximumAllowedQuantity]
     )
     const decreaseQuantity = useCallback(() => {
-      changeQuantity(quantity - 1)
-    }, [changeQuantity, quantity])
+      changeQuantityBy(-1)
+    }, [changeQuantityBy])
     const increaseQuantity = useCallback(() => {
-      changeQuantity(quantity + 1)
-    }, [changeQuantity, quantity])
+      changeQuantityBy(1)
+    }, [changeQuantityBy])
     const remove = useCallback(() => {
-      startTransition(async () => {
+      startRemoveTransition(async () => {
         try {
           if (onRemove) {
             await onRemove(item)
@@ -162,10 +220,10 @@ export const CartItem = memo<CartItemProps>(
       <article
         className={cn(
           "grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] gap-3 rounded-xl border border-border/60 bg-background/90 p-3 shadow-card transition-opacity sm:gap-4 sm:p-4",
-          isPending && "opacity-65",
+          isRemovePending && "opacity-65",
           className
         )}
-        aria-busy={isPending}
+        aria-busy={isBusy}
       >
         {productHref ? (
           <SmartLink
@@ -234,7 +292,7 @@ export const CartItem = memo<CartItemProps>(
                     : `Decrease quantity of ${title}`
                 }
                 onClick={decreaseQuantity}
-                disabled={isPending}
+                disabled={isRemovePending || displayQuantity <= 0}
               >
                 <Minus className="h-4 w-4" aria-hidden />
               </Button>
@@ -242,7 +300,7 @@ export const CartItem = memo<CartItemProps>(
                 className="min-w-8 text-center text-sm font-semibold tabular-nums"
                 aria-live="polite"
               >
-                {quantity}
+                {displayQuantity}
               </output>
               <Button
                 type="button"
@@ -251,7 +309,7 @@ export const CartItem = memo<CartItemProps>(
                 className="h-10 w-10 border-border/70 p-0"
                 aria-label={`Increase quantity of ${title}`}
                 onClick={increaseQuantity}
-                disabled={isPending || atMaximum}
+                disabled={isRemovePending || atMaximum}
               >
                 <Plus className="h-4 w-4" aria-hidden />
               </Button>
@@ -267,7 +325,7 @@ export const CartItem = memo<CartItemProps>(
               className="h-10 w-10 border-border/70 p-0 text-muted-foreground hover:border-destructive hover:text-destructive"
               aria-label={`Remove ${title}`}
               onClick={remove}
-              disabled={isPending}
+              disabled={isBusy}
             >
               <Trash2 className="h-4 w-4" aria-hidden />
             </Button>

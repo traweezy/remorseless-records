@@ -1,5 +1,6 @@
 import type { HttpTypes } from "@medusajs/types"
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -103,6 +104,98 @@ describe("CartItem", () => {
         name: "Increase quantity of Test pressing",
       })
     ).toBeDisabled()
+  })
+
+  it("accepts rapid quantity changes and coalesces queued updates", async () => {
+    let resolveFirstUpdate: (() => void) | undefined
+    cartMocks.updateItem
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveFirstUpdate = resolve
+          })
+      )
+      .mockResolvedValue(undefined)
+
+    render(
+      <CartItem
+        item={lineItemFixture({
+          variant: {
+            id: "variant_01ABC",
+            title: "LP",
+            manage_inventory: true,
+            allow_backorder: false,
+            inventory_quantity: 10,
+          } as HttpTypes.StoreProductVariant,
+        })}
+        currencyCode="usd"
+      />
+    )
+
+    const increase = screen.getByRole("button", {
+      name: "Increase quantity of Test pressing",
+    })
+    fireEvent.click(increase)
+    fireEvent.click(increase)
+    fireEvent.click(increase)
+
+    expect(increase).not.toBeDisabled()
+    expect(screen.getByText("4", { selector: "output" })).toBeInTheDocument()
+    expect(cartMocks.updateItem).toHaveBeenCalledTimes(1)
+    expect(cartMocks.updateItem).toHaveBeenNthCalledWith(1, "cali_01ABC", 2)
+
+    await act(async () => {
+      resolveFirstUpdate?.()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(cartMocks.updateItem).toHaveBeenCalledTimes(2)
+    })
+    expect(cartMocks.updateItem).toHaveBeenNthCalledWith(2, "cali_01ABC", 4)
+  })
+
+  it("restores the last saved quantity when a queued update fails", async () => {
+    let resolveFirstUpdate: (() => void) | undefined
+    cartMocks.updateItem
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveFirstUpdate = resolve
+          })
+      )
+      .mockRejectedValueOnce(new Error("Inventory changed"))
+
+    render(
+      <CartItem
+        item={lineItemFixture({
+          variant: {
+            id: "variant_01ABC",
+            title: "LP",
+            manage_inventory: true,
+            allow_backorder: false,
+            inventory_quantity: 10,
+          } as HttpTypes.StoreProductVariant,
+        })}
+        currencyCode="usd"
+      />
+    )
+
+    const increase = screen.getByRole("button", {
+      name: "Increase quantity of Test pressing",
+    })
+    fireEvent.click(increase)
+    fireEvent.click(increase)
+
+    await act(async () => {
+      resolveFirstUpdate?.()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(cartMocks.updateItem).toHaveBeenCalledTimes(2)
+      expect(screen.getByText("2", { selector: "output" })).toBeInTheDocument()
+    })
   })
 
   it("uses the explicit remove action when supplied by the drawer", async () => {
