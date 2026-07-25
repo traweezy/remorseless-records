@@ -3,8 +3,14 @@
 import type { HttpTypes } from "@medusajs/types"
 import { ShoppingBag } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { memo, useCallback, useTransition } from "react"
-import { toast } from "sonner"
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react"
 
 import CartItem from "@/components/cart/cart-item"
 import { Button } from "@/components/ui/button"
@@ -21,6 +27,7 @@ import { useCart } from "@/providers/cart-provider"
 import type { StoreCart } from "@/providers/cart-provider"
 
 const EMPTY_CART_ITEMS: HttpTypes.StoreCartLineItem[] = []
+const UNDO_DURATION_MS = 8_000
 
 type CartDrawerProps = {
   open: boolean
@@ -41,6 +48,11 @@ const formattedAmount = (
 export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
   const router = useRouter()
   const [isCheckoutPending, startCheckoutTransition] = useTransition()
+  const [isUndoPending, setIsUndoPending] = useState(false)
+  const [recentlyRemoved, setRecentlyRemoved] =
+    useState<HttpTypes.StoreCartLineItem | null>(null)
+  const [undoError, setUndoError] = useState<string | null>(null)
+  const undoExpirationRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const {
     addItem,
     cart,
@@ -68,33 +80,55 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
   const currentTotal = formattedAmount(cart, cart?.total) ?? subtotal
   const totalsAreFinal = Boolean(shipping && tax)
 
+  const clearUndoExpiration = useCallback(() => {
+    if (undoExpirationRef.current) {
+      clearTimeout(undoExpirationRef.current)
+      undoExpirationRef.current = null
+    }
+  }, [])
+
+  useEffect(() => clearUndoExpiration, [clearUndoExpiration])
+
   const handleRemove = useCallback(
     async (item: HttpTypes.StoreCartLineItem) => {
       await removeItem(item.id)
 
-      const variantId = item.variant_id
-      const quantity = Number(item.quantity ?? 1)
-      const title = item.product_title ?? item.title
-      toast(`${title} removed from cart.`, {
-        ...(variantId
-          ? {
-              action: {
-                label: "Undo",
-                onClick: () => {
-                  void addItem(variantId, quantity).catch(() => {
-                    toast.error(
-                      "This item could not be restored. Check its current availability."
-                    )
-                  })
-                },
-              },
-            }
-          : {}),
-        duration: 5_000,
-      })
+      clearUndoExpiration()
+      setUndoError(null)
+      setRecentlyRemoved(item.variant_id ? item : null)
+      if (item.variant_id) {
+        undoExpirationRef.current = setTimeout(() => {
+          setRecentlyRemoved(null)
+          undoExpirationRef.current = null
+        }, UNDO_DURATION_MS)
+      }
     },
-    [addItem, removeItem]
+    [clearUndoExpiration, removeItem]
   )
+
+  const handleUndo = useCallback(async () => {
+    const item = recentlyRemoved
+    if (!item?.variant_id || isUndoPending) {
+      return
+    }
+
+    clearUndoExpiration()
+    setIsUndoPending(true)
+    setUndoError(null)
+    try {
+      await addItem(item.variant_id, Number(item.quantity ?? 1))
+      setRecentlyRemoved(null)
+    } catch {
+      setUndoError(
+        "This item could not be restored. Check its current availability and try again."
+      )
+    } finally {
+      setIsUndoPending(false)
+    }
+  }, [addItem, clearUndoExpiration, isUndoPending, recentlyRemoved])
+  const requestUndo = useCallback(() => {
+    void handleUndo()
+  }, [handleUndo])
 
   const goToCatalog = useCallback(() => {
     onOpenChange(false)
@@ -113,6 +147,42 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
   const retryCart = useCallback(() => {
     void refreshCart()
   }, [refreshCart])
+  const removedTitle =
+    recentlyRemoved?.product_title ?? recentlyRemoved?.title ?? "Item"
+  const undoNotice = recentlyRemoved ? (
+    <div
+      className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-4 py-3 text-left shadow-[0_16px_38px_-28px_rgba(0,0,0,0.85)]"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-foreground">
+          {removedTitle} removed
+        </p>
+        {undoError ? (
+          <p
+            className="mt-1 text-xs leading-relaxed text-destructive"
+            role="alert"
+          >
+            {undoError}
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Restore it before this notice expires.
+          </p>
+        )}
+      </div>
+      <Button
+        type="button"
+        variant="outlined"
+        size="compact"
+        onClick={requestUndo}
+        disabled={isUndoPending}
+      >
+        {isUndoPending ? "Restoring…" : "Undo"}
+      </Button>
+    </div>
+  ) : null
 
   return (
     <Drawer
@@ -158,6 +228,7 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
           <>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
               <div className="space-y-4">
+                {undoNotice}
                 {items.map((item, index) => (
                   <CartItem
                     key={item.id ?? `${item.variant_id ?? "item"}-${index}`}
@@ -254,6 +325,7 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
           </>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-6 py-10 text-center">
+            {undoNotice}
             <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/70 bg-background/80 shadow-glow">
               <ShoppingBag
                 className="h-7 w-7 text-muted-foreground"

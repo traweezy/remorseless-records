@@ -399,6 +399,11 @@
     .skeleton {
       animation: none;
     }
+
+    [data-sonner-toaster] [data-sonner-toast] {
+      animation-duration: 1ms !important;
+      transition-duration: 1ms !important;
+    }
   }
 
   @keyframes accordion-down {

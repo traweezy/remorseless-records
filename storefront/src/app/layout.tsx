@@ -6,6 +6,7 @@ import BackToTopButton from "@/components/back-to-top-button"
 import SiteFooter from "@/components/site-footer"
 import SiteHeader from "@/components/site-header"
 import QueryProvider from "@/components/providers/query-provider"
+import { Toaster } from "@/components/ui/sonner"
 import { CartProvider } from "@/providers/cart-provider"
 import JsonLd from "@/components/json-ld"
 import CookieConsentBanner from "@/components/legal/cookie-consent-banner"
@@ -152,6 +153,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <CookieConsentBanner />
             </CookieConsentProvider>
           </CartProvider>
+          <Toaster />
         </QueryProvider>
         <JsonLd id="remorseless-organization" data={organizationJsonLd} />
         <JsonLd id="remorseless-website" data={webSiteJsonLd} />

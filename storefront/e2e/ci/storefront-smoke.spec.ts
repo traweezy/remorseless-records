@@ -293,6 +293,46 @@ test("visible interactive controls consistently use pointer cursors", async ({
 test("cart drawer stays usable and contained on mobile devices", async ({
   page,
 }, testInfo) => {
+  const cartItem = {
+    id: "cali_ci_mobile",
+    title: "Pathological Decomposition",
+    product_title: "Pathological Decomposition",
+    product_handle: "music-release-pathologist-pathological-decomposition",
+    variant_id: "variant_ci_pathologist_lp",
+    variant_title: "LP",
+    quantity: 2,
+    unit_price: 1_800,
+    subtotal: 3_600,
+    thumbnail: null,
+    variant: {
+      id: "variant_ci_pathologist_lp",
+      title: "LP",
+      manage_inventory: true,
+      allow_backorder: false,
+      inventory_quantity: 3,
+    },
+    product: {
+      id: "prod_ci_pathologist",
+      handle: "music-release-pathologist-pathological-decomposition",
+      metadata: {
+        artist_names: ["Pathologist"],
+        catalog_import: {
+          product_type: "music_release",
+        },
+      },
+    },
+  }
+  let cartItems = [cartItem]
+  const cartResponse = () => ({
+    cart: {
+      id: "cart_ci_mobile",
+      currency_code: "usd",
+      subtotal: cartItems.length ? 3_600 : 0,
+      total: cartItems.length ? 3_600 : 0,
+      items: cartItems,
+    },
+  })
+
   await page.route("**/api/cart", async (route) => {
     if (route.request().method() !== "GET") {
       await route.continue()
@@ -302,46 +342,33 @@ test("cart drawer stays usable and contained on mobile devices", async ({
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
-        cart: {
-          id: "cart_ci_mobile",
-          currency_code: "usd",
-          subtotal: 3_600,
-          total: 3_600,
-          items: [
-            {
-              id: "cali_ci_mobile",
-              title: "Pathological Decomposition",
-              product_title: "Pathological Decomposition",
-              product_handle:
-                "music-release-pathologist-pathological-decomposition",
-              variant_id: "variant_ci_pathologist_lp",
-              variant_title: "LP",
-              quantity: 2,
-              unit_price: 1_800,
-              subtotal: 3_600,
-              thumbnail: null,
-              variant: {
-                id: "variant_ci_pathologist_lp",
-                title: "LP",
-                manage_inventory: true,
-                allow_backorder: false,
-                inventory_quantity: 3,
-              },
-              product: {
-                id: "prod_ci_pathologist",
-                handle: "music-release-pathologist-pathological-decomposition",
-                metadata: {
-                  artist_names: ["Pathologist"],
-                  catalog_import: {
-                    product_type: "music_release",
-                  },
-                },
-              },
-            },
-          ],
-        },
-      }),
+      body: JSON.stringify(cartResponse()),
+    })
+  })
+  await page.route("**/api/cart/items/cali_ci_mobile", async (route) => {
+    if (route.request().method() !== "DELETE") {
+      await route.continue()
+      return
+    }
+
+    cartItems = []
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(cartResponse()),
+    })
+  })
+  await page.route("**/api/cart/items", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue()
+      return
+    }
+
+    cartItems = [cartItem]
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(cartResponse()),
     })
   })
 
@@ -421,6 +448,21 @@ test("cart drawer stays usable and contained on mobile devices", async ({
   await page.screenshot({
     path: `/tmp/remorseless-cart-drawer-${deviceName}.png`,
   })
+
+  await drawer
+    .getByRole("button", { name: "Remove Pathological Decomposition" })
+    .click()
+  const undo = page.getByRole("button", { name: "Undo", exact: true })
+  await expect(undo).toBeVisible()
+  await page.screenshot({
+    path: `/tmp/remorseless-cart-undo-${deviceName}.png`,
+  })
+  await undo.click()
+  await expect(
+    drawer.getByRole("button", {
+      name: "Remove Pathological Decomposition",
+    })
+  ).toBeVisible()
 })
 
 test("catalog filters stay stable and combine predictably", async ({

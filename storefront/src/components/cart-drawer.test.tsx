@@ -1,5 +1,11 @@
 import type { HttpTypes } from "@medusajs/types"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const routerMocks = vi.hoisted(() => ({
@@ -14,8 +20,24 @@ vi.mock("@/providers/cart-provider", () => ({
   useCart: useCartMock,
 }))
 vi.mock("@/components/cart/cart-item", () => ({
-  default: ({ item }: { item: HttpTypes.StoreCartLineItem }) => (
-    <article>{item.title}</article>
+  default: ({
+    item,
+    onRemove,
+  }: {
+    item: HttpTypes.StoreCartLineItem
+    onRemove: (item: HttpTypes.StoreCartLineItem) => Promise<void>
+  }) => (
+    <article>
+      {item.title}
+      <button
+        type="button"
+        onClick={() => {
+          void onRemove(item)
+        }}
+      >
+        Remove {item.title}
+      </button>
+    </article>
   ),
 }))
 vi.mock("@/components/ui/drawer", () => ({
@@ -39,8 +61,6 @@ vi.mock("@/components/ui/drawer", () => ({
     <h2>{children}</h2>
   ),
 }))
-vi.mock("sonner", () => ({ toast: vi.fn() }))
-
 import CartDrawer from "@/components/cart-drawer"
 
 const cartFixture = (): HttpTypes.StoreCart =>
@@ -53,6 +73,7 @@ const cartFixture = (): HttpTypes.StoreCart =>
       {
         id: "cali_01ABC",
         title: "Test pressing",
+        variant_id: "variant_01ABC",
         quantity: 1,
         unit_price: 2_400,
         subtotal: 2_400,
@@ -123,5 +144,29 @@ describe("CartDrawer", () => {
 
     expect(screen.getByLabelText("Loading cart")).toBeInTheDocument()
     expect(screen.queryByText("Your cart is empty")).not.toBeInTheDocument()
+  })
+
+  it("restores a recently removed item from inside the drawer", async () => {
+    const addItem = vi.fn().mockResolvedValue(undefined)
+    const removeItem = vi.fn().mockResolvedValue(undefined)
+    useCartMock.mockReturnValue(cartState({ addItem, removeItem }))
+    render(<CartDrawer open onOpenChange={vi.fn()} />)
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Test pressing" })
+    )
+
+    const undo = await screen.findByRole("button", { name: "Undo" })
+    expect(screen.getByText("Test pressing removed")).toBeInTheDocument()
+    expect(removeItem).toHaveBeenCalledWith("cali_01ABC")
+
+    fireEvent.click(undo)
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith("variant_01ABC", 1)
+    })
+    expect(
+      screen.queryByRole("button", { name: "Undo" })
+    ).not.toBeInTheDocument()
   })
 })
