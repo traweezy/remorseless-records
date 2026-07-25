@@ -1,38 +1,19 @@
-# Custom scheduled jobs
+# Scheduled jobs
 
-A scheduled job is a function executed at a specified interval of time in the background of your Medusa application.
+Medusa loads each default export in this directory and schedules it from the
+file's exported `config`. Deployed jobs use Medusa's Locking Module so only one
+replica performs a run.
 
-A scheduled job is created in a TypeScript or JavaScript file under the `src/jobs` directory.
+| Job                                | Schedule (UTC)    | Default  | Purpose                                                                                                          |
+| ---------------------------------- | ----------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `reconcile-checkout-payments`      | Every two minutes | Disabled | Complete an old incomplete cart with exactly one authorized/captured official Stripe session and no linked order |
+| `remove-expired-anonymous-carts`   | `04:17` daily     | Disabled | Soft-delete old incomplete carts with no customer or email                                                       |
+| `remove-abandoned-guest-checkouts` | `04:37` daily     | Disabled | Cancel only safe unused sessions, then soft-delete old guest checkouts containing PII                            |
 
-For example, create the file `src/jobs/hello-world.ts` with the following content:
+Every job is bounded, rechecks mutable state, and emits only aggregate results.
+Payment reconciliation never creates or confirms a payment. Retention never
+deletes completed, order-linked, customer-owned, recently updated, or
+unresolved/successful-payment carts.
 
-```ts
-import {
-  IProductModuleService,
-  MedusaContainer
-} from "@medusajs/types";
-import { ModuleRegistrationName } from "@medusajs/utils";
-
-export default async function myCustomJob(container: MedusaContainer) {
-  const productService: IProductModuleService = container.resolve(ModuleRegistrationName.PRODUCT)
-
-  const products = await productService.listAndCountProducts();
-
-  // Do something with the products
-}
-
-export const config = {
-  name: "daily-product-report",
-  schedule: "0 0 * * *", // Every day at midnight
-};
-```
-
-A scheduled job file must export:
-
-- The function to be executed whenever it’s time to run the scheduled job.
-- A configuration object defining the job. It has three properties:
-  - `name`: a unique name for the job.
-  - `schedule`: a [cron expression](https://crontab.guru/).
-  - `numberOfExecutions`: an optional integer, specifying how many times the job will execute before being removed
-
-The `handler` is a function that accepts one parameter, `container`, which is a `MedusaContainer` instance used to resolve services.
+Configuration and incident procedures are documented in
+[`../../../docs/CHECKOUT_OPERATIONS.md`](../../../docs/CHECKOUT_OPERATIONS.md).

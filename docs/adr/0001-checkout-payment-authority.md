@@ -34,23 +34,24 @@ creation and payment authorization.
   resolve the signed, HttpOnly cart cookie. A raw cart ID is not checkout
   identity.
 - Stripe's Payment Element replaces the legacy Card Element.
-- Browser completion, Medusa's official Stripe webhook, and a bounded
-  reconciliation job converge on Medusa's idempotent complete-cart workflow.
+- Browser completion and a bounded reconciliation job use Medusa's idempotent
+  complete-cart workflow. Medusa's official Stripe webhook processes the
+  authoritative payment events that inform those completion paths.
 - The `completeCartWorkflow.validate` hook rejects non-USD, non-finite,
   over-precision, non-Stripe, duplicate-session, amount-mismatch, and
   currency-mismatch states using the same locked cart snapshot that Medusa uses
   to create the order.
 - Positive totals require exactly one processable `pp_stripe_stripe` payment
   session. Zero totals never create a Stripe PaymentIntent.
-- Automatic capture remains disabled until exact amount mapping, successful
-  completion, compensation, webhook, and reconciliation behavior pass in the
-  Stripe sandbox.
+- Automatic capture is enabled for the ordinary stocked-goods flow after the
+  major-unit migration and locked amount contract passed in staging. Production
+  remains a separate approval.
 - Customer confirmation requires a Medusa order linked to the signed cart and
   a short-lived receipt grant. A Stripe redirect or success state alone is not
   confirmation.
-- The custom Checkout Session creation path stops accepting new traffic only
-  after the official provider path passes staging proof. Historical lookup is
-  retained temporarily and removed after review.
+- The custom Checkout Session creation route, custom webhook, public session
+  lookup, and duplicate confirmation pages are retired. They must not be
+  restored as a rollback path.
 
 ## Consequences
 
@@ -85,11 +86,12 @@ The rollout order is:
 2. install the locked amount/currency validation hook;
 3. prove one disposable Stripe test PaymentIntent maps exactly;
 4. build and test semantic server contracts;
-5. prove automatic capture, webhook completion, and compensation in the
+5. prove automatic capture, signed webhook delivery, and compensation in the
    sandbox;
 6. replace the browser UI with Payment Element;
 7. run the complete failure, recovery, accessibility, and device matrix;
-8. request separate production approval.
+8. retire the parallel custom Stripe authority;
+9. request separate production approval.
 
 ## References
 

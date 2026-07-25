@@ -1,11 +1,12 @@
 # Remorseless Records Monorepo
 
-Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Next.js 16 (React 19) storefront, Stripe Checkout, Meilisearch discovery, and Resend emails — all wired for Railway deployments and polished local DX.
+Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Next.js 16 (React 19) storefront, Stripe Payment Element, Meilisearch discovery, and Resend emails—all wired for Railway deployments and polished local DX.
 
 ## Contents
 
 - [Architecture](#architecture)
 - [Shopping Cart: Plain-English Guide](#shopping-cart-plain-english-guide)
+- [Checkout and Payment: Plain-English Guide](#checkout-and-payment-plain-english-guide)
 - [Money and Price Units](#money-and-price-units)
 - [Prerequisites](#prerequisites)
 - [Repository Setup](#repository-setup)
@@ -13,7 +14,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 - [Running the Backend Locally](#running-the-backend-locally)
 - [Running the Storefront Locally](#running-the-storefront-locally)
 - [Using Railway/Staging Environment Variables Locally](#using-railwaystaging-environment-variables-locally)
-- [Stripe Checkout & Webhooks](#stripe-checkout--webhooks)
+- [Stripe Payment Element & Webhooks](#stripe-payment-element--webhooks)
 - [Search (Meilisearch)](#search-meilisearch)
 - [Email (Resend)](#email-resend)
 - [Troubleshooting](#troubleshooting)
@@ -24,15 +25,15 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 
 ```
 /
-├── backend/      # MedusaJS 2.x server (Stripe checkout, webhooks, Meilisearch, emails)
+├── backend/      # MedusaJS 2.x server (commerce, Stripe provider, search, email)
 ├── storefront/   # Next.js 16 / React 19 App Router storefront
 ├── node_modules/ # monorepo root dependencies (pnpm workspace)
 ├── pnpm-workspace.yaml
 └── README.md
 ```
 
-- **Backend**: Medusa core services plus Stripe Checkout session endpoint, webhook handler, Resend-powered notifications, Meilisearch sync helpers.
-- **Storefront**: Next 16 App Router with React Compiler enabled, brutal UI spec, Stripe Checkout redirect, Meilisearch-powered search, variant selectors, optimistic cart updates.
+- **Backend**: Medusa core services, the official Stripe payment provider and webhook, Resend-powered notifications, retention/reconciliation jobs, and Meilisearch sync helpers.
+- **Storefront**: Next 16 App Router with React Compiler enabled, semantic same-origin cart/checkout APIs, Stripe Payment Element, Meilisearch-powered search, variant selectors, and optimistic cart updates.
 - **Package management**: `pnpm` 11.17.0. Node 26.5.0 is enforced through `.nvmrc`.
 
 ## Shopping Cart: Plain-English Guide
@@ -272,13 +273,12 @@ for an invalid or unavailable item, `429` for rate limiting, and `504` for an
 upstream timeout. The drawer turns those responses into useful shopper-facing
 feedback and restores optimistic state when necessary.
 
-### What this cart work deliberately does not do
+### Where cart stops and checkout begins
 
-This phase changed the cart only. It did **not** redesign checkout, create
-payment sessions, modify Stripe, collect shipping addresses, calculate final
-tax, or complete orders. The drawer's checkout button only hands the current
-Medusa cart to the existing `/checkout` flow. Checkout and payment behavior
-should be audited as a separate project.
+The drawer owns item selection and quantity changes. Its Checkout button hands
+the signed server cart to the dedicated checkout system described below.
+Checkout then collects contact and delivery details, asks Medusa for shipping
+and tax, prepares the official Stripe payment session, and completes the order.
 
 ### Where the implementation lives
 
@@ -344,6 +344,146 @@ future changes.
 - Backend, storefront, and root GitHub CI passed, and the final Railway staging
   backend/storefront deployments both reported `SUCCESS`.
 
+## Checkout and Payment: Plain-English Guide
+
+Checkout is a four-step page—Contact, Delivery address, Delivery method, and
+Payment—with a responsive order summary. The browser never supplies a cart ID,
+price, tax, shipping amount, PaymentIntent ID, or order ID. It sends small
+requests to same-origin Next.js endpoints, and the server resolves the signed
+`rr_cart_v1` cookie before asking Medusa for authoritative data.
+
+### Who owns what
+
+| Component         | Authority                                                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Medusa            | Cart, prices, promotions, shipping, tax, inventory, payment collection, order, reservation, capture/refund lifecycle |
+| Stripe            | Secure card/wallet collection and processing for Medusa's one payment session                                        |
+| Storefront server | Signed cart identity, validated checkout commands, safe projections, rate limits, recovery, and receipt grants       |
+| Browser           | Form input and presentation only; it cannot choose identifiers or totals                                             |
+
+There is exactly one payment integration. Medusa's official
+`@medusajs/payment-stripe` provider creates the PaymentIntent. The old custom
+Stripe Checkout Session route, custom Stripe webhook, Card Element, and public
+session lookup have been removed. This matters because two payment authorities
+could disagree about the amount charged or whether an order exists.
+
+### Normal paid-order flow
+
+```text
+Browser                   Storefront BFF            Medusa              Stripe
+  | GET /api/checkout          |                      |                    |
+  |--------------------------->| signed cart lookup   |                    |
+  |                            |--------------------->| cart projection    |
+  | contact/address/shipping   |                      |                    |
+  |--------------------------->| validate + rate limit|                    |
+  |                            |--------------------->| save/recalculate   |
+  | POST payment-session       |                      |                    |
+  |--------------------------->| revision preflight   |                    |
+  |                            |--------------------->| official session   |
+  |                            |                      |------------------->| PI
+  | Payment Element receives only the client secret                       |
+  |--------------------------------------------------------------------->|
+  | confirmPayment             |                      |                    |
+  |--------------------------------------------------------------------->|
+  | POST complete              | locked total/payment validation           |
+  |--------------------------->|--------------------->| complete cart/order |
+  | receipt grant + confirmation                     |                    |
+```
+
+Every checkout projection includes a SHA-256 revision of the exact
+customer-facing cart snapshot. Immediately before preparing payment and again
+before completing the cart, the server recalculates shipping/tax and compares
+that revision. If anything changed, payment is not submitted; the shopper sees
+the new total and reviews it.
+
+The backend also installs a hook inside Medusa's locked complete-cart workflow.
+For a positive USD total it requires exactly one official Stripe session and
+checks the cart, payment collection, and payment session currencies and amounts
+for an exact major-unit match. A zero-dollar order bypasses Stripe entirely.
+
+### Payment methods and card-data boundary
+
+The Stripe Payment Method Configuration is constrained to card, Link, Apple
+Pay, and Google Pay. Payment Element decides which eligible methods the current
+browser can show. Card numbers, CVCs, wallet credentials, and payment-method
+tokens stay inside Stripe-hosted frames; application routes and logs never
+receive them.
+
+Only `NEXT_PUBLIC_STRIPE_PK` is browser-safe. `STRIPE_API_KEY`,
+`STRIPE_WEBHOOK_SECRET`, `CHECKOUT_BFF_SECRET`, and
+`CHECKOUT_RECEIPT_SECRET` are server-only. Staging must use `pk_test_` /
+`sk_test_` credentials and a non-live Payment Method Configuration.
+
+### Why Stripe success is not yet an order
+
+Stripe can confirm a payment before Medusa finishes inventory reservation and
+order creation. The UI therefore never treats a Stripe redirect or
+PaymentIntent result as confirmation. Confirmation requires an order linked to
+the signed cart and a completed cart record.
+
+Two completion paths use Medusa's idempotent complete-cart workflow, while the
+official signed Stripe webhook keeps Medusa's payment state authoritative:
+
+1. the browser calls the semantic complete endpoint after `confirmPayment`;
+2. Medusa's official signed Stripe webhook processes payment events;
+3. a capped two-minute reconciliation job calls the same completion workflow
+   for an old incomplete cart only
+   when it has exactly one authorized/captured official Stripe session and no
+   linked order.
+
+If a response is lost, a tab closes, a 3DS redirect returns, or the network
+fails after confirmation begins, the UI routes to `/checkout/recover` and
+polls a server-to-server HMAC-protected status endpoint. It explicitly says not
+to pay again. Confirmed status issues a 30-minute signed, HttpOnly receipt
+grant; `/checkout/confirmation` uses that grant to fetch a privacy-limited
+receipt. Raw order and payment identifiers never enter a URL.
+
+The return handler strips every Stripe query parameter with a `303` redirect
+before rendering recovery. Legacy `/checkout/success` and `/order/confirmed`
+links also redirect into the same clean recovery path.
+
+### Checkout data lifetime
+
+- The opaque cart cookie lasts 30 inactive days after a successful cart item
+  change.
+- Anonymous carts that never supplied email are eligible for the existing
+  backend cleanup after 37 days.
+- Guest checkouts containing email/address PII use a separate 37-day job. It
+  excludes customer carts, completed/order-linked carts, and every unresolved
+  or successful payment state. Only unused pending/canceled/error sessions are
+  canceled through Medusa before the cart is soft-deleted.
+- The receipt grant lasts 30 minutes; afterward the emailed receipt is the
+  durable customer record.
+
+Both deletion jobs are disabled by default, capped, lock-protected, and re-read
+eligibility immediately before mutation. Reconciliation is also disabled by
+default and never creates or confirms a Stripe payment.
+
+### Semantic checkout endpoints
+
+| Endpoint                             | Purpose                                                 |
+| ------------------------------------ | ------------------------------------------------------- |
+| `GET /api/checkout`                  | Safe active-cart projection                             |
+| `PUT /api/checkout/contact`          | Validate and save receipt email                         |
+| `PUT /api/checkout/delivery-address` | Validate and save US shipping/billing address           |
+| `GET /api/checkout/shipping-options` | Medusa-authoritative options                            |
+| `PUT /api/checkout/shipping-method`  | Recheck option and calculate final tax                  |
+| `POST /api/checkout/payment-session` | Revision check and official Stripe session preparation  |
+| `POST /api/checkout/complete`        | Final locked validation and idempotent order completion |
+| `GET /api/checkout/status`           | Privacy-safe recovery state                             |
+| `GET /api/checkout/confirmation`     | Receipt projection authorized by the receipt cookie     |
+
+All responses are non-cacheable. Mutations enforce same-origin request headers,
+small strict JSON schemas, bounded upstream timeouts, and Redis-backed rate
+limits. Browser response schemas are validated again with Zod. Checkout queries
+and client secrets are explicitly excluded from persisted TanStack Query data.
+
+Implementation decisions are recorded in
+[`docs/adr/0001-checkout-payment-authority.md`](docs/adr/0001-checkout-payment-authority.md).
+The full test and incident procedures are in
+[`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK.md) and
+[`docs/CHECKOUT_OPERATIONS.md`](docs/CHECKOUT_OPERATIONS.md).
+
 ## Money and Price Units
 
 Medusa v2 uses **major currency units** throughout its commerce model. In plain
@@ -358,10 +498,10 @@ amount is sent to or received from Stripe as `2300`. Conversion belongs only in
 the Stripe adapter/provider. The browser must never multiply prices, and
 Medusa/PostgreSQL values must never be divided merely for display.
 
-| Boundary                         | Example for USD 23.00 | Rule                                                         |
-| -------------------------------- | --------------------- | ------------------------------------------------------------ |
-| Medusa, PostgreSQL, search, UI   | `23`                  | Major units are the application-wide source of truth.        |
-| Stripe request/response payloads | `2300`                | Convert once at the explicitly named Stripe boundary.        |
+| Boundary                         | Example for USD 23.00 | Rule                                                          |
+| -------------------------------- | --------------------- | ------------------------------------------------------------- |
+| Medusa, PostgreSQL, search, UI   | `23`                  | Major units are the application-wide source of truth.         |
+| Stripe request/response payloads | `2300`                | Convert once at the explicitly named Stripe boundary.         |
 | Source-review import artifact    | `2300` cents          | Kept as source evidence; uploader output converts to `23.00`. |
 
 ### Why a guarded migration exists
@@ -465,22 +605,29 @@ cp .env.template .env
 
 Key variables (non-empty values required for full functionality):
 
-| Variable                                 | Notes                                                                        |
-| ---------------------------------------- | ---------------------------------------------------------------------------- |
-| `DATABASE_URL`                           | PostgreSQL connection string                                                 |
-| `REDIS_URL`                              | Required when deployed; powers distributed events, workflows, and cart locks |
-| `STRIPE_API_KEY`                         | Stripe secret key (_sk\_..._)                                                |
-| `STRIPE_WEBHOOK_SECRET`                  | Endpoint secret for Medusa's official `/hooks/payment/stripe_stripe` webhook |
-| `STRIPE_PAYMENT_METHOD_CONFIGURATION`    | Active Stripe `pmc_...` limited to card, Link, Apple Pay, and Google Pay      |
-| `BACKEND_PUBLIC_URL`                     | External URL used in webhooks (e.g., `http://localhost:9000`)                |
-| `RESEND_API_KEY`                         | Optional; required for transactional mail                                    |
-| `MEILISEARCH_HOST`                       | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
-| `MEILISEARCH_ADMIN_KEY`                  | Corresponding admin/master key                                               |
-| `JWT_SECRET`, `COOKIE_SECRET`            | Medusa auth secrets (high entropy)                                           |
-| `MINIO_*`                                | Optional. Railway template populates these for object storage                |
-| `ANONYMOUS_CART_RETENTION_ENABLED`       | Enables daily anonymous-cart soft deletion (default `false`)                 |
-| `ANONYMOUS_CART_RETENTION_DAYS`          | Inactivity retention; minimum/default `37` days                              |
-| `ANONYMOUS_CART_RETENTION_MAX_DELETIONS` | Per-run safety cap; default `1000`                                           |
+| Variable                                     | Notes                                                                        |
+| -------------------------------------------- | ---------------------------------------------------------------------------- |
+| `DATABASE_URL`                               | PostgreSQL connection string                                                 |
+| `REDIS_URL`                                  | Required when deployed; powers distributed events, workflows, and cart locks |
+| `STRIPE_API_KEY`                             | Stripe secret key (_sk\_..._)                                                |
+| `STRIPE_WEBHOOK_SECRET`                      | Endpoint secret for Medusa's official `/hooks/payment/stripe_stripe` webhook |
+| `STRIPE_PAYMENT_METHOD_CONFIGURATION`        | Active Stripe `pmc_...` limited to card, Link, Apple Pay, and Google Pay     |
+| `CHECKOUT_BFF_SECRET`                        | Shared 32+ character HMAC key; identical on backend and storefront           |
+| `CHECKOUT_RECONCILIATION_ENABLED`            | Enables the bounded missed-completion safety net (default `false`)           |
+| `CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS`    | Minimum finalized-payment age before retry; default `120`, minimum `60`      |
+| `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS`       | Per-run completion-attempt cap; default `50`, maximum `250`                  |
+| `BACKEND_PUBLIC_URL`                         | External URL used in webhooks (e.g., `http://localhost:9000`)                |
+| `RESEND_API_KEY`                             | Optional; required for transactional mail                                    |
+| `MEILISEARCH_HOST`                           | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
+| `MEILISEARCH_ADMIN_KEY`                      | Corresponding admin/master key                                               |
+| `JWT_SECRET`, `COOKIE_SECRET`                | Medusa auth secrets (high entropy)                                           |
+| `MINIO_*`                                    | Optional. Railway template populates these for object storage                |
+| `ANONYMOUS_CART_RETENTION_ENABLED`           | Enables daily anonymous-cart soft deletion (default `false`)                 |
+| `ANONYMOUS_CART_RETENTION_DAYS`              | Inactivity retention; minimum/default `37` days                              |
+| `ANONYMOUS_CART_RETENTION_MAX_DELETIONS`     | Per-run safety cap; default `1000`                                           |
+| `ABANDONED_CHECKOUT_RETENTION_ENABLED`       | Enables guest-checkout PII cleanup (default `false`)                         |
+| `ABANDONED_CHECKOUT_RETENTION_DAYS`          | Inactivity retention; minimum/default `37` days                              |
+| `ABANDONED_CHECKOUT_RETENTION_MAX_DELETIONS` | Per-run safety cap; default `250`, maximum `2500`                            |
 
 ### Storefront (`storefront/.env.local`)
 
@@ -505,6 +652,8 @@ Required values:
 | `REDIS_URL`                                        | Server-only Redis connection used for cart retries and shared rate limits |
 | `CART_COOKIE_SECRET`                               | Server-only signing secret; use at least 32 random characters             |
 | `CART_COOKIE_SECRET_PREVIOUS`                      | Optional former signing secret used only during a planned rotation        |
+| `CHECKOUT_BFF_SECRET`                              | Same server-only HMAC key configured on the backend                       |
+| `CHECKOUT_RECEIPT_SECRET`                          | Different server-only 32+ character receipt-signing key                   |
 
 ### Example local `.env`
 
@@ -517,6 +666,9 @@ BACKEND_PUBLIC_URL=http://localhost:9000
 STRIPE_API_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PAYMENT_METHOD_CONFIGURATION=pmc_...
+CHECKOUT_BFF_SECRET=replace-with-at-least-32-random-characters
+CHECKOUT_RECONCILIATION_ENABLED=false
+ABANDONED_CHECKOUT_RETENTION_ENABLED=false
 MEILISEARCH_HOST=http://127.0.0.1:7700
 MEILISEARCH_ADMIN_KEY=masterKey
 RESEND_API_KEY=re_a1b2c3...
@@ -532,6 +684,8 @@ NEXT_PUBLIC_STRIPE_PK=pk_test_...
 NEXT_PUBLIC_MEILI_HOST=http://127.0.0.1:7700
 NEXT_PUBLIC_MEILI_SEARCH_KEY=searchKey
 MEDUSA_BACKEND_URL=http://localhost:9000
+CHECKOUT_BFF_SECRET=replace-with-the-same-backend-secret
+CHECKOUT_RECEIPT_SECRET=replace-with-a-different-32-character-secret
 ```
 
 ## Running the Backend Locally
@@ -550,8 +704,8 @@ MEDUSA_BACKEND_URL=http://localhost:9000
    ```
 
    - Healthcheck: `GET http://localhost:9000/api/health`
-   - Stripe webhook endpoint: `POST http://localhost:9000/api/webhooks/stripe`
-   - Stripe checkout session endpoint: `POST http://localhost:9000/store/checkout/stripe-session`
+   - Official Stripe webhook: `POST http://localhost:9000/hooks/payment/stripe_stripe`
+   - Internal checkout recovery: `POST http://localhost:9000/store/checkout/status`
 
 5. **Production build check (optional)**
    ```bash
@@ -616,28 +770,41 @@ To mirror staging settings locally:
 
 > Always validate that secrets fetched from Railway do not overwrite local development-only values unintentionally (e.g., pointing to production Stripe keys).
 
-## Stripe Checkout & Webhooks
+## Stripe Payment Element & Webhooks
 
-### Session Creation
+### Payment preparation
 
-- Storefront server action `start-stripe-checkout` posts to backend `/store/checkout/stripe-session`.
-- Backend verifies cart contents and creates Stripe Checkout Session with `automatic_tax` enabled.
-- Cart metadata stores Stripe session ID for reconciliation.
+- The browser posts only the current checkout revision to
+  `/api/checkout/payment-session`.
+- The storefront server resolves the signed cart cookie, recalculates totals,
+  and asks Medusa to initialize the official `pp_stripe_stripe` payment
+  session.
+- The browser receives the Payment Element client secret. It never receives a
+  secret key, raw cart ID, PaymentIntent ID, or order ID.
+- Repeated preparation reuses the one valid session; authorized or captured
+  sessions are never silently replaced.
 
 ### Webhook Handling
 
-- Endpoint: `POST /api/webhooks/stripe`
-- Validates signature (requires `STRIPE_WEBHOOK_SECRET`).
-- On `checkout.session.completed` with status `paid`, Medusa `completeCartWorkflow` finalizes the order, updates metadata to prevent duplicate processing, and stores Stripe IDs.
+- Endpoint: `POST /hooks/payment/stripe_stripe`
+- Medusa's official Stripe provider validates the raw-body signature using
+  `STRIPE_WEBHOOK_SECRET`.
+- The registered endpoint listens only for
+  `payment_intent.amount_capturable_updated`, `payment_intent.succeeded`,
+  `payment_intent.payment_failed`, and `payment_intent.partially_funded`.
+- Never point the endpoint at the removed `/api/webhooks/stripe` route.
 
 ### Local testing
 
 ```bash
 stripe login
-stripe listen --forward-to localhost:9000/api/webhooks/stripe
+stripe listen --forward-to localhost:9000/hooks/payment/stripe_stripe
 ```
 
-Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
+Set `STRIPE_WEBHOOK_SECRET` to the temporary `whsec_...` printed by
+`stripe listen` for that local process. Use only Stripe test-mode keys. See the
+QA and operations runbooks for the card, 3DS, decline, response-loss, webhook,
+and browser-close matrices.
 
 ## Search (Meilisearch)
 
@@ -671,13 +838,16 @@ Ensure `STRIPE_WEBHOOK_SECRET` matches the value printed by Stripe CLI.
 
 ## Troubleshooting
 
-| Symptom                                        | Resolution                                                                                                                                |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.5.0.                                                    |
-| Storefront shows empty cart despite items      | Check `rr_cart_v1` for the storefront domain, the cart-signing secret/previous secret, and the same-origin `/api/cart` response.          |
-| Search results empty                           | Confirm Meilisearch index name (`products`), API keys, and that documents exist. Backend fallback logs to console when Meili query fails. |
-| Webhook signature errors                       | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL.              |
-| React Compiler warnings                        | `next.config.ts` already enables `reactCompiler`. Ensure lint errors are fixed; the compiler is strict about invalid hooks usage.         |
+| Symptom                                        | Resolution                                                                                                                                                                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.5.0.                                                                                              |
+| Storefront shows empty cart despite items      | Check `rr_cart_v1` for the storefront domain, the cart-signing secret/previous secret, and the same-origin `/api/cart` response.                                                    |
+| Payment form does not load                     | Verify test/live key mode matches, the `pmc_...` is active, Stripe origins are allowed by CSP/Permissions-Policy, and `/api/checkout/payment-session` returns one official session. |
+| “Do not pay again” recovery persists           | Check official webhook delivery, backend `/store/checkout/status`, and the capped reconciliation aggregate before permitting another attempt.                                       |
+| Confirmed payment has no order                 | Follow `docs/CHECKOUT_OPERATIONS.md`; leave webhook/reconciliation running and do not manually create an order or re-submit payment.                                                |
+| Search results empty                           | Confirm Meilisearch index name (`products`), API keys, and that documents exist. Backend fallback logs to console when Meili query fails.                                           |
+| Webhook signature errors                       | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL.                                                        |
+| React Compiler warnings                        | `next.config.ts` already enables `reactCompiler`. Ensure lint errors are fixed; the compiler is strict about invalid hooks usage.                                                   |
 
 ## CI Pipelines
 
@@ -698,15 +868,17 @@ Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK
 - `pnpm exec eslint --ext .ts,.tsx src` and `pnpm run typecheck` (storefront) / `pnpm --filter backend exec tsc --noEmit` before commits.
 - Monorepo check shortcut: `pnpm run qa:lint` (lint + typecheck for storefront and backend).
 - Reindex search after catalog bulk changes: `pnpm --filter backend run search:sync` (use `pnpm --filter backend run search:check` to compare Medusa vs. Meilisearch counts).
-- Keyboard and screen-reader sweeps on header, Quick Shop, PDP, cart. Document in runbook checklist.
+- Keyboard and screen-reader sweeps on header, Quick Shop, PDP, cart, checkout,
+  recovery, and confirmation. Document in the runbook checklist.
 - Lighthouse (desktop + mobile) on `/`, `/catalog`, a typed detail route (`/music-release/{slug}`, `/bundle/{slug}`, or `/merch/{slug}`), and the legacy `/cart` drawer entry targeting LCP < 2.5s and A11y ≥ 95. Exercise the drawer interactions separately in Playwright.
-- Stripe standard + 3DS test cards, confirm webhook metadata and Medusa order creation.
+- Stripe success, 3DS, decline, processing-error, duplicate, response-loss,
+  browser-close, webhook, recovery, and receipt-TTL cases in test mode only.
 - Automated bundle: `QA_BASE_URL=<deployed url> pnpm run qa:ci` (runs lint/typecheck, pa11y axe audits, and Lighthouse assertions). Optional overrides: `QA_PRODUCT_PATH=/music-release/{slug}`, `QA_EXTRA_URLS=/custom`.
 
 ### Support
 
 - Medusa docs: https://docs.medusajs.com/
-- Stripe docs: https://stripe.com/docs/payments/checkout
+- Stripe Payment Element docs: https://docs.stripe.com/payments/payment-element
 - Meilisearch docs: https://www.meilisearch.com/docs
 - Railway docs: https://docs.railway.app/
 

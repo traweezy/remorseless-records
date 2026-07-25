@@ -22,10 +22,18 @@ This document outlines repeatable steps for validating Remorseless Records befor
    - On `/catalog`, open a Quick Shop modal and change variants; ensure focus is trapped and `Esc` closes it.
    - On a typed product detail route (`/music-release/[slug]`, `/bundle/[slug]`, or `/merch/[slug]`), confirm the variant selector is keyboard-operable and “Add to cart” updates the toast.
    - On `/bundle/[slug]`, confirm the fixed composition remains visible when an item is sold out, the card/detail sold-out indicators are textual, and the affected bundle variant cannot be added.
-   - On `/cart`, adjust quantities and submit checkout.
+   - On `/cart`, adjust quantities and open checkout.
+   - On `/checkout`, submit empty Contact and Delivery forms. Confirm focus
+     moves to the invalid field/error summary and every summary item focuses
+     its field.
+   - Complete Contact, Delivery, and Delivery method using only the keyboard.
+     Confirm Payment Element fields and Place order remain keyboard-operable.
 3. Launch VoiceOver (macOS) or NVDA (Windows):
    - Read the product page, ensuring variant options announce the selected state.
    - Verify Quick Shop modal announces title, description, and product image alt text.
+   - Verify checkout section state, shipping radios, payment errors, recovery
+     status, and confirmation receipt updates are announced without duplicate
+     or raw technical details.
 
 ### 1.2 Mobile Device Rendering
 
@@ -35,7 +43,8 @@ touch input, mobile viewport, and safe-area behavior match a phone.
 
 1. Validate at least the `Pixel 7` and `iPhone 15 Pro` Chrome device profiles.
 2. Check `/`, `/catalog`, a representative route for each typed product family,
-   and `/cart`.
+   `/cart`, `/checkout`, `/checkout/recover`, and a granted
+   `/checkout/confirmation`.
 3. Confirm the document width matches the viewport width (`scrollWidth ===
 clientWidth`); intentional carousels must clip or scroll within their own
    container instead of widening the page.
@@ -79,37 +88,73 @@ pnpm --filter backend exec tsc --noEmit
 
 ---
 
-## 2. Stripe Payment Matrix
+## 2. Stripe Payment Element Matrix
 
 ### 2.1 Environment
 
-- Ensure backend `.env` includes `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`.
+- Ensure backend `.env` includes `STRIPE_API_KEY`,
+  `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PAYMENT_METHOD_CONFIGURATION`.
+- Ensure backend and storefront share `CHECKOUT_BFF_SECRET`; the storefront
+  also needs a different `CHECKOUT_RECEIPT_SECRET`.
+- Verify every key/object is test mode before continuing. Do not use real card
+  details or a live Stripe object.
 - Start backend and listen for Stripe webhooks:
 
 ```bash
 stripe login
-stripe listen --forward-to localhost:9000/api/webhooks/stripe
+stripe listen \
+  --events payment_intent.amount_capturable_updated,payment_intent.succeeded,payment_intent.payment_failed,payment_intent.partially_funded \
+  --forward-to localhost:9000/hooks/payment/stripe_stripe
 ```
 
 Record the webhook secret printed by the CLI and mirror it in `.env`.
 
 ### 2.2 Test Cards
 
-| Scenario           | Card                                                                                                                 | Expected                                  |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Standard payment   | `4242 4242 4242 4242`                                                                                                | Checkout completes → Medusa order created |
-| 3DS challenge      | `4000 0027 6000 3184`                                                                                                | 3DS modal appears, confirm success        |
-| Insufficient funds | `4000 0000 0000 9995`                                                                                                | Stripe declines, storefront shows error   |
-| Refund flow        | Run successful payment above, then trigger refund in Medusa admin/dashboard and confirm Stripe + order status update |
+| Scenario           | Card                  | Expected                                  |
+| ------------------ | --------------------- | ----------------------------------------- |
+| Standard payment   | `4242 4242 4242 4242` | One PaymentIntent and Medusa order        |
+| 3DS authentication | `4000 0025 0000 3155` | Authentication, clean recovery, one order |
+| Generic decline    | `4000 0000 0000 0002` | Safe decline; no order                    |
+| Insufficient funds | `4000 0000 0000 9995` | Specific safe decline; no order           |
+| Expired card       | `4000 0000 0000 0069` | Expired-card error; no order              |
+| Incorrect CVC      | `4000 0000 0000 0127` | CVC error; no order                       |
+| Processing error   | `4000 0000 0000 0119` | Safe retry/recovery; no duplicate         |
+| Invalid number     | `4242 4242 4242 4241` | Inline validation; no request             |
 
 For each run:
 
 1. Create cart with ≥1 item.
-2. Checkout via storefront (Quick Shop or PDP).
-3. After redirect, ensure `/order/confirmed` loads with correct data.
-4. Inspect backend logs for webhook processing (`stripe_checkout_completed_event_id` metadata) to confirm idempotency.
+2. Complete Contact, Delivery address, and an authoritative Delivery method.
+3. Confirm the Payment Element amount matches the Medusa cart exactly.
+4. Complete the payment and ensure `/checkout/confirmation` shows only after
+   a linked completed Medusa order exists.
+5. Verify the cart cookie clears and the short-lived receipt cookie is HttpOnly
+   and scoped to `/api/checkout/confirmation`.
+6. Confirm the receipt and order email amounts/items/address match Medusa.
+7. Inspect Stripe Workbench delivery and backend aggregate logs; never print a
+   client secret or customer/payment object.
 
 Document results in PR or release notes.
+
+### 2.3 Recovery and concurrency
+
+Run all of the following in staging test mode:
+
+- double-click/Enter on Place order;
+- two tabs submitting the same signed cart;
+- refresh and browser close after `confirmPayment`;
+- lost/delayed complete response;
+- delayed and duplicate official webhook;
+- arbitrary Stripe parameters on `/checkout/return`;
+- recovery polling through processing/finalizing/confirmed/failed states;
+- revisit confirmation before and after the 30-minute receipt TTL;
+- address/shipping/cart change in another tab before payment.
+
+Every path must yield at most one charge and one order. An uncertain result must
+say not to pay again and route through recovery. See
+[`CHECKOUT_OPERATIONS.md`](CHECKOUT_OPERATIONS.md) for exact incident and
+rollback procedures.
 
 ---
 
@@ -167,6 +212,7 @@ Fill in observed counts in the release checklist.
 - [ ] Lighthouse thresholds met on target routes.
 - [ ] Keyboard and screen-reader smoke tests completed.
 - [ ] Stripe payment matrix executed, webhook confirmed.
+- [ ] Recovery/concurrency matrix creates no duplicate charge or order.
 - [ ] Meilisearch CRUD validation performed, counts recorded.
 - [ ] README/QA runbook updated if new steps discovered.
 
