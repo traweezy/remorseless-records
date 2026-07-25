@@ -30,7 +30,7 @@ packageExtensions:
         optional: true
       "@types/react-dom":
         optional: true
-  "lucide-react@1.25.0":
+  "lucide-react@1.26.0":
     peerDependencies:
       "@types/react": "*"
     peerDependenciesMeta:
@@ -87,7 +87,7 @@ overrides:
   "picomatch@<2.3.2": ^2.3.2
   "picomatch@>=4.0.0 <4.0.4": ^4.0.4
   posthog-node: ^5.46.1
-  postcss: ^8.5.15
+  postcss: ^8.5.23
   protobufjs: ^7.6.5
   qs: ^6.15.2
   react-router: 6.30.4
