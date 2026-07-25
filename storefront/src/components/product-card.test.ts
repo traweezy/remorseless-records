@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { resolveCollectionRibbonLabel } from "@/components/product-card"
+import {
+  resolveCollectionRibbonLabel,
+  resolveProductCardBadge,
+} from "@/components/product-card"
 import type { ProductSearchHit } from "@/types/product"
 
 const searchHit: ProductSearchHit = {
@@ -31,6 +34,14 @@ const searchHit: ProductSearchHit = {
 
 describe("product card ribbons", () => {
   it("uses the client-prioritized ribbon indexed with a search hit", () => {
-    expect(resolveCollectionRibbonLabel(searchHit, searchHit)).toBe("Staff Pick")
+    expect(resolveCollectionRibbonLabel(searchHit, searchHit)).toBe(
+      "Staff Pick"
+    )
+  })
+
+  it("uses the merchandising shelf ribbon in shelf context", () => {
+    expect(resolveProductCardBadge(searchHit, searchHit, "Featured")).toBe(
+      "Featured"
+    )
   })
 })

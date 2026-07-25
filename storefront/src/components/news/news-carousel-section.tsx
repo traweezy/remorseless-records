@@ -1,15 +1,13 @@
 "use client"
 
-import { useMemo, useRef, type ReactElement } from "react"
+import { useCallback, useMemo, type ReactElement } from "react"
 import { Splide, SplideSlide } from "@splidejs/react-splide"
+import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
 
 import NewsCarouselCard from "@/components/news/news-carousel-card"
-import {
-  getCarouselNavigation,
-  normalizeCarouselSlideRoles,
-  type CarouselNavigation,
-} from "@/components/ui/carousel"
+import CarouselMotionToggle from "@/components/ui/carousel-motion-toggle"
 import { SectionHeading } from "@/components/ui/section-heading"
+import { useCarouselAutoScroll } from "@/hooks/use-carousel-auto-scroll"
 import type { NewsEntry } from "@/lib/data/news"
 
 import "@splidejs/react-splide/css"
@@ -37,7 +35,13 @@ export const NewsCarouselSection = ({
   description,
   entries,
 }: NewsCarouselSectionProps): ReactElement | null => {
-  const splideRef = useRef<CarouselNavigation | null>(null)
+  const {
+    destroy: destroyAutoScroll,
+    go,
+    isPaused,
+    mount: mountAutoScroll,
+    toggle,
+  } = useCarouselAutoScroll()
 
   const slides = useMemo<NewsEntry[]>(
     () => entries.filter((entry) => entry.status === "published"),
@@ -62,20 +66,23 @@ export const NewsCarouselSection = ({
     return extended
   }, [slides])
 
+  const handleWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      const { deltaX, deltaY } = event
+      const dominantHorizontal =
+        Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 4
+      if (!dominantHorizontal) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      go(deltaX > 0 ? "+1" : "-1")
+    },
+    [go]
+  )
+
   if (!slides.length) {
     return null
-  }
-
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    const { deltaX, deltaY } = event
-    const dominantHorizontal =
-      Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 4
-    if (!dominantHorizontal || !splideRef.current) {
-      return
-    }
-    event.preventDefault()
-    event.stopPropagation()
-    splideRef.current.go(deltaX > 0 ? "+1" : "-1")
   }
 
   return (
@@ -86,57 +93,74 @@ export const NewsCarouselSection = ({
         description={description}
       />
 
-      <div className="product-carousel">
-        <div className="product-carousel__container" onWheel={handleWheel}>
-          <Splide
-            className="product-carousel__splide"
-            aria-label={`${heading.leading} ${heading.highlight}`}
-            options={{
-              type: "loop",
-              pagination: false,
-              drag: true,
-              perPage: perPageByBreakpoint.default,
-              perMove: 1,
-              speed: 420,
-              easing: "cubic-bezier(0.33, 1, 0.68, 1)",
-              gap: "clamp(16px, 2vw, 24px)",
-              pauseOnHover: true,
-              pauseOnFocus: true,
-              wheel: false,
-              arrows: slides.length > 1,
-              trimSpace: false,
-              classes: {
-                arrows: "product-carousel__arrows",
-                arrow: "product-carousel__arrow",
-                prev: "product-carousel__arrow product-carousel__arrow--left",
-                next: "product-carousel__arrow product-carousel__arrow--right",
-              },
-              breakpoints: {
-                1440: { perPage: perPageByBreakpoint["1440"] },
-                1200: { perPage: perPageByBreakpoint["1200"] },
-                768: { perPage: perPageByBreakpoint["768"] },
-              },
-            }}
-            hasTrack
-            onMounted={(splide: unknown) => {
-              normalizeCarouselSlideRoles(splide)
-              splideRef.current = getCarouselNavigation(splide)
-            }}
-            onDestroy={() => {
-              splideRef.current = null
-            }}
-          >
-            {filledSlides.map((entry, index) => (
-              <SplideSlide
-                key={`${entry.id}-${index}`}
-                className="product-carousel__slide"
-              >
-                <div className="product-carousel__card">
-                  <NewsCarouselCard entry={entry} />
-                </div>
-              </SplideSlide>
-            ))}
-          </Splide>
+      <div>
+        {slides.length > 1 ? (
+          <div className="mb-3 flex justify-end px-1 sm:px-2">
+            <CarouselMotionToggle
+              carouselLabel={`${heading.leading} ${heading.highlight} carousel`}
+              isPaused={isPaused}
+              onToggle={toggle}
+            />
+          </div>
+        ) : null}
+        <div className="product-carousel">
+          <div className="product-carousel__container" onWheel={handleWheel}>
+            <Splide
+              className="product-carousel__splide"
+              aria-label={`${heading.leading} ${heading.highlight}`}
+              options={{
+                type: "loop",
+                pagination: false,
+                drag: true,
+                perPage: perPageByBreakpoint.default,
+                perMove: 1,
+                speed: 420,
+                easing: "cubic-bezier(0.33, 1, 0.68, 1)",
+                gap: "clamp(16px, 2vw, 24px)",
+                pauseOnHover: true,
+                pauseOnFocus: true,
+                wheel: false,
+                arrows: slides.length > 1,
+                trimSpace: false,
+                classes: {
+                  arrows: "product-carousel__arrows",
+                  arrow: "product-carousel__arrow",
+                  prev: "product-carousel__arrow product-carousel__arrow--left",
+                  next: "product-carousel__arrow product-carousel__arrow--right",
+                },
+                breakpoints: {
+                  1440: { perPage: perPageByBreakpoint["1440"] },
+                  1200: { perPage: perPageByBreakpoint["1200"] },
+                  768: { perPage: perPageByBreakpoint["768"] },
+                },
+                ...(slides.length > 1
+                  ? {
+                      autoScroll: {
+                        speed: 0.45,
+                        autoStart: false,
+                        pauseOnHover: true,
+                        pauseOnFocus: true,
+                      },
+                    }
+                  : {}),
+              }}
+              extensions={slides.length > 1 ? { AutoScroll } : {}}
+              hasTrack
+              onMounted={mountAutoScroll}
+              onDestroy={destroyAutoScroll}
+            >
+              {filledSlides.map((entry, index) => (
+                <SplideSlide
+                  key={`${entry.id}-${index}`}
+                  className="product-carousel__slide"
+                >
+                  <div className="product-carousel__card">
+                    <NewsCarouselCard entry={entry} />
+                  </div>
+                </SplideSlide>
+              ))}
+            </Splide>
+          </div>
         </div>
       </div>
     </section>

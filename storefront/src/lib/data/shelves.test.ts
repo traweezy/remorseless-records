@@ -22,6 +22,9 @@ describe("homepage catalog shelves", () => {
                 handle: "featured",
                 title: "Featured Vault",
                 description: "Client-curated selections.",
+                showRibbon: true,
+                ribbonLabel: "Featured",
+                ribbonPriority: 20,
               },
               productIds: ["prod_2", "prod_1"],
             },
@@ -30,6 +33,9 @@ describe("homepage catalog shelves", () => {
                 handle: "new-releases",
                 title: "Newest Arrivals",
                 description: null,
+                showRibbon: true,
+                ribbonLabel: "New Release",
+                ribbonPriority: 10,
               },
               productIds: ["prod_3"],
             },
@@ -38,6 +44,9 @@ describe("homepage catalog shelves", () => {
                 handle: "staff-picks",
                 title: "Staff Signals",
                 description: "Staff selections.",
+                showRibbon: false,
+                ribbonLabel: null,
+                ribbonPriority: 30,
               },
               productIds: [],
             },
@@ -69,6 +78,9 @@ describe("homepage catalog shelves", () => {
     expect(shelves.featured).toMatchObject({
       title: "Featured Vault",
       description: "Client-curated selections.",
+      showRibbon: true,
+      ribbonLabel: "Featured",
+      ribbonPriority: 20,
       products: [
         { id: "prod_2", handle: "handle-prod_2" },
         { id: "prod_1", handle: "handle-prod_1" },
@@ -110,7 +122,10 @@ describe("homepage catalog shelves", () => {
       getProductsByIds: vi.fn(),
       getRecentProducts,
     }))
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 404 }))
+    )
     vi.spyOn(console, "error").mockImplementation(() => undefined)
 
     const { getHomepageShelves } = await import("@/lib/data/shelves")

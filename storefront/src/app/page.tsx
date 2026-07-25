@@ -38,7 +38,9 @@ export const metadata: Metadata = {
   },
 }
 
-const splitHeading = (title: string): { leading: string; highlight: string } => {
+const splitHeading = (
+  title: string
+): { leading: string; highlight: string } => {
   const words = title.trim().split(/\s+/).filter(Boolean)
   if (words.length < 2) {
     return { leading: title.trim(), highlight: "" }
@@ -84,18 +86,21 @@ const HomePage = async (): Promise<ReactElement> => {
             heading={splitHeading(featured.title)}
             description={featured.description}
             products={featured.products}
+            ribbonLabel={featured.ribbonLabel}
           />
 
           <ProductCarouselSection
             heading={splitHeading(newest.title)}
             description={newest.description}
             products={newest.products}
+            ribbonLabel={newest.ribbonLabel}
           />
 
           <ProductCarouselSection
             heading={splitHeading(staff.title)}
             description={staff.description}
             products={staff.products}
+            ribbonLabel={staff.ribbonLabel}
           />
 
           <NewsCarouselSection

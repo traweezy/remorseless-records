@@ -207,10 +207,16 @@ const resolveFallbackBadge = (product: ProductCardSource): string | null => {
   return null
 }
 
-const resolveBadge = (
+export const resolveProductCardBadge = (
   product: ProductCardSource,
-  summary: RelatedProductSummary
+  summary: RelatedProductSummary,
+  contextualRibbonLabel?: string | null
 ): string | null => {
+  const contextualRibbon = contextualRibbonLabel?.trim()
+  if (contextualRibbon) {
+    return contextualRibbon
+  }
+
   return (
     resolveCollectionRibbonLabel(product, summary) ??
     resolveFallbackBadge(product)
@@ -251,9 +257,14 @@ const resolveStockBadge = (
 type ProductCardProps = {
   product: ProductCardSource
   onMediaLoad?: () => void
+  ribbonLabel?: string | null
 }
 
-export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
+export const ProductCard = ({
+  product,
+  onMediaLoad,
+  ribbonLabel,
+}: ProductCardProps) => {
   const router = useRouter()
   const [quickShopOpen, setQuickShopOpen] = useState(false)
   const cardRef = useRef<HTMLDivElement | null>(null)
@@ -288,7 +299,7 @@ export const ProductCard = ({ product, onMediaLoad }: ProductCardProps) => {
   const hasPrice = summary.defaultVariant?.hasPrice ?? false
   const isUnavailable = !hasPrice
   const canQuickShop = !isSoldOut && !isUnavailable
-  const badge = resolveBadge(product, summary)
+  const badge = resolveProductCardBadge(product, summary, ribbonLabel)
   const thumbnail = resolveThumbnail(product)
   const [resolvedThumbnail, setResolvedThumbnail] = useState<string | null>(
     thumbnail

@@ -15,6 +15,9 @@ export type HomepageShelf = {
   handle: string
   title: string
   description: string
+  showRibbon: boolean
+  ribbonLabel: string | null
+  ribbonPriority: number
   products: StoreProduct[]
 }
 
@@ -23,6 +26,9 @@ const shelfSchema = z.object({
     handle: z.string().trim().min(1),
     title: z.string().trim().min(1),
     description: z.string().nullable().optional(),
+    showRibbon: z.boolean().optional().default(false),
+    ribbonLabel: z.string().trim().nullable().optional(),
+    ribbonPriority: z.number().int().min(0).optional().default(100),
   }),
   productIds: z.array(z.string().trim().min(1)).max(50),
 })
@@ -73,7 +79,10 @@ const fetchCatalogShelves = async (): Promise<
       next: { revalidate: 60, tags: ["catalog-shelves"] },
     })
     if (!response.ok) {
-      console.error("[catalog-shelves] Failed to fetch shelves", response.status)
+      console.error(
+        "[catalog-shelves] Failed to fetch shelves",
+        response.status
+      )
       return null
     }
 
@@ -89,10 +98,14 @@ const fetchCatalogShelves = async (): Promise<
   }
 }
 
-const loadLegacyFallback = async (handle: ShelfHandle): Promise<StoreProduct[]> => {
+const loadLegacyFallback = async (
+  handle: ShelfHandle
+): Promise<StoreProduct[]> => {
   if (handle === "new-releases") {
     const collectionProducts = await getCollectionProductsByHandle(handle, 12)
-    return collectionProducts.length ? collectionProducts : getRecentProducts(12)
+    return collectionProducts.length
+      ? collectionProducts
+      : getRecentProducts(12)
   }
   return getCollectionProductsByHandle(handle, 12)
 }
@@ -103,7 +116,9 @@ export const getHomepageShelves = unstable_cache(
     const shelves = await Promise.all(
       shelfHandles.map(async (handle) => {
         const defaults = shelfDefaults[handle]
-        const resolved = response?.find((entry) => entry.shelf.handle === handle)
+        const resolved = response?.find(
+          (entry) => entry.shelf.handle === handle
+        )
         const products = resolved
           ? await getProductsByIds(resolved.productIds)
           : await loadLegacyFallback(handle)
@@ -117,6 +132,11 @@ export const getHomepageShelves = unstable_cache(
               resolved?.shelf.description,
               defaults.description
             ),
+            showRibbon: resolved?.shelf.showRibbon ?? false,
+            ribbonLabel: resolved?.shelf.showRibbon
+              ? (resolved.shelf.ribbonLabel ?? resolved.shelf.title)
+              : null,
+            ribbonPriority: resolved?.shelf.ribbonPriority ?? 100,
             products,
           },
         ] as const
