@@ -42,7 +42,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "immer": "11.1.15",
-    "lucide-react": "^1.26.0",
+    "lucide-react": "^1.27.0",
     "meilisearch": "^0.60.0",
     "motion": "^12.42.2",
     "next": "^16.2.12",

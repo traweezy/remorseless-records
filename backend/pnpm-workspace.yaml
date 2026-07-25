@@ -30,7 +30,7 @@ packageExtensions:
         optional: true
       "@types/react-dom":
         optional: true
-  "lucide-react@1.26.0":
+  "lucide-react@1.27.0":
     peerDependencies:
       "@types/react": "*"
     peerDependenciesMeta:

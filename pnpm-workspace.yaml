@@ -36,7 +36,7 @@ packageExtensions:
         optional: true
       "@types/react-dom":
         optional: true
-  "lucide-react@1.26.0":
+  "lucide-react@1.27.0":
     peerDependencies:
       "@types/react": "*"
     peerDependenciesMeta:
@@ -275,3 +275,4 @@ minimumReleaseAgeExclude:
   - next@16.2.12
   - playwright-core@1.62.0
   - playwright@1.62.0
+  - lucide-react@1.27.0

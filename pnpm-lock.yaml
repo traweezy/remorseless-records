@@ -66,7 +66,7 @@ overrides:
   '@opentelemetry/core': 2.9.0
   '@opentelemetry/propagator-jaeger': 2.9.0
 
-packageExtensionsChecksum: sha256-XGfhbUeBHJ1QqLw7WeUiw3J32dA/osAS+wRcAGXDSgQ=
+packageExtensionsChecksum: sha256-YDsO09iY61h24iJheq3asBc17A5NAuuXqZHe9X2FQXI=
 
 patchedDependencies:
   '@remix-run/router@1.23.3': cba02de04f5a5945f782a22652c0c6f20c7ad475ef713b567f9ad611c3dc4f60
@@ -332,8 +332,8 @@ importers:
         specifier: 11.1.15
         version: 11.1.15
       lucide-react:
-        specifier: ^1.26.0
-        version: 1.26.0(@types/react@19.2.17)(react@19.2.8)
+        specifier: ^1.27.0
+        version: 1.27.0(@types/react@19.2.17)(react@19.2.8)
       meilisearch:
         specifier: ^0.60.0
         version: 0.60.0
@@ -7717,8 +7717,8 @@ packages:
   lru-memoizer@2.3.0:
     resolution: {integrity: sha512-GXn7gyHAMhO13WSKrIiNfztwxodVsP8IoZ3XfrJV4yH2x0/OeTO/FIaAHTY5YekdGgW94njfuKmyyt1E0mR6Ug==}
 
-  lucide-react@1.26.0:
-    resolution: {integrity: sha512-raglYVR2+VkMfJL158krjVmE+rV5ST2lzA/KQm1FRSjMHT4MnWaegHxoVEpmc2So3nOEhp9oGejJwAPX8MoAjg==}
+  lucide-react@1.27.0:
+    resolution: {integrity: sha512-rJicGl/3Fly/E0rOH1YmPZ6e49JCnKknh1ox1vpHnkfjujAkKA6sqUZvH3MTAaXXjgexyUwgNwTJzTtYuAFYJw==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -18508,7 +18508,7 @@ snapshots:
       lodash.clonedeep: 4.5.0
       lru-cache: 6.0.0
 
-  lucide-react@1.26.0(@types/react@19.2.17)(react@19.2.8):
+  lucide-react@1.27.0(@types/react@19.2.17)(react@19.2.8):
     dependencies:
       react: 19.2.8
     optionalDependencies:
