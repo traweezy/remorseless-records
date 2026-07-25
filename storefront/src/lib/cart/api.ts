@@ -22,6 +22,8 @@ const CART_FIELDS = [
   "shipping_tax_total",
   "discount_total",
   "*items",
+  "*items.tax_lines",
+  "*items.adjustments",
   "*items.variant",
   "items.variant.inventory_quantity",
   "items.variant.calculated_price",
@@ -32,6 +34,8 @@ const CART_FIELDS = [
   "*shipping_address",
   "*billing_address",
   "*shipping_methods",
+  "*shipping_methods.tax_lines",
+  "*shipping_methods.adjustments",
   "shipping_methods.shipping_option_id",
   "shipping_methods.price",
   "*payment_collection",
@@ -41,6 +45,7 @@ const CART_FIELDS = [
 ].join(",")
 
 const CART_UPSTREAM_TIMEOUT_MS = 8_000
+const STRIPE_PROVIDER_ID = "pp_stripe_stripe"
 
 const cartRequest = <T>(
   path: string,
@@ -132,10 +137,13 @@ export const setCartEmail = async (
   cartId: string,
   email: string
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await storeClient.cart.update(
-    cartId,
-    { email },
-    { fields: CART_FIELDS }
+  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+    `/store/carts/${cartId}`,
+    {
+      method: "POST",
+      body: { email },
+      query: { fields: CART_FIELDS },
+    }
   )
 
   return cart
@@ -157,9 +165,14 @@ export const setCartAddresses = async (
     payload.billing_address = addresses.billing_address
   }
 
-  const { cart } = await storeClient.cart.update(cartId, payload, {
-    fields: CART_FIELDS,
-  })
+  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+    `/store/carts/${cartId}`,
+    {
+      method: "POST",
+      body: payload,
+      query: { fields: CART_FIELDS },
+    }
+  )
 
   return cart
 }
@@ -167,16 +180,24 @@ export const setCartAddresses = async (
 export const listShippingOptions = async (
   cartId: string
 ): Promise<HttpTypes.StoreShippingOptionListResponse> =>
-  storeClient.fulfillment.listCartOptions({ cart_id: cartId })
+  cartRequest<HttpTypes.StoreShippingOptionListResponse>(
+    "/store/shipping-options",
+    {
+      query: { cart_id: cartId },
+    }
+  )
 
 export const addShippingMethod = async (
   cartId: string,
   optionId: string
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await storeClient.cart.addShippingMethod(
-    cartId,
-    { option_id: optionId },
-    { fields: CART_FIELDS }
+  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+    `/store/carts/${cartId}/shipping-methods`,
+    {
+      method: "POST",
+      body: { option_id: optionId },
+      query: { fields: CART_FIELDS },
+    }
   )
 
   return cart
@@ -185,7 +206,7 @@ export const addShippingMethod = async (
 export const calculateTaxes = async (
   cartId: string
 ): Promise<HttpTypes.StoreCart> => {
-  const response = await medusa.client.fetch<{ cart: HttpTypes.StoreCart }>(
+  const response = await cartRequest<{ cart: HttpTypes.StoreCart }>(
     `/store/carts/${cartId}/taxes`,
     {
       method: "POST",
@@ -225,22 +246,46 @@ export const initiatePaymentSession = async (
     throw new Error("Cart region is required to initialize payment")
   }
 
-  const { payment_providers } = await storeClient.payment.listPaymentProviders({
-    region_id: regionId,
-  })
+  const { payment_providers } =
+    await cartRequest<HttpTypes.StorePaymentProviderListResponse>(
+      "/store/payment-providers",
+      {
+        query: { region_id: regionId },
+      }
+    )
 
-  const resolvedProvider =
-    payment_providers.find((provider) => provider.id === providerId) ??
-    payment_providers.find((provider) => provider.id.includes("stripe"))
+  const requestedProvider = providerId ?? STRIPE_PROVIDER_ID
+  const resolvedProvider = payment_providers.find(
+    (provider) => provider.id === requestedProvider
+  )
 
   if (!resolvedProvider) {
     throw new Error("No Stripe payment provider is configured for this region")
   }
 
+  let paymentCollectionId = cart.payment_collection?.id
+  if (!paymentCollectionId) {
+    const { payment_collection } =
+      await cartRequest<HttpTypes.StorePaymentCollectionResponse>(
+        "/store/payment-collections",
+        {
+          method: "POST",
+          body: { cart_id: cartId },
+        }
+      )
+    paymentCollectionId = payment_collection.id
+  }
+
   const { payment_collection } =
-    await storeClient.payment.initiatePaymentSession(cart, {
-      provider_id: resolvedProvider.id,
-    })
+    await cartRequest<HttpTypes.StorePaymentCollectionResponse>(
+      `/store/payment-collections/${paymentCollectionId}/payment-sessions`,
+      {
+        method: "POST",
+        body: {
+          provider_id: resolvedProvider.id,
+        },
+      }
+    )
 
   const paymentSession =
     payment_collection.payment_sessions?.find(

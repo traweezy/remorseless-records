@@ -35,6 +35,7 @@ type ApiProblem = {
   title: string
   detail: string
   instance?: string
+  extensions?: Record<string, unknown>
 }
 
 const rateLimitBuckets = new Map<string, RateLimitBucket>()
@@ -324,9 +325,11 @@ export const jsonApiProblem = ({
   title,
   detail,
   instance,
+  extensions,
 }: ApiProblem): Response => {
   const response = jsonNoStore(
     {
+      ...extensions,
       type: `https://remorselessrecords.com/problems/${code}`,
       title,
       status,
