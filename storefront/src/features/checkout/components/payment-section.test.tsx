@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -9,10 +10,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { CheckoutCompletion } from "@/features/checkout/api/checkout-api"
 import type { CheckoutProjection } from "@/features/checkout/types/checkout"
+import type { StripeElementsOptions } from "@stripe/stripe-js"
 
-const stripeMocks = vi.hoisted(() => ({
+type StripeMocks = {
+  confirmPayment: ReturnType<typeof vi.fn>
+  elementsSubmit: ReturnType<typeof vi.fn>
+  elementsOptions: StripeElementsOptions | null
+  loaderStart: (() => void) | null
+}
+
+const stripeMocks = vi.hoisted<StripeMocks>(() => ({
   confirmPayment: vi.fn(),
   elementsSubmit: vi.fn(),
+  elementsOptions: null,
+  loaderStart: null,
 }))
 
 vi.mock("@/config/env.client", () => ({
@@ -28,14 +39,26 @@ vi.mock("@stripe/stripe-js", () => ({
 vi.mock("@stripe/react-stripe-js", async () => {
   const React = await import("react")
   return {
-    Elements: ({ children }: { children: React.ReactNode }) => children,
+    Elements: ({
+      children,
+      options,
+    }: {
+      children: React.ReactNode
+      options: StripeElementsOptions
+    }) => {
+      stripeMocks.elementsOptions = options
+      return children
+    },
     PaymentElement: ({
       onChange,
+      onLoaderStart,
       onReady,
     }: {
       onChange?: (event: { complete: boolean }) => void
+      onLoaderStart?: () => void
       onReady?: () => void
     }) => {
+      stripeMocks.loaderStart = onLoaderStart ?? null
       React.useEffect(() => {
         onReady?.()
         onChange?.({ complete: true })
@@ -53,9 +76,11 @@ const revision = `v1.${"a".repeat(43)}`
 
 const checkoutFixture = ({
   clientSecret = "pi_test_secret_test",
+  retainPaymentSession = false,
   total = 24.99,
 }: {
   clientSecret?: string | null
+  retainPaymentSession?: boolean
   total?: number
 } = {}): CheckoutProjection => ({
   state: "ready_for_payment",
@@ -63,6 +88,7 @@ const checkoutFixture = ({
   cart: {
     items: [
       {
+        availableQuantity: 4,
         id: "cali_test",
         productHandle: "test-release",
         productTitle: "Test Release",
@@ -101,9 +127,9 @@ const checkoutFixture = ({
     },
   },
   payment: {
-    provider: clientSecret ? "stripe" : null,
+    provider: clientSecret || retainPaymentSession ? "stripe" : null,
     clientSecret,
-    status: clientSecret ? "pending" : null,
+    status: clientSecret || retainPaymentSession ? "pending" : null,
     canRestart: false,
   },
   confirmation: null,
@@ -117,6 +143,8 @@ const completion: CheckoutCompletion = {
 describe("PaymentSection", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    stripeMocks.elementsOptions = null
+    stripeMocks.loaderStart = null
     stripeMocks.elementsSubmit.mockResolvedValue({})
     stripeMocks.confirmPayment.mockResolvedValue({
       paymentIntent: { status: "succeeded" },
@@ -162,6 +190,65 @@ describe("PaymentSection", () => {
     expect(stripeMocks.elementsSubmit).toHaveBeenCalledOnce()
     expect(stripeMocks.confirmPayment).toHaveBeenCalledOnce()
     expect(onComplete).toHaveBeenCalledOnce()
+  })
+
+  it("keeps the payment form mounted while an updated total is prepared", async () => {
+    const checkout = checkoutFixture()
+    const props = {
+      isPreparing: false,
+      prepareError: null,
+      onPrepare: vi.fn(() => Promise.resolve(checkout)),
+      onComplete: vi.fn(() => Promise.resolve(completion)),
+      onConfirmed: vi.fn(),
+      onRecovery: vi.fn(),
+    }
+    const { rerender } = render(
+      <PaymentSection checkout={checkout} {...props} />
+    )
+
+    expect(await screen.findByTestId("payment-element")).toBeInTheDocument()
+
+    rerender(
+      <PaymentSection
+        checkout={checkoutFixture({
+          clientSecret: null,
+          retainPaymentSession: true,
+        })}
+        {...props}
+        isPreparing
+      />
+    )
+
+    expect(screen.getByTestId("payment-element")).toBeInTheDocument()
+    expect(screen.getByText("Updating your order total…")).toBeInTheDocument()
+  })
+
+  it("loads Inter into Stripe and ignores loader restarts after ready", async () => {
+    render(
+      <PaymentSection
+        checkout={checkoutFixture()}
+        isPreparing={false}
+        prepareError={null}
+        onPrepare={vi.fn(() => Promise.resolve(checkoutFixture()))}
+        onComplete={vi.fn(() => Promise.resolve(completion))}
+        onConfirmed={vi.fn()}
+        onRecovery={vi.fn()}
+      />
+    )
+
+    const placeOrder = await screen.findByRole("button", {
+      name: "Place order — $24.99",
+    })
+    expect(stripeMocks.elementsOptions?.appearance?.variables?.fontFamily).toBe(
+      "Inter, system-ui, sans-serif"
+    )
+    const fontSource = stripeMocks.elementsOptions?.fonts?.[0]
+    expect(
+      fontSource && "cssSrc" in fontSource ? fontSource.cssSrc : null
+    ).toContain("fonts.googleapis.com/css2?family=Inter")
+
+    act(() => stripeMocks.loaderStart?.())
+    expect(placeOrder).toBeEnabled()
   })
 
   it("reconciles instead of inviting a retry after confirmation is uncertain", async () => {

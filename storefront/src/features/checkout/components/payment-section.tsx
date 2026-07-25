@@ -48,7 +48,7 @@ const appearance: Appearance = {
     colorTextSecondary: "#a1a1aa",
     colorDanger: "#f87171",
     borderRadius: "14px",
-    fontFamily: "var(--font-sans)",
+    fontFamily: "Inter, system-ui, sans-serif",
     spacingUnit: "4px",
   },
   rules: {
@@ -84,10 +84,19 @@ type PaymentSectionProps = {
 type PaymentElementFormProps = Omit<
   PaymentSectionProps,
   "isPreparing" | "prepareError"
->
+> & {
+  isUpdating: boolean
+}
 
 const PaymentElementForm = memo<PaymentElementFormProps>(
-  ({ checkout, onPrepare, onComplete, onConfirmed, onRecovery }) => {
+  ({
+    checkout,
+    isUpdating,
+    onPrepare,
+    onComplete,
+    onConfirmed,
+    onRecovery,
+  }) => {
     const stripe = useStripe()
     const elements = useElements()
     const [isReady, setIsReady] = useState(false)
@@ -95,96 +104,108 @@ const PaymentElementForm = memo<PaymentElementFormProps>(
     const [isComplete, setIsComplete] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
     const submissionLockRef = useRef(false)
+    const hasBeenReadyRef = useRef(false)
 
-    const submit = async (
-      event: React.FormEvent<HTMLFormElement>
-    ): Promise<void> => {
-      event.preventDefault()
-      if (!stripe || !elements || submissionLockRef.current) {
-        return
-      }
-
-      submissionLockRef.current = true
-      setMessage(null)
-      setIsSubmitting(true)
-      let confirmationAttempted = false
-
-      try {
-        const submitted = await elements.submit()
-        if (submitted.error) {
-          setMessage(safeStripeErrorMessage(submitted.error))
+    const submit = useCallback(
+      async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+        event.preventDefault()
+        if (!stripe || !elements || isUpdating || submissionLockRef.current) {
           return
         }
 
-        const prepared = await onPrepare(checkout.revision)
-        if (
-          prepared.revision !== checkout.revision ||
-          prepared.payment.clientSecret !== checkout.payment.clientSecret
-        ) {
-          setMessage(
-            "Your order total changed. Review the updated total before paying."
-          )
-          return
-        }
+        submissionLockRef.current = true
+        setMessage(null)
+        setIsSubmitting(true)
+        let confirmationAttempted = false
 
-        const clientSecret = prepared.payment.clientSecret
-        if (!clientSecret) {
-          setMessage(
-            "Secure payment could not be prepared. Review the order and try again."
-          )
-          return
-        }
-
-        confirmationAttempted = true
-        const result = await stripe.confirmPayment({
-          elements,
-          clientSecret,
-          confirmParams: {
-            return_url: `${window.location.origin}/checkout/return`,
-          },
-          redirect: "if_required",
-        })
-
-        if (result.error) {
-          setMessage(safeStripeErrorMessage(result.error))
-          if (stripeResultNeedsReconciliation(result.error)) {
-            onRecovery()
+        try {
+          const submitted = await elements.submit()
+          if (submitted.error) {
+            setMessage(safeStripeErrorMessage(submitted.error))
+            return
           }
-          return
-        }
 
-        const completed = await onComplete(prepared.revision)
-        onConfirmed(completed.confirmation.orderNumber)
-      } catch (error: unknown) {
-        if (confirmationAttempted) {
-          onRecovery()
-          return
-        }
-        if (error && typeof error === "object" && "problem" in error) {
-          const problem = (error as CheckoutApiError).problem
+          const prepared = await onPrepare(checkout.revision)
           if (
-            [
-              "completion_in_progress",
-              "order_finalizing",
-              "payment_processing",
-              "payment_result_unknown",
-              "recovery_required",
-            ].includes(problem.code)
+            prepared.revision !== checkout.revision ||
+            prepared.payment.clientSecret !== checkout.payment.clientSecret
           ) {
+            setMessage(
+              "Your order total changed. Review the updated total before paying."
+            )
+            return
+          }
+
+          const clientSecret = prepared.payment.clientSecret
+          if (!clientSecret) {
+            setMessage(
+              "Secure payment could not be prepared. Review the order and try again."
+            )
+            return
+          }
+
+          confirmationAttempted = true
+          const result = await stripe.confirmPayment({
+            elements,
+            clientSecret,
+            confirmParams: {
+              return_url: `${window.location.origin}/checkout/return`,
+            },
+            redirect: "if_required",
+          })
+
+          if (result.error) {
+            setMessage(safeStripeErrorMessage(result.error))
+            if (stripeResultNeedsReconciliation(result.error)) {
+              onRecovery()
+            }
+            return
+          }
+
+          const completed = await onComplete(prepared.revision)
+          onConfirmed(completed.confirmation.orderNumber)
+        } catch (error: unknown) {
+          if (confirmationAttempted) {
             onRecovery()
             return
           }
-          setMessage(problem.detail)
-          return
+          if (error && typeof error === "object" && "problem" in error) {
+            const problem = (error as CheckoutApiError).problem
+            if (
+              [
+                "completion_in_progress",
+                "order_finalizing",
+                "payment_processing",
+                "payment_result_unknown",
+                "recovery_required",
+              ].includes(problem.code)
+            ) {
+              onRecovery()
+              return
+            }
+            setMessage(problem.detail)
+            return
+          }
+          setMessage(
+            "Payment could not be completed. Check your connection and try again."
+          )
+        } finally {
+          submissionLockRef.current = false
+          setIsSubmitting(false)
         }
-        setMessage(
-          "Payment could not be completed. Check your connection and try again."
-        )
-      } finally {
-        submissionLockRef.current = false
-        setIsSubmitting(false)
-      }
-    }
+      },
+      [
+        checkout.payment.clientSecret,
+        checkout.revision,
+        elements,
+        isUpdating,
+        onComplete,
+        onConfirmed,
+        onPrepare,
+        onRecovery,
+        stripe,
+      ]
+    )
 
     const paymentOptions = useMemo<StripePaymentElementOptions>(() => {
       const email = checkout.cart.contact?.email
@@ -214,8 +235,45 @@ const PaymentElementForm = memo<PaymentElementFormProps>(
       }
     }, [checkout.cart.contact?.email, checkout.cart.deliveryAddress])
 
+    const handleLoaderStart = useCallback((): void => {
+      if (!hasBeenReadyRef.current) {
+        setIsReady(false)
+      }
+    }, [])
+
+    const handleReady = useCallback((): void => {
+      hasBeenReadyRef.current = true
+      setIsReady(true)
+    }, [])
+
+    const handleChange = useCallback(
+      (event: StripePaymentElementChangeEvent): void => {
+        setIsComplete(event.complete)
+        if (event.complete) {
+          setMessage(null)
+        }
+      },
+      []
+    )
+
+    const handleLoadError = useCallback((): void => {
+      if (!hasBeenReadyRef.current) {
+        setIsReady(false)
+      }
+      setMessage(
+        "The secure payment form did not load. Check your connection and try again."
+      )
+    }, [])
+
+    const handleSubmit = useCallback(
+      (event: React.FormEvent<HTMLFormElement>): void => {
+        void submit(event)
+      },
+      [submit]
+    )
+
     return (
-      <form className="space-y-5" onSubmit={(event) => void submit(event)}>
+      <form className="space-y-5" onSubmit={handleSubmit}>
         <div className="relative min-h-[260px] rounded-2xl border border-border/60 bg-background/70 p-4">
           {!isReady ? (
             <div className="absolute inset-4 space-y-3" aria-hidden="true">
@@ -224,22 +282,20 @@ const PaymentElementForm = memo<PaymentElementFormProps>(
               <Skeleton className="h-24 w-full rounded-xl" />
             </div>
           ) : null}
+          {isUpdating && isReady ? (
+            <div
+              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/85 px-6 text-center text-sm font-semibold text-foreground backdrop-blur-sm"
+              role="status"
+            >
+              Updating your order total…
+            </div>
+          ) : null}
           <PaymentElement
             options={paymentOptions}
-            onLoaderStart={() => setIsReady(false)}
-            onReady={() => setIsReady(true)}
-            onChange={(event: StripePaymentElementChangeEvent) => {
-              setIsComplete(event.complete)
-              if (event.complete) {
-                setMessage(null)
-              }
-            }}
-            onLoadError={() => {
-              setIsReady(false)
-              setMessage(
-                "The secure payment form did not load. Check your connection and try again."
-              )
-            }}
+            onLoaderStart={handleLoaderStart}
+            onReady={handleReady}
+            onChange={handleChange}
+            onLoadError={handleLoadError}
           />
         </div>
 
@@ -259,7 +315,12 @@ const PaymentElementForm = memo<PaymentElementFormProps>(
           size="lg"
           className="w-full"
           disabled={
-            !stripe || !elements || !isReady || !isComplete || isSubmitting
+            !stripe ||
+            !elements ||
+            !isReady ||
+            !isComplete ||
+            isSubmitting ||
+            isUpdating
           }
         >
           {isSubmitting
@@ -293,7 +354,26 @@ export const PaymentSection = memo<PaymentSectionProps>(
     const [localPrepareError, setLocalPrepareError] = useState<string | null>(
       null
     )
+    const [mountedClientSecret, setMountedClientSecret] = useState<
+      string | null
+    >(checkout.payment.clientSecret)
     const freeOrderLockRef = useRef(false)
+    const lastRevisionRef = useRef(checkout.revision)
+
+    useEffect(() => {
+      if (lastRevisionRef.current === checkout.revision) {
+        return
+      }
+      lastRevisionRef.current = checkout.revision
+      preparedRevisionRef.current = null
+      setLocalPrepareError(null)
+    }, [checkout.revision])
+
+    useEffect(() => {
+      if (checkout.payment.clientSecret) {
+        setMountedClientSecret(checkout.payment.clientSecret)
+      }
+    }, [checkout.payment.clientSecret])
 
     const prepare = useCallback(async (): Promise<void> => {
       if (preparedRevisionRef.current === checkout.revision) {
@@ -415,7 +495,15 @@ export const PaymentSection = memo<PaymentSectionProps>(
       )
     }
 
-    if (isPreparing || !checkout.payment.clientSecret) {
+    const canReuseMountedPayment =
+      checkout.payment.provider === "stripe" &&
+      (checkout.payment.status === "pending" ||
+        checkout.payment.status === "requires_more")
+    const effectiveClientSecret =
+      checkout.payment.clientSecret ??
+      (canReuseMountedPayment ? mountedClientSecret : null)
+
+    if (!effectiveClientSecret) {
       return (
         <div
           className="min-h-[300px] space-y-3 rounded-2xl border border-border/60 bg-background/70 p-4"
@@ -430,19 +518,26 @@ export const PaymentSection = memo<PaymentSectionProps>(
     }
 
     const elementsOptions: StripeElementsOptions = {
-      clientSecret: checkout.payment.clientSecret,
+      clientSecret: effectiveClientSecret,
       appearance,
+      fonts: [
+        {
+          cssSrc:
+            "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+        },
+      ],
       loader: "auto",
     }
 
     return (
       <Elements
-        key={checkout.payment.clientSecret}
+        key={effectiveClientSecret}
         stripe={getStripePromise()}
         options={elementsOptions}
       >
         <PaymentElementForm
           checkout={checkout}
+          isUpdating={isPreparing || !checkout.payment.clientSecret}
           onPrepare={onPrepare}
           onComplete={onComplete}
           onConfirmed={onConfirmed}

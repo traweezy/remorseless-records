@@ -31,12 +31,39 @@ const mutationOptions = {
   scope: { id: "checkout" },
 } as const
 
+export const preservePreparedPayment = (
+  current: CheckoutProjection | null | undefined,
+  next: CheckoutProjection
+): CheckoutProjection => {
+  if (
+    next.payment.clientSecret ||
+    !current?.payment.clientSecret ||
+    current.revision !== next.revision ||
+    current.payment.provider !== next.payment.provider ||
+    current.payment.status !== next.payment.status
+  ) {
+    return next
+  }
+
+  return {
+    ...next,
+    payment: {
+      ...next.payment,
+      clientSecret: current.payment.clientSecret,
+    },
+  }
+}
+
 export const useCheckout = () => {
   const queryClient = useQueryClient()
 
   const setCheckout = useCallback(
-    (checkout: CheckoutProjection): void => {
-      queryClient.setQueryData(CHECKOUT_QUERY_KEY, checkout)
+    (checkout: CheckoutProjection | null): void => {
+      queryClient.setQueryData<CheckoutProjection | null>(
+        CHECKOUT_QUERY_KEY,
+        (current) =>
+          checkout ? preservePreparedPayment(current, checkout) : null
+      )
     },
     [queryClient]
   )
@@ -55,7 +82,11 @@ export const useCheckout = () => {
 
   const checkoutQuery = useQuery({
     queryKey: CHECKOUT_QUERY_KEY,
-    queryFn: getCheckout,
+    queryFn: async () =>
+      preservePreparedPayment(
+        queryClient.getQueryData<CheckoutProjection>(CHECKOUT_QUERY_KEY),
+        await getCheckout()
+      ),
     staleTime: 0,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: true,
