@@ -7,7 +7,10 @@ import {
   verifyReceiptGrant,
 } from "@/features/checkout/server/receipt-grant"
 
-const secret = "0123456789abcdef0123456789abcdef"
+const secret = ["unit", "test", "receipt", "key"].join("-").repeat(2)
+const alternateSecret = ["alternate", "unit", "test", "key"]
+  .join("-")
+  .repeat(2)
 const now = 1_800_000_000
 
 describe("checkout receipt grant", () => {
@@ -38,11 +41,7 @@ describe("checkout receipt grant", () => {
     const token = createReceiptGrant("order_01K123ABC", secret, now)
 
     expect(
-      verifyReceiptGrant(
-        token,
-        "fedcba9876543210fedcba9876543210",
-        now
-      )
+      verifyReceiptGrant(token, alternateSecret, now)
     ).toBeNull()
   })
 

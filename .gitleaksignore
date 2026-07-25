@@ -1,2 +1,15 @@
 # Historical README example using the literal Meilisearch placeholder "masterKey".
 1207aff8cdee45ed70d71034896612f7b339a3e3:README.md:curl-auth-header:260
+
+# Synthetic checkout test fixtures introduced in d389a76. The fixtures were
+# replaced with runtime-built values in the following commit so future diffs
+# cannot resemble credentials; these exact fingerprints keep the immutable
+# historical commit scannable without broad path or rule exclusions.
+d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:backend/src/lib/checkout/internal-status-auth.test.ts:generic-api-key:7
+d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server/receipt-grant.test.ts:generic-api-key:10
+d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server/receipt-grant.test.ts:generic-api-key:59
+d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:backend/src/api/store/checkout/status/route.test.ts:generic-api-key:10
+d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server/internal-status-auth.test.ts:generic-api-key:5
+d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/config/env.checkout.server.test.ts:generic-api-key:29
+d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/config/env.checkout.server.test.ts:generic-api-key:30
+d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server/internal-status-client.test.ts:generic-api-key:9

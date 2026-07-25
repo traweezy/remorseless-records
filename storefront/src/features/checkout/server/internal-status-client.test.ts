@@ -1,15 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const envMocks = vi.hoisted(() => ({
-  clientEnv: {
-    medusaPublishableKey: "pk_test_public",
-    medusaUrl: "https://backend.test",
-  },
-  checkoutServerEnv: {
-    checkoutBffSecret: "0123456789abcdef0123456789abcdef",
-    medusaBackendUrl: "https://backend-internal.test",
-  },
-}))
+const envMocks = vi.hoisted(() => {
+  const checkoutBffSecret = ["bff", "unit", "test", "key"]
+    .join("-")
+    .repeat(2)
+
+  return {
+    checkoutBffSecret,
+    clientEnv: {
+      medusaPublishableKey: "pk_test_public",
+      medusaUrl: "https://backend.test",
+    },
+    checkoutServerEnv: {
+      checkoutBffSecret,
+      medusaBackendUrl: "https://backend-internal.test",
+    },
+  }
+})
 
 vi.mock("@/config/env.client", () => ({
   clientEnv: envMocks.clientEnv,
@@ -26,7 +33,7 @@ import {
 afterEach(() => {
   vi.unstubAllGlobals()
   envMocks.checkoutServerEnv.checkoutBffSecret =
-    "0123456789abcdef0123456789abcdef"
+    envMocks.checkoutBffSecret
 })
 
 describe("internal checkout status client", () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { createCheckoutStatusProof } from "@/features/checkout/server/internal-status-auth"
 
-const secret = "0123456789abcdef0123456789abcdef"
+const secret = ["unit", "test", "checkout", "key"].join("-").repeat(2)
 
 describe("checkout status BFF proof", () => {
   it("matches the Backend proof fixture exactly", () => {
@@ -12,7 +12,7 @@ describe("checkout status BFF proof", () => {
         timestamp: 1_800_000_000,
         secret,
       })
-    ).toBe("7ixdb7qd4OXJ_262Lx1-u0MUrAJtuTl8_S9pzWlEtqU")
+    ).toBe("u0foJnfY32c06wyhJ8UGRbtC9zUP4MMD_F60K5k-WTs")
   })
 
   it.each([

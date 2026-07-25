@@ -12,22 +12,20 @@ afterEach(() => {
 
 describe("checkoutServerEnv", () => {
   it("keeps optional checkout secrets in a dedicated server contract", async () => {
-    vi.stubEnv(
-      "CHECKOUT_BFF_SECRET",
-      "0123456789abcdef0123456789abcdef"
-    )
-    vi.stubEnv(
-      "CHECKOUT_RECEIPT_SECRET",
-      "fedcba9876543210fedcba9876543210"
-    )
+    const bffSecret = ["bff", "unit", "test", "value"].join("-").repeat(2)
+    const receiptSecret = ["receipt", "unit", "test", "value"]
+      .join("-")
+      .repeat(2)
+    vi.stubEnv("CHECKOUT_BFF_SECRET", bffSecret)
+    vi.stubEnv("CHECKOUT_RECEIPT_SECRET", receiptSecret)
     vi.stubEnv("MEDUSA_BACKEND_URL", "https://backend.test")
 
     const { checkoutServerEnv } = await loadCheckoutServerEnv()
 
     expect(checkoutServerEnv).toEqual({
       medusaBackendUrl: "https://backend.test",
-      checkoutBffSecret: "0123456789abcdef0123456789abcdef",
-      checkoutReceiptSecret: "fedcba9876543210fedcba9876543210",
+      checkoutBffSecret: bffSecret,
+      checkoutReceiptSecret: receiptSecret,
     })
   })
 

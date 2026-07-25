@@ -7,7 +7,7 @@ import { createCheckoutStatusProof } from "../../../../lib/checkout/internal-sta
 
 import { POST } from "./route"
 
-const secret = "0123456789abcdef0123456789abcdef"
+const secret = ["unit", "test", "checkout", "key"].join("-").repeat(2)
 const cartId = "cart_01K123ABC"
 const originalSecret = process.env.CHECKOUT_BFF_SECRET
 
