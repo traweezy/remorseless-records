@@ -116,12 +116,22 @@ plus hydration-error constructor restrictions in
 rebuilt from the official 6.30.4 source tag. The focused upstream suite passed
 293 tests.
 
-pnpm’s audit is version-based and cannot detect a patched package, so only
-these three GHSA records are listed under `auditConfig.ignoreGhsas`. This is
-paired with a required `pnpm run qa:react-router-security` CI check that loads
-the installed production artifacts and verifies mixed-separator navigation,
-redirect handling, link handling, and blocked custom hydration constructors.
-pnpm 11 also fails installation if either exact patch stops applying.
+pnpm’s audit is version-based and cannot detect a patched package, so these
+three React Router GHSA records are listed under `auditConfig.ignoreGhsas`.
+This is paired with a required `pnpm run qa:react-router-security` CI check
+that loads the installed production artifacts and verifies mixed-separator
+navigation, redirect handling, link handling, and blocked custom hydration
+constructors. pnpm 11 also fails installation if either exact patch stops
+applying.
+
+The audit also reports high-severity
+[GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg)
+against legacy CommonJS `brace-expansion@2.1.2`. Its official bounded-output
+fix from 5.0.8 is backported in
+`patches/brace-expansion@2.1.2.patch`; consumers that support the current API
+resolve directly to 5.0.8. The GHSA is ignored only because pnpm cannot
+recognize that source backport, and installation fails if the patch no longer
+applies.
 
 ## Deliberate major-version holds
 

@@ -84,7 +84,7 @@ so the project is built.
 Run the non-destructive CI smoke suite after building:
 
 ```sh
-pnpm run test:e2e -- --config=playwright.ci.config.ts
+pnpm run test:e2e --config=playwright.ci.config.ts
 ```
 
 Only run the database-reset suite after configuring the dedicated test database

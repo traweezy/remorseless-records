@@ -37,6 +37,13 @@ creation and payment authorization.
 - Browser completion and a bounded reconciliation job use Medusa's idempotent
   complete-cart workflow. Medusa's official Stripe webhook processes the
   authoritative payment events that inform those completion paths.
+- Stripe receives non-PII Medusa cart/order reference metadata and a readable
+  description for payment reconciliation. An idempotent `order.placed`
+  subscriber annotates both the PaymentIntent and any existing Charge. It
+  never duplicates catalog, customer, tax, fulfillment, or order authority.
+- Medusa Admin is the staff workspace. Its order detail view links to the
+  matching test/live Stripe payment for investigation while Medusa continues
+  to own order operations.
 - The `completeCartWorkflow.validate` hook rejects non-USD, non-finite,
   negative, out-of-Stripe-range, non-Stripe, duplicate-session,
   amount-mismatch, and currency-mismatch states using the same locked cart
@@ -73,6 +80,9 @@ creation and payment authorization.
   projection and revision.
 - Payment Element, return handling, receipt grants, webhook registration,
   reconciliation, and operations runbooks require new tests and monitoring.
+- Stripe order-reference synchronization is eventually consistent; a
+  subscriber retry may briefly leave a new payment without its final order
+  number even though Medusa already owns the order.
 - The legacy custom Stripe route and webhook need a staged compatibility window
   before deletion.
 

@@ -31,6 +31,7 @@ Useful aggregate log events:
 - `Anonymous cart retention completed`
 - `Abandoned checkout retention completed`
 - `checkout_payment_*` validation errors from the complete-cart hook
+- `[stripe-order-sync] synchronized <count> payment reference(s)`
 
 ## Verify that an environment is safe to test
 
@@ -131,6 +132,11 @@ Repeat success with:
 - the only available shipping option;
 - multiple shipping options.
 
+Also edit quantity and remove a line directly in the checkout summary. The URL
+must remain `/checkout`, completed steps must remain present, and the Stripe
+frame must stay mounted under an updating overlay until the new revision is
+prepared.
+
 Inventory-blocked and zero-shipping-option carts must stop before payment. A
 zero-total order must complete without a Stripe PaymentIntent.
 
@@ -150,6 +156,8 @@ Each case must yield one order/charge at most:
 10. Revisit `/checkout/confirmation` within the 30-minute receipt lifetime.
 11. Revisit after the grant expires.
 12. Change cart/address/shipping in another tab before payment.
+13. Switch away from and back to the browser after Payment Element is ready.
+14. Edit each completed step and then return to Payment.
 
 Expected safety behavior:
 
@@ -161,6 +169,36 @@ Expected safety behavior:
 - The cart cookie clears only after authoritative order confirmation.
 - The receipt cookie is HttpOnly, signed, 30 minutes, and scoped to
   `/api/checkout/confirmation`.
+- A same-revision focus/reconnect refresh does not remount Payment Element.
+- A changed revision disables payment and preserves the old frame only while
+  Medusa prepares the replacement session.
+
+## Stripe/Medusa reference synchronization
+
+The `order.placed` subscriber copies only operational references:
+
+- Medusa cart ID and item count at PaymentIntent creation;
+- Medusa order ID and display number after order placement; and
+- a readable order description on the PaymentIntent and existing Charge.
+
+It uses idempotency keys scoped to the Medusa order and PaymentIntent. It does
+not copy customer email, addresses, phone, product titles, or card data.
+
+To investigate:
+
+1. Open the Medusa order detail.
+2. In **Stripe payments**, confirm the amount, status, and test/live indicator.
+3. Use **Open in Stripe** and verify the Dashboard URL stays in `/test/` for
+   staging.
+4. Search Stripe metadata by `medusa_order_id`,
+   `medusa_order_number`, or `medusa_cart_id`.
+5. If final order metadata is absent, inspect subscriber/event-bus retries and
+   backend availability. Do not create a second PaymentIntent or manually
+   rewrite commerce state in Stripe.
+
+An order may be complete even if this annotation call is temporarily delayed;
+Medusa order/payment state is authoritative. Conversely, Stripe success alone
+still does not prove that a Medusa order exists.
 
 ## Incident: payment succeeded but no order appears
 
@@ -345,7 +383,7 @@ Payment and lifecycle results:
 - an invalid card number failed inline in the real Payment Element before any
   payment request; and
 - the displayed example reconciled exactly as `$22.00 + $5.00 + $2.33 =
-  $29.33`, using pre-tax item/shipping subtotals beside aggregate tax.
+$29.33`, using pre-tax item/shipping subtotals beside aggregate tax.
 
 Storefront and device results:
 

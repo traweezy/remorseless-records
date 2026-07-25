@@ -396,6 +396,26 @@ before completing the cart, the server recalculates shipping/tax and compares
 that revision. If anything changed, payment is not submitted; the shopper sees
 the new total and reviews it.
 
+### Shopper editing and payment-frame behavior
+
+The checkout summary is the cart editor. Quantity and remove controls work in
+place, so the shopper does not leave checkout or lose completed contact,
+delivery, and shipping steps. Rapid quantity taps are coalesced and processed
+in order; the controls stay responsive while Medusa remains authoritative.
+Removing the last item changes checkout to its empty-cart state.
+
+Completed steps expose a visible outlined **Edit** button with a pencil icon.
+Quick Shop never opens the cart after an add: it changes the add button to
+**Added** briefly and exposes a separate **Checkout** action.
+
+The Payment Element uses the same Inter typeface and dark/red token family as
+the storefront. A same-revision focus or reconnect refresh preserves the
+prepared client secret, so Stripe's hosted frame is not destroyed merely
+because the shopper switches tabs or returns to the window. A real
+cart/address/shipping revision keeps the existing frame visible under an
+“Updating your order total…” overlay until Medusa returns the replacement
+session. A failed or canceled session never reuses a stale secret.
+
 The backend also installs a hook inside Medusa's locked complete-cart workflow.
 For a positive USD total it requires exactly one official Stripe session and
 checks the raw cart, payment collection, and payment session currencies and
@@ -417,6 +437,27 @@ Only `NEXT_PUBLIC_STRIPE_PK` is browser-safe. `STRIPE_API_KEY`,
 `STRIPE_WEBHOOK_SECRET`, `CHECKOUT_BFF_SECRET`, and
 `CHECKOUT_RECEIPT_SECRET` are server-only. Staging must use `pk_test_` /
 `sk_test_` credentials and a non-live Payment Method Configuration.
+
+### Stripe and Medusa reference synchronization
+
+Medusa remains the system of record; Stripe is not used as a second product,
+customer, tax, fulfillment, or order database. Payment-session creation adds
+only searchable, non-PII metadata (`medusa_cart_id`, item count, platform, and
+storefront) plus a recognizable description. After `order.placed`, a retryable
+Medusa subscriber adds the Medusa order ID/number and final description to the
+PaymentIntent and its existing Charge with idempotent Stripe updates.
+
+The Medusa order detail screen includes a **Stripe payments** widget showing
+amount, status, test/live mode, and a mode-correct Dashboard deep link. This
+keeps ordinary order work—capture/refund state, fulfillment, returns, and
+customer communication—in Medusa while making payment investigation one click
+away. Stripe metadata deliberately excludes email, address, phone, product
+titles, and card data.
+
+Stripe Customers and saved payment methods are not created for anonymous
+guests. Medusa's account-holder and saved-method support should be enabled only
+with a separately designed customer account, consent, deletion, and
+authentication flow.
 
 ### Why Stripe success is not yet an order
 
@@ -476,6 +517,8 @@ default and never creates or confirms a Stripe payment.
 | `POST /api/checkout/complete`        | Final locked validation and idempotent order completion |
 | `GET /api/checkout/status`           | Privacy-safe recovery state                             |
 | `GET /api/checkout/confirmation`     | Receipt projection authorized by the receipt cookie     |
+| `PATCH /api/cart/items/:itemId`      | Edit a checkout-summary quantity through the cart API   |
+| `DELETE /api/cart/items/:itemId`     | Remove an item directly from the checkout summary       |
 
 All responses are non-cacheable. Mutations enforce same-origin request headers,
 small strict JSON schemas, bounded upstream timeouts, and Redis-backed rate
@@ -878,16 +921,18 @@ and browser-close matrices.
 
 ## Troubleshooting
 
-| Symptom                                        | Resolution                                                                                                                                                                          |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.5.0.                                                                                              |
-| Storefront shows empty cart despite items      | Check `rr_cart_v1` for the storefront domain, the cart-signing secret/previous secret, and the same-origin `/api/cart` response.                                                    |
-| Payment form does not load                     | Verify test/live key mode matches, the `pmc_...` is active, Stripe origins are allowed by CSP/Permissions-Policy, and `/api/checkout/payment-session` returns one official session. |
-| “Do not pay again” recovery persists           | Check official webhook delivery, backend `/store/checkout/status`, and the capped reconciliation aggregate before permitting another attempt.                                       |
-| Confirmed payment has no order                 | Follow `docs/CHECKOUT_OPERATIONS.md`; leave webhook/reconciliation running and do not manually create an order or re-submit payment.                                                |
-| Search results empty                           | Confirm Meilisearch index name (`products`), API keys, and that documents exist. Backend fallback logs to console when Meili query fails.                                           |
-| Webhook signature errors                       | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL.                                                        |
-| React Compiler warnings                        | `next.config.ts` already enables `reactCompiler`. Ensure lint errors are fixed; the compiler is strict about invalid hooks usage.                                                   |
+| Symptom                                        | Resolution                                                                                                                                                                              |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm run typecheck` fails with engine warning | Ensure `nvm use` applied (Node 26). The repository and staging builds use Node 26.5.0.                                                                                                  |
+| Storefront shows empty cart despite items      | Check `rr_cart_v1` for the storefront domain, the cart-signing secret/previous secret, and the same-origin `/api/cart` response.                                                        |
+| Payment form does not load                     | Verify test/live key mode matches, the `pmc_...` is active, Stripe origins and custom font loading are allowed, and `/api/checkout/payment-session` returns one official session.       |
+| Payment form reloads after changing windows    | Confirm the checkout refetch has the same revision/provider/status and that its in-memory projection retained the prepared client secret; persisted query storage must remain disabled. |
+| Stripe payment lacks an order reference        | Open the Medusa order widget, confirm the `order.placed` subscriber ran, and retry the idempotent sync only in the same Stripe mode. Never put customer PII into Stripe metadata.       |
+| “Do not pay again” recovery persists           | Check official webhook delivery, backend `/store/checkout/status`, and the capped reconciliation aggregate before permitting another attempt.                                           |
+| Confirmed payment has no order                 | Follow `docs/CHECKOUT_OPERATIONS.md`; leave webhook/reconciliation running and do not manually create an order or re-submit payment.                                                    |
+| Search results empty                           | Confirm Meilisearch index name (`products`), API keys, and that documents exist. Backend fallback logs to console when Meili query fails.                                               |
+| Webhook signature errors                       | Verify CLI tunnel URL matches `BACKEND_PUBLIC_URL` or override Stripe webhook endpoint with the CLI-provided forwarding URL.                                                            |
+| React Compiler warnings                        | `next.config.ts` already enables `reactCompiler`. Ensure lint errors are fixed; the compiler is strict about invalid hooks usage.                                                       |
 
 ## CI Pipelines
 
