@@ -1,4 +1,4 @@
-import { Check, Circle } from "lucide-react"
+import { Check, Circle, Pencil } from "lucide-react"
 import { memo, type ReactNode } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,7 @@ export const CheckoutSection = memo<CheckoutSectionProps>(
       aria-labelledby={`checkout-step-${step}`}
       className={cn(disabled && "opacity-60")}
     >
-      <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+      <CardHeader className="flex flex-col items-start gap-4 space-y-0 sm:flex-row sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span
             className={cn(
@@ -63,12 +63,14 @@ export const CheckoutSection = memo<CheckoutSectionProps>(
         {complete && onEdit ? (
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="compact"
+            className="h-10 shrink-0 gap-2 border-border/80 px-4 tracking-[0.18rem]"
             onClick={onEdit}
-            aria-label={`Change ${title.toLowerCase()}`}
+            aria-label={`Edit ${title.toLowerCase()}`}
           >
-            Change
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+            Edit
           </Button>
         ) : null}
       </CardHeader>

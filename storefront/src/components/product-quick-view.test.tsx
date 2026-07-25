@@ -19,9 +19,22 @@ vi.mock("@/lib/query/products", () => ({
   useProductDetailQuery: productDetailQueryMock,
 }))
 
+vi.mock("@/components/ui/smart-link", () => ({
+  default: ({
+    children,
+    href,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}))
+
 vi.mock("@/providers/cart-provider", () => ({
   useCart: () => ({
     addItem: addItemMock,
+    itemCount: 0,
   }),
 }))
 
@@ -115,5 +128,25 @@ describe("ProductQuickView", () => {
 
     expect(cdFormat).toHaveAttribute("aria-pressed", "false")
     expect(lpFormat).toHaveAttribute("aria-pressed", "true")
+  })
+
+  it("offers checkout after an item is added without opening the cart", async () => {
+    addItemMock.mockResolvedValue(undefined)
+    render(
+      <ProductQuickView handle={product.handle} open onOpenChange={vi.fn()} />
+    )
+
+    const quickShop = screen.getByRole("dialog", { name: "Quick shop" })
+    expect(
+      within(quickShop).queryByRole("link", { name: "Checkout" })
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      within(quickShop).getByRole("button", { name: "Add to cart" })
+    )
+
+    expect(
+      await within(quickShop).findByRole("link", { name: "Checkout" })
+    ).toHaveAttribute("href", "/checkout")
   })
 })

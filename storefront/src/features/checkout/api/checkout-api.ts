@@ -26,6 +26,7 @@ const checkoutStateSchema = z.enum([
 
 const checkoutItemSchema = z
   .object({
+    availableQuantity: z.number().int().nonnegative().nullable(),
     id: z.string().min(1),
     productHandle: z.string().min(1).nullable(),
     productTitle: z.string().min(1),

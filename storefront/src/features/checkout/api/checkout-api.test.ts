@@ -14,6 +14,7 @@ const checkout = {
   cart: {
     items: [
       {
+        availableQuantity: 4,
         id: "item_test",
         productHandle: "test-release",
         productTitle: "Test Release",

@@ -141,6 +141,7 @@ export const ProductQuickView = ({
               <ProductVariantSelector
                 variants={variants}
                 productTitle={activeProduct?.title ?? "Release"}
+                showCheckoutAction
               />
               <p className="text-xs leading-relaxed text-muted-foreground">
                 {description}

@@ -652,8 +652,11 @@ test("adding from quick shop confirms in place without opening the cart", async 
   await expect(
     page.locator('header button[aria-label="Open cart, 1 item"]')
   ).toHaveCount(1)
+  const checkoutLink = quickShop.getByRole("link", { name: "Checkout" })
+  await expect(checkoutLink).toBeVisible()
+  await expect(checkoutLink).toHaveAttribute("href", "/checkout")
 
-  await addedButton.scrollIntoViewIfNeeded()
+  await checkoutLink.scrollIntoViewIfNeeded()
   const deviceName = testInfo.project.name
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, "-")
@@ -980,6 +983,7 @@ test("checkout remains accessible and contained with device emulation", async ({
     shipping: `v1.${"d".repeat(43)}`,
   }
   let checkoutStep: "contact" | "delivery" | "initial" | "shipping" = "initial"
+  let checkoutQuantity = 1
 
   const address = {
     firstName: "Ada",
@@ -1013,8 +1017,9 @@ test("checkout remains accessible and contained with device emulation", async ({
             productHandle:
               "music-release-pathologist-pathological-decomposition",
             productTitle: "Pathological Decomposition",
-            quantity: 1,
-            subtotal: 20,
+            availableQuantity: 5,
+            quantity: checkoutQuantity,
+            subtotal: 20 * checkoutQuantity,
             thumbnail: null,
             unitPrice: 20,
             variantTitle: "LP",
@@ -1022,11 +1027,11 @@ test("checkout remains accessible and contained with device emulation", async ({
         ],
         totals: {
           currencyCode: "usd",
-          subtotal: 20,
+          subtotal: 20 * checkoutQuantity,
           discountTotal: 0,
           shippingTotal: hasShipping ? 5 : 0,
           taxTotal: hasShipping ? 1.5 : 0,
-          total: hasShipping ? 26.5 : 20,
+          total: 20 * checkoutQuantity + (hasShipping ? 5 + 1.5 : 0),
         },
         contact: hasContact ? { email: "buyer@example.test" } : null,
         deliveryAddress: hasDelivery ? address : null,
@@ -1049,19 +1054,50 @@ test("checkout remains accessible and contained with device emulation", async ({
     }
   }
 
+  const cart = () => ({
+    id: "cart_checkout_mobile",
+    currency_code: "usd",
+    subtotal: 20 * checkoutQuantity,
+    total: 20 * checkoutQuantity,
+    items: [
+      {
+        id: "cali_checkout_mobile",
+        title: "Pathological Decomposition",
+        product_title: "Pathological Decomposition",
+        product_handle: "music-release-pathologist-pathological-decomposition",
+        variant_id: "variant_checkout_mobile",
+        variant_title: "LP",
+        quantity: checkoutQuantity,
+        unit_price: 20,
+        subtotal: 20 * checkoutQuantity,
+        thumbnail: null,
+      },
+    ],
+  })
+
   await page.route("**/api/cart", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
-        cart: {
-          id: "cart_checkout_mobile",
-          currency_code: "usd",
-          subtotal: 20,
-          total: 20,
-          items: [],
-        },
-      }),
+      body: JSON.stringify({ cart: cart() }),
+    })
+  })
+  await page.route("**/api/cart/items/**", async (route) => {
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON() as { quantity: number }
+      checkoutQuantity = body.quantity
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ cart: cart() }),
+      })
+      return
+    }
+
+    await route.fulfill({
+      status: 405,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Unexpected cart item request" }),
     })
   })
   await page.route("**/api/checkout{,/**}", async (route) => {
@@ -1197,6 +1233,35 @@ test("checkout remains accessible and contained with device emulation", async ({
   await expect(
     page.getByText("Secure payment could not be prepared. Try again.")
   ).toBeVisible()
+  await expect(page.getByRole("button", { name: "Edit contact" })).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "Edit delivery address" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "Edit delivery method" })
+  ).toBeVisible()
+
+  const showSummary = page.getByRole("button", {
+    name: "Show order summary",
+  })
+  if (await showSummary.isVisible()) {
+    await showSummary.click()
+  }
+  await page
+    .getByRole("button", {
+      name: "Increase quantity of Pathological Decomposition",
+    })
+    .click()
+  await expect(
+    page.getByRole("button", {
+      name: "Decrease quantity of Pathological Decomposition",
+    })
+  ).toBeEnabled()
+  await expect(
+    page.getByRole("definition").filter({ hasText: "$46.50" })
+  ).toBeVisible()
+  await expect(page).toHaveURL(/\/checkout$/)
+  await expect(page.getByRole("link", { name: "Edit cart" })).toHaveCount(0)
 
   await expectVisibleInteractivePointers(page)
   const layout = await page.evaluate(() => {

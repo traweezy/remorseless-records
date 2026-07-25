@@ -11,6 +11,7 @@ export type CheckoutState =
   | "recovery_required"
 
 export type CheckoutItem = {
+  availableQuantity: number | null
   id: string
   productHandle: string | null
   productTitle: string

@@ -108,12 +108,13 @@ EmptyCheckout.displayName = "EmptyCheckout"
 
 export const CheckoutShell = memo(() => {
   const router = useRouter()
-  const { refreshCart } = useCart()
+  const { refreshCart, removeItem, updateItem } = useCart()
   const {
     checkout,
     checkoutError,
     isLoading,
     refreshCheckout,
+    setCheckout,
     contactMutation,
     deliveryMutation,
     shippingOptions,
@@ -126,6 +127,35 @@ export const CheckoutShell = memo(() => {
   } = useCheckout()
   const [editingStep, setEditingStep] = useState<EditableStep>(null)
   const [summaryExpanded, setSummaryExpanded] = useState(false)
+
+  const syncCheckoutAfterCartEdit = useCallback(
+    async (
+      activeCart: Awaited<ReturnType<typeof updateItem>>
+    ): Promise<void> => {
+      if (!activeCart?.items?.length) {
+        setCheckout(null)
+        return
+      }
+      await refreshCheckout()
+    },
+    [refreshCheckout, setCheckout]
+  )
+
+  const updateCheckoutItem = useCallback(
+    async (itemId: string, quantity: number): Promise<void> => {
+      const activeCart = await updateItem(itemId, quantity)
+      await syncCheckoutAfterCartEdit(activeCart)
+    },
+    [syncCheckoutAfterCartEdit, updateItem]
+  )
+
+  const removeCheckoutItem = useCallback(
+    async (itemId: string): Promise<void> => {
+      const activeCart = await removeItem(itemId)
+      await syncCheckoutAfterCartEdit(activeCart)
+    },
+    [removeItem, syncCheckoutAfterCartEdit]
+  )
 
   useEffect(() => {
     if (!checkout) {
@@ -217,7 +247,7 @@ export const CheckoutShell = memo(() => {
     return <CheckoutSkeleton />
   }
 
-  if (!checkout && isMissingCart(checkoutError)) {
+  if (!checkout && (!checkoutError || isMissingCart(checkoutError))) {
     return <EmptyCheckout />
   }
 
@@ -261,6 +291,8 @@ export const CheckoutShell = memo(() => {
           <div className="min-w-0 space-y-5">
             <CheckoutSummary
               checkout={checkout}
+              onRemoveItem={removeCheckoutItem}
+              onUpdateItem={updateCheckoutItem}
               expanded={summaryExpanded}
               onExpandedChange={setSummaryExpanded}
               className="lg:hidden"
@@ -406,7 +438,12 @@ export const CheckoutShell = memo(() => {
             </p>
           </div>
 
-          <CheckoutSummary checkout={checkout} className="hidden lg:block" />
+          <CheckoutSummary
+            checkout={checkout}
+            onRemoveItem={removeCheckoutItem}
+            onUpdateItem={updateCheckoutItem}
+            className="hidden lg:block"
+          />
         </div>
       </div>
     </div>

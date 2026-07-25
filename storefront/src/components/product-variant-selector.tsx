@@ -13,6 +13,7 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import SmartLink from "@/components/ui/smart-link"
 import { useProductVariantSelection } from "@/components/providers/product-variant-selection-provider"
 import { formatAmount } from "@/lib/money"
 import { resolveDefaultVariantId } from "@/lib/products/variant-selection"
@@ -25,6 +26,7 @@ type ProductVariantSelectorProps = {
   variants: VariantOption[]
   productTitle: string
   availabilityNoticeByVariantId?: Readonly<Record<string, string>>
+  showCheckoutAction?: boolean
 }
 
 const resolveMaxQuantity = (variant: VariantOption | null): number => {
@@ -41,7 +43,12 @@ const clampQuantity = (value: number, max: number) =>
 const ADDED_CONFIRMATION_DURATION_MS = 2_000
 
 const ProductVariantSelector = memo<ProductVariantSelectorProps>(
-  ({ variants, productTitle, availabilityNoticeByVariantId = {} }) => {
+  ({
+    variants,
+    productTitle,
+    availabilityNoticeByVariantId = {},
+    showCheckoutAction = false,
+  }) => {
     const defaultVariantId = useMemo(
       () => resolveDefaultVariantId(variants),
       [variants]
@@ -55,7 +62,7 @@ const ProductVariantSelector = memo<ProductVariantSelectorProps>(
       null
     )
     const [isPending, startTransition] = useTransition()
-    const { addItem } = useCart()
+    const { addItem, itemCount } = useCart()
 
     const requestedVariantId =
       variantSelection?.selectedVariantId ?? localSelectedVariantId
@@ -283,6 +290,12 @@ const ProductVariantSelector = memo<ProductVariantSelectorProps>(
               ? `${productTitle} added to cart.`
               : ""}
           </span>
+          {showCheckoutAction &&
+          (itemCount > 0 || confirmedVariantId !== null) ? (
+            <Button asChild variant="outline" size="lg" className="w-full">
+              <SmartLink href="/checkout">Checkout</SmartLink>
+            </Button>
+          ) : null}
           {availabilityNotice ? (
             <p
               className="text-sm leading-relaxed text-amber-200"

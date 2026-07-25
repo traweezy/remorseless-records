@@ -45,8 +45,8 @@ type CartContextValue = {
   total: number | null
   refreshCart: (options?: { silent?: boolean }) => Promise<StoreCart | null>
   addItem: (variantId: string, quantity?: number) => Promise<void>
-  updateItem: (lineItemId: string, quantity: number) => Promise<void>
-  removeItem: (lineItemId: string) => Promise<void>
+  updateItem: (lineItemId: string, quantity: number) => Promise<StoreCart>
+  removeItem: (lineItemId: string) => Promise<StoreCart>
   setEmail: (email: string) => Promise<StoreCart | null>
   setAddresses: (addresses: {
     shipping_address: StoreCartAddressInput
@@ -287,11 +287,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   )
 
   const updateItem = useCallback(
-    async (lineItemId: string, quantity: number) => {
+    async (lineItemId: string, quantity: number): Promise<StoreCart> => {
       if (!cart?.id) {
         throw new Error("No active cart")
       }
-      await cartMutation.mutateAsync({
+      return cartMutation.mutateAsync({
         kind: "update",
         lineItemId,
         quantity: Math.max(0, quantity),
@@ -302,11 +302,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   )
 
   const removeItem = useCallback(
-    async (lineItemId: string) => {
+    async (lineItemId: string): Promise<StoreCart> => {
       if (!cart?.id) {
         throw new Error("No active cart")
       }
-      await cartMutation.mutateAsync({
+      return cartMutation.mutateAsync({
         kind: "remove",
         lineItemId,
         showErrorToast: true,

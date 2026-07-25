@@ -1,20 +1,221 @@
-import { ChevronDown, Lock } from "lucide-react"
+"use client"
+
+import { ChevronDown, Lock, Minus, Plus, Trash2 } from "lucide-react"
 import Image from "next/image"
-import { memo, useId } from "react"
+import { memo, useCallback, useEffect, useId, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import SmartLink from "@/components/ui/smart-link"
-import type { CheckoutProjection } from "@/features/checkout/types/checkout"
+import type {
+  CheckoutItem,
+  CheckoutProjection,
+} from "@/features/checkout/types/checkout"
 import { formatAmount } from "@/lib/money"
 import { cn } from "@/lib/ui/cn"
 
 type CheckoutSummaryProps = {
   checkout: CheckoutProjection
+  onRemoveItem?: (itemId: string) => Promise<void>
+  onUpdateItem?: (itemId: string, quantity: number) => Promise<void>
   expanded?: boolean
   onExpandedChange?: (expanded: boolean) => void
   className?: string
 }
+
+type CheckoutSummaryItemProps = {
+  currencyCode: string
+  item: CheckoutItem
+  onRemove: ((itemId: string) => Promise<void>) | undefined
+  onUpdate: ((itemId: string, quantity: number) => Promise<void>) | undefined
+}
+
+const MAX_CART_QUANTITY = 100
+
+const CheckoutSummaryItem = memo<CheckoutSummaryItemProps>(
+  ({ currencyCode, item, onRemove, onUpdate }) => {
+    const [displayQuantity, setDisplayQuantity] = useState(item.quantity)
+    const [isRemoving, setIsRemoving] = useState(false)
+    const [isUpdating, setIsUpdating] = useState(false)
+    const authoritativeQuantityRef = useRef(item.quantity)
+    const desiredQuantityRef = useRef(item.quantity)
+    const isFlushingRef = useRef(false)
+    const maximumQuantity =
+      typeof item.availableQuantity === "number"
+        ? Math.min(
+            Math.max(item.quantity, item.availableQuantity),
+            MAX_CART_QUANTITY
+          )
+        : MAX_CART_QUANTITY
+
+    useEffect(() => {
+      authoritativeQuantityRef.current = item.quantity
+      if (!isFlushingRef.current) {
+        desiredQuantityRef.current = item.quantity
+        setDisplayQuantity(item.quantity)
+      }
+    }, [item.quantity])
+
+    const flush = useCallback(async (): Promise<void> => {
+      if (!onUpdate || isFlushingRef.current) {
+        return
+      }
+
+      isFlushingRef.current = true
+      setIsUpdating(true)
+      try {
+        for (;;) {
+          const target = desiredQuantityRef.current
+          await onUpdate(item.id, target)
+          authoritativeQuantityRef.current = target
+          if (desiredQuantityRef.current === target) {
+            break
+          }
+        }
+      } catch {
+        const restored = authoritativeQuantityRef.current
+        desiredQuantityRef.current = restored
+        setDisplayQuantity(restored)
+      } finally {
+        isFlushingRef.current = false
+        setIsUpdating(false)
+      }
+    }, [item.id, onUpdate])
+
+    const changeBy = useCallback(
+      (delta: number): void => {
+        const next = Math.min(
+          maximumQuantity,
+          Math.max(1, desiredQuantityRef.current + delta)
+        )
+        if (next === desiredQuantityRef.current) {
+          return
+        }
+        desiredQuantityRef.current = next
+        setDisplayQuantity(next)
+        void flush()
+      },
+      [flush, maximumQuantity]
+    )
+
+    const remove = useCallback(async (): Promise<void> => {
+      if (!onRemove || isRemoving) {
+        return
+      }
+      setIsRemoving(true)
+      try {
+        await onRemove(item.id)
+      } catch {
+        // The cart provider owns the customer-facing error toast. Keeping this
+        // handler resolved prevents an unhandled rejection from a click event.
+      } finally {
+        setIsRemoving(false)
+      }
+    }, [isRemoving, item.id, onRemove])
+
+    const decreaseQuantity = useCallback((): void => {
+      changeBy(-1)
+    }, [changeBy])
+
+    const increaseQuantity = useCallback((): void => {
+      changeBy(1)
+    }, [changeBy])
+
+    const removeItem = useCallback((): void => {
+      void remove()
+    }, [remove])
+
+    const editable = Boolean(onRemove && onUpdate)
+    const subtotal = item.unitPrice * displayQuantity
+
+    return (
+      <div
+        className={cn(
+          "grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 transition-opacity",
+          isRemoving && "opacity-60"
+        )}
+        aria-busy={isRemoving || isUpdating}
+      >
+        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
+          {item.thumbnail ? (
+            <Image
+              src={item.thumbnail}
+              alt=""
+              fill
+              sizes="56px"
+              className="object-cover"
+            />
+          ) : null}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                {item.productTitle}
+              </p>
+              {item.variantTitle ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {item.variantTitle}
+                </p>
+              ) : null}
+            </div>
+            <p className="shrink-0 text-sm font-semibold text-foreground">
+              {formatAmount(currencyCode, subtotal)}
+            </p>
+          </div>
+
+          {editable ? (
+            <div className="mt-3 flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="p-0"
+                aria-label={`Decrease quantity of ${item.productTitle}`}
+                onClick={decreaseQuantity}
+                disabled={isRemoving || displayQuantity <= 1}
+              >
+                <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+              </Button>
+              <output
+                className="min-w-7 text-center text-sm font-semibold tabular-nums"
+                aria-live="polite"
+              >
+                {displayQuantity}
+              </output>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="p-0"
+                aria-label={`Increase quantity of ${item.productTitle}`}
+                onClick={increaseQuantity}
+                disabled={isRemoving || displayQuantity >= maximumQuantity}
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="ml-auto p-0 text-muted-foreground hover:text-destructive"
+                aria-label={`Remove ${item.productTitle}`}
+                onClick={removeItem}
+                disabled={isRemoving || isUpdating}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Qty {item.quantity}
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+)
+CheckoutSummaryItem.displayName = "CheckoutSummaryItem"
 
 const SummaryRow = ({
   label,
@@ -40,11 +241,21 @@ const SummaryRow = ({
 )
 
 export const CheckoutSummary = memo<CheckoutSummaryProps>(
-  ({ checkout, expanded = true, onExpandedChange, className }) => {
+  ({
+    checkout,
+    onRemoveItem,
+    onUpdateItem,
+    expanded = true,
+    onExpandedChange,
+    className,
+  }) => {
     const { items, totals } = checkout.cart
     const detailsId = useId()
     const format = (amount: number): string =>
       formatAmount(totals.currencyCode, amount)
+    const toggleExpanded = useCallback((): void => {
+      onExpandedChange?.(!expanded)
+    }, [expanded, onExpandedChange])
 
     return (
       <Card
@@ -73,7 +284,7 @@ export const CheckoutSummary = memo<CheckoutSummaryProps>(
               aria-label={
                 expanded ? "Hide order summary" : "Show order summary"
               }
-              onClick={() => onExpandedChange(!expanded)}
+              onClick={toggleExpanded}
             >
               <ChevronDown
                 className={`h-5 w-5 transition-transform motion-reduce:transition-none ${
@@ -88,35 +299,13 @@ export const CheckoutSummary = memo<CheckoutSummaryProps>(
         <div id={detailsId} className={expanded ? "block" : "hidden lg:block"}>
           <div className="space-y-4 border-t border-border/60 px-5 py-5">
             {items.map((item) => (
-              <div key={item.id} className="flex items-start gap-3">
-                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
-                  {item.thumbnail ? (
-                    <Image
-                      src={item.thumbnail}
-                      alt=""
-                      fill
-                      sizes="56px"
-                      className="object-cover"
-                    />
-                  ) : null}
-                  <span className="absolute right-1 top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-background/90 px-1 text-[10px] font-semibold text-foreground">
-                    {item.quantity}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-sm font-semibold text-foreground">
-                    {item.productTitle}
-                  </p>
-                  {item.variantTitle ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {item.variantTitle}
-                    </p>
-                  ) : null}
-                </div>
-                <p className="shrink-0 text-sm font-semibold text-foreground">
-                  {format(item.subtotal)}
-                </p>
-              </div>
+              <CheckoutSummaryItem
+                key={item.id}
+                item={item}
+                currencyCode={totals.currencyCode}
+                onRemove={onRemoveItem}
+                onUpdate={onUpdateItem}
+              />
             ))}
           </div>
 
@@ -148,9 +337,6 @@ export const CheckoutSummary = memo<CheckoutSummaryProps>(
           </dl>
 
           <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-5">
-            <Button asChild variant="outline" size="compact">
-              <SmartLink href="/?cart=1">Edit cart</SmartLink>
-            </Button>
             <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
               Secure payment powered by Stripe

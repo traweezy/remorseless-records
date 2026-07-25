@@ -113,12 +113,22 @@ const addressFrom = (value: unknown): CheckoutAddress | null => {
 const lineItemsFrom = (items: HttpTypes.StoreCart["items"]): CheckoutItem[] =>
   (items ?? []).map((item) => {
     const product = asRecord(item.product)
+    const variant = asRecord(item.variant)
     const productTitle = text(item.product_title) || text(product?.title)
     if (!item.id || !productTitle) {
       throw new CheckoutProjectionError("Cart item identity is unavailable")
     }
 
+    const rawInventoryQuantity = Number(variant?.inventory_quantity)
+    const availableQuantity =
+      variant?.allow_backorder === true || variant?.manage_inventory === false
+        ? null
+        : Number.isFinite(rawInventoryQuantity)
+          ? Math.max(0, Math.trunc(rawInventoryQuantity))
+          : null
+
     return {
+      availableQuantity,
       id: item.id,
       productHandle:
         optionalText(item.product_handle) ?? optionalText(product?.handle),
