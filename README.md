@@ -470,7 +470,8 @@ Key variables (non-empty values required for full functionality):
 | `DATABASE_URL`                           | PostgreSQL connection string                                                 |
 | `REDIS_URL`                              | Required when deployed; powers distributed events, workflows, and cart locks |
 | `STRIPE_API_KEY`                         | Stripe secret key (_sk\_..._)                                                |
-| `STRIPE_WEBHOOK_SECRET`                  | From Stripe CLI or dashboard endpoint for `/api/webhooks/stripe`             |
+| `STRIPE_WEBHOOK_SECRET`                  | Endpoint secret for Medusa's official `/hooks/payment/stripe_stripe` webhook |
+| `STRIPE_PAYMENT_METHOD_CONFIGURATION`    | Active Stripe `pmc_...` limited to card, Link, Apple Pay, and Google Pay      |
 | `BACKEND_PUBLIC_URL`                     | External URL used in webhooks (e.g., `http://localhost:9000`)                |
 | `RESEND_API_KEY`                         | Optional; required for transactional mail                                    |
 | `MEILISEARCH_HOST`                       | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
@@ -515,6 +516,7 @@ COOKIE_SECRET=also-change-me
 BACKEND_PUBLIC_URL=http://localhost:9000
 STRIPE_API_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PAYMENT_METHOD_CONFIGURATION=pmc_...
 MEILISEARCH_HOST=http://127.0.0.1:7700
 MEILISEARCH_ADMIN_KEY=masterKey
 RESEND_API_KEY=re_a1b2c3...

@@ -14,6 +14,7 @@ import {
   SHOULD_DISABLE_ADMIN,
   STORE_CORS,
   STRIPE_API_KEY,
+  STRIPE_PAYMENT_METHOD_CONFIGURATION,
   STRIPE_WEBHOOK_SECRET,
   TAX_RATE_LOOKUP_API_KEY,
   TAX_RATE_LOOKUP_MODE,
@@ -32,6 +33,20 @@ import meilisearchSettings from './config/meilisearch-settings.json' assert { ty
 loadEnv(process.env.NODE_ENV, process.cwd());
 
 const productIndexSettings = meilisearchSettings.products;
+const stripeConfigurationValues = [
+  STRIPE_API_KEY,
+  STRIPE_WEBHOOK_SECRET,
+  STRIPE_PAYMENT_METHOD_CONFIGURATION,
+];
+const hasAnyStripeConfiguration = stripeConfigurationValues.some(Boolean);
+const hasCompleteStripeConfiguration = stripeConfigurationValues.every(Boolean);
+
+if (hasAnyStripeConfiguration && !hasCompleteStripeConfiguration) {
+  throw new Error(
+    "STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, and " +
+      "STRIPE_PAYMENT_METHOD_CONFIGURATION must be configured together."
+  );
+}
 
 /** @type {import('@medusajs/types').ConfigModule} */
 const medusaConfig = {
@@ -181,7 +196,7 @@ const medusaConfig = {
         ]
       }
     }] : []),
-    ...(STRIPE_API_KEY && STRIPE_WEBHOOK_SECRET ? [{
+    ...(hasCompleteStripeConfiguration ? [{
       key: Modules.PAYMENT,
       resolve: '@medusajs/payment',
       options: {
@@ -192,6 +207,11 @@ const medusaConfig = {
             options: {
               apiKey: STRIPE_API_KEY,
               webhookSecret: STRIPE_WEBHOOK_SECRET,
+              capture: true,
+              automaticPaymentMethods: true,
+              paymentMethodConfiguration:
+                STRIPE_PAYMENT_METHOD_CONFIGURATION,
+              asyncPaymentMethodTypes: [],
             },
           },
         ],
