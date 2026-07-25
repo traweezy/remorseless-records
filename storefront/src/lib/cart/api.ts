@@ -22,6 +22,7 @@ const CART_FIELDS = [
   "shipping_subtotal",
   "shipping_tax_total",
   "discount_total",
+  "discount_subtotal",
   "*items",
   "*items.tax_lines",
   "*items.adjustments",

@@ -16,8 +16,9 @@ const cartFixture = (
     subtotal: 24.99,
     item_subtotal: 19.99,
     discount_total: 0,
+    discount_subtotal: 0,
     shipping_subtotal: 5,
-    shipping_total: 5,
+    shipping_total: 5.4,
     tax_total: 2,
     total: 26.99,
     items: [
@@ -129,6 +130,34 @@ describe("checkout projection", () => {
       subtotal: 19.99,
       shippingTotal: 5,
       total: 26.99,
+    })
+  })
+
+  it("shows pre-tax shipping separately from the cart tax total", () => {
+    expect(createCheckoutProjection(cartFixture()).cart.totals).toMatchObject({
+      shippingTotal: 5,
+      taxTotal: 2,
+      total: 26.99,
+    })
+  })
+
+  it("shows the pre-tax discount alongside the post-discount tax", () => {
+    const cart = cartFixture({
+      discount_total: 2.16,
+      tax_total: 1.84,
+      total: 24.83,
+    })
+    const cartWithDiscountSubtotal = cart as unknown as {
+      discount_subtotal: number
+    }
+    cartWithDiscountSubtotal.discount_subtotal = 2
+
+    expect(createCheckoutProjection(cart).cart.totals).toMatchObject({
+      subtotal: 19.99,
+      discountTotal: 2,
+      shippingTotal: 5,
+      taxTotal: 1.84,
+      total: 24.83,
     })
   })
 

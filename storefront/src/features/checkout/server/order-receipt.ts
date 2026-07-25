@@ -11,10 +11,9 @@ const ORDER_RECEIPT_FIELDS = [
   "created_at",
   "email",
   "currency_code",
-  "subtotal",
   "item_subtotal",
-  "discount_total",
-  "shipping_total",
+  "discount_subtotal",
+  "shipping_subtotal",
   "tax_total",
   "total",
   "*items",
@@ -58,6 +57,7 @@ const optionalText = (value: string | null | undefined): string | null => {
 }
 
 const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
+  const orderRecord = order as unknown as Record<string, unknown>
   const placedAt = new Date(order.created_at)
   if (Number.isNaN(placedAt.valueOf())) {
     throw new Error("Order receipt contains an invalid timestamp")
@@ -110,8 +110,8 @@ const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
     totals: {
       currencyCode,
       subtotal: finiteAmount(order.item_subtotal),
-      discountTotal: finiteAmount(order.discount_total),
-      shippingTotal: finiteAmount(order.shipping_total),
+      discountTotal: finiteAmount(Number(orderRecord.discount_subtotal)),
+      shippingTotal: finiteAmount(order.shipping_subtotal),
       taxTotal: finiteAmount(order.tax_total),
       total: finiteAmount(order.total),
     },

@@ -149,6 +149,7 @@ const shippingMethodFrom = (
 
 const totalsFrom = (cart: HttpTypes.StoreCart): CheckoutTotals => {
   const currencyCode = text(cart.currency_code).toLowerCase()
+  const cartRecord = asRecord(cart)
   if (currencyCode !== "usd") {
     throw new CheckoutProjectionError("Checkout is configured for USD only")
   }
@@ -156,11 +157,11 @@ const totalsFrom = (cart: HttpTypes.StoreCart): CheckoutTotals => {
   return {
     currencyCode,
     subtotal: amount(cart.item_subtotal, "Cart item subtotal"),
-    discountTotal: amount(cart.discount_total, "Cart discount total"),
-    shippingTotal: amount(
-      cart.shipping_total ?? cart.shipping_subtotal,
-      "Cart shipping total"
+    discountTotal: amount(
+      cartRecord?.discount_subtotal,
+      "Cart discount subtotal"
     ),
+    shippingTotal: amount(cart.shipping_subtotal, "Cart shipping subtotal"),
     taxTotal: amount(cart.tax_total, "Cart tax total"),
     total: amount(cart.total, "Cart total"),
   }
@@ -249,6 +250,7 @@ const sortCanonical = <T>(values: T[]): T[] =>
   )
 
 const revisionFor = (cart: HttpTypes.StoreCart): string => {
+  const cartRecord = asRecord(cart)
   const canonical = {
     currencyCode: text(cart.currency_code).toLowerCase(),
     email: text(cart.email).toLowerCase(),
@@ -311,12 +313,12 @@ const revisionFor = (cart: HttpTypes.StoreCart): string => {
     totals: {
       subtotal: canonicalAmount(cart.item_subtotal, "Cart item subtotal"),
       discountTotal: canonicalAmount(
-        cart.discount_total,
-        "Cart discount total"
+        cartRecord?.discount_subtotal,
+        "Cart discount subtotal"
       ),
       shippingTotal: canonicalAmount(
-        cart.shipping_total ?? cart.shipping_subtotal,
-        "Cart shipping total"
+        cart.shipping_subtotal,
+        "Cart shipping subtotal"
       ),
       taxTotal: canonicalAmount(cart.tax_total, "Cart tax total"),
       total: canonicalAmount(cart.total, "Cart total"),

@@ -20,7 +20,9 @@ const order = {
   subtotal: 24.99,
   item_subtotal: 19.99,
   discount_total: 0,
-  shipping_total: 5,
+  discount_subtotal: 0,
+  shipping_subtotal: 5,
+  shipping_total: 5.4,
   tax_total: 1.75,
   total: 26.74,
   items: [
@@ -67,6 +69,8 @@ describe("order receipt projection", () => {
     expect(options.method).toBe("GET")
     expect(options.query.fields).toContain("*items")
     expect(options.query.fields).toContain("item_subtotal")
+    expect(options.query.fields).toContain("discount_subtotal")
+    expect(options.query.fields).toContain("shipping_subtotal")
     expect(options.signal).toBeInstanceOf(AbortSignal)
     expect(receipt).toMatchObject({
       orderNumber: "1042",
