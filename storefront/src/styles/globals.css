@@ -155,10 +155,10 @@
     padding: 0.5rem 0;
     background: linear-gradient(
       135deg,
-      hsl(var(--destructive)) 0%,
-      hsl(var(--accent)) 100%
+      var(--ribbon-start) 0%,
+      var(--ribbon-end) 100%
     );
-    color: hsl(var(--destructive-foreground));
+    color: var(--ribbon-foreground);
     font-family: var(--font-headline, var(--font-sans));
     font-size: 0.64rem;
     font-weight: 700;
@@ -196,12 +196,12 @@
 
   .product-card__corner span::before {
     left: 0.38rem;
-    border-color: hsl(var(--destructive)) transparent transparent transparent;
+    border-color: var(--ribbon-start) transparent transparent transparent;
   }
 
   .product-card__corner span::after {
     right: 0.38rem;
-    border-color: hsl(var(--accent)) transparent transparent transparent;
+    border-color: var(--ribbon-end) transparent transparent transparent;
   }
 
   .interactive {
@@ -235,6 +235,9 @@
     --accent-foreground: 0 0% 7%;
     --destructive: 0 88% 60%;
     --destructive-foreground: 0 0% 7%;
+    --ribbon-start: oklch(0.8 0.15 86);
+    --ribbon-end: oklch(0.69 0.17 66);
+    --ribbon-foreground: oklch(0.16 0.02 70);
 
     /* Elements */
     --border: 0 0% 20%;

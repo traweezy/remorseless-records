@@ -8,6 +8,7 @@ import {
   getProductsByIds,
   getRecentProducts,
 } from "@/lib/data/products"
+import { normalizeRibbonLabel } from "@/lib/products/ribbons"
 
 type StoreProduct = HttpTypes.StoreProduct
 
@@ -134,7 +135,9 @@ export const getHomepageShelves = unstable_cache(
             ),
             showRibbon: resolved?.shelf.showRibbon ?? false,
             ribbonLabel: resolved?.shelf.showRibbon
-              ? (resolved.shelf.ribbonLabel ?? resolved.shelf.title)
+              ? normalizeRibbonLabel(
+                  resolved.shelf.ribbonLabel ?? resolved.shelf.title
+                )
               : null,
             ribbonPriority: resolved?.shelf.ribbonPriority ?? 100,
             products,

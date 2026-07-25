@@ -23,6 +23,7 @@ import {
   buildPublicProductPath,
   resolvePublicProductRouteType,
 } from "@/lib/products/routes"
+import { normalizeRibbonLabel } from "@/lib/products/ribbons"
 import { useProductDetailPrefetch } from "@/lib/query/products"
 import { shouldBlockPrefetch } from "@/lib/prefetch"
 import type {
@@ -175,11 +176,11 @@ export const resolveCollectionRibbonLabel = (
         candidate.slug === priority || candidate.slug.startsWith(priority)
     )
     if (match) {
-      return match.label
+      return normalizeRibbonLabel(match.label)
     }
   }
 
-  return filtered[0]?.label ?? null
+  return normalizeRibbonLabel(filtered[0]?.label)
 }
 
 const resolveFallbackBadge = (product: ProductCardSource): string | null => {
@@ -214,7 +215,7 @@ export const resolveProductCardBadge = (
 ): string | null => {
   const contextualRibbon = contextualRibbonLabel?.trim()
   if (contextualRibbon) {
-    return contextualRibbon
+    return normalizeRibbonLabel(contextualRibbon)
   }
 
   return (

@@ -44,4 +44,16 @@ describe("product card ribbons", () => {
       "Featured"
     )
   })
+
+  it("shortens legacy new-release ribbons in every card context", () => {
+    expect(resolveProductCardBadge(searchHit, searchHit, "New Release")).toBe(
+      "New"
+    )
+    expect(
+      resolveCollectionRibbonLabel(
+        { ...searchHit, ribbonLabel: "New Releases" },
+        searchHit
+      )
+    ).toBe("New")
+  })
 })

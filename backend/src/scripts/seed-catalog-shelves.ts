@@ -33,7 +33,7 @@ const shelfSeeds = [
     mode: "automatic" as const,
     automation_type: "new_release" as const,
     show_ribbon: true,
-    ribbon_label: "New Release",
+    ribbon_label: "New",
     ribbon_priority: 10,
     product_limit: 12,
     is_active: true,

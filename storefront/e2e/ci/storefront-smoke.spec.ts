@@ -235,6 +235,12 @@ test("homepage hydrates every curated shelf without client errors", async ({
   await expect(
     page.getByRole("button", { name: /^Play .+ carousel$/ })
   ).toHaveCount(4)
+  await expect(
+    page.locator('[aria-label="Collection: New"]').first()
+  ).toBeVisible()
+  await expect(
+    page.locator('[aria-label="Collection: New Release"]')
+  ).toHaveCount(0)
 
   await page.waitForTimeout(500)
   expect(pageErrors).toEqual([])

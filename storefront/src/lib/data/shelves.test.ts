@@ -86,6 +86,7 @@ describe("homepage catalog shelves", () => {
         { id: "prod_1", handle: "handle-prod_1" },
       ],
     })
+    expect(shelves["new-releases"].ribbonLabel).toBe("New")
     expect(shelves["staff-picks"].products).toEqual([])
     expect(getCollectionProductsByHandle).not.toHaveBeenCalled()
     expect(getRecentProducts).not.toHaveBeenCalled()
