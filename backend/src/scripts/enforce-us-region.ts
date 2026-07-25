@@ -245,7 +245,6 @@ export default async function enforceUsRegion({ container }: ExecArgs): Promise<
 
   for (const serviceZoneId of serviceZoneIds) {
     await fulfillmentModule.updateServiceZones(serviceZoneId, {
-      name: "US",
       geo_zones: [
         {
           type: "country",

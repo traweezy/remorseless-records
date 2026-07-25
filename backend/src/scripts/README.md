@@ -120,3 +120,32 @@ railway run --service Postgres --environment staging \
 
 After a successful apply, rerun the audit and rebuild Meilisearch. Never reuse
 one environment's count or fingerprint in another environment.
+
+## Shipping and inventory-location repair
+
+Shipping eligibility is location-scoped in Medusa: a shipping option is usable
+only when its service zone belongs to the stock location that can fulfill every
+cart line. Run the idempotent repair after importing inventory into a new
+location or restoring a database:
+
+```bash
+pnpm --filter backend run shipping:update
+```
+
+The script targets the stock location named `HQ` by default. Override that
+explicitly when an environment uses a different canonical location:
+
+```bash
+SHIPPING_STOCK_LOCATION_NAME="Warehouse A" \
+  pnpm --filter backend run shipping:update
+```
+
+It fails closed if the name is missing or ambiguous. For the selected location
+it enables the `per_item_standard` provider, narrows its service zones to the
+United States, converts its single shipping option to calculated Standard
+Shipping (`$5` plus `$0.50` per additional unit), and removes legacy Express
+options. It never moves inventory or changes stocked/reserved quantities.
+
+Afterward, validate a real addressed cart through
+`GET /store/shipping-options?cart_id=...`: the selected option must have
+`insufficient_inventory: false` before checkout is enabled.

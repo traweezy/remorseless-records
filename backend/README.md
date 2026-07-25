@@ -137,6 +137,22 @@ The tax lookup module uses a bounded in-memory cache and Redis when configured:
 Tax failures remain checkout failures. The application does not silently
 replace a failed lookup with zero tax.
 
+## Fulfillment location contract
+
+Storefront checkout ships from the canonical `HQ` stock location. Medusa
+evaluates inventory and shipping eligibility at the same location, so an
+option attached to an empty legacy warehouse is intentionally unavailable even
+when aggregate inventory appears positive.
+
+`pnpm run shipping:update` repairs this association without changing any stock
+count. It enables the calculated per-item provider at `HQ`, scopes its service
+zone to the United States, and updates the location's existing shipping option.
+Set `SHIPPING_STOCK_LOCATION_NAME` only when an environment intentionally uses
+a different canonical location. The command fails instead of guessing when the
+location is absent or ambiguous. See
+[`src/scripts/README.md`](src/scripts/README.md#shipping-and-inventory-location-repair)
+for the exact behavior and verification step.
+
 ## Quality commands
 
 ```bash
