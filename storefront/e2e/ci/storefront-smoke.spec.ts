@@ -89,7 +89,7 @@ const catalogFilterFixtures: Record<string, unknown> = {
     ],
   },
   "/api/catalog/filters/price-range": {
-    range: { min: 100, max: 5_600, currency: "usd" },
+    range: { min: 1, max: 56, currency: "usd" },
   },
 }
 
@@ -707,8 +707,8 @@ test("catalog filters stay stable and combine predictably", async ({
   const maximumPriceSlider = drawer.getByRole("slider", {
     name: "Maximum price",
   })
-  await expect(minimumPriceSlider).toHaveAttribute("aria-valuenow", "100")
-  await expect(maximumPriceSlider).toHaveAttribute("aria-valuenow", "5600")
+  await expect(minimumPriceSlider).toHaveAttribute("aria-valuenow", "1")
+  await expect(maximumPriceSlider).toHaveAttribute("aria-valuenow", "56")
   const maximumPriceInput = drawer.getByRole("spinbutton", {
     name: "Maximum price in dollars",
   })
@@ -716,7 +716,7 @@ test("catalog filters stay stable and combine predictably", async ({
   await maximumPriceSlider.press("ArrowLeft")
   await expect(maximumPriceInput).toHaveValue("55")
   await maximumPriceInput.fill("20")
-  await expect(maximumPriceSlider).toHaveAttribute("aria-valuenow", "2000")
+  await expect(maximumPriceSlider).toHaveAttribute("aria-valuenow", "20")
   await expect(drawer.getByRole("button", { name: "Apply" })).toHaveClass(
     /bg-destructive/
   )
@@ -741,7 +741,7 @@ test("catalog filters stay stable and combine predictably", async ({
           request.filters.genres.includes("Grind") &&
           request.filters.formats?.includes("CD") &&
           request.filters.productTypes?.includes("music-release") &&
-          request.filters.price?.max === 2_000
+          request.filters.price?.max === 20
       )
     )
     .toBe(true)

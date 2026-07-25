@@ -48,7 +48,7 @@ describe("fetchCatalogFilterOptions", () => {
   })
 
   it("loads and validates the dedicated price range endpoint", async () => {
-    const payload = { range: { min: 100, max: 5_600, currency: "usd" } }
+    const payload = { range: { min: 1, max: 56, currency: "usd" } }
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }))
@@ -60,7 +60,7 @@ describe("fetchCatalogFilterOptions", () => {
 
     fetchMock.mockResolvedValueOnce(
       new Response(
-        JSON.stringify({ range: { min: 5_600, max: 100, currency: "usd" } }),
+        JSON.stringify({ range: { min: 56, max: 1, currency: "usd" } }),
         { status: 200 }
       )
     )
