@@ -8,7 +8,7 @@ const cartApiMocks = vi.hoisted(() => ({
   getCart: vi.fn(),
 }))
 const cartCookieMocks = vi.hoisted(() => ({
-  setCartCookie: vi.fn(),
+  syncCartCookie: vi.fn(),
 }))
 const cartRouteMocks = vi.hoisted(() => ({
   readOrCreateCartId: vi.fn(),
@@ -51,7 +51,7 @@ const createRequest = (
 describe("POST /api/cart/items", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    cartCookieMocks.setCartCookie.mockImplementation(
+    cartCookieMocks.syncCartCookie.mockImplementation(
       (response: Response) => response
     )
   })
@@ -100,9 +100,9 @@ describe("POST /api/cart/items", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(cartCookieMocks.setCartCookie).toHaveBeenCalledWith(
+    expect(cartCookieMocks.syncCartCookie).toHaveBeenCalledWith(
       expect.any(Response),
-      "cart_fresh"
+      populatedCart
     )
     expect(cartApiMocks.addLineItem).toHaveBeenNthCalledWith(
       2,

@@ -4,7 +4,7 @@ import { unstable_noStore as noStore } from "next/cache"
 import { z } from "zod"
 
 import { addLineItem, createCart, getCart } from "@/lib/cart/api"
-import { setCartCookie } from "@/lib/cart/cookie"
+import { syncCartCookie } from "@/lib/cart/cookie"
 import { mapCartError } from "@/lib/cart/errors"
 import { runIdempotentCartMutation } from "@/lib/cart/idempotency"
 import { readOrCreateCartId } from "@/lib/cart/route"
@@ -93,9 +93,9 @@ export const POST = async (request: NextRequest): Promise<Response> => {
       return result.response
     }
 
-    const response = setCartCookie(
+    const response = syncCartCookie(
       jsonApiResponse({ cart: result.cart }),
-      result.cart.id
+      result.cart
     )
     if (result.replayed) {
       response.headers.set("Idempotency-Replayed", "true")

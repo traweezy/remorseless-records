@@ -1,6 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useState, useTransition } from "react"
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react"
 
 import { toast } from "sonner"
 
@@ -10,7 +17,6 @@ import { useProductVariantSelection } from "@/components/providers/product-varia
 import { formatAmount } from "@/lib/money"
 import { resolveDefaultVariantId } from "@/lib/products/variant-selection"
 import { resolveStockChip } from "@/lib/products/stock-presentation"
-import { useUIStore } from "@/lib/store/ui"
 import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
 import type { VariantOption } from "@/types/product"
@@ -32,253 +38,267 @@ const resolveMaxQuantity = (variant: VariantOption | null): number => {
 const clampQuantity = (value: number, max: number) =>
   Math.min(Math.max(value, 1), max)
 
-const ProductVariantSelector = ({
-  variants,
-  productTitle,
-  availabilityNoticeByVariantId = {},
-}: ProductVariantSelectorProps) => {
-  const defaultVariantId = useMemo(
-    () => resolveDefaultVariantId(variants),
-    [variants]
-  )
+const ADDED_CONFIRMATION_DURATION_MS = 2_000
 
-  const variantSelection = useProductVariantSelection()
-  const [localSelectedVariantId, setLocalSelectedVariantId] =
-    useState(defaultVariantId)
-  const [quantity, setQuantity] = useState(1)
-  const [optimisticVariantId, setOptimisticVariantId] = useState<string | null>(
-    null
-  )
-  const [isPending, startTransition] = useTransition()
-  const { addItem } = useCart()
-  const setCartOpen = useUIStore((state) => state.setCartOpen)
+const ProductVariantSelector = memo<ProductVariantSelectorProps>(
+  ({ variants, productTitle, availabilityNoticeByVariantId = {} }) => {
+    const defaultVariantId = useMemo(
+      () => resolveDefaultVariantId(variants),
+      [variants]
+    )
 
-  const requestedVariantId =
-    variantSelection?.selectedVariantId ?? localSelectedVariantId
-  const resolvedVariantId =
-    requestedVariantId &&
-    variants.some((variant) => variant.id === requestedVariantId)
-      ? requestedVariantId
-      : defaultVariantId
+    const variantSelection = useProductVariantSelection()
+    const [localSelectedVariantId, setLocalSelectedVariantId] =
+      useState(defaultVariantId)
+    const [quantity, setQuantity] = useState(1)
+    const [confirmedVariantId, setConfirmedVariantId] = useState<string | null>(
+      null
+    )
+    const [isPending, startTransition] = useTransition()
+    const { addItem } = useCart()
 
-  const selectedVariant = useMemo(
-    () => variants.find((variant) => variant.id === resolvedVariantId) ?? null,
-    [resolvedVariantId, variants]
-  )
+    const requestedVariantId =
+      variantSelection?.selectedVariantId ?? localSelectedVariantId
+    const resolvedVariantId =
+      requestedVariantId &&
+      variants.some((variant) => variant.id === requestedVariantId)
+        ? requestedVariantId
+        : defaultVariantId
 
-  const maxQuantity = useMemo(() => {
-    return resolveMaxQuantity(selectedVariant)
-  }, [selectedVariant])
+    const selectedVariant = useMemo(
+      () =>
+        variants.find((variant) => variant.id === resolvedVariantId) ?? null,
+      [resolvedVariantId, variants]
+    )
 
-  const isPurchasable = Boolean(
-    selectedVariant?.inStock && selectedVariant?.hasPrice
-  )
-  const effectiveMax = Math.max(1, maxQuantity)
-  const safeQuantity = isPurchasable ? clampQuantity(quantity, effectiveMax) : 1
+    const maxQuantity = useMemo(() => {
+      return resolveMaxQuantity(selectedVariant)
+    }, [selectedVariant])
 
-  useEffect(() => {
-    if (!isPending && optimisticVariantId) {
-      const timer = setTimeout(() => {
-        setOptimisticVariantId(null)
-      }, 1600)
+    const isPurchasable = Boolean(
+      selectedVariant?.inStock && selectedVariant?.hasPrice
+    )
+    const effectiveMax = Math.max(1, maxQuantity)
+    const safeQuantity = isPurchasable
+      ? clampQuantity(quantity, effectiveMax)
+      : 1
 
-      return () => clearTimeout(timer)
-    }
+    useEffect(() => {
+      if (confirmedVariantId) {
+        const timer = setTimeout(() => {
+          setConfirmedVariantId(null)
+        }, ADDED_CONFIRMATION_DURATION_MS)
 
-    return undefined
-  }, [isPending, optimisticVariantId])
-
-  const handleVariantSelect = (variantId: string) => {
-    const nextVariant =
-      variants.find((variant) => variant.id === variantId) ?? null
-    const nextMax = Math.max(1, resolveMaxQuantity(nextVariant))
-    setLocalSelectedVariantId(variantId)
-    variantSelection?.selectVariant(variantId)
-    setQuantity((prev) => clampQuantity(prev, nextMax))
-  }
-
-  const handleQuantityChange = (value: string) => {
-    const parsed = Number(value)
-    if (Number.isNaN(parsed)) {
-      setQuantity(1)
-      return
-    }
-
-    const clamped = clampQuantity(parsed, effectiveMax)
-    setQuantity(clamped)
-  }
-
-  const handleAddToCart = () => {
-    if (!variants.length) {
-      toast.error("All variants are coming soon. Check back shortly.")
-      return
-    }
-
-    if (!selectedVariant) {
-      toast.error("Select a variant before adding to cart.")
-      return
-    }
-
-    if (!selectedVariant.hasPrice) {
-      toast.error("Pricing for this format is unavailable right now.")
-      return
-    }
-
-    if (!selectedVariant.inStock) {
-      toast.error("That variant is currently sold out.")
-      return
-    }
-
-    if (safeQuantity !== quantity) {
-      setQuantity(safeQuantity)
-    }
-
-    setOptimisticVariantId(selectedVariant.id)
-
-    startTransition(async () => {
-      try {
-        await addItem(selectedVariant.id, safeQuantity)
-        setCartOpen(true)
-        toast.success(`${productTitle} added to cart.`)
-      } catch (error) {
-        console.error(error)
-        toast.error("Unable to add this item right now.")
-        setOptimisticVariantId(null)
+        return () => clearTimeout(timer)
       }
-    })
-  }
 
-  const addButtonLabel = (() => {
-    if (!variants.length) {
-      return "Coming soon"
-    }
+      return undefined
+    }, [confirmedVariantId])
 
-    if (!selectedVariant?.hasPrice) {
-      return "Unavailable"
-    }
+    const handleVariantSelect = useCallback(
+      (variantId: string) => {
+        const nextVariant =
+          variants.find((variant) => variant.id === variantId) ?? null
+        const nextMax = Math.max(1, resolveMaxQuantity(nextVariant))
+        setLocalSelectedVariantId(variantId)
+        variantSelection?.selectVariant(variantId)
+        setQuantity((prev) => clampQuantity(prev, nextMax))
+      },
+      [variantSelection, variants]
+    )
 
-    if (!selectedVariant?.inStock) {
-      return "Sold out"
-    }
+    const handleQuantityChange = useCallback(
+      (value: string) => {
+        const parsed = Number(value)
+        if (Number.isNaN(parsed)) {
+          setQuantity(1)
+          return
+        }
 
-    if (isPending) {
-      return "Adding..."
-    }
+        const clamped = clampQuantity(parsed, effectiveMax)
+        setQuantity(clamped)
+      },
+      [effectiveMax]
+    )
 
-    if (optimisticVariantId === selectedVariant?.id) {
-      return "Added!"
-    }
+    const handleAddToCart = useCallback(() => {
+      if (!variants.length) {
+        toast.error("All variants are coming soon. Check back shortly.")
+        return
+      }
 
-    return "Add to cart"
-  })()
+      if (!selectedVariant) {
+        toast.error("Select a variant before adding to cart.")
+        return
+      }
 
-  const availabilityNotice = selectedVariant
-    ? availabilityNoticeByVariantId[selectedVariant.id]
-    : undefined
+      if (!selectedVariant.hasPrice) {
+        toast.error("Pricing for this format is unavailable right now.")
+        return
+      }
 
-  return (
-    <div className="space-y-4">
-      <div
-        className="grid gap-2.5 sm:grid-cols-2"
-        role="group"
-        aria-label="Available formats"
-      >
-        {variants.length ? (
-          variants.map((variant) => {
-            const isSelected = variant.id === selectedVariant?.id
-            const variantPrice = variant.hasPrice
-              ? formatAmount(variant.currency, variant.amount)
-              : "Price unavailable"
-            const isSoldOut = variant.stockStatus === "sold_out"
-            const isUnavailable = !variant.hasPrice
-            const stockChip = resolveStockChip(variant)
+      if (!selectedVariant.inStock) {
+        toast.error("That variant is currently sold out.")
+        return
+      }
 
-            return (
-              <Button
-                key={variant.id}
-                type="button"
-                variant="unstyled"
-                size="auto"
-                className={cn(
-                  "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-3.5 text-left transition",
-                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                  isSelected &&
-                    !isSoldOut &&
-                    !isUnavailable &&
-                    "border-accent bg-accent/10",
-                  (isSoldOut || isUnavailable) &&
-                    "cursor-not-allowed opacity-50"
-                )}
-                aria-pressed={isSelected}
-                disabled={isSoldOut || isUnavailable}
-                onClick={() => handleVariantSelect(variant.id)}
-              >
-                <span className="font-headline text-sm uppercase tracking-[0.3rem] text-foreground">
-                  {variant.title}
-                </span>
-                <span className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
-                  {variantPrice}
-                </span>
-                {stockChip ? (
-                  <Badge variant={stockChip.tone} className="px-2.5 py-1">
-                    {stockChip.label}
-                  </Badge>
-                ) : null}
-              </Button>
-            )
-          })
-        ) : (
-          <div className="rounded-2xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground sm:col-span-2">
-            All formats are currently in production. Join the newsletter to be
-            alerted when the next pressing drops.
-          </div>
-        )}
-      </div>
+      if (safeQuantity !== quantity) {
+        setQuantity(safeQuantity)
+      }
 
-      <div className="space-y-3 border-t border-border/60 pt-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <label
-            className="flex items-center gap-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground"
-            htmlFor="quantity"
-          >
-            Qty
-            <input
-              id="quantity"
-              min={1}
-              max={effectiveMax}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              className="h-11 w-20 rounded-full border border-border/60 bg-background/80 px-4 text-sm uppercase tracking-[0.2rem] shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-destructive"
-              type="number"
-              value={safeQuantity}
-              onFocus={(event) => event.currentTarget.select()}
-              onChange={(event) => handleQuantityChange(event.target.value)}
-              disabled={!isPurchasable}
-            />
-          </label>
-          <Button
-            type="button"
-            size="lg"
-            className="flex-1 text-xs uppercase tracking-[0.35rem]"
-            onClick={handleAddToCart}
-            disabled={!variants.length || !isPurchasable || isPending}
-          >
-            {addButtonLabel}
-          </Button>
+      setConfirmedVariantId(null)
+
+      startTransition(async () => {
+        try {
+          await addItem(selectedVariant.id, safeQuantity)
+          setConfirmedVariantId(selectedVariant.id)
+        } catch (error) {
+          console.error(error)
+          toast.error("Unable to add this item right now.")
+          setConfirmedVariantId(null)
+        }
+      })
+    }, [addItem, quantity, safeQuantity, selectedVariant, variants.length])
+
+    const addButtonLabel = (() => {
+      if (!variants.length) {
+        return "Coming soon"
+      }
+
+      if (!selectedVariant?.hasPrice) {
+        return "Unavailable"
+      }
+
+      if (!selectedVariant?.inStock) {
+        return "Sold out"
+      }
+
+      if (isPending) {
+        return "Adding..."
+      }
+
+      if (confirmedVariantId === selectedVariant?.id) {
+        return "Added"
+      }
+
+      return "Add to cart"
+    })()
+
+    const availabilityNotice = selectedVariant
+      ? availabilityNoticeByVariantId[selectedVariant.id]
+      : undefined
+
+    return (
+      <div className="space-y-4">
+        <div
+          className="grid gap-2.5 sm:grid-cols-2"
+          role="group"
+          aria-label="Available formats"
+        >
+          {variants.length ? (
+            variants.map((variant) => {
+              const isSelected = variant.id === selectedVariant?.id
+              const variantPrice = variant.hasPrice
+                ? formatAmount(variant.currency, variant.amount)
+                : "Price unavailable"
+              const isSoldOut = variant.stockStatus === "sold_out"
+              const isUnavailable = !variant.hasPrice
+              const stockChip = resolveStockChip(variant)
+
+              return (
+                <Button
+                  key={variant.id}
+                  type="button"
+                  variant="unstyled"
+                  size="auto"
+                  className={cn(
+                    "flex flex-col items-start gap-2 rounded-2xl border border-border/60 bg-background/70 p-3.5 text-left transition",
+                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                    isSelected &&
+                      !isSoldOut &&
+                      !isUnavailable &&
+                      "border-accent bg-accent/10",
+                    (isSoldOut || isUnavailable) &&
+                      "cursor-not-allowed opacity-50"
+                  )}
+                  aria-pressed={isSelected}
+                  disabled={isSoldOut || isUnavailable}
+                  onClick={() => handleVariantSelect(variant.id)}
+                >
+                  <span className="font-headline text-sm uppercase tracking-[0.3rem] text-foreground">
+                    {variant.title}
+                  </span>
+                  <span className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
+                    {variantPrice}
+                  </span>
+                  {stockChip ? (
+                    <Badge variant={stockChip.tone} className="px-2.5 py-1">
+                      {stockChip.label}
+                    </Badge>
+                  ) : null}
+                </Button>
+              )
+            })
+          ) : (
+            <div className="rounded-2xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground sm:col-span-2">
+              All formats are currently in production. Join the newsletter to be
+              alerted when the next pressing drops.
+            </div>
+          )}
         </div>
-        {availabilityNotice ? (
-          <p
-            className="text-sm leading-relaxed text-amber-200"
-            role="status"
-            aria-live="polite"
-          >
-            {availabilityNotice} Choose another available format or check back
-            later.
-          </p>
-        ) : null}
+
+        <div className="space-y-3 border-t border-border/60 pt-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <label
+              className="flex items-center gap-2 text-xs uppercase tracking-[0.3rem] text-muted-foreground"
+              htmlFor="quantity"
+            >
+              Qty
+              <input
+                id="quantity"
+                min={1}
+                max={effectiveMax}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className="h-11 w-20 rounded-full border border-border/60 bg-background/80 px-4 text-sm uppercase tracking-[0.2rem] shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-destructive"
+                type="number"
+                value={safeQuantity}
+                onFocus={(event) => event.currentTarget.select()}
+                onChange={(event) => handleQuantityChange(event.target.value)}
+                disabled={!isPurchasable}
+              />
+            </label>
+            <Button
+              type="button"
+              size="lg"
+              className="flex-1 text-xs uppercase tracking-[0.35rem]"
+              onClick={handleAddToCart}
+              disabled={!variants.length || !isPurchasable || isPending}
+            >
+              {addButtonLabel}
+            </Button>
+          </div>
+          <span className="sr-only" role="status" aria-live="polite">
+            {confirmedVariantId === selectedVariant?.id
+              ? `${productTitle} added to cart.`
+              : ""}
+          </span>
+          {availabilityNotice ? (
+            <p
+              className="text-sm leading-relaxed text-amber-200"
+              role="status"
+              aria-live="polite"
+            >
+              {availabilityNotice} Choose another available format or check back
+              later.
+            </p>
+          ) : null}
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
+)
+
+ProductVariantSelector.displayName = "ProductVariantSelector"
 
 export default ProductVariantSelector

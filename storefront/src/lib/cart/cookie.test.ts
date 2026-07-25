@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
+  CART_COOKIE_MAX_AGE_SECONDS,
   clearCartCookie,
   readCartCookie,
   setCartCookie,
   signCartId,
+  syncCartCookie,
   verifyCartCookie,
 } from "@/lib/cart/cookie"
 
@@ -54,12 +56,31 @@ describe("cart cookie signatures", () => {
     expect(setCookie).toContain("SameSite=lax")
     expect(setCookie).toContain("Path=/")
     expect(setCookie).toContain("Priority=high")
+    expect(setCookie).toContain(
+      `Max-Age=${String(CART_COOKIE_MAX_AGE_SECONDS)}`
+    )
   })
 
   it("expires the cart cookie on the returned response", () => {
     const response = clearCartCookie(NextResponse.json({ cart: null }))
 
     expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0")
+  })
+
+  it("keeps populated cart sessions and expires empty cart sessions", () => {
+    const populated = syncCartCookie(NextResponse.json({ cart: null }), {
+      id: "cart_01K123ABC",
+      items: [{ id: "cali_01K123ABC" }],
+    } as never)
+    const empty = syncCartCookie(NextResponse.json({ cart: null }), {
+      id: "cart_01K123ABC",
+      items: [],
+    })
+
+    expect(populated.headers.get("Set-Cookie")).toContain(
+      `Max-Age=${String(CART_COOKIE_MAX_AGE_SECONDS)}`
+    )
+    expect(empty.headers.get("Set-Cookie")).toContain("Max-Age=0")
   })
 
   it("accepts the previous key and marks the cookie for rotation", () => {

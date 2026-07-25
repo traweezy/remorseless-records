@@ -77,7 +77,7 @@ const deferred = <T,>() => {
 }
 
 const CartConsumer = () => {
-  const { addItem, cart, isLoading, isMutating, itemCount, updateItem } =
+  const { addItem, cart, error, isLoading, isMutating, itemCount, updateItem } =
     useCart()
 
   return (
@@ -86,10 +86,23 @@ const CartConsumer = () => {
       <output data-testid="mutating">{String(isMutating)}</output>
       <output data-testid="cart-id">{cart?.id ?? "none"}</output>
       <output data-testid="item-count">{itemCount}</output>
-      <button type="button" onClick={() => void addItem("variant-a")}>
+      <output data-testid="error">{error ?? "none"}</output>
+      <button
+        type="button"
+        onClick={() => void addItem("variant-a").catch(() => undefined)}
+      >
         Add A
       </button>
-      <button type="button" onClick={() => void addItem("variant-b")}>
+      <button
+        type="button"
+        onClick={() => void addItem("variant-a", 2).catch(() => undefined)}
+      >
+        Add two A
+      </button>
+      <button
+        type="button"
+        onClick={() => void addItem("variant-b").catch(() => undefined)}
+      >
         Add B
       </button>
       <button type="button" onClick={() => void updateItem("line-a", 2)}>
@@ -178,6 +191,56 @@ describe("CartProvider lifecycle", () => {
     })
 
     expect(cartClientMocks.addLineItem).toHaveBeenCalledWith("variant-a", 1)
+  })
+
+  it("merges a duplicate variant through the authoritative cart response", async () => {
+    const existingCart = cartFixture("cart_existing", [
+      lineItemFixture("line-a", "variant-a"),
+    ])
+    const mergedCart = cartFixture("cart_existing", [
+      lineItemFixture("line-a", "variant-a", 3),
+    ])
+    cartClientMocks.getCart
+      .mockResolvedValueOnce(existingCart)
+      .mockResolvedValueOnce(mergedCart)
+    cartClientMocks.addLineItem.mockResolvedValue(mergedCart)
+
+    renderProvider()
+    await waitFor(() => {
+      expect(screen.getByTestId("item-count")).toHaveTextContent("1")
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Add two A" }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("item-count")).toHaveTextContent("3")
+    })
+    expect(cartClientMocks.addLineItem).toHaveBeenCalledWith("variant-a", 2)
+  })
+
+  it("rolls an optimistic duplicate add back after an inventory failure", async () => {
+    const existingCart = cartFixture("cart_existing", [
+      lineItemFixture("line-a", "variant-a"),
+    ])
+    cartClientMocks.getCart.mockResolvedValue(existingCart)
+    cartClientMocks.addLineItem.mockRejectedValue(
+      new Error("Only one copy remains.")
+    )
+
+    renderProvider()
+    await waitFor(() => {
+      expect(screen.getByTestId("item-count")).toHaveTextContent("1")
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Add two A" }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("item-count")).toHaveTextContent("1")
+      expect(screen.getByTestId("error")).toHaveTextContent(
+        "Only one copy remains."
+      )
+    })
+    expect(toastMocks.error).not.toHaveBeenCalled()
   })
 
   it("serializes simultaneous first adds", async () => {

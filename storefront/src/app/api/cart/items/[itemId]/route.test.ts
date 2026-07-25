@@ -10,10 +10,14 @@ const cartApiMocks = vi.hoisted(() => ({
 const cartRouteMocks = vi.hoisted(() => ({
   readActiveCartId: vi.fn(),
 }))
+const cartCookieMocks = vi.hoisted(() => ({
+  syncCartCookie: vi.fn(),
+}))
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }))
 vi.mock("@/lib/cart/api", () => cartApiMocks)
 vi.mock("@/lib/cart/route", () => cartRouteMocks)
+vi.mock("@/lib/cart/cookie", () => cartCookieMocks)
 
 import { DELETE, PATCH } from "@/app/api/cart/items/[itemId]/route"
 
@@ -53,6 +57,9 @@ describe("/api/cart/items/[itemId]", () => {
     cartRouteMocks.readActiveCartId.mockResolvedValue("cart_active")
     cartApiMocks.removeLineItem.mockResolvedValue(cartFixture())
     cartApiMocks.updateLineItem.mockResolvedValue(cartFixture())
+    cartCookieMocks.syncCartCookie.mockImplementation(
+      (response: Response) => response
+    )
   })
 
   it("treats a quantity of zero as a removal", async () => {
@@ -80,6 +87,10 @@ describe("/api/cart/items/[itemId]", () => {
       "cart_active",
       "cali_01ABC",
       3
+    )
+    expect(cartCookieMocks.syncCartCookie).toHaveBeenCalledWith(
+      expect.any(Response),
+      expect.objectContaining({ id: "cart_active" })
     )
   })
 

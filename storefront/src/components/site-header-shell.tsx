@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Menu, ShoppingCart } from "lucide-react"
 
 import CartDrawer from "@/components/cart-drawer"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Drawer, { DrawerCloseButton } from "@/components/ui/drawer"
 import SmartLink from "@/components/ui/smart-link"
@@ -51,6 +50,12 @@ const SiteHeaderShell = () => {
   const prefetchCart = useCallback(() => {
     void refreshCart({ silent: true })
   }, [refreshCart])
+  const openCart = useCallback(() => {
+    setCartOpen(true)
+  }, [setCartOpen])
+  const openMenu = useCallback(() => {
+    setMenuOpen(true)
+  }, [])
 
   const activeHref = useMemo(() => {
     if (!pathname) {
@@ -184,19 +189,29 @@ const SiteHeaderShell = () => {
             </nav>
           ) : null}
           <Button
-            variant="ghost"
-            size="icon"
-            className="relative text-muted-foreground hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="Open cart"
-            onClick={() => setCartOpen(true)}
+            variant="outlined"
+            size="auto"
+            className="h-11 min-w-11 gap-2 rounded-full border-border/70 bg-background/70 px-3 text-muted-foreground shadow-sm hover:border-destructive/70 hover:bg-destructive/5 hover:text-foreground focus-visible:ring-destructive focus-visible:ring-offset-background"
+            aria-label={
+              hasItems
+                ? `Open cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`
+                : "Open cart, empty"
+            }
+            onClick={openCart}
             onPointerEnter={prefetchCart}
             onFocus={prefetchCart}
           >
-            <ShoppingCart className="h-5 w-5" />
+            <ShoppingCart className="h-5 w-5 shrink-0" aria-hidden />
+            <span className="hidden text-xs font-semibold uppercase tracking-[0.18rem] sm:inline">
+              Cart
+            </span>
             {hasItems ? (
-              <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center rounded-full bg-destructive text-xs text-white">
-                {itemCount}
-              </Badge>
+              <span
+                className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold leading-none text-white"
+                aria-hidden
+              >
+                {itemCount > 99 ? "99+" : itemCount}
+              </span>
             ) : null}
           </Button>
           <Button
@@ -204,7 +219,7 @@ const SiteHeaderShell = () => {
             size="icon"
             className="md:hidden"
             aria-label="Open navigation"
-            onClick={() => setMenuOpen(true)}
+            onClick={openMenu}
           >
             <Menu className="h-5 w-5" />
           </Button>

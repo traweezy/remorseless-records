@@ -326,18 +326,12 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
         ) : (
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-6 py-10 text-center">
             {undoNotice}
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/70 bg-background/80 shadow-glow">
-              <ShoppingBag
-                className="h-7 w-7 text-muted-foreground"
-                aria-hidden
-              />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-destructive/35 bg-destructive/10">
+              <ShoppingBag className="h-7 w-7 text-destructive" aria-hidden />
             </div>
-            <div className="max-w-sm space-y-2">
+            <div className="max-w-sm">
               <p className="text-lg font-semibold text-foreground">
                 Your cart is empty
-              </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Browse the catalog and choose a format to get started.
               </p>
             </div>
             {error ? (

@@ -93,6 +93,32 @@ const catalogFilterFixtures: Record<string, unknown> = {
   },
 }
 
+const productDetailFixture = {
+  id: "prod_ci_pathologist",
+  handle: "music-release-pathologist-pathological-decomposition",
+  title: "Pathological Decomposition",
+  subtitle: "Pathologist",
+  description: "A test pressing used for the cart interaction journey.",
+  thumbnail: null,
+  images: [],
+  variants: [
+    {
+      id: "variant_ci_pathologist_cd",
+      title: "CD",
+      calculated_price: {
+        calculated_amount: 1_500,
+        currency_code: "usd",
+      },
+      inventory_quantity: 10,
+      manage_inventory: true,
+      allow_backorder: false,
+      metadata: {
+        inventory_count_status: "verified",
+      },
+    },
+  ],
+}
+
 const createPaginationFixture = (
   offset: number,
   limit: number
@@ -463,6 +489,124 @@ test("cart drawer stays usable and contained on mobile devices", async ({
       name: "Remove Pathological Decomposition",
     })
   ).toBeVisible()
+})
+
+test("adding from quick shop confirms in place without opening the cart", async ({
+  page,
+}, testInfo) => {
+  let activeCart: Record<string, unknown> | null = null
+  const cartItem = {
+    id: "cali_ci_added",
+    title: "Pathological Decomposition",
+    product_title: "Pathological Decomposition",
+    product_handle: "music-release-pathologist-pathological-decomposition",
+    variant_id: "variant_ci_pathologist_cd",
+    variant_title: "CD",
+    quantity: 1,
+    unit_price: 1_500,
+    subtotal: 1_500,
+    thumbnail: null,
+  }
+
+  await page.route("**/api/catalog/filters/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname
+    const fixture = catalogFilterFixtures[pathname]
+    if (!fixture) {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(fixture),
+    })
+  })
+  await page.route("**/api/search/products", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(catalogSearchFixture),
+    })
+  })
+  await page.route("**/api/products/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ product: productDetailFixture }),
+    })
+  })
+  await page.route("**/api/cart", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ cart: activeCart }),
+    })
+  })
+  await page.route("**/api/cart/items", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue()
+      return
+    }
+    activeCart = {
+      id: "cart_ci_added",
+      currency_code: "usd",
+      subtotal: 1_500,
+      total: 1_500,
+      items: [cartItem],
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ cart: activeCart }),
+    })
+  })
+
+  await page.goto("/catalog", { waitUntil: "networkidle" })
+  const rejectCookies = page.getByRole("button", {
+    name: "Reject non-essential",
+  })
+  if (await rejectCookies.isVisible()) {
+    await rejectCookies.click()
+  }
+
+  const search = page.getByRole("searchbox", {
+    name: "Search catalog by product or artist name",
+  })
+  await search.fill("Pathologist")
+  await expect(page.getByText("Showing 1 of 1")).toBeVisible()
+  await page
+    .getByRole("button", {
+      name: "Quick shop Pathological Decomposition",
+    })
+    .click()
+  const quickShop = page.getByRole("dialog", { name: "Quick shop" })
+  await expect(quickShop).toBeVisible()
+  await quickShop.getByRole("button", { name: "Add to cart" }).click()
+
+  const addedButton = quickShop.getByRole("button", { name: "Added" })
+  await expect(addedButton).toBeVisible()
+  await expect(quickShop.getByRole("status")).toContainText(
+    "Pathological Decomposition added to cart."
+  )
+  await expect(quickShop).toBeVisible()
+  await expect(page.getByRole("dialog", { name: "Shopping cart" })).toHaveCount(
+    0
+  )
+  await expect(
+    page.locator('header button[aria-label="Open cart, 1 item"]')
+  ).toHaveCount(1)
+
+  await addedButton.scrollIntoViewIfNeeded()
+  const deviceName = testInfo.project.name
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+  await page.screenshot({
+    path: `/tmp/remorseless-cart-added-${deviceName}.png`,
+  })
 })
 
 test("catalog filters stay stable and combine predictably", async ({

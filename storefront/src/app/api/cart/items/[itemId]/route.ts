@@ -3,6 +3,7 @@ import { unstable_noStore as noStore } from "next/cache"
 import { z } from "zod"
 
 import { getCart, removeLineItem, updateLineItem } from "@/lib/cart/api"
+import { syncCartCookie } from "@/lib/cart/cookie"
 import { mapCartError } from "@/lib/cart/errors"
 import { runIdempotentCartMutation } from "@/lib/cart/idempotency"
 import { readActiveCartId } from "@/lib/cart/route"
@@ -96,7 +97,10 @@ export const PATCH = async (
     if (!result.ok) {
       return result.response
     }
-    const response = jsonApiResponse({ cart: result.cart })
+    const response = syncCartCookie(
+      jsonApiResponse({ cart: result.cart }),
+      result.cart
+    )
     if (result.replayed) {
       response.headers.set("Idempotency-Replayed", "true")
     }
@@ -145,7 +149,10 @@ export const DELETE = async (
     if (!result.ok) {
       return result.response
     }
-    const response = jsonApiResponse({ cart: result.cart })
+    const response = syncCartCookie(
+      jsonApiResponse({ cart: result.cart }),
+      result.cart
+    )
     if (result.replayed) {
       response.headers.set("Idempotency-Replayed", "true")
     }

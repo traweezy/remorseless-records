@@ -119,4 +119,61 @@ describe("CartItem", () => {
     })
     expect(cartMocks.removeItem).not.toHaveBeenCalled()
   })
+
+  it("does not infer an artist label for merchandise", () => {
+    render(
+      <CartItem
+        item={lineItemFixture({
+          title: "Logo Shirt",
+          product_title: "Logo Shirt",
+          product_handle: "merch-logo-shirt",
+          variant_title: "Large",
+          product: {
+            id: "prod_merch",
+            metadata: {
+              catalog_import: {
+                product_type: "merch",
+              },
+            },
+          } as unknown as HttpTypes.StoreProduct,
+        })}
+        currencyCode="usd"
+      />
+    )
+
+    expect(screen.getByText("Logo Shirt")).toBeInTheDocument()
+    expect(screen.getByText("Large")).toBeInTheDocument()
+    expect(screen.queryByText("Test Artist")).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ["fixed_bundle", "Bundle"],
+    ["mystery_bundle", "Mystery bundle"],
+  ])("labels %s line items explicitly", (productType, label) => {
+    render(
+      <CartItem
+        item={lineItemFixture({
+          product_handle: `${productType}-test`,
+          product: {
+            id: `prod_${productType}`,
+            metadata: {
+              catalog_import: {
+                product_type: productType,
+              },
+            },
+          } as unknown as HttpTypes.StoreProduct,
+        })}
+        currencyCode="usd"
+      />
+    )
+
+    expect(screen.getByText(label, { exact: true })).toBeInTheDocument()
+    if (productType === "mystery_bundle") {
+      expect(
+        screen.getByText(
+          "Three formats are selected when your order is packed."
+        )
+      ).toBeInTheDocument()
+    }
+  })
 })

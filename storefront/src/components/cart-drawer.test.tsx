@@ -146,6 +146,26 @@ describe("CartDrawer", () => {
     expect(screen.queryByText("Your cart is empty")).not.toBeInTheDocument()
   })
 
+  it("keeps the empty state concise", () => {
+    useCartMock.mockReturnValue(
+      cartState({
+        cart: null,
+        itemCount: 0,
+      })
+    )
+    render(<CartDrawer open onOpenChange={vi.fn()} />)
+
+    expect(screen.getByText("Your cart is empty")).toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        "Browse the catalog and choose a format to get started."
+      )
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Browse catalog" })
+    ).toBeInTheDocument()
+  })
+
   it("restores a recently removed item from inside the drawer", async () => {
     const addItem = vi.fn().mockResolvedValue(undefined)
     const removeItem = vi.fn().mockResolvedValue(undefined)

@@ -2,6 +2,7 @@ import "server-only"
 
 import { createHmac, timingSafeEqual } from "node:crypto"
 
+import type { HttpTypes } from "@medusajs/types"
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
@@ -149,3 +150,11 @@ export const clearCartCookie = (response: Response): Response => {
   })
   return nextResponse
 }
+
+export const syncCartCookie = (
+  response: Response,
+  cart: Pick<HttpTypes.StoreCart, "id" | "items">
+): Response =>
+  Array.isArray(cart.items) && cart.items.length === 0
+    ? clearCartCookie(response)
+    : setCartCookie(response, cart.id)

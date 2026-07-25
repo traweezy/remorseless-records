@@ -34,6 +34,9 @@ export const GET = async (request: NextRequest): Promise<Response> => {
 
   try {
     const cart = await getCart(cookie.cartId)
+    if (cart.completed_at || cart.items?.length === 0) {
+      return clearCartCookie(jsonApiResponse({ cart: null }))
+    }
     const response = jsonApiResponse({ cart })
     return cookie.needsRotation ? setCartCookie(response, cart.id) : response
   } catch (error: unknown) {

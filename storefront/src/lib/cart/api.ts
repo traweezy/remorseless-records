@@ -9,6 +9,10 @@ import { resolveRegionId } from "@/lib/regions"
 const CART_FIELDS = [
   "id",
   "email",
+  "customer_id",
+  "completed_at",
+  "created_at",
+  "updated_at",
   "currency_code",
   "subtotal",
   "total",
