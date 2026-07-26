@@ -20,3 +20,8 @@ d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server
 # the Stripe detector for any other commit, path, or value.
 3727483dad58cf6249aab92128839b7996a921c9:backend/src/api/store/checkout/tax-link/route.test.ts:stripe-access-token:19
 3727483dad58cf6249aab92128839b7996a921c9:backend/src/api/store/checkout/tax-link/route.test.ts:stripe-access-token:104
+
+# This schema-valid UUID was a synthetic tax-switch idempotency test fixture,
+# not a credential. The active fixture is now deterministic; ignore only the
+# exact immutable historical fingerprint without weakening the generic rule.
+8e76c885bcd6470ffd851cfdc5a8b57dcf579310:backend/src/api/admin/tax-control/switch/route.test.ts:generic-api-key:42
