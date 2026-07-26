@@ -1,10 +1,13 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
+import type { Context } from "@medusajs/framework/types"
+import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
 import {
   serializeCatalogVariantProfile,
 } from "@/modules/catalog/serializers"
+import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import {
   assertVariantExists,
   coerceJsonRecord,
@@ -23,6 +26,8 @@ const namedReferenceInputSchema = z.object({
 })
 
 const variantProfileUpsertSchema = z.object({
+  idempotencyKey: z.string().uuid(),
+  expectedVersion: z.number().int().min(0),
   productProfileId: z.string().trim().optional().nullable(),
   productId: z.string().trim().optional().nullable(),
   formatId: z.string().trim().optional().nullable(),
@@ -42,11 +47,16 @@ const variantProfileUpsertSchema = z.object({
 
 const resolveVariantProfile = async (
   catalogService: CatalogService,
-  variantId: string
+  variantId: string,
+  sharedContext?: Context<EntityManager>
 ) => {
-  const profiles = await catalogService.listCatalogVariantProfiles({
-    variant_id: variantId,
-  })
+  const profiles = await catalogService.listCatalogVariantProfiles(
+    {
+      variant_id: variantId,
+    },
+    {},
+    sharedContext
+  )
   return profiles.at(0) ?? null
 }
 
@@ -55,7 +65,8 @@ const resolveProductProfileId = async (
   input: {
     productProfileId?: string | null | undefined
     productId?: string | null | undefined
-  }
+  },
+  sharedContext?: Context<EntityManager>
 ): Promise<string | null | undefined> => {
   if (input.productProfileId === null || input.productId === null) {
     return null
@@ -63,7 +74,11 @@ const resolveProductProfileId = async (
 
   const productProfileId = toNullableString(input.productProfileId)
   if (productProfileId) {
-    await catalogService.retrieveCatalogProductProfile(productProfileId)
+    await catalogService.retrieveCatalogProductProfile(
+      productProfileId,
+      {},
+      sharedContext
+    )
     return productProfileId
   }
 
@@ -72,9 +87,13 @@ const resolveProductProfileId = async (
     return undefined
   }
 
-  const profiles = await catalogService.listCatalogProductProfiles({
-    product_id: productId,
-  })
+  const profiles = await catalogService.listCatalogProductProfiles(
+    {
+      product_id: productId,
+    },
+    {},
+    sharedContext
+  )
   const profile = profiles.at(0)
   if (!profile) {
     throw new MedusaError(
@@ -92,7 +111,8 @@ const resolveFormatReferenceId = async (
     id?: string | null | undefined
     kind: "format" | "format_detail"
     reference?: z.infer<typeof namedReferenceInputSchema> | null | undefined
-  }
+  },
+  sharedContext?: Context<EntityManager>
 ): Promise<string | null | undefined> => {
   if (input.id === null || input.reference === null) {
     return null
@@ -113,7 +133,7 @@ const resolveFormatReferenceId = async (
     label: input.reference.label,
     value: input.reference.value,
     metadata: coerceJsonRecord(input.reference.metadata),
-  })
+  }, sharedContext)
 
   return value?.id ?? null
 }
@@ -160,85 +180,189 @@ export const PUT = async (
 
   await assertVariantExists(req, variantId)
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const existing = await resolveVariantProfile(catalogService, variantId)
-  const productProfileId = await resolveProductProfileId(catalogService, {
-    productProfileId: parsed.data.productProfileId,
-    productId: parsed.data.productId,
+  const actorId =
+    (
+      req as MedusaRequest & {
+        auth_context?: { actor_id?: string | null }
+      }
+    ).auth_context?.actor_id ?? null
+  const { idempotencyKey, ...commandData } = parsed.data
+  const requestSha256 = hashCatalogCommand({
+    command: "catalog.variant-profile.upsert",
+    variantId,
+    input: commandData,
   })
-  const formatId = await resolveFormatReferenceId(catalogService, {
-    id: parsed.data.formatId,
-    kind: "format",
-    reference: parsed.data.format,
-  })
-  const formatDetailId = await resolveFormatReferenceId(catalogService, {
-    id: parsed.data.formatDetailId,
-    kind: "format_detail",
-    reference: parsed.data.formatDetail,
-  })
+  const result = await catalogService.runCatalogTransaction(
+    async (sharedContext) => {
+      const existingOperation = (
+        await catalogService.listCatalogAuthoringOperations(
+          { idempotency_key: idempotencyKey },
+          { take: 1 },
+          sharedContext
+        )
+      )[0]
+      if (existingOperation) {
+        const matches =
+          existingOperation.command === "catalog.variant-profile.upsert" &&
+          existingOperation.aggregate_id === variantId &&
+          existingOperation.actor_id === actorId &&
+          existingOperation.expected_version === parsed.data.expectedVersion &&
+          existingOperation.request_sha256 === requestSha256
+        if (!matches || existingOperation.status !== "succeeded") {
+          throw new MedusaError(
+            MedusaError.Types.CONFLICT,
+            "The catalog idempotency key cannot be replayed for this variant profile command."
+          )
+        }
+        const profile = await resolveVariantProfile(
+          catalogService,
+          variantId,
+          sharedContext
+        )
+        return { created: false, profile }
+      }
 
-  const payload: Record<string, unknown> = {
-    variant_id: variantId,
-    availability_status: "available",
-  }
+      const existing = await resolveVariantProfile(
+        catalogService,
+        variantId,
+        sharedContext
+      )
+      const currentVersion = existing?.version ?? 0
+      if (currentVersion !== parsed.data.expectedVersion) {
+        throw new MedusaError(
+          MedusaError.Types.CONFLICT,
+          "The variant profile changed after it was loaded. Refresh before saving."
+        )
+      }
+      const [operation] = await catalogService.createCatalogAuthoringOperations(
+        [
+          {
+            idempotency_key: idempotencyKey,
+            command: "catalog.variant-profile.upsert",
+            aggregate_id: variantId,
+            actor_id: actorId,
+            request_sha256: requestSha256,
+            expected_version: parsed.data.expectedVersion,
+            status: "pending",
+            result: {},
+            metadata: {},
+          },
+        ],
+        sharedContext
+      )
+      if (!operation) {
+        throw new MedusaError(
+          MedusaError.Types.UNEXPECTED_STATE,
+          "The variant profile command audit record was not created."
+        )
+      }
 
-  if (productProfileId !== undefined) {
-    payload.product_profile_id = productProfileId
-  }
-  if (formatId !== undefined) {
-    payload.format_id = formatId
-  }
-  if (formatDetailId !== undefined) {
-    payload.format_detail_id = formatDetailId
-  }
-  if (parsed.data.formatLabel !== undefined) {
-    payload.format_label = toNullableString(parsed.data.formatLabel)
-  }
-  if (parsed.data.formatDetailLabel !== undefined) {
-    payload.format_detail_label = toNullableString(parsed.data.formatDetailLabel)
-  }
-  if (parsed.data.displayLabel !== undefined) {
-    payload.display_label = toNullableString(parsed.data.displayLabel)
-  }
-  if (parsed.data.preorderAllowed !== undefined) {
-    payload.preorder_allowed = parsed.data.preorderAllowed
-  }
-  if (parsed.data.preorderReleaseDate !== undefined) {
-    payload.preorder_release_date = toOptionalDate(
-      parsed.data.preorderReleaseDate
-    )
-  }
-  if (parsed.data.backorderAllowed !== undefined) {
-    payload.backorder_allowed = parsed.data.backorderAllowed
-  }
-  if (parsed.data.backorderNote !== undefined) {
-    payload.backorder_note = toNullableString(parsed.data.backorderNote)
-  }
-  if (parsed.data.imageUrl !== undefined) {
-    payload.image_url = toNullableString(parsed.data.imageUrl)
-  }
-  if (parsed.data.metadata !== undefined) {
-    payload.metadata = coerceJsonRecord(parsed.data.metadata)
-  }
-
-  const savedResult = existing
-    ? await catalogService.updateCatalogVariantProfiles([
+      const productProfileId = await resolveProductProfileId(
+        catalogService,
         {
-          id: existing.id,
-          ...payload,
+          productProfileId: parsed.data.productProfileId,
+          productId: parsed.data.productId,
         },
-      ])
-    : await catalogService.createCatalogVariantProfiles([payload])
-  const saved = firstResult(savedResult)
+        sharedContext
+      )
+      const formatId = await resolveFormatReferenceId(
+        catalogService,
+        {
+          id: parsed.data.formatId,
+          kind: "format",
+          reference: parsed.data.format,
+        },
+        sharedContext
+      )
+      const formatDetailId = await resolveFormatReferenceId(
+        catalogService,
+        {
+          id: parsed.data.formatDetailId,
+          kind: "format_detail",
+          reference: parsed.data.formatDetail,
+        },
+        sharedContext
+      )
+      const payload: Record<string, unknown> = {
+        variant_id: variantId,
+        availability_status: "available",
+        version: currentVersion + 1,
+      }
 
-  if (!saved) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Unable to save catalog variant profile"
-    )
-  }
+      if (productProfileId !== undefined) {
+        payload.product_profile_id = productProfileId
+      }
+      if (formatId !== undefined) {
+        payload.format_id = formatId
+      }
+      if (formatDetailId !== undefined) {
+        payload.format_detail_id = formatDetailId
+      }
+      if (parsed.data.formatLabel !== undefined) {
+        payload.format_label = toNullableString(parsed.data.formatLabel)
+      }
+      if (parsed.data.formatDetailLabel !== undefined) {
+        payload.format_detail_label = toNullableString(
+          parsed.data.formatDetailLabel
+        )
+      }
+      if (parsed.data.displayLabel !== undefined) {
+        payload.display_label = toNullableString(parsed.data.displayLabel)
+      }
+      if (parsed.data.preorderAllowed !== undefined) {
+        payload.preorder_allowed = parsed.data.preorderAllowed
+      }
+      if (parsed.data.preorderReleaseDate !== undefined) {
+        payload.preorder_release_date = toOptionalDate(
+          parsed.data.preorderReleaseDate
+        )
+      }
+      if (parsed.data.backorderAllowed !== undefined) {
+        payload.backorder_allowed = parsed.data.backorderAllowed
+      }
+      if (parsed.data.backorderNote !== undefined) {
+        payload.backorder_note = toNullableString(parsed.data.backorderNote)
+      }
+      if (parsed.data.imageUrl !== undefined) {
+        payload.image_url = toNullableString(parsed.data.imageUrl)
+      }
+      if (parsed.data.metadata !== undefined) {
+        payload.metadata = coerceJsonRecord(parsed.data.metadata)
+      }
 
-  res.status(existing ? 200 : 201).json({
-    profile: serializeCatalogVariantProfile(saved),
+      const savedResult = existing
+        ? await catalogService.updateCatalogVariantProfiles(
+            [{ id: existing.id, ...payload }],
+            sharedContext
+          )
+        : await catalogService.createCatalogVariantProfiles(
+            [payload],
+            sharedContext
+          )
+      const saved = firstResult(savedResult)
+      if (!saved) {
+        throw new MedusaError(
+          MedusaError.Types.UNEXPECTED_STATE,
+          "Unable to save catalog variant profile"
+        )
+      }
+      await catalogService.completeCatalogAuthoringOperation(
+        operation.id,
+        {
+          profileId: saved.id,
+          variantId,
+          version: currentVersion + 1,
+        },
+        sharedContext
+      )
+      return { created: !existing, profile: saved }
+    }
+  )
+
+  res.status(result.created ? 201 : 200).json({
+    profile: result.profile
+      ? serializeCatalogVariantProfile(result.profile)
+      : null,
   })
 }
 
@@ -255,12 +379,18 @@ export const DELETE = async (
   }
 
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const profile = await resolveVariantProfile(catalogService, variantId)
-  if (!profile) {
-    res.sendStatus(204)
-    return
-  }
-
-  await catalogService.deleteCatalogVariantProfiles(profile.id)
+  await catalogService.runCatalogTransaction(async (sharedContext) => {
+    const profile = await resolveVariantProfile(
+      catalogService,
+      variantId,
+      sharedContext
+    )
+    if (profile) {
+      await catalogService.deleteCatalogVariantProfiles(
+        profile.id,
+        sharedContext
+      )
+    }
+  })
   res.sendStatus(204)
 }

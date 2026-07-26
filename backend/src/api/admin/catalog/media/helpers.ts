@@ -1,4 +1,6 @@
 import type { MedusaRequest } from "@medusajs/framework"
+import type { Context } from "@medusajs/framework/types"
+import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
@@ -57,23 +59,32 @@ export type ProductMediaInput = z.infer<typeof productMediaInputSchema>
 
 export const listProductMediaItems = async (
   catalogService: CatalogService,
-  productId: string
+  productId: string,
+  sharedContext?: Context<EntityManager>
 ): Promise<CatalogProductMediaItemRecord[]> =>
   (await catalogService.listCatalogProductMediaItems(
     { product_id: productId },
-    { order: { sort_order: "ASC" } }
+    { order: { sort_order: "ASC" } },
+    sharedContext
   )) as CatalogProductMediaItemRecord[]
 
 export const loadProductMediaResponse = async (
   catalogService: CatalogService,
-  productId: string
+  productId: string,
+  sharedContext?: Context<EntityManager>
 ) => {
-  const items = await listProductMediaItems(catalogService, productId)
+  const items = await listProductMediaItems(
+    catalogService,
+    productId,
+    sharedContext
+  )
   const assets = await Promise.all(
     items.map(async (item) => {
       try {
         return (await catalogService.retrieveCatalogMediaAsset(
-          item.media_asset_id
+          item.media_asset_id,
+          {},
+          sharedContext
         )) as CatalogMediaAssetRecord
       } catch {
         return null
@@ -91,21 +102,30 @@ export const loadProductMediaResponse = async (
 
 const findReusableAsset = async (
   catalogService: CatalogService,
-  input: ProductMediaInput
+  input: ProductMediaInput,
+  sharedContext: Context<EntityManager>
 ): Promise<CatalogMediaAssetRecord | null> => {
   const sourceFileKey = toNullableString(input.sourceFileKey)
   if (sourceFileKey) {
-    const matches = await catalogService.listCatalogMediaAssets({
-      source_file_key: sourceFileKey,
-    })
+    const matches = await catalogService.listCatalogMediaAssets(
+      {
+        source_file_key: sourceFileKey,
+      },
+      {},
+      sharedContext
+    )
     return (matches.at(0) as CatalogMediaAssetRecord | undefined) ?? null
   }
 
   const sourceUrl = toNullableString(input.sourceUrl)
   if (sourceUrl) {
-    const matches = await catalogService.listCatalogMediaAssets({
-      source_url: sourceUrl,
-    })
+    const matches = await catalogService.listCatalogMediaAssets(
+      {
+        source_url: sourceUrl,
+      },
+      {},
+      sharedContext
+    )
     return (matches.at(0) as CatalogMediaAssetRecord | undefined) ?? null
   }
 
@@ -165,30 +185,37 @@ const buildAssetPayload = (input: ProductMediaInput): Record<string, unknown> =>
 
 const resolveMediaAsset = async (
   catalogService: CatalogService,
-  input: ProductMediaInput
+  input: ProductMediaInput,
+  sharedContext: Context<EntityManager>
 ): Promise<CatalogMediaAssetRecord> => {
   const mediaAssetId = toNullableString(input.mediaAssetId)
   if (mediaAssetId) {
     const existing = (await catalogService.retrieveCatalogMediaAsset(
-      mediaAssetId
+      mediaAssetId,
+      {},
+      sharedContext
     )) as CatalogMediaAssetRecord
     const payload = buildAssetPayload(input)
     if (Object.keys(payload).length > 0) {
       const updated = await catalogService.updateCatalogMediaAssets([
         { id: existing.id, ...payload },
-      ])
+      ], sharedContext)
       return firstResult(updated) as CatalogMediaAssetRecord
     }
     return existing
   }
 
-  const reusable = await findReusableAsset(catalogService, input)
+  const reusable = await findReusableAsset(
+    catalogService,
+    input,
+    sharedContext
+  )
   if (reusable) {
     const payload = buildAssetPayload(input)
     if (Object.keys(payload).length > 0) {
       const updated = await catalogService.updateCatalogMediaAssets([
         { id: reusable.id, ...payload },
-      ])
+      ], sharedContext)
       return firstResult(updated) as CatalogMediaAssetRecord
     }
     return reusable
@@ -202,7 +229,10 @@ const resolveMediaAsset = async (
     )
   }
 
-  const created = await catalogService.createCatalogMediaAssets([payload])
+  const created = await catalogService.createCatalogMediaAssets(
+    [payload],
+    sharedContext
+  )
   const asset = firstResult(created) as CatalogMediaAssetRecord | undefined
   if (!asset) {
     throw new MedusaError(
@@ -216,16 +246,21 @@ const resolveMediaAsset = async (
 const resolveProductProfileId = async (
   catalogService: CatalogService,
   productId: string,
-  explicitProductProfileId?: string | null
+  explicitProductProfileId: string | null | undefined,
+  sharedContext: Context<EntityManager>
 ): Promise<string | null> => {
   const explicit = toNullableString(explicitProductProfileId)
   if (explicit) {
     return explicit
   }
 
-  const profiles = await catalogService.listCatalogProductProfiles({
-    product_id: productId,
-  })
+  const profiles = await catalogService.listCatalogProductProfiles(
+    {
+      product_id: productId,
+    },
+    {},
+    sharedContext
+  )
   return profiles.at(0)?.id ?? null
 }
 
@@ -274,51 +309,78 @@ export const replaceProductMedia = async (
 ) => {
   await assertProductExists(req, productId)
   const primaryByIndex = assertPrimaryShape(inputs)
-  const productProfileId = await resolveProductProfileId(catalogService, productId)
-  const resolvedItems: Array<{
+  const validatedItems: Array<{
     input: ProductMediaInput
     index: number
     variantId: string | null
-    asset: CatalogMediaAssetRecord
   }> = []
-
   for (const [index, input] of inputs.entries()) {
     const variantId = toNullableString(input.variantId)
     if (variantId) {
       await assertVariantBelongsToProduct(req, productId, variantId)
     }
-
-    const asset = await resolveMediaAsset(catalogService, input)
-    resolvedItems.push({ input, index, variantId, asset })
+    validatedItems.push({ input, index, variantId })
   }
 
-  const existing = await listProductMediaItems(catalogService, productId)
-  const existingIds = existing.map((item) => item.id)
-  if (existingIds.length) {
-    await catalogService.deleteCatalogProductMediaItems(existingIds)
-  }
+  return catalogService.runCatalogTransaction(async (sharedContext) => {
+    const productProfileId = await resolveProductProfileId(
+      catalogService,
+      productId,
+      undefined,
+      sharedContext
+    )
+    const resolvedItems = []
+    for (const item of validatedItems) {
+      const asset = await resolveMediaAsset(
+        catalogService,
+        item.input,
+        sharedContext
+      )
+      resolvedItems.push({ ...item, asset })
+    }
 
-  const payloads: Record<string, unknown>[] = []
-  for (const item of resolvedItems) {
-    const isPrimary = primaryByIndex.get(item.index) ?? false
-    payloads.push({
-      product_id: productId,
-      variant_id: item.variantId,
-      product_profile_id:
-        toNullableString(item.input.productProfileId) ?? productProfileId,
-      media_asset_id: item.asset.id,
-      role:
-        item.input.role ??
-        (item.variantId ? "variant" : isPrimary ? "primary" : "gallery"),
-      sort_order: item.input.sortOrder ?? item.index,
-      is_primary: isPrimary,
-      metadata: coerceJsonRecord(item.input.metadata),
-    })
-  }
+    const existing = await listProductMediaItems(
+      catalogService,
+      productId,
+      sharedContext
+    )
+    const existingIds = existing.map((item) => item.id)
+    if (existingIds.length) {
+      await catalogService.deleteCatalogProductMediaItems(
+        existingIds,
+        sharedContext
+      )
+    }
 
-  if (payloads.length) {
-    await catalogService.createCatalogProductMediaItems(payloads)
-  }
+    const payloads: Record<string, unknown>[] = []
+    for (const item of resolvedItems) {
+      const isPrimary = primaryByIndex.get(item.index) ?? false
+      payloads.push({
+        product_id: productId,
+        variant_id: item.variantId,
+        product_profile_id:
+          toNullableString(item.input.productProfileId) ?? productProfileId,
+        media_asset_id: item.asset.id,
+        role:
+          item.input.role ??
+          (item.variantId ? "variant" : isPrimary ? "primary" : "gallery"),
+        sort_order: item.input.sortOrder ?? item.index,
+        is_primary: isPrimary,
+        metadata: coerceJsonRecord(item.input.metadata),
+      })
+    }
 
-  return await loadProductMediaResponse(catalogService, productId)
+    if (payloads.length) {
+      await catalogService.createCatalogProductMediaItems(
+        payloads,
+        sharedContext
+      )
+    }
+
+    return loadProductMediaResponse(
+      catalogService,
+      productId,
+      sharedContext
+    )
+  })
 }

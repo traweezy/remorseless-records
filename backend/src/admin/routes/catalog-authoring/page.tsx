@@ -117,6 +117,7 @@ type CatalogProductProfile = {
   credits: JsonRecord
   pressingNotes: JsonRecord
   merchDetails: JsonRecord
+  version: number
   metadata: JsonRecord
 }
 
@@ -149,6 +150,7 @@ type CatalogVariantProfile = {
   backorderAllowed: boolean
   backorderNote: string | null
   imageUrl: string | null
+  version: number
 }
 
 type CatalogBundleProfile = {
@@ -234,6 +236,7 @@ type ReferenceFormLine = {
 
 type VariantProfileFormLine = {
   variantId: string
+  version: number
   displayLabel: string
   formatId: string
   formatLabel: string
@@ -567,6 +570,7 @@ const toProfileForm = (
 
 const buildEmptyVariantProfile = (variantId: string): VariantProfileFormLine => ({
   variantId,
+  version: 0,
   displayLabel: "",
   formatId: "",
   formatLabel: "",
@@ -593,6 +597,7 @@ const toVariantProfileLine = (
   )
   return {
     variantId,
+    version: profile.version,
     displayLabel: profile.displayLabel ?? "",
     formatId: profile.formatId ?? "",
     formatLabel: profile.formatLabel ?? format?.label ?? "",
@@ -650,6 +655,7 @@ const ProductAuthoringPage = memo(() => {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [productForm, setProductForm] = useState<ProductFormState>(emptyProductForm)
   const [profileForm, setProfileForm] = useState<ProfileFormState>(emptyProfileForm)
+  const [profileVersion, setProfileVersion] = useState(0)
   const [variantProfiles, setVariantProfiles] = useState<VariantProfileFormLine[]>([])
   const [bundleForm, setBundleForm] = useState<BundleFormState>(emptyBundleForm)
   const [bundleVersion, setBundleVersion] = useState(0)
@@ -723,6 +729,7 @@ const ProductAuthoringPage = memo(() => {
       if (!product) {
         setProductForm(emptyProductForm)
         setProfileForm(emptyProfileForm)
+        setProfileVersion(0)
         setVariantProfiles([])
         setBundleForm(emptyBundleForm)
         setBundleVersion(0)
@@ -749,6 +756,7 @@ const ProductAuthoringPage = memo(() => {
 
         setProductForm(toProductForm(product))
         setProfileForm(toProfileForm(profileResponse, references))
+        setProfileVersion(profileResponse.profile?.version ?? 0)
         setBundleForm(toBundleForm(bundleResponse))
         setBundleVersion(bundleResponse.bundle?.version ?? 0)
         setVariantProfiles(
@@ -989,6 +997,8 @@ const ProductAuthoringPage = memo(() => {
       )
 
       const profilePayload = {
+        idempotencyKey: crypto.randomUUID(),
+        expectedVersion: profileVersion,
         releaseTitle: toNullable(profileForm.releaseTitle),
         labelId: toNullable(profileForm.labelId),
         label: profileForm.labelId
@@ -1038,6 +1048,8 @@ const ProductAuthoringPage = memo(() => {
           {
             method: "PUT",
             body: JSON.stringify({
+              idempotencyKey: crypto.randomUUID(),
+              expectedVersion: variantProfile.version,
               productProfileId: profileResponse.profile?.id ?? undefined,
               formatId: toNullable(variantProfile.formatId),
               format: variantProfile.formatId
@@ -1114,6 +1126,7 @@ const ProductAuthoringPage = memo(() => {
     loadProductAuthoring,
     productForm,
     profileForm,
+    profileVersion,
     refreshProducts,
     refreshReferences,
     selectedProduct,
@@ -1233,6 +1246,8 @@ const ProductAuthoringPage = memo(() => {
         {
           method: "PUT",
           body: JSON.stringify({
+            idempotencyKey: crypto.randomUUID(),
+            expectedVersion: 0,
             releaseTitle: title,
             label: {
               label: toNullable(createForm.label),
@@ -1262,6 +1277,8 @@ const ProductAuthoringPage = memo(() => {
           {
             method: "PUT",
             body: JSON.stringify({
+              idempotencyKey: crypto.randomUUID(),
+              expectedVersion: 0,
               productProfileId: profileResponse.profile?.id ?? undefined,
               format: {
                 label: toNullable(createForm.format),

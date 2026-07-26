@@ -1,4 +1,6 @@
 import type { MedusaRequest } from "@medusajs/framework"
+import type { Context } from "@medusajs/framework/types"
+import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import { MedusaError } from "@medusajs/framework/utils"
 import { ContainerRegistrationKeys } from "@medusajs/utils"
 
@@ -186,12 +188,15 @@ export const createOrReuseArtist = async (
     artistId?: string | null | undefined
     name?: string | null | undefined
     metadata?: JsonRecord
-  }
+  },
+  sharedContext?: Context<EntityManager>
 ): Promise<CatalogArtistRecord | null> => {
   const artistId = toNullableString(input.artistId)
   if (artistId) {
     return (await catalogService.retrieveCatalogArtist(
-      artistId
+      artistId,
+      {},
+      sharedContext
     )) as CatalogArtistRecord
   }
 
@@ -201,20 +206,27 @@ export const createOrReuseArtist = async (
   }
 
   const slug = slugify(name, "artist")
-  const existing = await catalogService.listCatalogArtists({ slug })
+  const existing = await catalogService.listCatalogArtists(
+    { slug },
+    {},
+    sharedContext
+  )
   const match = existing.at(0) as CatalogArtistRecord | undefined
   if (match) {
     return match
   }
 
-  const created = await catalogService.createCatalogArtists([
-    {
-      name,
-      slug,
-      sort_name: name,
-      metadata: input.metadata ?? {},
-    },
-  ])
+  const created = await catalogService.createCatalogArtists(
+    [
+      {
+        name,
+        slug,
+        sort_name: name,
+        metadata: input.metadata ?? {},
+      },
+    ],
+    sharedContext
+  )
 
   return firstResult(created) as CatalogArtistRecord | undefined ?? null
 }
@@ -227,12 +239,15 @@ export const createOrReuseReferenceValue = async (
     label?: string | null | undefined
     value?: string | null | undefined
     metadata?: JsonRecord
-  }
+  },
+  sharedContext?: Context<EntityManager>
 ): Promise<CatalogReferenceValueRecord | null> => {
   const referenceValueId = toNullableString(input.referenceValueId)
   if (referenceValueId) {
     return (await catalogService.retrieveCatalogReferenceValue(
-      referenceValueId
+      referenceValueId,
+      {},
+      sharedContext
     )) as CatalogReferenceValueRecord
   }
 
@@ -243,25 +258,32 @@ export const createOrReuseReferenceValue = async (
   }
 
   const value = toNullableString(input.value) ?? slugify(label, kind)
-  const existing = await catalogService.listCatalogReferenceValues({
-    kind,
-    value,
-  })
+  const existing = await catalogService.listCatalogReferenceValues(
+    {
+      kind,
+      value,
+    },
+    {},
+    sharedContext
+  )
   const match = existing.at(0) as CatalogReferenceValueRecord | undefined
   if (match) {
     return match
   }
 
-  const created = await catalogService.createCatalogReferenceValues([
-    {
-      kind,
-      label,
-      value,
-      rank: 0,
-      is_active: true,
-      metadata: input.metadata ?? {},
-    },
-  ])
+  const created = await catalogService.createCatalogReferenceValues(
+    [
+      {
+        kind,
+        label,
+        value,
+        rank: 0,
+        is_active: true,
+        metadata: input.metadata ?? {},
+      },
+    ],
+    sharedContext
+  )
 
   return firstResult(created) as CatalogReferenceValueRecord | undefined ?? null
 }

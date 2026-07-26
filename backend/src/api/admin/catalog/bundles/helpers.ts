@@ -13,6 +13,7 @@ import {
   serializeCatalogBundleProfile,
 } from "@/modules/catalog/serializers";
 import { parseResolvedVariantMappings } from "@/lib/catalog/bundle-inventory";
+import { sanitizeRichTextHtml } from "@/lib/content/rich-text";
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command";
 import type {
   CatalogBundleComponentState,
@@ -324,6 +325,7 @@ export const upsertBundleForProduct = async (
     input.components === undefined
       ? preserveExistingComponents(existingComponents)
       : await normalizeInputComponents(req, productId, input.components);
+  const descriptionHtml = toNullableString(input.descriptionHtml);
   const profile = {
     product_id: productId,
     product_profile_id:
@@ -340,7 +342,9 @@ export const upsertBundleForProduct = async (
     description_html:
       input.descriptionHtml === undefined
         ? (existing?.description_html ?? null)
-        : toNullableString(input.descriptionHtml),
+        : descriptionHtml
+          ? sanitizeRichTextHtml(descriptionHtml)
+          : null,
     is_active: input.isActive ?? existing?.is_active ?? true,
     metadata:
       input.metadata === undefined

@@ -10,6 +10,7 @@ import {
   catalogShelfAutomationTypes,
   catalogShelfModes,
 } from "./constants"
+import { sanitizeRichTextHtml } from "@/lib/content/rich-text"
 
 export const catalogReferenceKindValues = catalogReferenceKinds
 export type CatalogReferenceKind = (typeof catalogReferenceKindValues)[number]
@@ -569,7 +570,9 @@ export const serializeCatalogProductProfile = (
   releaseDatePrecision: toCatalogReleaseDatePrecision(
     profile.release_date_precision
   ),
-  descriptionHtml: profile.description_html ?? null,
+  descriptionHtml: profile.description_html
+    ? sanitizeRichTextHtml(profile.description_html)
+    : null,
   searchKeywords: profile.search_keywords ?? [],
   tracklist: toList(profile.tracklist as JsonList | null | undefined),
   credits: toRecord(profile.credits as JsonRecord | null | undefined),
@@ -642,7 +645,9 @@ export const serializeCatalogBundleProfile = (
   inventoryMode: toCatalogBundleInventoryMode(profile.inventory_mode),
   fulfillmentMode: toCatalogBundleFulfillmentMode(profile.fulfillment_mode),
   displayTitle: profile.display_title ?? null,
-  descriptionHtml: profile.description_html ?? null,
+  descriptionHtml: profile.description_html
+    ? sanitizeRichTextHtml(profile.description_html)
+    : null,
   isActive: profile.is_active ?? true,
   version: profile.version ?? 1,
   metadata: toRecord(profile.metadata),

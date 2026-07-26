@@ -119,6 +119,7 @@ type CatalogProductProfile = {
   credits: JsonRecord
   pressingNotes: JsonRecord
   merchDetails: JsonRecord
+  version: number
   metadata: JsonRecord
 }
 
@@ -156,6 +157,7 @@ type CatalogVariantProfile = {
   backorderAllowed: boolean
   backorderNote: string | null
   imageUrl: string | null
+  version: number
   metadata: JsonRecord
 }
 
@@ -1328,9 +1330,15 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
         `/admin/catalog/products/${productId}/profile`,
         {
           method: "PUT",
-          body: JSON.stringify(
-            buildProductProfilePayload(profileForm, artists, referenceValues)
-          ),
+          body: JSON.stringify({
+            ...buildProductProfilePayload(
+              profileForm,
+              artists,
+              referenceValues
+            ),
+            idempotencyKey: crypto.randomUUID(),
+            expectedVersion: profileResponse.profile?.version ?? 0,
+          }),
         }
       )
 
@@ -1381,6 +1389,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
     productId,
     products,
     profileForm,
+    profileResponse.profile?.version,
     referenceValues,
   ])
 
@@ -2677,7 +2686,11 @@ export const VariantCatalogProfileWidget = memo<WidgetProps<AdminProductVariant>
           `/admin/catalog/variants/${variantId}/profile`,
           {
             method: "PUT",
-            body: JSON.stringify(buildVariantProfilePayload(form, data, referenceValues)),
+            body: JSON.stringify({
+              ...buildVariantProfilePayload(form, data, referenceValues),
+              idempotencyKey: crypto.randomUUID(),
+              expectedVersion: profile?.version ?? 0,
+            }),
           }
         )
         setProfile(response.profile)
@@ -2689,7 +2702,7 @@ export const VariantCatalogProfileWidget = memo<WidgetProps<AdminProductVariant>
       } finally {
         setSaving(false)
       }
-    }, [data, form, referenceValues, variantId])
+    }, [data, form, profile?.version, referenceValues, variantId])
 
     if (!variantId) {
       return null

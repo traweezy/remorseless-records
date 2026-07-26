@@ -53,6 +53,25 @@ class CatalogModuleService extends MedusaService({
   CatalogShelf,
   CatalogShelfProduct,
 }) {
+  @InjectTransactionManager()
+  protected async runCatalogTransaction_<T>(
+    task: (sharedContext: Context<EntityManager>) => Promise<T>,
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
+  ): Promise<T> {
+    return task(sharedContext)
+  }
+
+  @InjectManager()
+  async runCatalogTransaction<T>(
+    task: (sharedContext: Context<EntityManager>) => Promise<T>,
+    @MedusaContext() sharedContext: Context<EntityManager> = {
+      isolationLevel: "SERIALIZABLE",
+    }
+  ): Promise<T> {
+    sharedContext.isolationLevel ??= "SERIALIZABLE"
+    return this.runCatalogTransaction_(task, sharedContext)
+  }
+
   private async snapshotBundle_(
     productId: string,
     sharedContext: Context<EntityManager>

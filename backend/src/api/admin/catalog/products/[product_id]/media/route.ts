@@ -59,11 +59,17 @@ export const DELETE = async (
 ): Promise<void> => {
   const productId = getProductId(req)
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const items = await listProductMediaItems(catalogService, productId)
-  const ids = items.map((item) => item.id)
-  if (ids.length) {
-    await catalogService.deleteCatalogProductMediaItems(ids)
-  }
+  await catalogService.runCatalogTransaction(async (sharedContext) => {
+    const items = await listProductMediaItems(
+      catalogService,
+      productId,
+      sharedContext
+    )
+    const ids = items.map((item) => item.id)
+    if (ids.length) {
+      await catalogService.deleteCatalogProductMediaItems(ids, sharedContext)
+    }
+  })
 
   res.sendStatus(204)
 }
