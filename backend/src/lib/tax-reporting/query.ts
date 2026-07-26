@@ -470,14 +470,16 @@ const recordsForFilingState = (
     ? records
     : records.filter(
         (record) =>
-          record.destination.countryCode === "US" &&
+          (!record.destination.countryCode ||
+            record.destination.countryCode === "US") &&
           record.destination.stateCode === filingState,
       );
 
-const unassignedDomesticRecords = (records: TaxRecord[]): TaxRecord[] =>
+const unassignedFilingRecords = (records: TaxRecord[]): TaxRecord[] =>
   records.filter(
     (record) =>
-      record.destination.countryCode === "US" &&
+      (!record.destination.countryCode ||
+        record.destination.countryCode === "US") &&
       !record.destination.stateCode,
   );
 
@@ -496,7 +498,7 @@ export const buildTaxReport = async ({
     allRecords,
     filters.filingState,
   );
-  const unassignedRecords = unassignedDomesticRecords(allRecords);
+  const unassignedRecords = unassignedFilingRecords(allRecords);
   const filteredRecords = scopedRecords.filter((record) =>
     matchesFilters(record, filters),
   );
@@ -534,7 +536,7 @@ export const buildTaxReport = async ({
       relationships: relationshipDiagnostics(loaded.orders),
       scopedRecords: scopedRecords.length,
       truncated: loaded.truncated,
-      unassignedDomesticRecords: unassignedRecords.length,
+      unassignedStateRecords: unassignedRecords.length,
     },
     summaries: summarizeTaxRecords(scopedRecords),
     unassignedRecordExamples: unassignedRecords
@@ -559,7 +561,7 @@ export const buildFullTaxReport = async ({
   const loaded = await loadTaxReportOrders({ container, period });
   const allRecords = projectTaxRecords({ orders: loaded.orders, period });
   const records = recordsForFilingState(allRecords, filingState);
-  const unassignedRecords = unassignedDomesticRecords(allRecords);
+  const unassignedRecords = unassignedFilingRecords(allRecords);
   return {
     destinations: summarizeDestinations(records),
     filingState,
@@ -576,7 +578,7 @@ export const buildFullTaxReport = async ({
       relationships: relationshipDiagnostics(loaded.orders),
       scopedRecords: records.length,
       truncated: loaded.truncated,
-      unassignedDomesticRecords: unassignedRecords.length,
+      unassignedStateRecords: unassignedRecords.length,
     },
     summaries: summarizeTaxRecords(records),
   };

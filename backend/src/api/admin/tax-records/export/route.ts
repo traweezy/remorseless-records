@@ -67,13 +67,13 @@ export const GET = async (
         });
       return;
     }
-    if (report.source.unassignedDomesticRecords > 0) {
+    if (report.source.unassignedStateRecords > 0) {
       res
         .status(409)
         .type("application/problem+json")
         .json({
           detail:
-            "At least one United States tax record has no destination state. Correct the source address before relying on a state filing export.",
+            "At least one United States or country-unknown tax record has no destination state. Correct the source address before relying on a state filing export.",
           status: 409,
           title: "Tax export has unassigned records",
           type: "https://remorselessrecords.com/problems/tax-export-unassigned-state",

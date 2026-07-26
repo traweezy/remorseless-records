@@ -547,8 +547,9 @@ required jurisdiction selector scopes totals and exports, supplies the correct
 state period calendar, separates Pennsylvania local buckets, flags missing
 locality or destination-state evidence, distinguishes same-period from
 prior-period refund credits, and keeps currencies separate. State-specific CSV
-exports fail closed if the source scan is truncated or a domestic record cannot
-be assigned to a state. It is filing support, not an automated registration,
+exports fail closed if the source scan is truncated or a U.S. or
+country-unknown record cannot be assigned to a state. It is filing support,
+not an automated registration,
 return, or payment service. Relocation handling, record retention, workpaper
 fields, quality rules, official state references, and the accountant workflow
 are documented in

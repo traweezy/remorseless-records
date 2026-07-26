@@ -165,10 +165,10 @@ do not preserve provider-generation evidence. Stripe Tax periods still require
 reconciliation to Stripe's finalized itemized tax report when sub-state rows
 are not preserved on the Medusa tax line.
 
-A domestic record with no destination state cannot be safely assigned to
-Connecticut, New York, or Pennsylvania. The UI surfaces the count and the
-state-specific export endpoint returns a conflict response until the source
-shipping address is corrected.
+A United States or country-unknown record with no destination state cannot be
+safely assigned to Connecticut, New York, or Pennsylvania. The UI surfaces the
+affected orders, and the state-specific export endpoint returns a conflict
+response until the source shipping address is corrected.
 
 ## Totals and exports
 

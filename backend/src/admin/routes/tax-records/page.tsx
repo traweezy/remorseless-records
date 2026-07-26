@@ -62,7 +62,7 @@ type TaxReport = {
     medusaOrdersScanned: number;
     scopedRecords: number;
     truncated: boolean;
-    unassignedDomesticRecords: number;
+    unassignedStateRecords: number;
   };
   summaries: TaxReportSummary[];
   unassignedRecordExamples: {
@@ -703,7 +703,7 @@ const TaxRecordsPage = memo(() => {
   const periodOptions = taxPeriodPresetOptions(filingState);
   const exportsBlocked =
     report.source.truncated ||
-    report.source.unassignedDomesticRecords > 0;
+    report.source.unassignedStateRecords > 0;
 
   return (
     <div className="flex flex-col gap-4" aria-busy={loading}>
@@ -949,14 +949,15 @@ const TaxRecordsPage = memo(() => {
           />
         </div>
 
-        {report.source.unassignedDomesticRecords > 0 ? (
+        {report.source.unassignedStateRecords > 0 ? (
           <Alert className="mt-4" variant="error">
             <Text weight="plus">
-              A United States destination is missing its state.
+              A destination is missing the state needed for filing.
             </Text>
             <Text size="small">
-              {report.source.unassignedDomesticRecords} record
-              {report.source.unassignedDomesticRecords === 1 ? "" : "s"} could
+              {report.source.unassignedStateRecords} United States or
+              country-unknown record
+              {report.source.unassignedStateRecords === 1 ? "" : "s"} could
               not be assigned to a filing jurisdiction. Exports are blocked
               until the source shipping address is corrected.
             </Text>
@@ -977,7 +978,7 @@ const TaxRecordsPage = memo(() => {
                   </li>
                 ))}
             </ul>
-            {report.source.unassignedDomesticRecords > 5 ? (
+            {report.source.unassignedStateRecords > 5 ? (
               <Text size="xsmall" className="mt-2 text-ui-fg-subtle">
                 Showing the first 5 affected orders. Ask an engineer for the
                 remaining source rows before filing.

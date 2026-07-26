@@ -85,9 +85,9 @@ const requestFixture = (
   }) as unknown as AuthenticatedMedusaRequest;
 
 const reportFixture = ({
-  unassignedDomesticRecords = 0,
+  unassignedStateRecords = 0,
 }: {
-  unassignedDomesticRecords?: number;
+  unassignedStateRecords?: number;
 } = {}) =>
   ({
     destinations: [],
@@ -117,7 +117,7 @@ const reportFixture = ({
       },
       scopedRecords: 0,
       truncated: false,
-      unassignedDomesticRecords,
+      unassignedStateRecords,
     },
     summaries: [],
   }) as Awaited<ReturnType<typeof buildFullTaxReport>>;
@@ -153,9 +153,9 @@ describe("GET /admin/tax-records/export", () => {
     });
   });
 
-  it("fails closed when a domestic record has no state", async () => {
+  it("fails closed when a filing record has no state", async () => {
     buildFullTaxReportMock.mockResolvedValue(
-      reportFixture({ unassignedDomesticRecords: 1 }),
+      reportFixture({ unassignedStateRecords: 1 }),
     );
     const { res, state } = responseFixture();
 

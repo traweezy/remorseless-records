@@ -413,7 +413,7 @@ describe("tax report query", () => {
     expect(report.source).toMatchObject({
       projectedRecords: 2,
       scopedRecords: 1,
-      unassignedDomesticRecords: 0,
+      unassignedStateRecords: 0,
     });
   });
 
@@ -422,6 +422,7 @@ describe("tax report query", () => {
       ...order,
       shipping_address: {
         ...order.shipping_address,
+        country_code: null,
         province: null,
       },
     };
@@ -437,7 +438,7 @@ describe("tax report query", () => {
     expect(report.source).toMatchObject({
       projectedRecords: 1,
       scopedRecords: 0,
-      unassignedDomesticRecords: 1,
+      unassignedStateRecords: 1,
     });
     expect(report.unassignedRecordExamples).toEqual([
       expect.objectContaining({
@@ -449,6 +450,39 @@ describe("tax report query", () => {
       grossSales: "0.0000",
       orderCount: 0,
     });
+  });
+
+  it("keeps a tracked state visible when its country is missing", async () => {
+    const connecticutOrder = {
+      ...order,
+      shipping_address: {
+        ...order.shipping_address,
+        city: "Hartford",
+        country_code: null,
+        postal_code: "06103",
+        province: "Connecticut",
+      },
+    };
+    const report = await buildTaxReport({
+      container: containerWith(async () => ({
+        data: [connecticutOrder],
+      })),
+      filters: parseTaxReportFilters(
+        new URLSearchParams({ filing_state: "CT" }),
+      ),
+      period,
+    });
+
+    expect(report.records).toEqual([
+      expect.objectContaining({
+        destination: expect.objectContaining({
+          countryCode: null,
+          stateCode: "CT",
+        }),
+        quality: "incomplete",
+      }),
+    ]);
+    expect(report.source.unassignedStateRecords).toBe(0);
   });
 
   it.each([
