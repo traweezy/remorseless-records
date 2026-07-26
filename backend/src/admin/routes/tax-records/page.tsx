@@ -299,7 +299,7 @@ const SummaryCard = memo(
         {value}
       </Text>
       {note ? (
-        <Text size="xsmall" className="mt-1 text-ui-fg-muted">
+        <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
           {note}
         </Text>
       ) : null}
@@ -783,7 +783,7 @@ const TaxRecordsPage = memo(() => {
                     report.resultCount === 1 ? "" : "s"
                   }`}
             </Text>
-            <Text size="xsmall" className="text-ui-fg-muted">
+            <Text size="xsmall" className="text-ui-fg-subtle">
               Generated {formatDate(report.generatedAt)}
             </Text>
           </div>
