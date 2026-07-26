@@ -53,7 +53,7 @@ import { Empty } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Slider } from "@/components/ui/slider"
 import ProductCard from "@/components/product-card"
-import type { ProductSearchHit, RelatedProductSummary } from "@/types/product"
+import type { ProductSearchHit } from "@/types/product"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { cn } from "@/lib/ui/cn"
 import {
@@ -199,9 +199,7 @@ const deriveFormatLabels = (hit: ProductSearchHit): string[] => {
   return Array.from(preferred)
 }
 
-export const mapHitToSummary = (
-  hit: ProductSearchHit
-): RelatedProductSummary => {
+export const mapHitToSummary = (hit: ProductSearchHit): ProductSearchHit => {
   const fallbackCurrency = hit.defaultVariant?.currency ?? "usd"
   const fallbackStockStatus = hit.stockStatus ?? "unknown"
   const fallbackInStock = fallbackStockStatus !== "sold_out"
@@ -221,6 +219,7 @@ export const mapHitToSummary = (
       : null)
 
   return {
+    ...hit,
     id: hit.id,
     handle: hit.handle,
     title: hit.title,
