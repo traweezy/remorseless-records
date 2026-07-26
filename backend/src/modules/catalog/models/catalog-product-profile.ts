@@ -1,5 +1,7 @@
 import { model } from "@medusajs/framework/utils"
 
+import { catalogReleaseDatePrecisions } from "../constants"
+
 const CatalogProductProfile = model.define(
   {
     name: "catalog_product_profile",
@@ -13,12 +15,17 @@ const CatalogProductProfile = model.define(
     product_type_id: model.text().index().nullable(),
     release_date: model.dateTime().nullable(),
     release_year: model.number().nullable(),
+    release_date_precision: model
+      .enum([...catalogReleaseDatePrecisions])
+      .default("unknown"),
     description_html: model.text().nullable(),
     search_keywords: model.array().default([]),
     tracklist: model.json().default([] as unknown as Record<string, unknown>),
     credits: model.json().default({}),
     pressing_notes: model.json().default({}),
     merch_details: model.json().default({}),
+    content_schema_version: model.number().default(1),
+    version: model.number().default(1),
     metadata: model.json().default({}),
   }
 )

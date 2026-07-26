@@ -21,6 +21,7 @@ const CatalogShelf = model.define(
     starts_at: model.dateTime().nullable(),
     ends_at: model.dateTime().nullable(),
     is_active: model.boolean().default(true),
+    version: model.number().default(1),
     metadata: model.json().default({}),
   }
 )

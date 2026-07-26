@@ -47,6 +47,7 @@
     "@medusajs/draft-order": "^2.18.0",
     "@medusajs/event-bus-redis": "^2.18.0",
     "@medusajs/file": "^2.18.0",
+    "@medusajs/file-local": "^2.18.0",
     "@medusajs/framework": "^2.18.0",
     "@medusajs/fulfillment": "^2.18.0",
     "@medusajs/fulfillment-manual": "^2.18.0",

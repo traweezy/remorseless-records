@@ -16,6 +16,7 @@ const CatalogMediaAsset = model.define(
     byte_size: model.number().nullable(),
     width: model.number().nullable(),
     height: model.number().nullable(),
+    content_sha256: model.text().index().nullable(),
     alt_text: model.text().nullable(),
     caption: model.text().nullable(),
     focal_x: model.number().nullable(),
@@ -25,6 +26,7 @@ const CatalogMediaAsset = model.define(
       .enum([...catalogMediaDerivativeStatuses])
       .default("source_only"),
     derivatives: model.json().default({}),
+    version: model.number().default(1),
     metadata: model.json().default({}),
   }
 )

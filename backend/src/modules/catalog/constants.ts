@@ -19,6 +19,13 @@ export const catalogAvailabilityStatuses = [
   "unknown",
 ] as const
 
+export const catalogReleaseDatePrecisions = [
+  "unknown",
+  "year",
+  "month",
+  "day",
+] as const
+
 export const catalogBundleTypes = [
   "fixed",
   "mystery",

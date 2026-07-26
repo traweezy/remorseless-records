@@ -22,6 +22,7 @@ const CatalogVariantProfile = model.define(
     backorder_allowed: model.boolean().default(false),
     backorder_note: model.text().nullable(),
     image_url: model.text().nullable(),
+    version: model.number().default(1),
     metadata: model.json().default({}),
   }
 )

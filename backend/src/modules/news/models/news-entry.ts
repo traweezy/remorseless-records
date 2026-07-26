@@ -20,6 +20,7 @@ const NewsEntry = model.define(
     cover_url: model.text().nullable(),
     seo_title: model.text().nullable(),
     seo_description: model.text().nullable(),
+    version: model.number().default(1),
   }
 )
 

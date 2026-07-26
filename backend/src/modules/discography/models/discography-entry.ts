@@ -10,7 +10,9 @@ const DiscographyEntry = model.define(
     title: model.text().searchable(),
     artist: model.text().searchable(),
     album: model.text().searchable(),
+    product_id: model.text().index().nullable(),
     product_handle: model.text().index().nullable(),
+    source_mode: model.enum(["catalog_product", "manual"]).default("manual"),
     collection_title: model.text().nullable(),
     catalog_number: model.text().nullable(),
     release_date: model.dateTime().nullable(),
@@ -22,6 +24,8 @@ const DiscographyEntry = model.define(
       .enum(["in_print", "out_of_print", "preorder", "digital_only", "unknown"])
       .default("unknown"),
     cover_url: model.text().nullable(),
+    cover_alt_text: model.text().nullable(),
+    version: model.number().default(1),
   }
 )
 

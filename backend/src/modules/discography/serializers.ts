@@ -9,12 +9,22 @@ export const discographyAvailabilityValues = [
 export type DiscographyAvailability =
   (typeof discographyAvailabilityValues)[number]
 
+export const discographySourceModeValues = [
+  "catalog_product",
+  "manual",
+] as const
+
+export type DiscographySourceMode =
+  (typeof discographySourceModeValues)[number]
+
 export type DiscographyEntryRecord = {
   id: string
   title: string
   artist: string
   album: string
+  product_id: string | null
   product_handle: string | null
+  source_mode: DiscographySourceMode
   collection_title: string | null
   catalog_number: string | null
   release_date: Date | string | null
@@ -24,6 +34,8 @@ export type DiscographyEntryRecord = {
   tags: string[] | null
   availability: DiscographyAvailability
   cover_url: string | null
+  cover_alt_text: string | null
+  version: number
   created_at?: Date | string | null
   updated_at?: Date | string | null
 }
@@ -33,7 +45,9 @@ export type DiscographyEntryDTO = {
   title: string
   artist: string
   album: string
+  productId: string | null
   productHandle: string | null
+  sourceMode: DiscographySourceMode
   collectionTitle: string | null
   catalogNumber: string | null
   releaseDate: string | null
@@ -43,6 +57,8 @@ export type DiscographyEntryDTO = {
   tags: string[]
   availability: DiscographyAvailability
   coverUrl: string | null
+  coverAltText: string | null
+  version: number
   createdAt?: string | null
   updatedAt?: string | null
 }
@@ -65,7 +81,9 @@ export const serializeDiscographyEntry = (
   title: entry.title,
   artist: entry.artist,
   album: entry.album,
+  productId: entry.product_id ?? null,
   productHandle: entry.product_handle ?? null,
+  sourceMode: entry.source_mode,
   collectionTitle: entry.collection_title ?? null,
   catalogNumber: entry.catalog_number ?? null,
   releaseDate: toIso(entry.release_date),
@@ -75,6 +93,8 @@ export const serializeDiscographyEntry = (
   tags: entry.tags ?? [],
   availability: entry.availability,
   coverUrl: entry.cover_url ?? null,
+  coverAltText: entry.cover_alt_text ?? null,
+  version: entry.version,
   createdAt: toIso(entry.created_at),
   updatedAt: toIso(entry.updated_at),
 })

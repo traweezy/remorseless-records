@@ -25,6 +25,7 @@ const CatalogBundleProfile = model.define(
     display_title: model.text().nullable(),
     description_html: model.text().nullable(),
     is_active: model.boolean().default(true),
+    version: model.number().default(1),
     metadata: model.json().default({}),
   }
 )

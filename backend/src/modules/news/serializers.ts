@@ -21,6 +21,7 @@ export type NewsEntryRecord = {
   cover_url: string | null
   seo_title: string | null
   seo_description: string | null
+  version: number
   created_at?: Date | string | null
   updated_at?: Date | string | null
 }
@@ -38,6 +39,7 @@ export type NewsEntryDTO = {
   coverUrl: string | null
   seoTitle: string | null
   seoDescription: string | null
+  version: number
   createdAt?: string | null
   updatedAt?: string | null
 }
@@ -66,6 +68,7 @@ export const serializeNewsEntry = (entry: NewsEntryRecord): NewsEntryDTO => ({
   coverUrl: entry.cover_url ?? null,
   seoTitle: entry.seo_title ?? null,
   seoDescription: entry.seo_description ?? null,
+  version: entry.version,
   createdAt: toIso(entry.created_at),
   updatedAt: toIso(entry.updated_at),
 })
