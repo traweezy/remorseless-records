@@ -154,9 +154,16 @@ to only one PaymentIntent.
 
 Non-PII evidence is reconciled on `order.placed`, `payment.captured`, and
 `payment.refunded`, with an hourly bounded safety-net job. It records successful
-tax transactions, refund reversals, disputes, and association errors. A dispute
-is surfaced for manual tax review because Stripe does not automatically reverse
-tax merely because a payment is disputed.
+tax transactions, every individual refund reversal, failed refunds,
+Medusa/Stripe refund-ledger mismatches, disputes, and association errors. A
+dispute is surfaced for manual tax review because Stripe does not automatically
+reverse tax merely because a payment is disputed.
+
+Existing Stripe-taxed order lines retain their historical effective tax rates
+during returns and safe order updates. New taxable items on a Stripe-taxed order
+fail closed: Medusa may require a separate additional payment, and that payment
+needs its own bound Stripe Tax calculation. Until that dedicated flow exists,
+create a separate order instead of bypassing tax/payment evidence.
 
 Configuration:
 

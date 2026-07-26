@@ -295,6 +295,26 @@ Tax-provider outage:
 7. Confirm the refund in both Medusa and Stripe and document the reason without
    customer PII.
 
+## Refund authority and reconciliation
+
+Initiate customer refunds from the Medusa order Payment section. Medusa then
+records the refund and invokes the configured Stripe provider. Do not use the
+Stripe Dashboard as the ordinary refund UI.
+
+The tax evidence job independently lists Stripe refunds and compares them with
+Medusa's Payment Module refund records:
+
+- every successful Stripe Tax refund must have its own committed tax reversal;
+- failed/canceled refunds remain incidents even if another refund succeeded;
+- multiple partial refunds are checked individually;
+- a Stripe refund missing from Medusa is a ledger mismatch; and
+- a Medusa refund not yet observed in Stripe remains a mismatch until
+  reconciled.
+
+If a direct Stripe refund is discovered, do not issue another refund. Record the
+incident, reconcile the order through an approved Medusa operation, and verify
+the aggregate amounts and tax reversal before further changes.
+
 ## Secret and webhook rotation
 
 Cart signing supports `CART_COOKIE_SECRET_PREVIOUS`; keep the prior secret for
@@ -432,6 +452,10 @@ prices in staging.
       webhook-delay, and two-tab cases pass.
 - [ ] Official webhook returns `2xx` for signed events.
 - [ ] Reconciliation completes a disposable eligible test cart and is bounded.
+- [ ] Full, partial, repeated-partial, failed, and direct-Stripe refund evidence
+      is reconciled per refund.
+- [ ] Stripe-taxed order edits preserve existing rates and reject new taxable
+      items until a tax-bound additional-payment flow exists.
 - [ ] Desktop and Chrome Pixel/iPhone device-emulation screenshots are
       inspected with no horizontal overflow.
 - [ ] Keyboard, focus/error summary, screen-reader status, reduced motion, and

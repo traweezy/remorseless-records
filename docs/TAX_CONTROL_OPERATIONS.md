@@ -14,7 +14,8 @@ Open **Tax control** in Medusa Admin. The page shows:
 - TaxRate.io's most recently returned usage/quota;
 - active carts, prepared checkouts, and payments finalizing;
 - tracked tax-bound payments and refund counts;
-- disputes or failed Stripe Tax associations; and
+- pending refund reversals, Medusa/Stripe refund-ledger mismatches, disputes,
+  or failed Stripe Tax associations; and
 - the immutable provider-switch history.
 
 Choosing a provider does not change state. A switch requires a provider that is
@@ -80,6 +81,14 @@ rechecks prepared/successful/refunded/disputed records so delayed refund
 reversals and missed dispute signals remain visible. Aggregate warnings report
 failures, incidents, or a reached cap.
 
+Refund reconciliation is per refund, not merely per PaymentIntent. It verifies
+that every successful Stripe refund has its own committed Stripe Tax reversal,
+surfaces failed/canceled refunds, and fails closed when Stripe reports more
+than the 100-refund audit window. Admin also compares the sum of Medusa refund
+records with Stripe's observed refunded amount. A direct Stripe Dashboard/API
+refund therefore remains visible as a ledger mismatch even though Stripe's
+simplified Tax integration creates its reversal automatically.
+
 Service objectives:
 
 - zero accepted checkouts with mismatched or expired tax evidence;
@@ -103,11 +112,34 @@ Service objectives:
 
 ## Incident: refund reversal pending or failed
 
-1. Confirm the refund was initiated and recorded through Medusa.
-2. Check the evidence refund amount and Stripe Tax association attempts.
-3. Allow the hourly job to reconcile a reversal that is still being committed.
-4. If Stripe reports an errored attempt, investigate before more refunds.
-5. Never manufacture a reversal without reconciling it to the Medusa refund.
+1. Confirm the refund was initiated and recorded through Medusa Admin.
+2. Compare the exact Medusa refund total with the Stripe-observed total.
+3. Check every refund ID for its own committed Stripe Tax reversal.
+4. Allow the hourly job to reconcile a reversal that is still being committed.
+5. If Stripe reports a failed/canceled refund or errored reversal, stop further
+   refunds on the affected payment and investigate the original payment method.
+6. If Stripe has a refund Medusa does not, record a direct-Stripe incident and
+   reconcile Medusa before continuing order operations.
+7. Never manufacture a reversal or issue a second refund without reconciling it
+   to the Medusa refund ledger.
+
+## Order edits, returns, and exchanges
+
+Existing Stripe-taxed order items and shipping methods keep the exact effective
+rates recorded at purchase. Return shipping may reuse the original reviewed
+shipping rate when that rate is unambiguous. This prevents an old order from
+changing merely because a provider was switched or a jurisdiction rate changed.
+
+Do not add or reprice taxable items on a Stripe-taxed order. Medusa can require
+an additional payment for an order edit, while Stripe requires that payment's
+Tax calculation to be bound to that PaymentIntent. The current storefront has
+no customer-facing, tax-bound additional-payment flow, so the tax hook rejects
+that edit instead of producing unreported or mismatched tax. Create a separate
+new order for the added items.
+
+TaxRate.io orders keep their historical frozen percentage for subsequent order
+tax-line operations. This preserves history but does not turn TaxRate.io into a
+transaction-reporting system.
 
 ## Incident: dispute
 
@@ -141,6 +173,11 @@ does not undo tax transactions, refunds, or provider history.
 - A successful Stripe Tax checkout proves the three-way amount invariant and
   committed Tax transaction.
 - Partial and full refunds prove the expected reversal association.
+- Multiple partial refunds prove a distinct committed reversal for each refund.
+- A direct Stripe refund produces a visible Medusa-ledger mismatch.
+- A failed refund and a truncated refund audit remain operator incidents.
+- Existing-line returns preserve historical rates, and new taxable items on a
+  Stripe-taxed order fail closed.
 - Tax control is checked with keyboard, focus, narrow viewport, and reduced
   motion.
 - A separate owner approval exists for live registrations, classifications,
@@ -153,3 +190,5 @@ Official references:
 - [Stripe Tax registrations](https://docs.stripe.com/tax/registering)
 - [Stripe Tax transaction reversals](https://docs.stripe.com/tax/custom#reverse-transaction)
 - [Medusa custom Tax Module providers](https://docs.medusajs.com/resources/commerce-modules/tax/tax-provider)
+- [Medusa order edits and outstanding payments](https://docs.medusajs.com/resources/commerce-modules/order/edit)
+- [Medusa order payment and refund operations](https://docs.medusajs.com/user-guide/orders/payments)
