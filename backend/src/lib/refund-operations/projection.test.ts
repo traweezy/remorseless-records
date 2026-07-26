@@ -1,0 +1,332 @@
+import {
+  projectRefundCases,
+  summarizeRefundCases,
+} from "./projection";
+
+type EvidenceOverrides = {
+  associationStatus?: string;
+  metadata?: Record<string, unknown>;
+  provider?: "stripe_tax" | "taxrate_io";
+  status?: string;
+};
+
+const evidenceFixture = ({
+  associationStatus = "committed",
+  metadata = {
+    refund_amount_minor: 500,
+    refund_tax_missing_sources: [],
+    refund_tax_transaction_ids: ["tax_txn_refund"],
+    stripe_refund_count: 1,
+    stripe_refund_statuses: [{ status: "succeeded" }],
+  },
+  provider = "stripe_tax",
+  status = "partially_refunded",
+}: EvidenceOverrides = {}) => ({
+  amount_minor: 2_000,
+  association_status: associationStatus,
+  cart_id: "cart_01",
+  currency_code: "usd",
+  id: "taxevidence_01",
+  last_verified_at: "2026-07-26T15:00:00.000Z",
+  metadata,
+  order_id: "order_01",
+  payment_intent_id: "pi_test",
+  provider,
+  status,
+});
+
+const orderFixture = ({
+  refunds = [{ amount: 5, created_at: "2026-07-26T14:00:00.000Z" }],
+}: {
+  refunds?: unknown[];
+} = {}) => ({
+  currency_code: "usd",
+  display_id: 42,
+  id: "order_01",
+  payment_collections: [
+    {
+      payments: [
+        {
+          amount: 20,
+          captured_amount: 20,
+          currency_code: "usd",
+          data: { id: "pi_test" },
+          id: "pay_01",
+          provider_id: "pp_stripe_stripe",
+          refunds,
+        },
+      ],
+    },
+  ],
+});
+
+describe("refund operations projection", () => {
+  it("omits payments without refund or dispute signals", () => {
+    expect(
+      projectRefundCases({
+        evidence: [
+          evidenceFixture({
+            metadata: {},
+            status: "succeeded",
+          }),
+        ],
+        orders: [orderFixture({ refunds: [] })],
+      }),
+    ).toEqual([]);
+  });
+
+  it("marks a reconciled Stripe Tax refund as verified", () => {
+    expect(
+      projectRefundCases({
+        evidence: [evidenceFixture()],
+        orders: [orderFixture()],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        medusaRefundAmountMinor: 500,
+        status: "verified",
+        stripeRefundAmountMinor: 500,
+        taxStatus: "verified",
+      }),
+    ]);
+  });
+
+  it("does not require a Stripe Tax reversal for TaxRate.io", () => {
+    const refundCase = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          metadata: {
+            refund_amount_minor: 500,
+            stripe_refund_count: 1,
+            stripe_refund_statuses: [{ status: "succeeded" }],
+          },
+          provider: "taxrate_io",
+        }),
+      ],
+      orders: [orderFixture()],
+    })[0];
+
+    expect(refundCase).toMatchObject({
+      provider: "taxrate_io",
+      status: "verified",
+      taxStatus: "not_applicable",
+    });
+  });
+
+  it("keeps a missing Stripe Tax reversal in processing", () => {
+    const refundCase = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          associationStatus: "refund_pending",
+          metadata: {
+            refund_amount_minor: 500,
+            refund_tax_missing_sources: ["re_test"],
+            refund_tax_transaction_ids: [],
+            stripe_refund_count: 1,
+            stripe_refund_statuses: [{ status: "succeeded" }],
+          },
+        }),
+      ],
+      orders: [orderFixture()],
+    })[0];
+
+    expect(refundCase).toMatchObject({
+      status: "processing",
+      taxStatus: "pending",
+    });
+    expect(refundCase?.nextAction).toContain("automatic verification job");
+  });
+
+  it.each(["failed", "canceled"] as const)(
+    "requires action for a %s provider refund",
+    (stripeStatus) => {
+      const refundCase = projectRefundCases({
+        evidence: [
+          evidenceFixture({
+            associationStatus: `refund_failed:${stripeStatus}`,
+            metadata: {
+              refund_amount_minor: 0,
+              stripe_refund_count: 1,
+              stripe_refund_statuses: [{ status: stripeStatus }],
+            },
+            status: "association_failed",
+          }),
+        ],
+        orders: [orderFixture()],
+      })[0];
+
+      expect(refundCase).toMatchObject({
+        status: "action_required",
+        taxStatus: "attention",
+      });
+      expect(refundCase?.nextAction).toContain("without retrying blindly");
+    },
+  );
+
+  it("guards against a refund made directly in Stripe", () => {
+    const refundCase = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          metadata: {
+            refund_amount_minor: 500,
+            stripe_refund_count: 1,
+            stripe_refund_statuses: [{ status: "succeeded" }],
+          },
+          provider: "taxrate_io",
+        }),
+      ],
+      orders: [orderFixture({ refunds: [] })],
+    })[0];
+
+    expect(refundCase).toMatchObject({
+      medusaRefundAmountMinor: 0,
+      status: "action_required",
+      stripeRefundAmountMinor: 500,
+    });
+    expect(refundCase?.nextAction).toContain("Do not refund again");
+  });
+
+  it("does not suggest a retry while Medusa is ahead of Stripe", () => {
+    const refundCase = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          metadata: {
+            refund_amount_minor: 200,
+            stripe_refund_count: 1,
+            stripe_refund_statuses: [{ status: "pending" }],
+          },
+          provider: "taxrate_io",
+        }),
+      ],
+      orders: [orderFixture()],
+    })[0];
+
+    expect(refundCase?.status).toBe("action_required");
+    expect(refundCase?.nextAction).toContain("Do not retry yet");
+  });
+
+  it("makes a dispute the highest-priority action", () => {
+    const refundCase = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          metadata: {
+            disputed: true,
+            refund_amount_minor: 500,
+            stripe_refund_count: 1,
+            stripe_refund_statuses: [{ status: "succeeded" }],
+          },
+          provider: "taxrate_io",
+          status: "disputed",
+        }),
+      ],
+      orders: [orderFixture()],
+    })[0];
+
+    expect(refundCase?.status).toBe("action_required");
+    expect(refundCase?.nextAction).toContain("Pause additional refunds");
+  });
+
+  it("tracks a Medusa refund while provider evidence is unavailable", () => {
+    const refundCase = projectRefundCases({
+      evidence: [],
+      orders: [orderFixture()],
+    })[0];
+
+    expect(refundCase).toMatchObject({
+      provider: "untracked",
+      status: "processing",
+      stripeRefundAmountMinor: null,
+      taxStatus: "untracked",
+    });
+  });
+
+  it("does not call a legacy refund verified without individual statuses", () => {
+    const refundCase = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          metadata: {
+            refund_amount_minor: 500,
+            stripe_refund_count: 1,
+          },
+          provider: "taxrate_io",
+        }),
+      ],
+      orders: [orderFixture()],
+    })[0];
+
+    expect(refundCase).toMatchObject({
+      status: "processing",
+      stripeStatuses: [],
+    });
+  });
+
+  it("surfaces checkout compensation refunds that have no order", () => {
+    const refundCase = projectRefundCases({
+      evidence: [
+        {
+          ...evidenceFixture({
+            metadata: {
+              refund_amount_minor: 2_000,
+              stripe_refund_count: 1,
+              stripe_refund_statuses: [{ status: "succeeded" }],
+            },
+            provider: "taxrate_io",
+            status: "refunded",
+          }),
+          order_id: null,
+        },
+      ],
+      orders: [],
+    })[0];
+
+    expect(refundCase).toMatchObject({
+      displayId: null,
+      medusaRefundAmountMinor: 0,
+      orderId: null,
+      status: "action_required",
+    });
+  });
+
+  it("summarizes case states and Medusa-recorded amounts by currency", () => {
+    const verified = projectRefundCases({
+      evidence: [evidenceFixture()],
+      orders: [orderFixture()],
+    })[0];
+    const processing = projectRefundCases({
+      evidence: [],
+      orders: [
+        {
+          ...orderFixture(),
+          currency_code: "cad",
+          id: "order_02",
+          payment_collections: [
+            {
+              payments: [
+                {
+                  amount: 10,
+                  captured_amount: 10,
+                  currency_code: "cad",
+                  data: { id: "pi_second" },
+                  id: "pay_02",
+                  provider_id: "pp_stripe_stripe",
+                  refunds: [{ amount: 2 }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })[0];
+
+    expect(summarizeRefundCases([verified!, processing!])).toEqual({
+      actionRequired: 0,
+      amountsByCurrency: [
+        { amountMinor: 200, currencyCode: "cad" },
+        { amountMinor: 500, currencyCode: "usd" },
+      ],
+      processing: 1,
+      totalCases: 2,
+      verified: 1,
+    });
+  });
+});

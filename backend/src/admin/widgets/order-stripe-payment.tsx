@@ -2,7 +2,7 @@
 
 import { defineWidgetConfig } from "@medusajs/admin-sdk";
 import type { AdminOrder, DetailWidgetProps } from "@medusajs/framework/types";
-import { Badge, Container, Heading, Text } from "@medusajs/ui";
+import { Badge, Button, Container, Heading, Text } from "@medusajs/ui";
 
 import {
   stripeDashboardPaymentUrl,
@@ -57,26 +57,36 @@ const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
                 {reference.livemode ? " · Live mode" : " · Test mode"}
               </Text>
             </div>
-            <a
-              href={stripeDashboardPaymentUrl(reference)}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-md border border-ui-border-strong px-2.5 py-1.5 text-ui-fg-interactive hover:bg-ui-bg-base-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
-            >
-              <Text size="small" weight="plus">
+            <Button asChild size="small" variant="secondary">
+              <a
+                href={stripeDashboardPaymentUrl(reference)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 Open in Stripe
-              </Text>
-            </a>
+              </a>
+            </Button>
           </div>
         ))}
         <div className="rounded-lg border border-ui-border-base bg-ui-bg-subtle p-3">
-          <Text size="small" weight="plus">
-            Issue refunds from this order
-          </Text>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-2xl">
+              <Text size="small" weight="plus">
+                Choose the order workflow before refunding
+              </Text>
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                If an item is coming back, create a return or claim and record
+                the inventory outcome first. For a payment-only correction,
+                use this order&apos;s payment-row Refund action.
+              </Text>
+            </div>
+            <Button asChild size="small" variant="secondary">
+              <a href="/app/refund-operations">Refund guide and audit</a>
+            </Button>
+          </div>
           <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-            Use Medusa&apos;s payment actions so the order ledger, Stripe
-            refund, and tax evidence stay together. Open Stripe for
-            investigation only; do not refund from the Stripe Dashboard.
+            Always issue the refund in Medusa so the order ledger, Stripe, and
+            tax evidence stay together. Open Stripe for investigation only.
           </Text>
         </div>
       </div>
