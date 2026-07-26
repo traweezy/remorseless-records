@@ -85,7 +85,7 @@ const providerLabel = (provider: RefundProvider): string => {
 
 const taxStatusLabel = (status: RefundTaxStatus): string => {
   if (status === "not_applicable") {
-    return "No provider reversal";
+    return "Not required";
   }
   if (status === "attention") {
     return "Needs review";
@@ -181,7 +181,12 @@ const SummaryCard = memo<SummaryCardProps>(
 SummaryCard.displayName = "SummaryCard";
 
 const CaseStatus = memo<{ status: RefundCaseStatus }>(({ status }) => (
-  <StatusBadge color={statusColor(status)}>{statusLabel(status)}</StatusBadge>
+  <StatusBadge
+    className="shrink-0 whitespace-nowrap"
+    color={statusColor(status)}
+  >
+    {statusLabel(status)}
+  </StatusBadge>
 ));
 
 CaseStatus.displayName = "CaseStatus";
@@ -205,7 +210,7 @@ OrderAction.displayName = "OrderAction";
 
 const CaseCard = memo<CaseCardProps>(({ refundCase }) => (
   <article className="rounded-lg border border-ui-border-base p-4">
-    <div className="flex items-start justify-between gap-3">
+    <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
       <div className="min-w-0">
         <Heading level="h3">{caseLabel(refundCase)}</Heading>
         <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
@@ -234,9 +239,14 @@ const CaseCard = memo<CaseCardProps>(({ refundCase }) => (
         </dd>
       </div>
       <div>
-        <dt className="txt-compact-xsmall text-ui-fg-subtle">Tax path</dt>
+        <dt className="txt-compact-xsmall text-ui-fg-subtle">
+          Tax reversal
+        </dt>
         <dd className="mt-1">
-          <StatusBadge color={taxStatusColor(refundCase.taxStatus)}>
+          <StatusBadge
+            className="whitespace-nowrap"
+            color={taxStatusColor(refundCase.taxStatus)}
+          >
             {taxStatusLabel(refundCase.taxStatus)}
           </StatusBadge>
         </dd>
