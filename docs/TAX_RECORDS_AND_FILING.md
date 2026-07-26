@@ -46,13 +46,16 @@ The summary provides:
 - destination groups by country, state, locality, postal code, and rate.
 
 Sales are recorded at the final positive payment-capture timestamp. The report
-reads Medusa's paid-order summary first, then explicit capture records
-(including incremental captures), and finally the payment collection's
-captured total. This keeps reporting correct when Medusa's internal graph omits
-a computed amount from the nested payment object. If a legacy paid order has no
-capture timestamp, the order timestamp is used and the row is marked for
-review. A captured amount that differs from the original order total is marked
-incomplete instead of silently reporting a full sale.
+loads linked payments directly from Medusa's Payment Module, in bounded
+batches, so explicit capture records and refund records are authoritative even
+when the order graph omits computed nested amounts. It reads the paid-order
+summary first, then explicit capture records (including incremental captures),
+and finally the payment collection's captured total. The report fails closed
+if a linked payment cannot be hydrated; it never silently omits that payment
+from the workpaper. If a legacy paid order has no capture timestamp, the order
+timestamp is used and the row is marked for review. A captured amount that
+differs from the original order total is marked incomplete instead of silently
+reporting a full sale.
 Zero-value orders are omitted because they do not create a sales-tax amount.
 Refunds are credits in the period in which the refund occurred. The extension
 also classifies every refund as a **same-period credit**, **prior-period

@@ -32,6 +32,24 @@ type QueryGraph = {
 
 const PAGE_SIZE = 250;
 const MAX_ORDERS = 50_000;
+const PAYMENT_QUERY_CONCURRENCY = 4;
+
+const PAYMENT_FIELDS = [
+  "id",
+  "amount",
+  "raw_amount",
+  "captured_at",
+  "provider_id",
+  "data",
+  "captures.id",
+  "captures.amount",
+  "captures.raw_amount",
+  "captures.created_at",
+  "refunds.id",
+  "refunds.amount",
+  "refunds.raw_amount",
+  "refunds.created_at",
+] as const;
 
 const ORDER_FIELDS = [
   "id",
@@ -90,6 +108,111 @@ const ORDER_FIELDS = [
   "payment_collections.captured_amount",
   "payment_collections.raw_captured_amount",
 ] as const;
+
+const asRecord = (value: unknown): UnknownRecord | null =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as UnknownRecord)
+    : null;
+
+const records = (value: unknown): UnknownRecord[] =>
+  Array.isArray(value)
+    ? value
+        .map(asRecord)
+        .filter((record): record is UnknownRecord => record !== null)
+    : [];
+
+const text = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() ? value.trim() : null;
+
+const paymentIdsFrom = (orders: UnknownRecord[]): string[] => [
+  ...new Set(
+    orders.flatMap((order) =>
+      records(order.payment_collections).flatMap((collection) =>
+        records(collection.payments)
+          .map((payment) => text(payment.id))
+          .filter((id): id is string => id !== null),
+      ),
+    ),
+  ),
+];
+
+const loadPayments = async ({
+  paymentIds,
+  query,
+}: {
+  paymentIds: string[];
+  query: QueryGraph;
+}): Promise<Map<string, UnknownRecord>> => {
+  const paymentsById = new Map<string, UnknownRecord>();
+  const batches = Array.from(
+    { length: Math.ceil(paymentIds.length / PAGE_SIZE) },
+    (_, index) =>
+      paymentIds.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE),
+  );
+  for (
+    let offset = 0;
+    offset < batches.length;
+    offset += PAYMENT_QUERY_CONCURRENCY
+  ) {
+    const results = await Promise.all(
+      batches
+        .slice(offset, offset + PAYMENT_QUERY_CONCURRENCY)
+        .map(async (ids) =>
+          query.graph({
+            entity: "payment",
+            fields: [...PAYMENT_FIELDS],
+            filters: { id: ids },
+            pagination: {
+              order: { created_at: "DESC" },
+              skip: 0,
+              take: ids.length,
+            },
+          }),
+        ),
+    );
+    for (const { data } of results) {
+      for (const payment of data) {
+        const id = text(payment.id);
+        if (id) {
+          paymentsById.set(id, payment);
+        }
+      }
+    }
+  }
+  if (paymentIds.some((id) => !paymentsById.has(id))) {
+    throw new Error(
+      "Tax report could not load every linked payment record.",
+    );
+  }
+  return paymentsById;
+};
+
+const hydrateOrderPayments = async ({
+  orders,
+  query,
+}: {
+  orders: UnknownRecord[];
+  query: QueryGraph;
+}): Promise<UnknownRecord[]> => {
+  const paymentIds = paymentIdsFrom(orders);
+  if (!paymentIds.length) {
+    return orders;
+  }
+  const paymentsById = await loadPayments({ paymentIds, query });
+  return orders.map((order) => ({
+    ...order,
+    payment_collections: records(order.payment_collections).map(
+      (collection) => ({
+        ...collection,
+        payments: records(collection.payments).map((payment) => {
+          const id = text(payment.id);
+          const hydrated = id ? paymentsById.get(id) : undefined;
+          return hydrated ? { ...payment, ...hydrated } : payment;
+        }),
+      }),
+    ),
+  }));
+};
 
 const filtersSchema = z.object({
   limit: z.coerce.number().int().min(10).max(100).default(50),
@@ -150,11 +273,17 @@ export const loadTaxReportOrders = async ({
     });
     orders.push(...data);
     if (data.length < PAGE_SIZE) {
-      return { orders, truncated: false };
+      return {
+        orders: await hydrateOrderPayments({ orders, query }),
+        truncated: false,
+      };
     }
   }
 
-  return { orders, truncated: true };
+  return {
+    orders: await hydrateOrderPayments({ orders, query }),
+    truncated: true,
+  };
 };
 
 const matchesFilters = (

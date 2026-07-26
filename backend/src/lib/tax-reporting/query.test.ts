@@ -103,6 +103,92 @@ describe("tax report query", () => {
     });
   });
 
+  it("hydrates authoritative capture data from the Payment Module", async () => {
+    let paymentQuery: Record<string, unknown> | null = null;
+    const sparseOrder = {
+      ...order,
+      payment_collections: [
+        {
+          payments: [
+            {
+              captured_at: "2026-07-20T16:01:00.000Z",
+              id: "pay_42",
+            },
+          ],
+        },
+      ],
+      summary: undefined,
+    };
+    const report = await buildFullTaxReport({
+      container: containerWith(async (input) => {
+        if (input.entity === "payment") {
+          paymentQuery = input;
+          return {
+            data: [
+              {
+                amount: "10.8",
+                captured_at: "2026-07-20T16:01:00.000Z",
+                captures: [
+                  {
+                    amount: "10.8",
+                    created_at: "2026-07-20T16:01:00.000Z",
+                    id: "capt_42",
+                  },
+                ],
+                id: "pay_42",
+                refunds: [],
+              },
+            ],
+          };
+        }
+        return { data: [sparseOrder] };
+      }),
+      period,
+    });
+
+    expect(paymentQuery).toMatchObject({
+      entity: "payment",
+      fields: expect.arrayContaining([
+        "amount",
+        "captures.amount",
+        "captures.created_at",
+        "refunds.amount",
+      ]),
+      filters: { id: ["pay_42"] },
+    });
+    expect(report.records).toEqual([
+      expect.objectContaining({
+        grossSales: "10.0000",
+        occurredAt: "2026-07-20T16:01:00.000Z",
+        taxAmount: "0.8000",
+        total: "10.8000",
+      }),
+    ]);
+  });
+
+  it("fails closed when a linked payment cannot be hydrated", async () => {
+    const sparseOrder = {
+      ...order,
+      payment_collections: [
+        {
+          payments: [{ id: "pay_missing" }],
+        },
+      ],
+      summary: undefined,
+    };
+
+    await expect(
+      buildFullTaxReport({
+        container: containerWith(async (input) => ({
+          data: input.entity === "payment" ? [] : [sparseOrder],
+        })),
+        period,
+      }),
+    ).rejects.toThrow(
+      "Tax report could not load every linked payment record.",
+    );
+  });
+
   it("keeps period summaries complete when table filters match no rows", async () => {
     const report = await buildTaxReport({
       container: containerWith(async () => ({ data: [order] })),
