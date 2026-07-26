@@ -72,6 +72,20 @@ const integer = (value: unknown): number | null => {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 };
 
+const records = (value: unknown): UnknownRecord[] =>
+  Array.isArray(value)
+    ? value
+        .map(asRecord)
+        .filter((record): record is UnknownRecord => record !== null)
+    : [];
+
+const hasMedusaRefund = (order: UnknownRecord): boolean =>
+  records(order.payment_collections).some((collection) =>
+    records(collection.payments).some(
+      (payment) => records(payment.refunds).length > 0,
+    ),
+  );
+
 const hasRefundSignal = (value: unknown): boolean => {
   const evidence = asRecord(value);
   const metadata = asRecord(evidence?.metadata);
@@ -121,21 +135,22 @@ const loadRecentOrders = async ({
   query: QueryGraph;
 }): Promise<{ orders: UnknownRecord[]; truncated: boolean }> => {
   const orders: UnknownRecord[] = [];
-  while (orders.length < MAX_RECENT_ORDERS) {
+  let scanned = 0;
+  while (scanned < MAX_RECENT_ORDERS) {
     const { data } = await query.graph({
       entity: "order",
       fields: [...ORDER_FIELDS],
       filters: {
-        payment_status: ["partially_refunded", "refunded"],
         updated_at: { $gte: activityCutoff(now) },
       },
       pagination: {
         order: { updated_at: "DESC" },
-        skip: orders.length,
-        take: Math.min(PAGE_SIZE, MAX_RECENT_ORDERS - orders.length),
+        skip: scanned,
+        take: Math.min(PAGE_SIZE, MAX_RECENT_ORDERS - scanned),
       },
     });
-    orders.push(...data);
+    scanned += data.length;
+    orders.push(...data.filter(hasMedusaRefund));
     if (data.length < PAGE_SIZE) {
       return { orders, truncated: false };
     }

@@ -78,7 +78,7 @@ const containerFixture = ({
 };
 
 describe("refund operations snapshot query", () => {
-  it("loads only recently refunded Medusa orders", async () => {
+  it("loads recent orders and retains only those with Medusa refunds", async () => {
     const graph = jest.fn(async () => ({ data: [orderFixture()] }));
 
     const snapshot = await buildRefundOperationsSnapshot({
@@ -99,10 +99,10 @@ describe("refund operations snapshot query", () => {
     expect(firstCall?.[0]).toMatchObject({
       entity: "order",
       filters: {
-        payment_status: ["partially_refunded", "refunded"],
         updated_at: { $gte: "2026-01-27T16:00:00.000Z" },
       },
     });
+    expect(firstCall?.[0].filters).not.toHaveProperty("payment_status");
     expect(firstCall?.[0].fields).not.toEqual(
       expect.arrayContaining([
         "email",
@@ -125,6 +125,36 @@ describe("refund operations snapshot query", () => {
         verified: 1,
       },
     });
+  });
+
+  it("does not project recent orders without Medusa or evidence refunds", async () => {
+    const graph = jest.fn(async () => ({
+      data: [
+        {
+          ...orderFixture(),
+          payment_collections: [
+            {
+              payments: [
+                {
+                  currency_code: "usd",
+                  data: { id: "pi_without_refund" },
+                  id: "pay_without_refund",
+                  provider_id: "pp_stripe_stripe",
+                  refunds: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }));
+
+    const snapshot = await buildRefundOperationsSnapshot({
+      container: containerFixture({ evidence: [], graph }),
+    });
+
+    expect(snapshot.cases).toEqual([]);
+    expect(snapshot.source.ordersScanned).toBe(0);
   });
 
   it("loads an older order when tracked evidence has a refund signal", async () => {
