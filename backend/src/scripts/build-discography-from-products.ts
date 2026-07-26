@@ -1,53 +1,48 @@
-import type { ExecArgs } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import fs from "node:fs/promises"
+import os from "node:os"
+import path from "node:path"
 
+import type { ExecArgs } from "@medusajs/framework/types"
+import {
+  ContainerRegistrationKeys,
+  Modules,
+} from "@medusajs/framework/utils"
+
+import {
+  buildDiscographyProjection,
+  isMusicReleaseReference,
+  parseDiscographyReplacementCommandOptions,
+  type DiscographyProjectionSource,
+  type DiscographyProjectionVariant,
+} from "@/lib/catalog/discography-projection"
+import type CatalogModuleService from "@/modules/catalog/service"
 import type DiscographyModuleService from "@/modules/discography/service"
 
+type CatalogService = InstanceType<typeof CatalogModuleService>
 type DiscographyService = InstanceType<typeof DiscographyModuleService>
 
-type ProductCategory = {
-  name?: string | null
-  handle?: string | null
-  parent_category?: ProductCategory | null
-}
-
-type ProductCollection = {
-  title?: string | null
-}
-
-type ProductImage = {
+type ProductImageRecord = {
   url?: string | null
 }
 
-type ProductVariant = {
-  title?: string | null
+type ProductVariantRecord = {
   allow_backorder?: boolean | null
-  manage_inventory?: boolean | null
+  id: string
   inventory_quantity?: number | null
-}
-
-type ProductOptionValue = {
-  value?: string | null
-}
-
-type ProductOption = {
+  manage_inventory?: boolean | null
   title?: string | null
-  values?: ProductOptionValue[] | null
 }
 
 type ProductRecord = {
-  id?: string | null
+  collection?: { title?: string | null } | null
   handle?: string | null
-  title?: string | null
-  subtitle?: string | null
-  status?: string | null
+  id: string
+  images?: ProductImageRecord[] | null
   metadata?: Record<string, unknown> | null
-  categories?: ProductCategory[] | null
-  collection?: ProductCollection | null
+  status?: string | null
   thumbnail?: string | null
-  images?: ProductImage[] | null
-  variants?: ProductVariant[] | null
-  options?: ProductOption[] | null
+  title?: string | null
+  variants?: ProductVariantRecord[] | null
 }
 
 type ProductService = {
@@ -61,460 +56,48 @@ type ProductService = {
   ) => Promise<[ProductRecord[], number]>
 }
 
-type DiscographyEntryRecord = {
-  id?: string
-  product_handle?: string | null
+type CatalogProductProfileRecord = {
+  id: string
+  label_id?: string | null
+  metadata?: Record<string, unknown> | null
+  product_id: string
+  product_type_id?: string | null
+  release_date?: Date | string | null
+  release_title?: string | null
+  release_year?: number | null
+  search_keywords?: string[] | null
 }
 
-type DiscographyCreatePayload = {
-  title: string
-  artist: string
-  album: string
-  product_handle: string | null
-  collection_title: string | null
-  catalog_number: string | null
-  release_date: Date | null
-  release_year: number | null
-  formats: string[]
-  genres: string[]
-  tags: string[]
-  availability: "in_print" | "out_of_print" | "preorder" | "digital_only" | "unknown"
-  cover_url: string | null
+type CatalogReferenceValueRecord = {
+  id: string
+  is_active?: boolean | null
+  kind: string
+  label: string
+  value: string
 }
 
-const PRODUCT_RELATIONS = [
-  "collection",
-  "categories",
-  "categories.parent_category",
-  "categories.parent_category.parent_category",
-  "images",
-  "variants",
-  "options",
-  "options.values",
-]
-
-const normalizeString = (value: unknown): string | null => {
-  if (typeof value !== "string") {
-    return null
-  }
-  const trimmed = value.trim()
-  return trimmed.length ? trimmed : null
+type CatalogProductArtistRecord = {
+  display_name: string
+  product_profile_id: string
+  sort_order?: number | null
 }
 
-const coerceRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
-
-const normalizeHandle = (value: string | null | undefined): string | null => {
-  if (!value) {
-    return null
-  }
-  const trimmed = value.trim().toLowerCase()
-  return trimmed.length ? trimmed : null
+type CatalogProductReferenceRecord = {
+  kind: string
+  product_profile_id: string
+  reference_value_id: string
+  sort_order?: number | null
 }
 
-const humanizeHandle = (handle: string): string =>
-  handle
-    .split("-")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ")
-
-const collectAncestors = (category: ProductCategory | null | undefined): ProductCategory[] => {
-  const ancestors: ProductCategory[] = []
-  let current: ProductCategory | null | undefined = category
-  let guard = 0
-
-  while (current && guard < 16) {
-    ancestors.push(current)
-    current = current.parent_category ?? null
-    guard += 1
-  }
-
-  return ancestors
+type CatalogVariantProfileRecord = {
+  availability_status?: string | null
+  variant_id: string
 }
 
-const findRootCategory = (category: ProductCategory | null | undefined): ProductCategory | null => {
-  const ancestors = collectAncestors(category)
-  return ancestors.length ? ancestors[ancestors.length - 1] ?? null : null
-}
-
-const findArtistCategory = (
-  categories: ProductCategory[] | null | undefined
-): { name: string; handle: string } | null => {
-  if (!categories?.length) {
-    return null
-  }
-
-  for (const category of categories) {
-    let current: ProductCategory | null | undefined = category
-    let hasArtistAncestor = false
-
-    while (current) {
-      const handle = normalizeHandle(current.handle)
-      if (handle === "artists") {
-        hasArtistAncestor = true
-        break
-      }
-      current = current.parent_category ?? null
-    }
-
-    if (!hasArtistAncestor) {
-      continue
-    }
-
-    const handle = normalizeHandle(category.handle)
-    if (!handle) {
-      continue
-    }
-
-    const name = normalizeString(category.name) ?? humanizeHandle(handle)
-    return { name, handle }
-  }
-
-  return null
-}
-
-const GENRE_ROOT_HANDLES = new Set(["genres", "metal", "death", "doom", "grind", "sludge"])
-
-const DISCOGRAPHY_FORMATS = [
-  {
-    label: "Vinyl",
-    pattern:
-      /(vinyl|lp|12"|12-inch|12 inch|10"|10-inch|10 inch|7"|7-inch|7 inch|record)/i,
-  },
-  { label: "CD", pattern: /(compact disc|\bcd\b)/i },
-  { label: "Cassette", pattern: /(cassette|tape|k7)/i },
-] as const
-
-const normalizeDiscographyFormats = (formats: string[]): string[] => {
-  const found = new Set<string>()
-
-  formats.forEach((format) => {
-    const trimmed = normalizeString(format)
-    if (!trimmed) {
-      return
-    }
-    for (const entry of DISCOGRAPHY_FORMATS) {
-      if (entry.pattern.test(trimmed)) {
-        found.add(entry.label)
-        break
-      }
-    }
-  })
-
-  return DISCOGRAPHY_FORMATS.map((entry) => entry.label).filter((label) => found.has(label))
-}
-
-const extractGenres = (categories: ProductCategory[] | null | undefined): string[] => {
-  if (!categories?.length) {
-    return []
-  }
-
-  const genres = new Map<string, string>()
-
-  for (const category of categories) {
-    const handle = normalizeHandle(category.handle)
-    if (!handle || handle === "artists") {
-      continue
-    }
-
-    const root = findRootCategory(category)
-    const rootHandle = normalizeHandle(root?.handle)
-    if (!rootHandle || rootHandle === "artists") {
-      continue
-    }
-
-    if (!GENRE_ROOT_HANDLES.has(rootHandle) && !GENRE_ROOT_HANDLES.has(handle)) {
-      continue
-    }
-
-    const label = normalizeString(category.name) ?? humanizeHandle(handle)
-    genres.set(handle, label)
-  }
-
-  return Array.from(genres.values())
-}
-
-const extractMetadataString = (metadata: Record<string, unknown> | null, keys: string[]): string | null => {
-  if (!metadata) {
-    return null
-  }
-
-  for (const key of keys) {
-    const value = metadata[key]
-    if (typeof value === "string") {
-      const trimmed = value.trim()
-      if (trimmed.length) {
-        return trimmed
-      }
-    }
-  }
-
-  return null
-}
-
-const extractMetadataNumber = (metadata: Record<string, unknown> | null, keys: string[]): number | null => {
-  if (!metadata) {
-    return null
-  }
-
-  for (const key of keys) {
-    const value = metadata[key]
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return Math.trunc(value)
-    }
-    if (typeof value === "string") {
-      const trimmed = value.trim()
-      if (!trimmed.length) {
-        continue
-      }
-      const parsed = Number.parseInt(trimmed, 10)
-      if (!Number.isNaN(parsed)) {
-        return parsed
-      }
-    }
-  }
-
-  return null
-}
-
-const normalizeStringList = (values: string[]): string[] => {
-  const seen = new Set<string>()
-  const normalized: string[] = []
-
-  values.forEach((value) => {
-    const trimmed = normalizeString(value)
-    if (!trimmed) {
-      return
-    }
-    const key = trimmed.toLowerCase()
-    if (seen.has(key)) {
-      return
-    }
-    seen.add(key)
-    normalized.push(trimmed)
-  })
-
-  return normalized
-}
-
-const extractMetadataStringList = (
-  metadata: Record<string, unknown> | null,
-  keys: string[]
-): string[] => {
-  if (!metadata) {
-    return []
-  }
-
-  const values: string[] = []
-
-  keys.forEach((key) => {
-    const rawValue = metadata[key]
-    if (typeof rawValue === "string") {
-      values.push(...rawValue.split(","))
-      return
-    }
-    if (Array.isArray(rawValue)) {
-      rawValue.forEach((entry) => {
-        if (typeof entry === "string") {
-          values.push(entry)
-        }
-      })
-    }
-  })
-
-  return normalizeStringList(values)
-}
-
-const parseDate = (value: string | null | undefined): Date | null => {
-  if (!value) {
-    return null
-  }
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-const normalizeFormat = (value: string | null | undefined): string | null => {
-  const trimmed = normalizeString(value)
-  if (!trimmed || trimmed.toLowerCase() === "default") {
-    return null
-  }
-  return trimmed
-}
-
-const extractFormats = (product: ProductRecord): string[] => {
-  const formats = new Set<string>()
-
-  const add = (value: string | null | undefined) => {
-    const normalized = normalizeFormat(value)
-    if (normalized) {
-      formats.add(normalized)
-    }
-  }
-
-  product.variants?.forEach((variant) => add(variant?.title))
-
-  product.options
-    ?.find((option) => option?.title?.toLowerCase() === "format")
-    ?.values?.forEach((entry) => add(entry?.value))
-
-  const metadata = coerceRecord(product.metadata)
-  if (metadata) {
-    add(typeof metadata.format === "string" ? metadata.format : null)
-    add(typeof metadata.packaging === "string" ? metadata.packaging : null)
-
-    const rawFormats = metadata.formats
-    if (Array.isArray(rawFormats)) {
-      rawFormats.forEach((entry) => {
-        if (typeof entry === "string") {
-          add(entry)
-        }
-      })
-    }
-  }
-
-  return normalizeDiscographyFormats(Array.from(formats.values()))
-}
-
-const resolveAvailability = (product: ProductRecord): DiscographyCreatePayload["availability"] => {
-  const status = normalizeString(product.status)?.toLowerCase() ?? null
-  if (status && status !== "published") {
-    return "unknown"
-  }
-
-  const variants = product.variants ?? []
-  if (!variants.length) {
-    return "unknown"
-  }
-
-  const inStock = variants.some((variant) => {
-    if (!variant) {
-      return false
-    }
-    if (variant.allow_backorder) {
-      return true
-    }
-    const manageInventory =
-      typeof variant.manage_inventory === "boolean" ? variant.manage_inventory : null
-    const qty =
-      typeof variant.inventory_quantity === "number" ? variant.inventory_quantity : null
-    if (manageInventory === false) {
-      return true
-    }
-    if (typeof qty === "number") {
-      return qty > 0
-    }
-    return false
-  })
-
-  return inStock ? "in_print" : "out_of_print"
-}
-
-const resolveArtistAlbum = (product: ProductRecord) => {
-  const metadata = coerceRecord(product.metadata)
-
-  const metaArtist = extractMetadataString(metadata, [
-    "artist",
-    "Artist",
-    "artist_name",
-    "artistName",
-  ])
-  const metaAlbum = extractMetadataString(metadata, [
-    "album",
-    "Album",
-    "release",
-    "release_title",
-    "releaseTitle",
-  ])
-
-  const title = normalizeString(product.title) ?? ""
-  const collectionTitle = normalizeString(product.collection?.title)
-  const artistCategory = findArtistCategory(product.categories ?? null)
-
-  const parseFromTitle = () => {
-    if (title.includes(" - ")) {
-      const [maybeArtistRaw, ...rest] = title.split(" - ")
-      const artist = maybeArtistRaw?.trim() ?? ""
-      const album = rest.join(" - ").trim()
-      if (artist.length && album.length) {
-        return { artist, album }
-      }
-    }
-    const fallback = collectionTitle ?? "Remorseless Records"
-    return { artist: fallback, album: fallback }
-  }
-
-  const parsed = parseFromTitle()
-  const artist =
-    metaArtist ??
-    normalizeString(artistCategory?.name) ??
-    parsed.artist ??
-    "Remorseless Records"
-  const album = metaAlbum ?? parsed.album ?? artist
-
-  return { artist, album }
-}
-
-const buildPayload = (product: ProductRecord): DiscographyCreatePayload | null => {
-  const handle = normalizeString(product.handle)
-  if (!handle) {
-    return null
-  }
-
-  const { artist, album } = resolveArtistAlbum(product)
-  const title = normalizeString(product.title) ?? album ?? handle
-
-  const metadata = coerceRecord(product.metadata)
-  const collectionTitle = normalizeString(product.collection?.title)
-  const catalogNumber =
-    extractMetadataString(metadata, ["catalog_number", "catalogNumber", "catalog", "cat_no"]) ??
-    null
-
-  const releaseDate =
-    parseDate(
-      extractMetadataString(metadata, [
-        "release_date",
-        "releaseDate",
-        "released_at",
-        "releasedAt",
-        "release",
-      ])
-    ) ?? null
-
-  const releaseYear =
-    extractMetadataNumber(metadata, ["release_year", "releaseYear", "year"]) ??
-    (releaseDate ? releaseDate.getFullYear() : null)
-
-  const formats = extractFormats(product)
-  const genres = extractGenres(product.categories ?? null)
-  const tags = extractMetadataStringList(metadata, [
-    "tags",
-    "tag",
-    "keywords",
-    "styles",
-  ])
-  const availability = resolveAvailability(product)
-  const coverUrl =
-    normalizeString(product.thumbnail) ??
-    normalizeString(product.images?.find((image) => image?.url)?.url) ??
-    null
-
-  return {
-    title,
-    artist,
-    album,
-    product_handle: handle,
-    collection_title: collectionTitle ?? null,
-    catalog_number: catalogNumber,
-    release_date: releaseDate,
-    release_year: releaseYear,
-    formats,
-    genres,
-    tags,
-    availability,
-    cover_url: coverUrl,
-  }
+type ExistingDiscographyRecord = {
+  id: string
+  product_id?: string | null
+  source_mode?: string | null
 }
 
 const listAll = async <T>(
@@ -523,85 +106,293 @@ const listAll = async <T>(
   const results: T[] = []
   const take = 200
   let skip = 0
-
   while (true) {
     const [items, count] = await fetchPage(skip, take)
     results.push(...items)
     skip += items.length
     if (!items.length || skip >= count) {
-      break
+      return results
     }
   }
-
-  return results
 }
 
+const groupBy = <T>(
+  entries: T[],
+  keyFor: (entry: T) => string
+): Map<string, T[]> => {
+  const result = new Map<string, T[]>()
+  entries.forEach((entry) => {
+    const key = keyFor(entry)
+    result.set(key, [...(result.get(key) ?? []), entry])
+  })
+  return result
+}
+
+const defaultStateDirectory = (): string =>
+  path.join(
+    os.homedir(),
+    ".local",
+    "share",
+    "remorseless-records",
+    "discography-rebuild"
+  )
+
+const writeJsonAtomically = async (
+  destination: string,
+  value: unknown
+): Promise<void> => {
+  const temporary = `${destination}.tmp`
+  await fs.writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, {
+    mode: 0o600,
+  })
+  await fs.rename(temporary, destination)
+}
+
+const toProjectionVariant = (
+  variant: ProductVariantRecord,
+  availabilityStatus: string | null
+): DiscographyProjectionVariant => ({
+  allowBackorder: variant.allow_backorder ?? null,
+  availabilityStatus,
+  inventoryQuantity: variant.inventory_quantity ?? null,
+  manageInventory: variant.manage_inventory ?? null,
+  title: variant.title ?? null,
+})
+
 export default async function buildDiscographyFromProducts({
+  args = [],
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+  const options = parseDiscographyReplacementCommandOptions([
+    ...args,
+    ...process.argv.slice(2),
+  ])
   const productService = container.resolve(Modules.PRODUCT) as ProductService
-  const discographyService = container.resolve("discography") as DiscographyService
+  const catalogService = container.resolve("catalog") as CatalogService
+  const discographyService = container.resolve(
+    "discography"
+  ) as DiscographyService
 
-  const existingEntries = await listAll<DiscographyEntryRecord>((skip, take) =>
-    discographyService.listAndCountDiscographyEntries(
-      {},
-      { skip, take }
+  const [
+    products,
+    profiles,
+    referenceValues,
+    productArtists,
+    productReferences,
+    variantProfiles,
+    existingEntries,
+  ] = await Promise.all([
+    listAll<ProductRecord>((skip, take) =>
+      productService.listAndCountProducts(
+        {},
+        {
+          relations: ["collection", "images", "variants"],
+          skip,
+          take,
+        }
+      )
+    ),
+    listAll<CatalogProductProfileRecord>((skip, take) =>
+      catalogService.listAndCountCatalogProductProfiles({}, { skip, take })
+    ),
+    listAll<CatalogReferenceValueRecord>((skip, take) =>
+      catalogService.listAndCountCatalogReferenceValues({}, { skip, take })
+    ),
+    listAll<CatalogProductArtistRecord>((skip, take) =>
+      catalogService.listAndCountCatalogProductArtists({}, { skip, take })
+    ),
+    listAll<CatalogProductReferenceRecord>((skip, take) =>
+      catalogService.listAndCountCatalogProductReferences({}, { skip, take })
+    ),
+    listAll<CatalogVariantProfileRecord>((skip, take) =>
+      catalogService.listAndCountCatalogVariantProfiles({}, { skip, take })
+    ),
+    listAll<ExistingDiscographyRecord>((skip, take) =>
+      discographyService.listAndCountDiscographyEntries({}, { skip, take })
+    ),
+  ])
+
+  const productsById = new Map(products.map((product) => [product.id, product]))
+  const referenceValuesById = new Map(
+    referenceValues.map((reference) => [reference.id, reference])
+  )
+  const artistsByProfile = groupBy(
+    productArtists,
+    ({ product_profile_id }) => product_profile_id
+  )
+  const referencesByProfile = groupBy(
+    productReferences,
+    ({ product_profile_id }) => product_profile_id
+  )
+  const variantAvailabilityById = new Map(
+    variantProfiles.map((profile) => [
+      profile.variant_id,
+      profile.availability_status ?? null,
+    ])
+  )
+
+  const musicProfiles = profiles.filter((profile) => {
+    const productType = profile.product_type_id
+      ? referenceValuesById.get(profile.product_type_id)
+      : null
+    return Boolean(
+      productType?.is_active !== false &&
+        productType?.kind === "product_type" &&
+        isMusicReleaseReference(productType.value)
     )
-  )
-  const existingByHandle = new Set(
-    existingEntries
-      .map((entry) => normalizeString(entry.product_handle))
-      .filter((handle): handle is string => Boolean(handle))
-  )
-
-  const products = await listAll<ProductRecord>((skip, take) =>
-    productService.listAndCountProducts(
-      {},
-      {
-        relations: PRODUCT_RELATIONS,
-        skip,
-        take,
-      }
-    )
-  )
-
-  const toCreate: DiscographyCreatePayload[] = []
-  let skippedExisting = 0
-  let skippedMissing = 0
-
-  products.forEach((product) => {
-    const handle = normalizeString(product.handle)
-    if (!handle) {
-      skippedMissing += 1
-      return
-    }
-    if (existingByHandle.has(handle)) {
-      skippedExisting += 1
-      return
-    }
-
-    const payload = buildPayload(product)
-    if (!payload) {
-      skippedMissing += 1
-      return
-    }
-    toCreate.push(payload)
   })
-
-  const batchSize = 50
-  let created = 0
-
-  for (let i = 0; i < toCreate.length; i += batchSize) {
-    const batch = toCreate.slice(i, i + batchSize)
-    if (!batch.length) {
-      continue
-    }
-    await discographyService.createDiscographyEntries(batch)
-    created += batch.length
+  const missingProductIds = musicProfiles
+    .filter((profile) => !productsById.has(profile.product_id))
+    .map(({ product_id }) => product_id)
+  if (missingProductIds.length) {
+    throw new Error(
+      `${missingProductIds.length} music-release profile(s) reference missing products: ${missingProductIds.slice(0, 10).join(", ")}`
+    )
   }
 
+  const publishedProfiles = musicProfiles.filter(
+    (profile) =>
+      productsById.get(profile.product_id)?.status?.toLowerCase() ===
+      "published"
+  )
+  const sources: DiscographyProjectionSource[] = publishedProfiles.map(
+    (profile) => {
+      const product = productsById.get(profile.product_id)
+      if (!product?.handle || !product.title) {
+        throw new Error(
+          `${profile.product_id} is missing a product handle or title.`
+        )
+      }
+      const productType = profile.product_type_id
+        ? referenceValuesById.get(profile.product_type_id)
+        : null
+      if (!productType) {
+        throw new Error(
+          `${profile.product_id} has no controlled product type reference.`
+        )
+      }
+      const label = profile.label_id
+        ? referenceValuesById.get(profile.label_id)?.label ?? null
+        : null
+
+      return {
+        artists: (artistsByProfile.get(profile.id) ?? []).map((artist) => ({
+          displayName: artist.display_name,
+          sortOrder: artist.sort_order ?? 0,
+        })),
+        collectionTitle: product.collection?.title ?? null,
+        coverUrl:
+          product.thumbnail ??
+          product.images?.find(({ url }) => Boolean(url))?.url ??
+          null,
+        label,
+        product: {
+          handle: product.handle,
+          id: product.id,
+          metadata: product.metadata ?? {},
+          status: product.status ?? null,
+          title: product.title,
+          variants: (product.variants ?? []).map((variant) =>
+            toProjectionVariant(
+              variant,
+              variantAvailabilityById.get(variant.id) ?? null
+            )
+          ),
+        },
+        profile: {
+          metadata: profile.metadata ?? {},
+          productTypeValue: productType.value,
+          releaseDate: profile.release_date ?? null,
+          releaseTitle: profile.release_title ?? null,
+          releaseYear: profile.release_year ?? null,
+          searchKeywords: profile.search_keywords ?? [],
+        },
+        references: (referencesByProfile.get(profile.id) ?? []).flatMap(
+          (link) => {
+            const reference = referenceValuesById.get(link.reference_value_id)
+            if (!reference || reference.is_active === false) {
+              return []
+            }
+            return [
+              {
+                kind: link.kind,
+                label: reference.label,
+                sortOrder: link.sort_order ?? 0,
+                value: reference.value,
+              },
+            ]
+          }
+        ),
+      }
+    }
+  )
+  const projection = buildDiscographyProjection(sources)
+  const projectedProductIds = projection.map(({ product_id }) => product_id)
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+  const stateDirectory = path.resolve(
+    options.stateDirectory ?? defaultStateDirectory()
+  )
+  await fs.mkdir(stateDirectory, { mode: 0o700, recursive: true })
+  const planPath = path.join(stateDirectory, `plan-${timestamp}.json`)
+  await writeJsonAtomically(planPath, {
+    existingEntries,
+    generatedAt: new Date().toISOString(),
+    projectedEntries: projection,
+    summary: {
+      existingActiveEntries: existingEntries.length,
+      nonMusicProfiles: profiles.length - musicProfiles.length,
+      projectedEntries: projection.length,
+      unpublishedMusicProfiles: musicProfiles.length - publishedProfiles.length,
+    },
+  })
+
   logger.info(
-    `[discography] Scanned ${products.length} products. Created ${created} entries. Skipped ${skippedExisting} existing, ${skippedMissing} missing handles.`
+    `[discography] mode=${options.apply ? "apply" : "dry-run"} current=${existingEntries.length} projected=${projection.length} unpublished=${musicProfiles.length - publishedProfiles.length} plan=${planPath}`
+  )
+  if (!options.apply) {
+    logger.info(
+      "[discography] Dry run complete. No discography records were changed."
+    )
+    return
+  }
+
+  const result = await discographyService.replaceWithCatalogProjection(
+    projection
+  )
+  const rebuiltEntries = await listAll<ExistingDiscographyRecord>(
+    (skip, take) =>
+      discographyService.listAndCountDiscographyEntries({}, { skip, take })
+  )
+  const rebuiltProductIds = rebuiltEntries
+    .map(({ product_id }) => product_id)
+    .filter((id): id is string => Boolean(id))
+    .sort()
+  if (
+    rebuiltEntries.length !== projection.length ||
+    rebuiltEntries.some(
+      ({ product_id, source_mode }) =>
+        !product_id || source_mode !== "catalog_product"
+    ) ||
+    JSON.stringify(rebuiltProductIds) !==
+      JSON.stringify([...projectedProductIds].sort())
+  ) {
+    throw new Error(
+      "Discography parity validation failed after replacement; use the pre-rebuild plan for recovery."
+    )
+  }
+
+  const completionPath = path.join(
+    stateDirectory,
+    `completed-${timestamp}.json`
+  )
+  await writeJsonAtomically(completionPath, {
+    completedAt: new Date().toISOString(),
+    created: result.created,
+    productIds: rebuiltProductIds,
+    removed: result.removed,
+  })
+  logger.info(
+    `[discography] Replacement complete. removed=${result.removed} created=${result.created} report=${completionPath}`
   )
 }

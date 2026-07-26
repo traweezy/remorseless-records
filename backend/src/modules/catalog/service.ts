@@ -65,10 +65,10 @@ class CatalogModuleService extends MedusaService({
   async runCatalogTransaction<T>(
     task: (sharedContext: Context<EntityManager>) => Promise<T>,
     @MedusaContext() sharedContext: Context<EntityManager> = {
-      isolationLevel: "SERIALIZABLE",
+      isolationLevel: "serializable",
     }
   ): Promise<T> {
-    sharedContext.isolationLevel ??= "SERIALIZABLE"
+    sharedContext.isolationLevel ??= "serializable"
     return this.runCatalogTransaction_(task, sharedContext)
   }
 
