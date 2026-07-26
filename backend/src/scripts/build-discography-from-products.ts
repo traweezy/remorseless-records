@@ -5,6 +5,7 @@ import path from "node:path"
 import type { ExecArgs } from "@medusajs/framework/types"
 import {
   ContainerRegistrationKeys,
+  getTotalVariantAvailability,
   Modules,
 } from "@medusajs/framework/utils"
 
@@ -150,11 +151,12 @@ const writeJsonAtomically = async (
 
 const toProjectionVariant = (
   variant: ProductVariantRecord,
-  availabilityStatus: string | null
+  availabilityStatus: string | null,
+  inventoryQuantity: number | null
 ): DiscographyProjectionVariant => ({
   allowBackorder: variant.allow_backorder ?? null,
   availabilityStatus,
-  inventoryQuantity: variant.inventory_quantity ?? null,
+  inventoryQuantity,
   manageInventory: variant.manage_inventory ?? null,
   title: variant.title ?? null,
 })
@@ -231,7 +233,6 @@ export default async function buildDiscographyFromProducts({
       profile.availability_status ?? null,
     ])
   )
-
   const musicProfiles = profiles.filter((profile) => {
     const productType = profile.product_type_id
       ? referenceValuesById.get(profile.product_type_id)
@@ -256,6 +257,36 @@ export default async function buildDiscographyFromProducts({
       productsById.get(profile.product_id)?.status?.toLowerCase() ===
       "published"
   )
+  const publishedProducts = publishedProfiles.flatMap((profile) => {
+    const product = productsById.get(profile.product_id)
+    return product ? [product] : []
+  })
+  const variantIds = publishedProducts.flatMap((product) =>
+    (product.variants ?? []).map(({ id }) => id)
+  )
+  const query = container.resolve(
+    ContainerRegistrationKeys.QUERY
+  ) as Parameters<typeof getTotalVariantAvailability>[0]
+  const inventoryByVariantId = variantIds.length
+    ? await getTotalVariantAvailability(query, {
+        variant_ids: variantIds,
+      })
+    : {}
+  const managedVariantsWithoutInventory = publishedProducts.flatMap((product) =>
+    (product.variants ?? []).flatMap((variant) => {
+      if (variant.manage_inventory === false) {
+        return []
+      }
+      return typeof inventoryByVariantId[variant.id]?.availability === "number"
+        ? []
+        : [variant.id]
+    })
+  )
+  if (managedVariantsWithoutInventory.length) {
+    throw new Error(
+      `${managedVariantsWithoutInventory.length} managed music-release variant(s) are missing inventory availability: ${managedVariantsWithoutInventory.slice(0, 10).join(", ")}`
+    )
+  }
   const sources: DiscographyProjectionSource[] = publishedProfiles.map(
     (profile) => {
       const product = productsById.get(profile.product_id)
@@ -296,7 +327,10 @@ export default async function buildDiscographyFromProducts({
           variants: (product.variants ?? []).map((variant) =>
             toProjectionVariant(
               variant,
-              variantAvailabilityById.get(variant.id) ?? null
+              variantAvailabilityById.get(variant.id) ?? null,
+              variant.manage_inventory === false
+                ? null
+                : (inventoryByVariantId[variant.id]?.availability ?? null)
             )
           ),
         },
