@@ -8,36 +8,32 @@ import {
   taxDestinationsCsv,
   taxTransactionsCsv,
 } from "../../../../lib/tax-reporting/csv";
+import {
+  taxReportErrorName,
+  taxReportProblem,
+} from "../../../../lib/tax-reporting/http";
 import { parseTaxReportPeriod } from "../../../../lib/tax-reporting/periods";
 import { buildFullTaxReport } from "../../../../lib/tax-reporting/query";
 
 const exportSchema = z.enum(["destinations", "transactions"]);
 
-const invalidRequest = (
+const problemResponse = (
   res: MedusaResponse,
   error: unknown,
 ): MedusaResponse => {
-  const detail =
-    error instanceof z.ZodError
-      ? error.issues[0]?.message
-      : error instanceof Error
-        ? error.message
-        : null;
+  const problem = taxReportProblem({ error, operation: "export" });
   return res
-    .status(400)
+    .status(problem.status)
     .type("application/problem+json")
-    .json({
-      detail: detail ?? "The tax export request is invalid.",
-      status: 400,
-      title: "Invalid tax export request",
-      type: "https://remorselessrecords.com/problems/invalid-tax-export",
-    });
+    .json(problem.body);
 };
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse,
 ): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   try {
     const searchParams = new URL(
       req.originalUrl,
@@ -58,7 +54,7 @@ export const GET = async (
         .type("application/problem+json")
         .json({
           detail:
-            "The export reached its safety limit and would be incomplete. Narrow the reporting period.",
+            "The export reached its bounded source-scan limit and would be incomplete. Use an earlier period end or contact an engineer before filing.",
           status: 409,
           title: "Tax export is incomplete",
           type: "https://remorselessrecords.com/problems/tax-export-truncated",
@@ -71,11 +67,18 @@ export const GET = async (
         ? taxTransactionsCsv(report)
         : taxDestinationsCsv(report);
     const filename = `remorseless-tax-${format}-${period.startDate}-to-${period.endDate}.csv`;
-    res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("X-Content-Type-Options", "nosniff");
     res.status(200).type("text/csv; charset=utf-8").send(csv);
   } catch (error) {
-    invalidRequest(res, error);
+    const problem = taxReportProblem({ error, operation: "export" });
+    if (problem.status === 500) {
+      const logger = req.scope.resolve("logger") as {
+        error?: (message: string) => void;
+      };
+      logger.error?.(
+        `[tax-records] Export generation failed (${taxReportErrorName(error)}).`,
+      );
+    }
+    problemResponse(res, error);
   }
 };

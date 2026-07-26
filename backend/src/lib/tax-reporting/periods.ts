@@ -3,6 +3,13 @@ import { z } from "zod";
 export const TAX_REPORT_TIME_ZONE = "America/New_York";
 export const TAX_REPORT_MAX_DAYS = 1_462;
 
+export class TaxReportPeriodError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TaxReportPeriodError";
+  }
+}
+
 export type TaxReportPeriod = {
   endDate: string;
   endExclusive: string;
@@ -107,10 +114,12 @@ export const parseTaxReportPeriod = ({
     (endUtc.getTime() - startUtc.getTime()) / (24 * 60 * 60 * 1000);
 
   if (durationDays <= 0) {
-    throw new Error("The report end date must be after its start date.");
+    throw new TaxReportPeriodError(
+      "The report end date must be after its start date.",
+    );
   }
   if (durationDays > TAX_REPORT_MAX_DAYS) {
-    throw new Error(
+    throw new TaxReportPeriodError(
       `Tax reports are limited to ${TAX_REPORT_MAX_DAYS} days at a time.`,
     );
   }
@@ -122,6 +131,30 @@ export const parseTaxReportPeriod = ({
     startDate: start,
     startInclusive: newYorkMidnightUtc(start),
     timeZone: TAX_REPORT_TIME_ZONE,
+  };
+};
+
+export const newYorkCalendarMonth = (
+  reference = new Date(),
+  offset = 0,
+): { endDate: string; startDate: string } => {
+  const local = new Intl.DateTimeFormat("en-CA", {
+    month: "2-digit",
+    timeZone: TAX_REPORT_TIME_ZONE,
+    year: "numeric",
+  }).formatToParts(reference);
+  const year = Number(local.find((part) => part.type === "year")?.value);
+  const month = Number(local.find((part) => part.type === "month")?.value);
+  const monthIndex = year * 12 + month - 1 + offset;
+  const startYear = Math.floor(monthIndex / 12);
+  const startMonth = ((monthIndex % 12) + 12) % 12;
+  const endMonthIndex = monthIndex + 1;
+  const endYear = Math.floor(endMonthIndex / 12);
+  const endMonth = ((endMonthIndex % 12) + 12) % 12;
+
+  return {
+    endDate: `${endYear}-${String(endMonth + 1).padStart(2, "0")}-01`,
+    startDate: `${startYear}-${String(startMonth + 1).padStart(2, "0")}-01`,
   };
 };
 

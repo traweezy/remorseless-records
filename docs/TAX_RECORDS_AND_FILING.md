@@ -25,6 +25,11 @@ Remorseless Records is based in Buffalo, New York. New York sales tax is
 destination-based, so a sale is grouped by where the order was delivered.
 New York sales-tax years run from March through February. Quarterly periods
 are March–May, June–August, September–November, and December–February.
+New York can assign monthly (part-quarterly), quarterly, or annual filing
+frequency. The workspace therefore offers current/previous calendar-month,
+quarter, and sales-tax-year presets, plus exact custom dates. The operator
+must select the frequency and dates shown in New York Online Services; the
+extension does not infer or change the business's assigned filing frequency.
 
 The extension uses an end-exclusive period in `America/New_York`. A report
 from `2026-03-01` to `2027-03-01`, for example, includes local timestamps on
@@ -40,11 +45,30 @@ The summary provides:
 - transaction-quality counts; and
 - destination groups by country, state, locality, postal code, and rate.
 
-Sales are recorded in the period in which the order was placed and captured.
-Refunds are credits in the period in which the refund occurred. A full refund
-has an exact proportional tax reversal. A partial, amount-only Medusa refund
-does not identify which item was refunded, so its tax portion is shown as an
-estimate and is marked for review.
+Sales are recorded at the final positive payment-capture timestamp. If a
+legacy paid order has no capture timestamp, the order timestamp is used and
+the row is marked for review. A captured amount that differs from the original
+order total is marked incomplete instead of silently reporting a full sale.
+Zero-value orders are omitted because they do not create a sales-tax amount.
+Refunds are credits in the period in which the refund occurred. The extension
+also classifies every refund as a **same-period credit**, **prior-period
+credit**, or **unknown timing** by comparing the original sale and refund
+timestamps. Prior-period credits are always marked for review because New York
+may require locality-specific reporting and supporting forms such as
+ST-100-ATT or AU-11. The workspace identifies the condition; the accountant
+decides the correct return treatment.
+
+A full refund has an exact proportional tax reversal. A partial, amount-only
+Medusa refund does not identify which item was refunded, so its tax portion is
+shown as an estimate and is marked for review. The projector also adds an
+incomplete-data exception when cumulative refund records exceed the original
+order total.
+
+Monetary totals are grouped by ISO currency and are never added across
+currencies. The Admin currency selector changes the summary cards and
+destination workpaper being viewed. Transaction exports retain each row's
+currency, and destination exports produce separate currency groups and period
+summaries. The extension does not invent a filing-currency exchange rate.
 
 ## Record quality
 
@@ -54,7 +78,8 @@ The report never silently promotes incomplete history to filing-ready data:
   destination, and usable locality evidence.
 - **Review** means the monetary record is usable but needs an external
   workpaper or accountant decision. Examples include legacy tax lines,
-  Stripe sub-state detail, or a partial-refund estimate.
+  Stripe sub-state detail, a partial-refund estimate, a prior-period credit,
+  or a non-USD record.
 - **Incomplete** means required destination or tax identity data is absent or
   inconsistent.
 
@@ -69,11 +94,14 @@ contain multiple rows per line item for multiple jurisdictions.
 
 ## Exports
 
-Two UTF-8 CSV exports are available for the selected period:
+Two UTF-8 CSV exports are available for the selected period. Exports always
+contain the entire selected period across all currencies; search, quality,
+provider, state, record-type, pagination, and the on-screen currency selector
+only affect the Admin view.
 
 1. **Transaction detail** contains one signed row per sale or refund with
    Medusa IDs, provider evidence, destination, taxable and nontaxable amounts,
-   tax, quality, and review notes.
+   tax, refund-credit timing, quality, and review notes.
 2. **Destination summary** groups sales, refunds, and tax by destination and
    rate. It also includes the period totals used by the Admin summary.
 
@@ -82,14 +110,19 @@ customer names, emails, phone numbers, and street addresses, and are served as
 private, non-cacheable attachments. Source invoices remain in Medusa for
 audit support.
 
-If the bounded source scan reaches its safety limit, the UI reports that the
-result is truncated and the export endpoint refuses to generate an incomplete
-file. Narrow the period before exporting.
+To catch a refund in this period for a sale from an older period, the bounded
+source scan reads orders created before the selected end. If it reaches its
+50,000-order limit, the UI reports that the result is truncated and the export
+endpoint refuses to generate an incomplete file. Use an earlier period end or
+have an engineer design a larger bounded export before filing; moving only the
+start date later does not make historical refund detection safe.
 
 ## Filing workflow
 
 1. Select the exact filing period shown in New York Online Services.
 2. Resolve every **Incomplete** record and review every **Review** record.
+   Reconcile each prior-period credit to the locality and supporting
+   documentation required by the current return instructions.
 3. Download both workpapers.
 4. Reconcile gross sales, credits, taxable sales, and tax to Medusa orders,
    refunds, payment evidence, and the accounting ledger.
@@ -119,7 +152,8 @@ This storefront report does not currently model:
 - marketplace-facilitator statements;
 - bad-debt adjustments not represented as refunds;
 - special taxes or fees; or
-- tax returns for jurisdictions in which the business later registers.
+- tax returns for jurisdictions in which the business later registers; or
+- filing-currency conversion for non-USD sales.
 
 Those items belong in the accountant reconciliation rather than being guessed
 from storefront data.
@@ -133,10 +167,16 @@ from storefront data.
 - New York, Sales Tax Rates and destination rules:
   https://www.tax.ny.gov/bus/st/rates.htm
 - New York, Form ST-100 instructions:
-  https://www.tax.ny.gov/forms/html-instructions/2024/st/st100i-0224.htm
+  https://www.tax.ny.gov/forms/html-instructions/2026/st/st100i-426.htm
+- New York, partial returned-merchandise credit advisory opinion:
+  https://www.tax.ny.gov/pdf/advisory_opinions/sales/a09_29s.pdf
 - Stripe Tax reporting:
   https://docs.stripe.com/tax/reports
+- Stripe Tax report schemas:
+  https://docs.stripe.com/reports/report-types/tax
 - Medusa order tax lines:
   https://docs.medusajs.com/resources/commerce-modules/order/tax-lines
 - Medusa order transactions:
   https://docs.medusajs.com/resources/commerce-modules/order/transactions
+- Medusa order totals:
+  https://docs.medusajs.com/resources/commerce-modules/order/order-totals

@@ -25,116 +25,51 @@ import {
   Text,
 } from "@medusajs/ui";
 
-type Provider =
-  | "legacy"
-  | "mixed"
-  | "stripe_tax"
-  | "taxrate_io"
-  | "unknown";
-type Quality = "complete" | "incomplete" | "review";
-type RecordType = "refund" | "sale";
-
-type TaxRecord = {
-  currencyCode: string;
-  destination: {
-    city: string | null;
-    countryCode: string | null;
-    county: string | null;
-    jurisdictionLevel: string | null;
-    jurisdictionName: string | null;
-    postalCode: string | null;
-    stateCode: string | null;
-  };
-  displayId: number;
-  generation: number | null;
-  grossSales: string;
-  id: string;
-  issues: string[];
-  nontaxableSales: string;
-  occurredAt: string;
-  orderId: string;
-  provider: Provider;
-  quality: Quality;
-  refundId: string | null;
-  refundTaxMethod: "estimated" | "exact" | null;
-  taxAmount: string;
-  taxableSales: string;
-  taxCalculationId: string | null;
-  taxRatePercent: string | null;
-  total: string;
-  type: RecordType;
-};
-
-type DestinationSummary = {
-  city: string | null;
-  countryCode: string | null;
-  county: string | null;
-  grossSales: string;
-  jurisdictionLevel: string | null;
-  jurisdictionName: string | null;
-  nontaxableSales: string;
-  postalCode: string | null;
-  refundedSales: string;
-  refundedTax: string;
-  stateCode: string | null;
-  taxCollected: string;
-  taxRatePercent: string | null;
-  taxableSales: string;
-};
+import type { TaxReportPeriod } from "../../../lib/tax-reporting/periods";
+import type {
+  TaxDestinationSummary,
+  TaxRecord,
+  TaxRecordProvider,
+  TaxRecordQuality,
+  TaxRecordType,
+  TaxReportSummary,
+} from "../../../lib/tax-reporting/types";
 
 type TaxReport = {
-  destinations: DestinationSummary[];
+  destinations: TaxDestinationSummary[];
   filters: {
-    providers: Provider[];
+    currencies: string[];
+    providers: TaxRecordProvider[];
     states: string[];
   };
   generatedAt: string;
-  period: {
-    endDate: string;
-    endExclusive: string;
-    label: string;
-    startDate: string;
-    startInclusive: string;
-    timeZone: "America/New_York";
-  };
+  period: TaxReportPeriod;
   records: TaxRecord[];
   resultCount: number;
   source: {
     medusaOrdersScanned: number;
     truncated: boolean;
   };
-  summary: {
-    completeRecords: number;
-    grossSales: string;
-    incompleteRecords: number;
-    netSales: string;
-    netTax: string;
-    nontaxableSales: string;
-    orderCount: number;
-    refundCount: number;
-    refundedSales: string;
-    refundedTax: string;
-    reviewRecords: number;
-    taxCollected: string;
-    taxableSales: string;
-  };
+  summaries: TaxReportSummary[];
 };
 
 type PeriodPreset =
+  | "current-month"
   | "current-quarter"
   | "current-year"
   | "custom"
+  | "previous-month"
   | "previous-quarter"
   | "previous-year";
 
 type Filters = {
   limit: number;
   page: number;
-  provider: "all" | Provider;
+  provider: "all" | TaxRecordProvider;
   q: string;
-  quality: "all" | Quality;
+  quality: "all" | TaxRecordQuality;
   state: string;
-  type: "all" | RecordType;
+  type: "all" | TaxRecordType;
 };
 
 const TIME_ZONE = "America/New_York";
@@ -183,6 +118,20 @@ const quarterPeriod = (offset: number): { end: string; start: string } => {
   };
 };
 
+const monthPeriod = (offset: number): { end: string; start: string } => {
+  const { month, year } = localYearMonth();
+  const monthIndex = year * 12 + month - 1 + offset;
+  const startYear = Math.floor(monthIndex / 12);
+  const startMonth = ((monthIndex % 12) + 12) % 12;
+  const endMonthIndex = monthIndex + 1;
+  const endYear = Math.floor(endMonthIndex / 12);
+  const endMonth = ((endMonthIndex % 12) + 12) % 12;
+  return {
+    end: dateString(endYear, endMonth + 1),
+    start: dateString(startYear, startMonth + 1),
+  };
+};
+
 const salesTaxYearPeriod = (
   offset: number,
 ): { end: string; start: string } => {
@@ -197,6 +146,12 @@ const salesTaxYearPeriod = (
 const periodForPreset = (
   preset: PeriodPreset,
 ): { end: string; start: string } => {
+  if (preset === "current-month") {
+    return monthPeriod(0);
+  }
+  if (preset === "previous-month") {
+    return monthPeriod(-1);
+  }
   if (preset === "current-year") {
     return salesTaxYearPeriod(0);
   }
@@ -233,7 +188,7 @@ const formatDate = (value: string): string =>
     timeStyle: "short",
   }).format(new Date(value));
 
-const providerLabel = (provider: Provider): string => {
+const providerLabel = (provider: TaxRecordProvider): string => {
   if (provider === "taxrate_io") {
     return "TaxRate.io";
   }
@@ -244,7 +199,7 @@ const providerLabel = (provider: Provider): string => {
 };
 
 const qualityColor = (
-  quality: Quality,
+  quality: TaxRecordQuality,
 ): "green" | "orange" | "red" =>
   quality === "complete"
     ? "green"
@@ -252,7 +207,7 @@ const qualityColor = (
       ? "orange"
       : "red";
 
-const qualityLabel = (quality: Quality): string =>
+const qualityLabel = (quality: TaxRecordQuality): string =>
   quality === "complete"
     ? "Complete"
     : quality === "review"
@@ -268,6 +223,33 @@ const destinationLabel = (record: TaxRecord): string =>
   ]
     .filter(Boolean)
     .join(", ") || "Destination missing";
+
+const destinationSummaryLabel = (
+  destination: TaxDestinationSummary,
+): string =>
+  [
+    destination.city,
+    destination.county,
+    destination.stateCode,
+    destination.postalCode,
+  ]
+    .filter(Boolean)
+    .join(", ") || "Destination missing";
+
+const refundTimingLabel = (
+  timing: TaxRecord["refundCreditTiming"],
+): string | null => {
+  if (timing === "prior_period") {
+    return "Prior-period credit";
+  }
+  if (timing === "same_period") {
+    return "Same-period credit";
+  }
+  if (timing === "unknown") {
+    return "Credit timing unknown";
+  }
+  return null;
+};
 
 const LoadingState = memo(() => (
   <div
@@ -299,7 +281,7 @@ const SummaryCard = memo(
       <Text size="xsmall" className="text-ui-fg-subtle">
         {label}
       </Text>
-      <Text size="large" weight="plus" className="mt-1">
+      <Text size="large" weight="plus" className="mt-1 break-words">
         {value}
       </Text>
       {note ? (
@@ -308,6 +290,156 @@ const SummaryCard = memo(
         </Text>
       ) : null}
     </div>
+  ),
+);
+
+const MobileTaxRecord = memo(({ record }: { record: TaxRecord }) => {
+  const timing = refundTimingLabel(record.refundCreditTiming);
+  return (
+    <article className="border-b border-ui-border-base p-4 last:border-b-0">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <a
+            className="inline-flex min-h-6 min-w-6 items-center rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+            href={`/app/orders/${record.orderId}`}
+          >
+            Order #{record.displayId}
+          </a>
+          <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+            {formatDate(record.occurredAt)}
+          </Text>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <StatusBadge
+            color={record.type === "refund" ? "orange" : "grey"}
+          >
+            {record.type === "refund" ? "Refund" : "Sale"}
+          </StatusBadge>
+          <StatusBadge color={qualityColor(record.quality)}>
+            {qualityLabel(record.quality)}
+          </StatusBadge>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 rounded-md bg-ui-bg-subtle p-3">
+        <div>
+          <Text size="xsmall" className="text-ui-fg-subtle">
+            Taxable
+          </Text>
+          <Text size="small" weight="plus" className="tabular-nums">
+            {record.type === "refund" ? "−" : ""}
+            {formatMoney(record.taxableSales, record.currencyCode)}
+          </Text>
+        </div>
+        <div>
+          <Text size="xsmall" className="text-ui-fg-subtle">
+            Tax
+          </Text>
+          <Text size="small" weight="plus" className="tabular-nums">
+            {record.type === "refund" ? "−" : ""}
+            {formatMoney(record.taxAmount, record.currencyCode)}
+          </Text>
+        </div>
+        <div className="col-span-2 border-t border-ui-border-base pt-2">
+          <Text size="xsmall" className="text-ui-fg-subtle">
+            Total including tax
+          </Text>
+          <Text weight="plus" className="tabular-nums">
+            {record.type === "refund" ? "−" : ""}
+            {formatMoney(record.total, record.currencyCode)}
+          </Text>
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <Text size="small">{destinationLabel(record)}</Text>
+        <Text size="xsmall" className="text-ui-fg-subtle">
+          {providerLabel(record.provider)}
+          {record.taxRatePercent
+            ? ` · ${Number(record.taxRatePercent).toFixed(3)}%`
+            : " · No tax"}
+          {timing ? ` · ${timing}` : ""}
+        </Text>
+      </div>
+
+      {record.issues.length ? (
+        <Text className="mt-3 text-ui-fg-subtle" size="xsmall">
+          {record.issues.join(" ")}
+        </Text>
+      ) : null}
+    </article>
+  );
+});
+
+const MobileDestination = memo(
+  ({ destination }: { destination: TaxDestinationSummary }) => (
+    <article className="border-b border-ui-border-base p-4 last:border-b-0">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Text size="small" weight="plus">
+            {destinationSummaryLabel(destination)}
+          </Text>
+          <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+            {destination.jurisdictionName ??
+              destination.countryCode ??
+              "No jurisdiction evidence"}
+          </Text>
+        </div>
+        <Text
+          size="xsmall"
+          weight="plus"
+          className="shrink-0 uppercase text-ui-fg-subtle"
+        >
+          {destination.currencyCode} ·{" "}
+          {destination.taxRatePercent
+            ? `${Number(destination.taxRatePercent).toFixed(3)}%`
+            : "No rate"}
+        </Text>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+        <div>
+          <Text size="xsmall" className="text-ui-fg-subtle">
+            Gross sales
+          </Text>
+          <Text size="small" className="tabular-nums">
+            {formatMoney(
+              destination.grossSales,
+              destination.currencyCode,
+            )}
+          </Text>
+        </div>
+        <div>
+          <Text size="xsmall" className="text-ui-fg-subtle">
+            Refunded
+          </Text>
+          <Text size="small" className="tabular-nums">
+            {formatMoney(
+              destination.refundedSales,
+              destination.currencyCode,
+            )}
+          </Text>
+        </div>
+        <div>
+          <Text size="xsmall" className="text-ui-fg-subtle">
+            Net taxable
+          </Text>
+          <Text size="small" className="tabular-nums">
+            {formatMoney(
+              destination.taxableSales,
+              destination.currencyCode,
+            )}
+          </Text>
+        </div>
+        <div>
+          <Text size="xsmall" className="text-ui-fg-subtle">
+            Net tax
+          </Text>
+          <Text size="small" className="tabular-nums">
+            {formatMoney(destination.netTax, destination.currencyCode)}
+          </Text>
+        </div>
+      </div>
+    </article>
   ),
 );
 
@@ -320,12 +452,20 @@ const TaxRecordsPage = memo(() => {
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [draftSearch, setDraftSearch] = useState("");
   const [report, setReport] = useState<TaxReport | null>(null);
+  const [reportingCurrency, setReportingCurrency] = useState("usd");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const activeRequest = useRef<AbortController | null>(null);
   const loadSequence = useRef(0);
 
   const load = useCallback(async () => {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     const sequence = ++loadSequence.current;
+    const timeout = globalThis.setTimeout(() => {
+      controller.abort(new Error("The tax records request timed out."));
+    }, 20_000);
     setLoading(true);
     setError(null);
     const searchParams = new URLSearchParams({
@@ -344,6 +484,7 @@ const TaxRecordsPage = memo(() => {
       const response = await fetch(`/admin/tax-records?${searchParams}`, {
         credentials: "include",
         headers: { Accept: "application/json" },
+        signal: controller.signal,
       });
       if (!response.ok) {
         throw new Error(await extractErrorMessage(response));
@@ -361,6 +502,10 @@ const TaxRecordsPage = memo(() => {
         );
       }
     } finally {
+      globalThis.clearTimeout(timeout);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+      }
       if (sequence === loadSequence.current) {
         setLoading(false);
       }
@@ -369,6 +514,10 @@ const TaxRecordsPage = memo(() => {
 
   useEffect(() => {
     void load();
+    return () => {
+      loadSequence.current += 1;
+      activeRequest.current?.abort();
+    };
   }, [load]);
 
   const handlePreset = useCallback((value: string) => {
@@ -462,6 +611,10 @@ const TaxRecordsPage = memo(() => {
     }));
   }, []);
 
+  const handleReportingCurrency = useCallback((value: string) => {
+    setReportingCurrency(value);
+  }, []);
+
   const previousPage = useCallback(() => {
     setFilters((current) => ({
       ...current,
@@ -497,6 +650,46 @@ const TaxRecordsPage = memo(() => {
     [download],
   );
 
+  const reportView = useMemo(() => {
+    if (!report) {
+      return null;
+    }
+    const activeSummary =
+      report.summaries.find(
+        (summary) => summary.currencyCode === reportingCurrency,
+      ) ?? report.summaries[0];
+    const activeCurrency = activeSummary?.currencyCode;
+    return {
+      activeCurrency,
+      activeDestinations: activeCurrency
+        ? report.destinations.filter(
+            (destination) =>
+              destination.currencyCode === activeCurrency,
+          )
+        : [],
+      activeSummary,
+      currencies: report.summaries.map(
+        (summary) => summary.currencyCode,
+      ),
+      incompleteRecordCount: report.summaries.reduce(
+        (total, summary) => total + summary.incompleteRecords,
+        0,
+      ),
+      pageCount: Math.max(
+        1,
+        Math.ceil(report.resultCount / filters.limit),
+      ),
+      priorPeriodRefundCount: report.summaries.reduce(
+        (total, summary) => total + summary.priorPeriodRefundCount,
+        0,
+      ),
+      reviewRecordCount: report.summaries.reduce(
+        (total, summary) => total + summary.reviewRecords,
+        0,
+      ),
+    };
+  }, [filters.limit, report, reportingCurrency]);
+
   if (!report && loading) {
     return <LoadingState />;
   }
@@ -515,13 +708,32 @@ const TaxRecordsPage = memo(() => {
     );
   }
 
-  const pageCount = Math.max(
-    1,
-    Math.ceil(report.resultCount / filters.limit),
-  );
+  if (!reportView?.activeSummary || !reportView.activeCurrency) {
+    return (
+      <Container>
+        <Heading>Tax summary is unavailable</Heading>
+        <Text className="mt-2 text-ui-fg-subtle">
+          The report returned no reporting-currency summary. Try again before
+          using any workpapers.
+        </Text>
+        <Button className="mt-4" onClick={load} type="button">
+          Try again
+        </Button>
+      </Container>
+    );
+  }
+  const {
+    activeCurrency,
+    activeDestinations,
+    activeSummary,
+    currencies,
+    incompleteRecordCount,
+    pageCount,
+    priorPeriodRefundCount,
+    reviewRecordCount,
+  } = reportView;
   const hasQualityIssues =
-    report.summary.reviewRecords > 0 ||
-    report.summary.incompleteRecords > 0;
+    reviewRecordCount > 0 || incompleteRecordCount > 0;
 
   return (
     <div className="flex flex-col gap-4" aria-busy={loading}>
@@ -534,23 +746,32 @@ const TaxRecordsPage = memo(() => {
               before preparing a return.
             </Text>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={downloadTransactions}
-              type="button"
-              variant="secondary"
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={downloadTransactions}
+                type="button"
+                variant="secondary"
+              >
+                <ArrowDownTray aria-hidden="true" />
+                Transaction CSV
+              </Button>
+              <Button
+                onClick={downloadDestinations}
+                type="button"
+                variant="primary"
+              >
+                <ArrowDownTray aria-hidden="true" />
+                Destination CSV
+              </Button>
+            </div>
+            <Text
+              size="xsmall"
+              className="mt-2 max-w-sm text-ui-fg-subtle"
             >
-              <ArrowDownTray aria-hidden="true" />
-              Transaction CSV
-            </Button>
-            <Button
-              onClick={downloadDestinations}
-              type="button"
-              variant="primary"
-            >
-              <ArrowDownTray aria-hidden="true" />
-              Destination CSV
-            </Button>
+              Exports include the full selected period across all currencies;
+              table filters do not change them.
+            </Text>
           </div>
         </div>
 
@@ -563,6 +784,12 @@ const TaxRecordsPage = memo(() => {
                   <Select.Value />
                 </Select.Trigger>
                 <Select.Content>
+                  <Select.Item value="current-month">
+                    Current calendar month
+                  </Select.Item>
+                  <Select.Item value="previous-month">
+                    Previous calendar month
+                  </Select.Item>
                   <Select.Item value="current-quarter">
                     Current NY quarter
                   </Select.Item>
@@ -609,43 +836,87 @@ const TaxRecordsPage = memo(() => {
           </Text>
         </div>
 
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <Text size="small" weight="plus">
+              Period totals
+            </Text>
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              Currencies are never combined.
+            </Text>
+          </div>
+          {currencies.length > 1 ? (
+            <div className="min-w-36">
+              <Label htmlFor="tax-reporting-currency">
+                Reporting currency
+              </Label>
+              <Select
+                value={activeCurrency}
+                onValueChange={handleReportingCurrency}
+              >
+                <Select.Trigger
+                  className="mt-1"
+                  id="tax-reporting-currency"
+                >
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  {currencies.map((currency) => (
+                    <Select.Item key={currency} value={currency}>
+                      {currency.toUpperCase()}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+            </div>
+          ) : (
+            <Text
+              size="xsmall"
+              weight="plus"
+              className="uppercase text-ui-fg-subtle"
+            >
+              {activeCurrency}
+            </Text>
+          )}
+        </div>
+
         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <SummaryCard
             label="Gross sales"
             note="Tax excluded"
-            value={formatMoney(report.summary.grossSales)}
+            value={formatMoney(activeSummary.grossSales, activeCurrency)}
           />
           <SummaryCard
             label="Sales refunded"
-            note={`${report.summary.refundCount} refund record${
-              report.summary.refundCount === 1 ? "" : "s"
+            note={`${activeSummary.refundCount} refund record${
+              activeSummary.refundCount === 1 ? "" : "s"
             }`}
-            value={formatMoney(report.summary.refundedSales)}
+            value={formatMoney(activeSummary.refundedSales, activeCurrency)}
           />
           <SummaryCard
             label="Net taxable sales"
-            value={formatMoney(report.summary.taxableSales)}
+            value={formatMoney(activeSummary.taxableSales, activeCurrency)}
           />
           <SummaryCard
             label="Net nontaxable sales"
-            value={formatMoney(report.summary.nontaxableSales)}
+            value={formatMoney(activeSummary.nontaxableSales, activeCurrency)}
           />
           <SummaryCard
             label="Tax collected"
-            value={formatMoney(report.summary.taxCollected)}
+            value={formatMoney(activeSummary.taxCollected, activeCurrency)}
           />
           <SummaryCard
             label="Tax refunded"
-            value={formatMoney(report.summary.refundedTax)}
+            value={formatMoney(activeSummary.refundedTax, activeCurrency)}
           />
           <SummaryCard
             label="Net sales"
-            value={formatMoney(report.summary.netSales)}
+            value={formatMoney(activeSummary.netSales, activeCurrency)}
           />
           <SummaryCard
             label="Net tax"
             note="Reconcile before filing"
-            value={formatMoney(report.summary.netTax)}
+            value={formatMoney(activeSummary.netTax, activeCurrency)}
           />
         </div>
 
@@ -653,8 +924,8 @@ const TaxRecordsPage = memo(() => {
           <Alert className="mt-4" variant="error">
             <Text weight="plus">The source scan is incomplete.</Text>
             <Text size="small">
-              It reached the 50,000-order safety limit. Narrow the period;
-              exports are blocked while results are truncated.
+              It reached the 50,000-order bounded scan. Exports are blocked.
+              Use an earlier period end or contact an engineer before filing.
             </Text>
           </Alert>
         ) : null}
@@ -663,31 +934,33 @@ const TaxRecordsPage = memo(() => {
           <Alert className="mt-4" variant="warning">
             <Text weight="plus">Review before using these workpapers.</Text>
             <Text size="small">
-              {report.summary.incompleteRecords} incomplete and{" "}
-              {report.summary.reviewRecords} review record
-              {report.summary.reviewRecords === 1 ? "" : "s"} are included.
-              Legacy rows do not contain locality evidence, and partial
-              refund tax can be estimated.
+              {incompleteRecordCount} incomplete and {reviewRecordCount} review
+              record{reviewRecordCount === 1 ? "" : "s"} are included. Legacy
+              rows may lack locality evidence, partial refund tax can be
+              estimated, and {priorPeriodRefundCount} prior-period credit
+              {priorPeriodRefundCount === 1 ? "" : "s"} require separate
+              review.
             </Text>
           </Alert>
         ) : (
           <Alert className="mt-4" variant="success">
-            <Text weight="plus">All records are structurally complete.</Text>
+            <Text weight="plus">No structural exceptions were detected.</Text>
             <Text size="small">
-              Still reconcile the exports with the accounting ledger and
-              filing instructions.
+              This is not filing approval. Reconcile the exports with the
+              accounting ledger and current filing instructions.
             </Text>
           </Alert>
         )}
       </Container>
 
       <Container className="p-0">
-        <div className="sticky top-0 z-10 border-b border-ui-border-base bg-ui-bg-base p-4">
+        <div className="z-10 border-b border-ui-border-base bg-ui-bg-base p-4 md:sticky md:top-0">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[220px] flex-1">
               <Label htmlFor="tax-record-search">Search records</Label>
-              <div className="mt-1 flex gap-2">
+              <div className="mt-1 flex flex-wrap gap-2">
                 <Input
+                  className="min-w-[180px] flex-1"
                   id="tax-record-search"
                   onChange={handleSearch}
                   onKeyDown={handleSearchKey}
@@ -793,7 +1066,28 @@ const TaxRecordsPage = memo(() => {
           </div>
         </div>
 
-        <div className="max-w-full overflow-x-auto">
+        <div className="md:hidden">
+          {report.records.length ? (
+            report.records.map((record) => (
+              <MobileTaxRecord key={record.id} record={record} />
+            ))
+          ) : (
+            <div className="p-8 text-center">
+              <Text weight="plus">No matching tax records</Text>
+              <Text size="small" className="mt-1 text-ui-fg-subtle">
+                Adjust the dates or filters. A registered vendor may still
+                need to file a zero return.
+              </Text>
+            </div>
+          )}
+        </div>
+
+        <div
+          aria-label="Tax record table; scroll horizontally for all columns"
+          className="hidden max-w-full overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ui-fg-interactive md:block"
+          role="region"
+          tabIndex={0}
+        >
           <Table className="min-w-[1080px]">
             <Table.Header>
               <Table.Row>
@@ -819,7 +1113,7 @@ const TaxRecordsPage = memo(() => {
                     <Table.Cell>{formatDate(record.occurredAt)}</Table.Cell>
                     <Table.Cell>
                       <a
-                        className="text-ui-fg-interactive hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+                        className="inline-flex min-h-6 min-w-6 items-center rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
                         href={`/app/orders/${record.orderId}`}
                       >
                         #{record.displayId}
@@ -831,6 +1125,14 @@ const TaxRecordsPage = memo(() => {
                       >
                         {record.type === "refund" ? "Refund" : "Sale"}
                       </StatusBadge>
+                      {record.refundCreditTiming ? (
+                        <Text
+                          className="mt-1 text-ui-fg-subtle"
+                          size="xsmall"
+                        >
+                          {refundTimingLabel(record.refundCreditTiming)}
+                        </Text>
+                      ) : null}
                     </Table.Cell>
                     <Table.Cell>
                       <Text size="small">{destinationLabel(record)}</Text>
@@ -930,10 +1232,42 @@ const TaxRecordsPage = memo(() => {
           <Heading level="h2">Destination workpaper</Heading>
           <Text size="small" className="mt-1 text-ui-fg-subtle">
             Sales and credits grouped by destination and effective rate.
-            Confirm New York jurisdiction codes before filing.
+            Showing {activeCurrency.toUpperCase()}; confirm New York
+            jurisdiction codes before filing.
           </Text>
         </div>
-        <div className="max-w-full overflow-x-auto">
+        <div className="md:hidden">
+          {activeDestinations.length ? (
+            activeDestinations.map((destination) => (
+              <MobileDestination
+                destination={destination}
+                key={[
+                  destination.currencyCode,
+                  destination.countryCode,
+                  destination.stateCode,
+                  destination.county,
+                  destination.city,
+                  destination.postalCode,
+                  destination.taxRatePercent,
+                ].join(":")}
+              />
+            ))
+          ) : (
+            <div className="p-8 text-center">
+              <Text weight="plus">No destination rows</Text>
+              <Text size="small" className="mt-1 text-ui-fg-subtle">
+                No sales or refund credits were recorded for this period and
+                currency.
+              </Text>
+            </div>
+          )}
+        </div>
+        <div
+          aria-label="Destination workpaper table; scroll horizontally for all columns"
+          className="hidden max-w-full overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ui-fg-interactive md:block"
+          role="region"
+          tabIndex={0}
+        >
           <Table className="min-w-[900px]">
             <Table.Header>
               <Table.Row>
@@ -957,56 +1291,82 @@ const TaxRecordsPage = memo(() => {
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {report.destinations.map((destination) => (
-                <Table.Row
-                  key={[
-                    destination.countryCode,
-                    destination.stateCode,
-                    destination.county,
-                    destination.city,
-                    destination.postalCode,
-                    destination.taxRatePercent,
-                  ].join(":")}
-                >
+              {activeDestinations.length ? (
+                activeDestinations.map((destination) => (
+                  <Table.Row
+                    key={[
+                      destination.currencyCode,
+                      destination.countryCode,
+                      destination.stateCode,
+                      destination.county,
+                      destination.city,
+                      destination.postalCode,
+                      destination.taxRatePercent,
+                    ].join(":")}
+                  >
+                    <Table.Cell>
+                      <Text size="small">
+                        {destinationSummaryLabel(destination)}
+                      </Text>
+                      <Text size="xsmall" className="text-ui-fg-subtle">
+                        {destination.jurisdictionName ??
+                          destination.countryCode ??
+                          "No jurisdiction evidence"}
+                      </Text>
+                    </Table.Cell>
+                    <Table.Cell>
+                      {destination.taxRatePercent
+                        ? `${Number(destination.taxRatePercent).toFixed(3)}%`
+                        : "—"}
+                    </Table.Cell>
+                    <Table.Cell className="text-right tabular-nums">
+                      {formatMoney(
+                        destination.grossSales,
+                        destination.currencyCode,
+                      )}
+                    </Table.Cell>
+                    <Table.Cell className="text-right tabular-nums">
+                      {formatMoney(
+                        destination.refundedSales,
+                        destination.currencyCode,
+                      )}
+                    </Table.Cell>
+                    <Table.Cell className="text-right tabular-nums">
+                      {formatMoney(
+                        destination.taxableSales,
+                        destination.currencyCode,
+                      )}
+                    </Table.Cell>
+                    <Table.Cell className="text-right tabular-nums">
+                      {formatMoney(
+                        destination.taxCollected,
+                        destination.currencyCode,
+                      )}
+                    </Table.Cell>
+                    <Table.Cell className="text-right tabular-nums">
+                      {formatMoney(
+                        destination.refundedTax,
+                        destination.currencyCode,
+                      )}
+                    </Table.Cell>
+                  </Table.Row>
+                ))
+              ) : (
+                <Table.Row>
                   <Table.Cell>
-                    <Text size="small">
-                      {[
-                        destination.city,
-                        destination.county,
-                        destination.stateCode,
-                        destination.postalCode,
-                      ]
-                        .filter(Boolean)
-                        .join(", ") || "Destination missing"}
-                    </Text>
-                    <Text size="xsmall" className="text-ui-fg-subtle">
-                      {destination.jurisdictionName ??
-                        destination.countryCode ??
-                        "No jurisdiction evidence"}
-                    </Text>
+                    <div className="py-12 text-center">
+                      <Text weight="plus">No destination rows</Text>
+                      <Text size="small" className="mt-1 text-ui-fg-subtle">
+                        No sales or refund credits were recorded for this
+                        period and currency.
+                      </Text>
+                    </div>
                   </Table.Cell>
-                  <Table.Cell>
-                    {destination.taxRatePercent
-                      ? `${Number(destination.taxRatePercent).toFixed(3)}%`
-                      : "—"}
-                  </Table.Cell>
-                  <Table.Cell className="text-right tabular-nums">
-                    {formatMoney(destination.grossSales)}
-                  </Table.Cell>
-                  <Table.Cell className="text-right tabular-nums">
-                    {formatMoney(destination.refundedSales)}
-                  </Table.Cell>
-                  <Table.Cell className="text-right tabular-nums">
-                    {formatMoney(destination.taxableSales)}
-                  </Table.Cell>
-                  <Table.Cell className="text-right tabular-nums">
-                    {formatMoney(destination.taxCollected)}
-                  </Table.Cell>
-                  <Table.Cell className="text-right tabular-nums">
-                    {formatMoney(destination.refundedTax)}
-                  </Table.Cell>
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <Table.Cell aria-hidden="true" key={index} />
+                  ))}
                 </Table.Row>
-              ))}
+              )}
             </Table.Body>
           </Table>
         </div>
@@ -1021,9 +1381,10 @@ const TaxRecordsPage = memo(() => {
           official return instructions, and file through New York Online
           Services.
         </Text>
-        <Text size="xsmall" className="mt-3 text-ui-fg-muted">
+        <Text size="xsmall" className="mt-3 text-ui-fg-subtle">
           {report.source.medusaOrdersScanned} Medusa order
-          {report.source.medusaOrdersScanned === 1 ? "" : "s"} scanned. No
+          {report.source.medusaOrdersScanned === 1 ? "" : "s"} created before
+          the period end scanned so refunds for older sales are not missed. No
           customer names, email addresses, phone numbers, or street addresses
           are included in exports.
         </Text>

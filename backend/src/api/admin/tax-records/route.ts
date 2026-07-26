@@ -2,8 +2,11 @@ import type {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework/http";
-import { z } from "zod";
 
+import {
+  taxReportErrorName,
+  taxReportProblem,
+} from "../../../lib/tax-reporting/http";
 import { parseTaxReportPeriod } from "../../../lib/tax-reporting/periods";
 import {
   buildTaxReport,
@@ -13,31 +16,23 @@ import {
 const searchParamsFrom = (req: AuthenticatedMedusaRequest): URLSearchParams =>
   new URL(req.originalUrl, "http://medusa.local").searchParams;
 
-const invalidRequest = (
+const problemResponse = (
   res: MedusaResponse,
   error: unknown,
 ): MedusaResponse => {
-  const detail =
-    error instanceof z.ZodError
-      ? error.issues[0]?.message
-      : error instanceof Error
-        ? error.message
-        : null;
+  const problem = taxReportProblem({ error, operation: "report" });
   return res
-    .status(400)
+    .status(problem.status)
     .type("application/problem+json")
-    .json({
-      detail: detail ?? "The tax report request is invalid.",
-      status: 400,
-      title: "Invalid tax report request",
-      type: "https://remorselessrecords.com/problems/invalid-tax-report",
-    });
+    .json(problem.body);
 };
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse,
 ): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   try {
     const searchParams = searchParamsFrom(req);
     const period = parseTaxReportPeriod({
@@ -50,9 +45,17 @@ export const GET = async (
       filters,
       period,
     });
-    res.setHeader("Cache-Control", "private, no-store");
     res.status(200).json(report);
   } catch (error) {
-    invalidRequest(res, error);
+    const problem = taxReportProblem({ error, operation: "report" });
+    if (problem.status === 500) {
+      const logger = req.scope.resolve("logger") as {
+        error?: (message: string) => void;
+      };
+      logger.error?.(
+        `[tax-records] Report generation failed (${taxReportErrorName(error)}).`,
+      );
+    }
+    problemResponse(res, error);
   }
 };

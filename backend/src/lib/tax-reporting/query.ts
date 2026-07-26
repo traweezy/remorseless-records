@@ -213,6 +213,9 @@ export const buildTaxReport = async ({
   return {
     destinations: summarizeDestinations(allRecords),
     filters: {
+      currencies: [
+        ...new Set(allRecords.map((record) => record.currencyCode)),
+      ].sort(),
       providers: [...new Set(allRecords.map((record) => record.provider))].sort(),
       states: [
         ...new Set(
@@ -230,7 +233,7 @@ export const buildTaxReport = async ({
       medusaOrdersScanned: loaded.orders.length,
       truncated: loaded.truncated,
     },
-    summary: summarizeTaxRecords(allRecords),
+    summaries: summarizeTaxRecords(allRecords),
   };
 };
 
@@ -252,6 +255,6 @@ export const buildFullTaxReport = async ({
       medusaOrdersScanned: loaded.orders.length,
       truncated: loaded.truncated,
     },
-    summary: summarizeTaxRecords(records),
+    summaries: summarizeTaxRecords(records),
   };
 };

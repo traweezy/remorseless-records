@@ -1,4 +1,5 @@
 import {
+  newYorkCalendarMonth,
   newYorkMidnightUtc,
   newYorkSalesTaxQuarter,
   newYorkSalesTaxYear,
@@ -27,6 +28,21 @@ describe("tax reporting periods", () => {
     ).toEqual({
       endDate: "2026-03-01",
       startDate: "2025-03-01",
+    });
+  });
+
+  it("builds current and previous calendar-month filing periods", () => {
+    expect(
+      newYorkCalendarMonth(new Date("2026-01-15T12:00:00.000Z")),
+    ).toEqual({
+      endDate: "2026-02-01",
+      startDate: "2026-01-01",
+    });
+    expect(
+      newYorkCalendarMonth(new Date("2026-01-15T12:00:00.000Z"), -1),
+    ).toEqual({
+      endDate: "2026-01-01",
+      startDate: "2025-12-01",
     });
   });
 

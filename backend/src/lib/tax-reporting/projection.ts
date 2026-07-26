@@ -8,6 +8,7 @@ import type {
   TaxRecordDestination,
   TaxRecordProvider,
   TaxRecordQuality,
+  TaxRefundCreditTiming,
   TaxReportSummary,
 } from "./types";
 
@@ -34,13 +35,22 @@ const text = (value: unknown): string | null =>
 const decimal = (value: unknown): Decimal => {
   const raw = asRecord(value);
   const candidate = raw?.value ?? value ?? 0;
+  const nested = asRecord(candidate);
+  const scalar = nested?.value ?? candidate;
+  let normalized: string;
+
+  try {
+    normalized = String(scalar).trim();
+  } catch {
+    return MathBN.convert(0);
+  }
   if (
-    (typeof candidate !== "string" && typeof candidate !== "number") ||
-    !Number.isFinite(Number(candidate))
+    !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(normalized) ||
+    !Number.isFinite(Number(normalized))
   ) {
     return MathBN.convert(0);
   }
-  return MathBN.convert(candidate);
+  return MathBN.convert(normalized);
 };
 
 const money = (value: Decimal): string => value.toFixed(4);
@@ -310,6 +320,21 @@ const paidTotal = (order: UnknownRecord): Decimal => {
   );
 };
 
+const paymentCaptureTimestamp = (order: UnknownRecord): string | null => {
+  const timestamps = payments(order)
+    .filter((payment) =>
+      decimalField(
+        payment,
+        "raw_captured_amount",
+        "captured_amount",
+      ).gt(0),
+    )
+    .map((payment) => timestamp(payment.captured_at))
+    .filter((value): value is string => value !== null)
+    .sort();
+  return timestamps.at(-1) ?? null;
+};
+
 const baseRecord = (
   order: UnknownRecord,
 ): {
@@ -338,12 +363,17 @@ const saleRecord = (
   period: TaxReportPeriod,
 ): TaxRecord | null => {
   const base = baseRecord(order);
-  const occurredAt = timestamp(order.created_at);
+  const capturedAt = paymentCaptureTimestamp(order);
+  const occurredAt = capturedAt ?? timestamp(order.created_at);
   if (!base || !occurredAt || !inPeriod(occurredAt, period)) {
     return null;
   }
   const amounts = originalAmounts(order);
-  if (amounts.total.gt(0) && !paidTotal(order).gt(0)) {
+  if (!amounts.total.gt(0)) {
+    return null;
+  }
+  const capturedTotal = paidTotal(order);
+  if (!capturedTotal.gt(0)) {
     return null;
   }
   const quality = qualityFor({
@@ -352,6 +382,20 @@ const saleRecord = (
     provider: base.identity.provider,
     tax: amounts.tax,
   });
+  if (!capturedTotal.eq(amounts.total)) {
+    quality.issues.push(
+      "Captured payment does not match the original order total.",
+    );
+    quality.quality = "incomplete";
+  }
+  if (!capturedAt) {
+    quality.issues.push(
+      "Payment capture time is missing; the order timestamp was used.",
+    );
+    if (quality.quality === "complete") {
+      quality.quality = "review";
+    }
+  }
   if (base.currencyCode !== "usd") {
     quality.issues.push("Confirm filing-currency conversion outside USD.");
     if (quality.quality === "complete") {
@@ -372,6 +416,7 @@ const saleRecord = (
     orderId: base.orderId,
     provider: base.identity.provider,
     quality: quality.quality,
+    refundCreditTiming: null,
     refundId: null,
     refundTaxMethod: null,
     taxAmount: money(amounts.tax),
@@ -396,62 +441,94 @@ const refundRecords = (
     return [];
   }
 
-  return payments(order).flatMap((payment) =>
+  const candidates = payments(order).flatMap((payment) =>
     records(payment.refunds).flatMap((refund) => {
       const refundId = text(refund.id);
       const occurredAt = timestamp(refund.created_at);
       const refundTotal = decimalField(refund, "raw_amount", "amount");
-      if (
-        !refundId ||
-        !occurredAt ||
-        !inPeriod(occurredAt, period) ||
-        !refundTotal.gt(0)
-      ) {
+      if (!refundId || !occurredAt || !refundTotal.gt(0)) {
         return [];
       }
-
-      const ratio = MathBN.div(refundTotal, amounts.total);
-      const gross = MathBN.mult(amounts.gross, ratio);
-      const tax = MathBN.mult(amounts.tax, ratio);
-      const taxable = MathBN.mult(amounts.taxable, ratio);
-      const isEstimated = refundTotal.lt(amounts.total);
-      const quality = qualityFor({
-        destination: base.destination,
-        isEstimatedRefund: isEstimated,
-        provider: base.identity.provider,
-        tax,
-      });
-      if (refundTotal.gt(amounts.total)) {
-        quality.issues.push("Refund amount exceeds the original order total.");
-        quality.quality = "incomplete";
-      }
-
-      return [
-        {
-          currencyCode: base.currencyCode,
-          destination: base.destination,
-          displayId: base.displayId,
-          generation: base.identity.generation,
-          grossSales: money(gross),
-          id: `refund:${refundId}`,
-          issues: quality.issues,
-          nontaxableSales: money(MathBN.sub(gross, taxable)),
-          occurredAt,
-          orderId: base.orderId,
-          provider: base.identity.provider,
-          quality: quality.quality,
-          refundId,
-          refundTaxMethod: isEstimated ? "estimated" : "exact",
-          taxAmount: money(tax),
-          taxableSales: money(taxable),
-          taxCalculationId: base.identity.calculationId,
-          taxRatePercent: effectiveRate(tax, taxable),
-          total: money(refundTotal),
-          type: "refund" as const,
-        },
-      ];
+      return [{ occurredAt, refundId, refundTotal }];
     }),
   );
+  const cumulativeRefundTotal = candidates.reduce(
+    (total, candidate) => MathBN.add(total, candidate.refundTotal),
+    ZERO,
+  );
+  const cumulativeRefundExceedsOrder = cumulativeRefundTotal.gt(amounts.total);
+  const orderOccurredAt = timestamp(order.created_at);
+
+  return candidates.flatMap(({ occurredAt, refundId, refundTotal }) => {
+    if (!inPeriod(occurredAt, period)) {
+      return [];
+    }
+    const ratio = MathBN.div(refundTotal, amounts.total);
+    const gross = MathBN.mult(amounts.gross, ratio);
+    const tax = MathBN.mult(amounts.tax, ratio);
+    const taxable = MathBN.mult(amounts.taxable, ratio);
+    const isEstimated = !refundTotal.eq(amounts.total);
+    const quality = qualityFor({
+      destination: base.destination,
+      isEstimatedRefund: isEstimated,
+      provider: base.identity.provider,
+      tax,
+    });
+    let refundCreditTiming: TaxRefundCreditTiming;
+    if (!orderOccurredAt || occurredAt < orderOccurredAt) {
+      refundCreditTiming = "unknown";
+      quality.issues.push(
+        "The refund cannot be matched to a valid original-sale timestamp.",
+      );
+      quality.quality = "incomplete";
+    } else if (orderOccurredAt < period.startInclusive) {
+      refundCreditTiming = "prior_period";
+      quality.issues.push(
+        "This refund relates to a sale from an earlier filing period; confirm the locality credit and required New York support.",
+      );
+      if (quality.quality === "complete") {
+        quality.quality = "review";
+      }
+    } else {
+      refundCreditTiming = "same_period";
+    }
+    if (cumulativeRefundExceedsOrder) {
+      quality.issues.push("Cumulative refunds exceed the original order total.");
+      quality.quality = "incomplete";
+    }
+    if (base.currencyCode !== "usd") {
+      quality.issues.push("Confirm filing-currency conversion outside USD.");
+      if (quality.quality === "complete") {
+        quality.quality = "review";
+      }
+    }
+
+    return [
+      {
+        currencyCode: base.currencyCode,
+        destination: base.destination,
+        displayId: base.displayId,
+        generation: base.identity.generation,
+        grossSales: money(gross),
+        id: `refund:${refundId}`,
+        issues: quality.issues,
+        nontaxableSales: money(MathBN.sub(gross, taxable)),
+        occurredAt,
+        orderId: base.orderId,
+        provider: base.identity.provider,
+        quality: quality.quality,
+        refundCreditTiming,
+        refundId,
+        refundTaxMethod: isEstimated ? "estimated" : "exact",
+        taxAmount: money(tax),
+        taxableSales: money(taxable),
+        taxCalculationId: base.identity.calculationId,
+        taxRatePercent: effectiveRate(tax, taxable),
+        total: money(refundTotal),
+        type: "refund" as const,
+      },
+    ];
+  });
 };
 
 const addMoney = (left: string, right: string): string =>
@@ -462,49 +539,67 @@ const subtractMoney = (left: string, right: string): string =>
 
 export const summarizeTaxRecords = (
   recordsToSummarize: TaxRecord[],
-): TaxReportSummary => {
-  const sales = recordsToSummarize.filter((record) => record.type === "sale");
-  const refunds = recordsToSummarize.filter(
-    (record) => record.type === "refund",
-  );
-  const sum = (values: string[]): string =>
-    money(values.reduce((total, value) => MathBN.add(total, value), ZERO));
-  const grossSales = sum(sales.map((record) => record.grossSales));
-  const refundedSales = sum(refunds.map((record) => record.grossSales));
-  const taxCollected = sum(sales.map((record) => record.taxAmount));
-  const refundedTax = sum(refunds.map((record) => record.taxAmount));
+): TaxReportSummary[] => {
+  const currencies = unique(
+    recordsToSummarize.map((record) => record.currencyCode),
+  ).sort();
+  const reportingCurrencies = currencies.length ? currencies : ["usd"];
 
-  return {
-    completeRecords: recordsToSummarize.filter(
-      (record) => record.quality === "complete",
-    ).length,
-    grossSales,
-    incompleteRecords: recordsToSummarize.filter(
-      (record) => record.quality === "incomplete",
-    ).length,
-    netSales: subtractMoney(grossSales, refundedSales),
-    netTax: subtractMoney(taxCollected, refundedTax),
-    nontaxableSales: subtractMoney(
-      sum(sales.map((record) => record.nontaxableSales)),
-      sum(refunds.map((record) => record.nontaxableSales)),
-    ),
-    orderCount: new Set(sales.map((record) => record.orderId)).size,
-    refundCount: refunds.length,
-    refundedSales,
-    refundedTax,
-    reviewRecords: recordsToSummarize.filter(
-      (record) => record.quality === "review",
-    ).length,
-    taxCollected,
-    taxableSales: subtractMoney(
-      sum(sales.map((record) => record.taxableSales)),
-      sum(refunds.map((record) => record.taxableSales)),
-    ),
-  };
+  return reportingCurrencies.map((currencyCode) => {
+    const currencyRecords = recordsToSummarize.filter(
+      (record) => record.currencyCode === currencyCode,
+    );
+    const sales = currencyRecords.filter((record) => record.type === "sale");
+    const refunds = currencyRecords.filter(
+      (record) => record.type === "refund",
+    );
+    const sum = (values: string[]): string =>
+      money(values.reduce((total, value) => MathBN.add(total, value), ZERO));
+    const grossSales = sum(sales.map((record) => record.grossSales));
+    const refundedSales = sum(refunds.map((record) => record.grossSales));
+    const taxCollected = sum(sales.map((record) => record.taxAmount));
+    const refundedTax = sum(refunds.map((record) => record.taxAmount));
+
+    return {
+      completeRecords: currencyRecords.filter(
+        (record) => record.quality === "complete",
+      ).length,
+      currencyCode,
+      grossSales,
+      incompleteRecords: currencyRecords.filter(
+        (record) => record.quality === "incomplete",
+      ).length,
+      netSales: subtractMoney(grossSales, refundedSales),
+      netTax: subtractMoney(taxCollected, refundedTax),
+      nontaxableSales: subtractMoney(
+        sum(sales.map((record) => record.nontaxableSales)),
+        sum(refunds.map((record) => record.nontaxableSales)),
+      ),
+      orderCount: new Set(sales.map((record) => record.orderId)).size,
+      priorPeriodRefundCount: refunds.filter(
+        (record) => record.refundCreditTiming === "prior_period",
+      ).length,
+      refundCount: refunds.length,
+      refundedSales,
+      refundedTax,
+      reviewRecords: currencyRecords.filter(
+        (record) => record.quality === "review",
+      ).length,
+      samePeriodRefundCount: refunds.filter(
+        (record) => record.refundCreditTiming === "same_period",
+      ).length,
+      taxCollected,
+      taxableSales: subtractMoney(
+        sum(sales.map((record) => record.taxableSales)),
+        sum(refunds.map((record) => record.taxableSales)),
+      ),
+    };
+  });
 };
 
 const destinationKey = (record: TaxRecord): string =>
   JSON.stringify([
+    record.currencyCode,
     record.destination.countryCode,
     record.destination.stateCode,
     record.destination.county,
@@ -541,9 +636,18 @@ export const summarizeDestinations = (
         city: first.destination.city,
         countryCode: first.destination.countryCode,
         county: first.destination.county,
+        currencyCode: first.currencyCode,
         grossSales: sum("grossSales", sales),
         jurisdictionLevel: first.destination.jurisdictionLevel,
         jurisdictionName: first.destination.jurisdictionName,
+        netSales: subtractMoney(
+          sum("grossSales", sales),
+          sum("grossSales", refunds),
+        ),
+        netTax: subtractMoney(
+          sum("taxAmount", sales),
+          sum("taxAmount", refunds),
+        ),
         nontaxableSales: subtractMoney(
           sum("nontaxableSales", sales),
           sum("nontaxableSales", refunds),
@@ -562,6 +666,7 @@ export const summarizeDestinations = (
     })
     .sort((left, right) =>
       [
+        left.currencyCode,
         left.countryCode,
         left.stateCode,
         left.jurisdictionName,
@@ -572,6 +677,7 @@ export const summarizeDestinations = (
         .join(":")
         .localeCompare(
           [
+            right.currencyCode,
             right.countryCode,
             right.stateCode,
             right.jurisdictionName,

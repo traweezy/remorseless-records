@@ -543,9 +543,13 @@ switching and reconciliation operations are in
 The Medusa Admin also includes a separate **Tax records** workspace. It builds
 New York filing-period workpapers from Medusa sales, refunds, delivery
 destinations, and preserved provider evidence; flags legacy, incomplete, and
-estimated rows; and exports transaction-detail and destination-summary CSVs.
+estimated rows; distinguishes same-period from prior-period refund credits;
+keeps currencies separate; and exports full-period transaction-detail and
+destination-summary CSVs. Monthly, quarterly, annual, and custom period
+controls support the filing frequency assigned in New York Online Services.
 It is filing support, not an automated return or payment service. The report
-contract and accountant workflow are documented in
+contract, currency rules, credit review, and accountant workflow are documented
+in
 [`docs/TAX_RECORDS_AND_FILING.md`](docs/TAX_RECORDS_AND_FILING.md).
 
 ## Refund Operations: Plain-English Guide

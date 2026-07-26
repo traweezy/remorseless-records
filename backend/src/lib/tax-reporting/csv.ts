@@ -1,5 +1,3 @@
-import { MathBN } from "@medusajs/framework/utils";
-
 import type { TaxReportPeriod } from "./periods";
 import type {
   TaxDestinationSummary,
@@ -28,21 +26,21 @@ const rowsToCsv = (rows: unknown[][]): string =>
 const signed = (value: string, type: TaxRecord["type"]): string =>
   type === "refund" && Number(value) !== 0 ? `-${value}` : value;
 
-const subtract = (left: string, right: string): string =>
-  MathBN.sub(left, right).toFixed(4);
-
 export const taxTransactionsCsv = ({
   generatedAt,
   period,
   records,
-  summary,
+  summaries,
 }: {
   generatedAt: string;
   period: TaxReportPeriod;
   records: TaxRecord[];
-  summary: TaxReportSummary;
-}): string =>
-  rowsToCsv([
+  summaries: TaxReportSummary[];
+}): string => {
+  const summaryByCurrency = new Map(
+    summaries.map((summary) => [summary.currencyCode, summary]),
+  );
+  return rowsToCsv([
     [
       "record_type",
       "transaction_date_utc",
@@ -69,6 +67,7 @@ export const taxTransactionsCsv = ({
       "total_including_tax",
       "record_quality",
       "refund_tax_method",
+      "refund_credit_timing",
       "issues",
       "report_period_start",
       "report_period_end_exclusive",
@@ -76,51 +75,56 @@ export const taxTransactionsCsv = ({
       "period_net_sales",
       "period_net_tax",
     ],
-    ...records.map((record) => [
-      record.type,
-      record.occurredAt,
-      period.timeZone,
-      record.displayId,
-      record.orderId,
-      record.refundId,
-      record.provider,
-      record.generation,
-      record.taxCalculationId,
-      record.destination.countryCode,
-      record.destination.stateCode,
-      record.destination.county,
-      record.destination.city,
-      record.destination.postalCode,
-      record.destination.jurisdictionName,
-      record.destination.jurisdictionLevel,
-      record.taxRatePercent,
-      record.currencyCode,
-      signed(record.grossSales, record.type),
-      signed(record.taxableSales, record.type),
-      signed(record.nontaxableSales, record.type),
-      signed(record.taxAmount, record.type),
-      signed(record.total, record.type),
-      record.quality,
-      record.refundTaxMethod,
-      record.issues.join(" | "),
-      period.startDate,
-      period.endDate,
-      generatedAt,
-      summary.netSales,
-      summary.netTax,
-    ]),
+    ...records.map((record) => {
+      const summary = summaryByCurrency.get(record.currencyCode);
+      return [
+        record.type,
+        record.occurredAt,
+        period.timeZone,
+        record.displayId,
+        record.orderId,
+        record.refundId,
+        record.provider,
+        record.generation,
+        record.taxCalculationId,
+        record.destination.countryCode,
+        record.destination.stateCode,
+        record.destination.county,
+        record.destination.city,
+        record.destination.postalCode,
+        record.destination.jurisdictionName,
+        record.destination.jurisdictionLevel,
+        record.taxRatePercent,
+        record.currencyCode,
+        signed(record.grossSales, record.type),
+        signed(record.taxableSales, record.type),
+        signed(record.nontaxableSales, record.type),
+        signed(record.taxAmount, record.type),
+        signed(record.total, record.type),
+        record.quality,
+        record.refundTaxMethod,
+        record.refundCreditTiming,
+        record.issues.join(" | "),
+        period.startDate,
+        period.endDate,
+        generatedAt,
+        summary?.netSales ?? "",
+        summary?.netTax ?? "",
+      ];
+    }),
   ]);
+};
 
 export const taxDestinationsCsv = ({
   destinations,
   generatedAt,
   period,
-  summary,
+  summaries,
 }: {
   destinations: TaxDestinationSummary[];
   generatedAt: string;
   period: TaxReportPeriod;
-  summary: TaxReportSummary;
+  summaries: TaxReportSummary[];
 }): string =>
   rowsToCsv([
     [
@@ -155,15 +159,15 @@ export const taxDestinationsCsv = ({
       destination.jurisdictionName,
       destination.jurisdictionLevel,
       destination.taxRatePercent,
-      "usd",
+      destination.currencyCode,
       destination.grossSales,
       destination.refundedSales,
-      subtract(destination.grossSales, destination.refundedSales),
+      destination.netSales,
       destination.taxableSales,
       destination.nontaxableSales,
       destination.taxCollected,
       destination.refundedTax,
-      subtract(destination.taxCollected, destination.refundedTax),
+      destination.netTax,
       period.startDate,
       period.endDate,
       period.timeZone,
@@ -171,12 +175,30 @@ export const taxDestinationsCsv = ({
     ]),
     [],
     ["period_summary"],
-    ["gross_sales", summary.grossSales],
-    ["sales_refunded", summary.refundedSales],
-    ["net_sales", summary.netSales],
-    ["net_taxable_sales", summary.taxableSales],
-    ["net_nontaxable_sales", summary.nontaxableSales],
-    ["tax_collected", summary.taxCollected],
-    ["tax_refunded", summary.refundedTax],
-    ["net_tax", summary.netTax],
+    [
+      "currency",
+      "gross_sales",
+      "sales_refunded",
+      "net_sales",
+      "net_taxable_sales",
+      "net_nontaxable_sales",
+      "tax_collected",
+      "tax_refunded",
+      "net_tax",
+      "same_period_refunds",
+      "prior_period_refunds",
+    ],
+    ...summaries.map((summary) => [
+      summary.currencyCode,
+      summary.grossSales,
+      summary.refundedSales,
+      summary.netSales,
+      summary.taxableSales,
+      summary.nontaxableSales,
+      summary.taxCollected,
+      summary.refundedTax,
+      summary.netTax,
+      summary.samePeriodRefundCount,
+      summary.priorPeriodRefundCount,
+    ]),
   ]);

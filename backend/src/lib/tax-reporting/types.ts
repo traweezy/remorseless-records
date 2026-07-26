@@ -7,6 +7,10 @@ export type TaxRecordProvider =
 
 export type TaxRecordQuality = "complete" | "incomplete" | "review";
 export type TaxRecordType = "refund" | "sale";
+export type TaxRefundCreditTiming =
+  | "prior_period"
+  | "same_period"
+  | "unknown";
 
 export type TaxRecordDestination = {
   city: string | null;
@@ -32,6 +36,7 @@ export type TaxRecord = {
   provider: TaxRecordProvider;
   quality: TaxRecordQuality;
   refundId: string | null;
+  refundCreditTiming: TaxRefundCreditTiming | null;
   refundTaxMethod: "estimated" | "exact" | null;
   taxAmount: string;
   taxableSales: string;
@@ -45,9 +50,12 @@ export type TaxDestinationSummary = {
   city: string | null;
   countryCode: string | null;
   county: string | null;
+  currencyCode: string;
   grossSales: string;
   jurisdictionLevel: string | null;
   jurisdictionName: string | null;
+  netSales: string;
+  netTax: string;
   nontaxableSales: string;
   postalCode: string | null;
   refundedSales: string;
@@ -60,16 +68,19 @@ export type TaxDestinationSummary = {
 
 export type TaxReportSummary = {
   completeRecords: number;
+  currencyCode: string;
   grossSales: string;
   incompleteRecords: number;
   netSales: string;
   netTax: string;
   nontaxableSales: string;
   orderCount: number;
+  priorPeriodRefundCount: number;
   refundCount: number;
   refundedSales: string;
   refundedTax: string;
   reviewRecords: number;
+  samePeriodRefundCount: number;
   taxCollected: string;
   taxableSales: string;
 };

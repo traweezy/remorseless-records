@@ -13,14 +13,18 @@ const period = parseTaxReportPeriod({
 
 const orderFixture = ({
   controlled = true,
+  createdAt = "2026-07-20T16:00:00.000Z",
   paid = true,
   refund,
 }: {
   controlled?: boolean;
+  createdAt?: string;
   paid?: boolean;
-  refund?: { amount: string; createdAt: string };
+  refund?:
+    | { amount: string; createdAt: string }
+    | { amount: string; createdAt: string }[];
 } = {}) => ({
-  created_at: "2026-07-20T16:00:00.000Z",
+  created_at: createdAt,
   currency_code: "usd",
   display_id: 42,
   id: "order_42",
@@ -66,16 +70,17 @@ const orderFixture = ({
       payments: [
         {
           captured_amount: paid ? "10.8" : "0",
-          captured_at: paid ? "2026-07-20T16:01:00.000Z" : null,
-          refunds: refund
-            ? [
-                {
-                  amount: refund.amount,
-                  created_at: refund.createdAt,
-                  id: "refund_42",
-                },
-              ]
-            : [],
+          captured_at: paid ? createdAt : null,
+          refunds: (refund
+            ? Array.isArray(refund)
+              ? refund
+              : [refund]
+            : []
+          ).map((entry, index) => ({
+            amount: entry.amount,
+            created_at: entry.createdAt,
+            id: `refund_42_${index}`,
+          })),
         },
       ],
     },
@@ -129,6 +134,45 @@ describe("tax record projection", () => {
     );
   });
 
+  it("marks a taxed sale with unknown provider evidence incomplete", () => {
+    const base = orderFixture();
+    const order = {
+      ...base,
+      items: base.items.map((item) => ({
+        ...item,
+        tax_lines: [
+          {
+            code: "unrecognized",
+            provider_id: "rate_lookup",
+            rate: "8",
+          },
+        ],
+      })),
+    };
+    const [record] = projectTaxRecords({ orders: [order], period });
+
+    expect(record).toMatchObject({
+      provider: "unknown",
+      quality: "incomplete",
+    });
+    expect(record?.issues).toContain("Tax line identity is missing.");
+  });
+
+  it("marks an incomplete delivery destination incomplete", () => {
+    const base = orderFixture();
+    const order = {
+      ...base,
+      shipping_address: {
+        ...base.shipping_address,
+        postal_code: null,
+      },
+    };
+    const [record] = projectTaxRecords({ orders: [order], period });
+
+    expect(record).toMatchObject({ quality: "incomplete" });
+    expect(record?.issues).toContain("Delivery destination is incomplete.");
+  });
+
   it("records partial refunds in their own period with an explicit estimate", () => {
     const records = projectTaxRecords({
       orders: [
@@ -150,7 +194,8 @@ describe("tax record projection", () => {
       taxAmount: "0.4000",
       total: "5.4000",
     });
-    expect(summarizeTaxRecords(records)).toMatchObject({
+    expect(summarizeTaxRecords(records)[0]).toMatchObject({
+      currencyCode: "usd",
       grossSales: "10.0000",
       netSales: "5.0000",
       netTax: "0.4000",
@@ -174,7 +219,98 @@ describe("tax record projection", () => {
     });
     expect(records.find((record) => record.type === "refund")).toMatchObject({
       quality: "complete",
+      refundCreditTiming: "same_period",
       refundTaxMethod: "exact",
+    });
+  });
+
+  it("marks a credit for a sale from an earlier filing period", () => {
+    const records = projectTaxRecords({
+      orders: [
+        orderFixture({
+          createdAt: "2026-05-20T16:00:00.000Z",
+          refund: {
+            amount: "10.8",
+            createdAt: "2026-07-01T13:00:00.000Z",
+          },
+        }),
+      ],
+      period: parseTaxReportPeriod({
+        endDate: "2026-09-01",
+        startDate: "2026-06-01",
+      }),
+    });
+    const refund = records.find((record) => record.type === "refund");
+
+    expect(refund).toMatchObject({
+      quality: "review",
+      refundCreditTiming: "prior_period",
+    });
+    expect(refund?.issues.join(" ")).toContain("earlier filing period");
+    expect(summarizeTaxRecords(records)[0]).toMatchObject({
+      priorPeriodRefundCount: 1,
+      samePeriodRefundCount: 0,
+    });
+  });
+
+  it("marks every affected refund when cumulative credits exceed the sale", () => {
+    const records = projectTaxRecords({
+      orders: [
+        orderFixture({
+          refund: [
+            {
+              amount: "6",
+              createdAt: "2026-08-01T13:00:00.000Z",
+            },
+            {
+              amount: "6",
+              createdAt: "2026-08-02T13:00:00.000Z",
+            },
+          ],
+        }),
+      ],
+      period,
+    });
+    const refunds = records.filter((record) => record.type === "refund");
+
+    expect(refunds).toHaveLength(2);
+    expect(
+      refunds.every(
+        (refund) =>
+          refund.quality === "incomplete" &&
+          refund.issues.includes(
+            "Cumulative refunds exceed the original order total.",
+          ),
+      ),
+    ).toBe(true);
+  });
+
+  it("reads Medusa runtime decimal wrappers without zeroing totals", () => {
+    const wrapped = (value: string) => ({
+      value: { toString: () => value },
+    });
+    const base = orderFixture();
+    const order = {
+      ...base,
+      items: base.items.map((item) => ({
+        ...item,
+        raw_original_subtotal: wrapped("10"),
+        raw_original_tax_total: wrapped("0.8"),
+      })),
+      raw_original_subtotal: wrapped("10"),
+      raw_original_tax_total: wrapped("0.8"),
+      raw_original_total: wrapped("10.8"),
+      summary: {
+        raw_paid_total: wrapped("10.8"),
+      },
+    };
+
+    expect(
+      projectTaxRecords({ orders: [order], period })[0],
+    ).toMatchObject({
+      grossSales: "10.0000",
+      taxAmount: "0.8000",
+      total: "10.8000",
     });
   });
 
@@ -185,6 +321,48 @@ describe("tax record projection", () => {
         period,
       }),
     ).toEqual([]);
+  });
+
+  it("marks a captured-total mismatch as incomplete", () => {
+    const base = orderFixture();
+    const order = {
+      ...base,
+      payment_collections: [
+        {
+          payments: [
+            {
+              captured_amount: "5",
+              captured_at: "2026-07-20T16:01:00.000Z",
+              refunds: [],
+            },
+          ],
+        },
+      ],
+      summary: { paid_total: "5" },
+    };
+    const [record] = projectTaxRecords({ orders: [order], period });
+
+    expect(record).toMatchObject({ quality: "incomplete" });
+    expect(record?.issues).toContain(
+      "Captured payment does not match the original order total.",
+    );
+  });
+
+  it("does not emit zero-value orders as tax sales", () => {
+    const base = orderFixture();
+    const order = {
+      ...base,
+      items: base.items.map((item) => ({
+        ...item,
+        original_subtotal: "0",
+        original_tax_total: "0",
+      })),
+      original_subtotal: "0",
+      original_tax_total: "0",
+      original_total: "0",
+    };
+
+    expect(projectTaxRecords({ orders: [order], period })).toEqual([]);
   });
 
   it("groups sales and refunds into destination workpapers", () => {
@@ -203,6 +381,7 @@ describe("tax record projection", () => {
     expect(summarizeDestinations(records)).toEqual([
       expect.objectContaining({
         grossSales: "10.0000",
+        currencyCode: "usd",
         refundedSales: "10.0000",
         refundedTax: "0.8000",
         stateCode: "NY",
@@ -210,5 +389,30 @@ describe("tax record projection", () => {
         taxableSales: "0.0000",
       }),
     ]);
+  });
+
+  it("keeps monetary summaries and destination rows separated by currency", () => {
+    const euroOrder = {
+      ...orderFixture(),
+      currency_code: "eur",
+      display_id: 43,
+      id: "order_43",
+    };
+    const records = projectTaxRecords({
+      orders: [orderFixture(), euroOrder],
+      period,
+    });
+
+    expect(summarizeTaxRecords(records)).toEqual([
+      expect.objectContaining({
+        currencyCode: "eur",
+        grossSales: "10.0000",
+      }),
+      expect.objectContaining({
+        currencyCode: "usd",
+        grossSales: "10.0000",
+      }),
+    ]);
+    expect(summarizeDestinations(records)).toHaveLength(2);
   });
 });
