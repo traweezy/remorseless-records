@@ -6,12 +6,20 @@ const configuredPaths = process.env.QA_PATHS
 const paths = configuredPaths.length
   ? configuredPaths
   : ["/", "/products", productPath, "/cart"]
+const disableChromeSandbox = process.env.LHCI_CHROME_NO_SANDBOX === "1"
 
 module.exports = {
   ci: {
     collect: {
       numberOfRuns: 1,
       url: paths.map((path) => new URL(path, baseUrl).toString()),
+      ...(disableChromeSandbox
+        ? {
+            settings: {
+              chromeFlags: "--no-sandbox --disable-setuid-sandbox",
+            },
+          }
+        : {}),
     },
     assert: {
       assertions: {

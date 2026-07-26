@@ -7,11 +7,14 @@ This document outlines repeatable steps for validating Remorseless Records befor
 ## 1. Accessibility & Performance Sweep
 
 > Quick automation: `QA_BASE_URL=http://127.0.0.1:3000 pnpm run qa:ci`
-> (runs lint/typecheck, pa11y axe audits, Lighthouse assertions). Use the manual steps below to investigate failures.
+> (runs lint/typecheck, real Chrome mobile emulation with axe, pa11y axe
+> audits, and Lighthouse assertions). Use the manual steps below to investigate
+> failures.
 > Set `QA_PATHS=/about,/accessibility` to replace the default dynamic route set
 > when a deterministic, backend-independent local sweep is required.
 > If Chrome is not discoverable on `PATH`, set `PA11Y_CHROME_EXECUTABLE_PATH`
-> for pa11y and `CHROME_PATH` for Lighthouse to a sandbox-capable Chrome binary.
+> for pa11y, `QA_CHROME_EXECUTABLE_PATH` for the mobile audit, and
+> `CHROME_PATH` for Lighthouse to a sandbox-capable Chrome binary.
 > Do not disable the browser sandbox to make a host pass.
 
 ### 1.1 Keyboard / Screen-reader
@@ -52,6 +55,27 @@ clientWidth`); intentional carousels must clip or scroll within their own
    gutters, long product titles wrap, and every control remains touchable.
 5. Capture and inspect a real rendered screenshot for each changed mobile
    surface before sign-off.
+
+Run the independent mobile gate against every public route:
+
+```bash
+QA_BASE_URL=http://127.0.0.1:3000 \
+QA_SCREENSHOT_DIR=/tmp/remorseless-mobile-audit \
+pnpm run qa:mobile
+```
+
+The gate launches real Chrome with Pixel 7 and compact 320-pixel phone
+emulation. It fails on horizontal page overflow, missing touch emulation,
+standalone controls below the WCAG 2.2 24×24 CSS-pixel minimum, HTTP errors, or
+axe WCAG A/AA violations. It logs visible text below 11 CSS pixels as a
+typography warning for manual review. Use `QA_PATHS=/contact,/checkout` for a
+targeted pass. `QA_CHROME_NO_SANDBOX=1` exists only for an already isolated CI
+container that cannot launch a browser sandbox; do not use it on an ordinary
+workstation.
+
+The equivalent isolated-container escape hatch for Lighthouse is
+`LHCI_CHROME_NO_SANDBOX=1`. It is opt-in and must not be set on an ordinary
+workstation.
 
 ### 1.3 Lighthouse Baseline
 

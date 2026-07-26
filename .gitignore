@@ -4,6 +4,7 @@ node_modules/
 .next/
 dist/
 coverage/
+.lighthouseci/
 .DS_Store
 .env
 .env.*

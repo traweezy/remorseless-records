@@ -14,14 +14,17 @@
     "data:build-import": "go run ./scripts/generate_remorseless_import.go",
     "data:apply-import": "go run ./scripts/apply_remorseless_import.go",
     "qa:a11y": "node qa/run-pa11y.cjs",
+    "qa:mobile": "node qa/run-mobile-audit.mjs",
     "qa:lighthouse": "lhci autorun --config=./lighthouse/lhci.config.js",
-    "qa:ci": "pnpm run qa:lint && pnpm run qa:a11y && pnpm run qa:lighthouse",
+    "qa:ci": "pnpm run qa:lint && pnpm run qa:mobile && pnpm run qa:a11y && pnpm run qa:lighthouse",
     "prepare": "if [ \"$CI\" = \"true\" ] || [ \"$NODE_ENV\" = \"production\" ]; then exit 0; fi; lefthook install"
   },
   "devDependencies": {
+    "@axe-core/puppeteer": "4.12.1",
     "@lhci/cli": "0.15.1",
     "esbuild": "^0.28.1",
     "lefthook": "^2.1.10",
-    "pa11y": "^9.1.1"
+    "pa11y": "^9.1.1",
+    "puppeteer": "25.3.0"
   }
 }
