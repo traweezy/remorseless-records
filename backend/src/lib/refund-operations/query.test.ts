@@ -106,6 +106,10 @@ describe("refund operations snapshot query", () => {
     expect(firstCall?.[0].fields).not.toEqual(
       expect.arrayContaining([
         "email",
+        "fulfillment_status",
+        "payment_status",
+        "status",
+        "updated_at",
         "customer.*",
         "shipping_address.*",
       ]),

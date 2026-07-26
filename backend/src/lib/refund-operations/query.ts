@@ -41,11 +41,7 @@ const REFUND_EVIDENCE_STATUSES = [
 const ORDER_FIELDS = [
   "id",
   "display_id",
-  "status",
-  "payment_status",
-  "fulfillment_status",
   "currency_code",
-  "updated_at",
   "payment_collections.payments.id",
   "payment_collections.payments.currency_code",
   "payment_collections.payments.provider_id",
