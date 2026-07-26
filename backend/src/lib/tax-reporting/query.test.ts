@@ -8,6 +8,12 @@ import {
   parseTaxReportFilters,
 } from "./query";
 
+const mockGetOrdersListRun = jest.fn();
+
+jest.mock("@medusajs/core-flows", () => ({
+  getOrdersListWorkflow: () => ({ run: mockGetOrdersListRun }),
+}));
+
 const period = parseTaxReportPeriod({
   endDate: "2026-09-01",
   startDate: "2026-06-01",
@@ -58,10 +64,39 @@ const containerWith = (
   graph: (input: Record<string, unknown>) => Promise<{
     data: Record<string, unknown>[];
   }>,
-): MedusaContainer =>
-  ({
+): MedusaContainer => {
+  mockGetOrdersListRun.mockImplementation(
+    async ({
+      input,
+    }: {
+      input: {
+        fields: string[];
+        variables: Record<string, unknown> & {
+          order: Record<string, "ASC" | "DESC">;
+          skip: number;
+          take: number;
+        };
+      };
+    }) => {
+      const { order: orderBy, skip, take, ...filters } = input.variables;
+      const { data } = await graph({
+        entity: "orders",
+        fields: input.fields,
+        filters,
+        pagination: { order: orderBy, skip, take },
+      });
+      return {
+        result: {
+          metadata: { count: data.length, skip, take },
+          rows: data,
+        },
+      };
+    },
+  );
+  return {
     resolve: () => ({ graph }),
-  }) as unknown as MedusaContainer;
+  } as unknown as MedusaContainer;
+};
 
 describe("tax report query", () => {
   it("parses bounded table filters and rejects unsafe values", () => {

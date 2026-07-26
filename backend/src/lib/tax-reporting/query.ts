@@ -1,3 +1,4 @@
+import { getOrdersListWorkflow } from "@medusajs/core-flows";
 import type { MedusaContainer } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
@@ -34,8 +35,6 @@ type QueryGraph = {
 const PAGE_SIZE = 250;
 const MAX_ORDERS = 50_000;
 const PAYMENT_QUERY_CONCURRENCY = 4;
-// Medusa's plural Orders graph entry point decorates computed order totals.
-const ORDER_QUERY_ENTITY = "orders";
 
 const PAYMENT_FIELDS = [
   "id",
@@ -312,21 +311,24 @@ export const loadTaxReportOrders = async ({
   period: TaxReportPeriod;
 }): Promise<{ orders: UnknownRecord[]; truncated: boolean }> => {
   const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY);
+  const orderListWorkflow = getOrdersListWorkflow(container);
   const orders: UnknownRecord[] = [];
 
   while (orders.length < MAX_ORDERS) {
-    const { data } = await query.graph({
-      entity: ORDER_QUERY_ENTITY,
-      fields: [...ORDER_FIELDS],
-      filters: {
-        created_at: { $lt: period.endExclusive },
-      },
-      pagination: {
-        order: { created_at: "DESC" },
-        skip: orders.length,
-        take: PAGE_SIZE,
+    const { result } = await orderListWorkflow.run({
+      input: {
+        fields: [...ORDER_FIELDS],
+        variables: {
+          created_at: { $lt: period.endExclusive },
+          order: { created_at: "DESC" },
+          skip: orders.length,
+          take: PAGE_SIZE,
+        },
       },
     });
+    const data = (Array.isArray(result)
+      ? result
+      : result.rows) as unknown as UnknownRecord[];
     orders.push(...data);
     if (data.length < PAGE_SIZE) {
       return {
