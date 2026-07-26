@@ -171,7 +171,7 @@ const SummaryCard = memo<SummaryCardProps>(
         {label}
       </Text>
       <div className="mt-1">{children}</div>
-      <Text size="xsmall" className="mt-1 text-ui-fg-muted">
+      <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
         {description}
       </Text>
     </div>
@@ -393,13 +393,18 @@ const RefundOperationsPage = memo(() => {
     [filteredCases, safePage],
   );
 
-  const overallStatus = snapshot
-    ? snapshot.summary.actionRequired > 0
-      ? "action_required"
-      : snapshot.summary.processing > 0
-        ? "processing"
-        : "verified"
-    : "processing";
+  const operationsStatus = useMemo(() => {
+    if (!snapshot) {
+      return null;
+    }
+    if (snapshot.summary.actionRequired > 0) {
+      return { color: "red" as const, label: "Needs attention" };
+    }
+    if (snapshot.summary.processing > 0) {
+      return { color: "orange" as const, label: "Monitoring" };
+    }
+    return { color: "green" as const, label: "Operational" };
+  }, [snapshot]);
 
   const totalRefunded = snapshot?.summary.amountsByCurrency
     .map(({ amountMinor, currencyCode }) =>
@@ -414,7 +419,11 @@ const RefundOperationsPage = memo(() => {
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
               <Heading level="h1">Refund operations</Heading>
-              {snapshot ? <CaseStatus status={overallStatus} /> : null}
+              {operationsStatus ? (
+                <StatusBadge color={operationsStatus.color}>
+                  {operationsStatus.label}
+                </StatusBadge>
+              ) : null}
             </div>
             <Text size="small" className="mt-2 text-ui-fg-subtle">
               Choose the correct order workflow, then monitor Medusa, Stripe,
@@ -451,7 +460,7 @@ const RefundOperationsPage = memo(() => {
         </Text>
         <ol className="mt-5 grid gap-3 lg:grid-cols-3">
           <li className="rounded-lg border border-ui-border-base p-4">
-            <Text size="xsmall" weight="plus" className="text-ui-fg-muted">
+            <Text size="xsmall" weight="plus" className="text-ui-fg-subtle">
               PATH 1
             </Text>
             <Heading level="h3" className="mt-1">
@@ -464,7 +473,7 @@ const RefundOperationsPage = memo(() => {
             </Text>
           </li>
           <li className="rounded-lg border border-ui-border-base p-4">
-            <Text size="xsmall" weight="plus" className="text-ui-fg-muted">
+            <Text size="xsmall" weight="plus" className="text-ui-fg-subtle">
               PATH 2
             </Text>
             <Heading level="h3" className="mt-1">
@@ -477,7 +486,7 @@ const RefundOperationsPage = memo(() => {
             </Text>
           </li>
           <li className="rounded-lg border border-ui-border-base p-4">
-            <Text size="xsmall" weight="plus" className="text-ui-fg-muted">
+            <Text size="xsmall" weight="plus" className="text-ui-fg-subtle">
               PATH 3
             </Text>
             <Heading level="h3" className="mt-1">
@@ -776,7 +785,7 @@ const RefundOperationsPage = memo(() => {
                               </div>
                               <Text
                                 size="xsmall"
-                                className="mt-2 text-ui-fg-muted"
+                                className="mt-2 text-ui-fg-subtle"
                               >
                                 Checked{" "}
                                 {formatDate(refundCase.lastVerifiedAt)}
