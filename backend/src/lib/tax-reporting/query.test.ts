@@ -93,7 +93,9 @@ describe("tax report query", () => {
     expect(capturedInput).toMatchObject({
       entity: "order",
       fields: expect.arrayContaining([
+        "payment_collections.id",
         "payment_collections.captured_amount",
+        "payment_collections.payments.id",
         "payment_collections.payments.captures.amount",
         "payment_collections.payments.captures.created_at",
       ]),
