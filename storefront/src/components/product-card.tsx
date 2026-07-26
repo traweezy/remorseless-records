@@ -541,7 +541,7 @@ export const ProductCard = ({
             ) : null}
             {isUnavailable ? (
               <div className="absolute left-4 top-4 z-40">
-                <span className="inline-flex items-center rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.3rem] text-muted-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)]">
+                <span className="inline-flex items-center rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14rem] text-muted-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] sm:tracking-[0.24rem]">
                   Unavailable
                 </span>
               </div>
@@ -549,7 +549,7 @@ export const ProductCard = ({
               <div className="absolute left-4 top-4 z-40">
                 <span
                   className={cn(
-                    "relative isolate inline-flex items-center rounded-full border px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.3rem] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)]",
+                    "relative isolate inline-flex items-center rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14rem] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] sm:tracking-[0.24rem]",
                     stockBadge.className
                   )}
                 >
@@ -560,7 +560,7 @@ export const ProductCard = ({
             {isBundle && bundleComponentCount && bundleComponentCount > 0 ? (
               <div className="absolute right-4 top-4 z-40">
                 <span
-                  className="inline-flex items-center rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.22rem] text-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)]"
+                  className="inline-flex items-center rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14rem] text-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] sm:tracking-[0.22rem]"
                   aria-label={`${bundleComponentCount} items in this bundle`}
                 >
                   {bundleComponentCount} items
@@ -612,12 +612,12 @@ export const ProductCard = ({
                   </Button>
                 </div>
               </div>
-              <div className="flex flex-1 flex-col justify-between px-5 py-6">
+              <div className="flex flex-1 flex-col justify-between px-4 py-4 sm:px-5 sm:py-6">
                 <div className="space-y-2">
-                  <p className="truncate text-xs uppercase tracking-[0.35rem] text-muted-foreground">
+                  <p className="truncate text-xs uppercase tracking-[0.16rem] text-muted-foreground sm:tracking-[0.35rem]">
                     {summary.subtitle ?? summary.artist}
                   </p>
-                  <h3 className="break-words font-bebas text-2xl uppercase tracking-[0.35rem] text-foreground">
+                  <h3 className="break-words font-bebas text-xl uppercase tracking-[0.14rem] text-foreground sm:text-2xl sm:tracking-[0.35rem]">
                     {summary.title}
                   </h3>
                 </div>
@@ -639,7 +639,7 @@ export const ProductCard = ({
                       <Badge
                         key={`${summary.id}-${label}`}
                         variant="outline"
-                        className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.28rem] text-foreground"
+                        className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-foreground sm:tracking-[0.22rem]"
                       >
                         <span className="text-center leading-none">
                           {label.toUpperCase()}

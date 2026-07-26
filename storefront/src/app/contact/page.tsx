@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { siBandcamp } from "simple-icons"
 
 import ContactForm from "@/components/contact/contact-form"
-import BandcampEmbed from "@/components/contact/bandcamp-embed"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
@@ -39,13 +38,13 @@ const ContactPage = () => {
         <div className="space-y-4">
           <ContactForm />
 
-          <Card variant="inset" className="space-y-3 p-4">
+          <Card variant="inset" className="space-y-3 p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
+                <p className="text-xs uppercase tracking-[0.16rem] text-muted-foreground sm:tracking-[0.35rem]">
                   Primary line
                 </p>
-                <h2 className="font-headline text-lg uppercase tracking-[0.3rem] text-foreground">
+                <h2 className="font-headline text-lg uppercase tracking-[0.14rem] text-foreground sm:tracking-[0.3rem]">
                   Email the label
                 </h2>
                 <p className="text-sm text-muted-foreground">
@@ -54,7 +53,12 @@ const ContactPage = () => {
                 </p>
               </div>
             </div>
-            <Button asChild variant="outlined" size="compact" className="w-fit">
+            <Button
+              asChild
+              variant="outlined"
+              size="compact"
+              className="w-full min-w-0 px-3 tracking-[0.08rem] sm:w-fit sm:px-6 sm:tracking-[0.2rem]"
+            >
               <a href={`mailto:${siteMetadata.contact.email}`}>
                 {siteMetadata.contact.email}
               </a>
@@ -62,28 +66,27 @@ const ContactPage = () => {
           </Card>
         </div>
 
-        <Card as="aside" variant="panel" className="space-y-4 p-6">
+        <Card as="aside" variant="panel" className="space-y-4 p-4 sm:p-6">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
-                  Listen while you write
+                <p className="text-xs uppercase tracking-[0.16rem] text-muted-foreground sm:tracking-[0.35rem]">
+                  Hear the catalog
                 </p>
-                <h3 className="font-headline text-base uppercase tracking-[0.25rem] text-foreground">
+                <h2 className="font-headline text-lg uppercase tracking-[0.14rem] text-foreground sm:tracking-[0.25rem]">
                   Bandcamp
-                </h3>
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Featured release from our Bandcamp. Stream while you write and
-                  follow the label.
+                  Stream releases, follow the label, and support us directly on
+                  Bandcamp.
                 </p>
               </div>
             </div>
-            <BandcampEmbed />
             <Button
               asChild
               variant="outlined"
               size="compact"
-              className="w-fit gap-2"
+              className="w-full gap-2 sm:w-fit"
             >
               <a
                 href={

@@ -59,7 +59,7 @@ const FOOTER_LINKS: FooterLinkSection[] = [
 ]
 
 const footerLinkClassName =
-  "interactive -mx-1 inline-flex min-h-6 items-center gap-1.5 rounded-md px-1 py-1.5 text-muted-foreground hover:text-foreground"
+  "interactive -mx-1 inline-flex min-h-8 items-center gap-1.5 rounded-md px-1 py-1.5 text-muted-foreground hover:text-foreground"
 
 const SocialIcon = ({ path }: { path: string | undefined }) => {
   if (!path) {
@@ -86,25 +86,25 @@ const SiteFooter = () => {
     <footer className="relative z-20 mt-12 border-t-4 border-accent/80 bg-background py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 text-xs text-muted-foreground md:flex-row md:justify-between">
         <div className="max-w-sm space-y-2">
-          <span className="font-headline text-[0.65rem] uppercase tracking-[0.3rem] text-accent">
+          <span className="font-headline text-xs uppercase tracking-[0.16rem] text-accent sm:tracking-[0.3rem]">
             Remorseless Records
           </span>
-          <p className="text-[0.7rem] leading-snug">
+          <p className="text-xs leading-relaxed">
             Brutal maximalism across every pressing. Limited runs, no
             compromises, all volume. Join the signal and never miss another
             drop.
           </p>
-          <p className="text-[0.58rem] uppercase tracking-[0.2rem] text-muted-foreground">
+          <p className="text-[0.7rem] uppercase tracking-[0.12rem] text-muted-foreground sm:tracking-[0.2rem]">
             © {currentYear} Remorseless Records
           </p>
         </div>
         <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
           {FOOTER_LINKS.map((section) => (
             <div key={section.title} className="space-y-2">
-              <p className="font-headline text-[0.65rem] uppercase tracking-[0.24rem] text-foreground">
+              <p className="font-headline text-xs uppercase tracking-[0.14rem] text-foreground sm:tracking-[0.24rem]">
                 {section.title}
               </p>
-              <ul className="space-y-1 text-[0.65rem] uppercase tracking-[0.2rem] leading-tight">
+              <ul className="space-y-1 text-[0.7rem] uppercase leading-tight tracking-[0.12rem] sm:tracking-[0.2rem]">
                 {section.links.map((link) => (
                   <li key={link.label}>
                     {link.href.startsWith("http") ? (

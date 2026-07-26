@@ -86,10 +86,10 @@ export const CheckoutConfirmation = memo(() => {
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
           <Check className="h-7 w-7" aria-hidden="true" />
         </span>
-        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.24rem] text-destructive">
+        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14rem] text-destructive sm:tracking-[0.24rem]">
           Order confirmed
         </p>
-        <h1 className="mt-2 font-headline text-4xl uppercase tracking-[0.18rem] text-foreground sm:text-5xl">
+        <h1 className="mt-2 font-headline text-3xl uppercase tracking-[0.12rem] text-foreground sm:text-5xl sm:tracking-[0.18rem]">
           Thank you
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">

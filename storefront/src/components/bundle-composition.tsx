@@ -47,7 +47,7 @@ const BundleComposition = ({ bundle }: BundleCompositionProps) => {
         {hasUnavailableComponents ? (
           <Badge
             variant="warning"
-            className="px-3 py-1 text-[0.65rem] tracking-[0.22rem]"
+            className="px-3 py-1 text-[0.7rem] tracking-[0.16rem] sm:tracking-[0.22rem]"
             role="status"
             aria-live="polite"
           >

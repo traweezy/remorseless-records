@@ -6,7 +6,6 @@ import { Splide, SplideSlide } from "@splidejs/react-splide"
 import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
 
 import ProductCard from "@/components/product-card"
-import CarouselMotionToggle from "@/components/ui/carousel-motion-toggle"
 import { SectionHeading } from "@/components/ui/section-heading"
 import { useCarouselAutoScroll } from "@/hooks/use-carousel-auto-scroll"
 
@@ -44,9 +43,7 @@ export const ProductCarouselSection = ({
   const {
     destroy: destroyAutoScroll,
     go,
-    isPaused,
     mount: mountAutoScroll,
-    toggle,
   } = useCarouselAutoScroll()
   const slides = useMemo<StoreProduct[]>(
     () =>
@@ -102,79 +99,68 @@ export const ProductCarouselSection = ({
         description={description}
       />
 
-      <div>
-        {slides.length > 1 ? (
-          <div className="mb-3 flex justify-end px-1 sm:px-2">
-            <CarouselMotionToggle
-              carouselLabel={`${heading.leading} ${heading.highlight} carousel`}
-              isPaused={isPaused}
-              onToggle={toggle}
-            />
-          </div>
-        ) : null}
-        <div className="product-carousel">
-          <div className="product-carousel__container" onWheel={handleWheel}>
-            <Splide
-              className="product-carousel__splide"
-              aria-label={`${heading.leading} ${heading.highlight}`}
-              options={{
-                type: "loop",
-                pagination: false,
-                drag: true,
-                perPage: perPageByBreakpoint.default,
-                perMove: 1,
-                speed: 420,
-                easing: "cubic-bezier(0.33, 1, 0.68, 1)",
-                gap: "clamp(12px, 1.5vw, 20px)",
-                pauseOnHover: true,
-                pauseOnFocus: true,
-                wheel: false,
-                arrows: slides.length > 1,
-                trimSpace: false,
-                classes: {
-                  arrows: "product-carousel__arrows",
-                  arrow: "product-carousel__arrow",
-                  prev: "product-carousel__arrow product-carousel__arrow--left",
-                  next: "product-carousel__arrow product-carousel__arrow--right",
-                },
-                breakpoints: {
-                  1800: { perPage: perPageByBreakpoint["1800"] },
-                  1440: { perPage: perPageByBreakpoint["1440"] },
-                  1024: { perPage: perPageByBreakpoint["1024"] },
-                  768: { perPage: perPageByBreakpoint["768"] },
-                  640: { perPage: perPageByBreakpoint["640"] },
-                },
-                ...(slides.length > 1
-                  ? {
-                      autoScroll: {
-                        speed: 0.6,
-                        autoStart: false,
-                        pauseOnHover: true,
-                        pauseOnFocus: true,
-                      },
-                    }
-                  : {}),
-              }}
-              extensions={slides.length > 1 ? { AutoScroll } : {}}
-              hasTrack
-              onMounted={mountAutoScroll}
-              onDestroy={destroyAutoScroll}
-            >
-              {filledSlides.map((product, index) => (
-                <SplideSlide
-                  key={`${product.id ?? product.handle ?? "product"}-${index}`}
-                  className="product-carousel__slide"
-                >
-                  <div className="product-carousel__card">
-                    <ProductCard
-                      product={product}
-                      {...(ribbonLabel !== undefined ? { ribbonLabel } : {})}
-                    />
-                  </div>
-                </SplideSlide>
-              ))}
-            </Splide>
-          </div>
+      <div className="product-carousel">
+        <div className="product-carousel__container" onWheel={handleWheel}>
+          <Splide
+            className="product-carousel__splide"
+            aria-label={`${heading.leading} ${heading.highlight}`}
+            options={{
+              type: "loop",
+              pagination: false,
+              drag: true,
+              perPage: perPageByBreakpoint.default,
+              perMove: 1,
+              speed: 420,
+              easing: "cubic-bezier(0.33, 1, 0.68, 1)",
+              gap: "clamp(12px, 1.5vw, 20px)",
+              pauseOnHover: true,
+              pauseOnFocus: true,
+              wheel: false,
+              arrows: slides.length > 1,
+              trimSpace: false,
+              classes: {
+                arrows: "product-carousel__arrows",
+                arrow: "product-carousel__arrow",
+                prev: "product-carousel__arrow product-carousel__arrow--left",
+                next: "product-carousel__arrow product-carousel__arrow--right",
+              },
+              breakpoints: {
+                1800: { perPage: perPageByBreakpoint["1800"] },
+                1440: { perPage: perPageByBreakpoint["1440"] },
+                1024: { perPage: perPageByBreakpoint["1024"] },
+                768: { perPage: perPageByBreakpoint["768"] },
+                640: { perPage: perPageByBreakpoint["640"] },
+              },
+              ...(slides.length > 1
+                ? {
+                    autoScroll: {
+                      speed: 0.6,
+                      autoStart: false,
+                      pauseOnHover: true,
+                      pauseOnFocus: true,
+                    },
+                  }
+                : {}),
+            }}
+            extensions={slides.length > 1 ? { AutoScroll } : {}}
+            hasTrack
+            onMounted={mountAutoScroll}
+            onDestroy={destroyAutoScroll}
+          >
+            {filledSlides.map((product, index) => (
+              <SplideSlide
+                key={`${product.id ?? product.handle ?? "product"}-${index}`}
+                className="product-carousel__slide"
+              >
+                <div className="product-carousel__card">
+                  <ProductCard
+                    product={product}
+                    {...(ribbonLabel !== undefined ? { ribbonLabel } : {})}
+                  />
+                </div>
+              </SplideSlide>
+            ))}
+          </Splide>
         </div>
       </div>
     </section>

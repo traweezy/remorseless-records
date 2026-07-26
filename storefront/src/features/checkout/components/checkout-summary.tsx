@@ -264,9 +264,9 @@ export const CheckoutSummary = memo<CheckoutSummaryProps>(
         aria-label="Order summary"
         className={cn("overflow-hidden lg:sticky lg:top-24", className)}
       >
-        <div className="flex items-center justify-between gap-3 p-5">
+        <div className="flex items-center justify-between gap-3 p-4 sm:p-5">
           <div>
-            <p className="font-headline text-base uppercase tracking-[0.28rem] text-foreground">
+            <p className="font-headline text-base uppercase tracking-[0.14rem] text-foreground sm:tracking-[0.28rem]">
               Order summary
             </p>
             <p className="mt-1 text-sm font-semibold text-foreground lg:hidden">
@@ -297,7 +297,7 @@ export const CheckoutSummary = memo<CheckoutSummaryProps>(
         </div>
 
         <div id={detailsId} className={expanded ? "block" : "hidden lg:block"}>
-          <div className="space-y-4 border-t border-border/60 px-5 py-5">
+          <div className="space-y-4 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
             {items.map((item) => (
               <CheckoutSummaryItem
                 key={item.id}
@@ -309,7 +309,7 @@ export const CheckoutSummary = memo<CheckoutSummaryProps>(
             ))}
           </div>
 
-          <dl className="space-y-3 border-t border-border/60 px-5 py-5">
+          <dl className="space-y-3 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
             <SummaryRow label="Subtotal" value={format(totals.subtotal)} />
             {totals.discountTotal > 0 ? (
               <SummaryRow
@@ -336,7 +336,7 @@ export const CheckoutSummary = memo<CheckoutSummaryProps>(
             <SummaryRow label="Total" value={format(totals.total)} emphasized />
           </dl>
 
-          <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-5">
+          <div className="flex flex-col gap-3 border-t border-border/60 px-4 py-4 sm:px-5 sm:py-5">
             <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
               Secure payment powered by Stripe

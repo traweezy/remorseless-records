@@ -67,7 +67,7 @@ const isMissingCart = (error: unknown): boolean =>
 
 const CheckoutSkeleton = memo(() => (
   <div
-    className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8 lg:py-14"
+    className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-8 sm:gap-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8 lg:py-14"
     role="status"
   >
     <div className="space-y-5">
@@ -273,13 +273,13 @@ export const CheckoutShell = memo(() => {
 
   return (
     <div className="w-full overflow-x-clip">
-      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-        <header className="mb-8 max-w-2xl">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22rem] text-destructive">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-14">
+        <header className="mb-7 max-w-2xl sm:mb-8">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14rem] text-destructive sm:tracking-[0.22rem]">
             <ShieldCheck className="h-4 w-4" aria-hidden="true" />
             Secure guest checkout
           </p>
-          <h1 className="mt-3 font-headline text-4xl uppercase tracking-[0.18rem] text-foreground sm:text-5xl">
+          <h1 className="mt-3 font-headline text-3xl uppercase tracking-[0.12rem] text-foreground sm:text-5xl sm:tracking-[0.18rem]">
             Finish your order
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">

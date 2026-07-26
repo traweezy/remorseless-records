@@ -87,7 +87,7 @@ export const ProductQuickView = ({
               {activeProduct?.title ?? "Loading release"}
             </DrawerTitle>
             {activeProduct?.subtitle ? (
-              <p className="text-[0.65rem] uppercase tracking-[0.35rem] text-muted-foreground">
+              <p className="text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground sm:tracking-[0.3rem]">
                 {activeProduct.subtitle}
               </p>
             ) : null}
@@ -109,7 +109,7 @@ export const ProductQuickView = ({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
           {isFetching && !detail && !initialProduct ? (
             <motion.div
               className="space-y-5"

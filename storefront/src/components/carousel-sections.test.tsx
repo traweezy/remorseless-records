@@ -77,9 +77,7 @@ describe("homepage carousel sections", () => {
       pauseOnFocus: true,
     })
     expect(carouselCapture.extensions[0]).toHaveProperty("AutoScroll")
-    expect(
-      screen.getByRole("button", { name: "Play Featured Picks carousel" })
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/motion/i)).not.toBeInTheDocument()
     screen.getAllByTestId("product-card").forEach((card) => {
       expect(card).toHaveAttribute("data-ribbon", "Featured")
     })
@@ -101,8 +99,6 @@ describe("homepage carousel sections", () => {
       pauseOnFocus: true,
     })
     expect(carouselCapture.extensions[0]).toHaveProperty("AutoScroll")
-    expect(
-      screen.getByRole("button", { name: "Play Latest News carousel" })
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/motion/i)).not.toBeInTheDocument()
   })
 })

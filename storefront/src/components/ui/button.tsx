@@ -19,7 +19,7 @@ const outlinedButtonClasses =
   "border border-destructive/70 bg-transparent text-destructive [&:not([data-disabled=true]):hover]:border-destructive [&:not([data-disabled=true]):hover]:bg-destructive/10 [&:not([data-disabled=true]):hover]:text-foreground"
 
 const buttonVariants = cva(
-  "inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold uppercase tracking-[0.3rem] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 ring-offset-background [&:not([data-disabled=true]):active]:translate-y-[1px]",
+  "inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold uppercase tracking-[0.16rem] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 ring-offset-background sm:tracking-[0.3rem] [&:not([data-disabled=true]):active]:translate-y-[1px]",
   {
     variants: {
       variant: {
@@ -39,8 +39,8 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-11 px-6",
-        sm: "h-9 px-4 text-[0.55rem]",
-        compact: "h-9 px-4 text-xs tracking-[0.25rem]",
+        sm: "h-9 px-4 text-[0.7rem]",
+        compact: "h-9 px-4 text-xs tracking-[0.14rem] sm:tracking-[0.25rem]",
         lg: "h-12 px-8 text-base",
         icon: "h-11 w-11",
         auto: "",

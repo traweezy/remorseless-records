@@ -136,7 +136,7 @@ export const DrawerEyebrow = ({
 }: React.HTMLAttributes<HTMLParagraphElement>) => (
   <p
     className={cn(
-      "text-xs font-headline uppercase tracking-[0.35rem] text-muted-foreground",
+      "text-xs font-headline uppercase tracking-[0.16rem] text-muted-foreground sm:tracking-[0.35rem]",
       className
     )}
     {...props}
@@ -150,7 +150,7 @@ export const DrawerTitle = ({
 }: React.HTMLAttributes<HTMLHeadingElement>) => (
   <h2
     className={cn(
-      "font-bebas text-3xl uppercase tracking-[0.35rem] text-foreground",
+      "font-bebas text-2xl uppercase tracking-[0.14rem] text-foreground sm:text-3xl sm:tracking-[0.35rem]",
       className
     )}
     {...props}

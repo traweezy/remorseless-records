@@ -70,7 +70,7 @@ export const PillDropdown = <TValue extends string>({
             aria-describedby={ariaDescribedBy}
             aria-invalid={invalid}
           >
-            <span className="flex items-center gap-2 text-[0.65rem]">
+            <span className="flex items-center gap-2 text-[0.7rem]">
               {renderTriggerLabel ? (
                 renderTriggerLabel(activeOption)
               ) : (
@@ -134,7 +134,7 @@ export const PillDropdown = <TValue extends string>({
                       {option.helper ? (
                         <span
                           className={cn(
-                            "text-[0.55rem] uppercase tracking-[0.3rem]",
+                            "text-[0.7rem] uppercase tracking-[0.14rem] sm:tracking-[0.24rem]",
                             value === option.value
                               ? "text-destructive/80"
                               : "text-muted-foreground"

@@ -38,7 +38,7 @@ export const BundleAvailabilityBadge = memo<BundleAvailabilityBadgeProps>(
         variant={presentation.variant}
         className={cn(
           compact
-            ? "px-2 py-0.5 text-[0.6rem] tracking-[0.12rem]"
+            ? "px-2 py-0.5 text-[0.7rem] tracking-[0.12rem]"
             : "px-2.5 py-1 tracking-[0.22rem]",
           className
         )}

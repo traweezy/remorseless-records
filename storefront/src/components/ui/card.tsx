@@ -43,7 +43,7 @@ export const CardHeader = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("space-y-1.5 p-6", className)} {...props} />
+  <div className={cn("space-y-1.5 p-4 sm:p-6", className)} {...props} />
 )
 
 type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
@@ -57,7 +57,7 @@ export const CardTitle = ({
 }: CardTitleProps) => (
   <h3
     className={cn(
-      "font-headline text-lg uppercase tracking-[0.4rem] text-foreground",
+      "font-headline text-lg uppercase tracking-[0.18rem] text-foreground sm:tracking-[0.4rem]",
       className
     )}
     {...props}
@@ -77,14 +77,17 @@ export const CardContent = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("p-6 pt-0", className)} {...props} />
+  <div className={cn("p-4 pt-0 sm:p-6 sm:pt-0", className)} {...props} />
 )
 
 export const CardFooter = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex items-center p-6 pt-0", className)} {...props} />
+  <div
+    className={cn("flex items-center p-4 pt-0 sm:p-6 sm:pt-0", className)}
+    {...props}
+  />
 )
 
 export { cardVariants }

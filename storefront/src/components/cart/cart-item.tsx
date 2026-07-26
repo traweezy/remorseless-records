@@ -264,7 +264,7 @@ export const CartItem = memo<CartItemProps>(
               </p>
             ) : null}
             {isFixedBundle || isMysteryBundle ? (
-              <Badge variant="outline" className="px-2 py-0.5 text-[0.6rem]">
+              <Badge variant="outline" className="px-2 py-0.5 text-[0.7rem]">
                 {isMysteryBundle ? "Mystery bundle" : "Bundle"}
               </Badge>
             ) : null}

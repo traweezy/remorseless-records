@@ -16,7 +16,7 @@ export const SectionHeading = ({
   ...props
 }: SectionHeadingProps) => (
   <header className={cn("text-center", className)} {...props}>
-    <h2 className="font-bebas text-5xl uppercase tracking-[0.55rem] text-foreground md:text-6xl">
+    <h2 className="font-bebas text-4xl uppercase tracking-[0.18rem] text-foreground sm:text-5xl sm:tracking-[0.35rem] md:text-6xl md:tracking-[0.55rem]">
       {leading}
       {highlight ? (
         <>

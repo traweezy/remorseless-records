@@ -94,7 +94,7 @@ const ContactForm = () => {
     <Card
       as="form"
       variant="panel"
-      className="space-y-4 p-6"
+      className="space-y-4 p-4 sm:p-6"
       noValidate
       onSubmit={(event) => {
         event.preventDefault()
@@ -230,13 +230,13 @@ const ContactForm = () => {
         }}
       </form.Field>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <Button
           type="submit"
           disabled={disabled}
           variant="filled"
           size="compact"
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
         >
           {status === "submitting" ? "Sending..." : "Send message"}
         </Button>

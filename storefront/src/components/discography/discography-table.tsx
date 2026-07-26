@@ -1,13 +1,6 @@
 "use client"
 
-import {
-  memo,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { memo, useCallback, useMemo, useState } from "react"
 import Image from "next/image"
 import {
   createColumnHelper,
@@ -21,7 +14,6 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table"
-import { useVirtualizer } from "@tanstack/react-virtual"
 import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -176,8 +168,6 @@ const DiscographyTable = memo(
     ])
     const [globalFilterValue, setGlobalFilterValue] = useState("")
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-    const [headerStickyTop, setHeaderStickyTop] = useState(0)
-    const filtersRef = useRef<HTMLDivElement | null>(null)
 
     const columns = useMemo(
       () => [
@@ -197,7 +187,7 @@ const DiscographyTable = memo(
                     className="object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[0.65rem] uppercase tracking-[0.28rem] text-muted-foreground">
+                  <div className="flex h-full w-full items-center justify-center text-[0.7rem] uppercase tracking-[0.16rem] text-muted-foreground">
                     No art
                   </div>
                 )}
@@ -211,7 +201,7 @@ const DiscographyTable = memo(
           ),
           cell: ({ row }) => (
             <div className="min-w-0 space-y-1">
-              <span className="block break-words text-sm font-semibold uppercase tracking-[0.25rem] text-foreground">
+              <span className="block break-words text-base font-semibold uppercase tracking-[0.1rem] text-foreground md:text-sm md:tracking-[0.2rem]">
                 {row.original.title}
               </span>
             </div>
@@ -225,7 +215,7 @@ const DiscographyTable = memo(
             const artist =
               row.original.slug?.artist?.trim() || row.original.artist
             return (
-              <span className="block break-words text-sm uppercase tracking-[0.24rem] text-muted-foreground">
+              <span className="block break-words text-sm uppercase tracking-[0.08rem] text-muted-foreground md:tracking-[0.18rem]">
                 {artist}
               </span>
             )
@@ -268,7 +258,7 @@ const DiscographyTable = memo(
                 {formats.map((format) => (
                   <span
                     key={format}
-                    className="max-w-full rounded-full border border-border/60 px-2 py-1 text-[0.65rem] uppercase tracking-[0.24rem] text-muted-foreground"
+                    className="max-w-full rounded-full border border-border/60 px-2 py-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground"
                   >
                     {format}
                   </span>
@@ -299,7 +289,7 @@ const DiscographyTable = memo(
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="max-w-full rounded-full border border-border/60 px-2 py-1 text-[0.65rem] uppercase tracking-[0.2rem] text-muted-foreground"
+                    className="max-w-full rounded-full border border-border/60 px-2 py-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground"
                   >
                     {tag}
                   </span>
@@ -403,60 +393,6 @@ const DiscographyTable = memo(
 
     const filteredRowCount = table.getFilteredRowModel().rows.length
     const rows = table.getRowModel().rows
-    const parentRef = useRef<HTMLDivElement | null>(null)
-
-    const virtualizer = useVirtualizer({
-      count: rows.length,
-      getScrollElement: () => parentRef.current,
-      estimateSize: () => 132,
-      overscan: 8,
-    })
-
-    useLayoutEffect(() => {
-      const updateHeaderStickyTop = () => {
-        const scrollElement = parentRef.current
-        const filtersElement = filtersRef.current
-
-        if (!scrollElement || !filtersElement) {
-          setHeaderStickyTop(0)
-          return
-        }
-
-        const hasInternalScroll =
-          scrollElement.scrollHeight > scrollElement.clientHeight + 1
-
-        if (hasInternalScroll) {
-          setHeaderStickyTop(0)
-          return
-        }
-
-        const globalHeaderOffset = 64
-        setHeaderStickyTop(filtersElement.offsetHeight + globalHeaderOffset)
-      }
-
-      updateHeaderStickyTop()
-
-      const scrollElement = parentRef.current
-      const filtersElement = filtersRef.current
-      const resizeObserver = new ResizeObserver(() => {
-        updateHeaderStickyTop()
-      })
-
-      if (scrollElement) {
-        resizeObserver.observe(scrollElement)
-      }
-
-      if (filtersElement) {
-        resizeObserver.observe(filtersElement)
-      }
-
-      window.addEventListener("resize", updateHeaderStickyTop)
-
-      return () => {
-        resizeObserver.disconnect()
-        window.removeEventListener("resize", updateHeaderStickyTop)
-      }
-    }, [entries.length, filteredRowCount])
 
     const availabilityOptions: [
       PillDropdownOption<DiscographyEntry["availability"] | "">,
@@ -502,14 +438,11 @@ const DiscographyTable = memo(
     return (
       <div
         className={cn(
-          "flex h-full min-h-[16rem] flex-col rounded-3xl bg-background/85 p-0",
+          "flex h-full min-h-[16rem] flex-col overflow-hidden rounded-3xl border border-border/50 bg-background/85 p-0",
           className
         )}
       >
-        <div
-          ref={filtersRef}
-          className="sticky top-16 z-30 flex flex-col gap-3 border-b border-border/30 bg-background/95 px-4 pb-3 pt-4 backdrop-blur lg:flex-row lg:flex-wrap lg:items-center lg:justify-between"
-        >
+        <div className="sticky top-16 z-30 flex flex-col gap-3 border-b border-border/30 bg-background/95 px-4 pb-3 pt-4 backdrop-blur lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
           <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:gap-4">
             <div className="space-y-1">
               <Label htmlFor="discography-search" className="sr-only">
@@ -559,20 +492,20 @@ const DiscographyTable = memo(
               />
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.24rem] text-muted-foreground lg:justify-end lg:items-center">
+          <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.12rem] text-muted-foreground sm:tracking-[0.2rem] lg:items-center lg:justify-end">
             <span className="whitespace-nowrap">
               Showing {filteredRowCount} filtered · {entries.length} total
             </span>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <div ref={parentRef} className="h-full min-h-0 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <div className="h-full min-h-0 overflow-auto">
             {rows.length ? (
               <>
                 <div
-                  className="sticky z-10 hidden border-b border-border/30 bg-background/95 px-5 py-3 text-[0.68rem] uppercase tracking-[0.2rem] text-muted-foreground backdrop-blur md:grid md:grid-cols-[72px_1.55fr_1.05fr_0.9fr_1fr_0.95fr_0.85fr_1fr_0.9fr] md:items-center md:gap-5"
-                  style={{ top: `${headerStickyTop}px` }}
+                  data-testid="discography-table-header"
+                  className="hidden border-b border-border/40 bg-surface/95 px-5 py-3 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground md:grid md:grid-cols-[72px_1.55fr_1.05fr_0.9fr_1fr_0.95fr_0.85fr_1fr_0.9fr] md:items-center md:gap-5"
                 >
                   <div className="text-left">Cover</div>
                   <SortableHeader
@@ -597,15 +530,8 @@ const DiscographyTable = memo(
                   <div className="text-right">Actions</div>
                 </div>
 
-                <div
-                  className="relative md:pt-14"
-                  style={{ height: virtualizer.getTotalSize() }}
-                >
-                  {virtualizer.getVirtualItems().map((virtualRow) => {
-                    const row = rows[virtualRow.index]
-                    if (!row) {
-                      return null
-                    }
+                <div>
+                  {rows.map((row) => {
                     const cellById = Object.fromEntries(
                       row
                         .getVisibleCells()
@@ -614,15 +540,7 @@ const DiscographyTable = memo(
                     return (
                       <div
                         key={row.id}
-                        data-index={virtualRow.index}
-                        ref={virtualizer.measureElement}
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          width: "100%",
-                          transform: `translateY(${virtualRow.start}px)`,
-                        }}
+                        data-testid="discography-row"
                         className="border-b border-border/30"
                       >
                         <div className="px-4 py-4 md:hidden">
@@ -638,7 +556,7 @@ const DiscographyTable = memo(
                               </div>
                               <div className="min-w-0 flex-1 space-y-3">
                                 <div className="space-y-1">
-                                  <p className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-muted-foreground">
                                     Release
                                   </p>
                                   {cellById.title
@@ -649,7 +567,7 @@ const DiscographyTable = memo(
                                     : null}
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-muted-foreground">
                                     Artist
                                   </p>
                                   {cellById.artist
@@ -663,7 +581,7 @@ const DiscographyTable = memo(
                             </div>
 
                             <div className="mt-4 space-y-1">
-                              <p className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-muted-foreground">
                                 Formats
                               </p>
                               {cellById.formats
@@ -676,7 +594,7 @@ const DiscographyTable = memo(
 
                             <dl className="mt-4 grid grid-cols-2 gap-3">
                               <div className="space-y-1">
-                                <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-muted-foreground">
                                   Release date
                                 </dt>
                                 <dd>
@@ -690,7 +608,7 @@ const DiscographyTable = memo(
                                 </dd>
                               </div>
                               <div className="space-y-1">
-                                <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-muted-foreground">
                                   Tags
                                 </dt>
                                 <dd>
@@ -703,7 +621,7 @@ const DiscographyTable = memo(
                                 </dd>
                               </div>
                               <div className="space-y-1">
-                                <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-muted-foreground">
                                   Catalog #
                                 </dt>
                                 <dd>
@@ -717,7 +635,7 @@ const DiscographyTable = memo(
                                 </dd>
                               </div>
                               <div className="space-y-1">
-                                <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
+                                <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-muted-foreground">
                                   Availability
                                 </dt>
                                 <dd>
@@ -730,11 +648,8 @@ const DiscographyTable = memo(
                                     : null}
                                 </dd>
                               </div>
-                              <div className="space-y-1">
-                                <dt className="text-[0.58rem] font-semibold uppercase tracking-[0.24rem] text-muted-foreground">
-                                  Action
-                                </dt>
-                                <dd className="pt-0.5">
+                              <div className="col-span-2">
+                                <dd className="pt-1">
                                   {cellById.actions
                                     ? flexRender(
                                         cellById.actions.column.columnDef.cell,

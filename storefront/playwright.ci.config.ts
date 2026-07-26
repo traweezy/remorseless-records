@@ -21,7 +21,7 @@ export default defineConfig({
   projects: [
     {
       name: "Desktop Chrome checkout",
-      grep: /checkout remains accessible/,
+      grep: /checkout remains accessible|discography header precedes/,
       use: { ...devices["Desktop Chrome"], browserName: "chromium" },
     },
     {

@@ -408,7 +408,7 @@ const FilterCheckboxList = ({
                       />
                       <span className="min-w-0 text-foreground">{label}</span>
                     </span>
-                    <span className="shrink-0 tabular-nums text-[0.6rem] text-muted-foreground/80">
+                    <span className="shrink-0 tabular-nums text-[0.7rem] text-muted-foreground/80">
                       <span className="sr-only">Catalog total: </span>
                       {count}
                     </span>
@@ -610,7 +610,7 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                 <div className="grid grid-cols-2 gap-2">
                   <label
                     htmlFor={`${idPrefix}-price-minimum`}
-                    className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground"
+                    className="space-y-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground sm:tracking-[0.18rem]"
                   >
                     <span>Minimum</span>
                     <InputGroup className="min-h-11 rounded-lg border-border/70 bg-background px-3 shadow-none">
@@ -635,7 +635,7 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                   </label>
                   <label
                     htmlFor={`${idPrefix}-price-maximum`}
-                    className="space-y-1 text-[0.62rem] uppercase tracking-[0.18rem] text-muted-foreground"
+                    className="space-y-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground sm:tracking-[0.18rem]"
                   >
                     <span>Maximum</span>
                     <InputGroup className="min-h-11 rounded-lg border-border/70 bg-background px-3 shadow-none">
@@ -661,7 +661,7 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
                 </div>
                 <p
                   id={errorId}
-                  className="min-h-4 text-[0.62rem] text-destructive"
+                  className="min-h-4 text-[0.7rem] text-destructive"
                   aria-live="polite"
                 >
                   {error}
@@ -739,7 +739,7 @@ const FilterSidebar = ({
           variant="unstyled"
           size="auto"
           onClick={onClear}
-          className="cursor-pointer text-[0.65rem] uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
+          className="cursor-pointer text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground transition hover:text-foreground sm:tracking-[0.24rem]"
         >
           Reset
         </Button>
@@ -749,7 +749,7 @@ const FilterSidebar = ({
         onClick={onToggleStock}
         variant={showInStockOnly ? "filled" : "outlined"}
         size="default"
-        className="w-full justify-between px-4 text-[0.65rem]"
+        className="w-full justify-between px-4 text-[0.7rem]"
         aria-pressed={showInStockOnly}
       >
         <span className="select-none">In stock</span>
@@ -1402,7 +1402,7 @@ const ProductSearchExperience = ({
   const hasActiveFilters = activeFiltersCount > 0
 
   const filterChipClass =
-    "inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16rem] text-foreground shadow-[0_0_15px_rgba(255,0,0,0.18)] transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50 sm:tracking-[0.25rem]"
+    "inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.16rem] text-foreground shadow-[0_0_15px_rgba(255,0,0,0.18)] transition hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50 sm:tracking-[0.25rem]"
 
   const genreOptions = useMemo(() => {
     type RankedOption = FilterOption & { rank: number }
@@ -1564,7 +1564,7 @@ const ProductSearchExperience = ({
               >
                 {isFetching ? "Refreshing…" : `${totalResults} results`}
               </p>
-              <p className="hidden text-[0.65rem] uppercase tracking-[0.35rem] text-muted-foreground/80 sm:block">
+              <p className="hidden text-[0.7rem] uppercase tracking-[0.24rem] text-muted-foreground/80 sm:block">
                 Tuned in · Brutalized
               </p>
             </div>

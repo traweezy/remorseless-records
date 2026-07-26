@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 
 import {
   getCarouselAutoScroll,
@@ -13,11 +13,9 @@ import {
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
 
 type CarouselAutoScrollControls = {
-  isPaused: boolean
   mount: (instance: unknown) => void
   destroy: () => void
   go: (destination: string | number) => void
-  toggle: () => void
 }
 
 const prefersReducedMotion = (): boolean =>
@@ -28,26 +26,18 @@ const prefersReducedMotion = (): boolean =>
 export const useCarouselAutoScroll = (): CarouselAutoScrollControls => {
   const navigationRef = useRef<CarouselNavigation | null>(null)
   const autoScrollRef = useRef<CarouselAutoScroll | null>(null)
-  const manuallyPausedRef = useRef(false)
-  const [isPaused, setIsPaused] = useState(true)
 
   const mount = useCallback((instance: unknown) => {
     normalizeCarouselSlideRoles(instance)
     navigationRef.current = getCarouselNavigation(instance)
     autoScrollRef.current = getCarouselAutoScroll(instance)
 
-    if (
-      !autoScrollRef.current ||
-      prefersReducedMotion() ||
-      manuallyPausedRef.current
-    ) {
+    if (!autoScrollRef.current || prefersReducedMotion()) {
       autoScrollRef.current?.pause()
-      setIsPaused(true)
       return
     }
 
     autoScrollRef.current.play()
-    setIsPaused(false)
   }, [])
 
   const destroy = useCallback(() => {
@@ -58,24 +48,6 @@ export const useCarouselAutoScroll = (): CarouselAutoScrollControls => {
   const go = useCallback((destination: string | number) => {
     navigationRef.current?.go(destination)
   }, [])
-
-  const toggle = useCallback(() => {
-    const autoScroll = autoScrollRef.current
-    if (!autoScroll) {
-      return
-    }
-
-    if (isPaused) {
-      manuallyPausedRef.current = false
-      autoScroll.play()
-      setIsPaused(false)
-      return
-    }
-
-    manuallyPausedRef.current = true
-    autoScroll.pause()
-    setIsPaused(true)
-  }, [isPaused])
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") {
@@ -91,10 +63,8 @@ export const useCarouselAutoScroll = (): CarouselAutoScrollControls => {
 
       if (event.matches) {
         autoScroll.pause()
-        setIsPaused(true)
-      } else if (!manuallyPausedRef.current) {
+      } else {
         autoScroll.play()
-        setIsPaused(false)
       }
     }
 
@@ -104,5 +74,5 @@ export const useCarouselAutoScroll = (): CarouselAutoScrollControls => {
     }
   }, [])
 
-  return { isPaused, mount, destroy, go, toggle }
+  return { mount, destroy, go }
 }

@@ -236,7 +236,7 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
 
   return (
     <div className="bg-background">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 px-4 pb-12 pt-10 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pb-12 pt-8 sm:gap-10 sm:pt-10 lg:px-8">
         <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-start">
           <ProductGallery
             images={heroImages.map((image, index) => ({
@@ -254,10 +254,10 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
             >
               <Card
                 variant="panel"
-                className="space-y-4 bg-surface/95 p-6 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)]"
+                className="space-y-4 bg-surface/95 p-4 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)] sm:p-6"
               >
                 <div className="space-y-2">
-                  <h1 className="break-words font-display text-4xl uppercase tracking-[0.2rem] text-foreground sm:text-5xl sm:tracking-[0.3rem]">
+                  <h1 className="break-words font-display text-3xl uppercase tracking-[0.12rem] text-foreground sm:text-5xl sm:tracking-[0.3rem]">
                     {productTitle}
                   </h1>
                   {isMusicRelease && artistDisplay ? (
@@ -277,7 +277,7 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                       <Badge
                         key={`genre-chip-${genre}`}
                         variant="outline"
-                        className="border-border/40 bg-background/70 px-3 py-1 text-[0.55rem] tracking-[0.28rem]"
+                        className="border-border/40 bg-background/70 px-3 py-1 text-[0.7rem] tracking-[0.12rem] sm:tracking-[0.24rem]"
                       >
                         {genre}
                       </Badge>
@@ -296,7 +296,7 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
               ) : null}
             </ProductVariantSelectionProvider>
 
-            <Card variant="panel" className="space-y-3 p-6 shadow-none">
+            <Card variant="panel" className="space-y-3 p-4 shadow-none sm:p-6">
               <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                 Description
               </h2>
@@ -306,7 +306,10 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
             </Card>
 
             {tracklist.length ? (
-              <Card variant="panel" className="space-y-3 p-6 shadow-none">
+              <Card
+                variant="panel"
+                className="space-y-3 p-4 shadow-none sm:p-6"
+              >
                 <h3 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
                   Tracklist
                 </h3>

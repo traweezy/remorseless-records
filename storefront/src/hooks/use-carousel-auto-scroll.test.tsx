@@ -27,7 +27,7 @@ type AutoScrollProbeProps = {
 }
 
 const AutoScrollProbe = ({ instance = carousel }: AutoScrollProbeProps) => {
-  const { destroy, go, isPaused, mount, toggle } = useCarouselAutoScroll()
+  const { destroy, go, mount } = useCarouselAutoScroll()
 
   useEffect(() => {
     mount(instance)
@@ -35,15 +35,9 @@ const AutoScrollProbe = ({ instance = carousel }: AutoScrollProbeProps) => {
   }, [destroy, instance, mount])
 
   return (
-    <>
-      <output>{isPaused ? "paused" : "playing"}</output>
-      <button type="button" onClick={toggle}>
-        Toggle
-      </button>
-      <button type="button" onClick={() => go("+1")}>
-        Next
-      </button>
-    </>
+    <button type="button" onClick={() => go("+1")}>
+      Next
+    </button>
   )
 }
 
@@ -59,18 +53,10 @@ describe("useCarouselAutoScroll", () => {
     )
   })
 
-  it("starts, pauses, resumes, and navigates the mounted carousel", () => {
+  it("starts and navigates the mounted carousel", () => {
     render(<AutoScrollProbe />)
 
     expect(autoScroll.play).toHaveBeenCalledTimes(1)
-    expect(screen.getByText("playing")).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle" }))
-    expect(autoScroll.pause).toHaveBeenCalledTimes(1)
-    expect(screen.getByText("paused")).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle" }))
-    expect(autoScroll.play).toHaveBeenCalledTimes(2)
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }))
     expect(carousel.go).toHaveBeenCalledWith("+1")
@@ -83,7 +69,6 @@ describe("useCarouselAutoScroll", () => {
 
     expect(autoScroll.pause).toHaveBeenCalledTimes(1)
     expect(autoScroll.play).not.toHaveBeenCalled()
-    expect(screen.getByText("paused")).toBeInTheDocument()
   })
 
   it("reacts to reduced-motion preference changes", () => {
@@ -97,34 +82,17 @@ describe("useCarouselAutoScroll", () => {
       listener?.({ matches: true } as MediaQueryListEvent)
     })
     expect(autoScroll.pause).toHaveBeenCalledTimes(1)
-    expect(screen.getByText("paused")).toBeInTheDocument()
 
     act(() => {
       listener?.({ matches: false } as MediaQueryListEvent)
     })
     expect(autoScroll.play).toHaveBeenCalledTimes(2)
-    expect(screen.getByText("playing")).toBeInTheDocument()
 
     unmount()
     expect(mediaQuery.removeEventListener).toHaveBeenCalledWith(
       "change",
       listener
     )
-  })
-
-  it("keeps a manually paused carousel paused after motion is allowed", () => {
-    render(<AutoScrollProbe />)
-    const listener = mediaQuery.addEventListener.mock.calls[0]?.[1] as
-      ((event: MediaQueryListEvent) => void) | undefined
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle" }))
-    act(() => {
-      listener?.({ matches: true } as MediaQueryListEvent)
-      listener?.({ matches: false } as MediaQueryListEvent)
-    })
-
-    expect(autoScroll.play).toHaveBeenCalledTimes(1)
-    expect(screen.getByText("paused")).toBeInTheDocument()
   })
 
   it("remains safe when the carousel has no auto-scroll extension", () => {
@@ -138,10 +106,7 @@ describe("useCarouselAutoScroll", () => {
       />
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Toggle" }))
-
     expect(autoScroll.play).not.toHaveBeenCalled()
     expect(autoScroll.pause).not.toHaveBeenCalled()
-    expect(screen.getByText("paused")).toBeInTheDocument()
   })
 })

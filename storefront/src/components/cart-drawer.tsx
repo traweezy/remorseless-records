@@ -102,7 +102,7 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DrawerHeader className="px-4 py-4 sm:px-6">
           <DrawerHeading>
-            <DrawerTitle className="flex items-center gap-2 text-2xl tracking-[0.24rem] sm:text-3xl">
+            <DrawerTitle className="flex items-center gap-2 text-2xl tracking-[0.14rem] sm:text-3xl sm:tracking-[0.24rem]">
               <ShoppingBag className="h-5 w-5 text-accent" aria-hidden />
               Cart
             </DrawerTitle>
@@ -230,7 +230,7 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
             </div>
           </>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-6 py-10 text-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 py-8 text-center sm:px-6 sm:py-10">
             <div className="flex h-16 w-16 items-center justify-center rounded-full border border-destructive/35 bg-destructive/10">
               <ShoppingBag className="h-7 w-7 text-destructive" aria-hidden />
             </div>

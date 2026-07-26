@@ -58,7 +58,7 @@ const CartBundleDetails = memo<CartBundleDetailsProps>(
             {bundle.componentCount === 1 ? "" : "s"}
           </p>
           {hasUnavailable ? (
-            <Badge variant="warning" className="px-2 py-0.5 text-[0.6rem]">
+            <Badge variant="warning" className="px-2 py-0.5 text-[0.7rem]">
               Includes sold-out item
             </Badge>
           ) : null}
@@ -78,7 +78,7 @@ const CartBundleDetails = memo<CartBundleDetailsProps>(
                     {title}
                   </span>
                   {presentation.formatLabel ? (
-                    <span className="mt-0.5 block text-[0.65rem] uppercase tracking-[0.12rem] text-muted-foreground">
+                    <span className="mt-0.5 block text-[0.7rem] uppercase tracking-[0.12rem] text-muted-foreground">
                       {presentation.formatLabel}
                     </span>
                   ) : null}

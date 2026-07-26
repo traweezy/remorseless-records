@@ -15,7 +15,7 @@ export const PageShell = ({
   <div className={cn("bg-background", className)} {...props}>
     <div
       className={cn(
-        "mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pb-16 pt-12 lg:gap-10 lg:px-8",
+        "mx-auto flex w-full max-w-[1440px] flex-col gap-7 px-4 pb-14 pt-8 sm:gap-8 sm:pb-16 sm:pt-12 lg:gap-10 lg:px-8",
         contentClassName
       )}
     >
@@ -42,10 +42,10 @@ export const PageHeader = ({
   ...props
 }: PageHeaderProps) => (
   <header className={cn("space-y-3", className)} {...props}>
-    <p className="text-xs uppercase tracking-[0.35rem] text-muted-foreground">
+    <p className="text-xs uppercase tracking-[0.2rem] text-muted-foreground sm:tracking-[0.35rem]">
       {eyebrow}
     </p>
-    <h1 className="font-display text-5xl uppercase tracking-[0.3rem] text-foreground">
+    <h1 className="font-display text-4xl uppercase tracking-[0.14rem] text-foreground sm:text-5xl sm:tracking-[0.3rem]">
       {title}
     </h1>
     {description ? (

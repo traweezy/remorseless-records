@@ -53,7 +53,7 @@ export const CheckoutSection = memo<CheckoutSectionProps>(
           <div className="min-w-0">
             <h2
               id={`checkout-step-${step}`}
-              className="font-headline text-base uppercase tracking-[0.28rem] text-foreground sm:text-lg"
+              className="font-headline text-base uppercase tracking-[0.14rem] text-foreground sm:text-lg sm:tracking-[0.28rem]"
             >
               {title}
             </h2>

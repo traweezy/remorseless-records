@@ -274,8 +274,11 @@ test("homepage hydrates every curated shelf without client errors", async ({
   }
 
   await expect(
-    page.getByRole("button", { name: /^Play .+ carousel$/ })
+    page.getByRole("main").locator(".product-carousel__splide")
   ).toHaveCount(4)
+  await expect(
+    page.getByRole("button", { name: /^(Play|Pause) .+ carousel$/ })
+  ).toHaveCount(0)
   await expect(
     page.locator('[aria-label="Collection: New"]').first()
   ).toBeVisible()
@@ -531,17 +534,14 @@ test("cart drawer stays usable and contained on mobile devices", async ({
   await drawer
     .getByRole("button", { name: "Remove Pathological Decomposition" })
     .click()
-  const undo = page.getByRole("button", { name: "Undo", exact: true })
-  await expect(undo).toBeVisible()
-  await page.screenshot({
-    path: `/tmp/remorseless-cart-undo-${deviceName}.png`,
-  })
-  await undo.click()
+  await expect(drawer.getByText("Your cart is empty")).toBeVisible()
   await expect(
-    drawer.getByRole("button", {
-      name: "Remove Pathological Decomposition",
-    })
-  ).toBeVisible()
+    page.getByRole("button", { name: "Undo", exact: true })
+  ).toHaveCount(0)
+  await expect(drawer.getByRole("button", { name: "Checkout" })).toHaveCount(0)
+  await page.screenshot({
+    path: `/tmp/remorseless-cart-empty-${deviceName}.png`,
+  })
 })
 
 test("adding from quick shop confirms in place without opening the cart", async ({
@@ -937,7 +937,24 @@ test("catalog loads the next result window before the end is reached", async ({
   await expect(page.getByText("Showing 120 of 461")).toBeVisible()
 })
 
-const routes = ["/about", "/accessibility", "/cookies", "/terms"] as const
+const routes = [
+  "/",
+  "/catalog",
+  "/discography",
+  "/news",
+  "/contact",
+  "/about",
+  "/submissions",
+  "/faq",
+  "/help/shipping",
+  "/shipping",
+  "/returns",
+  "/terms",
+  "/privacy",
+  "/accessibility",
+  "/cookies",
+  "/cart",
+] as const
 
 for (const path of routes) {
   test(`${path} stays within the emulated mobile viewport`, async ({
@@ -972,6 +989,31 @@ for (const path of routes) {
     expect(metrics.mainRight).toBeLessThanOrEqual(metrics.viewportWidth)
   })
 }
+
+test("discography header precedes every desktop row", async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith("Desktop"))
+
+  const response = await page.goto("/discography", {
+    waitUntil: "networkidle",
+  })
+  expect(response?.status()).toBeLessThan(400)
+
+  const activeMain = page.getByRole("main")
+  const header = activeMain.getByTestId("discography-table-header")
+  const firstRow = activeMain.getByTestId("discography-row").first()
+  await expect(header).toBeVisible()
+  await expect(firstRow).toBeVisible()
+
+  const headerBounds = await header.boundingBox()
+  const rowBounds = await firstRow.boundingBox()
+  expect(headerBounds).not.toBeNull()
+  expect(rowBounds).not.toBeNull()
+  expect(headerBounds!.y + headerBounds!.height).toBeLessThanOrEqual(
+    rowBounds!.y + 1
+  )
+})
 
 test("checkout remains accessible and contained with device emulation", async ({
   page,

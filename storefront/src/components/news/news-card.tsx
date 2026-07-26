@@ -66,7 +66,7 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
   return (
     <Card
       as="article"
-      className="group border-border/50 bg-muted/10 p-5 shadow-lg shadow-black/5 backdrop-blur-sm md:p-8"
+      className="group border-border/50 bg-muted/10 p-4 shadow-lg shadow-black/5 backdrop-blur-sm sm:p-5 md:p-8"
     >
       <div className={layoutClassName}>
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-border/50 bg-muted md:w-5/12">
@@ -84,7 +84,7 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
           )}
         </div>
         <div className="flex flex-1 flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.14rem] text-muted-foreground sm:tracking-[0.3rem]">
             <span>{publishedLabel}</span>
             {entry.author ? (
               <span className="text-foreground/70">By {entry.author}</span>
@@ -94,7 +94,7 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
             href={detailHref}
             className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <h2 className="font-display text-3xl uppercase tracking-[0.2rem] text-foreground">
+            <h2 className="font-display text-2xl uppercase tracking-[0.1rem] text-foreground sm:text-3xl sm:tracking-[0.2rem]">
               {entry.title}
             </h2>
           </SmartLink>
@@ -123,9 +123,9 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
           <div className="pt-4">
             <SmartLink
               href={detailHref}
-              className="text-xs uppercase tracking-[0.3rem] text-foreground underline decoration-2 underline-offset-4"
+              className="inline-flex min-h-8 items-center text-xs uppercase tracking-[0.16rem] text-foreground underline decoration-2 underline-offset-4 sm:tracking-[0.3rem]"
             >
-              Read more
+              Read {entry.title}
             </SmartLink>
           </div>
         </div>
