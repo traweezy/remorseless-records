@@ -382,8 +382,12 @@ const baseRecord = (
   orderId: string;
 } | null => {
   const orderId = text(order.id);
-  const displayId = Number(order.display_id);
-  if (!orderId || !Number.isSafeInteger(displayId)) {
+  const displayIdValue = decimal(order.display_id);
+  if (!orderId || !displayIdValue.isInteger()) {
+    return null;
+  }
+  const displayId = displayIdValue.toNumber();
+  if (!Number.isSafeInteger(displayId)) {
     return null;
   }
   return {

@@ -292,6 +292,7 @@ describe("tax record projection", () => {
     const base = orderFixture();
     const order = {
       ...base,
+      display_id: wrapped("42"),
       items: base.items.map((item) => ({
         ...item,
         raw_original_subtotal: wrapped("10"),

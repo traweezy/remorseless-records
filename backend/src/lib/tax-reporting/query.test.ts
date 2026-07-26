@@ -173,6 +173,19 @@ describe("tax report query", () => {
         total: "10.8000",
       }),
     ]);
+    expect(report.source).toMatchObject({
+      medusaOrdersScanned: 1,
+      projectedRecords: 1,
+      relationships: {
+        ordersWithItems: 1,
+        ordersWithPaymentCollections: 1,
+        ordersWithPayments: 1,
+        ordersWithShippingAddress: 1,
+        ordersWithSummary: 0,
+        paymentCollections: 1,
+        payments: 1,
+      },
+    });
   });
 
   it("fails closed when a linked payment cannot be hydrated", async () => {

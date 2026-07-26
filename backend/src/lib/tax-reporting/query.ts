@@ -228,6 +228,45 @@ const hydrateOrderPayments = async ({
   }));
 };
 
+const relationshipDiagnostics = (
+  orders: UnknownRecord[],
+): {
+  ordersWithItems: number;
+  ordersWithPaymentCollections: number;
+  ordersWithPayments: number;
+  ordersWithShippingAddress: number;
+  ordersWithSummary: number;
+  paymentCollections: number;
+  payments: number;
+} => {
+  const collections = orders.flatMap((order) =>
+    records(order.payment_collections),
+  );
+  const linkedPayments = collections.flatMap((collection) =>
+    records(collection.payments),
+  );
+  return {
+    ordersWithItems: orders.filter((order) => records(order.items).length > 0)
+      .length,
+    ordersWithPaymentCollections: orders.filter(
+      (order) => records(order.payment_collections).length > 0,
+    ).length,
+    ordersWithPayments: orders.filter((order) =>
+      records(order.payment_collections).some(
+        (collection) => records(collection.payments).length > 0,
+      ),
+    ).length,
+    ordersWithShippingAddress: orders.filter(
+      (order) => asRecord(order.shipping_address) !== null,
+    ).length,
+    ordersWithSummary: orders.filter(
+      (order) => asRecord(order.summary) !== null,
+    ).length,
+    paymentCollections: collections.length,
+    payments: linkedPayments.length,
+  };
+};
+
 const filtersSchema = z.object({
   limit: z.coerce.number().int().min(10).max(100).default(50),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
@@ -381,6 +420,8 @@ export const buildTaxReport = async ({
     resultCount: filteredRecords.length,
     source: {
       medusaOrdersScanned: loaded.orders.length,
+      projectedRecords: allRecords.length,
+      relationships: relationshipDiagnostics(loaded.orders),
       truncated: loaded.truncated,
     },
     summaries: summarizeTaxRecords(allRecords),
@@ -403,6 +444,8 @@ export const buildFullTaxReport = async ({
     records,
     source: {
       medusaOrdersScanned: loaded.orders.length,
+      projectedRecords: records.length,
+      relationships: relationshipDiagnostics(loaded.orders),
       truncated: loaded.truncated,
     },
     summaries: summarizeTaxRecords(records),
