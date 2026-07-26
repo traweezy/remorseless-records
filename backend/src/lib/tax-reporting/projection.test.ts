@@ -2,6 +2,7 @@ import { BigNumber } from "@medusajs/framework/utils";
 
 import { parseTaxReportPeriod } from "./periods";
 import {
+  diagnoseTaxProjection,
   projectTaxRecords,
   summarizeDestinations,
   summarizeTaxRecords,
@@ -97,6 +98,37 @@ const orderFixture = ({
 });
 
 describe("tax record projection", () => {
+  it("reports privacy-safe reasons when an order is not projected", () => {
+    const order = orderFixture();
+    const diagnostics = diagnoseTaxProjection({
+      orders: [
+        {
+          ...order,
+          display_id: new BigNumber("42"),
+          payment_collections: [],
+          summary: undefined,
+        },
+      ],
+      period,
+    });
+
+    expect(diagnostics).toMatchObject({
+      ordersInPeriod: 1,
+      ordersWithCaptureTimestamp: 0,
+      ordersWithIntegerDisplayId: 1,
+      ordersWithOccurredAt: 1,
+      ordersWithOrderId: 1,
+      ordersWithPositiveCaptureTotal: 0,
+      ordersWithPositiveCapturedPaymentTotal: 0,
+      ordersWithPositiveCollectionCapturedTotal: 0,
+      ordersWithPositiveOriginalTotal: 1,
+      ordersWithPositivePaidTotal: 0,
+      ordersWithPositiveSummaryPaidTotal: 0,
+      projectedSales: 0,
+      structuredOrders: 1,
+    });
+  });
+
   it("projects a complete controlled sale", () => {
     const records = projectTaxRecords({
       orders: [orderFixture()],

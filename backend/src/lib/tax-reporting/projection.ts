@@ -299,29 +299,22 @@ const payments = (order: UnknownRecord): UnknownRecord[] =>
 const captures = (payment: UnknownRecord): UnknownRecord[] =>
   records(payment.captures);
 
-const paidTotal = (order: UnknownRecord): Decimal => {
+const summaryPaidTotal = (order: UnknownRecord): Decimal => {
   const summary = asRecord(order.summary);
-  const summaryPaid = decimalField(
-    summary ?? {},
-    "raw_paid_total",
-    "paid_total",
-  );
-  if (summaryPaid.gt(0)) {
-    return summaryPaid;
-  }
+  return decimalField(summary ?? {}, "raw_paid_total", "paid_total");
+};
 
-  const captureTotal = payments(order)
+const captureTotal = (order: UnknownRecord): Decimal =>
+  payments(order)
     .flatMap(captures)
     .reduce(
       (total, capture) =>
         MathBN.add(total, decimalField(capture, "raw_amount", "amount")),
       ZERO,
     );
-  if (captureTotal.gt(0)) {
-    return captureTotal;
-  }
 
-  const collectionTotal = records(order.payment_collections).reduce(
+const collectionCapturedTotal = (order: UnknownRecord): Decimal =>
+  records(order.payment_collections).reduce(
     (total, collection) =>
       MathBN.add(
         total,
@@ -333,11 +326,9 @@ const paidTotal = (order: UnknownRecord): Decimal => {
       ),
     ZERO,
   );
-  if (collectionTotal.gt(0)) {
-    return collectionTotal;
-  }
 
-  return payments(order).reduce(
+const capturedPaymentTotal = (order: UnknownRecord): Decimal =>
+  payments(order).reduce(
     (total, payment) =>
       payment.captured_at
         ? MathBN.add(
@@ -353,6 +344,24 @@ const paidTotal = (order: UnknownRecord): Decimal => {
         : total,
     ZERO,
   );
+
+const paidTotal = (order: UnknownRecord): Decimal => {
+  const summaryPaid = summaryPaidTotal(order);
+  if (summaryPaid.gt(0)) {
+    return summaryPaid;
+  }
+
+  const capturesPaid = captureTotal(order);
+  if (capturesPaid.gt(0)) {
+    return capturesPaid;
+  }
+
+  const collectionTotal = collectionCapturedTotal(order);
+  if (collectionTotal.gt(0)) {
+    return collectionTotal;
+  }
+
+  return capturedPaymentTotal(order);
 };
 
 const paymentCaptureTimestamp = (order: UnknownRecord): string | null => {
@@ -748,6 +757,70 @@ export const projectTaxRecords = ({
       return [...(sale ? [sale] : []), ...refundRecords(order, period)];
     })
     .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+
+export const diagnoseTaxProjection = ({
+  orders,
+  period,
+}: {
+  orders: unknown[];
+  period: TaxReportPeriod;
+}): {
+  ordersInPeriod: number;
+  ordersWithCaptureTimestamp: number;
+  ordersWithIntegerDisplayId: number;
+  ordersWithOccurredAt: number;
+  ordersWithOrderId: number;
+  ordersWithPositiveCaptureTotal: number;
+  ordersWithPositiveCapturedPaymentTotal: number;
+  ordersWithPositiveCollectionCapturedTotal: number;
+  ordersWithPositiveOriginalTotal: number;
+  ordersWithPositivePaidTotal: number;
+  ordersWithPositiveSummaryPaidTotal: number;
+  projectedSales: number;
+  structuredOrders: number;
+} => {
+  const structuredOrders = orders
+    .map(asRecord)
+    .filter((order): order is UnknownRecord => order !== null);
+  const count = (predicate: (order: UnknownRecord) => boolean): number =>
+    structuredOrders.filter(predicate).length;
+  const occurredAt = (order: UnknownRecord): string | null =>
+    paymentCaptureTimestamp(order) ?? timestamp(order.created_at);
+
+  return {
+    ordersInPeriod: count((order) => {
+      const value = occurredAt(order);
+      return value !== null && inPeriod(value, period);
+    }),
+    ordersWithCaptureTimestamp: count(
+      (order) => paymentCaptureTimestamp(order) !== null,
+    ),
+    ordersWithIntegerDisplayId: count((order) => {
+      const value = decimal(order.display_id);
+      return value.isInteger() && Number.isSafeInteger(value.toNumber());
+    }),
+    ordersWithOccurredAt: count((order) => occurredAt(order) !== null),
+    ordersWithOrderId: count((order) => text(order.id) !== null),
+    ordersWithPositiveCaptureTotal: count((order) =>
+      captureTotal(order).gt(0),
+    ),
+    ordersWithPositiveCapturedPaymentTotal: count((order) =>
+      capturedPaymentTotal(order).gt(0),
+    ),
+    ordersWithPositiveCollectionCapturedTotal: count((order) =>
+      collectionCapturedTotal(order).gt(0),
+    ),
+    ordersWithPositiveOriginalTotal: count((order) =>
+      originalAmounts(order).total.gt(0),
+    ),
+    ordersWithPositivePaidTotal: count((order) => paidTotal(order).gt(0)),
+    ordersWithPositiveSummaryPaidTotal: count((order) =>
+      summaryPaidTotal(order).gt(0),
+    ),
+    projectedSales: count((order) => saleRecord(order, period) !== null),
+    structuredOrders: structuredOrders.length,
+  };
+};
 
 export const totalWithTax = (summary: TaxDestinationSummary): string =>
   addMoney(summary.grossSales, summary.taxCollected);

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { TaxReportPeriod } from "./periods";
 import {
+  diagnoseTaxProjection,
   projectTaxRecords,
   summarizeDestinations,
   summarizeTaxRecords,
@@ -421,6 +422,10 @@ export const buildTaxReport = async ({
     source: {
       medusaOrdersScanned: loaded.orders.length,
       projectedRecords: allRecords.length,
+      projectionDiagnostics:
+        allRecords.length === 0
+          ? diagnoseTaxProjection({ orders: loaded.orders, period })
+          : null,
       relationships: relationshipDiagnostics(loaded.orders),
       truncated: loaded.truncated,
     },
@@ -445,6 +450,10 @@ export const buildFullTaxReport = async ({
     source: {
       medusaOrdersScanned: loaded.orders.length,
       projectedRecords: records.length,
+      projectionDiagnostics:
+        records.length === 0
+          ? diagnoseTaxProjection({ orders: loaded.orders, period })
+          : null,
       relationships: relationshipDiagnostics(loaded.orders),
       truncated: loaded.truncated,
     },
