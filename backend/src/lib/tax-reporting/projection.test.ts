@@ -168,20 +168,11 @@ describe("tax record projection", () => {
           ],
         },
       ],
-      shipping_methods: [
-        {
-          original_subtotal: "5",
-          original_tax_total: "0.4",
-          tax_lines: [
-            {
-              code: "rr_tax:taxrate_io:g2:quote",
-              data: base.items[0]?.tax_lines[0]?.data,
-              provider_id: "rate_lookup",
-              rate: "8",
-            },
-          ],
-        },
-      ],
+      original_item_subtotal: "10",
+      original_item_tax_total: "0.8",
+      original_shipping_subtotal: "5",
+      original_shipping_tax_total: "0.4",
+      shipping_methods: [],
       summary: {
         original_order_total: "16.2",
         paid_total: "16.2",

@@ -212,6 +212,30 @@ const originalAmounts = (
     "raw_original_order_total",
     "original_order_total",
   );
+  const explicitGross = MathBN.add(
+    decimalField(
+      order,
+      "raw_original_item_subtotal",
+      "original_item_subtotal",
+    ),
+    decimalField(
+      order,
+      "raw_original_shipping_subtotal",
+      "original_shipping_subtotal",
+    ),
+  );
+  const explicitTax = MathBN.add(
+    decimalField(
+      order,
+      "raw_original_item_tax_total",
+      "original_item_tax_total",
+    ),
+    decimalField(
+      order,
+      "raw_original_shipping_tax_total",
+      "original_shipping_tax_total",
+    ),
+  );
   const orderSubjects = subjects(order);
   let subjectGross = ZERO;
   let subjectTax = ZERO;
@@ -238,8 +262,11 @@ const originalAmounts = (
 
   const greater = (left: Decimal, right: Decimal): Decimal =>
     right.gt(left) ? right : left;
-  const gross = greater(orderGross, subjectGross);
-  const tax = greater(orderTax, subjectTax);
+  const gross = [orderGross, explicitGross, subjectGross].reduce(
+    greater,
+    ZERO,
+  );
+  const tax = [orderTax, explicitTax, subjectTax].reduce(greater, ZERO);
   const total = [orderTotal, summaryTotal, MathBN.add(gross, tax)].reduce(
     greater,
     ZERO,
