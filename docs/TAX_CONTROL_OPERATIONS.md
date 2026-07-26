@@ -9,23 +9,30 @@ manually edit an order total in Stripe.
 
 Open **Tax control** in Medusa Admin. The page shows:
 
-- an active-provider overview with its calculation basis, readiness, generation,
-  last change, reason, and provider-specific operating state;
-- readiness checks for both providers;
+- a neutral current-setup summary with its calculation method, connection,
+  last change, and reason;
+- readiness rows for both providers, using plain **Ready** or **Missing**
+  labels;
 - TaxRate.io's most recently returned usage/quota inside its provider card;
-- active carts, prepared checkouts, and payments finalizing;
+- provider-locked checkouts and payments completing, with the exact definition
+  shown beside each number;
 - tracked tax-bound payments and refund counts;
 - pending refund reversals, Medusa/Stripe refund-ledger mismatches, disputes,
   or failed Stripe Tax associations; and
 - the immutable provider-switch history.
 
-The providers are one radio group. The blue outline and **Active provider**
-status always identify the applied provider, even while another provider is
-selected as a pending change. Choosing the inactive provider reveals the impact
-and reason form in the same section; it does not change backend state. A switch
-requires a provider that is ready, a reason of at least ten characters,
-confirmation, the current generation, and an authenticated Admin. The backend
-serializes the switch and uses an idempotency key.
+The current provider has a neutral **Current** label. Each inactive provider has
+an explicit switch button, which stays disabled until its setup is ready. The
+button opens one confirmation dialog containing the impact summary and audit
+reason; no backend state changes before confirmation. A switch requires a
+reason of at least ten characters, the current internal configuration version,
+and an authenticated Admin. The backend serializes the switch and uses an
+idempotency key.
+
+Provider-locked checkout and payment-completion counts are calculated across
+every unfinished cart updated in the last 30 days. The query paginates the
+entire matching set; it is not a 500-row sample. Abandoned browsing carts that
+never reached a processable Stripe payment session are not included.
 
 Open carts without a prepared payment adopt the new provider on their next tax
 refresh. Prepared payments retain their original provider/generation/quote.

@@ -138,12 +138,14 @@ for a new quote:
 - Stripe Tax supplies address-aware, per-line calculations and a calculation
   ID that is bound to the exact Medusa-created PaymentIntent.
 
-An authenticated Medusa Admin can review readiness, quota, open-cart impact,
-payment evidence, and an immutable provider-switch history at **Tax control**.
-Switches increment a generation. Open carts without a prepared payment use the
-new generation on their next tax refresh; prepared payments keep their original
-provider, generation, fingerprint, and calculation/rate. No cart can combine
-two providers.
+An authenticated Medusa Admin can review readiness, quota, exact paginated
+checkout impact, payment evidence, and an immutable provider-switch history at
+**Tax control**. The current setup is read-only; an explicit provider action
+opens the confirmation and audit-reason dialog. Switches increment an internal
+generation. Open carts without a prepared payment use the new generation on
+their next tax refresh; prepared payments keep their original provider,
+generation, fingerprint, and calculation/rate. No cart can combine two
+providers.
 
 The storefront BFF calls `POST /store/checkout/tax-link` with a short-lived,
 purpose-bound `CHECKOUT_BFF_SECRET` proof before returning a client secret and

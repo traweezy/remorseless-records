@@ -10,14 +10,13 @@ import {
   type ReactNode,
 } from "react";
 import { defineRouteConfig } from "@medusajs/admin-sdk";
-import { BuildingTax, CheckCircle, XCircle } from "@medusajs/icons";
+import { BuildingTax } from "@medusajs/icons";
 import {
   Button,
   Container,
   Heading,
   Label,
   Prompt,
-  RadioGroup,
   Skeleton,
   StatusBadge,
   Table,
@@ -26,22 +25,10 @@ import {
   toast,
 } from "@medusajs/ui";
 import {
-  canReviewProviderSwitch,
-  getProviderCardState,
-  isProviderName,
-  normalizeTargetProvider,
+  canConfirmProviderSwitch,
   providerLabel,
-  resolveProviderSelection,
   type ProviderName,
 } from "./ui-state";
-
-type FocusableTextarea = HTMLTextAreaElement & {
-  focus: (options?: { preventScroll?: boolean }) => void;
-  scrollIntoView: (options?: {
-    behavior?: "auto" | "smooth";
-    block?: "center";
-  }) => void;
-};
 
 type ReadinessCheck = {
   detail: string;
@@ -107,12 +94,10 @@ type TaxControlSnapshot = {
     tracked: number;
   };
   impact: {
-    activeCartWindowDays: number;
-    activeCarts: number;
-    finalizingCarts: number;
+    activityWindowDays: number;
     frozenByProvider: Record<ProviderName, number>;
-    preparedCarts: number;
-    truncated: boolean;
+    paymentsFinalizing: number;
+    preparedCheckouts: number;
   };
   providers: {
     stripeTax: ProviderReadiness & {
@@ -139,10 +124,10 @@ type ProviderCardProps = {
   children?: ReactNode;
   description: string;
   name: string;
-  pending: boolean;
+  onSwitch: (provider: ProviderName) => void;
   provider: ProviderName;
   readiness: ProviderReadiness;
-  highlighted: boolean;
+  saving: boolean;
 };
 
 const incidentLabel = (
@@ -212,107 +197,118 @@ const formatMinorAmount = (amount: number, currencyCode: string): string =>
     style: "currency",
   }).format(amount / 100);
 
+const quotaSourceLabel = (source: string): string =>
+  source === "manual_refresh"
+    ? "manual refresh"
+    : source === "checkout_lookup"
+      ? "checkout calculation"
+      : "provider response";
+
 const ProviderCard = memo<ProviderCardProps>(
   ({
     active,
     children,
     description,
-    highlighted,
     name,
-    pending,
+    onSwitch,
     provider,
     readiness,
-  }) => (
-    <section
-      className={`flex min-h-full flex-col rounded-lg border p-4 transition-[border-color,box-shadow,background-color] duration-200 motion-reduce:transition-none ${
-        active
-          ? "border-ui-border-interactive bg-ui-bg-base-hover ring-1 ring-ui-fg-interactive"
-          : pending
-            ? "border-ui-border-strong shadow-elevation-card-rest"
-            : "border-ui-border-base"
-      }`}
-      aria-label={`${name}${active ? ", active provider" : ""}`}
-      data-active={active ? "true" : "false"}
-      data-highlighted={highlighted ? "true" : "false"}
-      data-pending={pending ? "true" : "false"}
-    >
-      <div className="flex items-start gap-3">
-        <RadioGroup.Item
-          aria-describedby={`tax-provider-${provider}-description`}
-          className="mt-0.5 shrink-0"
-          id={`tax-provider-${provider}`}
-          value={provider}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <Label
-                className="cursor-pointer"
-                htmlFor={`tax-provider-${provider}`}
-                size="base"
-                weight="plus"
-              >
-                {name}
-              </Label>
-              <Text
-                id={`tax-provider-${provider}-description`}
-                size="small"
-                className="mt-1 text-ui-fg-subtle"
-              >
-                {description}
-              </Text>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {active ? (
-                <StatusBadge color="blue">Active provider</StatusBadge>
-              ) : null}
-              {pending ? (
-                <StatusBadge color="orange">Pending change</StatusBadge>
-              ) : null}
-              <StatusBadge color={readiness.ready ? "green" : "orange"}>
-                {readiness.ready ? "Ready" : "Needs setup"}
-              </StatusBadge>
-            </div>
+    saving,
+  }) => {
+    const handleSwitch = useCallback(() => {
+      onSwitch(provider);
+    }, [onSwitch, provider]);
+
+    return (
+      <section
+        className="flex flex-col rounded-lg border border-ui-border-base p-4"
+        aria-label={`${name}${active ? ", active provider" : ""}`}
+        data-active={active ? "true" : "false"}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Heading level="h3">{name}</Heading>
+            <Text
+              id={`tax-provider-${provider}-description`}
+              size="small"
+              className="mt-1 text-ui-fg-subtle"
+            >
+              {description}
+            </Text>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {active ? <StatusBadge color="grey">Current</StatusBadge> : null}
+            <StatusBadge color={readiness.ready ? "green" : "orange"}>
+              {readiness.ready ? "Ready" : "Needs setup"}
+            </StatusBadge>
           </div>
         </div>
-      </div>
 
-      <Text size="small" className="mt-4">
-        {readiness.message}
-      </Text>
-      <ul className="mt-4 flex flex-1 flex-col gap-3">
-        {readiness.checks.map((item) => (
-          <li key={item.id} className="flex items-start gap-2">
-            {item.ready ? (
-              <CheckCircle
-                aria-hidden="true"
-                className="mt-0.5 shrink-0 text-ui-fg-success"
-              />
-            ) : (
-              <XCircle
-                aria-hidden="true"
-                className="mt-0.5 shrink-0 text-ui-fg-error"
-              />
-            )}
-            <div className="min-w-0">
-              <Text size="small" weight="plus">
-                {item.label}
-              </Text>
-              <Text size="xsmall" className="text-ui-fg-subtle">
-                {item.detail}
-              </Text>
+        <Text size="small" className="mt-4">
+          {readiness.message}
+        </Text>
+        <dl className="mt-4 flex flex-col divide-y divide-ui-border-base">
+          {readiness.checks.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+            >
+              <dt className="min-w-0">
+                <Text size="small" weight="plus">
+                  {item.label}
+                </Text>
+                <Text size="xsmall" className="mt-0.5 text-ui-fg-subtle">
+                  {item.detail}
+                </Text>
+              </dt>
+              <dd className="shrink-0">
+                <Text
+                  size="xsmall"
+                  weight="plus"
+                  className={
+                    item.ready ? "text-ui-fg-subtle" : "text-ui-fg-warning"
+                  }
+                >
+                  {item.ready ? "Ready" : "Missing"}
+                </Text>
+              </dd>
             </div>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </dl>
 
-      {children ? (
+        {children ? (
+          <div className="mt-5 border-t border-ui-border-base pt-4">
+            {children}
+          </div>
+        ) : null}
+
         <div className="mt-5 border-t border-ui-border-base pt-4">
-          {children}
+          {active ? (
+            <Text size="small" className="text-ui-fg-subtle">
+              Used for new tax calculations.
+            </Text>
+          ) : (
+            <>
+              <Button
+                aria-describedby={`tax-provider-${provider}-description`}
+                disabled={!readiness.ready || saving}
+                onClick={handleSwitch}
+                type="button"
+                variant="secondary"
+              >
+                Switch to {name}
+              </Button>
+              {!readiness.ready ? (
+                <Text size="xsmall" className="mt-2 text-ui-fg-subtle">
+                  Complete the missing setup before switching.
+                </Text>
+              ) : null}
+            </>
+          )}
         </div>
-      ) : null}
-    </section>
-  ),
+      </section>
+    );
+  },
 );
 
 const LoadingState = memo(() => (
@@ -335,11 +331,9 @@ const TaxControlPage = memo(() => {
   const [saving, setSaving] = useState(false);
   const [refreshingQuota, setRefreshingQuota] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
   const loadLockRef = useRef(false);
   const switchLockRef = useRef(false);
   const quotaRefreshLockRef = useRef(false);
-  const reasonRef = useRef<FocusableTextarea>(null);
 
   const load = useCallback(async () => {
     if (loadLockRef.current) {
@@ -370,41 +364,21 @@ const TaxControlPage = memo(() => {
     void load();
   }, [load]);
 
-  const selectProvider = useCallback(
-    (value: string) => {
-      if (!snapshot || !isProviderName(value)) {
+  const beginProviderSwitch = useCallback(
+    (provider: ProviderName) => {
+      if (!snapshot || provider === snapshot.control.activeProvider) {
         return;
       }
-      const targetProvider = normalizeTargetProvider(
-        snapshot.control.activeProvider,
-        value,
-      );
-      setSelectedProvider(targetProvider);
-      if (!targetProvider) {
-        setReason("");
-        setSelectionAnnouncement(
-          `${providerLabel(value)} remains the active provider. No change is pending.`,
-        );
+      const readiness =
+        provider === "stripe_tax"
+          ? snapshot.providers.stripeTax
+          : snapshot.providers.taxRateIo;
+      if (!readiness.ready) {
         return;
       }
 
-      setSelectionAnnouncement(
-        `${providerLabel(targetProvider)} selected as the pending provider. Enter a reason to review this change.`,
-      );
-      const browser = globalThis as unknown as {
-        matchMedia: (query: string) => { matches: boolean };
-        requestAnimationFrame: (callback: () => void) => number;
-      };
-      browser.requestAnimationFrame(() => {
-        reasonRef.current?.scrollIntoView({
-          behavior: browser.matchMedia("(prefers-reduced-motion: reduce)")
-            .matches
-            ? "auto"
-            : "smooth",
-          block: "center",
-        });
-        reasonRef.current?.focus({ preventScroll: true });
-      });
+      setReason("");
+      setSelectedProvider(provider);
     },
     [snapshot],
   );
@@ -418,16 +392,22 @@ const TaxControlPage = memo(() => {
     [],
   );
 
-  const cancelPendingChange = useCallback(() => {
-    if (!snapshot) {
-      return;
+  const handleSwitchPromptOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && !saving) {
+        setSelectedProvider(null);
+        setReason("");
+      }
+    },
+    [saving],
+  );
+
+  const cancelProviderSwitch = useCallback(() => {
+    if (!saving) {
+      setSelectedProvider(null);
+      setReason("");
     }
-    setSelectedProvider(null);
-    setReason("");
-    setSelectionAnnouncement(
-      `${providerLabel(snapshot.control.activeProvider)} remains the active provider. The pending change was canceled.`,
-    );
-  }, [snapshot]);
+  }, [saving]);
 
   const selectedReadiness = useMemo(() => {
     if (!snapshot || !selectedProvider) {
@@ -439,7 +419,7 @@ const TaxControlPage = memo(() => {
   }, [selectedProvider, snapshot]);
 
   const canSwitch = snapshot
-    ? canReviewProviderSwitch({
+    ? canConfirmProviderSwitch({
         activeProvider: snapshot.control.activeProvider,
         reason,
         saving,
@@ -470,9 +450,6 @@ const TaxControlPage = memo(() => {
       setSnapshot(next);
       setSelectedProvider(null);
       setReason("");
-      setSelectionAnnouncement(
-        `${providerLabel(selectedProvider)} is now active.`,
-      );
       toast.success(`${providerLabel(selectedProvider)} is now active`);
     } catch (caught) {
       toast.error(
@@ -539,10 +516,6 @@ const TaxControlPage = memo(() => {
     activeProvider === "stripe_tax"
       ? snapshot.providers.stripeTax
       : snapshot.providers.taxRateIo;
-  const activeDescription =
-    activeProvider === "stripe_tax"
-      ? "Address-aware calculations are attached to Stripe payments for tax reporting and refund reversals."
-      : "US ZIP-code rates are applied in Medusa and each real lookup records TaxRate.io's returned quota.";
   const activeCalculationBasis =
     activeProvider === "stripe_tax"
       ? "Shipping address and line tax codes"
@@ -555,20 +528,6 @@ const TaxControlPage = memo(() => {
       : quota
         ? `${quota.remaining} of ${quota.quota} monthly lookups remaining`
         : "No usage response recorded yet";
-  const selectedValue = resolveProviderSelection(
-    activeProvider,
-    selectedProvider,
-  );
-  const taxRateIoCardState = getProviderCardState({
-    activeProvider,
-    provider: "taxrate_io",
-    targetProvider: selectedProvider,
-  });
-  const stripeTaxCardState = getProviderCardState({
-    activeProvider,
-    provider: "stripe_tax",
-    targetProvider: selectedProvider,
-  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -577,8 +536,8 @@ const TaxControlPage = memo(() => {
           <div>
             <Heading>Tax control</Heading>
             <Text className="mt-1 text-ui-fg-subtle">
-              Review the active calculation engine, usage, and payment impact
-              before making a versioned change.
+              See the current setup, compare providers, and make a deliberate
+              change when needed.
             </Text>
           </div>
           <StatusBadge color={activeReadiness.ready ? "green" : "orange"}>
@@ -587,56 +546,40 @@ const TaxControlPage = memo(() => {
         </div>
 
         <section
-          aria-label={`Active provider: ${providerLabel(activeProvider)}`}
-          className="mt-6 rounded-lg border border-ui-border-interactive bg-ui-bg-base-hover p-4 ring-1 ring-ui-fg-interactive"
+          aria-label={`Current provider: ${providerLabel(activeProvider)}`}
+          className="mt-6 border-t border-ui-border-base pt-5"
           data-testid="active-provider-overview"
         >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Text size="xsmall" weight="plus" className="text-ui-fg-base">
-                Active provider
-              </Text>
-              <Heading level="h2" className="mt-1">
-                {providerLabel(activeProvider)}
-              </Heading>
-              <Text size="small" className="mt-2 max-w-3xl text-ui-fg-subtle">
-                {activeDescription}
-              </Text>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <StatusBadge color="blue">Applied now</StatusBadge>
-              <StatusBadge color={activeReadiness.ready ? "green" : "orange"}>
-                {activeReadiness.ready ? "Ready" : "Needs setup"}
-              </StatusBadge>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-md bg-ui-bg-base p-3">
+          <Heading level="h2">Current setup</Heading>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
               <Text size="xsmall" className="text-ui-fg-subtle">
-                Calculation basis
+                Provider
+              </Text>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <Text size="small" weight="plus">
+                  {providerLabel(activeProvider)}
+                </Text>
+                <StatusBadge color="grey">Current</StatusBadge>
+              </div>
+            </div>
+            <div>
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                Calculation method
               </Text>
               <Text size="small" weight="plus" className="mt-1">
                 {activeCalculationBasis}
               </Text>
             </div>
-            <div className="rounded-md bg-ui-bg-base p-3">
+            <div>
               <Text size="xsmall" className="text-ui-fg-subtle">
-                Provider status
+                Connection
               </Text>
               <Text size="small" weight="plus" className="mt-1">
                 {activeProviderDetail}
               </Text>
             </div>
-            <div className="rounded-md bg-ui-bg-base p-3">
-              <Text size="xsmall" className="text-ui-fg-subtle">
-                Configuration generation
-              </Text>
-              <Text size="small" weight="plus" className="mt-1">
-                {snapshot.control.generation}
-              </Text>
-            </div>
-            <div className="rounded-md bg-ui-bg-base p-3">
+            <div>
               <Text size="xsmall" className="text-ui-fg-subtle">
                 Last changed
               </Text>
@@ -651,7 +594,7 @@ const TaxControlPage = memo(() => {
             </div>
           </div>
 
-          <div className="mt-3 rounded-md border border-ui-border-base bg-ui-bg-base p-3">
+          <div className="mt-5 rounded-md bg-ui-bg-subtle p-3">
             <Text size="xsmall" className="text-ui-fg-subtle">
               Last change reason
             </Text>
@@ -662,71 +605,67 @@ const TaxControlPage = memo(() => {
           </div>
         </section>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Active carts · last {snapshot.impact.activeCartWindowDays} days
-            </Text>
-            <Text size="large" weight="plus">
-              {snapshot.impact.activeCarts}
-              {snapshot.impact.truncated ? "+" : ""}
-            </Text>
-          </div>
-          <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Prepared checkouts
-            </Text>
-            <Text size="large" weight="plus">
-              {snapshot.impact.preparedCarts}
-            </Text>
-          </div>
-          <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Payments finalizing
-            </Text>
-            <Text size="large" weight="plus">
-              {snapshot.impact.finalizingCarts}
-            </Text>
-          </div>
-        </div>
-        <Text size="small" className="mt-4 text-ui-fg-subtle">
-          Open carts without a prepared payment use the new provider on their
-          next tax refresh. Prepared payments stay frozen to their reviewed
-          quote, and captured orders are never repriced.
-        </Text>
-        {snapshot.impact.truncated ? (
-          <Text size="xsmall" className="mt-2 text-ui-fg-warning">
-            The active-cart impact preview reached its 500-cart display limit.
+        <section
+          aria-labelledby="switch-impact-title"
+          className="mt-5 rounded-lg border border-ui-border-base p-4"
+        >
+          <Heading id="switch-impact-title" level="h3">
+            If the provider changes
+          </Heading>
+          <Text size="small" className="mt-1 text-ui-fg-subtle">
+            New or refreshed quotes use the new provider. Existing reviewed
+            quotes and completed orders are not repriced.
           </Text>
-        ) : null}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <Text size="large" weight="plus">
+                {snapshot.impact.preparedCheckouts}
+              </Text>
+              <Text size="small" weight="plus" className="mt-1">
+                Provider-locked checkouts
+              </Text>
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                Open carts updated within the last{" "}
+                {snapshot.impact.activityWindowDays} days that already have a
+                processable Stripe payment session.
+              </Text>
+            </div>
+            <div>
+              <Text size="large" weight="plus">
+                {snapshot.impact.paymentsFinalizing}
+              </Text>
+              <Text size="small" weight="plus" className="mt-1">
+                Payments completing
+              </Text>
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                A subset of those checkouts with a payment authorizing,
+                authorized, or captured before order completion.
+              </Text>
+            </div>
+          </div>
+        </section>
       </Container>
 
       <Container>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <Heading level="h2">Calculation provider</Heading>
+            <Heading level="h2">Providers</Heading>
             <Text size="small" className="mt-1 text-ui-fg-subtle">
-              Select the engine Medusa should use for new tax quotes. The blue
-              outline always identifies the provider currently applied.
+              Compare each provider&apos;s readiness and use its switch button
+              to review a change.
             </Text>
           </div>
         </div>
 
-        <RadioGroup
-          aria-label="Tax calculation provider"
-          className="mt-5 grid gap-4 lg:grid-cols-2"
-          onValueChange={selectProvider}
-          orientation="horizontal"
-          value={selectedValue}
-        >
+        <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
           <ProviderCard
-            active={taxRateIoCardState.active}
+            active={activeProvider === "taxrate_io"}
             description="ZIP-code sales-tax rates with a monthly lookup quota."
-            highlighted={taxRateIoCardState.highlighted}
             name="TaxRate.io"
-            pending={taxRateIoCardState.pending}
+            onSwitch={beginProviderSwitch}
             provider="taxrate_io"
             readiness={snapshot.providers.taxRateIo}
+            saving={saving}
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -734,7 +673,7 @@ const TaxControlPage = memo(() => {
                   Monthly lookup usage
                 </Text>
                 <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-                  Provider-reported usage, never an estimate.
+                  Reported by TaxRate.io, not estimated from cart traffic.
                 </Text>
               </div>
               <Button
@@ -755,7 +694,7 @@ const TaxControlPage = memo(() => {
               <div className="mt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Text size="small" weight="plus">
-                    {quota.remaining} of {quota.quota} remaining
+                    {quota.remaining} of {quota.quota} lookups remaining
                   </Text>
                   <Text size="xsmall" className="text-ui-fg-subtle">
                     Checked {formatDate(quota.observedAt)}
@@ -775,13 +714,14 @@ const TaxControlPage = memo(() => {
                   />
                 </div>
                 <Text size="xsmall" className="mt-2 text-ui-fg-subtle">
-                  {quota.usage} used · source {quota.source}
+                  {quota.usage} used this provider period · last updated by{" "}
+                  {quotaSourceLabel(quota.source)}
                 </Text>
               </div>
             ) : (
               <Text size="small" className="mt-4 text-ui-fg-subtle">
-                No quota response has been recorded. A real checkout lookup
-                updates this automatically.
+                No provider usage response has been recorded. A real checkout
+                lookup updates this automatically.
               </Text>
             )}
 
@@ -791,22 +731,21 @@ const TaxControlPage = memo(() => {
                   Manual usage refresh needs setup
                 </Text>
                 <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-                  A monitoring ZIP code has not been configured. Checkout
-                  calculations still record usage automatically; ask the store
-                  administrator to enable deliberate quota checks.
+                  Checkout calculations still record usage automatically. A
+                  monitoring ZIP code is only needed for this manual refresh.
                 </Text>
               </div>
             ) : null}
           </ProviderCard>
 
           <ProviderCard
-            active={stripeTaxCardState.active}
+            active={activeProvider === "stripe_tax"}
             description="Address-aware calculations linked to Stripe payments, reporting, and refund reversals."
-            highlighted={stripeTaxCardState.highlighted}
             name="Stripe Tax"
-            pending={stripeTaxCardState.pending}
+            onSwitch={beginProviderSwitch}
             provider="stripe_tax"
             readiness={snapshot.providers.stripeTax}
+            saving={saving}
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-md bg-ui-bg-subtle p-3">
@@ -827,146 +766,79 @@ const TaxControlPage = memo(() => {
               </div>
             </div>
           </ProviderCard>
-        </RadioGroup>
-
-        <div aria-live="polite" className="sr-only">
-          {selectionAnnouncement}
         </div>
 
         {selectedProvider ? (
-          <section
-            aria-labelledby="pending-provider-change-title"
-            className="mt-6 rounded-lg border border-ui-border-strong bg-ui-bg-subtle p-4"
-            data-testid="provider-change-review"
+          <Prompt
+            onOpenChange={handleSwitchPromptOpenChange}
+            open
+            variant="confirmation"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            <Prompt.Content>
+              <Prompt.Header>
+                <Prompt.Title>
+                  Switch to {providerLabel(selectedProvider)}?
+                </Prompt.Title>
+                <Prompt.Description>
+                  {providerLabel(activeProvider)} remains active until you
+                  confirm. New or refreshed quotes will then use{" "}
+                  {providerLabel(selectedProvider)}.
+                </Prompt.Description>
+              </Prompt.Header>
+
+              <div className="my-4 rounded-md bg-ui-bg-subtle p-3">
+                <Text size="small" weight="plus">
+                  What stays unchanged
+                </Text>
+                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                  {snapshot.impact.preparedCheckouts} provider-locked checkout
+                  {snapshot.impact.preparedCheckouts === 1 ? "" : "s"} and all
+                  completed orders keep their reviewed tax quote.{" "}
+                  {snapshot.impact.paymentsFinalizing} payment
+                  {snapshot.impact.paymentsFinalizing === 1 ? "" : "s"}{" "}
+                  {snapshot.impact.paymentsFinalizing === 1 ? "is" : "are"}{" "}
+                  currently completing.
+                </Text>
+              </div>
+
               <div>
-                <Text
-                  size="xsmall"
-                  weight="plus"
-                  className="text-ui-fg-warning"
+                <Label htmlFor="tax-switch-reason">
+                  Reason for this change
+                </Label>
+                <Textarea
+                  autoFocus
+                  id="tax-switch-reason"
+                  className="mt-2"
+                  maxLength={500}
+                  onChange={handleReason}
+                  placeholder="Example: Stripe sandbox validation completed and approved."
+                  rows={3}
+                  value={reason}
+                />
+                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                  Required for the audit history · minimum 10 characters ·{" "}
+                  {reason.length}/500
+                </Text>
+              </div>
+
+              <Prompt.Footer>
+                <Prompt.Cancel
+                  disabled={saving}
+                  onClick={cancelProviderSwitch}
                 >
-                  Pending configuration change
-                </Text>
-                <Heading
-                  id="pending-provider-change-title"
-                  level="h3"
-                  className="mt-1"
+                  Cancel
+                </Prompt.Cancel>
+                <Prompt.Action
+                  disabled={!canSwitch}
+                  onClick={switchProvider}
                 >
-                  Change from {providerLabel(activeProvider)} to{" "}
-                  {providerLabel(selectedProvider)}
-                </Heading>
-                <Text size="small" className="mt-2 text-ui-fg-subtle">
-                  Nothing changes until an admin confirms this review.
-                </Text>
-              </div>
-              <StatusBadge
-                color={selectedReadiness?.ready ? "green" : "orange"}
-              >
-                {selectedReadiness?.ready
-                  ? "Target ready"
-                  : "Target needs setup"}
-              </StatusBadge>
-            </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-md bg-ui-bg-base p-3">
-                <Text size="xsmall" className="text-ui-fg-subtle">
-                  New generation
-                </Text>
-                <Text size="small" weight="plus" className="mt-1">
-                  {snapshot.control.generation + 1}
-                </Text>
-              </div>
-              <div className="rounded-md bg-ui-bg-base p-3">
-                <Text size="xsmall" className="text-ui-fg-subtle">
-                  Active carts reviewed
-                </Text>
-                <Text size="small" weight="plus" className="mt-1">
-                  {snapshot.impact.activeCarts}
-                  {snapshot.impact.truncated ? "+" : ""}
-                </Text>
-              </div>
-              <div className="rounded-md bg-ui-bg-base p-3">
-                <Text size="xsmall" className="text-ui-fg-subtle">
-                  Frozen prepared checkouts
-                </Text>
-                <Text size="small" weight="plus" className="mt-1">
-                  {snapshot.impact.preparedCarts}
-                </Text>
-              </div>
-            </div>
-            <Text size="small" className="mt-4 text-ui-fg-subtle">
-              Open carts without a prepared payment refresh onto the new
-              generation. Prepared payments and captured orders keep their
-              reviewed tax quote.
-            </Text>
-
-            {!selectedReadiness?.ready ? (
-              <div className="mt-4 rounded-md border border-ui-border-base bg-ui-bg-base p-3">
-                <Text size="small" weight="plus" className="text-ui-fg-warning">
-                  Complete the provider checks above before switching.
-                </Text>
-              </div>
-            ) : null}
-
-            <div className="mt-5 max-w-2xl">
-              <Label htmlFor="tax-switch-reason">Reason for this change</Label>
-              <Textarea
-                ref={reasonRef}
-                id="tax-switch-reason"
-                className="mt-2"
-                maxLength={500}
-                onChange={handleReason}
-                placeholder="Example: Stripe sandbox validation completed and approved."
-                rows={3}
-                value={reason}
-              />
-              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-                Minimum 10 characters · {reason.length}/500
-              </Text>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Prompt>
-                <Prompt.Trigger asChild>
-                  <Button disabled={!canSwitch} type="button">
-                    Review and switch to {providerLabel(selectedProvider)}
-                  </Button>
-                </Prompt.Trigger>
-                <Prompt.Content>
-                  <Prompt.Header>
-                    <Prompt.Title>
-                      Switch to {providerLabel(selectedProvider)}?
-                    </Prompt.Title>
-                    <Prompt.Description>
-                      New and unprepared carts will use generation{" "}
-                      {snapshot.control.generation + 1}. Prepared payments and
-                      completed orders keep their existing tax quote. The reason
-                      will be written to the immutable provider history.
-                      <span className="mt-2 block font-medium text-ui-fg-base">
-                        Reason: {reason.trim()}
-                      </span>
-                    </Prompt.Description>
-                  </Prompt.Header>
-                  <Prompt.Footer>
-                    <Prompt.Cancel>Back to review</Prompt.Cancel>
-                    <Prompt.Action disabled={saving} onClick={switchProvider}>
-                      {saving ? "Switching…" : "Confirm provider change"}
-                    </Prompt.Action>
-                  </Prompt.Footer>
-                </Prompt.Content>
-              </Prompt>
-              <Button
-                disabled={saving}
-                onClick={cancelPendingChange}
-                type="button"
-                variant="secondary"
-              >
-                Cancel change
-              </Button>
-            </div>
-          </section>
+                  {saving
+                    ? "Switching…"
+                    : `Switch to ${providerLabel(selectedProvider)}`}
+                </Prompt.Action>
+              </Prompt.Footer>
+            </Prompt.Content>
+          </Prompt>
         ) : null}
         <div aria-live="polite" className="sr-only">
           {saving ? "Switching tax provider" : ""}
@@ -1001,53 +873,48 @@ const TaxControlPage = memo(() => {
           </StatusBadge>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <Text size="small" className="mt-5 text-ui-fg-subtle">
+          {snapshot.evidence.tracked} payment tax record
+          {snapshot.evidence.tracked === 1 ? " is" : "s are"} tracked:{" "}
+          {snapshot.evidence.succeeded} successful and{" "}
+          {snapshot.evidence.refunds} partially or fully refunded.
+        </Text>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Payments tracked
-            </Text>
-            <Text size="large" weight="plus">
-              {snapshot.evidence.tracked}
-            </Text>
-          </div>
-          <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Awaiting final state
-            </Text>
             <Text size="large" weight="plus">
               {snapshot.evidence.prepared}
             </Text>
-          </div>
-          <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Successful
+            <Text size="small" weight="plus" className="mt-1">
+              Awaiting payment outcome
             </Text>
-            <Text size="large" weight="plus">
-              {snapshot.evidence.succeeded}
-            </Text>
-          </div>
-          <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Partially or fully refunded
-            </Text>
-            <Text size="large" weight="plus">
-              {snapshot.evidence.refunds}
+            <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+              Tax evidence exists, but the related payment has not reached a
+              final result.
             </Text>
           </div>
           <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Tax reversals pending
-            </Text>
             <Text size="large" weight="plus">
               {snapshot.evidence.pendingRefundReversals}
             </Text>
+            <Text size="small" weight="plus" className="mt-1">
+              Tax reversals pending
+            </Text>
+            <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+              Refunds recorded in Medusa that still need a confirmed tax
+              reversal.
+            </Text>
           </div>
           <div className="rounded-md bg-ui-bg-subtle p-3">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Refund ledger mismatches
-            </Text>
             <Text size="large" weight="plus">
               {snapshot.evidence.refundLedger.mismatches}
+            </Text>
+            <Text size="small" weight="plus" className="mt-1">
+              Refund amount mismatches
+            </Text>
+            <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+              Tracked payments where Medusa and Stripe report different refund
+              totals.
             </Text>
           </div>
         </div>
@@ -1168,9 +1035,6 @@ const TaxControlPage = memo(() => {
                     <Table.Cell>
                       {providerLabel(audit.fromProvider)} →{" "}
                       {providerLabel(audit.toProvider)}
-                      <Text size="xsmall" className="block text-ui-fg-subtle">
-                        Generation {audit.fromGeneration} → {audit.toGeneration}
-                      </Text>
                     </Table.Cell>
                     <Table.Cell className="min-w-64">{audit.reason}</Table.Cell>
                     <Table.Cell>{audit.actorId}</Table.Cell>

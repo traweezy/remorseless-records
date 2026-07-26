@@ -9,9 +9,12 @@ import {
   buildRefundLedgerMismatches,
   type RefundEvidenceRecord,
 } from "../../../lib/tax-control/refund-ledger";
+import {
+  loadTaxControlImpact,
+  type TaxControlImpactQuery,
+} from "../../../lib/tax-control/impact";
 import { TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE } from "../../../lib/constants";
 import { syncTaxRateIoQuota } from "../../../lib/tax-control/quota";
-import type { TaxProviderName } from "../../../modules/tax-control/constants";
 import type TaxControlModuleService from "../../../modules/tax-control/service";
 
 type UnknownRecord = Record<string, unknown>;
@@ -28,20 +31,6 @@ type QueryGraph = {
   }) => Promise<{ data: UnknownRecord[] }>;
 };
 
-const PROCESSABLE_PAYMENT_STATUSES = new Set([
-  "authorized",
-  "captured",
-  "pending",
-  "pending_authorization",
-  "requires_more",
-]);
-const FINALIZING_PAYMENT_STATUSES = new Set([
-  "authorized",
-  "captured",
-  "pending_authorization",
-]);
-const ACTIVE_CART_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-const IMPACT_QUERY_LIMIT = 500;
 const REFUND_LEDGER_QUERY_LIMIT = 500;
 
 const asRecord = (value: unknown): UnknownRecord | null =>
@@ -53,84 +42,6 @@ const text = (value: unknown): string | null =>
 const dateString = (value: unknown): string | null => {
   const date = value instanceof Date ? value : new Date(String(value ?? ""));
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
-};
-
-const impactSnapshot = async (container: MedusaContainer) => {
-  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY);
-  const activeSince = new Date(
-    Date.now() - ACTIVE_CART_WINDOW_MS,
-  ).toISOString();
-  const { data } = await query.graph({
-    entity: "cart",
-    fields: [
-      "id",
-      "completed_at",
-      "payment_collection.payment_sessions.data",
-      "payment_collection.payment_sessions.provider_id",
-      "payment_collection.payment_sessions.status",
-    ],
-    filters: {
-      completed_at: null,
-      updated_at: { $gte: activeSince },
-    },
-    pagination: {
-      order: { updated_at: "DESC" },
-      take: IMPACT_QUERY_LIMIT,
-    },
-  });
-
-  let preparedCarts = 0;
-  let finalizingCarts = 0;
-  const frozenByProvider: Record<TaxProviderName, number> = {
-    stripe_tax: 0,
-    taxrate_io: 0,
-  };
-  for (const cart of data) {
-    const collection = asRecord(cart.payment_collection);
-    const sessions = Array.isArray(collection?.payment_sessions)
-      ? collection.payment_sessions
-      : [];
-    let prepared = false;
-    let finalizing = false;
-    let frozenProvider: TaxProviderName | null = null;
-    for (const value of sessions) {
-      const session = asRecord(value);
-      if (text(session?.provider_id) !== "pp_stripe_stripe") {
-        continue;
-      }
-      const status = text(session?.status) ?? "";
-      if (PROCESSABLE_PAYMENT_STATUSES.has(status)) {
-        prepared = true;
-      }
-      if (FINALIZING_PAYMENT_STATUSES.has(status)) {
-        finalizing = true;
-      }
-      const sessionData = asRecord(session?.data);
-      const metadata = asRecord(sessionData?.metadata);
-      const provider = text(metadata?.rr_tax_provider);
-      if (provider === "stripe_tax" || provider === "taxrate_io") {
-        frozenProvider = provider;
-      }
-    }
-    if (prepared) {
-      preparedCarts += 1;
-    }
-    if (finalizing) {
-      finalizingCarts += 1;
-    }
-    if (prepared && frozenProvider) {
-      frozenByProvider[frozenProvider] += 1;
-    }
-  }
-
-  return {
-    activeCartWindowDays: ACTIVE_CART_WINDOW_MS / (24 * 60 * 60 * 1000),
-    activeCarts: data.length,
-    finalizingCarts,
-    frozenByProvider,
-    preparedCarts,
-    truncated: data.length === IMPACT_QUERY_LIMIT,
-  };
 };
 
 const evidenceSnapshot = async ({
@@ -325,7 +236,11 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
       {},
       { order: { created_at: "DESC" }, take: 25 },
     ),
-    impactSnapshot(container),
+    loadTaxControlImpact(
+      container.resolve<TaxControlImpactQuery>(
+        ContainerRegistrationKeys.QUERY,
+      ),
+    ),
     evidenceSnapshot({ container, logger, service }),
   ]);
   const remaining = quota ? Number(quota.remaining) : null;

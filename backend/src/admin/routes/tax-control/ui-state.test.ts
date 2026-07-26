@@ -1,46 +1,12 @@
 import {
-  canReviewProviderSwitch,
-  getProviderCardState,
-  isProviderName,
-  normalizeTargetProvider,
-  resolveProviderSelection,
+  canConfirmProviderSwitch,
+  providerLabel,
 } from "./ui-state";
 
 describe("tax control UI state", () => {
-  it("recognizes only supported providers", () => {
-    expect(isProviderName("taxrate_io")).toBe(true);
-    expect(isProviderName("stripe_tax")).toBe(true);
-    expect(isProviderName("manual")).toBe(false);
-  });
-
-  it("treats choosing the active provider as canceling a pending change", () => {
-    expect(normalizeTargetProvider("taxrate_io", "taxrate_io")).toBeNull();
-    expect(resolveProviderSelection("taxrate_io", null)).toBe("taxrate_io");
-  });
-
-  it("keeps the active provider highlighted while marking the target pending", () => {
-    expect(
-      getProviderCardState({
-        activeProvider: "taxrate_io",
-        provider: "taxrate_io",
-        targetProvider: "stripe_tax",
-      }),
-    ).toEqual({
-      active: true,
-      highlighted: true,
-      pending: false,
-    });
-    expect(
-      getProviderCardState({
-        activeProvider: "taxrate_io",
-        provider: "stripe_tax",
-        targetProvider: "stripe_tax",
-      }),
-    ).toEqual({
-      active: false,
-      highlighted: true,
-      pending: true,
-    });
+  it("uses merchant-facing provider names", () => {
+    expect(providerLabel("taxrate_io")).toBe("TaxRate.io");
+    expect(providerLabel("stripe_tax")).toBe("Stripe Tax");
   });
 
   it("requires a distinct ready target and an auditable reason", () => {
@@ -52,19 +18,19 @@ describe("tax control UI state", () => {
       targetReady: true,
     };
 
-    expect(canReviewProviderSwitch(baseline)).toBe(true);
-    expect(canReviewProviderSwitch({ ...baseline, reason: "Too short" })).toBe(
+    expect(canConfirmProviderSwitch(baseline)).toBe(true);
+    expect(canConfirmProviderSwitch({ ...baseline, reason: "Too short" })).toBe(
       false,
     );
-    expect(canReviewProviderSwitch({ ...baseline, targetReady: false })).toBe(
+    expect(canConfirmProviderSwitch({ ...baseline, targetReady: false })).toBe(
       false,
     );
     expect(
-      canReviewProviderSwitch({
+      canConfirmProviderSwitch({
         ...baseline,
         targetProvider: "taxrate_io",
       }),
     ).toBe(false);
-    expect(canReviewProviderSwitch({ ...baseline, saving: true })).toBe(false);
+    expect(canConfirmProviderSwitch({ ...baseline, saving: true })).toBe(false);
   });
 });
