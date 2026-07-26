@@ -1,3 +1,5 @@
+import { BigNumber } from "@medusajs/framework/utils";
+
 import { parseTaxReportPeriod } from "./periods";
 import {
   projectTaxRecords,
@@ -286,9 +288,7 @@ describe("tax record projection", () => {
   });
 
   it("reads Medusa runtime decimal wrappers without zeroing totals", () => {
-    const wrapped = (value: string) => ({
-      value: { toString: () => value },
-    });
+    const wrapped = (value: string) => new BigNumber(value);
     const base = orderFixture();
     const order = {
       ...base,
@@ -312,6 +312,18 @@ describe("tax record projection", () => {
       taxAmount: "0.8000",
       total: "10.8000",
     });
+  });
+
+  it("fails closed instead of silently zeroing an invalid monetary value", () => {
+    const base = orderFixture();
+    const order = {
+      ...base,
+      raw_original_total: { value: "not-money" },
+    };
+
+    expect(() => projectTaxRecords({ orders: [order], period })).toThrow(
+      "Tax projection encountered an invalid monetary value.",
+    );
   });
 
   it("does not report unpaid positive-total orders as sales", () => {

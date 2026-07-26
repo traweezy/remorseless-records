@@ -33,24 +33,22 @@ const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null;
 
 const decimal = (value: unknown): Decimal => {
-  const raw = asRecord(value);
-  const candidate = raw?.value ?? value ?? 0;
-  const nested = asRecord(candidate);
-  const scalar = nested?.value ?? candidate;
-  let normalized: string;
-
+  if (value === null || value === undefined || value === "") {
+    return MathBN.convert(0);
+  }
   try {
-    normalized = String(scalar).trim();
+    const converted = MathBN.convert(
+      value as Parameters<typeof MathBN.convert>[0],
+    );
+    if (!converted.isFinite()) {
+      throw new Error("Non-finite monetary value.");
+    }
+    return converted;
   } catch {
-    return MathBN.convert(0);
+    throw new Error(
+      "Tax projection encountered an invalid monetary value.",
+    );
   }
-  if (
-    !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(normalized) ||
-    !Number.isFinite(Number(normalized))
-  ) {
-    return MathBN.convert(0);
-  }
-  return MathBN.convert(normalized);
 };
 
 const money = (value: Decimal): string => value.toFixed(4);
