@@ -92,6 +92,11 @@ describe("tax report query", () => {
     expect(result).toEqual({ orders: [], truncated: false });
     expect(capturedInput).toMatchObject({
       entity: "order",
+      fields: expect.arrayContaining([
+        "payment_collections.captured_amount",
+        "payment_collections.payments.captures.amount",
+        "payment_collections.payments.captures.created_at",
+      ]),
       filters: {
         created_at: { $lt: period.endExclusive },
       },

@@ -73,15 +73,22 @@ const ORDER_FIELDS = [
   "shipping_methods.tax_lines.rate",
   "payment_collections.payments.id",
   "payment_collections.payments.amount",
+  "payment_collections.payments.raw_amount",
   "payment_collections.payments.captured_amount",
   "payment_collections.payments.raw_captured_amount",
   "payment_collections.payments.captured_at",
+  "payment_collections.payments.captures.id",
+  "payment_collections.payments.captures.amount",
+  "payment_collections.payments.captures.raw_amount",
+  "payment_collections.payments.captures.created_at",
   "payment_collections.payments.provider_id",
   "payment_collections.payments.data",
   "payment_collections.payments.refunds.id",
   "payment_collections.payments.refunds.amount",
   "payment_collections.payments.refunds.raw_amount",
   "payment_collections.payments.refunds.created_at",
+  "payment_collections.captured_amount",
+  "payment_collections.raw_captured_amount",
 ] as const;
 
 const filtersSchema = z.object({

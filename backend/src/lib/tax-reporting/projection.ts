@@ -296,6 +296,9 @@ const payments = (order: UnknownRecord): UnknownRecord[] =>
     records(collection.payments),
   );
 
+const captures = (payment: UnknownRecord): UnknownRecord[] =>
+  records(payment.captures);
+
 const paidTotal = (order: UnknownRecord): Decimal => {
   const summary = asRecord(order.summary);
   const summaryPaid = decimalField(
@@ -306,12 +309,46 @@ const paidTotal = (order: UnknownRecord): Decimal => {
   if (summaryPaid.gt(0)) {
     return summaryPaid;
   }
+
+  const captureTotal = payments(order)
+    .flatMap(captures)
+    .reduce(
+      (total, capture) =>
+        MathBN.add(total, decimalField(capture, "raw_amount", "amount")),
+      ZERO,
+    );
+  if (captureTotal.gt(0)) {
+    return captureTotal;
+  }
+
+  const collectionTotal = records(order.payment_collections).reduce(
+    (total, collection) =>
+      MathBN.add(
+        total,
+        decimalField(
+          collection,
+          "raw_captured_amount",
+          "captured_amount",
+        ),
+      ),
+    ZERO,
+  );
+  if (collectionTotal.gt(0)) {
+    return collectionTotal;
+  }
+
   return payments(order).reduce(
     (total, payment) =>
       payment.captured_at
         ? MathBN.add(
             total,
-            decimalField(payment, "raw_captured_amount", "captured_amount"),
+            decimalField(
+              payment,
+              "raw_captured_amount",
+              payment.captured_amount === undefined
+                ? "amount"
+                : "captured_amount",
+            ),
           )
         : total,
     ZERO,
@@ -319,15 +356,17 @@ const paidTotal = (order: UnknownRecord): Decimal => {
 };
 
 const paymentCaptureTimestamp = (order: UnknownRecord): string | null => {
-  const timestamps = payments(order)
-    .filter((payment) =>
-      decimalField(
-        payment,
-        "raw_captured_amount",
-        "captured_amount",
-      ).gt(0),
+  const orderPayments = payments(order);
+  const captureTimestamps = orderPayments
+    .flatMap(captures)
+    .filter((capture) =>
+      decimalField(capture, "raw_amount", "amount").gt(0),
     )
-    .map((payment) => timestamp(payment.captured_at))
+    .map((capture) => timestamp(capture.created_at));
+  const paymentTimestamps = orderPayments.map((payment) =>
+    timestamp(payment.captured_at),
+  );
+  const timestamps = [...captureTimestamps, ...paymentTimestamps]
     .filter((value): value is string => value !== null)
     .sort();
   return timestamps.at(-1) ?? null;

@@ -335,6 +335,68 @@ describe("tax record projection", () => {
     ).toEqual([]);
   });
 
+  it("reads captured totals from Medusa payment collections", () => {
+    const base = orderFixture();
+    const order = {
+      ...base,
+      payment_collections: [
+        {
+          captured_amount: "10.8",
+          payments: [
+            {
+              captured_at: "2026-07-20T16:01:00.000Z",
+              refunds: [],
+            },
+          ],
+        },
+      ],
+      summary: undefined,
+    };
+
+    expect(
+      projectTaxRecords({ orders: [order], period })[0],
+    ).toMatchObject({
+      occurredAt: "2026-07-20T16:01:00.000Z",
+      total: "10.8000",
+      type: "sale",
+    });
+  });
+
+  it("sums incremental capture records and uses their latest timestamp", () => {
+    const base = orderFixture();
+    const order = {
+      ...base,
+      payment_collections: [
+        {
+          payments: [
+            {
+              captures: [
+                {
+                  amount: "5",
+                  created_at: "2026-07-20T16:01:00.000Z",
+                },
+                {
+                  amount: "5.8",
+                  created_at: "2026-07-20T16:02:00.000Z",
+                },
+              ],
+              refunds: [],
+            },
+          ],
+        },
+      ],
+      summary: undefined,
+    };
+
+    expect(
+      projectTaxRecords({ orders: [order], period })[0],
+    ).toMatchObject({
+      occurredAt: "2026-07-20T16:02:00.000Z",
+      total: "10.8000",
+      type: "sale",
+    });
+  });
+
   it("marks a captured-total mismatch as incomplete", () => {
     const base = orderFixture();
     const order = {
