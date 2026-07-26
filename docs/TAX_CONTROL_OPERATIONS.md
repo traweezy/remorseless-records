@@ -9,19 +9,23 @@ manually edit an order total in Stripe.
 
 Open **Tax control** in Medusa Admin. The page shows:
 
-- the active provider and generation;
+- an active-provider overview with its calculation basis, readiness, generation,
+  last change, reason, and provider-specific operating state;
 - readiness checks for both providers;
-- TaxRate.io's most recently returned usage/quota;
+- TaxRate.io's most recently returned usage/quota inside its provider card;
 - active carts, prepared checkouts, and payments finalizing;
 - tracked tax-bound payments and refund counts;
 - pending refund reversals, Medusa/Stripe refund-ledger mismatches, disputes,
   or failed Stripe Tax associations; and
 - the immutable provider-switch history.
 
-Choosing a provider does not change state. A switch requires a provider that is
-ready, a reason of at least ten characters, confirmation, the current
-generation, and an authenticated Admin. The backend serializes the switch and
-uses an idempotency key.
+The providers are one radio group. The blue outline and **Active provider**
+status always identify the applied provider, even while another provider is
+selected as a pending change. Choosing the inactive provider reveals the impact
+and reason form in the same section; it does not change backend state. A switch
+requires a provider that is ready, a reason of at least ten characters,
+confirmation, the current generation, and an authenticated Admin. The backend
+serializes the switch and uses an idempotency key.
 
 Open carts without a prepared payment adopt the new provider on their next tax
 refresh. Prepared payments retain their original provider/generation/quote.

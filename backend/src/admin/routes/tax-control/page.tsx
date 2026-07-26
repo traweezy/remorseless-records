@@ -1,6 +1,14 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { defineRouteConfig } from "@medusajs/admin-sdk";
 import { BuildingTax, CheckCircle, XCircle } from "@medusajs/icons";
 import {
@@ -9,6 +17,7 @@ import {
   Heading,
   Label,
   Prompt,
+  RadioGroup,
   Skeleton,
   StatusBadge,
   Table,
@@ -16,8 +25,15 @@ import {
   Textarea,
   toast,
 } from "@medusajs/ui";
-
-type ProviderName = "stripe_tax" | "taxrate_io";
+import {
+  canReviewProviderSwitch,
+  getProviderCardState,
+  isProviderName,
+  normalizeTargetProvider,
+  providerLabel,
+  resolveProviderSelection,
+  type ProviderName,
+} from "./ui-state";
 
 type FocusableTextarea = HTMLTextAreaElement & {
   focus: (options?: { preventScroll?: boolean }) => void;
@@ -120,16 +136,14 @@ type TaxControlSnapshot = {
 
 type ProviderCardProps = {
   active: boolean;
+  children?: ReactNode;
   description: string;
   name: string;
+  pending: boolean;
   provider: ProviderName;
   readiness: ProviderReadiness;
-  selected: boolean;
-  onSelect: (provider: ProviderName) => void;
+  highlighted: boolean;
 };
-
-const providerLabel = (provider: ProviderName): string =>
-  provider === "stripe_tax" ? "Stripe Tax" : "TaxRate.io";
 
 const incidentLabel = (
   incident: TaxControlSnapshot["evidence"]["incidents"][number],
@@ -199,83 +213,106 @@ const formatMinorAmount = (amount: number, currencyCode: string): string =>
   }).format(amount / 100);
 
 const ProviderCard = memo<ProviderCardProps>(
-  ({ active, description, name, onSelect, provider, readiness, selected }) => {
-    const handleSelect = useCallback(() => {
-      onSelect(provider);
-    }, [onSelect, provider]);
-
-    return (
-      <section
-        className={`flex min-h-full flex-col rounded-lg border p-4 ${
-          selected
-            ? "border-ui-border-interactive shadow-elevation-card-rest"
+  ({
+    active,
+    children,
+    description,
+    highlighted,
+    name,
+    pending,
+    provider,
+    readiness,
+  }) => (
+    <section
+      className={`flex min-h-full flex-col rounded-lg border p-4 transition-[border-color,box-shadow,background-color] duration-200 motion-reduce:transition-none ${
+        active
+          ? "border-ui-border-interactive bg-ui-bg-base-hover ring-1 ring-ui-fg-interactive"
+          : pending
+            ? "border-ui-border-strong shadow-elevation-card-rest"
             : "border-ui-border-base"
-        }`}
-        aria-label={name}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <Heading level="h2">{name}</Heading>
-            <Text size="small" className="mt-1 text-ui-fg-subtle">
-              {description}
-            </Text>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {active ? <StatusBadge color="blue">Active</StatusBadge> : null}
-            {selected && !active ? (
-              <StatusBadge color="orange">Selected</StatusBadge>
-            ) : null}
-            <StatusBadge color={readiness.ready ? "green" : "orange"}>
-              {readiness.ready ? "Ready" : "Needs setup"}
-            </StatusBadge>
+      }`}
+      aria-label={`${name}${active ? ", active provider" : ""}`}
+      data-active={active ? "true" : "false"}
+      data-highlighted={highlighted ? "true" : "false"}
+      data-pending={pending ? "true" : "false"}
+    >
+      <div className="flex items-start gap-3">
+        <RadioGroup.Item
+          aria-describedby={`tax-provider-${provider}-description`}
+          className="mt-0.5 shrink-0"
+          id={`tax-provider-${provider}`}
+          value={provider}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <Label
+                className="cursor-pointer"
+                htmlFor={`tax-provider-${provider}`}
+                size="base"
+                weight="plus"
+              >
+                {name}
+              </Label>
+              <Text
+                id={`tax-provider-${provider}-description`}
+                size="small"
+                className="mt-1 text-ui-fg-subtle"
+              >
+                {description}
+              </Text>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {active ? (
+                <StatusBadge color="blue">Active provider</StatusBadge>
+              ) : null}
+              {pending ? (
+                <StatusBadge color="orange">Pending change</StatusBadge>
+              ) : null}
+              <StatusBadge color={readiness.ready ? "green" : "orange"}>
+                {readiness.ready ? "Ready" : "Needs setup"}
+              </StatusBadge>
+            </div>
           </div>
         </div>
+      </div>
 
-        <Text size="small" className="mt-4">
-          {readiness.message}
-        </Text>
-        <ul className="mt-4 flex flex-1 flex-col gap-3">
-          {readiness.checks.map((item) => (
-            <li key={item.id} className="flex items-start gap-2">
-              {item.ready ? (
-                <CheckCircle
-                  aria-hidden="true"
-                  className="mt-0.5 shrink-0 text-ui-fg-success"
-                />
-              ) : (
-                <XCircle
-                  aria-hidden="true"
-                  className="mt-0.5 shrink-0 text-ui-fg-error"
-                />
-              )}
-              <div className="min-w-0">
-                <Text size="small" weight="plus">
-                  {item.label}
-                </Text>
-                <Text size="xsmall" className="text-ui-fg-subtle">
-                  {item.detail}
-                </Text>
-              </div>
-            </li>
-          ))}
-        </ul>
+      <Text size="small" className="mt-4">
+        {readiness.message}
+      </Text>
+      <ul className="mt-4 flex flex-1 flex-col gap-3">
+        {readiness.checks.map((item) => (
+          <li key={item.id} className="flex items-start gap-2">
+            {item.ready ? (
+              <CheckCircle
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-ui-fg-success"
+              />
+            ) : (
+              <XCircle
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-ui-fg-error"
+              />
+            )}
+            <div className="min-w-0">
+              <Text size="small" weight="plus">
+                {item.label}
+              </Text>
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                {item.detail}
+              </Text>
+            </div>
+          </li>
+        ))}
+      </ul>
 
-        <Button
-          className="mt-5"
-          disabled={active}
-          onClick={handleSelect}
-          type="button"
-          variant={selected ? "primary" : "secondary"}
-        >
-          {active
-            ? "Currently active"
-            : selected
-              ? `${name} selected`
-              : `Choose ${name}`}
-        </Button>
-      </section>
-    );
-  },
+      {children ? (
+        <div className="mt-5 border-t border-ui-border-base pt-4">
+          {children}
+        </div>
+      ) : null}
+    </section>
+  ),
 );
 
 const LoadingState = memo(() => (
@@ -333,25 +370,44 @@ const TaxControlPage = memo(() => {
     void load();
   }, [load]);
 
-  const selectProvider = useCallback((provider: ProviderName) => {
-    setSelectedProvider(provider);
-    setSelectionAnnouncement(
-      `${providerLabel(provider)} selected. Enter a reason to review this switch.`,
-    );
-    const browser = globalThis as unknown as {
-      matchMedia: (query: string) => { matches: boolean };
-      requestAnimationFrame: (callback: () => void) => number;
-    };
-    browser.requestAnimationFrame(() => {
-      reasonRef.current?.scrollIntoView({
-        behavior: browser.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "center",
+  const selectProvider = useCallback(
+    (value: string) => {
+      if (!snapshot || !isProviderName(value)) {
+        return;
+      }
+      const targetProvider = normalizeTargetProvider(
+        snapshot.control.activeProvider,
+        value,
+      );
+      setSelectedProvider(targetProvider);
+      if (!targetProvider) {
+        setReason("");
+        setSelectionAnnouncement(
+          `${providerLabel(value)} remains the active provider. No change is pending.`,
+        );
+        return;
+      }
+
+      setSelectionAnnouncement(
+        `${providerLabel(targetProvider)} selected as the pending provider. Enter a reason to review this change.`,
+      );
+      const browser = globalThis as unknown as {
+        matchMedia: (query: string) => { matches: boolean };
+        requestAnimationFrame: (callback: () => void) => number;
+      };
+      browser.requestAnimationFrame(() => {
+        reasonRef.current?.scrollIntoView({
+          behavior: browser.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
+        reasonRef.current?.focus({ preventScroll: true });
       });
-      reasonRef.current?.focus({ preventScroll: true });
-    });
-  }, []);
+    },
+    [snapshot],
+  );
 
   const handleReason = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -362,6 +418,17 @@ const TaxControlPage = memo(() => {
     [],
   );
 
+  const cancelPendingChange = useCallback(() => {
+    if (!snapshot) {
+      return;
+    }
+    setSelectedProvider(null);
+    setReason("");
+    setSelectionAnnouncement(
+      `${providerLabel(snapshot.control.activeProvider)} remains the active provider. The pending change was canceled.`,
+    );
+  }, [snapshot]);
+
   const selectedReadiness = useMemo(() => {
     if (!snapshot || !selectedProvider) {
       return null;
@@ -371,10 +438,15 @@ const TaxControlPage = memo(() => {
       : snapshot.providers.taxRateIo;
   }, [selectedProvider, snapshot]);
 
-  const canSwitch =
-    Boolean(snapshot && selectedProvider && selectedReadiness?.ready) &&
-    reason.trim().length >= 10 &&
-    !saving;
+  const canSwitch = snapshot
+    ? canReviewProviderSwitch({
+        activeProvider: snapshot.control.activeProvider,
+        reason,
+        saving,
+        targetProvider: selectedProvider,
+        targetReady: selectedReadiness?.ready ?? false,
+      })
+    : false;
 
   const switchProvider = useCallback(async () => {
     if (!snapshot || !selectedProvider || !canSwitch || switchLockRef.current) {
@@ -462,6 +534,41 @@ const TaxControlPage = memo(() => {
   const quotaPercent = quota
     ? Math.max(0, Math.min(100, quota.usagePercent))
     : 0;
+  const activeProvider = snapshot.control.activeProvider;
+  const activeReadiness =
+    activeProvider === "stripe_tax"
+      ? snapshot.providers.stripeTax
+      : snapshot.providers.taxRateIo;
+  const activeDescription =
+    activeProvider === "stripe_tax"
+      ? "Address-aware calculations are attached to Stripe payments for tax reporting and refund reversals."
+      : "US ZIP-code rates are applied in Medusa and each real lookup records TaxRate.io's returned quota.";
+  const activeCalculationBasis =
+    activeProvider === "stripe_tax"
+      ? "Shipping address and line tax codes"
+      : "US shipping ZIP code";
+  const activeProviderDetail =
+    activeProvider === "stripe_tax"
+      ? `${snapshot.providers.stripeTax.accountMode === "sandbox" ? "Sandbox" : snapshot.providers.stripeTax.accountMode === "live" ? "Live" : "Unknown"} account · ${snapshot.providers.stripeTax.activeRegistrationCount} active registration${
+          snapshot.providers.stripeTax.activeRegistrationCount === 1 ? "" : "s"
+        }`
+      : quota
+        ? `${quota.remaining} of ${quota.quota} monthly lookups remaining`
+        : "No usage response recorded yet";
+  const selectedValue = resolveProviderSelection(
+    activeProvider,
+    selectedProvider,
+  );
+  const taxRateIoCardState = getProviderCardState({
+    activeProvider,
+    provider: "taxrate_io",
+    targetProvider: selectedProvider,
+  });
+  const stripeTaxCardState = getProviderCardState({
+    activeProvider,
+    provider: "stripe_tax",
+    targetProvider: selectedProvider,
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -470,26 +577,99 @@ const TaxControlPage = memo(() => {
           <div>
             <Heading>Tax control</Heading>
             <Text className="mt-1 text-ui-fg-subtle">
-              Choose the calculation engine used for new tax quotes.
+              Review the active calculation engine, usage, and payment impact
+              before making a versioned change.
             </Text>
           </div>
-          <div className="flex items-center gap-2">
-            <StatusBadge color="blue">
-              {providerLabel(snapshot.control.activeProvider)}
-            </StatusBadge>
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Generation {snapshot.control.generation}
-            </Text>
-          </div>
+          <StatusBadge color={activeReadiness.ready ? "green" : "orange"}>
+            {activeReadiness.ready ? "Operational" : "Needs attention"}
+          </StatusBadge>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <section
+          aria-label={`Active provider: ${providerLabel(activeProvider)}`}
+          className="mt-6 rounded-lg border border-ui-border-interactive bg-ui-bg-base-hover p-4 ring-1 ring-ui-fg-interactive"
+          data-testid="active-provider-overview"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <Text size="xsmall" weight="plus" className="text-ui-fg-base">
+                Active provider
+              </Text>
+              <Heading level="h2" className="mt-1">
+                {providerLabel(activeProvider)}
+              </Heading>
+              <Text size="small" className="mt-2 max-w-3xl text-ui-fg-subtle">
+                {activeDescription}
+              </Text>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge color="blue">Applied now</StatusBadge>
+              <StatusBadge color={activeReadiness.ready ? "green" : "orange"}>
+                {activeReadiness.ready ? "Ready" : "Needs setup"}
+              </StatusBadge>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-md bg-ui-bg-base p-3">
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                Calculation basis
+              </Text>
+              <Text size="small" weight="plus" className="mt-1">
+                {activeCalculationBasis}
+              </Text>
+            </div>
+            <div className="rounded-md bg-ui-bg-base p-3">
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                Provider status
+              </Text>
+              <Text size="small" weight="plus" className="mt-1">
+                {activeProviderDetail}
+              </Text>
+            </div>
+            <div className="rounded-md bg-ui-bg-base p-3">
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                Configuration generation
+              </Text>
+              <Text size="small" weight="plus" className="mt-1">
+                {snapshot.control.generation}
+              </Text>
+            </div>
+            <div className="rounded-md bg-ui-bg-base p-3">
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                Last changed
+              </Text>
+              <Text size="small" weight="plus" className="mt-1">
+                {formatDate(snapshot.control.lastSwitchedAt)}
+              </Text>
+              {snapshot.control.lastSwitchedBy ? (
+                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                  By {snapshot.control.lastSwitchedBy}
+                </Text>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-md border border-ui-border-base bg-ui-bg-base p-3">
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              Last change reason
+            </Text>
+            <Text size="small" className="mt-1">
+              {snapshot.control.lastSwitchReason ??
+                "Initial provider configuration; no switch has been recorded."}
+            </Text>
+          </div>
+        </section>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-md bg-ui-bg-subtle p-3">
             <Text size="xsmall" className="text-ui-fg-subtle">
               Active carts · last {snapshot.impact.activeCartWindowDays} days
             </Text>
             <Text size="large" weight="plus">
               {snapshot.impact.activeCarts}
+              {snapshot.impact.truncated ? "+" : ""}
             </Text>
           </div>
           <div className="rounded-md bg-ui-bg-subtle p-3">
@@ -521,168 +701,276 @@ const TaxControlPage = memo(() => {
         ) : null}
       </Container>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ProviderCard
-          active={snapshot.control.activeProvider === "taxrate_io"}
-          description="ZIP-code sales-tax rates with a monthly lookup quota."
-          name="TaxRate.io"
-          onSelect={selectProvider}
-          provider="taxrate_io"
-          readiness={snapshot.providers.taxRateIo}
-          selected={selectedProvider === "taxrate_io"}
-        />
-        <ProviderCard
-          active={snapshot.control.activeProvider === "stripe_tax"}
-          description="Address-aware tax calculations linked to Stripe payments and reporting."
-          name="Stripe Tax"
-          onSelect={selectProvider}
-          provider="stripe_tax"
-          readiness={snapshot.providers.stripeTax}
-          selected={selectedProvider === "stripe_tax"}
-        />
-      </div>
-      <div aria-live="polite" className="sr-only">
-        {selectionAnnouncement}
-      </div>
-
       <Container>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <Heading level="h2">Switch provider</Heading>
+            <Heading level="h2">Calculation provider</Heading>
             <Text size="small" className="mt-1 text-ui-fg-subtle">
-              Select a provider above, record the reason, and review the impact
-              before confirming. Every switch is versioned in the audit log.
+              Select the engine Medusa should use for new tax quotes. The blue
+              outline always identifies the provider currently applied.
             </Text>
           </div>
-          {selectedProvider ? (
-            <StatusBadge color="orange">
-              {providerLabel(selectedProvider)} selected
-            </StatusBadge>
-          ) : null}
-        </div>
-        <div className="mt-5 max-w-2xl">
-          <Label htmlFor="tax-switch-reason">Reason for this change</Label>
-          <Textarea
-            ref={reasonRef}
-            id="tax-switch-reason"
-            className="mt-2"
-            disabled={!selectedProvider}
-            maxLength={500}
-            onChange={handleReason}
-            placeholder={
-              selectedProvider
-                ? "Example: Stripe sandbox validation completed and approved."
-                : "Choose another provider above to begin."
-            }
-            rows={3}
-            value={reason}
-          />
-          <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-            Minimum 10 characters · {reason.length}/500
-          </Text>
         </div>
 
-        <Prompt>
-          <Prompt.Trigger asChild>
-            <Button className="mt-4" disabled={!canSwitch} type="button">
-              {selectedProvider
-                ? `Review switch to ${providerLabel(selectedProvider)}`
-                : "Choose another provider above"}
-            </Button>
-          </Prompt.Trigger>
-          <Prompt.Content>
-            <Prompt.Header>
-              <Prompt.Title>
-                Switch to{" "}
-                {selectedProvider
-                  ? providerLabel(selectedProvider)
-                  : "provider"}
-                ?
-              </Prompt.Title>
-              <Prompt.Description>
-                New and unprepared carts will use generation{" "}
-                {snapshot.control.generation + 1}. Prepared payments and
-                completed orders keep their existing tax quote.
-              </Prompt.Description>
-            </Prompt.Header>
-            <Prompt.Footer>
-              <Prompt.Cancel>Keep current provider</Prompt.Cancel>
-              <Prompt.Action disabled={saving} onClick={switchProvider}>
-                {saving ? "Switching…" : "Confirm switch"}
-              </Prompt.Action>
-            </Prompt.Footer>
-          </Prompt.Content>
-        </Prompt>
+        <RadioGroup
+          aria-label="Tax calculation provider"
+          className="mt-5 grid gap-4 lg:grid-cols-2"
+          onValueChange={selectProvider}
+          orientation="horizontal"
+          value={selectedValue}
+        >
+          <ProviderCard
+            active={taxRateIoCardState.active}
+            description="ZIP-code sales-tax rates with a monthly lookup quota."
+            highlighted={taxRateIoCardState.highlighted}
+            name="TaxRate.io"
+            pending={taxRateIoCardState.pending}
+            provider="taxrate_io"
+            readiness={snapshot.providers.taxRateIo}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <Text size="small" weight="plus">
+                  Monthly lookup usage
+                </Text>
+                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                  Provider-reported usage, never an estimate.
+                </Text>
+              </div>
+              <Button
+                disabled={
+                  refreshingQuota ||
+                  !snapshot.providers.taxRateIo.manualRefreshConfigured
+                }
+                isLoading={refreshingQuota}
+                onClick={refreshQuota}
+                type="button"
+                variant="secondary"
+              >
+                Refresh · uses 1 lookup
+              </Button>
+            </div>
+
+            {quota ? (
+              <div className="mt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Text size="small" weight="plus">
+                    {quota.remaining} of {quota.quota} remaining
+                  </Text>
+                  <Text size="xsmall" className="text-ui-fg-subtle">
+                    Checked {formatDate(quota.observedAt)}
+                  </Text>
+                </div>
+                <div
+                  aria-label="TaxRate.io quota used"
+                  aria-valuemax={quota.quota}
+                  aria-valuemin={0}
+                  aria-valuenow={quota.usage}
+                  className="mt-2 h-2 overflow-hidden rounded-full bg-ui-bg-subtle"
+                  role="progressbar"
+                >
+                  <div
+                    className="h-full rounded-full bg-ui-tag-blue-icon transition-[width] duration-200 motion-reduce:transition-none"
+                    style={{ width: `${quotaPercent}%` }}
+                  />
+                </div>
+                <Text size="xsmall" className="mt-2 text-ui-fg-subtle">
+                  {quota.usage} used · source {quota.source}
+                </Text>
+              </div>
+            ) : (
+              <Text size="small" className="mt-4 text-ui-fg-subtle">
+                No quota response has been recorded. A real checkout lookup
+                updates this automatically.
+              </Text>
+            )}
+
+            {!snapshot.providers.taxRateIo.manualRefreshConfigured ? (
+              <div className="mt-4 rounded-md border border-ui-border-base bg-ui-bg-subtle p-3">
+                <Text size="small" weight="plus" className="text-ui-fg-warning">
+                  Manual usage refresh needs setup
+                </Text>
+                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                  A monitoring ZIP code has not been configured. Checkout
+                  calculations still record usage automatically; ask the store
+                  administrator to enable deliberate quota checks.
+                </Text>
+              </div>
+            ) : null}
+          </ProviderCard>
+
+          <ProviderCard
+            active={stripeTaxCardState.active}
+            description="Address-aware calculations linked to Stripe payments, reporting, and refund reversals."
+            highlighted={stripeTaxCardState.highlighted}
+            name="Stripe Tax"
+            pending={stripeTaxCardState.pending}
+            provider="stripe_tax"
+            readiness={snapshot.providers.stripeTax}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md bg-ui-bg-subtle p-3">
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Stripe account
+                </Text>
+                <Text size="small" weight="plus" className="mt-1 capitalize">
+                  {snapshot.providers.stripeTax.accountMode}
+                </Text>
+              </div>
+              <div className="rounded-md bg-ui-bg-subtle p-3">
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Active tax registrations
+                </Text>
+                <Text size="small" weight="plus" className="mt-1">
+                  {snapshot.providers.stripeTax.activeRegistrationCount}
+                </Text>
+              </div>
+            </div>
+          </ProviderCard>
+        </RadioGroup>
+
+        <div aria-live="polite" className="sr-only">
+          {selectionAnnouncement}
+        </div>
+
+        {selectedProvider ? (
+          <section
+            aria-labelledby="pending-provider-change-title"
+            className="mt-6 rounded-lg border border-ui-border-strong bg-ui-bg-subtle p-4"
+            data-testid="provider-change-review"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <Text
+                  size="xsmall"
+                  weight="plus"
+                  className="text-ui-fg-warning"
+                >
+                  Pending configuration change
+                </Text>
+                <Heading
+                  id="pending-provider-change-title"
+                  level="h3"
+                  className="mt-1"
+                >
+                  Change from {providerLabel(activeProvider)} to{" "}
+                  {providerLabel(selectedProvider)}
+                </Heading>
+                <Text size="small" className="mt-2 text-ui-fg-subtle">
+                  Nothing changes until an admin confirms this review.
+                </Text>
+              </div>
+              <StatusBadge
+                color={selectedReadiness?.ready ? "green" : "orange"}
+              >
+                {selectedReadiness?.ready
+                  ? "Target ready"
+                  : "Target needs setup"}
+              </StatusBadge>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-md bg-ui-bg-base p-3">
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  New generation
+                </Text>
+                <Text size="small" weight="plus" className="mt-1">
+                  {snapshot.control.generation + 1}
+                </Text>
+              </div>
+              <div className="rounded-md bg-ui-bg-base p-3">
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Active carts reviewed
+                </Text>
+                <Text size="small" weight="plus" className="mt-1">
+                  {snapshot.impact.activeCarts}
+                  {snapshot.impact.truncated ? "+" : ""}
+                </Text>
+              </div>
+              <div className="rounded-md bg-ui-bg-base p-3">
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Frozen prepared checkouts
+                </Text>
+                <Text size="small" weight="plus" className="mt-1">
+                  {snapshot.impact.preparedCarts}
+                </Text>
+              </div>
+            </div>
+            <Text size="small" className="mt-4 text-ui-fg-subtle">
+              Open carts without a prepared payment refresh onto the new
+              generation. Prepared payments and captured orders keep their
+              reviewed tax quote.
+            </Text>
+
+            {!selectedReadiness?.ready ? (
+              <div className="mt-4 rounded-md border border-ui-border-base bg-ui-bg-base p-3">
+                <Text size="small" weight="plus" className="text-ui-fg-warning">
+                  Complete the provider checks above before switching.
+                </Text>
+              </div>
+            ) : null}
+
+            <div className="mt-5 max-w-2xl">
+              <Label htmlFor="tax-switch-reason">Reason for this change</Label>
+              <Textarea
+                ref={reasonRef}
+                id="tax-switch-reason"
+                className="mt-2"
+                maxLength={500}
+                onChange={handleReason}
+                placeholder="Example: Stripe sandbox validation completed and approved."
+                rows={3}
+                value={reason}
+              />
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                Minimum 10 characters · {reason.length}/500
+              </Text>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Prompt>
+                <Prompt.Trigger asChild>
+                  <Button disabled={!canSwitch} type="button">
+                    Review and switch to {providerLabel(selectedProvider)}
+                  </Button>
+                </Prompt.Trigger>
+                <Prompt.Content>
+                  <Prompt.Header>
+                    <Prompt.Title>
+                      Switch to {providerLabel(selectedProvider)}?
+                    </Prompt.Title>
+                    <Prompt.Description>
+                      New and unprepared carts will use generation{" "}
+                      {snapshot.control.generation + 1}. Prepared payments and
+                      completed orders keep their existing tax quote. The reason
+                      will be written to the immutable provider history.
+                      <span className="mt-2 block font-medium text-ui-fg-base">
+                        Reason: {reason.trim()}
+                      </span>
+                    </Prompt.Description>
+                  </Prompt.Header>
+                  <Prompt.Footer>
+                    <Prompt.Cancel>Back to review</Prompt.Cancel>
+                    <Prompt.Action disabled={saving} onClick={switchProvider}>
+                      {saving ? "Switching…" : "Confirm provider change"}
+                    </Prompt.Action>
+                  </Prompt.Footer>
+                </Prompt.Content>
+              </Prompt>
+              <Button
+                disabled={saving}
+                onClick={cancelPendingChange}
+                type="button"
+                variant="secondary"
+              >
+                Cancel change
+              </Button>
+            </div>
+          </section>
+        ) : null}
         <div aria-live="polite" className="sr-only">
           {saving ? "Switching tax provider" : ""}
         </div>
-      </Container>
-
-      <Container>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <Heading level="h2">TaxRate.io usage</Heading>
-            <Text size="small" className="mt-1 text-ui-fg-subtle">
-              This is the last quota value returned by TaxRate.io, not an
-              estimate.
-            </Text>
-          </div>
-          <Button
-            disabled={
-              refreshingQuota ||
-              !snapshot.providers.taxRateIo.manualRefreshConfigured
-            }
-            isLoading={refreshingQuota}
-            onClick={refreshQuota}
-            type="button"
-            variant="secondary"
-          >
-            Use 1 lookup to refresh
-          </Button>
-        </div>
-
-        {quota ? (
-          <div className="mt-5">
-            <div className="flex items-center justify-between gap-3">
-              <Text size="small" weight="plus">
-                {quota.remaining} of {quota.quota} remaining
-              </Text>
-              <Text size="xsmall" className="text-ui-fg-subtle">
-                Checked {formatDate(quota.observedAt)}
-              </Text>
-            </div>
-            <div
-              aria-label="TaxRate.io quota used"
-              aria-valuemax={quota.quota}
-              aria-valuemin={0}
-              aria-valuenow={quota.usage}
-              className="mt-2 h-2 overflow-hidden rounded-full bg-ui-bg-subtle"
-              role="progressbar"
-            >
-              <div
-                className="h-full rounded-full bg-ui-tag-blue-icon transition-[width] duration-200 motion-reduce:transition-none"
-                style={{ width: `${quotaPercent}%` }}
-              />
-            </div>
-          </div>
-        ) : (
-          <Text size="small" className="mt-5 text-ui-fg-subtle">
-            No quota response has been recorded yet. A real checkout lookup
-            updates this automatically.
-          </Text>
-        )}
-        {!snapshot.providers.taxRateIo.manualRefreshConfigured ? (
-          <div className="mt-4 rounded-md border border-ui-border-base bg-ui-bg-subtle p-3">
-            <Text size="small" weight="plus" className="text-ui-fg-warning">
-              Usage monitoring needs setup
-            </Text>
-            <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-              Configure TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE to enable a
-              deliberate quota refresh. Checkout tax calculation is still ready,
-              and real checkout lookups continue recording usage.
-            </Text>
-          </div>
-        ) : null}
       </Container>
 
       <Container>
