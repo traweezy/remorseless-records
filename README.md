@@ -530,6 +530,9 @@ and client secrets are explicitly excluded from persisted TanStack Query data.
 
 Implementation decisions are recorded in
 [`docs/adr/0001-checkout-payment-authority.md`](docs/adr/0001-checkout-payment-authority.md).
+The proposed single-engine Stripe Tax integration, its current configuration
+blockers, and its exact-total rollout gates are recorded in
+[`docs/adr/0002-stripe-tax-medusa-authority.md`](docs/adr/0002-stripe-tax-medusa-authority.md).
 The full test and incident procedures are in
 [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK.md) and
 [`docs/CHECKOUT_OPERATIONS.md`](docs/CHECKOUT_OPERATIONS.md).
@@ -961,7 +964,11 @@ Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK
 - Lighthouse (desktop + mobile) on `/`, `/catalog`, a typed detail route (`/music-release/{slug}`, `/bundle/{slug}`, or `/merch/{slug}`), and the legacy `/cart` drawer entry targeting LCP < 2.5s and A11y ≥ 95. Exercise the drawer interactions separately in Playwright.
 - Stripe success, 3DS, decline, processing-error, duplicate, response-loss,
   browser-close, webhook, recovery, and receipt-TTL cases in test mode only.
-- Automated bundle: `QA_BASE_URL=<deployed url> pnpm run qa:ci` (runs lint/typecheck, pa11y axe audits, and Lighthouse assertions). Optional overrides: `QA_PRODUCT_PATH=/music-release/{slug}`, `QA_EXTRA_URLS=/custom`.
+- Automated bundle: `QA_BASE_URL=<deployed url> pnpm run qa:ci` (runs
+  lint/typecheck, Pixel 7 and compact-phone Chrome/axe audits, pa11y axe audits,
+  and Lighthouse assertions). Optional overrides:
+  `QA_PRODUCT_PATH=/music-release/{slug}`, `QA_EXTRA_URLS=/custom`, and
+  `QA_PATHS=/contact,/checkout`.
 
 ### Support
 
