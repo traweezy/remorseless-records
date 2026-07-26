@@ -25,7 +25,6 @@ import {
   ArrowDown01,
   ArrowDownAZ,
   ArrowUp10,
-  Check,
   ChevronDown,
   Clock,
   LoaderCircle,
@@ -743,23 +742,26 @@ const FilterSidebar = ({
           Reset
         </Button>
       </div>
-      <Button
-        type="button"
-        onClick={onToggleStock}
-        variant={showInStockOnly ? "filled" : "outlined"}
-        size="default"
-        className="w-full justify-between px-4 text-[0.7rem]"
-        aria-pressed={showInStockOnly}
-      >
-        <span className="select-none">In stock</span>
-        <Check
+      <div className="space-y-1">
+        <p className="px-2 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground">
+          Availability
+        </p>
+        <label
+          htmlFor={`${idPrefix}-in-stock`}
           className={cn(
-            "h-4 w-4 transition-opacity",
-            showInStockOnly ? "opacity-100" : "opacity-0"
+            "flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.18rem] text-foreground transition hover:text-destructive",
+            showInStockOnly && "text-destructive"
           )}
-          aria-hidden
-        />
-      </Button>
+        >
+          <Checkbox
+            id={`${idPrefix}-in-stock`}
+            checked={showInStockOnly}
+            onCheckedChange={onToggleStock}
+            className="border-border/60 bg-background/70 data-[state=checked]:border-destructive data-[state=checked]:bg-destructive focus-visible:ring-destructive/60"
+          />
+          <span className="select-none">In stock</span>
+        </label>
+      </div>
     </div>
 
     <div className="space-y-5">

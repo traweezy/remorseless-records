@@ -711,13 +711,12 @@ test("catalog filters stay stable and combine predictably", async ({
   const drawer = page.getByRole("dialog", { name: "Filters" })
   await expect(drawer).toBeVisible()
 
-  const inStockButton = drawer.getByRole("button", { name: "In stock" })
-  await expect(inStockButton).toHaveAttribute("aria-pressed", "false")
-  await expect(inStockButton).toHaveClass(/border-destructive\/70/)
-  await inStockButton.click()
-  await expect(inStockButton).toHaveAttribute("aria-pressed", "true")
-  await expect(inStockButton).toHaveClass(/bg-destructive/)
-  await inStockButton.click()
+  const inStockCheckbox = drawer.getByRole("checkbox", { name: "In stock" })
+  await expect(inStockCheckbox).not.toBeChecked()
+  await drawer.getByText("In stock", { exact: true }).click()
+  await expect(inStockCheckbox).toBeChecked()
+  await drawer.getByText("In stock", { exact: true }).click()
+  await expect(inStockCheckbox).not.toBeChecked()
 
   const merchandise = drawer.getByRole("checkbox", {
     name: /^Merchandise/,
