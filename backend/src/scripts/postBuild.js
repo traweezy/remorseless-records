@@ -8,6 +8,7 @@ const MEDUSA_INIT_DEST = path.join(MEDUSA_SERVER_PATH, 'scripts', 'init-backend.
 const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
 const MEDUSA_WORKSPACE_YAML = path.join(MEDUSA_SERVER_PATH, 'pnpm-workspace.yaml');
 const MEDUSA_PATCHES_DIR = path.join(MEDUSA_SERVER_PATH, 'patches');
+const MEDUSA_ADMIN_INDEX = path.join(MEDUSA_SERVER_PATH, 'public', 'admin', 'index.html');
 const LOCAL_PACKAGE_JSON = path.join(process.cwd(), 'package.json');
 const REPOSITORY_ROOT = path.resolve(process.cwd(), '..');
 const ROOT_PACKAGE_JSON = path.join(REPOSITORY_ROOT, 'package.json');
@@ -29,6 +30,15 @@ const DEFAULT_ALLOWED_BUILDS = [
 // Check if .medusa/server exists - if not, build process failed
 if (!fs.existsSync(MEDUSA_SERVER_PATH)) {
   throw new Error('.medusa/server directory not found. This indicates the Medusa build process failed. Please check for build errors.');
+}
+
+if (fs.existsSync(MEDUSA_ADMIN_INDEX)) {
+  const adminDocument = fs.readFileSync(MEDUSA_ADMIN_INDEX, 'utf-8');
+  const accessibleAdminDocument = adminDocument
+    .replace('<html>', '<html lang="en">')
+    .replace(/,\s*user-scalable=no/g, '');
+
+  fs.writeFileSync(MEDUSA_ADMIN_INDEX, accessibleAdminDocument, 'utf-8');
 }
 
 // Copy pnpm-lock.yaml (scoped to the backend importer for frozen installs)
