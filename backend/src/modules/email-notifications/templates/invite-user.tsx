@@ -1,3 +1,5 @@
+import * as React from 'react'
+
 import { Button, Link, Section, Text, Img, Hr } from './primitives'
 import { Base } from './base'
 

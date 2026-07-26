@@ -1,11 +1,18 @@
-import { ReactNode } from 'react'
+import * as React from 'react'
+import type { ReactNode } from 'react'
 import { MedusaError } from '@medusajs/framework/utils'
 import { InviteUserEmail, INVITE_USER, isInviteUserData } from './invite-user'
 import { OrderPlacedTemplate, ORDER_PLACED, isOrderPlacedTemplateData } from './order-placed'
+import {
+  isRefundIssuedTemplateData,
+  RefundIssuedTemplate,
+  REFUND_ISSUED,
+} from './refund-issued'
 
 export const EmailTemplates = {
   INVITE_USER,
-  ORDER_PLACED
+  ORDER_PLACED,
+  REFUND_ISSUED,
 } as const
 
 export type EmailTemplateType = keyof typeof EmailTemplates
@@ -30,6 +37,15 @@ export function generateEmailTemplate(templateKey: string, data: unknown): React
       }
       return <OrderPlacedTemplate {...data} />
 
+    case EmailTemplates.REFUND_ISSUED:
+      if (!isRefundIssuedTemplateData(data)) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          `Invalid data for template "${EmailTemplates.REFUND_ISSUED}"`
+        )
+      }
+      return <RefundIssuedTemplate {...data} />
+
     default:
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
@@ -38,4 +54,4 @@ export function generateEmailTemplate(templateKey: string, data: unknown): React
   }
 }
 
-export { InviteUserEmail, OrderPlacedTemplate }
+export { InviteUserEmail, OrderPlacedTemplate, RefundIssuedTemplate }

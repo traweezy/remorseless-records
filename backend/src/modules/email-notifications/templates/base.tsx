@@ -5,6 +5,7 @@ import {
   Preview,
   Head,
 } from './primitives'
+import * as React from 'react'
 import type { PropsWithChildren, ReactElement } from 'react'
 
 type BaseProps = {
