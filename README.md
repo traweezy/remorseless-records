@@ -7,6 +7,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 - [Architecture](#architecture)
 - [Shopping Cart: Plain-English Guide](#shopping-cart-plain-english-guide)
 - [Checkout and Payment: Plain-English Guide](#checkout-and-payment-plain-english-guide)
+- [Refund Operations: Plain-English Guide](#refund-operations-plain-english-guide)
 - [Money and Price Units](#money-and-price-units)
 - [Prerequisites](#prerequisites)
 - [Repository Setup](#repository-setup)
@@ -546,6 +547,39 @@ estimated rows; and exports transaction-detail and destination-summary CSVs.
 It is filing support, not an automated return or payment service. The report
 contract and accountant workflow are documented in
 [`docs/TAX_RECORDS_AND_FILING.md`](docs/TAX_RECORDS_AND_FILING.md).
+
+## Refund Operations: Plain-English Guide
+
+Refunds are issued only from the Medusa order. The Stripe Dashboard is for
+investigation, not an alternative refund button. This keeps the Medusa order
+transaction, Stripe movement, inventory decision, customer communication, and
+tax evidence connected.
+
+The Admin **Refund operations** workspace first explains whether the operator
+should cancel unfulfilled goods, create a return/claim for physical goods, or
+use a payment-only adjustment. It then monitors all known refunds as **Needs
+attention**, **Processing**, or **Verified**. A case that shows a direct Stripe
+refund, a Medusa/Stripe amount mismatch, a failed provider refund, a dispute, or
+a missing tax reversal explicitly tells the operator not to refund again.
+
+The workspace cannot move money. Its **Open order** action returns the operator
+to Medusa's native, irreversible refund flow. The order's Stripe widget carries
+the same guidance.
+
+Every `payment.refunded` event also creates an idempotent Resend notification
+for the order email. Multiple legitimate partial refunds each get one message;
+replayed event delivery cannot duplicate a message for the same Medusa refund
+ID. Checkout compensation can notify a guest from the cart email even when
+order creation failed. The message states the amount and original-payment
+method behavior but does not promise when the customer's bank will post the
+credit.
+
+Immediate event handling and the existing hourly tax-evidence job reconcile
+Medusa, Stripe refund statuses/amounts, and Stripe Tax reversals. TaxRate.io
+refunds need no provider-side reversal because Medusa remains the tax filing
+ledger. The full operator decision tree, exception runbooks, edge-case matrix,
+service objectives, and test plan are in
+[`docs/REFUND_OPERATIONS.md`](docs/REFUND_OPERATIONS.md).
 
 ### Checkout staging verification
 

@@ -1,31 +1,21 @@
-# Admin Customizations
+# Admin customizations
 
-You can extend the Medusa Admin to add widgets and new pages. Your customizations interact with API routes to provide merchants with custom functionalities.
+The Medusa Admin includes project-specific workspaces for catalog authoring,
+merchandising, discography, news, tax-provider control, tax records, and refund
+operations.
 
-## Example: Create a Widget
+## Refund operations
 
-A widget is a React component that can be injected into an existing page in the admin dashboard.
+`routes/refund-operations/page.tsx` is a read-only operator guide and
+reconciliation queue. It never issues a refund. The native Medusa order screen
+remains the only mutation surface.
 
-For example, create the file `src/admin/widgets/product-widget.tsx` with the following content:
+`widgets/order-stripe-payment.tsx` links Stripe payment investigation to an
+order and directs the operator to the appropriate Medusa return, claim, or
+payment action. Opening Stripe must not be used to create a refund.
 
-```tsx title="src/admin/widgets/product-widget.tsx"
-import { defineWidgetConfig } from "@medusajs/admin-shared"
-
-// The widget
-const ProductWidget = () => {
-  return (
-    <div>
-      <h2>Product Widget</h2>
-    </div>
-  )
-}
-
-// The widget's configurations
-export const config = defineWidgetConfig({
-  zone: "product.details.after",
-})
-
-export default ProductWidget
-```
-
-This inserts a widget with the text “Product Widget” at the end of a product’s details page.
+The backing Admin endpoint is `GET /admin/refund-operations`. It returns
+privacy-minimized projections from Medusa payment/refund records and existing
+tax evidence. See
+[`../../../docs/REFUND_OPERATIONS.md`](../../../docs/REFUND_OPERATIONS.md) for
+the authority boundary, statuses, edge cases, and incident runbook.
