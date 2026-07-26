@@ -39,7 +39,7 @@ const snapshotMock = taxControlSnapshot as jest.MockedFunction<
 
 const validBody = {
   expectedGeneration: 3,
-  idempotencyKey: "6f596d70-b288-43c6-9c43-23c79d6f47f9",
+  idempotencyKey: "00000000-0000-4000-8000-000000000001",
   reason: "Sandbox Stripe Tax checks passed.",
   targetProvider: "stripe_tax",
 } as const;
