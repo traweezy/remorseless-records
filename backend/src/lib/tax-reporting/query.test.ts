@@ -115,17 +115,25 @@ describe("tax report query", () => {
   });
 
   it("scans orders before period end so older-sale refunds remain available", async () => {
-    let capturedInput: Record<string, unknown> | null = null;
+    const capturedInputs: Record<string, unknown>[] = [];
     const result = await loadTaxReportOrders({
       container: containerWith(async (input) => {
-        capturedInput = input;
+        capturedInputs.push(input);
         return { data: [] };
       }),
       period,
     });
 
     expect(result).toEqual({ orders: [], truncated: false });
-    expect(capturedInput).toMatchObject({
+    expect(capturedInputs).toHaveLength(2);
+    const fullInput = capturedInputs.find((input) =>
+      (input.fields as string[]).includes("*payment_collections"),
+    );
+    const totalsInput = capturedInputs.find(
+      (input) =>
+        !(input.fields as string[]).includes("*payment_collections"),
+    );
+    expect(fullInput).toMatchObject({
       entity: "orders",
       fields: expect.arrayContaining([
         "*items.tax_lines",
@@ -153,6 +161,90 @@ describe("tax report query", () => {
         created_at: { $lt: period.endExclusive },
       },
     });
+    expect(totalsInput).toMatchObject({
+      entity: "orders",
+      fields: expect.arrayContaining([
+        "original_item_subtotal",
+        "original_item_tax_total",
+        "original_shipping_subtotal",
+        "original_shipping_tax_total",
+        "original_subtotal",
+        "original_tax_total",
+        "original_total",
+      ]),
+      filters: {
+        created_at: { $lt: period.endExclusive },
+      },
+    });
+  });
+
+  it("merges a totals-only workflow result into the full order page", async () => {
+    const fullOrder = {
+      ...order,
+      original_subtotal: "10",
+      original_tax_total: "0.8",
+      original_total: "10.8",
+      shipping_methods: [],
+      summary: {
+        original_order_total: "16.2",
+        paid_total: "16.2",
+      },
+      payment_collections: [
+        {
+          payments: [
+            {
+              captured_amount: "16.2",
+              captured_at: "2026-07-20T16:01:00.000Z",
+              refunds: [],
+            },
+          ],
+        },
+      ],
+    };
+    const authoritativeTotals = {
+      id: order.id,
+      original_item_subtotal: "10",
+      original_item_tax_total: "0.8",
+      original_shipping_subtotal: "5",
+      original_shipping_tax_total: "0.4",
+      original_subtotal: "15",
+      original_tax_total: "1.2",
+      original_total: "16.2",
+    };
+    const report = await buildFullTaxReport({
+      container: containerWith(async (input) => ({
+        data: (input.fields as string[]).includes("*payment_collections")
+          ? [fullOrder]
+          : [authoritativeTotals],
+      })),
+      period,
+    });
+
+    expect(report.records).toEqual([
+      expect.objectContaining({
+        grossSales: "15.0000",
+        issues: [
+          "Legacy tax lines do not include provider-generation evidence.",
+        ],
+        taxAmount: "1.2000",
+        total: "16.2000",
+      }),
+    ]);
+  });
+
+  it("fails closed when the totals-only result omits an order", async () => {
+    await expect(
+      loadTaxReportOrders({
+        container: containerWith(async (input) => ({
+          data: (input.fields as string[]).includes("*payment_collections")
+            ? [order]
+            : [],
+        })),
+        period,
+      }),
+    ).rejects.toThrow(
+      "Tax report could not load authoritative totals for every order.",
+    );
   });
 
   it("hydrates authoritative capture data from the Payment Module", async () => {

@@ -36,6 +36,24 @@ const PAGE_SIZE = 250;
 const MAX_ORDERS = 50_000;
 const PAYMENT_QUERY_CONCURRENCY = 4;
 
+const ORDER_TOTAL_FIELDS = [
+  "id",
+  "original_total",
+  "raw_original_total",
+  "original_subtotal",
+  "raw_original_subtotal",
+  "original_tax_total",
+  "raw_original_tax_total",
+  "original_item_subtotal",
+  "raw_original_item_subtotal",
+  "original_item_tax_total",
+  "raw_original_item_tax_total",
+  "original_shipping_subtotal",
+  "raw_original_shipping_subtotal",
+  "original_shipping_tax_total",
+  "raw_original_shipping_tax_total",
+] as const;
+
 const PAYMENT_FIELDS = [
   "id",
   "amount",
@@ -70,20 +88,7 @@ const ORDER_FIELDS = [
   "*payment_collections.payments",
   "*payment_collections.payments.refunds",
   "*payment_collections.payments.captures",
-  "original_total",
-  "raw_original_total",
-  "original_subtotal",
-  "raw_original_subtotal",
-  "original_tax_total",
-  "raw_original_tax_total",
-  "original_item_subtotal",
-  "raw_original_item_subtotal",
-  "original_item_tax_total",
-  "raw_original_item_tax_total",
-  "original_shipping_subtotal",
-  "raw_original_shipping_subtotal",
-  "original_shipping_tax_total",
-  "raw_original_shipping_tax_total",
+  ...ORDER_TOTAL_FIELDS,
   "shipping_address.city",
   "shipping_address.country_code",
   "shipping_address.postal_code",
@@ -149,6 +154,44 @@ const records = (value: unknown): UnknownRecord[] =>
 
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null;
+
+const workflowRows = (result: {
+  rows: unknown[];
+} | unknown[]): UnknownRecord[] =>
+  (Array.isArray(result) ? result : result.rows) as UnknownRecord[];
+
+const mergeAuthoritativeTotals = ({
+  orders,
+  totals,
+}: {
+  orders: UnknownRecord[];
+  totals: UnknownRecord[];
+}): UnknownRecord[] => {
+  const totalsById = new Map(
+    totals.flatMap((order) => {
+      const id = text(order.id);
+      return id ? [[id, order] as const] : [];
+    }),
+  );
+  return orders.map((order) => {
+    const id = text(order.id);
+    const authoritative = id ? totalsById.get(id) : undefined;
+    if (!id || !authoritative) {
+      throw new Error(
+        "Tax report could not load authoritative totals for every order.",
+      );
+    }
+    return Object.fromEntries(
+      Object.entries(order).concat(
+        ORDER_TOTAL_FIELDS.flatMap((field) =>
+          field in authoritative
+            ? ([[field, authoritative[field]]] as const)
+            : [],
+        ),
+      ),
+    );
+  });
+};
 
 const paymentIdsFrom = (orders: UnknownRecord[]): string[] => [
   ...new Set(
@@ -325,20 +368,32 @@ export const loadTaxReportOrders = async ({
   const orders: UnknownRecord[] = [];
 
   while (orders.length < MAX_ORDERS) {
-    const { result } = await orderListWorkflow.run({
-      input: {
-        fields: [...ORDER_FIELDS],
-        variables: {
-          created_at: { $lt: period.endExclusive },
-          order: { created_at: "DESC" },
-          skip: orders.length,
-          take: PAGE_SIZE,
+    const variables = {
+      created_at: { $lt: period.endExclusive },
+      order: { created_at: "DESC" as const },
+      skip: orders.length,
+      take: PAGE_SIZE,
+    };
+    const [{ result }, { result: totalsResult }] = await Promise.all([
+      orderListWorkflow.run({
+        input: {
+          fields: [...ORDER_FIELDS],
+          variables,
         },
-      },
+      }),
+      orderListWorkflow.run({
+        input: {
+          fields: [...ORDER_TOTAL_FIELDS],
+          variables,
+        },
+      }),
+    ]);
+    const data = mergeAuthoritativeTotals({
+      orders: workflowRows(result as { rows: unknown[] } | unknown[]),
+      totals: workflowRows(
+        totalsResult as { rows: unknown[] } | unknown[],
+      ),
     });
-    const data = (Array.isArray(result)
-      ? result
-      : result.rows) as unknown as UnknownRecord[];
     orders.push(...data);
     if (data.length < PAGE_SIZE) {
       return {
