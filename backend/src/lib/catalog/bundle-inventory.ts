@@ -5,6 +5,11 @@ import {
   Modules,
 } from "@medusajs/framework/utils";
 
+import type {
+  CatalogBundleInventoryLinkState,
+  CatalogBundleStateSnapshot,
+} from "@/modules/catalog/bundle-authoring";
+
 type JsonRecord = Record<string, unknown>;
 type MedusaContainer = MedusaRequest["scope"];
 
@@ -31,6 +36,22 @@ type CatalogService = {
   listCatalogBundleComponents: (
     filters: Record<string, unknown>,
   ) => Promise<CatalogBundleComponentRecord[]>;
+  listCatalogBundleInventoryLinks: (
+    filters: Record<string, unknown>,
+  ) => Promise<
+    Array<{
+      id: string;
+      bundle_profile_id: string;
+      bundle_variant_id: string;
+      inventory_item_id: string;
+      required_quantity: number;
+      metadata?: unknown;
+    }>
+  >;
+  replaceBundleInventoryLinks: (
+    bundleProfileId: string,
+    links: CatalogBundleInventoryLinkState[],
+  ) => Promise<void>;
 };
 
 type QueryGraph = {
@@ -72,6 +93,10 @@ export type ResolvedVariantMapping = {
 type InventoryLink = {
   inventoryItemId: string;
   requiredQuantity: number;
+};
+
+type InventoryLinkWithVariant = InventoryLink & {
+  bundleVariantId: string;
 };
 
 export type BundleVariantInventoryPlan = {
@@ -327,6 +352,350 @@ const readBundleVariants = async (
   });
 };
 
+const inventoryLinkKey = (
+  variantId: string,
+  inventoryItemId: string,
+): string => `${variantId}:${inventoryItemId}`;
+
+const flattenPlan = (
+  plan: BundleVariantInventoryPlan[],
+): InventoryLinkWithVariant[] =>
+  plan.flatMap((variant) =>
+    variant.links.map((link) => ({
+      bundleVariantId: variant.bundleVariantId,
+      ...link,
+    })),
+  );
+
+const toInventoryMap = (
+  links: InventoryLinkWithVariant[],
+): Map<string, InventoryLinkWithVariant> =>
+  new Map(
+    links.map((link) => [
+      inventoryLinkKey(link.bundleVariantId, link.inventoryItemId),
+      link,
+    ]),
+  );
+
+const flattenActualInventory = (
+  variants: Awaited<ReturnType<typeof readBundleVariants>>,
+): InventoryLinkWithVariant[] =>
+  variants.flatMap((variant) =>
+    variant.inventoryItems.map((link) => ({
+      bundleVariantId: variant.id,
+      ...link,
+    })),
+  );
+
+const buildPlanForSnapshot = (
+  snapshot: CatalogBundleStateSnapshot,
+  bundleVariantIds: string[],
+): BundleVariantInventoryPlan[] => {
+  if (
+    !snapshot.profile ||
+    snapshot.profile.inventory_mode !== "component_derived" ||
+    !snapshot.profile.is_active
+  ) {
+    return [];
+  }
+  return buildBundleVariantInventoryPlan({
+    bundleVariantIds,
+    components: snapshot.components,
+  });
+};
+
+type ProvenanceSnapshot = {
+  bundleProfileId: string;
+  links: CatalogBundleInventoryLinkState[];
+};
+
+export type BundleInventoryReconciliationSnapshot = {
+  actualBefore: InventoryLinkWithVariant[];
+  affectedKeys: string[];
+  provenanceBefore: ProvenanceSnapshot[];
+};
+
+const readProvenance = async (
+  catalogService: CatalogService,
+  bundleProfileIds: string[],
+): Promise<ProvenanceSnapshot[]> =>
+  Promise.all(
+    bundleProfileIds.map(async (bundleProfileId) => ({
+      bundleProfileId,
+      links: (
+        await catalogService.listCatalogBundleInventoryLinks({
+          bundle_profile_id: bundleProfileId,
+        })
+      ).map((link) => ({
+        id: link.id,
+        bundle_profile_id: link.bundle_profile_id,
+        bundle_variant_id: link.bundle_variant_id,
+        inventory_item_id: link.inventory_item_id,
+        required_quantity: link.required_quantity,
+        metadata: isRecord(link.metadata) ? link.metadata : {},
+      })),
+    })),
+  );
+
+const restoreProvenance = async (
+  catalogService: CatalogService,
+  provenance: ProvenanceSnapshot[],
+): Promise<void> => {
+  for (const snapshot of provenance) {
+    await catalogService.replaceBundleInventoryLinks(
+      snapshot.bundleProfileId,
+      snapshot.links,
+    );
+  }
+};
+
+const restoreRemoteInventory = async (
+  container: MedusaContainer,
+  productId: string,
+  snapshot: BundleInventoryReconciliationSnapshot,
+): Promise<void> => {
+  const query = container.resolve(
+    ContainerRegistrationKeys.QUERY,
+  ) as QueryGraph;
+  const remoteLink = container.resolve(
+    ContainerRegistrationKeys.REMOTE_LINK,
+  ) as RemoteLink;
+  const current = flattenActualInventory(
+    await readBundleVariants(query, productId),
+  );
+  const currentByKey = toInventoryMap(current);
+  const beforeByKey = toInventoryMap(snapshot.actualBefore);
+
+  for (const key of snapshot.affectedKeys) {
+    const currentLink = currentByKey.get(key);
+    const beforeLink = beforeByKey.get(key);
+    if (
+      currentLink &&
+      (!beforeLink ||
+        beforeLink.requiredQuantity !== currentLink.requiredQuantity)
+    ) {
+      await remoteLink.dismiss([
+        buildRemoteLink(
+          currentLink.bundleVariantId,
+          currentLink.inventoryItemId,
+        ),
+      ]);
+    }
+    if (
+      beforeLink &&
+      (!currentLink ||
+        currentLink.requiredQuantity !== beforeLink.requiredQuantity)
+    ) {
+      await remoteLink.create([
+        buildRemoteLink(
+          beforeLink.bundleVariantId,
+          beforeLink.inventoryItemId,
+          beforeLink.requiredQuantity,
+        ),
+      ]);
+    }
+  }
+};
+
+export const restoreBundleInventoryReconciliation = async (
+  container: MedusaContainer,
+  productId: string,
+  snapshot: BundleInventoryReconciliationSnapshot,
+): Promise<void> => {
+  const catalogService = container.resolve("catalog") as CatalogService;
+  await restoreRemoteInventory(container, productId, snapshot);
+  await restoreProvenance(catalogService, snapshot.provenanceBefore);
+};
+
+export const reconcileComponentDerivedBundleInventory = async (
+  container: MedusaContainer,
+  productId: string,
+  previous: CatalogBundleStateSnapshot,
+): Promise<{
+  plan: BundleVariantInventoryPlan[];
+  snapshot: BundleInventoryReconciliationSnapshot;
+}> => {
+  const catalogService = container.resolve("catalog") as CatalogService;
+  const profiles = await catalogService.listCatalogBundleProfiles({
+    product_id: productId,
+  });
+  const profile = profiles[0];
+  const bundleVariants = await readBundleVariants(
+    container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph,
+    productId,
+  );
+
+  const needsVariants =
+    (profile &&
+      profile.inventory_mode === "component_derived" &&
+      profile.is_active !== false) ||
+    (previous.profile &&
+      previous.profile.inventory_mode === "component_derived" &&
+      previous.profile.is_active);
+  if (needsVariants && !bundleVariants.length) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Component-derived bundle has no product variants",
+    );
+  }
+
+  const bundleVariantIds = bundleVariants.map((variant) => variant.id);
+  const components =
+    profile &&
+    profile.inventory_mode === "component_derived" &&
+    profile.is_active !== false
+      ? await catalogService.listCatalogBundleComponents({
+          bundle_profile_id: profile.id,
+        })
+      : [];
+  const plan =
+    profile &&
+    profile.inventory_mode === "component_derived" &&
+    profile.is_active !== false
+      ? buildBundleVariantInventoryPlan({
+          bundleVariantIds,
+          components,
+        })
+      : [];
+  if (plan.some((variant) => !variant.links.length)) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Every component-derived bundle variant must resolve to inventory components",
+    );
+  }
+
+  const profileIds = Array.from(
+    new Set(
+      [previous.profile?.id, profile?.id].filter(
+        (id): id is string => typeof id === "string",
+      ),
+    ),
+  );
+  const provenanceBefore = await readProvenance(
+    catalogService,
+    profileIds,
+  );
+  const actualBefore = flattenActualInventory(bundleVariants);
+  const actualByKey = toInventoryMap(actualBefore);
+  const desiredLinks = flattenPlan(plan);
+  const desiredByKey = toInventoryMap(desiredLinks);
+  const previouslyPlanned = flattenPlan(
+    buildPlanForSnapshot(previous, bundleVariantIds),
+  );
+  const managedBefore = toInventoryMap([
+    ...provenanceBefore.flatMap((snapshot) =>
+      snapshot.links.map((link) => ({
+        bundleVariantId: link.bundle_variant_id,
+        inventoryItemId: link.inventory_item_id,
+        requiredQuantity: link.required_quantity,
+      })),
+    ),
+    ...previouslyPlanned.filter((link) => {
+      const actual = actualByKey.get(
+        inventoryLinkKey(link.bundleVariantId, link.inventoryItemId),
+      );
+      return actual?.requiredQuantity === link.requiredQuantity;
+    }),
+  ]);
+
+  desiredLinks.forEach((desired) => {
+    const key = inventoryLinkKey(
+      desired.bundleVariantId,
+      desired.inventoryItemId,
+    );
+    const actual = actualByKey.get(key);
+    if (
+      actual &&
+      actual.requiredQuantity !== desired.requiredQuantity &&
+      !managedBefore.has(key)
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.CONFLICT,
+        `Inventory link ${key} is not owned by the bundle workflow and cannot be replaced.`,
+      );
+    }
+  });
+
+  const linksToDismiss = Array.from(managedBefore.entries()).flatMap(
+    ([key]) => {
+      const actual = actualByKey.get(key);
+      const desired = desiredByKey.get(key);
+      return actual &&
+        (!desired || desired.requiredQuantity !== actual.requiredQuantity)
+        ? [actual]
+        : [];
+    },
+  );
+  const linksToCreate = desiredLinks.filter((desired) => {
+    const actual = actualByKey.get(
+      inventoryLinkKey(desired.bundleVariantId, desired.inventoryItemId),
+    );
+    return !actual || actual.requiredQuantity !== desired.requiredQuantity;
+  });
+  const affectedKeys = Array.from(
+    new Set(
+      [...linksToDismiss, ...linksToCreate].map((link) =>
+        inventoryLinkKey(link.bundleVariantId, link.inventoryItemId),
+      ),
+    ),
+  );
+  const snapshot: BundleInventoryReconciliationSnapshot = {
+    actualBefore,
+    affectedKeys,
+    provenanceBefore,
+  };
+
+  const remoteLink = container.resolve(
+    ContainerRegistrationKeys.REMOTE_LINK,
+  ) as RemoteLink;
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER) as Logger;
+  let changes = 0;
+  try {
+    for (const link of linksToDismiss) {
+      await remoteLink.dismiss([
+        buildRemoteLink(link.bundleVariantId, link.inventoryItemId),
+      ]);
+      changes += 1;
+    }
+    for (const link of linksToCreate) {
+      await remoteLink.create([
+        buildRemoteLink(
+          link.bundleVariantId,
+          link.inventoryItemId,
+          link.requiredQuantity,
+        ),
+      ]);
+      changes += 1;
+    }
+
+    for (const profileId of profileIds) {
+      await catalogService.replaceBundleInventoryLinks(
+        profileId,
+        profile?.id === profileId
+          ? desiredLinks.map((link) => ({
+              bundle_profile_id: profileId,
+              bundle_variant_id: link.bundleVariantId,
+              inventory_item_id: link.inventoryItemId,
+              required_quantity: link.requiredQuantity,
+              metadata: {},
+            }))
+          : [],
+      );
+    }
+  } catch (error) {
+    await restoreRemoteInventory(container, productId, snapshot);
+    await restoreProvenance(catalogService, provenanceBefore);
+    throw error;
+  }
+
+  if (changes) {
+    logger.info(
+      `[catalog] Synchronized ${changes} bundle inventory link change(s) for ${productId}`,
+    );
+  }
+  return { plan, snapshot };
+};
+
 export const syncComponentDerivedBundleInventory = async (
   container: MedusaContainer,
   productId: string,
@@ -336,97 +705,50 @@ export const syncComponentDerivedBundleInventory = async (
     product_id: productId,
   });
   const profile = profiles[0];
-  if (
-    !profile ||
-    profile.inventory_mode !== "component_derived" ||
-    profile.is_active === false
-  ) {
-    return [];
-  }
-
-  const [components, bundleVariants] = await Promise.all([
-    catalogService.listCatalogBundleComponents({
-      bundle_profile_id: profile.id,
-    }),
-    readBundleVariants(
-      container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph,
+  const previous: CatalogBundleStateSnapshot = profile
+    ? {
+        profile: {
+          id: profile.id,
+          product_id: profile.product_id,
+          product_profile_id: null,
+          bundle_type: "fixed",
+          inventory_mode:
+            profile.inventory_mode === "manual"
+              ? "manual"
+              : "component_derived",
+          fulfillment_mode: "ship_components",
+          display_title: null,
+          description_html: null,
+          is_active: profile.is_active !== false,
+          version: 1,
+          metadata: {},
+        },
+        components: await catalogService.listCatalogBundleComponents({
+          bundle_profile_id: profile.id,
+        }).then((components) =>
+          components.map((component, index) => ({
+            id: component.id ?? `legacy-${index}`,
+            bundle_profile_id: profile.id,
+            component_product_id: "",
+            component_variant_id: component.component_variant_id ?? null,
+            component_inventory_item_id:
+              component.component_inventory_item_id ?? null,
+            title: null,
+            variant_title: null,
+            sku: null,
+            quantity: component.quantity ?? 1,
+            sort_order: index,
+            is_required: component.is_required !== false,
+            metadata: isRecord(component.metadata) ? component.metadata : {},
+          })),
+        ),
+      }
+    : { profile: null, components: [] };
+  return (
+    await reconcileComponentDerivedBundleInventory(
+      container,
       productId,
-    ),
-  ]);
-
-  if (!bundleVariants.length) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "Component-derived bundle has no product variants",
-    );
-  }
-
-  const plan = buildBundleVariantInventoryPlan({
-    bundleVariantIds: bundleVariants.map((variant) => variant.id),
-    components,
-  });
-  if (plan.some((variant) => !variant.links.length)) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "Every component-derived bundle variant must resolve to inventory components",
-    );
-  }
-
-  const remoteLink = container.resolve(
-    ContainerRegistrationKeys.REMOTE_LINK,
-  ) as RemoteLink;
-  const logger = container.resolve(ContainerRegistrationKeys.LOGGER) as Logger;
-  let changes = 0;
-
-  for (const variantPlan of plan) {
-    const current =
-      bundleVariants.find(
-        (variant) => variant.id === variantPlan.bundleVariantId,
-      )?.inventoryItems ?? [];
-    const desiredByItemId = new Map(
-      variantPlan.links.map((link) => [
-        link.inventoryItemId,
-        link.requiredQuantity,
-      ]),
-    );
-    const currentByItemId = new Map(
-      current.map((link) => [link.inventoryItemId, link.requiredQuantity]),
-    );
-    const linksToDismiss = current.filter(
-      (link) =>
-        desiredByItemId.get(link.inventoryItemId) !== link.requiredQuantity,
-    );
-    const linksToCreate = variantPlan.links.filter(
-      (link) =>
-        currentByItemId.get(link.inventoryItemId) !== link.requiredQuantity,
-    );
-
-    if (linksToDismiss.length) {
-      await remoteLink.dismiss(
-        linksToDismiss.map((link) =>
-          buildRemoteLink(variantPlan.bundleVariantId, link.inventoryItemId),
-        ),
-      );
-      changes += linksToDismiss.length;
-    }
-    if (linksToCreate.length) {
-      await remoteLink.create(
-        linksToCreate.map((link) =>
-          buildRemoteLink(
-            variantPlan.bundleVariantId,
-            link.inventoryItemId,
-            link.requiredQuantity,
-          ),
-        ),
-      );
-      changes += linksToCreate.length;
-    }
-  }
-
-  if (changes) {
-    logger.info(
-      `[catalog] Synchronized ${changes} bundle inventory link change(s) for ${productId}`,
-    );
-  }
-  return plan;
+      previous,
+    )
+  ).plan;
 };

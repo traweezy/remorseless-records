@@ -12,12 +12,18 @@ import {
   serializeCatalogBundleComponent,
   serializeCatalogBundleProfile,
 } from "@/modules/catalog/serializers";
-import { syncComponentDerivedBundleInventory } from "@/lib/catalog/bundle-inventory";
+import { parseResolvedVariantMappings } from "@/lib/catalog/bundle-inventory";
+import { hashCatalogCommand } from "@/modules/catalog/catalog-command";
+import type {
+  CatalogBundleComponentState,
+  CatalogBundleMutationInput,
+} from "@/modules/catalog/bundle-authoring";
+import { mutateCatalogBundleWorkflow } from "@/workflows/catalog/mutate-bundle";
 import {
   assertProductExists,
-  assertVariantExists,
+  assertQueryEntityExists,
+  assertVariantBelongsToProduct,
   coerceJsonRecord,
-  firstResult,
   toNullableString,
   type CatalogService,
 } from "../utils";
@@ -36,6 +42,8 @@ export const bundleComponentInputSchema = z.object({
 });
 
 export const bundleUpsertSchema = z.object({
+  idempotencyKey: z.string().uuid(),
+  expectedVersion: z.number().int().min(0),
   productProfileId: z.string().trim().optional().nullable(),
   bundleType: z.enum(catalogBundleTypeValues).optional(),
   inventoryMode: z.enum(catalogBundleInventoryModeValues).optional(),
@@ -48,6 +56,13 @@ export const bundleUpsertSchema = z.object({
 });
 
 export type BundleUpsertInput = z.infer<typeof bundleUpsertSchema>;
+
+export const bundleDeleteSchema = z.object({
+  idempotencyKey: z.string().uuid(),
+  expectedVersion: z.number().int().min(0),
+});
+
+export type BundleDeleteInput = z.infer<typeof bundleDeleteSchema>;
 
 type ResolvedBundleDefaults = {
   bundleType: CatalogBundleType;
@@ -94,19 +109,6 @@ export const serializeBundleResponse = async (
   };
 };
 
-const deleteBundleComponents = async (
-  catalogService: CatalogService,
-  bundleProfileId: string,
-): Promise<void> => {
-  const existing = await catalogService.listCatalogBundleComponents({
-    bundle_profile_id: bundleProfileId,
-  });
-  const ids = existing.map((component) => component.id);
-  if (ids.length) {
-    await catalogService.deleteCatalogBundleComponents(ids);
-  }
-};
-
 const validateBundleShape = (
   productId: string,
   input: BundleUpsertInput,
@@ -138,8 +140,18 @@ const validateBundleShape = (
   }
 };
 
-const resolveDefaults = (input: BundleUpsertInput): ResolvedBundleDefaults => {
-  const bundleType = input.bundleType ?? "fixed";
+const resolveDefaults = (
+  input: BundleUpsertInput,
+  existing?: {
+    bundle_type?: unknown;
+    inventory_mode?: unknown;
+    fulfillment_mode?: unknown;
+  } | null,
+): ResolvedBundleDefaults => {
+  const existingBundleType = catalogBundleTypeValues.find(
+    (type) => type === existing?.bundle_type,
+  );
+  const bundleType = input.bundleType ?? existingBundleType ?? "fixed";
   if (bundleType === "mystery") {
     return {
       bundleType,
@@ -150,55 +162,139 @@ const resolveDefaults = (input: BundleUpsertInput): ResolvedBundleDefaults => {
 
   return {
     bundleType,
-    inventoryMode: input.inventoryMode ?? "component_derived",
-    fulfillmentMode: input.fulfillmentMode ?? "ship_components",
+    inventoryMode:
+      input.inventoryMode ??
+      catalogBundleInventoryModeValues.find(
+        (mode) => mode === existing?.inventory_mode,
+      ) ??
+      "component_derived",
+    fulfillmentMode:
+      input.fulfillmentMode ??
+      catalogBundleFulfillmentModeValues.find(
+        (mode) => mode === existing?.fulfillment_mode,
+      ) ??
+      "ship_components",
   };
 };
 
-const replaceBundleComponents = async (
+const validateBundleComponent = async (
   req: MedusaRequest,
-  catalogService: CatalogService,
   productId: string,
-  bundleProfileId: string,
-  components: z.infer<typeof bundleComponentInputSchema>[],
+  component: z.infer<typeof bundleComponentInputSchema>,
 ): Promise<void> => {
-  await deleteBundleComponents(catalogService, bundleProfileId);
+  if (component.componentProductId === productId) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "A bundle cannot include itself as a component",
+    );
+  }
 
-  const payloads = [];
-  for (const [index, component] of components.entries()) {
-    if (component.componentProductId === productId) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "A bundle cannot include itself as a component",
+  await assertProductExists(req, component.componentProductId);
+  const componentVariantId = toNullableString(component.componentVariantId);
+  if (componentVariantId) {
+    await assertVariantBelongsToProduct(
+      req,
+      component.componentProductId,
+      componentVariantId,
+    );
+  }
+  const componentInventoryItemId = toNullableString(
+    component.componentInventoryItemId,
+  );
+  if (componentInventoryItemId) {
+    await assertQueryEntityExists(
+      req,
+      "inventory_item",
+      componentInventoryItemId,
+      "Component inventory item not found",
+    );
+  }
+
+  const mappings = parseResolvedVariantMappings({
+    metadata: component.metadata,
+  });
+  for (const mapping of mappings) {
+    for (const variant of mapping.componentVariants) {
+      await assertVariantBelongsToProduct(
+        req,
+        component.componentProductId,
+        variant.variantId,
+      );
+      await assertQueryEntityExists(
+        req,
+        "inventory_item",
+        variant.inventoryItemId,
+        "Mapped component inventory item not found",
       );
     }
+  }
+};
 
-    await assertProductExists(req, component.componentProductId);
-    const componentVariantId = toNullableString(component.componentVariantId);
-    if (componentVariantId) {
-      await assertVariantExists(req, componentVariantId);
+const normalizeInputComponents = async (
+  req: MedusaRequest,
+  productId: string,
+  components: z.infer<typeof bundleComponentInputSchema>[],
+): Promise<CatalogBundleMutationInput["components"]> => {
+  await Promise.all(
+    components.map((component) =>
+      validateBundleComponent(req, productId, component),
+    ),
+  );
+  return components.map((component, index) => ({
+    component_product_id: component.componentProductId,
+    component_variant_id: toNullableString(component.componentVariantId),
+    component_inventory_item_id: toNullableString(
+      component.componentInventoryItemId,
+    ),
+    title: toNullableString(component.title),
+    variant_title: toNullableString(component.variantTitle),
+    sku: toNullableString(component.sku),
+    quantity: component.quantity ?? 1,
+    sort_order: component.sortOrder ?? index,
+    is_required: component.isRequired ?? true,
+    metadata: coerceJsonRecord(component.metadata),
+  }));
+};
+
+const preserveExistingComponents = (
+  components: Awaited<
+    ReturnType<CatalogService["listCatalogBundleComponents"]>
+  >,
+): CatalogBundleMutationInput["components"] =>
+  components.map((component) => ({
+    id: component.id,
+    component_product_id: component.component_product_id,
+    component_variant_id: component.component_variant_id ?? null,
+    component_inventory_item_id:
+      component.component_inventory_item_id ?? null,
+    title: component.title ?? null,
+    variant_title: component.variant_title ?? null,
+    sku: component.sku ?? null,
+    quantity: component.quantity,
+    sort_order: component.sort_order,
+    is_required: component.is_required,
+    metadata: coerceJsonRecord(component.metadata),
+  }));
+
+const actorId = (req: MedusaRequest): string | null =>
+  (
+    req as MedusaRequest & {
+      auth_context?: { actor_id?: string | null };
     }
+  ).auth_context?.actor_id ?? null;
 
-    payloads.push({
-      bundle_profile_id: bundleProfileId,
-      component_product_id: component.componentProductId,
-      component_variant_id: componentVariantId,
-      component_inventory_item_id: toNullableString(
-        component.componentInventoryItemId,
-      ),
-      title: toNullableString(component.title),
-      variant_title: toNullableString(component.variantTitle),
-      sku: toNullableString(component.sku),
-      quantity: component.quantity ?? 1,
-      sort_order: component.sortOrder ?? index,
-      is_required: component.isRequired ?? true,
-      metadata: coerceJsonRecord(component.metadata),
-    });
-  }
-
-  if (payloads.length) {
-    await catalogService.createCatalogBundleComponents(payloads);
-  }
+const runBundleMutation = async (
+  req: MedusaRequest,
+  input: CatalogBundleMutationInput,
+) => {
+  const { result } = await mutateCatalogBundleWorkflow(req.scope).run({
+    input,
+    context: {
+      idempotencyKey: input.idempotencyKey,
+      requestId: input.idempotencyKey,
+    },
+  });
+  return result;
 };
 
 export const upsertBundleForProduct = async (
@@ -210,13 +306,12 @@ export const upsertBundleForProduct = async (
   await assertProductExists(req, productId);
 
   const existing = await resolveBundleProfile(catalogService, productId);
-  const existingComponentsCount = existing
-    ? (
-        await catalogService.listCatalogBundleComponents({
-          bundle_profile_id: existing.id,
-        })
-      ).length
-    : 0;
+  const existingComponents = existing
+    ? await catalogService.listCatalogBundleComponents({
+        bundle_profile_id: existing.id,
+      })
+    : [];
+  const existingComponentsCount = existingComponents.length;
   validateBundleShape(
     productId,
     input,
@@ -224,63 +319,47 @@ export const upsertBundleForProduct = async (
     existing?.bundle_type,
   );
 
-  const defaults = resolveDefaults(input);
-  const payload: Record<string, unknown> = {
+  const defaults = resolveDefaults(input, existing);
+  const components =
+    input.components === undefined
+      ? preserveExistingComponents(existingComponents)
+      : await normalizeInputComponents(req, productId, input.components);
+  const profile = {
     product_id: productId,
+    product_profile_id:
+      input.productProfileId === undefined
+        ? (existing?.product_profile_id ?? null)
+        : toNullableString(input.productProfileId),
+    bundle_type: defaults.bundleType,
+    inventory_mode: defaults.inventoryMode,
+    fulfillment_mode: defaults.fulfillmentMode,
+    display_title:
+      input.displayTitle === undefined
+        ? (existing?.display_title ?? null)
+        : toNullableString(input.displayTitle),
+    description_html:
+      input.descriptionHtml === undefined
+        ? (existing?.description_html ?? null)
+        : toNullableString(input.descriptionHtml),
+    is_active: input.isActive ?? existing?.is_active ?? true,
+    metadata:
+      input.metadata === undefined
+        ? coerceJsonRecord(existing?.metadata)
+        : coerceJsonRecord(input.metadata),
+  } satisfies CatalogBundleMutationInput["profile"];
+  const commandPayload = {
+    aggregateId: productId,
+    command: "catalog.bundle.upsert" as const,
+    expectedVersion: input.expectedVersion,
+    profile,
+    components,
   };
-
-  if (input.productProfileId !== undefined) {
-    payload.product_profile_id = toNullableString(input.productProfileId);
-  }
-  if (input.bundleType !== undefined || !existing) {
-    payload.bundle_type = defaults.bundleType;
-  }
-  if (input.inventoryMode !== undefined || !existing) {
-    payload.inventory_mode = defaults.inventoryMode;
-  }
-  if (input.fulfillmentMode !== undefined || !existing) {
-    payload.fulfillment_mode = defaults.fulfillmentMode;
-  }
-  if (input.displayTitle !== undefined) {
-    payload.display_title = toNullableString(input.displayTitle);
-  }
-  if (input.descriptionHtml !== undefined) {
-    payload.description_html = toNullableString(input.descriptionHtml);
-  }
-  if (input.isActive !== undefined) {
-    payload.is_active = input.isActive;
-  }
-  if (input.metadata !== undefined) {
-    payload.metadata = coerceJsonRecord(input.metadata);
-  }
-
-  const savedResult = existing
-    ? await catalogService.updateCatalogBundleProfiles([
-        {
-          id: existing.id,
-          ...payload,
-        },
-      ])
-    : await catalogService.createCatalogBundleProfiles([payload]);
-  const saved = firstResult(savedResult);
-  if (!saved) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Unable to save catalog bundle",
-    );
-  }
-
-  if (input.components !== undefined) {
-    await replaceBundleComponents(
-      req,
-      catalogService,
-      productId,
-      saved.id,
-      input.components,
-    );
-  }
-
-  await syncComponentDerivedBundleInventory(req.scope, productId);
+  await runBundleMutation(req, {
+    ...commandPayload,
+    actorId: actorId(req),
+    idempotencyKey: input.idempotencyKey,
+    requestSha256: hashCatalogCommand(commandPayload),
+  });
 
   const refreshed = await resolveBundleProfile(catalogService, productId);
   return {
@@ -290,14 +369,23 @@ export const upsertBundleForProduct = async (
 };
 
 export const deleteBundleForProduct = async (
+  req: MedusaRequest,
   catalogService: CatalogService,
   productId: string,
+  input: BundleDeleteInput,
 ): Promise<void> => {
-  const existing = await resolveBundleProfile(catalogService, productId);
-  if (!existing) {
-    return;
-  }
-
-  await deleteBundleComponents(catalogService, existing.id);
-  await catalogService.deleteCatalogBundleProfiles(existing.id);
+  await assertProductExists(req, productId);
+  const commandPayload = {
+    aggregateId: productId,
+    command: "catalog.bundle.delete" as const,
+    expectedVersion: input.expectedVersion,
+    profile: null,
+    components: [] as CatalogBundleComponentState[],
+  };
+  await runBundleMutation(req, {
+    ...commandPayload,
+    actorId: actorId(req),
+    idempotencyKey: input.idempotencyKey,
+    requestSha256: hashCatalogCommand(commandPayload),
+  });
 };

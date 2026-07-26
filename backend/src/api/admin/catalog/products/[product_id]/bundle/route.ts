@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import {
+  bundleDeleteSchema,
   bundleUpsertSchema,
   deleteBundleForProduct,
   resolveBundleProfile,
@@ -70,7 +71,15 @@ export const DELETE = async (
     )
   }
 
+  const parsed = bundleDeleteSchema.safeParse(req.body ?? {})
+  if (!parsed.success) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Invalid catalog bundle delete command"
+    )
+  }
+
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  await deleteBundleForProduct(catalogService, productId)
+  await deleteBundleForProduct(req, catalogService, productId, parsed.data)
   res.sendStatus(204)
 }

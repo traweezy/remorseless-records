@@ -161,6 +161,7 @@ type CatalogBundleProfile = {
   displayTitle: string | null
   descriptionHtml: string | null
   isActive: boolean
+  version: number
 }
 
 type CatalogBundleComponent = {
@@ -651,6 +652,7 @@ const ProductAuthoringPage = memo(() => {
   const [profileForm, setProfileForm] = useState<ProfileFormState>(emptyProfileForm)
   const [variantProfiles, setVariantProfiles] = useState<VariantProfileFormLine[]>([])
   const [bundleForm, setBundleForm] = useState<BundleFormState>(emptyBundleForm)
+  const [bundleVersion, setBundleVersion] = useState(0)
   const [createForm, setCreateForm] = useState<CreateFormState>(emptyCreateForm)
   const [createOpen, setCreateOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -723,6 +725,7 @@ const ProductAuthoringPage = memo(() => {
         setProfileForm(emptyProfileForm)
         setVariantProfiles([])
         setBundleForm(emptyBundleForm)
+        setBundleVersion(0)
         return
       }
 
@@ -747,6 +750,7 @@ const ProductAuthoringPage = memo(() => {
         setProductForm(toProductForm(product))
         setProfileForm(toProfileForm(profileResponse, references))
         setBundleForm(toBundleForm(bundleResponse))
+        setBundleVersion(bundleResponse.bundle?.version ?? 0)
         setVariantProfiles(
           variantResponses.map(({ variantId, response }) =>
             toVariantProfileLine(variantId, response.profile, references)
@@ -1065,6 +1069,8 @@ const ProductAuthoringPage = memo(() => {
             method: "PUT",
             body: JSON.stringify({
               productProfileId: profileResponse.profile?.id ?? undefined,
+              idempotencyKey: crypto.randomUUID(),
+              expectedVersion: bundleVersion,
               bundleType: bundleForm.bundleType,
               inventoryMode: bundleForm.inventoryMode,
               fulfillmentMode: bundleForm.fulfillmentMode,
@@ -1086,6 +1092,10 @@ const ProductAuthoringPage = memo(() => {
       } else {
         await fetchJson(`/admin/catalog/products/${selectedProduct.id}/bundle`, {
           method: "DELETE",
+          body: JSON.stringify({
+            idempotencyKey: crypto.randomUUID(),
+            expectedVersion: bundleVersion,
+          }),
         })
       }
 
@@ -1100,6 +1110,7 @@ const ProductAuthoringPage = memo(() => {
     }
   }, [
     bundleForm,
+    bundleVersion,
     loadProductAuthoring,
     productForm,
     profileForm,
@@ -1279,6 +1290,8 @@ const ProductAuthoringPage = memo(() => {
             method: "PUT",
             body: JSON.stringify({
               productProfileId: profileResponse.profile?.id ?? undefined,
+              idempotencyKey: crypto.randomUUID(),
+              expectedVersion: 0,
               bundleType: createForm.kind === "mystery_bundle" ? "mystery" : "fixed",
               inventoryMode:
                 createForm.kind === "mystery_bundle" ? "manual" : "component_derived",

@@ -63,3 +63,10 @@ export const catalogMediaDerivativeStatuses = [
   "ready",
   "failed",
 ] as const
+
+export const catalogAuthoringOperationStatuses = [
+  "pending",
+  "succeeded",
+  "failed",
+  "compensated",
+] as const

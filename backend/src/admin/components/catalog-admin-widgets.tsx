@@ -169,6 +169,7 @@ type CatalogBundleProfile = {
   displayTitle: string | null
   descriptionHtml: string | null
   isActive: boolean
+  version: number
   metadata: JsonRecord
 }
 
@@ -1337,12 +1338,24 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
         await fetchJson<BundleResponse>(`/admin/catalog/products/${productId}/bundle`, {
           method: "PUT",
           body: JSON.stringify(
-            buildBundlePayload(bundleForm, profile.profile?.id, products)
+            {
+              ...buildBundlePayload(
+                bundleForm,
+                profile.profile?.id,
+                products
+              ),
+              idempotencyKey: crypto.randomUUID(),
+              expectedVersion: bundleResponse.bundle?.version ?? 0,
+            }
           ),
         })
       } else if (bundleResponse.bundle) {
         await fetchJson<void>(`/admin/catalog/products/${productId}/bundle`, {
           method: "DELETE",
+          body: JSON.stringify({
+            idempotencyKey: crypto.randomUUID(),
+            expectedVersion: bundleResponse.bundle.version,
+          }),
         })
       }
 

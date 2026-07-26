@@ -5,6 +5,7 @@ import {
   catalogBundleTypes,
   catalogMediaDerivativeStatuses,
   catalogMediaRoles,
+  catalogReleaseDatePrecisions,
   catalogReferenceKinds,
   catalogShelfAutomationTypes,
   catalogShelfModes,
@@ -44,6 +45,10 @@ export type CatalogMediaDerivativeStatus =
 
 export type JsonRecord = Record<string, unknown>
 export type JsonList = unknown[]
+
+export const catalogReleaseDatePrecisionValues = catalogReleaseDatePrecisions
+export type CatalogReleaseDatePrecision =
+  (typeof catalogReleaseDatePrecisionValues)[number]
 
 export type CatalogArtistRecord = {
   id: string
@@ -105,12 +110,15 @@ export type CatalogProductProfileRecord = {
   product_type_id: string | null
   release_date: Date | string | null
   release_year: number | null
+  release_date_precision: unknown
   description_html: string | null
   search_keywords: string[] | null
   tracklist: unknown
   credits: unknown
   pressing_notes: unknown
   merch_details: unknown
+  content_schema_version: number
+  version: number
   metadata: unknown
   created_at?: Date | string | null
   updated_at?: Date | string | null
@@ -124,12 +132,15 @@ export type CatalogProductProfileDTO = {
   productTypeId: string | null
   releaseDate: string | null
   releaseYear: number | null
+  releaseDatePrecision: CatalogReleaseDatePrecision
   descriptionHtml: string | null
   searchKeywords: string[]
   tracklist: JsonList
   credits: JsonRecord
   pressingNotes: JsonRecord
   merchDetails: JsonRecord
+  contentSchemaVersion: number
+  version: number
   metadata: JsonRecord
   createdAt?: string | null
   updatedAt?: string | null
@@ -196,6 +207,7 @@ export type CatalogVariantProfileRecord = {
   backorder_allowed: boolean
   backorder_note: string | null
   image_url: string | null
+  version: number
   metadata: JsonRecord | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
@@ -216,6 +228,7 @@ export type CatalogVariantProfileDTO = {
   backorderAllowed: boolean
   backorderNote: string | null
   imageUrl: string | null
+  version: number
   metadata: JsonRecord
   createdAt?: string | null
   updatedAt?: string | null
@@ -231,6 +244,7 @@ export type CatalogBundleProfileRecord = {
   display_title: string | null
   description_html: string | null
   is_active: boolean
+  version: number
   metadata: JsonRecord | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
@@ -246,6 +260,7 @@ export type CatalogBundleProfileDTO = {
   displayTitle: string | null
   descriptionHtml: string | null
   isActive: boolean
+  version: number
   metadata: JsonRecord
   createdAt?: string | null
   updatedAt?: string | null
@@ -294,6 +309,7 @@ export type CatalogMediaAssetRecord = {
   byte_size: number | null
   width: number | null
   height: number | null
+  content_sha256: string | null
   alt_text: string | null
   caption: string | null
   focal_x: number | null
@@ -301,6 +317,7 @@ export type CatalogMediaAssetRecord = {
   crop_intent: string | null
   derivative_status: unknown
   derivatives: JsonRecord | null
+  version: number
   metadata: JsonRecord | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
@@ -315,6 +332,7 @@ export type CatalogMediaAssetDTO = {
   byteSize: number | null
   width: number | null
   height: number | null
+  contentSha256: string | null
   altText: string | null
   caption: string | null
   focalX: number | null
@@ -322,6 +340,7 @@ export type CatalogMediaAssetDTO = {
   cropIntent: string | null
   derivativeStatus: CatalogMediaDerivativeStatus
   derivatives: JsonRecord
+  version: number
   metadata: JsonRecord
   createdAt?: string | null
   updatedAt?: string | null
@@ -370,6 +389,7 @@ export type CatalogShelfRecord = {
   starts_at: Date | string | null
   ends_at: Date | string | null
   is_active: boolean
+  version: number
   metadata: JsonRecord | null
   created_at?: Date | string | null
   updated_at?: Date | string | null
@@ -389,6 +409,7 @@ export type CatalogShelfDTO = {
   startsAt: string | null
   endsAt: string | null
   isActive: boolean
+  version: number
   metadata: JsonRecord
   createdAt?: string | null
   updatedAt?: string | null
@@ -449,6 +470,15 @@ const toCatalogAvailabilityStatus = (
 ): CatalogAvailabilityStatus => {
   const match = catalogAvailabilityStatusValues.find((status) => status === value)
   return match ?? "available"
+}
+
+const toCatalogReleaseDatePrecision = (
+  value: unknown
+): CatalogReleaseDatePrecision => {
+  const match = catalogReleaseDatePrecisionValues.find(
+    (precision) => precision === value
+  )
+  return match ?? "unknown"
 }
 
 const toCatalogBundleType = (value: unknown): CatalogBundleType => {
@@ -536,12 +566,17 @@ export const serializeCatalogProductProfile = (
   productTypeId: profile.product_type_id ?? null,
   releaseDate: toIso(profile.release_date),
   releaseYear: profile.release_year ?? null,
+  releaseDatePrecision: toCatalogReleaseDatePrecision(
+    profile.release_date_precision
+  ),
   descriptionHtml: profile.description_html ?? null,
   searchKeywords: profile.search_keywords ?? [],
   tracklist: toList(profile.tracklist as JsonList | null | undefined),
   credits: toRecord(profile.credits as JsonRecord | null | undefined),
   pressingNotes: toRecord(profile.pressing_notes as JsonRecord | null | undefined),
   merchDetails: toRecord(profile.merch_details as JsonRecord | null | undefined),
+  contentSchemaVersion: profile.content_schema_version ?? 1,
+  version: profile.version ?? 1,
   metadata: toRecord(profile.metadata as JsonRecord | null | undefined),
   createdAt: toIso(profile.created_at),
   updatedAt: toIso(profile.updated_at),
@@ -591,6 +626,7 @@ export const serializeCatalogVariantProfile = (
   backorderAllowed: profile.backorder_allowed ?? false,
   backorderNote: profile.backorder_note ?? null,
   imageUrl: profile.image_url ?? null,
+  version: profile.version ?? 1,
   metadata: toRecord(profile.metadata),
   createdAt: toIso(profile.created_at),
   updatedAt: toIso(profile.updated_at),
@@ -608,6 +644,7 @@ export const serializeCatalogBundleProfile = (
   displayTitle: profile.display_title ?? null,
   descriptionHtml: profile.description_html ?? null,
   isActive: profile.is_active ?? true,
+  version: profile.version ?? 1,
   metadata: toRecord(profile.metadata),
   createdAt: toIso(profile.created_at),
   updatedAt: toIso(profile.updated_at),
@@ -643,6 +680,7 @@ export const serializeCatalogMediaAsset = (
   byteSize: asset.byte_size ?? null,
   width: asset.width ?? null,
   height: asset.height ?? null,
+  contentSha256: asset.content_sha256 ?? null,
   altText: asset.alt_text ?? null,
   caption: asset.caption ?? null,
   focalX: asset.focal_x ?? null,
@@ -650,6 +688,7 @@ export const serializeCatalogMediaAsset = (
   cropIntent: asset.crop_intent ?? null,
   derivativeStatus: toCatalogMediaDerivativeStatus(asset.derivative_status),
   derivatives: toRecord(asset.derivatives),
+  version: asset.version ?? 1,
   metadata: toRecord(asset.metadata),
   createdAt: toIso(asset.created_at),
   updatedAt: toIso(asset.updated_at),
@@ -689,6 +728,7 @@ export const serializeCatalogShelf = (
   startsAt: toIso(shelf.starts_at),
   endsAt: toIso(shelf.ends_at),
   isActive: shelf.is_active ?? true,
+  version: shelf.version ?? 1,
   metadata: toRecord(shelf.metadata),
   createdAt: toIso(shelf.created_at),
   updatedAt: toIso(shelf.updated_at),

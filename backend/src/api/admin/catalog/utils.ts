@@ -143,7 +143,8 @@ export const assertVariantExists = async (
 export const assertVariantBelongsToProduct = async (
   req: MedusaRequest,
   productId: string,
-  variantId: string
+  variantId: string,
+  message = "Product variant must belong to the product"
 ): Promise<void> => {
   const query = getQuery(req)
   const result = await query.graph({
@@ -174,7 +175,7 @@ export const assertVariantBelongsToProduct = async (
   if (variantProductId !== productId) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Product media variant must belong to the product"
+      message
     )
   }
 }
