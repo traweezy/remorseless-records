@@ -191,19 +191,30 @@ const originalAmounts = (
   taxable: Decimal;
   total: Decimal;
 } => {
-  const gross = decimalField(
+  const orderGross = decimalField(
     order,
     "raw_original_subtotal",
     "original_subtotal",
   );
-  const tax = decimalField(
+  const orderTax = decimalField(
     order,
     "raw_original_tax_total",
     "original_tax_total",
   );
-  const total = decimalField(order, "raw_original_total", "original_total");
+  const orderTotal = decimalField(
+    order,
+    "raw_original_total",
+    "original_total",
+  );
+  const summary = asRecord(order.summary);
+  const summaryTotal = decimalField(
+    summary ?? {},
+    "raw_original_order_total",
+    "original_order_total",
+  );
   const orderSubjects = subjects(order);
   let subjectGross = ZERO;
+  let subjectTax = ZERO;
   let subjectTaxable = ZERO;
 
   for (const subject of orderSubjects) {
@@ -212,13 +223,27 @@ const originalAmounts = (
       "raw_original_subtotal",
       "original_subtotal",
     );
+    const taxAmount = decimalField(
+      subject,
+      "raw_original_tax_total",
+      "original_tax_total",
+    );
     const rates = taxLines(subject).map((line) => decimal(line.rate));
     subjectGross = MathBN.add(subjectGross, amount);
+    subjectTax = MathBN.add(subjectTax, taxAmount);
     if (rates.some((rate) => rate.gt(0))) {
       subjectTaxable = MathBN.add(subjectTaxable, amount);
     }
   }
 
+  const greater = (left: Decimal, right: Decimal): Decimal =>
+    right.gt(left) ? right : left;
+  const gross = greater(orderGross, subjectGross);
+  const tax = greater(orderTax, subjectTax);
+  const total = [orderTotal, summaryTotal, MathBN.add(gross, tax)].reduce(
+    greater,
+    ZERO,
+  );
   const taxable =
     subjectGross.gt(0) && gross.gte(0)
       ? MathBN.mult(gross, MathBN.div(subjectTaxable, subjectGross))

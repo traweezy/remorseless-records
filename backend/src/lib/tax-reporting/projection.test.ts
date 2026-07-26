@@ -153,6 +153,51 @@ describe("tax record projection", () => {
     });
   });
 
+  it("reconciles shipping omitted from list-level order totals", () => {
+    const base = orderFixture();
+    const order = {
+      ...base,
+      payment_collections: [
+        {
+          payments: [
+            {
+              captured_amount: "16.2",
+              captured_at: base.created_at,
+              refunds: [],
+            },
+          ],
+        },
+      ],
+      shipping_methods: [
+        {
+          original_subtotal: "5",
+          original_tax_total: "0.4",
+          tax_lines: [
+            {
+              code: "rr_tax:taxrate_io:g2:quote",
+              data: base.items[0]?.tax_lines[0]?.data,
+              provider_id: "rate_lookup",
+              rate: "8",
+            },
+          ],
+        },
+      ],
+      summary: {
+        original_order_total: "16.2",
+        paid_total: "16.2",
+      },
+    };
+
+    expect(
+      projectTaxRecords({ orders: [order], period })[0],
+    ).toMatchObject({
+      grossSales: "15.0000",
+      issues: [],
+      taxAmount: "1.2000",
+      total: "16.2000",
+    });
+  });
+
   it("keeps legacy sales visible but marks them for review", () => {
     const [record] = projectTaxRecords({
       orders: [orderFixture({ controlled: false })],

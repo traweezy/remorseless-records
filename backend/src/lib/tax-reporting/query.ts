@@ -82,6 +82,8 @@ const ORDER_FIELDS = [
   "shipping_address.province",
   "summary.paid_total",
   "summary.raw_paid_total",
+  "summary.original_order_total",
+  "summary.raw_original_order_total",
   "items.id",
   "items.title",
   "items.original_subtotal",
