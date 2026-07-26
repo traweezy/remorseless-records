@@ -1,38 +1,41 @@
-# ADR 0002: Make Stripe Tax a Medusa-owned tax provider
+# ADR 0002: Medusa-owned switchable tax providers
 
-- Status: proposed; activation blocked on tax configuration and sandbox proof
+- Status: accepted and implemented; Stripe Tax activation remains an explicit
+  Admin decision
 - Date: 2026-07-25
 - Scope: US storefront tax calculation, reporting, refunds, and payment linkage
 
 ## Decision summary
 
-Medusa remains the sole cart, total, order, and refund authority. If the store
-adopts Stripe Tax, Stripe Tax will replace Taxrate.io as the calculation engine
-behind Medusa's Tax Module Provider. Stripe must not calculate an independent
-second total after Medusa has prepared the order.
+Medusa remains the sole cart, total, order, and refund authority. TaxRate.io and
+Stripe Tax are installed behind one Medusa Tax Module Provider, while a durable
+Admin control selects exactly one engine for each new quote generation. Stripe
+must not calculate an independent second total after Medusa has prepared the
+order.
 
 The same fresh Stripe Tax `Calculation` used to populate Medusa's tax lines must
 be linked to the Medusa-created PaymentIntent. The PaymentIntent amount must
 equal both the locked Medusa cart total and the Stripe Tax calculation's
 `amount_total` before payment can proceed.
 
-This is not active yet. The Stripe sandbox was inspected read-only on
-2026-07-25 and reported:
+Stripe Tax is not selected for new quotes until an Admin explicitly switches
+to it. On 2026-07-25 the Stripe sandbox—not live mode—was configured and
+verified with:
 
 - `livemode: false`;
-- Tax settings status `pending`;
-- no head-office address;
-- no default product tax code or tax behavior; and
-- no tax registrations.
+- Tax settings status `active`;
+- a configured head-office address;
+- exclusive prices and General Tangible Goods as the account default; and
+- one active New York sandbox registration.
 
-Stripe documents that Tax only calculates tax in sandbox jurisdictions with a
-test registration. Enabling it in the current state could therefore produce
-zero-tax results that look technically successful but are commercially wrong.
+The address and secret key are environment/account data and are not stored in
+the repository. The readiness gate also requires the reviewed shipping tax
+code and refuses a live/test key-mode mismatch.
 
 ## Why one tax engine
 
-The current checkout already enforces Medusa as the payment and order
-authority. Running Taxrate.io in Medusa while separately enabling Stripe Tax on
+The checkout already enforces Medusa as the payment and order authority.
+Running TaxRate.io in Medusa while separately enabling Stripe Tax on
 the PaymentIntent would create two answers for the same order. The results can
 differ because product taxability, shipping treatment, discounts, address
 quality, jurisdiction breakdowns, and rounding are not identical.
@@ -67,10 +70,29 @@ and creates the documented flat-amount reversals for refunds. Medusa still owns
 the order and refund workflow; Stripe holds the tax reporting transaction and
 payment evidence.
 
-## Current implementation and its limits
+## Implemented provider control
 
-`backend/src/modules/tax-rate-provider/service.ts` currently calls Taxrate.io by
-US postal code, caches one percentage for five minutes, and applies that same
+The `tax_control` module persists:
+
+- the active provider and monotonically increasing generation;
+- an authenticated switch audit with actor, reason, and idempotency key;
+- TaxRate.io's last provider-returned quota result; and
+- immutable PaymentIntent-to-tax-quote evidence.
+
+Switches are serialized with the distributed Locking Module. A cart without a
+prepared payment adopts the active generation on its next tax refresh. A cart
+with a processable payment remains frozen to its original provider, generation,
+fingerprint, and Stripe calculation or TaxRate.io rate. Completed orders are
+never repriced.
+
+The Medusa Admin extension shows both providers' readiness checks, provider
+quota, active/prepared/finalizing cart impact, switch history, tracked payment
+evidence, and disputes or failed tax associations needing attention.
+
+## TaxRate.io limits
+
+The provider can call TaxRate.io by US postal code, caches one percentage for
+five minutes, and applies that same
 rate to every line item and the shipping line. It does not model:
 
 - full destination address precision;
@@ -104,27 +126,25 @@ contents' eventual identities.
 
 ### 2. Medusa provider boundary
 
-Implement a new `ITaxProvider` adapter under `backend/src/modules`, selected by
-the US tax region. It will:
+The `ITaxProvider` adapter under `backend/src/modules` is selected by the
+durable control generation. It:
 
-- validate the complete shipping address, currency, positive finite amounts,
+- validates the complete shipping address, currency, positive finite amounts,
   quantities, references, and mapped tax codes;
-- send line amounts after Medusa discounts, plus the selected shipping amount,
+- sends line amounts after Medusa discounts, plus the selected shipping amount,
   to Stripe Tax with `address_source=shipping`;
-- use stable non-PII references based on Medusa line IDs;
-- use bounded timeouts and safe retry/backoff only for retryable failures;
-- store the calculation ID, expiry, cart revision/fingerprint, per-line tax,
-  shipping tax, and jurisdiction breakdown in provider data;
-- map the returned result into Medusa item and shipping tax lines; and
-- fail closed with a customer-safe retry message when an exact result cannot be
+- uses stable non-PII references based on Medusa line IDs;
+- uses bounded timeouts and safe retry/backoff only for retryable failures;
+- stores the calculation ID, expiry, cart fingerprint, per-line tax, and
+  shipping tax in provider data;
+- maps the returned result into Medusa item and shipping tax lines; and
+- fails closed with a customer-safe retry message when an exact result cannot be
   produced. It must never silently fall back to zero tax.
 
 Medusa's provider contract expresses percentage tax lines, while Stripe returns
-exact per-line tax amounts. Before rollout, a compatibility test must prove
-that reconstructing the Stripe result through Medusa's rates produces the exact
-same cent-rounded totals for all supported cases. If it cannot, extend the
-Medusa tax workflow to persist the Stripe amounts directly; do not hide a
-rounding difference with an adjustment line.
+exact per-line tax amounts. The adapter derives high-precision effective rates
+from Stripe's exact line amounts. The final three-way amount invariant is still
+the stop-ship proof; a cent mismatch is never hidden with an adjustment.
 
 ### 3. Calculation lifecycle
 
@@ -138,10 +158,11 @@ invalidated whenever any of these change:
 - currency or tax behavior; or
 - the calculation expires.
 
-The final payment-session preparation runs a forced tax refresh under the same
-cart lock used by checkout validation. The resulting calculation ID is linked
-to the official Medusa Stripe PaymentIntent using Stripe's tax calculation
-hook. Payment preparation stops unless all three totals match exactly:
+Payment-session preparation runs under the cart mutation lock. A signed,
+purpose-bound server-to-server endpoint re-verifies the resulting calculation
+and links it to the official Medusa Stripe PaymentIntent using Stripe's tax
+calculation hook. It runs before the browser receives a client secret and again
+before completion. Payment preparation stops unless all three totals match:
 
 ```text
 Medusa locked cart total
@@ -153,7 +174,8 @@ No browser code handles tax IDs or recomputes tax.
 
 ### 4. Payment, order, refund, and dispute records
 
-On successful payment, persist only non-PII reconciliation references:
+On payment preparation and success, persist only non-PII reconciliation
+references:
 
 - Medusa cart and order IDs/numbers;
 - Stripe PaymentIntent ID;
@@ -161,9 +183,10 @@ On successful payment, persist only non-PII reconciliation references:
 - tax engine/version and cart revision.
 
 Stripe documents automatic tax-transaction creation for a successfully linked
-PaymentIntent and automatic flat-amount reversals for refunds. Medusa must
-initiate refunds, record the refund result, and reconcile the Stripe reversal.
-Disputes require a separate operations path because Stripe does not
+PaymentIntent and automatic flat-amount reversals for refunds. Medusa initiates
+refunds and event subscribers reconcile the Stripe reversal. An hourly bounded
+job rechecks old evidence for missed events and delayed associations. Disputes
+are surfaced in Admin for a separate operations path because Stripe does not
 automatically create a Tax reversal for them.
 
 ### 5. Idempotency, caching, and failure behavior
@@ -177,26 +200,27 @@ automatically create a Tax reversal for them.
   preparation.
 - Never log full addresses, emails, Stripe secrets, client secrets, or raw
   provider payloads.
-- Preserve the current provider behind an explicit rollback flag during the
-  sandbox rollout. A single cart must never mix providers.
+- Keep both providers installed behind the audited Admin control for safe
+  rollback. A single cart must never mix providers.
 
 ## Rollout gates
 
-1. Obtain business approval for Stripe Tax pricing and professional confirmation
-   of collection registrations and tax-code choices.
-2. Configure Stripe Tax in the sandbox until settings are `active`; add at least
-   one test registration.
-3. Build catalog and shipping tax-code mappings with an explicit fallback.
-4. Implement the provider and PaymentIntent calculation link behind a disabled
-   feature flag.
-5. Run a golden matrix across taxable, non-taxable, mixed, discounted, shipping,
-   bundle, refund, failed-payment, expired-calculation, and rounding-boundary
-   cases.
-6. Prove the three-way amount invariant and tax transaction/reversal linkage in
-   Stripe sandbox.
-7. Compare shadow Stripe results with current checkout results without charging
-   customers.
-8. Enable only in staging, monitor, and request separate production approval.
+1. [ ] Obtain business approval for Stripe Tax pricing and professional
+       confirmation of live registrations and catalog tax-code choices.
+2. [x] Configure Stripe Tax in the sandbox until settings are `active`; add one
+       test registration.
+3. [x] Add an explicit shipping mapping and a controlled product fallback.
+4. [x] Implement provider control, quote freezing, exact PaymentIntent binding,
+       evidence, and Admin readiness gates.
+5. [ ] Run the sandbox golden matrix across taxable, non-taxable, mixed,
+       discounted, shipping, bundle, refund, failed-payment,
+       expired-calculation, and rounding-boundary cases.
+6. [ ] Prove the three-way amount invariant and tax transaction/reversal
+       linkage in Stripe sandbox.
+7. [ ] Compare representative Stripe results with TaxRate.io without charging
+       a live customer.
+8. [ ] Switch only in staging, monitor, and request separate production
+       approval before any live registration or provider change.
 
 ## SLO and observability
 
@@ -217,8 +241,8 @@ transaction after the payment-success grace window.
   inconsistent reporting.
 - **Let Stripe own the checkout total:** conflicts with Medusa's cart, promotion,
   shipping, inventory, order, and payment-session authority.
-- **Switch Stripe Tax on immediately:** the sandbox is pending and has no
-  registrations or tax defaults.
+- **Switch Stripe Tax on merely because readiness is green:** configuration
+  readiness does not replace the sandbox golden matrix or owner approval.
 - **Trust an effective percentage without exact-total proof:** line rounding and
   mixed-tax carts can diverge by cents.
 

@@ -3,13 +3,31 @@ import {
   validateCheckoutPayment,
 } from "./payment-validation";
 
+const taxFingerprint = "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789";
+
 const validCart = () => ({
   id: "cart_test",
   currency_code: "usd",
   email: "buyer@example.test",
   total: 24.99,
   raw_total: { value: "24.99", precision: 20 },
-  items: [{ id: "cali_test", quantity: 1 }],
+  items: [
+    {
+      id: "cali_test",
+      quantity: 1,
+      tax_lines: [
+        {
+          code: "rr_tax:taxrate_io:g1:quote",
+          data: {
+            fingerprint: taxFingerprint,
+            generation: 1,
+            provider: "taxrate_io",
+          },
+          rate: 8,
+        },
+      ],
+    },
+  ],
   shipping_address: {
     first_name: "Test",
     last_name: "Buyer",
@@ -18,7 +36,22 @@ const validCart = () => ({
     postal_code: "94080",
     country_code: "us",
   },
-  shipping_methods: [{ id: "casm_test" }],
+  shipping_methods: [
+    {
+      id: "casm_test",
+      tax_lines: [
+        {
+          code: "rr_tax:taxrate_io:g1:quote",
+          data: {
+            fingerprint: taxFingerprint,
+            generation: 1,
+            provider: "taxrate_io",
+          },
+          rate: 8,
+        },
+      ],
+    },
+  ],
   payment_collection: {
     amount: 24.99,
     raw_amount: { value: "24.99", precision: 20 },
@@ -34,6 +67,12 @@ const validCart = () => ({
         data: {
           amount: 2499,
           currency: "usd",
+          metadata: {
+            rr_tax_fingerprint: taxFingerprint,
+            rr_tax_generation: "1",
+            rr_tax_provider: "taxrate_io",
+            rr_tax_rate_percent: "8",
+          },
         },
       },
     ],
@@ -140,6 +179,14 @@ describe("checkout payment validation", () => {
     cart.payment_collection.payment_sessions[0]!.data.currency = "eur";
 
     expectCode(cart, "checkout_payment_currency_mismatch");
+  });
+
+  it("rejects a mismatched tax provider generation at the same total", () => {
+    const cart = validCart();
+    cart.payment_collection.payment_sessions[0]!.data.metadata.rr_tax_generation =
+      "2";
+
+    expectCode(cart, "checkout_tax_quote_invalid");
   });
 
   it("rejects the system provider for a positive checkout", () => {

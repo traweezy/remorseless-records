@@ -9,6 +9,8 @@ import {
   reusablePreparedPayment,
 } from "@/features/checkout/server/payment"
 
+const taxFingerprint = "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789"
+
 const cartFixture = (
   overrides: Partial<HttpTypes.StoreCart> = {}
 ): HttpTypes.StoreCart =>
@@ -16,6 +18,23 @@ const cartFixture = (
     id: "cart_test",
     currency_code: "usd",
     total: 24.99,
+    items: [
+      {
+        id: "cali_test",
+        tax_lines: [
+          {
+            id: "calitax_test",
+            code: "rr_tax:taxrate_io:g1:quote",
+            data: {
+              fingerprint: taxFingerprint,
+              generation: 1,
+              provider: "taxrate_io",
+            },
+            rate: 8,
+          },
+        ],
+      },
+    ],
     payment_collection: {
       id: "pay_col_test",
       amount: 24.99,
@@ -31,6 +50,12 @@ const cartFixture = (
             amount: 2499,
             client_secret: "pi_test_secret_test",
             currency: "usd",
+            metadata: {
+              rr_tax_fingerprint: taxFingerprint,
+              rr_tax_generation: "1",
+              rr_tax_provider: "taxrate_io",
+              rr_tax_rate_percent: "8",
+            },
           },
         },
       ],
@@ -71,6 +96,7 @@ describe("checkout payment preparation", () => {
     cart.payment_collection!.amount = 23.8975
     cart.payment_collection!.payment_sessions![0]!.amount = 23.8975
     cart.payment_collection!.payment_sessions![0]!.data = {
+      ...cart.payment_collection!.payment_sessions![0]!.data,
       amount: 2390,
       client_secret: "pi_test_secret_test",
       currency: "usd",
@@ -90,12 +116,6 @@ describe("checkout payment preparation", () => {
   })
 
   it.each([
-    [
-      "collection amount",
-      (cart: HttpTypes.StoreCart) => {
-        cart.payment_collection!.amount = 25
-      },
-    ],
     [
       "session amount",
       (cart: HttpTypes.StoreCart) => {
@@ -120,21 +140,28 @@ describe("checkout payment preparation", () => {
         cart.payment_collection!.payment_sessions![0]!.data.currency = "eur"
       },
     ],
-  ] as const)("rejects a stale %s", (_label, mutate) => {
+  ] as const)("replaces a stale %s", (_label, mutate) => {
     const cart = cartFixture()
     mutate(cart)
+
+    expect(reusablePreparedPayment(cart)).toBeNull()
+  })
+
+  it("rejects a stale payment collection amount", () => {
+    const cart = cartFixture()
+    cart.payment_collection!.amount = 25
 
     expectCode(() => reusablePreparedPayment(cart), "payment_session_stale")
   })
 
-  it("rejects a session without a client secret", () => {
+  it("replaces a session without a client secret", () => {
     const cart = cartFixture()
     cart.payment_collection!.payment_sessions![0]!.data = {
       amount: 2499,
       currency: "usd",
     }
 
-    expectCode(() => reusablePreparedPayment(cart), "payment_not_configured")
+    expect(reusablePreparedPayment(cart)).toBeNull()
   })
 
   it.each([0.001, 0.49, 1_000_000])(
@@ -148,8 +175,12 @@ describe("checkout payment preparation", () => {
     }
   )
 
-  it("does not silently replace an authorized or captured payment", () => {
-    for (const status of ["authorized", "captured"] as const) {
+  it("does not silently replace a finalizing payment", () => {
+    for (const status of [
+      "authorized",
+      "captured",
+      "pending_authorization",
+    ] as const) {
       const cart = cartFixture()
       cart.payment_collection!.payment_sessions![0]!.status = status
 
@@ -188,13 +219,40 @@ describe("checkout payment preparation", () => {
     expectCode(() => assertCompletablePayment(cart), "payment_session_stale")
   })
 
-  it("rejects multiple reusable sessions", () => {
+  it("replaces multiple reusable sessions through Medusa's single-session workflow", () => {
     const cart = cartFixture()
     cart.payment_collection!.payment_sessions!.push({
       ...cart.payment_collection!.payment_sessions![0]!,
       id: "payses_duplicate",
     })
 
-    expectCode(() => reusablePreparedPayment(cart), "payment_session_stale")
+    expect(reusablePreparedPayment(cart)).toBeNull()
+  })
+
+  it("replaces a session when the provider generation changes at the same total", () => {
+    const cart = cartFixture()
+    cart.items![0]!.tax_lines![0]!.code =
+      "rr_tax:taxrate_io:g2:quote"
+    ;(
+      cart.items![0]!.tax_lines![0]! as unknown as Record<string, unknown>
+    ).data = {
+      fingerprint: "newTaxFingerprint_abcdefghijklmnopqrstuvwxyz0123456789",
+      generation: 2,
+      provider: "taxrate_io",
+    }
+
+    expect(reusablePreparedPayment(cart)).toBeNull()
+  })
+
+  it("rejects completion when the tax quote metadata is stale", () => {
+    const cart = cartFixture()
+    cart.payment_collection!.payment_sessions![0]!.data.metadata = {
+      rr_tax_fingerprint: "staleTaxFingerprint_abcdefghijklmnopqrstuvwxyz01234",
+      rr_tax_generation: "1",
+      rr_tax_provider: "taxrate_io",
+      rr_tax_rate_percent: "8",
+    }
+
+    expectCode(() => assertCompletablePayment(cart), "payment_session_stale")
   })
 })

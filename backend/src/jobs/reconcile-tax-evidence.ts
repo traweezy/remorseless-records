@@ -1,0 +1,106 @@
+import type {
+  ILockingModule,
+  Logger,
+  MedusaContainer,
+} from "@medusajs/framework/types";
+import { Modules } from "@medusajs/framework/utils";
+import Stripe from "stripe";
+
+import { STRIPE_API_KEY } from "../lib/constants";
+import { reconcileTaxQuoteEvidence } from "../lib/tax-control/evidence-reconciliation";
+import {
+  taxEvidenceLockKey,
+  type TaxQuoteEvidenceStatus,
+} from "../modules/tax-control/constants";
+import type TaxControlModuleService from "../modules/tax-control/service";
+
+const RECONCILIATION_LIMIT = 100;
+const RECONCILABLE_STATUSES: TaxQuoteEvidenceStatus[] = [
+  "association_failed",
+  "disputed",
+  "failed",
+  "partially_refunded",
+  "prepared",
+  "refunded",
+  "succeeded",
+];
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+export default async function reconcileTaxEvidenceJob(
+  container: MedusaContainer,
+): Promise<void> {
+  if (!STRIPE_API_KEY) {
+    return;
+  }
+
+  const logger = container.resolve<Logger>("logger");
+  const service = container.resolve<TaxControlModuleService>("tax_control");
+  const locking = container.resolve<ILockingModule>(Modules.LOCKING);
+  const evidence = await service.listTaxQuoteEvidences(
+    { status: RECONCILABLE_STATUSES },
+    {
+      order: { last_verified_at: "ASC" },
+      take: RECONCILIATION_LIMIT,
+    },
+  );
+  const client = new Stripe(STRIPE_API_KEY, {
+    appInfo: {
+      name: "remorseless-records-medusa",
+      version: "1.0.0",
+    },
+    maxNetworkRetries: 2,
+    timeout: 10_000,
+  });
+
+  let failed = 0;
+  let needsAttention = 0;
+  for (const record of evidence) {
+    try {
+      const result = await locking.execute(
+        taxEvidenceLockKey(record.payment_intent_id),
+        () =>
+          reconcileTaxQuoteEvidence({
+            client,
+            ...(record.order_id ? { orderId: record.order_id } : {}),
+            paymentIntentId: record.payment_intent_id,
+            service,
+          }),
+        { timeout: 5 },
+      );
+      if (
+        result.status === "association_failed" ||
+        result.status === "disputed"
+      ) {
+        needsAttention += 1;
+      }
+    } catch (error) {
+      failed += 1;
+      logger.error(
+        `[tax-evidence] ${record.payment_intent_id} failed: ${errorMessage(error)}`,
+      );
+    }
+  }
+
+  const summary = {
+    capped: evidence.length === RECONCILIATION_LIMIT,
+    failed,
+    inspected: evidence.length,
+    needsAttention,
+  };
+  if (failed || needsAttention || summary.capped) {
+    logger.warn(
+      `Tax evidence reconciliation needs attention: ${JSON.stringify(summary)}`,
+    );
+    return;
+  }
+  logger.info(
+    `Tax evidence reconciliation completed: ${JSON.stringify(summary)}`,
+  );
+}
+
+export const config = {
+  name: "reconcile-tax-evidence",
+  schedule: "23 * * * *",
+};

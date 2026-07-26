@@ -259,6 +259,22 @@ const sortCanonical = <T>(values: T[]): T[] =>
     JSON.stringify(left).localeCompare(JSON.stringify(right))
   )
 
+const canonicalTaxLine = (line: UnknownRecord) => {
+  const data = asRecord(line.data)
+  return {
+    code: text(line.code),
+    providerId: text(line.provider_id),
+    quote: {
+      calculationId: optionalText(data?.calculation_id),
+      fingerprint: optionalText(data?.fingerprint),
+      generation: scalarText(data?.generation),
+      provider: optionalText(data?.provider),
+    },
+    rate: scalarText(line.rate),
+    total: canonicalAmount(line.total, "Tax line total"),
+  }
+}
+
 const revisionFor = (cart: HttpTypes.StoreCart): string => {
   const cartRecord = asRecord(cart)
   const canonical = {
@@ -279,11 +295,7 @@ const revisionFor = (cart: HttpTypes.StoreCart): string => {
           "Cart item discount total"
         ),
         taxLines: sortCanonical(
-          sortableRecords(item.tax_lines).map((line) => ({
-            code: text(line.code),
-            rate: scalarText(line.rate),
-            total: canonicalAmount(line.total, "Cart item tax line total"),
-          }))
+          sortableRecords(item.tax_lines).map(canonicalTaxLine)
         ),
         adjustments: sortCanonical(
           sortableRecords(item.adjustments).map((adjustment) => ({
@@ -307,11 +319,7 @@ const revisionFor = (cart: HttpTypes.StoreCart): string => {
         ),
         total: canonicalAmount(method.total, "Shipping method total"),
         taxLines: sortCanonical(
-          sortableRecords(method.tax_lines).map((line) => ({
-            code: text(line.code),
-            rate: scalarText(line.rate),
-            total: canonicalAmount(line.total, "Shipping tax line total"),
-          }))
+          sortableRecords(method.tax_lines).map(canonicalTaxLine)
         ),
         adjustments: sortCanonical(
           sortableRecords(method.adjustments).map((adjustment) => ({

@@ -15,6 +15,8 @@ import {
   STORE_CORS,
   STRIPE_API_KEY,
   STRIPE_PAYMENT_METHOD_CONFIGURATION,
+  STRIPE_TAX_QUOTE_TTL_MS,
+  STRIPE_TAX_SHIPPING_TAX_CODE,
   STRIPE_WEBHOOK_SECRET,
   TAX_RATE_LOOKUP_API_KEY,
   TAX_RATE_LOOKUP_MODE,
@@ -229,7 +231,10 @@ const medusaConfig = {
             options: {
               provider: TAX_RATE_LOOKUP_PROVIDER,
               apiKey: TAX_RATE_LOOKUP_API_KEY,
-              mode: TAX_RATE_LOOKUP_MODE
+              mode: TAX_RATE_LOOKUP_MODE,
+              stripeApiKey: STRIPE_API_KEY,
+              stripeQuoteTtlMs: STRIPE_TAX_QUOTE_TTL_MS,
+              stripeShippingTaxCode: STRIPE_TAX_SHIPPING_TAX_CODE,
             }
           }
         ]
@@ -246,6 +251,10 @@ const medusaConfig = {
     {
       key: "catalog",
       resolve: "./src/modules/catalog",
+    },
+    {
+      key: "tax_control",
+      resolve: "./src/modules/tax-control",
     }
   ],
   plugins: [

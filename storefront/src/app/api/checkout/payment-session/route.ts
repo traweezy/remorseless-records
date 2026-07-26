@@ -19,6 +19,10 @@ import {
   CheckoutRevalidationError,
   revalidateShippingAndTaxes,
 } from "@/features/checkout/server/revalidate"
+import {
+  CheckoutTaxLinkError,
+  linkCheckoutTax,
+} from "@/features/checkout/server/tax-link-client"
 import { getCart, initiatePaymentSession } from "@/lib/cart/api"
 import { jsonApiProblem, parseJsonBody } from "@/lib/security/route-guards"
 
@@ -111,6 +115,7 @@ export const POST = async (request: NextRequest): Promise<Response> => {
       preparedCart = await getCart(active.value.cart.id)
     }
     assertPreparedPayment(preparedCart)
+    await linkCheckoutTax(preparedCart.id)
 
     return checkoutProjectionResponse(
       {
@@ -131,6 +136,15 @@ export const POST = async (request: NextRequest): Promise<Response> => {
     }
     if (error instanceof CheckoutPaymentError) {
       return paymentProblem(request, error)
+    }
+    if (error instanceof CheckoutTaxLinkError) {
+      return paymentProblem(
+        request,
+        new CheckoutPaymentError(
+          "payment_not_configured",
+          "The secure tax binding could not be verified."
+        )
+      )
     }
     return checkoutOperationError(request, error, {
       code: "payment_not_configured",

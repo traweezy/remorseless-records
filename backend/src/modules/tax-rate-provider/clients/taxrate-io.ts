@@ -1,6 +1,24 @@
 type TaxRateIoResponse = {
   rate?: number | string
   rate_pct?: number | string
+  usage_data?: {
+    quota?: number | string
+    usage?: number | string
+    usage_pct?: number | string
+  }
+}
+
+export type TaxRateIoQuota = {
+  observedAt: string
+  quota: number
+  remaining: number
+  usage: number
+  usagePercent: number
+}
+
+export type TaxRateIoResult = {
+  quota: TaxRateIoQuota | null
+  ratePercent: number
 }
 
 const parseRateValue = (value: unknown): number | null => {
@@ -24,6 +42,43 @@ const normalizeRatePercent = (rawRate: number): number => {
   return rawRate
 }
 
+const nonNegativeInteger = (value: unknown): number | null => {
+  const parsed = parseRateValue(value)
+  if (parsed === null || parsed < 0) {
+    return null
+  }
+
+  return Math.trunc(parsed)
+}
+
+const parseQuota = (
+  value: TaxRateIoResponse["usage_data"]
+): TaxRateIoQuota | null => {
+  if (!value) {
+    return null
+  }
+
+  const usage = nonNegativeInteger(value.usage)
+  const quota = nonNegativeInteger(value.quota)
+  const reportedPercent = parseRateValue(value.usage_pct)
+  if (usage === null || quota === null || quota === 0) {
+    return null
+  }
+
+  const usagePercent =
+    reportedPercent !== null && reportedPercent >= 0
+      ? reportedPercent
+      : (usage / quota) * 100
+
+  return {
+    observedAt: new Date().toISOString(),
+    quota,
+    remaining: Math.max(0, quota - usage),
+    usage,
+    usagePercent,
+  }
+}
+
 export const fetchTaxRateIo = async ({
   apiKey,
   zip,
@@ -32,7 +87,7 @@ export const fetchTaxRateIo = async ({
   apiKey: string
   zip: string
   timeoutMs: number
-}): Promise<number> => {
+}): Promise<TaxRateIoResult> => {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   const url = new URL('https://www.taxrate.io/api/v1/rate/getratebyzip')
@@ -56,7 +111,10 @@ export const fetchTaxRateIo = async ({
       throw new Error('Taxrate.io returned an invalid rate')
     }
 
-    return normalizeRatePercent(rawRate)
+    return {
+      quota: parseQuota(payload.usage_data),
+      ratePercent: normalizeRatePercent(rawRate),
+    }
   } finally {
     clearTimeout(timeout)
   }

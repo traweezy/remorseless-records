@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { createCheckoutStatusProof } from "@/features/checkout/server/internal-status-auth"
+import {
+  createCheckoutStatusProof,
+  createCheckoutTaxLinkProof,
+} from "@/features/checkout/server/internal-status-auth"
 
 const secret = ["unit", "test", "checkout", "key"].join("-").repeat(2)
 
@@ -27,5 +30,17 @@ describe("checkout status BFF proof", () => {
         secret: key,
       })
     ).toThrow()
+  })
+
+  it("uses a distinct signature context for tax linking", () => {
+    const input = {
+      cartId: "cart_01K123ABC",
+      timestamp: 1_800_000_000,
+      secret,
+    }
+
+    expect(createCheckoutTaxLinkProof(input)).not.toBe(
+      createCheckoutStatusProof(input)
+    )
   })
 })

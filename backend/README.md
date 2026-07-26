@@ -128,14 +128,49 @@ The 37-day minimum preserves the storefront's 30-day cart-cookie lifetime plus
 a seven-day grace period. Read-only candidate counts must be reviewed before
 either job is enabled in a new environment.
 
-## Tax cache
+## Tax control and payment evidence
 
-The tax lookup module uses a bounded in-memory cache and Redis when configured:
+The Tax Module has two installed calculation engines, but exactly one is active
+for a new quote:
 
-- `TAX_RATE_LOOKUP_CACHE_TTL_MS` (default `300000`)
+- TaxRate.io supplies a ZIP-based percentage and its returned monthly
+  quota/usage.
+- Stripe Tax supplies address-aware, per-line calculations and a calculation
+  ID that is bound to the exact Medusa-created PaymentIntent.
 
-Tax failures remain checkout failures. The application does not silently
-replace a failed lookup with zero tax.
+An authenticated Medusa Admin can review readiness, quota, open-cart impact,
+payment evidence, and an immutable provider-switch history at **Tax control**.
+Switches increment a generation. Open carts without a prepared payment use the
+new generation on their next tax refresh; prepared payments keep their original
+provider, generation, fingerprint, and calculation/rate. No cart can combine
+two providers.
+
+The storefront BFF calls `POST /store/checkout/tax-link` with a short-lived,
+purpose-bound `CHECKOUT_BFF_SECRET` proof before returning a client secret and
+again before cart completion. The backend verifies the Medusa cart, collection,
+session, Stripe PaymentIntent, tax fingerprint, amount, currency, and—when
+Stripe Tax is active—the unexpired calculation. One calculation can be attached
+to only one PaymentIntent.
+
+Non-PII evidence is reconciled on `order.placed`, `payment.captured`, and
+`payment.refunded`, with an hourly bounded safety-net job. It records successful
+tax transactions, refund reversals, disputes, and association errors. A dispute
+is surfaced for manual tax review because Stripe does not automatically reverse
+tax merely because a payment is disputed.
+
+Configuration:
+
+- `TAX_RATE_LOOKUP_API_KEY`
+- `TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE` — optional reviewed ZIP for a deliberate
+  admin quota refresh; each refresh consumes one real TaxRate.io lookup.
+- `TAX_RATE_LOOKUP_CACHE_TTL_MS` — default `300000`.
+- `STRIPE_TAX_SHIPPING_TAX_CODE` — required for Stripe Tax readiness.
+- `STRIPE_TAX_QUOTE_TTL_MS` — local/Redis quote ceiling, default `1800000`.
+
+Tax and payment-association failures remain checkout failures. The application
+does not silently replace a failed final lookup with zero tax. Operational
+procedures are in
+[`../docs/TAX_CONTROL_OPERATIONS.md`](../docs/TAX_CONTROL_OPERATIONS.md).
 
 ## Fulfillment location contract
 

@@ -17,6 +17,10 @@ import {
   CheckoutRevalidationError,
   revalidateShippingAndTaxes,
 } from "@/features/checkout/server/revalidate"
+import {
+  CheckoutTaxLinkError,
+  linkCheckoutTax,
+} from "@/features/checkout/server/tax-link-client"
 import { orderConfirmedResponse } from "@/features/checkout/server/responses"
 import { completeCart, getCart } from "@/lib/cart/api"
 import { jsonApiProblem, parseJsonBody } from "@/lib/security/route-guards"
@@ -181,6 +185,7 @@ export const POST = async (request: NextRequest): Promise<Response> => {
 
     if (revalidated.cart.totals.total > 0) {
       assertCompletablePayment(revalidatedCart)
+      await linkCheckoutTax(revalidatedCart.id)
     }
 
     completionAttempted = true
@@ -217,6 +222,14 @@ export const POST = async (request: NextRequest): Promise<Response> => {
           error.code === "payment_not_configured"
             ? "Secure payment is temporarily unavailable."
             : "Review the updated payment details before trying again.",
+      })
+    }
+    if (error instanceof CheckoutTaxLinkError) {
+      return completionProblem(request, {
+        status: 503,
+        code: "payment_not_configured",
+        title: "Payment cannot be submitted",
+        detail: "Secure tax binding is temporarily unavailable.",
       })
     }
     return completionProblem(request, {

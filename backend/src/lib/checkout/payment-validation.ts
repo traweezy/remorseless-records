@@ -1,6 +1,11 @@
 import { BigNumber, MathBN } from "@medusajs/framework/utils";
 import type { BigNumberInput } from "@medusajs/framework/types";
 
+import {
+  TaxQuoteIdentityError,
+  taxQuoteIdentityFromCart,
+} from "../tax-control/quote";
+
 const CHECKOUT_CURRENCY = "usd";
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe";
 const USD_MINOR_UNIT_MULTIPLIER = 100;
@@ -28,6 +33,7 @@ export type CheckoutPaymentValidationCode =
   | "checkout_payment_session_missing"
   | "checkout_payment_session_multiple"
   | "checkout_payment_session_provider_invalid"
+  | "checkout_tax_quote_invalid"
   | "checkout_shipping_missing";
 
 export class CheckoutPaymentValidationError extends Error {
@@ -62,6 +68,9 @@ const asRecordArray = (value: unknown): UnknownRecord[] =>
 
 const normalizedString = (value: unknown): string =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
+
+const exactString = (value: unknown): string =>
+  typeof value === "string" ? value.trim() : "";
 
 const requiredString = (value: unknown): boolean =>
   typeof value === "string" && value.trim().length > 0;
@@ -123,6 +132,53 @@ const assertAddress = (value: unknown): void => {
       "checkout_address_missing",
       "A complete US delivery address is required.",
     );
+  }
+};
+
+const assertTaxQuote = (
+  cart: UnknownRecord,
+  paymentIntent: UnknownRecord | null,
+): void => {
+  let quote: ReturnType<typeof taxQuoteIdentityFromCart>;
+  try {
+    quote = taxQuoteIdentityFromCart(cart);
+  } catch (error: unknown) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_tax_quote_invalid",
+      error instanceof TaxQuoteIdentityError
+        ? error.message
+        : "The cart tax quote is invalid.",
+    );
+  }
+
+  const metadata = asRecord(paymentIntent?.metadata);
+  const generation = Number(metadata?.rr_tax_generation);
+  const calculationId = exactString(metadata?.rr_tax_calculation_id);
+  if (
+    normalizedString(metadata?.rr_tax_provider) !== quote.provider ||
+    !Number.isSafeInteger(generation) ||
+    generation !== quote.generation ||
+    metadata?.rr_tax_fingerprint !== quote.fingerprint ||
+    calculationId !== (quote.calculationId ?? "")
+  ) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_tax_quote_invalid",
+      "The Stripe PaymentIntent tax identity does not match the cart.",
+    );
+  }
+
+  if (quote.provider === "taxrate_io") {
+    const rate = Number(metadata?.rr_tax_rate_percent);
+    if (
+      !Number.isFinite(rate) ||
+      rate < 0 ||
+      rate !== quote.taxRatePercent
+    ) {
+      throw new CheckoutPaymentValidationError(
+        "checkout_tax_quote_invalid",
+        "The Stripe PaymentIntent tax rate does not match the cart.",
+      );
+    }
   }
 };
 
@@ -268,6 +324,7 @@ export const validateCheckoutPayment = (
       "The Stripe PaymentIntent currency does not match the cart.",
     );
   }
+  assertTaxQuote(cart, paymentIntent);
 
   const status = normalizedString(paymentSession.status);
   if (!status) {

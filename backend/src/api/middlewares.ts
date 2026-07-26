@@ -162,6 +162,12 @@ const contactRateLimit = createRateLimitMiddleware({
   windowMs: 60_000,
 });
 
+const adminTaxControlRateLimit = createRateLimitMiddleware({
+  key: "admin:tax-control",
+  max: 30,
+  windowMs: 60_000,
+});
+
 export default defineMiddlewares({
   routes: [
     {
@@ -175,7 +181,7 @@ export default defineMiddlewares({
       middlewares: [catalogReadRateLimit],
     },
     {
-      matcher: "/store/checkout/status",
+      matcher: /^\/store\/checkout\/(status|tax-link)$/,
       methods: ["POST"],
       middlewares: [checkoutStatusRateLimit],
       bodyParser: {
@@ -188,6 +194,14 @@ export default defineMiddlewares({
       middlewares: [contactRateLimit, enforceStoreOrigin],
       bodyParser: {
         sizeLimit: "16kb",
+      },
+    },
+    {
+      matcher: /^\/admin\/tax-control(\/.*)?$/,
+      methods: ["POST"],
+      middlewares: [adminTaxControlRateLimit],
+      bodyParser: {
+        sizeLimit: "8kb",
       },
     },
   ],

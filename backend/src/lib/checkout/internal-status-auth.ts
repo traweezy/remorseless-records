@@ -1,7 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 
 const PROOF_VERSION = "v1"
-const PROOF_CONTEXT = "checkout-status"
 const CART_ID_PATTERN = /^cart_[A-Za-z0-9]+$/
 const PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const MINIMUM_SECRET_LENGTH = 32
@@ -18,6 +17,8 @@ type VerifyCheckoutStatusProofInput = CheckoutStatusProofInput & {
   proof: string
   nowSeconds?: number
 }
+
+type CheckoutProofPurpose = "checkout-status" | "checkout-tax-link"
 
 const validateSigningInput = ({
   cartId,
@@ -37,27 +38,37 @@ const validateSigningInput = ({
   }
 }
 
-const signedPayload = (cartId: string, timestamp: number): string =>
-  [PROOF_VERSION, PROOF_CONTEXT, String(timestamp), cartId].join("\n")
+const signedPayload = (
+  purpose: CheckoutProofPurpose,
+  cartId: string,
+  timestamp: number,
+): string =>
+  [PROOF_VERSION, purpose, String(timestamp), cartId].join("\n")
 
-export const createCheckoutStatusProof = ({
+const createCheckoutProof = ({
   cartId,
   timestamp,
   secret,
-}: CheckoutStatusProofInput): string => {
+  purpose,
+}: CheckoutStatusProofInput & {
+  purpose: CheckoutProofPurpose
+}): string => {
   validateSigningInput({ cartId, timestamp, secret })
   return createHmac("sha256", secret.trim())
-    .update(signedPayload(cartId, timestamp))
+    .update(signedPayload(purpose, cartId, timestamp))
     .digest("base64url")
 }
 
-export const verifyCheckoutStatusProof = ({
+const verifyCheckoutProof = ({
   cartId,
   timestamp,
   secret,
   proof,
+  purpose,
   nowSeconds = Math.floor(Date.now() / 1000),
-}: VerifyCheckoutStatusProofInput): boolean => {
+}: VerifyCheckoutStatusProofInput & {
+  purpose: CheckoutProofPurpose
+}): boolean => {
   try {
     validateSigningInput({ cartId, timestamp, secret })
   } catch {
@@ -73,10 +84,26 @@ export const verifyCheckoutStatusProof = ({
   }
 
   const expected = Buffer.from(
-    createCheckoutStatusProof({ cartId, timestamp, secret }),
+    createCheckoutProof({ cartId, timestamp, secret, purpose }),
   )
   const supplied = Buffer.from(proof)
   return (
     expected.length === supplied.length && timingSafeEqual(expected, supplied)
   )
 }
+
+export const createCheckoutStatusProof = (
+  input: CheckoutStatusProofInput,
+): string => createCheckoutProof({ ...input, purpose: "checkout-status" })
+
+export const createCheckoutTaxLinkProof = (
+  input: CheckoutStatusProofInput,
+): string => createCheckoutProof({ ...input, purpose: "checkout-tax-link" })
+
+export const verifyCheckoutStatusProof = (
+  input: VerifyCheckoutStatusProofInput,
+): boolean => verifyCheckoutProof({ ...input, purpose: "checkout-status" })
+
+export const verifyCheckoutTaxLinkProof = (
+  input: VerifyCheckoutStatusProofInput,
+): boolean => verifyCheckoutProof({ ...input, purpose: "checkout-tax-link" })

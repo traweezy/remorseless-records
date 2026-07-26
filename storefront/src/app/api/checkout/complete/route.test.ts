@@ -51,6 +51,13 @@ const cartApiMocks = vi.hoisted(() => ({
   completeCart: vi.fn(),
   getCart: vi.fn(),
 }))
+const taxLinkMocks = vi.hoisted(() => {
+  class CheckoutTaxLinkError extends Error {}
+  return {
+    CheckoutTaxLinkError,
+    linkCheckoutTax: vi.fn(),
+  }
+})
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }))
 vi.mock("@/features/checkout/server/active-cart", () => activeCartMocks)
@@ -60,6 +67,7 @@ vi.mock("@/features/checkout/server/payment", () => paymentMocks)
 vi.mock("@/features/checkout/server/projection", () => projectionMocks)
 vi.mock("@/features/checkout/server/revalidate", () => revalidationMocks)
 vi.mock("@/features/checkout/server/responses", () => responseMocks)
+vi.mock("@/features/checkout/server/tax-link-client", () => taxLinkMocks)
 vi.mock("@/lib/cart/api", () => cartApiMocks)
 
 import { POST } from "@/app/api/checkout/complete/route"
@@ -130,6 +138,7 @@ describe("POST /api/checkout/complete", () => {
       expect.objectContaining({ id: "cart_signed" })
     )
     expect(paymentMocks.assertCompletablePayment).toHaveBeenCalledOnce()
+    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith("cart_signed")
     expect(cartApiMocks.completeCart).toHaveBeenCalledWith("cart_signed")
     expect(responseMocks.orderConfirmedResponse).toHaveBeenCalledWith({
       orderId: "order_01K123ABC",
@@ -176,6 +185,7 @@ describe("POST /api/checkout/complete", () => {
 
     expect(response.status).toBe(200)
     expect(paymentMocks.assertCompletablePayment).not.toHaveBeenCalled()
+    expect(taxLinkMocks.linkCheckoutTax).not.toHaveBeenCalled()
     expect(cartApiMocks.completeCart).toHaveBeenCalledOnce()
   })
 

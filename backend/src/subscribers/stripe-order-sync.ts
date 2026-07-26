@@ -1,8 +1,12 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import type { ILockingModule } from "@medusajs/framework/types";
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import Stripe from "stripe";
 
 import { STRIPE_API_KEY } from "@/lib/constants";
+import { reconcileTaxQuoteEvidence } from "@/lib/tax-control/evidence-reconciliation";
+import { taxEvidenceLockKey } from "@/modules/tax-control/constants";
+import type TaxControlModuleService from "@/modules/tax-control/service";
 import {
   orderUsesStripe,
   stripePaymentReferencesFromOrder,
@@ -93,6 +97,22 @@ export default async function stripeOrderSyncHandler({
     orderNumber,
     references,
   });
+
+  const service = container.resolve<TaxControlModuleService>("tax_control");
+  const locking = container.resolve<ILockingModule>(Modules.LOCKING);
+  for (const reference of references) {
+    await locking.execute(
+      taxEvidenceLockKey(reference.paymentIntentId),
+      () =>
+        reconcileTaxQuoteEvidence({
+          client: stripe,
+          orderId: data.id,
+          paymentIntentId: reference.paymentIntentId,
+          service,
+        }),
+      { timeout: 5 },
+    );
+  }
 
   logger.info(
     `[stripe-order-sync] synchronized ${synchronizedCount} payment reference(s)`,

@@ -24,6 +24,13 @@ const cartApiMocks = vi.hoisted(() => ({
   initiatePaymentSession: vi.fn(),
   listShippingOptions: vi.fn(),
 }))
+const taxLinkMocks = vi.hoisted(() => {
+  class CheckoutTaxLinkError extends Error {}
+  return {
+    CheckoutTaxLinkError,
+    linkCheckoutTax: vi.fn(),
+  }
+})
 
 vi.mock("next/cache", () => ({ unstable_noStore: vi.fn() }))
 vi.mock("@/features/checkout/server/active-cart", () => activeCartMocks)
@@ -35,6 +42,7 @@ vi.mock("@/features/checkout/server/payment", async (importOriginal) => ({
   ...paymentMocks,
 }))
 vi.mock("@/features/checkout/server/projection", () => projectionMocks)
+vi.mock("@/features/checkout/server/tax-link-client", () => taxLinkMocks)
 vi.mock("@/lib/cart/api", () => cartApiMocks)
 
 import { POST } from "@/app/api/checkout/payment-session/route"
@@ -147,6 +155,7 @@ describe("POST /api/checkout/payment-session", () => {
     expect(cartApiMocks.calculateTaxes).toHaveBeenCalledWith("cart_signed")
     expect(cartApiMocks.initiatePaymentSession).not.toHaveBeenCalled()
     expect(paymentMocks.assertPreparedPayment).toHaveBeenCalledWith(cart)
+    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith("cart_signed")
     expect(activeCartMocks.checkoutProjectionResponse).toHaveBeenCalledWith(
       expect.objectContaining({ cart }),
       { includeClientSecret: true }
@@ -171,6 +180,7 @@ describe("POST /api/checkout/payment-session", () => {
     expect(paymentMocks.assertPreparedPayment).toHaveBeenCalledWith(
       preparedCart
     )
+    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith("cart_signed")
   })
 
   it("does not replace an authorized or captured payment", async () => {

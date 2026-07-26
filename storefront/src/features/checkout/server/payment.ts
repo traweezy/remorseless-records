@@ -2,11 +2,20 @@ import "server-only"
 
 import type { HttpTypes } from "@medusajs/types"
 
+import {
+  TaxQuoteIdentityError,
+  taxQuoteIdentityFromCart,
+} from "@/lib/cart/tax-quote"
+
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe"
 const STRIPE_MIN_USD_AMOUNT = 50
 const STRIPE_MAX_USD_AMOUNT = 99_999_999
 const REUSABLE_PAYMENT_STATUSES = new Set(["pending", "requires_more"])
-const FINALIZING_PAYMENT_STATUSES = new Set(["authorized", "captured"])
+const FINALIZING_PAYMENT_STATUSES = new Set([
+  "authorized",
+  "captured",
+  "pending_authorization",
+])
 const COMPLETABLE_PAYMENT_STATUSES = new Set([
   "pending",
   "requires_more",
@@ -95,6 +104,55 @@ const assertStripeIntentAmount = (
   }
 }
 
+const assertTaxQuoteIdentity = (
+  cart: HttpTypes.StoreCart,
+  session: HttpTypes.StorePaymentSession
+): void => {
+  let quote: ReturnType<typeof taxQuoteIdentityFromCart>
+  try {
+    quote = taxQuoteIdentityFromCart(cart)
+  } catch (error: unknown) {
+    if (error instanceof TaxQuoteIdentityError) {
+      throw new CheckoutPaymentError("payment_session_stale", error.message)
+    }
+    throw error
+  }
+
+  const data = asRecord(session.data)
+  const metadata = asRecord(data?.metadata)
+  const generation = Number(metadata?.rr_tax_generation)
+  const calculationId =
+    typeof metadata?.rr_tax_calculation_id === "string"
+      ? metadata.rr_tax_calculation_id.trim()
+      : ""
+  if (
+    metadata?.rr_tax_provider !== quote.provider ||
+    !Number.isSafeInteger(generation) ||
+    generation !== quote.generation ||
+    metadata?.rr_tax_fingerprint !== quote.fingerprint ||
+    (quote.calculationId ?? "") !== calculationId
+  ) {
+    throw new CheckoutPaymentError(
+      "payment_session_stale",
+      "The payment session tax quote changed."
+    )
+  }
+
+  if (quote.provider === "taxrate_io") {
+    const rate = Number(metadata?.rr_tax_rate_percent)
+    if (
+      !Number.isFinite(rate) ||
+      rate < 0 ||
+      rate !== quote.taxRatePercent
+    ) {
+      throw new CheckoutPaymentError(
+        "payment_session_stale",
+        "The payment session tax rate changed."
+      )
+    }
+  }
+}
+
 const clientSecretFrom = (
   session: HttpTypes.StorePaymentSession
 ): string | null => {
@@ -130,6 +188,7 @@ export const reusablePreparedPayment = (
       "Checkout is configured for USD only."
     )
   }
+  payableUsdMinorUnits(total, "Cart total")
 
   const paymentCollection = cart.payment_collection
   if (!paymentCollection) {
@@ -157,40 +216,39 @@ export const reusablePreparedPayment = (
     return null
   }
   if (sessions.length !== 1) {
-    throw new CheckoutPaymentError(
-      "payment_session_stale",
-      "More than one reusable Stripe payment session exists."
-    )
+    return null
   }
 
   const session = sessions[0]
   if (!session) {
     return null
   }
-  if (normalizedCurrency(session.currency_code) !== "usd") {
-    throw new CheckoutPaymentError(
-      "payment_session_stale",
-      "The payment session currency changed."
-    )
-  }
-  if (usdAmount(session.amount, "Payment session amount") !== total) {
-    throw new CheckoutPaymentError(
-      "payment_session_stale",
-      "The payment session amount changed."
-    )
-  }
-  assertStripeIntentAmount(session, total)
-  const clientSecret = clientSecretFrom(session)
-  if (!clientSecret) {
-    throw new CheckoutPaymentError(
-      "payment_not_configured",
-      "Stripe did not return a client secret."
-    )
-  }
+  try {
+    if (normalizedCurrency(session.currency_code) !== "usd") {
+      return null
+    }
+    if (usdAmount(session.amount, "Payment session amount") !== total) {
+      return null
+    }
+    assertStripeIntentAmount(session, total)
+    assertTaxQuoteIdentity(cart, session)
+    const clientSecret = clientSecretFrom(session)
+    if (!clientSecret) {
+      return null
+    }
 
-  return {
-    clientSecret,
-    status: session.status,
+    return {
+      clientSecret,
+      status: session.status,
+    }
+  } catch (error: unknown) {
+    if (
+      error instanceof CheckoutPaymentError &&
+      error.code !== "payment_result_unknown"
+    ) {
+      return null
+    }
+    throw error
   }
 }
 
@@ -282,6 +340,7 @@ export const assertCompletablePayment = (
     )
   }
   assertStripeIntentAmount(session, total)
+  assertTaxQuoteIdentity(cart, session)
 
   return { status: session.status }
 }

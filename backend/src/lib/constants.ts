@@ -183,6 +183,13 @@ export const TAX_RATE_LOOKUP_PROVIDER =
   process.env.TAX_RATE_LOOKUP_PROVIDER ?? "taxrate_io"
 export const TAX_RATE_LOOKUP_API_KEY = process.env.TAX_RATE_LOOKUP_API_KEY ?? ""
 export const TAX_RATE_LOOKUP_MODE = process.env.TAX_RATE_LOOKUP_MODE ?? "zip"
+export const TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE =
+  process.env.TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE
+export const STRIPE_TAX_QUOTE_TTL_MS = Number(
+  process.env.STRIPE_TAX_QUOTE_TTL_MS ?? 30 * 60 * 1000
+)
+export const STRIPE_TAX_SHIPPING_TAX_CODE =
+  process.env.STRIPE_TAX_SHIPPING_TAX_CODE
 
 /**
  * (optional) Meilisearch configuration

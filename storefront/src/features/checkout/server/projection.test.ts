@@ -234,6 +234,29 @@ describe("checkout projection", () => {
     )
   })
 
+  it("changes the revision when the controlled tax fingerprint changes", () => {
+    const original = cartFixture()
+    const changed = cartFixture()
+    ;(
+      original.items![0]!.tax_lines![0]! as unknown as Record<string, unknown>
+    ).data = {
+      fingerprint: "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789",
+      generation: 1,
+      provider: "taxrate_io",
+    }
+    ;(
+      changed.items![0]!.tax_lines![0]! as unknown as Record<string, unknown>
+    ).data = {
+      fingerprint: "changedTaxFingerprint_abcdefghijklmnopqrstuvwxyz012345678",
+      generation: 1,
+      provider: "taxrate_io",
+    }
+
+    expect(createCheckoutProjection(changed).revision).not.toBe(
+      createCheckoutProjection(original).revision
+    )
+  })
+
   it.each([
     [
       "quantity",

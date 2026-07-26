@@ -1,7 +1,9 @@
 import {
   CHECKOUT_STATUS_PROOF_MAX_SKEW_SECONDS,
   createCheckoutStatusProof,
+  createCheckoutTaxLinkProof,
   verifyCheckoutStatusProof,
+  verifyCheckoutTaxLinkProof,
 } from "./internal-status-auth"
 
 const secret = ["unit", "test", "checkout", "key"].join("-").repeat(2)
@@ -76,5 +78,37 @@ describe("internal checkout status proof", () => {
         secret: key,
       }),
     ).toThrow()
+  })
+
+  it("prevents proof replay between status and tax-link endpoints", () => {
+    const statusProof = createCheckoutStatusProof({
+      cartId,
+      timestamp,
+      secret,
+    })
+    const taxLinkProof = createCheckoutTaxLinkProof({
+      cartId,
+      timestamp,
+      secret,
+    })
+
+    expect(
+      verifyCheckoutTaxLinkProof({
+        cartId,
+        timestamp,
+        secret,
+        proof: statusProof,
+        nowSeconds: timestamp,
+      }),
+    ).toBe(false)
+    expect(
+      verifyCheckoutStatusProof({
+        cartId,
+        timestamp,
+        secret,
+        proof: taxLinkProof,
+        nowSeconds: timestamp,
+      }),
+    ).toBe(false)
   })
 })

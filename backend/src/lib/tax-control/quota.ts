@@ -1,0 +1,164 @@
+import type { Logger } from "@medusajs/framework/types";
+import type { RedisClientType } from "redis";
+import { createClient } from "redis";
+
+import { REDIS_URL } from "../constants";
+import {
+  TAXRATE_IO_QUOTA_ID,
+  TAXRATE_IO_QUOTA_REDIS_KEY,
+} from "../../modules/tax-control/constants";
+import type TaxControlModuleService from "../../modules/tax-control/service";
+import type { TaxRateIoQuota } from "../../modules/tax-rate-provider/clients/taxrate-io";
+
+let quotaRedisClient: RedisClientType | null = null;
+let quotaRedisConnectPromise: Promise<RedisClientType | null> | null = null;
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+const parseQuota = (value: string | null): TaxRateIoQuota | null => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as TaxRateIoQuota;
+    const observed = Date.parse(parsed.observedAt);
+    if (
+      !Number.isFinite(observed) ||
+      !Number.isSafeInteger(parsed.usage) ||
+      !Number.isSafeInteger(parsed.quota) ||
+      !Number.isSafeInteger(parsed.remaining) ||
+      !Number.isFinite(parsed.usagePercent) ||
+      parsed.usage < 0 ||
+      parsed.quota <= 0 ||
+      parsed.remaining < 0
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const redisClient = async (logger: Logger): Promise<RedisClientType | null> => {
+  const redisUrl = REDIS_URL?.trim();
+  if (!redisUrl) {
+    return null;
+  }
+  if (quotaRedisClient?.isOpen) {
+    return quotaRedisClient;
+  }
+  if (quotaRedisConnectPromise) {
+    return quotaRedisConnectPromise;
+  }
+
+  const client =
+    quotaRedisClient ??
+    createClient({
+      url: redisUrl,
+      RESP: 3,
+      socket: {
+        connectTimeout: 2_000,
+        reconnectStrategy: (retries) =>
+          retries >= 3 ? false : Math.min(100 * 2 ** retries, 1_000),
+      },
+    }).on("error", (error) => {
+      logger.warn(`Tax quota Redis error: ${errorMessage(error)}`);
+    });
+  quotaRedisClient = client;
+  quotaRedisConnectPromise = client
+    .connect()
+    .then(() => client)
+    .catch((error) => {
+      logger.warn(`Tax quota Redis connection failed: ${errorMessage(error)}`);
+      try {
+        client.destroy();
+      } catch {
+        // The persisted snapshot remains available if Redis is down.
+      }
+      quotaRedisClient = null;
+      return null;
+    })
+    .finally(() => {
+      quotaRedisConnectPromise = null;
+    });
+  return quotaRedisConnectPromise;
+};
+
+export const writeTaxRateIoQuotaToRedis = async (
+  logger: Logger,
+  quota: TaxRateIoQuota,
+): Promise<void> => {
+  const client = await redisClient(logger);
+  if (client) {
+    await client.set(TAXRATE_IO_QUOTA_REDIS_KEY, JSON.stringify(quota));
+  }
+};
+
+export const persistTaxRateIoQuota = async ({
+  quota,
+  service,
+  source,
+}: {
+  quota: TaxRateIoQuota;
+  service: TaxControlModuleService;
+  source: "checkout_lookup" | "manual_refresh";
+}) => {
+  const existing = await service.listTaxProviderQuotas(
+    { provider: "taxrate_io" },
+    { take: 1 },
+  );
+  const payload = {
+    id: TAXRATE_IO_QUOTA_ID,
+    metadata: {},
+    observed_at: new Date(quota.observedAt),
+    provider: "taxrate_io",
+    quota: quota.quota,
+    remaining: quota.remaining,
+    source,
+    usage: quota.usage,
+    usage_percent: quota.usagePercent,
+  };
+  const current = existing[0];
+  if (current) {
+    const [updated] = await service.updateTaxProviderQuotas([
+      { ...payload, id: current.id },
+    ]);
+    return updated ?? current;
+  }
+
+  const [created] = await service.createTaxProviderQuotas([payload]);
+  return created ?? null;
+};
+
+export const syncTaxRateIoQuota = async ({
+  logger,
+  service,
+}: {
+  logger: Logger;
+  service: TaxControlModuleService;
+}) => {
+  const client = await redisClient(logger);
+  if (client) {
+    try {
+      const quota = parseQuota(await client.get(TAXRATE_IO_QUOTA_REDIS_KEY));
+      if (quota) {
+        return persistTaxRateIoQuota({
+          quota,
+          service,
+          source: "checkout_lookup",
+        });
+      }
+    } catch (error) {
+      logger.warn(`Tax quota synchronization failed: ${errorMessage(error)}`);
+    }
+  }
+
+  const persisted = await service.listTaxProviderQuotas(
+    { provider: "taxrate_io" },
+    { order: { observed_at: "DESC" }, take: 1 },
+  );
+  return persisted[0] ?? null;
+};

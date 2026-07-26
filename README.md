@@ -530,12 +530,14 @@ and client secrets are explicitly excluded from persisted TanStack Query data.
 
 Implementation decisions are recorded in
 [`docs/adr/0001-checkout-payment-authority.md`](docs/adr/0001-checkout-payment-authority.md).
-The proposed single-engine Stripe Tax integration, its current configuration
-blockers, and its exact-total rollout gates are recorded in
+The dual-provider tax control, Stripe Tax payment binding, and exact-total
+rollout gates are recorded in
 [`docs/adr/0002-stripe-tax-medusa-authority.md`](docs/adr/0002-stripe-tax-medusa-authority.md).
 The full test and incident procedures are in
 [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK.md) and
-[`docs/CHECKOUT_OPERATIONS.md`](docs/CHECKOUT_OPERATIONS.md).
+[`docs/CHECKOUT_OPERATIONS.md`](docs/CHECKOUT_OPERATIONS.md). Tax-provider
+switching and reconciliation operations are in
+[`docs/TAX_CONTROL_OPERATIONS.md`](docs/TAX_CONTROL_OPERATIONS.md).
 
 ### Checkout staging verification
 
@@ -705,6 +707,11 @@ Key variables (non-empty values required for full functionality):
 | `CHECKOUT_RECONCILIATION_ENABLED`            | Enables the bounded missed-completion safety net (default `false`)           |
 | `CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS`    | Minimum finalized-payment age before retry; default `120`, minimum `60`      |
 | `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS`       | Per-run completion-attempt cap; default `50`, maximum `250`                  |
+| `TAX_RATE_LOOKUP_API_KEY`                    | TaxRate.io key; its returned quota is recorded, never estimated              |
+| `TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE`        | Reviewed ZIP for deliberate one-call Admin quota refresh                     |
+| `TAX_RATE_LOOKUP_CACHE_TTL_MS`               | TaxRate.io percentage cache TTL; default `300000`                            |
+| `STRIPE_TAX_SHIPPING_TAX_CODE`               | Reviewed Stripe shipping tax code; required for Stripe Tax readiness         |
+| `STRIPE_TAX_QUOTE_TTL_MS`                    | Stripe calculation cache ceiling; default `1800000`                          |
 | `BACKEND_PUBLIC_URL`                         | External URL used in webhooks (e.g., `http://localhost:9000`)                |
 | `RESEND_API_KEY`                             | Optional; required for transactional mail                                    |
 | `MEILISEARCH_HOST`                           | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
@@ -757,6 +764,10 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PAYMENT_METHOD_CONFIGURATION=pmc_...
 CHECKOUT_BFF_SECRET=replace-with-at-least-32-random-characters
 CHECKOUT_RECONCILIATION_ENABLED=false
+TAX_RATE_LOOKUP_API_KEY=
+TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE=
+STRIPE_TAX_SHIPPING_TAX_CODE=txcd_92010001
+STRIPE_TAX_QUOTE_TTL_MS=1800000
 ABANDONED_CHECKOUT_RETENTION_ENABLED=false
 MEILISEARCH_HOST=http://127.0.0.1:7700
 MEILISEARCH_ADMIN_KEY=masterKey
