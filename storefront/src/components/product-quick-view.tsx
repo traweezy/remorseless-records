@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useMemo } from "react"
 
 import { motion, useReducedMotion, type Transition } from "framer-motion"
@@ -97,12 +98,12 @@ export const ProductQuickView = ({
 
         <div className="relative aspect-[4/5] w-full overflow-hidden border-b border-border/60 bg-background/80">
           {heroImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={heroImage}
               alt={activeProduct?.title ?? "Release artwork"}
+              fill
+              sizes="(max-width: 639px) 100vw, 448px"
               className="h-full w-full object-cover"
-              loading="lazy"
             />
           ) : (
             <MediaPlaceholder label="No artwork" />

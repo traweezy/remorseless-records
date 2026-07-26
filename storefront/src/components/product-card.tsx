@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type MouseEvent } from "react"
 
@@ -570,15 +571,15 @@ export const ProductCard = ({
             <div className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-surface/95">
               <div className="relative z-10 aspect-square overflow-hidden bg-card">
                 {resolvedThumbnail ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={resolvedThumbnail ?? ""}
+                  <Image
+                    src={resolvedThumbnail}
                     alt={summary.album ?? summary.title}
+                    fill
+                    sizes="(max-width: 639px) calc(100vw - 3rem), (max-width: 1023px) 45vw, (max-width: 1535px) 30vw, 320px"
                     className={cn(
                       "h-full w-full object-cover transition duration-300 md:group-hover:scale-[1.06] md:group-hover:rotate-[1.8deg] md:group-hover:brightness-[0.75] group-focus-within:scale-[1.06] group-focus-within:rotate-[1.8deg] group-focus-within:brightness-[0.75]",
                       (isSoldOut || isUnavailable) && "grayscale brightness-75"
                     )}
-                    loading="lazy"
                     onLoad={handleMediaLoad}
                     onError={() => {
                       setResolvedThumbnail(null)
