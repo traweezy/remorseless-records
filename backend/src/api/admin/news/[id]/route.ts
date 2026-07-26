@@ -2,6 +2,10 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
+import {
+  hasVisibleRichText,
+  sanitizeRichTextHtml,
+} from "@/lib/content/rich-text"
 import { newsStatusValues, serializeNewsEntry } from "@/modules/news/serializers"
 import {
   buildSeo,
@@ -45,7 +49,13 @@ const buildUpdatePayload = async ({
     input.excerpt !== undefined
       ? toNullableString(input.excerpt)
       : existing.excerpt ?? null
-  const content = input.content ?? existing.content
+  const content = sanitizeRichTextHtml(input.content ?? existing.content)
+  if (!hasVisibleRichText(content)) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "News content must include visible text"
+    )
+  }
   const status = input.status ?? existing.status ?? "draft"
   const publishedAt = resolvePublishedAt({
     status,

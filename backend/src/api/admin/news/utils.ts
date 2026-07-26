@@ -1,6 +1,7 @@
 import type { MedusaRequest } from "@medusajs/framework"
 import { ContainerRegistrationKeys, remoteQueryObjectFromString } from "@medusajs/utils"
 
+import { richTextToPlainText } from "@/lib/content/rich-text"
 import type NewsModuleService from "@/modules/news/service"
 
 export type NewsService = InstanceType<typeof NewsModuleService>
@@ -73,9 +74,6 @@ export const resolveAdminUserName = async (
   return user.email?.trim() ?? null
 }
 
-const stripHtml = (value: string): string =>
-  value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
-
 export const buildSeo = (input: {
   title: string
   excerpt: string | null
@@ -83,7 +81,8 @@ export const buildSeo = (input: {
 }) => {
   const title = input.title.trim()
   const baseDescription =
-    input.excerpt?.trim() || stripHtml(input.content).slice(0, 160).trim()
+    input.excerpt?.trim() ||
+    richTextToPlainText(input.content).slice(0, 160).trim()
 
   return {
     seo_title: title ? `${title} · Remorseless Records` : null,

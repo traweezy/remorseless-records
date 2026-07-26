@@ -56,7 +56,14 @@ const secondPassOptions = {
   },
 } satisfies sanitizeHtml.IOptions
 
-export const sanitizeNewsHtml = (input: string): string => {
+const plainTextOptions = {
+  allowedTags: [],
+  allowedAttributes: {},
+  disallowedTagsMode: "discard",
+  enforceHtmlBoundary: true,
+} satisfies sanitizeHtml.IOptions
+
+export const sanitizeRichTextHtml = (input: string): string => {
   if (!input) {
     return ""
   }
@@ -64,3 +71,11 @@ export const sanitizeNewsHtml = (input: string): string => {
   const safeHtml = sanitizeHtml(input, firstPassOptions)
   return sanitizeHtml(safeHtml, secondPassOptions)
 }
+
+export const richTextToPlainText = (input: string): string =>
+  sanitizeHtml(sanitizeRichTextHtml(input), plainTextOptions)
+    .replace(/\s+/g, " ")
+    .trim()
+
+export const hasVisibleRichText = (input: string): boolean =>
+  richTextToPlainText(input).length > 0

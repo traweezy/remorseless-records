@@ -3,6 +3,10 @@ import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
 import {
+  hasVisibleRichText,
+  sanitizeRichTextHtml,
+} from "@/lib/content/rich-text"
+import {
   newsStatusValues,
   serializeNewsEntry,
 } from "@/modules/news/serializers"
@@ -45,7 +49,13 @@ const toEntryPayload = async (
   const slug = await resolveUniqueSlug(newsService, baseSlug)
   const author = await resolveAdminUserName(req)
   const excerpt = toNullableString(input.excerpt)
-  const content = input.content.trim()
+  const content = sanitizeRichTextHtml(input.content.trim())
+  if (!hasVisibleRichText(content)) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "News content must include visible text"
+    )
+  }
   const seo = buildSeo({ title: input.title, excerpt, content })
 
   return {

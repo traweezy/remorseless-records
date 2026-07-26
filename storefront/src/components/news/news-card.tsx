@@ -9,7 +9,6 @@ import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import SmartLink from "@/components/ui/smart-link"
 import { cn } from "@/lib/ui/cn"
 import type { NewsEntry } from "@/lib/data/news"
-import { sanitizeNewsHtml } from "@/lib/news/rich-text"
 
 type NewsCardProps = {
   entry: NewsEntry
@@ -48,11 +47,6 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
     }
     return dateFormatter.format(parsed)
   }, [dateFormatter, entry.createdAt, entry.publishedAt])
-
-  const sanitizedContent = useMemo(
-    () => sanitizeNewsHtml(entry.content),
-    [entry.content]
-  )
 
   const tagList = useMemo(
     () => (Array.isArray(entry.tags) ? entry.tags.filter(Boolean) : []),
@@ -103,10 +97,6 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
               {entry.excerpt}
             </p>
           ) : null}
-          <div
-            className="news-richtext text-sm leading-relaxed text-muted-foreground"
-            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-          />
           {tagList.length ? (
             <div className="flex flex-wrap gap-2 pt-2">
               {tagList.map((tag) => (

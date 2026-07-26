@@ -1,3 +1,5 @@
+import { sanitizeRichTextHtml } from "@/lib/content/rich-text"
+
 export const newsStatusValues = [
   "draft",
   "published",
@@ -56,7 +58,7 @@ export const serializeNewsEntry = (entry: NewsEntryRecord): NewsEntryDTO => ({
   title: entry.title,
   slug: entry.slug,
   excerpt: entry.excerpt ?? null,
-  content: entry.content,
+  content: sanitizeRichTextHtml(entry.content),
   author: entry.author ?? null,
   status: entry.status,
   publishedAt: toIso(entry.published_at),
