@@ -27,8 +27,9 @@ describe("cookie consent utilities", () => {
       analytics: false,
       marketing: false,
       version: COOKIE_PREFERENCES_VERSION,
+      updatedAt: "1970-01-01T00:00:00.000Z",
     })
-    expect(new Date(preferences.updatedAt).toISOString()).toBe(preferences.updatedAt)
+    expect(getDefaultCookiePreferences()).toEqual(preferences)
   })
 
   it("builds custom preferences with deterministic timestamp", () => {
@@ -105,7 +106,9 @@ describe("cookie consent utilities", () => {
 
   it("extracts named cookies from mixed cookie headers", () => {
     const cookieName = faker.word.sample()
-    const cookieValue = faker.string.alphanumeric(faker.number.int({ min: 12, max: 24 }))
+    const cookieValue = faker.string.alphanumeric(
+      faker.number.int({ min: 12, max: 24 })
+    )
     const header = [
       `${faker.word.sample()}=${faker.string.alphanumeric(8)}`,
       `${cookieName}=${cookieValue}`,
@@ -117,7 +120,9 @@ describe("cookie consent utilities", () => {
 
   it("returns null for empty or invalid cookie preference values", () => {
     expect(parseCookiePreferences("")).toBeNull()
-    expect(parseCookiePreferences(faker.string.alpha({ length: 16 }))).toBeNull()
+    expect(
+      parseCookiePreferences(faker.string.alpha({ length: 16 }))
+    ).toBeNull()
     expect(parseCookiePreferencesFromHeader(undefined)).toBeNull()
     expect(
       extractCookieValue(
@@ -127,4 +132,3 @@ describe("cookie consent utilities", () => {
     ).toBeNull()
   })
 })
-

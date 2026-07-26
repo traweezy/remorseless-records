@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { siBandcamp } from "simple-icons"
 
+import BandcampEmbed from "@/components/contact/bandcamp-embed"
 import ContactForm from "@/components/contact/contact-form"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -77,11 +78,12 @@ const ContactPage = () => {
                   Bandcamp
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Stream releases, follow the label, and support us directly on
-                  Bandcamp.
+                  Stream the featured release, follow the label, and support us
+                  directly on Bandcamp.
                 </p>
               </div>
             </div>
+            <BandcampEmbed />
             <Button
               asChild
               variant="outlined"

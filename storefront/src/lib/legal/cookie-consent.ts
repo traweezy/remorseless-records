@@ -2,6 +2,7 @@ export const COOKIE_PREFERENCES_COOKIE_NAME = "rr_cookie_preferences"
 export const COOKIE_PREFERENCES_STORAGE_KEY = "rr.cookie.preferences"
 export const COOKIE_PREFERENCES_VERSION = 1
 export const COOKIE_PREFERENCES_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
+const DEFAULT_PREFERENCES_TIMESTAMP = "1970-01-01T00:00:00.000Z"
 
 export type CookiePreferences = {
   necessary: true
@@ -42,11 +43,17 @@ export const buildCookiePreferences = (
   updatedAt: now.toISOString(),
 })
 
-export const getDefaultCookiePreferences = (): CookiePreferences =>
-  buildCookiePreferences({ analytics: false, marketing: false })
+export const getDefaultCookiePreferences = (): CookiePreferences => ({
+  necessary: true,
+  analytics: false,
+  marketing: false,
+  version: COOKIE_PREFERENCES_VERSION,
+  updatedAt: DEFAULT_PREFERENCES_TIMESTAMP,
+})
 
-export const serializeCookiePreferences = (preferences: CookiePreferences): string =>
-  encodeURIComponent(JSON.stringify(preferences))
+export const serializeCookiePreferences = (
+  preferences: CookiePreferences
+): string => encodeURIComponent(JSON.stringify(preferences))
 
 const tryParseCookiePreferences = (
   value: string | null | undefined
@@ -85,7 +92,12 @@ export const parseCookiePreferences = (
 
 export const buildCookiePreferencesHeader = (
   preferences: CookiePreferences,
-  options?: { secure?: boolean; path?: string; sameSite?: "Lax" | "Strict"; maxAge?: number }
+  options?: {
+    secure?: boolean
+    path?: string
+    sameSite?: "Lax" | "Strict"
+    maxAge?: number
+  }
 ): string => {
   const secure = options?.secure ?? true
   const path = options?.path ?? "/"
@@ -132,4 +144,3 @@ export const parseCookiePreferencesFromHeader = (
   const raw = extractCookieValue(cookieHeader, COOKIE_PREFERENCES_COOKIE_NAME)
   return parseCookiePreferences(raw)
 }
-
