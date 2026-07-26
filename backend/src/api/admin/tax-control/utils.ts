@@ -5,12 +5,13 @@ import {
   resolveStripeTaxReadiness,
   resolveTaxRateIoReadiness,
 } from "../../../lib/tax-control/readiness";
+import {
+  buildRefundLedgerMismatches,
+  type RefundEvidenceRecord,
+} from "../../../lib/tax-control/refund-ledger";
 import { TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE } from "../../../lib/constants";
 import { syncTaxRateIoQuota } from "../../../lib/tax-control/quota";
-import {
-  TAX_CONTROL_ID,
-  type TaxProviderName,
-} from "../../../modules/tax-control/constants";
+import type { TaxProviderName } from "../../../modules/tax-control/constants";
 import type TaxControlModuleService from "../../../modules/tax-control/service";
 
 type UnknownRecord = Record<string, unknown>;
@@ -41,6 +42,7 @@ const FINALIZING_PAYMENT_STATUSES = new Set([
 ]);
 const ACTIVE_CART_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const IMPACT_QUERY_LIMIT = 500;
+const REFUND_LEDGER_QUERY_LIMIT = 500;
 
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" ? (value as UnknownRecord) : null;
@@ -51,25 +53,6 @@ const text = (value: unknown): string | null =>
 const dateString = (value: unknown): string | null => {
   const date = value instanceof Date ? value : new Date(String(value ?? ""));
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
-};
-
-export const ensureTaxControl = async (service: TaxControlModuleService) => {
-  try {
-    return await service.retrieveTaxProviderControl(TAX_CONTROL_ID);
-  } catch {
-    const [created] = await service.createTaxProviderControls([
-      {
-        id: TAX_CONTROL_ID,
-        active_provider: "taxrate_io",
-        generation: 1,
-        metadata: {},
-      },
-    ]);
-    if (!created) {
-      throw new Error("Tax provider control could not be initialized.");
-    }
-    return created;
-  }
 };
 
 const impactSnapshot = async (container: MedusaContainer) => {
@@ -150,7 +133,15 @@ const impactSnapshot = async (container: MedusaContainer) => {
   };
 };
 
-const evidenceSnapshot = async (service: TaxControlModuleService) => {
+const evidenceSnapshot = async ({
+  container,
+  logger,
+  service,
+}: {
+  container: MedusaContainer;
+  logger: Logger;
+  service: TaxControlModuleService;
+}) => {
   const [
     [, tracked],
     [, prepared],
@@ -158,6 +149,8 @@ const evidenceSnapshot = async (service: TaxControlModuleService) => {
     [, refunds],
     [, needsAttention],
     incidents,
+    [pendingRefundIncidents, pendingRefundReversals],
+    refundEvidence,
   ] = await Promise.all([
     service.listAndCountTaxQuoteEvidences({}, { take: 1 }),
     service.listAndCountTaxQuoteEvidences({ status: "prepared" }, { take: 1 }),
@@ -174,23 +167,150 @@ const evidenceSnapshot = async (service: TaxControlModuleService) => {
       { status: ["association_failed", "disputed"] },
       { order: { last_verified_at: "DESC" }, take: 25 },
     ),
+    service.listAndCountTaxQuoteEvidences(
+      { association_status: "refund_pending" },
+      { order: { last_verified_at: "DESC" }, take: 25 },
+    ),
+    service.listTaxQuoteEvidences(
+      {},
+      {
+        order: { last_verified_at: "DESC" },
+        take: REFUND_LEDGER_QUERY_LIMIT,
+      },
+    ),
   ]);
 
+  let refundLedgerAvailable = true;
+  let refundLedgerMismatches: ReturnType<typeof buildRefundLedgerMismatches> =
+    [];
+  const orderIds = Array.from(
+    new Set(
+      refundEvidence
+        .map((evidence) => text(evidence.order_id))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const cartIds = Array.from(
+    new Set(
+      refundEvidence
+        .filter((evidence) => !text(evidence.order_id))
+        .map((evidence) => text(evidence.cart_id))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  if (orderIds.length || cartIds.length) {
+    try {
+      const query = container.resolve<QueryGraph>(
+        ContainerRegistrationKeys.QUERY,
+      );
+      const [orders, carts] = await Promise.all([
+        orderIds.length
+          ? query.graph({
+              entity: "order",
+              fields: [
+                "id",
+                "payment_collections.payments.provider_id",
+                "payment_collections.payments.data",
+                "payment_collections.payments.refunds.amount",
+              ],
+              filters: { id: orderIds },
+              pagination: { take: orderIds.length },
+            })
+          : Promise.resolve({ data: [] }),
+        cartIds.length
+          ? query.graph({
+              entity: "cart",
+              fields: [
+                "id",
+                "payment_collection.payments.provider_id",
+                "payment_collection.payments.data",
+                "payment_collection.payments.refunds.amount",
+              ],
+              filters: { id: cartIds },
+              pagination: { take: cartIds.length },
+            })
+          : Promise.resolve({ data: [] }),
+      ]);
+      refundLedgerMismatches = buildRefundLedgerMismatches({
+        evidence: refundEvidence as RefundEvidenceRecord[],
+        paymentRecords: [...orders.data, ...carts.data],
+      });
+    } catch (caught) {
+      refundLedgerAvailable = false;
+      logger.warn(
+        `[tax-control] refund ledger comparison unavailable: ${
+          caught instanceof Error ? caught.message : "unknown query error"
+        }`,
+      );
+    }
+  }
+
+  const ledgerIncidents = refundLedgerMismatches.map((mismatch) => ({
+    associationStatus: mismatch.evidence.association_status,
+    currencyCode: mismatch.evidence.currency_code,
+    id: `${mismatch.evidence.id}:refund-ledger`,
+    lastVerifiedAt: dateString(mismatch.evidence.last_verified_at),
+    medusaRefundAmountMinor: mismatch.medusaRefundAmountMinor,
+    orderId: mismatch.evidence.order_id,
+    paymentIntentId: mismatch.evidence.payment_intent_id,
+    provider: mismatch.evidence.provider,
+    status: "refund_ledger_mismatch" as const,
+    stripeEvidenceAvailable: mismatch.stripeEvidenceAvailable,
+    stripeRefundAmountMinor: mismatch.stripeRefundAmountMinor,
+  }));
+
   return {
-    incidents: incidents.map((evidence) => ({
-      associationStatus: evidence.association_status,
-      id: evidence.id,
-      lastVerifiedAt: dateString(evidence.last_verified_at),
-      orderId: evidence.order_id,
-      paymentIntentId: evidence.payment_intent_id,
-      provider: evidence.provider,
-      status: evidence.status,
-    })),
-    needsAttention,
+    incidents: [
+      ...incidents.map((evidence) => ({
+        associationStatus: evidence.association_status,
+        currencyCode: evidence.currency_code,
+        id: evidence.id,
+        lastVerifiedAt: dateString(evidence.last_verified_at),
+        medusaRefundAmountMinor: null,
+        orderId: evidence.order_id,
+        paymentIntentId: evidence.payment_intent_id,
+        provider: evidence.provider,
+        status: evidence.status,
+        stripeEvidenceAvailable: true,
+        stripeRefundAmountMinor: null,
+      })),
+      ...pendingRefundIncidents.map((evidence) => ({
+        associationStatus: evidence.association_status,
+        currencyCode: evidence.currency_code,
+        id: evidence.id,
+        lastVerifiedAt: dateString(evidence.last_verified_at),
+        medusaRefundAmountMinor: null,
+        orderId: evidence.order_id,
+        paymentIntentId: evidence.payment_intent_id,
+        provider: evidence.provider,
+        status: "refund_pending" as const,
+        stripeEvidenceAvailable: true,
+        stripeRefundAmountMinor: null,
+      })),
+      ...ledgerIncidents,
+    ]
+      .sort((left, right) =>
+        (right.lastVerifiedAt ?? "").localeCompare(left.lastVerifiedAt ?? ""),
+      )
+      .slice(0, 25),
+    needsAttention:
+      needsAttention +
+      refundLedgerMismatches.filter(
+        (mismatch) =>
+          mismatch.evidence.status !== "association_failed" &&
+          mismatch.evidence.status !== "disputed",
+      ).length,
+    pendingRefundReversals,
     prepared,
     refunds,
     succeeded,
     tracked,
+    refundLedger: {
+      available: refundLedgerAvailable,
+      checked: refundEvidence.length,
+      mismatches: refundLedgerMismatches.length,
+      truncated: tracked > REFUND_LEDGER_QUERY_LIMIT,
+    },
   };
 };
 
@@ -198,7 +318,7 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
   const service = container.resolve<TaxControlModuleService>("tax_control");
   const logger = container.resolve<Logger>("logger");
   const [control, quota, stripe, audits, impact, evidence] = await Promise.all([
-    ensureTaxControl(service),
+    service.ensureTaxProviderControl(),
     syncTaxRateIoQuota({ logger, service }),
     resolveStripeTaxReadiness(),
     service.listTaxProviderAudits(
@@ -206,7 +326,7 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
       { order: { created_at: "DESC" }, take: 25 },
     ),
     impactSnapshot(container),
-    evidenceSnapshot(service),
+    evidenceSnapshot({ container, logger, service }),
   ]);
   const remaining = quota ? Number(quota.remaining) : null;
 

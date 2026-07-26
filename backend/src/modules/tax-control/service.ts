@@ -13,10 +13,12 @@ import {
   type TaxProviderName,
   type TaxQuoteEvidenceStatus,
 } from "./constants";
+import { ensureTaxProviderControlSingleton } from "./control-initialization";
 import TaxProviderAudit from "./models/tax-provider-audit";
 import TaxProviderControl from "./models/tax-provider-control";
 import TaxProviderQuota from "./models/tax-provider-quota";
 import TaxQuoteEvidence from "./models/tax-quote-evidence";
+import { matchesProviderSwitchReplay } from "./switch-idempotency";
 
 type SwitchProviderInput = {
   actorId: string;
@@ -53,6 +55,30 @@ class TaxControlModuleService extends MedusaService({
   TaxProviderQuota,
   TaxQuoteEvidence,
 }) {
+  @InjectManager()
+  async ensureTaxProviderControl(
+    @MedusaContext() sharedContext: Context<EntityManager> = {},
+  ) {
+    return ensureTaxProviderControlSingleton({
+      create: async () =>
+        (
+          await this.createTaxProviderControls(
+            [
+              {
+                id: TAX_CONTROL_ID,
+                active_provider: "taxrate_io",
+                generation: 1,
+                metadata: {},
+              },
+            ],
+            sharedContext,
+          )
+        )[0],
+      retrieve: () =>
+        this.retrieveTaxProviderControl(TAX_CONTROL_ID, {}, sharedContext),
+    });
+  }
+
   @InjectTransactionManager()
   protected async recordTaxQuoteEvidence_(
     input: RecordTaxQuoteEvidenceInput,
@@ -230,6 +256,12 @@ class TaxControlModuleService extends MedusaService({
     );
     const existingAudit = existingAudits[0];
     if (existingAudit) {
+      if (!matchesProviderSwitchReplay(existingAudit, input)) {
+        throw new MedusaError(
+          MedusaError.Types.CONFLICT,
+          "The tax provider idempotency key was already used for a different switch request.",
+        );
+      }
       const control = await this.retrieveTaxProviderControl(
         TAX_CONTROL_ID,
         {},

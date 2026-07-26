@@ -50,6 +50,8 @@ const serviceFixture = ({
 
 const stripeFixture = ({
   intent = paymentIntent(),
+  refunds,
+  refundsHasMore = false,
   taxAssociation = association([
     {
       committed: { transaction: "tax_txn_sale" },
@@ -59,18 +61,47 @@ const stripeFixture = ({
   ]),
 }: {
   intent?: Stripe.PaymentIntent;
+  refunds?: Stripe.Refund[];
+  refundsHasMore?: boolean;
   taxAssociation?: Stripe.Tax.Association;
-} = {}) =>
-  ({
+} = {}) => {
+  const charge =
+    intent.latest_charge && typeof intent.latest_charge === "object"
+      ? intent.latest_charge
+      : null;
+  const defaultRefunds =
+    charge && charge.amount_refunded > 0
+      ? [
+          {
+            amount: charge.amount_refunded,
+            failure_reason: null,
+            id: "re_test",
+            object: "refund",
+            payment_intent: intent.id,
+            status: "succeeded",
+          } as unknown as Stripe.Refund,
+        ]
+      : [];
+
+  return {
     paymentIntents: {
       retrieve: jest.fn(async () => intent),
+    },
+    refunds: {
+      list: jest.fn(async () => ({
+        data: refunds ?? defaultRefunds,
+        has_more: refundsHasMore,
+        object: "list",
+        url: "/v1/refunds",
+      })),
     },
     tax: {
       associations: {
         find: jest.fn(async () => taxAssociation),
       },
     },
-  }) as unknown as Stripe;
+  } as unknown as Stripe;
+};
 
 describe("reconcileTaxQuoteEvidence", () => {
   it("avoids Stripe calls when the PaymentIntent is not tracked", async () => {
@@ -180,6 +211,107 @@ describe("reconcileTaxQuoteEvidence", () => {
     ).resolves.toMatchObject({
       associationStatus: "refund_pending",
       status: "refunded",
+    });
+  });
+
+  it("keeps a second partial refund pending until its own reversal appears", async () => {
+    const client = stripeFixture({
+      intent: paymentIntent({
+        latest_charge: {
+          amount_refunded: 700,
+          disputed: false,
+          id: "ch_test",
+          object: "charge",
+        } as Stripe.Charge,
+      }),
+      refunds: [
+        {
+          amount: 300,
+          failure_reason: null,
+          id: "re_first",
+          object: "refund",
+          payment_intent: "pi_test",
+          status: "succeeded",
+        } as unknown as Stripe.Refund,
+        {
+          amount: 400,
+          failure_reason: null,
+          id: "re_second",
+          object: "refund",
+          payment_intent: "pi_test",
+          status: "succeeded",
+        } as unknown as Stripe.Refund,
+      ],
+      taxAssociation: association([
+        {
+          committed: { transaction: "tax_txn_sale" },
+          source: "pi_test",
+          status: "committed",
+        },
+        {
+          committed: { transaction: "tax_txn_refund_first" },
+          source: "re_first",
+          status: "committed",
+        },
+      ]),
+    });
+
+    await expect(
+      reconcileTaxQuoteEvidence({
+        client,
+        paymentIntentId: "pi_test",
+        service: serviceFixture(),
+      }),
+    ).resolves.toMatchObject({
+      associationStatus: "refund_pending",
+      status: "partially_refunded",
+    });
+  });
+
+  it("surfaces a refund that failed after Medusa accepted it", async () => {
+    const service = serviceFixture();
+    const client = stripeFixture({
+      refunds: [
+        {
+          amount: 400,
+          failure_reason: "expired_or_canceled_card",
+          id: "re_failed",
+          object: "refund",
+          payment_intent: "pi_test",
+          status: "failed",
+        } as Stripe.Refund,
+      ],
+    });
+
+    await expect(
+      reconcileTaxQuoteEvidence({
+        client,
+        paymentIntentId: "pi_test",
+        service,
+      }),
+    ).resolves.toMatchObject({
+      associationStatus: "refund_failed:expired_or_canceled_card",
+      status: "association_failed",
+    });
+    expect(service.updateTaxQuoteEvidenceLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          stripe_refund_failed_count: 1,
+        }),
+      }),
+    );
+  });
+
+  it("fails closed when more refunds exist than the bounded audit retrieved", async () => {
+    await expect(
+      reconcileTaxQuoteEvidence({
+        client: stripeFixture({ refundsHasMore: true }),
+        paymentIntentId: "pi_test",
+        service: serviceFixture(),
+      }),
+    ).resolves.toMatchObject({
+      associationStatus: "refund_list_truncated",
+      status: "association_failed",
     });
   });
 

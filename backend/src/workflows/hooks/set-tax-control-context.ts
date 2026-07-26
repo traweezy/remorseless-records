@@ -13,11 +13,11 @@ import {
   TAX_CONTEXT_KEY,
   type FrozenTaxQuote,
 } from "../../lib/tax-control/context";
-import type CatalogModuleService from "../../modules/catalog/service";
 import {
-  TAX_CONTROL_ID,
-  type TaxProviderName,
-} from "../../modules/tax-control/constants";
+  requirePreservedStripeOrderRates,
+} from "../../lib/tax-control/order-rate-preservation";
+import type CatalogModuleService from "../../modules/catalog/service";
+import type { TaxProviderName } from "../../modules/tax-control/constants";
 import type TaxControlModuleService from "../../modules/tax-control/service";
 
 type UnknownRecord = Record<string, unknown>;
@@ -468,22 +468,7 @@ const ensureControl = async (
   container: MedusaContainer,
 ): Promise<{ active_provider: TaxProviderName; generation: number }> => {
   const service = container.resolve<TaxControlModuleService>("tax_control");
-  try {
-    return await service.retrieveTaxProviderControl(TAX_CONTROL_ID);
-  } catch {
-    const [created] = await service.createTaxProviderControls([
-      {
-        id: TAX_CONTROL_ID,
-        active_provider: "taxrate_io",
-        generation: 1,
-        metadata: {},
-      },
-    ]);
-    if (!created) {
-      throw new Error("Tax provider control could not be initialized.");
-    }
-    return created;
-  }
+  return service.ensureTaxProviderControl();
 };
 
 const contextForCart = async (
@@ -523,30 +508,60 @@ const contextForCart = async (
 const contextForOrder = async (
   container: MedusaContainer,
   order: UnknownRecord,
+  items?: unknown,
+  shippingMethods?: unknown,
 ) => {
   const subjectId = text(order.id);
   if (!subjectId) {
     throw new Error("Tax calculation order identity is unavailable.");
   }
+  const isPartialUpdate =
+    Array.isArray(items) || Array.isArray(shippingMethods);
+  const taxSubject = {
+    ...order,
+    ...(isPartialUpdate
+      ? {
+          items: Array.isArray(items) ? items : [],
+          shipping_methods: Array.isArray(shippingMethods)
+            ? shippingMethods
+            : [],
+        }
+      : {}),
+  };
   const [control, itemTaxCodes] = await Promise.all([
     ensureControl(container),
-    resolveItemTaxCodes(container, order),
+    resolveItemTaxCodes(container, taxSubject),
   ]);
-  const historical = identityFromTaxLines(order);
+  const historical =
+    identityFromTaxLines(taxSubject) ?? identityFromTaxLines(order);
   const provider = historical?.provider ?? control.active_provider;
   const generation = historical?.generation ?? control.generation;
+  const preservedRates =
+    historical?.provider === "stripe_tax"
+      ? requirePreservedStripeOrderRates(order, taxSubject, historical)
+      : null;
+  const frozenQuote =
+    historical?.provider === "taxrate_io" || preservedRates ? historical : null;
   const fingerprint = buildFingerprint({
     generation,
-    orderOrCart: order,
+    orderOrCart: taxSubject,
     provider,
   });
+  const taxableAmounts = taxableAmountsFrom(taxSubject);
 
   return {
     [TAX_CONTEXT_KEY]: {
       fingerprint,
-      ...(historical ? { frozenQuote: historical } : {}),
+      ...(frozenQuote ? { frozenQuote } : {}),
       generation,
+      ...taxableAmounts,
       itemTaxCodes,
+      ...(preservedRates
+        ? {
+            preservedItemRates: preservedRates.itemRates,
+            preservedShippingRates: preservedRates.shippingRates,
+          }
+        : {}),
       provider,
       subjectId,
     },
@@ -564,6 +579,13 @@ upsertTaxLinesWorkflow.hooks.setTaxLineContext(
 );
 
 updateOrderTaxLinesWorkflow.hooks.setTaxLineContext(
-  async ({ order }, { container }) =>
-    new StepResponse(await contextForOrder(container, order as UnknownRecord)),
+  async ({ items, order, shipping_methods }, { container }) =>
+    new StepResponse(
+      await contextForOrder(
+        container,
+        order as UnknownRecord,
+        items,
+        shipping_methods,
+      ),
+    ),
 );

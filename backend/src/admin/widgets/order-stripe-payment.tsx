@@ -69,6 +69,16 @@ const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
             </a>
           </div>
         ))}
+        <div className="rounded-lg border border-ui-border-base bg-ui-bg-subtle p-3">
+          <Text size="small" weight="plus">
+            Issue refunds from this order
+          </Text>
+          <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+            Use Medusa&apos;s payment actions so the order ledger, Stripe
+            refund, and tax evidence stay together. Open Stripe for
+            investigation only; do not refund from the Stripe Dashboard.
+          </Text>
+        </div>
       </div>
     </Container>
   );

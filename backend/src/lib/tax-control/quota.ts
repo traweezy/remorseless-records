@@ -1,4 +1,5 @@
 import type { Logger } from "@medusajs/framework/types";
+import { MedusaError } from "@medusajs/framework/utils";
 import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
@@ -110,10 +111,11 @@ export const persistTaxRateIoQuota = async ({
     { provider: "taxrate_io" },
     { take: 1 },
   );
+  const observedAt = new Date(quota.observedAt);
   const payload = {
     id: TAXRATE_IO_QUOTA_ID,
     metadata: {},
-    observed_at: new Date(quota.observedAt),
+    observed_at: observedAt,
     provider: "taxrate_io",
     quota: quota.quota,
     remaining: quota.remaining,
@@ -121,16 +123,44 @@ export const persistTaxRateIoQuota = async ({
     usage: quota.usage,
     usage_percent: quota.usagePercent,
   };
-  const current = existing[0];
-  if (current) {
+  const updateExisting = async (current: (typeof existing)[number]) => {
+    const currentObservedAt = new Date(current.observed_at);
+    if (
+      Number.isFinite(currentObservedAt.getTime()) &&
+      currentObservedAt > observedAt
+    ) {
+      return current;
+    }
     const [updated] = await service.updateTaxProviderQuotas([
       { ...payload, id: current.id },
     ]);
     return updated ?? current;
+  };
+  const current = existing[0];
+  if (current) {
+    return updateExisting(current);
   }
 
-  const [created] = await service.createTaxProviderQuotas([payload]);
-  return created ?? null;
+  try {
+    const [created] = await service.createTaxProviderQuotas([payload]);
+    return created ?? null;
+  } catch (error) {
+    if (
+      !MedusaError.isMedusaError(error) ||
+      error.type !== MedusaError.Types.DUPLICATE_ERROR
+    ) {
+      throw error;
+    }
+    const concurrent = await service.listTaxProviderQuotas(
+      { provider: "taxrate_io" },
+      { take: 1 },
+    );
+    const winner = concurrent[0];
+    if (!winner) {
+      throw error;
+    }
+    return updateExisting(winner);
+  }
 };
 
 export const syncTaxRateIoQuota = async ({

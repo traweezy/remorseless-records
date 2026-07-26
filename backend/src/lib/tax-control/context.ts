@@ -21,6 +21,8 @@ export type TaxControlContext = {
   generation: number;
   itemAmountsMinor: Record<string, number>;
   itemTaxCodes: Record<string, string>;
+  preservedItemRates: Record<string, number>;
+  preservedShippingRates: Record<string, number>;
   provider: TaxProviderName;
   shippingAmountMinor: number;
   subjectId: string;
@@ -69,6 +71,22 @@ const minorUnitAmountsFrom = (value: unknown): Record<string, number> => {
       .filter(
         (entry): entry is readonly [string, number] =>
           Boolean(entry[0]) && Number.isSafeInteger(entry[1]) && entry[1] >= 0,
+      ),
+  );
+};
+
+const finiteNumbersFrom = (value: unknown): Record<string, number> => {
+  const record = asRecord(value);
+  if (!record) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(record)
+      .map(([key, number]) => [key, Number(number)] as const)
+      .filter(
+        (entry): entry is readonly [string, number] =>
+          Boolean(entry[0]) && Number.isFinite(entry[1]) && entry[1] >= 0,
       ),
   );
 };
@@ -142,6 +160,8 @@ export const parseTaxControlContext = (
     generation,
     itemAmountsMinor: minorUnitAmountsFrom(record.itemAmountsMinor),
     itemTaxCodes: taxCodesFrom(record.itemTaxCodes),
+    preservedItemRates: finiteNumbersFrom(record.preservedItemRates),
+    preservedShippingRates: finiteNumbersFrom(record.preservedShippingRates),
     provider: record.provider,
     shippingAmountMinor,
     subjectId,
