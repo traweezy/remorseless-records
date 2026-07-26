@@ -468,6 +468,7 @@ const TaxRecordsPage = memo(() => {
   const handleFilingState = useCallback((value: string) => {
     const nextState = value as TaxFilingState;
     const nextPeriod = uiPeriodForPreset(nextState, "current-quarter");
+    setLoading(true);
     setFilingState(nextState);
     setPreset("current-quarter");
     setDraftStart(nextPeriod.start);
@@ -510,6 +511,7 @@ const TaxRecordsPage = memo(() => {
   }, []);
 
   const applyPeriod = useCallback(() => {
+    setLoading(true);
     setFilters((current) => ({ ...current, page: 1 }));
     setPeriod({ end: draftEnd, start: draftStart });
   }, [draftEnd, draftStart]);
