@@ -168,6 +168,12 @@ const adminTaxControlRateLimit = createRateLimitMiddleware({
   windowMs: 60_000,
 });
 
+const adminTaxRecordsRateLimit = createRateLimitMiddleware({
+  key: "admin:tax-records",
+  max: 60,
+  windowMs: 60_000,
+});
+
 export default defineMiddlewares({
   routes: [
     {
@@ -203,6 +209,11 @@ export default defineMiddlewares({
       bodyParser: {
         sizeLimit: "8kb",
       },
+    },
+    {
+      matcher: /^\/admin\/tax-records(\/.*)?$/,
+      methods: ["GET"],
+      middlewares: [adminTaxRecordsRateLimit],
     },
   ],
 });

@@ -179,6 +179,26 @@ does not silently replace a failed final lookup with zero tax. Operational
 procedures are in
 [`../docs/TAX_CONTROL_OPERATIONS.md`](../docs/TAX_CONTROL_OPERATIONS.md).
 
+## Tax records and filing workpapers
+
+The authenticated Admin **Tax records** route reads Medusa orders, captured
+payments, refunds, delivery destinations, and preserved tax-line evidence into
+an auditable period report. It provides New York quarter and March–February
+sales-tax-year presets, quality gates, transaction and destination grids, and
+signed transaction-detail and destination-summary CSV downloads.
+
+The reporting ledger intentionally uses completed commerce records rather than
+raw tax-provider calls. Cached lookups may serve many abandoned carts, so an
+API-call log cannot establish sales-tax liability. Provider generations and
+jurisdiction details remain supporting evidence on the Medusa tax lines.
+
+Legacy tax rows and partial-refund allocations are never presented as
+filing-ready: they remain visible with explicit review warnings in the UI and
+exports. No customer names, contact details, or street addresses are exported.
+The extension does not file or pay a return. See the data contract, filing
+workflow, retention rules, and limitations in
+[`../docs/TAX_RECORDS_AND_FILING.md`](../docs/TAX_RECORDS_AND_FILING.md).
+
 ## Fulfillment location contract
 
 Storefront checkout ships from the canonical `HQ` stock location. Medusa

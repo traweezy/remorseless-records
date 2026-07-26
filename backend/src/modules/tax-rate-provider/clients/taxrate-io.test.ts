@@ -12,7 +12,16 @@ describe("fetchTaxRateIo", () => {
     global.fetch = jest.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
+          city: "Buffalo",
+          country: "US",
+          county: "Erie",
           rate: "0.0635",
+          rate_city: "0.01",
+          rate_county: "0.0175",
+          rate_special: "0.0025",
+          rate_state: "0.035",
+          state: "NY",
+          tax_name: "Sales Tax",
           usage_data: {
             quota: "100",
             usage: "19",
@@ -30,6 +39,21 @@ describe("fetchTaxRateIo", () => {
     })
 
     expect(result.ratePercent).toBe(6.35)
+    expect(result.jurisdiction).toEqual({
+      city: "Buffalo",
+      country_code: "US",
+      county: "Erie",
+      level: "county",
+      name: "Erie",
+      rate_components: {
+        city: 1,
+        county: 1.75,
+        special: 0.25,
+        state: 3.5,
+      },
+      state: "NY",
+      tax_name: "Sales Tax",
+    })
     expect(result.quota).toMatchObject({
       quota: 100,
       remaining: 81,
@@ -51,6 +75,7 @@ describe("fetchTaxRateIo", () => {
         zip: "06902",
       })
     ).resolves.toEqual({
+      jurisdiction: null,
       quota: null,
       ratePercent: 6.35,
     })

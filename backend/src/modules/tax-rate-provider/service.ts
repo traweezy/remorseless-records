@@ -23,7 +23,12 @@ import {
   retrieveStripeTaxCalculation,
   type StripeTaxCalculationResult,
 } from "./clients/stripe-tax";
-import { fetchTaxRateIo, type TaxRateIoQuota } from "./clients/taxrate-io";
+import {
+  fetchTaxRateIo,
+  type TaxRateIoJurisdiction,
+  type TaxRateIoQuota,
+  type TaxRateIoResult,
+} from "./clients/taxrate-io";
 
 type TaxRateLookupProviderOptions = {
   apiKey: string;
@@ -41,7 +46,7 @@ type InjectedDependencies = {
 
 type CachedRate = {
   expiresAt: number;
-  ratePercent: number;
+  result: TaxRateIoResult;
 };
 
 type CachedStripeQuote = {
@@ -80,7 +85,7 @@ const buildRateCacheKey = (
   return `${countryCode}:${provinceCode}:${postalCode}`;
 };
 
-const readCachedRate = (cacheKey: string): number | null => {
+const readCachedRate = (cacheKey: string): TaxRateIoResult | null => {
   const cached = rateCache.get(cacheKey);
   if (!cached) {
     return null;
@@ -91,14 +96,42 @@ const readCachedRate = (cacheKey: string): number | null => {
     return null;
   }
 
-  return cached.ratePercent;
+  return cached.result;
 };
 
-const writeCachedRate = (cacheKey: string, ratePercent: number): void => {
+const writeCachedRate = (cacheKey: string, result: TaxRateIoResult): void => {
   rateCache.set(cacheKey, {
     expiresAt: Date.now() + CACHE_TTL_MS,
-    ratePercent,
+    result,
   });
+};
+
+const parseCachedTaxRateIoResult = (value: string): TaxRateIoResult | null => {
+  try {
+    const parsed = JSON.parse(value) as Partial<TaxRateIoResult> | number;
+    if (typeof parsed === "number" && Number.isFinite(parsed)) {
+      return { jurisdiction: null, quota: null, ratePercent: parsed };
+    }
+    const ratePercent = Number(
+      typeof parsed === "object" && parsed ? parsed.ratePercent : Number.NaN,
+    );
+    if (!Number.isFinite(ratePercent) || ratePercent < 0) {
+      return null;
+    }
+    return {
+      jurisdiction:
+        typeof parsed === "object" && parsed && parsed.jurisdiction
+          ? parsed.jurisdiction
+          : null,
+      quota: null,
+      ratePercent,
+    };
+  } catch {
+    const legacyRate = Number(value);
+    return Number.isFinite(legacyRate) && legacyRate >= 0
+      ? { jurisdiction: null, quota: null, ratePercent: legacyRate }
+      : null;
+  }
 };
 
 const getRedisClient = async (
@@ -266,6 +299,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     generation: number,
     fingerprint: string,
     calculationId?: string,
+    jurisdiction?: TaxRateIoJurisdiction | null,
   ) {
     return {
       code: buildTaxLineCode({
@@ -277,6 +311,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         ...(calculationId ? { calculation_id: calculationId } : {}),
         fingerprint,
         generation,
+        ...(jurisdiction ? { jurisdiction } : {}),
         provider,
       },
       name: provider === "stripe_tax" ? "Stripe Tax" : "Sales tax",
@@ -291,25 +326,31 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
   ): Promise<(ItemTaxLineDTO | ShippingTaxLineDTO)[]> {
     const control = parseTaxControlContext(context.additional_context);
     const frozenRate = control.frozenQuote?.taxRatePercent;
-    const ratePercent =
+    const lookup =
       frozenRate !== undefined
-        ? frozenRate
-        : await this.resolveTaxRateIoPercent(context);
+        ? {
+            jurisdiction: null,
+            quota: null,
+            ratePercent: frozenRate,
+          }
+        : await this.resolveTaxRateIo(context);
     const identity = this.taxLineIdentity(
       "taxrate_io",
       control.generation,
       control.fingerprint,
+      undefined,
+      lookup.jurisdiction,
     );
 
     const itemTaxLines: ItemTaxLineDTO[] = itemLines.map((line) => ({
       ...identity,
       line_item_id: line.line_item.id,
-      rate: ratePercent,
+      rate: lookup.ratePercent,
     }));
     const shippingTaxLines: ShippingTaxLineDTO[] = shippingLines.map(
       (line) => ({
         ...identity,
-        rate: ratePercent,
+        rate: lookup.ratePercent,
         shipping_line_id: line.shipping_line.id,
       }),
     );
@@ -585,12 +626,12 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     }
   }
 
-  private async resolveTaxRateIoPercent(
+  private async resolveTaxRateIo(
     context: TaxCalculationContext,
-  ): Promise<number> {
+  ): Promise<TaxRateIoResult> {
     const cacheKey = buildRateCacheKey(context.address);
     if (!cacheKey) {
-      return 0;
+      return { jurisdiction: null, quota: null, ratePercent: 0 };
     }
 
     const cached = readCachedRate(cacheKey);
@@ -605,8 +646,8 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
           buildRedisRateKey(cacheKey),
         );
         if (redisValue !== null) {
-          const parsed = Number(redisValue);
-          if (Number.isFinite(parsed)) {
+          const parsed = parseCachedTaxRateIoResult(redisValue);
+          if (parsed) {
             writeCachedRate(cacheKey, parsed);
             return parsed;
           }
@@ -620,18 +661,18 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
 
     const countryCode = context.address.country_code?.toLowerCase();
     if (!countryCode) {
-      return 0;
+      return { jurisdiction: null, quota: null, ratePercent: 0 };
     }
     if (countryCode !== "us") {
       this.logger_.warn(
         `Tax lookup skipped for unsupported country: ${countryCode}`,
       );
-      return 0;
+      return { jurisdiction: null, quota: null, ratePercent: 0 };
     }
 
     const postalCode = context.address.postal_code?.trim();
     if (!postalCode) {
-      return 0;
+      return { jurisdiction: null, quota: null, ratePercent: 0 };
     }
     if (!this.options_.apiKey) {
       throw new Error("TAX_RATE_LOOKUP_API_KEY is not set.");
@@ -648,12 +689,15 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       zip: postalCode,
     });
 
-    writeCachedRate(cacheKey, result.ratePercent);
+    writeCachedRate(cacheKey, result);
     if (redisClientInstance) {
       try {
         await redisClientInstance.set(
           buildRedisRateKey(cacheKey),
-          String(result.ratePercent),
+          JSON.stringify({
+            jurisdiction: result.jurisdiction,
+            ratePercent: result.ratePercent,
+          }),
           { EX: Math.max(1, Math.ceil(CACHE_TTL_MS / 1000)) },
         );
         if (result.quota) {
@@ -665,7 +709,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         );
       }
     }
-    return result.ratePercent;
+    return result;
   }
 
   private async writeTaxRateIoQuota(

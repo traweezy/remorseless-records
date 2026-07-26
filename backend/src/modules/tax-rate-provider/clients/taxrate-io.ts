@@ -1,6 +1,15 @@
 type TaxRateIoResponse = {
+  city?: string
+  country?: string
+  county?: string
   rate?: number | string
+  rate_city?: number | string
+  rate_county?: number | string
   rate_pct?: number | string
+  rate_special?: number | string
+  rate_state?: number | string
+  state?: string
+  tax_name?: string
   usage_data?: {
     quota?: number | string
     usage?: number | string
@@ -17,8 +26,25 @@ export type TaxRateIoQuota = {
 }
 
 export type TaxRateIoResult = {
+  jurisdiction: TaxRateIoJurisdiction | null
   quota: TaxRateIoQuota | null
   ratePercent: number
+}
+
+export type TaxRateIoJurisdiction = {
+  city: string | null
+  country_code: string | null
+  county: string | null
+  level: "city" | "county" | "state" | null
+  name: string | null
+  rate_components: {
+    city: number | null
+    county: number | null
+    special: number | null
+    state: number | null
+  }
+  state: string | null
+  tax_name: string | null
 }
 
 const parseRateValue = (value: unknown): number | null => {
@@ -40,6 +66,53 @@ const normalizeRatePercent = (rawRate: number): number => {
   }
 
   return rawRate
+}
+
+const normalizedText = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() ? value.trim() : null
+
+const componentRate = (value: unknown): number | null => {
+  const parsed = parseRateValue(value)
+  return parsed === null
+    ? null
+    : Number(normalizeRatePercent(parsed).toFixed(12))
+}
+
+const parseJurisdiction = (
+  value: TaxRateIoResponse
+): TaxRateIoJurisdiction | null => {
+  const city = normalizedText(value.city)
+  const county = normalizedText(value.county)
+  const state = normalizedText(value.state)?.toUpperCase() ?? null
+  const country = normalizedText(value.country)?.toUpperCase() ?? null
+  const taxName = normalizedText(value.tax_name)
+  const components = {
+    city: componentRate(value.rate_city),
+    county: componentRate(value.rate_county),
+    special: componentRate(value.rate_special),
+    state: componentRate(value.rate_state),
+  }
+  if (
+    !city &&
+    !county &&
+    !state &&
+    !country &&
+    !taxName &&
+    Object.values(components).every((rate) => rate === null)
+  ) {
+    return null
+  }
+
+  return {
+    city,
+    country_code: country,
+    county,
+    level: county ? "county" : city ? "city" : state ? "state" : null,
+    name: county ?? city ?? state,
+    rate_components: components,
+    state,
+    tax_name: taxName,
+  }
 }
 
 const nonNegativeInteger = (value: unknown): number | null => {
@@ -112,6 +185,7 @@ export const fetchTaxRateIo = async ({
     }
 
     return {
+      jurisdiction: parseJurisdiction(payload),
       quota: parseQuota(payload.usage_data),
       ratePercent: normalizeRatePercent(rawRate),
     }
