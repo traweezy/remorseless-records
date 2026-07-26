@@ -541,15 +541,17 @@ switching and reconciliation operations are in
 [`docs/TAX_CONTROL_OPERATIONS.md`](docs/TAX_CONTROL_OPERATIONS.md).
 
 The Medusa Admin also includes a separate **Tax records** workspace. It builds
-New York filing-period workpapers from Medusa sales, refunds, delivery
-destinations, and preserved provider evidence; flags legacy, incomplete, and
-estimated rows; distinguishes same-period from prior-period refund credits;
-keeps currencies separate; and exports full-period transaction-detail and
-destination-summary CSVs. Monthly, quarterly, annual, and custom period
-controls support the filing frequency assigned in New York Online Services.
-It is filing support, not an automated return or payment service. The report
-contract, currency rules, credit review, and accountant workflow are documented
-in
+separate Connecticut, New York, and Pennsylvania filing workpapers from Medusa
+sales, refunds, delivery destinations, and preserved provider evidence. The
+required jurisdiction selector scopes totals and exports, supplies the correct
+state period calendar, separates Pennsylvania local buckets, flags missing
+locality or destination-state evidence, distinguishes same-period from
+prior-period refund credits, and keeps currencies separate. State-specific CSV
+exports fail closed if the source scan is truncated or a domestic record cannot
+be assigned to a state. It is filing support, not an automated registration,
+return, or payment service. Relocation handling, record retention, workpaper
+fields, quality rules, official state references, and the accountant workflow
+are documented in
 [`docs/TAX_RECORDS_AND_FILING.md`](docs/TAX_RECORDS_AND_FILING.md).
 
 ## Refund Operations: Plain-English Guide
