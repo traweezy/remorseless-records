@@ -91,7 +91,7 @@ describe("tax report query", () => {
 
     expect(result).toEqual({ orders: [], truncated: false });
     expect(capturedInput).toMatchObject({
-      entity: "order",
+      entity: "orders",
       fields: expect.arrayContaining([
         "*items.tax_lines",
         "*payment_collections",

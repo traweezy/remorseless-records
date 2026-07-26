@@ -34,6 +34,8 @@ type QueryGraph = {
 const PAGE_SIZE = 250;
 const MAX_ORDERS = 50_000;
 const PAYMENT_QUERY_CONCURRENCY = 4;
+// Medusa's plural Orders graph entry point decorates computed order totals.
+const ORDER_QUERY_ENTITY = "orders";
 
 const PAYMENT_FIELDS = [
   "id",
@@ -314,7 +316,7 @@ export const loadTaxReportOrders = async ({
 
   while (orders.length < MAX_ORDERS) {
     const { data } = await query.graph({
-      entity: "order",
+      entity: ORDER_QUERY_ENTITY,
       fields: [...ORDER_FIELDS],
       filters: {
         created_at: { $lt: period.endExclusive },
