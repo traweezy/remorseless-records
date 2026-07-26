@@ -454,10 +454,13 @@ customer communication—in Medusa while making payment investigation one click
 away. Stripe metadata deliberately excludes email, address, phone, product
 titles, and card data.
 
-Stripe Customers and saved payment methods are not created for anonymous
-guests. Medusa's account-holder and saved-method support should be enabled only
-with a separately designed customer account, consent, deletion, and
-authentication flow.
+Checkout is guest-first and does not require an account. The storefront creates
+the cart without a `customer_id`, resolves it through a signed HttpOnly cookie,
+and collects an email only for the receipt and shipping updates. Stripe
+Customers and saved payment methods are not created for anonymous guests.
+Medusa's account-holder and saved-method support should be enabled only with a
+separately designed customer account, consent, deletion, and authentication
+flow.
 
 ### Why Stripe success is not yet an order
 

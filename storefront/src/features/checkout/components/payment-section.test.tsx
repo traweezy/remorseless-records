@@ -189,6 +189,15 @@ describe("PaymentSection", () => {
     })
     expect(stripeMocks.elementsSubmit).toHaveBeenCalledOnce()
     expect(stripeMocks.confirmPayment).toHaveBeenCalledOnce()
+    expect(stripeMocks.confirmPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientSecret: "pi_test_secret_test",
+        confirmParams: {
+          return_url: `${window.location.origin}/checkout/return`,
+        },
+        redirect: "if_required",
+      })
+    )
     expect(onComplete).toHaveBeenCalledOnce()
   })
 

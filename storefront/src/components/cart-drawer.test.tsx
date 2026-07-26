@@ -166,27 +166,21 @@ describe("CartDrawer", () => {
     ).toBeInTheDocument()
   })
 
-  it("restores a recently removed item from inside the drawer", async () => {
-    const addItem = vi.fn().mockResolvedValue(undefined)
+  it("removes an item without offering an undo action", async () => {
     const removeItem = vi.fn().mockResolvedValue(undefined)
-    useCartMock.mockReturnValue(cartState({ addItem, removeItem }))
+    useCartMock.mockReturnValue(cartState({ removeItem }))
     render(<CartDrawer open onOpenChange={vi.fn()} />)
 
     fireEvent.click(
       screen.getByRole("button", { name: "Remove Test pressing" })
     )
 
-    const undo = await screen.findByRole("button", { name: "Undo" })
-    expect(screen.getByText("Test pressing removed")).toBeInTheDocument()
-    expect(removeItem).toHaveBeenCalledWith("cali_01ABC")
-
-    fireEvent.click(undo)
-
     await waitFor(() => {
-      expect(addItem).toHaveBeenCalledWith("variant_01ABC", 1)
+      expect(removeItem).toHaveBeenCalledWith("cali_01ABC")
     })
     expect(
       screen.queryByRole("button", { name: "Undo" })
     ).not.toBeInTheDocument()
+    expect(screen.queryByText("Test pressing removed")).not.toBeInTheDocument()
   })
 })

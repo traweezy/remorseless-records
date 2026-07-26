@@ -43,7 +43,7 @@ describe("cart Medusa boundary", () => {
     medusaMocks.resolveRegionId.mockResolvedValue("reg_01ABC")
   })
 
-  it("creates and retrieves carts through cancellable Store API requests", async () => {
+  it("creates an anonymous cart without requiring a customer account", async () => {
     medusaMocks.fetch.mockResolvedValue({ cart: cartFixture })
 
     await expect(createCart()).resolves.toBe(cartFixture)
@@ -57,6 +57,10 @@ describe("cart Medusa boundary", () => {
         body: { region_id: "reg_01ABC" },
       })
     )
+    expect(
+      (medusaMocks.fetch.mock.calls[0]?.[1] as { body?: unknown } | undefined)
+        ?.body
+    ).not.toHaveProperty("customer_id")
     expect(medusaMocks.fetch.mock.calls[1]?.[0]).toBe(
       `/store/carts/${cartFixture.id}`
     )

@@ -55,6 +55,20 @@ stripe payment_method_configurations retrieve pmc_...
 stripe webhook_endpoints list --limit 20
 ```
 
+The browser checkout is the canonical confirmation path and always supplies
+`https://<staging-storefront>/checkout/return` to Stripe. If an isolated API
+confirmation is explicitly needed for diagnostics, include the same return URL:
+
+```bash
+stripe payment_intents confirm pi_... \
+  --payment-method pm_card_visa \
+  --return-url https://<staging-storefront>/checkout/return
+```
+
+Omitting it from a direct API or CLI confirmation can trigger Stripe integration
+error alerts and does not exercise the storefront's Payment Element return and
+recovery lifecycle.
+
 The approved payment methods are card, Link, Apple Pay, and Google Pay.
 Delayed methods and BNPL must remain disabled for this release.
 

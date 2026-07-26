@@ -277,13 +277,16 @@ export const CheckoutShell = memo(() => {
         <header className="mb-8 max-w-2xl">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22rem] text-destructive">
             <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-            Secure checkout
+            Secure guest checkout
           </p>
           <h1 className="mt-3 font-headline text-4xl uppercase tracking-[0.18rem] text-foreground sm:text-5xl">
             Finish your order
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
             {headerCopy}
+          </p>
+          <p className="mt-1 text-sm font-medium text-foreground">
+            No account required.
           </p>
         </header>
 
