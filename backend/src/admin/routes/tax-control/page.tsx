@@ -312,7 +312,11 @@ const ProviderCard = memo<ProviderCardProps>(
 );
 
 const LoadingState = memo(() => (
-  <div className="flex flex-col gap-4" aria-label="Loading tax control">
+  <div
+    className="flex flex-col gap-4"
+    aria-label="Loading tax control"
+    role="status"
+  >
     <Skeleton className="h-28 w-full" />
     <div className="grid gap-4 lg:grid-cols-2">
       <Skeleton className="h-80 w-full" />

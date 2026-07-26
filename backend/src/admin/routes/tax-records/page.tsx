@@ -270,7 +270,11 @@ const destinationLabel = (record: TaxRecord): string =>
     .join(", ") || "Destination missing";
 
 const LoadingState = memo(() => (
-  <div className="flex flex-col gap-4" aria-label="Loading tax records">
+  <div
+    className="flex flex-col gap-4"
+    aria-label="Loading tax records"
+    role="status"
+  >
     <Skeleton className="h-44 w-full" />
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {Array.from({ length: 8 }, (_, index) => (
