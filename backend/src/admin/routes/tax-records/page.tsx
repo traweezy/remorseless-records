@@ -25,7 +25,18 @@ import {
   Text,
 } from "@medusajs/ui";
 
-import type { TaxReportPeriod } from "../../../lib/tax-reporting/periods";
+import {
+  filingBucketFor,
+  TAX_FILING_PROFILES,
+  TAX_FILING_STATES,
+  type TaxFilingState,
+} from "../../../lib/tax-reporting/filing-states";
+import {
+  taxPeriodForPreset,
+  taxPeriodPresetOptions,
+  type TaxPeriodPreset,
+  type TaxReportPeriod,
+} from "../../../lib/tax-reporting/periods";
 import type {
   TaxDestinationSummary,
   TaxRecord,
@@ -37,6 +48,7 @@ import type {
 
 type TaxReport = {
   destinations: TaxDestinationSummary[];
+  filingState: TaxFilingState;
   filters: {
     currencies: string[];
     providers: TaxRecordProvider[];
@@ -48,19 +60,17 @@ type TaxReport = {
   resultCount: number;
   source: {
     medusaOrdersScanned: number;
+    scopedRecords: number;
     truncated: boolean;
+    unassignedDomesticRecords: number;
   };
   summaries: TaxReportSummary[];
+  unassignedRecordExamples: {
+    displayId: number;
+    occurredAt: string;
+    orderId: string;
+  }[];
 };
-
-type PeriodPreset =
-  | "current-month"
-  | "current-quarter"
-  | "current-year"
-  | "custom"
-  | "previous-month"
-  | "previous-quarter"
-  | "previous-year";
 
 type Filters = {
   limit: number;
@@ -68,100 +78,26 @@ type Filters = {
   provider: "all" | TaxRecordProvider;
   q: string;
   quality: "all" | TaxRecordQuality;
-  state: string;
   type: "all" | TaxRecordType;
 };
 
-const TIME_ZONE = "America/New_York";
 const INITIAL_FILTERS: Filters = {
   limit: 50,
   page: 1,
   provider: "all",
   q: "",
   quality: "all",
-  state: "ALL",
   type: "all",
 };
 
-const dateString = (year: number, month: number): string =>
-  `${year}-${String(month).padStart(2, "0")}-01`;
+type UiPeriod = { end: string; start: string };
 
-const localYearMonth = (): { month: number; year: number } => {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    month: "numeric",
-    timeZone: TIME_ZONE,
-    year: "numeric",
-  }).formatToParts(new Date());
-  return {
-    month: Number(parts.find((part) => part.type === "month")?.value),
-    year: Number(parts.find((part) => part.type === "year")?.value),
-  };
-};
-
-const quarterPeriod = (offset: number): { end: string; start: string } => {
-  const { month, year } = localYearMonth();
-  const salesTaxYear = month >= 3 ? year : year - 1;
-  const quarter =
-    month >= 12 || month < 3 ? 3 : Math.floor((month - 3) / 3);
-  const index = salesTaxYear * 4 + quarter + offset;
-  const indexedYear = Math.floor(index / 4);
-  const indexedQuarter = ((index % 4) + 4) % 4;
-  const rawStartMonth = 3 + indexedQuarter * 3;
-  const startYear = rawStartMonth > 12 ? indexedYear + 1 : indexedYear;
-  const startMonth = rawStartMonth > 12 ? rawStartMonth - 12 : rawStartMonth;
-  const rawEndMonth = startMonth + 3;
-  const endYear = rawEndMonth > 12 ? startYear + 1 : startYear;
-  const endMonth = rawEndMonth > 12 ? rawEndMonth - 12 : rawEndMonth;
-  return {
-    end: dateString(endYear, endMonth),
-    start: dateString(startYear, startMonth),
-  };
-};
-
-const monthPeriod = (offset: number): { end: string; start: string } => {
-  const { month, year } = localYearMonth();
-  const monthIndex = year * 12 + month - 1 + offset;
-  const startYear = Math.floor(monthIndex / 12);
-  const startMonth = ((monthIndex % 12) + 12) % 12;
-  const endMonthIndex = monthIndex + 1;
-  const endYear = Math.floor(endMonthIndex / 12);
-  const endMonth = ((endMonthIndex % 12) + 12) % 12;
-  return {
-    end: dateString(endYear, endMonth + 1),
-    start: dateString(startYear, startMonth + 1),
-  };
-};
-
-const salesTaxYearPeriod = (
-  offset: number,
-): { end: string; start: string } => {
-  const { month, year } = localYearMonth();
-  const startYear = (month >= 3 ? year : year - 1) + offset;
-  return {
-    end: dateString(startYear + 1, 3),
-    start: dateString(startYear, 3),
-  };
-};
-
-const periodForPreset = (
-  preset: PeriodPreset,
-): { end: string; start: string } => {
-  if (preset === "current-month") {
-    return monthPeriod(0);
-  }
-  if (preset === "previous-month") {
-    return monthPeriod(-1);
-  }
-  if (preset === "current-year") {
-    return salesTaxYearPeriod(0);
-  }
-  if (preset === "previous-year") {
-    return salesTaxYearPeriod(-1);
-  }
-  if (preset === "previous-quarter") {
-    return quarterPeriod(-1);
-  }
-  return quarterPeriod(0);
+const uiPeriodForPreset = (
+  filingState: TaxFilingState,
+  preset: TaxPeriodPreset,
+): UiPeriod => {
+  const period = taxPeriodForPreset({ filingState, preset });
+  return { end: period.endDate, start: period.startDate };
 };
 
 const extractErrorMessage = async (response: Response): Promise<string> => {
@@ -372,7 +308,13 @@ const MobileTaxRecord = memo(({ record }: { record: TaxRecord }) => {
 });
 
 const MobileDestination = memo(
-  ({ destination }: { destination: TaxDestinationSummary }) => (
+  ({
+    destination,
+    filingState,
+  }: {
+    destination: TaxDestinationSummary;
+    filingState: TaxFilingState;
+  }) => (
     <article className="border-b border-ui-border-base p-4 last:border-b-0">
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -380,9 +322,7 @@ const MobileDestination = memo(
             {destinationSummaryLabel(destination)}
           </Text>
           <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-            {destination.jurisdictionName ??
-              destination.countryCode ??
-              "No jurisdiction evidence"}
+            Filing bucket: {filingBucketFor({ destination, filingState })}
           </Text>
         </div>
         <Text
@@ -444,8 +384,13 @@ const MobileDestination = memo(
 );
 
 const TaxRecordsPage = memo(() => {
-  const initialPeriod = useMemo(() => periodForPreset("current-quarter"), []);
-  const [preset, setPreset] = useState<PeriodPreset>("current-quarter");
+  const initialPeriod = useMemo(
+    () => uiPeriodForPreset("CT", "current-quarter"),
+    [],
+  );
+  const [filingState, setFilingState] = useState<TaxFilingState>("CT");
+  const [preset, setPreset] =
+    useState<TaxPeriodPreset>("current-quarter");
   const [draftStart, setDraftStart] = useState(initialPeriod.start);
   const [draftEnd, setDraftEnd] = useState(initialPeriod.end);
   const [period, setPeriod] = useState(initialPeriod);
@@ -470,13 +415,13 @@ const TaxRecordsPage = memo(() => {
     setError(null);
     const searchParams = new URLSearchParams({
       end: period.end,
+      filing_state: filingState,
       limit: String(filters.limit),
       page: String(filters.page),
       provider: filters.provider,
       q: filters.q,
       quality: filters.quality,
       start: period.start,
-      state: filters.state,
       type: filters.type,
     });
 
@@ -510,7 +455,7 @@ const TaxRecordsPage = memo(() => {
         setLoading(false);
       }
     }
-  }, [filters, period]);
+  }, [filingState, filters, period]);
 
   useEffect(() => {
     void load();
@@ -520,15 +465,31 @@ const TaxRecordsPage = memo(() => {
     };
   }, [load]);
 
-  const handlePreset = useCallback((value: string) => {
-    const next = value as PeriodPreset;
-    setPreset(next);
-    if (next !== "custom") {
-      const nextPeriod = periodForPreset(next);
-      setDraftStart(nextPeriod.start);
-      setDraftEnd(nextPeriod.end);
-    }
+  const handleFilingState = useCallback((value: string) => {
+    const nextState = value as TaxFilingState;
+    const nextPeriod = uiPeriodForPreset(nextState, "current-quarter");
+    setFilingState(nextState);
+    setPreset("current-quarter");
+    setDraftStart(nextPeriod.start);
+    setDraftEnd(nextPeriod.end);
+    setPeriod(nextPeriod);
+    setFilters(INITIAL_FILTERS);
+    setDraftSearch("");
+    setReportingCurrency("usd");
   }, []);
+
+  const handlePreset = useCallback(
+    (value: string) => {
+      const next = value as TaxPeriodPreset;
+      setPreset(next);
+      if (next !== "custom") {
+        const nextPeriod = uiPeriodForPreset(filingState, next);
+        setDraftStart(nextPeriod.start);
+        setDraftEnd(nextPeriod.end);
+      }
+    },
+    [filingState],
+  );
 
   const handleStart = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setPreset("custom");
@@ -599,10 +560,6 @@ const TaxRecordsPage = memo(() => {
     }));
   }, []);
 
-  const handleState = useCallback((value: string) => {
-    setFilters((current) => ({ ...current, page: 1, state: value }));
-  }, []);
-
   const handleType = useCallback((value: string) => {
     setFilters((current) => ({
       ...current,
@@ -630,6 +587,7 @@ const TaxRecordsPage = memo(() => {
     (format: "destinations" | "transactions") => {
       const searchParams = new URLSearchParams({
         end: period.end,
+        filing_state: filingState,
         format,
         start: period.start,
       });
@@ -638,7 +596,7 @@ const TaxRecordsPage = memo(() => {
       };
       browser.location.assign(`/admin/tax-records/export?${searchParams}`);
     },
-    [period],
+    [filingState, period],
   );
 
   const downloadTransactions = useCallback(
@@ -690,11 +648,16 @@ const TaxRecordsPage = memo(() => {
     };
   }, [filters.limit, report, reportingCurrency]);
 
-  if (!report && loading) {
+  const reportMatchesSelection =
+    report?.filingState === filingState &&
+    report.period.startDate === period.start &&
+    report.period.endDate === period.end;
+
+  if ((!report || !reportMatchesSelection) && loading) {
     return <LoadingState />;
   }
 
-  if (!report) {
+  if (!report || !reportMatchesSelection) {
     return (
       <Container>
         <Heading>Tax records are unavailable</Heading>
@@ -734,6 +697,11 @@ const TaxRecordsPage = memo(() => {
   } = reportView;
   const hasQualityIssues =
     reviewRecordCount > 0 || incompleteRecordCount > 0;
+  const filingProfile = TAX_FILING_PROFILES[filingState];
+  const periodOptions = taxPeriodPresetOptions(filingState);
+  const exportsBlocked =
+    report.source.truncated ||
+    report.source.unassignedDomesticRecords > 0;
 
   return (
     <div className="flex flex-col gap-4" aria-busy={loading}>
@@ -742,13 +710,15 @@ const TaxRecordsPage = memo(() => {
           <div className="max-w-3xl">
             <Heading>Tax records</Heading>
             <Text className="mt-1 text-ui-fg-subtle">
-              Reconcile Medusa sales, refunds, tax, and delivery destinations
-              before preparing a return.
+              Build separate Connecticut, New York, and Pennsylvania
+              workpapers from Medusa sales, refunds, tax, and delivery
+              destinations.
             </Text>
           </div>
           <div>
             <div className="flex flex-wrap gap-2">
               <Button
+                disabled={exportsBlocked}
                 onClick={downloadTransactions}
                 type="button"
                 variant="secondary"
@@ -757,6 +727,7 @@ const TaxRecordsPage = memo(() => {
                 Transaction CSV
               </Button>
               <Button
+                disabled={exportsBlocked}
                 onClick={downloadDestinations}
                 type="button"
                 variant="primary"
@@ -769,14 +740,56 @@ const TaxRecordsPage = memo(() => {
               size="xsmall"
               className="mt-2 max-w-sm text-ui-fg-subtle"
             >
-              Exports include the full selected period across all currencies;
-              table filters do not change them.
+              Exports include the full {filingProfile.name} filing scope and
+              selected period across all currencies; table filters do not
+              change them.
             </Text>
           </div>
         </div>
 
         <div className="mt-6 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_minmax(0,1fr)]">
+            <div>
+              <Label htmlFor="tax-filing-state">Filing jurisdiction</Label>
+              <Select
+                value={filingState}
+                onValueChange={handleFilingState}
+              >
+                <Select.Trigger className="mt-1" id="tax-filing-state">
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  {TAX_FILING_STATES.map((state) => (
+                    <Select.Item key={state} value={state}>
+                      {TAX_FILING_PROFILES[state].name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+            </div>
+            <div>
+              <Text size="small" weight="plus">
+                {filingProfile.returnName}
+              </Text>
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                {filingProfile.filingFrequencyGuidance}
+              </Text>
+            </div>
+            <div>
+              <Text size="small" weight="plus">
+                Official filing portal
+              </Text>
+              <a
+                className="mt-1 inline-flex min-h-6 min-w-6 cursor-pointer items-center rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+                href={filingProfile.portalUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Open {filingProfile.portalName}
+              </a>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-4 border-t border-ui-border-base pt-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
             <div>
               <Label htmlFor="tax-period-preset">Filing period</Label>
               <Select value={preset} onValueChange={handlePreset}>
@@ -784,25 +797,11 @@ const TaxRecordsPage = memo(() => {
                   <Select.Value />
                 </Select.Trigger>
                 <Select.Content>
-                  <Select.Item value="current-month">
-                    Current calendar month
-                  </Select.Item>
-                  <Select.Item value="previous-month">
-                    Previous calendar month
-                  </Select.Item>
-                  <Select.Item value="current-quarter">
-                    Current NY quarter
-                  </Select.Item>
-                  <Select.Item value="previous-quarter">
-                    Previous NY quarter
-                  </Select.Item>
-                  <Select.Item value="current-year">
-                    Current NY sales-tax year
-                  </Select.Item>
-                  <Select.Item value="previous-year">
-                    Previous NY sales-tax year
-                  </Select.Item>
-                  <Select.Item value="custom">Custom dates</Select.Item>
+                  {periodOptions.map((option) => (
+                    <Select.Item key={option.value} value={option.value}>
+                      {option.label}
+                    </Select.Item>
+                  ))}
                 </Select.Content>
               </Select>
             </div>
@@ -834,12 +833,40 @@ const TaxRecordsPage = memo(() => {
             {report.period.label} · {report.period.timeZone} · end date is not
             included
           </Text>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="rounded-md border border-ui-border-base bg-ui-bg-base p-3">
+              <Text size="xsmall" weight="plus">
+                Due-date guidance
+              </Text>
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                {filingProfile.dueDateGuidance}
+              </Text>
+            </div>
+            <div className="rounded-md border border-ui-border-base bg-ui-bg-base p-3">
+              <Text size="xsmall" weight="plus">
+                Destination treatment
+              </Text>
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                {filingProfile.destinationGuidance}
+              </Text>
+            </div>
+          </div>
         </div>
+
+        <Alert className="mt-4" variant="warning">
+          <Text weight="plus">Keep each state obligation separate.</Text>
+          <Text size="small">
+            A move from Connecticut to Pennsylvania does not transfer or close
+            a tax registration. Continue required Connecticut, New York, and
+            Pennsylvania zero, periodic, and final returns until the
+            respective agency confirms a change or closure.
+          </Text>
+        </Alert>
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <Text size="small" weight="plus">
-              Period totals
+              {filingProfile.name} period totals
             </Text>
             <Text size="xsmall" className="text-ui-fg-subtle">
               Currencies are never combined.
@@ -920,6 +947,43 @@ const TaxRecordsPage = memo(() => {
           />
         </div>
 
+        {report.source.unassignedDomesticRecords > 0 ? (
+          <Alert className="mt-4" variant="error">
+            <Text weight="plus">
+              A United States destination is missing its state.
+            </Text>
+            <Text size="small">
+              {report.source.unassignedDomesticRecords} record
+              {report.source.unassignedDomesticRecords === 1 ? "" : "s"} could
+              not be assigned to a filing jurisdiction. Exports are blocked
+              until the source shipping address is corrected.
+            </Text>
+            <ul className="mt-2 list-inside list-disc">
+              {report.unassignedRecordExamples
+                .slice(0, 5)
+                .map((record) => (
+                  <li key={record.orderId}>
+                    <a
+                      className="cursor-pointer rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+                      href={`/app/orders/${record.orderId}`}
+                    >
+                      Order #{record.displayId}
+                    </a>{" "}
+                    <span className="text-ui-fg-subtle">
+                      ({formatDate(record.occurredAt)})
+                    </span>
+                  </li>
+                ))}
+            </ul>
+            {report.source.unassignedDomesticRecords > 5 ? (
+              <Text size="xsmall" className="mt-2 text-ui-fg-subtle">
+                Showing the first 5 affected orders. Ask an engineer for the
+                remaining source rows before filing.
+              </Text>
+            ) : null}
+          </Alert>
+        ) : null}
+
         {report.source.truncated ? (
           <Alert className="mt-4" variant="error">
             <Text weight="plus">The source scan is incomplete.</Text>
@@ -934,10 +998,12 @@ const TaxRecordsPage = memo(() => {
           <Alert className="mt-4" variant="warning">
             <Text weight="plus">Review before using these workpapers.</Text>
             <Text size="small">
-              {incompleteRecordCount} incomplete and {reviewRecordCount} review
-              record{reviewRecordCount === 1 ? "" : "s"} are included. Legacy
-              rows may lack locality evidence, partial refund tax can be
-              estimated, and {priorPeriodRefundCount} prior-period credit
+              {incompleteRecordCount} incomplete record
+              {incompleteRecordCount === 1 ? "" : "s"} and{" "}
+              {reviewRecordCount} review record
+              {reviewRecordCount === 1 ? "" : "s"} are included. Legacy rows
+              may lack locality evidence, partial-refund tax can be estimated,
+              and {priorPeriodRefundCount} prior-period credit
               {priorPeriodRefundCount === 1 ? "" : "s"} require separate
               review.
             </Text>
@@ -1032,22 +1098,6 @@ const TaxRecordsPage = memo(() => {
               </Select>
             </div>
 
-            <div className="min-w-32">
-              <Label htmlFor="tax-record-state">State</Label>
-              <Select value={filters.state} onValueChange={handleState}>
-                <Select.Trigger className="mt-1" id="tax-record-state">
-                  <Select.Value />
-                </Select.Trigger>
-                <Select.Content>
-                  <Select.Item value="ALL">All states</Select.Item>
-                  {report.filters.states.map((state) => (
-                    <Select.Item key={state} value={state}>
-                      {state}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select>
-            </div>
           </div>
           <div
             aria-live="polite"
@@ -1232,8 +1282,8 @@ const TaxRecordsPage = memo(() => {
           <Heading level="h2">Destination workpaper</Heading>
           <Text size="small" className="mt-1 text-ui-fg-subtle">
             Sales and credits grouped by destination and effective rate.
-            Showing {activeCurrency.toUpperCase()}; confirm New York
-            jurisdiction codes before filing.
+            Showing {activeCurrency.toUpperCase()}.{" "}
+            {filingProfile.destinationGuidance}
           </Text>
         </div>
         <div className="md:hidden">
@@ -1241,6 +1291,7 @@ const TaxRecordsPage = memo(() => {
             activeDestinations.map((destination) => (
               <MobileDestination
                 destination={destination}
+                filingState={filingState}
                 key={[
                   destination.currencyCode,
                   destination.countryCode,
@@ -1268,10 +1319,11 @@ const TaxRecordsPage = memo(() => {
           role="region"
           tabIndex={0}
         >
-          <Table className="min-w-[900px]">
+          <Table className="min-w-[1040px]">
             <Table.Header>
               <Table.Row>
                 <Table.HeaderCell>Destination</Table.HeaderCell>
+                <Table.HeaderCell>Filing bucket</Table.HeaderCell>
                 <Table.HeaderCell>Rate</Table.HeaderCell>
                 <Table.HeaderCell className="text-right">
                   Gross sales
@@ -1313,6 +1365,9 @@ const TaxRecordsPage = memo(() => {
                           destination.countryCode ??
                           "No jurisdiction evidence"}
                       </Text>
+                    </Table.Cell>
+                    <Table.Cell>
+                      {filingBucketFor({ destination, filingState })}
                     </Table.Cell>
                     <Table.Cell>
                       {destination.taxRatePercent
@@ -1362,7 +1417,7 @@ const TaxRecordsPage = memo(() => {
                       </Text>
                     </div>
                   </Table.Cell>
-                  {Array.from({ length: 6 }, (_, index) => (
+                  {Array.from({ length: 7 }, (_, index) => (
                     <Table.Cell aria-hidden="true" key={index} />
                   ))}
                 </Table.Row>
@@ -1375,11 +1430,17 @@ const TaxRecordsPage = memo(() => {
       <Container>
         <Heading level="h2">What this report does not file</Heading>
         <Text size="small" className="mt-2 max-w-4xl text-ui-fg-subtle">
-          Business use-tax purchases, exemption certificates, marketplace
-          statements, bad-debt adjustments, and special taxes are not derived
-          from storefront orders. Reconcile those separately, review the
-          official return instructions, and file through New York Online
-          Services.
+          {filingProfile.separateReconciliation} Review the official{" "}
+          {filingProfile.returnName} instructions, then file through{" "}
+          <a
+            className="cursor-pointer rounded-sm text-ui-fg-interactive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+            href={filingProfile.portalUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {filingProfile.portalName}
+          </a>
+          .
         </Text>
         <Text size="xsmall" className="mt-3 text-ui-fg-subtle">
           {report.source.medusaOrdersScanned} Medusa order

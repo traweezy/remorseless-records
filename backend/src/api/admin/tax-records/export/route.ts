@@ -8,6 +8,7 @@ import {
   taxDestinationsCsv,
   taxTransactionsCsv,
 } from "../../../../lib/tax-reporting/csv";
+import { TAX_FILING_STATES } from "../../../../lib/tax-reporting/filing-states";
 import {
   taxReportErrorName,
   taxReportProblem,
@@ -16,6 +17,7 @@ import { parseTaxReportPeriod } from "../../../../lib/tax-reporting/periods";
 import { buildFullTaxReport } from "../../../../lib/tax-reporting/query";
 
 const exportSchema = z.enum(["destinations", "transactions"]);
+const filingStateSchema = z.enum(TAX_FILING_STATES);
 
 const problemResponse = (
   res: MedusaResponse,
@@ -44,8 +46,12 @@ export const GET = async (
       endDate: searchParams.get("end"),
       startDate: searchParams.get("start"),
     });
+    const filingState = filingStateSchema.parse(
+      searchParams.get("filing_state"),
+    );
     const report = await buildFullTaxReport({
       container: req.scope,
+      filingState,
       period,
     });
     if (report.source.truncated) {
@@ -61,12 +67,27 @@ export const GET = async (
         });
       return;
     }
+    if (report.source.unassignedDomesticRecords > 0) {
+      res
+        .status(409)
+        .type("application/problem+json")
+        .json({
+          detail:
+            "At least one United States tax record has no destination state. Correct the source address before relying on a state filing export.",
+          status: 409,
+          title: "Tax export has unassigned records",
+          type: "https://remorselessrecords.com/problems/tax-export-unassigned-state",
+        });
+      return;
+    }
 
     const csv =
       format === "transactions"
         ? taxTransactionsCsv(report)
         : taxDestinationsCsv(report);
-    const filename = `remorseless-tax-${format}-${period.startDate}-to-${period.endDate}.csv`;
+    const filename =
+      `remorseless-tax-${filingState.toLowerCase()}-${format}-` +
+      `${period.startDate}-to-${period.endDate}.csv`;
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.status(200).type("text/csv; charset=utf-8").send(csv);
   } catch (error) {

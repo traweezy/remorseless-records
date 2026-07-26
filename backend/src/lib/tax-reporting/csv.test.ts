@@ -41,6 +41,7 @@ describe("tax reporting CSV", () => {
       type: "refund",
     };
     const csv = taxTransactionsCsv({
+      filingState: "NY",
       generatedAt: "2026-07-21T12:00:00.000Z",
       period,
       records: [record],
@@ -65,6 +66,7 @@ describe("tax reporting CSV", () => {
     });
 
     expect(csv.startsWith("\uFEFFrecord_type")).toBe(true);
+    expect(csv).toContain("refund,NY,'=cmd() 14201 — verify locality");
     expect(csv).toContain(",-5.0000,");
     expect(csv).toContain("'=cmd()");
     expect(csv).toContain("'+review");
@@ -114,6 +116,7 @@ describe("tax reporting CSV", () => {
           taxRatePercent: "8.000000",
         },
       ],
+      filingState: "ALL",
       generatedAt: "2026-07-21T12:00:00.000Z",
       period,
       summaries,
@@ -122,5 +125,41 @@ describe("tax reporting CSV", () => {
     expect(csv).toContain("IDF,");
     expect(csv).toContain(",eur,10.0000,");
     expect(csv).toContain("eur,10.0000,0.0000,10.0000");
+  });
+
+  it("adds state-specific filing buckets to destination workpapers", () => {
+    const csv = taxDestinationsCsv({
+      destinations: [
+        {
+          city: "Philadelphia",
+          countryCode: "US",
+          county: "Philadelphia",
+          currencyCode: "usd",
+          grossSales: "10.0000",
+          jurisdictionLevel: "city",
+          jurisdictionName: "Philadelphia",
+          netSales: "10.0000",
+          netTax: "0.8000",
+          nontaxableSales: "0.0000",
+          postalCode: "19103",
+          refundedSales: "0.0000",
+          refundedTax: "0.0000",
+          stateCode: "PA",
+          taxCollected: "0.8000",
+          taxableSales: "10.0000",
+          taxRatePercent: "8.000000",
+        },
+      ],
+      filingState: "PA",
+      generatedAt: "2026-07-21T12:00:00.000Z",
+      period,
+      summaries: [],
+    });
+
+    expect(csv).toContain(
+      "filing_state,filing_bucket,country_code,state_code",
+    );
+    expect(csv).toContain("PA,Philadelphia local,US,PA");
+    expect(csv).toContain("filing_state,PA");
   });
 });

@@ -1,6 +1,7 @@
 import { MathBN } from "@medusajs/framework/utils";
 
 import { parseTaxLineCode } from "../tax-control/context";
+import { filingBucketFor } from "./filing-states";
 import type { TaxReportPeriod } from "./periods";
 import type {
   TaxDestinationSummary,
@@ -31,6 +32,17 @@ const records = (value: unknown): UnknownRecord[] =>
 
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null;
+
+const TRACKED_STATE_NAMES = new Map([
+  ["CONNECTICUT", "CT"],
+  ["NEW YORK", "NY"],
+  ["PENNSYLVANIA", "PA"],
+]);
+
+const stateCode = (value: unknown): string | null => {
+  const normalized = text(value)?.toUpperCase();
+  return normalized ? (TRACKED_STATE_NAMES.get(normalized) ?? normalized) : null;
+};
 
 const decimal = (value: unknown): Decimal => {
   if (value === null || value === undefined || value === "") {
@@ -176,10 +188,7 @@ const destinationFrom = (order: UnknownRecord): TaxRecordDestination => {
       text(jurisdiction?.county) ??
       text(jurisdiction?.city),
     postalCode: text(address?.postal_code),
-    stateCode:
-      text(jurisdiction?.state)?.toUpperCase() ??
-      text(address?.province)?.toUpperCase() ??
-      null,
+    stateCode: stateCode(jurisdiction?.state) ?? stateCode(address?.province),
   };
 };
 
@@ -330,6 +339,30 @@ const qualityFor = ({
     !destination.jurisdictionName
   ) {
     issues.push("The TaxRate.io locality breakdown was not preserved.");
+  }
+  if (
+    destination.countryCode === "US" &&
+    destination.stateCode === "NY" &&
+    tax.gt(0) &&
+    !destination.county &&
+    !destination.jurisdictionName
+  ) {
+    issues.push(
+      "New York filing requires confirming the destination locality and return schedule.",
+    );
+  }
+  if (
+    destination.countryCode === "US" &&
+    destination.stateCode === "PA" &&
+    tax.gt(0) &&
+    filingBucketFor({
+      destination,
+      filingState: "PA",
+    }).endsWith("— verify")
+  ) {
+    issues.push(
+      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation.",
+    );
   }
   if (isEstimatedRefund) {
     issues.push(
@@ -586,7 +619,7 @@ const refundRecords = (
     } else if (orderOccurredAt < period.startInclusive) {
       refundCreditTiming = "prior_period";
       quality.issues.push(
-        "This refund relates to a sale from an earlier filing period; confirm the locality credit and required New York support.",
+        "This refund relates to a sale from an earlier filing period; confirm the destination-jurisdiction credit and required state support.",
       );
       if (quality.quality === "complete") {
         quality.quality = "review";

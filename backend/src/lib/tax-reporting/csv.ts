@@ -1,3 +1,7 @@
+import {
+  filingBucketFor,
+  type TaxFilingScope,
+} from "./filing-states";
 import type { TaxReportPeriod } from "./periods";
 import type {
   TaxDestinationSummary,
@@ -27,11 +31,13 @@ const signed = (value: string, type: TaxRecord["type"]): string =>
   type === "refund" && Number(value) !== 0 ? `-${value}` : value;
 
 export const taxTransactionsCsv = ({
+  filingState,
   generatedAt,
   period,
   records,
   summaries,
 }: {
+  filingState: TaxFilingScope;
   generatedAt: string;
   period: TaxReportPeriod;
   records: TaxRecord[];
@@ -43,6 +49,8 @@ export const taxTransactionsCsv = ({
   return rowsToCsv([
     [
       "record_type",
+      "filing_state",
+      "filing_bucket",
       "transaction_date_utc",
       "report_timezone",
       "order_number",
@@ -79,6 +87,11 @@ export const taxTransactionsCsv = ({
       const summary = summaryByCurrency.get(record.currencyCode);
       return [
         record.type,
+        filingState,
+        filingBucketFor({
+          destination: record.destination,
+          filingState,
+        }),
         record.occurredAt,
         period.timeZone,
         record.displayId,
@@ -117,17 +130,21 @@ export const taxTransactionsCsv = ({
 
 export const taxDestinationsCsv = ({
   destinations,
+  filingState,
   generatedAt,
   period,
   summaries,
 }: {
   destinations: TaxDestinationSummary[];
+  filingState: TaxFilingScope;
   generatedAt: string;
   period: TaxReportPeriod;
   summaries: TaxReportSummary[];
 }): string =>
   rowsToCsv([
     [
+      "filing_state",
+      "filing_bucket",
       "country_code",
       "state_code",
       "county",
@@ -151,6 +168,8 @@ export const taxDestinationsCsv = ({
       "report_generated_at",
     ],
     ...destinations.map((destination) => [
+      filingState,
+      filingBucketFor({ destination, filingState }),
       destination.countryCode,
       destination.stateCode,
       destination.county,
@@ -174,6 +193,7 @@ export const taxDestinationsCsv = ({
       generatedAt,
     ]),
     [],
+    ["filing_state", filingState],
     ["period_summary"],
     [
       "currency",

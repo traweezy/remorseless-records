@@ -204,6 +204,77 @@ describe("tax record projection", () => {
     );
   });
 
+  it("normalizes tracked state names from legacy shipping addresses", () => {
+    const base = orderFixture({ controlled: false });
+    const [record] = projectTaxRecords({
+      orders: [
+        {
+          ...base,
+          shipping_address: {
+            ...base.shipping_address,
+            city: "Hartford",
+            postal_code: "06103",
+            province: "Connecticut",
+          },
+        },
+      ],
+      period,
+    });
+
+    expect(record?.destination.stateCode).toBe("CT");
+    expect(record?.issues).not.toContain(
+      "New York filing requires confirming the destination locality and return schedule.",
+    );
+  });
+
+  it("flags Pennsylvania tax rows without local-allocation evidence", () => {
+    const base = orderFixture({ controlled: false });
+    const [record] = projectTaxRecords({
+      orders: [
+        {
+          ...base,
+          shipping_address: {
+            ...base.shipping_address,
+            city: "Pittsburgh",
+            postal_code: "15222",
+            province: "Pennsylvania",
+          },
+        },
+      ],
+      period,
+    });
+
+    expect(record).toMatchObject({
+      destination: { stateCode: "PA" },
+      quality: "review",
+    });
+    expect(record?.issues).toContain(
+      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation.",
+    );
+  });
+
+  it("accepts an explicit Philadelphia destination as local evidence", () => {
+    const base = orderFixture({ controlled: false });
+    const [record] = projectTaxRecords({
+      orders: [
+        {
+          ...base,
+          shipping_address: {
+            ...base.shipping_address,
+            city: "Philadelphia",
+            postal_code: "19103",
+            province: "PA",
+          },
+        },
+      ],
+      period,
+    });
+
+    expect(record?.issues).not.toContain(
+      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation.",
+    );
+  });
+
   it("marks a taxed sale with unknown provider evidence incomplete", () => {
     const base = orderFixture();
     const order = {

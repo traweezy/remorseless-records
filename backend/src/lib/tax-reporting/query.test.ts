@@ -101,6 +101,7 @@ const containerWith = (
 describe("tax report query", () => {
   it("parses bounded table filters and rejects unsafe values", () => {
     expect(parseTaxReportFilters(new URLSearchParams())).toMatchObject({
+      filingState: "ALL",
       limit: 50,
       page: 1,
       provider: "all",
@@ -111,6 +112,11 @@ describe("tax report query", () => {
     ).toThrow();
     expect(() =>
       parseTaxReportFilters(new URLSearchParams({ state: "NY;DROP" })),
+    ).toThrow();
+    expect(() =>
+      parseTaxReportFilters(
+        new URLSearchParams({ filing_state: "NJ" }),
+      ),
     ).toThrow();
   });
 
@@ -225,6 +231,7 @@ describe("tax report query", () => {
         grossSales: "15.0000",
         issues: [
           "Legacy tax lines do not include provider-generation evidence.",
+          "New York filing requires confirming the destination locality and return schedule.",
         ],
         taxAmount: "1.2000",
         total: "16.2000",
@@ -366,6 +373,84 @@ describe("tax report query", () => {
     });
   });
 
+  it("scopes records, totals, and destinations before table filtering", async () => {
+    const connecticutOrder = {
+      ...order,
+      display_id: 43,
+      id: "order_ct",
+      shipping_address: {
+        ...order.shipping_address,
+        city: "Hartford",
+        postal_code: "06103",
+        province: "Connecticut",
+      },
+    };
+    const report = await buildTaxReport({
+      container: containerWith(async () => ({
+        data: [order, connecticutOrder],
+      })),
+      filters: parseTaxReportFilters(
+        new URLSearchParams({ filing_state: "CT" }),
+      ),
+      period,
+    });
+
+    expect(report.filingState).toBe("CT");
+    expect(report.records).toEqual([
+      expect.objectContaining({
+        destination: expect.objectContaining({ stateCode: "CT" }),
+        displayId: 43,
+      }),
+    ]);
+    expect(report.destinations).toEqual([
+      expect.objectContaining({ stateCode: "CT" }),
+    ]);
+    expect(report.filters.states).toEqual(["CT"]);
+    expect(report.summaries[0]).toMatchObject({
+      grossSales: "10.0000",
+      orderCount: 1,
+    });
+    expect(report.source).toMatchObject({
+      projectedRecords: 2,
+      scopedRecords: 1,
+      unassignedDomesticRecords: 0,
+    });
+  });
+
+  it("reports domestic records that cannot be assigned to a filing state", async () => {
+    const unassigned = {
+      ...order,
+      shipping_address: {
+        ...order.shipping_address,
+        province: null,
+      },
+    };
+    const report = await buildTaxReport({
+      container: containerWith(async () => ({ data: [unassigned] })),
+      filters: parseTaxReportFilters(
+        new URLSearchParams({ filing_state: "PA" }),
+      ),
+      period,
+    });
+
+    expect(report.records).toEqual([]);
+    expect(report.source).toMatchObject({
+      projectedRecords: 1,
+      scopedRecords: 0,
+      unassignedDomesticRecords: 1,
+    });
+    expect(report.unassignedRecordExamples).toEqual([
+      expect.objectContaining({
+        displayId: 42,
+        orderId: "order_42",
+      }),
+    ]);
+    expect(report.summaries[0]).toMatchObject({
+      grossSales: "0.0000",
+      orderCount: 0,
+    });
+  });
+
   it.each([
     ["provider", new URLSearchParams({ provider: "stripe_tax" })],
     ["quality", new URLSearchParams({ quality: "complete" })],
@@ -397,9 +482,11 @@ describe("tax report query", () => {
   it("builds an unpaginated full-period export model", async () => {
     const report = await buildFullTaxReport({
       container: containerWith(async () => ({ data: [order] })),
+      filingState: "NY",
       period,
     });
 
+    expect(report.filingState).toBe("NY");
     expect(report.records).toHaveLength(1);
     expect(report.destinations).toHaveLength(1);
     expect(report.summaries[0]).toMatchObject({

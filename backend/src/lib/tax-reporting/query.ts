@@ -3,6 +3,10 @@ import type { MedusaContainer } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 
+import {
+  TAX_FILING_STATES,
+  type TaxFilingScope,
+} from "./filing-states";
 import type { TaxReportPeriod } from "./periods";
 import {
   diagnoseTaxProjection,
@@ -323,6 +327,7 @@ const relationshipDiagnostics = (
 };
 
 const filtersSchema = z.object({
+  filingState: z.enum(["ALL", ...TAX_FILING_STATES]).default("ALL"),
   limit: z.coerce.number().int().min(10).max(100).default(50),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   provider: z
@@ -343,10 +348,14 @@ const filtersSchema = z.object({
 
 export type TaxReportFilters = z.infer<typeof filtersSchema>;
 
+export const parseTaxFilingState = (value: unknown): TaxFilingScope =>
+  z.enum(["ALL", ...TAX_FILING_STATES]).default("ALL").parse(value);
+
 export const parseTaxReportFilters = (
   searchParams: URLSearchParams,
 ): TaxReportFilters =>
   filtersSchema.parse({
+    filingState: searchParams.get("filing_state") ?? undefined,
     limit: searchParams.get("limit") ?? undefined,
     page: searchParams.get("page") ?? undefined,
     provider: searchParams.get("provider") ?? undefined,
@@ -453,6 +462,25 @@ const matchesFilters = (
   ].some((value) => String(value ?? "").toLowerCase().includes(query));
 };
 
+const recordsForFilingState = (
+  records: TaxRecord[],
+  filingState: TaxFilingScope,
+): TaxRecord[] =>
+  filingState === "ALL"
+    ? records
+    : records.filter(
+        (record) =>
+          record.destination.countryCode === "US" &&
+          record.destination.stateCode === filingState,
+      );
+
+const unassignedDomesticRecords = (records: TaxRecord[]): TaxRecord[] =>
+  records.filter(
+    (record) =>
+      record.destination.countryCode === "US" &&
+      !record.destination.stateCode,
+  );
+
 export const buildTaxReport = async ({
   container,
   filters,
@@ -464,21 +492,29 @@ export const buildTaxReport = async ({
 }) => {
   const loaded = await loadTaxReportOrders({ container, period });
   const allRecords = projectTaxRecords({ orders: loaded.orders, period });
-  const filteredRecords = allRecords.filter((record) =>
+  const scopedRecords = recordsForFilingState(
+    allRecords,
+    filters.filingState,
+  );
+  const unassignedRecords = unassignedDomesticRecords(allRecords);
+  const filteredRecords = scopedRecords.filter((record) =>
     matchesFilters(record, filters),
   );
   const offset = (filters.page - 1) * filters.limit;
 
   return {
-    destinations: summarizeDestinations(allRecords),
+    destinations: summarizeDestinations(scopedRecords),
+    filingState: filters.filingState,
     filters: {
       currencies: [
-        ...new Set(allRecords.map((record) => record.currencyCode)),
+        ...new Set(scopedRecords.map((record) => record.currencyCode)),
       ].sort(),
-      providers: [...new Set(allRecords.map((record) => record.provider))].sort(),
+      providers: [
+        ...new Set(scopedRecords.map((record) => record.provider)),
+      ].sort(),
       states: [
         ...new Set(
-          allRecords
+          scopedRecords
             .map((record) => record.destination.stateCode)
             .filter((state): state is string => Boolean(state)),
         ),
@@ -496,35 +532,51 @@ export const buildTaxReport = async ({
           ? diagnoseTaxProjection({ orders: loaded.orders, period })
           : null,
       relationships: relationshipDiagnostics(loaded.orders),
+      scopedRecords: scopedRecords.length,
       truncated: loaded.truncated,
+      unassignedDomesticRecords: unassignedRecords.length,
     },
-    summaries: summarizeTaxRecords(allRecords),
+    summaries: summarizeTaxRecords(scopedRecords),
+    unassignedRecordExamples: unassignedRecords
+      .slice(0, 25)
+      .map(({ displayId, occurredAt, orderId }) => ({
+        displayId,
+        occurredAt,
+        orderId,
+      })),
   };
 };
 
 export const buildFullTaxReport = async ({
   container,
+  filingState = "ALL",
   period,
 }: {
   container: MedusaContainer;
+  filingState?: TaxFilingScope;
   period: TaxReportPeriod;
 }) => {
   const loaded = await loadTaxReportOrders({ container, period });
-  const records = projectTaxRecords({ orders: loaded.orders, period });
+  const allRecords = projectTaxRecords({ orders: loaded.orders, period });
+  const records = recordsForFilingState(allRecords, filingState);
+  const unassignedRecords = unassignedDomesticRecords(allRecords);
   return {
     destinations: summarizeDestinations(records),
+    filingState,
     generatedAt: new Date().toISOString(),
     period,
     records,
     source: {
       medusaOrdersScanned: loaded.orders.length,
-      projectedRecords: records.length,
+      projectedRecords: allRecords.length,
       projectionDiagnostics:
-        records.length === 0
+        allRecords.length === 0
           ? diagnoseTaxProjection({ orders: loaded.orders, period })
           : null,
       relationships: relationshipDiagnostics(loaded.orders),
+      scopedRecords: records.length,
       truncated: loaded.truncated,
+      unassignedDomesticRecords: unassignedRecords.length,
     },
     summaries: summarizeTaxRecords(records),
   };
