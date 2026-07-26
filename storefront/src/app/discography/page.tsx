@@ -31,12 +31,9 @@ const DiscographyPage = async () => {
   const entries = await getDiscographyEntries()
 
   return (
-    <PageShell
-      className="flex h-full min-h-screen flex-col"
-      contentClassName="flex-1 gap-8 lg:gap-8"
-    >
+    <PageShell className="min-h-screen" contentClassName="gap-6 lg:gap-8">
       <PageHeader
-        className="flex-0 space-y-4"
+        className="space-y-4"
         eyebrow="Discography"
         title="Label catalog"
         description={
@@ -48,8 +45,8 @@ const DiscographyPage = async () => {
         }
       />
 
-      <section className="flex-1 min-h-[20rem] flex flex-col gap-4">
-        <DiscographyTable entries={entries} className="flex-1" />
+      <section className="min-h-[20rem]" aria-label="Discography releases">
+        <DiscographyTable entries={entries} />
       </section>
     </PageShell>
   )
