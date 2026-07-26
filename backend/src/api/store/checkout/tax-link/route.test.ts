@@ -16,7 +16,7 @@ jest.mock("../../../../lib/tax-control/payment-binding", () => ({
   bindCheckoutTaxToPayment: jest.fn(),
 }));
 jest.mock("../../../../lib/constants", () => ({
-  STRIPE_API_KEY: "sk_test_placeholder",
+  STRIPE_API_KEY: "synthetic-stripe-unit-test-key",
 }));
 
 const bindingMock = bindCheckoutTaxToPayment as jest.MockedFunction<
@@ -101,7 +101,7 @@ const requestFixture = ({
 
 beforeEach(() => {
   process.env.CHECKOUT_BFF_SECRET = secret;
-  process.env.STRIPE_API_KEY = "sk_test_placeholder";
+  process.env.STRIPE_API_KEY = "synthetic-stripe-unit-test-key";
   bindingMock.mockReset();
   bindingMock.mockResolvedValue({
     generation: 3,

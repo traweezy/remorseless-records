@@ -13,3 +13,10 @@ d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server
 d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/config/env.checkout.server.test.ts:generic-api-key:29
 d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/config/env.checkout.server.test.ts:generic-api-key:30
 d389a76a63b2e3b13f9526674ea7a9f0a99f72d9:storefront/src/features/checkout/server/internal-status-client.test.ts:generic-api-key:9
+
+# Stripe-shaped placeholders introduced in 3727483 were deterministic unit-test
+# fixtures, not credentials. The active fixtures no longer use a Stripe key
+# prefix; these exact fingerprints preserve history scanning without weakening
+# the Stripe detector for any other commit, path, or value.
+3727483dad58cf6249aab92128839b7996a921c9:backend/src/api/store/checkout/tax-link/route.test.ts:stripe-access-token:19
+3727483dad58cf6249aab92128839b7996a921c9:backend/src/api/store/checkout/tax-link/route.test.ts:stripe-access-token:104
