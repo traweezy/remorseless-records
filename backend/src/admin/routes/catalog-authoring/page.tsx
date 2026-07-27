@@ -17,6 +17,15 @@ import {
 import { Link } from "react-router-dom"
 
 import RichTextEditor from "../../components/rich-text-editor"
+import {
+  getCatalogProductOptionPath,
+  getPrimaryProductLoadPath,
+  getRemainingProductOptionOffsets,
+  mergeExactProduct,
+  mergeProductOptions,
+  shouldLoadBundleProductOptions,
+  type ProductOptionStatus,
+} from "../../features/catalog-authoring/product-option-loading"
 
 const productStatuses = ["draft", "published", "proposed", "rejected"] as const
 const referenceKinds = [
@@ -87,6 +96,11 @@ type AdminProduct = {
   created_at?: string | null
   updated_at?: string | null
   variants?: AdminVariant[] | null
+}
+
+type AdminProductListResponse = {
+  count?: number
+  products: AdminProduct[]
 }
 
 type CatalogArtist = {
@@ -676,6 +690,11 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [productOptionStatus, setProductOptionStatus] =
+    useState<ProductOptionStatus>(productId ? "idle" : "loading")
+  const [productOptionsError, setProductOptionsError] = useState<string | null>(
+    null
+  )
 
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
@@ -715,19 +734,62 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
     [products, selectedProductId]
   )
 
-  const refreshProducts = useCallback(async () => {
-    const response = await fetchJson<{ products: AdminProduct[] }>(
-      "/admin/products?limit=200&fields=*variants,*variants.prices"
+  const refreshProducts = useCallback(async (): Promise<AdminProduct[]> => {
+    if (productId) {
+      const requested = await fetchJson<{ product: AdminProduct }>(
+        getPrimaryProductLoadPath(productId)
+      )
+      setProducts((currentProducts) =>
+        mergeExactProduct(requested.product, currentProducts)
+      )
+      return [requested.product]
+    }
+
+    const response = await fetchJson<AdminProductListResponse>(
+      getCatalogProductOptionPath()
     )
     const listedProducts = response.products ?? []
-    if (!productId || listedProducts.some((product) => product.id === productId)) {
-      setProducts(listedProducts)
+    setProducts(listedProducts)
+    setProductOptionStatus("ready")
+    return listedProducts
+  }, [productId])
+
+  const loadBundleProductOptions = useCallback(async () => {
+    if (!productId) {
       return
     }
-    const requested = await fetchJson<{ product: AdminProduct }>(
-      `/admin/products/${encodeURIComponent(productId)}?fields=*variants,*variants.prices`
-    )
-    setProducts([requested.product, ...listedProducts])
+
+    setProductOptionStatus("loading")
+    setProductOptionsError(null)
+    try {
+      const firstPage = await fetchJson<AdminProductListResponse>(
+        getCatalogProductOptionPath()
+      )
+      const remainingPages = await Promise.all(
+        getRemainingProductOptionOffsets(
+          firstPage.count ?? firstPage.products.length
+        ).map((offset) =>
+          fetchJson<AdminProductListResponse>(
+            getCatalogProductOptionPath(offset)
+          )
+        )
+      )
+      const productOptions = [
+        ...(firstPage.products ?? []),
+        ...remainingPages.flatMap((page) => page.products ?? []),
+      ]
+      setProducts((currentProducts) =>
+        mergeProductOptions(currentProducts, productOptions, productId)
+      )
+      setProductOptionStatus("ready")
+    } catch (err) {
+      setProductOptionsError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load bundle product choices"
+      )
+      setProductOptionStatus("error")
+    }
   }, [productId])
 
   const refreshReferences = useCallback(async () => {
@@ -802,13 +864,32 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
     }
   }, [refreshProducts, refreshReferences])
 
+  const refreshWorkspace = useCallback(async () => {
+    if (productId && bundleForm.enabled) {
+      setProductOptionStatus("idle")
+      setProductOptionsError(null)
+    }
+    await refreshAll()
+  }, [bundleForm.enabled, productId, refreshAll])
+
   useEffect(() => {
     void refreshAll()
   }, [refreshAll])
 
   useEffect(() => {
+    if (!productId) {
+      return
+    }
+    setSelectedProductId(productId)
+    setProducts((currentProducts) =>
+      currentProducts.filter((product) => product.id === productId)
+    )
+    setProductOptionStatus("idle")
+    setProductOptionsError(null)
+  }, [productId])
+
+  useEffect(() => {
     if (productId) {
-      setSelectedProductId(productId)
       return
     }
     const firstProduct = products.at(0)
@@ -820,6 +901,23 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
   useEffect(() => {
     void loadProductAuthoring(selectedProduct)
   }, [loadProductAuthoring, selectedProduct])
+
+  useEffect(() => {
+    if (
+      shouldLoadBundleProductOptions({
+        bundleEnabled: bundleForm.enabled,
+        dedicatedProductId: productId,
+        status: productOptionStatus,
+      })
+    ) {
+      void loadBundleProductOptions()
+    }
+  }, [
+    bundleForm.enabled,
+    loadBundleProductOptions,
+    productId,
+    productOptionStatus,
+  ])
 
   const updateProductField = useCallback(
     (field: keyof ProductFormState) => (value: string) => {
@@ -1132,9 +1230,12 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
         })
       }
 
-      await refreshProducts()
+      const refreshedProducts = await refreshProducts()
       await refreshReferences()
-      await loadProductAuthoring(selectedProduct)
+      await loadProductAuthoring(
+        refreshedProducts.find((product) => product.id === selectedProduct.id) ??
+          selectedProduct
+      )
       setNotice("Saved catalog authoring changes.")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save product")
@@ -1391,7 +1492,11 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
             </Text>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" onClick={() => void refreshAll()}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void refreshWorkspace()}
+            >
               Refresh
             </Button>
             {!productId ? (
@@ -2216,18 +2321,67 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                           />
                         </div>
                       </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <Text size="small" className="font-medium">
-                          Included products
-                        </Text>
-                        <Button type="button" size="small" variant="secondary" onClick={addBundleComponent}>
-                          Add included product
-                        </Button>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div aria-live="polite">
+                          <Text size="small" className="font-medium">
+                            Included products
+                          </Text>
+                          {productOptionStatus === "loading" ? (
+                            <Text size="xsmall" className="text-ui-fg-subtle">
+                              Loading available product choices…
+                            </Text>
+                          ) : null}
+                          {productOptionStatus === "ready" ? (
+                            <Text size="xsmall" className="text-ui-fg-subtle">
+                              {selectableProducts.length} product choices available
+                            </Text>
+                          ) : null}
+                          {productOptionsError ? (
+                            <Text size="xsmall" className="text-ui-fg-error">
+                              {productOptionsError}
+                            </Text>
+                          ) : null}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {productOptionStatus === "error" ? (
+                            <Button
+                              type="button"
+                              size="small"
+                              variant="secondary"
+                              onClick={() => void loadBundleProductOptions()}
+                            >
+                              Retry choices
+                            </Button>
+                          ) : null}
+                          <Button
+                            type="button"
+                            size="small"
+                            variant="secondary"
+                            disabled={productOptionStatus !== "ready"}
+                            onClick={addBundleComponent}
+                          >
+                            Add included product
+                          </Button>
+                        </div>
                       </div>
-                      <div className="space-y-3">
+                      <div
+                        aria-busy={productOptionStatus === "loading"}
+                        className="space-y-3"
+                      >
                         {bundleForm.components.map((component) => {
                           const componentProduct = products.find(
                             (product) => product.id === component.componentProductId
+                          )
+                          const hasComponentProductOption =
+                            selectableProducts.some(
+                              (product) =>
+                                product.id === component.componentProductId
+                            )
+                          const hasComponentVariantOption = Boolean(
+                            componentProduct?.variants?.some(
+                              (variant) =>
+                                variant.id === component.componentVariantId
+                            )
                           )
                           return (
                             <div key={component.key} className="grid gap-3 rounded-md border border-ui-border-base p-3 lg:grid-cols-[1fr,1fr,90px,auto]">
@@ -2238,12 +2392,20 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                                     component.title ?? component.componentProductId
                                   }`}
                                   value={component.componentProductId}
+                                  disabled={productOptionStatus !== "ready"}
                                   onChange={(event) =>
                                     selectComponentProduct(component.key, readValue(event))
                                   }
                                   className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
                                 >
                                   <option value="">Select product</option>
+                                  {component.componentProductId &&
+                                  !hasComponentProductOption ? (
+                                    <option value={component.componentProductId}>
+                                      {component.title ||
+                                        component.componentProductId}
+                                    </option>
+                                  ) : null}
                                   {selectableProducts.map((product) => (
                                     <option key={product.id} value={product.id}>
                                       {product.title ?? product.handle ?? product.id}
@@ -2258,6 +2420,7 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                                     component.title ?? "bundle component"
                                   }`}
                                   value={component.componentVariantId}
+                                  disabled={productOptionStatus !== "ready"}
                                   onChange={(event) => {
                                     const componentVariantId = readValue(event)
                                     const variant = componentProduct?.variants?.find(
@@ -2272,6 +2435,13 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                                   className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
                                 >
                                   <option value="">Product only</option>
+                                  {component.componentVariantId &&
+                                  !hasComponentVariantOption ? (
+                                    <option value={component.componentVariantId}>
+                                      {component.variantTitle ||
+                                        component.componentVariantId}
+                                    </option>
+                                  ) : null}
                                   {(componentProduct?.variants ?? []).map((variant) => (
                                     <option key={variant.id} value={variant.id}>
                                       {formatVariantLabel(variant)}

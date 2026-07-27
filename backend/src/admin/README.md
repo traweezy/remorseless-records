@@ -99,10 +99,14 @@ route for the exact product. Admin links use React Router paths without the
 
 During the editor cutover, the dynamic route reuses the existing authoring
 workspace but suppresses the general product picker and draft-creation action.
-It always fetches the requested Product directly when that Product is outside
-the legacy 200-row workspace list. The old sidebar route remains a temporary
-compatibility surface until the dedicated editor has complete form parity and
-the authoring audit is clean.
+It fetches only the requested Product for ordinary product editing. Bundle
+product choices are deferred until an existing bundle is loaded or the operator
+enables bundle editing, then fetched across bounded 200-row pages so all
+products remain selectable without putting that catalog-wide request on every
+editor visit. Existing bundle selections remain visible while choices load;
+loading, failure, and retry are explicit. The old sidebar route remains a
+temporary compatibility surface until the dedicated editor has complete form
+parity and the authoring audit is clean.
 
 Run `pnpm --filter backend run catalog:authoring:view-check` to load every
 product through that contract in bounded batches of eight. The gate fails if
