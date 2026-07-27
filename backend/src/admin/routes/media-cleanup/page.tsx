@@ -172,17 +172,38 @@ const AssetPreview = memo<{ asset: MediaAsset }>(({ asset }) => {
 
 AssetPreview.displayName = "AssetPreview"
 
-type MediaRowProps = {
+type MediaActionProps = {
   asset: MediaAsset
   busy: boolean
   disabled: boolean
   onAction: (asset: MediaAsset) => void
 }
 
-const MediaRow = memo<MediaRowProps>(({ asset, busy, disabled, onAction }) => {
-  const handleAction = useCallback(() => {
-    onAction(asset)
-  }, [asset, onAction])
+const MediaActionButton = memo<MediaActionProps>(
+  ({ asset, busy, disabled, onAction }) => {
+    const handleAction = useCallback(() => {
+      onAction(asset)
+    }, [asset, onAction])
+    const quarantined = asset.lifecycleStatus === "quarantined"
+
+    return (
+      <Button
+        aria-label={`${quarantined ? "Restore" : "Quarantine"} ${asset.originalFilename ?? asset.id}`}
+        disabled={disabled}
+        isLoading={busy}
+        onClick={handleAction}
+        size="small"
+        variant={quarantined ? "primary" : "secondary"}
+      >
+        {quarantined ? "Restore" : "Quarantine"}
+      </Button>
+    )
+  },
+)
+
+MediaActionButton.displayName = "MediaActionButton"
+
+const MediaRow = memo<MediaActionProps>(({ asset, busy, disabled, onAction }) => {
   const quarantined = asset.lifecycleStatus === "quarantined"
 
   return (
@@ -251,16 +272,12 @@ const MediaRow = memo<MediaRowProps>(({ asset, busy, disabled, onAction }) => {
       </Table.Cell>
       <Table.Cell>
         <div className="flex justify-end">
-          <Button
-            aria-label={`${quarantined ? "Restore" : "Quarantine"} ${asset.originalFilename ?? asset.id}`}
+          <MediaActionButton
+            asset={asset}
+            busy={busy}
             disabled={disabled}
-            isLoading={busy}
-            onClick={handleAction}
-            size="small"
-            variant={quarantined ? "primary" : "secondary"}
-          >
-            {quarantined ? "Restore" : "Quarantine"}
-          </Button>
+            onAction={onAction}
+          />
         </div>
       </Table.Cell>
     </Table.Row>
@@ -268,6 +285,107 @@ const MediaRow = memo<MediaRowProps>(({ asset, busy, disabled, onAction }) => {
 })
 
 MediaRow.displayName = "MediaRow"
+
+const MediaMobileCard = memo<MediaActionProps>(
+  ({ asset, busy, disabled, onAction }) => {
+    const quarantined = asset.lifecycleStatus === "quarantined"
+
+    return (
+      <li className="border-t border-ui-border-base px-4 py-5 first:border-t-0">
+        <div className="flex min-w-0 items-center gap-3">
+          <AssetPreview asset={asset} />
+          <div className="min-w-0">
+            <Text className="truncate" size="small" weight="plus">
+              {asset.originalFilename ?? asset.id}
+            </Text>
+            <Text
+              className="truncate text-ui-fg-subtle"
+              size="xsmall"
+              title={asset.sourceUrl}
+            >
+              {asset.sourceUrl}
+            </Text>
+          </div>
+        </div>
+
+        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5">
+          <div>
+            <dt>
+              <Text className="text-ui-fg-subtle" size="xsmall">
+                Storage
+              </Text>
+            </dt>
+            <dd className="mt-1">
+              <StatusBadge color={asset.sourceFileKey ? "green" : "grey"}>
+                {asset.sourceFileKey ? "Managed" : "External"}
+              </StatusBadge>
+              <Text className="mt-1 text-ui-fg-subtle" size="xsmall">
+                {asset.mimeType ?? "Unknown type"} ·{" "}
+                {formatBytes(asset.byteSize)}
+              </Text>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <Text className="text-ui-fg-subtle" size="xsmall">
+                Status
+              </Text>
+            </dt>
+            <dd className="mt-1">
+              <StatusBadge color={quarantined ? "orange" : "blue"}>
+                {quarantined ? "Quarantined" : "Needs review"}
+              </StatusBadge>
+              <Text className="mt-1 text-ui-fg-subtle" size="xsmall">
+                {quarantined
+                  ? `Since ${formatDate(asset.quarantinedAt)}`
+                  : `Created ${formatDate(asset.createdAt)}`}
+              </Text>
+              {quarantined ? (
+                <Text
+                  className="mt-1 truncate text-ui-fg-subtle"
+                  size="xsmall"
+                  title={asset.quarantinedBy ?? undefined}
+                >
+                  By {asset.quarantinedBy ?? "unknown operator"}
+                </Text>
+              ) : null}
+            </dd>
+          </div>
+          <div className="col-span-2">
+            <dt>
+              <Text className="text-ui-fg-subtle" size="xsmall">
+                Purge review
+              </Text>
+            </dt>
+            <dd className="mt-1">
+              <Text size="small">
+                {quarantined
+                  ? formatDate(asset.purgeEligibleAt)
+                  : "Not scheduled"}
+              </Text>
+              {quarantined ? (
+                <Text className="text-ui-fg-subtle" size="xsmall">
+                  Review date only
+                </Text>
+              ) : null}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="mt-5 [&>button]:w-full">
+          <MediaActionButton
+            asset={asset}
+            busy={busy}
+            disabled={disabled}
+            onAction={onAction}
+          />
+        </div>
+      </li>
+    )
+  },
+)
+
+MediaMobileCard.displayName = "MediaMobileCard"
 
 const LoadingRows = memo(() => (
   <>
@@ -294,6 +412,32 @@ const LoadingRows = memo(() => (
 ))
 
 LoadingRows.displayName = "LoadingRows"
+
+const MobileLoadingCards = memo(() => (
+  <ul aria-label="Loading unlinked catalog media">
+    {Array.from({ length: 4 }, (_, index) => (
+      <li
+        className="border-t border-ui-border-base px-4 py-5 first:border-t-0"
+        key={index}
+      >
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-12 shrink-0" />
+          <div className="flex-1">
+            <Skeleton className="h-5 w-48 max-w-full" />
+            <Skeleton className="mt-2 h-4 w-full" />
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+        <Skeleton className="mt-5 h-8 w-full" />
+      </li>
+    ))}
+  </ul>
+))
+
+MobileLoadingCards.displayName = "MobileLoadingCards"
 
 const MediaCleanupPage = memo(() => {
   const [view, setView] = useState<LifecycleStatus>("active")
@@ -505,40 +649,58 @@ const MediaCleanupPage = memo(() => {
             </Text>
           </div>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <Table>
-              <caption className="sr-only">
-                Unlinked catalog media available for lifecycle review
-              </caption>
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell scope="col">Asset</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Storage</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Status</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">
-                    Purge review
-                  </Table.HeaderCell>
-                  <Table.HeaderCell scope="col">
-                    <span className="sr-only">Actions</span>
-                  </Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {loading ? <LoadingRows /> : null}
-                {!loading
-                  ? page.assets.map((asset) => (
-                      <MediaRow
-                        asset={asset}
-                        busy={busyAssetId === asset.id}
-                        disabled={busyAssetId !== null}
-                        key={asset.id}
-                        onAction={handleLifecycleAction}
-                      />
-                    ))
-                  : null}
-              </Table.Body>
-            </Table>
-          </div>
+          <>
+            <div className="mt-4 md:hidden">
+              {loading ? <MobileLoadingCards /> : null}
+              {!loading ? (
+                <ul aria-label="Unlinked catalog media available for lifecycle review">
+                  {page.assets.map((asset) => (
+                    <MediaMobileCard
+                      asset={asset}
+                      busy={busyAssetId === asset.id}
+                      disabled={busyAssetId !== null}
+                      key={asset.id}
+                      onAction={handleLifecycleAction}
+                    />
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <div className="mt-4 hidden overflow-x-auto md:block">
+              <Table>
+                <caption className="sr-only">
+                  Unlinked catalog media available for lifecycle review
+                </caption>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.HeaderCell scope="col">Asset</Table.HeaderCell>
+                    <Table.HeaderCell scope="col">Storage</Table.HeaderCell>
+                    <Table.HeaderCell scope="col">Status</Table.HeaderCell>
+                    <Table.HeaderCell scope="col">
+                      Purge review
+                    </Table.HeaderCell>
+                    <Table.HeaderCell scope="col">
+                      <span className="sr-only">Actions</span>
+                    </Table.HeaderCell>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {loading ? <LoadingRows /> : null}
+                  {!loading
+                    ? page.assets.map((asset) => (
+                        <MediaRow
+                          asset={asset}
+                          busy={busyAssetId === asset.id}
+                          disabled={busyAssetId !== null}
+                          key={asset.id}
+                          onAction={handleLifecycleAction}
+                        />
+                      ))
+                    : null}
+                </Table.Body>
+              </Table>
+            </div>
+          </>
         )}
 
         <Table.Pagination
