@@ -25,6 +25,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import {
+  AdminPageHeader,
+  AdminSingleColumnLayout,
+} from "../../components/admin-page";
+import { AdminRetryState } from "../../components/admin-retry-state";
+import {
   filingBucketFor,
   TAX_FILING_PROFILES,
   TAX_FILING_STATES,
@@ -568,30 +573,23 @@ const TaxRecordsPage = memo(() => {
 
   if (!report || !reportMatchesSelection) {
     return (
-      <Container>
-        <Heading>Tax records are unavailable</Heading>
-        <Text className="mt-2 text-ui-fg-subtle">
-          {error ?? "The report could not be loaded."}
-        </Text>
-        <Button className="mt-4" onClick={handleRetry} type="button">
-          Try again
-        </Button>
-      </Container>
+      <AdminRetryState
+        message={error ?? "The report could not be loaded."}
+        onRetry={handleRetry}
+        retrying={loading}
+        title="Tax records are unavailable"
+      />
     );
   }
 
   if (!reportView?.activeSummary || !reportView.activeCurrency) {
     return (
-      <Container>
-        <Heading>Tax summary is unavailable</Heading>
-        <Text className="mt-2 text-ui-fg-subtle">
-          The report returned no reporting-currency summary. Try again before
-          using any workpapers.
-        </Text>
-        <Button className="mt-4" onClick={handleRetry} type="button">
-          Try again
-        </Button>
-      </Container>
+      <AdminRetryState
+        message="The report returned no reporting-currency summary. Try again before using any workpapers."
+        onRetry={handleRetry}
+        retrying={loading}
+        title="Tax summary is unavailable"
+      />
     );
   }
   const {
@@ -613,48 +611,44 @@ const TaxRecordsPage = memo(() => {
     report.source.unassignedStateRecords > 0;
 
   return (
-    <div className="flex flex-col gap-4" aria-busy={loading}>
+    <AdminSingleColumnLayout aria-busy={loading}>
       <Container>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <Heading>Tax records</Heading>
-            <Text className="mt-1 text-ui-fg-subtle">
-              Build separate Connecticut, New York, and Pennsylvania
-              workpapers from Medusa sales, refunds, tax, and delivery
-              destinations.
-            </Text>
-          </div>
-          <div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={exportsBlocked}
-                onClick={downloadTransactions}
-                type="button"
-                variant="secondary"
+        <AdminPageHeader
+          actions={
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={exportsBlocked}
+                  onClick={downloadTransactions}
+                  type="button"
+                  variant="secondary"
+                >
+                  <ArrowDownTray aria-hidden="true" />
+                  Transaction CSV
+                </Button>
+                <Button
+                  disabled={exportsBlocked}
+                  onClick={downloadDestinations}
+                  type="button"
+                  variant="primary"
+                >
+                  <ArrowDownTray aria-hidden="true" />
+                  Destination CSV
+                </Button>
+              </div>
+              <Text
+                size="xsmall"
+                className="mt-2 max-w-sm text-ui-fg-subtle"
               >
-                <ArrowDownTray aria-hidden="true" />
-                Transaction CSV
-              </Button>
-              <Button
-                disabled={exportsBlocked}
-                onClick={downloadDestinations}
-                type="button"
-                variant="primary"
-              >
-                <ArrowDownTray aria-hidden="true" />
-                Destination CSV
-              </Button>
+                Exports include the full {filingProfile.name} filing scope and
+                selected period across all currencies; table filters do not
+                change them.
+              </Text>
             </div>
-            <Text
-              size="xsmall"
-              className="mt-2 max-w-sm text-ui-fg-subtle"
-            >
-              Exports include the full {filingProfile.name} filing scope and
-              selected period across all currencies; table filters do not
-              change them.
-            </Text>
-          </div>
-        </div>
+          }
+          description="Build separate Connecticut, New York, and Pennsylvania workpapers from Medusa sales, refunds, tax, and delivery destinations."
+          title="Tax records"
+        />
 
         <div className="mt-6 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_minmax(0,1fr)]">
@@ -1360,7 +1354,7 @@ const TaxRecordsPage = memo(() => {
           are included in exports.
         </Text>
       </Container>
-    </div>
+    </AdminSingleColumnLayout>
   );
 });
 

@@ -25,6 +25,11 @@ import {
   Text,
   toast,
 } from "@medusajs/ui";
+import {
+  AdminPageHeader,
+  AdminSingleColumnLayout,
+} from "../../components/admin-page";
+import { AdminRetryState } from "../../components/admin-retry-state";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
 import { ProviderSwitchPrompt } from "./provider-switch-prompt";
 import {
@@ -393,13 +398,12 @@ const TaxControlPage = memo(() => {
       "The tax control state could not be loaded.",
     );
     return (
-      <Container>
-        <Heading>Tax control is unavailable</Heading>
-        <Text className="mt-2 text-ui-fg-subtle">{error}</Text>
-        <Button className="mt-4" onClick={retryLoad} type="button">
-          Try again
-        </Button>
-      </Container>
+      <AdminRetryState
+        message={error}
+        onRetry={retryLoad}
+        retrying={taxControlQuery.isFetching}
+        title="Tax control is unavailable"
+      />
     );
   }
 
@@ -426,20 +430,17 @@ const TaxControlPage = memo(() => {
         : "No usage response recorded yet";
 
   return (
-    <div className="flex flex-col gap-4">
+    <AdminSingleColumnLayout>
       <Container>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <Heading>Tax control</Heading>
-            <Text className="mt-1 text-ui-fg-subtle">
-              See the current setup, compare providers, and make a deliberate
-              change when needed.
-            </Text>
-          </div>
-          <StatusBadge color={activeReadiness.ready ? "green" : "orange"}>
-            {activeReadiness.ready ? "Operational" : "Needs attention"}
-          </StatusBadge>
-        </div>
+        <AdminPageHeader
+          description="See the current setup, compare providers, and make a deliberate change when needed."
+          status={
+            <StatusBadge color={activeReadiness.ready ? "green" : "orange"}>
+              {activeReadiness.ready ? "Operational" : "Needs attention"}
+            </StatusBadge>
+          }
+          title="Tax control"
+        />
 
         <section
           aria-label={`Current provider: ${providerLabel(activeProvider)}`}
@@ -880,7 +881,7 @@ const TaxControlPage = memo(() => {
           </Text>
         )}
       </Container>
-    </div>
+    </AdminSingleColumnLayout>
   );
 });
 

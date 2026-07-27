@@ -17,10 +17,16 @@ dialogs route by route:
   consequence action, pending lock, disabled enforcement, live pending
   announcement, mobile-height boundary, and cancel behavior. Domain forms keep
   ownership of validation, idempotency, and mutation error handling.
+- `components/admin-page.tsx` owns the single-column route rhythm and one
+  responsive page-header hierarchy for title, description, status, and
+  actions.
+- `components/admin-retry-state.tsx` owns the announced error presentation and
+  a real retry button that locks while a replacement request is pending.
 
-Tax Control is the first consumer. Its provider-switch reason remains a
-Zod-backed TanStack Form field, while the shared components provide the
-presentation and interaction contract. New custom forms should extend these
+Tax Control is the first form/confirmation consumer. Tax Control and Tax
+Records share the page, layout, and retry-state components. Domain queries
+still own their skeleton shape and the conditions that distinguish an initial
+load from a recoverable failure. New custom forms should extend these
 components instead of copying their accessibility wiring.
 
 ## Refund operations
