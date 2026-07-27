@@ -34,3 +34,16 @@ operator gate. The command exits non-zero when any product is unclassified,
 needs review, or has conflicting authorities. Informational migration work,
 such as adding native Product Types after a catalog classification is already
 unambiguous, remains visible without creating a false blocker.
+
+`GET /admin/catalog/products/:product_id/authoring-view` is the consolidated,
+read-only editor contract. One request returns the native Product and Variant
+facts, all prices, controlled catalog assignments, bundle composition, managed
+media, exact inventory availability, derived customer-facing state with its
+reason, classification, and relationship diagnostics. Raw technical data stays
+available for a Diagnostics disclosure without becoming a second writable
+authority.
+
+Run `pnpm --filter backend run catalog:authoring:view-check` to load every
+product through that contract in bounded batches of eight. The gate fails if
+classification drifts, inventory cannot be read, a native Variant lacks its
+catalog profile, or selected catalog/media relationships are missing.

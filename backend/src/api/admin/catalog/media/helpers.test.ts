@@ -3,8 +3,8 @@ import type {
   CatalogProductMediaItemRecord,
 } from "../../../../modules/catalog/serializers"
 
-import type { CatalogService } from "../utils"
-import { loadProductMediaResponse } from "./helpers"
+import type CatalogModuleService from "../../../../modules/catalog/service"
+import { loadProductMediaResponse } from "../../../../lib/catalog/product-media-read"
 
 jest.mock("../../../../modules/catalog/serializers", () => ({
   catalogMediaDerivativeStatusValues: [
@@ -23,6 +23,8 @@ jest.mock("../../../../modules/catalog/serializers", () => ({
     id: item.id,
   }),
 }))
+
+type CatalogService = InstanceType<typeof CatalogModuleService>
 
 const mediaItem = (
   id: string,
