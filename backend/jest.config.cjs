@@ -7,6 +7,17 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
-    '^.+\\.[cm]?[tj]sx?$': ['@swc/jest'],
+    '^.+\\.[cm]?[tj]sx?$': [
+      '@swc/jest',
+      {
+        jsc: {
+          transform: {
+            react: {
+              runtime: 'automatic',
+            },
+          },
+        },
+      },
+    ],
   },
 }

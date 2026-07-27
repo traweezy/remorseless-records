@@ -4,7 +4,6 @@ import {
   memo,
   useCallback,
   type ChangeEvent,
-  type FormEvent,
 } from "react";
 import {
   useForm,
@@ -12,13 +11,15 @@ import {
   type AnyFieldApi,
 } from "@tanstack/react-form";
 import {
-  Button,
-  Label,
-  Prompt,
   Text,
   Textarea,
 } from "@medusajs/ui";
 
+import {
+  AdminFormField,
+  type AdminFormControlProps,
+} from "../../components/admin-form-field";
+import { ConfirmAction } from "../../components/confirm-action";
 import {
   providerLabel,
   taxProviderSwitchFormSchema,
@@ -62,20 +63,12 @@ const SwitchReasonField = memo<SwitchReasonFieldProps>(({ field }) => {
     },
     [field],
   );
-
-  return (
-    <div>
-      <Label htmlFor="tax-switch-reason">Reason for this change</Label>
+  const renderControl = useCallback(
+    (controlProps: AdminFormControlProps) => (
       <Textarea
-        aria-describedby={
-          showError
-            ? "tax-switch-reason-help tax-switch-reason-error"
-            : "tax-switch-reason-help"
-        }
-        aria-invalid={showError}
+        {...controlProps}
         autoFocus
         className="mt-2"
-        id="tax-switch-reason"
         maxLength={500}
         name={field.name}
         onBlur={handleBlur}
@@ -84,26 +77,28 @@ const SwitchReasonField = memo<SwitchReasonFieldProps>(({ field }) => {
         rows={3}
         value={value}
       />
-      <Text
-        aria-live="polite"
-        className="mt-1 text-ui-fg-subtle"
-        id="tax-switch-reason-help"
-        size="xsmall"
-      >
-        Required for the audit history · minimum 10 characters · {value.length}
-        /500
-      </Text>
-      {showError ? (
-        <Text
-          className="mt-1 text-ui-fg-error"
-          id="tax-switch-reason-error"
-          role="alert"
-          size="xsmall"
-        >
-          Enter a reason between 10 and 500 characters.
-        </Text>
-      ) : null}
-    </div>
+    ),
+    [field.name, handleBlur, handleChange, value],
+  );
+
+  return (
+    <AdminFormField
+      error={
+        showError
+          ? "Enter a reason between 10 and 500 characters."
+          : undefined
+      }
+      hint={
+        <>
+          Required for the audit history · minimum 10 characters ·{" "}
+          <span aria-live="polite">{value.length}/500</span>
+        </>
+      }
+      id="tax-switch-reason"
+      label="Reason for this change"
+    >
+      {renderControl}
+    </AdminFormField>
   );
 });
 
@@ -141,88 +136,46 @@ export const ProviderSwitchPrompt = memo<ProviderSwitchPromptProps>(
     }));
     const busy = pending || formState.isSubmitting;
 
-    const handleOpenChange = useCallback(
-      (open: boolean) => {
-        if (!open && !busy) {
-          onCancel();
-        }
-      },
-      [busy, onCancel],
-    );
-
-    const handleSubmit = useCallback(
-      (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void form.handleSubmit();
-      },
-      [form],
-    );
+    const handleConfirm = useCallback(() => form.handleSubmit(), [form]);
 
     return (
-      <Prompt
-        onOpenChange={handleOpenChange}
+      <ConfirmAction
+        confirmDisabled={!formState.canSubmit || formState.isPristine}
+        confirmLabel={`Switch to ${providerLabel(targetProvider)}`}
+        description={
+          <>
+            {providerLabel(activeProvider)} remains active until you confirm.
+            New or refreshed quotes will then use{" "}
+            {providerLabel(targetProvider)}.
+          </>
+        }
+        onCancel={onCancel}
+        onConfirm={handleConfirm}
         open
-        variant="confirmation"
+        pending={busy}
+        pendingAnnouncement="Switching tax provider"
+        pendingLabel="Switching…"
+        title={`Switch to ${providerLabel(targetProvider)}?`}
       >
-        <Prompt.Content className="max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto">
-          <form noValidate onSubmit={handleSubmit}>
-            <Prompt.Header>
-              <Prompt.Title>
-                Switch to {providerLabel(targetProvider)}?
-              </Prompt.Title>
-              <Prompt.Description>
-                {providerLabel(activeProvider)} remains active until you
-                confirm. New or refreshed quotes will then use{" "}
-                {providerLabel(targetProvider)}.
-              </Prompt.Description>
-            </Prompt.Header>
+        <div className="rounded-md bg-ui-bg-subtle p-3">
+          <Text size="small" weight="plus">
+            What stays unchanged
+          </Text>
+          <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+            {impact.preparedCheckouts} provider-locked checkout
+            {impact.preparedCheckouts === 1 ? "" : "s"} and all completed orders
+            keep their reviewed tax quote. {impact.paymentsFinalizing} payment
+            {impact.paymentsFinalizing === 1 ? "" : "s"}{" "}
+            {impact.paymentsFinalizing === 1 ? "is" : "are"} currently
+            completing.
+          </Text>
+        </div>
 
-            <div className="mx-6 my-4 rounded-md bg-ui-bg-subtle p-3">
-              <Text size="small" weight="plus">
-                What stays unchanged
-              </Text>
-              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-                {impact.preparedCheckouts} provider-locked checkout
-                {impact.preparedCheckouts === 1 ? "" : "s"} and all completed
-                orders keep their reviewed tax quote.{" "}
-                {impact.paymentsFinalizing} payment
-                {impact.paymentsFinalizing === 1 ? "" : "s"}{" "}
-                {impact.paymentsFinalizing === 1 ? "is" : "are"} currently
-                completing.
-              </Text>
-            </div>
-
-            <div className="px-6">
-              <form.Field
-                children={renderSwitchReasonField}
-                name="reason"
-              />
-            </div>
-
-            <Prompt.Footer>
-              <Prompt.Cancel disabled={busy} type="button">
-                Cancel
-              </Prompt.Cancel>
-              <Button
-                disabled={
-                  busy || !formState.canSubmit || formState.isPristine
-                }
-                isLoading={busy}
-                size="small"
-                type="submit"
-              >
-                {busy
-                  ? "Switching…"
-                  : `Switch to ${providerLabel(targetProvider)}`}
-              </Button>
-            </Prompt.Footer>
-            <div aria-live="polite" className="sr-only">
-              {busy ? "Switching tax provider" : ""}
-            </div>
-          </form>
-        </Prompt.Content>
-      </Prompt>
+        <form.Field
+          children={renderSwitchReasonField}
+          name="reason"
+        />
+      </ConfirmAction>
     );
   },
 );

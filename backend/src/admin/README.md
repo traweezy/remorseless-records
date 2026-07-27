@@ -4,6 +4,25 @@ The Medusa Admin includes project-specific workspaces for catalog authoring,
 merchandising, discography, news, tax-provider control, tax records, and refund
 operations.
 
+## Shared interaction components
+
+Custom Admin forms build on Medusa UI rather than recreating labels, errors, or
+dialogs route by route:
+
+- `components/admin-form-field.tsx` owns the label/control association,
+  optional marker, hint and error IDs, `aria-describedby`, `aria-invalid`, and
+  visible alert semantics. Validation errors are supplied only after the form
+  decides they should be visible.
+- `components/confirm-action.tsx` owns the Medusa Prompt layout, explicit
+  consequence action, pending lock, disabled enforcement, live pending
+  announcement, mobile-height boundary, and cancel behavior. Domain forms keep
+  ownership of validation, idempotency, and mutation error handling.
+
+Tax Control is the first consumer. Its provider-switch reason remains a
+Zod-backed TanStack Form field, while the shared components provide the
+presentation and interaction contract. New custom forms should extend these
+components instead of copying their accessibility wiring.
+
 ## Refund operations
 
 `routes/refund-operations/page.tsx` is a read-only operator guide and
