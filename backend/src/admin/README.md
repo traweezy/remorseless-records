@@ -89,6 +89,21 @@ reason, classification, and relationship diagnostics. Raw technical data stays
 available for a Diagnostics disclosure without becoming a second writable
 authority.
 
+The native Product detail page consumes that contract through a read-only
+Catalog Summary widget. The widget reports product kind, artist/release
+identity, catalog completion, customer availability, managed-media alternative
+text, and bundle-mapping health without creating another write authority. Its
+single action opens `/app/catalog/products/:product_id`, a hidden dynamic Admin
+route for the exact product. Admin links use React Router paths without the
+`/app` prefix so navigation stays inside the dashboard.
+
+During the editor cutover, the dynamic route reuses the existing authoring
+workspace but suppresses the general product picker and draft-creation action.
+It always fetches the requested Product directly when that Product is outside
+the legacy 200-row workspace list. The old sidebar route remains a temporary
+compatibility surface until the dedicated editor has complete form parity and
+the authoring audit is clean.
+
 Run `pnpm --filter backend run catalog:authoring:view-check` to load every
 product through that contract in bounded batches of eight. The gate fails if
 classification drifts, inventory cannot be read, a native Variant lacks its

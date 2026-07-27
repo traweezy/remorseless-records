@@ -223,6 +223,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      react-router-dom:
+        specifier: 6.30.4
+        version: 6.30.4(patch_hash=b68c27113138b12cb3983d1999ab34dcddcd39b2631b472795f2644c2b8c91af)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       redis:
         specifier: ^6.1.0
         version: 6.1.0(@opentelemetry/api@1.9.1)

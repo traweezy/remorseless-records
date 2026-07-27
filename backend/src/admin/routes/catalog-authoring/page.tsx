@@ -14,6 +14,7 @@ import {
   Text,
   Textarea,
 } from "@medusajs/ui"
+import { Link } from "react-router-dom"
 
 import RichTextEditor from "../../components/rich-text-editor"
 
@@ -648,11 +649,19 @@ const kindToProductType = (kind: ProductKind): string => {
 const isBundleKind = (kind: ProductKind): boolean =>
   kind === "fixed_bundle" || kind === "mystery_bundle"
 
-const ProductAuthoringPage = memo(() => {
+type ProductAuthoringWorkspaceProps = {
+  productId?: string
+}
+
+export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
+  productId,
+}) => {
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [artists, setArtists] = useState<CatalogArtist[]>([])
   const [references, setReferences] = useState<CatalogReferenceValue[]>([])
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(
+    productId ?? null
+  )
   const [productForm, setProductForm] = useState<ProductFormState>(emptyProductForm)
   const [profileForm, setProfileForm] = useState<ProfileFormState>(emptyProfileForm)
   const [profileVersion, setProfileVersion] = useState(0)
@@ -710,8 +719,16 @@ const ProductAuthoringPage = memo(() => {
     const response = await fetchJson<{ products: AdminProduct[] }>(
       "/admin/products?limit=200&fields=*variants,*variants.prices"
     )
-    setProducts(response.products ?? [])
-  }, [])
+    const listedProducts = response.products ?? []
+    if (!productId || listedProducts.some((product) => product.id === productId)) {
+      setProducts(listedProducts)
+      return
+    }
+    const requested = await fetchJson<{ product: AdminProduct }>(
+      `/admin/products/${encodeURIComponent(productId)}?fields=*variants,*variants.prices`
+    )
+    setProducts([requested.product, ...listedProducts])
+  }, [productId])
 
   const refreshReferences = useCallback(async () => {
     const [artistResponse, referenceResponse] = await Promise.all([
@@ -790,11 +807,15 @@ const ProductAuthoringPage = memo(() => {
   }, [refreshAll])
 
   useEffect(() => {
+    if (productId) {
+      setSelectedProductId(productId)
+      return
+    }
     const firstProduct = products.at(0)
     if (!selectedProductId && firstProduct) {
       setSelectedProductId(firstProduct.id)
     }
-  }, [products, selectedProductId])
+  }, [productId, products, selectedProductId])
 
   useEffect(() => {
     void loadProductAuthoring(selectedProduct)
@@ -1352,26 +1373,32 @@ const ProductAuthoringPage = memo(() => {
   }, [createForm, products, refreshProducts, refreshReferences])
 
   const defaultEditorHref = selectedProduct
-    ? `/app/products/${selectedProduct.id}`
-    : "/app/products"
+    ? `/products/${selectedProduct.id}`
+    : "/products"
 
   return (
     <div className="flex flex-col gap-y-6">
       <Container className="flex flex-col gap-4 p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <Heading level="h1">Product authoring</Heading>
+            <Heading level="h1">
+              {productId ? "Catalog details" : "Product authoring"}
+            </Heading>
             <Text size="small" className="text-ui-fg-subtle">
-              Structured catalog editing with Medusa product fallback.
+              {productId
+                ? "Edit the catalog presentation for this Medusa product."
+                : "Structured catalog editing with Medusa product fallback."}
             </Text>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => void refreshAll()}>
               Refresh
             </Button>
-            <Button type="button" onClick={() => setCreateOpen(true)}>
-              Create draft
-            </Button>
+            {!productId ? (
+              <Button type="button" onClick={() => setCreateOpen(true)}>
+                Create draft
+              </Button>
+            ) : null}
           </div>
         </div>
         {error ? (
@@ -1390,55 +1417,63 @@ const ProductAuthoringPage = memo(() => {
         ) : null}
       </Container>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(320px,420px),1fr]">
-        <Container className="p-0">
-          <div className="border-b border-ui-border-base p-4">
-            <div className="flex items-center justify-between gap-3">
-              <Heading level="h2">Products</Heading>
-              <Text size="small" className="text-ui-fg-subtle">
-                {filteredProducts.length} shown
-              </Text>
+      <div
+        className={
+          productId
+            ? "grid gap-6"
+            : "grid gap-6 xl:grid-cols-[minmax(320px,420px),1fr]"
+        }
+      >
+        {!productId ? (
+          <Container className="p-0">
+            <div className="border-b border-ui-border-base p-4">
+              <div className="flex items-center justify-between gap-3">
+                <Heading level="h2">Products</Heading>
+                <Text size="small" className="text-ui-fg-subtle">
+                  {filteredProducts.length} shown
+                </Text>
+              </div>
+              <Input
+                className="mt-3"
+                value={searchQuery}
+                placeholder="Search title, handle, or ID"
+                onChange={(event) => setSearchQuery(readValue(event))}
+              />
             </div>
-            <Input
-              className="mt-3"
-              value={searchQuery}
-              placeholder="Search title, handle, or ID"
-              onChange={(event) => setSearchQuery(readValue(event))}
-            />
-          </div>
-          <div className="max-h-[70vh] overflow-y-auto">
-            <Table>
-              <Table.Body>
-                {filteredProducts.map((product) => {
-                  const selected = product.id === selectedProductId
-                  return (
-                    <Table.Row key={product.id}>
-                      <Table.Cell>
-                        <button
-                          type="button"
-                          className={`flex w-full flex-col gap-1 rounded-md px-2 py-2 text-left ${
-                            selected ? "bg-ui-bg-subtle" : "hover:bg-ui-bg-subtle"
-                          }`}
-                          onClick={() => setSelectedProductId(product.id)}
-                        >
-                          <span className="text-sm font-medium text-ui-fg-base">
-                            {product.title ?? "Untitled product"}
-                          </span>
-                          <span className="text-xs text-ui-fg-subtle">
-                            {product.handle ?? product.id}
-                          </span>
-                          <span className="text-xs uppercase text-ui-fg-muted">
-                            {product.status ?? "draft"}
-                          </span>
-                        </button>
-                      </Table.Cell>
-                    </Table.Row>
-                  )
-                })}
-              </Table.Body>
-            </Table>
-          </div>
-        </Container>
+            <div className="max-h-[70vh] overflow-y-auto">
+              <Table>
+                <Table.Body>
+                  {filteredProducts.map((product) => {
+                    const selected = product.id === selectedProductId
+                    return (
+                      <Table.Row key={product.id}>
+                        <Table.Cell>
+                          <button
+                            type="button"
+                            className={`flex w-full flex-col gap-1 rounded-md px-2 py-2 text-left ${
+                              selected ? "bg-ui-bg-subtle" : "hover:bg-ui-bg-subtle"
+                            }`}
+                            onClick={() => setSelectedProductId(product.id)}
+                          >
+                            <span className="text-sm font-medium text-ui-fg-base">
+                              {product.title ?? "Untitled product"}
+                            </span>
+                            <span className="text-xs text-ui-fg-subtle">
+                              {product.handle ?? product.id}
+                            </span>
+                            <span className="text-xs uppercase text-ui-fg-muted">
+                              {product.status ?? "draft"}
+                            </span>
+                          </button>
+                        </Table.Cell>
+                      </Table.Row>
+                    )
+                  })}
+                </Table.Body>
+              </Table>
+            </div>
+          </Container>
+        ) : null}
 
         <Container className="p-0">
           {selectedProduct ? (
@@ -1451,12 +1486,12 @@ const ProductAuthoringPage = memo(() => {
                   </Text>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <a
-                    href={defaultEditorHref}
+                  <Link
+                    to={defaultEditorHref}
                     className="inline-flex min-h-8 items-center rounded-md border border-ui-border-base px-3 text-sm text-ui-fg-base hover:bg-ui-bg-subtle"
                   >
                     Default Medusa editor
-                  </a>
+                  </Link>
                   <Button type="button" disabled={saving || loading} onClick={saveProduct}>
                     {saving ? "Saving..." : "Save authoring"}
                   </Button>
@@ -2410,6 +2445,10 @@ const ProductAuthoringPage = memo(() => {
     </div>
   )
 })
+
+ProductAuthoringWorkspace.displayName = "ProductAuthoringWorkspace"
+
+const ProductAuthoringPage = memo(() => <ProductAuthoringWorkspace />)
 
 ProductAuthoringPage.displayName = "ProductAuthoringPage"
 

@@ -85,6 +85,7 @@
     "posthog-node": "^5.46.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "6.30.4",
     "redis": "^6.1.0",
     "resend": "6.18.0",
     "sanitize-html": "2.17.5",

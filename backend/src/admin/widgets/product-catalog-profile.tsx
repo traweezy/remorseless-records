@@ -2,10 +2,10 @@
 
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 
-import { ProductCatalogProfileWidget } from "../components/catalog-admin-widgets"
+import { ProductCatalogSummaryWidget } from "../features/catalog-authoring/product-catalog-summary-widget"
 
 export const config = defineWidgetConfig({
   zone: "product.details.after",
 })
 
-export default ProductCatalogProfileWidget
+export default ProductCatalogSummaryWidget
