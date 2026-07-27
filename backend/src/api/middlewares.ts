@@ -234,6 +234,14 @@ export default defineMiddlewares({
       },
     },
     {
+      matcher: "/webhooks/stripe/lifecycle",
+      methods: ["POST"],
+      bodyParser: {
+        preserveRawBody: true,
+        sizeLimit: "256kb",
+      },
+    },
+    {
       matcher: "/store/contact",
       methods: ["POST"],
       middlewares: [contactRateLimit, enforceStoreOrigin],

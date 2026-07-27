@@ -14,6 +14,7 @@ import {
   SHOULD_DISABLE_ADMIN,
   STORE_CORS,
   STRIPE_API_KEY,
+  STRIPE_LIFECYCLE_WEBHOOK_SECRET,
   STRIPE_PAYMENT_METHOD_CONFIGURATION,
   STRIPE_TAX_QUOTE_TTL_MS,
   STRIPE_TAX_SHIPPING_TAX_CODE,
@@ -88,6 +89,11 @@ if (hasAnyStripeConfiguration && !hasCompleteStripeConfiguration) {
   throw new Error(
     "STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, and " +
       "STRIPE_PAYMENT_METHOD_CONFIGURATION must be configured together."
+  );
+}
+if (STRIPE_LIFECYCLE_WEBHOOK_SECRET && !STRIPE_API_KEY) {
+  throw new Error(
+    "STRIPE_API_KEY is required when STRIPE_LIFECYCLE_WEBHOOK_SECRET is configured."
   );
 }
 
@@ -304,6 +310,10 @@ const medusaConfig = {
     {
       key: "tax_control",
       resolve: "./src/modules/tax-control",
+    },
+    {
+      key: "payment_lifecycle",
+      resolve: "./src/modules/payment-lifecycle",
     }
   ],
   plugins: [
