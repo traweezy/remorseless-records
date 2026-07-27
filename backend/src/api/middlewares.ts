@@ -26,6 +26,15 @@ type RateLimitBucket = {
 const buckets = new Map<string, RateLimitBucket>();
 const MAX_RATE_LIMIT_BUCKETS = 10_000;
 
+const removeFrameworkHeader = (
+  _req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+): void => {
+  res.removeHeader("X-Powered-By");
+  next();
+};
+
 const allowedStoreOriginHosts = new Set(
   STORE_CORS.split(",")
     .map((origin) => origin.trim())
@@ -202,6 +211,10 @@ const rejectPresignedUploads = (
 
 export default defineMiddlewares({
   routes: [
+    {
+      matcher: /.*/,
+      middlewares: [removeFrameworkHeader],
+    },
     {
       matcher: /^\/store\/(carts|checkout)(\/.*)?$/,
       methods: ["POST", "PUT", "PATCH", "DELETE"],

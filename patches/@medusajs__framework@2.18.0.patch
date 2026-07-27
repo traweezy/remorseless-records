@@ -1,0 +1,12 @@
+diff --git a/dist/http/express-loader.js b/dist/http/express-loader.js
+index 28ce900e452093579520516527ab3ac3eef7ce45..5fe6af7523e07378901127d3e27d60c9e82043dd 100644
+--- a/dist/http/express-loader.js
++++ b/dist/http/express-loader.js
+@@ -81,6 +81,7 @@ async function expressLoader({ app, container, }) {
+         });
+     }
+     app.set("trust proxy", 1);
++    app.disable("x-powered-by");
+     /**
+      * Register the HTTP compression middleware when it's enabled through
+      * `projectConfig.http.compression`. It has to be registered before the

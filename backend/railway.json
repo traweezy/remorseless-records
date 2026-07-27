@@ -6,10 +6,10 @@
   },
   "deploy": {
     "preDeployCommand": [
-      "pnpm --filter backend run search:prepare"
+      "pnpm --filter backend run release:prepare"
     ],
     "startCommand": "pnpm --filter backend --silent run start",
-    "healthcheckPath": "/api/health",
+    "healthcheckPath": "/ready",
     "healthcheckTimeout": 720,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10

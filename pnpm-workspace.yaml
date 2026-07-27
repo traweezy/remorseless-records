@@ -124,6 +124,7 @@ auditConfig:
     - GHSA-wrjc-x8rr-h8h6
 
 patchedDependencies:
+  "@medusajs/framework@2.18.0": patches/@medusajs__framework@2.18.0.patch
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
   brace-expansion@2.1.2: patches/brace-expansion@2.1.2.patch
