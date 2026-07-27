@@ -192,8 +192,9 @@ const managedUpload = multer({
   limits: {
     fileSize: MAX_UPLOAD_BYTES,
     files: MAX_UPLOAD_FILES,
-    fields: 0,
-    parts: MAX_UPLOAD_FILES,
+    fieldSize: 128,
+    fields: 1,
+    parts: MAX_UPLOAD_FILES + 1,
   },
   storage: multer.memoryStorage(),
 });
