@@ -1904,9 +1904,9 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                   </div>
                 </section>
 
-                <section className="space-y-4">
+                <section className="min-w-0 space-y-4">
                   <Heading level="h3">Variants</Heading>
-                  <div className="space-y-4">
+                  <div className="min-w-0 space-y-4">
                     {(selectedProduct.variants ?? []).map((variant) => {
                       const line =
                         variantProfiles.find((item) => item.variantId === variant.id) ??
@@ -1915,17 +1915,17 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                         variant.calculated_price?.calculated_amount ??
                         variant.prices?.[0]?.amount
                       return (
-                        <div key={variant.id} className="space-y-4 rounded-md border border-ui-border-base p-4">
-                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <Text size="small" className="font-medium">
+                        <div key={variant.id} className="min-w-0 space-y-4 rounded-md border border-ui-border-base p-4">
+                          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <Text size="small" className="break-all font-medium">
                                 {formatVariantLabel(variant)}
                               </Text>
-                              <Text size="xsmall" className="text-ui-fg-subtle">
+                              <Text size="xsmall" className="break-words text-ui-fg-subtle">
                                 {formatCurrency(price)} · {variant.manage_inventory ? "Managed stock" : "Manual stock"}
                               </Text>
                             </div>
-                            <Text size="xsmall" className="text-ui-fg-muted">
+                            <Text size="xsmall" className="break-all text-ui-fg-muted">
                               {variant.id}
                             </Text>
                           </div>
