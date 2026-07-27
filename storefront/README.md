@@ -81,6 +81,13 @@ queries Meilisearch and returns the normalized catalog response. Text queries
 match configured title and artist fields, while format, genre, type,
 availability, price, and other facets are applied as filters.
 
+The storefront uses a version-controlled subset of the backend's filterable
+index contract instead of reading index settings on every request. The backend
+release rebuild validates that contract before its atomic index swap. Initial
+catalog results are cached with Next Cache Components for 15 minutes, expire
+after one day without traffic, and carry the `products` cache tag; interactive
+search requests remain server-side and current.
+
 ## Quality gates
 
 Before committing storefront changes, run:

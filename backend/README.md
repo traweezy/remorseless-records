@@ -15,14 +15,54 @@ cp backend/.env.template backend/.env
 pnpm --filter backend dev
 ```
 
-For a new local database only, initialize Medusa system data with
-`pnpm --filter backend ib`. Do not seed, migrate, or reset a shared Railway
-database as part of ordinary startup.
+For a new local database only, migrate, synchronize module links, and then
+seed explicitly:
+
+```bash
+pnpm --filter backend exec medusa db:migrate
+pnpm --filter backend exec medusa db:sync-links
+pnpm --filter backend run seed
+```
+
+Do not seed, migrate, or reset a shared Railway database as part of ordinary
+process startup.
 
 Required deployed services are PostgreSQL and Redis. MinIO and Meilisearch are
 used for media and search. Local fallbacks exist for some modules, but deployed
 checkout mutations and jobs require the shared Redis-backed workflow and
 locking providers.
+
+## Release and health model
+
+Railway runs `pnpm --filter backend run release:prepare` before switching
+traffic. The command fails closed if a migration, module-link sync, read-only
+object-storage check, or atomic Meilisearch rebuild fails. Ordinary process
+startup only starts Medusa; it never writes secrets to disk, migrates, seeds,
+changes bucket policy, or rebuilds search.
+
+- `GET /live` checks only that the process can answer HTTP.
+- `GET /ready` checks PostgreSQL, Redis, Meilisearch, and object storage with
+  bounded timeouts. It returns `503` when any configured dependency fails.
+- `GET /api/health` is a temporary liveness alias for older monitors.
+
+Production uses Medusa's official `@medusajs/file-s3` provider in
+S3-compatible path-style mode. The provider keeps the historical `minio` ID so
+existing file records remain valid. The bucket and public-read policy are
+provisioned outside application startup.
+
+A deliberate staging write/read/delete canary is available, but never runs
+during deploy:
+
+```bash
+OBJECT_STORAGE_WRITE_CHECK_CONFIRM=upload-and-delete-canary \
+  pnpm --filter backend run storage:verify-write
+```
+
+Custom catalog and news image uploads use `POST /admin/managed-uploads`.
+Requests are limited to ten files, 12 MiB per file, and 20 MiB total; filenames,
+extensions, media types, and image signatures are validated before the upload
+is delegated to Medusa's File Module. The unused presigned-upload route is
+disabled because it bypasses server-side content inspection.
 
 ## Checkout payment authority
 

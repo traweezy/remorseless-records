@@ -766,7 +766,8 @@ Key variables (non-empty values required for full functionality):
 | `MEILISEARCH_HOST`                           | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
 | `MEILISEARCH_ADMIN_KEY`                      | Corresponding admin/master key                                               |
 | `JWT_SECRET`, `COOKIE_SECRET`                | Medusa auth secrets (high entropy)                                           |
-| `MINIO_*`                                    | Optional. Railway template populates these for object storage                |
+| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Required together when deployed; official S3-compatible media provider |
+| `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_FILE_URL` | Optional storage overrides; bucket defaults to `medusa-media`            |
 | `ANONYMOUS_CART_RETENTION_ENABLED`           | Enables daily anonymous-cart soft deletion (default `false`)                 |
 | `ANONYMOUS_CART_RETENTION_DAYS`              | Inactivity retention; minimum/default `37` days                              |
 | `ANONYMOUS_CART_RETENTION_MAX_DELETIONS`     | Per-run safety cap; default `1000`                                           |
@@ -841,10 +842,12 @@ CHECKOUT_RECEIPT_SECRET=replace-with-a-different-32-character-secret
 
 1. **Install dependencies** (already satisfied by root `pnpm install`).
 2. **Ensure DB is running** (local Postgres or tunnel to Railway).
-3. **Migrate & seed (first run or schema change)**
+3. **Migrate and synchronize links (first run or schema change)**
    ```bash
    cd backend
-   pnpm ib                 # runs migrations + seeds required system data
+   pnpm exec medusa db:migrate
+   pnpm exec medusa db:sync-links
+   pnpm seed               # new local database only
    ```
 4. **Start Medusa**
 
@@ -852,7 +855,8 @@ CHECKOUT_RECEIPT_SECRET=replace-with-a-different-32-character-secret
    pnpm dev                # listens on http://localhost:9000
    ```
 
-   - Healthcheck: `GET http://localhost:9000/api/health`
+   - Liveness: `GET http://localhost:9000/live`
+   - Readiness: `GET http://localhost:9000/ready`
    - Official Stripe webhook: `POST http://localhost:9000/hooks/payment/stripe_stripe`
    - Internal checkout recovery: `POST http://localhost:9000/store/checkout/status`
 
@@ -958,6 +962,12 @@ and browser-close matrices.
 ## Search (Meilisearch)
 
 - Storefront uses Meilisearch with TanStack Pacer debounced client for instant filtering.
+- The server-side storefront uses a version-controlled filter contract rather
+  than fetching Meilisearch settings per request; release validation proves the
+  live index supports that contract before the atomic swap.
+- Initial catalog search is cached through Next Cache Components for 15 minutes
+  with product-tag invalidation, while interactive searches continue through
+  the validated same-origin server route.
 - Medusa events keep the live `products` index current. Bulk rebuilds never
   clear that live index.
 - Local Meilisearch:
@@ -999,6 +1009,46 @@ and browser-close matrices.
     -H 'Content-Type: application/json' \
   -d '[{ "id": "prod_123", "title": "Demo", "handle": "demo", "price": 25, "genres": ["doom"], "format": "vinyl" }]'
   ```
+
+## Release preparation, storage, and health
+
+Application startup is intentionally read-only. It does not migrate or seed
+the database, discover or persist secrets, change bucket policy, or rebuild
+search. Railway executes the fail-closed backend release command before
+traffic moves:
+
+```bash
+pnpm --filter backend run release:prepare
+```
+
+```mermaid
+flowchart LR
+  Build[Build immutable backend] --> Migrate[Run database migrations]
+  Migrate --> Links[Synchronize module links]
+  Links --> Storage[Head-check object storage]
+  Storage --> Search[Build and atomically swap search index]
+  Search --> Start[Start Medusa]
+  Start --> Ready[Expose traffic after /ready succeeds]
+```
+
+Production media uses Medusa's official S3 provider against MinIO. It retains
+the provider ID `minio` for existing database records, uses path-style
+requests, and relies on infrastructure-managed bucket policy. `MINIO_ENDPOINT`
+is the API origin without a path; `MINIO_FILE_URL` may override the public
+bucket/CDN base. The release storage check performs `HeadBucket` only.
+
+Backend `GET /live` reports process liveness. Backend `GET /ready` checks
+PostgreSQL, Redis, Meilisearch, and object storage using bounded timeouts and
+returns only dependency names, status, and duration. Storefront `GET /ready`
+checks its backend and shared Redis; both Railway services route health checks
+to `/ready`. Responses are non-cacheable and never include connection strings
+or raw dependency errors.
+
+Catalog and news admin extensions upload through
+`POST /admin/managed-uploads`. This route limits request count and size,
+accepts only JPEG, PNG, WebP, GIF, and UTF-8 CSV, verifies filename/extension
+coherence and file signatures, then delegates persistence to Medusa's
+File Module. The unused presigned-upload route is disabled.
 
 ## Email (Resend)
 
