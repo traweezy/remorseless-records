@@ -6,6 +6,7 @@ import type { HttpTypes } from "@medusajs/types"
 import type { NextRequest } from "next/server"
 import { z } from "zod"
 
+import { readCartCookie } from "@/lib/cart/cookie"
 import { getSharedRedisClient, withRedisTimeout } from "@/lib/redis/client"
 import { jsonApiProblem } from "@/lib/security/route-guards"
 
@@ -89,6 +90,11 @@ const memoryLocks = new Map<string, MemoryValue>()
 
 const sha256 = (value: string): string =>
   createHash("sha256").update(value).digest("hex")
+
+const mutationScope = (request: NextRequest): string => {
+  const cartCookie = readCartCookie(request)
+  return cartCookie.status === "valid" ? cartCookie.cartId : "fresh-cart"
+}
 
 const storeOperation = async <T>(operation: () => Promise<T>): Promise<T> => {
   try {
@@ -315,13 +321,15 @@ export const runIdempotentCartMutation = async (
     }
   }
 
+  const scope = mutationScope(options.request)
   const fingerprint = sha256(
     JSON.stringify({
       operation: options.operation,
       payload: options.payload,
+      scope,
     })
   )
-  const keyHash = sha256(`${options.operation}:${parsedKey.data}`)
+  const keyHash = sha256(`${scope}:${options.operation}:${parsedKey.data}`)
   const resultKey = `${KEY_PREFIX}:${keyHash}`
   const lockKey = `${resultKey}:lock`
   const owner = randomUUID()

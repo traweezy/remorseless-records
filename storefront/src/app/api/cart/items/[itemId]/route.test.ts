@@ -11,6 +11,7 @@ const cartRouteMocks = vi.hoisted(() => ({
   readActiveCartId: vi.fn(),
 }))
 const cartCookieMocks = vi.hoisted(() => ({
+  readCartCookie: vi.fn(),
   syncCartCookie: vi.fn(),
 }))
 
@@ -54,6 +55,10 @@ const context = (itemId: string) => ({
 describe("/api/cart/items/[itemId]", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    cartCookieMocks.readCartCookie.mockReturnValue({
+      status: "missing",
+      cartId: null,
+    })
     cartRouteMocks.readActiveCartId.mockResolvedValue("cart_active")
     cartApiMocks.removeLineItem.mockResolvedValue(cartFixture())
     cartApiMocks.updateLineItem.mockResolvedValue(cartFixture())

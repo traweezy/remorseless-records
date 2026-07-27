@@ -3,6 +3,7 @@ import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { runIdempotentCartMutation } from "@/lib/cart/idempotency"
+import { CART_COOKIE_NAME, signCartId } from "@/lib/cart/cookie"
 
 const cartFixture = (id = "cart_01IDEMPOTENT"): HttpTypes.StoreCart =>
   ({
@@ -11,11 +12,27 @@ const cartFixture = (id = "cart_01IDEMPOTENT"): HttpTypes.StoreCart =>
     items: [],
   }) as unknown as HttpTypes.StoreCart
 
-const createRequest = (idempotencyKey?: string): NextRequest =>
+const TEST_CART_COOKIE_SECRET = "test-cart-cookie-secret-at-least-32-chars"
+
+const createRequest = (
+  idempotencyKey?: string,
+  cartId?: string,
+  rawCookie?: string
+): NextRequest =>
   new NextRequest("https://storefront.test/api/cart/items", {
     method: "POST",
     headers: {
       ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+      ...(rawCookie
+        ? { cookie: `${CART_COOKIE_NAME}=${rawCookie}` }
+        : cartId
+        ? {
+            cookie: `${CART_COOKIE_NAME}=${signCartId(
+              cartId,
+              TEST_CART_COOKIE_SECRET
+            )}`,
+          }
+        : {}),
     },
   })
 
@@ -31,6 +48,7 @@ describe("cart mutation idempotency", () => {
   beforeEach(() => {
     vi.unstubAllEnvs()
     vi.stubEnv("REDIS_URL", "")
+    vi.stubEnv("CART_COOKIE_SECRET", TEST_CART_COOKIE_SECRET)
   })
 
   it("replays a completed mutation without executing it twice", async () => {
@@ -127,6 +145,62 @@ describe("cart mutation idempotency", () => {
       })
     }
     expect(execute).toHaveBeenCalledOnce()
+  })
+
+  it("scopes the same request key to the signed cart identity", async () => {
+    const key = crypto.randomUUID()
+    const firstCart = cartFixture("cart_01FIRST")
+    const secondCart = cartFixture("cart_01SECOND")
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce(firstCart)
+      .mockResolvedValueOnce(secondCart)
+    const options = {
+      operation: "cart.item.update",
+      payload: { itemId: "cali_01ITEM", quantity: 2 },
+      execute,
+      replay: vi.fn(),
+    }
+
+    const first = await runIdempotentCartMutation({
+      ...options,
+      request: createRequest(key, firstCart.id),
+    })
+    const second = await runIdempotentCartMutation({
+      ...options,
+      request: createRequest(key, secondCart.id),
+    })
+
+    expect(first).toMatchObject({ ok: true, replayed: false })
+    expect(second).toMatchObject({ ok: true, replayed: false })
+    expect(execute).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not let invalid cookie values create idempotency scopes", async () => {
+    const key = crypto.randomUUID()
+    const cart = cartFixture("cart_01INVALIDCOOKIE")
+    const execute = vi.fn().mockResolvedValue(cart)
+    const replay = vi.fn().mockResolvedValue(cart)
+    const options = {
+      operation: "cart.item.add",
+      payload: { variantId: "variant_01ABC", quantity: 1 },
+      execute,
+      replay,
+    }
+
+    const first = await runIdempotentCartMutation({
+      ...options,
+      request: createRequest(key, undefined, "attacker-controlled-value"),
+    })
+    const second = await runIdempotentCartMutation({
+      ...options,
+      request: createRequest(key, undefined, "different-invalid-value"),
+    })
+
+    expect(first).toMatchObject({ ok: true, replayed: false })
+    expect(second).toMatchObject({ ok: true, replayed: true })
+    expect(execute).toHaveBeenCalledOnce()
+    expect(replay).toHaveBeenCalledWith(cart.id)
   })
 
   it("requires a valid idempotency key before executing", async () => {

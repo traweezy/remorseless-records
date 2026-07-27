@@ -8,6 +8,7 @@ const cartApiMocks = vi.hoisted(() => ({
   getCart: vi.fn(),
 }))
 const cartCookieMocks = vi.hoisted(() => ({
+  readCartCookie: vi.fn(),
   syncCartCookie: vi.fn(),
 }))
 const cartRouteMocks = vi.hoisted(() => ({
@@ -51,6 +52,10 @@ const createRequest = (
 describe("POST /api/cart/items", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    cartCookieMocks.readCartCookie.mockReturnValue({
+      status: "missing",
+      cartId: null,
+    })
     cartCookieMocks.syncCartCookie.mockImplementation(
       (response: Response) => response
     )
