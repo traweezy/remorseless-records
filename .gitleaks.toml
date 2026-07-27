@@ -22,5 +22,5 @@ id = "stripe-access-token"
 description = "Ignore the removed nonfunctional Stripe SDK placeholder"
 condition = "AND"
 regexTarget = "secret"
-regexes = ['''^sk_test_unconfigured$''']
+regexes = ['''^sk_(test)_unconfigured$''']
 paths = ['''^backend/src/api/webhooks/stripe/lifecycle/route\.ts$''']
