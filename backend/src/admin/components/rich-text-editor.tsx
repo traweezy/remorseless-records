@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef } from "react"
 import { Button, Text } from "@medusajs/ui"
 
 type RichTextEditorProps = {
+  ariaLabel?: string
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -30,7 +31,7 @@ const toolbarActions: ToolbarAction[] = [
 type EditorNode = { innerHTML?: string; focus?: () => void }
 
 const RichTextEditor = memo<RichTextEditorProps>(
-  ({ value, onChange, placeholder }) => {
+  ({ ariaLabel = "Rich text editor", value, onChange, placeholder }) => {
     const editorRef = useRef<HTMLDivElement | null>(null)
 
     const getEditorNode = useCallback(
@@ -132,6 +133,7 @@ const RichTextEditor = memo<RichTextEditorProps>(
           className="min-h-[220px] w-full rounded-md border border-ui-border-base bg-ui-bg-base px-3 py-2 text-sm leading-relaxed text-ui-fg-base shadow-sm outline-none focus:border-ui-border-strong"
           contentEditable
           role="textbox"
+          aria-label={ariaLabel}
           aria-multiline="true"
           onInput={syncValue}
           suppressContentEditableWarning
