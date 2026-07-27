@@ -8,7 +8,7 @@ import {
 } from "@/lib/catalog/product-profile-authoring"
 import type { CatalogService } from "@/lib/catalog/reference-resolution"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
-import { mutateCatalogProductProfileWorkflow } from "@/workflows/catalog/mutate-product-profile"
+import { mutateCatalogProductProfileWorkflow } from "../../../../../../workflows/catalog/mutate-product-profile"
 import { assertProductExists } from "../../../utils"
 
 const productIdFromRequest = (req: MedusaRequest): string => {

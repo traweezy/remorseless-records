@@ -8,7 +8,7 @@ import {
 import { listProductMediaItems } from "@/lib/catalog/product-media-read"
 import { toCatalogNullableString } from "@/lib/catalog/normalization"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
-import { mutateCatalogProductMediaWorkflow } from "@/workflows/catalog/mutate-product-media"
+import { mutateCatalogProductMediaWorkflow } from "../../../../../../workflows/catalog/mutate-product-media"
 import {
   assertProductExists,
   assertVariantBelongsToProduct,

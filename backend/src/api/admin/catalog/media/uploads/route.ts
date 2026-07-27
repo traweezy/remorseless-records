@@ -10,7 +10,7 @@ import { z } from "zod"
 import { buildCatalogMediaRemoteFilename } from "@/lib/catalog/product-media-upload"
 import { validateManagedImageUploads } from "@/lib/uploads/validation"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
-import { uploadCatalogProductMediaWorkflow } from "@/workflows/catalog/upload-product-media"
+import { uploadCatalogProductMediaWorkflow } from "../../../../../workflows/catalog/upload-product-media"
 
 const uploadCommandSchema = z.object({
   idempotencyKey: z.string().uuid(),

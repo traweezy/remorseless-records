@@ -7,7 +7,7 @@ import {
   serializeCatalogVariantProfileResponse,
 } from "@/lib/catalog/variant-profile-authoring"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
-import { mutateCatalogVariantProfileWorkflow } from "@/workflows/catalog/mutate-variant-profile"
+import { mutateCatalogVariantProfileWorkflow } from "../../../../../../workflows/catalog/mutate-variant-profile"
 import { assertVariantExists, type CatalogService } from "../../../utils"
 
 const variantIdFromRequest = (req: MedusaRequest): string => {
