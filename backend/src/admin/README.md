@@ -47,3 +47,11 @@ Run `pnpm --filter backend run catalog:authoring:view-check` to load every
 product through that contract in bounded batches of eight. The gate fails if
 classification drifts, inventory cannot be read, a native Variant lacks its
 catalog profile, or selected catalog/media relationships are missing.
+
+Product-profile PUTs use the stored `mutate-catalog-product-profile` workflow.
+The command requires a UUID idempotency key and the profile version returned by
+the read contract. It acquires a product-scoped lock, records the canonical
+request hash and actor, and rejects stale or mismatched replays. If a later
+workflow step fails, compensation restores the complete prior profile, artist
+assignments, and reference assignments. Newly created controlled values are
+deleted only when the restored catalog no longer references them.

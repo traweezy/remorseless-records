@@ -124,4 +124,32 @@ describe("catalog reference resolution", () => {
       }),
     ).resolves.toEqual({ created: false, record: null })
   })
+
+  it("rejects explicit values with the wrong kind or archived state", async () => {
+    const service = serviceFixture()
+    service.retrieveCatalogReferenceValue
+      .mockResolvedValueOnce({
+        id: "ref_genre",
+        is_active: true,
+        kind: "genre",
+      } as never)
+      .mockResolvedValueOnce({
+        id: "ref_archived",
+        is_active: false,
+        kind: "format",
+      } as never)
+
+    await expect(
+      resolveOrCreateCatalogReferenceValue(service, {
+        kind: "format",
+        referenceValueId: "ref_genre",
+      }),
+    ).rejects.toThrow("is not a format")
+    await expect(
+      resolveOrCreateCatalogReferenceValue(service, {
+        kind: "format",
+        referenceValueId: "ref_archived",
+      }),
+    ).rejects.toThrow("archived")
+  })
 })

@@ -1,5 +1,6 @@
 import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import type { Context } from "@medusajs/framework/types"
+import { MedusaError } from "@medusajs/framework/utils"
 
 import type CatalogModuleService from "../../modules/catalog/service"
 import type {
@@ -98,13 +99,26 @@ export const resolveOrCreateCatalogReferenceValue = async (
 ): Promise<CatalogResolution<CatalogReferenceValueRecord>> => {
   const referenceValueId = toCatalogNullableString(input.referenceValueId)
   if (referenceValueId) {
+    const record = (await catalogService.retrieveCatalogReferenceValue(
+      referenceValueId,
+      {},
+      sharedContext,
+    )) as CatalogReferenceValueRecord
+    if (input.kind && record.kind !== input.kind) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        `The selected reference value is not a ${input.kind}.`,
+      )
+    }
+    if (record.is_active === false) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "The selected reference value is archived.",
+      )
+    }
     return {
       created: false,
-      record: (await catalogService.retrieveCatalogReferenceValue(
-        referenceValueId,
-        {},
-        sharedContext,
-      )) as CatalogReferenceValueRecord,
+      record,
     }
   }
 
