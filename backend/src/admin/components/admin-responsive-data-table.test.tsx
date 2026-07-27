@@ -63,6 +63,7 @@ describe("AdminResponsiveDataTable", () => {
 
     expect(markup).toContain("Mobile skeleton");
     expect(markup).toContain("md:hidden");
+    expect(markup).toContain("scroll-mt-16");
     expect(markup).toContain("hidden md:flex");
     expect(markup.match(/h-12 w-full/g)).toHaveLength(3);
   });

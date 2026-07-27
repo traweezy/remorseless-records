@@ -45,8 +45,10 @@ page size remain controlled inputs to the server query, while the response
 count drives Medusa's native previous/next availability. Switching lifecycle
 views resets to page one, empty collections omit pagination, and moving the
 last item off a later page returns the operator to the preceding valid page.
-The shared wrapper is presentation-only and must not initiate collection
-queries or mutations.
+On mobile, changing pages returns the operator to the collection start with a
+reduced-motion-safe transition instead of inheriting the prior page's bottom
+scroll position. The shared wrapper is presentation-only and must not initiate
+collection queries or mutations.
 
 ## Refund operations
 
