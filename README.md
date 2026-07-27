@@ -435,9 +435,10 @@ tokens stay inside Stripe-hosted frames; application routes and logs never
 receive them.
 
 Only `NEXT_PUBLIC_STRIPE_PK` is browser-safe. `STRIPE_API_KEY`,
-`STRIPE_WEBHOOK_SECRET`, `CHECKOUT_BFF_SECRET`, and
-`CHECKOUT_RECEIPT_SECRET` are server-only. Staging must use `pk_test_` /
-`sk_test_` credentials and a non-live Payment Method Configuration.
+`STRIPE_WEBHOOK_SECRET`, `STRIPE_LIFECYCLE_WEBHOOK_SECRET`,
+`CHECKOUT_BFF_SECRET`, and `CHECKOUT_RECEIPT_SECRET` are server-only. Staging
+must use `pk_test_` / `sk_test_` credentials and a non-live Payment Method
+Configuration.
 
 ### Stripe and Medusa reference synchronization
 
@@ -587,6 +588,15 @@ refunds need no provider-side reversal because Medusa remains the tax filing
 ledger. The full operator decision tree, exception runbooks, edge-case matrix,
 service objectives, and test plan are in
 [`docs/REFUND_OPERATIONS.md`](docs/REFUND_OPERATIONS.md).
+
+Stripe refund and dispute events use a second, narrowly scoped endpoint at
+`POST /webhooks/stripe/lifecycle`. It does not replace Medusa's official
+payment webhook and cannot move money. It verifies a separate endpoint secret,
+accepts only the documented refund/dispute allowlist, stores an idempotent
+PII-minimized receipt, then retrieves current Stripe state before reconciling
+Medusa's evidence. A five-minute bounded job recovers queue outages, stale
+workers, duplicate delivery, and out-of-order events. The endpoint remains
+dormant until `STRIPE_LIFECYCLE_WEBHOOK_SECRET` is configured.
 
 ### Checkout staging verification
 
@@ -751,6 +761,7 @@ Key variables (non-empty values required for full functionality):
 | `REDIS_URL`                                  | Required when deployed; powers distributed events, workflows, and cart locks |
 | `STRIPE_API_KEY`                             | Stripe secret key (_sk\_..._)                                                |
 | `STRIPE_WEBHOOK_SECRET`                      | Endpoint secret for Medusa's official `/hooks/payment/stripe_stripe` webhook |
+| `STRIPE_LIFECYCLE_WEBHOOK_SECRET`            | Separate secret for the refund/dispute lifecycle endpoint                    |
 | `STRIPE_PAYMENT_METHOD_CONFIGURATION`        | Active Stripe `pmc_...` limited to card, Link, Apple Pay, and Google Pay     |
 | `CHECKOUT_BFF_SECRET`                        | Shared 32+ character HMAC key; identical on backend and storefront           |
 | `CHECKOUT_RECONCILIATION_ENABLED`            | Enables the bounded missed-completion safety net (default `false`)           |
@@ -811,6 +822,7 @@ COOKIE_SECRET=also-change-me
 BACKEND_PUBLIC_URL=http://localhost:9000
 STRIPE_API_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_LIFECYCLE_WEBHOOK_SECRET=whsec_...
 STRIPE_PAYMENT_METHOD_CONFIGURATION=pmc_...
 CHECKOUT_BFF_SECRET=replace-with-at-least-32-random-characters
 CHECKOUT_RECONCILIATION_ENABLED=false
@@ -939,12 +951,19 @@ To mirror staging settings locally:
 
 ### Webhook Handling
 
-- Endpoint: `POST /hooks/payment/stripe_stripe`
-- Medusa's official Stripe provider validates the raw-body signature using
-  `STRIPE_WEBHOOK_SECRET`.
-- The registered endpoint listens only for
+- `POST /hooks/payment/stripe_stripe` is Medusa's official payment-state
+  endpoint. It validates the raw-body signature with
+  `STRIPE_WEBHOOK_SECRET` and listens only for
   `payment_intent.amount_capturable_updated`, `payment_intent.succeeded`,
   `payment_intent.payment_failed`, and `payment_intent.partially_funded`.
+- `POST /webhooks/stripe/lifecycle` is the additive refund/dispute evidence
+  endpoint. It uses its own `STRIPE_LIFECYCLE_WEBHOOK_SECRET` and listens only
+  for `refund.created`, `refund.updated`, `refund.failed`,
+  `charge.dispute.created`, `charge.dispute.updated`,
+  `charge.dispute.closed`, `charge.dispute.funds_withdrawn`, and
+  `charge.dispute.funds_reinstated`.
+- Both endpoints require Stripe raw-body signature verification. Neither
+  endpoint accepts browser credentials or trusts event order.
 - Never point the endpoint at the removed `/api/webhooks/stripe` route.
 
 ### Local testing
@@ -952,12 +971,17 @@ To mirror staging settings locally:
 ```bash
 stripe login
 stripe listen --forward-to localhost:9000/hooks/payment/stripe_stripe
+
+# Run in a second terminal; it prints a different endpoint secret.
+stripe listen \
+  --events refund.created,refund.updated,refund.failed,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_withdrawn,charge.dispute.funds_reinstated \
+  --forward-to localhost:9000/webhooks/stripe/lifecycle
 ```
 
-Set `STRIPE_WEBHOOK_SECRET` to the temporary `whsec_...` printed by
-`stripe listen` for that local process. Use only Stripe test-mode keys. See the
-QA and operations runbooks for the card, 3DS, decline, response-loss, webhook,
-and browser-close matrices.
+Set `STRIPE_WEBHOOK_SECRET` and `STRIPE_LIFECYCLE_WEBHOOK_SECRET` to the
+different temporary `whsec_...` values printed by their respective listener
+processes. Use only Stripe test-mode keys. See the QA and operations runbooks
+for the card, 3DS, decline, response-loss, webhook, and browser-close matrices.
 
 ## Search (Meilisearch)
 

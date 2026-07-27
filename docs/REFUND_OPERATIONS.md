@@ -76,22 +76,21 @@ additional-payment workflow; never offset it with an unrelated Stripe action.
 
 ## What happens after a Medusa refund
 
-```text
-Operator saves refund in Medusa
-  |
-  +--> Medusa creates the refund and order transaction
-  |
-  +--> Official Stripe provider processes the original-payment-method refund
-  |
-  +--> payment.refunded event
-         |
-         +--> idempotent customer refund email
-         +--> immediate Stripe/tax evidence reconciliation
-  |
-  +--> hourly minute-23 reconciliation safety net
-         |
-         +--> Refund operations status and next action
-         +--> Tax records refund workpaper
+```mermaid
+flowchart TD
+  A[Operator saves refund in Medusa] --> B[Medusa creates refund and order transaction]
+  B --> C[Official Stripe provider processes original-method refund]
+  C --> D[payment.refunded]
+  D --> E[Idempotent customer refund email]
+  D --> F[Immediate Stripe and tax evidence reconciliation]
+  C --> G[Signed Stripe refund lifecycle event]
+  G --> H[PII-minimized idempotent event ledger]
+  H --> F
+  H --> I[Five-minute retry safety net]
+  F --> J[Refund operations status and next action]
+  F --> K[Tax records refund workpaper]
+  L[Hourly minute-23 evidence safety net] --> J
+  L --> K
 ```
 
 Medusa's refund ID is the customer-email idempotency key. Replayed or duplicate
@@ -220,6 +219,14 @@ reconciliation. The `reconcile-tax-evidence` job runs hourly at minute 23,
 oldest eligible evidence first, with a 100-record per-run cap, bounded Stripe
 timeouts/retries, and a per-PaymentIntent distributed lock.
 
+Stripe's separate lifecycle endpoint listens only for `refund.created`,
+`refund.updated`, `refund.failed`, and the created/updated/closed/funds
+withdrawn/funds reinstated dispute events. It records the event ID plus a
+minimal immutable projection and processes only after retrieving current
+provider state. Duplicate delivery is idempotent, event order is irrelevant,
+and the five-minute retry job recovers queue outages, failed attempts, and
+workers left processing for more than 15 minutes.
+
 The refund-notification subscriber logs only opaque payment identity and
 notification count; it does not log recipient addresses, notes, card data, or
 client secrets.
@@ -233,6 +240,8 @@ Operational objectives:
   Admin queue;
 - retry-safe customer notification per Medusa refund; and
 - unresolved provider/tax exceptions visible within the hourly safety window.
+- signed refund/dispute receipts acknowledged promptly and unresolved queue or
+  worker failures retried within five minutes.
 
 ## Required test matrix
 
@@ -247,6 +256,8 @@ Before a production refund feature release:
 - each successful Stripe Tax refund requires its own reversal;
 - checkout-without-order compensation remains visible;
 - duplicate event delivery proves one email per refund ID;
+- invalid signatures, duplicate receipts, out-of-order updates, queue failure,
+  stale processing, and missing PaymentIntent references fail safely;
 - invalid notification amounts fail closed;
 - the Admin page is checked with keyboard, reduced motion, desktop Chrome, and
   a real Chrome mobile-device profile; and

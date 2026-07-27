@@ -1,5 +1,21 @@
 # Custom subscribers
 
+## Project payment subscribers
+
+`stripe-lifecycle-event.ts` consumes only internal ledger IDs emitted after
+`POST /webhooks/stripe/lifecycle` has verified the Stripe signature and
+persisted a minimal receipt. It retrieves the current Stripe refund or dispute
+object, links the PaymentIntent to the Medusa order when available, and invokes
+the existing tax/payment evidence reconciliation under a distributed lock.
+Duplicate and out-of-order delivery is safe because provider payloads are not
+treated as current state.
+
+`payment-tax-evidence.ts` handles Medusa's own capture/refund events, while
+`refund-issued.ts` sends the idempotent customer notification for a refund that
+Medusa actually recorded. A direct Stripe refund deliberately does not pretend
+that Medusa emitted `payment.refunded`; it becomes an operator-visible ledger
+mismatch so a second refund is not issued accidentally.
+
 Subscribers handle events emitted in the Medusa application.
 
 The subscriber is created in a TypeScript or JavaScript file under the `src/subscribers` directory.

@@ -315,6 +315,19 @@ If a direct Stripe refund is discovered, do not issue another refund. Record the
 incident, reconcile the order through an approved Medusa operation, and verify
 the aggregate amounts and tax reversal before further changes.
 
+Stripe sends refund and dispute evidence to
+`POST /webhooks/stripe/lifecycle`, using a separate
+`STRIPE_LIFECYCLE_WEBHOOK_SECRET`. The route is additive to Medusa's official
+payment webhook: it persists a minimal idempotent receipt, queues reconciliation
+and returns promptly. Processing always retrieves current Stripe state, and a
+five-minute bounded job retries queue failures or stale processing. Raw Stripe
+payloads, signatures, customer data, and card data are never stored.
+
+The lifecycle integration cannot move money or manufacture a Medusa refund. A
+direct Stripe refund becomes an explicit Medusa/Stripe mismatch in **Refund
+operations**. Correct the ledger only through an approved Medusa/accounting
+procedure; never click refund again to make the totals match.
+
 ## Secret and webhook rotation
 
 Cart signing supports `CART_COOKIE_SECRET_PREVIOUS`; keep the prior secret for
@@ -327,6 +340,12 @@ test.
 
 `CHECKOUT_RECEIPT_SECRET` is storefront-only. Rotating it invalidates existing
 30-minute receipt grants; email remains the durable receipt.
+
+`STRIPE_LIFECYCLE_WEBHOOK_SECRET` belongs only to
+`POST /webhooks/stripe/lifecycle` and must not reuse
+`STRIPE_WEBHOOK_SECRET`. During rotation, let Stripe overlap the old and new
+endpoint secret for its supported grace window, verify signed test delivery,
+then expire the old secret.
 
 For Stripe webhook-secret rotation:
 
@@ -454,6 +473,8 @@ prices in staging.
 - [ ] Reconciliation completes a disposable eligible test cart and is bounded.
 - [ ] Full, partial, repeated-partial, failed, and direct-Stripe refund evidence
       is reconciled per refund.
+- [ ] Duplicate, out-of-order, queue-failed, and stale refund/dispute lifecycle
+      receipts converge without duplicate money movement.
 - [ ] Stripe-taxed order edits preserve existing rates and reject new taxable
       items until a tax-bound additional-payment flow exists.
 - [ ] Desktop and Chrome Pixel/iPhone device-emulation screenshots are

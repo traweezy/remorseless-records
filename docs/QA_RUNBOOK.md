@@ -117,7 +117,8 @@ pnpm --filter backend exec tsc --noEmit
 ### 2.1 Environment
 
 - Ensure backend `.env` includes `STRIPE_API_KEY`,
-  `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PAYMENT_METHOD_CONFIGURATION`.
+  `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIFECYCLE_WEBHOOK_SECRET`, and
+  `STRIPE_PAYMENT_METHOD_CONFIGURATION`.
 - Ensure backend and storefront share `CHECKOUT_BFF_SECRET`; the storefront
   also needs a different `CHECKOUT_RECEIPT_SECRET`.
 - Verify every key/object is test mode before continuing. Do not use real card
@@ -131,7 +132,16 @@ stripe listen \
   --forward-to localhost:9000/hooks/payment/stripe_stripe
 ```
 
-Record the webhook secret printed by the CLI and mirror it in `.env`.
+In a second terminal:
+
+```bash
+stripe listen \
+  --events refund.created,refund.updated,refund.failed,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_withdrawn,charge.dispute.funds_reinstated \
+  --forward-to localhost:9000/webhooks/stripe/lifecycle
+```
+
+Record the two different webhook secrets printed by the CLI and map them to
+`STRIPE_WEBHOOK_SECRET` and `STRIPE_LIFECYCLE_WEBHOOK_SECRET` respectively.
 
 ### 2.2 Test Cards
 

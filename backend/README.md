@@ -99,6 +99,18 @@ Configure all Stripe values together or leave all three empty:
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PAYMENT_METHOD_CONFIGURATION`
 
+Refund/dispute lifecycle evidence is an additive integration with a separate
+optional secret:
+
+- `STRIPE_LIFECYCLE_WEBHOOK_SECRET`
+
+When configured, Stripe sends the refund/dispute allowlist to
+`POST /webhooks/stripe/lifecycle`. The route stores only opaque IDs, status,
+amount/currency, timestamps, and retry state—never the raw payload or customer
+data. It retrieves current Stripe objects before reconciliation because webhook
+delivery can be duplicated or out of order. This endpoint does not issue,
+retry, capture, cancel, or synthesize a Medusa refund.
+
 Use `sk_test_...` and a test-mode `pmc_...` outside production. Never log
 values. The webhook endpoint must subscribe to:
 
@@ -116,6 +128,17 @@ stripe listen \
 
 Use the temporary signing secret printed by that process as the local
 `STRIPE_WEBHOOK_SECRET`.
+
+Run a second test-mode listener for lifecycle evidence:
+
+```bash
+stripe listen \
+  --events refund.created,refund.updated,refund.failed,charge.dispute.created,charge.dispute.updated,charge.dispute.closed,charge.dispute.funds_withdrawn,charge.dispute.funds_reinstated \
+  --forward-to localhost:9000/webhooks/stripe/lifecycle
+```
+
+Use that process's different signing secret as
+`STRIPE_LIFECYCLE_WEBHOOK_SECRET`.
 
 ## Checkout reconciliation
 
