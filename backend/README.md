@@ -58,10 +58,21 @@ OBJECT_STORAGE_WRITE_CHECK_CONFIRM=upload-and-delete-canary \
   pnpm --filter backend run storage:verify-write
 ```
 
-Custom catalog and news image uploads use `POST /admin/managed-uploads`.
-Requests are limited to ten files, 12 MiB per file, and 20 MiB total; filenames,
-extensions, media types, and image signatures are validated before the upload
-is delegated to Medusa's File Module. The unused presigned-upload route is
+Catalog product images use `POST /admin/catalog/media/uploads`. The
+authenticated multipart request includes a UUID idempotency key; the backend
+validates image names, media types, signatures, per-file size, and total size
+before calling Medusa's File Module. Each successful remote write is
+immediately represented by a catalog media asset with its SHA-256 digest and
+upload ownership metadata. Exact successful retries return the prior result.
+Partial or downstream failures attempt both database and remote cleanup; an
+incomplete cleanup is marked failed and retains the owned identifiers for
+operator reconciliation instead of being mislabeled as compensated. Abandoning
+the editor therefore leaves a visible, auditable unlinked asset instead of an
+untracked object.
+
+News images retain the generic `POST /admin/managed-uploads` route. It shares
+the same bounded content inspection and additionally accepts validated UTF-8
+CSV input for existing import tooling. The unused presigned-upload route is
 disabled because it bypasses server-side content inspection.
 
 ## Checkout payment authority

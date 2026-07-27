@@ -255,6 +255,11 @@ export default defineMiddlewares({
       middlewares: [managedUpload.array("files")],
     },
     {
+      matcher: "/admin/catalog/media/uploads",
+      methods: ["POST"],
+      middlewares: [managedUpload.array("files")],
+    },
+    {
       matcher: "/admin/uploads/presigned-urls",
       methods: ["POST"],
       middlewares: [rejectPresignedUploads],

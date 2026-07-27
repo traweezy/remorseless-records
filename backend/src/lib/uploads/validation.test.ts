@@ -1,4 +1,7 @@
-import { validateManagedUploads } from "./validation"
+import {
+  validateManagedImageUploads,
+  validateManagedUploads,
+} from "./validation"
 
 const upload = ({
   buffer,
@@ -99,5 +102,25 @@ describe("validateManagedUploads", () => {
         upload({ buffer: second, filename: "two.csv", mimeType: "text/csv" }),
       ])
     ).toThrow("combined upload")
+  })
+})
+
+describe("validateManagedImageUploads", () => {
+  it("accepts validated images but rejects otherwise valid CSV files", () => {
+    const image = upload({
+      buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]),
+      filename: "cover.jpg",
+      mimeType: "image/jpeg",
+    })
+    const csv = upload({
+      buffer: Buffer.from("title,handle\nAlbum,album"),
+      filename: "products.csv",
+      mimeType: "text/csv",
+    })
+
+    expect(validateManagedImageUploads([image])).toEqual([image])
+    expect(() => validateManagedImageUploads([csv])).toThrow(
+      "Catalog media uploads must be",
+    )
   })
 })

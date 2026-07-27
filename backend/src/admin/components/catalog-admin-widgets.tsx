@@ -245,6 +245,7 @@ type ProductMediaResponse = {
 
 type UploadFileResponse = {
   id?: string | null
+  mediaAssetId?: string | null
   url?: string | null
   key?: string | null
   fileKey?: string | null
@@ -1593,8 +1594,9 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
       for (const file of files) {
         formData.append("files", file)
       }
+      formData.append("idempotencyKey", crypto.randomUUID())
 
-      const response = await fetch("/admin/managed-uploads", {
+      const response = await fetch("/admin/catalog/media/uploads", {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -1611,6 +1613,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
         const line = emptyProductMediaLine()
         return {
           ...line,
+          mediaAssetId: uploaded.mediaAssetId ?? null,
           sourceUrl: uploaded.url ?? "",
           sourceFileKey: uploaded.fileKey ?? uploaded.key ?? uploaded.id ?? "",
           originalFilename:

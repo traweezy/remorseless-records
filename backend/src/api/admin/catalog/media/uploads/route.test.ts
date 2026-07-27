@@ -1,0 +1,153 @@
+import type {
+  AuthenticatedMedusaRequest,
+  MedusaResponse,
+} from "@medusajs/framework/http"
+
+import { uploadCatalogProductMediaWorkflow } from "@/workflows/catalog/upload-product-media"
+import { POST } from "./route"
+
+jest.mock("@/workflows/catalog/upload-product-media", () => ({
+  uploadCatalogProductMediaWorkflow: jest.fn(),
+}))
+
+const workflowMock =
+  uploadCatalogProductMediaWorkflow as jest.MockedFunction<
+    typeof uploadCatalogProductMediaWorkflow
+  >
+
+type ResponseState = {
+  body: unknown
+  status: number
+}
+
+const responseFixture = (): {
+  res: MedusaResponse
+  state: ResponseState
+} => {
+  const state: ResponseState = { body: null, status: 200 }
+  const response = {} as MedusaResponse
+  response.status = jest.fn((status: number) => {
+    state.status = status
+    return response
+  }) as MedusaResponse["status"]
+  response.json = jest.fn((body: unknown) => {
+    state.body = body
+    return response
+  }) as MedusaResponse["json"]
+  return { res: response, state }
+}
+
+const upload = ({
+  buffer,
+  filename,
+  mimeType,
+}: {
+  buffer: Buffer
+  filename: string
+  mimeType: string
+}): Express.Multer.File =>
+  ({
+    buffer,
+    destination: "",
+    encoding: "7bit",
+    fieldname: "files",
+    filename: "",
+    mimetype: mimeType,
+    originalname: filename,
+    path: "",
+    size: buffer.length,
+    stream: null as never,
+  }) satisfies Express.Multer.File
+
+const requestFixture = (
+  body: unknown,
+  files: Express.Multer.File[],
+): AuthenticatedMedusaRequest =>
+  ({
+    auth_context: { actor_id: "user_1" },
+    body,
+    files,
+    scope: {
+      resolve: jest.fn(() => ({ service: true })),
+    },
+  }) as unknown as AuthenticatedMedusaRequest
+
+beforeEach(() => {
+  jest.clearAllMocks()
+})
+
+describe("POST /admin/catalog/media/uploads", () => {
+  it("runs the catalog upload contract with an image digest and safe name", async () => {
+    const idempotencyKey = "00000000-0000-4000-8000-000000000001"
+    const files = [
+      {
+        filename: "The Album Cover.JPG",
+        id: "file_1",
+        mediaAssetId: "cmedia_1",
+        mimeType: "image/jpeg",
+        size: 4,
+        url: "https://media.example/catalog/cover.jpg",
+      },
+    ]
+    const run = jest.fn().mockResolvedValue({ result: { files } })
+    workflowMock.mockReturnValue({ run } as never)
+    const req = requestFixture(
+      { idempotencyKey },
+      [
+        upload({
+          buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]),
+          filename: "The Album Cover.JPG",
+          mimeType: "image/jpeg",
+        }),
+      ],
+    )
+    const { res, state } = responseFixture()
+
+    await POST(req, res)
+
+    expect(run).toHaveBeenCalledWith({
+      context: {
+        idempotencyKey,
+        requestId: idempotencyKey,
+      },
+      input: {
+        actorId: "user_1",
+        files: [
+          {
+            content: "/9j/AA==",
+            filename: "The Album Cover.JPG",
+            mimeType: "image/jpeg",
+            remoteFilename: `${idempotencyKey}-00-The-Album-Cover.jpg`,
+            sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+            size: 4,
+          },
+        ],
+        idempotencyKey,
+        requestSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      },
+    })
+    expect(state).toEqual({
+      body: { files },
+      status: 201,
+    })
+  })
+
+  it("rejects an invalid idempotency key before validating or uploading", async () => {
+    const req = requestFixture(
+      { idempotencyKey: "not-a-uuid" },
+      [
+        upload({
+          buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]),
+          filename: "cover.jpg",
+          mimeType: "image/jpeg",
+        }),
+      ],
+    )
+    const { res } = responseFixture()
+
+    await expect(POST(req, res)).rejects.toThrow(
+      "valid catalog upload idempotency key",
+    )
+    expect(workflowMock).not.toHaveBeenCalled()
+  })
+})

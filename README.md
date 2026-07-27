@@ -1068,11 +1068,21 @@ checks its backend and shared Redis; both Railway services route health checks
 to `/ready`. Responses are non-cacheable and never include connection strings
 or raw dependency errors.
 
-Catalog and news admin extensions upload through
-`POST /admin/managed-uploads`. This route limits request count and size,
-accepts only JPEG, PNG, WebP, GIF, and UTF-8 CSV, verifies filename/extension
-coherence and file signatures, then delegates persistence to Medusa's
-File Module. The unused presigned-upload route is disabled.
+Catalog product images upload through
+`POST /admin/catalog/media/uploads`. This authenticated route requires a UUID
+idempotency key, limits request count and size, accepts only JPEG, PNG, WebP,
+and GIF, and verifies filename/extension coherence plus file signatures before
+delegating persistence to Medusa's File Module. Every stored file immediately
+gets a catalog media asset row containing its digest and upload ownership. An
+exact successful retry reuses the recorded result. Partial and downstream
+failures attempt both database and remote cleanup; incomplete cleanup is
+recorded as failed with the owned identifiers retained for reconciliation. An
+editor abandoned after upload therefore leaves an auditable unlinked asset for
+the orphan workflow instead of an invisible object-storage leak.
+
+News images retain the generic `POST /admin/managed-uploads` route, which also
+accepts validated UTF-8 CSV for existing import tooling. The unused
+presigned-upload route remains disabled.
 
 ## Email (Resend)
 

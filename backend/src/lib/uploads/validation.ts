@@ -119,3 +119,13 @@ export const validateManagedUploads = (
   files.forEach(validateFile)
   return files
 }
+
+export const validateManagedImageUploads = (
+  files: Express.Multer.File[]
+): Express.Multer.File[] => {
+  const validated = validateManagedUploads(files)
+  if (validated.some(({ mimetype }) => !IMAGE_EXTENSIONS[mimetype])) {
+    invalidUpload("Catalog media uploads must be JPEG, PNG, WebP, or GIF images.")
+  }
+  return validated
+}
