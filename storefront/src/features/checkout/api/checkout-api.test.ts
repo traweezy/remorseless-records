@@ -67,6 +67,15 @@ describe("semantic checkout API client", () => {
     )
   })
 
+  it("treats an absent active cart as an expected checkout state", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(Response.json({ checkout: null })))
+    )
+
+    await expect(getCheckout()).resolves.toBeNull()
+  })
+
   it("rejects malformed successful responses at the browser boundary", async () => {
     vi.stubGlobal(
       "fetch",

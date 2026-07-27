@@ -18,15 +18,26 @@ export type ActiveCheckoutCart = {
   needsCookieRotation: boolean
 }
 
+export type CheckoutCartProblemCode =
+  | "cart_completed"
+  | "cart_empty"
+  | "cart_missing"
+  | "checkout_unavailable"
+
 export type ActiveCheckoutCartResult =
-  { ok: true; value: ActiveCheckoutCart } | { ok: false; response: Response }
+  | { ok: true; value: ActiveCheckoutCart }
+  | {
+      ok: false
+      code: CheckoutCartProblemCode
+      response: Response
+    }
 
 export type CheckoutCartIdentityResult =
   | {
       ok: true
       value: { cartId: string; needsCookieRotation: boolean }
     }
-  | { ok: false; response: Response }
+  | { ok: false; code: "cart_missing"; response: Response }
 
 const problem = (
   request: NextRequest,
@@ -55,6 +66,7 @@ export const resolveActiveCheckoutCart = async (
     if (cart.completed_at) {
       return {
         ok: false,
+        code: "cart_completed",
         response: problem(request, {
           status: 409,
           code: "cart_completed",
@@ -66,6 +78,7 @@ export const resolveActiveCheckoutCart = async (
     if (!cart.items?.length) {
       return {
         ok: false,
+        code: "cart_empty",
         response: clearCartCookie(
           problem(request, {
             status: 409,
@@ -94,6 +107,7 @@ export const resolveActiveCheckoutCart = async (
     })
     return {
       ok: false,
+      code: mapped.status === 404 ? "cart_missing" : "checkout_unavailable",
       response: mapped.status === 404 ? clearCartCookie(response) : response,
     }
   }
@@ -112,6 +126,7 @@ export const resolveCheckoutCartIdentity = (
     })
     return {
       ok: false,
+      code: "cart_missing",
       response:
         cookie.status === "invalid" ? clearCartCookie(response) : response,
     }

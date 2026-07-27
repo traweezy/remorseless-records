@@ -75,6 +75,52 @@ describe("semantic checkout routes", () => {
     expect(activeCartMocks.resolveActiveCheckoutCart).toHaveBeenCalledOnce()
   })
 
+  it.each(["cart_missing", "cart_empty", "cart_completed"] as const)(
+    "returns an expected empty state for %s",
+    async (code) => {
+      activeCartMocks.resolveActiveCheckoutCart.mockResolvedValue({
+        ok: false,
+        code,
+        response: Response.json(
+          { code },
+          {
+            status: code === "cart_missing" ? 404 : 409,
+            ...(code === "cart_empty"
+              ? {
+                  headers: {
+                    "set-cookie": "rr_cart_v1=; Max-Age=0; Path=/",
+                  },
+                }
+              : {}),
+          }
+        ),
+      })
+
+      const response = await getCheckout(request("/api/checkout", "GET"))
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({ checkout: null })
+      if (code === "cart_empty") {
+        expect(response.headers.get("set-cookie")).toContain("Max-Age=0")
+      }
+    }
+  )
+
+  it("preserves a genuine checkout dependency failure", async () => {
+    activeCartMocks.resolveActiveCheckoutCart.mockResolvedValue({
+      ok: false,
+      code: "checkout_unavailable",
+      response: Response.json(
+        { code: "checkout_unavailable" },
+        { status: 503 }
+      ),
+    })
+
+    const response = await getCheckout(request("/api/checkout", "GET"))
+
+    expect(response.status).toBe(503)
+  })
+
   it("persists contact against the signed cart only", async () => {
     cartApiMocks.setCartEmail.mockResolvedValue(cart)
 

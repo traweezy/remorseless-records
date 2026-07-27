@@ -21,18 +21,24 @@ describe("preservePreparedPayment", () => {
   it("keeps the mounted client secret across same-revision refetches", () => {
     const current = checkout("revision-a", "pi_test_secret")
     const refreshed = checkout("revision-a", null)
+    const result = preservePreparedPayment(current, refreshed)
 
-    expect(
-      preservePreparedPayment(current, refreshed).payment.clientSecret
-    ).toBe("pi_test_secret")
+    expect(result).not.toBeNull()
+    expect(result?.payment.clientSecret).toBe("pi_test_secret")
   })
 
   it("discards a client secret when the authoritative checkout changes", () => {
     const current = checkout("revision-a", "pi_test_secret")
     const changed = checkout("revision-b", null)
+    const result = preservePreparedPayment(current, changed)
 
-    expect(preservePreparedPayment(current, changed).payment.clientSecret).toBe(
-      null
-    )
+    expect(result).not.toBeNull()
+    expect(result?.payment.clientSecret).toBeNull()
+  })
+
+  it("discards prepared payment when checkout no longer has a cart", () => {
+    const current = checkout("revision-a", "pi_test_secret")
+
+    expect(preservePreparedPayment(current, null)).toBeNull()
   })
 })

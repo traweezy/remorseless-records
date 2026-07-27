@@ -33,8 +33,11 @@ const mutationOptions = {
 
 export const preservePreparedPayment = (
   current: CheckoutProjection | null | undefined,
-  next: CheckoutProjection
-): CheckoutProjection => {
+  next: CheckoutProjection | null
+): CheckoutProjection | null => {
+  if (!next) {
+    return null
+  }
   if (
     next.payment.clientSecret ||
     !current?.payment.clientSecret ||
@@ -84,7 +87,9 @@ export const useCheckout = () => {
     queryKey: CHECKOUT_QUERY_KEY,
     queryFn: async () =>
       preservePreparedPayment(
-        queryClient.getQueryData<CheckoutProjection>(CHECKOUT_QUERY_KEY),
+        queryClient.getQueryData<CheckoutProjection | null>(
+          CHECKOUT_QUERY_KEY
+        ),
         await getCheckout()
       ),
     staleTime: 0,

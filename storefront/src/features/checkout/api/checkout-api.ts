@@ -106,6 +106,10 @@ const checkoutProjectionSchema: z.ZodType<CheckoutProjection> = z
   .strict()
 
 const checkoutEnvelopeSchema = z
+  .object({ checkout: checkoutProjectionSchema.nullable() })
+  .strict()
+
+const activeCheckoutEnvelopeSchema = z
   .object({ checkout: checkoutProjectionSchema })
   .strict()
 
@@ -369,7 +373,7 @@ const request = async <TSchema extends z.ZodType>(
   }
 }
 
-export const getCheckout = async (): Promise<CheckoutProjection> => {
+export const getCheckout = async (): Promise<CheckoutProjection | null> => {
   const response = await request("/api/checkout", checkoutEnvelopeSchema)
   return response.checkout
 }
@@ -379,7 +383,7 @@ export const saveCheckoutContact = async (
 ): Promise<CheckoutProjection> => {
   const response = await request(
     "/api/checkout/contact",
-    checkoutEnvelopeSchema,
+    activeCheckoutEnvelopeSchema,
     { method: "PUT", body: payload }
   )
   return response.checkout
@@ -390,7 +394,7 @@ export const saveCheckoutDelivery = async (
 ): Promise<CheckoutProjection> => {
   const response = await request(
     "/api/checkout/delivery-address",
-    checkoutEnvelopeSchema,
+    activeCheckoutEnvelopeSchema,
     { method: "PUT", body: payload }
   )
   return response.checkout
@@ -411,7 +415,7 @@ export const saveCheckoutShippingMethod = async (
 ): Promise<CheckoutProjection> => {
   const response = await request(
     "/api/checkout/shipping-method",
-    checkoutEnvelopeSchema,
+    activeCheckoutEnvelopeSchema,
     { method: "PUT", body: { option_id: optionId } }
   )
   return response.checkout
@@ -422,7 +426,7 @@ export const prepareCheckoutPayment = async (
 ): Promise<CheckoutProjection> => {
   const response = await request(
     "/api/checkout/payment-session",
-    checkoutEnvelopeSchema,
+    activeCheckoutEnvelopeSchema,
     { method: "POST", body: { revision } }
   )
   return response.checkout
