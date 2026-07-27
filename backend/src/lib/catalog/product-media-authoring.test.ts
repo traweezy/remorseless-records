@@ -218,6 +218,52 @@ describe("catalog product media authoring", () => {
     expect(result.createdAssetIds).toEqual(["cmedia_clone"])
   })
 
+  it("never links, edits, or reuses quarantined media", async () => {
+    const service = serviceFixture()
+    service.createCatalogAuthoringOperations.mockResolvedValue([
+      { id: "caop_1" },
+    ])
+    service.retrieveCatalogMediaAsset.mockResolvedValue({
+      ...assetFixture("cmedia_quarantined"),
+      lifecycle_status: "quarantined",
+    })
+
+    await expect(
+      mutateCatalogProductMedia(
+        service as never,
+        commandFixture([
+          {
+            mediaAssetId: "cmedia_quarantined",
+          },
+        ]),
+      ),
+    ).rejects.toThrow("Quarantined catalog media")
+    expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
+
+    service.retrieveCatalogMediaAsset.mockReset()
+    service.listCatalogMediaAssets.mockResolvedValue([])
+    service.createCatalogMediaAssets.mockResolvedValue([
+      assetFixture("cmedia_active"),
+    ])
+    await mutateCatalogProductMedia(
+      service as never,
+      commandFixture([
+        {
+          sourceFileKey: "file_quarantined",
+          sourceUrl: "https://media.example/quarantined.jpg",
+        },
+      ]),
+    )
+    expect(service.listCatalogMediaAssets).toHaveBeenCalledWith(
+      {
+        lifecycle_status: "active",
+        source_file_key: "file_quarantined",
+      },
+      { take: 1 },
+      expect.any(Object),
+    )
+  })
+
   it("rejects a stale aggregate version before creating an operation", async () => {
     const service = serviceFixture()
     service.listCatalogAuthoringOperations.mockImplementation(

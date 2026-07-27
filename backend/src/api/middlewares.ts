@@ -188,6 +188,18 @@ const adminTaxRecordsRateLimit = createRateLimitMiddleware({
   windowMs: 60_000,
 });
 
+const adminCatalogMediaMutationRateLimit = createRateLimitMiddleware({
+  key: "admin:catalog-media-mutation",
+  max: 60,
+  windowMs: 60_000,
+});
+
+const adminCatalogMediaReadRateLimit = createRateLimitMiddleware({
+  key: "admin:catalog-media-read",
+  max: 120,
+  windowMs: 60_000,
+});
+
 const managedUpload = multer({
   limits: {
     fileSize: MAX_UPLOAD_BYTES,
@@ -258,7 +270,21 @@ export default defineMiddlewares({
     {
       matcher: "/admin/catalog/media/uploads",
       methods: ["POST"],
-      middlewares: [managedUpload.array("files")],
+      middlewares: [
+        adminCatalogMediaMutationRateLimit,
+        managedUpload.array("files"),
+      ],
+    },
+    {
+      matcher: "/admin/catalog/media/orphans",
+      methods: ["GET"],
+      middlewares: [adminCatalogMediaReadRateLimit],
+    },
+    {
+      matcher:
+        /^\/admin\/catalog\/media\/assets\/[^/]+\/(quarantine|restore)$/,
+      methods: ["POST"],
+      middlewares: [adminCatalogMediaMutationRateLimit],
     },
     {
       matcher: "/admin/uploads/presigned-urls",

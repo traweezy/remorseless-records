@@ -31,6 +31,11 @@ import CatalogReferenceValue from "./models/catalog-reference-value"
 import CatalogShelf from "./models/catalog-shelf"
 import CatalogShelfProduct from "./models/catalog-shelf-product"
 import CatalogVariantProfile from "./models/catalog-variant-profile"
+import {
+  buildOrphanCatalogMediaQueries,
+  type OrphanCatalogMediaPage,
+  type OrphanCatalogMediaQuery,
+} from "./orphan-media-query"
 
 const asJsonObject = (value: unknown): JsonObject =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -70,6 +75,38 @@ class CatalogModuleService extends MedusaService({
   ): Promise<T> {
     sharedContext.isolationLevel ??= "serializable"
     return this.runCatalogTransaction_(task, sharedContext)
+  }
+
+  @InjectManager()
+  async listOrphanCatalogMediaAssets(
+    input: OrphanCatalogMediaQuery,
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
+  ): Promise<OrphanCatalogMediaPage> {
+    const manager =
+      sharedContext.transactionManager ?? sharedContext.manager
+    if (!manager) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The catalog media query manager is unavailable."
+      )
+    }
+    const { countQuery, rowsQuery } = buildOrphanCatalogMediaQueries(
+      manager.getKnex(),
+      input,
+    )
+    const countRows = (await countQuery) as Array<{
+      count: string | number
+    }>
+    const rows = (await rowsQuery) as Record<string, unknown>[]
+    const countValue = countRows.at(0)?.count ?? 0
+    const count =
+      typeof countValue === "number"
+        ? countValue
+        : Number.parseInt(countValue, 10)
+    return {
+      count: Number.isFinite(count) ? count : 0,
+      rows,
+    }
   }
 
   private async snapshotBundle_(

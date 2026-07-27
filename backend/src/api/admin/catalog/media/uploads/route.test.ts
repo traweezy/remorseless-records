@@ -3,10 +3,10 @@ import type {
   MedusaResponse,
 } from "@medusajs/framework/http"
 
-import { uploadCatalogProductMediaWorkflow } from "@/workflows/catalog/upload-product-media"
+import { uploadCatalogProductMediaWorkflow } from "../../../../../workflows/catalog/upload-product-media"
 import { POST } from "./route"
 
-jest.mock("@/workflows/catalog/upload-product-media", () => ({
+jest.mock("../../../../../workflows/catalog/upload-product-media", () => ({
   uploadCatalogProductMediaWorkflow: jest.fn(),
 }))
 

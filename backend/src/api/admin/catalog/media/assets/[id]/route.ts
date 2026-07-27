@@ -4,7 +4,6 @@ import { MedusaError } from "@medusajs/framework/utils"
 import {
   serializeCatalogMediaAsset,
   type CatalogMediaAssetRecord,
-  type CatalogProductMediaItemRecord,
 } from "@/modules/catalog/serializers"
 import type { CatalogService } from "../../../utils"
 
@@ -34,22 +33,11 @@ export const GET = async (
 
 export const DELETE = async (
   req: MedusaRequest,
-  res: MedusaResponse
+  _res: MedusaResponse
 ): Promise<void> => {
-  const catalogService = req.scope.resolve("catalog") as CatalogService
-  const assetId = getAssetId(req)
-  const links = (await catalogService.listCatalogProductMediaItems(
-    { media_asset_id: assetId },
-    { take: 1 }
-  )) as CatalogProductMediaItemRecord[]
-
-  if (links.length) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "Catalog media asset is still linked to product media"
-    )
-  }
-
-  await catalogService.deleteCatalogMediaAssets([assetId])
-  res.sendStatus(204)
+  getAssetId(req)
+  throw new MedusaError(
+    MedusaError.Types.NOT_ALLOWED,
+    "Physical catalog media deletion is disabled. Quarantine the asset instead."
+  )
 }

@@ -1,7 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 
 import { loadCatalogProductMediaResponse } from "@/lib/catalog/product-media-authoring"
-import { mutateCatalogProductMediaWorkflow } from "@/workflows/catalog/mutate-product-media"
+import { mutateCatalogProductMediaWorkflow } from "../../../../../../workflows/catalog/mutate-product-media"
 import {
   assertProductExists,
   assertVariantBelongsToProduct,
@@ -17,7 +17,7 @@ jest.mock("@/lib/catalog/product-media-authoring", () => {
     loadCatalogProductMediaResponse: jest.fn(),
   }
 })
-jest.mock("@/workflows/catalog/mutate-product-media", () => ({
+jest.mock("../../../../../../workflows/catalog/mutate-product-media", () => ({
   mutateCatalogProductMediaWorkflow: jest.fn(),
 }))
 jest.mock("../../../utils", () => ({

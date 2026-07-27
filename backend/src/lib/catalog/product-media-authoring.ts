@@ -50,7 +50,7 @@ const findReusableAsset = async (
   const sourceFileKey = toCatalogNullableString(input.sourceFileKey)
   if (sourceFileKey) {
     const matches = await catalogService.listCatalogMediaAssets(
-      { source_file_key: sourceFileKey },
+      { lifecycle_status: "active", source_file_key: sourceFileKey },
       { take: 1 },
       sharedContext,
     )
@@ -61,7 +61,7 @@ const findReusableAsset = async (
     return null
   }
   const matches = await catalogService.listCatalogMediaAssets(
-    { source_url: sourceUrl },
+    { lifecycle_status: "active", source_url: sourceUrl },
     { take: 1 },
     sharedContext,
   )
@@ -136,6 +136,15 @@ const resolveMediaAsset = async (
         {},
         sharedContext,
       )) as CatalogMediaAssetRecord
+    if (
+      existing.lifecycle_status !== undefined &&
+      existing.lifecycle_status !== "active"
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.CONFLICT,
+        "Quarantined catalog media cannot be linked or edited.",
+      )
+    }
     rememberCatalogMediaAsset(previous, existing)
     if (!Object.keys(patch).length) {
       return existing

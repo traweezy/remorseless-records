@@ -4,7 +4,7 @@ import {
   resolveCatalogProductProfile,
   serializeCatalogProductProfileResponse,
 } from "@/lib/catalog/product-profile-authoring"
-import { mutateCatalogProductProfileWorkflow } from "@/workflows/catalog/mutate-product-profile"
+import { mutateCatalogProductProfileWorkflow } from "../../../../../../workflows/catalog/mutate-product-profile"
 import { assertProductExists } from "../../../utils"
 import { PUT } from "./route"
 
@@ -18,7 +18,7 @@ jest.mock("@/lib/catalog/product-profile-authoring", () => {
     serializeCatalogProductProfileResponse: jest.fn(),
   }
 })
-jest.mock("@/workflows/catalog/mutate-product-profile", () => ({
+jest.mock("../../../../../../workflows/catalog/mutate-product-profile", () => ({
   mutateCatalogProductProfileWorkflow: jest.fn(),
 }))
 jest.mock("../../../utils", () => ({

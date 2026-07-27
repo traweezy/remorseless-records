@@ -4,7 +4,7 @@ import {
   resolveCatalogVariantProfile,
   serializeCatalogVariantProfileResponse,
 } from "@/lib/catalog/variant-profile-authoring"
-import { mutateCatalogVariantProfileWorkflow } from "@/workflows/catalog/mutate-variant-profile"
+import { mutateCatalogVariantProfileWorkflow } from "../../../../../../workflows/catalog/mutate-variant-profile"
 import { assertVariantExists } from "../../../utils"
 import { PUT } from "./route"
 
@@ -18,7 +18,7 @@ jest.mock("@/lib/catalog/variant-profile-authoring", () => {
     serializeCatalogVariantProfileResponse: jest.fn(),
   }
 })
-jest.mock("@/workflows/catalog/mutate-variant-profile", () => ({
+jest.mock("../../../../../../workflows/catalog/mutate-variant-profile", () => ({
   mutateCatalogVariantProfileWorkflow: jest.fn(),
 }))
 jest.mock("../../../utils", () => ({

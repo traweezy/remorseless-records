@@ -64,6 +64,11 @@ export const catalogMediaDerivativeStatuses = [
   "failed",
 ] as const
 
+export const catalogMediaLifecycleStatuses = [
+  "active",
+  "quarantined",
+] as const
+
 export const catalogAuthoringOperationStatuses = [
   "pending",
   "succeeded",

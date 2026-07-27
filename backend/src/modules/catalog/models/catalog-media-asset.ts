@@ -1,6 +1,9 @@
 import { model } from "@medusajs/framework/utils"
 
-import { catalogMediaDerivativeStatuses } from "../constants"
+import {
+  catalogMediaDerivativeStatuses,
+  catalogMediaLifecycleStatuses,
+} from "../constants"
 
 const CatalogMediaAsset = model.define(
   {
@@ -25,6 +28,12 @@ const CatalogMediaAsset = model.define(
     derivative_status: model
       .enum([...catalogMediaDerivativeStatuses])
       .default("source_only"),
+    lifecycle_status: model
+      .enum([...catalogMediaLifecycleStatuses])
+      .default("active"),
+    quarantined_at: model.dateTime().nullable(),
+    quarantined_by: model.text().nullable(),
+    purge_eligible_at: model.dateTime().nullable(),
     derivatives: model.json().default({}),
     version: model.number().default(1),
     metadata: model.json().default({}),

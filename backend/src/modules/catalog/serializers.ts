@@ -4,6 +4,7 @@ import {
   catalogBundleInventoryModes,
   catalogBundleTypes,
   catalogMediaDerivativeStatuses,
+  catalogMediaLifecycleStatuses,
   catalogMediaRoles,
   catalogReleaseDatePrecisions,
   catalogReferenceKinds,
@@ -43,6 +44,10 @@ export type CatalogMediaRole = (typeof catalogMediaRoleValues)[number]
 export const catalogMediaDerivativeStatusValues = catalogMediaDerivativeStatuses
 export type CatalogMediaDerivativeStatus =
   (typeof catalogMediaDerivativeStatusValues)[number]
+
+export const catalogMediaLifecycleStatusValues = catalogMediaLifecycleStatuses
+export type CatalogMediaLifecycleStatus =
+  (typeof catalogMediaLifecycleStatusValues)[number]
 
 export type JsonRecord = Record<string, unknown>
 export type JsonList = unknown[]
@@ -317,6 +322,10 @@ export type CatalogMediaAssetRecord = {
   focal_y: number | null
   crop_intent: string | null
   derivative_status: unknown
+  lifecycle_status?: unknown
+  quarantined_at?: Date | string | null
+  quarantined_by?: string | null
+  purge_eligible_at?: Date | string | null
   derivatives: JsonRecord | null
   version: number
   metadata: JsonRecord | null
@@ -340,6 +349,10 @@ export type CatalogMediaAssetDTO = {
   focalY: number | null
   cropIntent: string | null
   derivativeStatus: CatalogMediaDerivativeStatus
+  lifecycleStatus: CatalogMediaLifecycleStatus
+  quarantinedAt: string | null
+  quarantinedBy: string | null
+  purgeEligibleAt: string | null
   derivatives: JsonRecord
   version: number
   metadata: JsonRecord
@@ -527,6 +540,15 @@ const toCatalogMediaDerivativeStatus = (
   return match ?? "source_only"
 }
 
+const toCatalogMediaLifecycleStatus = (
+  value: unknown
+): CatalogMediaLifecycleStatus => {
+  const match = catalogMediaLifecycleStatusValues.find(
+    (status) => status === value
+  )
+  return match ?? "active"
+}
+
 export const serializeCatalogArtist = (
   artist: CatalogArtistRecord
 ): CatalogArtistDTO => ({
@@ -692,6 +714,10 @@ export const serializeCatalogMediaAsset = (
   focalY: asset.focal_y ?? null,
   cropIntent: asset.crop_intent ?? null,
   derivativeStatus: toCatalogMediaDerivativeStatus(asset.derivative_status),
+  lifecycleStatus: toCatalogMediaLifecycleStatus(asset.lifecycle_status),
+  quarantinedAt: toIso(asset.quarantined_at),
+  quarantinedBy: asset.quarantined_by ?? null,
+  purgeEligibleAt: toIso(asset.purge_eligible_at),
   derivatives: toRecord(asset.derivatives),
   version: asset.version ?? 1,
   metadata: toRecord(asset.metadata),

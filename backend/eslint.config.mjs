@@ -43,6 +43,18 @@ export default tseslint.config({
     "@typescript-eslint/require-await": "off",
     "@typescript-eslint/no-unnecessary-type-assertion": "off",
     "no-console": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        patterns: [
+          {
+            group: ["@/workflows", "@/workflows/**"],
+            message:
+              "Import workflows by a relative path so production builds do not register a second source-tree workflow graph.",
+          },
+        ],
+      },
+    ],
     "no-undef": "off",
     "no-unused-vars": "off",
   },
