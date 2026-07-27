@@ -14,3 +14,13 @@ regexes = [
   '''^(0123456789abcdef0123456789abcdef|abcdef0123456789abcdef0123456789|fedcba9876543210fedcba9876543210)$''',
 ]
 paths = ['''^storefront/src/lib/cart/cookie\.test\.ts$''']
+
+[[rules]]
+id = "stripe-access-token"
+
+[[rules.allowlists]]
+description = "Ignore the removed nonfunctional Stripe SDK placeholder"
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^sk_test_unconfigured$''']
+paths = ['''^backend/src/api/webhooks/stripe/lifecycle/route\.ts$''']

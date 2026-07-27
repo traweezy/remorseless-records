@@ -6,10 +6,7 @@ import type { IEventBusModuleService } from "@medusajs/framework/types";
 import { Modules } from "@medusajs/framework/utils";
 import Stripe from "stripe";
 
-import {
-  STRIPE_API_KEY,
-  STRIPE_LIFECYCLE_WEBHOOK_SECRET,
-} from "../../../../lib/constants";
+import { STRIPE_LIFECYCLE_WEBHOOK_SECRET } from "../../../../lib/constants";
 import { projectStripeLifecycleEvent } from "../../../../lib/payment-lifecycle/stripe-event";
 import {
   PAYMENT_LIFECYCLE_MODULE,
@@ -62,11 +59,7 @@ export const POST = async (
 
   let event: Stripe.Event;
   try {
-    const client = new Stripe(STRIPE_API_KEY ?? "sk_test_unconfigured", {
-      maxNetworkRetries: 2,
-      timeout: 10_000,
-    });
-    event = client.webhooks.constructEvent(
+    event = Stripe.webhooks.constructEvent(
       rawBody,
       signature,
       STRIPE_LIFECYCLE_WEBHOOK_SECRET,

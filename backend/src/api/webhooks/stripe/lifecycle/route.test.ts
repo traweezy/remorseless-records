@@ -13,7 +13,6 @@ import {
 import { POST } from "./route";
 
 jest.mock("../../../../lib/constants", () => ({
-  STRIPE_API_KEY: "sk_test_lifecycle",
   STRIPE_LIFECYCLE_WEBHOOK_SECRET: "whsec_lifecycle_unit_test",
 }));
 
