@@ -1084,6 +1084,32 @@ News images retain the generic `POST /admin/managed-uploads` route, which also
 accepts validated UTF-8 CSV for existing import tooling. The unused
 presigned-upload route remains disabled.
 
+The Medusa Admin **Media cleanup** workspace lists the exact paginated set of
+catalog assets not linked to products, separated into **Needs review** and
+**Quarantined** views. Quarantine is versioned, idempotent, actor-attributed,
+and protected by the same distributed asset lock as product-media editing.
+Quarantined assets cannot be linked, edited, or reused, and they remain
+restorable.
+
+Physical media deletion is deliberately unavailable. The displayed 30-day
+date is only the earliest future review point; no job or route automatically
+deletes the catalog row or File Module object.
+
+The screen shows whether storage is managed by the application, when and by
+whom an asset was quarantined, and the earliest review date. External orphan
+URLs are shown as text but are not automatically loaded as images in the
+operator's browser. Stale edits and assets that became linked after the page
+loaded are rejected instead of being silently changed.
+
+```mermaid
+flowchart LR
+  A[Unlinked active asset] -->|Quarantine| Q[Recoverable quarantine]
+  Q -->|Restore| A
+  Q -->|30 days elapsed| R[Eligible for operator review]
+  R --> Q
+  R -. No physical purge implemented .-> X[File Module deletion]
+```
+
 ## Email (Resend)
 
 - Backend includes Resend notification templates (`backend/src/modules/email-notifications`).

@@ -75,6 +75,46 @@ the same bounded content inspection and additionally accepts validated UTF-8
 CSV input for existing import tooling. The unused presigned-upload route is
 disabled because it bypasses server-side content inspection.
 
+The Admin **Media cleanup** route is the safe review surface for catalog assets
+that are not linked to any product. Its server-side anti-join returns exact,
+paginated active or quarantined results instead of filtering an arbitrary
+in-memory slice. Quarantining requires an expected asset version and UUID
+idempotency key, runs under the same asset lock used by product-media writes,
+and records the actor plus a 30-day review date. Quarantined assets cannot be
+linked, edited, or reused, but an operator can restore them at any time.
+
+The supporting Admin endpoints are:
+
+- `GET /admin/catalog/media/orphans?lifecycleStatus=active&limit=25&offset=0`
+  for an exact unlinked-asset count and deterministic page;
+- `POST /admin/catalog/media/assets/:id/quarantine` with
+  `{ "expectedVersion": 1, "idempotencyKey": "<uuid>" }`; and
+- `POST /admin/catalog/media/assets/:id/restore` with the asset's latest
+  version and a new UUID.
+
+Stale versions, linked assets, and conflicting idempotency-key reuse fail
+closed. The Admin validates every response, times out stalled requests, and
+does not preview arbitrary external URLs in the operator's browser.
+
+`DELETE /admin/catalog/media/assets/:id` no longer removes only the database
+row. Physical object deletion and automatic purge are disabled. The review date
+is not a deletion schedule; adding a File Module purge remains separately gated
+on an operator-approved, fully reconciled workflow.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Active
+  Active --> Quarantined: Admin quarantines an unlinked asset
+  Quarantined --> Active: Admin restores the asset
+  Quarantined --> ReviewEligible: 30-day review date reached
+  ReviewEligible --> Quarantined: No approved physical purge exists
+```
+
+Workflow callers under `src/api` use relative imports so production code
+resolves the workflow already loaded from `.medusa/server`. ESLint rejects
+`@/workflows/**` imports, which would otherwise allow a second source-tree Core
+Flows graph to register during packaged startup.
+
 ## Checkout payment authority
 
 The only new-payment path is Medusa's official
