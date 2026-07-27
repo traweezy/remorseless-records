@@ -21,7 +21,7 @@ on:
         type: string
 
 concurrency:
-  group: storefront-ci-${{ github.ref }}
+  group: storefront-ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
