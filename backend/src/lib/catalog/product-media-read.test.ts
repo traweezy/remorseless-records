@@ -1,12 +1,12 @@
 import type {
   CatalogMediaAssetRecord,
   CatalogProductMediaItemRecord,
-} from "../../../../modules/catalog/serializers"
+} from "../../modules/catalog/serializers"
 
-import type CatalogModuleService from "../../../../modules/catalog/service"
-import { loadProductMediaResponse } from "../../../../lib/catalog/product-media-read"
+import type CatalogModuleService from "../../modules/catalog/service"
+import { loadProductMediaResponse } from "./product-media-read"
 
-jest.mock("../../../../modules/catalog/serializers", () => ({
+jest.mock("../../modules/catalog/serializers", () => ({
   catalogMediaDerivativeStatusValues: [
     "pending",
     "ready",

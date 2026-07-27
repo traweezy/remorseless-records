@@ -62,3 +62,11 @@ Compensation restores the complete prior variant profile and removes only
 mutation-owned format values that remain unreferenced. Variant edits do not
 write the legacy availability field; native inventory remains the availability
 authority.
+
+Product-media replacements use the stored `mutate-catalog-product-media`
+workflow. The response exposes a media-set version backed by the authoring
+ledger; writes require that version and a UUID idempotency key. The workflow
+locks the product and every explicitly edited asset, restores links plus asset
+metadata on compensation, and removes only newly created assets that remain
+unreferenced. Reusable source files are cloned at the metadata layer so one
+product cannot silently rewrite another product's alternative text or crop.

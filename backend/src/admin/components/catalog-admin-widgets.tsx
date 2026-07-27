@@ -240,6 +240,7 @@ type CatalogProductMediaItem = {
 type ProductMediaResponse = {
   productId: string
   media: CatalogProductMediaItem[]
+  version: number
 }
 
 type UploadFileResponse = {
@@ -1223,6 +1224,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
   )
   const [bundleForm, setBundleForm] = useState<BundleForm>(emptyBundleForm)
   const [mediaForm, setMediaForm] = useState<ProductMediaLine[]>([])
+  const [mediaVersion, setMediaVersion] = useState(0)
   const [uploadingMedia, setUploadingMedia] = useState(false)
 
   const load = useCallback(async () => {
@@ -1255,6 +1257,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
       setProfileForm(toProductProfileForm(profile, artistList.artists, referenceList.values))
       setBundleForm(toBundleForm(bundle))
       setMediaForm(toProductMediaLines(media))
+      setMediaVersion(media.version)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load catalog profile")
     } finally {
@@ -1369,7 +1372,11 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
 
       await fetchJson<ProductMediaResponse>(`/admin/catalog/products/${productId}/media`, {
         method: "PUT",
-        body: JSON.stringify(buildProductMediaPayload(mediaForm)),
+        body: JSON.stringify({
+          ...buildProductMediaPayload(mediaForm),
+          idempotencyKey: crypto.randomUUID(),
+          expectedVersion: mediaVersion,
+        }),
       })
 
       toast.success("Saved catalog profile")
@@ -1386,6 +1393,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
     bundleResponse.bundle,
     load,
     mediaForm,
+    mediaVersion,
     productId,
     products,
     profileForm,
