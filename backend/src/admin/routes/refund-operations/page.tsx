@@ -30,6 +30,13 @@ import type {
   RefundProvider,
   RefundTaxStatus,
 } from "../../../lib/refund-operations/types";
+import { AdminEmptyState } from "../../components/admin-empty-state";
+import {
+  AdminPageHeader,
+  AdminSectionHeader,
+  AdminSingleColumnLayout,
+} from "../../components/admin-page";
+import { AdminRetryState } from "../../components/admin-retry-state";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
 import { refundOperationsQueryOptions } from "./query";
 import {
@@ -354,32 +361,34 @@ const RefundOperationsPage = memo(() => {
     .join(" · ");
 
   return (
-    <div className="flex flex-col gap-3">
+    <AdminSingleColumnLayout>
       <Container>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <Heading level="h1">Refund operations</Heading>
-              {operationsStatus ? (
-                <StatusBadge color={operationsStatus.color}>
-                  {operationsStatus.label}
-                </StatusBadge>
-              ) : null}
-            </div>
-            <Text size="small" className="mt-2 text-ui-fg-subtle">
+        <AdminPageHeader
+          actions={
+            <>
+              <Button asChild size="small" variant="secondary">
+                <a href="/app/settings/refund-reasons">Manage reasons</a>
+              </Button>
+              <Button asChild size="small" variant="primary">
+                <a href="/app/orders">Open orders</a>
+              </Button>
+            </>
+          }
+          description={
+            <>
               Choose the correct order workflow, then monitor Medusa, Stripe,
               and tax evidence until they agree.
-            </Text>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild size="small" variant="secondary">
-              <a href="/app/settings/refund-reasons">Manage reasons</a>
-            </Button>
-            <Button asChild size="small" variant="primary">
-              <a href="/app/orders">Open orders</a>
-            </Button>
-          </div>
-        </div>
+            </>
+          }
+          status={
+            operationsStatus ? (
+              <StatusBadge color={operationsStatus.color}>
+                {operationsStatus.label}
+              </StatusBadge>
+            ) : null
+          }
+          title="Refund operations"
+        />
 
         <Alert className="mt-5" variant="warning">
           <Text weight="plus">
@@ -394,11 +403,15 @@ const RefundOperationsPage = memo(() => {
       </Container>
 
       <Container>
-        <Heading level="h2">Choose the order path first</Heading>
-        <Text size="small" className="mt-1 text-ui-fg-subtle">
-          The payment refund is only one part of the customer resolution.
-          Choose the path that matches what is physically happening.
-        </Text>
+        <AdminSectionHeader
+          description={
+            <>
+              The payment refund is only one part of the customer resolution.
+              Choose the path that matches what is physically happening.
+            </>
+          }
+          title="Choose the order path first"
+        />
         <ol className="mt-5 grid gap-3 lg:grid-cols-3">
           <li className="rounded-lg border border-ui-border-base p-4">
             <Text size="xsmall" weight="plus" className="text-ui-fg-subtle">
@@ -501,45 +514,38 @@ const RefundOperationsPage = memo(() => {
       ) : null}
 
       {error ? (
-        <Container>
-          <Alert variant="error">
-            <Text weight="plus">Refund audit unavailable</Text>
-            <Text size="small">{error}</Text>
-          </Alert>
-          <Button
-            className="mt-4"
-            onClick={handleRefresh}
-            size="small"
-            type="button"
-            variant="secondary"
-          >
-            Try again
-          </Button>
-        </Container>
+        <AdminRetryState
+          message={error}
+          onRetry={handleRefresh}
+          retrying={loading}
+          title="Refund audit unavailable"
+        />
       ) : null}
 
       {snapshot ? (
         <>
           <Container>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <Heading level="h2">Refund health</Heading>
-                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+            <AdminSectionHeader
+              actions={
+                <Button
+                  isLoading={loading}
+                  onClick={handleRefresh}
+                  size="small"
+                  type="button"
+                  variant="secondary"
+                >
+                  <ArrowPath />
+                  Refresh audit
+                </Button>
+              }
+              description={
+                <>
                   Medusa-recorded refunds, checked against Stripe and the
                   active tax evidence.
-                </Text>
-              </div>
-              <Button
-                isLoading={loading}
-                onClick={handleRefresh}
-                size="small"
-                type="button"
-                variant="secondary"
-              >
-                <ArrowPath />
-                Refresh audit
-              </Button>
-            </div>
+                </>
+              }
+              title="Refund health"
+            />
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryCard
@@ -619,23 +625,25 @@ const RefundOperationsPage = memo(() => {
           </Container>
 
           <Container>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <Heading level="h2">Monitor refund cases</Heading>
-                <Text size="small" className="mt-1 text-ui-fg-subtle">
+            <AdminSectionHeader
+              actions={
+                <Text
+                  aria-live="polite"
+                  className="text-ui-fg-subtle"
+                  size="small"
+                >
+                  {filteredCases.length}{" "}
+                  {filteredCases.length === 1 ? "case" : "cases"}
+                </Text>
+              }
+              description={
+                <>
                   Filters work together. Open the order to take action through
                   the native Medusa workflow.
-                </Text>
-              </div>
-              <Text
-                aria-live="polite"
-                size="small"
-                className="text-ui-fg-subtle"
-              >
-                {filteredCases.length}{" "}
-                {filteredCases.length === 1 ? "case" : "cases"}
-              </Text>
-            </div>
+                </>
+              }
+              title="Monitor refund cases"
+            />
 
             <div className="mt-5 grid gap-3 md:grid-cols-[minmax(16rem,1fr)_13rem_13rem_auto] md:items-end">
               <div>
@@ -826,33 +834,33 @@ const RefundOperationsPage = memo(() => {
                 ) : null}
               </>
             ) : (
-              <div className="mt-5 flex flex-col items-center rounded-lg border border-dashed border-ui-border-base px-5 py-12 text-center">
-                <ArrowUturnLeft className="text-ui-fg-muted" />
-                <Heading level="h3" className="mt-3">
-                  {snapshot.cases.length
-                    ? "No cases match these filters"
-                    : "No refunds need monitoring"}
-                </Heading>
-                <Text
-                  size="small"
-                  className="mt-2 max-w-lg text-ui-fg-subtle"
-                >
-                  {snapshot.cases.length
+              <AdminEmptyState
+                action={
+                  snapshot.cases.length ? (
+                    <Button
+                      onClick={handleClearFilters}
+                      size="small"
+                      type="button"
+                      variant="secondary"
+                    >
+                      Clear filters
+                    </Button>
+                  ) : null
+                }
+                className="mt-5 rounded-lg border border-dashed border-ui-border-base px-5 py-12"
+                description={
+                  snapshot.cases.length
                     ? "Clear or adjust the filters to see the rest of the refund audit."
-                    : "When a refund is recorded, its Medusa, Stripe, and tax states will appear here automatically."}
-                </Text>
-                {snapshot.cases.length ? (
-                  <Button
-                    className="mt-4"
-                    onClick={handleClearFilters}
-                    size="small"
-                    type="button"
-                    variant="secondary"
-                  >
-                    Clear filters
-                  </Button>
-                ) : null}
-              </div>
+                    : "When a refund is recorded, its Medusa, Stripe, and tax states will appear here automatically."
+                }
+                headingLevel="h3"
+                icon={<ArrowUturnLeft />}
+                title={
+                  snapshot.cases.length
+                    ? "No cases match these filters"
+                    : "No refunds need monitoring"
+                }
+              />
             )}
           </Container>
 
@@ -873,7 +881,7 @@ const RefundOperationsPage = memo(() => {
           </Container>
         </>
       ) : null}
-    </div>
+    </AdminSingleColumnLayout>
   );
 });
 

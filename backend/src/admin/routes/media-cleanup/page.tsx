@@ -7,7 +7,6 @@ import {
   Alert,
   Button,
   Container,
-  Heading,
   Skeleton,
   StatusBadge,
   Table,
@@ -22,6 +21,12 @@ import {
 } from "@tanstack/react-query"
 import { z } from "zod"
 
+import { AdminEmptyState } from "../../components/admin-empty-state"
+import {
+  AdminPageHeader,
+  AdminSingleColumnLayout,
+} from "../../components/admin-page"
+import { AdminRetryState } from "../../components/admin-retry-state"
 import {
   getAdminRequestErrorMessage,
   requestAdminJson,
@@ -508,20 +513,26 @@ const MediaCleanupPage = memo(() => {
   )
 
   return (
-    <div className="flex flex-col gap-3">
+    <AdminSingleColumnLayout>
       <Container>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-2xl">
-            <Heading level="h1">Media cleanup</Heading>
-            <Text className="mt-1 text-ui-fg-subtle">
+        <AdminPageHeader
+          actions={
+            <Text
+              aria-live="polite"
+              className="text-ui-fg-subtle"
+              size="small"
+            >
+              {loading ? "Loading assets…" : countLabel}
+            </Text>
+          }
+          description={
+            <>
               Review images that are not attached to any product. Quarantine
               keeps the file recoverable while preventing accidental reuse.
-            </Text>
-          </div>
-          <Text aria-live="polite" className="text-ui-fg-subtle" size="small">
-            {loading ? "Loading assets…" : countLabel}
-          </Text>
-        </div>
+            </>
+          }
+          title="Media cleanup"
+        />
 
         <Alert className="mt-5" variant="warning">
           <Text weight="plus">Physical deletion is disabled</Text>
@@ -533,114 +544,105 @@ const MediaCleanupPage = memo(() => {
         </Alert>
       </Container>
 
-      <Container className="p-0">
-        <div className="px-6 pt-5">
-          <Tabs value={view} onValueChange={handleViewChange}>
-            <Tabs.List>
-              <Tabs.Trigger value="active">Needs review</Tabs.Trigger>
-              <Tabs.Trigger value="quarantined">Quarantined</Tabs.Trigger>
-            </Tabs.List>
-          </Tabs>
-        </div>
-
-        {error ? (
-          <div className="px-6 py-5">
-            <Alert variant="error">
-              <Text weight="plus">Media cleanup could not load</Text>
-              <Text size="small">{error}</Text>
-              <Button
-                className="mt-3"
-                onClick={handleRetry}
-                size="small"
-                variant="secondary"
-              >
-                Retry
-              </Button>
-            </Alert>
-          </div>
-        ) : !loading && page.assets.length === 0 ? (
-          <div className="flex min-h-52 flex-col items-center justify-center px-6 py-10 text-center">
-            <Heading level="h2">
-              {view === "active"
-                ? "No unlinked media needs review"
-                : "Quarantine is empty"}
-            </Heading>
-            <Text
-              className="mt-1 max-w-lg text-ui-fg-subtle"
-              size="small"
-            >
-              {view === "active"
-                ? "Every active catalog asset is currently attached to a product."
-                : "Assets moved to quarantine will remain recoverable here."}
-            </Text>
-          </div>
-        ) : (
-          <>
-            <div className="mt-4 md:hidden">
-              {loading ? <MobileLoadingCards /> : null}
-              {!loading ? (
-                <ul aria-label="Unlinked catalog media available for lifecycle review">
-                  {page.assets.map((asset) => (
-                    <MediaMobileCard
-                      asset={asset}
-                      busy={busyAssetId === asset.id}
-                      disabled={busyAssetId !== null}
-                      key={asset.id}
-                      onAction={handleLifecycleAction}
-                    />
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-            <div className="mt-4 hidden overflow-x-auto md:block">
-              <Table>
-                <caption className="sr-only">
-                  Unlinked catalog media available for lifecycle review
-                </caption>
-                <Table.Header>
-                  <Table.Row>
-                    <Table.HeaderCell scope="col">Asset</Table.HeaderCell>
-                    <Table.HeaderCell scope="col">Storage</Table.HeaderCell>
-                    <Table.HeaderCell scope="col">Status</Table.HeaderCell>
-                    <Table.HeaderCell scope="col">
-                      Purge review
-                    </Table.HeaderCell>
-                    <Table.HeaderCell scope="col">
-                      <span className="sr-only">Actions</span>
-                    </Table.HeaderCell>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {loading ? <LoadingRows /> : null}
-                  {!loading
-                    ? page.assets.map((asset) => (
-                        <MediaRow
-                          asset={asset}
-                          busy={busyAssetId === asset.id}
-                          disabled={busyAssetId !== null}
-                          key={asset.id}
-                          onAction={handleLifecycleAction}
-                        />
-                      ))
-                    : null}
-                </Table.Body>
-              </Table>
-            </div>
-          </>
-        )}
-
-        <Table.Pagination
-          canNextPage={!loading && page.hasMore}
-          canPreviousPage={!loading && pageIndex > 0}
-          count={page.count}
-          nextPage={handleNext}
-          pageCount={pageCount}
-          pageIndex={pageIndex}
-          pageSize={PAGE_SIZE}
-          previousPage={handlePrevious}
+      {error ? (
+        <AdminRetryState
+          message={error}
+          onRetry={handleRetry}
+          retrying={orphanQuery.isFetching}
+          title="Media cleanup could not load"
         />
-      </Container>
-    </div>
+      ) : (
+        <Container className="p-0">
+          <div className="px-6 pt-5">
+            <Tabs value={view} onValueChange={handleViewChange}>
+              <Tabs.List>
+                <Tabs.Trigger value="active">Needs review</Tabs.Trigger>
+                <Tabs.Trigger value="quarantined">Quarantined</Tabs.Trigger>
+              </Tabs.List>
+            </Tabs>
+          </div>
+
+          {!loading && page.assets.length === 0 ? (
+            <AdminEmptyState
+              description={
+                view === "active"
+                  ? "Every active catalog asset is currently attached to a product."
+                  : "Assets moved to quarantine will remain recoverable here."
+              }
+              title={
+                view === "active"
+                  ? "No unlinked media needs review"
+                  : "Quarantine is empty"
+              }
+            />
+          ) : (
+            <>
+              <div className="mt-4 md:hidden">
+                {loading ? <MobileLoadingCards /> : null}
+                {!loading ? (
+                  <ul aria-label="Unlinked catalog media available for lifecycle review">
+                    {page.assets.map((asset) => (
+                      <MediaMobileCard
+                        asset={asset}
+                        busy={busyAssetId === asset.id}
+                        disabled={busyAssetId !== null}
+                        key={asset.id}
+                        onAction={handleLifecycleAction}
+                      />
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              <div className="mt-4 hidden overflow-x-auto md:block">
+                <Table>
+                  <caption className="sr-only">
+                    Unlinked catalog media available for lifecycle review
+                  </caption>
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.HeaderCell scope="col">Asset</Table.HeaderCell>
+                      <Table.HeaderCell scope="col">Storage</Table.HeaderCell>
+                      <Table.HeaderCell scope="col">Status</Table.HeaderCell>
+                      <Table.HeaderCell scope="col">
+                        Purge review
+                      </Table.HeaderCell>
+                      <Table.HeaderCell scope="col">
+                        <span className="sr-only">Actions</span>
+                      </Table.HeaderCell>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {loading ? <LoadingRows /> : null}
+                    {!loading
+                      ? page.assets.map((asset) => (
+                          <MediaRow
+                            asset={asset}
+                            busy={busyAssetId === asset.id}
+                            disabled={busyAssetId !== null}
+                            key={asset.id}
+                            onAction={handleLifecycleAction}
+                          />
+                        ))
+                      : null}
+                  </Table.Body>
+                </Table>
+              </div>
+            </>
+          )}
+
+          <Table.Pagination
+            canNextPage={!loading && page.hasMore}
+            canPreviousPage={!loading && pageIndex > 0}
+            count={page.count}
+            nextPage={handleNext}
+            pageCount={pageCount}
+            pageIndex={pageIndex}
+            pageSize={PAGE_SIZE}
+            previousPage={handlePrevious}
+          />
+        </Container>
+      )}
+    </AdminSingleColumnLayout>
   )
 })
 

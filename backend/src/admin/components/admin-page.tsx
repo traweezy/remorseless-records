@@ -55,6 +55,45 @@ export const AdminPageHeader = memo<AdminPageHeaderProps>(
 
 AdminPageHeader.displayName = "AdminPageHeader";
 
+export type AdminSectionHeaderProps = {
+  actions?: ReactNode;
+  className?: string;
+  description?: ReactNode;
+  title: ReactNode;
+};
+
+export const AdminSectionHeader = memo<AdminSectionHeaderProps>(
+  ({
+    actions,
+    className,
+    description,
+    title,
+  }) => (
+    <header
+      className={clx(
+        "flex flex-wrap items-start justify-between gap-3",
+        className,
+      )}
+    >
+      <div className="min-w-0 max-w-3xl">
+        <Heading level="h2">{title}</Heading>
+        {description ? (
+          <Text className="mt-1 text-ui-fg-subtle" size="small">
+            {description}
+          </Text>
+        ) : null}
+      </div>
+      {actions ? (
+        <div className="flex min-w-0 flex-wrap items-start gap-2">
+          {actions}
+        </div>
+      ) : null}
+    </header>
+  ),
+);
+
+AdminSectionHeader.displayName = "AdminSectionHeader";
+
 export type AdminSingleColumnLayoutProps = ComponentPropsWithoutRef<"div">;
 
 export const AdminSingleColumnLayout =

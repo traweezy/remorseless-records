@@ -17,17 +17,23 @@ dialogs route by route:
   consequence action, pending lock, disabled enforcement, live pending
   announcement, mobile-height boundary, and cancel behavior. Domain forms keep
   ownership of validation, idempotency, and mutation error handling.
-- `components/admin-page.tsx` owns the single-column route rhythm and one
-  responsive page-header hierarchy for title, description, status, and
-  actions.
+- `components/admin-page.tsx` owns the single-column route rhythm plus
+  responsive page and section header hierarchies for titles, descriptions,
+  statuses, and actions.
+- `components/admin-empty-state.tsx` owns the announced empty-state
+  label/description relationship, heading depth, optional icon, and recovery
+  action.
 - `components/admin-retry-state.tsx` owns the announced error presentation and
   a real retry button that locks while a replacement request is pending.
 
 Tax Control is the first form/confirmation consumer. Tax Control and Tax
-Records share the page, layout, and retry-state components. Domain queries
-still own their skeleton shape and the conditions that distinguish an initial
-load from a recoverable failure. New custom forms should extend these
-components instead of copying their accessibility wiring.
+Records share the page, layout, and retry-state components. Media Cleanup and
+Refund Operations also use the shared page and retry hierarchy; their
+collection-specific empty states use the shared empty-state component. Domain
+queries still own skeletons shaped like their final content and the conditions
+that distinguish an initial load from a recoverable failure. New custom forms
+and routes should extend these components instead of copying their
+accessibility wiring.
 
 ## Refund operations
 

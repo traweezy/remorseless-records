@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   AdminPageHeader,
+  AdminSectionHeader,
   AdminSingleColumnLayout,
 } from "./admin-page";
 
@@ -21,6 +22,26 @@ describe("AdminPageHeader", () => {
     expect(markup).toContain("Draft, schedule, and publish label news.");
     expect(markup).toContain("Operational");
     expect(markup).toContain("Create post");
+  });
+});
+
+describe("AdminSectionHeader", () => {
+  it("renders a section heading with its description and actions", () => {
+    const markup = renderToStaticMarkup(
+      <AdminSectionHeader
+        actions={<button type="button">Refresh audit</button>}
+        description="Compare Medusa, Stripe, and tax evidence."
+        title="Refund health"
+      />,
+    );
+
+    expect(markup).toContain("<h2");
+    expect(markup).toContain(">Refund health</h2>");
+    expect(markup).toContain(
+      "Compare Medusa, Stripe, and tax evidence.",
+    );
+    expect(markup).toContain("Refresh audit");
+    expect(markup).not.toContain("<h1");
   });
 });
 
