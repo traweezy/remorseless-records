@@ -55,3 +55,10 @@ request hash and actor, and rejects stale or mismatched replays. If a later
 workflow step fails, compensation restores the complete prior profile, artist
 assignments, and reference assignments. Newly created controlled values are
 deleted only when the restored catalog no longer references them.
+
+Variant-profile PUTs follow the same contract through the stored
+`mutate-catalog-variant-profile` workflow and a variant-scoped lock.
+Compensation restores the complete prior variant profile and removes only
+mutation-owned format values that remain unreferenced. Variant edits do not
+write the legacy availability field; native inventory remains the availability
+authority.
