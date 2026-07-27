@@ -19,7 +19,7 @@ import type {
   CatalogBundleComponentState,
   CatalogBundleMutationInput,
 } from "@/modules/catalog/bundle-authoring";
-import { mutateCatalogBundleWorkflow } from "@/workflows/catalog/mutate-bundle";
+import { mutateCatalogBundleWorkflow } from "../../../../workflows/catalog/mutate-bundle";
 import {
   assertProductExists,
   assertQueryEntityExists,
