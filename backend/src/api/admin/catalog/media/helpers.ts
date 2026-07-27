@@ -11,7 +11,7 @@ import {
   serializeCatalogProductMediaItem,
   type CatalogMediaAssetRecord,
   type CatalogProductMediaItemRecord,
-} from "@/modules/catalog/serializers"
+} from "../../../../modules/catalog/serializers"
 import {
   assertProductExists,
   assertVariantBelongsToProduct,
@@ -78,24 +78,23 @@ export const loadProductMediaResponse = async (
     productId,
     sharedContext
   )
-  const assets = await Promise.all(
-    items.map(async (item) => {
-      try {
-        return (await catalogService.retrieveCatalogMediaAsset(
-          item.media_asset_id,
-          {},
-          sharedContext
-        )) as CatalogMediaAssetRecord
-      } catch {
-        return null
-      }
-    })
-  )
+  const assetIds = [...new Set(items.map((item) => item.media_asset_id))]
+  const assets = assetIds.length
+    ? ((await catalogService.listCatalogMediaAssets(
+        { id: assetIds },
+        {},
+        sharedContext
+      )) as CatalogMediaAssetRecord[])
+    : []
+  const assetsById = new Map(assets.map((asset) => [asset.id, asset]))
 
   return {
     productId,
-    media: items.map((item, index) =>
-      serializeCatalogProductMediaItem(item, assets[index] ?? null)
+    media: items.map((item) =>
+      serializeCatalogProductMediaItem(
+        item,
+        assetsById.get(item.media_asset_id) ?? null
+      )
     ),
   }
 }
