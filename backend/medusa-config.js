@@ -22,21 +22,30 @@ import {
   TAX_RATE_LOOKUP_MODE,
   TAX_RATE_LOOKUP_PROVIDER,
   WORKER_MODE,
-  MINIO_ENDPOINT,
-  MINIO_ACCESS_KEY,
-  MINIO_SECRET_KEY,
-  MINIO_BUCKET,
   MEILISEARCH_HOST,
   MEILISEARCH_ADMIN_KEY
 } from './src/lib/constants';
 import productSearchTransformer from './src/lib/meilisearch/product-transformer';
+import { resolveObjectStorageConfig } from './src/lib/storage/config';
 import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
 
 loadEnv(process.env.NODE_ENV, process.cwd());
 
+const isProduction = process.env.NODE_ENV === "production";
+const objectStorageConfig = resolveObjectStorageConfig({
+  required: isProduction,
+});
 const productIndexSettings = meilisearchSettings.products;
 const meilisearchCandidateIndex = process.env.MEILISEARCH_CANDIDATE_INDEX?.trim();
 const meilisearchIndexPattern = /^[a-zA-Z0-9_-]+$/;
+const meilisearchConfigurationValues = [
+  MEILISEARCH_HOST,
+  MEILISEARCH_ADMIN_KEY,
+];
+const hasAnyMeilisearchConfiguration =
+  meilisearchConfigurationValues.some(Boolean);
+const hasCompleteMeilisearchConfiguration =
+  meilisearchConfigurationValues.every(Boolean);
 
 if (
   meilisearchCandidateIndex &&
@@ -48,6 +57,17 @@ if (
   throw new Error(
     "MEILISEARCH_CANDIDATE_INDEX must be a valid non-live Meilisearch index UID."
   );
+}
+if (
+  (hasAnyMeilisearchConfiguration && !hasCompleteMeilisearchConfiguration) ||
+  (isProduction && !hasCompleteMeilisearchConfiguration)
+) {
+  throw new Error(
+    "MEILISEARCH_HOST and MEILISEARCH_ADMIN_KEY must be configured together in production."
+  );
+}
+if (isProduction && !REDIS_URL) {
+  throw new Error("REDIS_URL is required in production.");
 }
 
 const productSearchIndex = {
@@ -134,14 +154,22 @@ const medusaConfig = {
       resolve: '@medusajs/file',
       options: {
         providers: [
-          ...(MINIO_ENDPOINT && MINIO_ACCESS_KEY && MINIO_SECRET_KEY ? [{
-            resolve: './src/modules/minio-file',
+          ...(objectStorageConfig ? [{
+            resolve: '@medusajs/file-s3',
             id: 'minio',
             options: {
-              endPoint: MINIO_ENDPOINT,
-              accessKey: MINIO_ACCESS_KEY,
-              secretKey: MINIO_SECRET_KEY,
-              bucket: MINIO_BUCKET // Optional, default: medusa-media
+              file_url: objectStorageConfig.fileUrl,
+              access_key_id: objectStorageConfig.accessKeyId,
+              secret_access_key: objectStorageConfig.secretAccessKey,
+              region: objectStorageConfig.region,
+              bucket: objectStorageConfig.bucket,
+              endpoint: objectStorageConfig.endpoint,
+              acl: false,
+              cache_control: 'public, max-age=31536000, immutable',
+              download_file_duration: 3600,
+              additional_client_config: {
+                forcePathStyle: true,
+              },
             }
           }] : [{
             resolve: '@medusajs/file-local',
@@ -279,7 +307,7 @@ const medusaConfig = {
     }
   ],
   plugins: [
-  ...(MEILISEARCH_HOST && MEILISEARCH_ADMIN_KEY ? [{
+  ...(hasCompleteMeilisearchConfiguration ? [{
       resolve: '@rokmohar/medusa-plugin-meilisearch',
       options: {
         config: {
