@@ -4,8 +4,13 @@ import {
   type MedusaRequest,
   type MedusaResponse,
 } from "@medusajs/framework/http";
+import multer from "multer";
 
 import { STORE_CORS } from "../lib/constants";
+import {
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_FILES,
+} from "../lib/uploads/validation";
 
 type RateLimitRule = {
   key: string;
@@ -174,6 +179,27 @@ const adminTaxRecordsRateLimit = createRateLimitMiddleware({
   windowMs: 60_000,
 });
 
+const managedUpload = multer({
+  limits: {
+    fileSize: MAX_UPLOAD_BYTES,
+    files: MAX_UPLOAD_FILES,
+    fields: 0,
+    parts: MAX_UPLOAD_FILES,
+  },
+  storage: multer.memoryStorage(),
+});
+
+const rejectPresignedUploads = (
+  _req: MedusaRequest,
+  res: MedusaResponse,
+): void => {
+  res.status(400).json({
+    type: "not_allowed",
+    message:
+      "Presigned uploads are disabled; use the validated managed upload endpoint.",
+  });
+};
+
 export default defineMiddlewares({
   routes: [
     {
@@ -201,6 +227,16 @@ export default defineMiddlewares({
       bodyParser: {
         sizeLimit: "16kb",
       },
+    },
+    {
+      matcher: "/admin/managed-uploads",
+      methods: ["POST"],
+      middlewares: [managedUpload.array("files")],
+    },
+    {
+      matcher: "/admin/uploads/presigned-urls",
+      methods: ["POST"],
+      middlewares: [rejectPresignedUploads],
     },
     {
       matcher: /^\/admin\/tax-control(\/.*)?$/,

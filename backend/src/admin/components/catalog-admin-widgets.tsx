@@ -1586,7 +1586,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
         formData.append("files", file)
       }
 
-      const response = await fetch("/admin/uploads", {
+      const response = await fetch("/admin/managed-uploads", {
         method: "POST",
         credentials: "include",
         body: formData,

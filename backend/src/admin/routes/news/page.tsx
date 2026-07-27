@@ -389,7 +389,7 @@ const NewsAdminPage = () => {
       try {
         const formData = new FormData()
         formData.append("files", file as Blob)
-        const response = await fetch("/admin/uploads", {
+        const response = await fetch("/admin/managed-uploads", {
           method: "POST",
           credentials: "include",
           body: formData,
