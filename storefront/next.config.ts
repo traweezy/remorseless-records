@@ -83,7 +83,6 @@ const imageOrigins = unique([
   "https://medusa-public-images.s3.eu-west-1.amazonaws.com",
   "https://medusa-server-testing.s3.amazonaws.com",
   "https://medusa-server-testing.s3.us-east-1.amazonaws.com",
-  "https://assets.bigcartel.com",
   "https://images.unsplash.com",
   ...dynamicOrigins,
 ])
@@ -153,10 +152,6 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "medusa-server-testing.s3.us-east-1.amazonaws.com",
-      },
-      {
-        protocol: "https",
-        hostname: "assets.bigcartel.com",
       },
       {
         protocol: "https",
