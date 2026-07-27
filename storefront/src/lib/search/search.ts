@@ -5,7 +5,7 @@ import {
   normalizeSearchHit,
 } from "@/lib/search/normalize"
 import type { ProductSearchHit } from "@/types/product"
-import type { Filter, Index, Meilisearch, SearchResponse } from "meilisearch"
+import type { Filter, Meilisearch, SearchResponse } from "meilisearch"
 
 export const PRODUCTS_INDEX = "products"
 export const CATALOG_PAGE_SIZE = 60
@@ -14,6 +14,19 @@ export const CATALOG_SEARCH_ATTRIBUTES = [
   "release_title",
   "artist_names",
   "artist",
+] as const
+export const CATALOG_FILTERABLE_ATTRIBUTES = [
+  "status",
+  "genres",
+  "format",
+  "formats",
+  "category_handles",
+  "variant_titles",
+  "product_type",
+  "availability_states",
+  "price_min",
+  "price_max",
+  "stock_status",
 ] as const
 
 export type ProductSearchFilters = {
@@ -460,35 +473,6 @@ export const computeFacetCounts = (
   }
 }
 
-const filterableCache = new Map<string, Set<string>>()
-
-const ensureFilterableAttributes = async (
-  index: Index<Record<string, unknown>>
-): Promise<Set<string>> => {
-  const cacheKey = index.uid
-  const cached = filterableCache.get(cacheKey)
-  if (cached) {
-    return cached
-  }
-  const settings = await index.getSettings()
-  const rawAttributes = settings.filterableAttributes ?? []
-  const normalized = rawAttributes
-    .map((value) => {
-      if (typeof value === "string") {
-        return value
-      }
-      if (value && typeof value === "object" && "attribute" in value) {
-        const attribute = (value as { attribute?: string }).attribute
-        return typeof attribute === "string" ? attribute : null
-      }
-      return null
-    })
-    .filter((value): value is string => Boolean(value))
-  const filterable = new Set<string>(normalized)
-  filterableCache.set(cacheKey, filterable)
-  return filterable
-}
-
 export const searchProductsWithClient = async (
   client: Meilisearch,
   {
@@ -498,10 +482,11 @@ export const searchProductsWithClient = async (
     filters,
     sort,
     inStockOnly,
-  }: ProductSearchRequest
+  }: ProductSearchRequest,
+  filterableAttributes: readonly string[] = CATALOG_FILTERABLE_ATTRIBUTES
 ): Promise<ProductSearchResponse> => {
   const index = client.index(PRODUCTS_INDEX)
-  const filterable = await ensureFilterableAttributes(index)
+  const filterable = new Set(filterableAttributes)
   const { filterExpression, postFilters } = buildFilter(
     filters,
     inStockOnly,

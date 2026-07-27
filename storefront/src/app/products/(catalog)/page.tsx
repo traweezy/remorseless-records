@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { cacheLife, cacheTag } from "next/cache"
 import ProductSearchExperience from "@/components/product-search-experience"
 import JsonLd from "@/components/json-ld"
 import { siteMetadata } from "@/config/site"
@@ -89,6 +90,11 @@ const loadCatalogViewModel = async (): Promise<{
 }
 
 const loadInitialSearchResponse = async (): Promise<ProductSearchResponse> => {
+  "use cache"
+
+  cacheLife({ stale: 300, revalidate: 900, expire: 86_400 })
+  cacheTag("products", "catalog-initial-search-v1")
+
   try {
     return await searchProductsServer({
       query: "",
@@ -98,8 +104,20 @@ const loadInitialSearchResponse = async (): Promise<ProductSearchResponse> => {
       inStockOnly: false,
     })
   } catch (error) {
+    const cause =
+      error instanceof Error && error.cause instanceof Error
+        ? {
+            code:
+              "code" in error.cause && typeof error.cause.code === "string"
+                ? error.cause.code
+                : undefined,
+            message: error.cause.message,
+            name: error.cause.name,
+          }
+        : undefined
     console.error("[ProductsPage] falling back from Meilisearch", {
       reason: error instanceof Error ? error.message : error,
+      cause,
     })
     const catalogHits = await getFullCatalogHits()
     const hits = catalogHits.slice(0, CATALOG_PAGE_SIZE)

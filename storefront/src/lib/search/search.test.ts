@@ -156,24 +156,39 @@ describe("searchProductsWithClient", () => {
       }),
     }
 
-    const response = await searchProductsWithClient(makeClient(index), {
-      query: "doom",
-      limit: 24,
-      offset: 0,
-      inStockOnly: true,
-      sort: "price-low",
-      filters: {
-        genres: ["Doom"],
-        formats: ["Vinyl"],
-        categories: ["doom", "grind"],
-        variants: ["LP"],
-        productTypes: ["album"],
-        availability: ["in_stock"],
-        price: { min: 10, max: 30 },
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      {
+        query: "doom",
+        limit: 24,
+        offset: 0,
+        inStockOnly: true,
+        sort: "price-low",
+        filters: {
+          genres: ["Doom"],
+          formats: ["Vinyl"],
+          categories: ["doom", "grind"],
+          variants: ["LP"],
+          productTypes: ["album"],
+          availability: ["in_stock"],
+          price: { min: 10, max: 30 },
+        },
       },
-    })
+      [
+        "genres",
+        "formats",
+        "category_handles",
+        "variant_titles",
+        "product_type",
+        "status",
+        "availability_states",
+        "stock_status",
+        "price_min",
+        "price_max",
+      ]
+    )
 
-    expect(index.getSettings).toHaveBeenCalledTimes(1)
+    expect(index.getSettings).not.toHaveBeenCalled()
     expect(index.search).toHaveBeenCalledTimes(1)
     expect(index.search).toHaveBeenCalledWith("doom", {
       limit: 24,
@@ -232,16 +247,20 @@ describe("searchProductsWithClient", () => {
       }),
     }
 
-    const response = await searchProductsWithClient(makeClient(index), {
-      query: "doom",
-      limit: 24,
-      filters: {
-        genres: ["Doom"],
-        categories: ["doom"],
-        formats: ["Vinyl"],
-        variants: ["LP"],
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      {
+        query: "doom",
+        limit: 24,
+        filters: {
+          genres: ["Doom"],
+          categories: ["doom"],
+          formats: ["Vinyl"],
+          variants: ["LP"],
+        },
       },
-    })
+      ["genres"]
+    )
 
     expect(index.search).toHaveBeenCalledWith(
       "doom",
@@ -298,14 +317,18 @@ describe("searchProductsWithClient", () => {
       }),
     }
 
-    const response = await searchProductsWithClient(makeClient(index), {
-      query: "preorder",
-      limit: 24,
-      filters: {
-        availability: ["preorder"],
-        price: { min: 10, max: 25 },
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      {
+        query: "preorder",
+        limit: 24,
+        filters: {
+          availability: ["preorder"],
+          price: { min: 10, max: 25 },
+        },
       },
-    })
+      []
+    )
 
     expect(index.search).toHaveBeenCalledTimes(1)
     expect(
@@ -332,10 +355,14 @@ describe("searchProductsWithClient", () => {
       }),
     }
 
-    const response = await searchProductsWithClient(makeClient(index), {
-      query: "",
-      limit: 24,
-    })
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      {
+        query: "",
+        limit: 24,
+      },
+      []
+    )
 
     expect(
       (index.search.mock.calls[0]?.[1] as { filter?: unknown } | undefined)
@@ -371,20 +398,28 @@ describe("searchProductsWithClient", () => {
       }),
     }
 
-    await searchProductsWithClient(makeClient(minIndex), {
-      query: "",
-      limit: 1,
-      filters: {
-        price: { min: 10 },
+    await searchProductsWithClient(
+      makeClient(minIndex),
+      {
+        query: "",
+        limit: 1,
+        filters: {
+          price: { min: 10 },
+        },
       },
-    })
-    await searchProductsWithClient(makeClient(maxIndex), {
-      query: "",
-      limit: 1,
-      filters: {
-        price: { max: 20 },
+      ["price_min", "price_max"]
+    )
+    await searchProductsWithClient(
+      makeClient(maxIndex),
+      {
+        query: "",
+        limit: 1,
+        filters: {
+          price: { max: 20 },
+        },
       },
-    })
+      ["price_min", "price_max"]
+    )
 
     expect(minIndex.search).toHaveBeenCalledWith(
       "",
@@ -425,11 +460,15 @@ describe("searchProductsWithClient", () => {
         }),
     }
 
-    const response = await searchProductsWithClient(makeClient(index), {
-      query: "release",
-      limit: 10,
-      offset: 60,
-    })
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      {
+        query: "release",
+        limit: 10,
+        offset: 60,
+      },
+      ["genres"]
+    )
 
     expect(index.search).toHaveBeenCalledTimes(2)
     expect(response.hits).toHaveLength(10)
@@ -438,7 +477,7 @@ describe("searchProductsWithClient", () => {
     expect(response.nextOffset).toBe(70)
   })
 
-  it("reuses cached filterable settings across requests", async () => {
+  it("uses the versioned filter contract without reading index settings", async () => {
     const index: MockIndex = {
       uid: "products-cached-settings",
       getSettings: vi.fn().mockResolvedValue({
@@ -466,7 +505,7 @@ describe("searchProductsWithClient", () => {
       filters: { genres: [faker.music.genre()] },
     })
 
-    expect(index.getSettings).toHaveBeenCalledTimes(1)
+    expect(index.getSettings).not.toHaveBeenCalled()
     expect(index.search).toHaveBeenCalledTimes(2)
   })
 
@@ -536,13 +575,17 @@ describe("searchProductsWithClient", () => {
       }),
     }
 
-    const response = await searchProductsWithClient(makeClient(index), {
-      query: faker.music.genre(),
-      limit: 10,
-      filters: {
-        categories: ["doom", "vinyl"],
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      {
+        query: faker.music.genre(),
+        limit: 10,
+        filters: {
+          categories: ["doom", "vinyl"],
+        },
       },
-    })
+      []
+    )
 
     expect(response.total).toBe(1)
     expect(response.hits).toHaveLength(1)
