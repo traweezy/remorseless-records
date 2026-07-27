@@ -1,6 +1,8 @@
 import {
   assertCatalogReadModelIntegrity,
+  assertExactDocumentIds,
   assertPublishedProductParity,
+  assertRequiredDocumentFields,
 } from "./check-meilisearch-sync"
 
 describe("assertPublishedProductParity", () => {
@@ -62,5 +64,49 @@ describe("assertCatalogReadModelIntegrity", () => {
         unknownStockCount: 0,
       })
     ).toThrow("1 non-published product(s) are exposed")
+  })
+})
+
+describe("catalog document integrity", () => {
+  it("accepts exact IDs and required catalog fields", () => {
+    expect(() =>
+      assertExactDocumentIds({
+        indexedIds: ["prod_1", "prod_2"],
+        publishedIds: ["prod_2", "prod_1"],
+      })
+    ).not.toThrow()
+    expect(() =>
+      assertRequiredDocumentFields([
+        {
+          handle: "album-one",
+          id: "prod_1",
+          product_type: "music_release",
+          status: "published",
+          stock_status: "available",
+          title: "Album One",
+        },
+      ])
+    ).not.toThrow()
+  })
+
+  it("rejects substituted, duplicate, and incomplete documents", () => {
+    expect(() =>
+      assertExactDocumentIds({
+        indexedIds: ["prod_1", "prod_1"],
+        publishedIds: ["prod_1", "prod_2"],
+      })
+    ).toThrow("Missing: 1; unexpected: 0; duplicate indexed IDs: 1")
+    expect(() =>
+      assertRequiredDocumentFields([
+        {
+          handle: "",
+          id: "prod_1",
+          product_type: "music_release",
+          status: "published",
+          stock_status: "available",
+          title: "Album One",
+        },
+      ])
+    ).toThrow("missing required catalog fields")
   })
 })

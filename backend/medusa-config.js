@@ -35,6 +35,27 @@ import meilisearchSettings from './config/meilisearch-settings.json' assert { ty
 loadEnv(process.env.NODE_ENV, process.cwd());
 
 const productIndexSettings = meilisearchSettings.products;
+const meilisearchCandidateIndex = process.env.MEILISEARCH_CANDIDATE_INDEX?.trim();
+const meilisearchIndexPattern = /^[a-zA-Z0-9_-]+$/;
+
+if (
+  meilisearchCandidateIndex &&
+  (
+    meilisearchCandidateIndex === "products" ||
+    !meilisearchIndexPattern.test(meilisearchCandidateIndex)
+  )
+) {
+  throw new Error(
+    "MEILISEARCH_CANDIDATE_INDEX must be a valid non-live Meilisearch index UID."
+  );
+}
+
+const productSearchIndex = {
+  type: 'products',
+  enabled: true,
+  ...productIndexSettings,
+  transformer: productSearchTransformer,
+};
 const stripeConfigurationValues = [
   STRIPE_API_KEY,
   STRIPE_WEBHOOK_SECRET,
@@ -266,37 +287,12 @@ const medusaConfig = {
           apiKey: MEILISEARCH_ADMIN_KEY
         },
         settings: {
-          products: {
-            type: 'products',
-            enabled: true,
-            ...productIndexSettings,
-            transformer: productSearchTransformer,
-            fields: [
-              'id',
-              'handle',
-              'status',
-              'title',
-              'subtitle',
-              'description',
-              'collection_id',
-              'thumbnail',
-              'metadata',
-              'created_at',
-              'updated_at',
-              'collection.*',
-              'tags.*',
-              'images.*',
-              'variants.*',
-              'variants.prices.*',
-              'variants.options.*',
-              'variants.options.option.*',
-              'options.*',
-              'options.values.*',
-              'categories.*',
-              'categories.parent_category.*',
-              'categories.parent_category.parent_category.*'
-            ]
-          }
+          products: productSearchIndex,
+          ...(meilisearchCandidateIndex ? {
+            [meilisearchCandidateIndex]: {
+              ...productSearchIndex,
+            },
+          } : {}),
         }
       }
     }] : [])

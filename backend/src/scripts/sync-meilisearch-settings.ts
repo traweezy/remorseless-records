@@ -19,7 +19,7 @@ type MeilisearchService = {
   }
 }
 
-const normalizeAttributeList = (raw: unknown): string[] => {
+export const normalizeAttributeList = (raw: unknown): string[] => {
   if (!raw) {
     return []
   }
@@ -40,6 +40,86 @@ const normalizeAttributeList = (raw: unknown): string[] => {
   }
 
   return []
+}
+
+const areEqual = (left: unknown, right: unknown): boolean => {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+const isConfiguredSubset = (actual: unknown, expected: unknown): boolean => {
+  if (
+    !expected ||
+    typeof expected !== "object" ||
+    Array.isArray(expected)
+  ) {
+    return areEqual(actual, expected)
+  }
+  if (!actual || typeof actual !== "object" || Array.isArray(actual)) {
+    return false
+  }
+
+  return Object.entries(expected).every(([key, value]) => {
+    return isConfiguredSubset(
+      (actual as Record<string, unknown>)[key],
+      value
+    )
+  })
+}
+
+export const assertConfiguredIndexSettings = ({
+  actual,
+  expected,
+  indexKey,
+}: {
+  actual: Record<string, unknown>
+  expected: Record<string, unknown>
+  indexKey: string
+}): void => {
+  const attributeKeys = [
+    "searchableAttributes",
+    "displayedAttributes",
+    "filterableAttributes",
+    "sortableAttributes",
+    "rankingRules",
+  ] as const
+  const mismatches: string[] = []
+
+  attributeKeys.forEach((key) => {
+    if (!(key in expected)) {
+      return
+    }
+
+    const expectedValues = normalizeAttributeList(expected[key])
+    const actualValues = normalizeAttributeList(actual[key])
+    const orderMatters =
+      key === "searchableAttributes" || key === "rankingRules"
+    const normalizedExpected = orderMatters
+      ? expectedValues
+      : [...expectedValues].sort()
+    const normalizedActual = orderMatters
+      ? actualValues
+      : [...actualValues].sort()
+    if (!areEqual(normalizedActual, normalizedExpected)) {
+      mismatches.push(
+        `${key}: expected [${expectedValues.join(", ")}], received [${actualValues.join(", ")}]`
+      )
+    }
+  })
+
+  if (
+    "typoTolerance" in expected &&
+    !isConfiguredSubset(actual.typoTolerance, expected.typoTolerance)
+  ) {
+    mismatches.push("typoTolerance differs from the configured value")
+  }
+
+  if (mismatches.length) {
+    throw new Error(
+      `[meilisearch] Settings for '${indexKey}' do not match configuration: ${mismatches.join(
+        "; "
+      )}`
+    )
+  }
 }
 
 export default async function syncMeilisearchSettings({
@@ -65,52 +145,11 @@ export default async function syncMeilisearchSettings({
   const expectedSettings = productConfig.indexSettings ?? {}
   const currentSettings = await meilisearch.getIndex(PRODUCTS_INDEX).getSettings()
 
-  const comparisons = [
-    {
-      label: "searchableAttributes",
-      expected: normalizeAttributeList(expectedSettings.searchableAttributes),
-      actual: normalizeAttributeList(currentSettings.searchableAttributes),
-    },
-    {
-      label: "displayedAttributes",
-      expected: normalizeAttributeList(expectedSettings.displayedAttributes),
-      actual: normalizeAttributeList(currentSettings.displayedAttributes),
-    },
-    {
-      label: "filterableAttributes",
-      expected: normalizeAttributeList(expectedSettings.filterableAttributes),
-      actual: normalizeAttributeList(currentSettings.filterableAttributes),
-    },
-    {
-      label: "sortableAttributes",
-      expected: normalizeAttributeList(expectedSettings.sortableAttributes),
-      actual: normalizeAttributeList(currentSettings.sortableAttributes),
-    },
-  ]
-
-  const mismatches: string[] = []
-
-  comparisons.forEach(({ label, expected, actual }) => {
-    if (!expected.length) {
-      return
-    }
-
-    const missing = expected.filter(
-      (value) => !actual.includes(value)
-    )
-
-    if (missing.length) {
-      mismatches.push(`${label}: missing [${missing.join(", ")}]`)
-    }
+  assertConfiguredIndexSettings({
+    actual: currentSettings,
+    expected: expectedSettings,
+    indexKey: PRODUCTS_INDEX,
   })
-
-  if (mismatches.length) {
-    throw new Error(
-      `[meilisearch] Synchronization incomplete. Missing attributes -> ${mismatches.join(
-        "; "
-      )}`
-    )
-  }
 
   logger.info("[meilisearch] Synchronized index settings for 'products' and validated attributes.")
 }

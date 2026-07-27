@@ -958,7 +958,8 @@ and browser-close matrices.
 ## Search (Meilisearch)
 
 - Storefront uses Meilisearch with TanStack Pacer debounced client for instant filtering.
-- Backend configuration expects the products index to be populated (via Medusa events or manual sync).
+- Medusa events keep the live `products` index current. Bulk rebuilds never
+  clear that live index.
 - Local Meilisearch:
   ```bash
   docker run -it --rm \
@@ -966,10 +967,30 @@ and browser-close matrices.
     -e MEILI_MASTER_KEY=masterKey \
     getmeili/meilisearch:v1.12
   ```
-- **Bootstrap the index** (re-run whenever products change in bulk):
+- **Bootstrap or rebuild the index** (re-run whenever products change in
+  bulk):
   ```bash
   pnpm --filter backend run search:sync
   ```
+- The command creates a versioned `products_build_*` index, applies and
+  verifies settings, indexes all published products, and validates exact IDs,
+  required fields, stock invariants, a representative title query, facets,
+  and sorting. Only then does it use Meilisearch's atomic swap operation.
+- After the swap, the command reconciles writes that occurred during the
+  build, validates `products` again, and retains the former live index as the
+  rollback target. Versioned indexes are eligible for automatic cleanup only
+  after seven days based on their controlled UID timestamp.
+- Completion reports are written with owner-only permissions under
+  `~/.local/share/remorseless-records/search-rebuild/`.
+- To perform an emergency rollback, copy the exact `rollbackIndex` from the
+  completion report and deliberately confirm it:
+  ```bash
+  MEILISEARCH_ROLLBACK_INDEX=products_build_<version> \
+  MEILISEARCH_ROLLBACK_CONFIRM=products_build_<version> \
+  pnpm --filter backend run search:rollback
+  ```
+  The rollback command refuses the live UID, unrelated indexes, empty
+  rollback indexes, and mismatched confirmation values.
 - Seed the index (example):
   ```bash
   curl \

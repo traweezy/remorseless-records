@@ -248,8 +248,15 @@ pnpm --filter backend run search:sync
 Watch backend logs for completion message:
 
 ```
-[meilisearch] Indexed N product(s) into 'products'
+[meilisearch] Atomic rebuild complete. 'products' is live; '<versioned index>' retains the prior index for rollback.
 ```
+
+The rebuild is fail-closed and zero-downtime: it validates a versioned
+candidate before the atomic swap, reconciles writes after the swap, validates
+the new live index, retains the prior index for rollback, and prunes only
+controlled candidates older than seven days. Save the owner-only JSON report
+from `~/.local/share/remorseless-records/search-rebuild/` with the release
+evidence.
 
 ### 3.2 CRUD Consistency Check
 
@@ -259,7 +266,9 @@ Run the following sequence:
 2. **Update**: Change title, tags, and price; confirm Meilisearch document reflects changes (`GET /indexes/products/documents/{id}`).
 3. **Delete**: Remove the product; ensure document disappears and storefront search no longer shows it.
 
-Helper command: `pnpm --filter backend run search:check` compares Medusa product count against Meilisearch documents and reports mismatches.
+Helper command: `pnpm --filter backend run search:check` verifies count and
+exact ID parity, required fields, published/stock invariants, title search,
+product-type facets, and title sorting.
 
 Helpful Meilisearch queries:
 
