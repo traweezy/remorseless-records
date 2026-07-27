@@ -145,6 +145,9 @@ importers:
       '@medusajs/icons':
         specifier: ^2.18.0
         version: 2.18.0(@types/react@18.3.31)(react@18.3.1)
+      '@medusajs/js-sdk':
+        specifier: 2.18.0
+        version: 2.18.0
       '@medusajs/medusa':
         specifier: ^2.18.0
         version: 2.18.0(911dde54f1726d317e95110c1f7a9a15)
@@ -251,6 +254,9 @@ importers:
       '@swc/jest':
         specifier: ^0.2.39
         version: 0.2.39(@swc/core@1.15.46(@swc/helpers@0.5.23))
+      '@tanstack/react-query':
+        specifier: 5.64.2
+        version: 5.64.2(react@18.3.1)
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
