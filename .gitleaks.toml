@@ -15,6 +15,13 @@ regexes = [
 ]
 paths = ['''^storefront/src/lib/cart/cookie\.test\.ts$''']
 
+[[rules.allowlists]]
+description = "Ignore the historical synthetic tax-control idempotency fixture"
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^6bcb5a26-6f8a-4c13-9c39-0f28dd41fb81$''']
+paths = ['''^backend/src/admin/routes/tax-control/query\.test\.ts$''']
+
 [[rules]]
 id = "stripe-access-token"
 

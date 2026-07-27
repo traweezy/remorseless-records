@@ -169,7 +169,7 @@ describe("tax control query boundary", () => {
     jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot);
     const switchInput = {
       expectedGeneration: 1,
-      idempotencyKey: "6bcb5a26-6f8a-4c13-9c39-0f28dd41fb81",
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
       reason: "Stripe sandbox validation completed.",
       targetProvider: "stripe_tax",
     } as const;
