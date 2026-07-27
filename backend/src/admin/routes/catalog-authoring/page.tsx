@@ -23,6 +23,8 @@ import {
   getRemainingProductOptionOffsets,
   mergeExactProduct,
   mergeProductOptions,
+  resolveBundleVariantLabel,
+  resolveStoredBundleVariantLabel,
   shouldLoadBundleProductOptions,
   type ProductOptionStatus,
 } from "../../features/catalog-authoring/product-option-loading"
@@ -513,6 +515,13 @@ const formatVariantLabel = (variant: AdminVariant): string => {
   const sku = variant.sku?.trim()
   return sku ? `${title} (${sku})` : title
 }
+
+const formatBundleVariantLabel = (variant: AdminVariant): string =>
+  resolveBundleVariantLabel({
+    title: variant.title,
+    optionLabel: getVariantOptionLabel(variant),
+    sku: variant.sku,
+  })
 
 const defaultHandle = (title: string): string =>
   title
@@ -1066,7 +1075,7 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
         componentProductId: productId,
         componentVariantId: firstVariant?.id ?? "",
         title: product?.title ?? "",
-        variantTitle: firstVariant ? formatVariantLabel(firstVariant) : "",
+        variantTitle: firstVariant ? formatBundleVariantLabel(firstVariant) : "",
         sku: firstVariant?.sku ?? "",
       })
     },
@@ -1448,7 +1457,7 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                         componentVariantId: componentVariant?.id ?? undefined,
                         title: componentProduct?.title ?? undefined,
                         variantTitle: componentVariant
-                          ? formatVariantLabel(componentVariant)
+                          ? formatBundleVariantLabel(componentVariant)
                           : undefined,
                         sku: componentVariant?.sku ?? undefined,
                         quantity: 1,
@@ -2402,8 +2411,7 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                                   {component.componentProductId &&
                                   !hasComponentProductOption ? (
                                     <option value={component.componentProductId}>
-                                      {component.title ||
-                                        component.componentProductId}
+                                      {component.title || "Current selected product"}
                                     </option>
                                   ) : null}
                                   {selectableProducts.map((product) => (
@@ -2428,7 +2436,9 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                                     )
                                     updateBundleComponent(component.key, {
                                       componentVariantId,
-                                      variantTitle: variant ? formatVariantLabel(variant) : "",
+                                      variantTitle: variant
+                                        ? formatBundleVariantLabel(variant)
+                                        : "",
                                       sku: variant?.sku ?? "",
                                     })
                                   }}
@@ -2438,13 +2448,14 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                                   {component.componentVariantId &&
                                   !hasComponentVariantOption ? (
                                     <option value={component.componentVariantId}>
-                                      {component.variantTitle ||
-                                        component.componentVariantId}
+                                      {resolveStoredBundleVariantLabel(
+                                        component.variantTitle
+                                      )}
                                     </option>
                                   ) : null}
                                   {(componentProduct?.variants ?? []).map((variant) => (
                                     <option key={variant.id} value={variant.id}>
-                                      {formatVariantLabel(variant)}
+                                      {formatBundleVariantLabel(variant)}
                                     </option>
                                   ))}
                                 </select>
@@ -2674,7 +2685,7 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
                         .find((product) => product.id === createForm.componentProductId)
                         ?.variants?.map((variant) => (
                           <option key={variant.id} value={variant.id}>
-                            {formatVariantLabel(variant)}
+                            {formatBundleVariantLabel(variant)}
                           </option>
                         ))}
                     </select>

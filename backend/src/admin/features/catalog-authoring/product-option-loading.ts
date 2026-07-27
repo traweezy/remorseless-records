@@ -58,3 +58,19 @@ export const shouldLoadBundleProductOptions = ({
   status: ProductOptionStatus
 }): boolean =>
   Boolean(dedicatedProductId) && bundleEnabled && status === "idle"
+
+type BundleVariantLabelInput = {
+  title: string | null | undefined
+  optionLabel: string
+  sku: string | null | undefined
+}
+
+export const resolveBundleVariantLabel = ({
+  title,
+  optionLabel,
+  sku,
+}: BundleVariantLabelInput): string =>
+  title?.trim() || optionLabel.trim() || sku?.trim() || "Variant"
+
+export const resolveStoredBundleVariantLabel = (variantTitle: string): string =>
+  variantTitle.trim() || "Current selected variant"

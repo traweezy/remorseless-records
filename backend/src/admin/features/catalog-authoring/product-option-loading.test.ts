@@ -4,6 +4,8 @@ import {
   getRemainingProductOptionOffsets,
   mergeExactProduct,
   mergeProductOptions,
+  resolveBundleVariantLabel,
+  resolveStoredBundleVariantLabel,
   shouldLoadBundleProductOptions,
 } from "./product-option-loading"
 
@@ -84,5 +86,41 @@ describe("catalog product option loading", () => {
         status: "idle",
       })
     ).toBe(false)
+  })
+
+  it("uses concise, human bundle variant labels", () => {
+    expect(
+      resolveBundleVariantLabel({
+        title: " CD ",
+        optionLabel: "Compact Disc",
+        sku: "MUSIC_RELEASE_CD",
+      })
+    ).toBe("CD")
+    expect(
+      resolveBundleVariantLabel({
+        title: " ",
+        optionLabel: " Compact Disc ",
+        sku: "MUSIC_RELEASE_CD",
+      })
+    ).toBe("Compact Disc")
+    expect(
+      resolveBundleVariantLabel({
+        title: null,
+        optionLabel: "",
+        sku: " MUSIC_RELEASE_CD ",
+      })
+    ).toBe("MUSIC_RELEASE_CD")
+    expect(
+      resolveBundleVariantLabel({
+        title: undefined,
+        optionLabel: "",
+        sku: undefined,
+      })
+    ).toBe("Variant")
+  })
+
+  it("never exposes a raw variant id when choices cannot load", () => {
+    expect(resolveStoredBundleVariantLabel(" 3LP ")).toBe("3LP")
+    expect(resolveStoredBundleVariantLabel("")).toBe("Current selected variant")
   })
 })
