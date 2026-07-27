@@ -3,9 +3,7 @@
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useState,
   type ChangeEvent,
 } from "react";
@@ -24,6 +22,7 @@ import {
   Table,
   Text,
 } from "@medusajs/ui";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   filingBucketFor,
@@ -35,53 +34,20 @@ import {
   taxPeriodForPreset,
   taxPeriodPresetOptions,
   type TaxPeriodPreset,
-  type TaxReportPeriod,
 } from "../../../lib/tax-reporting/periods";
 import type {
   TaxDestinationSummary,
   TaxRecord,
   TaxRecordProvider,
   TaxRecordQuality,
-  TaxRecordType,
-  TaxReportSummary,
 } from "../../../lib/tax-reporting/types";
+import { getAdminRequestErrorMessage } from "../../lib/admin-request";
+import {
+  taxRecordsQueryOptions,
+  type TaxRecordFilters,
+} from "./query";
 
-type TaxReport = {
-  destinations: TaxDestinationSummary[];
-  filingState: TaxFilingState;
-  filters: {
-    currencies: string[];
-    providers: TaxRecordProvider[];
-    states: string[];
-  };
-  generatedAt: string;
-  period: TaxReportPeriod;
-  records: TaxRecord[];
-  resultCount: number;
-  source: {
-    medusaOrdersScanned: number;
-    scopedRecords: number;
-    truncated: boolean;
-    unassignedStateRecords: number;
-  };
-  summaries: TaxReportSummary[];
-  unassignedRecordExamples: {
-    displayId: number;
-    occurredAt: string;
-    orderId: string;
-  }[];
-};
-
-type Filters = {
-  limit: number;
-  page: number;
-  provider: "all" | TaxRecordProvider;
-  q: string;
-  quality: "all" | TaxRecordQuality;
-  type: "all" | TaxRecordType;
-};
-
-const INITIAL_FILTERS: Filters = {
+const INITIAL_FILTERS: TaxRecordFilters = {
   limit: 50,
   page: 1,
   provider: "all",
@@ -98,18 +64,6 @@ const uiPeriodForPreset = (
 ): UiPeriod => {
   const period = taxPeriodForPreset({ filingState, preset });
   return { end: period.endDate, start: period.startDate };
-};
-
-const extractErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const body = (await response.json()) as {
-      detail?: string;
-      message?: string;
-    };
-    return body.detail ?? body.message ?? response.statusText;
-  } catch {
-    return response.statusText;
-  }
 };
 
 const formatMoney = (value: string, currencyCode = "usd"): string =>
@@ -394,81 +348,35 @@ const TaxRecordsPage = memo(() => {
   const [draftStart, setDraftStart] = useState(initialPeriod.start);
   const [draftEnd, setDraftEnd] = useState(initialPeriod.end);
   const [period, setPeriod] = useState(initialPeriod);
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const [filters, setFilters] =
+    useState<TaxRecordFilters>(INITIAL_FILTERS);
   const [draftSearch, setDraftSearch] = useState("");
-  const [report, setReport] = useState<TaxReport | null>(null);
   const [reportingCurrency, setReportingCurrency] = useState("usd");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const activeRequest = useRef<AbortController | null>(null);
-  const loadSequence = useRef(0);
-
-  const load = useCallback(async () => {
-    activeRequest.current?.abort();
-    const controller = new AbortController();
-    activeRequest.current = controller;
-    const sequence = ++loadSequence.current;
-    const timeout = globalThis.setTimeout(() => {
-      controller.abort(new Error("The tax records request timed out."));
-    }, 20_000);
-    setLoading(true);
-    setError(null);
-    const searchParams = new URLSearchParams({
-      end: period.end,
-      filing_state: filingState,
-      limit: String(filters.limit),
-      page: String(filters.page),
-      provider: filters.provider,
-      q: filters.q,
-      quality: filters.quality,
-      start: period.start,
-      type: filters.type,
-    });
-
-    try {
-      const response = await fetch(`/admin/tax-records?${searchParams}`, {
-        credentials: "include",
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        throw new Error(await extractErrorMessage(response));
-      }
-      const next = (await response.json()) as TaxReport;
-      if (sequence === loadSequence.current) {
-        setReport(next);
-      }
-    } catch (caught) {
-      if (sequence === loadSequence.current) {
-        setError(
-          caught instanceof Error
-            ? caught.message
-            : "Tax records could not be loaded.",
-        );
-      }
-    } finally {
-      globalThis.clearTimeout(timeout);
-      if (activeRequest.current === controller) {
-        activeRequest.current = null;
-      }
-      if (sequence === loadSequence.current) {
-        setLoading(false);
-      }
-    }
-  }, [filingState, filters, period]);
-
-  useEffect(() => {
-    void load();
-    return () => {
-      loadSequence.current += 1;
-      activeRequest.current?.abort();
-    };
-  }, [load]);
+  const {
+    data: report,
+    error: queryError,
+    isFetching: loading,
+    refetch,
+  } = useQuery(
+    taxRecordsQueryOptions({
+      filingState,
+      filters,
+      period,
+    }),
+  );
+  const error = queryError
+    ? getAdminRequestErrorMessage(
+        queryError,
+        "Tax records could not be loaded.",
+      )
+    : null;
+  const handleRetry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   const handleFilingState = useCallback((value: string) => {
     const nextState = value as TaxFilingState;
     const nextPeriod = uiPeriodForPreset(nextState, "current-quarter");
-    setLoading(true);
     setFilingState(nextState);
     setPreset("current-quarter");
     setDraftStart(nextPeriod.start);
@@ -511,7 +419,6 @@ const TaxRecordsPage = memo(() => {
   }, []);
 
   const applyPeriod = useCallback(() => {
-    setLoading(true);
     setFilters((current) => ({ ...current, page: 1 }));
     setPeriod({ end: draftEnd, start: draftStart });
   }, [draftEnd, draftStart]);
@@ -550,7 +457,7 @@ const TaxRecordsPage = memo(() => {
     setFilters((current) => ({
       ...current,
       page: 1,
-      provider: value as Filters["provider"],
+      provider: value as TaxRecordFilters["provider"],
     }));
   }, []);
 
@@ -558,7 +465,7 @@ const TaxRecordsPage = memo(() => {
     setFilters((current) => ({
       ...current,
       page: 1,
-      quality: value as Filters["quality"],
+      quality: value as TaxRecordFilters["quality"],
     }));
   }, []);
 
@@ -566,7 +473,7 @@ const TaxRecordsPage = memo(() => {
     setFilters((current) => ({
       ...current,
       page: 1,
-      type: value as Filters["type"],
+      type: value as TaxRecordFilters["type"],
     }));
   }, []);
 
@@ -666,7 +573,7 @@ const TaxRecordsPage = memo(() => {
         <Text className="mt-2 text-ui-fg-subtle">
           {error ?? "The report could not be loaded."}
         </Text>
-        <Button className="mt-4" onClick={load} type="button">
+        <Button className="mt-4" onClick={handleRetry} type="button">
           Try again
         </Button>
       </Container>
@@ -681,7 +588,7 @@ const TaxRecordsPage = memo(() => {
           The report returned no reporting-currency summary. Try again before
           using any workpapers.
         </Text>
-        <Button className="mt-4" onClick={load} type="button">
+        <Button className="mt-4" onClick={handleRetry} type="button">
           Try again
         </Button>
       </Container>
