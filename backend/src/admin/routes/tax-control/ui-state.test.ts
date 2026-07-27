@@ -1,6 +1,7 @@
 import {
-  canConfirmProviderSwitch,
   providerLabel,
+  providerSwitchWasApplied,
+  taxProviderSwitchFormSchema,
 } from "./ui-state";
 
 describe("tax control UI state", () => {
@@ -9,28 +10,48 @@ describe("tax control UI state", () => {
     expect(providerLabel("stripe_tax")).toBe("Stripe Tax");
   });
 
-  it("requires a distinct ready target and an auditable reason", () => {
-    const baseline = {
-      activeProvider: "taxrate_io" as const,
+  it("normalizes and bounds the provider-switch audit reason", () => {
+    expect(
+      taxProviderSwitchFormSchema.parse({
+        reason: "  Approved after sandbox verification.  ",
+      }),
+    ).toEqual({
       reason: "Approved after sandbox verification.",
-      saving: false,
+    });
+    expect(() =>
+      taxProviderSwitchFormSchema.parse({ reason: "Too short" }),
+    ).toThrow();
+    expect(() =>
+      taxProviderSwitchFormSchema.parse({ reason: "x".repeat(501) }),
+    ).toThrow();
+  });
+
+  it("recognizes an ambiguously returned switch only after reconciliation", () => {
+    const baseline = {
+      activeProvider: "stripe_tax" as const,
+      currentGeneration: 3,
+      expectedGeneration: 2,
       targetProvider: "stripe_tax" as const,
-      targetReady: true,
     };
 
-    expect(canConfirmProviderSwitch(baseline)).toBe(true);
-    expect(canConfirmProviderSwitch({ ...baseline, reason: "Too short" })).toBe(
-      false,
-    );
-    expect(canConfirmProviderSwitch({ ...baseline, targetReady: false })).toBe(
-      false,
-    );
+    expect(providerSwitchWasApplied(baseline)).toBe(true);
     expect(
-      canConfirmProviderSwitch({
+      providerSwitchWasApplied({
         ...baseline,
-        targetProvider: "taxrate_io",
+        activeProvider: "taxrate_io",
       }),
     ).toBe(false);
-    expect(canConfirmProviderSwitch({ ...baseline, saving: true })).toBe(false);
+    expect(
+      providerSwitchWasApplied({
+        ...baseline,
+        currentGeneration: baseline.expectedGeneration,
+      }),
+    ).toBe(false);
+    expect(
+      providerSwitchWasApplied({
+        ...baseline,
+        currentGeneration: undefined,
+      }),
+    ).toBe(false);
   });
 });

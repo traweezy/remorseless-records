@@ -75,6 +75,7 @@
     "@mikro-orm/postgresql": "6.6.14",
     "@react-email/render": "2.1.0",
     "@rokmohar/medusa-plugin-meilisearch": "^1.4.3",
+    "@tanstack/react-form": "1.33.2",
     "awilix": "^8.0.1",
     "csv-parse": "^7.0.1",
     "dotenv": "^17.4.2",

@@ -261,6 +261,15 @@ their next tax refresh; prepared payments keep their original provider,
 generation, fingerprint, and calculation/rate. No cart can combine two
 providers.
 
+The Admin reads this workspace through the session-authenticated Medusa SDK and
+TanStack Query. A complete Zod response contract rejects malformed readiness,
+quota, impact, evidence, or history data before it can render. Provider changes
+use a Zod-backed TanStack Form inside the confirmation dialog, reuse one
+idempotency key for ambiguous retries, and reconcile the returned generation
+before reporting an uncertain response as a failure. Client mutations never
+retry automatically; the server still rechecks readiness under its distributed
+provider lock.
+
 The storefront BFF calls `POST /store/checkout/tax-link` with a short-lived,
 purpose-bound `CHECKOUT_BFF_SECRET` proof before returning a client secret and
 again before cart completion. The backend verifies the Medusa cart, collection,

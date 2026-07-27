@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const providerNames = ["taxrate_io", "stripe_tax"] as const;
 
 export type ProviderName = (typeof providerNames)[number];
@@ -5,21 +7,25 @@ export type ProviderName = (typeof providerNames)[number];
 export const providerLabel = (provider: ProviderName): string =>
   provider === "stripe_tax" ? "Stripe Tax" : "TaxRate.io";
 
-export const canConfirmProviderSwitch = ({
+export const taxProviderSwitchFormSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Enter at least 10 characters.")
+    .max(500, "Enter no more than 500 characters."),
+});
+
+export const providerSwitchWasApplied = ({
   activeProvider,
-  reason,
-  saving,
+  currentGeneration,
+  expectedGeneration,
   targetProvider,
-  targetReady,
 }: {
-  activeProvider: ProviderName;
-  reason: string;
-  saving: boolean;
-  targetProvider: ProviderName | null;
-  targetReady: boolean;
+  activeProvider: ProviderName | undefined;
+  currentGeneration: number | undefined;
+  expectedGeneration: number;
+  targetProvider: ProviderName;
 }): boolean =>
-  targetProvider !== null &&
-  targetProvider !== activeProvider &&
-  targetReady &&
-  reason.trim().length >= 10 &&
-  !saving;
+  activeProvider === targetProvider &&
+  currentGeneration !== undefined &&
+  currentGeneration > expectedGeneration;

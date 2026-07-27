@@ -3,131 +3,61 @@
 import {
   memo,
   useCallback,
-  useEffect,
-  useMemo,
   useRef,
   useState,
+  type MouseEvent,
   type ReactNode,
 } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { defineRouteConfig } from "@medusajs/admin-sdk";
 import { BuildingTax } from "@medusajs/icons";
 import {
   Button,
   Container,
   Heading,
-  Label,
-  Prompt,
   Skeleton,
   StatusBadge,
   Table,
   Text,
-  Textarea,
   toast,
 } from "@medusajs/ui";
+import { getAdminRequestErrorMessage } from "../../lib/admin-request";
+import { ProviderSwitchPrompt } from "./provider-switch-prompt";
 import {
-  canConfirmProviderSwitch,
+  refreshTaxRateIoQuota,
+  switchTaxProvider,
+  TAX_CONTROL_QUERY_KEY,
+  taxControlQueryOptions,
+  type ProviderReadiness,
+  type TaxControlSnapshot,
+} from "./query";
+import {
   providerLabel,
+  providerSwitchWasApplied,
   type ProviderName,
 } from "./ui-state";
-
-type ReadinessCheck = {
-  detail: string;
-  id: string;
-  label: string;
-  ready: boolean;
-};
-
-type ProviderReadiness = {
-  checks: ReadinessCheck[];
-  configured: boolean;
-  message: string;
-  ready: boolean;
-};
-
-type TaxControlSnapshot = {
-  audits: Array<{
-    actorId: string;
-    createdAt: string | null;
-    fromGeneration: number;
-    fromProvider: ProviderName;
-    id: string;
-    reason: string;
-    toGeneration: number;
-    toProvider: ProviderName;
-  }>;
-  control: {
-    activeProvider: ProviderName;
-    generation: number;
-    lastSwitchReason: string | null;
-    lastSwitchedAt: string | null;
-    lastSwitchedBy: string | null;
-  };
-  evidence: {
-    incidents: Array<{
-      associationStatus: string | null;
-      id: string;
-      lastVerifiedAt: string | null;
-      currencyCode: string;
-      medusaRefundAmountMinor: number | null;
-      orderId: string | null;
-      paymentIntentId: string;
-      provider: ProviderName;
-      status:
-        | "association_failed"
-        | "disputed"
-        | "refund_ledger_mismatch"
-        | "refund_pending";
-      stripeEvidenceAvailable: boolean;
-      stripeRefundAmountMinor: number | null;
-    }>;
-    needsAttention: number;
-    pendingRefundReversals: number;
-    prepared: number;
-    refundLedger: {
-      available: boolean;
-      checked: number;
-      mismatches: number;
-      truncated: boolean;
-    };
-    refunds: number;
-    succeeded: number;
-    tracked: number;
-  };
-  impact: {
-    activityWindowDays: number;
-    frozenByProvider: Record<ProviderName, number>;
-    paymentsFinalizing: number;
-    preparedCheckouts: number;
-  };
-  providers: {
-    stripeTax: ProviderReadiness & {
-      accountMode: "live" | "sandbox" | "unknown";
-      activeRegistrationCount: number;
-      missingFields: string[];
-    };
-    taxRateIo: ProviderReadiness & {
-      manualRefreshConfigured: boolean;
-      quota: {
-        observedAt: string | null;
-        quota: number;
-        remaining: number;
-        source: string;
-        usage: number;
-        usagePercent: number;
-      } | null;
-    };
-  };
-};
 
 type ProviderCardProps = {
   active: boolean;
   children?: ReactNode;
   description: string;
   name: string;
-  onSwitch: (provider: ProviderName) => void;
+  onSwitch: (
+    provider: ProviderName,
+    trigger: HTMLButtonElement,
+  ) => void;
   provider: ProviderName;
   readiness: ProviderReadiness;
   saving: boolean;
+};
+
+type ProviderSwitchDraft = {
+  idempotencyKey: string;
+  targetProvider: ProviderName;
 };
 
 const incidentLabel = (
@@ -149,33 +79,6 @@ const incidentLabel = (
     return "Refund audit incomplete";
   }
   return "Tax association failed";
-};
-
-const extractErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const body = (await response.json()) as {
-      message?: string;
-      detail?: string;
-    };
-    return body.detail ?? body.message ?? response.statusText;
-  } catch {
-    return response.statusText;
-  }
-};
-
-const fetchJson = async <T,>(url: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(url, {
-    credentials: "include",
-    ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response));
-  }
-  return (await response.json()) as T;
 };
 
 const formatDate = (value: string | null): string => {
@@ -215,9 +118,12 @@ const ProviderCard = memo<ProviderCardProps>(
     readiness,
     saving,
   }) => {
-    const handleSwitch = useCallback(() => {
-      onSwitch(provider);
-    }, [onSwitch, provider]);
+    const handleSwitch = useCallback(
+      (event: MouseEvent<HTMLButtonElement>) => {
+        onSwitch(provider, event.currentTarget);
+      },
+      [onSwitch, provider],
+    );
 
     return (
       <section
@@ -326,50 +232,43 @@ const LoadingState = memo(() => (
 ));
 
 const TaxControlPage = memo(() => {
-  const [snapshot, setSnapshot] = useState<TaxControlSnapshot | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<ProviderName | null>(
-    null,
-  );
-  const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [refreshingQuota, setRefreshingQuota] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const loadLockRef = useRef(false);
-  const switchLockRef = useRef(false);
+  const [switchDraft, setSwitchDraft] =
+    useState<ProviderSwitchDraft | null>(null);
+  const switchTriggerRef = useRef<HTMLButtonElement | null>(null);
   const quotaRefreshLockRef = useRef(false);
+  const queryClient = useQueryClient();
+  const taxControlQuery = useQuery(taxControlQueryOptions());
+  const {
+    isPending: saving,
+    mutateAsync: mutateProviderSwitch,
+    reset: resetProviderSwitch,
+  } = useMutation({
+    mutationFn: switchTaxProvider,
+    retry: false,
+  });
+  const {
+    isPending: refreshingQuota,
+    mutateAsync: mutateQuotaRefresh,
+  } = useMutation({
+    mutationFn: refreshTaxRateIoQuota,
+    retry: false,
+  });
+  const snapshot = taxControlQuery.data;
 
-  const load = useCallback(async () => {
-    if (loadLockRef.current) {
-      return;
-    }
-    loadLockRef.current = true;
-    setLoading(true);
-    setError(null);
-    try {
-      const next = await fetchJson<TaxControlSnapshot>("/admin/tax-control");
-      setSnapshot(next);
-      setSelectedProvider((current) =>
-        current && current !== next.control.activeProvider ? current : null,
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Tax control could not be loaded.",
-      );
-    } finally {
-      loadLockRef.current = false;
-      setLoading(false);
-    }
+  const dismissProviderSwitch = useCallback(() => {
+    const trigger = switchTriggerRef.current;
+    setSwitchDraft(null);
+    globalThis.setTimeout(() => {
+      (
+        trigger as unknown as {
+          focus: () => void;
+        } | null
+      )?.focus();
+    }, 0);
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   const beginProviderSwitch = useCallback(
-    (provider: ProviderName) => {
+    (provider: ProviderName, trigger: HTMLButtonElement) => {
       if (!snapshot || provider === snapshot.control.activeProvider) {
         return;
       }
@@ -381,130 +280,123 @@ const TaxControlPage = memo(() => {
         return;
       }
 
-      setReason("");
-      setSelectedProvider(provider);
+      switchTriggerRef.current = trigger;
+      resetProviderSwitch();
+      setSwitchDraft({
+        idempotencyKey: crypto.randomUUID(),
+        targetProvider: provider,
+      });
     },
-    [snapshot],
-  );
-
-  const handleReason = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = (event.currentTarget as unknown as { value?: unknown })
-        .value;
-      setReason(typeof value === "string" ? value : "");
-    },
-    [],
-  );
-
-  const handleSwitchPromptOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open && !saving) {
-        setSelectedProvider(null);
-        setReason("");
-      }
-    },
-    [saving],
+    [resetProviderSwitch, snapshot],
   );
 
   const cancelProviderSwitch = useCallback(() => {
     if (!saving) {
-      setSelectedProvider(null);
-      setReason("");
+      dismissProviderSwitch();
     }
-  }, [saving]);
+  }, [dismissProviderSwitch, saving]);
 
-  const selectedReadiness = useMemo(() => {
-    if (!snapshot || !selectedProvider) {
-      return null;
-    }
-    return selectedProvider === "stripe_tax"
-      ? snapshot.providers.stripeTax
-      : snapshot.providers.taxRateIo;
-  }, [selectedProvider, snapshot]);
-
-  const canSwitch = snapshot
-    ? canConfirmProviderSwitch({
-        activeProvider: snapshot.control.activeProvider,
+  const confirmProviderSwitch = useCallback(
+    async (reason: string) => {
+      if (!snapshot || !switchDraft || saving) {
+        return;
+      }
+      const input = {
+        expectedGeneration: snapshot.control.generation,
+        idempotencyKey: switchDraft.idempotencyKey,
         reason,
-        saving,
-        targetProvider: selectedProvider,
-        targetReady: selectedReadiness?.ready ?? false,
-      })
-    : false;
+        targetProvider: switchDraft.targetProvider,
+      };
 
-  const switchProvider = useCallback(async () => {
-    if (!snapshot || !selectedProvider || !canSwitch || switchLockRef.current) {
-      return;
-    }
-    switchLockRef.current = true;
-    setSaving(true);
-    try {
-      const next = await fetchJson<TaxControlSnapshot>(
-        "/admin/tax-control/switch",
-        {
-          body: JSON.stringify({
-            expectedGeneration: snapshot.control.generation,
-            idempotencyKey: crypto.randomUUID(),
-            reason: reason.trim(),
-            targetProvider: selectedProvider,
-          }),
-          method: "POST",
-        },
-      );
-      setSnapshot(next);
-      setSelectedProvider(null);
-      setReason("");
-      toast.success(`${providerLabel(selectedProvider)} is now active`);
-    } catch (caught) {
-      toast.error(
-        caught instanceof Error
-          ? caught.message
-          : "The provider could not be switched.",
-      );
-      await load();
-    } finally {
-      switchLockRef.current = false;
-      setSaving(false);
-    }
-  }, [canSwitch, load, reason, selectedProvider, snapshot]);
+      try {
+        const next = await mutateProviderSwitch(input);
+        queryClient.setQueryData(TAX_CONTROL_QUERY_KEY, next);
+        dismissProviderSwitch();
+        toast.success(
+          `${providerLabel(switchDraft.targetProvider)} is now active`,
+        );
+        await queryClient.invalidateQueries({
+          queryKey: TAX_CONTROL_QUERY_KEY,
+        });
+      } catch (caught) {
+        const reconciled = await taxControlQuery.refetch();
+        if (
+          providerSwitchWasApplied({
+            activeProvider: reconciled.data?.control.activeProvider,
+            currentGeneration: reconciled.data?.control.generation,
+            expectedGeneration: input.expectedGeneration,
+            targetProvider: switchDraft.targetProvider,
+          })
+        ) {
+          resetProviderSwitch();
+          dismissProviderSwitch();
+          toast.success(
+            `${providerLabel(switchDraft.targetProvider)} switch confirmed after refresh`,
+          );
+          return;
+        }
+        toast.error(
+          getAdminRequestErrorMessage(
+            caught,
+            "The provider could not be switched.",
+          ),
+        );
+      }
+    },
+    [
+      dismissProviderSwitch,
+      mutateProviderSwitch,
+      queryClient,
+      resetProviderSwitch,
+      saving,
+      snapshot,
+      switchDraft,
+      taxControlQuery,
+    ],
+  );
 
   const refreshQuota = useCallback(async () => {
-    if (quotaRefreshLockRef.current) {
+    if (quotaRefreshLockRef.current || refreshingQuota) {
       return;
     }
     quotaRefreshLockRef.current = true;
-    setRefreshingQuota(true);
     try {
-      const next = await fetchJson<TaxControlSnapshot>(
-        "/admin/tax-control/taxrate-io/refresh",
-        { method: "POST" },
-      );
-      setSnapshot(next);
+      const next = await mutateQuotaRefresh();
+      queryClient.setQueryData(TAX_CONTROL_QUERY_KEY, next);
       toast.success("TaxRate.io quota refreshed");
+      await queryClient.invalidateQueries({
+        queryKey: TAX_CONTROL_QUERY_KEY,
+      });
     } catch (caught) {
       toast.error(
-        caught instanceof Error
-          ? caught.message
-          : "TaxRate.io quota could not be refreshed.",
+        getAdminRequestErrorMessage(
+          caught,
+          "TaxRate.io quota could not be refreshed.",
+        ),
       );
     } finally {
       quotaRefreshLockRef.current = false;
-      setRefreshingQuota(false);
     }
-  }, []);
+  }, [mutateQuotaRefresh, queryClient, refreshingQuota]);
 
-  if (loading) {
+  const retryLoad = useCallback(() => {
+    void taxControlQuery.refetch();
+  }, [taxControlQuery]);
+
+  if (taxControlQuery.isPending) {
     return <LoadingState />;
   }
 
   if (!snapshot) {
+    const error = getAdminRequestErrorMessage(
+      taxControlQuery.error,
+      "The tax control state could not be loaded.",
+    );
     return (
       <Container>
         <Heading>Tax control is unavailable</Heading>
-        <Text className="mt-2 text-ui-fg-subtle">
-          {error ?? "The tax control state could not be loaded."}
-        </Text>
-        <Button className="mt-4" onClick={load} type="button">
+        <Text className="mt-2 text-ui-fg-subtle">{error}</Text>
+        <Button className="mt-4" onClick={retryLoad} type="button">
           Try again
         </Button>
       </Container>
@@ -772,81 +664,16 @@ const TaxControlPage = memo(() => {
           </ProviderCard>
         </div>
 
-        {selectedProvider ? (
-          <Prompt
-            onOpenChange={handleSwitchPromptOpenChange}
-            open
-            variant="confirmation"
-          >
-            <Prompt.Content>
-              <Prompt.Header>
-                <Prompt.Title>
-                  Switch to {providerLabel(selectedProvider)}?
-                </Prompt.Title>
-                <Prompt.Description>
-                  {providerLabel(activeProvider)} remains active until you
-                  confirm. New or refreshed quotes will then use{" "}
-                  {providerLabel(selectedProvider)}.
-                </Prompt.Description>
-              </Prompt.Header>
-
-              <div className="my-4 rounded-md bg-ui-bg-subtle p-3">
-                <Text size="small" weight="plus">
-                  What stays unchanged
-                </Text>
-                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-                  {snapshot.impact.preparedCheckouts} provider-locked checkout
-                  {snapshot.impact.preparedCheckouts === 1 ? "" : "s"} and all
-                  completed orders keep their reviewed tax quote.{" "}
-                  {snapshot.impact.paymentsFinalizing} payment
-                  {snapshot.impact.paymentsFinalizing === 1 ? "" : "s"}{" "}
-                  {snapshot.impact.paymentsFinalizing === 1 ? "is" : "are"}{" "}
-                  currently completing.
-                </Text>
-              </div>
-
-              <div>
-                <Label htmlFor="tax-switch-reason">
-                  Reason for this change
-                </Label>
-                <Textarea
-                  autoFocus
-                  id="tax-switch-reason"
-                  className="mt-2"
-                  maxLength={500}
-                  onChange={handleReason}
-                  placeholder="Example: Stripe sandbox validation completed and approved."
-                  rows={3}
-                  value={reason}
-                />
-                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-                  Required for the audit history · minimum 10 characters ·{" "}
-                  {reason.length}/500
-                </Text>
-              </div>
-
-              <Prompt.Footer>
-                <Prompt.Cancel
-                  disabled={saving}
-                  onClick={cancelProviderSwitch}
-                >
-                  Cancel
-                </Prompt.Cancel>
-                <Prompt.Action
-                  disabled={!canSwitch}
-                  onClick={switchProvider}
-                >
-                  {saving
-                    ? "Switching…"
-                    : `Switch to ${providerLabel(selectedProvider)}`}
-                </Prompt.Action>
-              </Prompt.Footer>
-            </Prompt.Content>
-          </Prompt>
+        {switchDraft ? (
+          <ProviderSwitchPrompt
+            activeProvider={activeProvider}
+            impact={snapshot.impact}
+            onCancel={cancelProviderSwitch}
+            onConfirm={confirmProviderSwitch}
+            pending={saving}
+            targetProvider={switchDraft.targetProvider}
+          />
         ) : null}
-        <div aria-live="polite" className="sr-only">
-          {saving ? "Switching tax provider" : ""}
-        </div>
       </Container>
 
       <Container>
