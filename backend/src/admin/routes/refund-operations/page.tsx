@@ -3,9 +3,7 @@
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -24,14 +22,16 @@ import {
   Table,
   Text,
 } from "@medusajs/ui";
+import { useQuery } from "@tanstack/react-query";
 
 import type {
   RefundCase,
   RefundCaseStatus,
-  RefundOperationsSnapshot,
   RefundProvider,
   RefundTaxStatus,
 } from "../../../lib/refund-operations/types";
+import { getAdminRequestErrorMessage } from "../../lib/admin-request";
+import { refundOperationsQueryOptions } from "./query";
 import {
   caseLabel,
   filterRefundCases,
@@ -52,7 +52,6 @@ type SummaryCardProps = {
 };
 
 const PAGE_SIZE = 20;
-const REQUEST_TIMEOUT_MS = 15_000;
 
 const statusLabel = (status: RefundCaseStatus): string => {
   if (status === "action_required") {
@@ -139,30 +138,6 @@ const stripeAmountLabel = (refundCase: RefundCase): string =>
 
 const refundCountLabel = (count: number): string =>
   `${count} refund${count === 1 ? "" : "s"}`;
-
-const fetchSnapshot = async (
-  signal: AbortSignal,
-): Promise<RefundOperationsSnapshot> => {
-  const response = await fetch("/admin/refund-operations", {
-    credentials: "include",
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!response.ok) {
-    let message = response.statusText || "Unable to load refund operations.";
-    try {
-      const body = (await response.json()) as {
-        detail?: string;
-        message?: string;
-      };
-      message = body.detail ?? body.message ?? message;
-    } catch {
-      // The status text is the safest fallback for a non-JSON response.
-    }
-    throw new Error(message);
-  }
-  return (await response.json()) as RefundOperationsSnapshot;
-};
 
 const SummaryCard = memo<SummaryCardProps>(
   ({ children, description, label }) => (
@@ -277,70 +252,26 @@ const CaseCard = memo<CaseCardProps>(({ refundCase }) => (
 CaseCard.displayName = "CaseCard";
 
 const RefundOperationsPage = memo(() => {
-  const [snapshot, setSnapshot] =
-    useState<RefundOperationsSnapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [provider, setProvider] = useState<ProviderFilter>("all");
   const [page, setPage] = useState(0);
-  const activeRequest = useRef<AbortController | null>(null);
-
-  const load = useCallback(async () => {
-    activeRequest.current?.abort();
-    const controller = new AbortController();
-    activeRequest.current = controller;
-    const timeout = globalThis.setTimeout(
-      () => controller.abort(),
-      REQUEST_TIMEOUT_MS,
-    );
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchSnapshot(controller.signal);
-      if (activeRequest.current === controller) {
-        setSnapshot(result);
-      }
-    } catch (caught: unknown) {
-      if (
-        activeRequest.current === controller &&
-        !(caught instanceof DOMException && caught.name === "AbortError")
-      ) {
-        setError(
-          caught instanceof Error
-            ? caught.message
-            : "Unable to load refund operations.",
-        );
-      } else if (
-        activeRequest.current === controller &&
-        controller.signal.aborted
-      ) {
-        setError(
-          "The refund audit took too long. Try again; no refund was changed.",
-        );
-      }
-    } finally {
-      globalThis.clearTimeout(timeout);
-      if (activeRequest.current === controller) {
-        activeRequest.current = null;
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-    return () => {
-      const request = activeRequest.current;
-      activeRequest.current = null;
-      request?.abort();
-    };
-  }, [load]);
+  const {
+    data: snapshot,
+    error: queryError,
+    isFetching: loading,
+    refetch,
+  } = useQuery(refundOperationsQueryOptions());
+  const error = queryError
+    ? getAdminRequestErrorMessage(
+        queryError,
+        "Unable to load refund operations.",
+      )
+    : null;
 
   const handleRefresh = useCallback(() => {
-    void load();
-  }, [load]);
+    void refetch();
+  }, [refetch]);
 
   const handleSearch = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
