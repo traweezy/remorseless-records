@@ -25,6 +25,11 @@ dialogs route by route:
   action.
 - `components/admin-retry-state.tsx` owns the announced error presentation and
   a real retry button that locks while a replacement request is pending.
+- `components/admin-responsive-data-table.tsx` owns the responsive collection
+  boundary: Medusa's native `DataTable` table and pagination on desktop, the
+  route's purpose-built card/list presentation on mobile, and one controlled
+  table instance across both surfaces. Routes still own validated server
+  queries, columns, mobile content, empty-state copy, and mutation safeguards.
 
 Tax Control is the first form/confirmation consumer. Tax Control and Tax
 Records share the page, layout, and retry-state components. Media Cleanup and
@@ -34,6 +39,14 @@ queries still own skeletons shaped like their final content and the conditions
 that distinguish an initial load from a recoverable failure. New custom forms
 and routes should extend these components instead of copying their
 accessibility wiring.
+
+Media Cleanup is the first responsive data-table consumer. Its page index and
+page size remain controlled inputs to the server query, while the response
+count drives Medusa's native previous/next availability. Switching lifecycle
+views resets to page one, empty collections omit pagination, and moving the
+last item off a later page returns the operator to the preceding valid page.
+The shared wrapper is presentation-only and must not initiate collection
+queries or mutations.
 
 ## Refund operations
 

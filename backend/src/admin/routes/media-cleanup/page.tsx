@@ -1,6 +1,12 @@
 "use client"
 
-import { memo, useCallback, useMemo, useState } from "react"
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { Photo } from "@medusajs/icons"
 import {
@@ -9,10 +15,13 @@ import {
   Container,
   Skeleton,
   StatusBadge,
-  Table,
   Tabs,
   Text,
+  createDataTableColumnHelper,
   toast,
+  useDataTable,
+  type DataTableEmptyStateProps,
+  type DataTablePaginationState,
 } from "@medusajs/ui"
 import {
   useMutation,
@@ -27,6 +36,7 @@ import {
   AdminSingleColumnLayout,
 } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
+import { AdminResponsiveDataTable } from "../../components/admin-responsive-data-table"
 import {
   getAdminRequestErrorMessage,
   requestAdminJson,
@@ -65,6 +75,8 @@ const lifecycleResponseSchema = z.object({
 type MediaAsset = z.infer<typeof mediaAssetSchema>
 type LifecycleStatus = MediaAsset["lifecycleStatus"]
 type OrphanPage = z.infer<typeof orphanPageSchema>
+
+const mediaColumnHelper = createDataTableColumnHelper<MediaAsset>()
 
 const emptyPage = (offset = 0): OrphanPage => ({
   assets: [],
@@ -164,88 +176,144 @@ const MediaActionButton = memo<MediaActionProps>(
 
 MediaActionButton.displayName = "MediaActionButton"
 
-const MediaRow = memo<MediaActionProps>(({ asset, busy, disabled, onAction }) => {
-  const quarantined = asset.lifecycleStatus === "quarantined"
+type UseMediaColumnsOptions = {
+  busyAssetId: string | null
+  onAction: (asset: MediaAsset) => void
+}
 
-  return (
-    <Table.Row>
-      <Table.Cell>
-        <div className="flex min-w-64 items-center gap-3">
-          <AssetPreview asset={asset} />
-          <div className="min-w-0">
-            <Text className="truncate" size="small" weight="plus">
-              {asset.originalFilename ?? asset.id}
-            </Text>
-            <Text
-              className="max-w-72 truncate text-ui-fg-subtle"
-              size="xsmall"
-              title={asset.sourceUrl}
-            >
-              {asset.sourceUrl}
-            </Text>
-          </div>
-        </div>
-      </Table.Cell>
-      <Table.Cell>
-        <div className="flex min-w-32 flex-col gap-1">
-          <StatusBadge color={asset.sourceFileKey ? "green" : "grey"}>
-            {asset.sourceFileKey ? "Managed" : "External"}
-          </StatusBadge>
-          <Text size="xsmall" className="text-ui-fg-subtle">
-            {asset.mimeType ?? "Unknown type"} · {formatBytes(asset.byteSize)}
-          </Text>
-        </div>
-      </Table.Cell>
-      <Table.Cell>
-        <div className="flex min-w-36 flex-col gap-1">
-          <StatusBadge color={quarantined ? "orange" : "blue"}>
-            {quarantined ? "Quarantined" : "Needs review"}
-          </StatusBadge>
-          <Text size="xsmall" className="text-ui-fg-subtle">
-            {quarantined
-              ? `Since ${formatDate(asset.quarantinedAt)}`
-              : `Created ${formatDate(asset.createdAt)}`}
-          </Text>
-          {quarantined ? (
-            <Text
-              className="max-w-44 truncate text-ui-fg-subtle"
-              size="xsmall"
-              title={asset.quarantinedBy ?? undefined}
-            >
-              By {asset.quarantinedBy ?? "unknown operator"}
-            </Text>
-          ) : null}
-        </div>
-      </Table.Cell>
-      <Table.Cell>
-        <div className="min-w-40">
-          <Text size="small">
-            {quarantined
-              ? formatDate(asset.purgeEligibleAt)
-              : "Not scheduled"}
-          </Text>
-          {quarantined ? (
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Review date only
-            </Text>
-          ) : null}
-        </div>
-      </Table.Cell>
-      <Table.Cell>
-        <div className="flex justify-end">
-          <MediaActionButton
-            asset={asset}
-            busy={busy}
-            disabled={disabled}
-            onAction={onAction}
-          />
-        </div>
-      </Table.Cell>
-    </Table.Row>
+const useMediaColumns = ({
+  busyAssetId,
+  onAction,
+}: UseMediaColumnsOptions) =>
+  useMemo(
+    () => [
+      mediaColumnHelper.accessor((asset) => asset.originalFilename ?? asset.id, {
+        cell: ({ row }) => {
+          const asset = row.original
+          return (
+            <div className="flex min-w-64 items-center gap-3">
+              <AssetPreview asset={asset} />
+              <div className="min-w-0">
+                <Text className="truncate" size="small" weight="plus">
+                  {asset.originalFilename ?? asset.id}
+                </Text>
+                <Text
+                  className="max-w-72 truncate text-ui-fg-subtle"
+                  size="xsmall"
+                  title={asset.sourceUrl}
+                >
+                  {asset.sourceUrl}
+                </Text>
+              </div>
+            </div>
+          )
+        },
+        header: "Asset",
+        id: "asset",
+        minSize: 320,
+        size: 360,
+        truncateTooltip: false,
+      }),
+      mediaColumnHelper.accessor((asset) => asset.sourceFileKey, {
+        cell: ({ row }) => {
+          const asset = row.original
+          return (
+            <div className="flex min-w-32 flex-col gap-1">
+              <StatusBadge color={asset.sourceFileKey ? "green" : "grey"}>
+                {asset.sourceFileKey ? "Managed" : "External"}
+              </StatusBadge>
+              <Text className="text-ui-fg-subtle" size="xsmall">
+                {asset.mimeType ?? "Unknown type"} ·{" "}
+                {formatBytes(asset.byteSize)}
+              </Text>
+            </div>
+          )
+        },
+        header: "Storage",
+        id: "storage",
+        minSize: 170,
+        size: 190,
+        truncateTooltip: false,
+      }),
+      mediaColumnHelper.accessor((asset) => asset.lifecycleStatus, {
+        cell: ({ row }) => {
+          const asset = row.original
+          const quarantined = asset.lifecycleStatus === "quarantined"
+          return (
+            <div className="flex min-w-36 flex-col gap-1">
+              <StatusBadge color={quarantined ? "orange" : "blue"}>
+                {quarantined ? "Quarantined" : "Needs review"}
+              </StatusBadge>
+              <Text className="text-ui-fg-subtle" size="xsmall">
+                {quarantined
+                  ? `Since ${formatDate(asset.quarantinedAt)}`
+                  : `Created ${formatDate(asset.createdAt)}`}
+              </Text>
+              {quarantined ? (
+                <Text
+                  className="max-w-44 truncate text-ui-fg-subtle"
+                  size="xsmall"
+                  title={asset.quarantinedBy ?? undefined}
+                >
+                  By {asset.quarantinedBy ?? "unknown operator"}
+                </Text>
+              ) : null}
+            </div>
+          )
+        },
+        header: "Status",
+        id: "status",
+        minSize: 190,
+        size: 210,
+        truncateTooltip: false,
+      }),
+      mediaColumnHelper.accessor((asset) => asset.purgeEligibleAt, {
+        cell: ({ row }) => {
+          const asset = row.original
+          const quarantined = asset.lifecycleStatus === "quarantined"
+          return (
+            <div className="min-w-40">
+              <Text size="small">
+                {quarantined
+                  ? formatDate(asset.purgeEligibleAt)
+                  : "Not scheduled"}
+              </Text>
+              {quarantined ? (
+                <Text className="text-ui-fg-subtle" size="xsmall">
+                  Review date only
+                </Text>
+              ) : null}
+            </div>
+          )
+        },
+        header: "Purge review",
+        id: "purge-review",
+        minSize: 170,
+        size: 180,
+        truncateTooltip: false,
+      }),
+      mediaColumnHelper.accessor(() => null, {
+        align: "right",
+        cell: ({ row }) => {
+          const asset = row.original
+          return (
+            <MediaActionButton
+              asset={asset}
+              busy={busyAssetId === asset.id}
+              disabled={busyAssetId !== null}
+              onAction={onAction}
+            />
+          )
+        },
+        header: () => <span className="sr-only">Actions</span>,
+        id: "actions",
+        minSize: 140,
+        size: 140,
+        truncateTooltip: false,
+      }),
+    ],
+    [busyAssetId, onAction],
   )
-})
-
-MediaRow.displayName = "MediaRow"
 
 const MediaMobileCard = memo<MediaActionProps>(
   ({ asset, busy, disabled, onAction }) => {
@@ -348,32 +416,6 @@ const MediaMobileCard = memo<MediaActionProps>(
 
 MediaMobileCard.displayName = "MediaMobileCard"
 
-const LoadingRows = memo(() => (
-  <>
-    {Array.from({ length: 5 }, (_, index) => (
-      <Table.Row key={index}>
-        <Table.Cell>
-          <Skeleton className="h-12 w-64" />
-        </Table.Cell>
-        <Table.Cell>
-          <Skeleton className="h-8 w-32" />
-        </Table.Cell>
-        <Table.Cell>
-          <Skeleton className="h-8 w-32" />
-        </Table.Cell>
-        <Table.Cell>
-          <Skeleton className="h-8 w-40" />
-        </Table.Cell>
-        <Table.Cell>
-          <Skeleton className="ml-auto h-8 w-24" />
-        </Table.Cell>
-      </Table.Row>
-    ))}
-  </>
-))
-
-LoadingRows.displayName = "LoadingRows"
-
 const MobileLoadingCards = memo(() => (
   <ul aria-label="Loading unlinked catalog media">
     {Array.from({ length: 4 }, (_, index) => (
@@ -399,6 +441,23 @@ const MobileLoadingCards = memo(() => (
 ))
 
 MobileLoadingCards.displayName = "MobileLoadingCards"
+
+const MediaEmptyState = memo<{ view: LifecycleStatus }>(({ view }) => (
+  <AdminEmptyState
+    description={
+      view === "active"
+        ? "Every active catalog asset is currently attached to a product."
+        : "Assets moved to quarantine will remain recoverable here."
+    }
+    title={
+      view === "active"
+        ? "No unlinked media needs review"
+        : "Quarantine is empty"
+    }
+  />
+))
+
+MediaEmptyState.displayName = "MediaEmptyState"
 
 const MediaCleanupPage = memo(() => {
   const [view, setView] = useState<LifecycleStatus>("active")
@@ -432,10 +491,6 @@ const MediaCleanupPage = memo(() => {
     : null
   const countLabel = useMemo(
     () => `${page.count} ${page.count === 1 ? "asset" : "assets"}`,
-    [page.count],
-  )
-  const pageCount = useMemo(
-    () => Math.ceil(page.count / PAGE_SIZE),
     [page.count],
   )
 
@@ -490,14 +545,6 @@ const MediaCleanupPage = memo(() => {
     setPageIndex(0)
   }, [])
 
-  const handlePrevious = useCallback(() => {
-    setPageIndex((current) => Math.max(0, current - 1))
-  }, [])
-
-  const handleNext = useCallback(() => {
-    setPageIndex((current) => current + 1)
-  }, [])
-
   const handleRetry = useCallback(() => {
     void orphanQuery.refetch()
   }, [orphanQuery])
@@ -511,6 +558,69 @@ const MediaCleanupPage = memo(() => {
     },
     [lifecycleMutation],
   )
+  const columns = useMediaColumns({
+    busyAssetId,
+    onAction: handleLifecycleAction,
+  })
+  const pagination = useMemo<DataTablePaginationState>(
+    () => ({
+      pageIndex,
+      pageSize: PAGE_SIZE,
+    }),
+    [pageIndex],
+  )
+  const handlePaginationChange = useCallback(
+    (state: DataTablePaginationState) => {
+      setPageIndex(state.pageIndex)
+    },
+    [],
+  )
+  const dataTable = useDataTable({
+    columns,
+    data: page.assets,
+    getRowId: (asset) => asset.id,
+    isLoading: loading,
+    pagination: {
+      onPaginationChange: handlePaginationChange,
+      state: pagination,
+    },
+    rowCount: page.count,
+  })
+  const desktopEmptyState = useMemo<DataTableEmptyStateProps>(
+    () => ({
+      empty: {
+        custom: <MediaEmptyState view={view} />,
+      },
+    }),
+    [view],
+  )
+  const mobileCollection = useMemo<ReactNode>(() => {
+    if (loading) {
+      return <MobileLoadingCards />
+    }
+    if (page.assets.length === 0) {
+      return <MediaEmptyState view={view} />
+    }
+    return (
+      <ul aria-label="Unlinked catalog media available for lifecycle review">
+        {page.assets.map((asset) => (
+          <MediaMobileCard
+            asset={asset}
+            busy={busyAssetId === asset.id}
+            disabled={busyAssetId !== null}
+            key={asset.id}
+            onAction={handleLifecycleAction}
+          />
+        ))}
+      </ul>
+    )
+  }, [
+    busyAssetId,
+    handleLifecycleAction,
+    loading,
+    page.assets,
+    view,
+  ])
 
   return (
     <AdminSingleColumnLayout>
@@ -562,83 +672,11 @@ const MediaCleanupPage = memo(() => {
             </Tabs>
           </div>
 
-          {!loading && page.assets.length === 0 ? (
-            <AdminEmptyState
-              description={
-                view === "active"
-                  ? "Every active catalog asset is currently attached to a product."
-                  : "Assets moved to quarantine will remain recoverable here."
-              }
-              title={
-                view === "active"
-                  ? "No unlinked media needs review"
-                  : "Quarantine is empty"
-              }
-            />
-          ) : (
-            <>
-              <div className="mt-4 md:hidden">
-                {loading ? <MobileLoadingCards /> : null}
-                {!loading ? (
-                  <ul aria-label="Unlinked catalog media available for lifecycle review">
-                    {page.assets.map((asset) => (
-                      <MediaMobileCard
-                        asset={asset}
-                        busy={busyAssetId === asset.id}
-                        disabled={busyAssetId !== null}
-                        key={asset.id}
-                        onAction={handleLifecycleAction}
-                      />
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-              <div className="mt-4 hidden overflow-x-auto md:block">
-                <Table>
-                  <caption className="sr-only">
-                    Unlinked catalog media available for lifecycle review
-                  </caption>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.HeaderCell scope="col">Asset</Table.HeaderCell>
-                      <Table.HeaderCell scope="col">Storage</Table.HeaderCell>
-                      <Table.HeaderCell scope="col">Status</Table.HeaderCell>
-                      <Table.HeaderCell scope="col">
-                        Purge review
-                      </Table.HeaderCell>
-                      <Table.HeaderCell scope="col">
-                        <span className="sr-only">Actions</span>
-                      </Table.HeaderCell>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {loading ? <LoadingRows /> : null}
-                    {!loading
-                      ? page.assets.map((asset) => (
-                          <MediaRow
-                            asset={asset}
-                            busy={busyAssetId === asset.id}
-                            disabled={busyAssetId !== null}
-                            key={asset.id}
-                            onAction={handleLifecycleAction}
-                          />
-                        ))
-                      : null}
-                  </Table.Body>
-                </Table>
-              </div>
-            </>
-          )}
-
-          <Table.Pagination
-            canNextPage={!loading && page.hasMore}
-            canPreviousPage={!loading && pageIndex > 0}
-            count={page.count}
-            nextPage={handleNext}
-            pageCount={pageCount}
-            pageIndex={pageIndex}
-            pageSize={PAGE_SIZE}
-            previousPage={handlePrevious}
+          <AdminResponsiveDataTable
+            desktopEmptyState={desktopEmptyState}
+            instance={dataTable}
+            mobile={mobileCollection}
+            showPagination={loading || page.count > 0}
           />
         </Container>
       )}
