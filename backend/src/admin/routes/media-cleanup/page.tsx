@@ -1,12 +1,6 @@
 "use client"
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
+import { memo, useCallback, useMemo, useState } from "react"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { Photo } from "@medusajs/icons"
 import {
@@ -21,10 +15,20 @@ import {
   Text,
   toast,
 } from "@medusajs/ui"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { z } from "zod"
 
+import {
+  getAdminRequestErrorMessage,
+  requestAdminJson,
+} from "../../lib/admin-request"
+
 const PAGE_SIZE = 25
-const REQUEST_TIMEOUT_MS = 15_000
+const ORPHAN_MEDIA_QUERY_KEY = ["catalog-media-orphans"] as const
 
 const mediaAssetSchema = z.object({
   byteSize: z.number().nullable(),
@@ -57,12 +61,6 @@ type MediaAsset = z.infer<typeof mediaAssetSchema>
 type LifecycleStatus = MediaAsset["lifecycleStatus"]
 type OrphanPage = z.infer<typeof orphanPageSchema>
 
-type TimedRequest = {
-  didTimeOut: () => boolean
-  dispose: () => void
-  signal: AbortSignal
-}
-
 const emptyPage = (offset = 0): OrphanPage => ({
   assets: [],
   count: 0,
@@ -70,18 +68,6 @@ const emptyPage = (offset = 0): OrphanPage => ({
   limit: PAGE_SIZE,
   offset,
 })
-
-const extractErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const body = (await response.json()) as {
-      detail?: string
-      message?: string
-    }
-    return body.detail ?? body.message ?? response.statusText
-  } catch {
-    return response.statusText || "The request failed."
-  }
-}
 
 const formatDate = (value: string | null | undefined): string => {
   if (!value) {
@@ -108,36 +94,6 @@ const formatBytes = (value: number | null): string => {
     return `${(value / 1_024).toFixed(1)} KiB`
   }
   return `${(value / (1_024 * 1_024)).toFixed(1)} MiB`
-}
-
-const createTimedRequest = (
-  externalSignal?: AbortSignal,
-): TimedRequest => {
-  const controller = new AbortController()
-  let timedOut = false
-  const abortFromExternal = (): void => {
-    controller.abort()
-  }
-  if (externalSignal?.aborted) {
-    controller.abort()
-  } else {
-    externalSignal?.addEventListener("abort", abortFromExternal, {
-      once: true,
-    })
-  }
-  const timeout = globalThis.setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, REQUEST_TIMEOUT_MS)
-
-  return {
-    didTimeOut: () => timedOut,
-    dispose: () => {
-      globalThis.clearTimeout(timeout)
-      externalSignal?.removeEventListener("abort", abortFromExternal)
-    },
-    signal: controller.signal,
-  }
 }
 
 const isLifecycleStatus = (value: string): value is LifecycleStatus =>
@@ -442,12 +398,33 @@ MobileLoadingCards.displayName = "MobileLoadingCards"
 const MediaCleanupPage = memo(() => {
   const [view, setView] = useState<LifecycleStatus>("active")
   const [pageIndex, setPageIndex] = useState(0)
-  const [page, setPage] = useState<OrphanPage>(() => emptyPage())
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [busyAssetId, setBusyAssetId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
   const offset = pageIndex * PAGE_SIZE
+  const orphanQuery = useQuery({
+    queryFn: ({ signal }) =>
+      requestAdminJson({
+        path: "/admin/catalog/media/orphans",
+        query: {
+          lifecycleStatus: view,
+          limit: PAGE_SIZE,
+          offset,
+        },
+        schema: orphanPageSchema,
+        signal,
+      }),
+    queryKey: [...ORPHAN_MEDIA_QUERY_KEY, view, PAGE_SIZE, offset],
+    retry: false,
+    staleTime: 10_000,
+  })
+  const page = orphanQuery.data ?? emptyPage(offset)
+  const loading = orphanQuery.isPending
+  const error = orphanQuery.error
+    ? getAdminRequestErrorMessage(
+        orphanQuery.error,
+        "Unable to load unlinked media.",
+      )
+    : null
   const countLabel = useMemo(
     () => `${page.count} ${page.count === 1 ? "asset" : "assets"}`,
     [page.count],
@@ -457,56 +434,48 @@ const MediaCleanupPage = memo(() => {
     [page.count],
   )
 
-  const load = useCallback(
-    async (signal?: AbortSignal): Promise<void> => {
-      const request = createTimedRequest(signal)
-      setLoading(true)
-      setError(null)
-      try {
-        const query = new URLSearchParams({
-          lifecycleStatus: view,
-          limit: String(PAGE_SIZE),
-          offset: String(offset),
-        })
-        const response = await fetch(
-          `/admin/catalog/media/orphans?${query.toString()}`,
-          {
-            credentials: "include",
-            signal: request.signal,
-          },
-        )
-        if (!response.ok) {
-          throw new Error(await extractErrorMessage(response))
-        }
-        setPage(orphanPageSchema.parse(await response.json()))
-      } catch (caught) {
-        if (signal?.aborted) {
-          return
-        }
-        setPage(emptyPage(offset))
-        const message = request.didTimeOut()
-          ? "The media list took too long to load. Try again."
-          : caught instanceof Error
-            ? caught.message
-            : "Unable to load unlinked media."
-        setError(message)
-      } finally {
-        request.dispose()
-        if (!signal?.aborted) {
-          setLoading(false)
-        }
+  const lifecycleMutation = useMutation({
+    mutationFn: async (asset: MediaAsset) => {
+      const action =
+        asset.lifecycleStatus === "quarantined" ? "restore" : "quarantine"
+      await requestAdminJson({
+        body: {
+          expectedVersion: asset.version,
+          idempotencyKey: crypto.randomUUID(),
+        },
+        method: "POST",
+        path: `/admin/catalog/media/assets/${encodeURIComponent(asset.id)}/${action}`,
+        schema: lifecycleResponseSchema,
+      })
+      return action
+    },
+    onError: (mutationError) => {
+      toast.error(
+        getAdminRequestErrorMessage(
+          mutationError,
+          "Unable to update the media lifecycle.",
+        ),
+      )
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ORPHAN_MEDIA_QUERY_KEY,
+      })
+    },
+    onSuccess: (action) => {
+      toast.success(
+        action === "restore"
+          ? "Media restored"
+          : "Media moved to quarantine",
+      )
+      if (page.assets.length === 1 && pageIndex > 0) {
+        setPageIndex((current) => current - 1)
       }
     },
-    [offset, view],
-  )
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void load(controller.signal)
-    return () => {
-      controller.abort()
-    }
-  }, [load])
+  })
+  const busyAssetId = lifecycleMutation.isPending
+    ? (lifecycleMutation.variables?.id ?? null)
+    : null
 
   const handleViewChange = useCallback((value: string) => {
     if (!isLifecycleStatus(value)) {
@@ -525,60 +494,17 @@ const MediaCleanupPage = memo(() => {
   }, [])
 
   const handleRetry = useCallback(() => {
-    void load()
-  }, [load])
+    void orphanQuery.refetch()
+  }, [orphanQuery])
 
   const handleLifecycleAction = useCallback(
-    async (asset: MediaAsset): Promise<void> => {
-      if (busyAssetId !== null) {
+    (asset: MediaAsset): void => {
+      if (lifecycleMutation.isPending) {
         return
       }
-      const action =
-        asset.lifecycleStatus === "quarantined" ? "restore" : "quarantine"
-      const request = createTimedRequest()
-      setBusyAssetId(asset.id)
-      try {
-        const response = await fetch(
-          `/admin/catalog/media/assets/${encodeURIComponent(asset.id)}/${action}`,
-          {
-            body: JSON.stringify({
-              expectedVersion: asset.version,
-              idempotencyKey: crypto.randomUUID(),
-            }),
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            method: "POST",
-            signal: request.signal,
-          },
-        )
-        if (!response.ok) {
-          throw new Error(await extractErrorMessage(response))
-        }
-        lifecycleResponseSchema.parse(await response.json())
-        toast.success(
-          action === "restore"
-            ? "Media restored"
-            : "Media moved to quarantine",
-        )
-        if (page.assets.length === 1 && pageIndex > 0) {
-          setPageIndex((current) => current - 1)
-        } else {
-          await load()
-        }
-      } catch (caught) {
-        const message = request.didTimeOut()
-          ? "The request took too long. Reload before trying again."
-          : caught instanceof Error
-            ? caught.message
-            : "Unable to update the media lifecycle."
-        toast.error(message)
-        await load()
-      } finally {
-        request.dispose()
-        setBusyAssetId(null)
-      }
+      lifecycleMutation.mutate(asset)
     },
-    [busyAssetId, load, page.assets.length, pageIndex],
+    [lifecycleMutation],
   )
 
   return (
