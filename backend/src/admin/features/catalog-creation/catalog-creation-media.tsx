@@ -358,6 +358,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
           <div>
             <input
               accept="image/jpeg,image/png,image/webp,image/gif"
+              aria-label="Upload product images"
               className="sr-only"
               multiple
               onChange={handleUpload}
