@@ -321,6 +321,7 @@ export const createCatalogProductWorkflow = createWorkflow(
           buildCatalogBundleMutation(
             command,
             context!,
+            created!,
             created!.productId,
             profile!.profileId,
           ),

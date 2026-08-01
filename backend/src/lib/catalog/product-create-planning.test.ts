@@ -137,6 +137,7 @@ describe("catalog product creation planning", () => {
     ).resolves.toEqual({
       bundleComponents: [
         expect.objectContaining({
+          bundleVariantKeys: null,
           component_inventory_item_id: "component_inventory",
           component_product_id: "component_product",
           component_variant_id: "component_variant",
@@ -294,6 +295,7 @@ describe("catalog product creation planning", () => {
         ...contextFixture(),
         bundleComponents: [
           {
+            bundleVariantKeys: ["default"],
             component_inventory_item_id: "inventory_1",
             component_product_id: "component_product",
             component_variant_id: "component_variant",
@@ -307,12 +309,30 @@ describe("catalog product creation planning", () => {
           },
         ],
       },
+      {
+        productId: "product_1",
+        targets: [
+          {
+            definition: commandFixture("fixed_bundle").variants[0]!,
+            variantId: "bundle_variant_1",
+          },
+        ],
+      },
       "product_1",
       "profile_1",
     )
     const mystery = buildCatalogBundleMutation(
       commandFixture("mystery_bundle"),
       contextFixture(),
+      {
+        productId: "product_2",
+        targets: [
+          {
+            definition: commandFixture("mystery_bundle").variants[0]!,
+            variantId: "mystery_variant_1",
+          },
+        ],
+      },
       "product_2",
       "profile_2",
     )
@@ -324,7 +344,17 @@ describe("catalog product creation planning", () => {
     })
     expect(fixed).toMatchObject({
       command: "catalog.bundle.upsert",
-      components: [expect.any(Object)],
+      components: [
+        expect.objectContaining({
+          metadata: {
+            resolved_variant_mappings: [
+              expect.objectContaining({
+                bundle_variant_ids: ["bundle_variant_1"],
+              }),
+            ],
+          },
+        }),
+      ],
       profile: {
         bundle_type: "fixed",
         fulfillment_mode: "ship_components",

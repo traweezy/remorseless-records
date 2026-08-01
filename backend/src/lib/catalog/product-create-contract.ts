@@ -60,6 +60,18 @@ export const catalogProductCreateVariantSchema = z.object({
 export const catalogProductCreateBundleComponentSchema = z.object({
   componentProductId: z.string().trim().min(1).max(255),
   componentVariantId: z.string().trim().min(1).max(255),
+  bundleVariantKeys: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(100)
+        .regex(/^[a-zA-Z0-9_-]+$/),
+    )
+    .min(1)
+    .max(100)
+    .optional(),
   title: nullableTextSchema,
   variantTitle: nullableTextSchema,
   sku: nullableTextSchema,
@@ -310,7 +322,45 @@ export const catalogProductCreateSchema = z
         })
       }
       componentVariants.add(normalizedVariantId)
+
+      component.bundleVariantKeys?.forEach((variantKey, mappingIndex) => {
+        if (!variantKeys.has(variantKey.toLocaleLowerCase())) {
+          context.addIssue({
+            code: "custom",
+            message: `Unknown bundle variant key ${variantKey}.`,
+            path: [
+              "bundle",
+              "components",
+              componentIndex,
+              "bundleVariantKeys",
+              mappingIndex,
+            ],
+          })
+        }
+      })
     })
+
+    if (input.kind === "fixed_bundle") {
+      input.variants.forEach((variant, variantIndex) => {
+        const hasRequiredComponent = input.bundle?.components.some(
+          (component) =>
+            component.isRequired &&
+            (!component.bundleVariantKeys ||
+              component.bundleVariantKeys.some(
+                (key) =>
+                  key.toLocaleLowerCase() === variant.key.toLocaleLowerCase(),
+              )),
+        )
+        if (!hasRequiredComponent) {
+          context.addIssue({
+            code: "custom",
+            message:
+              "Every fixed bundle variant needs at least one required component mapping.",
+            path: ["variants", variantIndex, "key"],
+          })
+        }
+      })
+    }
   })
 
 export type CatalogProductCreateInput = z.infer<

@@ -47,7 +47,9 @@ type StoreService = {
 }
 
 export type CatalogProductCreateComponent =
-  CatalogBundleMutationInput["components"][number]
+  CatalogBundleMutationInput["components"][number] & {
+    bundleVariantKeys: string[] | null
+  }
 
 export type CatalogProductCreateContext = {
   bundleComponents: CatalogProductCreateComponent[]
@@ -149,6 +151,7 @@ const resolveBundleComponents = async (
       )
     }
     return {
+      bundleVariantKeys: component.bundleVariantKeys ?? null,
       component_inventory_item_id: inventoryItemIds[0],
       component_product_id: component.componentProductId,
       component_variant_id: component.componentVariantId,
@@ -359,6 +362,7 @@ export const buildCatalogProductProfileMutation = (
 export const buildCatalogBundleMutation = (
   input: CatalogProductCreateCommandInput,
   context: CatalogProductCreateContext,
+  created: CatalogCreatedProduct,
   productId: string,
   productProfileId: string,
 ): CatalogBundleMutationInput => {
@@ -375,10 +379,53 @@ export const buildCatalogBundleMutation = (
     product_id: productId,
     product_profile_id: productProfileId,
   }
+  const bundleVariantIdsByKey = new Map(
+    created.targets.map((target) => [
+      target.definition.key.toLocaleLowerCase(),
+      target.variantId,
+    ]),
+  )
+  const components = mystery
+    ? []
+    : context.bundleComponents.map(
+        ({ bundleVariantKeys, ...component }) => ({
+          ...component,
+          metadata: bundleVariantKeys
+            ? {
+                ...component.metadata,
+                resolved_variant_mappings: [
+                  {
+                    bundle_variant_ids: bundleVariantKeys.map((key) => {
+                      const variantId = bundleVariantIdsByKey.get(
+                        key.toLocaleLowerCase(),
+                      )
+                      if (!variantId) {
+                        throw new MedusaError(
+                          MedusaError.Types.UNEXPECTED_STATE,
+                          `Bundle variant mapping ${key} could not be resolved.`,
+                        )
+                      }
+                      return variantId
+                    }),
+                    component_variants: [
+                      {
+                        inventory_item_id:
+                          component.component_inventory_item_id,
+                        sku: component.sku,
+                        variant_id: component.component_variant_id,
+                      },
+                    ],
+                    selection_mode: "exact",
+                  },
+                ],
+              }
+            : component.metadata,
+        }),
+      )
   const commandPayload = {
     aggregateId: productId,
     command: "catalog.bundle.upsert" as const,
-    components: mystery ? [] : context.bundleComponents,
+    components,
     expectedVersion: 0,
     profile,
   }

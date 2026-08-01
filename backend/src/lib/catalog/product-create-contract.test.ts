@@ -198,4 +198,53 @@ describe("catalogProductCreateSchema", () => {
       false,
     )
   })
+
+  it("requires every fixed-bundle offering to have a valid component mapping", () => {
+    const base = musicRelease()
+    const fixed = {
+      ...base,
+      kind: "fixed_bundle",
+      profile: { productType: { label: "Bundle" } },
+      variants: base.variants.map(({ stockQuantity: _stock, ...variant }) =>
+        variant,
+      ),
+      bundle: {
+        components: [
+          {
+            bundleVariantKeys: ["cd"],
+            componentProductId: "component_product",
+            componentVariantId: "component_variant",
+          },
+        ],
+      },
+    }
+
+    expect(catalogProductCreateSchema.safeParse(fixed).success).toBe(false)
+    expect(
+      catalogProductCreateSchema.safeParse({
+        ...fixed,
+        bundle: {
+          components: [
+            {
+              ...fixed.bundle.components[0],
+              bundleVariantKeys: ["cd", "unknown"],
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      catalogProductCreateSchema.safeParse({
+        ...fixed,
+        bundle: {
+          components: [
+            {
+              ...fixed.bundle.components[0],
+              bundleVariantKeys: ["cd", "lp"],
+            },
+          ],
+        },
+      }).success,
+    ).toBe(true)
+  })
 })
