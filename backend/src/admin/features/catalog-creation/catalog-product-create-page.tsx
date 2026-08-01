@@ -27,7 +27,6 @@ import {
   Input,
   Select,
   Skeleton,
-  Switch,
   Text,
   Textarea,
 } from "@medusajs/ui"
@@ -45,10 +44,15 @@ import {
   CatalogControlledInput,
   type CatalogControlledOption,
 } from "./catalog-controlled-input"
+import {
+  CatalogCreationAvailability,
+  resolveCatalogCreationAvailability,
+} from "./catalog-creation-availability"
 import { CatalogMerchandiseTemplates } from "./catalog-merchandise-templates"
 import {
   applyCatalogCreationKind,
   buildCatalogProductCreateRequest,
+  catalogCreationAvailabilityPolicies,
   catalogCreationDraftKey,
   catalogCreationFormSchema,
   catalogCreationKindDescriptions,
@@ -149,36 +153,6 @@ type ScrollTarget = {
   }) => void
 }
 
-type OfferingBackorderSwitchProps = {
-  checked: boolean
-  label: string
-  offeringId: string
-  onChange: (offeringId: string, checked: boolean) => void
-}
-
-const OfferingBackorderSwitch = memo<OfferingBackorderSwitchProps>(({
-  checked,
-  label,
-  offeringId,
-  onChange,
-}) => {
-  const handleCheckedChange = useCallback(
-    (nextChecked: boolean) => onChange(offeringId, nextChecked),
-    [offeringId, onChange],
-  )
-
-  return (
-    <Switch
-      aria-label={label}
-      checked={checked}
-      className="min-h-6"
-      onCheckedChange={handleCheckedChange}
-    />
-  )
-})
-
-OfferingBackorderSwitch.displayName = "OfferingBackorderSwitch"
-
 const offeringLabel = (kind: CatalogCreationKind): string => {
   if (kind === "merch") {
     return "Size and color combination"
@@ -191,6 +165,20 @@ const offeringLabel = (kind: CatalogCreationKind): string => {
   }
   return "Release format"
 }
+
+const availabilityPolicyLabels = {
+  backorder: "Accept backorders",
+  inventory_only: "Stop at zero",
+  preorder: "Accept preorders",
+} as const
+
+const availabilityPolicyHints = {
+  backorder:
+    "Native backorders keep ordering open after exact inventory reaches zero.",
+  inventory_only: "Ordering stops when exact native inventory reaches zero.",
+  preorder:
+    "Preorders use the future release date and native backorders so zero-stock orders can be accepted.",
+} as const
 
 const stockLabel = (quantity: number | null, managed: boolean): string => {
   if (!managed || quantity === null) {
@@ -398,6 +386,23 @@ export const CatalogProductCreatePage = memo(() => {
       productType: byKind("product_type"),
     }
   }, [vocabulary?.references])
+  const availabilityByOfferingId = useMemo(
+    () =>
+      new Map(
+        values.offerings.map((offering) => [
+          offering.id,
+          resolveCatalogCreationAvailability({
+            bundleComponents: values.bundleComponents,
+            choices: choicesData ?? [],
+            kind: values.kind,
+            offering,
+            releaseDate: values.releaseDate,
+            releaseDatePrecision: values.releaseDatePrecision,
+          }),
+        ]),
+      ),
+    [choicesData, values],
+  )
 
   useEffect(() => {
     if (!submitted && (draftPersistenceEnabled || formState.isDirty)) {
@@ -647,21 +652,6 @@ export const CatalogProductCreatePage = memo(() => {
       )
     },
     [form, values.bundleComponents, values.offerings],
-  )
-
-  const updateBackorder = useCallback(
-    (offeringId: string, checked: boolean) => {
-      form.setFieldValue(
-        "offerings",
-        values.offerings.map((offering) =>
-          offering.id === offeringId
-            ? { ...offering, allowBackorder: checked }
-            : offering,
-        ),
-      )
-      setStepErrors([])
-    },
-    [form, values.offerings],
   )
 
   const addBundleComponent = useCallback(() => {
@@ -1182,8 +1172,10 @@ export const CatalogProductCreatePage = memo(() => {
               </div>
             ) : null}
             <div className="mt-5 flex flex-col gap-4">
-              {values.offerings.map((offering, index) => (
-                <section className="rounded-lg border border-ui-border-base p-4" key={offering.id}>
+              {values.offerings.map((offering, index) => {
+                const availability = availabilityByOfferingId.get(offering.id)!
+                return (
+                  <section className="rounded-lg border border-ui-border-base p-4" key={offering.id}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <Heading level="h3">{offeringLabel(values.kind)} {index + 1}</Heading>
@@ -1257,22 +1249,40 @@ export const CatalogProductCreatePage = memo(() => {
                       </AdminFormField>
                     )}
                     {values.kind !== "fixed_bundle" ? (
-                      <div className="flex min-h-16 items-center justify-between gap-3 rounded-md border border-ui-border-base px-3 py-2">
-                        <div>
-                          <Text size="small" weight="plus">Allow backorders</Text>
-                          <Text className="text-ui-fg-subtle" size="xsmall">Customers can order after stock reaches zero.</Text>
-                        </div>
-                        <OfferingBackorderSwitch
-                          checked={offering.allowBackorder}
-                          label={`Allow backorders for ${offering.title || `offering ${index + 1}`}`}
-                          offeringId={offering.id}
-                          onChange={updateBackorder}
-                        />
-                      </div>
+                      <AdminFormField
+                        hint={
+                          availabilityPolicyHints[offering.availabilityPolicy]
+                        }
+                        id={`offering-${offering.id}-availability-policy`}
+                        label="Selling policy"
+                      >
+                        {(control) => (
+                          <select
+                            {...control}
+                            className="min-h-9 w-full cursor-pointer rounded-md border border-ui-border-base bg-ui-bg-base px-2"
+                            data-offering-field="availabilityPolicy"
+                            data-offering-id={offering.id}
+                            onChange={updateOffering}
+                            value={offering.availabilityPolicy}
+                          >
+                            {catalogCreationAvailabilityPolicies
+                              .filter((policy) => policy !== "preorder" || values.kind === "music_release")
+                              .map((policy) => (
+                                <option key={policy} value={policy}>
+                                  {availabilityPolicyLabels[policy]}
+                                </option>
+                              ))}
+                          </select>
+                        )}
+                      </AdminFormField>
                     ) : null}
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <CatalogCreationAvailability preview={availability} />
+                    </div>
                   </div>
-                </section>
-              ))}
+                  </section>
+                )
+              })}
             </div>
           </Container>
 
@@ -1426,7 +1436,7 @@ export const CatalogProductCreatePage = memo(() => {
                 <Button data-step="1" onClick={handleChangeStep} size="small" type="button" variant="secondary">Change basics</Button>
               </div>
               <div className="flex flex-wrap items-start justify-between gap-3 p-4">
-                <div><Text size="xsmall" className="text-ui-fg-subtle">Offerings</Text><Text weight="plus">{values.offerings.length} {values.offerings.length === 1 ? "variant" : "variants"}</Text><Text size="small" className="text-ui-fg-subtle">{values.offerings.map((offering) => `${offering.title} · $${offering.priceUsd}${values.kind === "fixed_bundle" ? " · component stock" : ` · ${offering.stockQuantity} stock`}`).join("; ")}</Text></div>
+                <div className="min-w-0 flex-1"><Text size="xsmall" className="text-ui-fg-subtle">Offerings</Text><Text weight="plus">{values.offerings.length} {values.offerings.length === 1 ? "variant" : "variants"}</Text><Text size="small" className="break-words text-ui-fg-subtle">{values.offerings.map((offering) => `${offering.title} · $${offering.priceUsd}${values.kind === "fixed_bundle" ? " · component stock" : ` · ${offering.stockQuantity} stock`}`).join("; ")}</Text><div className="mt-3 grid gap-2">{values.offerings.map((offering) => <CatalogCreationAvailability key={offering.id} preview={availabilityByOfferingId.get(offering.id)!} />)}</div></div>
                 <Button data-step="2" onClick={handleChangeStep} size="small" type="button" variant="secondary">Change offerings</Button>
               </div>
               {values.kind === "fixed_bundle" ? (

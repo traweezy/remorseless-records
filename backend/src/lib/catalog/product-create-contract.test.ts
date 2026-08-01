@@ -43,6 +43,63 @@ describe("catalogProductCreateSchema", () => {
     expect(parsed.variants[1]?.stockQuantity).toBe(0)
   })
 
+  it("requires preorder presentation to retain native sellability", () => {
+    const base = musicRelease()
+    const preorder = {
+      ...base,
+      profile: { ...base.profile, releaseDate: "2099-08-01" },
+      variants: base.variants.map((variant, index) =>
+        index === 0
+          ? {
+              ...variant,
+              allowBackorder: true,
+              profile: {
+                ...variant.profile,
+                preorderAllowed: true,
+                preorderReleaseDate: "2099-08-01",
+              },
+            }
+          : variant,
+      ),
+    }
+    expect(catalogProductCreateSchema.safeParse(preorder).success).toBe(true)
+
+    expect(
+      catalogProductCreateSchema.safeParse({
+        ...preorder,
+        variants: preorder.variants.map((variant, index) =>
+          index === 0 ? { ...variant, allowBackorder: false } : variant,
+        ),
+      }).success,
+    ).toBe(false)
+
+    expect(
+      catalogProductCreateSchema.safeParse({
+        ...preorder,
+        kind: "merch",
+        profile: { productType: { label: "T-shirt" } },
+      }).success,
+    ).toBe(false)
+
+    expect(
+      catalogProductCreateSchema.safeParse({
+        ...preorder,
+        profile: { ...preorder.profile, releaseDate: null },
+        variants: preorder.variants.map((variant, index) =>
+          index === 0
+            ? {
+                ...variant,
+                profile: {
+                  ...variant.profile,
+                  preorderReleaseDate: null,
+                },
+              }
+            : variant,
+        ),
+      }).success,
+    ).toBe(false)
+  })
+
   it("accepts merchandise with managed inventory", () => {
     expect(
       catalogProductCreateSchema.safeParse({

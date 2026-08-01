@@ -142,6 +142,34 @@ describe("catalog product creation form", () => {
     })
   })
 
+  it("maps preorder intent to native backorders and a dated catalog profile", () => {
+    const values = createCatalogCreationDefaults()
+    values.title = "A Future Record"
+    values.artistName = "The Artist"
+    values.releaseDate = "2099-08-01"
+    values.releaseDatePrecision = "day"
+    values.offerings[0] = {
+      ...values.offerings[0]!,
+      availabilityPolicy: "preorder",
+      stockQuantity: "0",
+    }
+
+    const request = buildCatalogProductCreateRequest(
+      values,
+      "00000000-0000-4000-8000-000000000001",
+      [],
+    )
+
+    expect(request.variants[0]).toMatchObject({
+      allowBackorder: true,
+      profile: {
+        preorderAllowed: true,
+        preorderReleaseDate: "2099-08-01",
+      },
+      stockQuantity: 0,
+    })
+  })
+
   it("reuses controlled values and preserves release date precision", () => {
     const values = createCatalogCreationDefaults()
     values.title = "A New Record"
@@ -238,7 +266,7 @@ describe("catalog product creation form", () => {
     const values = createCatalogCreationDefaults("merch")
     values.offerings[0] = {
       ...values.offerings[0]!,
-      allowBackorder: true,
+      availabilityPolicy: "backorder",
       color: "Black",
       priceUsd: "24.99",
       sku: "SHIRT-BLACK",
@@ -262,7 +290,7 @@ describe("catalog product creation form", () => {
     expect(offerings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          allowBackorder: false,
+          availabilityPolicy: "inventory_only",
           color: "",
           priceUsd: "24.99",
           sku: "",
@@ -349,6 +377,13 @@ describe("catalog product creation form", () => {
         choices,
       ),
     ).toThrow("no longer available")
+
+    const merchPreorder = createCatalogCreationDefaults("merch")
+    merchPreorder.merchandiseType = "Shirt"
+    merchPreorder.offerings[0]!.availabilityPolicy = "preorder"
+    expect(validateCatalogCreationStep(merchPreorder, 2)).toContain(
+      "Preorders are available only for music releases in this workflow.",
+    )
   })
 
   it("round-trips valid drafts and expires or rejects unsafe stored state", () => {
@@ -383,15 +418,22 @@ describe("catalog product creation form", () => {
       productTypeId: _productTypeId,
       releaseDatePrecision: _releaseDatePrecision,
       sizeGuide: _sizeGuide,
+      offerings,
       ...legacyValues
     } = values
+    const legacyOfferings = offerings.map(
+      ({ availabilityPolicy: _availabilityPolicy, ...offering }) => ({
+        ...offering,
+        allowBackorder: false,
+      }),
+    )
 
     expect(
       parseCatalogCreationDraft(
         JSON.stringify({
           expiresAt: now + catalogCreationDraftTtlMs,
           step: 1,
-          values: legacyValues,
+          values: { ...legacyValues, offerings: legacyOfferings },
           version: 1,
         }),
         now,
@@ -400,10 +442,39 @@ describe("catalog product creation form", () => {
       step: 1,
       values: {
         artistId: "",
+        offerings: [expect.objectContaining({ availabilityPolicy: "inventory_only" })],
         releaseDate: "2026-08-01",
         releaseDatePrecision: "day",
         sizeGuide: "",
         title: "Legacy saved draft",
+      },
+    })
+  })
+
+  it("migrates version-two backorder drafts to the selling policy", () => {
+    const now = Date.UTC(2026, 7, 1)
+    const values = createCatalogCreationDefaults()
+    const versionTwoOfferings = values.offerings.map(
+      ({ availabilityPolicy: _availabilityPolicy, ...offering }) => ({
+        ...offering,
+        allowBackorder: true,
+      }),
+    )
+
+    expect(
+      parseCatalogCreationDraft(
+        JSON.stringify({
+          expiresAt: now + catalogCreationDraftTtlMs,
+          step: 2,
+          values: { ...values, offerings: versionTwoOfferings },
+          version: 2,
+        }),
+        now,
+      ),
+    ).toMatchObject({
+      step: 2,
+      values: {
+        offerings: [expect.objectContaining({ availabilityPolicy: "backorder" })],
       },
     })
   })

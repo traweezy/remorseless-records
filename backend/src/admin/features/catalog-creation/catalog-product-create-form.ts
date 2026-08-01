@@ -43,8 +43,17 @@ export type CatalogCreationVocabulary = {
   references: CatalogCreationReferenceChoice[]
 }
 
+export const catalogCreationAvailabilityPolicies = [
+  "inventory_only",
+  "backorder",
+  "preorder",
+] as const
+
+export type CatalogCreationAvailabilityPolicy =
+  (typeof catalogCreationAvailabilityPolicies)[number]
+
 export type CatalogCreationOffering = {
-  allowBackorder: boolean
+  availabilityPolicy: CatalogCreationAvailabilityPolicy
   color: string
   format: string
   formatDetail: string
@@ -191,7 +200,7 @@ const key = (): string => crypto.randomUUID()
 const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => {
   if (kind === "merch") {
     return {
-      allowBackorder: false,
+      availabilityPolicy: "inventory_only",
       color: "",
       format: "Merch",
       formatDetail: "",
@@ -205,7 +214,7 @@ const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => 
   }
   const title = kind === "mystery_bundle" ? "Mystery box" : kind === "fixed_bundle" ? "Bundle" : "Vinyl"
   return {
-    allowBackorder: false,
+    availabilityPolicy: "inventory_only",
     color: "",
     format: title,
     formatDetail: "",
@@ -231,7 +240,7 @@ export const createCatalogCreationMerchandiseOfferings = (
   }
   const seed = currentOfferings[0] ?? defaultOffering("merch")
   return template.sizes.map((size) => ({
-    allowBackorder: false,
+    availabilityPolicy: "inventory_only",
     color: "",
     format: "Merch",
     formatDetail: "",
@@ -319,7 +328,7 @@ const releaseDatePatterns: Record<
   year: /^\d{4}$/,
 }
 
-const normalizedReleaseDate = (
+export const normalizeCatalogCreationReleaseDate = (
   value: string,
   precision: CatalogCreationReleaseDatePrecision,
 ): string | null => {
@@ -343,7 +352,7 @@ const isValidReleaseDate = (
   value: string,
   precision: CatalogCreationReleaseDatePrecision,
 ): boolean => {
-  const normalized = normalizedReleaseDate(value, precision)
+  const normalized = normalizeCatalogCreationReleaseDate(value, precision)
   if (!normalized) {
     return false
   }
@@ -360,7 +369,7 @@ const isValidReleaseDate = (
 }
 
 const offeringSchema = z.object({
-  allowBackorder: z.boolean(),
+  availabilityPolicy: z.enum(catalogCreationAvailabilityPolicies),
   color: z.string().trim().max(100),
   format: z.string().trim().max(100),
   formatDetail: z.string().trim().max(100),
@@ -448,6 +457,29 @@ export const catalogCreationFormSchema = z
     }
     const combinations = new Set<string>()
     values.offerings.forEach((offering, index) => {
+      if (
+        offering.availabilityPolicy === "preorder" &&
+        values.kind !== "music_release"
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Preorders are available only for music releases in this workflow.",
+          path: ["offerings", index, "availabilityPolicy"],
+        })
+      }
+      if (offering.availabilityPolicy === "preorder") {
+        const releaseDate = normalizeCatalogCreationReleaseDate(
+          values.releaseDate,
+          values.releaseDatePrecision,
+        )
+        if (!releaseDate || Date.parse(releaseDate) <= Date.now()) {
+          context.addIssue({
+            code: "custom",
+            message: "Choose a future release date before accepting preorders.",
+            path: ["offerings", index, "availabilityPolicy"],
+          })
+        }
+      }
       if (values.kind === "merch" && !offering.size) {
         context.addIssue({
           code: "custom",
@@ -655,8 +687,15 @@ export const buildCatalogProductCreateRequest = (
             ),
           },
         ]
+  const releaseDate =
+    values.kind === "music_release"
+      ? normalizeCatalogCreationReleaseDate(
+          values.releaseDate,
+          values.releaseDatePrecision,
+        )
+      : null
   const variants = values.offerings.map((offering) => ({
-    allowBackorder: offering.allowBackorder,
+    allowBackorder: offering.availabilityPolicy !== "inventory_only",
     key: keys.get(offering.id)!,
     options:
       values.kind === "merch"
@@ -670,6 +709,9 @@ export const buildCatalogProductCreateRequest = (
       displayLabel: offering.title,
       format: { label: offering.format || (values.kind === "merch" ? "Merch" : offering.title) },
       formatDetail: { label: nullable(offering.formatDetail) },
+      preorderAllowed: offering.availabilityPolicy === "preorder",
+      preorderReleaseDate:
+        offering.availabilityPolicy === "preorder" ? releaseDate : null,
     },
     ...(offering.sku ? { sku: offering.sku } : {}),
     ...(values.kind === "fixed_bundle"
@@ -707,13 +749,6 @@ export const buildCatalogProductCreateRequest = (
     values.productType,
     vocabulary,
   )
-  const releaseDate =
-    values.kind === "music_release"
-      ? normalizedReleaseDate(
-          values.releaseDate,
-          values.releaseDatePrecision,
-        )
-      : null
   const releaseYear = releaseDate ? Number(releaseDate.slice(0, 4)) : null
   const references = [
     ...(values.kind === "music_release" && values.genre
@@ -897,11 +932,11 @@ export const validateCatalogCreationStep = (
     .map((issue) => issue.message)
 }
 
-const DRAFT_VERSION = 2
+const DRAFT_VERSION = 3
 export const catalogCreationDraftKey = "remorseless:catalog-product-create:v1"
 export const catalogCreationDraftTtlMs = 7 * 24 * 60 * 60 * 1_000
 
-const draftOfferingSchema = z.object({
+const legacyDraftOfferingSchema = z.object({
   allowBackorder: z.boolean(),
   color: z.string().max(100),
   format: z.string().max(100),
@@ -914,6 +949,12 @@ const draftOfferingSchema = z.object({
   title: z.string().max(500),
 })
 
+const draftOfferingSchema = legacyDraftOfferingSchema
+  .omit({ allowBackorder: true })
+  .extend({
+    availabilityPolicy: z.enum(catalogCreationAvailabilityPolicies),
+  })
+
 const draftComponentSchema = z.object({
   id: z.string().min(1).max(100),
   offeringIds: z.array(z.string().min(1).max(100)).max(100),
@@ -922,7 +963,7 @@ const draftComponentSchema = z.object({
   variantId: z.string().max(255),
 })
 
-const draftValuesSchema = z.object({
+const draftValuesShape = {
   artistId: z.string().max(255),
   artistName: z.string().max(500),
   bundleComponents: z.array(draftComponentSchema).max(100),
@@ -942,7 +983,6 @@ const draftValuesSchema = z.object({
   merchandiseTypeId: z.string().max(255),
   mysteryDisclaimer: z.string().max(10_000),
   mysteryPromise: z.string().max(10_000),
-  offerings: z.array(draftOfferingSchema).min(1).max(100),
   productTypeId: z.string().max(255),
   productType: z.string().max(500),
   releaseDate: z.string().max(100),
@@ -950,9 +990,19 @@ const draftValuesSchema = z.object({
   sizeGuide: z.string().max(10_000),
   title: z.string().max(500),
   tracklist: z.string().max(50_000),
+}
+
+const draftValuesSchema = z.object({
+  ...draftValuesShape,
+  offerings: z.array(draftOfferingSchema).min(1).max(100),
 })
 
-const legacyDraftValuesSchema = draftValuesSchema.omit({
+const versionTwoDraftValuesSchema = z.object({
+  ...draftValuesShape,
+  offerings: z.array(legacyDraftOfferingSchema).min(1).max(100),
+})
+
+const legacyDraftValuesSchema = versionTwoDraftValuesSchema.omit({
   artistId: true,
   genreId: true,
   labelId: true,
@@ -969,6 +1019,12 @@ const storedDraftSchema = z.discriminatedUnion("version", [
     step: z.number().int().min(0).max(4),
     values: legacyDraftValuesSchema,
     version: z.literal(1),
+  }),
+  z.object({
+    expiresAt: z.number().int().positive(),
+    step: z.number().int().min(0).max(4),
+    values: versionTwoDraftValuesSchema,
+    version: z.literal(2),
   }),
   z.object({
     expiresAt: z.number().int().positive(),
@@ -1002,17 +1058,33 @@ export const parseCatalogCreationDraft = (
     if (parsed.expiresAt <= now) {
       return null
     }
-    if (parsed.version === 1) {
-      return {
-        step: parsed.step,
-        values: {
-          ...createCatalogCreationDefaults(parsed.values.kind),
-          ...parsed.values,
-          releaseDatePrecision: parsed.values.releaseDate ? "day" : "unknown",
-        },
-      }
+    if (parsed.version === DRAFT_VERSION) {
+      return { step: parsed.step, values: parsed.values }
     }
-    return { step: parsed.step, values: parsed.values }
+    const legacyValues =
+      parsed.version === 1
+        ? {
+            ...createCatalogCreationDefaults(parsed.values.kind),
+            ...parsed.values,
+            releaseDatePrecision: parsed.values.releaseDate
+              ? ("day" as const)
+              : ("unknown" as const),
+          }
+        : parsed.values
+    return {
+      step: parsed.step,
+      values: {
+        ...legacyValues,
+        offerings: legacyValues.offerings.map(
+          ({ allowBackorder, ...offering }) => ({
+            ...offering,
+            availabilityPolicy: allowBackorder
+              ? ("backorder" as const)
+              : ("inventory_only" as const),
+          }),
+        ),
+      },
+    }
   } catch {
     return null
   }

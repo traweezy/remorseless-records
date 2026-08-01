@@ -248,6 +248,33 @@ export const catalogProductCreateSchema = z
         currencies.add(price.currencyCode)
       })
 
+      if (variant.profile?.preorderAllowed) {
+        if (input.kind !== "music_release") {
+          context.addIssue({
+            code: "custom",
+            message: "This creation workflow supports preorders only for music releases.",
+            path: ["variants", variantIndex, "profile", "preorderAllowed"],
+          })
+        }
+        if (variant.allowBackorder !== true) {
+          context.addIssue({
+            code: "custom",
+            message: "Preorders require native variant backorders to be enabled.",
+            path: ["variants", variantIndex, "allowBackorder"],
+          })
+        }
+        if (
+          !variant.profile.preorderReleaseDate &&
+          !input.profile.releaseDate
+        ) {
+          context.addIssue({
+            code: "custom",
+            message: "Preorders require a release date.",
+            path: ["variants", variantIndex, "profile", "preorderReleaseDate"],
+          })
+        }
+      }
+
       if (input.kind === "fixed_bundle") {
         if (variant.stockQuantity !== undefined) {
           context.addIssue({
