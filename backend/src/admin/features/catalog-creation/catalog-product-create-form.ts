@@ -155,6 +155,37 @@ export const catalogCreationKindDescriptions: Record<
   mystery_bundle: "A surprise assortment with its own manually counted stock.",
 }
 
+export type CatalogCreationMerchandiseTemplate = {
+  description: string
+  id: "one_size" | "apparel_standard" | "apparel_extended"
+  label: string
+  sizes: readonly string[]
+}
+
+export const catalogCreationMerchandiseTemplates = [
+  {
+    description: "A single variant for buttons, patches, bags, books, and other unsized items.",
+    id: "one_size",
+    label: "One size",
+    sizes: ["One size"],
+  },
+  {
+    description: "Five common adult apparel sizes from S through 2XL.",
+    id: "apparel_standard",
+    label: "Apparel S–2XL",
+    sizes: ["S", "M", "L", "XL", "2XL"],
+  },
+  {
+    description: "Seven adult apparel sizes from XS through 3XL.",
+    id: "apparel_extended",
+    label: "Apparel XS–3XL",
+    sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
+  },
+] as const satisfies readonly CatalogCreationMerchandiseTemplate[]
+
+export type CatalogCreationMerchandiseTemplateId =
+  (typeof catalogCreationMerchandiseTemplates)[number]["id"]
+
 const key = (): string => crypto.randomUUID()
 
 const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => {
@@ -185,6 +216,32 @@ const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => 
     stockQuantity: "0",
     title,
   }
+}
+
+export const createCatalogCreationMerchandiseOfferings = (
+  templateId: CatalogCreationMerchandiseTemplateId,
+  currentOfferings: CatalogCreationOffering[],
+  createId: () => string = key,
+): CatalogCreationOffering[] => {
+  const template = catalogCreationMerchandiseTemplates.find(
+    (candidate) => candidate.id === templateId,
+  )
+  if (!template) {
+    throw new Error(`Unknown merchandise offering template: ${templateId}`)
+  }
+  const seed = currentOfferings[0] ?? defaultOffering("merch")
+  return template.sizes.map((size) => ({
+    allowBackorder: false,
+    color: "",
+    format: "Merch",
+    formatDetail: "",
+    id: createId(),
+    priceUsd: seed.priceUsd,
+    size,
+    sku: "",
+    stockQuantity: "0",
+    title: size,
+  }))
 }
 
 const productTypeForKind = (kind: CatalogCreationKind): string => {

@@ -45,6 +45,7 @@ import {
   CatalogControlledInput,
   type CatalogControlledOption,
 } from "./catalog-controlled-input"
+import { CatalogMerchandiseTemplates } from "./catalog-merchandise-templates"
 import {
   applyCatalogCreationKind,
   buildCatalogProductCreateRequest,
@@ -55,6 +56,7 @@ import {
   catalogCreationKinds,
   catalogCreationReleaseDatePrecisions,
   createCatalogCreationDefaults,
+  createCatalogCreationMerchandiseOfferings,
   parseCatalogCreationDraft,
   resolveCatalogCreationHandle,
   serializeCatalogCreationDraft,
@@ -62,6 +64,7 @@ import {
   type CatalogCreationBundleComponent,
   type CatalogCreationFormValues,
   type CatalogCreationKind,
+  type CatalogCreationMerchandiseTemplateId,
   type CatalogCreationOffering,
   type CatalogCreationReferenceChoice,
   type CatalogCreationReleaseDatePrecision,
@@ -608,6 +611,20 @@ export const CatalogProductCreatePage = memo(() => {
       },
     ])
   }, [form, values])
+
+  const applyMerchandiseTemplate = useCallback(
+    (templateId: CatalogCreationMerchandiseTemplateId) => {
+      form.setFieldValue(
+        "offerings",
+        createCatalogCreationMerchandiseOfferings(
+          templateId,
+          values.offerings,
+        ),
+      )
+      setStepErrors([])
+    },
+    [form, values.offerings],
+  )
 
   const removeOffering = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -1156,6 +1173,14 @@ export const CatalogProductCreatePage = memo(() => {
               description="Each row becomes a native Medusa variant with its own price and exact inventory."
               title="Offerings"
             />
+            {values.kind === "merch" ? (
+              <div className="mt-5">
+                <CatalogMerchandiseTemplates
+                  currentCount={values.offerings.length}
+                  onApply={applyMerchandiseTemplate}
+                />
+              </div>
+            ) : null}
             <div className="mt-5 flex flex-col gap-4">
               {values.offerings.map((offering, index) => (
                 <section className="rounded-lg border border-ui-border-base p-4" key={offering.id}>

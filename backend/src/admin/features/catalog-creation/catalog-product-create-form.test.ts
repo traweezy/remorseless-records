@@ -4,6 +4,7 @@ import {
   catalogCreationDraftTtlMs,
   catalogCreationFormSchema,
   createCatalogCreationDefaults,
+  createCatalogCreationMerchandiseOfferings,
   parseCatalogCreationDraft,
   resolveCatalogCreationHandle,
   serializeCatalogCreationDraft,
@@ -231,6 +232,44 @@ describe("catalog product creation form", () => {
         },
       ],
     })
+  })
+
+  it("applies merchandise templates without copying unsafe variant state", () => {
+    const values = createCatalogCreationDefaults("merch")
+    values.offerings[0] = {
+      ...values.offerings[0]!,
+      allowBackorder: true,
+      color: "Black",
+      priceUsd: "24.99",
+      sku: "SHIRT-BLACK",
+      stockQuantity: "37",
+    }
+    let nextId = 0
+
+    const offerings = createCatalogCreationMerchandiseOfferings(
+      "apparel_standard",
+      values.offerings,
+      () => `offering_${++nextId}`,
+    )
+
+    expect(offerings.map(({ id, size, title }) => ({ id, size, title }))).toEqual([
+      { id: "offering_1", size: "S", title: "S" },
+      { id: "offering_2", size: "M", title: "M" },
+      { id: "offering_3", size: "L", title: "L" },
+      { id: "offering_4", size: "XL", title: "XL" },
+      { id: "offering_5", size: "2XL", title: "2XL" },
+    ])
+    expect(offerings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          allowBackorder: false,
+          color: "",
+          priceUsd: "24.99",
+          sku: "",
+          stockQuantity: "0",
+        }),
+      ]),
+    )
   })
 
   it("maps every fixed-bundle component to stable offering keys", () => {
