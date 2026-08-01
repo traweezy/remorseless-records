@@ -60,6 +60,8 @@ import {
 import {
   catalogProductChoicesQueryOptions,
   createCatalogProduct,
+  decideCatalogProductCreationRetry,
+  getCatalogProductCreationStatus,
   type CatalogCreationProductChoiceWithStock,
 } from "./catalog-product-create-query"
 
@@ -271,6 +273,9 @@ export const CatalogProductCreatePage = memo(() => {
   const choicesFetched = choicesQuery.isFetched
   const refetchChoices = choicesQuery.refetch
   const creationMutation = useMutation({ mutationFn: createCatalogProduct })
+  const retryStatusMutation = useMutation({
+    mutationFn: getCatalogProductCreationStatus,
+  })
 
   const form = useForm({
     defaultValues: initialDraft?.values ?? createCatalogCreationDefaults(),
@@ -303,6 +308,11 @@ export const CatalogProductCreatePage = memo(() => {
     values: state.values,
   }))
   const values = formState.values
+  const creationIsError = creationMutation.isError
+  const resetCreationMutation = creationMutation.reset
+  const inspectRetryStatus = retryStatusMutation.mutateAsync
+  const retryStatusIsPending = retryStatusMutation.isPending
+  const resetRetryStatusMutation = retryStatusMutation.reset
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       formState.isDirty &&
@@ -322,6 +332,23 @@ export const CatalogProductCreatePage = memo(() => {
     }
     return undefined
   }, [draftPersistenceEnabled, formState.isDirty, step, submitted, values])
+
+  useEffect(() => {
+    const submittedValues = lastSubmittedValuesRef.current
+    if (
+      creationIsError &&
+      submittedValues &&
+      submittedValues !== JSON.stringify(values)
+    ) {
+      resetCreationMutation()
+      resetRetryStatusMutation()
+    }
+  }, [
+    creationIsError,
+    resetCreationMutation,
+    resetRetryStatusMutation,
+    values,
+  ])
 
   useEffect(() => {
     if (blocker.state === "blocked") {
@@ -606,6 +633,53 @@ export const CatalogProductCreatePage = memo(() => {
     void form.handleSubmit()
   }, [form, values])
 
+  const handleRetry = useCallback(() => {
+    const validation = catalogCreationFormSchema.safeParse(values)
+    if (!validation.success) {
+      setStepErrors(validation.error.issues.map((issue) => issue.message))
+      return
+    }
+
+    void (async () => {
+      let state: Awaited<
+        ReturnType<typeof getCatalogProductCreationStatus>
+      >["state"]
+      try {
+        const status = await inspectRetryStatus(
+          idempotencyKeyRef.current,
+        )
+        state = status.state
+      } catch (error) {
+        setStepErrors([
+          getAdminRequestErrorMessage(
+            error,
+            "The previous attempt could not be checked. Try again.",
+          ),
+        ])
+        return
+      }
+      const decision = decideCatalogProductCreationRetry(state)
+      if (decision === "wait") {
+        setStepErrors([
+          "The previous creation attempt is still running. Wait a moment, then try again.",
+        ])
+        return
+      }
+      if (decision === "blocked") {
+        setStepErrors([
+          "This attempt needs an operator to reconcile it before the product can be retried safely.",
+        ])
+        return
+      }
+      if (decision === "new-key") {
+        idempotencyKeyRef.current = crypto.randomUUID()
+        lastSubmittedValuesRef.current = null
+      }
+      setStepErrors([])
+      void form.handleSubmit()
+    })()
+  }, [form, inspectRetryStatus, values])
+
   const handleCancel = useCallback(() => {
     if (formState.isDirty) {
       setLeaveOpen(true)
@@ -644,18 +718,23 @@ export const CatalogProductCreatePage = memo(() => {
     form.reset(defaults)
     idempotencyKeyRef.current = crypto.randomUUID()
     lastSubmittedValuesRef.current = null
+    resetCreationMutation()
+    resetRetryStatusMutation()
     setClearOpen(false)
     setDraftPersistenceEnabled(false)
     setResumed(false)
     setStep(0)
     setStepErrors([])
-  }, [form])
+  }, [form, resetCreationMutation, resetRetryStatusMutation])
 
   const handleChoicesRetry = useCallback(() => {
     void refetchChoices()
   }, [refetchChoices])
 
-  const busy = creationMutation.isPending || formState.isSubmitting
+  const busy =
+    creationMutation.isPending ||
+    formState.isSubmitting ||
+    retryStatusIsPending
   const previewRoute =
     values.kind === "music_release"
       ? "music-release"
@@ -691,8 +770,8 @@ export const CatalogProductCreatePage = memo(() => {
             creationMutation.error,
             "The product could not be created. Your form values are still here.",
           )}
-          onRetry={handleSave}
-          retrying={creationMutation.isPending}
+          onRetry={handleRetry}
+          retrying={busy}
           title="Draft creation failed"
         />
       ) : null}

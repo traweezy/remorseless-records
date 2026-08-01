@@ -37,6 +37,18 @@ export type CatalogProductCreateOperation = {
   result: CatalogProductCreateResult | null
 }
 
+export const catalogProductCreationStates = [
+  "absent",
+  "compensated",
+  "failed",
+  "pending",
+  "succeeded",
+  "unavailable",
+] as const
+
+export type CatalogProductCreationState =
+  (typeof catalogProductCreationStates)[number]
+
 type VariantTarget = {
   definition: CatalogProductCreateInput["variants"][number]
   variantId: string
@@ -77,6 +89,45 @@ const isCreateResult = (value: unknown): value is CatalogProductCreateResult => 
     Array.isArray(result.variantIds) &&
     result.variantIds.every((variantId) => typeof variantId === "string")
   )
+}
+
+export const inspectCatalogProductCreation = async (
+  catalogService: CatalogService,
+  actorId: string | null,
+  idempotencyKey: string,
+): Promise<CatalogProductCreationState> => {
+  const existing = (
+    await catalogService.listCatalogAuthoringOperations(
+      { idempotency_key: idempotencyKey },
+      { take: 1 },
+    )
+  )[0]
+  if (!existing) {
+    return "absent"
+  }
+  if (
+    existing.actor_id !== actorId ||
+    existing.command !== "catalog.product.create"
+  ) {
+    return "unavailable"
+  }
+  if (existing.status === "succeeded") {
+    if (!isCreateResult(existing.result)) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The completed catalog creation command has no valid result.",
+      )
+    }
+    return "succeeded"
+  }
+  if (
+    existing.status === "compensated" ||
+    existing.status === "failed" ||
+    existing.status === "pending"
+  ) {
+    return existing.status
+  }
+  return "unavailable"
 }
 
 export const beginCatalogProductCreation = async (

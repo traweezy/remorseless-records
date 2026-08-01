@@ -48,6 +48,42 @@ export type CatalogProductCreateResponse = z.infer<
   typeof catalogProductCreateResponseSchema
 >
 
+const catalogProductCreationStatusSchema = z.object({
+  state: z.enum([
+    "absent",
+    "compensated",
+    "failed",
+    "pending",
+    "succeeded",
+    "unavailable",
+  ]),
+})
+
+export type CatalogProductCreationStatus = z.infer<
+  typeof catalogProductCreationStatusSchema
+>
+
+export type CatalogProductCreationRetryDecision =
+  | "blocked"
+  | "new-key"
+  | "same-key"
+  | "wait"
+
+export const decideCatalogProductCreationRetry = (
+  state: CatalogProductCreationStatus["state"],
+): CatalogProductCreationRetryDecision => {
+  if (state === "compensated") {
+    return "new-key"
+  }
+  if (state === "absent" || state === "succeeded") {
+    return "same-key"
+  }
+  if (state === "pending") {
+    return "wait"
+  }
+  return "blocked"
+}
+
 export type CatalogCreationProductChoiceWithStock =
   Omit<CatalogCreationProductChoice, "variants"> & {
     variants: Array<
@@ -125,4 +161,12 @@ export const createCatalogProduct = async (
     path: "/admin/catalog/products",
     schema: catalogProductCreateResponseSchema,
     timeoutMs: 120_000,
+  })
+
+export const getCatalogProductCreationStatus = async (
+  idempotencyKey: string,
+): Promise<CatalogProductCreationStatus> =>
+  requestAdminJson({
+    path: `/admin/catalog/products/status/${encodeURIComponent(idempotencyKey)}`,
+    schema: catalogProductCreationStatusSchema,
   })

@@ -7,6 +7,7 @@ import {
   completeCatalogProductCreation,
   compensateCatalogProductCreation,
   compensateCatalogProductVariantProfiles,
+  inspectCatalogProductCreation,
   mutateCatalogProductVariantProfiles,
   type CatalogProductCreateCommandInput,
 } from "./product-create-authoring"
@@ -82,6 +83,83 @@ const targetsFixture = (command: CatalogProductCreateCommandInput) =>
   }))
 
 describe("catalog product creation audit", () => {
+  it("reports actor-scoped retry state without exposing another operation", async () => {
+    const service = serviceFixture()
+
+    await expect(
+      inspectCatalogProductCreation(
+        service,
+        "user_1",
+        "00000000-0000-4000-8000-000000000001",
+      ),
+    ).resolves.toBe("absent")
+
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      {
+        actor_id: "user_1",
+        command: "catalog.product.create",
+        result: {},
+        status: "compensated",
+      },
+    ] as never)
+    await expect(
+      inspectCatalogProductCreation(
+        service,
+        "user_1",
+        "00000000-0000-4000-8000-000000000001",
+      ),
+    ).resolves.toBe("compensated")
+
+    await expect(
+      inspectCatalogProductCreation(
+        service,
+        "user_2",
+        "00000000-0000-4000-8000-000000000001",
+      ),
+    ).resolves.toBe("unavailable")
+  })
+
+  it("accepts only a valid completed creation as succeeded", async () => {
+    const service = serviceFixture()
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      {
+        actor_id: "user_1",
+        command: "catalog.product.create",
+        result: {
+          kind: "merch",
+          productId: "prod_1",
+          profileId: "profile_1",
+          variantIds: ["variant_1"],
+        },
+        status: "succeeded",
+      },
+    ] as never)
+
+    await expect(
+      inspectCatalogProductCreation(
+        service,
+        "user_1",
+        "00000000-0000-4000-8000-000000000001",
+      ),
+    ).resolves.toBe("succeeded")
+
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      {
+        actor_id: "user_1",
+        command: "catalog.product.create",
+        result: {},
+        status: "succeeded",
+      },
+    ] as never)
+    await expect(
+      inspectCatalogProductCreation(
+        service,
+        "user_1",
+        "00000000-0000-4000-8000-000000000001",
+      ),
+    ).rejects.toThrow("no valid result")
+  })
+
   it("creates one pending outer operation before commerce writes", async () => {
     const service = serviceFixture()
     service.createCatalogAuthoringOperations.mockResolvedValue([
