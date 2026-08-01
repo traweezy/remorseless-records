@@ -160,6 +160,21 @@ describe("catalog product creation audit", () => {
     await expect(
       beginCatalogProductCreation(service, commandFixture()),
     ).rejects.toThrow("no valid result")
+
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      {
+        actor_id: "user_1",
+        command: "catalog.product.create",
+        expected_version: 0,
+        id: "creation_operation",
+        request_sha256: "request_hash",
+        result: { ...result, kind: "unsupported_kind" },
+        status: "succeeded",
+      },
+    ] as never)
+    await expect(
+      beginCatalogProductCreation(service, commandFixture()),
+    ).rejects.toThrow("no valid result")
   })
 
   it("persists success and records compensation through the catalog service", async () => {

@@ -317,7 +317,12 @@ export const createCatalogProductWorkflow = createWorkflow(
     ).then(() => {
       const bundleInput = transform(
         { command: input, context, created, profile },
-        ({ command, context, created, profile }) =>
+        ({
+          command,
+          context,
+          created,
+          profile,
+        }): ReturnType<typeof buildCatalogBundleMutation> =>
           buildCatalogBundleMutation(
             command,
             context!,

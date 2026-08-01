@@ -9,7 +9,10 @@ import type {
   CatalogVariantProfileMutationResult,
 } from "./variant-profile-contract"
 import type { CatalogService } from "./reference-resolution"
-import type { CatalogProductCreateInput } from "./product-create-contract"
+import {
+  catalogProductCreationKinds,
+  type CatalogProductCreateInput,
+} from "./product-create-contract"
 import {
   deriveCatalogCommandIdempotencyKey,
   hashCatalogCommand,
@@ -68,7 +71,7 @@ const creationAggregateId = (idempotencyKey: string): string =>
 const isCreateResult = (value: unknown): value is CatalogProductCreateResult => {
   const result = coerceCatalogJsonRecord(value)
   return (
-    typeof result.kind === "string" &&
+    catalogProductCreationKinds.some((kind) => kind === result.kind) &&
     typeof result.productId === "string" &&
     typeof result.profileId === "string" &&
     Array.isArray(result.variantIds) &&
