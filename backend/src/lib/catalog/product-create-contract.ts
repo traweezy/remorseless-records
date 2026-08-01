@@ -1,6 +1,10 @@
 import { z } from "zod"
 
 import { catalogProductProfileUpsertSchema } from "./product-profile-contract"
+import {
+  MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH,
+  MAX_CATALOG_PRODUCT_MEDIA_ITEMS,
+} from "./product-media-constraints"
 import { catalogVariantProfileUpsertSchema } from "./variant-profile-contract"
 
 export const catalogProductCreationKinds = [
@@ -91,6 +95,22 @@ export const catalogProductCreateBundleSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
+export const catalogProductCreateMediaSchema = z.object({
+  altText: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH),
+  isPrimary: z.boolean(),
+  mediaAssetId: z.string().trim().min(1).max(255),
+  role: z.enum(["primary", "gallery"]),
+  sortOrder: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_CATALOG_PRODUCT_MEDIA_ITEMS - 1),
+})
+
 const hasNamedReference = (
   input:
     | {
@@ -139,12 +159,48 @@ export const catalogProductCreateSchema = z
       .optional(),
     description: z.string().trim().max(250_000).optional().nullable(),
     metadata: z.record(z.string(), z.unknown()).optional(),
+    media: z
+      .array(catalogProductCreateMediaSchema)
+      .max(MAX_CATALOG_PRODUCT_MEDIA_ITEMS)
+      .default([]),
     options: z.array(catalogProductCreateOptionSchema).min(1).max(10),
     variants: z.array(catalogProductCreateVariantSchema).min(1).max(100),
     profile: productProfileSchema.default({}),
     bundle: catalogProductCreateBundleSchema.optional(),
   })
   .superRefine((input, context) => {
+    const mediaAssetIds = new Set<string>()
+    input.media.forEach((media, mediaIndex) => {
+      const normalizedAssetId = media.mediaAssetId.toLocaleLowerCase()
+      if (mediaAssetIds.has(normalizedAssetId)) {
+        context.addIssue({
+          code: "custom",
+          message: "Each managed media asset can be used only once.",
+          path: ["media", mediaIndex, "mediaAssetId"],
+        })
+      }
+      mediaAssetIds.add(normalizedAssetId)
+
+      if (media.sortOrder !== mediaIndex) {
+        context.addIssue({
+          code: "custom",
+          message: "Media sort order must match the submitted gallery order.",
+          path: ["media", mediaIndex, "sortOrder"],
+        })
+      }
+      const shouldBePrimary = mediaIndex === 0
+      if (
+        media.isPrimary !== shouldBePrimary ||
+        media.role !== (shouldBePrimary ? "primary" : "gallery")
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "The first media item must be the only primary image.",
+          path: ["media", mediaIndex],
+        })
+      }
+    })
+
     const optionTitles = new Set<string>()
     const optionValues = new Map<string, Set<string>>()
     input.options.forEach((option, optionIndex) => {

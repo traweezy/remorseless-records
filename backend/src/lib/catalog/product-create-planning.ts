@@ -21,6 +21,7 @@ import type {
   CatalogProductCreateCommandInput,
 } from "./product-create-authoring"
 import type { CatalogProductProfileMutationInput } from "./product-profile-contract"
+import type { CatalogProductMediaMutationInput } from "./product-media-contract"
 
 const DEFAULT_STOCK_LOCATION_NAME = "HQ"
 const CREATION_VARIANT_KEY = "catalog_creation_variant_key"
@@ -354,6 +355,36 @@ export const buildCatalogProductProfileMutation = (
     idempotencyKey: deriveCatalogCommandIdempotencyKey(
       input.idempotencyKey,
       "product-profile",
+    ),
+    requestSha256: hashCatalogCommand(commandPayload),
+  }
+}
+
+export const buildCatalogProductMediaMutation = (
+  input: CatalogProductCreateCommandInput,
+  productId: string,
+  productProfileId: string,
+): CatalogProductMediaMutationInput => {
+  const media = input.media.map((item) => ({
+    altText: item.altText,
+    isPrimary: item.isPrimary,
+    mediaAssetId: item.mediaAssetId,
+    productProfileId,
+    role: item.role,
+    sortOrder: item.sortOrder,
+  }))
+  const commandPayload = {
+    aggregateId: productId,
+    command: "catalog.product-media.replace" as const,
+    expectedVersion: 0,
+    media,
+  }
+  return {
+    ...commandPayload,
+    actorId: input.actorId,
+    idempotencyKey: deriveCatalogCommandIdempotencyKey(
+      input.idempotencyKey,
+      "product-media",
     ),
     requestSha256: hashCatalogCommand(commandPayload),
   }

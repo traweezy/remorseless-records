@@ -28,6 +28,7 @@ import {
 import {
   buildCatalogBundleMutation,
   buildCatalogNativeProduct,
+  buildCatalogProductMediaMutation,
   buildCatalogProductProfileMutation,
   resolveCatalogCreatedProduct,
   resolveCatalogProductCreateContext,
@@ -38,6 +39,7 @@ import {
 import type { CatalogProductProfileMutationResult } from "@/lib/catalog/product-profile-contract"
 import type CatalogModuleService from "@/modules/catalog/service"
 import { mutateCatalogBundleWorkflow } from "./mutate-bundle"
+import { mutateCatalogProductMediaWorkflow } from "./mutate-product-media"
 import { mutateCatalogProductProfileWorkflow } from "./mutate-product-profile"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
@@ -63,6 +65,7 @@ type CompletionInput = {
   command: CatalogProductCreateCommandInput
   created: CatalogCreatedProduct | undefined
   inventory: unknown
+  media: unknown
   operation: CatalogProductCreateOperation
   profile: CatalogProductProfileMutationResult | undefined
   variants: CatalogProductVariantBatchResult | undefined
@@ -215,6 +218,12 @@ const completeCatalogProductCreationStep = createStep(
         "The catalog creation workflow did not complete every required authoring step.",
       )
     }
+    if (input.command.media.length && !input.media) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The catalog creation workflow did not link its managed media.",
+      )
+    }
     const result: CatalogProductCreateResult = {
       kind: input.command.kind,
       productId: input.created.productId,
@@ -307,6 +316,24 @@ export const createCatalogProductWorkflow = createWorkflow(
       })
     })
 
+    const media = when(
+      "create-new-catalog-product-media",
+      { command: input, operation },
+      ({ command, operation }) =>
+        !operation.replayed && command.media.length > 0,
+    ).then(() => {
+      const mediaInput = transform(
+        { command: input, created, profile },
+        ({ command, created, profile }) =>
+          buildCatalogProductMediaMutation(
+            command,
+            created!.productId,
+            profile!.profileId,
+          ),
+      )
+      return mutateCatalogProductMediaWorkflow.runAsStep({ input: mediaInput })
+    })
+
     const bundle = when(
       "create-new-catalog-bundle-profile",
       { command: input, operation },
@@ -357,6 +384,7 @@ export const createCatalogProductWorkflow = createWorkflow(
       command: input,
       created,
       inventory,
+      media,
       operation,
       profile,
       variants,

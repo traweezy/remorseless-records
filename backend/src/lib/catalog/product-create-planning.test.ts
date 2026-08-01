@@ -10,6 +10,7 @@ import type { CatalogProductCreateCommandInput } from "./product-create-authorin
 import {
   buildCatalogBundleMutation,
   buildCatalogNativeProduct,
+  buildCatalogProductMediaMutation,
   buildCatalogProductProfileMutation,
   resolveCatalogCreatedProduct,
   resolveCatalogProductCreateContext,
@@ -369,6 +370,62 @@ describe("catalog product creation planning", () => {
         inventory_mode: "manual",
       },
     })
+  })
+
+  it("builds a deterministic managed-media child command", () => {
+    const command = {
+      ...commandFixture(),
+      media: [
+        {
+          altText: "Album cover with red lettering",
+          isPrimary: true,
+          mediaAssetId: "media_asset_1",
+          role: "primary" as const,
+          sortOrder: 0,
+        },
+        {
+          altText: "Back cover with the track list",
+          isPrimary: false,
+          mediaAssetId: "media_asset_2",
+          role: "gallery" as const,
+          sortOrder: 1,
+        },
+      ],
+    }
+
+    const mutation = buildCatalogProductMediaMutation(
+      command,
+      "product_1",
+      "profile_1",
+    )
+
+    expect(mutation).toMatchObject({
+      actorId: "user_1",
+      aggregateId: "product_1",
+      command: "catalog.product-media.replace",
+      expectedVersion: 0,
+      media: [
+        {
+          isPrimary: true,
+          mediaAssetId: "media_asset_1",
+          productProfileId: "profile_1",
+          role: "primary",
+          sortOrder: 0,
+        },
+        {
+          isPrimary: false,
+          mediaAssetId: "media_asset_2",
+          productProfileId: "profile_1",
+          role: "gallery",
+          sortOrder: 1,
+        },
+      ],
+    })
+    expect(mutation.idempotencyKey).not.toBe(command.idempotencyKey)
+    expect(
+      buildCatalogProductMediaMutation(command, "product_1", "profile_1")
+        .requestSha256,
+    ).toBe(mutation.requestSha256)
   })
 
   it("creates explicit zero-stock levels and skips owned stock for fixed bundles", async () => {

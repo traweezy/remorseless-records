@@ -2,16 +2,28 @@ import path from "node:path"
 
 import { MedusaError } from "@medusajs/framework/utils"
 
-export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024
-export const MAX_UPLOAD_FILES = 10
-export const MAX_UPLOAD_TOTAL_BYTES = 20 * 1024 * 1024
+import {
+  MANAGED_IMAGE_MIME_TYPES,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_FILES,
+  MAX_UPLOAD_TOTAL_BYTES,
+  type ManagedImageMimeType,
+} from "./constraints"
 
-const IMAGE_EXTENSIONS: Record<string, ReadonlySet<string>> = {
+export {
+  MANAGED_IMAGE_MIME_TYPES,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_FILES,
+  MAX_UPLOAD_TOTAL_BYTES,
+} from "./constraints"
+
+const IMAGE_EXTENSIONS: Record<ManagedImageMimeType, ReadonlySet<string>> = {
   "image/gif": new Set([".gif"]),
   "image/jpeg": new Set([".jpeg", ".jpg"]),
   "image/png": new Set([".png"]),
   "image/webp": new Set([".webp"]),
 }
+const IMAGE_MIME_TYPES = new Set<string>(MANAGED_IMAGE_MIME_TYPES)
 const CSV_MIME_TYPES = new Set([
   "application/csv",
   "application/vnd.ms-excel",
@@ -80,8 +92,10 @@ const validateFile = (file: Express.Multer.File): void => {
   }
 
   const extension = validateFilename(file.originalname)
-  const imageExtensions = IMAGE_EXTENSIONS[file.mimetype]
-  if (imageExtensions) {
+  if (IMAGE_MIME_TYPES.has(file.mimetype)) {
+    const imageExtensions = IMAGE_EXTENSIONS[
+      file.mimetype as ManagedImageMimeType
+    ]
     if (!imageExtensions.has(extension)) {
       invalidUpload("An uploaded image extension does not match its media type.")
     }
@@ -124,7 +138,7 @@ export const validateManagedImageUploads = (
   files: Express.Multer.File[]
 ): Express.Multer.File[] => {
   const validated = validateManagedUploads(files)
-  if (validated.some(({ mimetype }) => !IMAGE_EXTENSIONS[mimetype])) {
+  if (validated.some(({ mimetype }) => !IMAGE_MIME_TYPES.has(mimetype))) {
     invalidUpload("Catalog media uploads must be JPEG, PNG, WebP, or GIF images.")
   }
   return validated

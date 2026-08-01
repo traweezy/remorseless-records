@@ -7,6 +7,10 @@ import {
   type CatalogMediaRole,
   type JsonRecord,
 } from "../../modules/catalog/serializers"
+import {
+  MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH,
+  MAX_CATALOG_PRODUCT_MEDIA_ITEMS,
+} from "./product-media-constraints"
 
 const nullableText = (maximum: number) =>
   z.string().trim().max(maximum).optional().nullable()
@@ -39,7 +43,7 @@ export const catalogProductMediaInputSchema = z.object({
   byteSize: z.number().int().min(0).max(100_000_000).optional().nullable(),
   width: z.number().int().positive().max(100_000).optional().nullable(),
   height: z.number().int().positive().max(100_000).optional().nullable(),
-  altText: nullableText(2_000),
+  altText: nullableText(MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH),
   caption: nullableText(10_000),
   focalPoint: catalogFocalPointSchema.optional().nullable(),
   cropIntent: nullableText(255),
@@ -57,7 +61,9 @@ export const catalogProductMediaInputSchema = z.object({
 export const catalogProductMediaReplaceSchema = z.object({
   expectedVersion: z.number().int().min(0),
   idempotencyKey: z.string().uuid(),
-  media: z.array(catalogProductMediaInputSchema).max(100),
+  media: z
+    .array(catalogProductMediaInputSchema)
+    .max(MAX_CATALOG_PRODUCT_MEDIA_ITEMS),
 })
 
 export type CatalogProductMediaInput = z.infer<

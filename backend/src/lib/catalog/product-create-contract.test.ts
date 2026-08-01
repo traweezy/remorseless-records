@@ -43,6 +43,65 @@ describe("catalogProductCreateSchema", () => {
     expect(parsed.variants[1]?.stockQuantity).toBe(0)
   })
 
+  it("accepts one ordered managed gallery with required alt text", () => {
+    const parsed = catalogProductCreateSchema.parse({
+      ...musicRelease(),
+      media: [
+        {
+          altText: "Red and black album cover with a skull illustration",
+          isPrimary: true,
+          mediaAssetId: "media_asset_1",
+          role: "primary",
+          sortOrder: 0,
+        },
+        {
+          altText: "Back cover showing the complete track list",
+          isPrimary: false,
+          mediaAssetId: "media_asset_2",
+          role: "gallery",
+          sortOrder: 1,
+        },
+      ],
+    })
+
+    expect(parsed.media).toEqual([
+      expect.objectContaining({
+        mediaAssetId: "media_asset_1",
+        role: "primary",
+      }),
+      expect.objectContaining({
+        mediaAssetId: "media_asset_2",
+        role: "gallery",
+      }),
+    ])
+  })
+
+  it("rejects duplicate, misordered, or inaccessible creation media", () => {
+    const invalidMedia = [
+      {
+        altText: " ",
+        isPrimary: false,
+        mediaAssetId: "media_asset_1",
+        role: "gallery",
+        sortOrder: 1,
+      },
+      {
+        altText: "Back cover",
+        isPrimary: true,
+        mediaAssetId: "MEDIA_ASSET_1",
+        role: "primary",
+        sortOrder: 0,
+      },
+    ]
+
+    expect(
+      catalogProductCreateSchema.safeParse({
+        ...musicRelease(),
+        media: invalidMedia,
+      }).success,
+    ).toBe(false)
+  })
+
   it("requires preorder presentation to retain native sellability", () => {
     const base = musicRelease()
     const preorder = {
