@@ -250,6 +250,10 @@ StepErrorSummary.displayName = "StepErrorSummary"
 
 export const CatalogProductCreatePage = memo(() => {
   const initialDraft = useMemo(restoredDraft, [])
+  const initialValues = useMemo(
+    () => initialDraft?.values ?? createCatalogCreationDefaults(),
+    [initialDraft],
+  )
   const navigate = useNavigate()
   const [step, setStep] = useState(initialDraft?.step ?? 0)
   const [stepErrors, setStepErrors] = useState<string[]>([])
@@ -279,7 +283,7 @@ export const CatalogProductCreatePage = memo(() => {
   })
 
   const form = useForm({
-    defaultValues: initialDraft?.values ?? createCatalogCreationDefaults(),
+    defaultValues: initialValues,
     onSubmit: async ({ value }) => {
       const serialized = JSON.stringify(value)
       if (
