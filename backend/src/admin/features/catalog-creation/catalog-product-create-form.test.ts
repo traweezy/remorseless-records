@@ -9,6 +9,7 @@ import {
   serializeCatalogCreationDraft,
   validateCatalogCreationStep,
   type CatalogCreationProductChoice,
+  type CatalogCreationVocabulary,
 } from "./catalog-product-create-form"
 
 const choices: CatalogCreationProductChoice[] = [
@@ -21,6 +22,36 @@ const choices: CatalogCreationProductChoice[] = [
     ],
   },
 ]
+
+const vocabulary: CatalogCreationVocabulary = {
+  artists: [{ id: "artist_existing", name: "The Artist" }],
+  references: [
+    {
+      id: "reference_genre",
+      isActive: true,
+      kind: "genre",
+      label: "Death metal",
+    },
+    {
+      id: "reference_label",
+      isActive: true,
+      kind: "label",
+      label: "Remorseless Records",
+    },
+    {
+      id: "reference_merch_type",
+      isActive: true,
+      kind: "merch_type",
+      label: "Shirt",
+    },
+    {
+      id: "reference_product_type",
+      isActive: true,
+      kind: "product_type",
+      label: "Music Release",
+    },
+  ],
+}
 
 describe("catalog product creation form", () => {
   it("previews the same generated handle used by the backend", () => {
@@ -51,6 +82,9 @@ describe("catalog product creation form", () => {
     expect(merch.bundleComponents).toEqual([])
     expect(merch.offerings).toHaveLength(1)
     expect(merch.offerings[0]).toMatchObject({ size: "One size" })
+    expect(validateCatalogCreationStep(merch, 1)).toContain(
+      "Choose or enter a merchandise type.",
+    )
   })
 
   it("reports only errors owned by the active step", () => {
@@ -107,6 +141,43 @@ describe("catalog product creation form", () => {
     })
   })
 
+  it("reuses controlled values and preserves release date precision", () => {
+    const values = createCatalogCreationDefaults()
+    values.title = "A New Record"
+    values.artistName = "The Artist"
+    values.genre = "Death metal"
+    values.releaseDate = "2026-08"
+    values.releaseDatePrecision = "month"
+
+    const request = buildCatalogProductCreateRequest(
+      values,
+      "00000000-0000-4000-8000-000000000001",
+      [],
+      vocabulary,
+    )
+
+    expect(request.profile).toMatchObject({
+      artists: [
+        {
+          artistId: "artist_existing",
+          displayName: "The Artist",
+          role: "primary",
+        },
+      ],
+      labelId: "reference_label",
+      productTypeId: "reference_product_type",
+      references: [
+        {
+          kind: "genre",
+          referenceValueId: "reference_genre",
+        },
+      ],
+      releaseDate: "2026-08-01",
+      releaseDatePrecision: "month",
+      releaseYear: 2026,
+    })
+  })
+
   it("builds an accessible merchandise size/color matrix", () => {
     let values = applyCatalogCreationKind(
       createCatalogCreationDefaults(),
@@ -114,6 +185,8 @@ describe("catalog product creation form", () => {
     )
     values = {
       ...values,
+      merchandiseType: "Shirt",
+      sizeGuide: "S: 18 in wide\nM: 20 in wide",
       title: "Logo shirt",
       offerings: [
         {
@@ -138,6 +211,7 @@ describe("catalog product creation form", () => {
       values,
       "00000000-0000-4000-8000-000000000001",
       [],
+      vocabulary,
     )
 
     expect(request.options).toEqual([
@@ -148,6 +222,15 @@ describe("catalog product creation form", () => {
       { Color: "Black", Size: "S" },
       { Color: "Black", Size: "M" },
     ])
+    expect(request.profile).toMatchObject({
+      merchDetails: { sizeGuide: "S: 18 in wide\nM: 20 in wide" },
+      references: [
+        {
+          kind: "merch_type",
+          referenceValueId: "reference_merch_type",
+        },
+      ],
+    })
   })
 
   it("maps every fixed-bundle component to stable offering keys", () => {
@@ -244,5 +327,45 @@ describe("catalog product creation form", () => {
       parseCatalogCreationDraft(serialized, now + catalogCreationDraftTtlMs),
     ).toBeNull()
     expect(parseCatalogCreationDraft("not json", now)).toBeNull()
+  })
+
+  it("migrates version-one browser drafts without losing release dates", () => {
+    const now = Date.UTC(2026, 7, 1)
+    const values = createCatalogCreationDefaults()
+    values.title = "Legacy saved draft"
+    values.artistName = "Artist"
+    values.releaseDate = "2026-08-01"
+    const {
+      artistId: _artistId,
+      genreId: _genreId,
+      labelId: _labelId,
+      merchandiseType: _merchandiseType,
+      merchandiseTypeId: _merchandiseTypeId,
+      productTypeId: _productTypeId,
+      releaseDatePrecision: _releaseDatePrecision,
+      sizeGuide: _sizeGuide,
+      ...legacyValues
+    } = values
+
+    expect(
+      parseCatalogCreationDraft(
+        JSON.stringify({
+          expiresAt: now + catalogCreationDraftTtlMs,
+          step: 1,
+          values: legacyValues,
+          version: 1,
+        }),
+        now,
+      ),
+    ).toMatchObject({
+      step: 1,
+      values: {
+        artistId: "",
+        releaseDate: "2026-08-01",
+        releaseDatePrecision: "day",
+        sizeGuide: "",
+        title: "Legacy saved draft",
+      },
+    })
   })
 })

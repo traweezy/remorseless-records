@@ -25,6 +25,7 @@ import {
   Container,
   Heading,
   Input,
+  Select,
   Skeleton,
   Switch,
   Text,
@@ -41,6 +42,10 @@ import { AdminRetryState } from "../../components/admin-retry-state"
 import { ConfirmAction } from "../../components/confirm-action"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 import {
+  CatalogControlledInput,
+  type CatalogControlledOption,
+} from "./catalog-controlled-input"
+import {
   applyCatalogCreationKind,
   buildCatalogProductCreateRequest,
   catalogCreationDraftKey,
@@ -48,6 +53,7 @@ import {
   catalogCreationKindDescriptions,
   catalogCreationKindLabels,
   catalogCreationKinds,
+  catalogCreationReleaseDatePrecisions,
   createCatalogCreationDefaults,
   parseCatalogCreationDraft,
   resolveCatalogCreationHandle,
@@ -57,8 +63,11 @@ import {
   type CatalogCreationFormValues,
   type CatalogCreationKind,
   type CatalogCreationOffering,
+  type CatalogCreationReferenceChoice,
+  type CatalogCreationReleaseDatePrecision,
 } from "./catalog-product-create-form"
 import {
+  catalogCreationVocabularyQueryOptions,
   catalogProductChoicesQueryOptions,
   createCatalogProduct,
   decideCatalogProductCreationRetry,
@@ -67,6 +76,8 @@ import {
 } from "./catalog-product-create-query"
 
 const steps = ["Kind", "Basics", "Offerings", "Details", "Review"] as const
+const primaryActionClassName =
+  "hover:!bg-ui-button-inverted active:!bg-ui-button-inverted"
 
 const kindIcons = {
   music_release: ArchiveBox,
@@ -249,6 +260,28 @@ const StepErrorSummary = memo<{ errors: string[] }>(({ errors }) =>
 
 StepErrorSummary.displayName = "StepErrorSummary"
 
+const releaseDatePrecisionLabels: Record<
+  CatalogCreationReleaseDatePrecision,
+  string
+> = {
+  day: "Exact day",
+  month: "Month only",
+  unknown: "Not known",
+  year: "Year only",
+}
+
+const releaseDateInputType = (
+  precision: CatalogCreationReleaseDatePrecision,
+): "date" | "month" | "number" => {
+  if (precision === "day") {
+    return "date"
+  }
+  if (precision === "month") {
+    return "month"
+  }
+  return "number"
+}
+
 export const CatalogProductCreatePage = memo(() => {
   const initialDraft = useMemo(restoredDraft, [])
   const initialValues = useMemo(
@@ -278,6 +311,11 @@ export const CatalogProductCreatePage = memo(() => {
   const choicesFetching = choicesQuery.isFetching
   const choicesFetched = choicesQuery.isFetched
   const refetchChoices = choicesQuery.refetch
+  const vocabularyQuery = useQuery(catalogCreationVocabularyQueryOptions())
+  const vocabulary = vocabularyQuery.data
+  const vocabularyLoading = vocabularyQuery.isPending
+  const vocabularyUnavailable = vocabularyQuery.isError
+  const refetchVocabulary = vocabularyQuery.refetch
   const creationMutation = useMutation({ mutationFn: createCatalogProduct })
   const retryStatusMutation = useMutation({
     mutationFn: getCatalogProductCreationStatus,
@@ -298,6 +336,7 @@ export const CatalogProductCreatePage = memo(() => {
         value,
         idempotencyKeyRef.current,
         choicesData ?? [],
+        vocabulary,
       )
       let result: Awaited<ReturnType<typeof createCatalogProduct>>
       try {
@@ -331,6 +370,31 @@ export const CatalogProductCreatePage = memo(() => {
       !allowNavigation &&
       currentLocation.pathname !== nextLocation.pathname,
   )
+  const artistOptions = useMemo<CatalogControlledOption[]>(
+    () =>
+      (vocabulary?.artists ?? []).map((artist) => ({
+        id: artist.id,
+        label: artist.name,
+      })),
+    [vocabulary?.artists],
+  )
+  const referenceOptions = useMemo(() => {
+    const byKind = (
+      kind: CatalogCreationReferenceChoice["kind"],
+    ): CatalogControlledOption[] =>
+      (vocabulary?.references ?? [])
+        .filter((reference) => reference.kind === kind && reference.isActive)
+        .map((reference) => ({
+          id: reference.id,
+          label: reference.label,
+        }))
+    return {
+      genre: byKind("genre"),
+      label: byKind("label"),
+      merchType: byKind("merch_type"),
+      productType: byKind("product_type"),
+    }
+  }, [vocabulary?.references])
 
   useEffect(() => {
     if (!submitted && (draftPersistenceEnabled || formState.isDirty)) {
@@ -395,6 +459,74 @@ export const CatalogProductCreatePage = memo(() => {
   const setField = useCallback(
     (field: keyof CatalogCreationFormValues, value: string) => {
       form.setFieldValue(field, value as never)
+      setStepErrors([])
+    },
+    [form],
+  )
+
+  const setControlledField = useCallback(
+    (
+      field: keyof CatalogCreationFormValues,
+      idField: keyof CatalogCreationFormValues,
+      value: string,
+      selectedId: string,
+    ) => {
+      form.setFieldValue(field, value as never)
+      form.setFieldValue(idField, selectedId as never)
+      setStepErrors([])
+    },
+    [form],
+  )
+
+  const handleArtistChange = useCallback(
+    (value: string, selectedId: string) =>
+      setControlledField("artistName", "artistId", value, selectedId),
+    [setControlledField],
+  )
+  const handleLabelChange = useCallback(
+    (value: string, selectedId: string) =>
+      setControlledField("label", "labelId", value, selectedId),
+    [setControlledField],
+  )
+  const handleGenreChange = useCallback(
+    (value: string, selectedId: string) =>
+      setControlledField("genre", "genreId", value, selectedId),
+    [setControlledField],
+  )
+  const handleProductTypeChange = useCallback(
+    (value: string, selectedId: string) =>
+      setControlledField(
+        "productType",
+        "productTypeId",
+        value,
+        selectedId,
+      ),
+    [setControlledField],
+  )
+  const handleMerchandiseTypeChange = useCallback(
+    (value: string, selectedId: string) =>
+      setControlledField(
+        "merchandiseType",
+        "merchandiseTypeId",
+        value,
+        selectedId,
+      ),
+    [setControlledField],
+  )
+  const handleReleaseDatePrecisionChange = useCallback(
+    (precision: string) => {
+      if (
+        !catalogCreationReleaseDatePrecisions.includes(
+          precision as CatalogCreationReleaseDatePrecision,
+        )
+      ) {
+        return
+      }
+      form.setFieldValue(
+        "releaseDatePrecision",
+        precision as CatalogCreationReleaseDatePrecision,
+      )
+      form.setFieldValue("releaseDate", "")
       setStepErrors([])
     },
     [form],
@@ -745,6 +877,10 @@ export const CatalogProductCreatePage = memo(() => {
     void refetchChoices()
   }, [refetchChoices])
 
+  const handleVocabularyRetry = useCallback(() => {
+    void refetchVocabulary()
+  }, [refetchVocabulary])
+
   const busy =
     creationMutation.isPending ||
     formState.isSubmitting ||
@@ -833,8 +969,30 @@ export const CatalogProductCreatePage = memo(() => {
             description={`Customer-facing basics for this ${catalogCreationKindLabels[values.kind].toLowerCase()}.`}
             title="Product basics"
           />
+          {vocabularyUnavailable ? (
+            <div
+              className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-ui-border-error bg-ui-bg-error p-3"
+              role="alert"
+            >
+              <Text className="text-ui-fg-error" size="small">
+                Existing catalog choices could not be loaded. Typed names are
+                still deduplicated safely when the draft is created.
+              </Text>
+              <Button
+                onClick={handleVocabularyRetry}
+                size="small"
+                type="button"
+                variant="secondary"
+              >
+                Retry choices
+              </Button>
+            </div>
+          ) : null}
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <AdminFormField id="catalog-create-title" label="Product name">
+            <AdminFormField
+              id="catalog-create-title"
+              label={values.kind === "music_release" ? "Release title" : "Product name"}
+            >
               {(control) => (
                 <Input {...control} name="title" onChange={handleTextChange} value={values.title} />
               )}
@@ -845,31 +1003,100 @@ export const CatalogProductCreatePage = memo(() => {
               label="Product type"
             >
               {(control) => (
-                <Input {...control} name="productType" onChange={handleTextChange} value={values.productType} />
+                <CatalogControlledInput
+                  control={control}
+                  entityLabel="product type"
+                  loading={vocabularyLoading}
+                  name="productType"
+                  onChange={handleProductTypeChange}
+                  options={referenceOptions.productType}
+                  unavailable={vocabularyUnavailable}
+                  value={values.productType}
+                />
               )}
             </AdminFormField>
             {values.kind === "music_release" ? (
               <>
                 <AdminFormField id="catalog-create-artist" label="Primary artist">
                   {(control) => (
-                    <Input {...control} name="artistName" onChange={handleTextChange} value={values.artistName} />
+                    <CatalogControlledInput
+                      control={control}
+                      entityLabel="artist"
+                      loading={vocabularyLoading}
+                      name="artistName"
+                      onChange={handleArtistChange}
+                      options={artistOptions}
+                      unavailable={vocabularyUnavailable}
+                      value={values.artistName}
+                    />
                   )}
                 </AdminFormField>
                 <AdminFormField id="catalog-create-label" label="Label or source" optional>
                   {(control) => (
-                    <Input {...control} name="label" onChange={handleTextChange} value={values.label} />
+                    <CatalogControlledInput
+                      control={control}
+                      entityLabel="label"
+                      loading={vocabularyLoading}
+                      name="label"
+                      onChange={handleLabelChange}
+                      options={referenceOptions.label}
+                      unavailable={vocabularyUnavailable}
+                      value={values.label}
+                    />
                   )}
                 </AdminFormField>
                 <AdminFormField id="catalog-create-genre" label="Genre" optional>
                   {(control) => (
-                    <Input {...control} name="genre" onChange={handleTextChange} value={values.genre} />
+                    <CatalogControlledInput
+                      control={control}
+                      entityLabel="genre"
+                      loading={vocabularyLoading}
+                      name="genre"
+                      onChange={handleGenreChange}
+                      options={referenceOptions.genre}
+                      unavailable={vocabularyUnavailable}
+                      value={values.genre}
+                    />
                   )}
                 </AdminFormField>
-                <AdminFormField id="catalog-create-date" label="Release date" optional>
+                <AdminFormField id="catalog-create-date-precision" label="Release date detail">
                   {(control) => (
-                    <Input {...control} name="releaseDate" onChange={handleTextChange} type="date" value={values.releaseDate} />
+                    <Select
+                      onValueChange={handleReleaseDatePrecisionChange}
+                      value={values.releaseDatePrecision}
+                    >
+                      <Select.Trigger {...control}>
+                        <Select.Value />
+                      </Select.Trigger>
+                      <Select.Content>
+                        {catalogCreationReleaseDatePrecisions.map((precision) => (
+                          <Select.Item key={precision} value={precision}>
+                            {releaseDatePrecisionLabels[precision]}
+                          </Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select>
                   )}
                 </AdminFormField>
+                {values.releaseDatePrecision !== "unknown" ? (
+                  <AdminFormField
+                    id="catalog-create-date"
+                    label={`Release ${values.releaseDatePrecision}`}
+                  >
+                    {(control) => (
+                      <Input
+                        {...control}
+                        inputMode={values.releaseDatePrecision === "year" ? "numeric" : undefined}
+                        max={values.releaseDatePrecision === "year" ? 2200 : undefined}
+                        min={values.releaseDatePrecision === "year" ? 1900 : undefined}
+                        name="releaseDate"
+                        onChange={handleTextChange}
+                        type={releaseDateInputType(values.releaseDatePrecision)}
+                        value={values.releaseDate}
+                      />
+                    )}
+                  </AdminFormField>
+                ) : null}
                 <AdminFormField id="catalog-create-number" label="Catalog number" optional>
                   {(control) => (
                     <Input {...control} name="catalogNumber" onChange={handleTextChange} value={values.catalogNumber} />
@@ -877,13 +1104,33 @@ export const CatalogProductCreatePage = memo(() => {
                 </AdminFormField>
               </>
             ) : null}
+            {values.kind === "merch" ? (
+              <AdminFormField
+                hint="Examples include shirt, hoodie, patch, pin, and poster."
+                id="catalog-create-merch-type"
+                label="Merchandise type"
+              >
+                {(control) => (
+                  <CatalogControlledInput
+                    control={control}
+                    entityLabel="merchandise type"
+                    loading={vocabularyLoading}
+                    name="merchandiseType"
+                    onChange={handleMerchandiseTypeChange}
+                    options={referenceOptions.merchType}
+                    unavailable={vocabularyUnavailable}
+                    value={values.merchandiseType}
+                  />
+                )}
+              </AdminFormField>
+            ) : null}
             <AdminFormField className="md:col-span-2" id="catalog-create-description" label="Store description" optional>
               {(control) => (
                 <Textarea {...control} name="description" onChange={handleTextChange} rows={5} value={values.description} />
               )}
             </AdminFormField>
             <details className="md:col-span-2 rounded-md border border-ui-border-base p-4">
-              <summary className="cursor-pointer text-sm font-medium">Advanced URL</summary>
+              <summary className="flex min-h-6 cursor-pointer items-center text-sm font-medium">Advanced URL</summary>
               <div className="mt-4">
                 <AdminFormField
                   hint="Leave blank to generate it from the product name."
@@ -1108,6 +1355,14 @@ export const CatalogProductCreatePage = memo(() => {
                 <AdminFormField id="catalog-create-fit" label="Fit and measurements" optional>
                   {(control) => <Textarea {...control} name="merchandiseFit" onChange={handleTextChange} rows={4} value={values.merchandiseFit} />}
                 </AdminFormField>
+                <AdminFormField
+                  hint="List customer-facing measurements by size, one size per line."
+                  id="catalog-create-size-guide"
+                  label="Size guide"
+                  optional
+                >
+                  {(control) => <Textarea {...control} name="sizeGuide" onChange={handleTextChange} rows={4} value={values.sizeGuide} />}
+                </AdminFormField>
                 <AdminFormField className="md:col-span-2" id="catalog-create-care" label="Care instructions" optional>
                   {(control) => <Textarea {...control} name="merchandiseCare" onChange={handleTextChange} rows={4} value={values.merchandiseCare} />}
                 </AdminFormField>
@@ -1174,9 +1429,24 @@ export const CatalogProductCreatePage = memo(() => {
         <div className="flex flex-wrap gap-2">
           {step > 0 ? <Button disabled={busy} onClick={handleBack} type="button" variant="secondary">Back</Button> : null}
           {step < steps.length - 1 ? (
-            <Button disabled={busy} onClick={handleNext} type="button">Continue</Button>
+            <Button
+              className={primaryActionClassName}
+              disabled={busy}
+              onClick={handleNext}
+              type="button"
+            >
+              Continue
+            </Button>
           ) : (
-            <Button disabled={busy || !formState.canSubmit} isLoading={busy} onClick={handleSave} type="button">Create draft</Button>
+            <Button
+              className={primaryActionClassName}
+              disabled={busy || !formState.canSubmit}
+              isLoading={busy}
+              onClick={handleSave}
+              type="button"
+            >
+              Create draft
+            </Button>
           )}
         </div>
         <div aria-live="polite" className="sr-only">{busy ? "Creating draft product" : ""}</div>

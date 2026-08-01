@@ -9,6 +9,40 @@ export const catalogCreationKinds = [
 
 export type CatalogCreationKind = (typeof catalogCreationKinds)[number]
 
+export const catalogCreationReleaseDatePrecisions = [
+  "unknown",
+  "year",
+  "month",
+  "day",
+] as const
+
+export type CatalogCreationReleaseDatePrecision =
+  (typeof catalogCreationReleaseDatePrecisions)[number]
+
+export type CatalogCreationArtistChoice = {
+  id: string
+  name: string
+}
+
+export type CatalogCreationReferenceChoice = {
+  id: string
+  isActive: boolean
+  kind:
+    | "format"
+    | "format_detail"
+    | "genre"
+    | "label"
+    | "merch_type"
+    | "product_type"
+    | "utility_tag"
+  label: string
+}
+
+export type CatalogCreationVocabulary = {
+  artists: CatalogCreationArtistChoice[]
+  references: CatalogCreationReferenceChoice[]
+}
+
 export type CatalogCreationOffering = {
   allowBackorder: boolean
   color: string
@@ -31,22 +65,30 @@ export type CatalogCreationBundleComponent = {
 }
 
 export type CatalogCreationFormValues = {
+  artistId: string
   artistName: string
   catalogNumber: string
   credits: string
   description: string
+  genreId: string
   genre: string
   handle: string
   kind: CatalogCreationKind
+  labelId: string
   label: string
   material: string
   merchandiseCare: string
   merchandiseFit: string
+  merchandiseType: string
+  merchandiseTypeId: string
   mysteryDisclaimer: string
   mysteryPromise: string
   offerings: CatalogCreationOffering[]
+  productTypeId: string
   productType: string
   releaseDate: string
+  releaseDatePrecision: CatalogCreationReleaseDatePrecision
+  sizeGuide: string
   title: string
   tracklist: string
   bundleComponents: CatalogCreationBundleComponent[]
@@ -158,23 +200,31 @@ const productTypeForKind = (kind: CatalogCreationKind): string => {
 export const createCatalogCreationDefaults = (
   kind: CatalogCreationKind = "music_release",
 ): CatalogCreationFormValues => ({
+  artistId: "",
   artistName: "",
   bundleComponents: [],
   catalogNumber: "",
   credits: "",
   description: "",
+  genreId: "",
   genre: "",
   handle: "",
   kind,
+  labelId: "",
   label: "Remorseless Records",
   material: "",
   merchandiseCare: "",
   merchandiseFit: "",
+  merchandiseType: "",
+  merchandiseTypeId: "",
   mysteryDisclaimer: "",
   mysteryPromise: "",
   offerings: [defaultOffering(kind)],
+  productTypeId: "",
   productType: productTypeForKind(kind),
   releaseDate: "",
+  releaseDatePrecision: "unknown",
+  sizeGuide: "",
   title: "",
   tracklist: "",
 })
@@ -187,6 +237,7 @@ export const applyCatalogCreationKind = (
   bundleComponents: kind === "fixed_bundle" ? values.bundleComponents : [],
   kind,
   offerings: [defaultOffering(kind)],
+  productTypeId: "",
   productType: productTypeForKind(kind),
 })
 
@@ -201,6 +252,55 @@ const moneyString = z
     (value) => /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) >= 0,
     "Enter a valid non-negative amount with no more than two decimals.",
   )
+
+const releaseDatePatterns: Record<
+  Exclude<CatalogCreationReleaseDatePrecision, "unknown">,
+  RegExp
+> = {
+  day: /^\d{4}-\d{2}-\d{2}$/,
+  month: /^\d{4}-\d{2}$/,
+  year: /^\d{4}$/,
+}
+
+const normalizedReleaseDate = (
+  value: string,
+  precision: CatalogCreationReleaseDatePrecision,
+): string | null => {
+  const trimmed = value.trim()
+  if (!trimmed || precision === "unknown") {
+    return null
+  }
+  if (!releaseDatePatterns[precision].test(trimmed)) {
+    return null
+  }
+  if (precision === "year") {
+    return `${trimmed}-01-01`
+  }
+  if (precision === "month") {
+    return `${trimmed}-01`
+  }
+  return trimmed
+}
+
+const isValidReleaseDate = (
+  value: string,
+  precision: CatalogCreationReleaseDatePrecision,
+): boolean => {
+  const normalized = normalizedReleaseDate(value, precision)
+  if (!normalized) {
+    return false
+  }
+  const [year, month, day] = normalized.split("-").map(Number)
+  if (!year || year < 1900 || year > 2200 || !month || !day) {
+    return false
+  }
+  const parsed = new Date(Date.UTC(year, month - 1, day))
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  )
+}
 
 const offeringSchema = z.object({
   allowBackorder: z.boolean(),
@@ -228,11 +328,13 @@ const componentSchema = z.object({
 
 export const catalogCreationFormSchema = z
   .object({
+    artistId: z.string().trim().max(255),
     artistName: z.string().trim().max(500),
     bundleComponents: z.array(componentSchema).max(100),
     catalogNumber: z.string().trim().max(200),
     credits: z.string().trim().max(50_000),
     description: z.string().trim().max(250_000),
+    genreId: z.string().trim().max(255),
     genre: z.string().trim().max(200),
     handle: z
       .string()
@@ -243,21 +345,21 @@ export const catalogCreationFormSchema = z
         "Use lowercase words separated by hyphens.",
       ),
     kind: z.enum(catalogCreationKinds),
+    labelId: z.string().trim().max(255),
     label: z.string().trim().max(500),
     material: z.string().trim().max(5_000),
     merchandiseCare: z.string().trim().max(5_000),
     merchandiseFit: z.string().trim().max(5_000),
+    merchandiseType: z.string().trim().max(500),
+    merchandiseTypeId: z.string().trim().max(255),
     mysteryDisclaimer: z.string().trim().max(10_000),
     mysteryPromise: z.string().trim().max(10_000),
     offerings: z.array(offeringSchema).min(1).max(100),
+    productTypeId: z.string().trim().max(255),
     productType: z.string().trim().min(1, "Choose a product type.").max(500),
-    releaseDate: z
-      .string()
-      .trim()
-      .refine(
-        (value) => !value || Number.isFinite(Date.parse(value)),
-        "Enter a valid release date.",
-      ),
+    releaseDate: z.string().trim().max(10),
+    releaseDatePrecision: z.enum(catalogCreationReleaseDatePrecisions),
+    sizeGuide: z.string().trim().max(10_000),
     title: z.string().trim().min(1, "Enter a product name.").max(500),
     tracklist: z.string().trim().max(50_000),
   })
@@ -267,6 +369,24 @@ export const catalogCreationFormSchema = z
         code: "custom",
         message: "Choose or enter the primary artist.",
         path: ["artistName"],
+      })
+    }
+    if (values.kind === "merch" && !values.merchandiseType) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose or enter a merchandise type.",
+        path: ["merchandiseType"],
+      })
+    }
+    if (
+      values.kind === "music_release" &&
+      values.releaseDatePrecision !== "unknown" &&
+      !isValidReleaseDate(values.releaseDate, values.releaseDatePrecision)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: `Enter a valid release ${values.releaseDatePrecision}.`,
+        path: ["releaseDate"],
       })
     }
     const combinations = new Set<string>()
@@ -379,10 +499,71 @@ const findProductChoice = (
 ): CatalogCreationProductChoice | undefined =>
   choices.find((choice) => choice.id === productId)
 
+const normalizeVocabularyLabel = (value: string): string =>
+  value.trim().toLowerCase()
+
+const resolveArtistId = (
+  values: CatalogCreationFormValues,
+  vocabulary: CatalogCreationVocabulary,
+): string | undefined => {
+  const explicitId = values.artistId.trim()
+  const normalizedName = normalizeVocabularyLabel(values.artistName)
+  if (
+    explicitId &&
+    (!vocabulary.artists.length ||
+      vocabulary.artists.some(
+        (artist) =>
+          artist.id === explicitId &&
+          normalizeVocabularyLabel(artist.name) === normalizedName,
+      ))
+  ) {
+    return explicitId
+  }
+  return vocabulary.artists.find(
+    (artist) =>
+      normalizeVocabularyLabel(artist.name) === normalizedName,
+  )?.id
+}
+
+const resolveReferenceId = (
+  explicitId: string,
+  kind: CatalogCreationReferenceChoice["kind"],
+  label: string,
+  vocabulary: CatalogCreationVocabulary,
+): string | undefined => {
+  const selectedId = explicitId.trim()
+  const normalizedLabel = normalizeVocabularyLabel(label)
+  if (
+    selectedId &&
+    (!vocabulary.references.length ||
+      vocabulary.references.some(
+        (reference) =>
+          reference.id === selectedId &&
+          reference.isActive &&
+          reference.kind === kind &&
+          normalizeVocabularyLabel(reference.label) === normalizedLabel,
+      ))
+  ) {
+    return selectedId
+  }
+  return vocabulary.references.find(
+    (reference) =>
+      reference.isActive &&
+      reference.kind === kind &&
+      normalizeVocabularyLabel(reference.label) === normalizedLabel,
+  )?.id
+}
+
+const emptyVocabulary: CatalogCreationVocabulary = {
+  artists: [],
+  references: [],
+}
+
 export const buildCatalogProductCreateRequest = (
   rawValues: CatalogCreationFormValues,
   idempotencyKey: string,
   choices: CatalogCreationProductChoice[],
+  vocabulary: CatalogCreationVocabulary = emptyVocabulary,
 ): CatalogProductCreateRequest => {
   const values = catalogCreationFormSchema.parse(rawValues)
   const keys = offeringKeyMap(values.offerings)
@@ -444,37 +625,113 @@ export const buildCatalogProductCreateRequest = (
     .map((line) => line.trim())
     .filter(Boolean)
   const description = nullable(values.description)
-  const profile: Record<string, unknown> = {
-    artists: values.artistName
+  const artistId = resolveArtistId(values, vocabulary)
+  const genreId = resolveReferenceId(
+    values.genreId,
+    "genre",
+    values.genre,
+    vocabulary,
+  )
+  const labelId = resolveReferenceId(
+    values.labelId,
+    "label",
+    values.label,
+    vocabulary,
+  )
+  const merchandiseTypeId = resolveReferenceId(
+    values.merchandiseTypeId,
+    "merch_type",
+    values.merchandiseType,
+    vocabulary,
+  )
+  const productTypeId = resolveReferenceId(
+    values.productTypeId,
+    "product_type",
+    values.productType,
+    vocabulary,
+  )
+  const releaseDate =
+    values.kind === "music_release"
+      ? normalizedReleaseDate(
+          values.releaseDate,
+          values.releaseDatePrecision,
+        )
+      : null
+  const releaseYear = releaseDate ? Number(releaseDate.slice(0, 4)) : null
+  const references = [
+    ...(values.kind === "music_release" && values.genre
       ? [
           {
-            displayName: values.artistName,
-            name: values.artistName,
+            kind: "genre",
+            ...(genreId
+              ? { referenceValueId: genreId }
+              : { label: values.genre }),
+            sortOrder: 0,
+          },
+        ]
+      : []),
+    ...(values.kind === "merch" && values.merchandiseType
+      ? [
+          {
+            kind: "merch_type",
+            ...(merchandiseTypeId
+              ? { referenceValueId: merchandiseTypeId }
+              : { label: values.merchandiseType }),
+            sortOrder: 0,
+          },
+        ]
+      : []),
+  ]
+  const profile: Record<string, unknown> = {
+    artists: values.kind === "music_release" && values.artistName
+      ? [
+          {
+            ...(artistId
+              ? { artistId, displayName: values.artistName }
+              : {
+                  displayName: values.artistName,
+                  name: values.artistName,
+                }),
             role: "primary",
             sortOrder: 0,
           },
         ]
       : [],
-    credits: values.credits ? { notes: values.credits } : {},
+    credits:
+      values.kind === "music_release" && values.credits
+        ? { notes: values.credits }
+        : {},
     descriptionHtml: description,
-    label: { label: nullable(values.label) },
+    ...(values.kind === "music_release" && values.label
+      ? labelId
+        ? { labelId }
+        : { label: { label: values.label } }
+      : {}),
     merchDetails:
       values.kind === "merch"
         ? {
             care: nullable(values.merchandiseCare),
             fit: nullable(values.merchandiseFit),
             material: nullable(values.material),
+            sizeGuide: nullable(values.sizeGuide),
           }
         : {},
-    metadata: { catalog_number: nullable(values.catalogNumber) },
-    productType: { label: values.productType },
-    references: values.genre
-      ? [{ kind: "genre", label: values.genre, sortOrder: 0 }]
-      : [],
-    releaseDate: nullable(values.releaseDate),
-    releaseDatePrecision: values.releaseDate ? "day" : "unknown",
+    metadata:
+      values.kind === "music_release"
+        ? { catalog_number: nullable(values.catalogNumber) }
+        : {},
+    ...(productTypeId
+      ? { productTypeId }
+      : { productType: { label: values.productType } }),
+    references,
+    releaseDate,
+    releaseDatePrecision:
+      values.kind === "music_release"
+        ? values.releaseDatePrecision
+        : "unknown",
+    releaseYear,
     releaseTitle: values.title,
-    tracklist,
+    tracklist: values.kind === "music_release" ? tracklist : [],
   }
   const bundle =
     values.kind === "fixed_bundle"
@@ -537,12 +794,19 @@ export const catalogCreationStepFields: Array<
   [
     "title",
     "description",
+    "artistId",
     "productType",
+    "productTypeId",
     "artistName",
+    "labelId",
     "label",
+    "genreId",
     "genre",
     "releaseDate",
+    "releaseDatePrecision",
     "catalogNumber",
+    "merchandiseType",
+    "merchandiseTypeId",
     "handle",
   ],
   ["offerings", "bundleComponents"],
@@ -552,6 +816,7 @@ export const catalogCreationStepFields: Array<
     "material",
     "merchandiseFit",
     "merchandiseCare",
+    "sizeGuide",
     "mysteryPromise",
     "mysteryDisclaimer",
   ],
@@ -575,7 +840,7 @@ export const validateCatalogCreationStep = (
     .map((issue) => issue.message)
 }
 
-const DRAFT_VERSION = 1
+const DRAFT_VERSION = 2
 export const catalogCreationDraftKey = "remorseless:catalog-product-create:v1"
 export const catalogCreationDraftTtlMs = 7 * 24 * 60 * 60 * 1_000
 
@@ -601,33 +866,60 @@ const draftComponentSchema = z.object({
 })
 
 const draftValuesSchema = z.object({
+  artistId: z.string().max(255),
   artistName: z.string().max(500),
   bundleComponents: z.array(draftComponentSchema).max(100),
   catalogNumber: z.string().max(200),
   credits: z.string().max(50_000),
   description: z.string().max(250_000),
+  genreId: z.string().max(255),
   genre: z.string().max(200),
   handle: z.string().max(255),
   kind: z.enum(catalogCreationKinds),
+  labelId: z.string().max(255),
   label: z.string().max(500),
   material: z.string().max(5_000),
   merchandiseCare: z.string().max(5_000),
   merchandiseFit: z.string().max(5_000),
+  merchandiseType: z.string().max(500),
+  merchandiseTypeId: z.string().max(255),
   mysteryDisclaimer: z.string().max(10_000),
   mysteryPromise: z.string().max(10_000),
   offerings: z.array(draftOfferingSchema).min(1).max(100),
+  productTypeId: z.string().max(255),
   productType: z.string().max(500),
   releaseDate: z.string().max(100),
+  releaseDatePrecision: z.enum(catalogCreationReleaseDatePrecisions),
+  sizeGuide: z.string().max(10_000),
   title: z.string().max(500),
   tracklist: z.string().max(50_000),
 })
 
-const storedDraftSchema = z.object({
-  expiresAt: z.number().int().positive(),
-  step: z.number().int().min(0).max(4),
-  values: draftValuesSchema,
-  version: z.literal(DRAFT_VERSION),
+const legacyDraftValuesSchema = draftValuesSchema.omit({
+  artistId: true,
+  genreId: true,
+  labelId: true,
+  merchandiseType: true,
+  merchandiseTypeId: true,
+  productTypeId: true,
+  releaseDatePrecision: true,
+  sizeGuide: true,
 })
+
+const storedDraftSchema = z.discriminatedUnion("version", [
+  z.object({
+    expiresAt: z.number().int().positive(),
+    step: z.number().int().min(0).max(4),
+    values: legacyDraftValuesSchema,
+    version: z.literal(1),
+  }),
+  z.object({
+    expiresAt: z.number().int().positive(),
+    step: z.number().int().min(0).max(4),
+    values: draftValuesSchema,
+    version: z.literal(DRAFT_VERSION),
+  }),
+])
 
 export const serializeCatalogCreationDraft = (
   values: CatalogCreationFormValues,
@@ -652,6 +944,16 @@ export const parseCatalogCreationDraft = (
     const parsed = storedDraftSchema.parse(JSON.parse(serialized))
     if (parsed.expiresAt <= now) {
       return null
+    }
+    if (parsed.version === 1) {
+      return {
+        step: parsed.step,
+        values: {
+          ...createCatalogCreationDefaults(parsed.values.kind),
+          ...parsed.values,
+          releaseDatePrecision: parsed.values.releaseDate ? "day" : "unknown",
+        },
+      }
     }
     return { step: parsed.step, values: parsed.values }
   } catch {

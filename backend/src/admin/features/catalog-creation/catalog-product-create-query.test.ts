@@ -5,12 +5,34 @@ import {
   createCatalogProduct,
   decideCatalogProductCreationRetry,
   getCatalogProductCreationStatus,
+  loadCatalogCreationVocabulary,
 } from "./catalog-product-create-query"
 
 jest.mock("../../lib/admin-request", () => ({
   requestAdminJson: jest.fn(async (input: { path: string; schema: z.ZodType }) =>
     input.schema.parse(
-      input.path.includes("/status/")
+      input.path === "/admin/catalog/artists"
+        ? {
+            artists: [{ id: "artist_1", name: "Artist" }],
+            count: 1,
+            limit: 500,
+            offset: 0,
+          }
+        : input.path === "/admin/catalog/reference-values"
+          ? {
+              count: 1,
+              limit: 500,
+              offset: 0,
+              values: [
+                {
+                  id: "reference_1",
+                  isActive: true,
+                  kind: "genre",
+                  label: "Metal",
+                },
+              ],
+            }
+          : input.path.includes("/status/")
         ? { state: "compensated" }
         : {
             kind: "music_release",
@@ -83,5 +105,23 @@ describe("catalog product creation query", () => {
     expect(decideCatalogProductCreationRetry("pending")).toBe("wait")
     expect(decideCatalogProductCreationRetry("failed")).toBe("blocked")
     expect(decideCatalogProductCreationRetry("unavailable")).toBe("blocked")
+  })
+
+  it("loads and validates the controlled creation vocabulary", async () => {
+    const vocabulary = await loadCatalogCreationVocabulary(
+      new AbortController().signal,
+    )
+
+    expect(vocabulary).toEqual({
+      artists: [{ id: "artist_1", name: "Artist" }],
+      references: [
+        {
+          id: "reference_1",
+          isActive: true,
+          kind: "genre",
+          label: "Metal",
+        },
+      ],
+    })
   })
 })

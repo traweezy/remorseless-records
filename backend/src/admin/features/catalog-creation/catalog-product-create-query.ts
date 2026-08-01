@@ -6,7 +6,10 @@ import { z } from "zod"
 
 import { requestAdminJson } from "../../lib/admin-request"
 import type {
+  CatalogCreationArtistChoice,
   CatalogCreationProductChoice,
+  CatalogCreationReferenceChoice,
+  CatalogCreationVocabulary,
   CatalogProductCreateRequest,
 } from "./catalog-product-create-form"
 
@@ -29,6 +32,40 @@ const productListSchema = z.object({
       variants: z.array(productVariantSchema).nullable().optional(),
     }),
   ),
+})
+
+const catalogArtistSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+})
+
+const catalogReferenceSchema = z.object({
+  id: z.string().min(1),
+  isActive: z.boolean(),
+  kind: z.enum([
+    "format",
+    "format_detail",
+    "genre",
+    "label",
+    "merch_type",
+    "product_type",
+    "utility_tag",
+  ]),
+  label: z.string().min(1),
+})
+
+const catalogArtistListSchema = z.object({
+  artists: z.array(catalogArtistSchema),
+  count: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
+})
+
+const catalogReferenceListSchema = z.object({
+  values: z.array(catalogReferenceSchema),
+  count: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
 })
 
 export const catalogProductCreateResponseSchema = z.object({
@@ -98,6 +135,88 @@ export const catalogProductChoicesQueryKey = [
   "catalog",
   "product-create-choices",
 ] as const
+
+export const catalogCreationVocabularyQueryKey = [
+  "catalog",
+  "product-create-vocabulary",
+] as const
+
+const vocabularyPageOffsets = (count: number): number[] =>
+  Array.from(
+    { length: Math.max(0, Math.ceil(count / 500) - 1) },
+    (_, index) => (index + 1) * 500,
+  )
+
+const loadCatalogArtistPage = async (
+  offset: number,
+  signal: AbortSignal,
+) =>
+  requestAdminJson({
+    path: "/admin/catalog/artists",
+    query: {
+      direction: "asc",
+      limit: 500,
+      offset,
+      order: "name",
+    },
+    schema: catalogArtistListSchema,
+    signal,
+  })
+
+const loadCatalogReferencePage = async (
+  offset: number,
+  signal: AbortSignal,
+) =>
+  requestAdminJson({
+    path: "/admin/catalog/reference-values",
+    query: {
+      active: "true",
+      direction: "asc",
+      limit: 500,
+      offset,
+      order: "rank",
+    },
+    schema: catalogReferenceListSchema,
+    signal,
+  })
+
+export const loadCatalogCreationVocabulary = async (
+  signal: AbortSignal,
+): Promise<CatalogCreationVocabulary> => {
+  const [firstArtists, firstReferences] = await Promise.all([
+    loadCatalogArtistPage(0, signal),
+    loadCatalogReferencePage(0, signal),
+  ])
+  const [remainingArtists, remainingReferences] = await Promise.all([
+    Promise.all(
+      vocabularyPageOffsets(firstArtists.count).map((offset) =>
+        loadCatalogArtistPage(offset, signal),
+      ),
+    ),
+    Promise.all(
+      vocabularyPageOffsets(firstReferences.count).map((offset) =>
+        loadCatalogReferencePage(offset, signal),
+      ),
+    ),
+  ])
+  return {
+    artists: [firstArtists, ...remainingArtists].flatMap(
+      (page): CatalogCreationArtistChoice[] => page.artists,
+    ),
+    references: [firstReferences, ...remainingReferences].flatMap(
+      (page): CatalogCreationReferenceChoice[] => page.values,
+    ),
+  }
+}
+
+export const catalogCreationVocabularyQueryOptions = () =>
+  queryOptions({
+    queryFn: ({ signal }) => loadCatalogCreationVocabulary(signal),
+    queryKey: catalogCreationVocabularyQueryKey,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    staleTime: 5 * 60_000,
+  })
 
 const loadProductChoicePage = async (
   offset: number,
