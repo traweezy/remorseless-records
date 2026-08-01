@@ -6,7 +6,6 @@ import { ArchiveBox, PencilSquare, Trash } from "@medusajs/icons"
 import {
   Button,
   Container,
-  FocusModal,
   Heading,
   Input,
   Label,
@@ -52,7 +51,6 @@ const availabilityStatuses = [
 const bundleTypes = ["fixed", "mystery", "deal", "selectable"] as const
 const bundleInventoryModes = ["component_derived", "manual"] as const
 const bundleFulfillmentModes = ["ship_components", "manual"] as const
-const productKinds = ["music_release", "merch", "fixed_bundle", "mystery_bundle"] as const
 
 type ProductStatus = (typeof productStatuses)[number]
 type ReferenceKind = (typeof referenceKinds)[number]
@@ -60,7 +58,6 @@ type AvailabilityStatus = (typeof availabilityStatuses)[number]
 type BundleType = (typeof bundleTypes)[number]
 type BundleInventoryMode = (typeof bundleInventoryModes)[number]
 type BundleFulfillmentMode = (typeof bundleFulfillmentModes)[number]
-type ProductKind = (typeof productKinds)[number]
 
 type ValueChangeEvent = {
   target?: EventTarget | null
@@ -287,25 +284,6 @@ type BundleComponentFormLine = {
   quantity: string
 }
 
-type CreateFormState = {
-  kind: ProductKind
-  title: string
-  handle: string
-  description: string
-  artistName: string
-  label: string
-  genre: string
-  productType: string
-  format: string
-  formatDetail: string
-  variantTitle: string
-  sku: string
-  priceUsd: string
-  availabilityStatus: AvailabilityStatus
-  componentProductId: string
-  componentVariantId: string
-}
-
 const emptyProductForm: ProductFormState = {
   title: "",
   handle: "",
@@ -340,25 +318,6 @@ const emptyBundleForm: BundleFormState = {
   descriptionHtml: "",
   isActive: true,
   components: [],
-}
-
-const emptyCreateForm: CreateFormState = {
-  kind: "music_release",
-  title: "",
-  handle: "",
-  description: "",
-  artistName: "",
-  label: "Remorseless Records",
-  genre: "",
-  productType: "Music release",
-  format: "Vinyl",
-  formatDetail: "",
-  variantTitle: "Vinyl",
-  sku: "",
-  priceUsd: "0.00",
-  availabilityStatus: "available",
-  componentProductId: "",
-  componentVariantId: "",
 }
 
 const readValue = (event: ValueChangeEvent): string => {
@@ -523,16 +482,6 @@ const formatBundleVariantLabel = (variant: AdminVariant): string =>
     sku: variant.sku,
   })
 
-const defaultHandle = (title: string): string =>
-  title
-    .trim()
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "")
-
 const toProductForm = (product: AdminProduct | null): ProductFormState => {
   if (!product) {
     return emptyProductForm
@@ -659,19 +608,6 @@ const toBundleForm = (response: BundleResponse | null): BundleFormState => {
   }
 }
 
-const kindToProductType = (kind: ProductKind): string => {
-  if (kind === "merch") {
-    return "Merch"
-  }
-  if (kind === "fixed_bundle" || kind === "mystery_bundle") {
-    return "Bundle"
-  }
-  return "Music release"
-}
-
-const isBundleKind = (kind: ProductKind): boolean =>
-  kind === "fixed_bundle" || kind === "mystery_bundle"
-
 type ProductAuthoringWorkspaceProps = {
   productId?: string
 }
@@ -691,11 +627,8 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
   const [variantProfiles, setVariantProfiles] = useState<VariantProfileFormLine[]>([])
   const [bundleForm, setBundleForm] = useState<BundleFormState>(emptyBundleForm)
   const [bundleVersion, setBundleVersion] = useState(0)
-  const [createForm, setCreateForm] = useState<CreateFormState>(emptyCreateForm)
-  const [createOpen, setCreateOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -1264,224 +1197,6 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
     variantProfiles,
   ])
 
-  const updateCreateField = useCallback(
-    (field: keyof CreateFormState) => (value: string) => {
-      setCreateForm((prev) => {
-        const next = { ...prev, [field]: value }
-        if (field === "title" && !prev.handle.trim()) {
-          next.handle = defaultHandle(value)
-        }
-        if (field === "kind") {
-          const kind = value as ProductKind
-          next.productType = kindToProductType(kind)
-          if (kind === "merch") {
-            next.format = "Merch"
-            next.variantTitle = "Merch"
-          }
-          if (kind === "fixed_bundle") {
-            next.productType = "Bundle"
-            next.variantTitle = next.variantTitle || "Bundle"
-          }
-          if (kind === "mystery_bundle") {
-            next.productType = "Bundle"
-            next.variantTitle = next.variantTitle || "Mystery bundle"
-          }
-        }
-        if (field === "format" && !prev.variantTitle.trim()) {
-          next.variantTitle = value
-        }
-        return next
-      })
-    },
-    []
-  )
-
-  const createProduct = useCallback(async () => {
-    setCreating(true)
-    setError(null)
-    setNotice(null)
-    try {
-      const title = createForm.title.trim()
-      if (!title) {
-        throw new Error("Title is required.")
-      }
-      const handle = createForm.handle.trim() || defaultHandle(title)
-      const variantTitle =
-        createForm.variantTitle.trim() ||
-        createForm.formatDetail.trim() ||
-        createForm.format.trim() ||
-        "Default"
-      const amount =
-        Math.round(Number.parseFloat(createForm.priceUsd || "0") * 100) / 100
-      if (Number.isNaN(amount) || amount < 0) {
-        throw new Error("Price must be a valid amount.")
-      }
-      if (createForm.kind === "fixed_bundle" && !createForm.componentProductId) {
-        throw new Error("A fixed bundle needs at least one included product.")
-      }
-
-      const productResponse = await fetchJson<{ product: AdminProduct }>(
-        "/admin/products",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            title,
-            handle,
-            status: "draft",
-            description: toNullable(createForm.description),
-            metadata: {
-              authoring_kind: createForm.kind,
-            },
-            options: [
-              {
-                title: "Format",
-                values: [variantTitle],
-              },
-            ],
-            variants: [
-              {
-                title: variantTitle,
-                sku: toNullable(createForm.sku) ?? handle,
-                manage_inventory: false,
-                options: {
-                  Format: variantTitle,
-                },
-                prices: [
-                  {
-                    currency_code: "usd",
-                    amount,
-                  },
-                ],
-              },
-            ],
-          }),
-        }
-      )
-
-      const created = productResponse.product
-      const variant = created.variants?.[0]
-      const referencesPayload = [
-        createForm.genre.trim()
-          ? {
-              kind: "genre" as ReferenceKind,
-              label: createForm.genre.trim(),
-              sortOrder: 0,
-            }
-          : null,
-      ].filter((value): value is { kind: ReferenceKind; label: string; sortOrder: number } =>
-        Boolean(value)
-      )
-
-      const profileResponse = await fetchJson<ProductProfileResponse>(
-        `/admin/catalog/products/${created.id}/profile`,
-        {
-          method: "PUT",
-          body: JSON.stringify({
-            idempotencyKey: crypto.randomUUID(),
-            expectedVersion: 0,
-            releaseTitle: title,
-            label: {
-              label: toNullable(createForm.label),
-            },
-            productType: {
-              label: toNullable(createForm.productType),
-            },
-            descriptionHtml: toNullable(createForm.description),
-            artists: createForm.artistName.trim()
-              ? [
-                  {
-                    name: createForm.artistName.trim(),
-                    displayName: createForm.artistName.trim(),
-                    role: "primary",
-                    sortOrder: 0,
-                  },
-                ]
-              : [],
-            references: referencesPayload,
-          }),
-        }
-      )
-
-      if (variant) {
-        await fetchJson<VariantProfileResponse>(
-          `/admin/catalog/variants/${variant.id}/profile`,
-          {
-            method: "PUT",
-            body: JSON.stringify({
-              idempotencyKey: crypto.randomUUID(),
-              expectedVersion: 0,
-              productProfileId: profileResponse.profile?.id ?? undefined,
-              format: {
-                label: toNullable(createForm.format),
-              },
-              formatDetail: {
-                label: toNullable(createForm.formatDetail),
-              },
-              displayLabel: variantTitle,
-              availabilityStatus: createForm.availabilityStatus,
-            }),
-          }
-        )
-      }
-
-      if (isBundleKind(createForm.kind)) {
-        const componentProduct = products.find(
-          (product) => product.id === createForm.componentProductId
-        )
-        const componentVariant =
-          componentProduct?.variants?.find(
-            (item) => item.id === createForm.componentVariantId
-          ) ?? componentProduct?.variants?.[0]
-        await fetchJson<BundleResponse>(
-          `/admin/catalog/products/${created.id}/bundle`,
-          {
-            method: "PUT",
-            body: JSON.stringify({
-              productProfileId: profileResponse.profile?.id ?? undefined,
-              idempotencyKey: crypto.randomUUID(),
-              expectedVersion: 0,
-              bundleType: createForm.kind === "mystery_bundle" ? "mystery" : "fixed",
-              inventoryMode:
-                createForm.kind === "mystery_bundle" ? "manual" : "component_derived",
-              fulfillmentMode:
-                createForm.kind === "mystery_bundle" ? "manual" : "ship_components",
-              displayTitle: title,
-              descriptionHtml: toNullable(createForm.description),
-              isActive: true,
-              components:
-                createForm.kind === "mystery_bundle"
-                  ? []
-                  : [
-                      {
-                        componentProductId: createForm.componentProductId,
-                        componentVariantId: componentVariant?.id ?? undefined,
-                        title: componentProduct?.title ?? undefined,
-                        variantTitle: componentVariant
-                          ? formatBundleVariantLabel(componentVariant)
-                          : undefined,
-                        sku: componentVariant?.sku ?? undefined,
-                        quantity: 1,
-                        sortOrder: 0,
-                      },
-                    ],
-            }),
-          }
-        )
-      }
-
-      await refreshProducts()
-      await refreshReferences()
-      setSelectedProductId(created.id)
-      setCreateForm(emptyCreateForm)
-      setCreateOpen(false)
-      setNotice("Created draft product.")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create product")
-    } finally {
-      setCreating(false)
-    }
-  }, [createForm, products, refreshProducts, refreshReferences])
-
   const defaultEditorHref = selectedProduct
     ? `/products/${selectedProduct.id}`
     : "/products"
@@ -1509,8 +1224,8 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
               Refresh
             </Button>
             {!productId ? (
-              <Button type="button" onClick={() => setCreateOpen(true)}>
-                Create draft
+              <Button asChild>
+                <Link to="/catalog/new">Create draft</Link>
               </Button>
             ) : null}
           </div>
@@ -2507,216 +2222,6 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
         </Container>
       </div>
 
-      <FocusModal open={createOpen} onOpenChange={setCreateOpen}>
-        <FocusModal.Content className="max-w-5xl sm:inset-y-8 sm:inset-x-1/2 sm:-translate-x-1/2 sm:w-full">
-          <FocusModal.Header>
-            <FocusModal.Title>Create draft product</FocusModal.Title>
-          </FocusModal.Header>
-          <FocusModal.Body className="overflow-y-auto px-6 py-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Kind</Label>
-                <select
-                  aria-label="Product kind"
-                  value={createForm.kind}
-                  onChange={(event) =>
-                    updateCreateField("kind")(readValue(event) as ProductKind)
-                  }
-                  className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-                >
-                  {productKinds.map((kind) => (
-                    <option key={kind} value={kind}>
-                      {kind}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Product type</Label>
-                <Input
-                  aria-label="Product type"
-                  value={createForm.productType}
-                  onChange={(event) => updateCreateField("productType")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Title</Label>
-                <Input
-                  aria-label="Product title"
-                  value={createForm.title}
-                  onChange={(event) => updateCreateField("title")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Handle</Label>
-                <Input
-                  aria-label="Product handle"
-                  value={createForm.handle}
-                  onChange={(event) => updateCreateField("handle")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Artist</Label>
-                <Input
-                  aria-label="Primary artist"
-                  value={createForm.artistName}
-                  onChange={(event) => updateCreateField("artistName")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Label/source</Label>
-                <Input
-                  aria-label="Label or source"
-                  value={createForm.label}
-                  onChange={(event) => updateCreateField("label")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Genre</Label>
-                <Input
-                  aria-label="Genre"
-                  value={createForm.genre}
-                  onChange={(event) => updateCreateField("genre")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Availability</Label>
-                <select
-                  aria-label="Availability"
-                  value={createForm.availabilityStatus}
-                  onChange={(event) =>
-                    updateCreateField("availabilityStatus")(
-                      readValue(event) as AvailabilityStatus
-                    )
-                  }
-                  className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-                >
-                  {availabilityStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Format</Label>
-                <Input
-                  aria-label="Format"
-                  value={createForm.format}
-                  onChange={(event) => updateCreateField("format")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Format detail</Label>
-                <Input
-                  aria-label="Format detail"
-                  value={createForm.formatDetail}
-                  onChange={(event) =>
-                    updateCreateField("formatDetail")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Variant title</Label>
-                <Input
-                  aria-label="Variant title"
-                  value={createForm.variantTitle}
-                  onChange={(event) =>
-                    updateCreateField("variantTitle")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>SKU</Label>
-                <Input
-                  aria-label="SKU"
-                  value={createForm.sku}
-                  onChange={(event) => updateCreateField("sku")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>USD price</Label>
-                <Input
-                  aria-label="USD price"
-                  value={createForm.priceUsd}
-                  onChange={(event) => updateCreateField("priceUsd")(readValue(event))}
-                />
-              </div>
-              {createForm.kind === "fixed_bundle" ? (
-                <>
-                  <div className="space-y-2">
-                    <Label>Included product</Label>
-                    <select
-                      aria-label="Included product"
-                      value={createForm.componentProductId}
-                      onChange={(event) => {
-                        const componentProductId = readValue(event)
-                        const product = products.find(
-                          (item) => item.id === componentProductId
-                        )
-                        setCreateForm((prev) => ({
-                          ...prev,
-                          componentProductId,
-                          componentVariantId: product?.variants?.[0]?.id ?? "",
-                        }))
-                      }}
-                      className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-                    >
-                      <option value="">Select product</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.title ?? product.handle ?? product.id}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Included variant</Label>
-                    <select
-                      aria-label="Included variant"
-                      value={createForm.componentVariantId}
-                      onChange={(event) =>
-                        updateCreateField("componentVariantId")(readValue(event))
-                      }
-                      className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-                    >
-                      <option value="">Product only</option>
-                      {products
-                        .find((product) => product.id === createForm.componentProductId)
-                        ?.variants?.map((variant) => (
-                          <option key={variant.id} value={variant.id}>
-                            {formatBundleVariantLabel(variant)}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </>
-              ) : null}
-              <div className="space-y-2 md:col-span-2">
-                <Label>Description</Label>
-                <Textarea
-                  aria-label="Product description"
-                  value={createForm.description}
-                  rows={4}
-                  onChange={(event) =>
-                    updateCreateField("description")(readValue(event))
-                  }
-                />
-              </div>
-            </div>
-          </FocusModal.Body>
-          <FocusModal.Footer>
-            <FocusModal.Close asChild>
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </FocusModal.Close>
-            <Button type="button" disabled={creating} onClick={createProduct}>
-              {creating ? "Creating..." : "Create draft"}
-            </Button>
-          </FocusModal.Footer>
-        </FocusModal.Content>
-      </FocusModal>
     </div>
   )
 })
