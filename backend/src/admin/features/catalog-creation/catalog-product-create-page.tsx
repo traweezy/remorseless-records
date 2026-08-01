@@ -157,6 +157,7 @@ const OfferingBackorderSwitch = memo<OfferingBackorderSwitchProps>(({
     <Switch
       aria-label={label}
       checked={checked}
+      className="min-h-6"
       onCheckedChange={handleCheckedChange}
     />
   )
@@ -208,7 +209,7 @@ const CatalogCreationProgress = memo<{ current: number }>(({ current }) => (
         aria-current={current === index ? "step" : undefined}
         className={`rounded-md border px-3 py-2 ${
           current === index
-            ? "border-ui-border-interactive bg-ui-bg-interactive text-ui-fg-on-color"
+            ? "border-ui-border-interactive bg-ui-bg-highlight text-ui-fg-base"
             : index < current
               ? "border-ui-border-base bg-ui-bg-subtle text-ui-fg-base"
               : "border-ui-border-base text-ui-fg-subtle"
