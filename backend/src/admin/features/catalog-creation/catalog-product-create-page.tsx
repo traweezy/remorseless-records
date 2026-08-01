@@ -1497,7 +1497,7 @@ export const CatalogProductCreatePage = memo(() => {
         </div>
       ) : null}
 
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-ui-border-base bg-ui-bg-base/95 px-1 py-4 backdrop-blur">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-ui-border-base bg-ui-bg-base px-1 py-4">
         <Button disabled={busy} onClick={handleCancel} type="button" variant="secondary">Cancel</Button>
         <div className="flex flex-wrap gap-2">
           {step > 0 ? <Button disabled={busy} onClick={handleBack} type="button" variant="secondary">Back</Button> : null}
