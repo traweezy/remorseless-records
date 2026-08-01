@@ -48,6 +48,7 @@ import {
   CatalogCreationAvailability,
   resolveCatalogCreationAvailability,
 } from "./catalog-creation-availability"
+import { CatalogCreationMediaEditor } from "./catalog-creation-media"
 import { CatalogMerchandiseTemplates } from "./catalog-merchandise-templates"
 import {
   applyCatalogCreationKind,
@@ -69,6 +70,7 @@ import {
   type CatalogCreationFormValues,
   type CatalogCreationKind,
   type CatalogCreationMerchandiseTemplateId,
+  type CatalogCreationMedia,
   type CatalogCreationOffering,
   type CatalogCreationReferenceChoice,
   type CatalogCreationReleaseDatePrecision,
@@ -290,6 +292,7 @@ export const CatalogProductCreatePage = memo(() => {
   )
   const [resumed, setResumed] = useState(Boolean(initialDraft))
   const [submitted, setSubmitted] = useState(false)
+  const [mediaUploading, setMediaUploading] = useState(false)
   const pageStartRef = useRef<HTMLDivElement>(null)
   const idempotencyKeyRef = useRef(crypto.randomUUID())
   const lastSubmittedValuesRef = useRef<string | null>(null)
@@ -552,6 +555,14 @@ export const CatalogProductCreatePage = memo(() => {
       )
     },
     [setField],
+  )
+
+  const handleMediaChange = useCallback(
+    (media: CatalogCreationMedia[]) => {
+      form.setFieldValue("media", media)
+      setStepErrors([])
+    },
+    [form],
   )
 
   const handleKindSelect = useCallback(
@@ -891,6 +902,7 @@ export const CatalogProductCreatePage = memo(() => {
   const busy =
     creationMutation.isPending ||
     formState.isSubmitting ||
+    mediaUploading ||
     retryStatusIsPending
   const previewRoute =
     values.kind === "music_release"
@@ -904,11 +916,11 @@ export const CatalogProductCreatePage = memo(() => {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4" ref={pageStartRef}>
       <AdminPageHeader
         actions={
-          <Button onClick={handleClearDraftRequest} size="small" type="button" variant="secondary">
+          <Button disabled={busy} onClick={handleClearDraftRequest} size="small" type="button" variant="secondary">
             Clear draft
           </Button>
         }
-        description="Build a draft through one validated workflow. Nothing is written until the final review."
+        description="Build a draft through one validated workflow. Product records are written only after final review; image uploads are stored when selected."
         status={<Badge color="grey">Draft</Badge>}
         title="Create catalog product"
       />
@@ -1368,7 +1380,7 @@ export const CatalogProductCreatePage = memo(() => {
       {step === 3 ? (
         <Container className="p-6">
           <AdminSectionHeader
-            description="Only fields relevant to this product kind are shown. Media can be added from the product detail after the draft exists."
+            description="Add the storefront information and ordered product gallery customers will use to understand this item."
             title="Storefront details"
           />
           <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -1420,6 +1432,11 @@ export const CatalogProductCreatePage = memo(() => {
               </>
             ) : null}
           </div>
+          <CatalogCreationMediaEditor
+            media={values.media}
+            onChange={handleMediaChange}
+            onUploadingChange={setMediaUploading}
+          />
         </Container>
       ) : null}
 
@@ -1427,7 +1444,7 @@ export const CatalogProductCreatePage = memo(() => {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <Container className="p-6">
             <AdminSectionHeader
-              description="Nothing has been written yet. Review the customer-facing result before creating the draft."
+              description="Review the customer-facing result before creating the product draft. Uploaded images already exist in managed storage and will be linked on creation."
               title="Review draft"
             />
             <div className="mt-5 divide-y rounded-lg border border-ui-border-base">
@@ -1443,6 +1460,18 @@ export const CatalogProductCreatePage = memo(() => {
                 <div className="p-4"><Text size="xsmall" className="text-ui-fg-subtle">Bundle mapping</Text><Text weight="plus">{values.bundleComponents.length} included {values.bundleComponents.length === 1 ? "product" : "products"}</Text><Text size="small" className="text-ui-fg-subtle">Every offering must have a required component before this draft can be created.</Text></div>
               ) : null}
               <div className="flex flex-wrap items-start justify-between gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <Text className="text-ui-fg-subtle" size="xsmall">Product images</Text>
+                  <Text weight="plus">{values.media.length} {values.media.length === 1 ? "image" : "images"}</Text>
+                  <Text className="text-ui-fg-subtle" size="small">
+                    {values.media.length
+                      ? "The first image is primary; every image has required alt text."
+                      : "No images will be linked to this draft."}
+                  </Text>
+                </div>
+                <Button data-step="3" onClick={handleChangeStep} size="small" type="button" variant="secondary">Change images</Button>
+              </div>
+              <div className="flex flex-wrap items-start justify-between gap-3 p-4">
                 <div><Text size="xsmall" className="text-ui-fg-subtle">Storefront details</Text><Text size="small">{values.description || "No short description yet."}</Text></div>
                 <Button data-step="3" onClick={handleChangeStep} size="small" type="button" variant="secondary">Change details</Button>
               </div>
@@ -1450,6 +1479,15 @@ export const CatalogProductCreatePage = memo(() => {
           </Container>
           <Container className="h-fit p-5 lg:sticky lg:top-4">
             <Text size="xsmall" className="text-ui-fg-subtle">Customer preview</Text>
+            {values.media[0] ? (
+              <img
+                alt={values.media[0].altText}
+                className="mt-3 aspect-square w-full rounded-lg border border-ui-border-base object-cover"
+                height="288"
+                src={values.media[0].sourceUrl}
+                width="288"
+              />
+            ) : null}
             <Heading className="mt-2 break-words" level="h2">{values.title || "Untitled product"}</Heading>
             {values.kind === "music_release" && values.artistName ? <Text className="mt-1 text-ui-fg-subtle">{values.artistName}</Text> : null}
             <Text className="mt-4 line-clamp-4" size="small">{values.description || "Add a short description so customers know what they are buying."}</Text>
@@ -1489,7 +1527,11 @@ export const CatalogProductCreatePage = memo(() => {
 
       <ConfirmAction
         confirmLabel="Clear draft"
-        description="This removes the saved browser draft and resets every field. No Medusa product has been created."
+        description={
+          values.media.length
+            ? "This resets every field. No Medusa product has been created; uploaded images remain in Media Cleanup for safe review."
+            : "This removes the saved browser draft and resets every field. No Medusa product has been created."
+        }
         onCancel={handleClearDraftCancel}
         onConfirm={handleClearDraftConfirm}
         open={clearOpen}
@@ -1499,7 +1541,11 @@ export const CatalogProductCreatePage = memo(() => {
 
       <ConfirmAction
         confirmLabel="Leave creation"
-        description="Your browser draft is saved for seven days, but the product has not been created in Medusa."
+        description={
+          values.media.length
+            ? "Your browser draft is saved for seven days. The product has not been created; uploaded images remain managed and can be reviewed in Media Cleanup."
+            : "Your browser draft is saved for seven days, but the product has not been created in Medusa."
+        }
         onCancel={handleLeaveCancel}
         onConfirm={handleLeaveConfirm}
         open={leaveOpen}

@@ -71,6 +71,7 @@ describe("catalog product creation query", () => {
     const response = await createCatalogProduct({
       idempotencyKey: "00000000-0000-4000-8000-000000000001",
       kind: "music_release",
+      media: [],
       options: [{ title: "Format", values: ["CD"] }],
       profile: {},
       title: "Record",

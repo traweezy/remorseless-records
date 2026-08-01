@@ -1,5 +1,15 @@
 import { z } from "zod"
 
+import {
+  MANAGED_IMAGE_MIME_TYPES,
+  MAX_UPLOAD_BYTES,
+  type ManagedImageMimeType,
+} from "../../../lib/uploads/constraints"
+import {
+  MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH,
+  MAX_CATALOG_PRODUCT_MEDIA_ITEMS,
+} from "../../../lib/catalog/product-media-constraints"
+
 export const catalogCreationKinds = [
   "music_release",
   "merch",
@@ -73,6 +83,17 @@ export type CatalogCreationBundleComponent = {
   variantId: string
 }
 
+export type CatalogCreationMedia = {
+  altText: string
+  byteSize: number
+  id: string
+  mediaAssetId: string
+  mimeType: ManagedImageMimeType
+  originalFilename: string
+  sourceFileKey: string
+  sourceUrl: string
+}
+
 export type CatalogCreationFormValues = {
   artistId: string
   artistName: string
@@ -90,6 +111,7 @@ export type CatalogCreationFormValues = {
   merchandiseFit: string
   merchandiseType: string
   merchandiseTypeId: string
+  media: CatalogCreationMedia[]
   mysteryDisclaimer: string
   mysteryPromise: string
   offerings: CatalogCreationOffering[]
@@ -132,6 +154,13 @@ export type CatalogProductCreateRequest = {
   handle?: string
   idempotencyKey: string
   kind: CatalogCreationKind
+  media: Array<{
+    altText: string
+    isPrimary: boolean
+    mediaAssetId: string
+    role: "gallery" | "primary"
+    sortOrder: number
+  }>
   options: Array<{ title: string; values: string[] }>
   profile: Record<string, unknown>
   title: string
@@ -279,6 +308,7 @@ export const createCatalogCreationDefaults = (
   labelId: "",
   label: "Remorseless Records",
   material: "",
+  media: [],
   merchandiseCare: "",
   merchandiseFit: "",
   merchandiseType: "",
@@ -392,6 +422,21 @@ const componentSchema = z.object({
   variantId: z.string().trim().min(1, "Choose an included product format."),
 })
 
+const mediaSchema = z.object({
+  altText: z
+    .string()
+    .trim()
+    .min(1, "Describe every image for customers who cannot see it.")
+    .max(MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH),
+  byteSize: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+  id: z.string().min(1).max(100),
+  mediaAssetId: z.string().trim().min(1).max(255),
+  mimeType: z.enum(MANAGED_IMAGE_MIME_TYPES),
+  originalFilename: z.string().trim().min(1).max(255),
+  sourceFileKey: z.string().trim().min(1).max(1_024),
+  sourceUrl: z.string().trim().url().max(2_048),
+})
+
 export const catalogCreationFormSchema = z
   .object({
     artistId: z.string().trim().max(255),
@@ -418,6 +463,7 @@ export const catalogCreationFormSchema = z
     merchandiseFit: z.string().trim().max(5_000),
     merchandiseType: z.string().trim().max(500),
     merchandiseTypeId: z.string().trim().max(255),
+    media: z.array(mediaSchema).max(MAX_CATALOG_PRODUCT_MEDIA_ITEMS),
     mysteryDisclaimer: z.string().trim().max(10_000),
     mysteryPromise: z.string().trim().max(10_000),
     offerings: z.array(offeringSchema).min(1).max(100),
@@ -865,6 +911,13 @@ export const buildCatalogProductCreateRequest = (
             displayTitle: values.title,
           }
         : undefined
+  const media = values.media.map((item, index) => ({
+    altText: item.altText,
+    isPrimary: index === 0,
+    mediaAssetId: item.mediaAssetId,
+    role: index === 0 ? ("primary" as const) : ("gallery" as const),
+    sortOrder: index,
+  }))
 
   return {
     ...(bundle ? { bundle } : {}),
@@ -872,6 +925,7 @@ export const buildCatalogProductCreateRequest = (
     ...(values.handle ? { handle: values.handle } : {}),
     idempotencyKey,
     kind: values.kind,
+    media,
     options,
     profile,
     title: values.title,
@@ -911,6 +965,7 @@ export const catalogCreationStepFields: Array<
     "sizeGuide",
     "mysteryPromise",
     "mysteryDisclaimer",
+    "media",
   ],
   [],
 ]
@@ -932,7 +987,7 @@ export const validateCatalogCreationStep = (
     .map((issue) => issue.message)
 }
 
-const DRAFT_VERSION = 3
+const DRAFT_VERSION = 4
 export const catalogCreationDraftKey = "remorseless:catalog-product-create:v1"
 export const catalogCreationDraftTtlMs = 7 * 24 * 60 * 60 * 1_000
 
@@ -961,6 +1016,17 @@ const draftComponentSchema = z.object({
   productId: z.string().max(255),
   quantity: z.string().max(100),
   variantId: z.string().max(255),
+})
+
+const draftMediaSchema = z.object({
+  altText: z.string().max(MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH),
+  byteSize: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+  id: z.string().min(1).max(100),
+  mediaAssetId: z.string().min(1).max(255),
+  mimeType: z.enum(MANAGED_IMAGE_MIME_TYPES),
+  originalFilename: z.string().min(1).max(255),
+  sourceFileKey: z.string().min(1).max(1_024),
+  sourceUrl: z.string().url().max(2_048),
 })
 
 const draftValuesShape = {
@@ -993,6 +1059,12 @@ const draftValuesShape = {
 }
 
 const draftValuesSchema = z.object({
+  ...draftValuesShape,
+  media: z.array(draftMediaSchema).max(MAX_CATALOG_PRODUCT_MEDIA_ITEMS),
+  offerings: z.array(draftOfferingSchema).min(1).max(100),
+})
+
+const versionThreeDraftValuesSchema = z.object({
   ...draftValuesShape,
   offerings: z.array(draftOfferingSchema).min(1).max(100),
 })
@@ -1029,8 +1101,14 @@ const storedDraftSchema = z.discriminatedUnion("version", [
   z.object({
     expiresAt: z.number().int().positive(),
     step: z.number().int().min(0).max(4),
+    values: versionThreeDraftValuesSchema,
+    version: z.literal(3),
+  }),
+  z.object({
+    expiresAt: z.number().int().positive(),
+    step: z.number().int().min(0).max(4),
     values: draftValuesSchema,
-    version: z.literal(DRAFT_VERSION),
+    version: z.literal(4),
   }),
 ])
 
@@ -1061,6 +1139,12 @@ export const parseCatalogCreationDraft = (
     if (parsed.version === DRAFT_VERSION) {
       return { step: parsed.step, values: parsed.values }
     }
+    if (parsed.version === 3) {
+      return {
+        step: parsed.step,
+        values: { ...parsed.values, media: [] },
+      }
+    }
     const legacyValues =
       parsed.version === 1
         ? {
@@ -1075,6 +1159,7 @@ export const parseCatalogCreationDraft = (
       step: parsed.step,
       values: {
         ...legacyValues,
+        media: [],
         offerings: legacyValues.offerings.map(
           ({ allowBackorder, ...offering }) => ({
             ...offering,

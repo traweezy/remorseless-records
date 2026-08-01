@@ -142,6 +142,62 @@ describe("catalog product creation form", () => {
     })
   })
 
+  it("builds media in visual order and requires useful alt text", () => {
+    const values = createCatalogCreationDefaults()
+    values.title = "A New Record"
+    values.artistName = "The Artist"
+    values.media = [
+      {
+        altText: "Red album cover with the band logo",
+        byteSize: 1_024,
+        id: "draft_media_1",
+        mediaAssetId: "media_asset_1",
+        mimeType: "image/jpeg",
+        originalFilename: "cover.jpg",
+        sourceFileKey: "file_1",
+        sourceUrl: "https://cdn.example.com/cover.jpg",
+      },
+      {
+        altText: "Back cover with track names",
+        byteSize: 2_048,
+        id: "draft_media_2",
+        mediaAssetId: "media_asset_2",
+        mimeType: "image/webp",
+        originalFilename: "back.webp",
+        sourceFileKey: "file_2",
+        sourceUrl: "https://cdn.example.com/back.webp",
+      },
+    ]
+
+    const request = buildCatalogProductCreateRequest(
+      values,
+      "00000000-0000-4000-8000-000000000001",
+      [],
+    )
+
+    expect(request.media).toEqual([
+      {
+        altText: "Red album cover with the band logo",
+        isPrimary: true,
+        mediaAssetId: "media_asset_1",
+        role: "primary",
+        sortOrder: 0,
+      },
+      {
+        altText: "Back cover with track names",
+        isPrimary: false,
+        mediaAssetId: "media_asset_2",
+        role: "gallery",
+        sortOrder: 1,
+      },
+    ])
+
+    values.media[1]!.altText = ""
+    expect(validateCatalogCreationStep(values, 3)).toContain(
+      "Describe every image for customers who cannot see it.",
+    )
+  })
+
   it("maps preorder intent to native backorders and a dated catalog profile", () => {
     const values = createCatalogCreationDefaults()
     values.title = "A Future Record"
@@ -476,6 +532,27 @@ describe("catalog product creation form", () => {
       values: {
         offerings: [expect.objectContaining({ availabilityPolicy: "backorder" })],
       },
+    })
+  })
+
+  it("migrates version-three drafts to an empty managed gallery", () => {
+    const now = Date.UTC(2026, 7, 1)
+    const { media: _media, ...versionThreeValues } =
+      createCatalogCreationDefaults()
+
+    expect(
+      parseCatalogCreationDraft(
+        JSON.stringify({
+          expiresAt: now + catalogCreationDraftTtlMs,
+          step: 3,
+          values: versionThreeValues,
+          version: 3,
+        }),
+        now,
+      ),
+    ).toMatchObject({
+      step: 3,
+      values: { media: [] },
     })
   })
 })
