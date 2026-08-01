@@ -50,6 +50,7 @@ import {
   catalogCreationKinds,
   createCatalogCreationDefaults,
   parseCatalogCreationDraft,
+  resolveCatalogCreationHandle,
   serializeCatalogCreationDraft,
   validateCatalogCreationStep,
   type CatalogCreationBundleComponent,
@@ -741,7 +742,7 @@ export const CatalogProductCreatePage = memo(() => {
       : values.kind === "merch"
         ? "merch"
         : "bundle"
-  const previewUrl = `/${previewRoute}/${values.handle || "generated-from-name"}`
+  const previewUrl = `/${previewRoute}/${resolveCatalogCreationHandle(values.handle, values.title)}`
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4" ref={pageStartRef}>

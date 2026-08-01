@@ -347,6 +347,11 @@ const slugify = (value: string, fallback: string): string => {
   return slug || fallback
 }
 
+export const resolveCatalogCreationHandle = (
+  handle: string,
+  title: string,
+): string => handle.trim() || slugify(title, "draft-product")
+
 const nullable = (value: string): string | null => value.trim() || null
 
 const offeringKeyMap = (

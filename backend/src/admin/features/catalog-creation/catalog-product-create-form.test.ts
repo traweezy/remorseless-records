@@ -5,6 +5,7 @@ import {
   catalogCreationFormSchema,
   createCatalogCreationDefaults,
   parseCatalogCreationDraft,
+  resolveCatalogCreationHandle,
   serializeCatalogCreationDraft,
   validateCatalogCreationStep,
   type CatalogCreationProductChoice,
@@ -22,6 +23,16 @@ const choices: CatalogCreationProductChoice[] = [
 ]
 
 describe("catalog product creation form", () => {
+  it("previews the same generated handle used by the backend", () => {
+    expect(resolveCatalogCreationHandle("", "  Á New Record!  ")).toBe(
+      "a-new-record",
+    )
+    expect(resolveCatalogCreationHandle("custom-record", "Ignored")).toBe(
+      "custom-record",
+    )
+    expect(resolveCatalogCreationHandle("", "---")).toBe("draft-product")
+  })
+
   it("switches kinds without leaking incompatible offerings or components", () => {
     const music = createCatalogCreationDefaults()
     music.bundleComponents = [
