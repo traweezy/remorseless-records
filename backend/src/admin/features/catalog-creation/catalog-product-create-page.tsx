@@ -298,7 +298,13 @@ export const CatalogProductCreatePage = memo(() => {
         idempotencyKeyRef.current,
         choicesData ?? [],
       )
-      const result = await creationMutation.mutateAsync(request)
+      let result: Awaited<ReturnType<typeof createCatalogProduct>>
+      try {
+        result = await creationMutation.mutateAsync(request)
+      } catch {
+        // React Query owns the actionable error and retry state rendered below.
+        return
+      }
       removeDraft()
       setSubmitted(true)
       setAllowNavigation(true)
