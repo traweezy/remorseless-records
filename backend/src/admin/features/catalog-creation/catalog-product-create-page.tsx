@@ -422,7 +422,9 @@ export const CatalogProductCreatePage = memo(() => {
         return
       }
       const nextValues = applyCatalogCreationKind(values, kind)
-      form.reset(nextValues)
+      // Replacing mount defaults here makes useForm restore the prior kind.
+      form.reset(nextValues, { keepDefaultValues: true })
+      form.setFieldValue("kind", kind)
       idempotencyKeyRef.current = crypto.randomUUID()
       lastSubmittedValuesRef.current = null
       setStepErrors([])
@@ -726,7 +728,7 @@ export const CatalogProductCreatePage = memo(() => {
   const handleClearDraftConfirm = useCallback(() => {
     removeDraft()
     const defaults = createCatalogCreationDefaults()
-    form.reset(defaults)
+    form.reset(defaults, { keepDefaultValues: true })
     idempotencyKeyRef.current = crypto.randomUUID()
     lastSubmittedValuesRef.current = null
     resetCreationMutation()
