@@ -79,13 +79,15 @@ const sourceCopy = (entry: DiscographyEntry): string => {
 
 type EntryActionsProps = {
   busy: boolean
+  canReadProducts: boolean
+  canUpdate: boolean
   entry: DiscographyEntry
   onEdit: (entry: DiscographyEntry, trigger: HTMLButtonElement) => void
   onLifecycle: (entry: DiscographyEntry, trigger: HTMLButtonElement) => void
 }
 
 const EntryActions = memo<EntryActionsProps>(
-  ({ busy, entry, onEdit, onLifecycle }) => {
+  ({ busy, canReadProducts, canUpdate, entry, onEdit, onLifecycle }) => {
     const handleEdit = useCallback(
       (event: React.MouseEvent<HTMLButtonElement>) => {
         onEdit(entry, event.currentTarget)
@@ -101,7 +103,8 @@ const EntryActions = memo<EntryActionsProps>(
 
     return (
       <div className="flex flex-wrap justify-end gap-2">
-        {entry.sourceMode === "catalog_product" &&
+        {canReadProducts &&
+        entry.sourceMode === "catalog_product" &&
         entry.linkHealth === "healthy" &&
         entry.productId ? (
           <Button asChild size="small" variant="secondary">
@@ -110,7 +113,7 @@ const EntryActions = memo<EntryActionsProps>(
             </Link>
           </Button>
         ) : null}
-        {entry.sourceMode === "manual" && !entry.archivedAt ? (
+        {canUpdate && entry.sourceMode === "manual" && !entry.archivedAt ? (
           <Button
             disabled={busy}
             onClick={handleEdit}
@@ -121,15 +124,17 @@ const EntryActions = memo<EntryActionsProps>(
             Edit
           </Button>
         ) : null}
-        <Button
-          disabled={busy}
-          onClick={handleLifecycle}
-          size="small"
-          type="button"
-          variant={entry.archivedAt ? "primary" : "secondary"}
-        >
-          {entry.archivedAt ? "Restore" : "Archive"}
-        </Button>
+        {canUpdate ? (
+          <Button
+            disabled={busy}
+            onClick={handleLifecycle}
+            size="small"
+            type="button"
+            variant={entry.archivedAt ? "primary" : "secondary"}
+          >
+            {entry.archivedAt ? "Restore" : "Archive"}
+          </Button>
+        ) : null}
       </div>
     )
   }
@@ -139,12 +144,16 @@ EntryActions.displayName = "EntryActions"
 
 type UseDiscographyColumnsInput = {
   busyEntryId: string | null
+  canReadProducts: boolean
+  canUpdate: boolean
   onEdit: (entry: DiscographyEntry, trigger: HTMLButtonElement) => void
   onLifecycle: (entry: DiscographyEntry, trigger: HTMLButtonElement) => void
 }
 
 export const useDiscographyColumns = ({
   busyEntryId,
+  canReadProducts,
+  canUpdate,
   onEdit,
   onLifecycle,
 }: UseDiscographyColumnsInput) =>
@@ -233,28 +242,34 @@ export const useDiscographyColumns = ({
         minSize: 120,
         size: 130,
       }),
-      columnHelper.display({
-        cell: ({ row }) => (
-          <EntryActions
-            busy={busyEntryId !== null}
-            entry={row.original}
-            onEdit={onEdit}
-            onLifecycle={onLifecycle}
-          />
-        ),
-        header: "Actions",
-        id: "actions",
-        minSize: 200,
-        size: 220,
-      }),
+      ...(canReadProducts || canUpdate
+        ? [
+            columnHelper.display({
+              cell: ({ row }) => (
+                <EntryActions
+                  busy={busyEntryId !== null}
+                  canReadProducts={canReadProducts}
+                  canUpdate={canUpdate}
+                  entry={row.original}
+                  onEdit={onEdit}
+                  onLifecycle={onLifecycle}
+                />
+              ),
+              header: "Actions",
+              id: "actions",
+              minSize: 200,
+              size: 220,
+            }),
+          ]
+        : []),
     ],
-    [busyEntryId, onEdit, onLifecycle]
+    [busyEntryId, canReadProducts, canUpdate, onEdit, onLifecycle]
   )
 
 type MobileCardProps = EntryActionsProps
 
 const DiscographyMobileCard = memo<MobileCardProps>(
-  ({ busy, entry, onEdit, onLifecycle }) => (
+  ({ busy, canReadProducts, canUpdate, entry, onEdit, onLifecycle }) => (
     <li className="border-t border-ui-border-base px-4 py-5 first:border-t-0">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -293,14 +308,18 @@ const DiscographyMobileCard = memo<MobileCardProps>(
           </dd>
         </div>
       </dl>
-      <div className="mt-5 [&>div]:justify-start">
-        <EntryActions
-          busy={busy}
-          entry={entry}
-          onEdit={onEdit}
-          onLifecycle={onLifecycle}
-        />
-      </div>
+      {canReadProducts || canUpdate ? (
+        <div className="mt-5 [&>div]:justify-start">
+          <EntryActions
+            busy={busy}
+            canReadProducts={canReadProducts}
+            canUpdate={canUpdate}
+            entry={entry}
+            onEdit={onEdit}
+            onLifecycle={onLifecycle}
+          />
+        </div>
+      ) : null}
     </li>
   )
 )
@@ -330,6 +349,8 @@ MobileLoadingCards.displayName = "MobileLoadingCards"
 
 type DiscographyCollectionProps = {
   busyEntryId: string | null
+  canReadProducts: boolean
+  canUpdate: boolean
   dataTable: UseDataTableReturn<DiscographyEntry>
   entries: DiscographyEntry[]
   filtered: boolean
@@ -342,6 +363,8 @@ type DiscographyCollectionProps = {
 export const DiscographyCollection = memo<DiscographyCollectionProps>(
   ({
     busyEntryId,
+    canReadProducts,
+    canUpdate,
     dataTable,
     entries,
     filtered,
@@ -387,6 +410,8 @@ export const DiscographyCollection = memo<DiscographyCollectionProps>(
           {entries.map((entry) => (
             <DiscographyMobileCard
               busy={busyEntryId !== null}
+              canReadProducts={canReadProducts}
+              canUpdate={canUpdate}
               entry={entry}
               key={entry.id}
               onEdit={onEdit}
@@ -395,7 +420,16 @@ export const DiscographyCollection = memo<DiscographyCollectionProps>(
           ))}
         </ul>
       )
-    }, [busyEntryId, emptyState.empty, entries, loading, onEdit, onLifecycle])
+    }, [
+      busyEntryId,
+      canReadProducts,
+      canUpdate,
+      emptyState.empty,
+      entries,
+      loading,
+      onEdit,
+      onLifecycle,
+    ])
 
     return (
       <AdminResponsiveDataTable

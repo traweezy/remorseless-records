@@ -20,4 +20,19 @@ describe("ContentWorkspaceNavigation", () => {
       /<a[^>]*aria-current="page"[^>]*href="\/content\/news"[^>]*>News<\/a>/,
     )
   })
+
+  it("omits workspaces the current role cannot read", () => {
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <ContentWorkspaceNavigation
+          active="news"
+          showDiscography={false}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(markup).toContain('href="/content"')
+    expect(markup).toContain('href="/content/news"')
+    expect(markup).not.toContain('href="/content/discography"')
+  })
 })

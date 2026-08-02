@@ -25,6 +25,11 @@ import {
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
+import {
+  contentAdminActions,
+  nativeAdminActions,
+} from "../../../lib/admin-permissions"
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import { ConfirmAction } from "../../components/confirm-action"
 import {
   AdminPageHeader,
@@ -51,6 +56,7 @@ import {
 } from "../../features/discography/discography-query"
 import { useDiscographyColumns } from "../../features/discography/discography-table"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import { useAdminPermissions } from "../../lib/admin-permissions"
 
 const PAGE_SIZE = 25
 const QUERY_KEY = ["discography"] as const
@@ -135,7 +141,18 @@ const restoreFocus = (target: HTMLButtonElement | null): void => {
   })
 }
 
-export const DiscographyAdminPage = memo(() => {
+const DiscographyAdminPageContent = memo(() => {
+  const permissions = useAdminPermissions()
+  const canCreate = permissions.hasPermission(
+    contentAdminActions.discography.create,
+  )
+  const canUpdate = permissions.hasPermission(
+    contentAdminActions.discography.update,
+  )
+  const canReadNews = permissions.hasPermission(contentAdminActions.news.read)
+  const canReadProducts = permissions.hasPermission(
+    nativeAdminActions.product.read,
+  )
   const [view, setView] = useState<ArchiveView>("active")
   const [pageIndex, setPageIndex] = useState(0)
   const [searchInput, setSearchInput] = useState("")
@@ -422,6 +439,8 @@ export const DiscographyAdminPage = memo(() => {
     : null
   const columns = useDiscographyColumns({
     busyEntryId,
+    canReadProducts,
+    canUpdate,
     onEdit: handleEdit,
     onLifecycle: handleLifecycle,
   })
@@ -460,13 +479,15 @@ export const DiscographyAdminPage = memo(() => {
       <Container>
         <AdminPageHeader
           actions={
-            <Button
-              onClick={handleCreateOpen}
-              ref={createTriggerRef}
-              type="button"
-            >
-              Add historical release
-            </Button>
+            canCreate ? (
+              <Button
+                onClick={handleCreateOpen}
+                ref={createTriggerRef}
+                type="button"
+              >
+                Add historical release
+              </Button>
+            ) : null
           }
           description="Store releases synchronize from Products. Use historical records for label releases that are not currently sold."
           status={
@@ -476,7 +497,11 @@ export const DiscographyAdminPage = memo(() => {
           }
           title="Discography"
         />
-        <ContentWorkspaceNavigation active="discography" className="mt-5" />
+        <ContentWorkspaceNavigation
+          active="discography"
+          className="mt-5"
+          showNews={canReadNews}
+        />
         <Alert className="mt-5" variant="info">
           <Text weight="plus">One source of truth for store releases</Text>
           <Text size="small">
@@ -622,6 +647,8 @@ export const DiscographyAdminPage = memo(() => {
 
           <DiscographyCollection
             busyEntryId={busyEntryId}
+            canReadProducts={canReadProducts}
+            canUpdate={canUpdate}
             dataTable={dataTable}
             entries={page.entries}
             filtered={filtered}
@@ -683,6 +710,17 @@ export const DiscographyAdminPage = memo(() => {
     </AdminSingleColumnLayout>
   )
 })
+
+DiscographyAdminPageContent.displayName = "DiscographyAdminPageContent"
+
+export const DiscographyAdminPage = memo(() => (
+  <AdminPermissionBoundary
+    actions={contentAdminActions.discography.read}
+    workspace="Discography"
+  >
+    <DiscographyAdminPageContent />
+  </AdminPermissionBoundary>
+))
 
 DiscographyAdminPage.displayName = "DiscographyAdminPage"
 

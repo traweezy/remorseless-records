@@ -25,6 +25,11 @@ import {
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
+import {
+  contentAdminActions,
+  nativeAdminActions,
+} from "../../../lib/admin-permissions"
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import { ConfirmAction } from "../../components/confirm-action"
 import {
   AdminPageHeader,
@@ -52,6 +57,7 @@ import {
   useNewsColumns,
 } from "../../features/news/news-table"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import { useAdminPermissions } from "../../lib/admin-permissions"
 
 const PAGE_SIZE = 25
 const QUERY_KEY = ["news"] as const
@@ -152,7 +158,14 @@ const successMessage = (
   return previousStatus === "draft" ? "Draft updated" : "Post moved to drafts"
 }
 
-export const NewsAdminPage = memo(() => {
+const NewsAdminPageContent = memo(() => {
+  const permissions = useAdminPermissions()
+  const canCreate = permissions.hasPermission(contentAdminActions.news.create)
+  const canUpdate = permissions.hasPermission(contentAdminActions.news.update)
+  const canUploadCover = permissions.hasPermission(nativeAdminActions.file.create)
+  const canReadDiscography = permissions.hasPermission(
+    contentAdminActions.discography.read,
+  )
   const [view, setView] = useState<ArchiveView>("active")
   const [pageIndex, setPageIndex] = useState(0)
   const [searchInput, setSearchInput] = useState("")
@@ -408,6 +421,7 @@ export const NewsAdminPage = memo(() => {
     : null
   const columns = useNewsColumns({
     busyEntryId,
+    canUpdate,
     onEdit: handleEdit,
     onLifecycle: handleLifecycle,
   })
@@ -453,9 +467,11 @@ export const NewsAdminPage = memo(() => {
       <Container>
         <AdminPageHeader
           actions={
-            <Button onClick={handleCreateOpen} ref={createTriggerRef} type="button">
-              Create post
-            </Button>
+            canCreate ? (
+              <Button onClick={handleCreateOpen} ref={createTriggerRef} type="button">
+                Create post
+              </Button>
+            ) : null
           }
           description="Draft privately, schedule a future update, or publish immediately. Archived posts remain recoverable."
           status={
@@ -465,7 +481,11 @@ export const NewsAdminPage = memo(() => {
           }
           title="News"
         />
-        <ContentWorkspaceNavigation active="news" className="mt-5" />
+        <ContentWorkspaceNavigation
+          active="news"
+          className="mt-5"
+          showDiscography={canReadDiscography}
+        />
         <Alert className="mt-5" variant="info">
           <Text weight="plus">Visibility is deliberate</Text>
           <Text size="small">
@@ -581,6 +601,7 @@ export const NewsAdminPage = memo(() => {
 
           <NewsCollection
             busyEntryId={busyEntryId}
+            canUpdate={canUpdate}
             dataTable={dataTable}
             entries={page.entries}
             filtered={filtered}
@@ -594,6 +615,7 @@ export const NewsAdminPage = memo(() => {
 
       {createOpen ? (
         <NewsEditor
+          canUploadCover={canUploadCover}
           error={createError}
           mode="create"
           onClose={handleCreateClose}
@@ -603,6 +625,7 @@ export const NewsAdminPage = memo(() => {
       ) : null}
       {editingEntry ? (
         <NewsEditor
+          canUploadCover={canUploadCover}
           entry={editingEntry}
           error={updateError}
           mode="edit"
@@ -640,6 +663,17 @@ export const NewsAdminPage = memo(() => {
     </AdminSingleColumnLayout>
   )
 })
+
+NewsAdminPageContent.displayName = "NewsAdminPageContent"
+
+export const NewsAdminPage = memo(() => (
+  <AdminPermissionBoundary
+    actions={contentAdminActions.news.read}
+    workspace="News"
+  >
+    <NewsAdminPageContent />
+  </AdminPermissionBoundary>
+))
 
 NewsAdminPage.displayName = "NewsAdminPage"
 

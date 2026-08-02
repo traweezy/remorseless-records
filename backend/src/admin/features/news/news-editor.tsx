@@ -254,12 +254,13 @@ const ContentField = (field: AnyFieldApi) => <NewsContentField field={field} />
 
 type CoverFieldsProps = {
   altTextField: AnyFieldApi
+  canUploadCover: boolean
   coverUrlField: AnyFieldApi
   onUploadingChange: (uploading: boolean) => void
 }
 
 const CoverFields = memo<CoverFieldsProps>(
-  ({ altTextField, coverUrlField, onUploadingChange }) => {
+  ({ altTextField, canUploadCover, coverUrlField, onUploadingChange }) => {
   const inputRef = useRef<HTMLInputElement>(null)
   const uploadControllerRef = useRef<AbortController | null>(null)
   const mountedRef = useRef(true)
@@ -281,9 +282,12 @@ const CoverFields = memo<CoverFieldsProps>(
   }, [onUploadingChange])
 
   const handleChoose = useCallback(() => {
+    if (!canUploadCover) {
+      return
+    }
     const target = inputRef.current as unknown as { click?: () => void } | null
     target?.click?.()
-  }, [])
+  }, [canUploadCover])
   const handleUpload = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const input = event.currentTarget as unknown as {
@@ -292,7 +296,7 @@ const CoverFields = memo<CoverFieldsProps>(
       }
       const file = Array.from(input.files ?? [])[0]
       input.value = ""
-      if (!file) {
+      if (!canUploadCover || !file) {
         return
       }
       const validationError = validateNewsCover(file)
@@ -330,7 +334,7 @@ const CoverFields = memo<CoverFieldsProps>(
           }
         })
     },
-    [coverUrlField, onUploadingChange],
+    [canUploadCover, coverUrlField, onUploadingChange],
   )
   const handleRemove = useCallback(() => {
     uploadControllerRef.current?.abort()
@@ -353,7 +357,7 @@ const CoverFields = memo<CoverFieldsProps>(
         accept="image/gif,image/jpeg,image/png,image/webp"
         aria-label="Upload news cover image"
         className="sr-only"
-        disabled={uploading}
+        disabled={!canUploadCover || uploading}
         onChange={handleUpload}
         ref={inputRef}
         tabIndex={-1}
@@ -389,15 +393,17 @@ const CoverFields = memo<CoverFieldsProps>(
               )}
             </AdminFormField>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                disabled={uploading}
-                onClick={handleChoose}
-                size="small"
-                type="button"
-                variant="secondary"
-              >
-                Replace cover
-              </Button>
+              {canUploadCover ? (
+                <Button
+                  disabled={uploading}
+                  onClick={handleChoose}
+                  size="small"
+                  type="button"
+                  variant="secondary"
+                >
+                  Replace cover
+                </Button>
+              ) : null}
               <Button
                 disabled={uploading}
                 onClick={handleRemove}
@@ -412,21 +418,27 @@ const CoverFields = memo<CoverFieldsProps>(
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-ui-border-strong p-6 text-center">
-          <Text weight="plus">Add a cover image</Text>
-          <Text className="mt-1 text-ui-fg-subtle" size="small">
-            JPEG, PNG, WebP, or GIF · 12 MiB maximum
+          <Text weight="plus">
+            {canUploadCover ? "Add a cover image" : "Cover upload restricted"}
           </Text>
-          <Button
-            className="mt-4"
-            disabled={uploading}
-            isLoading={uploading}
-            onClick={handleChoose}
-            size="small"
-            type="button"
-            variant="secondary"
-          >
-            {uploading ? "Uploading…" : "Choose image"}
-          </Button>
+          <Text className="mt-1 text-ui-fg-subtle" size="small">
+            {canUploadCover
+              ? "JPEG, PNG, WebP, or GIF · 12 MiB maximum"
+              : "Your role can save this post but cannot upload files. Ask a super administrator for file creation access."}
+          </Text>
+          {canUploadCover ? (
+            <Button
+              className="mt-4"
+              disabled={uploading}
+              isLoading={uploading}
+              onClick={handleChoose}
+              size="small"
+              type="button"
+              variant="secondary"
+            >
+              {uploading ? "Uploading…" : "Choose image"}
+            </Button>
+          ) : null}
         </div>
       )}
       {uploadError ? (
@@ -442,6 +454,7 @@ const CoverFields = memo<CoverFieldsProps>(
 CoverFields.displayName = "CoverFields"
 
 type NewsEditorProps = {
+  canUploadCover: boolean
   entry?: NewsEntry
   error: string | null
   mode: "create" | "edit"
@@ -493,7 +506,15 @@ const focusSchedule = (): void => {
 }
 
 export const NewsEditor = memo<NewsEditorProps>(
-  ({ entry, error, mode, onClose, onSubmit, restoreFocusRef }) => {
+  ({
+    canUploadCover,
+    entry,
+    error,
+    mode,
+    onClose,
+    onSubmit,
+    restoreFocusRef,
+  }) => {
     const idempotencyKeyRef = useRef(crypto.randomUUID())
     const lastSubmittedRef = useRef<string | null>(null)
     const intentRef = useRef<NewsPublicationIntent>("draft")
@@ -591,13 +612,14 @@ export const NewsEditor = memo<NewsEditorProps>(
           {(altTextField) => (
             <CoverFields
               altTextField={altTextField}
+              canUploadCover={canUploadCover}
               coverUrlField={coverUrlField}
               onUploadingChange={handleUploadingChange}
             />
           )}
         </form.Field>
       ),
-      [form, handleUploadingChange],
+      [canUploadCover, form, handleUploadingChange],
     )
 
     const titlePreview = state.values.title.trim() || "Your headline"

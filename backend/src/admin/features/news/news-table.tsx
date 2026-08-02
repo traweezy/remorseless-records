@@ -59,13 +59,14 @@ const publicationCopy = (entry: NewsEntry): string => {
 
 type EntryActionsProps = {
   busy: boolean
+  canUpdate: boolean
   entry: NewsEntry
   onEdit: (entry: NewsEntry, trigger: HTMLButtonElement) => void
   onLifecycle: (entry: NewsEntry, trigger: HTMLButtonElement) => void
 }
 
 const EntryActions = memo<EntryActionsProps>(
-  ({ busy, entry, onEdit, onLifecycle }) => {
+  ({ busy, canUpdate, entry, onEdit, onLifecycle }) => {
     const handleEdit = useCallback(
       (event: React.MouseEvent<HTMLButtonElement>) => {
         onEdit(entry, event.currentTarget)
@@ -78,7 +79,7 @@ const EntryActions = memo<EntryActionsProps>(
       },
       [entry, onLifecycle],
     )
-    return (
+    return canUpdate ? (
       <div className="flex flex-wrap justify-end gap-2">
         {!entry.archivedAt ? (
           <Button
@@ -101,7 +102,7 @@ const EntryActions = memo<EntryActionsProps>(
           {entry.archivedAt ? "Restore" : "Archive"}
         </Button>
       </div>
-    )
+    ) : null
   },
 )
 
@@ -111,12 +112,14 @@ const columnHelper = createDataTableColumnHelper<NewsEntry>()
 
 type UseNewsColumnsInput = {
   busyEntryId: string | null
+  canUpdate: boolean
   onEdit: (entry: NewsEntry, trigger: HTMLButtonElement) => void
   onLifecycle: (entry: NewsEntry, trigger: HTMLButtonElement) => void
 }
 
 export const useNewsColumns = ({
   busyEntryId,
+  canUpdate,
   onEdit,
   onLifecycle,
 }: UseNewsColumnsInput) =>
@@ -179,26 +182,31 @@ export const useNewsColumns = ({
         minSize: 150,
         size: 170,
       }),
-      columnHelper.display({
-        cell: ({ row }) => (
-          <EntryActions
-            busy={busyEntryId !== null}
-            entry={row.original}
-            onEdit={onEdit}
-            onLifecycle={onLifecycle}
-          />
-        ),
-        header: "Actions",
-        id: "actions",
-        minSize: 190,
-        size: 210,
-      }),
+      ...(canUpdate
+        ? [
+            columnHelper.display({
+              cell: ({ row }) => (
+                <EntryActions
+                  busy={busyEntryId !== null}
+                  canUpdate={canUpdate}
+                  entry={row.original}
+                  onEdit={onEdit}
+                  onLifecycle={onLifecycle}
+                />
+              ),
+              header: "Actions",
+              id: "actions",
+              minSize: 190,
+              size: 210,
+            }),
+          ]
+        : []),
     ],
-    [busyEntryId, onEdit, onLifecycle],
+    [busyEntryId, canUpdate, onEdit, onLifecycle],
   )
 
 const NewsMobileCard = memo<EntryActionsProps>(
-  ({ busy, entry, onEdit, onLifecycle }) => (
+  ({ busy, canUpdate, entry, onEdit, onLifecycle }) => (
     <li className="border-t border-ui-border-base px-4 py-5 first:border-t-0">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -221,14 +229,17 @@ const NewsMobileCard = memo<EntryActionsProps>(
           {entry.tags.join(" · ")}
         </Text>
       ) : null}
-      <div className="mt-4">
-        <EntryActions
-          busy={busy}
-          entry={entry}
-          onEdit={onEdit}
-          onLifecycle={onLifecycle}
-        />
-      </div>
+      {canUpdate ? (
+        <div className="mt-4">
+          <EntryActions
+            busy={busy}
+            canUpdate={canUpdate}
+            entry={entry}
+            onEdit={onEdit}
+            onLifecycle={onLifecycle}
+          />
+        </div>
+      ) : null}
     </li>
   ),
 )
@@ -256,6 +267,7 @@ MobileLoadingCards.displayName = "MobileLoadingCards"
 
 type NewsCollectionProps = {
   busyEntryId: string | null
+  canUpdate: boolean
   dataTable: UseDataTableReturn<NewsEntry>
   entries: NewsEntry[]
   filtered: boolean
@@ -268,6 +280,7 @@ type NewsCollectionProps = {
 export const NewsCollection = memo<NewsCollectionProps>(
   ({
     busyEntryId,
+    canUpdate,
     dataTable,
     entries,
     filtered,
@@ -313,6 +326,7 @@ export const NewsCollection = memo<NewsCollectionProps>(
           {entries.map((entry) => (
             <NewsMobileCard
               busy={busyEntryId !== null}
+              canUpdate={canUpdate}
               entry={entry}
               key={entry.id}
               onEdit={onEdit}
@@ -321,7 +335,15 @@ export const NewsCollection = memo<NewsCollectionProps>(
           ))}
         </ul>
       )
-    }, [busyEntryId, emptyState.empty, entries, loading, onEdit, onLifecycle])
+    }, [
+      busyEntryId,
+      canUpdate,
+      emptyState.empty,
+      entries,
+      loading,
+      onEdit,
+      onLifecycle,
+    ])
 
     return (
       <AdminResponsiveDataTable

@@ -12,6 +12,8 @@ import {
 type ContentWorkspaceNavigationProps = {
   active: ContentWorkspace
   className?: string
+  showDiscography?: boolean
+  showNews?: boolean
 }
 
 type NavigationItemProps = {
@@ -32,7 +34,7 @@ NavigationItem.displayName = "NavigationItem"
 
 export const ContentWorkspaceNavigation = memo<
   ContentWorkspaceNavigationProps
->(({ active, className }) => (
+>(({ active, className, showDiscography = true, showNews = true }) => (
   <nav
     aria-label="Content workspaces"
     className={clx("flex flex-wrap gap-2", className)}
@@ -42,16 +44,20 @@ export const ContentWorkspaceNavigation = memo<
       label="Overview"
       to={contentRoutePaths.overview}
     />
-    <NavigationItem
-      active={active === "news"}
-      label="News"
-      to={contentRoutePaths.news}
-    />
-    <NavigationItem
-      active={active === "discography"}
-      label="Discography"
-      to={contentRoutePaths.discography}
-    />
+    {showNews ? (
+      <NavigationItem
+        active={active === "news"}
+        label="News"
+        to={contentRoutePaths.news}
+      />
+    ) : null}
+    {showDiscography ? (
+      <NavigationItem
+        active={active === "discography"}
+        label="Discography"
+        to={contentRoutePaths.discography}
+      />
+    ) : null}
   </nav>
 ))
 

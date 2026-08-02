@@ -3,9 +3,14 @@ import {
   type MedusaNextFunction,
   type MedusaRequest,
   type MedusaResponse,
+  type MiddlewareRoute,
 } from "@medusajs/framework/http";
 import multer from "multer";
 
+import {
+  contentAdminActions,
+  nativeAdminActions,
+} from "../lib/admin-permissions";
 import { STORE_CORS } from "../lib/constants";
 import {
   MAX_UPLOAD_BYTES,
@@ -222,6 +227,69 @@ const rejectPresignedUploads = (
   });
 };
 
+export const contentAdminPolicyRoutes = [
+  {
+    matcher: /^\/admin\/news$/,
+    methods: ["GET"],
+    policies: contentAdminActions.news.read,
+  },
+  {
+    matcher: /^\/admin\/news$/,
+    methods: ["POST"],
+    policies: contentAdminActions.news.create,
+  },
+  {
+    matcher: /^\/admin\/news\/[^/]+$/,
+    methods: ["GET"],
+    policies: contentAdminActions.news.read,
+  },
+  {
+    matcher: /^\/admin\/news\/[^/]+$/,
+    methods: ["PUT"],
+    policies: contentAdminActions.news.update,
+  },
+  {
+    matcher: /^\/admin\/news\/[^/]+$/,
+    methods: ["DELETE"],
+    policies: contentAdminActions.news.delete,
+  },
+  {
+    matcher: /^\/admin\/news\/[^/]+\/(archive|restore)$/,
+    methods: ["POST"],
+    policies: contentAdminActions.news.update,
+  },
+  {
+    matcher: /^\/admin\/discography$/,
+    methods: ["GET"],
+    policies: contentAdminActions.discography.read,
+  },
+  {
+    matcher: /^\/admin\/discography$/,
+    methods: ["POST"],
+    policies: contentAdminActions.discography.create,
+  },
+  {
+    matcher: /^\/admin\/discography\/[^/]+$/,
+    methods: ["GET"],
+    policies: contentAdminActions.discography.read,
+  },
+  {
+    matcher: /^\/admin\/discography\/[^/]+$/,
+    methods: ["PUT"],
+    policies: contentAdminActions.discography.update,
+  },
+  {
+    matcher: /^\/admin\/discography\/[^/]+$/,
+    methods: ["DELETE"],
+    policies: contentAdminActions.discography.delete,
+  },
+  {
+    matcher: /^\/admin\/discography\/[^/]+\/(archive|restore)$/,
+    methods: ["POST"],
+    policies: contentAdminActions.discography.update,
+  },
+] satisfies MiddlewareRoute[];
+
 export default defineMiddlewares({
   routes: [
     {
@@ -266,7 +334,9 @@ export default defineMiddlewares({
       matcher: "/admin/managed-uploads",
       methods: ["POST"],
       middlewares: [managedUpload.array("files")],
+      policies: nativeAdminActions.file.create,
     },
+    ...contentAdminPolicyRoutes,
     {
       matcher: "/admin/catalog/media/uploads",
       methods: ["POST"],
