@@ -16,10 +16,30 @@ const optionalPublicationDateSchema = z
   .optional()
   .nullable()
 
+const isHttpUrl = (value: string): boolean => {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol)
+  } catch {
+    return false
+  }
+}
+
+const optionalCoverUrlSchema = z
+  .string()
+  .trim()
+  .url()
+  .max(2_000)
+  .refine(
+    isHttpUrl,
+    "Cover URL must use http or https."
+  )
+  .optional()
+  .nullable()
+
 const newsFieldsSchema = z.object({
   content: z.string().trim().min(1).max(200_000).optional(),
   coverAltText: optionalText(500),
-  coverUrl: z.string().trim().url().max(2_000).optional().nullable(),
+  coverUrl: optionalCoverUrlSchema,
   excerpt: optionalText(1_000),
   publishedAt: optionalPublicationDateSchema,
   status: z.enum(newsWriteStatusValues).optional(),
