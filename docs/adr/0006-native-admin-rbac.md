@@ -40,6 +40,9 @@ logs each user's email and ID. Production logs must not become a PII export.
 - Existing administrators receive the native super-admin role during the first
   enabled migration. The version-pinned `@medusajs/medusa@2.18.0` patch retains
   that behavior but replaces per-user log output with aggregate progress.
+- A flag-off release can list the bootstrap script as pending. Medusa evaluates
+  the script's feature predicate before inserting its migration-ledger row, so
+  a disabled no-op does not consume the later enabled migration.
 - Role assignment changes require the affected administrator to sign out and
   sign back in. Route middleware reads role IDs from the signed authentication
   context; an old session must not be treated as evidence of a new role.
@@ -127,11 +130,12 @@ native permissions. Read-only roles do not see mutation controls, and denied
 custom pages do not start their data query.
 
 Medusa Admin SDK 2.18 does not expose a supported permission predicate in a
-custom route's sidebar configuration. A restricted user can therefore still
-see the top-level **Content** sidebar item and reach a clear access-restricted
-page. This is a navigation limitation, not an authorization bypass. A broad
-Dashboard patch is deliberately avoided; revisit this when the public Admin
-extension contract supports permission-aware navigation.
+custom route's top-level or nested sidebar configuration. A restricted user can
+therefore still see **Content** and its **News** or **Discography** child entries
+in the surrounding shell, then reach a clear access-restricted page for a
+denied workspace. This is a navigation limitation, not an authorization bypass.
+A broad Dashboard patch is deliberately avoided; revisit this when the public
+Admin extension contract supports permission-aware navigation.
 
 The Medusa bootstrap privacy patch is pinned to exactly 2.18.0. Every Medusa
 upgrade must re-audit the upstream migration and either drop or rebase the

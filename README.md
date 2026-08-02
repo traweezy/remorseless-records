@@ -195,10 +195,15 @@ emails or IDs to release logs.
 
 After activation or any role change, the affected administrator must sign out
 and sign back in so the signed session carries current role IDs. Medusa 2.18's
-public Admin extension API cannot yet hide a custom top-level sidebar item by
-permission, so a restricted user may see **Content** and then receive the clear
+public Admin extension API cannot yet hide custom top-level or nested sidebar
+items by permission, so a restricted user may still see **Content**, **News**,
+or **Discography** in that shell. Selecting a denied workspace shows the clear
 restricted-access page. That does not expose data; the page does not start its
 query and the backend independently rejects direct requests.
+
+A release with RBAC disabled can report the bootstrap script as pending. Medusa
+checks the script's feature predicate before inserting its migration record, so
+the skipped script remains available for the later approved activation.
 
 See [ADR 0006](docs/adr/0006-native-admin-rbac.md) for the complete permission
 matrix, rehearsal, activation, session-refresh, and rollback procedure.
