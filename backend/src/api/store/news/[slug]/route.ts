@@ -1,9 +1,13 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
+import { z } from "@medusajs/framework/zod"
 import { MedusaError } from "@medusajs/framework/utils"
-import { z } from "zod"
 
 import type NewsModuleService from "@/modules/news/service"
-import { serializeNewsEntry } from "@/modules/news/serializers"
+import {
+  type NewsEntryRecord,
+  serializeStoreNewsEntry,
+} from "@/modules/news/serializers"
+import { buildStoreNewsFilters } from "@/modules/news/store-visibility"
 
 type NewsService = InstanceType<typeof NewsModuleService>
 
@@ -15,18 +19,22 @@ export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const { slug } = slugParamSchema.parse(req.params)
+  const parsed = slugParamSchema.safeParse(req.params)
+  if (!parsed.success) {
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, "Invalid news slug.")
+  }
+  const { slug } = parsed.data
   const newsService = req.scope.resolve("news") as NewsService
 
   const entries = await newsService.listNewsEntries({
+    ...buildStoreNewsFilters(new Date()),
     slug,
-    status: "published",
   })
 
-  const entry = entries.at(0)
+  const entry = entries.at(0) as NewsEntryRecord | undefined
   if (!entry) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "News entry not found")
   }
 
-  res.status(200).json({ entry: serializeNewsEntry(entry) })
+  res.status(200).json({ entry: serializeStoreNewsEntry(entry) })
 }

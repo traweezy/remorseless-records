@@ -29,8 +29,18 @@ export const toOptionalDate = (value: string | null | undefined): Date | null =>
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-export const normalizeList = (values?: string[]): string[] =>
-  (values ?? []).map((value) => value.trim()).filter((value) => value.length > 0)
+export const normalizeList = (values?: string[]): string[] => {
+  const seen = new Set<string>()
+  return (values ?? []).flatMap((value) => {
+    const normalized = value.trim()
+    const key = normalized.toLocaleLowerCase("en-US")
+    if (!normalized || seen.has(key)) {
+      return []
+    }
+    seen.add(key)
+    return [normalized]
+  })
+}
 
 export const toNullableString = (
   value: string | null | undefined
@@ -88,51 +98,4 @@ export const buildSeo = (input: {
     seo_title: title ? `${title} · Remorseless Records` : null,
     seo_description: baseDescription || null,
   }
-}
-
-export const resolveUniqueSlug = async (
-  newsService: NewsService,
-  baseSlug: string,
-  excludeId?: string
-): Promise<string> => {
-  const normalizedBase = baseSlug.trim() || "news"
-  let candidate = normalizedBase
-  let suffix = 1
-
-  while (suffix < 50) {
-    const existing = await newsService.listNewsEntries({ slug: candidate })
-    const collision = existing.find((entry) => entry.id !== excludeId)
-    if (!collision) {
-      return candidate
-    }
-    candidate = `${normalizedBase}-${suffix}`
-    suffix += 1
-  }
-
-  return `${normalizedBase}-${Date.now()}`
-}
-
-export const resolvePublishedAt = ({
-  status,
-  publishedAt,
-  existing,
-}: {
-  status: string
-  publishedAt: string | null | undefined
-  existing?: Date | string | null
-}): Date | null => {
-  const existingDate = (() => {
-    if (!existing) {
-      return null
-    }
-    if (existing instanceof Date) {
-      return Number.isNaN(existing.getTime()) ? null : existing
-    }
-    return toOptionalDate(existing)
-  })()
-  const parsedPublishedAt = toOptionalDate(publishedAt)
-  if (status === "published") {
-    return parsedPublishedAt ?? existingDate ?? new Date()
-  }
-  return existingDate ?? null
 }

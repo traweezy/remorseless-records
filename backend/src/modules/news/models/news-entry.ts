@@ -13,14 +13,16 @@ const NewsEntry = model.define(
     content: model.text(),
     author: model.text().nullable(),
     status: model
-      .enum(["draft", "published", "archived"])
+      .enum(["draft", "scheduled", "published", "archived"])
       .default("draft"),
     published_at: model.dateTime().nullable(),
     tags: model.array().default([]),
     cover_url: model.text().nullable(),
+    cover_alt_text: model.text().nullable(),
     seo_title: model.text().nullable(),
     seo_description: model.text().nullable(),
     version: model.number().default(1),
+    archived_at: model.dateTime().nullable(),
   }
 )
 

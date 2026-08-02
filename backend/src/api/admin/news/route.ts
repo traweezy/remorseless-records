@@ -1,108 +1,70 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
+import { z } from "@medusajs/framework/zod"
 import { MedusaError } from "@medusajs/framework/utils"
-import { z } from "zod"
 
-import {
-  hasVisibleRichText,
-  sanitizeRichTextHtml,
-} from "@/lib/content/rich-text"
+import { withStableNewsOrder } from "@/modules/news/list-order"
+import type NewsModuleService from "@/modules/news/service"
 import {
   newsStatusValues,
+  type NewsEntryRecord,
   serializeNewsEntry,
 } from "@/modules/news/serializers"
-import {
-  buildSeo,
-  normalizeList,
-  resolveAdminUserName,
-  resolvePublishedAt,
-  resolveUniqueSlug,
-  slugify,
-  toNullableString,
-  type NewsService,
-} from "./utils"
+import { createNewsEntry, newsCreateSchema } from "./helpers"
+
+type NewsService = InstanceType<typeof NewsModuleService>
 
 const listQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).optional(),
-  offset: z.coerce.number().int().min(0).optional(),
-  order: z.enum(["published_at", "created_at", "title", "status"]).optional(),
+  archived: z.enum(["active", "archived", "all"]).optional(),
   direction: z.enum(["asc", "desc"]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+  order: z
+    .enum(["created_at", "published_at", "status", "title", "updated_at"])
+    .optional(),
+  q: z.string().trim().max(200).optional(),
   status: z.enum(newsStatusValues).optional(),
 })
-
-const entryBaseSchema = z.object({
-  title: z.string().trim().min(1),
-  excerpt: z.string().trim().optional().nullable(),
-  content: z.string().trim().min(1),
-  status: z.enum(newsStatusValues).optional(),
-  publishedAt: z.string().trim().optional().nullable(),
-  tags: z.array(z.string().trim()).optional(),
-  coverUrl: z.string().trim().url().optional().nullable(),
-})
-
-const toEntryPayload = async (
-  input: z.infer<typeof entryBaseSchema>,
-  newsService: NewsService,
-  req: MedusaRequest
-) => {
-  const resolvedStatus = input.status ?? "draft"
-  const baseSlug = slugify(input.title)
-  const slug = await resolveUniqueSlug(newsService, baseSlug)
-  const author = await resolveAdminUserName(req)
-  const excerpt = toNullableString(input.excerpt)
-  const content = sanitizeRichTextHtml(input.content.trim())
-  if (!hasVisibleRichText(content)) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "News content must include visible text"
-    )
-  }
-  const seo = buildSeo({ title: input.title, excerpt, content })
-
-  return {
-    title: input.title.trim(),
-    slug,
-    excerpt,
-    content,
-    author,
-    status: resolvedStatus,
-    published_at: resolvePublishedAt({
-      status: resolvedStatus,
-      publishedAt: input.publishedAt,
-    }),
-    tags: normalizeList(input.tags),
-    cover_url: toNullableString(input.coverUrl),
-    seo_title: seo.seo_title,
-    seo_description: seo.seo_description,
-  }
-}
 
 export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const { limit, offset, order, direction, status } = listQuerySchema.parse(
-    req.query
-  )
-  const newsService = req.scope.resolve("news") as NewsService
-
-  const take = limit ?? 100
-  const skip = offset ?? 0
-  const sortField = order ?? "published_at"
-  const sortDirection = (direction ?? "desc").toUpperCase() as "ASC" | "DESC"
-  const filter: Record<string, unknown> = {}
-
-  if (status) {
-    filter.status = status
+  const parsed = listQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Invalid news list query."
+    )
   }
+  const {
+    archived = "active",
+    direction,
+    limit,
+    offset,
+    order,
+    q,
+    status,
+  } = parsed.data
+  const take = limit ?? 25
+  const skip = offset ?? 0
+  const sortField = order ?? "updated_at"
+  const sortDirection = (direction ?? "desc").toUpperCase() as "ASC" | "DESC"
+  const filters: Record<string, unknown> = {}
+  if (q) filters.q = q
+  if (status && status !== "archived") filters.status = status
+  const archiveFilter = status === "archived" ? "archived" : archived
+  if (archiveFilter === "active") filters.archived_at = null
+  if (archiveFilter === "archived") filters.archived_at = { $ne: null }
 
-  const [entries, count] = await newsService.listAndCountNewsEntries(filter, {
+  const newsService = req.scope.resolve("news") as NewsService
+  const [entries, count] = await newsService.listAndCountNewsEntries(filters, {
     skip,
     take,
-    order: { [sortField]: sortDirection },
+    order: withStableNewsOrder({ [sortField]: sortDirection }),
   })
 
   res.status(200).json({
-    entries: entries.map(serializeNewsEntry),
+    entries: (entries as NewsEntryRecord[]).map(serializeNewsEntry),
     count,
     offset: skip,
     limit: take,
@@ -113,29 +75,14 @@ export const POST = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const parsed = entryBaseSchema.safeParse(req.body ?? {})
-
+  const parsed = newsCreateSchema.safeParse(req.body ?? {})
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid news payload"
+      "Invalid news payload."
     )
   }
-
   const newsService = req.scope.resolve("news") as NewsService
-  const createdResult = await newsService.createNewsEntries([
-    await toEntryPayload(parsed.data, newsService, req),
-  ])
-  const created = Array.isArray(createdResult)
-    ? createdResult[0]
-    : createdResult
-
-  if (!created) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Unable to create news entry"
-    )
-  }
-
-  res.status(201).json({ entry: serializeNewsEntry(created) })
+  const result = await createNewsEntry(req, newsService, parsed.data)
+  res.status(result.replayed ? 200 : 201).json(result)
 }

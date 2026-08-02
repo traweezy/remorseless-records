@@ -1,8 +1,14 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
-import { z } from "zod"
+import { z } from "@medusajs/framework/zod"
+import { MedusaError } from "@medusajs/framework/utils"
 
+import { withStableNewsOrder } from "@/modules/news/list-order"
 import type NewsModuleService from "@/modules/news/service"
-import { serializeNewsEntry } from "@/modules/news/serializers"
+import {
+  type NewsEntryRecord,
+  serializeStoreNewsEntry,
+} from "@/modules/news/serializers"
+import { buildStoreNewsFilters } from "@/modules/news/store-visibility"
 
 type NewsService = InstanceType<typeof NewsModuleService>
 
@@ -15,26 +21,33 @@ export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const { limit, offset } = listQuerySchema.parse(req.query)
+  const parsed = listQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Invalid news list query."
+    )
+  }
+  const { limit, offset } = parsed.data
   const newsService = req.scope.resolve("news") as NewsService
 
   const take = limit ?? 20
   const skip = offset ?? 0
 
   const [entries, count] = await newsService.listAndCountNewsEntries(
-    { status: "published" },
+    buildStoreNewsFilters(new Date()),
     {
       skip,
       take,
-      order: {
+      order: withStableNewsOrder({
         published_at: "DESC",
         created_at: "DESC",
-      },
+      }),
     }
   )
 
   res.status(200).json({
-    entries: entries.map(serializeNewsEntry),
+    entries: (entries as NewsEntryRecord[]).map(serializeStoreNewsEntry),
     count,
     offset: skip,
     limit: take,
