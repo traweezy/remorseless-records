@@ -1,10 +1,15 @@
-import { legacyCatalogAuthoringRedirect } from "./page"
+import {
+  legacyCatalogAuthoringRedirectTarget,
+  replaceLegacyCatalogAuthoringLocation,
+} from "./page"
 
 describe("legacy catalog authoring route", () => {
   it("redirects to the native Medusa product list without adding history", () => {
-    expect(legacyCatalogAuthoringRedirect).toEqual({
-      replace: true,
-      to: "/products",
-    })
+    const replace = jest.fn()
+
+    replaceLegacyCatalogAuthoringLocation({ replace })
+
+    expect(legacyCatalogAuthoringRedirectTarget).toBe("/app/products")
+    expect(replace).toHaveBeenCalledWith("/app/products")
   })
 })

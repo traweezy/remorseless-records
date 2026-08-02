@@ -12,7 +12,7 @@ import {
   Text,
   Textarea,
 } from "@medusajs/ui"
-import { Link, Navigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 
 import RichTextEditor from "../../components/rich-text-editor"
 import {
@@ -2227,14 +2227,28 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
 
 ProductAuthoringWorkspace.displayName = "ProductAuthoringWorkspace"
 
-export const legacyCatalogAuthoringRedirect = {
-  replace: true,
-  to: "/products",
-} as const
+export const legacyCatalogAuthoringRedirectTarget = "/app/products"
 
-const ProductAuthoringPage = memo(() => (
-  <Navigate {...legacyCatalogAuthoringRedirect} />
-))
+type ReplaceLocation = {
+  replace: (url: string) => void
+}
+
+export const replaceLegacyCatalogAuthoringLocation = (
+  location: ReplaceLocation,
+): void => {
+  location.replace(legacyCatalogAuthoringRedirectTarget)
+}
+
+const ProductAuthoringPage = memo(() => {
+  useEffect(() => {
+    const { location } = globalThis as unknown as {
+      location: ReplaceLocation
+    }
+    replaceLegacyCatalogAuthoringLocation(location)
+  }, [])
+
+  return null
+})
 
 ProductAuthoringPage.displayName = "ProductAuthoringPage"
 
