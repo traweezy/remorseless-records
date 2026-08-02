@@ -7,6 +7,7 @@ import {
   type DiscographyProductReader,
 } from "@/lib/discography/product-links"
 import type DiscographyModuleService from "@/modules/discography/service"
+import { withStableDiscographyOrder } from "@/modules/discography/list-order"
 import {
   discographySourceModeValues,
   discographyAvailabilityValues,
@@ -83,7 +84,7 @@ export const GET = async (
     await discographyService.listAndCountDiscographyEntries(filters, {
       skip,
       take,
-      order: { [sortField]: sortDirection },
+      order: withStableDiscographyOrder({ [sortField]: sortDirection }),
     })
   const records = entries as DiscographyEntryRecord[]
   const productsById = await loadDiscographyProductLinks(

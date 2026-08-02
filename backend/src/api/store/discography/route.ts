@@ -7,6 +7,7 @@ import {
   type DiscographyProductReader,
 } from "@/lib/discography/product-links"
 import type DiscographyModuleService from "@/modules/discography/service"
+import { withStableDiscographyOrder } from "@/modules/discography/list-order"
 import {
   type DiscographyEntryRecord,
   serializeDiscographyEntry,
@@ -47,11 +48,11 @@ export const GET = async (
       {
         skip,
         take,
-        order: {
+        order: withStableDiscographyOrder({
           release_year: "DESC",
           release_date: "DESC",
           created_at: "DESC",
-        },
+        }),
       }
     )
   const records = entries as DiscographyEntryRecord[]
