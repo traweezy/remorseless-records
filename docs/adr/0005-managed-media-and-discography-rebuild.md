@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-26
+- Amended: 2026-08-02
 - Scope: Big Cartel product images and storefront discography
 
 ## Context
@@ -39,20 +40,26 @@ not useful historical records.
 
 ### Discography
 
-- Export the current records for rollback, then replace all active
-  discography records.
-- The new discography is a projection of every active catalog product profile
-  whose controlled product kind is `music-release` and whose Medusa Product
-  exists.
-- Produce exactly one active discography record per Product ID.
-- Set source mode to `catalog_product`; resolve storefront URLs from the
-  current Product handle at read time.
-- The replacement command defaults to dry-run and requires explicit apply and
-  replacement confirmation flags.
-- The command validates all projected rows before changing any current row and
-  emits removed, created, skipped, and conflict manifests.
-- Existing discography-only covers are not media-migration inputs because the
-  records are deliberately replaced. This avoids retaining stale orphan media.
+- Project every published catalog profile with controlled product kind
+  `music-release` into exactly one `catalog_product` record keyed by stable
+  Product ID.
+- Keep `manual` records for historical releases that are not currently sold.
+  Manual records never contain or manufacture a customer purchase link.
+- Hydrate linked Products in one batch at each API boundary. Expose the current
+  handle only when the Product exists and is published; report missing and
+  unpublished link health explicitly.
+- Reconcile instead of replacing: update linked rows, create missing rows,
+  archive stale linked rows, and retain manual records. Preserve an explicit
+  operator archive across later catalog reconciliations.
+- Default the reconciliation command to dry-run and require the existing
+  explicit apply and confirmation flags before changing rows.
+- Validate the projection before writing and verify one linked row per
+  projected Product ID plus zero active stale linked rows afterward.
+- Make all interactive lifecycle changes optimistic-concurrency checked,
+  idempotent, serializable, actor-audited, and reversible through archive and
+  restore. Disable hard deletion.
+- Existing discography-only covers remain outside the product-media migration;
+  historical artwork is managed explicitly on the historical record.
 
 ## Operational sequence
 
@@ -85,7 +92,7 @@ control.
      --confirm-cutover=replace-big-cartel-runtime-media
    ```
 
-4. Review the exact current-to-catalog replacement plan, then replace
+4. Review the exact current-to-catalog reconciliation plan, then reconcile
    discography:
 
    ```bash
@@ -102,8 +109,10 @@ control.
 
 The storefront no longer depends on Big Cartel at runtime, image choices are
 based on actual rendered needs, and migration traffic is deliberately polite.
-Discography becomes deterministic and update/delete-aware instead of an
-append-only manual copy.
+Discography becomes deterministic and lifecycle-aware without sacrificing
+historical releases. Store Products remain authoritative for purchasable
+releases, stale Product links cannot become customer 404s, and operator changes
+are recoverable and audited.
 
 The prior database dump, JSON manifests, and media URL map must be retained
 outside version control through the rollback window.

@@ -1036,6 +1036,30 @@ for the card, 3DS, decline, response-loss, webhook, and browser-close matrices.
 
 ## Release preparation, storage, and health
 
+### Discography ownership and lifecycle
+
+Discography separates store inventory from label history. Published Products
+classified as `music-release` are the source of truth for purchasable releases;
+the Discography module links to their stable Product IDs and resolves the
+current handle only after confirming the Product is still published. Historical
+releases are independent records and intentionally have no purchase link.
+
+The custom Admin page uses server pagination, search, source and availability
+filters, and reversible Active/Archived views. Product-linked rows direct the
+operator back to Products instead of duplicating editable title, artist, format,
+or artwork fields. Historical records use a focused create form and edit drawer.
+All writes require an expected version and idempotency key, run in a serializable
+transaction, and leave an operation audit record; hard deletion is disabled.
+
+`pnpm --filter backend discography:build` performs a dry reconciliation plan.
+The confirmed `--apply` form updates or creates catalog-linked rows, archives
+stale links, preserves historical records, and writes a completion report under
+`~/.local/share/remorseless-records/discography-rebuild/`. The Store API returns
+active records only and batches Product hydration, so a deleted or unpublished
+Product remains readable as label history without sending a customer to a 404.
+The Storefront revalidates this read model every 60 seconds to bound lifecycle
+staleness without fetching the full Discography for every visitor.
+
 Application startup is intentionally read-only. It does not migrate or seed
 the database, discover or persist secrets, change bucket policy, or rebuild
 search. Railway executes the fail-closed backend release command before

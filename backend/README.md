@@ -382,10 +382,32 @@ available for a bounded staging test but is rejected for cutover. Do not remove
 Big Cartel from Storefront image/CSP allow-lists until the cutover report has
 zero unresolved sources.
 
-Discography is not hand-maintained historical data. It is an exact projection
-of every published custom catalog profile whose controlled product type is
-`music-release`. The command validates the complete projection before a
-serializable replacement and verifies one active row per Product ID afterward:
+Discography has two explicit sources. Every published custom catalog profile
+whose controlled product type is `music-release` produces one store-linked
+record. Historical releases that are not currently sold are independent manual
+records. Store-linked records use the stable Product ID; the customer API
+hydrates all referenced Products in one batch and exposes a handle only while
+the current Product exists and is published. A missing or unpublished Product
+therefore leaves a useful discography record without creating a broken purchase
+link.
+
+The Storefront cache revalidates this read model every 60 seconds, bounding the
+customer-visible lifetime of a recently unpublished or archived link while
+avoiding one large Discography fetch per visitor.
+
+The Admin list is server-paginated, searchable, filterable, and sortable.
+Store-linked releases are read-only there because Products remain their source
+of truth. Operators can create and edit historical records, and can archive or
+restore either source. Hard deletion is disabled. Each mutation requires an
+expected version and UUID idempotency key, runs in a serializable transaction,
+and records the actor, command hash, and result in `discography_operations`.
+
+The reconciliation command validates the complete Product projection before a
+serializable write. It updates existing linked rows, creates missing rows,
+archives linked rows no longer present in the projection, and retains every
+manual record. An operator-archived linked record is not silently restored by a
+later reconciliation. The final parity check requires exactly one linked row
+per projected Product ID and no active stale linked rows:
 
 ```bash
 pnpm --filter backend discography:build
@@ -394,10 +416,12 @@ pnpm --filter backend discography:build -- \
   --confirm-replace=replace-discography-from-catalog
 ```
 
-The replacement plan and completion report default to
-`~/.local/share/remorseless-records/discography-rebuild/`. Existing records are
-included in the pre-change plan for rollback and are not downloaded as managed
-media because they are intentionally deleted.
+The reconciliation plan and completion report default to
+`~/.local/share/remorseless-records/discography-rebuild/`. The legacy
+`--confirm-replace` flag name remains for command compatibility, but the command
+does not delete all records. Reports include created, updated, archived, and
+retained-manual counts. Existing discography-only covers are not downloaded by
+the product-media migration.
 
 ## Quality commands
 
