@@ -40,6 +40,15 @@ regexes = [
 ]
 paths = ['''^backend/src/api/admin/discography/helpers\.test\.ts$''']
 
+[[rules.allowlists]]
+description = "Ignore synthetic News contract idempotency fixtures"
+condition = "AND"
+regexTarget = "secret"
+regexes = [
+  '''^(d8a102f4-c0da-4f50-b846-108503e26488|b650e3d2-dccc-49f1-a55e-0dc6da2b7fd5)$''',
+]
+paths = ['''^backend/src/api/admin/news/contracts\.test\.ts$''']
+
 [[rules]]
 id = "stripe-access-token"
 
