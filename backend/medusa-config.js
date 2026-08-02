@@ -27,6 +27,7 @@ import {
   MEILISEARCH_ADMIN_KEY
 } from './src/lib/constants';
 import productSearchTransformer from './src/lib/meilisearch/product-transformer';
+import { resolveAdminRbacModuleConfig } from './src/lib/admin-rbac-config';
 import { resolveObjectStorageConfig } from './src/lib/storage/config';
 import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
 
@@ -133,6 +134,10 @@ const medusaConfig = {
     }),
   },
   modules: [
+    // Medusa 2.18 discovers its core RBAC flag after evaluating this config in
+    // migration commands. Override the default declaration explicitly so an
+    // enabled release cannot skip the RBAC schema and bootstrap silently.
+    resolveAdminRbacModuleConfig(process.env.MEDUSA_FF_RBAC),
     {
       key: Modules.FULFILLMENT,
       resolve: '@medusajs/fulfillment',
