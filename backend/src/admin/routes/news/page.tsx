@@ -1,918 +1,646 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { ArchiveBox, PencilSquare, Trash } from "@medusajs/icons"
 import {
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react"
+import { defineRouteConfig } from "@medusajs/admin-sdk"
+import { ArchiveBox } from "@medusajs/icons"
+import {
+  Alert,
   Button,
   Container,
-  FocusModal,
-  Heading,
   Input,
   Label,
-  Table,
+  Select,
+  Tabs,
   Text,
-  Textarea,
+  toast,
+  useDataTable,
+  type DataTablePaginationState,
 } from "@medusajs/ui"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import RichTextEditor from "../../components/rich-text-editor"
+import { ConfirmAction } from "../../components/confirm-action"
+import {
+  AdminPageHeader,
+  AdminSingleColumnLayout,
+} from "../../components/admin-page"
+import { AdminRetryState } from "../../components/admin-retry-state"
+import { NewsEditor } from "../../features/news/news-editor"
+import type { NewsPublicationIntent } from "../../features/news/news-form-state"
+import {
+  createNewsEntry,
+  listNewsEntries,
+  updateNewsEntry,
+  updateNewsLifecycle,
+  type NewsEntry,
+  type NewsWriteInput,
+  type NewsWriteStatus,
+} from "../../features/news/news-query"
+import {
+  NewsCollection,
+  useNewsColumns,
+} from "../../features/news/news-table"
+import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 
-const statusOptions = [
-  { value: "draft", label: "Draft" },
-  { value: "published", label: "Published" },
-  { value: "archived", label: "Archived" },
-] as const
-
-type NewsStatus = (typeof statusOptions)[number]["value"]
-
-type SortField = "published_at" | "created_at" | "title" | "status"
-type SortDirection = "asc" | "desc"
-
-type SortOption = {
-  value: `${SortField}:${SortDirection}`
-  label: string
-  field: SortField
-  direction: SortDirection
-}
+const PAGE_SIZE = 25
+const QUERY_KEY = ["news"] as const
 
 const sortOptions = [
   {
+    direction: "desc",
+    label: "Recently updated",
+    order: "updated_at",
+    value: "updated_at:desc",
+  },
+  {
+    direction: "desc",
+    label: "Publication date (newest)",
+    order: "published_at",
     value: "published_at:desc",
-    label: "Published (newest)",
-    field: "published_at",
-    direction: "desc",
   },
   {
+    direction: "asc",
+    label: "Publication date (oldest)",
+    order: "published_at",
     value: "published_at:asc",
-    label: "Published (oldest)",
-    field: "published_at",
-    direction: "asc",
   },
   {
+    direction: "desc",
+    label: "Recently created",
+    order: "created_at",
     value: "created_at:desc",
-    label: "Created (newest)",
-    field: "created_at",
-    direction: "desc",
   },
   {
+    direction: "asc",
+    label: "Headline A–Z",
+    order: "title",
     value: "title:asc",
-    label: "Title (A-Z)",
-    field: "title",
-    direction: "asc",
   },
   {
-    value: "title:desc",
-    label: "Title (Z-A)",
-    field: "title",
     direction: "desc",
+    label: "Headline Z–A",
+    order: "title",
+    value: "title:desc",
   },
-  {
-    value: "status:asc",
-    label: "Status (A-Z)",
-    field: "status",
-    direction: "asc",
-  },
-] satisfies readonly SortOption[]
+] as const
 
 type SortValue = (typeof sortOptions)[number]["value"]
-type StatusFilter = NewsStatus | "all"
+type ArchiveView = "active" | "archived"
+type StatusFilter = NewsWriteStatus | "all"
 
-type NewsEntry = {
-  id: string
-  title: string
-  slug: string
-  excerpt: string | null
-  content: string
-  author: string | null
-  status: NewsStatus
-  publishedAt: string | null
-  tags: string[]
-  coverUrl: string | null
-  createdAt?: string | null
-  updatedAt?: string | null
+const statusOptions: ReadonlyArray<{ label: string; value: StatusFilter }> = [
+  { label: "All statuses", value: "all" },
+  { label: "Draft", value: "draft" },
+  { label: "Scheduled", value: "scheduled" },
+  { label: "Published", value: "published" },
+]
+
+const isArchiveView = (value: string): value is ArchiveView =>
+  value === "active" || value === "archived"
+
+const isStatusFilter = (value: string): value is StatusFilter =>
+  statusOptions.some((option) => option.value === value)
+
+const isSortValue = (value: string): value is SortValue =>
+  sortOptions.some((option) => option.value === value)
+
+type BrowserEnvironment = typeof globalThis & {
+  requestAnimationFrame?: (callback: () => void) => number
 }
 
-type NewsFormState = {
-  title: string
-  excerpt: string
-  content: string
-  author: string
-  status: NewsStatus
-  publishedAt: string
-  tags: string[]
-  coverUrl: string
+const restoreFocus = (target: HTMLButtonElement | null): void => {
+  const browser = globalThis as BrowserEnvironment
+  browser.requestAnimationFrame?.(() => {
+    const focusTarget = target as unknown as { focus?: () => void } | null
+    focusTarget?.focus?.()
+  })
 }
 
-type ValueChangeEvent = {
-  target?: EventTarget | null
-  currentTarget?: EventTarget | null
-}
-
-const emptyForm: NewsFormState = {
-  title: "",
-  excerpt: "",
-  content: "",
-  author: "",
-  status: "draft",
-  publishedAt: "",
-  tags: [],
-  coverUrl: "",
-}
-
-const readValue = (event: ValueChangeEvent): string => {
-  const target = event.currentTarget ?? event.target
-  const value = (target as { value?: unknown } | null)?.value
-  return typeof value === "string" ? value : ""
-}
-
-const toDateTimeInput = (value: string | null | undefined): string => {
-  if (!value) {
-    return ""
+const successMessage = (
+  mode: "create" | "edit",
+  intent: NewsPublicationIntent,
+  previousStatus?: NewsEntry["status"],
+): string => {
+  if (intent === "publish") {
+    if (mode === "create") {
+      return "News post published"
+    }
+    return previousStatus === "published"
+      ? "Published post updated"
+      : "News post published"
   }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ""
+  if (intent === "schedule") {
+    if (mode === "create") {
+      return "News post scheduled"
+    }
+    return previousStatus === "scheduled" ? "Schedule updated" : "News post scheduled"
   }
-  const offset = date.getTimezoneOffset() * 60000
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+  if (mode === "create") {
+    return "Draft saved"
+  }
+  return previousStatus === "draft" ? "Draft updated" : "Post moved to drafts"
 }
 
-const normalizeList = (values: string[]): string[] =>
-  values
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-    .filter(
-      (value, index, array) =>
-        array.findIndex(
-          (item) => item.toLowerCase() === value.toLowerCase()
-        ) === index
-    )
+const NewsAdminPage = memo(() => {
+  const [view, setView] = useState<ArchiveView>("active")
+  const [pageIndex, setPageIndex] = useState(0)
+  const [searchInput, setSearchInput] = useState("")
+  const [query, setQuery] = useState("")
+  const [status, setStatus] = useState<StatusFilter>("all")
+  const [sortValue, setSortValue] = useState<SortValue>("updated_at:desc")
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<NewsEntry | null>(null)
+  const [lifecycleEntry, setLifecycleEntry] = useState<NewsEntry | null>(null)
+  const lifecycleIdempotencyKeyRef = useRef(crypto.randomUUID())
+  const createTriggerRef = useRef<HTMLButtonElement>(null)
+  const formTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const lifecycleTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const queryClient = useQueryClient()
 
-const extractErrorMessage = async (
-  response: Response
-): Promise<string | null> => {
-  const data = await response.json().catch(() => null)
-  if (!data || typeof data !== "object") {
-    return null
-  }
-  const message = (data as { message?: unknown }).message
-  if (typeof message === "string") {
-    return message
-  }
-  const error = (data as { error?: unknown }).error
-  if (typeof error === "string") {
-    return error
-  }
-  return null
-}
-
-const NewsAdminPage = () => {
-  const [entries, setEntries] = useState<NewsEntry[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [formOpen, setFormOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [formState, setFormState] = useState<NewsFormState>(emptyForm)
-  const [customTag, setCustomTag] = useState("")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [sortValue, setSortValue] = useState<SortValue>("published_at:desc")
-  const [adminName, setAdminName] = useState("")
-  const [uploadingCover, setUploadingCover] = useState(false)
-
-  const fetchEntries = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(
-        "/admin/news?limit=200&order=published_at&direction=desc",
+  const sort =
+    sortOptions.find((option) => option.value === sortValue) ?? sortOptions[0]
+  const offset = pageIndex * PAGE_SIZE
+  const pageQuery = useQuery({
+    queryFn: ({ signal }) =>
+      listNewsEntries(
         {
-          credentials: "include",
-        }
-      )
-      if (!response.ok) {
-        throw new Error(`Failed to load news (${response.status})`)
-      }
-      const data = (await response.json()) as { entries: NewsEntry[] }
-      setEntries(data.entries ?? [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load news")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void fetchEntries()
-  }, [fetchEntries])
-
-  useEffect(() => {
-    let isActive = true
-    const loadAdminUser = async () => {
-      try {
-        const response = await fetch("/admin/users/me", {
-          credentials: "include",
-        })
-        if (!response.ok) {
-          return
-        }
-        const payload = (await response.json()) as {
-          user?: {
-            first_name?: string | null
-            last_name?: string | null
-            email?: string | null
-          }
-        }
-        const user = payload.user
-        if (!user) {
-          return
-        }
-        const first = (user.first_name ?? "").trim()
-        const last = (user.last_name ?? "").trim()
-        const fullName = `${first} ${last}`.trim()
-        const resolvedName = fullName || (user.email ?? "").trim()
-        if (isActive && resolvedName) {
-          setAdminName(resolvedName)
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    void loadAdminUser()
-
-    return () => {
-      isActive = false
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!adminName) {
-      return
-    }
-    setFormState((prev) =>
-      prev.author ? prev : { ...prev, author: adminName }
-    )
-  }, [adminName])
-
-  const resetForm = useCallback(() => {
-    setEditingId(null)
-    setFormState(emptyForm)
-    setCustomTag("")
-    setFormOpen(false)
-  }, [])
-
-  const openCreate = useCallback(() => {
-    setEditingId(null)
-    setFormState({ ...emptyForm, author: adminName })
-    setCustomTag("")
-    setFormOpen(true)
-  }, [adminName])
-
-  const openEdit = useCallback((entry: NewsEntry) => {
-    setEditingId(entry.id)
-    setFormState({
-      title: entry.title,
-      excerpt: entry.excerpt ?? "",
-      content: entry.content ?? "",
-      author: entry.author ?? adminName,
-      status: entry.status,
-      publishedAt: toDateTimeInput(entry.publishedAt),
-      tags: entry.tags ?? [],
-      coverUrl: entry.coverUrl ?? "",
-    })
-    setCustomTag("")
-    setFormOpen(true)
-  }, [adminName])
-
-  const updateField = useCallback(
-    (field: keyof NewsFormState) =>
-      (value: NewsFormState[typeof field]) => {
-        setFormState((prev) => ({ ...prev, [field]: value }))
-      },
-    []
-  )
-
-  const handleTitleChange = useCallback((value: string) => {
-    setFormState((prev) => ({ ...prev, title: value }))
-  }, [])
-
-  const handleStatusChange = useCallback((value: NewsStatus) => {
-    setFormState((prev) => {
-      const publishedAt =
-        value === "published" && !prev.publishedAt
-          ? toDateTimeInput(new Date().toISOString())
-          : prev.publishedAt
-      return { ...prev, status: value, publishedAt }
-    })
-  }, [])
-
-  const addTag = useCallback(() => {
-    const trimmed = customTag.trim()
-    if (!trimmed) {
-      return
-    }
-    setFormState((prev) => ({
-      ...prev,
-      tags: normalizeList([...prev.tags, trimmed]),
-    }))
-    setCustomTag("")
-  }, [customTag])
-
-  const removeTag = useCallback((value: string) => {
-    setFormState((prev) => ({
-      ...prev,
-      tags: prev.tags.filter(
-        (tag) => tag.toLowerCase() !== value.toLowerCase()
+          archived: view,
+          direction: sort.direction,
+          limit: PAGE_SIZE,
+          offset,
+          order: sort.order,
+          q: query,
+          status: view === "archived" ? "all" : status,
+        },
+        signal,
       ),
-    }))
-  }, [])
+    queryKey: [
+      ...QUERY_KEY,
+      view,
+      status,
+      sortValue,
+      query,
+      offset,
+    ],
+    retry: false,
+    staleTime: 10_000,
+  })
+  const page = pageQuery.data ?? {
+    count: 0,
+    entries: [],
+    limit: PAGE_SIZE,
+    offset,
+  }
 
-  const handleSubmit = useCallback(async () => {
-    setError(null)
-    if (!formState.title.trim() || !formState.content.trim()) {
-      setError("Title and content are required.")
+  const invalidateNews = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+  }, [queryClient])
+  const createMutation = useMutation({
+    mutationFn: ({
+      idempotencyKey,
+      values,
+    }: {
+      idempotencyKey: string
+      values: NewsWriteInput
+    }) => createNewsEntry(values, idempotencyKey),
+    onSuccess: async () => {
+      setCreateOpen(false)
+      await invalidateNews()
+    },
+  })
+  const updateMutation = useMutation({
+    mutationFn: ({
+      entry,
+      idempotencyKey,
+      values,
+    }: {
+      entry: NewsEntry
+      idempotencyKey: string
+      values: NewsWriteInput
+    }) => updateNewsEntry(entry, values, idempotencyKey),
+    onSuccess: async () => {
+      setEditingEntry(null)
+      await invalidateNews()
+    },
+  })
+  const lifecycleMutation = useMutation({
+    mutationFn: ({
+      entry,
+      idempotencyKey,
+    }: {
+      entry: NewsEntry
+      idempotencyKey: string
+    }) =>
+      updateNewsLifecycle(
+        entry,
+        entry.archivedAt ? "restore" : "archive",
+        idempotencyKey,
+      ),
+    onSuccess: async (_result, variables) => {
+      const restored = Boolean(variables.entry.archivedAt)
+      const focusTarget = lifecycleTriggerRef.current
+      setLifecycleEntry(null)
+      toast.success(restored ? "News post restored" : "News post archived")
+      if (page.entries.length === 1 && pageIndex > 0) {
+        setPageIndex((current) => current - 1)
+      }
+      await invalidateNews()
+      restoreFocus(focusTarget)
+    },
+  })
+
+  const resetPage = useCallback(() => setPageIndex(0), [])
+  const handleViewChange = useCallback((value: string) => {
+    if (isArchiveView(value)) {
+      setView(value)
+      if (value === "archived") {
+        setStatus("all")
+      }
+      setPageIndex(0)
+    }
+  }, [])
+  const handleStatusChange = useCallback((value: string) => {
+    if (isStatusFilter(value)) {
+      setStatus(value)
+      setPageIndex(0)
+    }
+  }, [])
+  const handleSortChange = useCallback((value: string) => {
+    if (isSortValue(value)) {
+      setSortValue(value)
+      setPageIndex(0)
+    }
+  }, [])
+  const handleSearchChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = (event.currentTarget as unknown as { value?: unknown }).value
+      setSearchInput(typeof value === "string" ? value : "")
+    },
+    [],
+  )
+  const applySearch = useCallback(() => {
+    setQuery(searchInput.trim())
+    resetPage()
+  }, [resetPage, searchInput])
+  const handleSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault()
+        applySearch()
+      }
+    },
+    [applySearch],
+  )
+  const clearSearch = useCallback(() => {
+    setSearchInput("")
+    setQuery("")
+    resetPage()
+  }, [resetPage])
+  const clearAllControls = useCallback(() => {
+    setSearchInput("")
+    setQuery("")
+    setStatus("all")
+    setSortValue("updated_at:desc")
+    resetPage()
+  }, [resetPage])
+  const handleCreateOpen = useCallback(() => {
+    createMutation.reset()
+    setCreateOpen(true)
+  }, [createMutation])
+  const handleCreateClose = useCallback(() => {
+    if (!createMutation.isPending) {
+      setCreateOpen(false)
+      createMutation.reset()
+      restoreFocus(createTriggerRef.current)
+    }
+  }, [createMutation])
+  const handleEdit = useCallback(
+    (entry: NewsEntry, trigger: HTMLButtonElement) => {
+      formTriggerRef.current = trigger
+      updateMutation.reset()
+      setEditingEntry(entry)
+    },
+    [updateMutation],
+  )
+  const handleEditClose = useCallback(() => {
+    if (!updateMutation.isPending) {
+      setEditingEntry(null)
+      updateMutation.reset()
+      restoreFocus(formTriggerRef.current)
+    }
+  }, [updateMutation])
+  const handleLifecycle = useCallback(
+    (entry: NewsEntry, trigger: HTMLButtonElement) => {
+      lifecycleTriggerRef.current = trigger
+      lifecycleIdempotencyKeyRef.current = crypto.randomUUID()
+      lifecycleMutation.reset()
+      setLifecycleEntry(entry)
+    },
+    [lifecycleMutation],
+  )
+  const handleLifecycleCancel = useCallback(() => {
+    if (!lifecycleMutation.isPending) {
+      const focusTarget = lifecycleTriggerRef.current
+      setLifecycleEntry(null)
+      lifecycleMutation.reset()
+      restoreFocus(focusTarget)
+    }
+  }, [lifecycleMutation])
+  const handleLifecycleConfirm = useCallback(async () => {
+    if (!lifecycleEntry || lifecycleMutation.isPending) {
       return
     }
-
-    const title = formState.title.trim()
-    const publishedAtRaw = formState.publishedAt.trim()
-    const publishedAt = publishedAtRaw
-      ? new Date(publishedAtRaw).toISOString()
-      : null
-
-    const payload = {
-      title,
-      excerpt: formState.excerpt.trim() || null,
-      content: formState.content.trim(),
-      status: formState.status,
-      publishedAt,
-      tags: normalizeList(formState.tags),
-      coverUrl: formState.coverUrl.trim() || null,
-    }
-
-    const url = editingId ? `/admin/news/${editingId}` : "/admin/news"
-    const method = editingId ? "PUT" : "POST"
-
     try {
-      const response = await fetch(url, {
-        method,
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      await lifecycleMutation.mutateAsync({
+        entry: lifecycleEntry,
+        idempotencyKey: lifecycleIdempotencyKeyRef.current,
       })
-      if (!response.ok) {
-        const message =
-          (await extractErrorMessage(response)) ??
-          `Failed to ${editingId ? "update" : "create"} entry`
-        throw new Error(message)
-      }
-      await fetchEntries()
-      resetForm()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save entry")
+    } catch {
+      // Keep the confirmation and idempotency key available for an exact retry.
     }
-  }, [editingId, fetchEntries, formState, resetForm])
-
-  const handleCoverUpload = useCallback(
-    async (event: ValueChangeEvent) => {
-      const target = event.currentTarget ?? event.target
-      const input = target as
-        | { files?: { 0?: unknown } | null; value?: string }
-        | null
-      const file = input?.files?.[0]
-      if (!file) {
+  }, [lifecycleEntry, lifecycleMutation])
+  const handleCreateSubmit = useCallback(
+    async (
+      values: NewsWriteInput,
+      idempotencyKey: string,
+      intent: NewsPublicationIntent,
+    ) => {
+      await createMutation.mutateAsync({ idempotencyKey, values })
+      toast.success(successMessage("create", intent))
+    },
+    [createMutation],
+  )
+  const handleUpdateSubmit = useCallback(
+    async (
+      values: NewsWriteInput,
+      idempotencyKey: string,
+      intent: NewsPublicationIntent,
+    ) => {
+      if (!editingEntry) {
         return
       }
-      setUploadingCover(true)
-      setError(null)
-      try {
-        const formData = new FormData()
-        formData.append("files", file as Blob)
-        const response = await fetch("/admin/managed-uploads", {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        })
-        if (!response.ok) {
-          throw new Error("Upload failed")
-        }
-        const payload = (await response.json()) as {
-          files?: Array<{ url?: string | null }>
-        }
-        const url = payload.files?.[0]?.url
-        if (!url) {
-          throw new Error("Upload returned no file URL")
-        }
-        setFormState((prev) => ({ ...prev, coverUrl: url }))
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Upload failed")
-      } finally {
-        setUploadingCover(false)
-        if (input) {
-          input.value = ""
-        }
-      }
+      await updateMutation.mutateAsync({
+        entry: editingEntry,
+        idempotencyKey,
+        values,
+      })
+      toast.success(successMessage("edit", intent, editingEntry.status))
     },
-    []
+    [editingEntry, updateMutation],
   )
+  const handleRetry = useCallback(() => {
+    void pageQuery.refetch()
+  }, [pageQuery])
 
-  const handleDelete = useCallback(
-    async (entry: NewsEntry) => {
-      const confirmFn =
-        typeof globalThis !== "undefined" &&
-        typeof (globalThis as { confirm?: (message: string) => boolean })
-          .confirm === "function"
-          ? (globalThis as unknown as { confirm: (message: string) => boolean })
-              .confirm
-          : null
-      const confirmDelete = confirmFn
-        ? confirmFn(`Delete "${entry.title}"? This cannot be undone.`)
-        : false
-      if (!confirmDelete) {
-        return
-      }
-      setError(null)
-      try {
-        const response = await fetch(`/admin/news/${entry.id}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
-        if (!response.ok) {
-          throw new Error("Failed to delete entry")
-        }
-        await fetchEntries()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete entry")
-      }
+  const busyEntryId = lifecycleMutation.isPending
+    ? (lifecycleMutation.variables?.entry.id ?? null)
+    : null
+  const columns = useNewsColumns({
+    busyEntryId,
+    onEdit: handleEdit,
+    onLifecycle: handleLifecycle,
+  })
+  const pagination = useMemo<DataTablePaginationState>(
+    () => ({ pageIndex, pageSize: PAGE_SIZE }),
+    [pageIndex],
+  )
+  const handlePaginationChange = useCallback(
+    (next: DataTablePaginationState) => setPageIndex(next.pageIndex),
+    [],
+  )
+  const dataTable = useDataTable({
+    columns,
+    data: page.entries,
+    getRowId: (entry) => entry.id,
+    isLoading: pageQuery.isPending,
+    pagination: {
+      onPaginationChange: handlePaginationChange,
+      state: pagination,
     },
-    [fetchEntries]
-  )
-
-  const statusLabel = useMemo(
-    () =>
-      statusOptions.reduce<Record<string, string>>((acc, option) => {
-        acc[option.value] = option.label
-        return acc
-      }, {}),
-    []
-  )
-
-  const collator = useMemo(
-    () => new Intl.Collator("en", { numeric: true, sensitivity: "base" }),
-    []
-  )
-
-  const sortedEntries = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase()
-    const matchesSearch = (entry: NewsEntry): boolean => {
-      if (!normalizedQuery) {
-        return true
-      }
-      const haystack = [
-        entry.title,
-        entry.slug,
-        entry.author ?? "",
-        entry.excerpt ?? "",
-        entry.tags.join(" "),
-      ]
-        .join(" ")
-        .toLowerCase()
-      return haystack.includes(normalizedQuery)
-    }
-
-    const matchesStatus = (entry: NewsEntry): boolean =>
-      statusFilter === "all" ? true : entry.status === statusFilter
-
-    const compareText = (left?: string | null, right?: string | null): number => {
-      if (!left && !right) {
-        return 0
-      }
-      if (!left) {
-        return 1
-      }
-      if (!right) {
-        return -1
-      }
-      return collator.compare(left, right)
-    }
-
-    const compareDate = (
-      left?: string | null,
-      right?: string | null
-    ): number => {
-      const leftValue = left ? new Date(left).getTime() : Number.NaN
-      const rightValue = right ? new Date(right).getTime() : Number.NaN
-      const leftValid = Number.isFinite(leftValue)
-      const rightValid = Number.isFinite(rightValue)
-      if (!leftValid && !rightValid) {
-        return 0
-      }
-      if (!leftValid) {
-        return 1
-      }
-      if (!rightValid) {
-        return -1
-      }
-      return leftValue - rightValue
-    }
-
-    const filtered = entries.filter(
-      (entry) => matchesSearch(entry) && matchesStatus(entry)
-    )
-
-    const defaultSort = sortOptions[0]
-    if (!defaultSort) {
-      return filtered
-    }
-    const currentSort =
-      sortOptions.find((option) => option.value === sortValue) ?? defaultSort
-
-    const sorted = [...filtered].sort((left, right) => {
-      let comparison = 0
-      switch (currentSort.field) {
-        case "created_at":
-          comparison = compareDate(left.createdAt, right.createdAt)
-          break
-        case "title":
-          comparison = compareText(left.title, right.title)
-          break
-        case "status":
-          comparison = compareText(left.status, right.status)
-          break
-        case "published_at":
-        default:
-          comparison = compareDate(left.publishedAt, right.publishedAt)
-          break
-      }
-
-      if (comparison === 0) {
-        comparison = compareText(left.title, right.title)
-      }
-
-      return currentSort.direction === "asc" ? comparison : -comparison
-    })
-
-    return sorted
-  }, [collator, entries, searchQuery, sortValue, statusFilter])
-
-  const hasActiveFilters = useMemo(
-    () => searchQuery.trim().length > 0 || statusFilter !== "all",
-    [searchQuery, statusFilter]
-  )
-
-  const dateFormatter = useMemo(
-    () => new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }),
-    []
-  )
+    rowCount: page.count,
+  })
+  const filtered = Boolean(query || status !== "all")
+  const countLabel = `${page.count} ${page.count === 1 ? "post" : "posts"}`
+  const pageError = pageQuery.error
+    ? getAdminRequestErrorMessage(pageQuery.error, "Unable to load news posts.")
+    : null
+  const createError = createMutation.error
+    ? getAdminRequestErrorMessage(createMutation.error, "Unable to save the post.")
+    : null
+  const updateError = updateMutation.error
+    ? getAdminRequestErrorMessage(updateMutation.error, "Unable to update the post.")
+    : null
+  const lifecycleError = lifecycleMutation.error
+    ? getAdminRequestErrorMessage(
+        lifecycleMutation.error,
+        "Unable to update this post.",
+      )
+    : null
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <Container className="flex items-center justify-between">
-        <div>
-          <Heading level="h1">News</Heading>
-          <Text size="small" className="text-ui-fg-subtle">
-            Manage news posts for the public newsroom page.
-          </Text>
-        </div>
-        <Button type="button" onClick={openCreate}>
-          Add post
-        </Button>
-      </Container>
-
-      {error ? (
-        <Container>
-          <Text size="small" className="text-ui-fg-error">
-            {error}
-          </Text>
-        </Container>
-      ) : null}
-
-      <Container className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-1 flex-col gap-2">
-            <Label htmlFor="news-search" className="sr-only">
-              Search
-            </Label>
-            <Input
-              id="news-search"
-              placeholder="Search posts, authors, tags"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(readValue(event))}
-            />
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Showing {sortedEntries.length} of {entries.length}
-            </Text>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Label htmlFor="news-sort" className="sr-only">
-              Sort
-            </Label>
-            <select
-              id="news-sort"
-              value={sortValue}
-              onChange={(event) =>
-                setSortValue(readValue(event) as SortValue)
-              }
-              className="min-h-9 rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(readValue(event) as StatusFilter)
-              }
-              className="min-h-9 rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-            >
-              <option value="all">All status</option>
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {hasActiveFilters ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setSearchQuery("")
-                  setStatusFilter("all")
-                }}
-              >
-                Clear filters
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </Container>
-
-      <Container className="overflow-hidden">
-        <Table>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell>Title</Table.HeaderCell>
-              <Table.HeaderCell>Status</Table.HeaderCell>
-              <Table.HeaderCell>Author</Table.HeaderCell>
-              <Table.HeaderCell>Published</Table.HeaderCell>
-              <Table.HeaderCell>Tags</Table.HeaderCell>
-              <Table.HeaderCell className="text-right">Actions</Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {loading ? (
-              <Table.Row>
-                <Table.Cell>Loading…</Table.Cell>
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-              </Table.Row>
-            ) : sortedEntries.length ? (
-              sortedEntries.map((entry) => (
-                <Table.Row key={entry.id}>
-                  <Table.Cell>
-                    <div className="flex flex-col gap-1">
-                      <Text size="small" weight="plus">
-                        {entry.title}
-                      </Text>
-                      <Text size="xsmall" className="text-ui-fg-subtle">
-                        /news/{entry.slug}
-                      </Text>
-                    </div>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">
-                      {statusLabel[entry.status] ?? entry.status}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">{entry.author ?? "—"}</Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">
-                      {entry.publishedAt
-                        ? dateFormatter.format(new Date(entry.publishedAt))
-                        : "—"}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">
-                      {entry.tags.length ? entry.tags.join(", ") : "—"}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        size="small"
-                        variant="secondary"
-                        onClick={() => openEdit(entry)}
-                      >
-                        <PencilSquare />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="small"
-                        variant="secondary"
-                        onClick={() => handleDelete(entry)}
-                      >
-                        <Trash />
-                      </Button>
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
-              ))
-            ) : (
-              <Table.Row>
-                <Table.Cell>
-                  <Text size="small">
-                    {hasActiveFilters
-                      ? "No entries match the current filters."
-                      : "No news posts yet."}
-                  </Text>
-                </Table.Cell>
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-              </Table.Row>
-            )}
-          </Table.Body>
-        </Table>
-      </Container>
-
-      <FocusModal
-        open={formOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            resetForm()
+    <AdminSingleColumnLayout>
+      <Container>
+        <AdminPageHeader
+          actions={
+            <Button onClick={handleCreateOpen} ref={createTriggerRef} type="button">
+              Create post
+            </Button>
           }
-        }}
-      >
-        <FocusModal.Content className="max-w-5xl sm:inset-y-8 sm:inset-x-1/2 sm:-translate-x-1/2 sm:w-full">
-          <FocusModal.Header>
-            <div className="flex flex-col gap-1">
-              <FocusModal.Title>
-                {editingId ? "Edit post" : "New post"}
-              </FocusModal.Title>
-              <FocusModal.Description className="text-ui-fg-subtle">
-                Populate the newsroom with published updates and upcoming drops.
-              </FocusModal.Description>
-            </div>
-          </FocusModal.Header>
-          <FocusModal.Body className="overflow-y-auto px-6 py-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2">
-                <Label>Title</Label>
-                <Input
-                  value={formState.title}
-                  onChange={(event) => handleTitleChange(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <select
-                  value={formState.status}
-                  onChange={(event) =>
-                    handleStatusChange(readValue(event) as NewsStatus)
-                  }
-                  className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Publish date</Label>
-                <Input
-                  type="datetime-local"
-                  value={formState.publishedAt}
-                  onChange={(event) =>
-                    updateField("publishedAt")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Author</Label>
-                <Input
-                  value={formState.author}
-                  disabled
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Cover image</Label>
-                <div className="flex flex-col gap-3">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleCoverUpload}
-                    disabled={uploadingCover}
-                    className="block w-full text-sm text-ui-fg-base file:mr-3 file:rounded-md file:border-0 file:bg-ui-bg-subtle file:px-3 file:py-2 file:text-sm file:text-ui-fg-base hover:file:bg-ui-bg-base"
-                  />
-                  {formState.coverUrl ? (
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={formState.coverUrl}
-                        alt="Cover preview"
-                        className="h-16 w-16 rounded-md object-cover"
-                      />
-                      <Text size="xsmall" className="text-ui-fg-subtle">
-                        {formState.coverUrl}
-                      </Text>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Excerpt</Label>
-                <Textarea
-                  value={formState.excerpt}
-                  onChange={(event) =>
-                    updateField("excerpt")(readValue(event))
-                  }
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Content</Label>
-                <RichTextEditor
-                  value={formState.content}
-                  onChange={updateField("content")}
-                  placeholder="Use the toolbar to style the update. Links open in a new tab on the storefront."
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Tags</Label>
-                <div className="flex flex-wrap items-center gap-2">
+          description="Draft privately, schedule a future update, or publish immediately. Archived posts remain recoverable."
+          status={
+            <Text aria-live="polite" className="text-ui-fg-subtle" size="small">
+              {pageQuery.isPending ? "Loading…" : countLabel}
+            </Text>
+          }
+          title="News"
+        />
+        <Alert className="mt-5" variant="info">
+          <Text weight="plus">Visibility is deliberate</Text>
+          <Text size="small">
+            Drafts stay private. Scheduled posts appear automatically at their chosen time. Archiving hides a post without deleting its history.
+          </Text>
+        </Alert>
+      </Container>
+
+      {pageError ? (
+        <AdminRetryState
+          message={pageError}
+          onRetry={handleRetry}
+          retrying={pageQuery.isFetching}
+          title="News could not load"
+        />
+      ) : (
+        <Container className="p-0">
+          <div className="border-b border-ui-border-base px-6 py-5">
+            <Tabs onValueChange={handleViewChange} value={view}>
+              <Tabs.List>
+                <Tabs.Trigger value="active">Active</Tabs.Trigger>
+                <Tabs.Trigger value="archived">Archived</Tabs.Trigger>
+              </Tabs.List>
+              <Tabs.Content className="sr-only" value="active">
+                Active news posts
+              </Tabs.Content>
+              <Tabs.Content className="sr-only" value="archived">
+                Archived news posts
+              </Tabs.Content>
+            </Tabs>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(16rem,1fr)_auto_auto]">
+              <div>
+                <Label htmlFor="news-search">Search</Label>
+                <div className="mt-1 flex flex-wrap gap-2">
                   <Input
-                    value={customTag}
-                    placeholder="Add a tag…"
-                    onChange={(event) => setCustomTag(readValue(event))}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault()
-                        addTag()
-                      }
-                    }}
-                    className="max-w-xs"
+                    autoComplete="off"
+                    className="min-w-48 flex-1"
+                    id="news-search"
+                    onChange={handleSearchChange}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder="Headline or URL slug"
+                    role="searchbox"
+                    type="text"
+                    value={searchInput}
                   />
+                  {searchInput || query ? (
+                    <Button onClick={clearSearch} type="button" variant="secondary">
+                      Clear
+                    </Button>
+                  ) : null}
                   <Button
+                    disabled={searchInput.trim() === query}
+                    onClick={applySearch}
                     type="button"
-                    size="small"
                     variant="secondary"
-                    onClick={addTag}
                   >
-                    Add tag
+                    Search
                   </Button>
                 </div>
-                {formState.tags.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {formState.tags.map((tag) => (
-                      <Button
-                        key={`tag-${tag}`}
-                        type="button"
-                        size="small"
-                        variant="secondary"
-                        onClick={() => removeTag(tag)}
-                      >
-                        {tag} ×
-                      </Button>
+              </div>
+
+              <div>
+                <Label htmlFor="news-status">Status</Label>
+                <Select
+                  disabled={view === "archived"}
+                  onValueChange={handleStatusChange}
+                  value={status}
+                >
+                  <Select.Trigger className="mt-1 min-w-40" id="news-status">
+                    <Select.Value />
+                  </Select.Trigger>
+                  <Select.Content>
+                    {statusOptions.map((option) => (
+                      <Select.Item key={option.value} value={option.value}>
+                        {option.label}
+                      </Select.Item>
                     ))}
-                  </div>
-                ) : null}
+                  </Select.Content>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="news-sort">Sort</Label>
+                <Select onValueChange={handleSortChange} value={sortValue}>
+                  <Select.Trigger className="mt-1 min-w-48" id="news-sort">
+                    <Select.Value />
+                  </Select.Trigger>
+                  <Select.Content>
+                    {sortOptions.map((option) => (
+                      <Select.Item key={option.value} value={option.value}>
+                        {option.label}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select>
               </div>
             </div>
-          </FocusModal.Body>
-          <FocusModal.Footer>
-            <FocusModal.Close asChild>
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </FocusModal.Close>
-            <Button type="button" onClick={handleSubmit}>
-              {editingId ? "Save changes" : "Create post"}
-            </Button>
-          </FocusModal.Footer>
-        </FocusModal.Content>
-      </FocusModal>
-    </div>
+
+            {filtered ? (
+              <div className="mt-3 flex justify-end">
+                <Button
+                  onClick={clearAllControls}
+                  size="small"
+                  type="button"
+                  variant="transparent"
+                >
+                  Clear all controls
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
+          <NewsCollection
+            busyEntryId={busyEntryId}
+            dataTable={dataTable}
+            entries={page.entries}
+            filtered={filtered}
+            loading={pageQuery.isPending}
+            onEdit={handleEdit}
+            onLifecycle={handleLifecycle}
+            view={view}
+          />
+        </Container>
+      )}
+
+      {createOpen ? (
+        <NewsEditor
+          error={createError}
+          mode="create"
+          onClose={handleCreateClose}
+          onSubmit={handleCreateSubmit}
+          restoreFocusRef={createTriggerRef}
+        />
+      ) : null}
+      {editingEntry ? (
+        <NewsEditor
+          entry={editingEntry}
+          error={updateError}
+          mode="edit"
+          onClose={handleEditClose}
+          onSubmit={handleUpdateSubmit}
+          restoreFocusRef={formTriggerRef}
+        />
+      ) : null}
+
+      <ConfirmAction
+        confirmLabel={lifecycleEntry?.archivedAt ? "Restore post" : "Archive post"}
+        description={
+          lifecycleEntry?.archivedAt
+            ? "The post returns to its previous publication state. If a scheduled time passed while archived, it may become visible immediately."
+            : "The post disappears from the storefront but keeps its content, author, URL, publication state, and audit history."
+        }
+        onCancel={handleLifecycleCancel}
+        onConfirm={handleLifecycleConfirm}
+        open={lifecycleEntry !== null}
+        pending={lifecycleMutation.isPending}
+        pendingLabel={lifecycleEntry?.archivedAt ? "Restoring…" : "Archiving…"}
+        title={
+          lifecycleEntry?.archivedAt
+            ? `Restore “${lifecycleEntry.title}”?`
+            : `Archive “${lifecycleEntry?.title ?? "this post"}”?`
+        }
+        variant={lifecycleEntry?.archivedAt ? "confirmation" : "danger"}
+      >
+        {lifecycleError ? (
+          <Alert role="alert" variant="error">
+            <Text size="small">{lifecycleError}</Text>
+          </Alert>
+        ) : null}
+      </ConfirmAction>
+    </AdminSingleColumnLayout>
   )
-}
+})
+
+NewsAdminPage.displayName = "NewsAdminPage"
 
 export const config = defineRouteConfig({
-  label: "News",
   icon: ArchiveBox,
+  label: "News",
 })
 
 export default NewsAdminPage
