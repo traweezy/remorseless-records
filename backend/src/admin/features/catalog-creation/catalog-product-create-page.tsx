@@ -12,44 +12,28 @@ import {
 } from "react"
 import { useForm, useStore } from "@tanstack/react-form"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import {
-  ArchiveBox,
-  GiftSolid,
-  ShoppingBag,
-  Sparkles,
-  Trash,
-} from "@medusajs/icons"
-import {
-  Badge,
-  Button,
-  Container,
-  Heading,
-  Input,
-  Select,
-  Skeleton,
-  Text,
-  Textarea,
-} from "@medusajs/ui"
+import { Badge, Button, Text } from "@medusajs/ui"
 import {
   useBlocker,
   useNavigate,
 } from "react-router-dom"
 
-import { AdminFormField } from "../../components/admin-form-field"
-import { AdminPageHeader, AdminSectionHeader } from "../../components/admin-page"
+import { AdminPageHeader } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { ConfirmAction } from "../../components/confirm-action"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import type { CatalogControlledOption } from "./catalog-controlled-input"
 import {
-  CatalogControlledInput,
-  type CatalogControlledOption,
-} from "./catalog-controlled-input"
-import {
-  CatalogCreationAvailability,
   resolveCatalogCreationAvailability,
 } from "./catalog-creation-availability"
-import { CatalogCreationMediaEditor } from "./catalog-creation-media"
-import { CatalogCreationReview } from "./catalog-creation-review"
+import {
+  CatalogCreationBasicsStep,
+  type CatalogCreationReferenceOptions,
+} from "./catalog-creation-basics-step"
+import { CatalogCreationDetailsStep } from "./catalog-creation-details-step"
+import { CatalogCreationKindStep } from "./catalog-creation-kind-step"
+import { CatalogCreationOfferingsStep } from "./catalog-creation-offerings-step"
+import { CatalogCreationReviewStep } from "./catalog-creation-review-step"
 import {
   CatalogCreationValidationSummary,
 } from "./catalog-creation-validation-summary"
@@ -58,22 +42,21 @@ import {
   resolveCatalogCreationValidationIssues,
   type CatalogCreationValidationIssue,
 } from "./catalog-creation-validation"
-import { CatalogMerchandiseTemplates } from "./catalog-merchandise-templates"
+import {
+  CatalogCreationActions,
+  CatalogCreationProgress,
+  catalogCreationSteps,
+} from "./catalog-creation-wizard-shell"
 import {
   applyCatalogCreationKind,
   buildCatalogProductCreateRequest,
-  catalogCreationAvailabilityPolicies,
   catalogCreationDraftKey,
   catalogCreationFormSchema,
-  catalogCreationKindDescriptions,
-  catalogCreationKindLabels,
-  catalogCreationKinds,
   catalogCreationReleaseDatePrecisions,
   createCatalogCreationDefaults,
   createCatalogCreationMerchandiseOfferings,
   parseCatalogCreationDraft,
   serializeCatalogCreationDraft,
-  type CatalogCreationBundleComponent,
   type CatalogCreationFormValues,
   type CatalogCreationKind,
   type CatalogCreationMerchandiseTemplateId,
@@ -90,17 +73,6 @@ import {
   getCatalogProductCreationStatus,
   type CatalogCreationProductChoiceWithStock,
 } from "./catalog-product-create-query"
-
-const steps = ["Kind", "Basics", "Offerings", "Details", "Review"] as const
-const primaryActionClassName =
-  "hover:!bg-ui-button-inverted active:!bg-ui-button-inverted"
-
-const kindIcons = {
-  music_release: ArchiveBox,
-  merch: ShoppingBag,
-  fixed_bundle: GiftSolid,
-  mystery_bundle: Sparkles,
-} satisfies Record<CatalogCreationKind, typeof ArchiveBox>
 
 const restoredDraft = (): {
   step: number
@@ -189,89 +161,11 @@ const offeringLabel = (kind: CatalogCreationKind): string => {
   return "Release format"
 }
 
-const availabilityPolicyLabels = {
-  backorder: "Accept backorders",
-  inventory_only: "Stop at zero",
-  preorder: "Accept preorders",
-} as const
-
-const availabilityPolicyHints = {
-  backorder:
-    "Native backorders keep ordering open after exact inventory reaches zero.",
-  inventory_only: "Ordering stops when exact native inventory reaches zero.",
-  preorder:
-    "Preorders use the future release date and native backorders so zero-stock orders can be accepted.",
-} as const
-
-const stockLabel = (quantity: number | null, managed: boolean): string => {
-  if (!managed || quantity === null) {
-    return "Stock unavailable"
-  }
-  if (quantity === 0) {
-    return "Sold out"
-  }
-  return `${quantity} in stock`
-}
-
 const selectedProduct = (
   choices: CatalogCreationProductChoiceWithStock[],
   productId: string,
 ): CatalogCreationProductChoiceWithStock | undefined =>
   choices.find((choice) => choice.id === productId)
-
-const selectedVariant = (
-  choices: CatalogCreationProductChoiceWithStock[],
-  component: CatalogCreationBundleComponent,
-) =>
-  selectedProduct(choices, component.productId)?.variants.find(
-    (variant) => variant.id === component.variantId,
-  )
-
-const CatalogCreationProgress = memo<{ current: number }>(({ current }) => (
-  <ol aria-label="Product creation progress" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-    {steps.map((step, index) => (
-      <li
-        aria-current={current === index ? "step" : undefined}
-        className={`rounded-md border px-3 py-2 ${
-          current === index
-            ? "border-ui-border-interactive bg-ui-bg-highlight text-ui-fg-base"
-            : index < current
-              ? "border-ui-border-base bg-ui-bg-subtle text-ui-fg-base"
-              : "border-ui-border-base text-ui-fg-subtle"
-        }`}
-        key={step}
-      >
-        <Text size="xsmall" weight="plus">
-          {index + 1}. {step}
-        </Text>
-      </li>
-    ))}
-  </ol>
-))
-
-CatalogCreationProgress.displayName = "CatalogCreationProgress"
-
-const releaseDatePrecisionLabels: Record<
-  CatalogCreationReleaseDatePrecision,
-  string
-> = {
-  day: "Exact day",
-  month: "Month only",
-  unknown: "Not known",
-  year: "Year only",
-}
-
-const releaseDateInputType = (
-  precision: CatalogCreationReleaseDatePrecision,
-): "date" | "month" | "number" => {
-  if (precision === "day") {
-    return "date"
-  }
-  if (precision === "month") {
-    return "month"
-  }
-  return "number"
-}
 
 export const CatalogProductCreatePage = memo(() => {
   const initialDraft = useMemo(restoredDraft, [])
@@ -372,7 +266,7 @@ export const CatalogProductCreatePage = memo(() => {
       })),
     [vocabulary?.artists],
   )
-  const referenceOptions = useMemo(() => {
+  const referenceOptions = useMemo<CatalogCreationReferenceOptions>(() => {
     const byKind = (
       kind: CatalogCreationReferenceChoice["kind"],
     ): CatalogControlledOption[] =>
@@ -803,7 +697,7 @@ export const CatalogProductCreatePage = memo(() => {
       setStepErrors(issues)
       return
     }
-    goToStep(Math.min(steps.length - 1, step + 1))
+    goToStep(Math.min(catalogCreationSteps.length - 1, step + 1))
   }, [goToStep, step, values])
 
   const handleBack = useCallback(() => {
@@ -997,571 +891,76 @@ export const CatalogProductCreatePage = memo(() => {
       ) : null}
 
       {step === 0 ? (
-        <Container className="p-6">
-          <AdminSectionHeader
-            description="Choose the closest match. This controls the questions, inventory behavior, and bundle rules that follow."
-            title="What are you selling?"
-          />
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {catalogCreationKinds.map((kind) => {
-              const Icon = kindIcons[kind]
-              const selected = values.kind === kind
-              return (
-                <button
-                  aria-pressed={selected}
-                  className={`min-h-32 cursor-pointer rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-border-interactive ${
-                    selected
-                      ? "border-ui-border-interactive bg-ui-bg-highlight"
-                      : "border-ui-border-base bg-ui-bg-base hover:bg-ui-bg-subtle"
-                  }`}
-                  data-kind={kind}
-                  key={kind}
-                  onClick={handleKindSelect}
-                  type="button"
-                >
-                  <Icon className="h-5 w-5 text-ui-fg-interactive" />
-                  <Text className="mt-3" weight="plus">
-                    {catalogCreationKindLabels[kind]}
-                  </Text>
-                  <Text className="mt-1 text-ui-fg-subtle" size="small">
-                    {catalogCreationKindDescriptions[kind]}
-                  </Text>
-                </button>
-              )
-            })}
-          </div>
-        </Container>
+        <CatalogCreationKindStep
+          kind={values.kind}
+          onSelect={handleKindSelect}
+        />
       ) : null}
 
       {step === 1 ? (
-        <Container className="p-6">
-          <AdminSectionHeader
-            description={`Customer-facing basics for this ${catalogCreationKindLabels[values.kind].toLowerCase()}.`}
-            title="Product basics"
-          />
-          {vocabularyUnavailable ? (
-            <div
-              className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-ui-border-error bg-ui-bg-error p-3"
-              role="alert"
-            >
-              <Text className="text-ui-fg-error" size="small">
-                Existing catalog choices could not be loaded. Typed names are
-                still deduplicated safely when the draft is created.
-              </Text>
-              <Button
-                onClick={handleVocabularyRetry}
-                size="small"
-                type="button"
-                variant="secondary"
-              >
-                Retry choices
-              </Button>
-            </div>
-          ) : null}
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <AdminFormField
-              id="catalog-create-title"
-              label={values.kind === "music_release" ? "Release title" : "Product name"}
-            >
-              {(control) => (
-                <Input {...control} name="title" onChange={handleTextChange} value={values.title} />
-              )}
-            </AdminFormField>
-            <AdminFormField
-              hint="Preselected from the product kind; change it only when a more specific customer-facing type is useful."
-              id="catalog-create-product-type"
-              label="Product type"
-            >
-              {(control) => (
-                <CatalogControlledInput
-                  control={control}
-                  entityLabel="product type"
-                  loading={vocabularyLoading}
-                  name="productType"
-                  onChange={handleProductTypeChange}
-                  options={referenceOptions.productType}
-                  unavailable={vocabularyUnavailable}
-                  value={values.productType}
-                />
-              )}
-            </AdminFormField>
-            {values.kind === "music_release" ? (
-              <>
-                <AdminFormField id="catalog-create-artist" label="Primary artist">
-                  {(control) => (
-                    <CatalogControlledInput
-                      control={control}
-                      entityLabel="artist"
-                      loading={vocabularyLoading}
-                      name="artistName"
-                      onChange={handleArtistChange}
-                      options={artistOptions}
-                      unavailable={vocabularyUnavailable}
-                      value={values.artistName}
-                    />
-                  )}
-                </AdminFormField>
-                <AdminFormField id="catalog-create-label" label="Label or source" optional>
-                  {(control) => (
-                    <CatalogControlledInput
-                      control={control}
-                      entityLabel="label"
-                      loading={vocabularyLoading}
-                      name="label"
-                      onChange={handleLabelChange}
-                      options={referenceOptions.label}
-                      unavailable={vocabularyUnavailable}
-                      value={values.label}
-                    />
-                  )}
-                </AdminFormField>
-                <AdminFormField id="catalog-create-genre" label="Genre" optional>
-                  {(control) => (
-                    <CatalogControlledInput
-                      control={control}
-                      entityLabel="genre"
-                      loading={vocabularyLoading}
-                      name="genre"
-                      onChange={handleGenreChange}
-                      options={referenceOptions.genre}
-                      unavailable={vocabularyUnavailable}
-                      value={values.genre}
-                    />
-                  )}
-                </AdminFormField>
-                <AdminFormField id="catalog-create-date-precision" label="Release date detail">
-                  {(control) => (
-                    <Select
-                      onValueChange={handleReleaseDatePrecisionChange}
-                      value={values.releaseDatePrecision}
-                    >
-                      <Select.Trigger {...control}>
-                        <Select.Value />
-                      </Select.Trigger>
-                      <Select.Content>
-                        {catalogCreationReleaseDatePrecisions.map((precision) => (
-                          <Select.Item key={precision} value={precision}>
-                            {releaseDatePrecisionLabels[precision]}
-                          </Select.Item>
-                        ))}
-                      </Select.Content>
-                    </Select>
-                  )}
-                </AdminFormField>
-                {values.releaseDatePrecision !== "unknown" ? (
-                  <AdminFormField
-                    id="catalog-create-date"
-                    label={`Release ${values.releaseDatePrecision}`}
-                  >
-                    {(control) => (
-                      <Input
-                        {...control}
-                        inputMode={values.releaseDatePrecision === "year" ? "numeric" : undefined}
-                        max={values.releaseDatePrecision === "year" ? 2200 : undefined}
-                        min={values.releaseDatePrecision === "year" ? 1900 : undefined}
-                        name="releaseDate"
-                        onChange={handleTextChange}
-                        type={releaseDateInputType(values.releaseDatePrecision)}
-                        value={values.releaseDate}
-                      />
-                    )}
-                  </AdminFormField>
-                ) : null}
-                <AdminFormField id="catalog-create-number" label="Catalog number" optional>
-                  {(control) => (
-                    <Input {...control} name="catalogNumber" onChange={handleTextChange} value={values.catalogNumber} />
-                  )}
-                </AdminFormField>
-              </>
-            ) : null}
-            {values.kind === "merch" ? (
-              <AdminFormField
-                hint="Examples include shirt, hoodie, patch, pin, and poster."
-                id="catalog-create-merch-type"
-                label="Merchandise type"
-              >
-                {(control) => (
-                  <CatalogControlledInput
-                    control={control}
-                    entityLabel="merchandise type"
-                    loading={vocabularyLoading}
-                    name="merchandiseType"
-                    onChange={handleMerchandiseTypeChange}
-                    options={referenceOptions.merchType}
-                    unavailable={vocabularyUnavailable}
-                    value={values.merchandiseType}
-                  />
-                )}
-              </AdminFormField>
-            ) : null}
-            <AdminFormField className="md:col-span-2" id="catalog-create-description" label="Store description" optional>
-              {(control) => (
-                <Textarea {...control} name="description" onChange={handleTextChange} rows={5} value={values.description} />
-              )}
-            </AdminFormField>
-            <details className="md:col-span-2 rounded-md border border-ui-border-base p-4">
-              <summary className="flex min-h-6 cursor-pointer items-center text-sm font-medium">Advanced URL</summary>
-              <div className="mt-4">
-                <AdminFormField
-                  hint="Leave blank to generate it from the product name."
-                  id="catalog-create-handle"
-                  label="URL handle"
-                  optional
-                >
-                  {(control) => (
-                    <Input {...control} name="handle" onChange={handleTextChange} value={values.handle} />
-                  )}
-                </AdminFormField>
-              </div>
-            </details>
-          </div>
-        </Container>
+        <CatalogCreationBasicsStep
+          artistOptions={artistOptions}
+          onArtistChange={handleArtistChange}
+          onGenreChange={handleGenreChange}
+          onLabelChange={handleLabelChange}
+          onMerchandiseTypeChange={handleMerchandiseTypeChange}
+          onProductTypeChange={handleProductTypeChange}
+          onReleaseDatePrecisionChange={handleReleaseDatePrecisionChange}
+          onTextChange={handleTextChange}
+          onVocabularyRetry={handleVocabularyRetry}
+          referenceOptions={referenceOptions}
+          values={values}
+          vocabularyLoading={vocabularyLoading}
+          vocabularyUnavailable={vocabularyUnavailable}
+        />
       ) : null}
 
       {step === 2 ? (
-        <div className="flex flex-col gap-4">
-          <Container className="p-6">
-            <AdminSectionHeader
-              actions={<Button id="catalog-create-add-offering" onClick={addOffering} size="small" type="button" variant="secondary">Add offering</Button>}
-              description="Each row becomes a native Medusa variant with its own price and exact inventory."
-              title="Offerings"
-            />
-            {values.kind === "merch" ? (
-              <div className="mt-5">
-                <CatalogMerchandiseTemplates
-                  currentCount={values.offerings.length}
-                  onApply={applyMerchandiseTemplate}
-                />
-              </div>
-            ) : null}
-            <div className="mt-5 flex flex-col gap-4">
-              {values.offerings.map((offering, index) => {
-                const availability = availabilityByOfferingId.get(offering.id)!
-                return (
-                  <section className="rounded-lg border border-ui-border-base p-4" key={offering.id}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <Heading level="h3">{offeringLabel(values.kind)} {index + 1}</Heading>
-                      <Text className="mt-1 text-ui-fg-subtle" size="xsmall">Shown to customers as {offering.title || "Untitled"}.</Text>
-                    </div>
-                    <Button
-                      aria-label={`Remove offering ${index + 1}`}
-                      data-offering-id={offering.id}
-                      disabled={values.offerings.length === 1}
-                      onClick={removeOffering}
-                      size="small"
-                      type="button"
-                      variant="secondary"
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {values.kind === "merch" ? (
-                      <>
-                        <AdminFormField id={`offering-${offering.id}-size`} label="Size or style">
-                          {(control) => (
-                            <Input {...control} data-offering-field="size" data-offering-id={offering.id} onChange={updateOffering} value={offering.size} />
-                          )}
-                        </AdminFormField>
-                        <AdminFormField id={`offering-${offering.id}-color`} label="Color" optional>
-                          {(control) => (
-                            <Input {...control} data-offering-field="color" data-offering-id={offering.id} onChange={updateOffering} value={offering.color} />
-                          )}
-                        </AdminFormField>
-                      </>
-                    ) : (
-                      <>
-                        <AdminFormField id={`offering-${offering.id}-format`} label="Format">
-                          {(control) => (
-                            <Input {...control} data-offering-field="format" data-offering-id={offering.id} onChange={updateOffering} value={offering.format} />
-                          )}
-                        </AdminFormField>
-                        <AdminFormField id={`offering-${offering.id}-detail`} label="Format detail" optional>
-                          {(control) => (
-                            <Input {...control} data-offering-field="formatDetail" data-offering-id={offering.id} onChange={updateOffering} value={offering.formatDetail} />
-                          )}
-                        </AdminFormField>
-                      </>
-                    )}
-                    <AdminFormField id={`offering-${offering.id}-title`} label="Customer label">
-                      {(control) => (
-                        <Input {...control} data-offering-field="title" data-offering-id={offering.id} onChange={updateOffering} value={offering.title} />
-                      )}
-                    </AdminFormField>
-                    <AdminFormField id={`offering-${offering.id}-sku`} label="SKU" optional>
-                      {(control) => (
-                        <Input {...control} data-offering-field="sku" data-offering-id={offering.id} onChange={updateOffering} value={offering.sku} />
-                      )}
-                    </AdminFormField>
-                    <AdminFormField id={`offering-${offering.id}-price`} label="USD price">
-                      {(control) => (
-                        <Input {...control} data-offering-field="priceUsd" data-offering-id={offering.id} inputMode="decimal" min="0" onChange={updateOffering} step="0.01" type="number" value={offering.priceUsd} />
-                      )}
-                    </AdminFormField>
-                    {values.kind === "fixed_bundle" ? (
-                      <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle p-3">
-                        <Text size="small" weight="plus">Component-derived stock</Text>
-                        <Text className="mt-1 text-ui-fg-subtle" size="xsmall">Availability follows the products mapped below.</Text>
-                      </div>
-                    ) : (
-                      <AdminFormField id={`offering-${offering.id}-stock`} label="Initial stock">
-                        {(control) => (
-                          <Input {...control} data-offering-field="stockQuantity" data-offering-id={offering.id} inputMode="numeric" min="0" onChange={updateOffering} step="1" type="number" value={offering.stockQuantity} />
-                        )}
-                      </AdminFormField>
-                    )}
-                    {values.kind !== "fixed_bundle" ? (
-                      <AdminFormField
-                        hint={
-                          availabilityPolicyHints[offering.availabilityPolicy]
-                        }
-                        id={`offering-${offering.id}-availability-policy`}
-                        label="Selling policy"
-                      >
-                        {(control) => (
-                          <select
-                            {...control}
-                            className="min-h-9 w-full cursor-pointer rounded-md border border-ui-border-base bg-ui-bg-base px-2"
-                            data-offering-field="availabilityPolicy"
-                            data-offering-id={offering.id}
-                            onChange={updateOffering}
-                            value={offering.availabilityPolicy}
-                          >
-                            {catalogCreationAvailabilityPolicies
-                              .filter((policy) => policy !== "preorder" || values.kind === "music_release")
-                              .map((policy) => (
-                                <option key={policy} value={policy}>
-                                  {availabilityPolicyLabels[policy]}
-                                </option>
-                              ))}
-                          </select>
-                        )}
-                      </AdminFormField>
-                    ) : null}
-                    <div className="sm:col-span-2 lg:col-span-3">
-                      <CatalogCreationAvailability preview={availability} />
-                    </div>
-                  </div>
-                  </section>
-                )
-              })}
-            </div>
-          </Container>
-
-          {values.kind === "fixed_bundle" ? (
-            <Container className="p-6">
-              <AdminSectionHeader
-                actions={<Button disabled={!choicesData?.length} id="catalog-create-add-bundle-component" onClick={addBundleComponent} size="small" type="button" variant="secondary">Add included product</Button>}
-                description="Map each included product format to the bundle formats that consume it. Sold-out items are allowed and will make the affected bundle unavailable."
-                title="Included products"
-              />
-              {choicesQuery.isPending ? (
-                <div aria-label="Loading product choices" className="mt-5 grid gap-3" role="status">
-                  <Skeleton className="h-32" />
-                  <Skeleton className="h-32" />
-                </div>
-              ) : choicesQuery.isError ? (
-                <div className="mt-5">
-                  <AdminRetryState
-                    message={getAdminRequestErrorMessage(choicesQuery.error, "Product choices could not be loaded.")}
-                    onRetry={handleChoicesRetry}
-                    retrying={choicesQuery.isFetching}
-                    title="Included products unavailable"
-                  />
-                </div>
-              ) : (
-                <div className="mt-5 flex flex-col gap-4">
-                  {values.bundleComponents.length ? values.bundleComponents.map((component, index) => {
-                    const product = selectedProduct(choicesData ?? [], component.productId)
-                    const variant = selectedVariant(choicesData ?? [], component)
-                    return (
-                      <section className="rounded-lg border border-ui-border-base p-4" key={component.id}>
-                        <div className="flex items-start justify-between gap-3">
-                          <Heading level="h3">Included product {index + 1}</Heading>
-                          <Button aria-label={`Remove included product ${index + 1}`} data-component-id={component.id} onClick={removeBundleComponent} size="small" type="button" variant="secondary"><Trash className="h-4 w-4" /></Button>
-                        </div>
-                        <div className="mt-4 grid gap-4 md:grid-cols-2">
-                          <AdminFormField id={`component-${component.id}-product`} label="Product">
-                            {(control) => (
-                              <select {...control} className="min-h-9 w-full cursor-pointer rounded-md border border-ui-border-base bg-ui-bg-base px-2" data-component-field="productId" data-component-id={component.id} onChange={updateBundleComponent} value={component.productId}>
-                                {(choicesData ?? []).map((choice) => <option key={choice.id} value={choice.id}>{choice.title}</option>)}
-                              </select>
-                            )}
-                          </AdminFormField>
-                          <AdminFormField hint={variant ? stockLabel(variant.inventoryQuantity, variant.managesInventory) : undefined} id={`component-${component.id}-variant`} label="Included format">
-                            {(control) => (
-                              <select {...control} className="min-h-9 w-full cursor-pointer rounded-md border border-ui-border-base bg-ui-bg-base px-2" data-component-field="variantId" data-component-id={component.id} onChange={updateBundleComponent} value={component.variantId}>
-                                {(product?.variants ?? []).map((choice) => <option key={choice.id} value={choice.id}>{choice.title}{choice.sku ? ` · ${choice.sku}` : ""}</option>)}
-                              </select>
-                            )}
-                          </AdminFormField>
-                          <AdminFormField id={`component-${component.id}-quantity`} label="Quantity in bundle">
-                            {(control) => (
-                              <Input {...control} data-component-field="quantity" data-component-id={component.id} inputMode="numeric" min="1" onChange={updateBundleComponent} step="1" type="number" value={component.quantity} />
-                            )}
-                          </AdminFormField>
-                          <fieldset className="rounded-md border border-ui-border-base p-3" id={`component-${component.id}-offerings`} tabIndex={-1}>
-                            <legend className="px-1 text-sm font-medium">Used by bundle formats</legend>
-                            <div className="mt-2 flex flex-wrap gap-3">
-                              {values.offerings.map((offering) => (
-                                <label className="flex min-h-8 cursor-pointer items-center gap-2" key={offering.id}>
-                                  <input checked={component.offeringIds.includes(offering.id)} className="h-4 w-4" data-component-id={component.id} data-offering-id={offering.id} onChange={updateBundleMapping} type="checkbox" />
-                                  <span className="text-sm">{offering.title}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </fieldset>
-                        </div>
-                      </section>
-                    )
-                  }) : (
-                    <div className="rounded-md border border-dashed border-ui-border-base p-6 text-center">
-                      <Text weight="plus">No included products yet</Text>
-                      <Text className="mt-1 text-ui-fg-subtle" size="small">Add at least one product and map it to every bundle format.</Text>
-                    </div>
-                  )}
-                </div>
-              )}
-            </Container>
-          ) : null}
-        </div>
+        <CatalogCreationOfferingsStep
+          availabilityByOfferingId={availabilityByOfferingId}
+          choicesData={choicesData}
+          choicesError={choicesQuery.error}
+          choicesFetching={choicesQuery.isFetching}
+          choicesIsError={choicesQuery.isError}
+          choicesPending={choicesQuery.isPending}
+          onAddBundleComponent={addBundleComponent}
+          onAddOffering={addOffering}
+          onApplyMerchandiseTemplate={applyMerchandiseTemplate}
+          onChoicesRetry={handleChoicesRetry}
+          onRemoveBundleComponent={removeBundleComponent}
+          onRemoveOffering={removeOffering}
+          onUpdateBundleComponent={updateBundleComponent}
+          onUpdateBundleMapping={updateBundleMapping}
+          onUpdateOffering={updateOffering}
+          values={values}
+        />
       ) : null}
 
       {step === 3 ? (
-        <Container className="p-6">
-          <AdminSectionHeader
-            description="Add the storefront information and ordered product gallery customers will use to understand this item."
-            title="Storefront details"
-          />
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {values.kind === "music_release" ? (
-              <>
-                <AdminFormField id="catalog-create-tracklist" label="Tracklist" hint="One track per line." optional>
-                  {(control) => <Textarea {...control} name="tracklist" onChange={handleTextChange} rows={8} value={values.tracklist} />}
-                </AdminFormField>
-                <AdminFormField id="catalog-create-credits" label="Credits" hint="Plain-language performer, recording, and production credits." optional>
-                  {(control) => <Textarea {...control} name="credits" onChange={handleTextChange} rows={8} value={values.credits} />}
-                </AdminFormField>
-              </>
-            ) : null}
-            {values.kind === "merch" ? (
-              <>
-                <AdminFormField id="catalog-create-material" label="Material" optional>
-                  {(control) => <Textarea {...control} name="material" onChange={handleTextChange} rows={4} value={values.material} />}
-                </AdminFormField>
-                <AdminFormField id="catalog-create-fit" label="Fit and measurements" optional>
-                  {(control) => <Textarea {...control} name="merchandiseFit" onChange={handleTextChange} rows={4} value={values.merchandiseFit} />}
-                </AdminFormField>
-                <AdminFormField
-                  hint="List customer-facing measurements by size, one size per line."
-                  id="catalog-create-size-guide"
-                  label="Size guide"
-                  optional
-                >
-                  {(control) => <Textarea {...control} name="sizeGuide" onChange={handleTextChange} rows={4} value={values.sizeGuide} />}
-                </AdminFormField>
-                <AdminFormField className="md:col-span-2" id="catalog-create-care" label="Care instructions" optional>
-                  {(control) => <Textarea {...control} name="merchandiseCare" onChange={handleTextChange} rows={4} value={values.merchandiseCare} />}
-                </AdminFormField>
-              </>
-            ) : null}
-            {values.kind === "fixed_bundle" ? (
-              <div className="md:col-span-2 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
-                <Text weight="plus">Included-content presentation</Text>
-                <Text className="mt-1 text-ui-fg-subtle" size="small">The customer-facing bundle content is generated from the product and format mappings reviewed in the previous step.</Text>
-              </div>
-            ) : null}
-            {values.kind === "mystery_bundle" ? (
-              <>
-                <AdminFormField id="catalog-create-promise" label="Customer promise" hint="Explain the type or minimum value of contents without revealing exact items.">
-                  {(control) => <Textarea {...control} name="mysteryPromise" onChange={handleTextChange} rows={5} value={values.mysteryPromise} />}
-                </AdminFormField>
-                <AdminFormField id="catalog-create-disclaimer" label="Mystery box disclaimer" hint="Clarify substitutions, duplicates, and other expectations." optional>
-                  {(control) => <Textarea {...control} name="mysteryDisclaimer" onChange={handleTextChange} rows={5} value={values.mysteryDisclaimer} />}
-                </AdminFormField>
-              </>
-            ) : null}
-          </div>
-          <CatalogCreationMediaEditor
-            media={values.media}
-            onChange={handleMediaChange}
-            onUploadingChange={setMediaUploading}
-          />
-        </Container>
+        <CatalogCreationDetailsStep
+          onMediaChange={handleMediaChange}
+          onTextChange={handleTextChange}
+          onUploadingChange={setMediaUploading}
+          values={values}
+        />
       ) : null}
 
       {step === 4 ? (
-        <div className="flex flex-col gap-4">
-          <Container className="p-6">
-            <AdminSectionHeader
-              description="Review the customer-facing result before creating the product draft. Uploaded images already exist in managed storage and will be linked on creation."
-              title="Review draft"
-            />
-            <div className="mt-5 divide-y rounded-lg border border-ui-border-base">
-              <div className="flex flex-wrap items-start justify-between gap-3 p-4">
-                <div><Text size="xsmall" className="text-ui-fg-subtle">Product</Text><Text weight="plus">{values.title || "Untitled"}</Text><Text size="small" className="text-ui-fg-subtle">{catalogCreationKindLabels[values.kind]} · {values.productType}</Text></div>
-                <Button data-step="1" onClick={handleChangeStep} size="small" type="button" variant="secondary">Change basics</Button>
-              </div>
-              <div className="flex flex-wrap items-start justify-between gap-3 p-4">
-                <div className="min-w-0 flex-1"><Text size="xsmall" className="text-ui-fg-subtle">Offerings</Text><Text weight="plus">{values.offerings.length} {values.offerings.length === 1 ? "variant" : "variants"}</Text><Text size="small" className="break-words text-ui-fg-subtle">{values.offerings.map((offering) => `${offering.title} · $${offering.priceUsd}${values.kind === "fixed_bundle" ? " · component stock" : ` · ${offering.stockQuantity} stock`}`).join("; ")}</Text><div className="mt-3 grid gap-2">{values.offerings.map((offering) => <CatalogCreationAvailability key={offering.id} preview={availabilityByOfferingId.get(offering.id)!} />)}</div></div>
-                <Button data-step="2" onClick={handleChangeStep} size="small" type="button" variant="secondary">Change offerings</Button>
-              </div>
-              {values.kind === "fixed_bundle" ? (
-                <div className="p-4"><Text size="xsmall" className="text-ui-fg-subtle">Bundle mapping</Text><Text weight="plus">{values.bundleComponents.length} included {values.bundleComponents.length === 1 ? "product" : "products"}</Text><Text size="small" className="text-ui-fg-subtle">Every offering must have a required component before this draft can be created.</Text></div>
-              ) : null}
-              <div className="flex flex-wrap items-start justify-between gap-3 p-4">
-                <div className="min-w-0 flex-1">
-                  <Text className="text-ui-fg-subtle" size="xsmall">Product images</Text>
-                  <Text weight="plus">{values.media.length} {values.media.length === 1 ? "image" : "images"}</Text>
-                  <Text className="text-ui-fg-subtle" size="small">
-                    {values.media.length
-                      ? "The first image is primary; every image has required alt text."
-                      : "No images will be linked to this draft."}
-                  </Text>
-                </div>
-                <Button data-step="3" onClick={handleChangeStep} size="small" type="button" variant="secondary">Change images</Button>
-              </div>
-              <div className="flex flex-wrap items-start justify-between gap-3 p-4">
-                <div><Text size="xsmall" className="text-ui-fg-subtle">Storefront details</Text><Text size="small">{values.description || "No short description yet."}</Text></div>
-                <Button data-step="3" onClick={handleChangeStep} size="small" type="button" variant="secondary">Change details</Button>
-              </div>
-            </div>
-          </Container>
-          <CatalogCreationReview
-            availabilityByOfferingId={availabilityByOfferingId}
-            values={values}
-          />
-        </div>
+        <CatalogCreationReviewStep
+          availabilityByOfferingId={availabilityByOfferingId}
+          onChangeStep={handleChangeStep}
+          values={values}
+        />
       ) : null}
 
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-ui-border-base bg-ui-bg-base px-1 py-4">
-        <Button disabled={busy} onClick={handleCancel} type="button" variant="secondary">Cancel</Button>
-        <div className="flex flex-wrap gap-2">
-          {step > 0 ? <Button disabled={busy} onClick={handleBack} type="button" variant="secondary">Back</Button> : null}
-          {step < steps.length - 1 ? (
-            <Button
-              className={primaryActionClassName}
-              disabled={busy}
-              onClick={handleNext}
-              type="button"
-            >
-              Continue
-            </Button>
-          ) : (
-            <Button
-              className={primaryActionClassName}
-              disabled={busy}
-              isLoading={busy}
-              onClick={handleSave}
-              type="button"
-            >
-              Create draft
-            </Button>
-          )}
-        </div>
-        <div aria-live="polite" className="sr-only">{busy ? "Creating draft product" : ""}</div>
-      </div>
+      <CatalogCreationActions
+        busy={busy}
+        currentStep={step}
+        onBack={handleBack}
+        onCancel={handleCancel}
+        onNext={handleNext}
+        onSave={handleSave}
+      />
 
       <ConfirmAction
         confirmLabel="Clear draft"
