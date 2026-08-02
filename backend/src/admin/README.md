@@ -165,3 +165,21 @@ loaded with one bounded query and grouped by shelf ID, avoiding the prior N+1
 request pattern. The operational targets for this boundary are zero partial
 writes, deterministic conflict/replay behavior, and a constant two catalog
 queries per list page (one shelves/count query and one membership query).
+
+Product selection is also server-driven. The Admin does not preload a fixed
+subset of the native product catalog or render one large select per shelf row.
+Its Focus Modal requests 20 title-ordered Products at a time, applies Medusa's
+server-side `q` search, cancels superseded requests through TanStack Query, and
+keeps prior page content inert while the next response is loading. Product IDs
+already assigned to the shelf are hydrated in one exact-ID batch, while a newly
+chosen Product is cached locally so its title is available immediately without
+saving. Search, paging, and choosing a Product never persist shelf changes;
+only the explicit **Save shelf** command crosses the mutation boundary.
+
+The route is split into typed shelf-list, settings, product-editor, creation,
+and product-picker components built on Medusa UI controls. The shared Admin
+Focus Modal header supplies an accessible close name and stacks its supporting
+copy on narrow viewports. The layout uses zero-minimum grid columns, 24-pixel
+checkbox targets, disabled fieldsets for archived shelves, and responsive
+product cards so the complete route remains inside the Admin app bar at the
+built-in Pixel 7 viewport.
