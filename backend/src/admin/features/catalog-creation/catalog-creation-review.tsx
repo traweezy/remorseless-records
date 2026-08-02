@@ -421,7 +421,7 @@ const CatalogDetailPreview = memo<{
             <ol className="grid gap-2">
               {tracklist.map((entry, index) => (
                 <li className="flex gap-3" key={`${index}-${entry}`}>
-                  <Text className="text-ui-fg-muted" size="xsmall">
+                  <Text className="text-ui-fg-base" size="xsmall">
                     {(index + 1).toString().padStart(2, "0")}
                   </Text>
                   <Text size="small">{entry}</Text>
