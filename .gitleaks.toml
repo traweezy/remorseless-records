@@ -31,6 +31,15 @@ regexes = [
 ]
 paths = ['''^backend/src/api/admin/catalog/shelves/helpers\.test\.ts$''']
 
+[[rules.allowlists]]
+description = "Ignore synthetic discography idempotency fixtures"
+condition = "AND"
+regexTarget = "secret"
+regexes = [
+  '''^(57fb5c69-d829-47c3-a877-19c15add6137|64d0f078-50fe-428e-80e3-a628750353ad|98c549f3-31d0-462f-854c-45f5796a9de9|0a22bb15-6cf4-4881-85ef-afb817a94b47)$''',
+]
+paths = ['''^backend/src/api/admin/discography/helpers\.test\.ts$''']
+
 [[rules]]
 id = "stripe-access-token"
 
