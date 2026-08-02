@@ -49,6 +49,15 @@ import {
   resolveCatalogCreationAvailability,
 } from "./catalog-creation-availability"
 import { CatalogCreationMediaEditor } from "./catalog-creation-media"
+import { CatalogCreationReview } from "./catalog-creation-review"
+import {
+  CatalogCreationValidationSummary,
+} from "./catalog-creation-validation-summary"
+import {
+  createCatalogCreationGeneralIssue,
+  resolveCatalogCreationValidationIssues,
+  type CatalogCreationValidationIssue,
+} from "./catalog-creation-validation"
 import { CatalogMerchandiseTemplates } from "./catalog-merchandise-templates"
 import {
   applyCatalogCreationKind,
@@ -63,9 +72,7 @@ import {
   createCatalogCreationDefaults,
   createCatalogCreationMerchandiseOfferings,
   parseCatalogCreationDraft,
-  resolveCatalogCreationHandle,
   serializeCatalogCreationDraft,
-  validateCatalogCreationStep,
   type CatalogCreationBundleComponent,
   type CatalogCreationFormValues,
   type CatalogCreationKind,
@@ -145,7 +152,21 @@ const dataTarget = (event: { currentTarget: EventTarget }): DataTarget =>
 
 type BrowserEnvironment = {
   addEventListener?: (name: string, listener: (event: Event) => void) => void
+  cancelAnimationFrame?: (frame: number) => void
+  document?: {
+    getElementById: (id: string) => FocusTarget | null
+  }
   removeEventListener?: (name: string, listener: (event: Event) => void) => void
+  requestAnimationFrame?: (callback: () => void) => number
+}
+
+type FocusTarget = {
+  closest: (selector: string) => { open: boolean } | null
+  focus: (options: { preventScroll: boolean }) => void
+  scrollIntoView: (options: {
+    behavior: "smooth"
+    block: "center"
+  }) => void
 }
 
 type ScrollTarget = {
@@ -230,29 +251,6 @@ const CatalogCreationProgress = memo<{ current: number }>(({ current }) => (
 
 CatalogCreationProgress.displayName = "CatalogCreationProgress"
 
-const StepErrorSummary = memo<{ errors: string[] }>(({ errors }) =>
-  errors.length ? (
-    <div
-      aria-live="polite"
-      className="rounded-md border border-ui-border-error bg-ui-bg-error p-3"
-      role="alert"
-    >
-      <Text className="text-ui-fg-error" size="small" weight="plus">
-        Review this step
-      </Text>
-      <ul className="mt-1 list-disc pl-5 text-ui-fg-error">
-        {Array.from(new Set(errors)).map((error) => (
-          <li key={error}>
-            <Text size="xsmall">{error}</Text>
-          </li>
-        ))}
-      </ul>
-    </div>
-  ) : null,
-)
-
-StepErrorSummary.displayName = "StepErrorSummary"
-
 const releaseDatePrecisionLabels: Record<
   CatalogCreationReleaseDatePrecision,
   string
@@ -283,7 +281,9 @@ export const CatalogProductCreatePage = memo(() => {
   )
   const navigate = useNavigate()
   const [step, setStep] = useState(initialDraft?.step ?? 0)
-  const [stepErrors, setStepErrors] = useState<string[]>([])
+  const [stepErrors, setStepErrors] = useState<
+    CatalogCreationValidationIssue[]
+  >([])
   const [clearOpen, setClearOpen] = useState(false)
   const [leaveOpen, setLeaveOpen] = useState(false)
   const [allowNavigation, setAllowNavigation] = useState(false)
@@ -294,6 +294,7 @@ export const CatalogProductCreatePage = memo(() => {
   const [submitted, setSubmitted] = useState(false)
   const [mediaUploading, setMediaUploading] = useState(false)
   const pageStartRef = useRef<HTMLDivElement>(null)
+  const pendingFocusTargetRef = useRef<string | null>(null)
   const idempotencyKeyRef = useRef(crypto.randomUUID())
   const lastSubmittedValuesRef = useRef<string | null>(null)
 
@@ -347,7 +348,6 @@ export const CatalogProductCreatePage = memo(() => {
     validators: { onChange: catalogCreationFormSchema },
   })
   const formState = useStore(form.store, (state) => ({
-    canSubmit: state.canSubmit,
     isDirty: state.isDirty,
     isSubmitting: state.isSubmitting,
     values: state.values,
@@ -466,6 +466,37 @@ export const CatalogProductCreatePage = memo(() => {
       void refetchChoices()
     }
   }, [choicesData, choicesFetched, choicesFetching, refetchChoices, values.kind])
+
+  const focusValidationTarget = useCallback((targetId: string) => {
+    const browser = globalThis as BrowserEnvironment
+    const target = browser.document?.getElementById(targetId)
+    if (!target) {
+      return
+    }
+    const disclosure = target.closest("details")
+    if (disclosure) {
+      disclosure.open = true
+    }
+    target.focus({ preventScroll: true })
+    target.scrollIntoView({ behavior: "smooth", block: "center" })
+  }, [])
+
+  useEffect(() => {
+    const targetId = pendingFocusTargetRef.current
+    if (!targetId) {
+      return undefined
+    }
+    pendingFocusTargetRef.current = null
+    const browser = globalThis as BrowserEnvironment
+    if (!browser.requestAnimationFrame || !browser.cancelAnimationFrame) {
+      focusValidationTarget(targetId)
+      return undefined
+    }
+    const frame = browser.requestAnimationFrame(() => {
+      focusValidationTarget(targetId)
+    })
+    return () => browser.cancelAnimationFrame?.(frame)
+  }, [focusValidationTarget, step])
 
   const setField = useCallback(
     (field: keyof CatalogCreationFormValues, value: string) => {
@@ -759,6 +790,7 @@ export const CatalogProductCreatePage = memo(() => {
   )
 
   const goToStep = useCallback((nextStep: number) => {
+    pendingFocusTargetRef.current = null
     setStep(nextStep)
     setStepErrors([])
     const target = pageStartRef.current as unknown as ScrollTarget | null
@@ -766,9 +798,9 @@ export const CatalogProductCreatePage = memo(() => {
   }, [])
 
   const handleNext = useCallback(() => {
-    const errors = validateCatalogCreationStep(values, step)
-    if (errors.length) {
-      setStepErrors(errors)
+    const issues = resolveCatalogCreationValidationIssues(values, step)
+    if (issues.length) {
+      setStepErrors(issues)
       return
     }
     goToStep(Math.min(steps.length - 1, step + 1))
@@ -788,19 +820,34 @@ export const CatalogProductCreatePage = memo(() => {
     [goToStep],
   )
 
+  const handleValidationNavigate = useCallback(
+    (issue: CatalogCreationValidationIssue) => {
+      if (!issue.targetId) {
+        return
+      }
+      if (issue.step === step) {
+        focusValidationTarget(issue.targetId)
+        return
+      }
+      pendingFocusTargetRef.current = issue.targetId
+      setStep(issue.step)
+    },
+    [focusValidationTarget, step],
+  )
+
   const handleSave = useCallback(() => {
-    const result = catalogCreationFormSchema.safeParse(values)
-    if (!result.success) {
-      setStepErrors(result.error.issues.map((issue) => issue.message))
+    const issues = resolveCatalogCreationValidationIssues(values)
+    if (issues.length) {
+      setStepErrors(issues)
       return
     }
     void form.handleSubmit()
   }, [form, values])
 
   const handleRetry = useCallback(() => {
-    const validation = catalogCreationFormSchema.safeParse(values)
-    if (!validation.success) {
-      setStepErrors(validation.error.issues.map((issue) => issue.message))
+    const issues = resolveCatalogCreationValidationIssues(values)
+    if (issues.length) {
+      setStepErrors(issues)
       return
     }
 
@@ -815,9 +862,12 @@ export const CatalogProductCreatePage = memo(() => {
         state = status.state
       } catch (error) {
         setStepErrors([
-          getAdminRequestErrorMessage(
-            error,
-            "The previous attempt could not be checked. Try again.",
+          createCatalogCreationGeneralIssue(
+            getAdminRequestErrorMessage(
+              error,
+              "The previous attempt could not be checked. Try again.",
+            ),
+            step,
           ),
         ])
         return
@@ -825,13 +875,19 @@ export const CatalogProductCreatePage = memo(() => {
       const decision = decideCatalogProductCreationRetry(state)
       if (decision === "wait") {
         setStepErrors([
-          "The previous creation attempt is still running. Wait a moment, then try again.",
+          createCatalogCreationGeneralIssue(
+            "The previous creation attempt is still running. Wait a moment, then try again.",
+            step,
+          ),
         ])
         return
       }
       if (decision === "blocked") {
         setStepErrors([
-          "This attempt needs an operator to reconcile it before the product can be retried safely.",
+          createCatalogCreationGeneralIssue(
+            "This attempt needs an operator to reconcile it before the product can be retried safely.",
+            step,
+          ),
         ])
         return
       }
@@ -842,7 +898,7 @@ export const CatalogProductCreatePage = memo(() => {
       setStepErrors([])
       void form.handleSubmit()
     })()
-  }, [form, inspectRetryStatus, values])
+  }, [form, inspectRetryStatus, step, values])
 
   const handleCancel = useCallback(() => {
     if (formState.isDirty) {
@@ -904,14 +960,6 @@ export const CatalogProductCreatePage = memo(() => {
     formState.isSubmitting ||
     mediaUploading ||
     retryStatusIsPending
-  const previewRoute =
-    values.kind === "music_release"
-      ? "music-release"
-      : values.kind === "merch"
-        ? "merch"
-        : "bundle"
-  const previewUrl = `/${previewRoute}/${resolveCatalogCreationHandle(values.handle, values.title)}`
-
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4" ref={pageStartRef}>
       <AdminPageHeader
@@ -932,7 +980,10 @@ export const CatalogProductCreatePage = memo(() => {
       ) : null}
 
       <CatalogCreationProgress current={step} />
-      <StepErrorSummary errors={stepErrors} />
+      <CatalogCreationValidationSummary
+        issues={stepErrors}
+        onNavigate={handleValidationNavigate}
+      />
       {creationMutation.isError ? (
         <AdminRetryState
           message={getAdminRequestErrorMessage(
@@ -1171,7 +1222,7 @@ export const CatalogProductCreatePage = memo(() => {
         <div className="flex flex-col gap-4">
           <Container className="p-6">
             <AdminSectionHeader
-              actions={<Button onClick={addOffering} size="small" type="button" variant="secondary">Add offering</Button>}
+              actions={<Button id="catalog-create-add-offering" onClick={addOffering} size="small" type="button" variant="secondary">Add offering</Button>}
               description="Each row becomes a native Medusa variant with its own price and exact inventory."
               title="Offerings"
             />
@@ -1301,7 +1352,7 @@ export const CatalogProductCreatePage = memo(() => {
           {values.kind === "fixed_bundle" ? (
             <Container className="p-6">
               <AdminSectionHeader
-                actions={<Button disabled={!choicesData?.length} onClick={addBundleComponent} size="small" type="button" variant="secondary">Add included product</Button>}
+                actions={<Button disabled={!choicesData?.length} id="catalog-create-add-bundle-component" onClick={addBundleComponent} size="small" type="button" variant="secondary">Add included product</Button>}
                 description="Map each included product format to the bundle formats that consume it. Sold-out items are allowed and will make the affected bundle unavailable."
                 title="Included products"
               />
@@ -1350,7 +1401,7 @@ export const CatalogProductCreatePage = memo(() => {
                               <Input {...control} data-component-field="quantity" data-component-id={component.id} inputMode="numeric" min="1" onChange={updateBundleComponent} step="1" type="number" value={component.quantity} />
                             )}
                           </AdminFormField>
-                          <fieldset className="rounded-md border border-ui-border-base p-3">
+                          <fieldset className="rounded-md border border-ui-border-base p-3" id={`component-${component.id}-offerings`} tabIndex={-1}>
                             <legend className="px-1 text-sm font-medium">Used by bundle formats</legend>
                             <div className="mt-2 flex flex-wrap gap-3">
                               {values.offerings.map((offering) => (
@@ -1441,7 +1492,7 @@ export const CatalogProductCreatePage = memo(() => {
       ) : null}
 
       {step === 4 ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex flex-col gap-4">
           <Container className="p-6">
             <AdminSectionHeader
               description="Review the customer-facing result before creating the product draft. Uploaded images already exist in managed storage and will be linked on creation."
@@ -1477,23 +1528,10 @@ export const CatalogProductCreatePage = memo(() => {
               </div>
             </div>
           </Container>
-          <Container className="h-fit p-5 lg:sticky lg:top-4">
-            <Text size="xsmall" className="text-ui-fg-subtle">Customer preview</Text>
-            {values.media[0] ? (
-              <img
-                alt={values.media[0].altText}
-                className="mt-3 aspect-square w-full rounded-lg border border-ui-border-base object-cover"
-                height="288"
-                src={values.media[0].sourceUrl}
-                width="288"
-              />
-            ) : null}
-            <Heading className="mt-2 break-words" level="h2">{values.title || "Untitled product"}</Heading>
-            {values.kind === "music_release" && values.artistName ? <Text className="mt-1 text-ui-fg-subtle">{values.artistName}</Text> : null}
-            <Text className="mt-4 line-clamp-4" size="small">{values.description || "Add a short description so customers know what they are buying."}</Text>
-            <div className="mt-4 flex flex-wrap gap-2">{values.offerings.map((offering) => <Badge color="grey" key={offering.id}>{offering.title} · ${offering.priceUsd}</Badge>)}</div>
-            <Text className="mt-5 break-all text-ui-fg-subtle" size="xsmall">{previewUrl}</Text>
-          </Container>
+          <CatalogCreationReview
+            availabilityByOfferingId={availabilityByOfferingId}
+            values={values}
+          />
         </div>
       ) : null}
 
@@ -1513,7 +1551,7 @@ export const CatalogProductCreatePage = memo(() => {
           ) : (
             <Button
               className={primaryActionClassName}
-              disabled={busy || !formState.canSubmit}
+              disabled={busy}
               isLoading={busy}
               onClick={handleSave}
               type="button"

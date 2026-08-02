@@ -370,6 +370,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
               disabled={
                 uploading || media.length >= MAX_CATALOG_PRODUCT_MEDIA_ITEMS
               }
+              id="catalog-create-upload-media"
               isLoading={uploading}
               onClick={handleChooseImages}
               size="small"
