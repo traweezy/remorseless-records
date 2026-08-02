@@ -24,6 +24,8 @@ const entry = (
     },
     productHandle: `music-release-${id}`,
     productPath: `/music-release/${id}`,
+    sourceMode: "catalog_product",
+    linkHealth: "healthy",
     collectionTitle: null,
     catalogNumber: null,
     releaseDate: null,
@@ -33,6 +35,7 @@ const entry = (
     tags: [],
     availability: "unknown",
     coverUrl: null,
+    coverAltText: null,
     ...rest,
   }
 }

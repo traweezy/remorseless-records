@@ -3,8 +3,15 @@ import { unstable_cache } from "next/cache"
 import { runtimeEnv } from "@/config/env"
 import { buildPublicProductPath } from "@/lib/products/routes"
 
+const DISCOGRAPHY_REVALIDATE_SECONDS = 60
+
 export type DiscographyAvailability =
   "in_print" | "out_of_print" | "preorder" | "digital_only" | "unknown"
+
+export type DiscographyLinkHealth =
+  "healthy" | "missing" | "not_applicable" | "unknown" | "unpublished"
+
+export type DiscographySourceMode = "catalog_product" | "manual"
 
 export type DiscographyEntry = {
   id: string
@@ -18,7 +25,9 @@ export type DiscographyEntry = {
     albumSlug: string
   }
   productHandle: string | null
-  productPath: string
+  productPath: string | null
+  sourceMode: DiscographySourceMode
+  linkHealth: DiscographyLinkHealth
   collectionTitle: string | null
   catalogNumber: string | null
   releaseDate: string | null
@@ -28,6 +37,7 @@ export type DiscographyEntry = {
   tags: string[]
   availability: DiscographyAvailability
   coverUrl: string | null
+  coverAltText: string | null
 }
 
 type DiscographyApiEntry = {
@@ -36,6 +46,8 @@ type DiscographyApiEntry = {
   artist: string
   album: string
   productHandle: string | null
+  sourceMode: DiscographySourceMode
+  linkHealth: DiscographyLinkHealth
   collectionTitle: string | null
   catalogNumber: string | null
   releaseDate: string | null
@@ -45,6 +57,7 @@ type DiscographyApiEntry = {
   tags: string[]
   availability: DiscographyAvailability
   coverUrl: string | null
+  coverAltText: string | null
 }
 
 const FORMAT_PATTERNS = [
@@ -166,11 +179,15 @@ const normalizeEntry = (entry: DiscographyApiEntry): DiscographyEntry => {
   const slug = buildSlugParts(entry.artist, entry.album)
   const trimmedHandle = entry.productHandle?.trim() ?? ""
   const productHandle = trimmedHandle !== "" ? trimmedHandle : null
-  const productPath = buildPublicProductPath({
-    handle:
-      productHandle ?? `music-release-${slug.artistSlug}-${slug.albumSlug}`,
-    productType: "Music release",
-  })
+  const productPath =
+    entry.sourceMode === "catalog_product" &&
+    entry.linkHealth === "healthy" &&
+    productHandle
+      ? buildPublicProductPath({
+          handle: productHandle,
+          productType: "Music release",
+        })
+      : null
 
   const releaseYear =
     entry.releaseYear ??
@@ -184,6 +201,8 @@ const normalizeEntry = (entry: DiscographyApiEntry): DiscographyEntry => {
     slug,
     productHandle,
     productPath,
+    sourceMode: entry.sourceMode,
+    linkHealth: entry.linkHealth,
     collectionTitle: entry.collectionTitle ?? null,
     catalogNumber: entry.catalogNumber ?? null,
     releaseDate: entry.releaseDate ?? null,
@@ -193,6 +212,7 @@ const normalizeEntry = (entry: DiscographyApiEntry): DiscographyEntry => {
     tags: normalizeTags(entry.tags ?? []),
     availability: entry.availability ?? "unknown",
     coverUrl: entry.coverUrl ?? null,
+    coverAltText: entry.coverAltText ?? null,
   }
 }
 
@@ -217,7 +237,10 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
         headers: {
           "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
         },
-        next: { revalidate: 900, tags: ["discography"] },
+        next: {
+          revalidate: DISCOGRAPHY_REVALIDATE_SECONDS,
+          tags: ["discography"],
+        },
       })
 
       if (!response.ok) {
@@ -249,5 +272,8 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
 export const getDiscographyEntries = unstable_cache(
   fetchDiscographyEntries,
   ["discography-entries"],
-  { revalidate: 900, tags: ["discography"] }
+  {
+    revalidate: DISCOGRAPHY_REVALIDATE_SECONDS,
+    tags: ["discography"],
+  }
 )

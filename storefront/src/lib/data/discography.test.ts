@@ -47,6 +47,8 @@ describe("getDiscographyEntries", () => {
                 artist,
                 album,
                 productHandle,
+                sourceMode: "catalog_product",
+                linkHealth: "healthy",
                 collectionTitle: faker.company.name(),
                 catalogNumber: faker.string.alphanumeric(6).toUpperCase(),
                 releaseDate,
@@ -56,6 +58,7 @@ describe("getDiscographyEntries", () => {
                 tags: ["Limited", "  repress  ", "limited"],
                 availability: "in_print",
                 coverUrl: faker.internet.url(),
+                coverAltText: `${title} sleeve`,
               },
             ],
             count: 1,
@@ -130,7 +133,7 @@ describe("getDiscographyEntries", () => {
     expect(errorSpy).toHaveBeenCalled()
   })
 
-  it("normalizes missing handles, invalid release year, and format detection", async () => {
+  it("keeps historical releases visible without inventing product links", async () => {
     const medusaBackendUrl = faker.internet.url()
     const medusaPublishableKey = faker.string.alphanumeric(16)
     const id = faker.string.uuid()
@@ -162,6 +165,8 @@ describe("getDiscographyEntries", () => {
                 artist: " ",
                 album: fallbackAlbum,
                 productHandle: " ",
+                sourceMode: "manual",
+                linkHealth: "not_applicable",
                 collectionTitle: null,
                 catalogNumber: null,
                 releaseDate: "not-a-date",
@@ -171,6 +176,7 @@ describe("getDiscographyEntries", () => {
                 tags: [tagOne, " ", tagTwo],
                 availability: "in_print",
                 coverUrl: null,
+                coverAltText: null,
               },
             ],
             count: 1,
@@ -191,11 +197,61 @@ describe("getDiscographyEntries", () => {
     const entry = entries[0]
     expect(entry?.id).toBe(id)
     expect(entry?.productHandle).toBeNull()
-    expect(entry?.productPath.startsWith("/music-release/")).toBe(true)
+    expect(entry?.productPath).toBeNull()
     expect(entry?.releaseYear).toBeNull()
     expect(entry?.formats).toEqual(["Vinyl", "CD", "Cassette"])
     expect(entry?.tags).toEqual([tagOne, tagTwo])
     expect(entry?.slug.artist).toBe(fallbackAlbum)
     expect(entry?.slug.album).toBe(fallbackAlbum)
+  })
+
+  it("does not link an unpublished catalog product", async () => {
+    const medusaBackendUrl = faker.internet.url()
+    const medusaPublishableKey = faker.string.alphanumeric(16)
+
+    vi.doMock("next/cache", () => ({
+      unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
+    }))
+    vi.doMock("@/config/env", () => ({
+      runtimeEnv: {
+        medusaBackendUrl,
+        medusaPublishableKey,
+      },
+    }))
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          entries: [
+            {
+              id: faker.string.uuid(),
+              title: "Private release",
+              artist: "Private artist",
+              album: "Private release",
+              productHandle: "private-release",
+              sourceMode: "catalog_product",
+              linkHealth: "unpublished",
+              collectionTitle: null,
+              catalogNumber: null,
+              releaseDate: null,
+              releaseYear: 2026,
+              formats: ["CD"],
+              genres: [],
+              tags: [],
+              availability: "unknown",
+              coverUrl: null,
+              coverAltText: null,
+            },
+          ],
+          count: 1,
+        }),
+    } as Response)
+
+    const { getDiscographyEntries } = await import("@/lib/data/discography")
+    const entries = await getDiscographyEntries()
+
+    expect(entries[0]?.productHandle).toBe("private-release")
+    expect(entries[0]?.productPath).toBeNull()
   })
 })

@@ -25,6 +25,7 @@ const DiscographyEntry = model.define(
       .default("unknown"),
     cover_url: model.text().nullable(),
     cover_alt_text: model.text().nullable(),
+    archived_at: model.dateTime().nullable(),
     version: model.number().default(1),
   }
 )

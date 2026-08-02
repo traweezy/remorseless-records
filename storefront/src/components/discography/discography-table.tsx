@@ -272,7 +272,7 @@ const Cover = memo(({ entry }: { entry: DiscographyEntry }) => {
       {coverUrl ? (
         <Image
           src={coverUrl}
-          alt={`${entry.title} cover artwork`}
+          alt={entry.coverAltText ?? `${entry.title} cover artwork`}
           fill
           sizes="(min-width: 1024px) 64px, 56px"
           className="object-cover"
@@ -309,18 +309,9 @@ const FormatList = memo(({ formats }: { formats: string[] }) =>
 FormatList.displayName = "FormatList"
 
 const DiscographyRow = memo(
-  ({ entry, rowIndex }: { entry: DiscographyEntry; rowIndex: number }) => (
-    <div
-      role="listitem"
-      aria-posinset={rowIndex + 1}
-      data-testid="discography-row"
-    >
-      <SmartLink
-        href={entry.productPath}
-        nativePrefetch
-        className="group mx-2 my-1.5 grid min-h-28 grid-cols-[3.5rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-2xl border border-border/45 bg-background/80 p-3 transition-[border-color,background-color,box-shadow] hover:border-destructive/60 hover:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
-        aria-label={`View ${entry.title} by ${entry.artist}`}
-      >
+  ({ entry, rowIndex }: { entry: DiscographyEntry; rowIndex: number }) => {
+    const mobileContent = (
+      <>
         <div>
           <Cover entry={entry} />
         </div>
@@ -332,11 +323,18 @@ const DiscographyRow = memo(
             {entry.artist}
           </p>
         </div>
-        <ChevronRight
-          className="h-5 w-5 self-center text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-destructive"
-          aria-hidden
-        />
-        <div className="col-span-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/30 pt-2 text-xs text-muted-foreground">
+        {entry.productPath ? (
+          <ChevronRight
+            className="h-5 w-5 self-center text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-destructive"
+            aria-hidden
+          />
+        ) : null}
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/30 pt-2 text-xs text-muted-foreground",
+            entry.productPath ? "col-span-3" : "col-span-2"
+          )}
+        >
           <span>{formatReleaseDate(entry)}</span>
           <FormatList formats={entry.formats} />
           {entry.catalogNumber ? (
@@ -346,47 +344,76 @@ const DiscographyRow = memo(
           ) : null}
           <AvailabilityBadge availability={entry.availability} />
         </div>
-      </SmartLink>
+      </>
+    )
 
-      <div className="hidden min-h-24 grid-cols-[64px_minmax(10rem,1.8fr)_minmax(6rem,0.85fr)_minmax(7rem,1fr)_minmax(6rem,0.7fr)_minmax(7rem,0.8fr)_auto] items-center gap-3 border-b border-border/30 px-4 py-4 lg:grid">
-        <div>
-          <Cover entry={entry} />
-        </div>
-        <div className="min-w-0">
-          <p className="break-words text-sm font-semibold uppercase tracking-[0.12rem] text-foreground">
-            {entry.title}
-          </p>
-          <p className="mt-1 break-words text-xs uppercase tracking-[0.12rem] text-muted-foreground">
-            {entry.artist}
-          </p>
-          {entry.tags.length ? (
-            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground/80">
-              {entry.tags.join(" · ")}
+    return (
+      <div
+        role="listitem"
+        aria-posinset={rowIndex + 1}
+        data-testid="discography-row"
+      >
+        {entry.productPath ? (
+          <SmartLink
+            href={entry.productPath}
+            nativePrefetch
+            className="group mx-2 my-1.5 grid min-h-28 grid-cols-[3.5rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-2xl border border-border/45 bg-background/80 p-3 transition-[border-color,background-color,box-shadow] hover:border-destructive/60 hover:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
+            aria-label={`View ${entry.title} by ${entry.artist}`}
+          >
+            {mobileContent}
+          </SmartLink>
+        ) : (
+          <div className="mx-2 my-1.5 grid min-h-28 grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-2xl border border-border/45 bg-background/80 p-3 lg:hidden">
+            {mobileContent}
+          </div>
+        )}
+
+        <div className="hidden min-h-24 grid-cols-[64px_minmax(10rem,1.8fr)_minmax(6rem,0.85fr)_minmax(7rem,1fr)_minmax(6rem,0.7fr)_minmax(7rem,0.8fr)_auto] items-center gap-3 border-b border-border/30 px-4 py-4 lg:grid">
+          <div>
+            <Cover entry={entry} />
+          </div>
+          <div className="min-w-0">
+            <p className="break-words text-sm font-semibold uppercase tracking-[0.12rem] text-foreground">
+              {entry.title}
             </p>
-          ) : null}
-        </div>
-        <div className="text-xs text-muted-foreground">
-          {formatReleaseDate(entry)}
-        </div>
-        <div>
-          <FormatList formats={entry.formats} />
-        </div>
-        <div className="text-xs uppercase tracking-[0.18rem] text-muted-foreground">
-          {entry.catalogNumber ?? "—"}
-        </div>
-        <div>
-          <AvailabilityBadge availability={entry.availability} />
-        </div>
-        <div className="justify-self-end">
-          <Button asChild variant="outlined" size="compact">
-            <SmartLink href={entry.productPath} nativePrefetch>
-              View
-            </SmartLink>
-          </Button>
+            <p className="mt-1 break-words text-xs uppercase tracking-[0.12rem] text-muted-foreground">
+              {entry.artist}
+            </p>
+            {entry.tags.length ? (
+              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground/80">
+                {entry.tags.join(" · ")}
+              </p>
+            ) : null}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {formatReleaseDate(entry)}
+          </div>
+          <div>
+            <FormatList formats={entry.formats} />
+          </div>
+          <div className="text-xs uppercase tracking-[0.18rem] text-muted-foreground">
+            {entry.catalogNumber ?? "—"}
+          </div>
+          <div>
+            <AvailabilityBadge availability={entry.availability} />
+          </div>
+          <div className="justify-self-end">
+            {entry.productPath ? (
+              <Button asChild variant="outlined" size="compact">
+                <SmartLink href={entry.productPath} nativePrefetch>
+                  View
+                </SmartLink>
+              </Button>
+            ) : (
+              <span className="text-right text-xs text-muted-foreground">
+                Discography only
+              </span>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 )
 
 DiscographyRow.displayName = "DiscographyRow"

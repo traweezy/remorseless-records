@@ -1,8 +1,16 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
-import { z } from "zod"
+import { z } from "@medusajs/framework/zod"
+import { MedusaError, Modules } from "@medusajs/framework/utils"
 
+import {
+  loadDiscographyProductLinks,
+  type DiscographyProductReader,
+} from "@/lib/discography/product-links"
 import type DiscographyModuleService from "@/modules/discography/service"
-import { serializeDiscographyEntry } from "@/modules/discography/serializers"
+import {
+  type DiscographyEntryRecord,
+  serializeDiscographyEntry,
+} from "@/modules/discography/serializers"
 
 type DiscographyService = InstanceType<typeof DiscographyModuleService>
 
@@ -15,27 +23,56 @@ export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const { limit, offset } = listQuerySchema.parse(req.query)
-  const discographyService = req.scope.resolve("discography") as DiscographyService
+  const parsed = listQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Invalid discography list query"
+    )
+  }
+  const { limit, offset } = parsed.data
+  const discographyService = req.scope.resolve(
+    "discography"
+  ) as DiscographyService
+  const productService = req.scope.resolve(
+    Modules.PRODUCT
+  ) as DiscographyProductReader
 
   const take = limit ?? 200
   const skip = offset ?? 0
 
-  const [entries, count] = await discographyService.listAndCountDiscographyEntries(
-    {},
-    {
-      skip,
-      take,
-      order: {
-        release_year: "DESC",
-        release_date: "DESC",
-        created_at: "DESC",
-      },
-    }
+  const [entries, count] =
+    await discographyService.listAndCountDiscographyEntries(
+      { archived_at: null },
+      {
+        skip,
+        take,
+        order: {
+          release_year: "DESC",
+          release_date: "DESC",
+          created_at: "DESC",
+        },
+      }
+    )
+  const records = entries as DiscographyEntryRecord[]
+  const productsById = await loadDiscographyProductLinks(
+    productService,
+    records
   )
 
   res.status(200).json({
-    entries: entries.map(serializeDiscographyEntry),
+    entries: records.map((entry) =>
+      serializeDiscographyEntry(
+        entry,
+        entry.source_mode === "catalog_product"
+          ? {
+              product: entry.product_id
+                ? (productsById.get(entry.product_id) ?? null)
+                : null,
+            }
+          : {}
+      )
+    ),
     count,
     offset: skip,
     limit: take,

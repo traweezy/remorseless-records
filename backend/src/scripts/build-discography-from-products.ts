@@ -96,6 +96,7 @@ type CatalogVariantProfileRecord = {
 }
 
 type ExistingDiscographyRecord = {
+  archived_at?: Date | string | null
   id: string
   product_id?: string | null
   source_mode?: string | null
@@ -239,8 +240,8 @@ export default async function buildDiscographyFromProducts({
       : null
     return Boolean(
       productType?.is_active !== false &&
-        productType?.kind === "product_type" &&
-        isMusicReleaseReference(productType.value)
+      productType?.kind === "product_type" &&
+      isMusicReleaseReference(productType.value)
     )
   })
   const missingProductIds = musicProfiles
@@ -304,7 +305,7 @@ export default async function buildDiscographyFromProducts({
         )
       }
       const label = profile.label_id
-        ? referenceValuesById.get(profile.label_id)?.label ?? null
+        ? (referenceValuesById.get(profile.label_id)?.label ?? null)
         : null
 
       return {
@@ -391,23 +392,32 @@ export default async function buildDiscographyFromProducts({
     return
   }
 
-  const result = await discographyService.replaceWithCatalogProjection(
-    projection
-  )
+  const result =
+    await discographyService.replaceWithCatalogProjection(projection)
   const rebuiltEntries = await listAll<ExistingDiscographyRecord>(
     (skip, take) =>
       discographyService.listAndCountDiscographyEntries({}, { skip, take })
   )
   const rebuiltProductIds = rebuiltEntries
+    .filter(
+      ({ product_id, source_mode }) =>
+        Boolean(product_id) &&
+        source_mode === "catalog_product" &&
+        projectedProductIds.includes(product_id ?? "")
+    )
     .map(({ product_id }) => product_id)
     .filter((id): id is string => Boolean(id))
     .sort()
+  const activeStaleLinkedEntries = rebuiltEntries.filter(
+    ({ archived_at, product_id, source_mode }) =>
+      source_mode === "catalog_product" &&
+      Boolean(product_id) &&
+      !projectedProductIds.includes(product_id ?? "") &&
+      !archived_at
+  )
   if (
-    rebuiltEntries.length !== projection.length ||
-    rebuiltEntries.some(
-      ({ product_id, source_mode }) =>
-        !product_id || source_mode !== "catalog_product"
-    ) ||
+    rebuiltProductIds.length !== projection.length ||
+    activeStaleLinkedEntries.length > 0 ||
     JSON.stringify(rebuiltProductIds) !==
       JSON.stringify([...projectedProductIds].sort())
   ) {
@@ -421,12 +431,14 @@ export default async function buildDiscographyFromProducts({
     `completed-${timestamp}.json`
   )
   await writeJsonAtomically(completionPath, {
+    archived: result.archived,
     completedAt: new Date().toISOString(),
     created: result.created,
     productIds: rebuiltProductIds,
-    removed: result.removed,
+    retainedManual: result.retainedManual,
+    updated: result.updated,
   })
   logger.info(
-    `[discography] Replacement complete. removed=${result.removed} created=${result.created} report=${completionPath}`
+    `[discography] Sync complete. created=${result.created} updated=${result.updated} archived=${result.archived} retained_manual=${result.retainedManual} report=${completionPath}`
   )
 }

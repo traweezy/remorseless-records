@@ -1,93 +1,109 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
-import { MedusaError } from "@medusajs/framework/utils"
-import { z } from "zod"
+import { z } from "@medusajs/framework/zod"
+import { MedusaError, Modules } from "@medusajs/framework/utils"
 
+import {
+  loadDiscographyProductLinks,
+  type DiscographyProductReader,
+} from "@/lib/discography/product-links"
 import type DiscographyModuleService from "@/modules/discography/service"
 import {
+  discographySourceModeValues,
   discographyAvailabilityValues,
+  type DiscographyEntryRecord,
   serializeDiscographyEntry,
 } from "@/modules/discography/serializers"
+import {
+  createManualDiscographyEntry,
+  manualDiscographyCreateSchema,
+} from "./helpers"
 
 type DiscographyService = InstanceType<typeof DiscographyModuleService>
 
 const listQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).optional(),
+  archived: z.enum(["active", "archived", "all"]).optional(),
+  availability: z.enum(discographyAvailabilityValues).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).optional(),
+  q: z.string().trim().max(200).optional(),
   order: z
-    .enum(["release_date", "release_year", "created_at", "title"])
+    .enum([
+      "artist",
+      "created_at",
+      "release_date",
+      "release_year",
+      "title",
+      "updated_at",
+    ])
     .optional(),
   direction: z.enum(["asc", "desc"]).optional(),
-})
-
-const entryBaseSchema = z.object({
-  title: z.string().trim().min(1),
-  artist: z.string().trim().min(1),
-  album: z.string().trim().min(1),
-  productHandle: z.string().trim().optional().nullable(),
-  collectionTitle: z.string().trim().optional().nullable(),
-  catalogNumber: z.string().trim().optional().nullable(),
-  releaseDate: z.string().trim().optional().nullable(),
-  releaseYear: z.coerce.number().int().optional().nullable(),
-  formats: z.array(z.string().trim()).optional(),
-  genres: z.array(z.string().trim()).optional(),
-  tags: z.array(z.string().trim()).optional(),
-  availability: z.enum(discographyAvailabilityValues).optional(),
-  coverUrl: z.string().trim().url().optional().nullable(),
-})
-
-const toOptionalDate = (value: string | null | undefined): Date | null => {
-  if (!value || typeof value !== "string") {
-    return null
-  }
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-const normalizeList = (values?: string[]): string[] =>
-  (values ?? []).map((value) => value.trim()).filter((value) => value.length > 0)
-
-const toNullableString = (value: string | null | undefined): string | null =>
-  value && value.trim().length ? value.trim() : null
-
-const toEntryPayload = (input: z.infer<typeof entryBaseSchema>) => ({
-  title: input.title.trim(),
-  artist: input.artist.trim(),
-  album: input.album.trim(),
-  product_handle: toNullableString(input.productHandle),
-  collection_title: toNullableString(input.collectionTitle),
-  catalog_number: toNullableString(input.catalogNumber),
-  release_date: toOptionalDate(input.releaseDate),
-  release_year: input.releaseYear ?? null,
-  formats: normalizeList(input.formats),
-  genres: normalizeList(input.genres),
-  tags: normalizeList(input.tags),
-  availability: input.availability ?? "unknown",
-  cover_url: toNullableString(input.coverUrl),
+  sourceMode: z.enum(discographySourceModeValues).optional(),
 })
 
 export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const { limit, offset, order, direction } = listQuerySchema.parse(req.query)
-  const discographyService = req.scope.resolve("discography") as DiscographyService
+  const parsed = listQuerySchema.safeParse(req.query)
+  if (!parsed.success) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Invalid discography list query"
+    )
+  }
+  const {
+    archived = "active",
+    availability,
+    direction,
+    limit,
+    offset,
+    order,
+    q,
+    sourceMode,
+  } = parsed.data
+  const discographyService = req.scope.resolve(
+    "discography"
+  ) as DiscographyService
+  const productService = req.scope.resolve(
+    Modules.PRODUCT
+  ) as DiscographyProductReader
 
-  const take = limit ?? 100
+  const take = limit ?? 25
   const skip = offset ?? 0
   const sortField = order ?? "release_year"
   const sortDirection = (direction ?? "desc").toUpperCase() as "ASC" | "DESC"
+  const filters: Record<string, unknown> = {}
+  if (q) filters.q = q
+  if (availability) filters.availability = availability
+  if (sourceMode) filters.source_mode = sourceMode
+  if (archived === "active") filters.archived_at = null
+  if (archived === "archived") filters.archived_at = { $ne: null }
 
-  const [entries, count] = await discographyService.listAndCountDiscographyEntries(
-    {},
-    {
+  const [entries, count] =
+    await discographyService.listAndCountDiscographyEntries(filters, {
       skip,
       take,
       order: { [sortField]: sortDirection },
-    }
+    })
+  const records = entries as DiscographyEntryRecord[]
+  const productsById = await loadDiscographyProductLinks(
+    productService,
+    records
   )
 
   res.status(200).json({
-    entries: entries.map(serializeDiscographyEntry),
+    entries: records.map((entry) =>
+      serializeDiscographyEntry(
+        entry,
+        entry.source_mode === "catalog_product"
+          ? {
+              product: entry.product_id
+                ? (productsById.get(entry.product_id) ?? null)
+                : null,
+            }
+          : {}
+      )
+    ),
     count,
     offset: skip,
     limit: take,
@@ -98,7 +114,7 @@ export const POST = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const parsed = entryBaseSchema.safeParse(req.body ?? {})
+  const parsed = manualDiscographyCreateSchema.safeParse(req.body ?? {})
 
   if (!parsed.success) {
     throw new MedusaError(
@@ -107,20 +123,7 @@ export const POST = async (
     )
   }
 
-  const discographyService = req.scope.resolve("discography") as DiscographyService
-  const createdResult = await discographyService.createDiscographyEntries([
-    toEntryPayload(parsed.data),
-  ])
-  const created = Array.isArray(createdResult)
-    ? createdResult[0]
-    : createdResult
-
-  if (!created) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Unable to create discography entry"
-    )
-  }
-
-  res.status(201).json({ entry: serializeDiscographyEntry(created) })
+  const service = req.scope.resolve("discography") as DiscographyService
+  const result = await createManualDiscographyEntry(req, service, parsed.data)
+  res.status(result.replayed ? 200 : 201).json(result)
 }

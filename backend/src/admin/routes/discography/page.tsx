@@ -1,1198 +1,693 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { ArchiveBox, PencilSquare, Trash } from "@medusajs/icons"
 import {
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react"
+import { defineRouteConfig } from "@medusajs/admin-sdk"
+import { ArchiveBox } from "@medusajs/icons"
+import {
+  Alert,
   Button,
   Container,
-  FocusModal,
-  Heading,
   Input,
   Label,
-  Table,
+  Select,
+  Tabs,
   Text,
-  Textarea,
+  toast,
+  useDataTable,
+  type DataTablePaginationState,
 } from "@medusajs/ui"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-const availabilityOptions = [
-  { value: "in_print", label: "In print" },
-  { value: "out_of_print", label: "Out of print" },
-  { value: "preorder", label: "Pre-order" },
-  { value: "digital_only", label: "Digital only" },
-  { value: "unknown", label: "Unknown" },
-] as const
+import { ConfirmAction } from "../../components/confirm-action"
+import {
+  AdminPageHeader,
+  AdminSingleColumnLayout,
+} from "../../components/admin-page"
+import { AdminRetryState } from "../../components/admin-retry-state"
+import { DiscographyCollection } from "../../features/discography/discography-table"
+import { DiscographyManualForm } from "../../features/discography/discography-manual-form"
+import {
+  createManualDiscographyEntry,
+  discographyAvailabilityValues,
+  listDiscographyEntries,
+  updateDiscographyLifecycle,
+  updateManualDiscographyEntry,
+  type DiscographyAvailability,
+  type DiscographyEntry,
+  type DiscographySourceMode,
+  type ManualDiscographyInput,
+} from "../../features/discography/discography-query"
+import { useDiscographyColumns } from "../../features/discography/discography-table"
+import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 
-type DiscographyAvailability = (typeof availabilityOptions)[number]["value"]
+const PAGE_SIZE = 25
+const QUERY_KEY = ["discography"] as const
 
-type SortField =
-  | "title"
-  | "artist"
-  | "releaseYear"
-  | "catalogNumber"
-  | "availability"
-type SortDirection = "asc" | "desc"
-
-type SortOption = {
-  value: `${SortField}:${SortDirection}`
+const sourceOptions: Array<{
   label: string
-  field: SortField
-  direction: SortDirection
-}
+  value: DiscographySourceMode | "all"
+}> = [
+  { label: "All sources", value: "all" },
+  { label: "Store releases", value: "catalog_product" },
+  { label: "Historical records", value: "manual" },
+]
 
-type DiscographyEntry = {
-  id: string
-  title: string
-  artist: string
-  album: string
-  productHandle: string | null
-  collectionTitle: string | null
-  catalogNumber: string | null
-  releaseDate: string | null
-  releaseYear: number | null
-  formats: string[]
-  genres: string[]
-  tags: string[]
-  availability: DiscographyAvailability
-  coverUrl: string | null
-  createdAt?: string | null
-  updatedAt?: string | null
+const availabilityLabels: Record<DiscographyAvailability, string> = {
+  digital_only: "Digital only",
+  in_print: "In print",
+  out_of_print: "Out of print",
+  preorder: "Pre-order",
+  unknown: "Unknown",
 }
 
 const sortOptions = [
   {
+    direction: "desc",
+    label: "Newest release",
+    order: "release_year",
+    value: "release_year:desc",
+  },
+  {
+    direction: "asc",
+    label: "Oldest release",
+    order: "release_year",
+    value: "release_year:asc",
+  },
+  {
+    direction: "asc",
+    label: "Release A–Z",
+    order: "title",
     value: "title:asc",
-    label: "Release (A-Z)",
-    field: "title",
+  },
+  {
     direction: "asc",
-  },
-  {
-    value: "title:desc",
-    label: "Release (Z-A)",
-    field: "title",
-    direction: "desc",
-  },
-  {
+    label: "Artist A–Z",
+    order: "artist",
     value: "artist:asc",
-    label: "Artist (A-Z)",
-    field: "artist",
-    direction: "asc",
   },
   {
-    value: "artist:desc",
-    label: "Artist (Z-A)",
-    field: "artist",
     direction: "desc",
+    label: "Recently updated",
+    order: "updated_at",
+    value: "updated_at:desc",
   },
-  {
-    value: "releaseYear:desc",
-    label: "Year (newest)",
-    field: "releaseYear",
-    direction: "desc",
-  },
-  {
-    value: "releaseYear:asc",
-    label: "Year (oldest)",
-    field: "releaseYear",
-    direction: "asc",
-  },
-  {
-    value: "catalogNumber:asc",
-    label: "Catalog # (A-Z)",
-    field: "catalogNumber",
-    direction: "asc",
-  },
-  {
-    value: "availability:asc",
-    label: "Availability (A-Z)",
-    field: "availability",
-    direction: "asc",
-  },
-] satisfies readonly SortOption[]
+] as const
 
 type SortValue = (typeof sortOptions)[number]["value"]
-type AvailabilityFilter = DiscographyAvailability | "all"
+type ArchiveView = "active" | "archived"
 
-type DiscographyFormState = {
-  title: string
-  artist: string
-  productHandle: string
-  collectionTitle: string
-  catalogNumber: string
-  releaseDate: string
-  releaseYear: string
-  formats: string[]
-  genres: string[]
-  tags: string[]
-  availability: DiscographyAvailability
-  coverUrl: string
+const isArchiveView = (value: string): value is ArchiveView =>
+  value === "active" || value === "archived"
+
+const isSource = (value: string): value is DiscographySourceMode | "all" =>
+  value === "all" || value === "catalog_product" || value === "manual"
+
+const isAvailability = (
+  value: string
+): value is DiscographyAvailability | "all" =>
+  value === "all" ||
+  discographyAvailabilityValues.some((candidate) => candidate === value)
+
+const isSortValue = (value: string): value is SortValue =>
+  sortOptions.some((option) => option.value === value)
+
+type BrowserEnvironment = typeof globalThis & {
+  requestAnimationFrame?: (callback: () => void) => number
 }
 
-type ValueChangeEvent = {
-  target?: EventTarget | null
-  currentTarget?: EventTarget | null
+const restoreFocus = (target: HTMLButtonElement | null): void => {
+  const browser = globalThis as BrowserEnvironment
+  browser.requestAnimationFrame?.(() => {
+    const focusTarget = target as unknown as { focus?: () => void } | null
+    focusTarget?.focus?.()
+  })
 }
 
-const emptyForm: DiscographyFormState = {
-  title: "",
-  artist: "",
-  productHandle: "",
-  collectionTitle: "",
-  catalogNumber: "",
-  releaseDate: "",
-  releaseYear: "",
-  formats: [],
-  genres: [],
-  tags: [],
-  availability: "unknown",
-  coverUrl: "",
-}
-
-const toDateInput = (value: string | null | undefined): string => {
-  if (!value) {
-    return ""
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ""
-  }
-  return date.toISOString().slice(0, 10)
-}
-
-const normalizeList = (values: string[]): string[] =>
-  values
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-    .filter((value, index, array) => array.findIndex((item) => item.toLowerCase() === value.toLowerCase()) === index)
-
-const readValue = (event: ValueChangeEvent): string => {
-  const target = event.currentTarget ?? event.target
-  const value = (target as { value?: unknown } | null)?.value
-  return typeof value === "string" ? value : ""
-}
-
-const extractErrorMessage = async (
-  response: Response
-): Promise<string | null> => {
-  const data = await response.json().catch(() => null)
-  if (!data || typeof data !== "object") {
-    return null
-  }
-  const message = (data as { message?: unknown }).message
-  if (typeof message === "string") {
-    return message
-  }
-  const error = (data as { error?: unknown }).error
-  if (typeof error === "string") {
-    return error
-  }
-  return null
-}
-
-const DiscographyAdminPage = () => {
-  const [entries, setEntries] = useState<DiscographyEntry[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [formOpen, setFormOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [formState, setFormState] = useState<DiscographyFormState>(emptyForm)
-  const [customGenre, setCustomGenre] = useState("")
-  const [customTag, setCustomTag] = useState("")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([])
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([])
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [availabilityFilter, setAvailabilityFilter] =
-    useState<AvailabilityFilter>("all")
-  const [sortValue, setSortValue] = useState<SortValue>("title:asc")
-
-  const formatOptions = useMemo(
-    () => ["Vinyl", "CD", "Cassette"],
-    []
+const DiscographyAdminPage = memo(() => {
+  const [view, setView] = useState<ArchiveView>("active")
+  const [pageIndex, setPageIndex] = useState(0)
+  const [searchInput, setSearchInput] = useState("")
+  const [query, setQuery] = useState("")
+  const [sourceMode, setSourceMode] = useState<DiscographySourceMode | "all">(
+    "all"
   )
-  const genreOptions = useMemo(
-    () => ["Death", "Doom", "Grind"],
-    []
+  const [availability, setAvailability] = useState<
+    DiscographyAvailability | "all"
+  >("all")
+  const [sortValue, setSortValue] = useState<SortValue>("release_year:desc")
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<DiscographyEntry | null>(
+    null
   )
-  const tagOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(entries.flatMap((entry) => entry.tags ?? []).map((tag) => tag.trim()))
+  const [lifecycleEntry, setLifecycleEntry] = useState<DiscographyEntry | null>(
+    null
+  )
+  const lifecycleIdempotencyKeyRef = useRef(crypto.randomUUID())
+  const createTriggerRef = useRef<HTMLButtonElement>(null)
+  const formTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const lifecycleTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const queryClient = useQueryClient()
+
+  const sort =
+    sortOptions.find((option) => option.value === sortValue) ?? sortOptions[0]
+  const offset = pageIndex * PAGE_SIZE
+  const pageQuery = useQuery({
+    queryFn: ({ signal }) =>
+      listDiscographyEntries(
+        {
+          archived: view,
+          availability,
+          direction: sort.direction,
+          limit: PAGE_SIZE,
+          offset,
+          order: sort.order,
+          q: query,
+          sourceMode,
+        },
+        signal
+      ),
+    queryKey: [
+      ...QUERY_KEY,
+      view,
+      availability,
+      sourceMode,
+      sortValue,
+      query,
+      offset,
+    ],
+    retry: false,
+    staleTime: 10_000,
+  })
+  const page = pageQuery.data ?? {
+    count: 0,
+    entries: [],
+    limit: PAGE_SIZE,
+    offset,
+  }
+
+  const invalidateDiscography = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+  }, [queryClient])
+
+  const createMutation = useMutation({
+    mutationFn: ({
+      idempotencyKey,
+      values,
+    }: {
+      idempotencyKey: string
+      values: ManualDiscographyInput
+    }) => createManualDiscographyEntry(values, idempotencyKey),
+    onSuccess: async () => {
+      setCreateOpen(false)
+      toast.success("Historical release added")
+      await invalidateDiscography()
+    },
+  })
+  const updateMutation = useMutation({
+    mutationFn: ({
+      entry,
+      idempotencyKey,
+      values,
+    }: {
+      entry: DiscographyEntry
+      idempotencyKey: string
+      values: ManualDiscographyInput
+    }) => updateManualDiscographyEntry(entry, values, idempotencyKey),
+    onSuccess: async () => {
+      setEditingEntry(null)
+      toast.success("Historical release updated")
+      await invalidateDiscography()
+    },
+  })
+  const lifecycleMutation = useMutation({
+    mutationFn: ({
+      entry,
+      idempotencyKey,
+    }: {
+      entry: DiscographyEntry
+      idempotencyKey: string
+    }) =>
+      updateDiscographyLifecycle(
+        entry,
+        entry.archivedAt ? "restore" : "archive",
+        idempotencyKey
+      ),
+    onSuccess: async (_result, variables) => {
+      const restored = Boolean(variables.entry.archivedAt)
+      const focusTarget = lifecycleTriggerRef.current
+      setLifecycleEntry(null)
+      toast.success(
+        restored ? "Discography release restored" : "Release archived"
       )
-        .filter((tag) => tag.length > 0)
-        .sort((left, right) =>
-          left.localeCompare(right, undefined, { sensitivity: "base" })
-        ),
-    [entries]
-  )
-
-  const fetchEntries = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch("/admin/discography?limit=200", {
-        credentials: "include",
-      })
-      if (!response.ok) {
-        throw new Error(`Failed to load discography (${response.status})`)
+      if (page.entries.length === 1 && pageIndex > 0) {
+        setPageIndex((current) => current - 1)
       }
-      const data = (await response.json()) as { entries: DiscographyEntry[] }
-      setEntries(
-        (data.entries ?? []).map((entry) => ({
-          ...entry,
-          formats: entry.formats ?? [],
-          genres: entry.genres ?? [],
-          tags: entry.tags ?? [],
-        }))
+      await invalidateDiscography()
+      restoreFocus(focusTarget)
+    },
+  })
+
+  const createError = createMutation.error
+    ? getAdminRequestErrorMessage(
+        createMutation.error,
+        "Unable to add the historical release."
       )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load discography")
-    } finally {
-      setLoading(false)
+    : null
+  const updateError = updateMutation.error
+    ? getAdminRequestErrorMessage(
+        updateMutation.error,
+        "Unable to update the historical release."
+      )
+    : null
+  const lifecycleError = lifecycleMutation.error
+    ? getAdminRequestErrorMessage(
+        lifecycleMutation.error,
+        "Unable to update this release."
+      )
+    : null
+
+  const resetPage = useCallback(() => setPageIndex(0), [])
+  const handleViewChange = useCallback((value: string) => {
+    if (isArchiveView(value)) {
+      setView(value)
+      setPageIndex(0)
     }
   }, [])
-
-  useEffect(() => {
-    void fetchEntries()
-  }, [fetchEntries])
-
-  const resetForm = useCallback(() => {
-    setEditingId(null)
-    setFormState(emptyForm)
-    setCustomGenre("")
-    setCustomTag("")
-    setFormOpen(false)
+  const handleSourceChange = useCallback((value: string) => {
+    if (isSource(value)) {
+      setSourceMode(value)
+      setPageIndex(0)
+    }
   }, [])
-
-  const openCreate = useCallback(() => {
-    setEditingId(null)
-    setFormState(emptyForm)
-    setCustomGenre("")
-    setCustomTag("")
-    setFormOpen(true)
+  const handleAvailabilityChange = useCallback((value: string) => {
+    if (isAvailability(value)) {
+      setAvailability(value)
+      setPageIndex(0)
+    }
   }, [])
-
-  const openEdit = useCallback((entry: DiscographyEntry) => {
-    setEditingId(entry.id)
-    setFormState({
-      title: entry.title,
-      artist: entry.artist,
-      productHandle: entry.productHandle ?? "",
-      collectionTitle: entry.collectionTitle ?? "",
-      catalogNumber: entry.catalogNumber ?? "",
-      releaseDate: toDateInput(entry.releaseDate),
-      releaseYear: entry.releaseYear ? String(entry.releaseYear) : "",
-      formats: entry.formats ?? [],
-      genres: entry.genres ?? [],
-      tags: entry.tags ?? [],
-      availability: entry.availability,
-      coverUrl: entry.coverUrl ?? "",
-    })
-    setCustomGenre("")
-    setCustomTag("")
-    setFormOpen(true)
+  const handleSortChange = useCallback((value: string) => {
+    if (isSortValue(value)) {
+      setSortValue(value)
+      setPageIndex(0)
+    }
   }, [])
-
-  const updateField = useCallback(
-    (field: keyof DiscographyFormState) =>
-      (value: DiscographyFormState[typeof field]) => {
-        setFormState((prev) => ({ ...prev, [field]: value }))
-      },
-    []
-  )
-
-  const toggleValue = useCallback(
-    (field: "formats" | "genres" | "tags", value: string) => {
-      const trimmed = value.trim()
-      if (!trimmed.length) {
-        return
-      }
-      setFormState((prev) => {
-        const current = prev[field]
-        const exists = current.some((item) => item.toLowerCase() === trimmed.toLowerCase())
-        const next = exists
-          ? current.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
-          : [...current, trimmed]
-        return { ...prev, [field]: next }
-      })
+  const handleSearchChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = (event.currentTarget as unknown as { value?: unknown })
+        .value
+      setSearchInput(typeof value === "string" ? value : "")
     },
     []
   )
-
-  const addCustomGenre = useCallback(() => {
-    const trimmed = customGenre.trim()
-    if (!trimmed) {
-      return
-    }
-    toggleValue("genres", trimmed)
-    setCustomGenre("")
-  }, [customGenre, toggleValue])
-
-  const addCustomTag = useCallback(() => {
-    const trimmed = customTag.trim()
-    if (!trimmed) {
-      return
-    }
-    toggleValue("tags", trimmed)
-    setCustomTag("")
-  }, [customTag, toggleValue])
-
-  const removeGenre = useCallback((value: string) => {
-    setFormState((prev) => ({
-      ...prev,
-      genres: prev.genres.filter((item) => item.toLowerCase() !== value.toLowerCase()),
-    }))
-  }, [])
-
-  const removeFormat = useCallback((value: string) => {
-    setFormState((prev) => ({
-      ...prev,
-      formats: prev.formats.filter((item) => item.toLowerCase() !== value.toLowerCase()),
-    }))
-  }, [])
-
-  const removeTag = useCallback((value: string) => {
-    setFormState((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((item) => item.toLowerCase() !== value.toLowerCase()),
-    }))
-  }, [])
-
-  const handleSubmit = useCallback(async () => {
-    setError(null)
-    if (!formState.title.trim() || !formState.artist.trim()) {
-      setError("Title and artist are required.")
-      return
-    }
-
-    const title = formState.title.trim()
-    const resolvedReleaseYear = (() => {
-      const dateValue = formState.releaseDate.trim()
-      if (dateValue) {
-        const parsed = new Date(dateValue)
-        if (!Number.isNaN(parsed.getTime())) {
-          return parsed.getUTCFullYear()
-        }
-      }
-      return formState.releaseYear.trim()
-        ? Number.parseInt(formState.releaseYear, 10)
-        : null
-    })()
-
-    const payload = {
-      title,
-      artist: formState.artist.trim(),
-      album: title,
-      productHandle: formState.productHandle.trim() || null,
-      collectionTitle: formState.collectionTitle.trim() || null,
-      catalogNumber: formState.catalogNumber.trim() || null,
-      releaseDate: formState.releaseDate.trim() || null,
-      releaseYear: resolvedReleaseYear,
-      formats: normalizeList(formState.formats),
-      genres: normalizeList(formState.genres),
-      tags: normalizeList(formState.tags),
-      availability: formState.availability,
-      coverUrl: formState.coverUrl.trim() || null,
-    }
-
-    const url = editingId ? `/admin/discography/${editingId}` : "/admin/discography"
-    const method = editingId ? "PUT" : "POST"
-
-    try {
-      const response = await fetch(url, {
-        method,
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      if (!response.ok) {
-        const message =
-          (await extractErrorMessage(response)) ??
-          `Failed to ${editingId ? "update" : "create"} entry`
-        throw new Error(message)
-      }
-      await fetchEntries()
-      resetForm()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save entry")
-    }
-  }, [editingId, fetchEntries, formState, resetForm])
-
-  const handleDelete = useCallback(
-    async (entry: DiscographyEntry) => {
-      const confirmFn =
-        typeof globalThis !== "undefined" &&
-        typeof (globalThis as { confirm?: (message: string) => boolean }).confirm ===
-          "function"
-          ? (globalThis as unknown as { confirm: (message: string) => boolean }).confirm
-          : null
-      const confirmDelete = confirmFn
-        ? confirmFn(`Delete "${entry.title}"? This cannot be undone.`)
-        : false
-      if (!confirmDelete) {
-        return
-      }
-      setError(null)
-      try {
-        const response = await fetch(`/admin/discography/${entry.id}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
-        if (!response.ok) {
-          throw new Error("Failed to delete entry")
-        }
-        await fetchEntries()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete entry")
+  const applySearch = useCallback(() => {
+    setQuery(searchInput.trim())
+    resetPage()
+  }, [resetPage, searchInput])
+  const handleSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault()
+        applySearch()
       }
     },
-    [fetchEntries]
+    [applySearch]
   )
-
-  const toggleFormatFilter = useCallback((value: string) => {
-    const trimmed = value.trim()
-    if (!trimmed) {
+  const clearSearch = useCallback(() => {
+    setSearchInput("")
+    setQuery("")
+    resetPage()
+  }, [resetPage])
+  const clearAllControls = useCallback(() => {
+    setSearchInput("")
+    setQuery("")
+    setSourceMode("all")
+    setAvailability("all")
+    setSortValue("release_year:desc")
+    resetPage()
+  }, [resetPage])
+  const handleCreateOpen = useCallback(() => {
+    createMutation.reset()
+    setCreateOpen(true)
+  }, [createMutation])
+  const handleCreateClose = useCallback(() => {
+    if (!createMutation.isPending) {
+      setCreateOpen(false)
+      createMutation.reset()
+      restoreFocus(createTriggerRef.current)
+    }
+  }, [createMutation])
+  const handleEdit = useCallback(
+    (entry: DiscographyEntry, trigger: HTMLButtonElement) => {
+      formTriggerRef.current = trigger
+      updateMutation.reset()
+      setEditingEntry(entry)
+    },
+    [updateMutation]
+  )
+  const handleEditClose = useCallback(() => {
+    if (!updateMutation.isPending) {
+      setEditingEntry(null)
+      updateMutation.reset()
+      restoreFocus(formTriggerRef.current)
+    }
+  }, [updateMutation])
+  const handleLifecycle = useCallback(
+    (entry: DiscographyEntry, trigger: HTMLButtonElement) => {
+      lifecycleTriggerRef.current = trigger
+      lifecycleIdempotencyKeyRef.current = crypto.randomUUID()
+      lifecycleMutation.reset()
+      setLifecycleEntry(entry)
+    },
+    [lifecycleMutation]
+  )
+  const handleLifecycleCancel = useCallback(() => {
+    if (!lifecycleMutation.isPending) {
+      const focusTarget = lifecycleTriggerRef.current
+      setLifecycleEntry(null)
+      lifecycleMutation.reset()
+      restoreFocus(focusTarget)
+    }
+  }, [lifecycleMutation])
+  const handleLifecycleConfirm = useCallback(async () => {
+    if (!lifecycleEntry || lifecycleMutation.isPending) {
       return
     }
-    setSelectedFormats((prev) => {
-      const exists = prev.some(
-        (item) => item.toLowerCase() === trimmed.toLowerCase()
-      )
-      return exists
-        ? prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
-        : [...prev, trimmed]
-    })
-  }, [])
-
-  const toggleGenreFilter = useCallback((value: string) => {
-    const trimmed = value.trim()
-    if (!trimmed) {
-      return
+    try {
+      await lifecycleMutation.mutateAsync({
+        entry: lifecycleEntry,
+        idempotencyKey: lifecycleIdempotencyKeyRef.current,
+      })
+    } catch {
+      // The open confirmation renders the mutation error and keeps the same
+      // idempotency key available for an exact retry.
     }
-    setSelectedGenres((prev) => {
-      const exists = prev.some(
-        (item) => item.toLowerCase() === trimmed.toLowerCase()
-      )
-      return exists
-        ? prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
-        : [...prev, trimmed]
-    })
-  }, [])
+  }, [lifecycleEntry, lifecycleMutation])
+  const handleCreateSubmit = useCallback(
+    async (values: ManualDiscographyInput, idempotencyKey: string) => {
+      await createMutation.mutateAsync({ idempotencyKey, values })
+    },
+    [createMutation]
+  )
+  const handleUpdateSubmit = useCallback(
+    async (values: ManualDiscographyInput, idempotencyKey: string) => {
+      if (!editingEntry) {
+        return
+      }
+      await updateMutation.mutateAsync({
+        entry: editingEntry,
+        idempotencyKey,
+        values,
+      })
+    },
+    [editingEntry, updateMutation]
+  )
+  const handleRetry = useCallback(() => {
+    void pageQuery.refetch()
+  }, [pageQuery])
 
-  const toggleTagFilter = useCallback((value: string) => {
-    const trimmed = value.trim()
-    if (!trimmed) {
-      return
-    }
-    setSelectedTags((prev) => {
-      const exists = prev.some(
-        (item) => item.toLowerCase() === trimmed.toLowerCase()
-      )
-      return exists
-        ? prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase())
-        : [...prev, trimmed]
-    })
-  }, [])
-
-  const clearFilters = useCallback(() => {
-    setSearchQuery("")
-    setSelectedFormats([])
-    setSelectedGenres([])
-    setSelectedTags([])
-    setAvailabilityFilter("all")
-  }, [])
-
-  const availabilityLabel = useMemo(
-    () =>
-      availabilityOptions.reduce<Record<string, string>>((acc, option) => {
-        acc[option.value] = option.label
-        return acc
-      }, {}),
+  const busyEntryId = lifecycleMutation.isPending
+    ? (lifecycleMutation.variables?.entry.id ?? null)
+    : null
+  const columns = useDiscographyColumns({
+    busyEntryId,
+    onEdit: handleEdit,
+    onLifecycle: handleLifecycle,
+  })
+  const pagination = useMemo<DataTablePaginationState>(
+    () => ({ pageIndex, pageSize: PAGE_SIZE }),
+    [pageIndex]
+  )
+  const handlePaginationChange = useCallback(
+    (next: DataTablePaginationState) => setPageIndex(next.pageIndex),
     []
   )
-
-  const collator = useMemo(
-    () => new Intl.Collator("en", { numeric: true, sensitivity: "base" }),
-    []
+  const dataTable = useDataTable({
+    columns,
+    data: page.entries,
+    getRowId: (entry) => entry.id,
+    isLoading: pageQuery.isPending,
+    pagination: {
+      onPaginationChange: handlePaginationChange,
+      state: pagination,
+    },
+    rowCount: page.count,
+  })
+  const filtered = Boolean(
+    query || sourceMode !== "all" || availability !== "all"
   )
-
-  const sortedEntries = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase()
-    const activeFormats = selectedFormats.map((value) => value.toLowerCase())
-    const activeGenres = selectedGenres.map((value) => value.toLowerCase())
-    const activeTags = selectedTags.map((value) => value.toLowerCase())
-
-    const matchesSearch = (entry: DiscographyEntry): boolean => {
-      if (!normalizedQuery) {
-        return true
-      }
-      const haystack = [
-        entry.title,
-        entry.artist,
-        entry.catalogNumber ?? "",
-        entry.collectionTitle ?? "",
-        entry.productHandle ?? "",
-        entry.formats.join(" "),
-        entry.genres.join(" "),
-        entry.tags.join(" "),
-      ]
-        .join(" ")
-        .toLowerCase()
-      return haystack.includes(normalizedQuery)
-    }
-
-    const matchesFormats = (entry: DiscographyEntry): boolean => {
-      if (!activeFormats.length) {
-        return true
-      }
-      return entry.formats.some((format) =>
-        activeFormats.includes(format.toLowerCase())
+  const countLabel = `${page.count} ${page.count === 1 ? "release" : "releases"}`
+  const pageError = pageQuery.error
+    ? getAdminRequestErrorMessage(
+        pageQuery.error,
+        "Unable to load the discography."
       )
-    }
-
-    const matchesGenres = (entry: DiscographyEntry): boolean => {
-      if (!activeGenres.length) {
-        return true
-      }
-      return entry.genres.some((genre) =>
-        activeGenres.includes(genre.toLowerCase())
-      )
-    }
-
-    const matchesTags = (entry: DiscographyEntry): boolean => {
-      if (!activeTags.length) {
-        return true
-      }
-      return entry.tags.some((tag) => activeTags.includes(tag.toLowerCase()))
-    }
-
-    const matchesAvailability = (entry: DiscographyEntry): boolean => {
-      if (availabilityFilter === "all") {
-        return true
-      }
-      return entry.availability === availabilityFilter
-    }
-
-    const compareText = (left?: string | null, right?: string | null): number => {
-      if (!left && !right) {
-        return 0
-      }
-      if (!left) {
-        return 1
-      }
-      if (!right) {
-        return -1
-      }
-      return collator.compare(left, right)
-    }
-
-    const compareYear = (
-      left?: number | null,
-      right?: number | null
-    ): number => {
-      if (left == null && right == null) {
-        return 0
-      }
-      if (left == null) {
-        return 1
-      }
-      if (right == null) {
-        return -1
-      }
-      return left - right
-    }
-
-    const filtered = entries.filter(
-      (entry) =>
-        matchesSearch(entry) &&
-        matchesFormats(entry) &&
-        matchesGenres(entry) &&
-        matchesTags(entry) &&
-        matchesAvailability(entry)
-    )
-
-    const defaultSort = sortOptions[0]
-    if (!defaultSort) {
-      return filtered
-    }
-    const currentSort =
-      sortOptions.find((option) => option.value === sortValue) ?? defaultSort
-
-    const sorted = [...filtered].sort((left, right) => {
-      let comparison = 0
-      switch (currentSort.field) {
-        case "artist":
-          comparison = compareText(left.artist, right.artist)
-          break
-        case "releaseYear":
-          comparison = compareYear(left.releaseYear, right.releaseYear)
-          break
-        case "catalogNumber":
-          comparison = compareText(left.catalogNumber, right.catalogNumber)
-          break
-        case "availability":
-          comparison = compareText(
-            availabilityLabel[left.availability],
-            availabilityLabel[right.availability]
-          )
-          break
-        default:
-          comparison = compareText(left.title, right.title)
-          break
-      }
-
-      if (comparison === 0) {
-        comparison = compareText(left.title, right.title)
-      }
-
-      return currentSort.direction === "asc" ? comparison : -comparison
-    })
-
-    return sorted
-  }, [
-    availabilityFilter,
-    availabilityLabel,
-    collator,
-    entries,
-    searchQuery,
-    selectedFormats,
-    selectedGenres,
-    selectedTags,
-    sortValue,
-  ])
-
-  const hasActiveFilters = useMemo(
-    () =>
-      searchQuery.trim().length > 0 ||
-      selectedFormats.length > 0 ||
-      selectedGenres.length > 0 ||
-      selectedTags.length > 0 ||
-      availabilityFilter !== "all",
-    [availabilityFilter, searchQuery, selectedFormats, selectedGenres, selectedTags]
-  )
+    : null
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <Container className="flex items-center justify-between">
-        <div>
-          <Heading level="h1">Discography</Heading>
-          <Text size="small" className="text-ui-fg-subtle">
-            Manage standalone discography entries (separate from products).
+    <AdminSingleColumnLayout>
+      <Container>
+        <AdminPageHeader
+          actions={
+            <Button
+              onClick={handleCreateOpen}
+              ref={createTriggerRef}
+              type="button"
+            >
+              Add historical release
+            </Button>
+          }
+          description="Store releases synchronize from Products. Use historical records for label releases that are not currently sold."
+          status={
+            <Text aria-live="polite" className="text-ui-fg-subtle" size="small">
+              {pageQuery.isPending ? "Loading…" : countLabel}
+            </Text>
+          }
+          title="Discography"
+        />
+        <Alert className="mt-5" variant="info">
+          <Text weight="plus">One source of truth for store releases</Text>
+          <Text size="small">
+            Edit titles, artists, formats, artwork, and availability on the
+            Product. This page keeps the read-only discography projection in
+            sync and prevents duplicate storefront links.
           </Text>
-        </div>
-        <Button type="button" onClick={openCreate}>
-          Add entry
-        </Button>
+        </Alert>
       </Container>
 
-      {error ? (
-        <Container>
-          <Text size="small" className="text-ui-fg-error">
-            {error}
-          </Text>
-        </Container>
-      ) : null}
+      {pageError ? (
+        <AdminRetryState
+          message={pageError}
+          onRetry={handleRetry}
+          retrying={pageQuery.isFetching}
+          title="Discography could not load"
+        />
+      ) : (
+        <Container className="p-0">
+          <div className="border-b border-ui-border-base px-6 py-5">
+            <Tabs onValueChange={handleViewChange} value={view}>
+              <Tabs.List>
+                <Tabs.Trigger value="active">Active</Tabs.Trigger>
+                <Tabs.Trigger value="archived">Archived</Tabs.Trigger>
+              </Tabs.List>
+              <Tabs.Content className="sr-only" value="active">
+                Active discography releases
+              </Tabs.Content>
+              <Tabs.Content className="sr-only" value="archived">
+                Archived discography releases
+              </Tabs.Content>
+            </Tabs>
 
-      <Container className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-1 flex-col gap-2">
-            <Label htmlFor="discography-search" className="sr-only">
-              Search
-            </Label>
-            <Input
-              id="discography-search"
-              placeholder="Search releases, artists, catalog #"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(readValue(event))}
-            />
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Showing {sortedEntries.length} of {entries.length}
-            </Text>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Label htmlFor="discography-sort" className="sr-only">
-              Sort
-            </Label>
-            <select
-              id="discography-sort"
-              value={sortValue}
-              onChange={(event) =>
-                setSortValue(readValue(event) as SortValue)
-              }
-              className="min-h-9 rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {hasActiveFilters ? (
-              <Button type="button" variant="secondary" onClick={clearFilters}>
-                Clear filters
-              </Button>
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(16rem,1fr)_auto_auto_auto]">
+              <div>
+                <Label htmlFor="discography-search">Search</Label>
+                <div className="mt-1 flex gap-2">
+                  <Input
+                    autoComplete="off"
+                    id="discography-search"
+                    onChange={handleSearchChange}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder="Release title or artist"
+                    role="searchbox"
+                    type="text"
+                    value={searchInput}
+                  />
+                  {searchInput || query ? (
+                    <Button
+                      onClick={clearSearch}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Clear
+                    </Button>
+                  ) : null}
+                  <Button
+                    disabled={searchInput.trim() === query}
+                    onClick={applySearch}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Search
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="discography-source">Source</Label>
+                <Select onValueChange={handleSourceChange} value={sourceMode}>
+                  <Select.Trigger
+                    className="mt-1 min-w-40"
+                    id="discography-source"
+                  >
+                    <Select.Value />
+                  </Select.Trigger>
+                  <Select.Content>
+                    {sourceOptions.map((option) => (
+                      <Select.Item key={option.value} value={option.value}>
+                        {option.label}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="discography-availability">Availability</Label>
+                <Select
+                  onValueChange={handleAvailabilityChange}
+                  value={availability}
+                >
+                  <Select.Trigger
+                    className="mt-1 min-w-40"
+                    id="discography-availability"
+                  >
+                    <Select.Value />
+                  </Select.Trigger>
+                  <Select.Content>
+                    <Select.Item value="all">All availability</Select.Item>
+                    {discographyAvailabilityValues.map((value) => (
+                      <Select.Item key={value} value={value}>
+                        {availabilityLabels[value]}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="discography-sort">Sort</Label>
+                <Select onValueChange={handleSortChange} value={sortValue}>
+                  <Select.Trigger
+                    className="mt-1 min-w-40"
+                    id="discography-sort"
+                  >
+                    <Select.Value />
+                  </Select.Trigger>
+                  <Select.Content>
+                    {sortOptions.map((option) => (
+                      <Select.Item key={option.value} value={option.value}>
+                        {option.label}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select>
+              </div>
+            </div>
+
+            {filtered ? (
+              <div className="mt-3 flex justify-end">
+                <Button
+                  onClick={clearAllControls}
+                  size="small"
+                  type="button"
+                  variant="transparent"
+                >
+                  Clear all controls
+                </Button>
+              </div>
             ) : null}
           </div>
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Formats
-            </Text>
-            {formatOptions.map((option) => {
-              const selected = selectedFormats.some(
-                (value) => value.toLowerCase() === option.toLowerCase()
-              )
-              return (
-                <Button
-                  key={`format-filter-${option}`}
-                  type="button"
-                  size="small"
-                  variant={selected ? "primary" : "secondary"}
-                  onClick={() => toggleFormatFilter(option)}
-                >
-                  {option}
-                </Button>
-              )
-            })}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Genres
-            </Text>
-            {genreOptions.map((option) => {
-              const selected = selectedGenres.some(
-                (value) => value.toLowerCase() === option.toLowerCase()
-              )
-              return (
-                <Button
-                  key={`genre-filter-${option}`}
-                  type="button"
-                  size="small"
-                  variant={selected ? "primary" : "secondary"}
-                  onClick={() => toggleGenreFilter(option)}
-                >
-                  {option}
-                </Button>
-              )
-            })}
-          </div>
-          {tagOptions.length ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Text size="xsmall" className="text-ui-fg-subtle">
-                Tags
-              </Text>
-              {tagOptions.map((option) => {
-                const selected = selectedTags.some(
-                  (value) => value.toLowerCase() === option.toLowerCase()
-                )
-                return (
-                  <Button
-                    key={`tag-filter-${option}`}
-                    type="button"
-                    size="small"
-                    variant={selected ? "primary" : "secondary"}
-                    onClick={() => toggleTagFilter(option)}
-                  >
-                    {option}
-                  </Button>
-                )
-              })}
-            </div>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2">
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              Availability
-            </Text>
-            <select
-              value={availabilityFilter}
-              onChange={(event) =>
-                setAvailabilityFilter(readValue(event) as AvailabilityFilter)
-              }
-              className="min-h-9 rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-            >
-              <option value="all">All</option>
-              {availabilityOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </Container>
 
-      <Container className="overflow-hidden">
-        <Table>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell>Release</Table.HeaderCell>
-              <Table.HeaderCell>Artist</Table.HeaderCell>
-              <Table.HeaderCell>Year</Table.HeaderCell>
-              <Table.HeaderCell>Formats</Table.HeaderCell>
-              <Table.HeaderCell>Tags</Table.HeaderCell>
-              <Table.HeaderCell>Catalog #</Table.HeaderCell>
-              <Table.HeaderCell>Availability</Table.HeaderCell>
-              <Table.HeaderCell className="text-right">Actions</Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {loading ? (
-              <Table.Row>
-                <Table.Cell>Loading…</Table.Cell>
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-              </Table.Row>
-            ) : sortedEntries.length ? (
-              sortedEntries.map((entry) => (
-                <Table.Row key={entry.id}>
-                  <Table.Cell>
-                    <div className="flex flex-col gap-1">
-                      <Text size="small" weight="plus">
-                        {entry.title}
-                      </Text>
-                      {entry.collectionTitle ? (
-                        <Text size="xsmall" className="text-ui-fg-subtle">
-                          {entry.collectionTitle}
-                        </Text>
-                      ) : null}
-                    </div>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">{entry.artist}</Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">{entry.releaseYear ?? "—"}</Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">
-                      {entry.formats.length ? entry.formats.join(", ") : "—"}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">
-                      {entry.tags.length ? entry.tags.join(", ") : "—"}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">{entry.catalogNumber ?? "—"}</Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text size="small">
-                      {availabilityLabel[entry.availability] ?? "Unknown"}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        size="small"
-                        variant="secondary"
-                        onClick={() => openEdit(entry)}
-                      >
-                        <PencilSquare />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="small"
-                        variant="secondary"
-                        onClick={() => handleDelete(entry)}
-                      >
-                        <Trash />
-                      </Button>
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
-              ))
-            ) : (
-              <Table.Row>
-                <Table.Cell>
-                  <Text size="small">
-                    {hasActiveFilters
-                      ? "No entries match the current filters."
-                      : "No discography entries yet."}
-                  </Text>
-                </Table.Cell>
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-                <Table.Cell />
-              </Table.Row>
-            )}
-          </Table.Body>
-        </Table>
-      </Container>
+          <DiscographyCollection
+            busyEntryId={busyEntryId}
+            dataTable={dataTable}
+            entries={page.entries}
+            filtered={filtered}
+            loading={pageQuery.isPending}
+            onEdit={handleEdit}
+            onLifecycle={handleLifecycle}
+            view={view}
+          />
+        </Container>
+      )}
 
-      <FocusModal
-        open={formOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            resetForm()
+      {createOpen ? (
+        <DiscographyManualForm
+          error={createError}
+          mode="create"
+          onClose={handleCreateClose}
+          onSubmit={handleCreateSubmit}
+          restoreFocusRef={createTriggerRef}
+        />
+      ) : null}
+
+      {editingEntry ? (
+        <DiscographyManualForm
+          entry={editingEntry}
+          error={updateError}
+          key={`${editingEntry.id}:${editingEntry.version}`}
+          mode="edit"
+          onClose={handleEditClose}
+          onSubmit={handleUpdateSubmit}
+          restoreFocusRef={formTriggerRef}
+        />
+      ) : null}
+
+      {lifecycleEntry ? (
+        <ConfirmAction
+          confirmLabel={
+            lifecycleEntry.archivedAt ? "Restore release" : "Archive release"
           }
-        }}
-      >
-        <FocusModal.Content className="max-w-4xl sm:inset-y-8 sm:inset-x-1/2 sm:-translate-x-1/2 sm:w-full">
-          <FocusModal.Header>
-            <div className="flex flex-col gap-1">
-              <FocusModal.Title>
-                {editingId ? "Edit entry" : "New entry"}
-              </FocusModal.Title>
-              <FocusModal.Description className="text-ui-fg-subtle">
-                Select formats, genres, and tags, and add custom values as needed.
-              </FocusModal.Description>
-            </div>
-          </FocusModal.Header>
-          <FocusModal.Body className="overflow-y-auto px-6 py-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Release (title/album)</Label>
-                <Input
-                  value={formState.title}
-                  onChange={(event) => updateField("title")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Artist</Label>
-                <Input
-                  value={formState.artist}
-                  onChange={(event) => updateField("artist")(readValue(event))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Product handle (optional)</Label>
-                <Input
-                  value={formState.productHandle}
-                  onChange={(event) =>
-                    updateField("productHandle")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Collection title</Label>
-                <Input
-                  value={formState.collectionTitle}
-                  onChange={(event) =>
-                    updateField("collectionTitle")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Catalog number</Label>
-                <Input
-                  value={formState.catalogNumber}
-                  onChange={(event) =>
-                    updateField("catalogNumber")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Release date</Label>
-                <Input
-                  type="date"
-                  value={formState.releaseDate}
-                  onChange={(event) =>
-                    updateField("releaseDate")(readValue(event))
-                  }
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Formats</Label>
-                <div className="flex flex-wrap gap-2">
-                  {formatOptions.map((option) => {
-                    const selected = formState.formats.some(
-                      (value) => value.toLowerCase() === option.toLowerCase()
-                    )
-                    return (
-                      <Button
-                        key={option}
-                        type="button"
-                        size="small"
-                        variant={selected ? "primary" : "secondary"}
-                        onClick={() => toggleValue("formats", option)}
-                      >
-                        {option}
-                      </Button>
-                    )
-                  })}
-                </div>
-                {formState.formats.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {formState.formats.map((format) => (
-                      <Button
-                        key={`format-${format}`}
-                        type="button"
-                        size="small"
-                        variant="secondary"
-                        onClick={() => removeFormat(format)}
-                      >
-                        {format} ×
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Genres</Label>
-                <div className="flex flex-wrap gap-2">
-                  {genreOptions.map((option) => {
-                    const selected = formState.genres.some(
-                      (value) => value.toLowerCase() === option.toLowerCase()
-                    )
-                    return (
-                      <Button
-                        key={option}
-                        type="button"
-                        size="small"
-                        variant={selected ? "primary" : "secondary"}
-                        onClick={() => toggleValue("genres", option)}
-                      >
-                        {option}
-                      </Button>
-                    )
-                  })}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    value={customGenre}
-                    placeholder="Add a genre…"
-                    onChange={(event) => setCustomGenre(readValue(event))}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault()
-                        addCustomGenre()
-                      }
-                    }}
-                    className="max-w-xs"
-                  />
-                  <Button type="button" size="small" variant="secondary" onClick={addCustomGenre}>
-                    Add genre
-                  </Button>
-                </div>
-                {formState.genres.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {formState.genres.map((genre) => (
-                      <Button
-                        key={`genre-${genre}`}
-                        type="button"
-                        size="small"
-                        variant="secondary"
-                        onClick={() => removeGenre(genre)}
-                      >
-                        {genre} ×
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Tags</Label>
-                {tagOptions.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {tagOptions.map((option) => {
-                      const selected = formState.tags.some(
-                        (value) => value.toLowerCase() === option.toLowerCase()
-                      )
-                      return (
-                        <Button
-                          key={`tag-option-${option}`}
-                          type="button"
-                          size="small"
-                          variant={selected ? "primary" : "secondary"}
-                          onClick={() => toggleValue("tags", option)}
-                        >
-                          {option}
-                        </Button>
-                      )
-                    })}
-                  </div>
-                ) : null}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    value={customTag}
-                    placeholder="Add a tag…"
-                    onChange={(event) => setCustomTag(readValue(event))}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault()
-                        addCustomTag()
-                      }
-                    }}
-                    className="max-w-xs"
-                  />
-                  <Button type="button" size="small" variant="secondary" onClick={addCustomTag}>
-                    Add tag
-                  </Button>
-                </div>
-                {formState.tags.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {formState.tags.map((tag) => (
-                      <Button
-                        key={`tag-${tag}`}
-                        type="button"
-                        size="small"
-                        variant="secondary"
-                        onClick={() => removeTag(tag)}
-                      >
-                        {tag} ×
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="space-y-2">
-                <Label>Availability</Label>
-                <select
-                  value={formState.availability}
-                  onChange={(event) =>
-                    updateField("availability")(
-                      readValue(event) as DiscographyAvailability
-                    )
-                  }
-                  className="min-h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-base px-2 text-ui-fg-base"
-                >
-                  {availabilityOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Cover URL</Label>
-                <Input
-                  value={formState.coverUrl}
-                  onChange={(event) => updateField("coverUrl")(readValue(event))}
-                />
-              </div>
-            </div>
-          </FocusModal.Body>
-          <FocusModal.Footer>
-            <FocusModal.Close asChild>
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </FocusModal.Close>
-            <Button type="button" onClick={handleSubmit}>
-              {editingId ? "Save changes" : "Create entry"}
-            </Button>
-          </FocusModal.Footer>
-        </FocusModal.Content>
-      </FocusModal>
-    </div>
+          description={
+            lifecycleEntry.archivedAt
+              ? "Restore this release to the active discography. Storefront purchase links still depend on a healthy published Product."
+              : "Remove this release from the customer discography without deleting its history. It can be restored later."
+          }
+          onCancel={handleLifecycleCancel}
+          onConfirm={handleLifecycleConfirm}
+          open
+          pending={lifecycleMutation.isPending}
+          pendingLabel={lifecycleEntry.archivedAt ? "Restoring…" : "Archiving…"}
+          title={`${lifecycleEntry.archivedAt ? "Restore" : "Archive"} ${lifecycleEntry.title}?`}
+          variant={lifecycleEntry.archivedAt ? "confirmation" : "danger"}
+        >
+          {lifecycleError ? (
+            <Alert role="alert" variant="error">
+              <Text size="small">{lifecycleError}</Text>
+            </Alert>
+          ) : null}
+        </ConfirmAction>
+      ) : null}
+    </AdminSingleColumnLayout>
   )
-}
+})
+
+DiscographyAdminPage.displayName = "DiscographyAdminPage"
 
 export const config = defineRouteConfig({
-  label: "Discography",
   icon: ArchiveBox,
+  label: "Discography",
 })
+
+export const handle = {
+  breadcrumb: () => "Discography",
+}
 
 export default DiscographyAdminPage
