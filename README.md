@@ -6,6 +6,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 
 - [Architecture](#architecture)
 - [News Publishing: Plain-English Guide](#news-publishing-plain-english-guide)
+- [Admin Access Control: Plain-English Guide](#admin-access-control-plain-english-guide)
 - [Shopping Cart: Plain-English Guide](#shopping-cart-plain-english-guide)
 - [Checkout and Payment: Plain-English Guide](#checkout-and-payment-plain-english-guide)
 - [Refund Operations: Plain-English Guide](#refund-operations-plain-english-guide)
@@ -150,6 +151,57 @@ their public status to `published`, sanitize stored rich HTML on the server,
 use stable ordering, and paginate. The Storefront revalidates the News feed
 every five minutes, so an administrative visibility change has a bounded cache
 window without requiring a database read for every visitor.
+
+## Admin Access Control: Plain-English Guide
+
+The codebase is prepared to use Medusa 2.18's native roles and permissions for
+the custom **Content**, **News**, and **Discography** workspaces. This is not a
+second login system. Medusa still authenticates the administrator; RBAC decides
+what that authenticated administrator may read or change.
+
+The permission model is deliberately small:
+
+- News and Discography each have read, create, update, and delete permissions.
+- Archive and restore count as updates because they change a record's lifecycle.
+- Hard deletion remains unavailable, but its endpoint still requires delete
+  permission so a future implementation cannot inherit an unguarded route.
+- News cover upload also requires Medusa's native `file:create` permission.
+- Discography links to native Products appear only with `product:read`.
+
+The backend is the authority. A direct request without the required role gets a
+403 before the route handler runs. The Admin performs the same check earlier so
+it does not fetch protected data or show buttons that would fail. If the role
+can read only one Content workspace, the overview and workspace navigation show
+only that one.
+
+```mermaid
+flowchart TD
+  Login[Administrator signs in] --> Roles[Medusa resolves assigned roles]
+  Roles --> Permission[Effective permissions]
+  Permission --> UI[Admin shows only allowed workspaces and actions]
+  UI --> API[Request reaches Medusa]
+  API --> Check{Required route policy granted?}
+  Check -- Yes --> Handler[Run the operation]
+  Check -- No --> Deny[Return 403 without running it]
+```
+
+RBAC is feature-flagged and intentionally remains off until its additive
+database migration and rollback have been rehearsed in isolation and the
+environment change is explicitly approved. While it is off, authenticated
+administrators retain the access they had before this work. The first enabled
+migration assigns the native super-admin role to every existing administrator,
+and a version-pinned privacy patch prevents that bootstrap from writing user
+emails or IDs to release logs.
+
+After activation or any role change, the affected administrator must sign out
+and sign back in so the signed session carries current role IDs. Medusa 2.18's
+public Admin extension API cannot yet hide a custom top-level sidebar item by
+permission, so a restricted user may see **Content** and then receive the clear
+restricted-access page. That does not expose data; the page does not start its
+query and the backend independently rejects direct requests.
+
+See [ADR 0006](docs/adr/0006-native-admin-rbac.md) for the complete permission
+matrix, rehearsal, activation, session-refresh, and rollback procedure.
 
 ## Shopping Cart: Plain-English Guide
 
@@ -891,6 +943,7 @@ Key variables (non-empty values required for full functionality):
 | `MEILISEARCH_HOST`                           | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
 | `MEILISEARCH_ADMIN_KEY`                      | Corresponding admin/master key                                               |
 | `JWT_SECRET`, `COOKIE_SECRET`                | Medusa auth secrets (high entropy)                                           |
+| `MEDUSA_FF_RBAC`                             | Enables native Admin RBAC only after the approved migration rehearsal        |
 | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Required together when deployed; official S3-compatible media provider |
 | `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_FILE_URL` | Optional storage overrides; bucket defaults to `medusa-media`            |
 | `ANONYMOUS_CART_RETENTION_ENABLED`           | Enables daily anonymous-cart soft deletion (default `false`)                 |
