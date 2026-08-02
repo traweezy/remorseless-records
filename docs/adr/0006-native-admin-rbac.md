@@ -1,6 +1,6 @@
 # ADR 0006: Use Medusa native RBAC for custom Content administration
 
-- Status: accepted; production activation pending
+- Status: accepted; isolated rehearsal complete; staging activation pending
 - Date: 2026-08-02
 - Scope: custom Medusa Admin Content routes and APIs
 
@@ -43,6 +43,11 @@ logs each user's email and ID. Production logs must not become a PII export.
 - A flag-off release can list the bootstrap script as pending. Medusa evaluates
   the script's feature predicate before inserting its migration-ledger row, so
   a disabled no-op does not consume the later enabled migration.
+- The project declares Medusa's RBAC module explicitly from the same strict
+  `MEDUSA_FF_RBAC` value. In Medusa 2.18 migration commands, project config is
+  evaluated before the framework registers its core feature flags; relying on
+  only the default module declaration can therefore log an enabled flag while
+  silently leaving the RBAC module disabled.
 - Role assignment changes require the affected administrator to sign out and
   sign back in. Route middleware reads role IDs from the signed authentication
   context; an old session must not be treated as evidence of a new role.
@@ -115,6 +120,46 @@ not part of an ordinary code deploy.
    effective permission response and Content smoke matrix before creating any
    restricted production role.
 
+### Isolated rehearsal evidence — 2026-08-02
+
+Steps 1–7 above passed against a disposable PostgreSQL 16.11 clone and Redis,
+with staging left unchanged:
+
+- A current pre-RBAC custom-format snapshot was retained outside the repository
+  at
+  `/home/tylers/.local/share/remorseless-records/backups/2026-08-02-before-rbac/database-before-rbac.dump`.
+  It is owned by the local user, mode `0600`, 1,882,161 bytes, with SHA-256
+  `3161fd8eea261815baf52133b3ac79be79e24a12898f029e44d58c20d6cabd1a`.
+- The first enabled migration exposed the Medusa 2.18 config-order issue above.
+  The explicit module declaration fixed it; the next clean restore applied both
+  RBAC migrations, synchronized links, and ran the privacy-patched bootstrap.
+- Repeating migration and link synchronization was idempotent: 241 policies,
+  exactly eight Content policies, one wildcard policy, three original
+  Super Admin links for three original administrators, and exactly one
+  `create-super-admin-role.js` ledger row.
+- A real disposable invite exercised News viewer and Content editor roles.
+  Viewer reads succeeded only for News; denied News writes, Discography,
+  Product, and managed-upload calls returned 403 before their handlers.
+  Malformed paths stayed 404. Editor create, exact replay, update,
+  optimistic-conflict, archive, restore, Product-read, and upload-validation
+  paths behaved as designed; both hard-delete guards remained effective.
+- Role changes proved the documented session contract: an old News-viewer token
+  remained unable to create News after the database assignment changed, and a
+  fresh login received the editor grants. Medusa's effective-permission endpoint
+  reads current role links, so it can reflect the new assignment before an old
+  signed session can use it; the server still fails closed until reauthentication.
+- Real headed Chromium at 1440×900 and Playwright's built-in Pixel 7 profile,
+  both with reduced motion, showed no document overflow or custom pointer
+  mismatch. The denied Discography page issued zero protected-data requests.
+  Direct screenshots and a real desktop Flameshot capture were inspected.
+- On the same migrated database, restarting with `MEDUSA_FF_RBAC=false`
+  restored ordinary authenticated News and Discography access, disabled the
+  RBAC endpoint with 404, and retained all seven RBAC tables, policies, links,
+  and the single bootstrap ledger row.
+
+The rehearsal does not authorize step 8. Staging still reports `rbac: false`
+and must not be activated without a separate explicit approval.
+
 ## Rollback
 
 Set `MEDUSA_FF_RBAC=false` and redeploy. Do not drop RBAC tables or remove role
@@ -140,6 +185,13 @@ Admin extension contract supports permission-aware navigation.
 The Medusa bootstrap privacy patch is pinned to exactly 2.18.0. Every Medusa
 upgrade must re-audit the upstream migration and either drop or rebase the
 patch before changing the pinned version.
+
+Medusa 2.18's effective-permission endpoint resolves current database role
+links, while route middleware authorizes from role IDs embedded in the signed
+session. During a role change, this can briefly make the Admin aware of a new
+grant that the old session cannot exercise. This is fail-closed, and the
+operational contract remains an immediate sign-out/sign-in after every role
+change. Re-audit this behavior on every Medusa upgrade.
 
 ## References
 

@@ -185,16 +185,27 @@ flowchart TD
   Check -- No --> Deny[Return 403 without running it]
 ```
 
-RBAC is feature-flagged and intentionally remains off until its additive
-database migration and rollback have been rehearsed in isolation and the
-environment change is explicitly approved. While it is off, authenticated
-administrators retain the access they had before this work. The first enabled
-migration assigns the native super-admin role to every existing administrator,
-and a version-pinned privacy patch prevents that bootstrap from writing user
-emails or IDs to release logs.
+RBAC is feature-flagged. Its additive database migration, real viewer/editor
+journeys, session-change behavior, and flag-off rollback passed against a
+disposable clone on August 2, 2026. Staging intentionally remains off until the
+environment change is separately and explicitly approved. While it is off,
+authenticated administrators retain the access they had before this work. The
+first enabled migration assigns the native super-admin role to every existing
+administrator, and a version-pinned privacy patch prevents that bootstrap from
+writing user emails or IDs to release logs.
+
+The rehearsal also found a Medusa 2.18 startup-order trap: migration commands
+evaluate this project's config before Medusa registers its built-in feature
+flags. The Backend now declares the native RBAC module explicitly from the
+strict `MEDUSA_FF_RBAC` value, so an enabled release cannot claim the flag is on
+while silently skipping the RBAC schema and bootstrap. Repeating the migration
+is safe and did not duplicate roles, policies, links, or its one-time ledger.
 
 After activation or any role change, the affected administrator must sign out
 and sign back in so the signed session carries current role IDs. Medusa 2.18's
+permission-summary endpoint can see a newly assigned database role before an
+old signed session can use it; backend authorization still rejects the old
+session, so reauthentication is both the UX and security boundary. Medusa's
 public Admin extension API cannot yet hide custom top-level or nested sidebar
 items by permission, so a restricted user may still see **Content**, **News**,
 or **Discography** in that shell. Selecting a denied workspace shows the clear
