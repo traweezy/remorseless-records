@@ -3,14 +3,13 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type KeyboardEvent,
 } from "react"
-import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { ArchiveBox } from "@medusajs/icons"
 import {
   Alert,
   Button,
@@ -32,6 +31,11 @@ import {
   AdminSingleColumnLayout,
 } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
+import { ContentWorkspaceNavigation } from "../../features/content/content-navigation"
+import {
+  replaceLegacyContentLocation,
+  type ReplaceContentLocation,
+} from "../../features/content/content-routes"
 import { NewsEditor } from "../../features/news/news-editor"
 import type { NewsPublicationIntent } from "../../features/news/news-form-state"
 import {
@@ -148,7 +152,7 @@ const successMessage = (
   return previousStatus === "draft" ? "Draft updated" : "Post moved to drafts"
 }
 
-const NewsAdminPage = memo(() => {
+export const NewsAdminPage = memo(() => {
   const [view, setView] = useState<ArchiveView>("active")
   const [pageIndex, setPageIndex] = useState(0)
   const [searchInput, setSearchInput] = useState("")
@@ -461,6 +465,7 @@ const NewsAdminPage = memo(() => {
           }
           title="News"
         />
+        <ContentWorkspaceNavigation active="news" className="mt-5" />
         <Alert className="mt-5" variant="info">
           <Text weight="plus">Visibility is deliberate</Text>
           <Text size="small">
@@ -638,9 +643,17 @@ const NewsAdminPage = memo(() => {
 
 NewsAdminPage.displayName = "NewsAdminPage"
 
-export const config = defineRouteConfig({
-  icon: ArchiveBox,
-  label: "News",
+const LegacyNewsPage = memo(() => {
+  useEffect(() => {
+    const { location } = globalThis as unknown as {
+      location: ReplaceContentLocation
+    }
+    replaceLegacyContentLocation(location, "news")
+  }, [])
+
+  return null
 })
 
-export default NewsAdminPage
+LegacyNewsPage.displayName = "LegacyNewsPage"
+
+export default LegacyNewsPage

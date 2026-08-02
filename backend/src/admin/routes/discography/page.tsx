@@ -3,14 +3,13 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type KeyboardEvent,
 } from "react"
-import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { ArchiveBox } from "@medusajs/icons"
 import {
   Alert,
   Button,
@@ -32,6 +31,11 @@ import {
   AdminSingleColumnLayout,
 } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
+import { ContentWorkspaceNavigation } from "../../features/content/content-navigation"
+import {
+  replaceLegacyContentLocation,
+  type ReplaceContentLocation,
+} from "../../features/content/content-routes"
 import { DiscographyCollection } from "../../features/discography/discography-table"
 import { DiscographyManualForm } from "../../features/discography/discography-manual-form"
 import {
@@ -131,7 +135,7 @@ const restoreFocus = (target: HTMLButtonElement | null): void => {
   })
 }
 
-const DiscographyAdminPage = memo(() => {
+export const DiscographyAdminPage = memo(() => {
   const [view, setView] = useState<ArchiveView>("active")
   const [pageIndex, setPageIndex] = useState(0)
   const [searchInput, setSearchInput] = useState("")
@@ -472,6 +476,7 @@ const DiscographyAdminPage = memo(() => {
           }
           title="Discography"
         />
+        <ContentWorkspaceNavigation active="discography" className="mt-5" />
         <Alert className="mt-5" variant="info">
           <Text weight="plus">One source of truth for store releases</Text>
           <Text size="small">
@@ -681,13 +686,17 @@ const DiscographyAdminPage = memo(() => {
 
 DiscographyAdminPage.displayName = "DiscographyAdminPage"
 
-export const config = defineRouteConfig({
-  icon: ArchiveBox,
-  label: "Discography",
+const LegacyDiscographyPage = memo(() => {
+  useEffect(() => {
+    const { location } = globalThis as unknown as {
+      location: ReplaceContentLocation
+    }
+    replaceLegacyContentLocation(location, "discography")
+  }, [])
+
+  return null
 })
 
-export const handle = {
-  breadcrumb: () => "Discography",
-}
+LegacyDiscographyPage.displayName = "LegacyDiscographyPage"
 
-export default DiscographyAdminPage
+export default LegacyDiscographyPage
