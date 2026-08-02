@@ -3,9 +3,10 @@ import { MedusaError } from "@medusajs/framework/utils"
 
 import type { CatalogService } from "../../utils"
 import {
-  deleteShelf,
   resolveShelf,
   serializeShelfResponse,
+  setShelfArchived,
+  shelfLifecycleSchema,
   shelfUpsertSchema,
   upsertShelf,
 } from "../helpers"
@@ -59,9 +60,16 @@ export const DELETE = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
+  const parsed = shelfLifecycleSchema.safeParse(req.body ?? {})
+  if (!parsed.success) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Invalid catalog shelf archive payload",
+    )
+  }
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const shelfId = getShelfId(req)
-  await deleteShelf(catalogService, shelfId)
+  await setShelfArchived(req, catalogService, shelfId, parsed.data, true)
   await emitCatalogShelfChanged(req, shelfId)
   res.sendStatus(204)
 }

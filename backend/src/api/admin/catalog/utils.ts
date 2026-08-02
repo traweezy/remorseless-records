@@ -95,6 +95,36 @@ export const assertProductExists = async (
   await assertQueryEntityExists(req, "product", productId, "Product not found")
 }
 
+export const assertProductsExist = async (
+  req: MedusaRequest,
+  productIds: readonly string[],
+): Promise<void> => {
+  const uniqueProductIds = [...new Set(productIds)]
+  if (!uniqueProductIds.length) {
+    return
+  }
+
+  const query = getQuery(req)
+  const result = await query.graph({
+    entity: "product",
+    fields: ["id"],
+    filters: { id: uniqueProductIds },
+    pagination: { take: uniqueProductIds.length },
+  })
+  const found = new Set(
+    result.data.flatMap((product) =>
+      typeof product.id === "string" ? [product.id] : [],
+    ),
+  )
+  const missing = uniqueProductIds.find((productId) => !found.has(productId))
+  if (missing) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `Product not found: ${missing}`,
+    )
+  }
+}
+
 export const assertVariantExists = async (
   req: MedusaRequest,
   variantId: string

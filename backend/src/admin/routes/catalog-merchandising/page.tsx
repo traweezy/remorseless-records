@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ArchiveBox, Trash } from "@medusajs/icons"
 import {
@@ -14,6 +14,8 @@ import {
   Text,
   Textarea,
 } from "@medusajs/ui"
+
+import { ConfirmAction } from "../../components/confirm-action"
 
 const shelfModes = ["manual", "automatic", "hybrid"] as const
 const automationTypes = ["none", "new_release"] as const
@@ -47,6 +49,8 @@ type CatalogShelf = {
   startsAt: string | null
   endsAt: string | null
   isActive: boolean
+  archivedAt: string | null
+  version: number
 }
 
 type CatalogShelfProduct = {
@@ -66,6 +70,7 @@ type ShelfResponse = {
 }
 
 type ShelfFormState = {
+  version: number
   title: string
   handle: string
   description: string
@@ -102,6 +107,7 @@ type CreateShelfState = {
 }
 
 const emptyShelfForm: ShelfFormState = {
+  version: 0,
   title: "",
   handle: "",
   description: "",
@@ -152,6 +158,24 @@ const defaultHandle = (value: string): string =>
 const toNullable = (value: string): string | null => {
   const trimmed = value.trim()
   return trimmed.length ? trimmed : null
+}
+
+type PendingRequest = {
+  fingerprint: string
+  idempotencyKey: string
+}
+
+const idempotencyKeyFor = (
+  pending: { current: PendingRequest | null },
+  payload: Record<string, unknown>,
+): string => {
+  const fingerprint = JSON.stringify(payload)
+  if (pending.current?.fingerprint === fingerprint) {
+    return pending.current.idempotencyKey
+  }
+  const idempotencyKey = crypto.randomUUID()
+  pending.current = { fingerprint, idempotencyKey }
+  return idempotencyKey
 }
 
 const toDateTimeInput = (value: string | null | undefined): string => {
@@ -205,6 +229,7 @@ const toShelfForm = (response: ShelfResponse | null): ShelfFormState => {
   }
 
   return {
+    version: response.shelf.version,
     title: response.shelf.title ?? "",
     handle: response.shelf.handle ?? "",
     description: response.shelf.description ?? "",
@@ -293,10 +318,15 @@ const CatalogMerchandisingPage = memo(() => {
   const [createForm, setCreateForm] =
     useState<CreateShelfState>(emptyCreateShelfForm)
   const [createOpen, setCreateOpen] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const saveRequest = useRef<PendingRequest | null>(null)
+  const createRequest = useRef<PendingRequest | null>(null)
+  const archiveRequest = useRef<PendingRequest | null>(null)
+  const restoreRequest = useRef<PendingRequest | null>(null)
 
   const productById = useMemo(() => {
     const map = new Map<string, AdminProduct>()
@@ -320,7 +350,7 @@ const CatalogMerchandisingPage = memo(() => {
 
   const refreshShelves = useCallback(async () => {
     const response = await fetchJson<{ shelves: ShelfResponse[] }>(
-      "/admin/catalog/shelves?limit=100"
+      "/admin/catalog/shelves?limit=100&archived=all"
     )
     setShelves(response.shelves ?? [])
   }, [])
@@ -465,31 +495,37 @@ const CatalogMerchandisingPage = memo(() => {
       }
 
       const productLines = formState.products.filter((line) => line.productId)
+      const payload = {
+        expectedVersion: formState.version,
+        title: formState.title.trim(),
+        handle: formState.handle.trim(),
+        description: toNullable(formState.description),
+        mode: formState.mode,
+        automationType: formState.automationType,
+        showRibbon: formState.showRibbon,
+        ribbonLabel: toNullable(formState.ribbonLabel),
+        ribbonPriority,
+        productLimit,
+        startsAt: toNullable(formState.startsAt),
+        endsAt: toNullable(formState.endsAt),
+        isActive: formState.isActive,
+        products: productLines.map((line, index) => ({
+          productId: line.productId,
+          sortOrder: Number.parseInt(line.sortOrder, 10) || index,
+          isPinned: line.isPinned,
+          startsAt: toNullable(line.startsAt),
+          endsAt: toNullable(line.endsAt),
+        })),
+      }
       await fetchJson<ShelfResponse>(`/admin/catalog/shelves/${selectedShelfId}`, {
         method: "PUT",
         body: JSON.stringify({
-          title: formState.title.trim(),
-          handle: formState.handle.trim(),
-          description: toNullable(formState.description),
-          mode: formState.mode,
-          automationType: formState.automationType,
-          showRibbon: formState.showRibbon,
-          ribbonLabel: toNullable(formState.ribbonLabel),
-          ribbonPriority,
-          productLimit,
-          startsAt: toNullable(formState.startsAt),
-          endsAt: toNullable(formState.endsAt),
-          isActive: formState.isActive,
-          products: productLines.map((line, index) => ({
-            productId: line.productId,
-            sortOrder: Number.parseInt(line.sortOrder, 10) || index,
-            isPinned: line.isPinned,
-            startsAt: toNullable(line.startsAt),
-            endsAt: toNullable(line.endsAt),
-          })),
+          ...payload,
+          idempotencyKey: idempotencyKeyFor(saveRequest, payload),
         }),
       })
 
+      saveRequest.current = null
       await refreshShelves()
       await loadShelf(selectedShelfId)
       setNotice("Saved merchandising shelf.")
@@ -511,22 +547,28 @@ const CatalogMerchandisingPage = memo(() => {
       }
       const ribbonPriority = toIntegerOrNull(createForm.ribbonPriority) ?? 100
       const productLimit = toIntegerOrNull(createForm.productLimit)
+      const payload = {
+        expectedVersion: 0,
+        title,
+        handle: createForm.handle.trim() || defaultHandle(title),
+        mode: createForm.mode,
+        automationType: createForm.automationType,
+        showRibbon: createForm.showRibbon,
+        ribbonLabel: toNullable(createForm.ribbonLabel),
+        ribbonPriority,
+        productLimit,
+        isActive: true,
+        products: [],
+      }
       const response = await fetchJson<ShelfResponse>("/admin/catalog/shelves", {
         method: "POST",
         body: JSON.stringify({
-          title,
-          handle: createForm.handle.trim() || defaultHandle(title),
-          mode: createForm.mode,
-          automationType: createForm.automationType,
-          showRibbon: createForm.showRibbon,
-          ribbonLabel: toNullable(createForm.ribbonLabel),
-          ribbonPriority,
-          productLimit,
-          isActive: true,
-          products: [],
+          ...payload,
+          idempotencyKey: idempotencyKeyFor(createRequest, payload),
         }),
       })
 
+      createRequest.current = null
       await refreshShelves()
       setSelectedShelfId(response.shelf.id)
       setCreateForm(emptyCreateShelfForm)
@@ -550,17 +592,65 @@ const CatalogMerchandisingPage = memo(() => {
     try {
       await fetchJson(`/admin/catalog/shelves/${selectedShelfId}`, {
         method: "DELETE",
+        body: JSON.stringify({
+          expectedVersion: formState.version,
+          idempotencyKey: idempotencyKeyFor(archiveRequest, {
+            expectedVersion: formState.version,
+            shelfId: selectedShelfId,
+          }),
+        }),
       })
+      archiveRequest.current = null
       await refreshShelves()
-      setSelectedShelfId("")
-      setFormState(emptyShelfForm)
-      setNotice("Deleted merchandising shelf.")
+      await loadShelf(selectedShelfId)
+      setArchiveOpen(false)
+      setNotice("Archived merchandising shelf.")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to delete shelf")
+      setError(err instanceof Error ? err.message : "Unable to archive shelf")
     } finally {
       setSaving(false)
     }
-  }, [refreshShelves, selectedShelfId])
+  }, [formState.version, loadShelf, refreshShelves, selectedShelfId])
+
+  const openArchive = useCallback(() => {
+    setArchiveOpen(true)
+  }, [])
+
+  const closeArchive = useCallback(() => {
+    if (!saving) {
+      setArchiveOpen(false)
+    }
+  }, [saving])
+
+  const restoreSelectedShelf = useCallback(async () => {
+    if (!selectedShelfId) {
+      return
+    }
+    setSaving(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const payload = {
+        expectedVersion: formState.version,
+        shelfId: selectedShelfId,
+      }
+      await fetchJson(`/admin/catalog/shelves/${selectedShelfId}/restore`, {
+        method: "POST",
+        body: JSON.stringify({
+          expectedVersion: formState.version,
+          idempotencyKey: idempotencyKeyFor(restoreRequest, payload),
+        }),
+      })
+      restoreRequest.current = null
+      await refreshShelves()
+      await loadShelf(selectedShelfId)
+      setNotice("Restored merchandising shelf as inactive.")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to restore shelf")
+    } finally {
+      setSaving(false)
+    }
+  }, [formState.version, loadShelf, refreshShelves, selectedShelfId])
 
   return (
     <Container className="flex flex-col gap-y-6 p-0">
@@ -636,6 +726,7 @@ const CatalogMerchandisingPage = memo(() => {
                         {entry.shelf.automationType !== "none"
                           ? ` / ${entry.shelf.automationType}`
                           : ""}
+                        {entry.shelf.archivedAt ? " / archived" : ""}
                       </Text>
                     </div>
                   </Table.Cell>
@@ -670,22 +761,51 @@ const CatalogMerchandisingPage = memo(() => {
                   </Text>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {selectedShelf.shelf.archivedAt ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={restoreSelectedShelf}
+                      disabled={saving}
+                    >
+                      Restore
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={openArchive}
+                      disabled={saving}
+                    >
+                      <ArchiveBox />
+                      Archive
+                    </Button>
+                  )}
                   <Button
                     type="button"
-                    variant="secondary"
-                    onClick={deleteSelectedShelf}
-                    disabled={saving}
+                    onClick={saveShelf}
+                    disabled={saving || Boolean(selectedShelf.shelf.archivedAt)}
                   >
-                    <Trash />
-                    Delete
-                  </Button>
-                  <Button type="button" onClick={saveShelf} disabled={saving}>
                     {saving ? "Saving..." : "Save shelf"}
                   </Button>
                 </div>
               </div>
 
-              <div className="grid gap-4 p-4 md:grid-cols-2">
+              {selectedShelf.shelf.archivedAt ? (
+                <div className="border-b border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+                  <Text size="small" className="text-ui-fg-subtle">
+                    This shelf is archived and read-only. Restore it to make
+                    changes; restored shelves remain inactive until you choose
+                    to publish them again.
+                  </Text>
+                </div>
+              ) : null}
+
+              <fieldset
+                aria-label="Shelf settings"
+                className="grid gap-4 p-4 md:grid-cols-2"
+                disabled={Boolean(selectedShelf.shelf.archivedAt)}
+              >
                 <div className="space-y-2">
                   <Label htmlFor="shelf-title">Title</Label>
                   <Input
@@ -832,10 +952,14 @@ const CatalogMerchandisingPage = memo(() => {
                     }}
                   />
                 </div>
-              </div>
+              </fieldset>
             </div>
 
-            <div className="rounded-lg border border-ui-border-base">
+            <fieldset
+              aria-label="Shelf products"
+              className="rounded-lg border border-ui-border-base"
+              disabled={Boolean(selectedShelf.shelf.archivedAt)}
+            >
               <div className="flex items-center justify-between gap-3 border-b border-ui-border-base px-4 py-3">
                 <div>
                   <Heading level="h3">Products</Heading>
@@ -949,7 +1073,7 @@ const CatalogMerchandisingPage = memo(() => {
                   ) : null}
                 </Table.Body>
               </Table>
-            </div>
+            </fieldset>
           </div>
         ) : (
           <div className="rounded-lg border border-ui-border-base p-8 text-center">
@@ -1082,6 +1206,21 @@ const CatalogMerchandisingPage = memo(() => {
           </FocusModal.Footer>
         </FocusModal.Content>
       </FocusModal>
+      <ConfirmAction
+        confirmLabel="Archive shelf"
+        description={
+          <>
+            Archive <strong>{selectedShelf?.shelf.title ?? "this shelf"}</strong>?
+            It will be hidden from customers and retained for restoration.
+          </>
+        }
+        onCancel={closeArchive}
+        onConfirm={deleteSelectedShelf}
+        open={archiveOpen}
+        pending={saving}
+        pendingLabel="Archiving"
+        title="Archive merchandising shelf"
+      />
     </Container>
   )
 })

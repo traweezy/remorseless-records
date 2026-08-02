@@ -135,3 +135,33 @@ locks the product and every explicitly edited asset, restores links plus asset
 metadata on compensation, and removes only newly created assets that remain
 unreferenced. Reusable source files are cloned at the metadata layer so one
 product cannot silently rewrite another product's alternative text or crop.
+
+## Catalog merchandising safety contract
+
+Shelf creation, editing, membership replacement, archive, and restore use one
+serializable catalog transaction. Every write requires the shelf version shown
+by the read response and a UUID idempotency key. The command ledger stores the
+actor, canonical request hash, expected version, result, and completion state;
+an exact retry returns the completed result, while stale edits or a reused key
+with different input return a conflict. PostgreSQL serialization/deadlock
+failures are translated into the same refresh-and-retry contract.
+
+All requested Medusa Product IDs, optional catalog Product Profile ownership,
+duplicate membership, bounds, and date ranges are validated before the
+transaction can delete an existing membership row. Shelf metadata, its version
+increment, the complete ordered membership set, and the succeeded operation
+record then commit together. A failure at any point rolls the entire database
+transaction back, so this boundary does not need a later compensating write and
+cannot leave an empty or partially rebuilt shelf.
+
+`DELETE /admin/catalog/shelves/:id` is intentionally recoverable: it archives
+the shelf, disables customer display, retains membership, and increments the
+version. `POST /admin/catalog/shelves/:id/restore` restores it as inactive so a
+merchant can review it before explicitly publishing it again. The Admin asks
+for confirmation before archive and makes archived fields read-only.
+
+The shelf list remains server-paginated. Memberships for the returned page are
+loaded with one bounded query and grouped by shelf ID, avoiding the prior N+1
+request pattern. The operational targets for this boundary are zero partial
+writes, deterministic conflict/replay behavior, and a constant two catalog
+queries per list page (one shelves/count query and one membership query).

@@ -403,6 +403,7 @@ export type CatalogShelfRecord = {
   starts_at: Date | string | null
   ends_at: Date | string | null
   is_active: boolean
+  archived_at?: Date | string | null
   version: number
   metadata: JsonRecord | null
   created_at?: Date | string | null
@@ -423,6 +424,7 @@ export type CatalogShelfDTO = {
   startsAt: string | null
   endsAt: string | null
   isActive: boolean
+  archivedAt: string | null
   version: number
   metadata: JsonRecord
   createdAt?: string | null
@@ -759,6 +761,7 @@ export const serializeCatalogShelf = (
   startsAt: toIso(shelf.starts_at),
   endsAt: toIso(shelf.ends_at),
   isActive: shelf.is_active ?? true,
+  archivedAt: toIso(shelf.archived_at),
   version: shelf.version ?? 1,
   metadata: toRecord(shelf.metadata),
   createdAt: toIso(shelf.created_at),
