@@ -800,7 +800,7 @@ export const CatalogProductCreatePage = memo(() => {
       return
     }
     setAllowNavigation(true)
-    navigate("/catalog-authoring")
+    navigate("/products")
   }, [formState.isDirty, navigate])
 
   const handleLeaveCancel = useCallback(() => {
@@ -820,7 +820,7 @@ export const CatalogProductCreatePage = memo(() => {
       blocker.proceed()
       return
     }
-    navigate("/catalog-authoring")
+    navigate("/products")
   }, [blocker, formState.isDirty, navigate, step, values])
 
   const handleClearDraftRequest = useCallback(() => setClearOpen(true), [])

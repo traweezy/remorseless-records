@@ -1,8 +1,7 @@
 "use client"
 
 import { memo, useCallback, useEffect, useMemo, useState } from "react"
-import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { ArchiveBox, PencilSquare, Trash } from "@medusajs/icons"
+import { PencilSquare, Trash } from "@medusajs/icons"
 import {
   Button,
   Container,
@@ -13,7 +12,7 @@ import {
   Text,
   Textarea,
 } from "@medusajs/ui"
-import { Link } from "react-router-dom"
+import { Link, Navigate, redirect } from "react-router-dom"
 
 import RichTextEditor from "../../components/rich-text-editor"
 import {
@@ -2228,13 +2227,12 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
 
 ProductAuthoringWorkspace.displayName = "ProductAuthoringWorkspace"
 
-const ProductAuthoringPage = memo(() => <ProductAuthoringWorkspace />)
+const ProductAuthoringPage = memo(() => (
+  <Navigate replace to="/products" />
+))
 
 ProductAuthoringPage.displayName = "ProductAuthoringPage"
 
-export const config = defineRouteConfig({
-  label: "Product Authoring",
-  icon: ArchiveBox,
-})
+export const loader = () => redirect("/products")
 
 export default ProductAuthoringPage
