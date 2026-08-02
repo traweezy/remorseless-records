@@ -395,12 +395,15 @@ The Storefront cache revalidates this read model every 60 seconds, bounding the
 customer-visible lifetime of a recently unpublished or archived link while
 avoiding one large Discography fetch per visitor.
 
-The Admin list is server-paginated, searchable, filterable, and sortable.
-Store-linked releases are read-only there because Products remain their source
-of truth. Operators can create and edit historical records, and can archive or
-restore either source. Hard deletion is disabled. Each mutation requires an
-expected version and UUID idempotency key, runs in a serializable transaction,
-and records the actor, command hash, and result in `discography_operations`.
+The Admin sidebar groups editorial tools beneath **Content**. Discography lives
+at `/app/content/discography`, with `/app/discography` retained as a
+replace-history compatibility route. Its list is server-paginated, searchable,
+filterable, and sortable. Store-linked releases are read-only there because
+Products remain their source of truth. Operators can create and edit historical
+records, and can archive or restore either source. Hard deletion is disabled.
+Each mutation requires an expected version and UUID idempotency key, runs in a
+serializable transaction, and records the actor, command hash, and result in
+`discography_operations`.
 
 The reconciliation command validates the complete Product projection before a
 serializable write. It updates existing linked rows, creates missing rows,
@@ -429,9 +432,10 @@ The News module owns editorial drafts, schedules, publication, stable slugs,
 archive state, accessible cover metadata, and its mutation ledger. The Admin
 and Storefront never infer visibility independently.
 
-Admin reads use `GET /admin/news` with bounded server search, active/archived
-selection, status filtering, stable sorting, and offset pagination. The write
-surface uses:
+The Admin News workspace lives at `/app/content/news`, with `/app/news`
+retained as a replace-history compatibility route. Reads use `GET /admin/news`
+with bounded server search, active/archived selection, status filtering, stable
+sorting, and offset pagination. The write surface uses:
 
 - `POST /admin/news` to create;
 - `PUT /admin/news/:id` to update;

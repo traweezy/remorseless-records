@@ -80,10 +80,12 @@ exact second while preserving the administrator's original scheduling intent.
 
 ### What the administrator does
 
-The **News** Admin route has separate **Active** and **Archived** views. Active
-posts can be searched by headline or stable URL slug, filtered by status,
-sorted, and paged on the server. The browser does not download an arbitrary
-batch and pretend it is the complete collection.
+Open **Content** in the Admin sidebar, then choose **News**. The canonical route
+is `/app/content/news`; old `/app/news` bookmarks are replaced without adding a
+duplicate browser-history entry. News has separate **Active** and **Archived**
+views. Active posts can be searched by headline or stable URL slug, filtered by
+status, sorted, and paged on the server. The browser does not download an
+arbitrary batch and pretend it is the complete collection.
 
 Creating or editing opens one full-viewport authoring surface:
 
@@ -1156,12 +1158,15 @@ the Discography module links to their stable Product IDs and resolves the
 current handle only after confirming the Product is still published. Historical
 releases are independent records and intentionally have no purchase link.
 
-The custom Admin page uses server pagination, search, source and availability
-filters, and reversible Active/Archived views. Product-linked rows direct the
-operator back to Products instead of duplicating editable title, artist, format,
-or artwork fields. Historical records use a focused create form and edit drawer.
-All writes require an expected version and idempotency key, run in a serializable
-transaction, and leave an operation audit record; hard deletion is disabled.
+Open **Content** in the Admin sidebar, then choose **Discography**. Its canonical
+route is `/app/content/discography`; old `/app/discography` bookmarks are
+replaced without adding a duplicate browser-history entry. The page uses server
+pagination, search, source and availability filters, and reversible
+Active/Archived views. Product-linked rows direct the operator back to Products
+instead of duplicating editable title, artist, format, or artwork fields.
+Historical records use a focused create form and edit drawer. All writes require
+an expected version and idempotency key, run in a serializable transaction, and
+leave an operation audit record; hard deletion is disabled.
 
 `pnpm --filter backend discography:build` performs a dry reconciliation plan.
 The confirmed `--apply` form updates or creates catalog-linked rows, archives
