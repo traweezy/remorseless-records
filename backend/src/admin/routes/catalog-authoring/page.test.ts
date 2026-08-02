@@ -6,5 +6,6 @@ describe("legacy catalog authoring route", () => {
 
     expect(response.status).toBe(302)
     expect(response.headers.get("location")).toBe("/products")
+    expect(response.headers.get("x-remix-replace")).toBe("true")
   })
 })

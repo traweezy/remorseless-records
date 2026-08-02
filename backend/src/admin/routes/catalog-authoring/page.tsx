@@ -12,7 +12,7 @@ import {
   Text,
   Textarea,
 } from "@medusajs/ui"
-import { Link, Navigate, redirect } from "react-router-dom"
+import { Link, Navigate, replace } from "react-router-dom"
 
 import RichTextEditor from "../../components/rich-text-editor"
 import {
@@ -2233,6 +2233,6 @@ const ProductAuthoringPage = memo(() => (
 
 ProductAuthoringPage.displayName = "ProductAuthoringPage"
 
-export const loader = () => redirect("/products")
+export const loader = () => replace("/products")
 
 export default ProductAuthoringPage
