@@ -5,6 +5,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 ## Contents
 
 - [Architecture](#architecture)
+- [News Publishing: Plain-English Guide](#news-publishing-plain-english-guide)
 - [Shopping Cart: Plain-English Guide](#shopping-cart-plain-english-guide)
 - [Checkout and Payment: Plain-English Guide](#checkout-and-payment-plain-english-guide)
 - [Refund Operations: Plain-English Guide](#refund-operations-plain-english-guide)
@@ -36,6 +37,117 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 - **Backend**: Medusa core services, the official Stripe payment provider and webhook, Resend-powered notifications, retention/reconciliation jobs, and Meilisearch sync helpers.
 - **Storefront**: Next 16 App Router with React Compiler enabled, semantic same-origin cart/checkout APIs, Stripe Payment Element, Meilisearch-powered search, variant selectors, and optimistic cart updates.
 - **Package management**: `pnpm` 11.17.0. Node 26.5.0 is enforced through `.nvmrc`.
+
+## News Publishing: Plain-English Guide
+
+News is label-owned editorial content, not a product or commerce record. The
+Medusa Backend is its source of truth: it stores the post, decides whether it
+is public, protects every change from stale or duplicate requests, and returns
+only public posts to the Storefront. The Next.js application renders that safe
+public view but cannot publish a draft by itself.
+
+### The four states
+
+| State | What the administrator sees | What a visitor sees |
+| --- | --- | --- |
+| **Draft** | A private work in progress that can be edited, scheduled, or published. | Nothing. Drafts are excluded by the Store API. |
+| **Scheduled** | A post with a chosen future date and time. The original scheduled state remains visible for auditing. | Nothing before that instant; the post appears automatically when the date arrives. |
+| **Published** | A post intentionally made public now. | The post appears in the News feed, homepage carousel, metadata, and its stable detail URL. |
+| **Archived** | A recoverable post hidden from normal editing until it is restored. | Nothing. The old public URL stops resolving through the Store API. |
+
+```mermaid
+stateDiagram-v2
+  [*] --> Draft: Create privately
+  Draft --> Scheduled: Choose a future time
+  Draft --> Published: Publish now
+  Scheduled --> PublishedView: Scheduled time arrives
+  Scheduled --> Draft: Save as draft
+  Scheduled --> Published: Publish now
+  Published --> Draft: Save as draft
+  Draft --> Archived: Archive
+  Scheduled --> Archived: Archive
+  Published --> Archived: Archive
+  Archived --> Draft: Restore prior draft
+  Archived --> Scheduled: Restore prior schedule
+  Archived --> Published: Restore prior publication
+  state "Public scheduled view" as PublishedView
+```
+
+`PublishedView` is a customer-facing condition rather than a database rewrite.
+The Store API treats an unarchived scheduled post whose time has arrived as
+published. This avoids depending on a background timer to flip a row at the
+exact second while preserving the administrator's original scheduling intent.
+
+### What the administrator does
+
+The **News** Admin route has separate **Active** and **Archived** views. Active
+posts can be searched by headline or stable URL slug, filtered by status,
+sorted, and paged on the server. The browser does not download an arbitrary
+batch and pretend it is the complete collection.
+
+Creating or editing opens one full-viewport authoring surface:
+
+- **Story** contains the headline, optional summary, formatted body, cover,
+  accessible cover description, and tags.
+- **Publishing** explains the recorded author, current state, optional local
+  schedule time, and the effect of each action.
+- **Search preview** shows the stable public path and the copy search engines
+  and link previews will use.
+- **Save draft**, **Schedule**, and **Publish now** are separate actions. There
+  is no ambiguous status dropdown that silently changes visibility.
+
+The author is the authenticated administrator recorded by the Backend; it is
+not a free-form identity field. A post receives its URL slug when first
+created. Later headline edits do not silently break links by changing that
+slug.
+
+The body editor is Lexical rather than the browser's deprecated editing
+commands. It supports paragraphs, headings, emphasis, quotes, lists, and
+validated `http`, `https`, or `mailto` links. It is keyboard operable, exposes
+its errors to assistive technology, preserves focus while typing, and keeps the
+toolbar above the editable document on desktop and mobile.
+
+### Covers and accessible descriptions
+
+A cover is optional. The browser accepts JPEG, PNG, WebP, or GIF input up to
+12 MiB and sends it to the authenticated managed-upload route. The Backend
+performs the authoritative filename, media type, size, and signature checks
+before the File Module stores anything. Only `http` or `https` cover URLs can
+pass either the Admin response validator or the Backend News contract.
+
+When a cover exists, its description is required. The same description is
+used on News cards, the homepage carousel, the detail page, and social/Open
+Graph metadata. Older records without one retain a descriptive title-based
+fallback until they are edited.
+
+### Safe saves, retries, conflicts, and recovery
+
+Every create, update, archive, or restore includes:
+
+- the version the administrator actually loaded;
+- a UUID idempotency key for that exact action; and
+- the authenticated actor recorded in an operation ledger.
+
+The Backend applies the change in a serializable transaction. Repeating the
+same successful request returns the recorded result instead of creating a
+duplicate. Reusing its key for different content is rejected. If another
+administrator saved a newer version first, the stale request fails with a
+conflict rather than overwriting that work.
+
+Closing an editor with unsaved changes requires confirmation. Failed requests
+leave the editor and exact retry identity intact. Archive is the normal removal
+path; physical deletion is not exposed. Restoring returns the post to its prior
+draft, scheduled, or published state, so the confirmation warns when an old
+scheduled time has already passed and would make the post immediately visible.
+
+### Storefront enforcement
+
+The public list and detail endpoints return only unarchived published posts and
+scheduled posts whose publication time has arrived. Store results normalize
+their public status to `published`, sanitize stored rich HTML on the server,
+use stable ordering, and paginate. The Storefront revalidates the News feed
+every five minutes, so an administrative visibility change has a bounded cache
+window without requiring a database read for every visitor.
 
 ## Shopping Cart: Plain-English Guide
 

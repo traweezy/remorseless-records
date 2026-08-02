@@ -423,6 +423,55 @@ does not delete all records. Reports include created, updated, archived, and
 retained-manual counts. Existing discography-only covers are not downloaded by
 the product-media migration.
 
+## News publication lifecycle
+
+The News module owns editorial drafts, schedules, publication, stable slugs,
+archive state, accessible cover metadata, and its mutation ledger. The Admin
+and Storefront never infer visibility independently.
+
+Admin reads use `GET /admin/news` with bounded server search, active/archived
+selection, status filtering, stable sorting, and offset pagination. The write
+surface uses:
+
+- `POST /admin/news` to create;
+- `PUT /admin/news/:id` to update;
+- `POST /admin/news/:id/archive` to hide without deleting; and
+- `POST /admin/news/:id/restore` to recover the previous lifecycle state.
+
+Every write requires an expected version and UUID idempotency key. Commands run
+in a serializable transaction, reject stale versions, and record the actor,
+command, request digest, result, and completion state in `news_operations`.
+An exact successful retry replays its stored result; a key reused for another
+actor, aggregate, version, command, or payload fails with a conflict.
+
+The Store API is deliberately narrower. `GET /store/news` and
+`GET /store/news/:slug` expose only rows where `archived_at` is null,
+`published_at` is due, and the stored status is `published` or `scheduled`.
+Scheduled rows therefore become visible without a timer-dependent database
+update. Their Store DTO status is normalized to `published`; Draft and Archived
+never cross this boundary. Stable ID ordering resolves timestamp ties.
+
+Rich HTML is sanitized during serialization for both Admin and Store output.
+The Admin uses Lexical for accessible structured authoring and validates every
+API response before rendering it. Covers continue through
+`POST /admin/managed-uploads`; the browser validates image type/size before the
+request, while the upload route performs the authoritative content checks.
+Both the upload response and News write contract allow only `http` or `https`
+cover URLs. A persisted cover requires descriptive alt text in the Admin, and
+the Storefront propagates it into cards, detail imagery, and social metadata.
+
+```mermaid
+flowchart LR
+  Admin[Authenticated News editor] -->|version + idempotency key| Command[Serializable News command]
+  Command --> Ledger[(news_operations)]
+  Command --> Entry[(news_entries)]
+  Entry --> Visibility{Unarchived and due?}
+  Visibility -->|No| Private[Admin only]
+  Visibility -->|Yes| Store[Sanitized Store News API]
+  Store --> Feed[News feed and homepage]
+  Store --> Detail[Stable detail URL]
+```
+
 ## Quality commands
 
 ```bash
