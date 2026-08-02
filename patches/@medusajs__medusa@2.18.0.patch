@@ -1,0 +1,53 @@
+diff --git a/dist/migration-scripts/create-super-admin-role.js b/dist/migration-scripts/create-super-admin-role.js
+--- a/dist/migration-scripts/create-super-admin-role.js
++++ b/dist/migration-scripts/create-super-admin-role.js
+@@ -30,10 +30,6 @@ async function assignSuperAdminRoleToUsers(container) {
+             return;
+         }
+         logger.info(`Found ${users.length} users`);
+-        logger.info("\nUsers found:");
+-        users.forEach((user, index) => {
+-            logger.info(`  ${index + 1}. ${user.email || user.id} (${user.id})`);
+-        });
+         logger.info("\nLooking for super admin role...");
+         // Get the pre-created super admin role
+         let superAdminRole;
+@@ -69,8 +65,8 @@ async function assignSuperAdminRoleToUsers(container) {
+         let errorCount = 0;
+         const link = container.resolve(utils_1.ContainerRegistrationKeys.LINK);
+-        for (const user of users) {
++        for (const [index, user] of users.entries()) {
+             try {
+-                logger.info(`  Processing user: ${user.email || user.id}`);
++                logger.info(`  Processing user ${index + 1} of ${users.length}`);
+                 // Link the user to the super admin role
+                 await link.create({
+                     [utils_1.Modules.USER]: {
+@@ -84,7 +80,7 @@ async function assignSuperAdminRoleToUsers(container) {
+                 successCount++;
+             }
+             catch (error) {
+-                console.error(`    Failed to assign role to user ${user.id}:`, error.message);
++                logger.error("    Failed to assign role to a user");
+                 errorCount++;
+             }
+         }
+@@ -98,8 +94,7 @@ async function assignSuperAdminRoleToUsers(container) {
+         }
+     }
+     catch (error) {
+-        console.error("\nFatal error:", error.message);
+-        console.error("Stack trace:", error.stack);
++        console.error("\nFatal error during super admin role assignment");
+         throw error;
+     }
+ }
+@@ -118,7 +113,7 @@ async function createSuperAdminRole({ container }) {
+     }
+     catch (error) {
+         const logger = container.resolve(utils_1.ContainerRegistrationKeys.LOGGER);
+-        logger.error("Failed to assign super admin role:", error);
++        logger.error("Failed to assign super admin role");
+         throw error;
+     }
+ }
