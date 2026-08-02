@@ -22,6 +22,15 @@ regexTarget = "secret"
 regexes = ['''^6bcb5a26-6f8a-4c13-9c39-0f28dd41fb81$''']
 paths = ['''^backend/src/admin/routes/tax-control/query\.test\.ts$''']
 
+[[rules.allowlists]]
+description = "Ignore synthetic shelf-authoring idempotency fixtures"
+condition = "AND"
+regexTarget = "secret"
+regexes = [
+  '''^(8bff4ab1-0d8b-4b73-a928-856272bfac81|26a5c95d-0271-4fd9-a296-9e7275e6fddd)$''',
+]
+paths = ['''^backend/src/api/admin/catalog/shelves/helpers\.test\.ts$''']
+
 [[rules]]
 id = "stripe-access-token"
 
