@@ -47,6 +47,7 @@ describe("news data layer", () => {
             publishedAt: ` ${publishedAt} `,
             tags: ["news"],
             coverUrl: " https://cdn.example.com/news.jpg ",
+            coverAltText: "  A red and black concert photograph  ",
             seoTitle: " SEO ",
             seoDescription: " Description ",
             createdAt: ` ${createdAt} `,
@@ -73,6 +74,7 @@ describe("news data layer", () => {
       publishedAt,
       createdAt,
       updatedAt,
+      coverAltText: "A red and black concert photograph",
     })
   })
 

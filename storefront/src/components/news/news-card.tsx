@@ -53,7 +53,10 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
     [entry.tags]
   )
 
-  const coverAlt = useMemo(() => `${entry.title} cover artwork`, [entry.title])
+  const coverAlt = useMemo(
+    () => entry.coverAltText ?? `${entry.title} cover artwork`,
+    [entry.coverAltText, entry.title]
+  )
 
   const detailHref = useMemo(() => `/news/${entry.slug}`, [entry.slug])
 
@@ -88,7 +91,7 @@ const NewsCard = memo<NewsCardProps>(({ entry, index }) => {
             href={detailHref}
             className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <h2 className="font-display text-2xl uppercase tracking-[0.1rem] text-foreground sm:text-3xl sm:tracking-[0.2rem]">
+            <h2 className="break-words font-display text-xl uppercase tracking-[0.08rem] text-foreground sm:text-3xl sm:tracking-[0.2rem]">
               {entry.title}
             </h2>
           </SmartLink>

@@ -36,7 +36,10 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
     return dateFormatter.format(parsed)
   }, [dateFormatter, entry.createdAt, entry.publishedAt])
 
-  const coverAlt = useMemo(() => `${entry.title} cover artwork`, [entry.title])
+  const coverAlt = useMemo(
+    () => entry.coverAltText ?? `${entry.title} cover artwork`,
+    [entry.coverAltText, entry.title]
+  )
 
   const detailHref = useMemo(() => `/news/${entry.slug}`, [entry.slug])
 
@@ -68,7 +71,7 @@ const NewsCarouselCard = memo<NewsCarouselCardProps>(({ entry }) => {
         <div className="text-xs uppercase tracking-[0.3rem] text-muted-foreground">
           {publishedLabel}
         </div>
-        <h3 className="font-display text-2xl uppercase tracking-[0.2rem] text-foreground">
+        <h3 className="break-words font-display text-xl uppercase tracking-[0.08rem] text-foreground sm:text-2xl sm:tracking-[0.2rem]">
           {entry.title}
         </h3>
         {entry.excerpt ? (

@@ -49,7 +49,12 @@ export const generateMetadata = async ({
       title,
       description,
       images: entry.coverUrl
-        ? [{ url: entry.coverUrl, alt: entry.title }]
+        ? [
+            {
+              url: entry.coverUrl,
+              alt: entry.coverAltText ?? `${entry.title} cover artwork`,
+            },
+          ]
         : undefined,
     },
     twitter: {
@@ -91,10 +96,10 @@ const NewsDetailPage = async ({ params }: NewsPageProps) => {
             Newsroom
           </p>
           <div className="space-y-4">
-            <h1 className="font-display text-4xl uppercase tracking-[0.3rem] text-foreground md:text-5xl">
+            <h1 className="break-words font-display text-3xl uppercase tracking-[0.1rem] text-foreground sm:text-4xl sm:tracking-[0.2rem] md:text-5xl md:tracking-[0.3rem]">
               {entry.title}
             </h1>
-            <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3rem] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.12rem] text-muted-foreground sm:tracking-[0.3rem]">
               <span>{publishedLabel}</span>
               {entry.author ? (
                 <span className="text-foreground/70">By {entry.author}</span>
@@ -109,11 +114,11 @@ const NewsDetailPage = async ({ params }: NewsPageProps) => {
         </header>
 
         <section className="space-y-8">
-          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl border border-border/50 bg-muted">
+          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-border/50 bg-muted sm:rounded-3xl">
             {entry.coverUrl ? (
               <Image
                 src={entry.coverUrl}
-                alt={`${entry.title} cover artwork`}
+                alt={entry.coverAltText ?? `${entry.title} cover artwork`}
                 fill
                 sizes="(max-width: 1024px) 100vw, 900px"
                 className="object-cover"

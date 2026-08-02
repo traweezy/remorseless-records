@@ -4,7 +4,7 @@ import { runtimeEnv } from "@/config/env"
 
 export const NEWS_PAGE_SIZE = 6
 
-export type NewsStatus = "draft" | "published" | "archived"
+export type NewsStatus = "published"
 
 export type NewsEntry = {
   id: string
@@ -17,6 +17,7 @@ export type NewsEntry = {
   publishedAt: string | null
   tags: string[]
   coverUrl: string | null
+  coverAltText: string | null
   seoTitle: string | null
   seoDescription: string | null
   createdAt: string | null
@@ -34,6 +35,7 @@ type NewsApiEntry = {
   publishedAt: string | null
   tags?: string[]
   coverUrl: string | null
+  coverAltText?: string | null
   seoTitle: string | null
   seoDescription: string | null
   createdAt?: string | null
@@ -70,6 +72,7 @@ const normalizeEntry = (entry: NewsApiEntry): NewsEntry => ({
   publishedAt: normalizeText(entry.publishedAt),
   tags: Array.isArray(entry.tags) ? entry.tags : [],
   coverUrl: normalizeText(entry.coverUrl),
+  coverAltText: normalizeText(entry.coverAltText),
   seoTitle: normalizeText(entry.seoTitle),
   seoDescription: normalizeText(entry.seoDescription),
   createdAt: normalizeText(entry.createdAt),
