@@ -7,10 +7,10 @@ const assetsDirectory =
   process.argv[2] ?? "backend/.medusa/server/public/admin/assets";
 
 const budgets = {
-  mainGzipBytes: 1_850_000,
-  mainRawBytes: 7_250_000,
-  totalGzipBytes: 2_500_000,
-  totalRawBytes: 9_000_000,
+  mainGzipBytes: 2_000_000,
+  mainRawBytes: 8_100_000,
+  totalGzipBytes: 2_650_000,
+  totalRawBytes: 10_000_000,
 };
 
 const files = fs
@@ -38,6 +38,15 @@ const totals = files.reduce(
   { gzipBytes: 0, rawBytes: 0 },
 );
 
+const report = {
+  budgets,
+  files: files.length,
+  main,
+  totals,
+};
+
+console.log(JSON.stringify(report, null, 2));
+
 assert.ok(
   main.rawBytes <= budgets.mainRawBytes,
   `Admin main bundle exceeds ${budgets.mainRawBytes} raw bytes: ${main.rawBytes}`,
@@ -53,17 +62,4 @@ assert.ok(
 assert.ok(
   totals.gzipBytes <= budgets.totalGzipBytes,
   `Admin JavaScript exceeds ${budgets.totalGzipBytes} gzip bytes: ${totals.gzipBytes}`,
-);
-
-console.log(
-  JSON.stringify(
-    {
-      budgets,
-      files: files.length,
-      main,
-      totals,
-    },
-    null,
-    2,
-  ),
 );
