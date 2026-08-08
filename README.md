@@ -1366,9 +1366,16 @@ We run three pipelines on push/PR (plus a weekly schedule):
 
 - **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build.
 - **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, and a mandatory direct-to-`main` release gate containing a production build, non-destructive Pixel/iPhone Playwright smoke tests, pa11y, and Lighthouse. Pull requests can opt into the browser gates with repository variables.
-- **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan.
+- **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, and a retained CycloneDX SBOM plus production-license inventory.
 
-Actions are hardened with `step-security/harden-runner`, and Trivy ignores generated `.medusa` output. Dependency Review runs when a pull request supplies a base/head diff. Keep `.env` files local (ignored by git) and rotate any secrets that were previously committed.
+Actions are hardened with `step-security/harden-runner` and pinned to immutable
+commits. Trivy ignores generated `.medusa` output. Root CI retains the verified
+SBOM and license inventory for 30 days. Five Medusa Admin packages omit license
+metadata from their published manifests; the verifier permits only those exact
+packages because the authoritative Medusa monorepo is MIT-licensed, and fails
+if any other production package lacks license metadata. Dependency Review runs
+when a pull request supplies a base/head diff. Keep `.env` files local (ignored
+by git) and rotate any secrets that were previously committed.
 
 ---
 
