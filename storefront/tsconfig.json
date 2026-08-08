@@ -38,6 +38,7 @@
     "next-env.d.ts",
     "next.config.ts",
     "playwright.ci.config.ts",
+    "playwright.cross-browser.config.ts",
     "postcss.config.ts",
     "tailwind.config.ts",
     "src",

@@ -4,7 +4,9 @@ This folder contains two Playwright surfaces:
 
 - `ci/` contains non-destructive browser smoke tests used by direct pushes to
   `main`. They run with `playwright.ci.config.ts`, use real Pixel 7 and iPhone 15
-  Pro device emulation, and never seed or reset a database.
+  Pro device emulation, and never seed or reset a database. The same journeys
+  can run in desktop Firefox and WebKit with
+  `playwright.cross-browser.config.ts`.
 - The remaining template suite exercises authenticated commerce flows. It
   requires a dedicated PostgreSQL test database and **drops and recreates that
   test database** to keep runs reproducible.
@@ -23,14 +25,14 @@ cat e2e/.env.example >> .env
 
 and configuring the `.env` file from there. There are more details below about what the test values correspond to and how to set them. But we mention that
 
-* `CLIENT_SERVER` - is the server the next server is listening on
+- `CLIENT_SERVER` - is the server the next server is listening on
 
 ## Playwright
 
 In order to run these tests, make sure playwright and a playwright-enabled browser is installed. You can do this by running
 
 ```sh
-pnpm exec playwright install chromium
+pnpm exec playwright install chromium firefox webkit
 ```
 
 ## Database
@@ -48,11 +50,11 @@ Note that **these tests drop and reset the database** after each test run. This 
 
 in addition, there are environment variables for connecting to the database as a superuser, so we can efficiently reset the database.
 
-* `PGHOST` - host for the postgres instance
-* `PGPORT` - port for the postgres instance
-* `PGUSER` - superuser for the postgres instance
-* `PGPASSWORD` - superuser password for the postgres instance
-* `PGDATABASE` - database we connect to while updating the other databases
+- `PGHOST` - host for the postgres instance
+- `PGPORT` - port for the postgres instance
+- `PGUSER` - superuser for the postgres instance
+- `PGPASSWORD` - superuser password for the postgres instance
+- `PGDATABASE` - database we connect to while updating the other databases
 
 ### Test Database Failsafes
 
@@ -85,6 +87,22 @@ Run the non-destructive CI smoke suite after building:
 
 ```sh
 pnpm run test:e2e --config=playwright.ci.config.ts
+```
+
+Run the same non-destructive smoke journeys in Firefox and WebKit. Desktop
+projects cover pointer affordances, cart and quick-shop behavior, catalog
+stability and continuous loading, discography layout, and checkout. Chromium-
+based Pixel 7 and iPhone 15 Pro emulation remain the device and touch gate in the
+primary CI configuration because the unsupported Linux fallback builds for
+Firefox and WebKit do not faithfully expose mobile touch points. The cross-
+browser runner targets the current HTTPS Railway deployment by default because
+WebKit correctly upgrades insecure subresources under the production CSP.
+Override the target with an HTTPS `PLAYWRIGHT_BASE_URL` when validating another
+deployment:
+
+```sh
+pnpm run test:e2e:cross-browser
+PLAYWRIGHT_BASE_URL=https://example.test pnpm run test:e2e:cross-browser
 ```
 
 Only run the database-reset suite after configuring the dedicated test database

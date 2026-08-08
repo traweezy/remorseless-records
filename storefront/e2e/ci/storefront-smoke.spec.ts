@@ -415,8 +415,8 @@ test("cart drawer stays usable and contained on mobile devices", async ({
     cart: {
       id: "cart_ci_mobile",
       currency_code: "usd",
-      subtotal: cartItems.length ? 3_600 : 0,
-      total: cartItems.length ? 3_600 : 0,
+      subtotal: cartItems.length ? 36 : 0,
+      total: cartItems.length ? 36 : 0,
       items: cartItems,
     },
   })
@@ -1320,7 +1320,7 @@ test("checkout remains accessible and contained with device emulation", async ({
     }
   })
 
-  if (testInfo.project.name === "Desktop Chrome checkout") {
+  if (testInfo.project.name.startsWith("Desktop")) {
     expect(layout.touchPoints).toBe(0)
   } else {
     expect(layout.touchPoints).toBeGreaterThan(0)
@@ -1388,6 +1388,14 @@ test("checkout remains accessible after confirmation", async ({
     waitUntil: "networkidle",
   })
   expect(response?.status()).toBeLessThan(400)
+
+  const rejectCookies = page.getByRole("button", {
+    name: "Reject non-essential",
+  })
+  if (await rejectCookies.isVisible()) {
+    await rejectCookies.click()
+  }
+
   await expect(page.getByRole("heading", { name: "Thank you" })).toBeVisible()
   await expect(page.getByText("Order #1042", { exact: false })).toBeVisible()
   await expect(page.getByText("$26.50", { exact: true })).toBeVisible()
