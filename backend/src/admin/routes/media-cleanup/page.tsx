@@ -28,7 +28,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
-import { z } from "zod"
 
 import { operationsAdminActions } from "../../../lib/admin-permissions"
 import { AdminEmptyState } from "../../components/admin-empty-state"
@@ -47,52 +46,18 @@ import {
 import { useAdminPermissions } from "../../lib/admin-permissions"
 import {
   getAdminRequestErrorMessage,
-  requestAdminJson,
 } from "../../lib/admin-request"
-
-const PAGE_SIZE = 25
-const ORPHAN_MEDIA_QUERY_KEY = ["catalog-media-orphans"] as const
-
-const mediaAssetSchema = z.object({
-  byteSize: z.number().nullable(),
-  createdAt: z.string().nullable().optional(),
-  id: z.string(),
-  lifecycleStatus: z.enum(["active", "quarantined"]),
-  mimeType: z.string().nullable(),
-  originalFilename: z.string().nullable(),
-  purgeEligibleAt: z.string().nullable(),
-  quarantinedAt: z.string().nullable(),
-  quarantinedBy: z.string().nullable(),
-  sourceFileKey: z.string().nullable(),
-  sourceUrl: z.string(),
-  version: z.number().int().min(1),
-})
-
-const orphanPageSchema = z.object({
-  assets: z.array(mediaAssetSchema),
-  count: z.number().int().min(0),
-  hasMore: z.boolean(),
-  limit: z.number().int().min(1),
-  offset: z.number().int().min(0),
-})
-
-const lifecycleResponseSchema = z.object({
-  asset: mediaAssetSchema,
-})
-
-type MediaAsset = z.infer<typeof mediaAssetSchema>
-type LifecycleStatus = MediaAsset["lifecycleStatus"]
-type OrphanPage = z.infer<typeof orphanPageSchema>
+import {
+  MEDIA_CLEANUP_PAGE_SIZE,
+  MEDIA_CLEANUP_QUERY_KEY,
+  emptyMediaPage,
+  mediaCleanupQueryOptions,
+  updateMediaLifecycle,
+  type MediaAsset,
+  type MediaLifecycleStatus,
+} from "./query"
 
 const mediaColumnHelper = createDataTableColumnHelper<MediaAsset>()
-
-const emptyPage = (offset = 0): OrphanPage => ({
-  assets: [],
-  count: 0,
-  hasMore: false,
-  limit: PAGE_SIZE,
-  offset,
-})
 
 const formatDate = (value: string | null | undefined): string => {
   if (!value) {
@@ -121,7 +86,7 @@ const formatBytes = (value: number | null): string => {
   return `${(value / (1_024 * 1_024)).toFixed(1)} MiB`
 }
 
-const isLifecycleStatus = (value: string): value is LifecycleStatus =>
+const isLifecycleStatus = (value: string): value is MediaLifecycleStatus =>
   value === "active" || value === "quarantined"
 
 const AssetPreview = memo<{ asset: MediaAsset }>(({ asset }) => {
@@ -465,7 +430,7 @@ const MobileLoadingCards = memo(() => (
 
 MobileLoadingCards.displayName = "MobileLoadingCards"
 
-const MediaEmptyState = memo<{ view: LifecycleStatus }>(({ view }) => (
+const MediaEmptyState = memo<{ view: MediaLifecycleStatus }>(({ view }) => (
   <AdminEmptyState
     description={
       view === "active"
@@ -483,7 +448,7 @@ const MediaEmptyState = memo<{ view: LifecycleStatus }>(({ view }) => (
 MediaEmptyState.displayName = "MediaEmptyState"
 
 export const MediaCleanupPageContent = memo(() => {
-  const [view, setView] = useState<LifecycleStatus>("active")
+  const [view, setView] = useState<MediaLifecycleStatus>("active")
   const [pageIndex, setPageIndex] = useState(0)
   const queryClient = useQueryClient()
   const permissions = useAdminPermissions()
@@ -491,24 +456,11 @@ export const MediaCleanupPageContent = memo(() => {
     operationsAdminActions.mediaCleanup.update,
   )
 
-  const offset = pageIndex * PAGE_SIZE
-  const orphanQuery = useQuery({
-    queryFn: ({ signal }) =>
-      requestAdminJson({
-        path: "/admin/catalog/media/orphans",
-        query: {
-          lifecycleStatus: view,
-          limit: PAGE_SIZE,
-          offset,
-        },
-        schema: orphanPageSchema,
-        signal,
-      }),
-    queryKey: [...ORPHAN_MEDIA_QUERY_KEY, view, PAGE_SIZE, offset],
-    retry: false,
-    staleTime: 10_000,
-  })
-  const page = orphanQuery.data ?? emptyPage(offset)
+  const offset = pageIndex * MEDIA_CLEANUP_PAGE_SIZE
+  const orphanQuery = useQuery(
+    mediaCleanupQueryOptions({ lifecycleStatus: view, offset }),
+  )
+  const page = orphanQuery.data ?? emptyMediaPage(offset)
   const loading = orphanQuery.isPending
   const error = orphanQuery.error
     ? getAdminRequestErrorMessage(
@@ -522,20 +474,8 @@ export const MediaCleanupPageContent = memo(() => {
   )
 
   const lifecycleMutation = useMutation({
-    mutationFn: async (asset: MediaAsset) => {
-      const action =
-        asset.lifecycleStatus === "quarantined" ? "restore" : "quarantine"
-      await requestAdminJson({
-        body: {
-          expectedVersion: asset.version,
-          idempotencyKey: crypto.randomUUID(),
-        },
-        method: "POST",
-        path: `/admin/catalog/media/assets/${encodeURIComponent(asset.id)}/${action}`,
-        schema: lifecycleResponseSchema,
-      })
-      return action
-    },
+    mutationFn: (asset: MediaAsset) =>
+      updateMediaLifecycle({ asset, idempotencyKey: crypto.randomUUID() }),
     onError: (mutationError) => {
       toast.error(
         getAdminRequestErrorMessage(
@@ -546,7 +486,7 @@ export const MediaCleanupPageContent = memo(() => {
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ORPHAN_MEDIA_QUERY_KEY,
+        queryKey: MEDIA_CLEANUP_QUERY_KEY,
       })
     },
     onSuccess: (action) => {
@@ -593,7 +533,7 @@ export const MediaCleanupPageContent = memo(() => {
   const pagination = useMemo<DataTablePaginationState>(
     () => ({
       pageIndex,
-      pageSize: PAGE_SIZE,
+      pageSize: MEDIA_CLEANUP_PAGE_SIZE,
     }),
     [pageIndex],
   )
