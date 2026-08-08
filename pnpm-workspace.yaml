@@ -69,13 +69,13 @@ overrides:
   "ajv@>=7.0.0 <8.18.0": ^8.20.0
   axios: ^1.18.0
   "body-parser@<1.20.6": ^1.20.6
-  "minimatch@<10.0.0>brace-expansion": 2.1.2
-  "minimatch@>=10.0.0>brace-expansion": 5.0.8
+  "minimatch@<10.0.0>brace-expansion": 2.1.4
+  "minimatch@>=10.0.0>brace-expansion": 5.0.9
   devalue: ^5.8.1
   diff: ^4.0.4
   esbuild: ^0.28.1
   fast-xml-parser: ^5.8.0
-  fast-uri: ^3.1.4
+  fast-uri: ^3.1.5
   fdir: ^6.5.0
   follow-redirects: ^1.16.0
   flatted: ^3.4.2
@@ -91,6 +91,7 @@ overrides:
   "minimatch@>=10.0.0 <10.2.3": ^10.2.5
   morgan: 1.11.0
   multer: ^2.2.0
+  "nanoid@<3.3.17": 3.3.17
   "path-to-regexp@<0.1.13": 0.1.13
   "path-to-regexp@>=8.0.0 <8.4.0": ^8.4.2
   "picomatch@<2.3.2": ^2.3.2
@@ -118,9 +119,6 @@ auditConfig:
   ignoreGhsas:
     - GHSA-337j-9hxr-rhxg
     - GHSA-jjmj-jmhj-qwj2
-    # Legacy CommonJS consumers use the v5.0.8 bounded-expansion backport in
-    # patches/brace-expansion@2.1.2.patch.
-    - GHSA-mh99-v99m-4gvg
     - GHSA-wrjc-x8rr-h8h6
 
 patchedDependencies:
@@ -128,11 +126,13 @@ patchedDependencies:
   "@medusajs/medusa@2.18.0": patches/@medusajs__medusa@2.18.0.patch
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
-  brace-expansion@2.1.2: patches/brace-expansion@2.1.2.patch
   react-router-dom@6.30.4: patches/react-router-dom@6.30.4.patch
 
 minimumReleaseAgeExclude:
-  - "brace-expansion@5.0.8"
+  - "brace-expansion@2.1.4"
+  - "brace-expansion@5.0.9"
+  - "fast-uri@3.1.5"
+  - "nanoid@3.3.17"
   - "@medusajs/admin-bundler@2.18.0"
   - "@medusajs/admin-sdk@2.18.0"
   - "@medusajs/admin-shared@2.18.0"
