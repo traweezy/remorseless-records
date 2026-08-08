@@ -3,6 +3,7 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useRef,
   useState,
   type MouseEvent,
@@ -13,8 +14,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { defineRouteConfig } from "@medusajs/admin-sdk";
-import { BuildingTax } from "@medusajs/icons";
 import {
   Button,
   Container,
@@ -25,16 +24,17 @@ import {
   Text,
   toast,
 } from "@medusajs/ui";
-import {
-  adminPermissionKey,
-  operationsAdminActions,
-} from "../../../lib/admin-permissions";
+import { operationsAdminActions } from "../../../lib/admin-permissions";
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
 import {
   AdminPageHeader,
   AdminSingleColumnLayout,
 } from "../../components/admin-page";
 import { AdminRetryState } from "../../components/admin-retry-state";
+import {
+  replaceLegacyTaxControlLocation,
+  type ReplaceAdminLocation,
+} from "../../features/operations/operations-routes";
 import { useAdminPermissions } from "../../lib/admin-permissions";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
 import { ProviderSwitchPrompt } from "./provider-switch-prompt";
@@ -917,7 +917,7 @@ export const TaxControlPageContent = memo(() => {
 
 TaxControlPageContent.displayName = "TaxControlPageContent";
 
-const TaxControlPage = memo(() => (
+export const TaxControlPage = memo(() => (
   <AdminPermissionBoundary
     actions={operationsAdminActions.taxControl.read}
     workspace="Tax control"
@@ -928,14 +928,17 @@ const TaxControlPage = memo(() => (
 
 TaxControlPage.displayName = "TaxControlPage";
 
-export const config = defineRouteConfig({
-  icon: BuildingTax,
-  label: "Tax control",
+const LegacyTaxControlPage = memo(() => {
+  useEffect(() => {
+    const { location } = globalThis as unknown as {
+      location: ReplaceAdminLocation;
+    };
+    replaceLegacyTaxControlLocation(location);
+  }, []);
+
+  return null;
 });
 
-export const handle = {
-  breadcrumb: () => "Tax control",
-  permissions: adminPermissionKey(operationsAdminActions.taxControl.read),
-};
+LegacyTaxControlPage.displayName = "LegacyTaxControlPage";
 
-export default TaxControlPage;
+export default LegacyTaxControlPage;

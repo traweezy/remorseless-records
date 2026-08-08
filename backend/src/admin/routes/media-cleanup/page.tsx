@@ -3,11 +3,11 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react"
-import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { Photo } from "@medusajs/icons"
 import {
   Alert,
@@ -30,10 +30,7 @@ import {
 } from "@tanstack/react-query"
 import { z } from "zod"
 
-import {
-  adminPermissionKey,
-  operationsAdminActions,
-} from "../../../lib/admin-permissions"
+import { operationsAdminActions } from "../../../lib/admin-permissions"
 import { AdminEmptyState } from "../../components/admin-empty-state"
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import {
@@ -42,6 +39,11 @@ import {
 } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { AdminResponsiveDataTable } from "../../components/admin-responsive-data-table"
+import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation"
+import {
+  replaceLegacyOperationsLocation,
+  type ReplaceAdminLocation,
+} from "../../features/operations/operations-routes"
 import { useAdminPermissions } from "../../lib/admin-permissions"
 import {
   getAdminRequestErrorMessage,
@@ -671,6 +673,10 @@ export const MediaCleanupPageContent = memo(() => {
           }
           title="Media cleanup"
         />
+        <OperationsWorkspaceNavigation
+          active="media-cleanup"
+          className="mt-5"
+        />
 
         <Alert className="mt-5" variant="warning">
           <Text weight="plus">Physical deletion is disabled</Text>
@@ -724,7 +730,7 @@ export const MediaCleanupPageContent = memo(() => {
 
 MediaCleanupPageContent.displayName = "MediaCleanupPageContent"
 
-const MediaCleanupPage = memo(() => (
+export const MediaCleanupPage = memo(() => (
   <AdminPermissionBoundary
     actions={operationsAdminActions.mediaCleanup.read}
     workspace="Media cleanup"
@@ -735,15 +741,17 @@ const MediaCleanupPage = memo(() => (
 
 MediaCleanupPage.displayName = "MediaCleanupPage"
 
-export const config = defineRouteConfig({
-  icon: Photo,
-  label: "Media cleanup",
-  rank: 91,
+const LegacyMediaCleanupPage = memo(() => {
+  useEffect(() => {
+    const { location } = globalThis as unknown as {
+      location: ReplaceAdminLocation
+    }
+    replaceLegacyOperationsLocation(location, "media-cleanup")
+  }, [])
+
+  return null
 })
 
-export const handle = {
-  breadcrumb: () => "Media cleanup",
-  permissions: adminPermissionKey(operationsAdminActions.mediaCleanup.read),
-}
+LegacyMediaCleanupPage.displayName = "LegacyMediaCleanupPage"
 
-export default MediaCleanupPage
+export default LegacyMediaCleanupPage

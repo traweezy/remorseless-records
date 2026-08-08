@@ -2,7 +2,7 @@
 
 ## Purpose and boundary
 
-The Medusa Admin **Tax records** workspace builds reviewable sales-tax
+The Medusa Admin **Operations → Tax records** workspace builds reviewable sales-tax
 workpapers for Connecticut, New York, and Pennsylvania. It projects completed
 Medusa sales, refunds, destination evidence, and preserved tax-provider
 evidence into:

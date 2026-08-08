@@ -8,6 +8,7 @@ import {
   stripeDashboardPaymentUrl,
   stripePaymentReferencesFromOrder,
 } from "../../lib/stripe/order-sync";
+import { operationsAppRoutePaths } from "../features/operations/operations-routes";
 
 const formatAmount = (
   amount: number | null,
@@ -81,7 +82,9 @@ const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
               </Text>
             </div>
             <Button asChild size="small" variant="secondary">
-              <a href="/app/refund-operations">Refund guide and audit</a>
+              <a href={operationsAppRoutePaths.refunds}>
+                Refund guide and audit
+              </a>
             </Button>
           </div>
           <Text size="xsmall" className="mt-1 text-ui-fg-subtle">

@@ -9,16 +9,16 @@ import {
 } from "../../lib/admin-permissions";
 import MediaCleanupPage, {
   handle as mediaCleanupHandle,
-} from "./media-cleanup/page";
+} from "./operations/media-cleanup/page";
 import RefundOperationsPage, {
   handle as refundOperationsHandle,
-} from "./refund-operations/page";
+} from "./operations/refunds/page";
 import TaxControlPage, {
   handle as taxControlHandle,
-} from "./tax-control/page";
+} from "./settings/tax-control/page";
 import TaxRecordsPage, {
   handle as taxRecordsHandle,
-} from "./tax-records/page";
+} from "./operations/tax-records/page";
 import {
   adminFeatureFlagsQueryKey,
   adminPermissionsQueryKey,
@@ -42,7 +42,7 @@ const protectedRoutes: readonly ProtectedRoute[] = [
     action: operationsAdminActions.refundOperations.read,
     Component: RefundOperationsPage,
     handle: refundOperationsHandle,
-    name: "Refund operations",
+    name: "Refunds",
   },
   {
     action: operationsAdminActions.taxControl.read,

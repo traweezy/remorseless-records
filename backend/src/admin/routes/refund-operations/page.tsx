@@ -3,11 +3,11 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import { defineRouteConfig } from "@medusajs/admin-sdk";
 import { ArrowPath, ArrowUturnLeft, ExclamationCircle } from "@medusajs/icons";
 import {
   Alert,
@@ -25,7 +25,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import {
-  adminPermissionKey,
   nativeAdminActions,
   operationsAdminActions,
 } from "../../../lib/admin-permissions";
@@ -43,6 +42,11 @@ import {
   AdminSingleColumnLayout,
 } from "../../components/admin-page";
 import { AdminRetryState } from "../../components/admin-retry-state";
+import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation";
+import {
+  replaceLegacyOperationsLocation,
+  type ReplaceAdminLocation,
+} from "../../features/operations/operations-routes";
 import { useAdminPermissions } from "../../lib/admin-permissions";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
 import { refundOperationsQueryOptions } from "./query";
@@ -412,8 +416,9 @@ export const RefundOperationsPageContent = memo(() => {
               </StatusBadge>
             ) : null
           }
-          title="Refund operations"
+          title="Refunds"
         />
+        <OperationsWorkspaceNavigation active="refunds" className="mt-5" />
 
         <Alert className="mt-5" variant="warning">
           <Text weight="plus">
@@ -916,10 +921,10 @@ export const RefundOperationsPageContent = memo(() => {
 
 RefundOperationsPageContent.displayName = "RefundOperationsPageContent";
 
-const RefundOperationsPage = memo(() => (
+export const RefundOperationsPage = memo(() => (
   <AdminPermissionBoundary
     actions={operationsAdminActions.refundOperations.read}
-    workspace="Refund operations"
+    workspace="Refunds"
   >
     <RefundOperationsPageContent />
   </AdminPermissionBoundary>
@@ -927,17 +932,17 @@ const RefundOperationsPage = memo(() => (
 
 RefundOperationsPage.displayName = "RefundOperationsPage";
 
-export const config = defineRouteConfig({
-  icon: ArrowUturnLeft,
-  label: "Refund operations",
-  rank: 92,
+const LegacyRefundOperationsPage = memo(() => {
+  useEffect(() => {
+    const { location } = globalThis as unknown as {
+      location: ReplaceAdminLocation;
+    };
+    replaceLegacyOperationsLocation(location, "refunds");
+  }, []);
+
+  return null;
 });
 
-export const handle = {
-  breadcrumb: () => "Refund operations",
-  permissions: adminPermissionKey(
-    operationsAdminActions.refundOperations.read,
-  ),
-};
+LegacyRefundOperationsPage.displayName = "LegacyRefundOperationsPage";
 
-export default RefundOperationsPage;
+export default LegacyRefundOperationsPage;

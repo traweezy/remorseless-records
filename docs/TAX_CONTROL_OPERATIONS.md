@@ -7,7 +7,7 @@ manually edit an order total in Stripe.
 
 ## Admin workflow
 
-Open **Tax control** in Medusa Admin. The page shows:
+Open **Settings → Tax control** in Medusa Admin. The page shows:
 
 - a neutral current-setup summary with its calculation method, connection,
   last change, and reason;

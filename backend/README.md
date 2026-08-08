@@ -75,7 +75,7 @@ the same bounded content inspection and additionally accepts validated UTF-8
 CSV input for existing import tooling. The unused presigned-upload route is
 disabled because it bypasses server-side content inspection.
 
-The Admin **Media cleanup** route is the safe review surface for catalog assets
+The Admin **Operations → Media cleanup** route is the safe review surface for catalog assets
 that are not linked to any product. Its server-side anti-join returns exact,
 paginated active or quarantined results instead of filtering an arbitrary
 in-memory slice. Quarantining requires an expected asset version and UUID
@@ -257,7 +257,7 @@ for a new quote:
 
 An authenticated Medusa Admin can review readiness, quota, exact paginated
 checkout impact, payment evidence, and an immutable provider-switch history at
-**Tax control**. The current setup is read-only; an explicit provider action
+**Settings → Tax control**. The current setup is read-only; an explicit provider action
 opens the confirmation and audit-reason dialog. Switches increment an internal
 generation. Open carts without a prepared payment use the new generation on
 their next tax refresh; prepared payments keep their original provider,
@@ -314,7 +314,7 @@ procedures are in
 
 ## Tax records and filing workpapers
 
-The authenticated Admin **Tax records** route reads Medusa orders, captured
+The authenticated Admin **Operations → Tax records** route reads Medusa orders, captured
 payments, refunds, delivery destinations, and preserved tax-line evidence into
 an auditable period report. It provides New York quarter and March–February
 sales-tax-year presets, quality gates, transaction and destination grids, and

@@ -50,11 +50,13 @@ reduced-motion-safe transition instead of inheriting the prior page's bottom
 scroll position. The shared wrapper is presentation-only and must not initiate
 collection queries or mutations.
 
-## Refund operations
+## Operations and refunds
 
-`routes/refund-operations/page.tsx` is a read-only operator guide and
-reconciliation queue. It never issues a refund. The native Medusa order screen
-remains the only mutation surface.
+`routes/operations/page.tsx` is the permission-aware overview for Tax records,
+Refunds, and Media cleanup. `routes/refund-operations/page.tsx` retains the
+shared read-only operator guide and reconciliation queue plus the compatibility
+redirect for its old bookmark. It never issues a refund. The native Medusa
+order screen remains the only mutation surface.
 
 `widgets/order-stripe-payment.tsx` links Stripe payment investigation to an
 order and directs the operator to the appropriate Medusa return, claim, or

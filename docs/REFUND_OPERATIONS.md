@@ -2,7 +2,7 @@
 
 Medusa is the only system allowed to issue a customer refund. Stripe processes
 that command, and the tax providers supply evidence, but neither the Stripe
-Dashboard nor the **Refund operations** Admin extension is a second refund
+Dashboard nor the **Operations → Refunds** Admin extension is a second refund
 authority.
 
 This boundary prevents the most dangerous failure in refund operations: paying
@@ -10,7 +10,7 @@ the customer twice because Stripe and the Medusa order ledger disagree.
 
 ## What the Admin extension does
 
-**Refund operations** has two jobs:
+**Operations → Refunds** has two jobs:
 
 1. explain which native order workflow to use before money moves; and
 2. monitor every known refund until Medusa, Stripe, and the applicable tax

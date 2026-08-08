@@ -3,12 +3,12 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ChangeEvent,
 } from "react";
-import { defineRouteConfig } from "@medusajs/admin-sdk";
-import { ArrowDownTray, ReceiptPercent } from "@medusajs/icons";
+import { ArrowDownTray } from "@medusajs/icons";
 import {
   Alert,
   Button,
@@ -24,16 +24,18 @@ import {
 } from "@medusajs/ui";
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  adminPermissionKey,
-  operationsAdminActions,
-} from "../../../lib/admin-permissions";
+import { operationsAdminActions } from "../../../lib/admin-permissions";
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
 import {
   AdminPageHeader,
   AdminSingleColumnLayout,
 } from "../../components/admin-page";
 import { AdminRetryState } from "../../components/admin-retry-state";
+import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation";
+import {
+  replaceLegacyOperationsLocation,
+  type ReplaceAdminLocation,
+} from "../../features/operations/operations-routes";
 import {
   filingBucketFor,
   TAX_FILING_PROFILES,
@@ -653,6 +655,10 @@ export const TaxRecordsPageContent = memo(() => {
           }
           description="Build separate Connecticut, New York, and Pennsylvania workpapers from Medusa sales, refunds, tax, and delivery destinations."
           title="Tax records"
+        />
+        <OperationsWorkspaceNavigation
+          active="tax-records"
+          className="mt-5"
         />
 
         <div className="mt-6 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
@@ -1365,7 +1371,7 @@ export const TaxRecordsPageContent = memo(() => {
 
 TaxRecordsPageContent.displayName = "TaxRecordsPageContent";
 
-const TaxRecordsPage = memo(() => (
+export const TaxRecordsPage = memo(() => (
   <AdminPermissionBoundary
     actions={operationsAdminActions.taxRecords.read}
     workspace="Tax records"
@@ -1376,15 +1382,17 @@ const TaxRecordsPage = memo(() => (
 
 TaxRecordsPage.displayName = "TaxRecordsPage";
 
-export const config = defineRouteConfig({
-  icon: ReceiptPercent,
-  label: "Tax records",
-  rank: 91,
+const LegacyTaxRecordsPage = memo(() => {
+  useEffect(() => {
+    const { location } = globalThis as unknown as {
+      location: ReplaceAdminLocation;
+    };
+    replaceLegacyOperationsLocation(location, "tax-records");
+  }, []);
+
+  return null;
 });
 
-export const handle = {
-  breadcrumb: () => "Tax records",
-  permissions: adminPermissionKey(operationsAdminActions.taxRecords.read),
-};
+LegacyTaxRecordsPage.displayName = "LegacyTaxRecordsPage";
 
-export default TaxRecordsPage;
+export default LegacyTaxRecordsPage;

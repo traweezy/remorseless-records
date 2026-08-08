@@ -741,7 +741,7 @@ The full test and incident procedures are in
 switching and reconciliation operations are in
 [`docs/TAX_CONTROL_OPERATIONS.md`](docs/TAX_CONTROL_OPERATIONS.md).
 
-The Medusa Admin also includes a separate **Tax records** workspace. It builds
+The Medusa Admin **Operations → Tax records** workspace builds
 separate Connecticut, New York, and Pennsylvania filing workpapers from Medusa
 sales, refunds, delivery destinations, and preserved provider evidence. The
 required jurisdiction selector scopes totals and exports, supplies the correct
@@ -763,7 +763,7 @@ investigation, not an alternative refund button. This keeps the Medusa order
 transaction, Stripe movement, inventory decision, customer communication, and
 tax evidence connected.
 
-The Admin **Refund operations** workspace first explains whether the operator
+The Admin **Operations → Refunds** workspace first explains whether the operator
 should cancel unfulfilled goods, create a return/claim for physical goods, or
 use a payment-only adjustment. It then monitors all known refunds as **Needs
 attention**, **Processing**, or **Verified**. A case that shows a direct Stripe
@@ -1312,7 +1312,8 @@ News images retain the generic `POST /admin/managed-uploads` route, which also
 accepts validated UTF-8 CSV for existing import tooling. The unused
 presigned-upload route remains disabled.
 
-The Medusa Admin **Media cleanup** workspace lists the exact paginated set of
+The Medusa Admin **Operations → Media cleanup** workspace lists the exact
+paginated set of
 catalog assets not linked to products, separated into **Needs review** and
 **Quarantined** views. Quarantine is versioned, idempotent, actor-attributed,
 and protected by the same distributed asset lock as product-media editing.
