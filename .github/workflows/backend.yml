@@ -265,6 +265,9 @@ jobs:
       - name: Build backend
         run: pnpm --filter backend run build
 
+      - name: Enforce Admin bundle budget
+        run: node scripts/verify-admin-bundle-budget.mjs
+
       # Optional: upload built backend artifact for a later deploy workflow
       # - name: Upload backend build artifact
       #   uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

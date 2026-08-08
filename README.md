@@ -1364,7 +1364,7 @@ flowchart LR
 
 We run three pipelines on push/PR (plus a weekly schedule):
 
-- **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build.
+- **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build, and an enforced Admin JavaScript bundle budget.
 - **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, and a mandatory direct-to-`main` release gate containing a production build, non-destructive Pixel/iPhone Playwright smoke tests, pa11y, and Lighthouse. Pull requests can opt into the browser gates with repository variables.
 - **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, and a retained CycloneDX SBOM plus production-license inventory.
 
