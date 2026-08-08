@@ -187,12 +187,11 @@ flowchart TD
 
 RBAC is feature-flagged. Its additive database migration, real viewer/editor
 journeys, session-change behavior, and flag-off rollback passed against a
-disposable clone on August 2, 2026. Staging intentionally remains off until the
-environment change is separately and explicitly approved. While it is off,
-authenticated administrators retain the access they had before this work. The
-first enabled migration assigns the native super-admin role to every existing
-administrator, and a version-pinned privacy patch prevents that bootstrap from
-writing user emails or IDs to release logs.
+disposable clone on August 2, 2026. After a fresh snapshot and explicit owner
+approval, Railway staging activated RBAC on August 8, 2026. The first enabled
+migration assigned the native Super Admin role to all three existing
+administrators, and a version-pinned privacy patch prevented that bootstrap
+from writing user emails or IDs to release logs.
 
 The rehearsal also found a Medusa 2.18 startup-order trap: migration commands
 evaluate this project's config before Medusa registers its built-in feature
@@ -200,6 +199,14 @@ flags. The Backend now declares the native RBAC module explicitly from the
 strict `MEDUSA_FF_RBAC` value, so an enabled release cannot claim the flag is on
 while silently skipping the RBAC schema and bootstrap. Repeating the migration
 is safe and did not duplicate roles, policies, links, or its one-time ledger.
+
+The activated staging database has one Super Admin role, 241 policies, the
+eight exact News and Discography policies, one wildcard policy, three distinct
+administrator links, and one bootstrap ledger row. A fresh administrator login
+resolved 240 concrete permissions and the live desktop and Pixel 7 Content
+journeys passed without page overflow or protected-route failures. The secured
+pre-activation snapshot and exact deployment evidence are recorded in
+[ADR 0006](docs/adr/0006-native-admin-rbac.md).
 
 After activation or any role change, the affected administrator must sign out
 and sign back in so the signed session carries current role IDs. Medusa 2.18's

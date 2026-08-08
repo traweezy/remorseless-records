@@ -1,7 +1,8 @@
 # ADR 0006: Use Medusa native RBAC for custom Content administration
 
-- Status: accepted; isolated rehearsal complete; staging activation pending
+- Status: accepted; activated on Railway staging
 - Date: 2026-08-02
+- Activation: 2026-08-08
 - Scope: custom Medusa Admin Content routes and APIs
 
 ## Context
@@ -25,8 +26,9 @@ logs each user's email and ID. Production logs must not become a PII export.
 ## Decision
 
 - Medusa's RBAC module is the only Admin authorization authority.
-- `MEDUSA_FF_RBAC` remains disabled until the isolated migration, access, and
-  rollback rehearsal passes and activation is explicitly approved.
+- `MEDUSA_FF_RBAC` can be enabled only after the isolated migration, access,
+  and rollback rehearsal passes and activation is explicitly approved. That
+  gate passed for Railway staging on 2026-08-08.
 - Custom policies are registered from `backend/src/policies/content.ts` and are
   synchronized by Medusa. Routes declare policy requirements in the canonical
   `backend/src/api/middlewares.ts` file.
@@ -157,8 +159,41 @@ with staging left unchanged:
   RBAC endpoint with 404, and retained all seven RBAC tables, policies, links,
   and the single bootstrap ledger row.
 
-The rehearsal does not authorize step 8. Staging still reports `rbac: false`
-and must not be activated without a separate explicit approval.
+### Railway staging activation evidence — 2026-08-08
+
+The owner explicitly approved step 8. Activation completed without creating
+disposable users, roles, Content, commerce, inventory, payment, or tax records:
+
+- A fresh custom-format snapshot was retained outside the repository at
+  `/home/tylers/.local/share/remorseless-records/backups/2026-08-08-before-rbac-activation/database-before-rbac.dump`.
+  It is owned by the local user, mode `0600`, 1,887,586 bytes, with SHA-256
+  `82e670684f052687f4efc06a055f6099823a59b632ef43da9ab2131b546bf8db`.
+  `pg_restore --list` validated the archive before activation.
+- The immediate baseline was three active administrators, zero RBAC tables,
+  and zero `create-super-admin-role.js` ledger rows.
+- Setting `MEDUSA_FF_RBAC=true` created Railway Backend deployment
+  `c163ae94-8e4b-4c77-aa43-7f267ca52dfc` at exact revision
+  `828f9abc681bf53f320608355922503d97691914`. It reached `SUCCESS`; the build
+  explicitly loaded the RBAC flag and produced image
+  `sha256:b5899d5aa09a6f4ba7493433fd063d11d2454b66399053c63c280f2b562c8513`.
+- The public feature-flag endpoint reports `rbac: true`, and no-store readiness
+  returned HTTP 200 with healthy database, Redis, search, and object storage.
+- The migrated database has all seven RBAC and user/invite link tables, one
+  Super Admin role, 241 policies, eight exact Content policies, one wildcard
+  policy, three Super Admin links for three distinct active administrators,
+  and exactly one bootstrap ledger row.
+- A fresh existing-administrator login returned 200 for authentication and
+  `/admin/users/me`; the native effective-permission endpoint returned 240
+  concrete permissions and all eight News and Discography grants.
+- Real headed Chromium at 1440×900 and Chrome's Pixel 7 device metrics, both
+  with reduced motion, loaded Content, News, and Discography without an access
+  restriction, document overflow, runtime page error, or HTTP 5xx. News showed
+  **Create post**, both Content workspaces were present, direct screenshots
+  were inspected, and a real Flameshot capture confirmed the foregrounded
+  deployed Admin.
+
+All administrators must still sign out and sign back in after activation or a
+later role change so their signed session contains the current role IDs.
 
 ## Rollback
 
