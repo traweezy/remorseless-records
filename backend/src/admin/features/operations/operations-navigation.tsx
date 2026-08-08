@@ -4,6 +4,8 @@ import { memo } from "react"
 import { Button, clx } from "@medusajs/ui"
 import { Link } from "react-router-dom"
 
+import { operationsAdminActions } from "../../../lib/admin-permissions"
+import { useAdminPermissions } from "../../lib/admin-permissions"
 import {
   operationsRoutePaths,
   type OperationsWorkspace,
@@ -12,9 +14,6 @@ import {
 type OperationsWorkspaceNavigationProps = {
   active: OperationsWorkspace
   className?: string
-  showMediaCleanup?: boolean
-  showRefunds?: boolean
-  showTaxRecords?: boolean
 }
 
 type NavigationItemProps = {
@@ -35,14 +34,19 @@ NavigationItem.displayName = "NavigationItem"
 
 export const OperationsWorkspaceNavigation = memo<
   OperationsWorkspaceNavigationProps
->(
-  ({
-    active,
-    className,
-    showMediaCleanup = true,
-    showRefunds = true,
-    showTaxRecords = true,
-  }) => (
+>(({ active, className }) => {
+  const permissions = useAdminPermissions()
+  const showTaxRecords = permissions.hasPermission(
+    operationsAdminActions.taxRecords.read,
+  )
+  const showRefunds = permissions.hasPermission(
+    operationsAdminActions.refundOperations.read,
+  )
+  const showMediaCleanup = permissions.hasPermission(
+    operationsAdminActions.mediaCleanup.read,
+  )
+
+  return (
     <nav
       aria-label="Operations workspaces"
       className={clx("flex flex-wrap gap-2", className)}
@@ -74,7 +78,7 @@ export const OperationsWorkspaceNavigation = memo<
         />
       ) : null}
     </nav>
-  ),
-)
+  )
+})
 
 OperationsWorkspaceNavigation.displayName = "OperationsWorkspaceNavigation"

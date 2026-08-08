@@ -94,9 +94,6 @@ const OperationsPageContent = memo(() => {
         <OperationsWorkspaceNavigation
           active="overview"
           className="mt-5"
-          showMediaCleanup={canReadMediaCleanup}
-          showRefunds={canReadRefunds}
-          showTaxRecords={canReadTaxRecords}
         />
       </Container>
 
