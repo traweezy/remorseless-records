@@ -12,6 +12,13 @@ export const contentAdminResources = {
   news: "news",
 } as const;
 
+export const operationsAdminResources = {
+  mediaCleanup: "media_cleanup",
+  refundOperations: "refund_operations",
+  taxControl: "tax_control",
+  taxRecords: "tax_records",
+} as const;
+
 export type AdminPolicyAction = {
   operation: string;
   resource: string;
@@ -48,6 +55,41 @@ export const contentAdminActions = {
   news: createResourceActions(contentAdminResources.news),
 } as const;
 
+export const operationsAdminActions = {
+  mediaCleanup: {
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: operationsAdminResources.mediaCleanup,
+    },
+    update: {
+      operation: adminPolicyOperations.update,
+      resource: operationsAdminResources.mediaCleanup,
+    },
+  },
+  refundOperations: {
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: operationsAdminResources.refundOperations,
+    },
+  },
+  taxControl: {
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: operationsAdminResources.taxControl,
+    },
+    update: {
+      operation: adminPolicyOperations.update,
+      resource: operationsAdminResources.taxControl,
+    },
+  },
+  taxRecords: {
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: operationsAdminResources.taxRecords,
+    },
+  },
+} as const;
+
 export const nativeAdminActions = {
   file: {
     create: {
@@ -55,10 +97,22 @@ export const nativeAdminActions = {
       resource: "file",
     },
   },
+  order: {
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: "order",
+    },
+  },
   product: {
     read: {
       operation: adminPolicyOperations.read,
       resource: "product",
+    },
+  },
+  refundReason: {
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: "refund_reason",
     },
   },
 } as const;
@@ -101,7 +155,57 @@ export const contentAdminPolicyDefinitions: PolicyDefinition[] = [
   ),
 ];
 
+export const operationsAdminPolicyDefinitions: PolicyDefinition[] = [
+  {
+    description:
+      "View tax provider status, readiness, usage, audit history, and payment tax evidence",
+    name: "ReadTaxControlOperations",
+    operation: adminPolicyOperations.read,
+    resource: operationsAdminResources.taxControl,
+  },
+  {
+    description:
+      "Switch the active tax provider and refresh metered provider usage",
+    name: "UpdateTaxControlOperations",
+    operation: adminPolicyOperations.update,
+    resource: operationsAdminResources.taxControl,
+  },
+  {
+    description:
+      "View and export tax filing records without customer contact or street-address data",
+    name: "ReadTaxRecords",
+    operation: adminPolicyOperations.read,
+    resource: operationsAdminResources.taxRecords,
+  },
+  {
+    description:
+      "View Medusa, payment-provider, and tax-reversal refund reconciliation",
+    name: "ReadRefundOperations",
+    operation: adminPolicyOperations.read,
+    resource: operationsAdminResources.refundOperations,
+  },
+  {
+    description: "View unlinked and quarantined catalog media",
+    name: "ReadMediaCleanup",
+    operation: adminPolicyOperations.read,
+    resource: operationsAdminResources.mediaCleanup,
+  },
+  {
+    description: "Quarantine and restore unlinked catalog media",
+    name: "UpdateMediaCleanup",
+    operation: adminPolicyOperations.update,
+    resource: operationsAdminResources.mediaCleanup,
+  },
+];
+
 export const contentReadPermissionKeys = [
   adminPermissionKey(contentAdminActions.news.read),
   adminPermissionKey(contentAdminActions.discography.read),
+] as const;
+
+export const operationsReadPermissionKeys = [
+  adminPermissionKey(operationsAdminActions.taxControl.read),
+  adminPermissionKey(operationsAdminActions.taxRecords.read),
+  adminPermissionKey(operationsAdminActions.refundOperations.read),
+  adminPermissionKey(operationsAdminActions.mediaCleanup.read),
 ] as const;

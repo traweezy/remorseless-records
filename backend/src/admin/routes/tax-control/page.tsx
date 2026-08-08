@@ -26,10 +26,16 @@ import {
   toast,
 } from "@medusajs/ui";
 import {
+  adminPermissionKey,
+  operationsAdminActions,
+} from "../../../lib/admin-permissions";
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
+import {
   AdminPageHeader,
   AdminSingleColumnLayout,
 } from "../../components/admin-page";
 import { AdminRetryState } from "../../components/admin-retry-state";
+import { useAdminPermissions } from "../../lib/admin-permissions";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
 import { ProviderSwitchPrompt } from "./provider-switch-prompt";
 import {
@@ -48,6 +54,7 @@ import {
 
 type ProviderCardProps = {
   active: boolean;
+  canUpdate: boolean;
   children?: ReactNode;
   description: string;
   name: string;
@@ -115,6 +122,7 @@ const quotaSourceLabel = (source: string): string =>
 const ProviderCard = memo<ProviderCardProps>(
   ({
     active,
+    canUpdate,
     children,
     description,
     name,
@@ -198,7 +206,7 @@ const ProviderCard = memo<ProviderCardProps>(
             <Text size="small" className="text-ui-fg-subtle">
               Used for new tax calculations.
             </Text>
-          ) : (
+          ) : canUpdate ? (
             <>
               <Button
                 aria-describedby={`tax-provider-${provider}-description`}
@@ -215,6 +223,11 @@ const ProviderCard = memo<ProviderCardProps>(
                 </Text>
               ) : null}
             </>
+          ) : (
+            <Text size="small" className="text-ui-fg-subtle">
+              View-only access. A role with Tax control update permission is
+              required to switch providers.
+            </Text>
           )}
         </div>
       </section>
@@ -236,12 +249,16 @@ const LoadingState = memo(() => (
   </div>
 ));
 
-const TaxControlPage = memo(() => {
+export const TaxControlPageContent = memo(() => {
   const [switchDraft, setSwitchDraft] =
     useState<ProviderSwitchDraft | null>(null);
   const switchTriggerRef = useRef<HTMLButtonElement | null>(null);
   const quotaRefreshLockRef = useRef(false);
   const queryClient = useQueryClient();
+  const permissions = useAdminPermissions();
+  const canUpdate = permissions.hasPermission(
+    operationsAdminActions.taxControl.update,
+  );
   const taxControlQuery = useQuery(taxControlQueryOptions());
   const {
     isPending: saving,
@@ -274,7 +291,11 @@ const TaxControlPage = memo(() => {
 
   const beginProviderSwitch = useCallback(
     (provider: ProviderName, trigger: HTMLButtonElement) => {
-      if (!snapshot || provider === snapshot.control.activeProvider) {
+      if (
+        !canUpdate ||
+        !snapshot ||
+        provider === snapshot.control.activeProvider
+      ) {
         return;
       }
       const readiness =
@@ -292,7 +313,7 @@ const TaxControlPage = memo(() => {
         targetProvider: provider,
       });
     },
-    [resetProviderSwitch, snapshot],
+    [canUpdate, resetProviderSwitch, snapshot],
   );
 
   const cancelProviderSwitch = useCallback(() => {
@@ -303,7 +324,7 @@ const TaxControlPage = memo(() => {
 
   const confirmProviderSwitch = useCallback(
     async (reason: string) => {
-      if (!snapshot || !switchDraft || saving) {
+      if (!canUpdate || !snapshot || !switchDraft || saving) {
         return;
       }
       const input = {
@@ -350,6 +371,7 @@ const TaxControlPage = memo(() => {
     },
     [
       dismissProviderSwitch,
+      canUpdate,
       mutateProviderSwitch,
       queryClient,
       resetProviderSwitch,
@@ -361,7 +383,7 @@ const TaxControlPage = memo(() => {
   );
 
   const refreshQuota = useCallback(async () => {
-    if (quotaRefreshLockRef.current || refreshingQuota) {
+    if (!canUpdate || quotaRefreshLockRef.current || refreshingQuota) {
       return;
     }
     quotaRefreshLockRef.current = true;
@@ -382,7 +404,7 @@ const TaxControlPage = memo(() => {
     } finally {
       quotaRefreshLockRef.current = false;
     }
-  }, [mutateQuotaRefresh, queryClient, refreshingQuota]);
+  }, [canUpdate, mutateQuotaRefresh, queryClient, refreshingQuota]);
 
   const retryLoad = useCallback(() => {
     void taxControlQuery.refetch();
@@ -557,6 +579,7 @@ const TaxControlPage = memo(() => {
         <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
           <ProviderCard
             active={activeProvider === "taxrate_io"}
+            canUpdate={canUpdate}
             description="ZIP-code sales-tax rates with a monthly lookup quota."
             name="TaxRate.io"
             onSwitch={beginProviderSwitch}
@@ -573,18 +596,24 @@ const TaxControlPage = memo(() => {
                   Reported by TaxRate.io, not estimated from cart traffic.
                 </Text>
               </div>
-              <Button
-                disabled={
-                  refreshingQuota ||
-                  !snapshot.providers.taxRateIo.manualRefreshConfigured
-                }
-                isLoading={refreshingQuota}
-                onClick={refreshQuota}
-                type="button"
-                variant="secondary"
-              >
-                Refresh · uses 1 lookup
-              </Button>
+              {canUpdate ? (
+                <Button
+                  disabled={
+                    refreshingQuota ||
+                    !snapshot.providers.taxRateIo.manualRefreshConfigured
+                  }
+                  isLoading={refreshingQuota}
+                  onClick={refreshQuota}
+                  type="button"
+                  variant="secondary"
+                >
+                  Refresh · uses 1 lookup
+                </Button>
+              ) : (
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  View-only access
+                </Text>
+              )}
             </div>
 
             {quota ? (
@@ -637,6 +666,7 @@ const TaxControlPage = memo(() => {
 
           <ProviderCard
             active={activeProvider === "stripe_tax"}
+            canUpdate={canUpdate}
             description="Address-aware calculations linked to Stripe payments, reporting, and refund reversals."
             name="Stripe Tax"
             onSwitch={beginProviderSwitch}
@@ -665,7 +695,7 @@ const TaxControlPage = memo(() => {
           </ProviderCard>
         </div>
 
-        {switchDraft ? (
+        {canUpdate && switchDraft ? (
           <ProviderSwitchPrompt
             activeProvider={activeProvider}
             impact={snapshot.impact}
@@ -885,9 +915,27 @@ const TaxControlPage = memo(() => {
   );
 });
 
+TaxControlPageContent.displayName = "TaxControlPageContent";
+
+const TaxControlPage = memo(() => (
+  <AdminPermissionBoundary
+    actions={operationsAdminActions.taxControl.read}
+    workspace="Tax control"
+  >
+    <TaxControlPageContent />
+  </AdminPermissionBoundary>
+));
+
+TaxControlPage.displayName = "TaxControlPage";
+
 export const config = defineRouteConfig({
   icon: BuildingTax,
   label: "Tax control",
 });
+
+export const handle = {
+  breadcrumb: () => "Tax control",
+  permissions: adminPermissionKey(operationsAdminActions.taxControl.read),
+};
 
 export default TaxControlPage;

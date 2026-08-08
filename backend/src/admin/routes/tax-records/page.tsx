@@ -25,6 +25,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import {
+  adminPermissionKey,
+  operationsAdminActions,
+} from "../../../lib/admin-permissions";
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
+import {
   AdminPageHeader,
   AdminSingleColumnLayout,
 } from "../../components/admin-page";
@@ -342,7 +347,7 @@ const MobileDestination = memo(
   ),
 );
 
-const TaxRecordsPage = memo(() => {
+export const TaxRecordsPageContent = memo(() => {
   const initialPeriod = useMemo(
     () => uiPeriodForPreset("CT", "current-quarter"),
     [],
@@ -1358,6 +1363,19 @@ const TaxRecordsPage = memo(() => {
   );
 });
 
+TaxRecordsPageContent.displayName = "TaxRecordsPageContent";
+
+const TaxRecordsPage = memo(() => (
+  <AdminPermissionBoundary
+    actions={operationsAdminActions.taxRecords.read}
+    workspace="Tax records"
+  >
+    <TaxRecordsPageContent />
+  </AdminPermissionBoundary>
+));
+
+TaxRecordsPage.displayName = "TaxRecordsPage";
+
 export const config = defineRouteConfig({
   icon: ReceiptPercent,
   label: "Tax records",
@@ -1366,6 +1384,7 @@ export const config = defineRouteConfig({
 
 export const handle = {
   breadcrumb: () => "Tax records",
+  permissions: adminPermissionKey(operationsAdminActions.taxRecords.read),
 };
 
 export default TaxRecordsPage;

@@ -1,17 +1,17 @@
-# ADR 0006: Use Medusa native RBAC for custom Content administration
+# ADR 0006: Use Medusa native RBAC for custom administration
 
 - Status: accepted; activated on Railway staging
 - Date: 2026-08-02
 - Activation: 2026-08-08
-- Scope: custom Medusa Admin Content routes and APIs
+- Scope: custom Medusa Admin Content and operations routes and APIs
 
 ## Context
 
 Medusa authentication already protects every `/admin/*` endpoint, but
-authentication alone gives every administrator the same access to custom News
-and Discography operations. Actor IDs in the custom operation ledgers answer
-who changed a record; they do not decide whether that actor was allowed to
-read or change it.
+authentication alone gives every administrator the same access to custom
+Content and operations workspaces. Actor IDs in the custom operation ledgers
+answer who changed a record; they do not decide whether that actor was allowed
+to read or change it.
 
 Medusa 2.18 includes a feature-flagged native role-based access-control (RBAC)
 module, code-registered policies, route policy checks, effective-permission
@@ -29,8 +29,9 @@ logs each user's email and ID. Production logs must not become a PII export.
 - `MEDUSA_FF_RBAC` can be enabled only after the isolated migration, access,
   and rollback rehearsal passes and activation is explicitly approved. That
   gate passed for Railway staging on 2026-08-08.
-- Custom policies are registered from `backend/src/policies/content.ts` and are
-  synchronized by Medusa. Routes declare policy requirements in the canonical
+- Custom policies are registered from `backend/src/policies/content.ts` and
+  `backend/src/policies/operations.ts` and are synchronized by Medusa. Routes
+  declare policy requirements in the canonical
   `backend/src/api/middlewares.ts` file.
 - The backend policy check is authoritative. Admin-side permission checks only
   prevent dead-end controls and protected-data fetches.
@@ -68,11 +69,25 @@ logs each user's email and ID. Production logs must not become a PII export.
 | `discography` | `delete` | No hard-delete control is exposed | The hard-disabled DELETE route remains guarded |
 | native `file` | `create` | Show News cover choose/replace controls | Managed upload POST |
 | native `product` | `read` | Show a Discography Product deep link | Native Product authorization remains authoritative |
+| `tax_control` | `read` | View provider readiness, usage, audit history, impact, and tax evidence | Tax control GET |
+| `tax_control` | `update` | Show provider switch and metered quota-refresh controls | Provider switch and TaxRate.io refresh POST |
+| `tax_records` | `read` | View filing workpapers and download minimized CSV exports | Tax records and export GET |
+| `refund_operations` | `read` | View refund, Stripe, and tax reconciliation | Refund operations GET |
+| native `order` | `read` | Show order deep links in Refund operations | Native Order authorization remains authoritative |
+| native `refund_reason` | `read` | Show the Refund reasons deep link | Native Refund reason authorization remains authoritative |
+| `media_cleanup` | `read` | View unlinked and quarantined catalog media | Media orphan list GET |
+| `media_cleanup` | `update` | Show Quarantine and Restore controls | Quarantine and restore POST |
 
 All required actions in a single route declaration are conjunctive. The
 Content landing page is the intentional exception in the UI: it opens when the
 actor can read at least one workspace and only renders cards and navigation for
 the workspaces that actor can read.
+
+Custom operations routes use one page-level read boundary and separate update
+capabilities where they mutate state. A read-only role can inspect Tax control
+or Media cleanup without receiving controls that would fail. Refund operations
+does not imply native Order access: reconciliation remains readable, while
+Order and Refund reason links follow their native grants.
 
 ```mermaid
 flowchart LR
@@ -194,6 +209,22 @@ disposable users, roles, Content, commerce, inventory, payment, or tax records:
 
 All administrators must still sign out and sign back in after activation or a
 later role change so their signed session contains the current role IDs.
+
+### Operations authorization extension — 2026-08-08
+
+Six code-registered policies extend the already active contract without a new
+schema migration: Tax control read/update, Tax records read, Refund operations
+read, and Media cleanup read/update. Medusa's RBAC module synchronizes them on
+application start. Exact API matchers enforce each read or write before its
+handler, denied Admin pages do not mount their protected query, and mutation or
+native-resource links follow the effective capability set. The Super Admin
+role retains access through its existing wildcard policy; restricted roles must
+receive only the grants their task requires and then sign in again.
+
+Release acceptance must verify 247 non-deleted policies, one wildcard policy,
+246 concrete effective Super Admin permissions, the six exact operations
+policies, and unchanged role/user-link counts. A mismatch is a failed release,
+not a reason to insert policies or role links manually.
 
 ## Rollback
 

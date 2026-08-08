@@ -10,6 +10,7 @@ import multer from "multer";
 import {
   contentAdminActions,
   nativeAdminActions,
+  operationsAdminActions,
 } from "../lib/admin-permissions";
 import { STORE_CORS } from "../lib/constants";
 import {
@@ -193,6 +194,12 @@ const adminTaxRecordsRateLimit = createRateLimitMiddleware({
   windowMs: 60_000,
 });
 
+const adminRefundOperationsRateLimit = createRateLimitMiddleware({
+  key: "admin:refund-operations",
+  max: 60,
+  windowMs: 60_000,
+});
+
 const adminCatalogMediaMutationRateLimit = createRateLimitMiddleware({
   key: "admin:catalog-media-mutation",
   max: 60,
@@ -290,6 +297,64 @@ export const contentAdminPolicyRoutes = [
   },
 ] satisfies MiddlewareRoute[];
 
+export const operationsAdminPolicyRoutes = [
+  {
+    matcher: "/admin/tax-control",
+    methods: ["GET"],
+    middlewares: [adminTaxControlRateLimit],
+    policies: operationsAdminActions.taxControl.read,
+  },
+  {
+    matcher: "/admin/tax-control/switch",
+    methods: ["POST"],
+    middlewares: [adminTaxControlRateLimit],
+    policies: operationsAdminActions.taxControl.update,
+    bodyParser: {
+      sizeLimit: "8kb",
+    },
+  },
+  {
+    matcher: "/admin/tax-control/taxrate-io/refresh",
+    methods: ["POST"],
+    middlewares: [adminTaxControlRateLimit],
+    policies: operationsAdminActions.taxControl.update,
+    bodyParser: {
+      sizeLimit: "8kb",
+    },
+  },
+  {
+    matcher: "/admin/tax-records",
+    methods: ["GET"],
+    middlewares: [adminTaxRecordsRateLimit],
+    policies: operationsAdminActions.taxRecords.read,
+  },
+  {
+    matcher: "/admin/tax-records/export",
+    methods: ["GET"],
+    middlewares: [adminTaxRecordsRateLimit],
+    policies: operationsAdminActions.taxRecords.read,
+  },
+  {
+    matcher: "/admin/refund-operations",
+    methods: ["GET"],
+    middlewares: [adminRefundOperationsRateLimit],
+    policies: operationsAdminActions.refundOperations.read,
+  },
+  {
+    matcher: "/admin/catalog/media/orphans",
+    methods: ["GET"],
+    middlewares: [adminCatalogMediaReadRateLimit],
+    policies: operationsAdminActions.mediaCleanup.read,
+  },
+  {
+    matcher:
+      /^\/admin\/catalog\/media\/assets\/[^/]+\/(quarantine|restore)$/,
+    methods: ["POST"],
+    middlewares: [adminCatalogMediaMutationRateLimit],
+    policies: operationsAdminActions.mediaCleanup.update,
+  },
+] satisfies MiddlewareRoute[];
+
 export default defineMiddlewares({
   routes: [
     {
@@ -337,6 +402,7 @@ export default defineMiddlewares({
       policies: nativeAdminActions.file.create,
     },
     ...contentAdminPolicyRoutes,
+    ...operationsAdminPolicyRoutes,
     {
       matcher: "/admin/catalog/media/uploads",
       methods: ["POST"],
@@ -346,33 +412,9 @@ export default defineMiddlewares({
       ],
     },
     {
-      matcher: "/admin/catalog/media/orphans",
-      methods: ["GET"],
-      middlewares: [adminCatalogMediaReadRateLimit],
-    },
-    {
-      matcher:
-        /^\/admin\/catalog\/media\/assets\/[^/]+\/(quarantine|restore)$/,
-      methods: ["POST"],
-      middlewares: [adminCatalogMediaMutationRateLimit],
-    },
-    {
       matcher: "/admin/uploads/presigned-urls",
       methods: ["POST"],
       middlewares: [rejectPresignedUploads],
-    },
-    {
-      matcher: /^\/admin\/tax-control(\/.*)?$/,
-      methods: ["POST"],
-      middlewares: [adminTaxControlRateLimit],
-      bodyParser: {
-        sizeLimit: "8kb",
-      },
-    },
-    {
-      matcher: /^\/admin\/tax-records(\/.*)?$/,
-      methods: ["GET"],
-      middlewares: [adminTaxRecordsRateLimit],
     },
   ],
 });

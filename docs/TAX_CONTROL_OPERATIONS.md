@@ -21,6 +21,11 @@ Open **Tax control** in Medusa Admin. The page shows:
   or failed Stripe Tax associations; and
 - the immutable provider-switch history.
 
+The role needs `tax_control:read` to open this workspace. Provider switching
+and the deliberate metered quota refresh additionally require
+`tax_control:update`; a read-only operator sees status and evidence without
+those controls. Direct API requests are checked by the same backend policies.
+
 The current provider has a neutral **Current** label. Each inactive provider has
 an explicit switch button, which stays disabled until its setup is ready. The
 button opens one confirmation dialog containing the impact summary and audit

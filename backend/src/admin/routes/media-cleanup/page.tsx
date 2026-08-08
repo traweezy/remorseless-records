@@ -30,13 +30,19 @@ import {
 } from "@tanstack/react-query"
 import { z } from "zod"
 
+import {
+  adminPermissionKey,
+  operationsAdminActions,
+} from "../../../lib/admin-permissions"
 import { AdminEmptyState } from "../../components/admin-empty-state"
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import {
   AdminPageHeader,
   AdminSingleColumnLayout,
 } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { AdminResponsiveDataTable } from "../../components/admin-responsive-data-table"
+import { useAdminPermissions } from "../../lib/admin-permissions"
 import {
   getAdminRequestErrorMessage,
   requestAdminJson,
@@ -178,15 +184,17 @@ MediaActionButton.displayName = "MediaActionButton"
 
 type UseMediaColumnsOptions = {
   busyAssetId: string | null
+  canManage: boolean
   onAction: (asset: MediaAsset) => void
 }
 
 const useMediaColumns = ({
   busyAssetId,
+  canManage,
   onAction,
 }: UseMediaColumnsOptions) =>
-  useMemo(
-    () => [
+  useMemo(() => {
+    const columns = [
       mediaColumnHelper.accessor((asset) => asset.originalFilename ?? asset.id, {
         cell: ({ row }) => {
           const asset = row.original
@@ -292,6 +300,14 @@ const useMediaColumns = ({
         size: 180,
         truncateTooltip: false,
       }),
+    ]
+
+    if (!canManage) {
+      return columns
+    }
+
+    return [
+      ...columns,
       mediaColumnHelper.accessor(() => null, {
         align: "right",
         cell: ({ row }) => {
@@ -311,12 +327,15 @@ const useMediaColumns = ({
         size: 140,
         truncateTooltip: false,
       }),
-    ],
-    [busyAssetId, onAction],
-  )
+    ]
+  }, [busyAssetId, canManage, onAction])
 
-const MediaMobileCard = memo<MediaActionProps>(
-  ({ asset, busy, disabled, onAction }) => {
+type MediaMobileCardProps = MediaActionProps & {
+  canManage: boolean
+}
+
+const MediaMobileCard = memo<MediaMobileCardProps>(
+  ({ asset, busy, canManage, disabled, onAction }) => {
     const quarantined = asset.lifecycleStatus === "quarantined"
 
     return (
@@ -401,14 +420,16 @@ const MediaMobileCard = memo<MediaActionProps>(
           </div>
         </dl>
 
-        <div className="mt-5 [&>button]:w-full">
-          <MediaActionButton
-            asset={asset}
-            busy={busy}
-            disabled={disabled}
-            onAction={onAction}
-          />
-        </div>
+        {canManage ? (
+          <div className="mt-5 [&>button]:w-full">
+            <MediaActionButton
+              asset={asset}
+              busy={busy}
+              disabled={disabled}
+              onAction={onAction}
+            />
+          </div>
+        ) : null}
       </li>
     )
   },
@@ -459,10 +480,14 @@ const MediaEmptyState = memo<{ view: LifecycleStatus }>(({ view }) => (
 
 MediaEmptyState.displayName = "MediaEmptyState"
 
-const MediaCleanupPage = memo(() => {
+export const MediaCleanupPageContent = memo(() => {
   const [view, setView] = useState<LifecycleStatus>("active")
   const [pageIndex, setPageIndex] = useState(0)
   const queryClient = useQueryClient()
+  const permissions = useAdminPermissions()
+  const canUpdate = permissions.hasPermission(
+    operationsAdminActions.mediaCleanup.update,
+  )
 
   const offset = pageIndex * PAGE_SIZE
   const orphanQuery = useQuery({
@@ -551,15 +576,16 @@ const MediaCleanupPage = memo(() => {
 
   const handleLifecycleAction = useCallback(
     (asset: MediaAsset): void => {
-      if (lifecycleMutation.isPending) {
+      if (!canUpdate || lifecycleMutation.isPending) {
         return
       }
       lifecycleMutation.mutate(asset)
     },
-    [lifecycleMutation],
+    [canUpdate, lifecycleMutation],
   )
   const columns = useMediaColumns({
     busyAssetId,
+    canManage: canUpdate,
     onAction: handleLifecycleAction,
   })
   const pagination = useMemo<DataTablePaginationState>(
@@ -607,6 +633,7 @@ const MediaCleanupPage = memo(() => {
           <MediaMobileCard
             asset={asset}
             busy={busyAssetId === asset.id}
+            canManage={canUpdate}
             disabled={busyAssetId !== null}
             key={asset.id}
             onAction={handleLifecycleAction}
@@ -616,6 +643,7 @@ const MediaCleanupPage = memo(() => {
     )
   }, [
     busyAssetId,
+    canUpdate,
     handleLifecycleAction,
     loading,
     page.assets,
@@ -652,6 +680,16 @@ const MediaCleanupPage = memo(() => {
             deleted automatically.
           </Text>
         </Alert>
+
+        {!canUpdate ? (
+          <Alert className="mt-4" variant="info">
+            <Text weight="plus">View-only access</Text>
+            <Text size="small">
+              A role with Media cleanup update permission is required to move
+              assets into or out of quarantine.
+            </Text>
+          </Alert>
+        ) : null}
       </Container>
 
       {error ? (
@@ -684,6 +722,17 @@ const MediaCleanupPage = memo(() => {
   )
 })
 
+MediaCleanupPageContent.displayName = "MediaCleanupPageContent"
+
+const MediaCleanupPage = memo(() => (
+  <AdminPermissionBoundary
+    actions={operationsAdminActions.mediaCleanup.read}
+    workspace="Media cleanup"
+  >
+    <MediaCleanupPageContent />
+  </AdminPermissionBoundary>
+))
+
 MediaCleanupPage.displayName = "MediaCleanupPage"
 
 export const config = defineRouteConfig({
@@ -694,6 +743,7 @@ export const config = defineRouteConfig({
 
 export const handle = {
   breadcrumb: () => "Media cleanup",
+  permissions: adminPermissionKey(operationsAdminActions.mediaCleanup.read),
 }
 
 export default MediaCleanupPage

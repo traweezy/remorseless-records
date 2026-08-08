@@ -154,10 +154,11 @@ window without requiring a database read for every visitor.
 
 ## Admin Access Control: Plain-English Guide
 
-The codebase is prepared to use Medusa 2.18's native roles and permissions for
-the custom **Content**, **News**, and **Discography** workspaces. This is not a
-second login system. Medusa still authenticates the administrator; RBAC decides
-what that authenticated administrator may read or change.
+The codebase uses Medusa 2.18's native roles and permissions for the custom
+**Content**, **News**, **Discography**, **Tax control**, **Tax records**,
+**Refund operations**, and **Media cleanup** workspaces. This is not a second
+login system. Medusa still authenticates the administrator; RBAC decides what
+that authenticated administrator may read or change.
 
 The permission model is deliberately small:
 
@@ -167,6 +168,14 @@ The permission model is deliberately small:
   permission so a future implementation cannot inherit an unguarded route.
 - News cover upload also requires Medusa's native `file:create` permission.
 - Discography links to native Products appear only with `product:read`.
+- Tax control separates read access from provider switching and metered quota
+  refreshes. Both writes require `tax_control:update`.
+- Tax records and Refund operations are deliberately read-only custom
+  workspaces. Tax CSV export is part of `tax_records:read`.
+- Refund operations links to native Orders and Refund reasons only when the
+  role also has the corresponding native read permission.
+- Media cleanup separates inspection from reversible quarantine/restore.
+  Those lifecycle changes require `media_cleanup:update`.
 
 The backend is the authority. A direct request without the required role gets a
 403 before the route handler runs. The Admin performs the same check earlier so
@@ -200,13 +209,15 @@ strict `MEDUSA_FF_RBAC` value, so an enabled release cannot claim the flag is on
 while silently skipping the RBAC schema and bootstrap. Repeating the migration
 is safe and did not duplicate roles, policies, links, or its one-time ledger.
 
-The activated staging database has one Super Admin role, 241 policies, the
-eight exact News and Discography policies, one wildcard policy, three distinct
-administrator links, and one bootstrap ledger row. A fresh administrator login
-resolved 240 concrete permissions and the live desktop and Pixel 7 Content
-journeys passed without page overflow or protected-route failures. The secured
-pre-activation snapshot and exact deployment evidence are recorded in
-[ADR 0006](docs/adr/0006-native-admin-rbac.md).
+The initial activated staging database had one Super Admin role, 241 policies,
+the eight exact News and Discography policies, one wildcard policy, three
+distinct administrator links, and one bootstrap ledger row. The operations
+authorization release adds six code-registered policies; Medusa synchronizes
+them at application start and the existing wildcard Super Admin grant covers
+them without adding per-user links. Deployment acceptance verifies the policy
+and concrete-permission totals instead of assuming synchronization succeeded.
+The secured pre-activation snapshot and exact deployment evidence are recorded
+in [ADR 0006](docs/adr/0006-native-admin-rbac.md).
 
 After activation or any role change, the affected administrator must sign out
 and sign back in so the signed session carries current role IDs. Medusa 2.18's
@@ -214,10 +225,10 @@ permission-summary endpoint can see a newly assigned database role before an
 old signed session can use it; backend authorization still rejects the old
 session, so reauthentication is both the UX and security boundary. Medusa's
 public Admin extension API cannot yet hide custom top-level or nested sidebar
-items by permission, so a restricted user may still see **Content**, **News**,
-or **Discography** in that shell. Selecting a denied workspace shows the clear
-restricted-access page. That does not expose data; the page does not start its
-query and the backend independently rejects direct requests.
+items by permission, so a restricted user may still see a denied custom
+workspace in that shell. Selecting it shows the clear restricted-access page.
+That does not expose data; the page does not start its query and the backend
+independently rejects direct requests.
 
 A release with RBAC disabled can report the bootstrap script as pending. Medusa
 checks the script's feature predicate before inserting its migration record, so

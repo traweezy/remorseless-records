@@ -1,7 +1,13 @@
 import type { MiddlewareRoute } from "@medusajs/framework/http";
 
-import { nativeAdminActions } from "../lib/admin-permissions";
-import middlewares, { contentAdminPolicyRoutes } from "./middlewares";
+import {
+  nativeAdminActions,
+  operationsAdminActions,
+} from "../lib/admin-permissions";
+import middlewares, {
+  contentAdminPolicyRoutes,
+  operationsAdminPolicyRoutes,
+} from "./middlewares";
 
 jest.mock("../lib/constants", () => ({
   STORE_CORS: "http://localhost:3000",
@@ -20,8 +26,12 @@ const routeMatches = (
     : route.matcher.test(path);
 };
 
-const policyFor = (method: string, path: string) => {
-  const matches = contentAdminPolicyRoutes.filter((route) =>
+const policyFor = (
+  routes: MiddlewareRoute[],
+  method: string,
+  path: string,
+) => {
+  const matches = routes.filter((route) =>
     routeMatches(route, method, path),
   );
   expect(matches).toHaveLength(1);
@@ -55,7 +65,10 @@ describe("content Admin RBAC middleware", () => {
       "update",
     ],
   ])("maps %s %s to %s:%s", (method, path, resource, operation) => {
-    expect(policyFor(method, path)).toEqual({ operation, resource });
+    expect(policyFor(contentAdminPolicyRoutes, method, path)).toEqual({
+      operation,
+      resource,
+    });
   });
 
   it("protects managed uploads with Medusa's native file permission", () => {
@@ -77,6 +90,77 @@ describe("content Admin RBAC middleware", () => {
     expect(
       contentAdminPolicyRoutes.some((route) =>
         routeMatches(route, "POST", "/admin/discography/disco_01/delete"),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("operations Admin RBAC middleware", () => {
+  it.each([
+    ["GET", "/admin/tax-control", "tax_control", "read"],
+    ["POST", "/admin/tax-control/switch", "tax_control", "update"],
+    [
+      "POST",
+      "/admin/tax-control/taxrate-io/refresh",
+      "tax_control",
+      "update",
+    ],
+    ["GET", "/admin/tax-records", "tax_records", "read"],
+    ["GET", "/admin/tax-records/export", "tax_records", "read"],
+    ["GET", "/admin/refund-operations", "refund_operations", "read"],
+    ["GET", "/admin/catalog/media/orphans", "media_cleanup", "read"],
+    [
+      "POST",
+      "/admin/catalog/media/assets/media_01/quarantine",
+      "media_cleanup",
+      "update",
+    ],
+    [
+      "POST",
+      "/admin/catalog/media/assets/media_01/restore",
+      "media_cleanup",
+      "update",
+    ],
+  ])("maps %s %s to %s:%s", (method, path, resource, operation) => {
+    expect(policyFor(operationsAdminPolicyRoutes, method, path)).toEqual({
+      operation,
+      resource,
+    });
+  });
+
+  it("uses distinct read and update capabilities for sensitive actions", () => {
+    expect(
+      policyFor(operationsAdminPolicyRoutes, "GET", "/admin/tax-control"),
+    ).toEqual(operationsAdminActions.taxControl.read);
+    expect(
+      policyFor(
+        operationsAdminPolicyRoutes,
+        "POST",
+        "/admin/tax-control/switch",
+      ),
+    ).toEqual(operationsAdminActions.taxControl.update);
+    expect(
+      policyFor(
+        operationsAdminPolicyRoutes,
+        "POST",
+        "/admin/catalog/media/assets/media_01/quarantine",
+      ),
+    ).toEqual(operationsAdminActions.mediaCleanup.update);
+  });
+
+  it("does not grant a policy to malformed or unsupported operations routes", () => {
+    expect(
+      operationsAdminPolicyRoutes.some((route) =>
+        routeMatches(route, "POST", "/admin/tax-records/export"),
+      ),
+    ).toBe(false);
+    expect(
+      operationsAdminPolicyRoutes.some((route) =>
+        routeMatches(
+          route,
+          "POST",
+          "/admin/catalog/media/assets/media_01/purge",
+        ),
       ),
     ).toBe(false);
   });

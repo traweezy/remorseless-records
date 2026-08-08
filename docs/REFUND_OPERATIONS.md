@@ -20,6 +20,11 @@ It deliberately has no **Refund now** button. The operator opens the order and
 uses Medusa's existing cancel, return, claim, and payment actions. The extension
 is an operational guide and exception queue, not a parallel mutation API.
 
+The role needs `refund_operations:read` to open the reconciliation workspace.
+That grant does not grant native Order or Refund reason access. Order links are
+shown only with native `order:read`, and the reason-management link only with
+native `refund_reason:read`; Medusa remains authoritative for both resources.
+
 The extension reads:
 
 - refunded Medusa orders updated during the last 180 days;

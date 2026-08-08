@@ -83,6 +83,9 @@ idempotency key, runs under the same asset lock used by product-media writes,
 and records the actor plus a 30-day review date. Quarantined assets cannot be
 linked, edited, or reused, but an operator can restore them at any time.
 
+`media_cleanup:read` grants inspection only. Quarantine and Restore controls
+and endpoints additionally require `media_cleanup:update`.
+
 The supporting Admin endpoints are:
 
 - `GET /admin/catalog/media/orphans?lifecycleStatus=active&limit=25&offset=0`
@@ -261,6 +264,11 @@ their next tax refresh; prepared payments keep their original provider,
 generation, fingerprint, and calculation/rate. No cart can combine two
 providers.
 
+Native Admin RBAC separates `tax_control:read` from `tax_control:update`.
+Read-only operators can inspect readiness and evidence but cannot see or invoke
+provider switching or the metered TaxRate.io quota refresh. The backend
+enforces the same split before either write handler.
+
 The Admin reads this workspace through the session-authenticated Medusa SDK and
 TanStack Query. A complete Zod response contract rejects malformed readiness,
 quota, impact, evidence, or history data before it can render. Provider changes
@@ -311,6 +319,9 @@ payments, refunds, delivery destinations, and preserved tax-line evidence into
 an auditable period report. It provides New York quarter and March–February
 sales-tax-year presets, quality gates, transaction and destination grids, and
 signed transaction-detail and destination-summary CSV downloads.
+
+Viewing and exporting use the single `tax_records:read` permission because the
+export is a PII-minimized representation of the same report, not a mutation.
 
 The reporting ledger intentionally uses completed commerce records rather than
 raw tax-provider calls. Cached lookups may serve many abandoned carts, so an

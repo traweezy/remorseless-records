@@ -24,6 +24,11 @@ import {
 } from "@medusajs/ui";
 import { useQuery } from "@tanstack/react-query";
 
+import {
+  adminPermissionKey,
+  nativeAdminActions,
+  operationsAdminActions,
+} from "../../../lib/admin-permissions";
 import type {
   RefundCase,
   RefundCaseStatus,
@@ -31,12 +36,14 @@ import type {
   RefundTaxStatus,
 } from "../../../lib/refund-operations/types";
 import { AdminEmptyState } from "../../components/admin-empty-state";
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
 import {
   AdminPageHeader,
   AdminSectionHeader,
   AdminSingleColumnLayout,
 } from "../../components/admin-page";
 import { AdminRetryState } from "../../components/admin-retry-state";
+import { useAdminPermissions } from "../../lib/admin-permissions";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
 import { refundOperationsQueryOptions } from "./query";
 import {
@@ -49,8 +56,11 @@ import {
 } from "./ui-state";
 
 type CaseCardProps = {
+  canOpenOrder: boolean;
   refundCase: RefundCase;
 };
+
+type OrderActionProps = CaseCardProps;
 
 type SummaryCardProps = {
   children: ReactNode;
@@ -173,13 +183,17 @@ const CaseStatus = memo<{ status: RefundCaseStatus }>(({ status }) => (
 
 CaseStatus.displayName = "CaseStatus";
 
-const OrderAction = memo<{ refundCase: RefundCase }>(({ refundCase }) =>
-  refundCase.orderId ? (
+const OrderAction = memo<OrderActionProps>(({ canOpenOrder, refundCase }) =>
+  refundCase.orderId && canOpenOrder ? (
     <Button asChild size="small" variant="secondary">
       <a href={`/app/orders/${encodeURIComponent(refundCase.orderId)}`}>
         Open order
       </a>
     </Button>
+  ) : refundCase.orderId ? (
+    <Text size="xsmall" className="text-ui-fg-subtle">
+      View-only refund access. Order access is required to open this order.
+    </Text>
   ) : (
     <Text size="xsmall" className="text-ui-fg-subtle">
       No order was created. Investigate the checkout payment before taking any
@@ -190,7 +204,7 @@ const OrderAction = memo<{ refundCase: RefundCase }>(({ refundCase }) =>
 
 OrderAction.displayName = "OrderAction";
 
-const CaseCard = memo<CaseCardProps>(({ refundCase }) => (
+const CaseCard = memo<CaseCardProps>(({ canOpenOrder, refundCase }) => (
   <article className="rounded-lg border border-ui-border-base p-4">
     <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
       <div className="min-w-0">
@@ -251,18 +265,23 @@ const CaseCard = memo<CaseCardProps>(({ refundCase }) => (
     </div>
 
     <div className="mt-4">
-      <OrderAction refundCase={refundCase} />
+      <OrderAction canOpenOrder={canOpenOrder} refundCase={refundCase} />
     </div>
   </article>
 ));
 
 CaseCard.displayName = "CaseCard";
 
-const RefundOperationsPage = memo(() => {
+export const RefundOperationsPageContent = memo(() => {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [provider, setProvider] = useState<ProviderFilter>("all");
   const [page, setPage] = useState(0);
+  const permissions = useAdminPermissions();
+  const canReadOrders = permissions.hasPermission(nativeAdminActions.order.read);
+  const canReadRefundReasons = permissions.hasPermission(
+    nativeAdminActions.refundReason.read,
+  );
   const {
     data: snapshot,
     error: queryError,
@@ -365,14 +384,20 @@ const RefundOperationsPage = memo(() => {
       <Container>
         <AdminPageHeader
           actions={
-            <>
-              <Button asChild size="small" variant="secondary">
-                <a href="/app/settings/refund-reasons">Manage reasons</a>
-              </Button>
-              <Button asChild size="small" variant="primary">
-                <a href="/app/orders">Open orders</a>
-              </Button>
-            </>
+            canReadOrders || canReadRefundReasons ? (
+              <>
+                {canReadRefundReasons ? (
+                  <Button asChild size="small" variant="secondary">
+                    <a href="/app/settings/refund-reasons">Manage reasons</a>
+                  </Button>
+                ) : null}
+                {canReadOrders ? (
+                  <Button asChild size="small" variant="primary">
+                    <a href="/app/orders">Open orders</a>
+                  </Button>
+                ) : null}
+              </>
+            ) : undefined
           }
           description={
             <>
@@ -704,6 +729,7 @@ const RefundOperationsPage = memo(() => {
                 <div className="mt-5 grid gap-3 md:hidden">
                   {visibleCases.map((refundCase) => (
                     <CaseCard
+                      canOpenOrder={canReadOrders}
                       key={refundCase.caseId}
                       refundCase={refundCase}
                     />
@@ -798,7 +824,10 @@ const RefundOperationsPage = memo(() => {
                               {refundCase.nextAction}
                             </Text>
                             <div className="mt-3">
-                              <OrderAction refundCase={refundCase} />
+                              <OrderAction
+                                canOpenOrder={canReadOrders}
+                                refundCase={refundCase}
+                              />
                             </div>
                           </Table.Cell>
                         </Table.Row>
@@ -885,6 +914,17 @@ const RefundOperationsPage = memo(() => {
   );
 });
 
+RefundOperationsPageContent.displayName = "RefundOperationsPageContent";
+
+const RefundOperationsPage = memo(() => (
+  <AdminPermissionBoundary
+    actions={operationsAdminActions.refundOperations.read}
+    workspace="Refund operations"
+  >
+    <RefundOperationsPageContent />
+  </AdminPermissionBoundary>
+));
+
 RefundOperationsPage.displayName = "RefundOperationsPage";
 
 export const config = defineRouteConfig({
@@ -895,6 +935,9 @@ export const config = defineRouteConfig({
 
 export const handle = {
   breadcrumb: () => "Refund operations",
+  permissions: adminPermissionKey(
+    operationsAdminActions.refundOperations.read,
+  ),
 };
 
 export default RefundOperationsPage;
