@@ -31,6 +31,7 @@ import {
   AdminSingleColumnLayout,
 } from "../../components/admin-page";
 import { AdminRetryState } from "../../components/admin-retry-state";
+import { AdminStatCard } from "../../components/admin-stat-card";
 import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation";
 import {
   replaceLegacyOperationsLocation,
@@ -168,32 +169,6 @@ const LoadingState = memo(() => (
     <Skeleton className="h-96 w-full" />
   </div>
 ));
-
-const SummaryCard = memo(
-  ({
-    label,
-    note,
-    value,
-  }: {
-    label: string;
-    note?: string;
-    value: string;
-  }) => (
-    <div className="rounded-lg border border-ui-border-base bg-ui-bg-base p-4">
-      <Text size="xsmall" className="text-ui-fg-subtle">
-        {label}
-      </Text>
-      <Text size="large" weight="plus" className="mt-1 break-words">
-        {value}
-      </Text>
-      {note ? (
-        <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-          {note}
-        </Text>
-      ) : null}
-    </div>
-  ),
-);
 
 const MobileTaxRecord = memo(({ record }: { record: TaxRecord }) => {
   const timing = refundTimingLabel(record.refundCreditTiming);
@@ -822,43 +797,47 @@ export const TaxRecordsPageContent = memo(() => {
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <SummaryCard
+          <AdminStatCard
+            description="Tax excluded"
             label="Gross sales"
-            note="Tax excluded"
-            value={formatMoney(activeSummary.grossSales, activeCurrency)}
-          />
-          <SummaryCard
-            label="Sales refunded"
-            note={`${activeSummary.refundCount} refund record${
+          >
+            <Text size="large" weight="plus" className="break-words">
+              {formatMoney(activeSummary.grossSales, activeCurrency)}
+            </Text>
+          </AdminStatCard>
+          <AdminStatCard
+            description={`${activeSummary.refundCount} refund record${
               activeSummary.refundCount === 1 ? "" : "s"
             }`}
-            value={formatMoney(activeSummary.refundedSales, activeCurrency)}
-          />
-          <SummaryCard
-            label="Net taxable sales"
-            value={formatMoney(activeSummary.taxableSales, activeCurrency)}
-          />
-          <SummaryCard
-            label="Net nontaxable sales"
-            value={formatMoney(activeSummary.nontaxableSales, activeCurrency)}
-          />
-          <SummaryCard
-            label="Tax collected"
-            value={formatMoney(activeSummary.taxCollected, activeCurrency)}
-          />
-          <SummaryCard
-            label="Tax refunded"
-            value={formatMoney(activeSummary.refundedTax, activeCurrency)}
-          />
-          <SummaryCard
-            label="Net sales"
-            value={formatMoney(activeSummary.netSales, activeCurrency)}
-          />
-          <SummaryCard
+            label="Sales refunded"
+          >
+            <Text size="large" weight="plus" className="break-words">
+              {formatMoney(activeSummary.refundedSales, activeCurrency)}
+            </Text>
+          </AdminStatCard>
+          {(
+            [
+              ["Net taxable sales", activeSummary.taxableSales],
+              ["Net nontaxable sales", activeSummary.nontaxableSales],
+              ["Tax collected", activeSummary.taxCollected],
+              ["Tax refunded", activeSummary.refundedTax],
+              ["Net sales", activeSummary.netSales],
+            ] satisfies ReadonlyArray<readonly [string, string]>
+          ).map(([label, value]) => (
+            <AdminStatCard key={label} label={label}>
+              <Text size="large" weight="plus" className="break-words">
+                {formatMoney(value, activeCurrency)}
+              </Text>
+            </AdminStatCard>
+          ))}
+          <AdminStatCard
+            description="Reconcile before filing"
             label="Net tax"
-            note="Reconcile before filing"
-            value={formatMoney(activeSummary.netTax, activeCurrency)}
-          />
+          >
+            <Text size="large" weight="plus" className="break-words">
+              {formatMoney(activeSummary.netTax, activeCurrency)}
+            </Text>
+          </AdminStatCard>
         </div>
 
         {report.source.unassignedStateRecords > 0 ? (

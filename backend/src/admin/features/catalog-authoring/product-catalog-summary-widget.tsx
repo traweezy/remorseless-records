@@ -4,7 +4,6 @@ import {
   memo,
   useCallback,
   useMemo,
-  type ReactNode,
 } from "react";
 import type { AdminProduct } from "@medusajs/framework/types";
 import {
@@ -20,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { AdminRetryState } from "../../components/admin-retry-state";
+import { AdminStatCard } from "../../components/admin-stat-card";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
 import { productAuthoringViewQueryOptions } from "./product-authoring-query";
 import {
@@ -29,31 +29,9 @@ import {
   type ProductCatalogCompletion,
 } from "./product-summary-state";
 
-type SummaryCardProps = {
-  children: ReactNode;
-  description: string;
-  label: string;
-};
-
 type ProductCatalogSummaryWidgetProps = {
   data: AdminProduct;
 };
-
-const SummaryCard = memo<SummaryCardProps>(
-  ({ children, description, label }) => (
-    <div className="rounded-lg border border-ui-border-base p-4">
-      <Text className="text-ui-fg-subtle" size="xsmall">
-        {label}
-      </Text>
-      <div className="mt-1">{children}</div>
-      <Text className="mt-1 text-ui-fg-subtle" size="xsmall">
-        {description}
-      </Text>
-    </div>
-  ),
-);
-
-SummaryCard.displayName = "SummaryCard";
 
 const CompletionStatus = memo<{
   completion: ProductCatalogCompletion;
@@ -152,19 +130,19 @@ export const ProductCatalogSummaryWidget = memo<
       </div>
 
       <div className="grid gap-3 px-6 py-5 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard
+        <AdminStatCard
           description={summary.completion.description}
           label="Catalog completion"
         >
           <CompletionStatus completion={summary.completion} />
-        </SummaryCard>
-        <SummaryCard
+        </AdminStatCard>
+        <AdminStatCard
           description={summary.availability.description}
           label="Customer availability"
         >
           <AvailabilityStatus availability={summary.availability} />
-        </SummaryCard>
-        <SummaryCard
+        </AdminStatCard>
+        <AdminStatCard
           description={summary.media.description}
           label="Managed media"
         >
@@ -172,16 +150,16 @@ export const ProductCatalogSummaryWidget = memo<
             {summary.media.total}{" "}
             {summary.media.total === 1 ? "image" : "images"}
           </Text>
-        </SummaryCard>
+        </AdminStatCard>
         {summary.bundleHealth ? (
-          <SummaryCard
+          <AdminStatCard
             description={summary.bundleHealth.description}
             label="Bundle mapping"
           >
             <BundleStatus bundleHealth={summary.bundleHealth} />
-          </SummaryCard>
+          </AdminStatCard>
         ) : (
-          <SummaryCard
+          <AdminStatCard
             description="Offerings are managed as native Medusa variants."
             label="Offerings"
           >
@@ -191,7 +169,7 @@ export const ProductCatalogSummaryWidget = memo<
                 ? "variant"
                 : "variants"}
             </Text>
-          </SummaryCard>
+          </AdminStatCard>
         )}
       </div>
     </Container>

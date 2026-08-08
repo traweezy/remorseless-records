@@ -42,6 +42,7 @@ import {
   AdminSingleColumnLayout,
 } from "../../components/admin-page";
 import { AdminRetryState } from "../../components/admin-retry-state";
+import { AdminStatCard } from "../../components/admin-stat-card";
 import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation";
 import {
   replaceLegacyOperationsLocation,
@@ -65,12 +66,6 @@ type CaseCardProps = {
 };
 
 type OrderActionProps = CaseCardProps;
-
-type SummaryCardProps = {
-  children: ReactNode;
-  description: string;
-  label: string;
-};
 
 const PAGE_SIZE = 20;
 
@@ -159,22 +154,6 @@ const stripeAmountLabel = (refundCase: RefundCase): string =>
 
 const refundCountLabel = (count: number): string =>
   `${count} refund${count === 1 ? "" : "s"}`;
-
-const SummaryCard = memo<SummaryCardProps>(
-  ({ children, description, label }) => (
-    <div className="rounded-lg border border-ui-border-base p-4">
-      <Text size="xsmall" className="text-ui-fg-subtle">
-        {label}
-      </Text>
-      <div className="mt-1">{children}</div>
-      <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-        {description}
-      </Text>
-    </div>
-  ),
-);
-
-SummaryCard.displayName = "SummaryCard";
 
 const CaseStatus = memo<{ status: RefundCaseStatus }>(({ status }) => (
   <StatusBadge
@@ -578,38 +557,38 @@ export const RefundOperationsPageContent = memo(() => {
             />
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard
+              <AdminStatCard
                 description="Investigate before issuing another refund."
                 label="Needs attention"
               >
                 <Text size="large" weight="plus" className="tabular-nums">
                   {snapshot.summary.actionRequired}
                 </Text>
-              </SummaryCard>
-              <SummaryCard
+              </AdminStatCard>
+              <AdminStatCard
                 description="Waiting for a provider or tax check."
                 label="Processing"
               >
                 <Text size="large" weight="plus" className="tabular-nums">
                   {snapshot.summary.processing}
                 </Text>
-              </SummaryCard>
-              <SummaryCard
+              </AdminStatCard>
+              <AdminStatCard
                 description="Medusa, Stripe, and tax evidence agree."
                 label="Verified"
               >
                 <Text size="large" weight="plus" className="tabular-nums">
                   {snapshot.summary.verified}
                 </Text>
-              </SummaryCard>
-              <SummaryCard
+              </AdminStatCard>
+              <AdminStatCard
                 description={`${snapshot.summary.totalCases} refund ${snapshot.summary.totalCases === 1 ? "case" : "cases"} in this audit.`}
                 label="Recorded in Medusa"
               >
                 <Text size="large" weight="plus" className="tabular-nums">
                   {totalRefunded || "—"}
                 </Text>
-              </SummaryCard>
+              </AdminStatCard>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2 text-ui-fg-subtle">
