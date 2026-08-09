@@ -5,6 +5,7 @@ import {
   ProductStatus,
 } from "@medusajs/framework/utils"
 
+import { homepageShelfCopy } from "@/lib/catalog/homepage-shelf-copy"
 import type CatalogModuleService from "@/modules/catalog/service"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
@@ -23,13 +24,10 @@ type ProductService = {
     config?: Record<string, unknown>
   ) => Promise<ProductSummary[]>
 }
-
 const shelfSeeds = [
   {
     handle: "new-releases",
-    title: "Newest Arrivals",
-    description:
-      "Fresh represses and new signings—these move fast. Bookmark them or lose them forever.",
+    ...homepageShelfCopy["new-releases"],
     mode: "automatic" as const,
     automation_type: "new_release" as const,
     show_ribbon: true,
@@ -43,9 +41,7 @@ const shelfSeeds = [
   },
   {
     handle: "featured",
-    title: "Featured Picks",
-    description:
-      "Curated slabs hand-picked from the vault—limited, savage, and in stock right now.",
+    ...homepageShelfCopy.featured,
     mode: "manual" as const,
     automation_type: "none" as const,
     show_ribbon: true,

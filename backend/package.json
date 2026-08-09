@@ -32,6 +32,7 @@
     "media:big-cartel:migrate": "node ./scripts/run-medusa.js ./src/scripts/migrate-big-cartel-media.ts",
     "news:seed": "node ./scripts/run-medusa.js ./src/scripts/seed-news.ts",
     "catalog:shelves:seed": "node ./scripts/run-medusa.js ./src/scripts/seed-catalog-shelves.ts",
+    "catalog:shelves:copy": "node ./scripts/run-medusa.js ./src/scripts/reconcile-homepage-shelf-copy.ts",
     "catalog:authoring:audit": "node ./scripts/run-medusa.js ./src/scripts/audit-catalog-authoring.ts",
     "catalog:authoring:view-check": "node ./scripts/run-medusa.js ./src/scripts/check-catalog-authoring-views.ts",
     "catalog:options:repair": "node ./scripts/run-medusa.js ./src/scripts/repair-duplicate-product-options.ts",

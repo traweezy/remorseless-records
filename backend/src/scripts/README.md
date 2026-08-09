@@ -63,6 +63,30 @@ Then, pass the arguments in the `exec` command after the file path:
 pnpm exec medusa exec ./src/scripts/my-script.ts arg1 arg2
 ```
 
+## Homepage shelf copy reconciliation
+
+Homepage shelf titles and descriptions are persisted catalog data. Preview the
+two approved copy changes without mutating data:
+
+```bash
+pnpm --filter backend run catalog:shelves:copy
+```
+
+The preview fails closed when either canonical shelf is missing or ambiguous
+and prints the exact change count plus a SHA-256 fingerprint of the current and
+desired values. Apply only the reviewed manifest:
+
+```bash
+pnpm --filter backend run catalog:shelves:copy -- \\
+  --apply \\
+  --expected-count=<reviewed-count> \\
+  --expected-manifest-sha256=<reviewed-sha256>
+```
+
+Apply mode reloads current data before comparing the guards, updates both
+records in one service call, and verifies the persisted copy afterward. The
+`staff-picks` shelf and all shelf memberships remain untouched.
+
 ## Monetary-unit audit and guarded migration
 
 Run the checkout monetary-unit audit before any Medusa v2 major-unit
