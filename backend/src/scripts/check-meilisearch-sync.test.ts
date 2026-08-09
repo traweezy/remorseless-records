@@ -80,6 +80,7 @@ describe("catalog document integrity", () => {
         {
           handle: "album-one",
           id: "prod_1",
+          artist_sort: "artist",
           product_type: "music_release",
           status: "published",
           stock_status: "available",
@@ -101,6 +102,7 @@ describe("catalog document integrity", () => {
         {
           handle: "",
           id: "prod_1",
+          artist_sort: "artist",
           product_type: "music_release",
           status: "published",
           stock_status: "available",

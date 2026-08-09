@@ -14,6 +14,7 @@ const REQUIRED_DOCUMENT_FIELDS = [
   "handle",
   "status",
   "title",
+  "artist_sort",
   "product_type",
   "stock_status",
 ] as const
@@ -303,7 +304,7 @@ export const validateProductIndex = async ({
   const facetAndSortProbe = await index.search("", {
     facets: ["product_type"],
     limit: 1,
-    sort: ["title_sort:asc"],
+    sort: ["artist_sort:asc", "title_sort:asc"],
   })
   if (!facetAndSortProbe.facetDistribution?.product_type) {
     throw new Error(

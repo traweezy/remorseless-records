@@ -9,4 +9,13 @@ describe("product search settings", () => {
       "artist",
     ])
   })
+
+  it("supports deterministic artist sorting without widening search", () => {
+    expect(indexSettings.products.indexSettings.displayedAttributes).toContain(
+      "artist_sort"
+    )
+    expect(indexSettings.products.indexSettings.sortableAttributes).toContain(
+      "artist_sort"
+    )
+  })
 })

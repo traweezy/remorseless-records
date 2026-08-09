@@ -200,6 +200,7 @@ describe("buildSearchDocument", () => {
       id: "prod_1",
       release_title: "Catalog Album",
       artist: "Catalog Artist / Imported Artist / Legacy Artist",
+      artist_sort: "catalog artist",
       artist_names: ["Catalog Artist", "Imported Artist", "Legacy Artist"],
       artist_ids: ["artist_1"],
       label: "Catalog Label",
@@ -258,6 +259,7 @@ describe("buildSearchDocument", () => {
     })
 
     expect(document.artist_names).toEqual(["Fallback Artist"])
+    expect(document.artist_sort).toBe("fallback artist")
     expect(document.genres).toEqual(["Grind"])
     expect(document.product_type).toBe("release")
     expect(document.label).toBe("Remorseless Records")

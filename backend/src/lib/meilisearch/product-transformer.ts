@@ -84,6 +84,7 @@ export type SearchDocument = {
   description_text: string | null
   subtitle: string | null
   artist: string | null
+  artist_sort: string
   artist_names: string[]
   artist_ids: string[]
   thumbnail: string | null
@@ -215,6 +216,15 @@ const unique = (values: Array<string | null | undefined>): string[] =>
         .filter((value): value is string => Boolean(value))
     )
   )
+
+const toSortableText = (value: string): string => {
+  const normalized = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("en-US")
+    .trim()
+  return normalized || "unknown"
+}
 
 const humanizeHandle = (handle: string): string =>
   handle
@@ -828,6 +838,13 @@ export const buildSearchDocument = (
     toStringOrNull(profile?.release_title) ??
     toStringOrNull(catalogImport?.release_title) ??
     toStringOrNull(normalizedProduct.title)
+  const artistSort = toSortableText(
+    artistNames[0] ??
+      releaseTitle ??
+      toStringOrNull(normalizedProduct.title) ??
+      toStringOrNull(normalizedProduct.id) ??
+      "unknown"
+  )
   const releaseDate =
     toIsoOrNull(profile?.release_date) ??
     toIsoOrNull(catalogImport?.release_date)
@@ -943,6 +960,7 @@ export const buildSearchDocument = (
     description_text: description,
     subtitle: toStringOrNull(normalizedProduct.subtitle),
     artist: artistNames.join(" / ") || null,
+    artist_sort: artistSort,
     artist_names: artistNames,
     artist_ids: artistIds,
     thumbnail,
