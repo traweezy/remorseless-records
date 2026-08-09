@@ -134,6 +134,7 @@ describe("ProductVariantSelector", () => {
     )
 
     expect(screen.getByRole("button", { name: "Sold out" })).toBeDisabled()
+    expect(screen.queryByText("$24.00")).not.toBeInTheDocument()
     expect(addItem).not.toHaveBeenCalled()
   })
 })

@@ -1,4 +1,9 @@
-const LEGACY_NEW_RIBBON_LABELS = new Set(["new release", "new releases"])
+const LEGACY_NEW_RIBBON_LABELS = new Set([
+  "new in store",
+  "new release",
+  "new releases",
+  "newest arrivals",
+])
 
 export const normalizeRibbonLabel = (
   value: string | null | undefined

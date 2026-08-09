@@ -96,14 +96,14 @@ export const ProductQuickView = ({
           <DrawerCloseButton label="Close quick shop" />
         </DrawerHeader>
 
-        <div className="relative aspect-[4/5] w-full overflow-hidden border-b border-border/60 bg-background/80">
+        <div className="relative aspect-square w-full overflow-hidden border-b border-border/60 bg-black">
           {heroImage ? (
             <Image
               src={heroImage}
               alt={activeProduct?.title ?? "Release artwork"}
               fill
               sizes="(max-width: 639px) 100vw, 448px"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
             />
           ) : (
             <MediaPlaceholder label="No artwork" />

@@ -211,7 +211,7 @@ describe("buildSearchDocument", () => {
       format: "LP",
       formats: ["LP", "CD", "Vinyl"],
       format_details: ["Black"],
-      price_min: 12,
+      price_min: 25,
       price_max: 25,
       stock_status: "low_stock",
       availability_states: expect.arrayContaining([
@@ -264,6 +264,8 @@ describe("buildSearchDocument", () => {
     expect(document.product_type).toBe("release")
     expect(document.label).toBe("Remorseless Records")
     expect(document.price_amount).toBe(9)
+    expect(document.price_min).toBeNull()
+    expect(document.price_max).toBeNull()
     expect(document.stock_status).toBe("sold_out")
     expect(document.availability_states).toEqual(["sold_out"])
   })

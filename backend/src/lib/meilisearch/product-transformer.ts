@@ -878,10 +878,11 @@ export const buildSearchDocument = (
   )
 
   const priceAmounts = variantDocuments
+    .filter((variant) => variant.stock_status !== "sold_out")
     .map((variant) => variant.price_amount)
     .filter((value): value is number => typeof value === "number")
-  const priceMin = priceAmounts.length ? Math.min(...priceAmounts) : amount
-  const priceMax = priceAmounts.length ? Math.max(...priceAmounts) : amount
+  const priceMin = priceAmounts.length ? Math.min(...priceAmounts) : null
+  const priceMax = priceAmounts.length ? Math.max(...priceAmounts) : null
 
   const formatLabels = unique([
     ...findFormatOptionValues(normalizedProduct),

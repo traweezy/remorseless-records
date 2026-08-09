@@ -19,6 +19,7 @@ import {
   deriveVariantOptions,
   mapStoreProductToRelatedSummary,
 } from "@/lib/products/transformers"
+import { resolveProductCardPrice } from "@/lib/products/card-price"
 import { summarizeStockStatus } from "@/lib/products/stock"
 import {
   buildPublicProductPath,
@@ -233,8 +234,7 @@ const resolveThumbnail = (product: ProductCardSource): string | null =>
     : (product.thumbnail ?? null)
 
 const resolveStockBadge = (
-  status: StockStatus,
-  lowStockBadgeEligible: boolean
+  status: StockStatus
 ): { label: string; className: string } | null => {
   switch (status) {
     case "sold_out":
@@ -242,14 +242,6 @@ const resolveStockBadge = (
         label: "Sold out",
         className:
           "border-destructive/80 bg-destructive text-destructive-foreground",
-      }
-    case "low_stock":
-      if (!lowStockBadgeEligible) {
-        return null
-      }
-      return {
-        label: "Low stock",
-        className: "border-amber-300/80 bg-amber-400 text-black",
       }
     default:
       return null
@@ -289,18 +281,22 @@ export const ProductCard = ({
     isProductSearchHitSource(product) && product.stockStatus
       ? product.stockStatus
       : derivedStockStatus
-  const lowStockBadgeEligible = isProductSearchHitSource(product)
-    ? product.lowStockBadgeEligible !== false
-    : variantOptions.some(
-        (variant) =>
-          variant.stockStatus === "low_stock" &&
-          variant.lowStockBadgeEligible !== false
-      )
-  const stockBadge = resolveStockBadge(stockStatus, lowStockBadgeEligible)
+  const stockBadge = resolveStockBadge(stockStatus)
   const isSoldOut = stockStatus === "sold_out"
   const hasPrice = summary.defaultVariant?.hasPrice ?? false
   const isUnavailable = !hasPrice
   const canQuickShop = !isSoldOut && !isUnavailable
+  const cardPrice = resolveProductCardPrice({
+    currency: summary.defaultVariant?.currency ?? null,
+    indexedMax: isProductSearchHitSource(product)
+      ? (product.priceMax ?? null)
+      : null,
+    indexedMin: isProductSearchHitSource(product)
+      ? (product.priceMin ?? null)
+      : null,
+    stockStatus,
+    variants: isProductSearchHitSource(product) ? [] : variantOptions,
+  })
   const badge = resolveProductCardBadge(product, summary, ribbonLabel)
   const thumbnail = resolveThumbnail(product)
   const [resolvedThumbnail, setResolvedThumbnail] = useState<string | null>(
@@ -471,6 +467,20 @@ export const ProductCard = ({
 
     return Array.from(labelsByKey.values())
   })()
+  const normalizedFormatLabels = Array.from(
+    new Map(
+      formatLabels.map((label) => {
+        const normalized = label.trim()
+        const display = normalized.toLowerCase().includes("bundle")
+          ? "Bundle"
+          : normalized
+        return [display.toLowerCase(), display]
+      })
+    ).values()
+  )
+  const visibleFormatLabels = normalizedFormatLabels.slice(0, 2)
+  const hiddenFormatCount =
+    normalizedFormatLabels.length - visibleFormatLabels.length
 
   const triggerPrefetch = () => {
     if (!handle || shouldBlockPrefetch()) {
@@ -613,42 +623,43 @@ export const ProductCard = ({
                   </Button>
                 </div>
               </div>
-              <div className="flex flex-1 flex-col justify-between px-4 py-4 sm:px-5 sm:py-6">
-                <div className="space-y-2">
-                  <p className="truncate text-xs uppercase tracking-[0.16rem] text-muted-foreground sm:tracking-[0.35rem]">
-                    {summary.subtitle ?? summary.artist}
+              <div className="flex h-[13.5rem] flex-col justify-between px-4 py-4 sm:h-[14rem] sm:px-5 sm:py-6">
+                <div className="min-w-0 space-y-2">
+                  <p className="line-clamp-2 min-h-8 break-words text-xs uppercase leading-4 tracking-[0.16rem] text-muted-foreground sm:tracking-[0.3rem]">
+                    {summary.artist}
                   </p>
-                  <h3 className="break-words font-bebas text-xl uppercase tracking-[0.14rem] text-foreground sm:text-2xl sm:tracking-[0.35rem]">
-                    {summary.title}
+                  <h3
+                    className="truncate font-bebas text-xl uppercase tracking-[0.14rem] text-foreground sm:text-2xl sm:tracking-[0.3rem]"
+                    title={summary.album ?? summary.title}
+                  >
+                    {summary.album ?? summary.title}
                   </h3>
+                  <p className="min-h-5 text-sm font-semibold text-foreground">
+                    {cardPrice?.label ?? null}
+                  </p>
                 </div>
-                {formatLabels.length ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {Array.from(
-                      new Map(
-                        formatLabels.map((label) => {
-                          const normalized = label.trim()
-                          const display = normalized
-                            .toLowerCase()
-                            .includes("bundle")
-                            ? "Bundle"
-                            : normalized
-                          return [display.toLowerCase(), display]
-                        })
-                      ).values()
-                    ).map((label) => (
-                      <Badge
-                        key={`${summary.id}-${label}`}
-                        variant="outline"
-                        className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-foreground sm:tracking-[0.22rem]"
-                      >
-                        <span className="text-center leading-none">
-                          {label.toUpperCase()}
-                        </span>
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
+                <div className="mt-4 flex min-h-7 flex-wrap content-start gap-2 overflow-hidden">
+                  {visibleFormatLabels.map((label) => (
+                    <Badge
+                      key={`${summary.id}-${label}`}
+                      variant="outline"
+                      className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-foreground sm:tracking-[0.22rem]"
+                    >
+                      <span className="text-center leading-none">
+                        {label.toUpperCase()}
+                      </span>
+                    </Badge>
+                  ))}
+                  {hiddenFormatCount > 0 ? (
+                    <Badge
+                      variant="outline"
+                      className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-foreground sm:tracking-[0.22rem]"
+                      aria-label={`${hiddenFormatCount} more formats`}
+                    >
+                      +{hiddenFormatCount}
+                    </Badge>
+                  ) : null}
+                </div>
               </div>
             </div>
             {isSoldOut || isUnavailable ? (

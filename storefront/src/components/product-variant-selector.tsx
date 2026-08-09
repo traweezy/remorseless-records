@@ -205,9 +205,12 @@ const ProductVariantSelector = memo<ProductVariantSelectorProps>(
           {variants.length ? (
             variants.map((variant) => {
               const isSelected = variant.id === selectedVariant?.id
-              const variantPrice = variant.hasPrice
-                ? formatAmount(variant.currency, variant.amount)
-                : "Price unavailable"
+              const variantPrice =
+                variant.stockStatus !== "sold_out" && variant.hasPrice
+                  ? formatAmount(variant.currency, variant.amount)
+                  : variant.stockStatus !== "sold_out"
+                    ? "Price unavailable"
+                    : null
               const isSoldOut = variant.stockStatus === "sold_out"
               const isUnavailable = !variant.hasPrice
               const stockChip = resolveStockChip(variant)
@@ -235,9 +238,11 @@ const ProductVariantSelector = memo<ProductVariantSelectorProps>(
                   <span className="font-headline text-sm uppercase tracking-[0.3rem] text-foreground">
                     {variant.title}
                   </span>
-                  <span className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
-                    {variantPrice}
-                  </span>
+                  {variantPrice ? (
+                    <span className="text-xs uppercase tracking-[0.25rem] text-muted-foreground">
+                      {variantPrice}
+                    </span>
+                  ) : null}
                   {stockChip ? (
                     <Badge variant={stockChip.tone} className="px-2.5 py-1">
                       {stockChip.label}

@@ -225,7 +225,7 @@ export const mapStoreProductToSearchHit = (
     ? summary.defaultVariant.amount
     : null
   const pricedAmounts = variants
-    .filter((variant) => variant.hasPrice)
+    .filter((variant) => variant.inStock && variant.hasPrice)
     .map((variant) => variant.amount)
   const priceMin = pricedAmounts.length ? Math.min(...pricedAmounts) : null
   const priceMax = pricedAmounts.length ? Math.max(...pricedAmounts) : null
