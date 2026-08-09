@@ -43,6 +43,8 @@ export type ProductSearchFilters = {
 }
 
 export type ProductSortOption =
+  | "artist-asc"
+  | "artist-desc"
   | "title-asc"
   | "title-desc"
   | "newest"
@@ -493,16 +495,17 @@ export const searchProductsWithClient = async (
     filterable
   )
 
-  const sortMapping: Record<ProductSortOption, string | null> = {
-    "title-asc": "title:asc",
-    "title-desc": "title:desc",
-    newest: "created_at:desc",
-    "price-low": "price_amount:asc",
-    "price-high": "price_amount:desc",
+  const sortMapping: Record<ProductSortOption, string[]> = {
+    "artist-asc": ["artist_sort:asc", "title_sort:asc", "id:asc"],
+    "artist-desc": ["artist_sort:desc", "title_sort:asc", "id:asc"],
+    "title-asc": ["title_sort:asc", "id:asc"],
+    "title-desc": ["title_sort:desc", "id:asc"],
+    newest: ["created_at:desc", "id:asc"],
+    "price-low": ["price_amount:asc", "id:asc"],
+    "price-high": ["price_amount:desc", "id:asc"],
   }
 
-  const sortDirective = sort ? (sortMapping[sort] ?? null) : null
-  const sortDirectives = sortDirective ? [sortDirective] : undefined
+  const sortDirectives = sort ? sortMapping[sort] : undefined
 
   const facetsToRequest: string[] = [
     "genres",

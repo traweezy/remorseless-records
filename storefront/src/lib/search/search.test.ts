@@ -213,11 +213,36 @@ describe("searchProductsWithClient", () => {
       ],
       filter:
         'status = "published" AND genres IN ["Doom"] AND (formats IN ["Vinyl"] OR variant_titles IN ["Vinyl"]) AND category_handles IN ["doom", "grind"] AND variant_titles IN ["LP"] AND product_type IN ["album"] AND availability_states IN ["in_stock"] AND price_max >= 10 AND price_min <= 30 AND (stock_status != "sold_out")',
-      sort: ["price_amount:asc"],
+      sort: ["price_amount:asc", "id:asc"],
     })
     expect(response.total).toBe(1)
     expect(response.hits).toHaveLength(1)
     expect(response.facets.productTypes).toEqual({ album: 1 })
+  })
+
+  it("sorts artists deterministically using indexed sort fields", async () => {
+    const index: MockIndex = {
+      uid: "products-artist-sort",
+      getSettings: vi.fn(),
+      search: vi.fn().mockResolvedValue({
+        hits: [makeHit()],
+        estimatedTotalHits: 1,
+        facetDistribution: undefined,
+      }),
+    }
+
+    await searchProductsWithClient(
+      makeClient(index),
+      { query: "", limit: 24, sort: "artist-desc" },
+      []
+    )
+
+    expect(index.search).toHaveBeenCalledWith(
+      "",
+      expect.objectContaining({
+        sort: ["artist_sort:desc", "title_sort:asc", "id:asc"],
+      })
+    )
   })
 
   it("applies client-side post filtering when attributes are not filterable", async () => {

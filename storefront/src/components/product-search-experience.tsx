@@ -25,15 +25,16 @@ import {
   ArrowDown01,
   ArrowDownAZ,
   ArrowUp10,
+  ArrowUpAZ,
   ChevronDown,
   Clock,
   LoaderCircle,
   Search,
-  SlidersHorizontal,
   X,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@/components/ui/button"
+import { CollectionFilterTrigger } from "@/components/ui/collection-filter-trigger"
 import { Checkbox } from "@/components/ui/checkbox"
 import Drawer, {
   DrawerCloseButton,
@@ -114,9 +115,9 @@ const COLLECTION_PRIORITY_LABELS = new Map<string, string>([
   ["staff", "Staff Signals"],
   ["staff-picks", "Staff Signals"],
   ["staff-signals", "Staff Signals"],
-  ["new-releases", "Newest Arrivals"],
-  ["new arrivals", "Newest Arrivals"],
-  ["newest arrivals", "Newest Arrivals"],
+  ["new-releases", "New in Store"],
+  ["new arrivals", "New in Store"],
+  ["newest arrivals", "New in Store"],
 ])
 
 const CATALOG_SKELETON_KEYS = ["one", "two", "three", "four", "five", "six"]
@@ -264,6 +265,24 @@ const SORT_OPTIONS: [
   ...Array<PillDropdownOption<ProductSortOption>>,
 ] = [
   {
+    value: "newest",
+    label: "Newest",
+    helper: "Fresh rituals first",
+    Icon: Clock,
+  },
+  {
+    value: "artist-asc",
+    label: "Artist · A → Z",
+    helper: "Artist alphabetical ascending",
+    Icon: ArrowDownAZ,
+  },
+  {
+    value: "artist-desc",
+    label: "Artist · Z → A",
+    helper: "Artist alphabetical descending",
+    Icon: ArrowUpAZ,
+  },
+  {
     value: "title-asc",
     label: "Title · A → Z",
     helper: "Alphabetical ascending",
@@ -273,13 +292,7 @@ const SORT_OPTIONS: [
     value: "title-desc",
     label: "Title · Z → A",
     helper: "Alphabetical descending",
-    Icon: ArrowUp10,
-  },
-  {
-    value: "newest",
-    label: "Newest",
-    helper: "Fresh rituals first",
-    Icon: Clock,
+    Icon: ArrowUpAZ,
   },
   {
     value: "price-low",
@@ -829,17 +842,18 @@ const SortDropdown = ({
       options={SORT_OPTIONS}
       onChange={onChange}
       ariaLabel="Sort products"
+      compactOnMobile
     />
   )
 }
 
-const useResponsiveColumns = () => {
+const useResponsiveColumns = (desktopFiltersVisible: boolean) => {
   const [columns, setColumns] = useState(1)
 
   useEffect(() => {
     const update = () => {
       const width = window.innerWidth
-      if (width >= 1536) {
+      if (width >= 1536 || (width >= 1280 && !desktopFiltersVisible)) {
         setColumns(4)
       } else if (width >= 1024) {
         setColumns(3)
@@ -853,14 +867,14 @@ const useResponsiveColumns = () => {
     update()
     window.addEventListener("resize", update)
     return () => window.removeEventListener("resize", update)
-  }, [])
+  }, [desktopFiltersVisible])
 
   return columns
 }
 
 const ProductSearchExperience = ({
   initialResponse,
-  initialSort = "title-asc",
+  initialSort = "newest",
   initialFilterDefinitions = {
     genres: [],
     formats: [],
@@ -1000,6 +1014,12 @@ const ProductSearchExperience = ({
   const hydrateFromParams = useCatalogStore((state) => state.hydrateFromParams)
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [desktopFiltersVisible, setDesktopFiltersVisible] = useState(true)
+  const openMobileFilters = useCallback(() => setMobileFiltersOpen(true), [])
+  const toggleDesktopFilters = useCallback(
+    () => setDesktopFiltersVisible((visible) => !visible),
+    []
+  )
   const [pacedQuery, setPacedQuery] = useState("")
   const measureScheduledRef = useRef(false)
   const queryDebouncer = useMemo(
@@ -1299,7 +1319,7 @@ const ProductSearchExperience = ({
   )
 
   const deferredResults = useDeferredValue(mappedResults)
-  const columns = useResponsiveColumns()
+  const columns = useResponsiveColumns(desktopFiltersVisible)
   const gridMeasureRef = useRef<HTMLDivElement | null>(null)
   const paginationSentinelRef = useRef<HTMLDivElement | null>(null)
   const lastAutoRequestedResultCountRef = useRef<number | null>(null)
@@ -1529,32 +1549,37 @@ const ProductSearchExperience = ({
   return (
     <div className="bg-background pb-8">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pt-4 sm:px-6 lg:flex-row lg:gap-8 lg:px-8">
-        <aside className="hidden lg:block lg:w-60 lg:flex-shrink-0">
-          <div
-            className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl"
-            data-testid="catalog-desktop-filters"
+        {desktopFiltersVisible ? (
+          <aside
+            id={`${filterInstanceId}-desktop-sidebar`}
+            className="hidden lg:block lg:w-60 lg:flex-shrink-0"
           >
-            <FilterSidebar
-              idPrefix={`${filterInstanceId}-desktop`}
-              genres={genreOptions}
-              formats={formatOptions}
-              productTypes={productTypeOptions}
-              priceRange={priceRange}
-              selectedGenres={selectedGenres}
-              selectedFormats={selectedFormats}
-              selectedProductTypes={selectedProductTypes}
-              selectedPriceMin={selectedPriceMin}
-              selectedPriceMax={selectedPriceMax}
-              onToggleGenre={handleToggleGenre}
-              onToggleFormat={handleToggleFormat}
-              onToggleProductType={handleToggleProductType}
-              onApplyPrice={setPriceRange}
-              onClear={clearFilters}
-              showInStockOnly={showInStockOnly}
-              onToggleStock={toggleStockOnly}
-            />
-          </div>
-        </aside>
+            <div
+              className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl"
+              data-testid="catalog-desktop-filters"
+            >
+              <FilterSidebar
+                idPrefix={`${filterInstanceId}-desktop`}
+                genres={genreOptions}
+                formats={formatOptions}
+                productTypes={productTypeOptions}
+                priceRange={priceRange}
+                selectedGenres={selectedGenres}
+                selectedFormats={selectedFormats}
+                selectedProductTypes={selectedProductTypes}
+                selectedPriceMin={selectedPriceMin}
+                selectedPriceMax={selectedPriceMax}
+                onToggleGenre={handleToggleGenre}
+                onToggleFormat={handleToggleFormat}
+                onToggleProductType={handleToggleProductType}
+                onApplyPrice={setPriceRange}
+                onClear={clearFilters}
+                showInStockOnly={showInStockOnly}
+                onToggleStock={toggleStockOnly}
+              />
+            </div>
+          </aside>
+        ) : null}
 
         <div className="flex-1 space-y-6">
           <header className="relative sticky top-16 z-20 space-y-2 border-b border-border/40 bg-background/85 px-2 py-2 supports-[backdrop-filter]:backdrop-blur-lg sm:px-4 lg:px-6">
@@ -1570,18 +1595,26 @@ const ProductSearchExperience = ({
               </p>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="lg:hidden">
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border-border/50 px-4 text-xs uppercase tracking-[0.3rem] sm:w-auto sm:justify-start"
-                  onClick={() => setMobileFiltersOpen(true)}
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
-                </Button>
+            <div className="flex items-center gap-2">
+              <CollectionFilterTrigger
+                activeCount={activeFiltersCount}
+                className="lg:hidden"
+                expanded={mobileFiltersOpen}
+                iconOnly
+                onClick={openMobileFilters}
+              />
 
+              <div className="hidden lg:block">
+                <CollectionFilterTrigger
+                  activeCount={activeFiltersCount}
+                  controlsId={`${filterInstanceId}-desktop-sidebar`}
+                  expanded={desktopFiltersVisible}
+                  mode="sidebar"
+                  onClick={toggleDesktopFilters}
+                />
+              </div>
+
+              <div className="contents lg:hidden">
                 <Drawer
                   open={mobileFiltersOpen}
                   onOpenChange={setMobileFiltersOpen}
@@ -1640,7 +1673,7 @@ const ProductSearchExperience = ({
                   </div>
                 </Drawer>
               </div>
-              <InputGroup className="h-11 gap-2 pl-3 pr-0 sm:min-w-[240px] sm:flex-1">
+              <InputGroup className="h-11 min-w-0 flex-1 gap-2 pl-3 pr-0 sm:min-w-[240px]">
                 <InputGroupAddon>
                   <Search className="h-4 w-4" aria-hidden />
                 </InputGroupAddon>
@@ -1670,7 +1703,7 @@ const ProductSearchExperience = ({
                   <span className="w-3 shrink-0" aria-hidden />
                 )}
               </InputGroup>
-              <div className="w-full sm:w-auto sm:shrink-0">
+              <div className="shrink-0">
                 <SortDropdown value={sortOption} onChange={setSortOption} />
               </div>
             </div>

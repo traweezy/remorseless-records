@@ -11,18 +11,19 @@ import {
 import Image from "next/image"
 import { useWindowVirtualizer } from "@tanstack/react-virtual"
 import {
+  ArrowDown01,
   ArrowDownAZ,
   ArrowUpAZ,
   CalendarArrowDown,
   CalendarArrowUp,
   ChevronRight,
   Search,
-  SlidersHorizontal,
   X,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { CollectionFilterTrigger } from "@/components/ui/collection-filter-trigger"
 import Drawer, {
   DrawerCloseButton,
   DrawerEyebrow,
@@ -57,7 +58,12 @@ type DiscographyTableProps = {
 }
 
 type DiscographySort =
-  "title-asc" | "title-desc" | "artist-asc" | "newest" | "oldest"
+  | "catalog-desc"
+  | "title-asc"
+  | "title-desc"
+  | "artist-asc"
+  | "newest"
+  | "oldest"
 
 export type DiscographyFilters = {
   availability: DiscographyEntry["availability"] | ""
@@ -88,6 +94,16 @@ const releaseDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: "UTC",
 })
+
+const catalogNumberCollator = new Intl.Collator("en-US", {
+  numeric: true,
+  sensitivity: "base",
+})
+
+const normalizeCatalogNumber = (value: string | null): string | null => {
+  const normalized = value?.trim()
+  return normalized?.length ? normalized : null
+}
 
 const normalizedText = (value: string): string =>
   value
@@ -189,6 +205,25 @@ export const sortDiscographyEntries = (
 ): DiscographyEntry[] =>
   entries.toSorted((left, right) => {
     switch (sort) {
+      case "catalog-desc": {
+        const leftCatalog = normalizeCatalogNumber(left.catalogNumber)
+        const rightCatalog = normalizeCatalogNumber(right.catalogNumber)
+        if (!leftCatalog && !rightCatalog) {
+          return (
+            left.artist.localeCompare(right.artist) ||
+            left.title.localeCompare(right.title) ||
+            left.id.localeCompare(right.id)
+          )
+        }
+        if (!leftCatalog) return 1
+        if (!rightCatalog) return -1
+        return (
+          catalogNumberCollator.compare(rightCatalog, leftCatalog) ||
+          left.artist.localeCompare(right.artist) ||
+          left.title.localeCompare(right.title) ||
+          left.id.localeCompare(right.id)
+        )
+      }
       case "title-desc":
         return right.title.localeCompare(left.title)
       case "artist-asc":
@@ -245,6 +280,7 @@ const sortOptions: [
   PillDropdownOption<DiscographySort>,
   ...Array<PillDropdownOption<DiscographySort>>,
 ] = [
+  { value: "catalog-desc", label: "Catalog # high–low", Icon: ArrowDown01 },
   { value: "title-asc", label: "Title A–Z", Icon: ArrowDownAZ },
   { value: "title-desc", label: "Title Z–A", Icon: ArrowUpAZ },
   { value: "artist-asc", label: "Artist A–Z", Icon: ArrowDownAZ },
@@ -425,8 +461,9 @@ const DiscographyTable = memo(
       useState<DiscographyFilters["availability"]>("")
     const [format, setFormat] = useState("")
     const [tag, setTag] = useState("")
-    const [sort, setSort] = useState<DiscographySort>("title-asc")
+    const [sort, setSort] = useState<DiscographySort>("catalog-desc")
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+    const [desktopFiltersVisible, setDesktopFiltersVisible] = useState(true)
     const [scrollMargin, setScrollMargin] = useState(0)
     const listRef = useRef<HTMLDivElement | null>(null)
 
@@ -507,6 +544,11 @@ const DiscographyTable = memo(
       setFormat("")
       setTag("")
     }, [])
+    const openMobileFilters = useCallback(() => setMobileFiltersOpen(true), [])
+    const toggleDesktopFilters = useCallback(
+      () => setDesktopFiltersVisible((visible) => !visible),
+      []
+    )
 
     const resultCopy =
       visibleEntries.length === entries.length
@@ -525,7 +567,7 @@ const DiscographyTable = memo(
         <header className="sticky top-16 z-30 overflow-visible rounded-t-3xl border-b border-border/40 bg-background shadow-[0_12px_30px_-24px_rgba(0,0,0,0.9)]">
           <div className="flex flex-col gap-2 p-3 sm:p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <InputGroup className="h-11 min-w-0 flex-1 basis-full gap-2 pl-3 pr-0 sm:basis-[18rem]">
+              <InputGroup className="h-11 min-w-0 flex-1 basis-[12rem] gap-2 pl-3 pr-0 sm:basis-[18rem]">
                 <InputGroupAddon>
                   <Search className="h-4 w-4" aria-hidden />
                 </InputGroupAddon>
@@ -553,16 +595,23 @@ const DiscographyTable = memo(
                 )}
               </InputGroup>
 
-              <Button
-                type="button"
-                variant="outlined"
-                size="compact"
-                onClick={() => setMobileFiltersOpen(true)}
-                className="h-11 flex-1 sm:flex-none lg:hidden"
-              >
-                <SlidersHorizontal className="h-4 w-4" aria-hidden />
-                Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}
-              </Button>
+              <CollectionFilterTrigger
+                activeCount={activeFilterCount}
+                className="lg:hidden"
+                expanded={mobileFiltersOpen}
+                iconOnly
+                onClick={openMobileFilters}
+              />
+
+              <div className="hidden lg:block">
+                <CollectionFilterTrigger
+                  activeCount={activeFilterCount}
+                  controlsId="discography-desktop-filters"
+                  expanded={desktopFiltersVisible}
+                  mode="sidebar"
+                  onClick={toggleDesktopFilters}
+                />
+              </div>
 
               <PillDropdown
                 value={sort}
@@ -572,9 +621,16 @@ const DiscographyTable = memo(
                 className="flex-1 sm:flex-none"
                 buttonClassName="sm:min-w-[180px]"
                 dropdownClassName="sm:min-w-[220px]"
+                compactOnMobile
               />
 
-              <div className="hidden items-center gap-2 lg:flex">
+              <div
+                id="discography-desktop-filters"
+                className={cn(
+                  "hidden items-center gap-2 lg:flex",
+                  !desktopFiltersVisible && "lg:hidden"
+                )}
+              >
                 <PillDropdown
                   value={availability}
                   options={availabilityOptions}

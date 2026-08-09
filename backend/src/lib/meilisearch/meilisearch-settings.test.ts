@@ -17,5 +17,8 @@ describe("product search settings", () => {
     expect(indexSettings.products.indexSettings.sortableAttributes).toContain(
       "artist_sort"
     )
+    expect(indexSettings.products.indexSettings.sortableAttributes).toContain(
+      "id"
+    )
   })
 })

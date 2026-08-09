@@ -21,7 +21,7 @@ export const getFullCatalogHits = unstable_cache(
         const { products } = await storeClient.product.list({
           limit: batchSize,
           offset,
-          order: "title",
+          order: "-created_at",
           fields: PRODUCT_LIST_FIELDS,
           region_id: regionId,
         })
@@ -31,7 +31,10 @@ export const getFullCatalogHits = unstable_cache(
         }
 
         products.forEach((product) => {
-          if (typeof product.handle !== "string" || !product.handle.trim().length) {
+          if (
+            typeof product.handle !== "string" ||
+            !product.handle.trim().length
+          ) {
             return
           }
           hits.push(mapStoreProductToSearchHit(product))

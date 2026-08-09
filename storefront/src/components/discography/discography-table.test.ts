@@ -104,4 +104,20 @@ describe("discography list controls", () => {
       sortDiscographyEntries(entries, "oldest").map(({ id }) => id)
     ).toEqual(["prod_old", "prod_new", "prod_unknown"])
   })
+
+  it("sorts catalog numbers high-to-low using natural numeric order", () => {
+    expect(
+      sortDiscographyEntries(
+        [
+          ...entries,
+          entry({
+            id: "prod_second",
+            title: "Second",
+            catalogNumber: "RR2",
+          }),
+        ],
+        "catalog-desc"
+      ).map(({ id }) => id)
+    ).toEqual(["prod_new", "prod_second", "prod_old", "prod_unknown"])
+  })
 })

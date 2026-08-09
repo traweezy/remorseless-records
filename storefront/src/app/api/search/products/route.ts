@@ -19,17 +19,34 @@ const searchRequestSchema = z
     limit: z.coerce.number().int().min(1).max(200).optional(),
     offset: z.coerce.number().int().min(0).optional(),
     sort: z
-      .enum(["title-asc", "title-desc", "newest", "price-low", "price-high"])
+      .enum([
+        "artist-asc",
+        "artist-desc",
+        "title-asc",
+        "title-desc",
+        "newest",
+        "price-low",
+        "price-high",
+      ])
       .optional(),
     inStockOnly: z.boolean().optional(),
     filters: z
       .object({
         genres: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
         formats: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
-        categories: z.array(z.string().trim().min(1).max(160)).max(40).optional(),
+        categories: z
+          .array(z.string().trim().min(1).max(160))
+          .max(40)
+          .optional(),
         variants: z.array(z.string().trim().min(1).max(160)).max(40).optional(),
-        productTypes: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
-        availability: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+        productTypes: z
+          .array(z.string().trim().min(1).max(120))
+          .max(20)
+          .optional(),
+        availability: z
+          .array(z.string().trim().min(1).max(80))
+          .max(20)
+          .optional(),
         price: z
           .object({
             min: z.coerce.number().int().min(0).max(1_000_000).optional(),
@@ -45,11 +62,7 @@ const searchRequestSchema = z
   .superRefine((value, ctx) => {
     const min = value.filters?.price?.min
     const max = value.filters?.price?.max
-    if (
-      typeof min === "number" &&
-      typeof max === "number" &&
-      min > max
-    ) {
+    if (typeof min === "number" && typeof max === "number" && min > max) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["filters", "price"],
@@ -63,10 +76,15 @@ const sanitizeFilters = (
 ): ProductSearchRequest["filters"] => {
   const price =
     filters?.price &&
-    (typeof filters.price.min === "number" || typeof filters.price.max === "number")
+    (typeof filters.price.min === "number" ||
+      typeof filters.price.max === "number")
       ? {
-          ...(typeof filters.price.min === "number" ? { min: filters.price.min } : {}),
-          ...(typeof filters.price.max === "number" ? { max: filters.price.max } : {}),
+          ...(typeof filters.price.min === "number"
+            ? { min: filters.price.min }
+            : {}),
+          ...(typeof filters.price.max === "number"
+            ? { max: filters.price.max }
+            : {}),
         }
       : undefined
 
@@ -75,8 +93,12 @@ const sanitizeFilters = (
     ...(filters?.formats?.length ? { formats: filters.formats } : {}),
     ...(filters?.categories?.length ? { categories: filters.categories } : {}),
     ...(filters?.variants?.length ? { variants: filters.variants } : {}),
-    ...(filters?.productTypes?.length ? { productTypes: filters.productTypes } : {}),
-    ...(filters?.availability?.length ? { availability: filters.availability } : {}),
+    ...(filters?.productTypes?.length
+      ? { productTypes: filters.productTypes }
+      : {}),
+    ...(filters?.availability?.length
+      ? { availability: filters.availability }
+      : {}),
     ...(price ? { price } : {}),
   }
 
@@ -96,13 +118,15 @@ const normalizeRequest = (
   payload: z.infer<typeof searchRequestSchema>
 ): ProductSearchRequest => {
   const query = typeof payload.query === "string" ? payload.query : ""
-  const limit = typeof payload.limit === "number" && Number.isFinite(payload.limit)
-    ? Math.max(1, Math.min(payload.limit, 200))
-    : 24
-  const offset = typeof payload.offset === "number" && Number.isFinite(payload.offset)
-    ? Math.max(0, payload.offset)
-    : 0
-  const sort = payload.sort ?? "title-asc"
+  const limit =
+    typeof payload.limit === "number" && Number.isFinite(payload.limit)
+      ? Math.max(1, Math.min(payload.limit, 200))
+      : 24
+  const offset =
+    typeof payload.offset === "number" && Number.isFinite(payload.offset)
+      ? Math.max(0, payload.offset)
+      : 0
+  const sort = payload.sort ?? "newest"
   const filters = sanitizeFilters(payload.filters)
   const inStockOnly = Boolean(payload.inStockOnly)
 

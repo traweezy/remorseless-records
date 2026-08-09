@@ -67,7 +67,7 @@ const ProductsPage = async () => {
     <>
       <ProductSearchExperience
         initialResponse={initialResponse}
-        initialSort="title-asc"
+        initialSort="newest"
         initialFilterDefinitions={filterDefinitions}
       />
 
@@ -100,7 +100,7 @@ const loadInitialSearchResponse = async (): Promise<ProductSearchResponse> => {
       query: "",
       limit: CATALOG_PAGE_SIZE,
       offset: 0,
-      sort: "title-asc",
+      sort: "newest",
       inStockOnly: false,
     })
   } catch (error) {

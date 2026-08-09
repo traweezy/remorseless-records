@@ -43,7 +43,7 @@ const initialState: FilterState = {
   priceMin: null,
   priceMax: null,
   showInStockOnly: false,
-  sort: "title-asc",
+  sort: "newest",
 }
 
 const catalogStoreBase = createWithEqualityFn<CatalogStoreState>()(

@@ -26,6 +26,7 @@ type PillDropdownProps<TValue extends string> = {
   ariaLabel?: string
   ariaDescribedBy?: string
   invalid?: boolean
+  compactOnMobile?: boolean
   renderTriggerLabel?: (option: PillDropdownOption<TValue>) => React.ReactNode
   renderOptionLabel?: (option: PillDropdownOption<TValue>) => React.ReactNode
 }
@@ -42,6 +43,7 @@ export const PillDropdown = <TValue extends string>({
   ariaLabel,
   ariaDescribedBy,
   invalid = false,
+  compactOnMobile = false,
   renderTriggerLabel,
   renderOptionLabel,
 }: PillDropdownProps<TValue>) => {
@@ -55,7 +57,13 @@ export const PillDropdown = <TValue extends string>({
       value={value}
       onValueChange={(nextValue) => onChange(nextValue as TValue)}
     >
-      <div className={cn("relative w-full sm:w-auto", className)}>
+      <div
+        className={cn(
+          "relative w-full sm:w-auto",
+          compactOnMobile && "w-auto",
+          className
+        )}
+      >
         <Select.Trigger asChild>
           <Button
             id={triggerId}
@@ -64,6 +72,8 @@ export const PillDropdown = <TValue extends string>({
             size="auto"
             className={cn(
               "group inline-flex h-11 w-full min-w-0 appearance-none items-center justify-between rounded-full border border-border/70 bg-background/90 px-4 text-left text-[0.72rem] uppercase tracking-[0.22rem] text-foreground outline-none transition-[border-color,box-shadow,color] supports-[backdrop-filter]:backdrop-blur-lg hover:border-border focus:border-destructive focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-destructive focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_hsl(var(--destructive)/0.55)] sm:min-w-[220px] sm:tracking-[0.28rem]",
+              compactOnMobile &&
+                "w-11 justify-center px-0 sm:w-full sm:justify-between sm:px-4",
               buttonClassName
             )}
             aria-label={ariaLabel}
@@ -71,23 +81,24 @@ export const PillDropdown = <TValue extends string>({
             aria-invalid={invalid}
           >
             <span className="flex items-center gap-2 text-[0.7rem]">
-              {renderTriggerLabel ? (
-                renderTriggerLabel(activeOption)
-              ) : (
-                <>
-                  {activeOption.Icon ? (
-                    <activeOption.Icon
-                      className="h-4 w-4 text-foreground"
-                      aria-hidden
-                    />
-                  ) : null}
-                  {activeOption.label}
-                </>
-              )}
+              {activeOption.Icon ? (
+                <activeOption.Icon
+                  className="h-4 w-4 text-foreground"
+                  aria-hidden
+                />
+              ) : null}
+              <span className={cn(compactOnMobile && "sr-only sm:not-sr-only")}>
+                {renderTriggerLabel
+                  ? renderTriggerLabel(activeOption)
+                  : activeOption.label}
+              </span>
             </span>
             <Select.Icon asChild>
               <ChevronDown
-                className="h-4 w-4 text-foreground transition duration-200 group-data-[state=open]:-scale-y-100"
+                className={cn(
+                  "h-4 w-4 text-foreground transition duration-200 group-data-[state=open]:-scale-y-100",
+                  compactOnMobile && "hidden sm:block"
+                )}
                 aria-hidden
               />
             </Select.Icon>
@@ -101,6 +112,8 @@ export const PillDropdown = <TValue extends string>({
             align={align}
             className={cn(
               "z-50 w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-3xl border border-border/50 bg-background/95 p-1.5 shadow-glow supports-[backdrop-filter]:backdrop-blur-2xl data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 sm:min-w-[260px]",
+              compactOnMobile &&
+                "w-[min(18rem,calc(100vw-2rem))] min-w-0 sm:w-[var(--radix-select-trigger-width)] sm:min-w-[260px]",
               dropdownClassName
             )}
           >
