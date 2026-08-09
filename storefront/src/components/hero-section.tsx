@@ -35,9 +35,9 @@ export const HeroSection = () => (
         <div className="space-y-4 sm:space-y-6">
           <p
             data-testid="hero-tagline"
-            className="whitespace-nowrap font-bebas text-[clamp(1.5rem,6.6vw,1.875rem)] tracking-[0.18rem] text-accent drop-shadow-[0_0_25px_hsl(0_100%_50%/0.75)] sm:text-4xl sm:tracking-[0.4rem] md:text-6xl md:tracking-[0.6rem] lg:text-7xl lg:tracking-[0.75rem]"
+            className="mx-auto max-w-[22ch] text-balance font-bebas text-[clamp(1.5rem,6.6vw,4.5rem)] leading-[0.95] tracking-[0.08rem] text-accent drop-shadow-[0_0_25px_hsl(0_100%_50%/0.75)] sm:tracking-[0.22rem] md:tracking-[0.35rem] lg:tracking-[0.5rem]"
           >
-            DEATH.&nbsp;DOOM.&nbsp;GRIND.
+            ...Death...Doom...and everything in between
           </p>
           <p className="font-teko text-xl font-semibold uppercase tracking-[0.35rem] text-muted-foreground sm:text-2xl sm:tracking-[0.4rem] md:text-3xl md:tracking-[0.5rem]">
             We ship the underground worldwide.

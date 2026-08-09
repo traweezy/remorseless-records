@@ -80,7 +80,7 @@ const SocialIcon = ({ path }: { path: string | undefined }) => {
 }
 
 const SiteFooter = () => {
-  const currentYear = process.env.NEXT_PUBLIC_BUILD_YEAR ?? "2025"
+  const currentYear = process.env.NEXT_PUBLIC_BUILD_YEAR ?? "2026"
 
   return (
     <footer className="relative z-20 mt-12 border-t-4 border-accent/80 bg-background py-8">
@@ -90,9 +90,7 @@ const SiteFooter = () => {
             Remorseless Records
           </span>
           <p className="text-xs leading-relaxed">
-            Brutal maximalism across every pressing. Limited runs, no
-            compromises, all volume. Join the signal and never miss another
-            drop.
+            Proudly serving the underground since 2024
           </p>
           <p className="text-[0.7rem] uppercase tracking-[0.12rem] text-muted-foreground sm:tracking-[0.2rem]">
             © {currentYear} Remorseless Records

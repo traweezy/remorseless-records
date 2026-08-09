@@ -262,20 +262,18 @@ test("homepage hydrates every curated shelf without client errors", async ({
   const response = await page.goto("/", { waitUntil: "domcontentloaded" })
   expect(response?.status()).toBeLessThan(400)
 
-  for (const heading of [
-    "Featured Picks",
-    "Newest Arrivals",
-    "Staff Signals",
-    "Latest News",
-  ]) {
+  for (const heading of ["New in Store", "Featured Picks", "Latest News"]) {
     await expect(
       page.getByRole("heading", { name: heading, exact: true }).first()
     ).toBeVisible()
   }
+  await expect(page.locator('[data-testid="hero-tagline"]:visible')).toHaveText(
+    "...Death...Doom...and everything in between"
+  )
 
   await expect(
     page.getByRole("main").locator(".product-carousel__splide")
-  ).toHaveCount(4)
+  ).toHaveCount(3)
   await expect(
     page.getByRole("button", { name: /^(Play|Pause) .+ carousel$/ })
   ).toHaveCount(0)
@@ -362,7 +360,7 @@ test("visible interactive controls consistently use pointer cursors", async ({
   await page.goto("/discography", { waitUntil: "networkidle" })
   await expectVisibleInteractivePointers(page)
   const mobileDiscographyFilters = page.getByRole("button", {
-    name: /^Filters/,
+    name: /^Show filters/,
   })
   if (await mobileDiscographyFilters.isVisible()) {
     await mobileDiscographyFilters.click()
@@ -370,6 +368,15 @@ test("visible interactive controls consistently use pointer cursors", async ({
   await page.getByRole("combobox", { name: "Filter by availability" }).click()
   await expectVisibleInteractivePointers(page)
   await page.keyboard.press("Escape")
+  const closeDiscographyFilters = page.getByRole("button", {
+    name: "Close discography filters",
+  })
+  if (await closeDiscographyFilters.isVisible()) {
+    await closeDiscographyFilters.click()
+  }
+  await expect(
+    page.getByRole("combobox", { name: "Sort discography" })
+  ).toContainText("Catalog # high–low")
 
   await page.goto("/contact", { waitUntil: "networkidle" })
   await expectVisibleInteractivePointers(page)
@@ -707,7 +714,16 @@ test("catalog filters stay stable and combine predictably", async ({
     await rejectCookies.click()
   }
 
-  await page.getByRole("button", { name: /^Filters/ }).click()
+  const filterTrigger = page.getByRole("button", { name: /^Show filters/ })
+  const filterTriggerBounds = await filterTrigger.boundingBox()
+  expect(filterTriggerBounds?.width).toBeGreaterThanOrEqual(44)
+  expect(filterTriggerBounds?.height).toBeGreaterThanOrEqual(44)
+  const sortTrigger = page.getByRole("combobox", { name: "Sort products" })
+  const sortTriggerBounds = await sortTrigger.boundingBox()
+  expect(sortTriggerBounds?.width).toBeGreaterThanOrEqual(44)
+  expect(sortTriggerBounds?.height).toBeGreaterThanOrEqual(44)
+
+  await filterTrigger.click()
   const drawer = page.getByRole("dialog", { name: "Filters" })
   await expect(drawer).toBeVisible()
 
@@ -826,6 +842,13 @@ test("catalog filters stay stable and combine predictably", async ({
   expect(clearBounds?.height).toBeGreaterThanOrEqual(44)
   await clearSearch.click()
   await expect(search).toHaveValue("")
+
+  await sortTrigger.click()
+  await page.getByRole("option", { name: /Artist · A → Z/ }).click()
+  await expect.poll(() => searchRequests.at(-1)?.sort).toBe("artist-asc")
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("sort"))
+    .toBe("artist-asc")
 })
 
 test("desktop filters preserve position while results refresh", async ({
@@ -866,6 +889,10 @@ test("desktop filters preserve position while results refresh", async ({
   }
 
   const sidebar = page.getByTestId("catalog-desktop-filters")
+  await expect(sidebar).toBeVisible()
+  await page.getByRole("button", { name: /^Hide filters/ }).click()
+  await expect(sidebar).toBeHidden()
+  await page.getByRole("button", { name: /^Show filters/ }).click()
   await expect(sidebar).toBeVisible()
   await page.evaluate(() => window.scrollTo({ top: 600 }))
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(600)

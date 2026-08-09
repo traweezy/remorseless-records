@@ -41,13 +41,11 @@ const responseSchema = z.object({
 const shelfDefaults = {
   featured: {
     title: "Featured Picks",
-    description:
-      "Curated slabs hand-picked from the vault—limited, savage, and in stock right now.",
+    description: "Curated selection of albums we can't stop spinning",
   },
   "new-releases": {
-    title: "Newest Arrivals",
-    description:
-      "Fresh represses and new signings—these move fast. Bookmark them or lose them forever.",
+    title: "New in Store",
+    description: "The latest and greatest, available now",
   },
   "staff-picks": {
     title: "Staff Signals",

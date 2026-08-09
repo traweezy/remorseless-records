@@ -58,7 +58,6 @@ const HomePage = async (): Promise<ReactElement> => {
   ])
   const featured = shelves.featured
   const newest = shelves["new-releases"]
-  const staff = shelves["staff-picks"]
   const latestNews = news.entries
   const featuredListJsonLd = buildItemListJsonLd(
     featured.title,
@@ -83,13 +82,6 @@ const HomePage = async (): Promise<ReactElement> => {
       <div className="mt-24">
         <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-24 px-4 sm:px-6">
           <ProductCarouselSection
-            heading={splitHeading(featured.title)}
-            description={featured.description}
-            products={featured.products}
-            ribbonLabel={featured.ribbonLabel}
-          />
-
-          <ProductCarouselSection
             heading={splitHeading(newest.title)}
             description={newest.description}
             products={newest.products}
@@ -97,10 +89,10 @@ const HomePage = async (): Promise<ReactElement> => {
           />
 
           <ProductCarouselSection
-            heading={splitHeading(staff.title)}
-            description={staff.description}
-            products={staff.products}
-            ribbonLabel={staff.ribbonLabel}
+            heading={splitHeading(featured.title)}
+            description={featured.description}
+            products={featured.products}
+            ribbonLabel={featured.ribbonLabel}
           />
 
           <NewsCarouselSection
