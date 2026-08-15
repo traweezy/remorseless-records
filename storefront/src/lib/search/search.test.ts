@@ -220,6 +220,57 @@ describe("searchProductsWithClient", () => {
     expect(response.facets.productTypes).toEqual({ album: 1 })
   })
 
+  it.each([
+    {
+      label: "generic facet",
+      filters: { genres: ['Doom\\") OR status = "draft'] },
+      filterableAttributes: ["status", "genres"],
+      expected: String.raw`status = "published" AND genres IN ["Doom\\\") OR status = \"draft"]`,
+    },
+    {
+      label: "format facet",
+      filters: { formats: ['Vinyl\\") OR status = "draft'] },
+      filterableAttributes: ["status", "formats", "variant_titles"],
+      expected: String.raw`status = "published" AND (formats IN ["Vinyl\\\") OR status = \"draft"] OR variant_titles IN ["Vinyl\\\") OR status = \"draft"])`,
+    },
+    {
+      label: "category facet",
+      filters: { categories: ['vinyl\\"] OR status = "draft'] },
+      filterableAttributes: ["status", "category_handles"],
+      expected: String.raw`status = "published" AND category_handles IN ["vinyl\\\"] OR status = \"draft"]`,
+    },
+    {
+      label: "control-character facet",
+      filters: { genres: ["line\nbreak\t\\"] },
+      filterableAttributes: ["status", "genres"],
+      expected: String.raw`status = "published" AND genres IN ["line\nbreak\t\\"]`,
+    },
+  ])(
+    "escapes filter grammar in $label values",
+    async ({ filters, filterableAttributes, expected }) => {
+      const index: MockIndex = {
+        uid: "products-filter-escaping",
+        getSettings: vi.fn(),
+        search: vi.fn().mockResolvedValue({
+          hits: [],
+          estimatedTotalHits: 0,
+          facetDistribution: undefined,
+        }),
+      }
+
+      await searchProductsWithClient(
+        makeClient(index),
+        { query: "", limit: 24, filters },
+        filterableAttributes
+      )
+
+      expect(index.search).toHaveBeenCalledWith(
+        "",
+        expect.objectContaining({ filter: expected })
+      )
+    }
+  )
+
   it("sorts artists deterministically using indexed sort fields", async () => {
     const index: MockIndex = {
       uid: "products-artist-sort",

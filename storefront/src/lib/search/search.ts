@@ -102,6 +102,12 @@ type FilterDescriptor = {
 const normalizeValues = (values: string[] | undefined): string[] =>
   (values ?? []).map((value) => value.trim()).filter(Boolean)
 
+const serializeFilterLiteral = (value: string): string =>
+  JSON.stringify(value)
+
+const serializeFilterValues = (values: string[]): string =>
+  values.map(serializeFilterLiteral).join(", ")
+
 const lowercaseSet = (values: string[]): Set<string> =>
   new Set(values.map((value) => value.toLowerCase()))
 
@@ -132,9 +138,7 @@ const buildFilter = (
     }
 
     if (filterable.has(attribute)) {
-      const escaped = normalized
-        .map((value) => `"${value.replace(/"/g, '\\"')}"`)
-        .join(", ")
+      const escaped = serializeFilterValues(normalized)
       clauses.push(`${attribute} IN [${escaped}]`)
     } else {
       postFilters.push({ attribute, values: normalized })
@@ -144,9 +148,7 @@ const buildFilter = (
   tryFilter("genres", filters?.genres)
   const formatValues = normalizeValues(filters?.formats)
   if (formatValues.length) {
-    const escaped = formatValues
-      .map((value) => `"${value.replace(/"/g, '\\"')}"`)
-      .join(", ")
+    const escaped = serializeFilterValues(formatValues)
     const formatAttributes = ["formats", "format", "variant_titles"].filter(
       (attribute) => filterable.has(attribute)
     )
@@ -163,9 +165,7 @@ const buildFilter = (
   const categoryValues = normalizeValues(filters?.categories)
   if (categoryValues.length) {
     if (filterable.has("category_handles")) {
-      const escaped = categoryValues
-        .map((value) => `"${value.replace(/"/g, '\\"')}"`)
-        .join(", ")
+      const escaped = serializeFilterValues(categoryValues)
       clauses.push(`category_handles IN [${escaped}]`)
     } else {
       postFilters.push({
