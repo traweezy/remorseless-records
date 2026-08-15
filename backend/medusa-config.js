@@ -137,7 +137,9 @@ const medusaConfig = {
     // Medusa 2.18 discovers its core RBAC flag after evaluating this config in
     // migration commands. Override the default declaration explicitly so an
     // enabled release cannot skip the RBAC schema and bootstrap silently.
-    resolveAdminRbacModuleConfig(process.env.MEDUSA_FF_RBAC),
+    resolveAdminRbacModuleConfig(process.env.MEDUSA_FF_RBAC, {
+      requireEnabled: isProduction,
+    }),
     {
       key: Modules.FULFILLMENT,
       resolve: '@medusajs/fulfillment',

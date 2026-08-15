@@ -3,6 +3,7 @@
 - Status: accepted; activated on Railway staging
 - Date: 2026-08-02
 - Activation: 2026-08-08
+- Fail-closed hardening: 2026-08-15
 - Scope: custom Medusa Admin Content and operations routes and APIs
 
 ## Context
@@ -37,15 +38,19 @@ logs each user's email and ID. Production logs must not become a PII export.
   prevent dead-end controls and protected-data fetches.
 - The Admin reuses the Dashboard's native feature-flag and effective-permission
   TanStack Query cache keys. Both responses are runtime-validated before use.
-- When RBAC is disabled, the Admin and backend preserve the current authenticated
-  administrator behavior. A feature-flag rollback therefore restores the old
-  access model without dropping RBAC tables.
+- Production configuration requires RBAC to be explicitly enabled. A missing,
+  false, or malformed `MEDUSA_FF_RBAC` value fails startup instead of restoring
+  authenticated-only administrator access.
+- Flag-off rollback remains available only for local rehearsal. An emergency
+  production rollback requires an audited revert to a previously validated
+  release; RBAC tables remain additive and recoverable.
 - Existing administrators receive the native super-admin role during the first
   enabled migration. The version-pinned `@medusajs/medusa@2.18.0` patch retains
   that behavior but replaces per-user log output with aggregate progress.
-- A flag-off release can list the bootstrap script as pending. Medusa evaluates
-  the script's feature predicate before inserting its migration-ledger row, so
-  a disabled no-op does not consume the later enabled migration.
+- A non-production flag-off rehearsal can list the bootstrap script as pending.
+  Medusa evaluates the script's feature predicate before inserting its
+  migration-ledger row, so a disabled no-op does not consume the later enabled
+  migration.
 - The project declares Medusa's RBAC module explicitly from the same strict
   `MEDUSA_FF_RBAC` value. In Medusa 2.18 migration commands, project config is
   evaluated before the framework registers its core feature flags; relying on
@@ -91,9 +96,11 @@ Order and Refund reason links follow their native grants.
 
 ```mermaid
 flowchart LR
-  A[Authenticated Admin request] --> B{RBAC enabled?}
-  B -- No --> C[Preserve existing Admin access]
-  B -- Yes --> D[Read role IDs from signed auth context]
+  S[Production startup] --> B{RBAC explicitly enabled?}
+  B -- No --> C[Fail startup]
+  B -- Yes --> R[Serve Admin]
+  R --> A[Authenticated Admin request]
+  A --> D[Read role IDs from signed auth context]
   D --> E{Role grants route policy?}
   E -- No --> F[403; route handler never runs]
   E -- Yes --> G[Run validated route handler]
@@ -228,11 +235,19 @@ not a reason to insert policies or role links manually.
 
 ## Rollback
 
-Set `MEDUSA_FF_RBAC=false` and redeploy. Do not drop RBAC tables or remove role
-links during the incident; they are additive, retain the intended configuration,
-and can be investigated offline. If the migration itself fails, stop the
-deployment and restore the verified snapshot rather than editing RBAC rows by
-hand.
+In production, keep `MEDUSA_FF_RBAC=true` and roll back to the last validated
+image. Setting the flag to false is deliberately not a production rollback:
+configuration validation will stop the process before it can serve traffic
+without authorization enforcement. If incident response explicitly authorizes
+restoring the pre-hardening behavior, use an audited code revert and treat the
+temporary authenticated-only access as a security exception.
+
+Do not drop RBAC tables or remove role links during the incident; they are
+additive, retain the intended configuration, and can be investigated offline.
+A flag-off rehearsal remains available in non-production. If an RBAC migration
+fails, stop the release before it serves traffic. Restore the verified snapshot
+only when the migration failure changed data and cannot be recovered safely;
+do not edit RBAC rows by hand.
 
 ## Consequences and limitations
 

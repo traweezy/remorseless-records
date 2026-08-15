@@ -209,6 +209,13 @@ strict `MEDUSA_FF_RBAC` value, so an enabled release cannot claim the flag is on
 while silently skipping the RBAC schema and bootstrap. Repeating the migration
 is safe and did not duplicate roles, policies, links, or its one-time ledger.
 
+Now that staging activation and rollback rehearsal are complete, production
+configuration fails closed unless `MEDUSA_FF_RBAC` resolves to enabled (for
+example, `MEDUSA_FF_RBAC=true`). Disabling the flag is limited to local
+rehearsal; an emergency production rollback requires an audited revert to a
+previously validated release rather than silently restoring authenticated-only
+Admin access.
+
 The initial activated staging database had one Super Admin role, 241 policies,
 the eight exact News and Discography policies, one wildcard policy, three
 distinct administrator links, and one bootstrap ledger row. The operations
@@ -230,9 +237,10 @@ workspace in that shell. Selecting it shows the clear restricted-access page.
 That does not expose data; the page does not start its query and the backend
 independently rejects direct requests.
 
-A release with RBAC disabled can report the bootstrap script as pending. Medusa
-checks the script's feature predicate before inserting its migration record, so
-the skipped script remains available for the later approved activation.
+A non-production rehearsal with RBAC disabled can report the bootstrap script
+as pending. Medusa checks the script's feature predicate before inserting its
+migration record, so the skipped script remains available for a later enabled
+run. Production refuses to start with RBAC disabled.
 
 See [ADR 0006](docs/adr/0006-native-admin-rbac.md) for the complete permission
 matrix, rehearsal, activation, session-refresh, and rollback procedure.
@@ -977,7 +985,7 @@ Key variables (non-empty values required for full functionality):
 | `MEILISEARCH_HOST`                           | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
 | `MEILISEARCH_ADMIN_KEY`                      | Corresponding admin/master key                                               |
 | `JWT_SECRET`, `COOKIE_SECRET`                | Medusa auth secrets (high entropy)                                           |
-| `MEDUSA_FF_RBAC`                             | Enables native Admin RBAC only after the approved migration rehearsal        |
+| `MEDUSA_FF_RBAC`                             | Must parse as true in production (case-insensitive, no surrounding whitespace) |
 | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Required together when deployed; official S3-compatible media provider |
 | `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_FILE_URL` | Optional storage overrides; bucket defaults to `medusa-media`            |
 | `ANONYMOUS_CART_RETENTION_ENABLED`           | Enables daily anonymous-cart soft deletion (default `false`)                 |
