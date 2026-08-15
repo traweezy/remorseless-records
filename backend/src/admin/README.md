@@ -68,6 +68,26 @@ tax evidence. See
 [`../../../docs/REFUND_OPERATIONS.md`](../../../docs/REFUND_OPERATIONS.md) for
 the authority boundary, statuses, edge cases, and incident runbook.
 
+## Product import authorization
+
+Product import is a two-capability workflow. Preparing a CSV-backed plan needs
+`product:read`, `file:create`, and `product_import:create`; confirming an
+existing plan needs `product:read` and `product_import:update`. This permits a
+maker/checker role split without granting either operator arbitrary manual
+Product mutation access. Backend middleware protects the current plural routes
+and Medusa 2.18's deprecated singular routes before their handlers run. The
+singular prepare and confirm routes both return 410 after authorization. A
+legacy plan predates this task-specific policy and must be re-prepared through
+the validated plural workflow rather than being trusted for execution.
+
+The stock Dashboard 2.18 Product Import drawer is not the supported path: it
+does not understand the custom permission and first calls the intentionally
+disabled presigned-upload endpoint. Approved tooling uploads validated UTF-8
+CSV through `POST /admin/managed-uploads`, sends the returned file key to
+`POST /admin/products/imports`, reviews the plan, and confirms through
+`POST /admin/products/imports/:transaction_id/confirm`. A later custom import UI
+must gate its query and controls on the same exact capabilities.
+
 ## Catalog authoring cutover audit
 
 `GET /admin/catalog/authoring-audit` is the read-only classification and

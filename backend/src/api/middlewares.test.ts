@@ -1,12 +1,21 @@
-import type { MiddlewareRoute } from "@medusajs/framework/http";
+import path from "node:path";
+
+import type {
+  MedusaRequest,
+  MedusaResponse,
+  MiddlewareRoute,
+} from "@medusajs/framework/http";
 
 import {
   nativeAdminActions,
   operationsAdminActions,
+  productImportAdminActions,
 } from "../lib/admin-permissions";
 import middlewares, {
   contentAdminPolicyRoutes,
   operationsAdminPolicyRoutes,
+  productImportAdminPolicyRoutes,
+  rejectDeprecatedProductImport,
 } from "./middlewares";
 
 jest.mock("../lib/constants", () => ({
@@ -36,6 +45,16 @@ const policyFor = (
   );
   expect(matches).toHaveLength(1);
   return matches[0]?.policies;
+};
+
+type PinnedSortableRoute = {
+  [key: string]: unknown;
+  marker?: string;
+  matcher: string | RegExp;
+};
+
+type PinnedRouteSorter = new (routes: ReadonlyArray<PinnedSortableRoute>) => {
+  sort: () => PinnedSortableRoute[];
 };
 
 describe("content Admin RBAC middleware", () => {
@@ -161,6 +180,147 @@ describe("operations Admin RBAC middleware", () => {
           "POST",
           "/admin/catalog/media/assets/media_01/purge",
         ),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("product import Admin RBAC middleware", () => {
+  const preparePolicies = [
+    nativeAdminActions.product.read,
+    nativeAdminActions.file.create,
+    productImportAdminActions.productImport.create,
+  ];
+  const confirmPolicies = [
+    nativeAdminActions.product.read,
+    productImportAdminActions.productImport.update,
+  ];
+
+  it("uses exact regex matchers for every import route", () => {
+    expect(
+      productImportAdminPolicyRoutes.every(
+        ({ matcher }) => matcher instanceof RegExp,
+      ),
+    ).toBe(true);
+  });
+
+  it("retires both deprecated routes before their core handlers", () => {
+    const deprecatedPaths = [
+      "/admin/products/import",
+      "/admin/products/import/transaction_01/confirm",
+    ];
+    deprecatedPaths.forEach((path) => {
+      const deprecatedRoute = productImportAdminPolicyRoutes.find(
+        ({ matcher }) => matcher instanceof RegExp && matcher.test(path),
+      );
+      expect(deprecatedRoute?.bodyParser).toBe(false);
+      expect(deprecatedRoute?.middlewares).toEqual([
+        rejectDeprecatedProductImport,
+      ]);
+    });
+
+    const json = jest.fn();
+    const status = jest.fn(() => ({ json }));
+    const setHeader = jest.fn();
+    const type = jest.fn();
+    rejectDeprecatedProductImport(
+      { path: "/admin/products/import" } as MedusaRequest,
+      { json, setHeader, status, type } as unknown as MedusaResponse,
+    );
+
+    expect(setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
+    expect(type).toHaveBeenCalledWith("application/problem+json");
+    expect(status).toHaveBeenCalledWith(410);
+    expect(json).toHaveBeenCalledWith({
+      type: "urn:remorseless-records:problem:deprecated-product-import",
+      title: "Deprecated product import route",
+      status: 410,
+      detail:
+        "Upload a validated CSV and prepare it through POST /admin/products/imports.",
+      instance: "/admin/products/import",
+    });
+  });
+
+  it("sorts the legacy rejection before Medusa's multipart parser", () => {
+    const frameworkEntry = require.resolve("@medusajs/framework");
+    const routesSorterPath = path.join(
+      path.dirname(frameworkEntry),
+      "http/routes-sorter.js",
+    );
+    const medusaEntry = require.resolve("@medusajs/medusa");
+    const productMiddlewarePath = path.join(
+      path.dirname(medusaEntry),
+      "api/admin/products/middlewares.js",
+    );
+    const { RoutesSorter } = jest.requireActual<{
+      RoutesSorter: PinnedRouteSorter;
+    }>(routesSorterPath);
+    const { adminProductRoutesMiddlewares } = jest.requireActual<{
+      adminProductRoutesMiddlewares: MiddlewareRoute[];
+    }>(productMiddlewarePath);
+    const coreMultipartRoute = adminProductRoutesMiddlewares.find(
+      ({ matcher }) => matcher === "/admin/products/import",
+    );
+    const projectRejectionRoute = productImportAdminPolicyRoutes.find(
+      ({ matcher }) =>
+        matcher instanceof RegExp && matcher.test("/admin/products/import"),
+    );
+    expect(coreMultipartRoute).toBeDefined();
+    expect(projectRejectionRoute).toBeDefined();
+    if (!coreMultipartRoute || !projectRejectionRoute) {
+      return;
+    }
+
+    const sorted = new RoutesSorter([
+      { ...coreMultipartRoute, marker: "core-multipart" },
+      {
+        isRoute: true,
+        matcher: "/admin/products/import",
+        method: "POST",
+        marker: "core-handler",
+      },
+      { ...projectRejectionRoute, marker: "project-rejection" },
+    ]).sort();
+    const markers = sorted.map(({ marker }) => marker);
+
+    expect(markers.indexOf("project-rejection")).toBeLessThan(
+      markers.indexOf("core-multipart"),
+    );
+    expect(markers.indexOf("project-rejection")).toBeLessThan(
+      markers.indexOf("core-handler"),
+    );
+  });
+
+  it.each([
+    ["/admin/products/import", preparePolicies],
+    ["/ADMIN/PRODUCTS/IMPORT/", preparePolicies],
+    ["/admin/products/imports", preparePolicies],
+    ["/Admin/Products/Imports/", preparePolicies],
+    ["/admin/products/import/transaction_01/confirm", confirmPolicies],
+    ["/Admin/Products/Import/transaction_01/Confirm/", confirmPolicies],
+    ["/admin/products/imports/transaction_01/confirm", confirmPolicies],
+    ["/Admin/Products/Imports/transaction_01/Confirm/", confirmPolicies],
+  ])("protects POST %s with its complete policy set", (path, policies) => {
+    expect(policyFor(productImportAdminPolicyRoutes, "POST", path)).toEqual(
+      policies,
+    );
+    expect(policyFor(middlewares.routes ?? [], "POST", path)).toEqual(policies);
+  });
+
+  it.each([
+    ["GET", "/admin/products/import"],
+    ["POST", "/admin/products/imported"],
+    ["POST", "/admin/products/import/confirm"],
+    ["POST", "/admin/products/imports/confirm"],
+    ["POST", "/admin/products/import/transaction_01/confirm/extra"],
+    ["POST", "/admin/products/imports/transaction_01/confirm/extra"],
+  ])("does not match unsupported %s %s", (method, path) => {
+    expect(
+      productImportAdminPolicyRoutes.some((route) =>
+        routeMatches(route, method, path),
       ),
     ).toBe(false);
   });

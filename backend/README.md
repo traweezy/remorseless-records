@@ -75,6 +75,17 @@ the same bounded content inspection and additionally accepts validated UTF-8
 CSV input for existing import tooling. The unused presigned-upload route is
 disabled because it bypasses server-side content inspection.
 
+CSV import is separately authorized from ordinary Product editing. Preparing a
+plan through the current plural endpoint requires `product:read`, `file:create`,
+and `product_import:create`; confirming it requires `product:read` and
+`product_import:update`. The deprecated singular prepare endpoint checks the
+same permissions and then returns 410 before multipart parsing; singular
+confirm checks `product:read` and `product_import:update` before also returning
+410. Legacy plans must be re-prepared through the validated plural workflow.
+Approved tooling uses the managed upload followed by the plural prepare/confirm
+endpoints. The stock Dashboard import drawer is not supported because it still
+begins with the disabled presigned-upload route.
+
 The Admin **Operations → Media cleanup** route is the safe review surface for catalog assets
 that are not linked to any product. Its server-side anti-join returns exact,
 paginated active or quarantined results instead of filtering an arbitrary

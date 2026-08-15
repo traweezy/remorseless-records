@@ -19,6 +19,10 @@ export const operationsAdminResources = {
   taxRecords: "tax_records",
 } as const;
 
+export const productImportAdminResources = {
+  productImport: "product_import",
+} as const;
+
 export type AdminPolicyAction = {
   operation: string;
   resource: string;
@@ -86,6 +90,19 @@ export const operationsAdminActions = {
     read: {
       operation: adminPolicyOperations.read,
       resource: operationsAdminResources.taxRecords,
+    },
+  },
+} as const;
+
+export const productImportAdminActions = {
+  productImport: {
+    create: {
+      operation: adminPolicyOperations.create,
+      resource: productImportAdminResources.productImport,
+    },
+    update: {
+      operation: adminPolicyOperations.update,
+      resource: productImportAdminResources.productImport,
     },
   },
 } as const;
@@ -195,6 +212,21 @@ export const operationsAdminPolicyDefinitions: PolicyDefinition[] = [
     name: "UpdateMediaCleanup",
     operation: adminPolicyOperations.update,
     resource: operationsAdminResources.mediaCleanup,
+  },
+];
+
+export const productImportAdminPolicyDefinitions: PolicyDefinition[] = [
+  {
+    description: "Prepare a product import plan from CSV input",
+    name: "PrepareProductImport",
+    operation: adminPolicyOperations.create,
+    resource: productImportAdminResources.productImport,
+  },
+  {
+    description: "Execute a prepared product import plan",
+    name: "ExecuteProductImport",
+    operation: adminPolicyOperations.update,
+    resource: productImportAdminResources.productImport,
   },
 ];
 

@@ -9,6 +9,9 @@ import {
   operationsAdminPolicyDefinitions,
   operationsAdminResources,
   operationsReadPermissionKeys,
+  productImportAdminActions,
+  productImportAdminPolicyDefinitions,
+  productImportAdminResources,
 } from "./admin-permissions";
 
 describe("content Admin permission contract", () => {
@@ -88,5 +91,30 @@ describe("operations Admin permission contract", () => {
       "refund_operations:read",
       "media_cleanup:read",
     ]);
+  });
+});
+
+describe("product import Admin permission contract", () => {
+  it("defines separate prepare and execute capabilities exactly once", () => {
+    expect(productImportAdminPolicyDefinitions).toHaveLength(2);
+
+    const keys = productImportAdminPolicyDefinitions.map(adminPermissionKey);
+    expect(keys).toEqual(["product_import:create", "product_import:update"]);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(productImportAdminPolicyDefinitions.map(({ name }) => name)).toEqual(
+      ["PrepareProductImport", "ExecuteProductImport"],
+    );
+  });
+
+  it("uses stable task-specific action keys", () => {
+    expect(productImportAdminResources).toEqual({
+      productImport: "product_import",
+    });
+    expect(
+      adminPermissionKey(productImportAdminActions.productImport.create),
+    ).toBe("product_import:create");
+    expect(
+      adminPermissionKey(productImportAdminActions.productImport.update),
+    ).toBe("product_import:update");
   });
 });

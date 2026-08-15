@@ -176,12 +176,23 @@ The permission model is deliberately small:
   role also has the corresponding native read permission.
 - Media cleanup separates inspection from reversible quarantine/restore.
   Those lifecycle changes require `media_cleanup:update`.
+- Product imports separate CSV upload/plan preparation from execution. Preparing
+  requires native Product read and file-create permissions plus
+  `product_import:create`; confirming requires Product read plus
+  `product_import:update`.
 
 The backend is the authority. A direct request without the required role gets a
 403 before the route handler runs. The Admin performs the same check earlier so
 it does not fetch protected data or show buttons that would fail. If the role
 can read only one Content workspace, the overview and workspace navigation show
 only that one.
+
+The pinned Dashboard's native Product Import drawer is the current UI exception:
+it does not understand the custom import permission and begins with the
+intentionally disabled presigned-upload route. Backend enforcement still
+rejects unauthorized imports. Approved tooling uses the validated managed
+upload and plural prepare/confirm APIs until a permission-aware replacement is
+implemented.
 
 ```mermaid
 flowchart TD
@@ -221,8 +232,10 @@ the eight exact News and Discography policies, one wildcard policy, three
 distinct administrator links, and one bootstrap ledger row. The operations
 authorization release adds six code-registered policies; Medusa synchronizes
 them at application start and the existing wildcard Super Admin grant covers
-them without adding per-user links. Deployment acceptance verifies the policy
-and concrete-permission totals instead of assuming synchronization succeeded.
+them without adding per-user links. Product-import authorization adds two more
+task-specific policies, bringing the current expected totals to 249 non-deleted
+policies and 248 concrete Super Admin permissions. Deployment acceptance
+verifies those totals instead of assuming synchronization succeeded.
 The secured pre-activation snapshot and exact deployment evidence are recorded
 in [ADR 0006](docs/adr/0006-native-admin-rbac.md).
 

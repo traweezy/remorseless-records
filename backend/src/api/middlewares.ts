@@ -11,6 +11,7 @@ import {
   contentAdminActions,
   nativeAdminActions,
   operationsAdminActions,
+  productImportAdminActions,
 } from "../lib/admin-permissions";
 import { STORE_CORS } from "../lib/constants";
 import {
@@ -234,6 +235,22 @@ const rejectPresignedUploads = (
   });
 };
 
+export const rejectDeprecatedProductImport = (
+  req: MedusaRequest,
+  res: MedusaResponse,
+): void => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.type("application/problem+json");
+  res.status(410).json({
+    type: "urn:remorseless-records:problem:deprecated-product-import",
+    title: "Deprecated product import route",
+    status: 410,
+    detail:
+      "Upload a validated CSV and prepare it through POST /admin/products/imports.",
+    instance: req.path,
+  });
+};
+
 export const contentAdminPolicyRoutes = [
   {
     matcher: /^\/admin\/news$/,
@@ -355,6 +372,44 @@ export const operationsAdminPolicyRoutes = [
   },
 ] satisfies MiddlewareRoute[];
 
+const productImportPreparePolicies = [
+  nativeAdminActions.product.read,
+  nativeAdminActions.file.create,
+  productImportAdminActions.productImport.create,
+];
+
+const productImportConfirmPolicies = [
+  nativeAdminActions.product.read,
+  productImportAdminActions.productImport.update,
+];
+
+export const productImportAdminPolicyRoutes = [
+  {
+    matcher: /^\/admin\/products\/import\/?$/i,
+    methods: ["POST"],
+    bodyParser: false,
+    middlewares: [rejectDeprecatedProductImport],
+    policies: productImportPreparePolicies,
+  },
+  {
+    matcher: /^\/admin\/products\/imports\/?$/i,
+    methods: ["POST"],
+    policies: productImportPreparePolicies,
+  },
+  {
+    matcher: /^\/admin\/products\/import\/[^/]+\/confirm\/?$/i,
+    methods: ["POST"],
+    bodyParser: false,
+    middlewares: [rejectDeprecatedProductImport],
+    policies: productImportConfirmPolicies,
+  },
+  {
+    matcher: /^\/admin\/products\/imports\/[^/]+\/confirm\/?$/i,
+    methods: ["POST"],
+    policies: productImportConfirmPolicies,
+  },
+] satisfies MiddlewareRoute[];
+
 export default defineMiddlewares({
   routes: [
     {
@@ -403,6 +458,7 @@ export default defineMiddlewares({
     },
     ...contentAdminPolicyRoutes,
     ...operationsAdminPolicyRoutes,
+    ...productImportAdminPolicyRoutes,
     {
       matcher: "/admin/catalog/media/uploads",
       methods: ["POST"],

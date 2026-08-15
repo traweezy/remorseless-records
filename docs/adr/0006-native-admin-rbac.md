@@ -4,7 +4,7 @@
 - Date: 2026-08-02
 - Activation: 2026-08-08
 - Fail-closed hardening: 2026-08-15
-- Scope: custom Medusa Admin Content and operations routes and APIs
+- Scope: custom Medusa Admin Content, operations, and product-import APIs
 
 ## Context
 
@@ -30,8 +30,9 @@ logs each user's email and ID. Production logs must not become a PII export.
 - `MEDUSA_FF_RBAC` can be enabled only after the isolated migration, access,
   and rollback rehearsal passes and activation is explicitly approved. That
   gate passed for Railway staging on 2026-08-08.
-- Custom policies are registered from `backend/src/policies/content.ts` and
-  `backend/src/policies/operations.ts` and are synchronized by Medusa. Routes
+- Custom policies are registered from `backend/src/policies/content.ts`,
+  `backend/src/policies/operations.ts`, and
+  `backend/src/policies/product-import.ts`, then synchronized by Medusa. Routes
   declare policy requirements in the canonical
   `backend/src/api/middlewares.ts` file.
 - The backend policy check is authoritative. Admin-side permission checks only
@@ -72,8 +73,10 @@ logs each user's email and ID. Production logs must not become a PII export.
 | `discography` | `create` | Show **Add historical release** | Collection POST |
 | `discography` | `update` | Show historical Edit, Archive, and Restore | Detail PUT and archive/restore POST |
 | `discography` | `delete` | No hard-delete control is exposed | The hard-disabled DELETE route remains guarded |
-| native `file` | `create` | Show News cover choose/replace controls | Managed upload POST |
-| native `product` | `read` | Show a Discography Product deep link | Native Product authorization remains authoritative |
+| native `file` | `create` | Show News cover controls and permit validated CSV upload | Managed upload and import-prepare prerequisites |
+| native `product` | `read` | Show Product links and inspect import scope | Native Product reads and every import route |
+| `product_import` | `create` | Prepare a reviewable plan from CSV input | Current prepare POST; deprecated prepare rejects after authorization |
+| `product_import` | `update` | Confirm and execute an existing plan | Current confirm POST; deprecated confirm rejects after authorization |
 | `tax_control` | `read` | View provider readiness, usage, audit history, impact, and tax evidence | Tax control GET |
 | `tax_control` | `update` | Show provider switch and metered quota-refresh controls | Provider switch and TaxRate.io refresh POST |
 | `tax_records` | `read` | View filing workpapers and download minimized CSV exports | Tax records and export GET |
@@ -87,6 +90,12 @@ All required actions in a single route declaration are conjunctive. The
 Content landing page is the intentional exception in the UI: it opens when the
 actor can read at least one workspace and only renders cards and navigation for
 the workspaces that actor can read.
+
+Product import uses a dedicated task capability instead of granting arbitrary
+manual Product writes. A preparer needs `product:read`, `file:create`, and
+`product_import:create`; a confirmer needs `product:read` and
+`product_import:update`. The split supports maker/checker roles, while the
+wildcard Super Admin policy continues to satisfy both contracts.
 
 Custom operations routes use one page-level read boundary and separate update
 capabilities where they mutate state. A read-only role can inspect Tax control
@@ -228,10 +237,43 @@ native-resource links follow the effective capability set. The Super Admin
 role retains access through its existing wildcard policy; restricted roles must
 receive only the grants their task requires and then sign in again.
 
-Release acceptance must verify 247 non-deleted policies, one wildcard policy,
+That release acceptance verified 247 non-deleted policies, one wildcard policy,
 246 concrete effective Super Admin permissions, the six exact operations
-policies, and unchanged role/user-link counts. A mismatch is a failed release,
-not a reason to insert policies or role links manually.
+policies, and unchanged role/user-link counts.
+
+### Product import authorization extension — 2026-08-15
+
+Two code-registered policies separate upload/plan preparation from plan
+execution. Exact method-and-path middleware protects the current plural routes
+and Medusa 2.18's still-installed deprecated singular routes:
+
+- `POST /admin/products/imports` requires `product:read`, `file:create`, and
+  `product_import:create`;
+- deprecated `POST /admin/products/import` checks the same permissions and then
+  returns 410 before parsing the multipart body;
+- `POST /admin/products/imports/:transaction_id/confirm` requires
+  `product:read` and `product_import:update`;
+- deprecated `POST /admin/products/import/:transaction_id/confirm` checks the
+  same confirmation permissions and then returns 410.
+
+The exact project policy middleware is ordered before Medusa's legacy
+multipart parser. Both singular endpoints are retained only as terminal,
+no-store problem responses. A legacy plan predates the task-specific policy and
+must be re-uploaded and reviewed through the plural workflow rather than being
+trusted for execution. A Product reader, file uploader, or Product editor
+without the dedicated import grant cannot prepare or confirm an import. Role
+changes still require sign-out and sign-in.
+
+Before retiring singular confirmation, a read-only staging aggregate found zero
+non-deleted `workflow_execution` rows for the `import-products` and
+`import-products-as-chunks` workflow IDs. No transaction ID, workflow context,
+administrator, or customer data was selected.
+
+Release acceptance must verify 249 non-deleted policies, one wildcard policy,
+248 concrete effective Super Admin permissions, eight exact Content policies,
+six exact Operations policies, two exact Product Import policies, and unchanged
+role/user-link counts. A mismatch is a failed release, not a reason to insert
+policies or role links manually.
 
 ## Rollback
 
@@ -262,6 +304,12 @@ in the surrounding shell, then reach a clear access-restricted page for a
 denied workspace. This is a navigation limitation, not an authorization bypass.
 A broad Dashboard patch is deliberately avoided; revisit this when the public
 Admin extension contract supports permission-aware navigation.
+
+The pinned Dashboard also renders its native Product Import action without the
+custom `product_import` permission and first calls the intentionally disabled
+presigned-upload route. Backend enforcement remains authoritative. Approved
+tooling must use the validated managed-upload endpoint plus the plural
+prepare/confirm API until a permission-aware custom import UI is implemented.
 
 The Medusa bootstrap privacy patch is pinned to exactly 2.18.0. Every Medusa
 upgrade must re-audit the upstream migration and either drop or rebase the
