@@ -15,19 +15,10 @@ import { toast } from "sonner"
 
 import {
   addLineItem,
-  addShippingMethod,
-  calculateTaxes as calculateTaxesRequest,
-  clearCartSession,
-  completeCart as completeCartRequest,
   getCart,
-  initPaymentSessions,
-  listShippingOptions,
   removeLineItem,
-  setAddresses,
-  setEmail,
   updateLineItem,
 } from "@/lib/cart/client"
-import type { StoreCartAddressInput } from "@/lib/cart/types"
 
 export type StoreCart = HttpTypes.StoreCart | null
 
@@ -47,21 +38,6 @@ type CartContextValue = {
   addItem: (variantId: string, quantity?: number) => Promise<void>
   updateItem: (lineItemId: string, quantity: number) => Promise<StoreCart>
   removeItem: (lineItemId: string) => Promise<StoreCart>
-  setEmail: (email: string) => Promise<StoreCart | null>
-  setAddresses: (addresses: {
-    shipping_address: StoreCartAddressInput
-    billing_address?: StoreCartAddressInput
-  }) => Promise<StoreCart | null>
-  listShippingOptions: (
-    cartIdOverride?: string
-  ) => Promise<HttpTypes.StoreCartShippingOptionWithServiceZone[]>
-  addShippingMethod: (optionId: string) => Promise<StoreCart | null>
-  calculateTaxes: () => Promise<StoreCart | null>
-  initPaymentSessions: () => Promise<{
-    clientSecret: string | null
-    providerId: string | null
-  }>
-  completeCart: () => Promise<HttpTypes.StoreCompleteCartResponse | null>
 }
 
 type CartMutation =
@@ -315,161 +291,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     [cart, cartMutation]
   )
 
-  const updateEmail = useCallback(
-    async (email: string) => {
-      if (!cart?.id) {
-        return null
-      }
-
-      try {
-        const updatedCart = await setEmail(cart.id, email)
-        queryClient.setQueryData<StoreCart>(CART_QUERY_KEY, updatedCart)
-        setOperationError(null)
-        return updatedCart
-      } catch (error: unknown) {
-        const message = resolveErrorMessage(error, "Unable to update email.")
-        setOperationError(message)
-        toast.error(message)
-        return null
-      }
-    },
-    [cart, queryClient]
-  )
-
-  const updateAddresses = useCallback(
-    async (addresses: {
-      shipping_address: StoreCartAddressInput
-      billing_address?: StoreCartAddressInput
-    }) => {
-      if (!cart?.id) {
-        return null
-      }
-
-      try {
-        const updatedCart = await setAddresses(cart.id, addresses)
-        queryClient.setQueryData<StoreCart>(CART_QUERY_KEY, updatedCart)
-        setOperationError(null)
-        return updatedCart
-      } catch (error: unknown) {
-        const message = resolveErrorMessage(
-          error,
-          "Unable to update addresses."
-        )
-        setOperationError(message)
-        toast.error(message)
-        return null
-      }
-    },
-    [cart, queryClient]
-  )
-
-  const loadShippingOptions = useCallback(
-    async (cartIdOverride?: string) => {
-      const cartId = cartIdOverride ?? cart?.id
-      if (!cartId) {
-        return []
-      }
-
-      try {
-        return await listShippingOptions(cartId)
-      } catch (error: unknown) {
-        const message = resolveErrorMessage(
-          error,
-          "Unable to load shipping options."
-        )
-        setOperationError(message)
-        toast.error(message)
-        return []
-      }
-    },
-    [cart]
-  )
-
-  const applyShippingMethod = useCallback(
-    async (optionId: string) => {
-      if (!cart?.id) {
-        return null
-      }
-
-      try {
-        const updatedCart = await addShippingMethod(cart.id, optionId)
-        queryClient.setQueryData<StoreCart>(CART_QUERY_KEY, updatedCart)
-        setOperationError(null)
-        return updatedCart
-      } catch (error: unknown) {
-        const message = resolveErrorMessage(
-          error,
-          "Unable to add shipping method."
-        )
-        setOperationError(message)
-        toast.error(message)
-        return null
-      }
-    },
-    [cart, queryClient]
-  )
-
-  const applyTaxes = useCallback(async () => {
-    if (!cart?.id) {
-      return null
-    }
-
-    try {
-      const updatedCart = await calculateTaxesRequest(cart.id)
-      queryClient.setQueryData<StoreCart>(CART_QUERY_KEY, updatedCart)
-      setOperationError(null)
-      return updatedCart
-    } catch (error: unknown) {
-      const message = resolveErrorMessage(error, "Unable to calculate taxes.")
-      setOperationError(message)
-      toast.error(message)
-      return null
-    }
-  }, [cart, queryClient])
-
-  const initializePaymentSessions = useCallback(async () => {
-    if (!cart?.id) {
-      return { clientSecret: null, providerId: null }
-    }
-
-    try {
-      const session = await initPaymentSessions(cart.id)
-      return {
-        clientSecret: session.client_secret,
-        providerId: session.provider_id,
-      }
-    } catch (error: unknown) {
-      const message = resolveErrorMessage(
-        error,
-        "Unable to initialize payment session."
-      )
-      setOperationError(message)
-      toast.error(message)
-      return { clientSecret: null, providerId: null }
-    }
-  }, [cart])
-
-  const finishCart = useCallback(async () => {
-    if (!cart?.id) {
-      return null
-    }
-
-    try {
-      const response = await completeCartRequest(cart.id)
-      if (response.type === "order") {
-        await clearCartSession()
-        queryClient.setQueryData<StoreCart>(CART_QUERY_KEY, null)
-        announceMutation()
-      }
-      return response
-    } catch (error: unknown) {
-      const message = resolveErrorMessage(error, "Unable to complete cart.")
-      setOperationError(message)
-      toast.error(message)
-      return null
-    }
-  }, [announceMutation, cart, queryClient])
-
   const totals = useMemo(
     () => ({
       itemCount: deriveItemCount(cart),
@@ -508,30 +329,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       addItem,
       updateItem,
       removeItem,
-      setEmail: updateEmail,
-      setAddresses: updateAddresses,
-      listShippingOptions: loadShippingOptions,
-      addShippingMethod: applyShippingMethod,
-      calculateTaxes: applyTaxes,
-      initPaymentSessions: initializePaymentSessions,
-      completeCart: finishCart,
     }),
     [
       addItem,
-      applyShippingMethod,
-      applyTaxes,
       cart,
       cartMutation.isPending,
       cartQuery.isPending,
       error,
-      finishCart,
-      initializePaymentSessions,
-      loadShippingOptions,
       refreshCart,
       removeItem,
       totals,
-      updateAddresses,
-      updateEmail,
       updateItem,
     ]
   )

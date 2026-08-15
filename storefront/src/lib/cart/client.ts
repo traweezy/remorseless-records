@@ -1,7 +1,5 @@
 import type { HttpTypes } from "@medusajs/types"
 
-import type { StoreCartAddressInput } from "@/lib/cart/types"
-
 type StoreCart = HttpTypes.StoreCart
 
 type CartResponse = { cart: StoreCart | null }
@@ -11,13 +9,6 @@ type ErrorResponse = {
   detail?: string
   title?: string
   code?: string
-}
-
-type PaymentSessionResponse = {
-  payment_collection: HttpTypes.StorePaymentCollection
-  payment_session: HttpTypes.StorePaymentSession | null
-  client_secret: string | null
-  provider_id: string
 }
 
 const CART_REQUEST_TIMEOUT_MS = 10_000
@@ -210,100 +201,3 @@ export const removeLineItem = async (
   }
   return payload.cart
 }
-
-export const clearCartSession = async (): Promise<void> => {
-  await requestJson<CartResponse>("/api/cart", { method: "DELETE" })
-}
-
-const requireCart = (payload: CartResponse, operation: string): StoreCart => {
-  if (payload.cart) {
-    return payload.cart
-  }
-
-  throw new CartClientError(`Cart response missing after ${operation}.`, {
-    status: 502,
-    code: "cart_response_missing",
-  })
-}
-
-export const setEmail = async (
-  cartId: string,
-  email: string
-): Promise<StoreCart> => {
-  const payload = await requestJson<CartResponse>(`/api/cart/${cartId}/email`, {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  })
-
-  return requireCart(payload, "updating email")
-}
-
-export const setAddresses = async (
-  cartId: string,
-  addresses: {
-    shipping_address: StoreCartAddressInput
-    billing_address?: StoreCartAddressInput
-  }
-): Promise<StoreCart> => {
-  const payload = await requestJson<CartResponse>(
-    `/api/cart/${cartId}/addresses`,
-    {
-      method: "POST",
-      body: JSON.stringify(addresses),
-    }
-  )
-
-  return requireCart(payload, "updating addresses")
-}
-
-export const listShippingOptions = async (
-  cartId: string
-): Promise<HttpTypes.StoreCartShippingOptionWithServiceZone[]> => {
-  const payload = await requestJson<{
-    shipping_options: HttpTypes.StoreCartShippingOptionWithServiceZone[]
-  }>(`/api/cart/${cartId}/shipping-options`, { method: "GET" })
-
-  return payload.shipping_options
-}
-
-export const addShippingMethod = async (
-  cartId: string,
-  optionId: string
-): Promise<StoreCart> => {
-  const payload = await requestJson<CartResponse>(
-    `/api/cart/${cartId}/shipping-methods`,
-    {
-      method: "POST",
-      body: JSON.stringify({ option_id: optionId }),
-    }
-  )
-
-  return requireCart(payload, "adding a shipping method")
-}
-
-export const calculateTaxes = async (cartId: string): Promise<StoreCart> => {
-  const payload = await requestJson<CartResponse>(`/api/cart/${cartId}/taxes`, {
-    method: "POST",
-  })
-
-  return requireCart(payload, "calculating taxes")
-}
-
-export const initPaymentSessions = async (
-  cartId: string,
-  providerId?: string
-): Promise<PaymentSessionResponse> =>
-  requestJson<PaymentSessionResponse>(`/api/cart/${cartId}/payment-sessions`, {
-    method: "POST",
-    body: JSON.stringify(providerId ? { provider_id: providerId } : {}),
-  })
-
-export const completeCart = async (
-  cartId: string
-): Promise<HttpTypes.StoreCompleteCartResponse> =>
-  requestJson<HttpTypes.StoreCompleteCartResponse>(
-    `/api/cart/${cartId}/complete`,
-    {
-      method: "POST",
-    }
-  )

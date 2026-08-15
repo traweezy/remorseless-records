@@ -12,16 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const cartClientMocks = vi.hoisted(() => ({
   addLineItem: vi.fn(),
-  addShippingMethod: vi.fn(),
-  calculateTaxes: vi.fn(),
-  clearCartSession: vi.fn(),
-  completeCart: vi.fn(),
   getCart: vi.fn(),
-  initPaymentSessions: vi.fn(),
-  listShippingOptions: vi.fn(),
   removeLineItem: vi.fn(),
-  setAddresses: vi.fn(),
-  setEmail: vi.fn(),
   updateLineItem: vi.fn(),
 }))
 
