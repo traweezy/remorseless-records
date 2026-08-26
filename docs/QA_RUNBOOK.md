@@ -16,6 +16,9 @@ This document outlines repeatable steps for validating Remorseless Records befor
 > for pa11y, `QA_CHROME_EXECUTABLE_PATH` for the mobile audit, and
 > `CHROME_PATH` for Lighthouse to a sandbox-capable Chrome binary.
 > Do not disable the browser sandbox to make a host pass.
+> Puppeteer install scripts and bundled-browser downloads are explicitly
+> blocked in every workspace. Keep using a reviewed external Chrome binary;
+> do not re-enable Puppeteer builds to repair a missing local browser.
 
 ### 1.1 Keyboard / Screen-reader
 
@@ -108,6 +111,9 @@ pnpm run typecheck
 
 # Backend type safety (ensures transformers stay in sync)
 pnpm --filter backend exec tsc --noEmit
+
+# Patched archive extraction and blocked browser-download install scripts
+pnpm run qa:extract-zip-security
 ```
 
 ---

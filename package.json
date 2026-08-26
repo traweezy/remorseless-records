@@ -9,6 +9,7 @@
   },
   "scripts": {
     "qa:lint": "pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
+    "qa:extract-zip-security": "node scripts/verify-extract-zip-security.mjs",
     "qa:react-router-security": "node scripts/verify-react-router-security.mjs",
     "qa:storefront:coverage": "pnpm --filter remorseless-records-storefront run test:coverage",
     "data:build-import": "go run ./scripts/generate_remorseless_import.go",
@@ -23,6 +24,7 @@
     "@axe-core/puppeteer": "4.12.1",
     "@lhci/cli": "0.15.1",
     "esbuild": "^0.28.1",
+    "extract-zip": "2.0.1",
     "lefthook": "^2.1.10",
     "pa11y": "^9.1.1",
     "puppeteer": "25.3.0"

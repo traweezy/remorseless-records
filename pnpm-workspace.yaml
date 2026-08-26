@@ -14,7 +14,7 @@ allowBuilds:
   lefthook: true
   msgpackr-extract: true
   protobufjs: true
-  puppeteer: true
+  puppeteer: false
   sharp: true
   unrs-resolver: true
 
@@ -128,6 +128,7 @@ patchedDependencies:
   "@medusajs/medusa@2.18.0": patches/@medusajs__medusa@2.18.0.patch
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
+  "extract-zip@2.0.1": patches/extract-zip@2.0.1.patch
   react-router-dom@6.30.4: patches/react-router-dom@6.30.4.patch
 
 minimumReleaseAgeExclude:

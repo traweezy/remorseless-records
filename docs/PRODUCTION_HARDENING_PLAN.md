@@ -236,6 +236,53 @@ connection or transaction occurred. This slice contains no policy definition,
 migration, or database change, and the live effective-permission contract is
 unchanged.
 
+## Active slice: browser-tooling archive extraction containment
+
+- [x] Trace `extract-zip@2.0.1` to the latest Pa11y and Lighthouse CI releases
+      through their Puppeteer 24 browser-manager dependency.
+- [x] Confirm the reviewed GitHub advisory lists no patched `extract-zip`
+      release and reproduce creation of an escaping `../../outside.txt`
+      archive symlink in an isolated temporary directory.
+- [x] Pin and patch the single resolved `extract-zip` instance so a symlink
+      target is resolved relative to its destination and rejected before
+      creation when it escapes the canonical extraction root.
+- [x] Explicitly deny Puppeteer install scripts in the root, Backend, and
+      Storefront pnpm build-policy manifests. Every CI browser job already
+      resolves an external Chrome executable and does not require a downloaded
+      Puppeteer browser.
+- [x] Add a behavioral security verifier proving the malicious archive is
+      rejected, no escaping link is created, a safe in-root link remains
+      readable, and all three build-policy manifests remain fail-closed.
+- [x] Run the verifier from Root CI after the frozen pnpm install.
+- [x] Pass the complete frozen-install, browser QA, quality, build, dependency,
+      secret, and vulnerability gates.
+- [ ] Commit and push the atomic mitigation, then watch all GitHub workflows
+      and both Railway staging deployments to `SUCCESS` on the exact SHA.
+
+Discovery: `pa11y@9.1.1` and `@lhci/cli@0.15.1` are the current upstream
+releases, while Lighthouse 13.3.0 still depends on Puppeteer Core 24.43. The
+advisory therefore cannot currently be removed through a supported version
+upgrade. Pnpm's explicit `allowBuilds` denial prevents both installed Puppeteer
+versions from running their browser-download scripts. The local patch closes
+the vulnerable extraction behavior for all consumers while preserving safe
+symlinks and existing external-Chrome QA. GitHub's version-based Dependabot
+alert may remain open because it cannot interpret a pnpm package patch; do not
+dismiss it until an upstream fixed version or a reviewed dependency
+replacement removes `extract-zip@2.0.1` from the lockfile.
+
+Local validation passed with a zero-download frozen offline install, the
+malicious/safe archive regression verifier, cross-app ESLint and strict
+typecheck, 159 Backend suites with 854 tests, and 102 Storefront suites with
+538 tests. Storefront coverage remained 93.5% statements, 85.71% branches,
+94.41% functions, and 93.47% lines. Both production builds passed; the Admin
+bundle remained inside its raw and gzip budgets. The production dependency
+audit reported only the three documented ignored moderates, while Trivy found
+no high/critical production dependency, misconfiguration, or secret findings.
+Pa11y, Pixel 7/compact-phone mobile Chrome audits, and Lighthouse assertions
+passed on `/about`, `/accessibility`, `/cookies`, and `/terms` using the
+reviewed external Chrome binary. GitHub and Railway evidence remains pending
+until the implementation commit is pushed and accepted.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -371,9 +418,12 @@ unchanged.
       remediation SLA.
 - [ ] Resolve or evidence-dismiss every open CodeQL alert, including the
       stranded legacy search-analysis category.
-- [ ] Mitigate `GHSA-jmr9-qjv8-65gv` in `extract-zip` by preventing unnecessary
-      browser downloads and upgrading, replacing, or patching the
-      Lighthouse/Pa11y parent chain.
+- [x] Mitigate `GHSA-jmr9-qjv8-65gv` in `extract-zip` with fail-closed symlink
+      containment, a malicious-archive regression gate, and explicit denial of
+      Puppeteer browser-download install scripts.
+- [ ] Remove the local `extract-zip` patch and the vulnerable package version
+      when Pa11y/Lighthouse ship a reviewed fixed chain or can be replaced
+      without losing accessibility and performance coverage.
 - [ ] Make Storefront build, Playwright, accessibility, and Lighthouse jobs
       required on relevant pull requests and scheduled runs.
 - [ ] Run Chromium, Firefox, and WebKit for critical home, catalog, product,
@@ -408,8 +458,9 @@ introduced by `@puppeteer/browsers` through Pa11y and Lighthouse, not by a
 runtime dependency, and GitHub currently lists no patched `extract-zip`
 version. Production-only pnpm audit and the Trivy source scan remain clean of
 high/critical findings; that does not close or dismiss the development-tooling
-alert. The mitigation item above remains open until downloads are contained
-and the parent chain can be upgraded, replaced, or safely patched.
+alert. The checked mitigation contains the current behavior; the separate
+removal item remains open until the parent chain can be upgraded or replaced
+so the vulnerable package version leaves the lockfile.
 
 ## Observability and operations
 
