@@ -400,8 +400,32 @@ register no Catalog query keys. Cross-app lint and strict typecheck, Backend
 ESLint, 159 Backend suites/854 tests, 102 Storefront suites/538 tests and
 coverage, both production builds, the Admin bundle budget, the production
 dependency audit, the React Router backport verifier, and a Trivy source scan
-all pass. Rendered-screen validation and exact-SHA staging acceptance remain
-pending for this slice.
+all pass.
+
+Exact-commit staging acceptance passed for
+`6ed952ffd03bb3879a626ef3e607039320742078`:
+
+- Root CI `32962293546`, Backend CI `32962293571`, and Storefront CI
+  `32962293567` completed successfully.
+- Railway Backend `13a45a21-a3af-472c-9c13-30ddc269d385` and Storefront
+  `e8785c9a-7a7a-43b1-a3b0-97574fed1e37` reached `SUCCESS` on the exact source
+  SHA.
+- Backend and Storefront `/live` and `/ready`, plus the Storefront root,
+  returned 200. Authentication, feature flags, and effective permissions also
+  returned 200; RBAC remained enabled with 259 unique concrete permissions and
+  all 27 custom keys.
+- Exact-deployment runtime logs contained no application warning, error,
+  exception, failed operation, or stack. The only build-log matches were the
+  previously tracked Railpack Corepack bootstrap and npm wrapper warnings; the
+  repository and release commands remained pnpm-only.
+- A headed Chromium browser rendered the exact staging Catalog Merchandising
+  workspace at 1440 x 900 with complete navigation and actions, readable
+  controls, a stable two-column layout, and no visible clipping or page-width
+  overflow. Flameshot could not capture the Wayland/Xwayland session, so the
+  headed browser's direct screenshot was inspected as the documented fallback.
+- No staging role, user, link, policy, or catalog record was created or
+  changed. Denied-role mounting and query suppression remain covered by the
+  source-derived component matrix.
 
 ## Rollback
 

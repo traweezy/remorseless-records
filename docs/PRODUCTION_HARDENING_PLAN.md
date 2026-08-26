@@ -24,10 +24,10 @@ tracks what is still required before production traffic is approved.
 ## Verified baseline
 
 - Git branch: `main`; the repository has no `master` branch.
-- Deployed application source: `8b5553e539f772f511b28b0628100a1a7f52e61a`.
+- Deployed application source: `6ed952ffd03bb3879a626ef3e607039320742078`.
 - Railway project: `store`; only the `staging` environment exists.
-- Backend deployment: `937eac40-59b8-4d9e-bde7-6aed7d07e32b` (`SUCCESS`).
-- Storefront deployment: `adb754a4-68b1-4845-a2f3-924142a87214`
+- Backend deployment: `13a45a21-a3af-472c-9c13-30ddc269d385` (`SUCCESS`).
+- Storefront deployment: `e8785c9a-7a7a-43b1-a3b0-97574fed1e37`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -162,7 +162,7 @@ wrapper warnings about production configuration and forced installation. The
 accepted file manifests remain pnpm-only; removing or classifying this platform
 log noise remains an observability follow-up.
 
-## Active slice: Catalog Admin fail-closed UI authorization
+## Completed slice: Catalog Admin fail-closed UI authorization
 
 - [x] Inventory the data dependencies and mount points for Catalog product
       creation, product editing, merchandising, Product summary, and Variant
@@ -183,8 +183,12 @@ log noise remains an observability follow-up.
 - [x] Pass the complete repository lint, strict typecheck, tests, coverage,
       production builds, bundle budget, dependency, router-security, and local
       filesystem vulnerability/secret gates.
-- [ ] Inspect the exact deployed Admin states with a real desktop screenshot.
-- [ ] Push the atomic slice, watch every GitHub workflow and both Railway
+- [x] Inspect the exact deployed Admin workspace in a headed Chromium browser
+      at 1440 x 900 and review the captured rendered image for clipping,
+      overflow, hierarchy, and control legibility. Flameshot could not capture
+      the active Wayland/Xwayland session, so the headed browser's direct
+      screenshot was used as the documented fallback.
+- [x] Push the atomic slice, watch every GitHub workflow and both Railway
       staging deployments to `SUCCESS`, then complete staging acceptance.
 
 Discovery: Dashboard 2.18 treats custom-route `handle.permissions` as metadata
@@ -203,6 +207,34 @@ total. The production audit reports only the three accepted ignored moderate
 findings and no high/critical finding, the React Router 6.30.4 backport verifier
 passes, and Trivy reports zero high/critical dependency, secret, or
 misconfiguration findings in the source scan.
+
+Release evidence: Root CI `32962293546`, Backend CI `32962293571`, and
+Storefront CI `32962293567` passed for
+`6ed952ffd03bb3879a626ef3e607039320742078`. Railway Backend
+`13a45a21-a3af-472c-9c13-30ddc269d385` and Storefront
+`e8785c9a-7a7a-43b1-a3b0-97574fed1e37` reached `SUCCESS` on that exact SHA.
+Backend and Storefront `/live` and `/ready`, plus the Storefront root, returned
+200. Fresh administrator authentication, feature flags, and effective
+permissions returned 200; RBAC remained enabled with 259 unique concrete
+permissions and all 27 custom keys. Exact-deployment runtime logs contained no
+application warning, error, exception, failed operation, or stack. Build-log
+matches were limited to the already tracked Railpack Corepack bootstrap and
+npm wrapper warnings while the actual install, build, and start commands
+remained pnpm-only.
+
+The exact staging Catalog Merchandising workspace rendered correctly in a
+headed Chromium browser at 1440 x 900 with complete navigation and actions, a
+stable two-column layout, readable controls, and no visible clipping or page-
+width overflow. The reviewed capture is
+`/tmp/catalog-admin-merchandising-6ed952f.png`; temporary acceptance images are
+not repository artifacts. Denied-role UI behavior remains proven by the
+source-derived no-query component matrix without creating or changing a
+staging role, user, link, policy, or catalog record. A repeat read-only policy
+count was attempted but could not connect because the CLI supplied only
+`postgres.railway.internal`, which is not resolvable from the local runner; no
+connection or transaction occurred. This slice contains no policy definition,
+migration, or database change, and the live effective-permission contract is
+unchanged.
 
 ## Remaining authorization work
 
@@ -368,6 +400,16 @@ misconfiguration findings in the source scan.
       security exceptions.
 - [ ] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
       Stripe, AWS SDK, and other outdated dependency families.
+
+Discovery: GitHub Dependabot alert `27` classifies
+`GHSA-jmr9-qjv8-65gv` / `CVE-2026-56876` as a high-severity development-only
+`extract-zip@2.0.1` symlink path-traversal risk in the root lockfile. It is
+introduced by `@puppeteer/browsers` through Pa11y and Lighthouse, not by a
+runtime dependency, and GitHub currently lists no patched `extract-zip`
+version. Production-only pnpm audit and the Trivy source scan remain clean of
+high/critical findings; that does not close or dismiss the development-tooling
+alert. The mitigation item above remains open until downloads are contained
+and the parent chain can be upgraded, replaced, or safely patched.
 
 ## Observability and operations
 
