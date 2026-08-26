@@ -12,6 +12,7 @@ import {
   type ChangeEvent,
   type MouseEvent,
   type MutableRefObject,
+  type ReactElement,
 } from "react"
 import { HistoryExtension } from "@lexical/history"
 import {
@@ -53,7 +54,7 @@ import { Button, Input, Label, Text } from "@medusajs/ui"
 
 const EXTERNAL_SYNC_TAG = "remorseless-external-html"
 
-const ToolbarFirstEditorChildren = memo<EditorChildrenComponentProps>(
+const ToolbarFirstEditorChildrenView = memo<EditorChildrenComponentProps>(
   ({ children, contentEditable }) => (
     <>
       {children}
@@ -62,7 +63,13 @@ const ToolbarFirstEditorChildren = memo<EditorChildrenComponentProps>(
   ),
 )
 
-ToolbarFirstEditorChildren.displayName = "ToolbarFirstEditorChildren"
+ToolbarFirstEditorChildrenView.displayName = "ToolbarFirstEditorChildrenView"
+
+// Lexical requires a callable returning JSX.Element | null, while React 18's
+// memo exotic component is typed as returning the broader ReactNode union.
+const ToolbarFirstEditorChildren = (
+  props: EditorChildrenComponentProps
+): ReactElement => <ToolbarFirstEditorChildrenView {...props} />
 
 const editorExtension = defineExtension({
   dependencies: [
