@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom"
 import {
   adminPermissionKey,
   contentAdminActions,
+  nativeAdminActions,
 } from "../../../lib/admin-permissions"
 import {
   adminFeatureFlagsQueryKey,
@@ -56,6 +57,35 @@ describe("Content Admin route", () => {
 
     expect(markup).toContain(">News</h2>")
     expect(markup).not.toContain(">Discography</h2>")
+    expect(markup).toContain("1 workspace")
+  })
+
+  it("does not advertise Discography without the complete read capability", () => {
+    const markup = renderContentPage({
+      permissions: [
+        adminPermissionKey(contentAdminActions.discography.read),
+      ],
+      rbac: true,
+    })
+
+    expect(markup).not.toContain(">Discography</h2>")
+    expect(markup).not.toContain('href="/content/discography"')
+    expect(markup).toContain("Access restricted")
+    expect(markup).toContain("No protected content was loaded")
+  })
+
+  it("advertises Discography when both required reads are granted", () => {
+    const markup = renderContentPage({
+      permissions: [
+        adminPermissionKey(contentAdminActions.discography.read),
+        adminPermissionKey(nativeAdminActions.product.read),
+      ],
+      rbac: true,
+    })
+
+    expect(markup).not.toContain(">News</h2>")
+    expect(markup).toContain(">Discography</h2>")
+    expect(markup).toContain('href="/content/discography"')
     expect(markup).toContain("1 workspace")
   })
 })

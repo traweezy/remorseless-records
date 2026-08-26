@@ -68,6 +68,47 @@ tax evidence. See
 [`../../../docs/REFUND_OPERATIONS.md`](../../../docs/REFUND_OPERATIONS.md) for
 the authority boundary, statuses, edge cases, and incident runbook.
 
+## Admin authorization boundaries
+
+The backend's typed authorization manifest inventories all 64 active custom
+Admin methods exactly once: 41 under `/admin/catalog/**` and 23 elsewhere.
+Generated policy middleware uses exact, anchored, case-insensitive route
+matchers with an
+optional trailing slash. Multiple custom and native actions on one entry are
+conjunctive; possessing only one action never authorizes the handler. Rate
+limits, body and multipart parsers, and other operational middleware remain a
+separate concern.
+
+Catalog access is split into three task-oriented resources:
+
+- `catalog_authoring` read/create/update/delete for product profiles, bundles,
+  managed media, and composite Product authoring;
+- `catalog_taxonomy` read/create/update/delete for artists and controlled
+  reference values; and
+- `catalog_merchandising` read/create/update for shelves. Archive is the
+  recoverable update operation; no merchandising delete grant exists.
+
+Handlers that cross into Medusa's Product, Product Variant, Price, Inventory
+Item, Inventory Level, or File authorities also require the exact native
+actions they use. Discography list and detail GETs likewise require both
+`discography:read` and native `product:read` because their response contract
+always includes Product enrichment.
+
+The old `/admin/custom` scaffold and the disabled physical media-asset DELETE
+method were removed instead of retaining dead authenticated surface. The 11
+catalog definitions bring the code-registered custom-policy total to 27. The
+catalog release has not yet completed staging acceptance: expected acceptance
+is 260 active policies, one wildcard, and 259 concrete Super Admin permissions,
+with role and user links unchanged.
+
+Route `handle.permissions` is metadata only: Dashboard 2.18 does not wrap
+custom routes with its built-in permission guard. It therefore does not stop a
+route component or widget from mounting and fetching. Catalog pages, the
+Product summary widget, and the Variant widget still need explicit fail-closed
+component boundaries before restricted-role UI behavior is complete. Do not
+describe metadata-only declarations as authorization; the backend remains
+authoritative.
+
 ## Product import authorization
 
 Product import is a two-capability workflow. Preparing a CSV-backed plan needs

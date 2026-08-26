@@ -1,6 +1,9 @@
 import {
   adminPermissionKey,
   adminPolicyOperations,
+  catalogAdminActions,
+  catalogAdminPolicyDefinitions,
+  catalogAdminResources,
   contentAdminActions,
   contentAdminPolicyDefinitions,
   contentAdminResources,
@@ -13,6 +16,67 @@ import {
   productImportAdminPolicyDefinitions,
   productImportAdminResources,
 } from "./admin-permissions";
+
+describe("catalog Admin permission contract", () => {
+  it("defines the eleven reviewed capabilities exactly once", () => {
+    expect(catalogAdminPolicyDefinitions).toHaveLength(11);
+
+    const keys = catalogAdminPolicyDefinitions.map(adminPermissionKey);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(
+      new Set(catalogAdminPolicyDefinitions.map(({ name }) => name)).size,
+    ).toBe(catalogAdminPolicyDefinitions.length);
+    expect(new Set(keys)).toEqual(
+      new Set([
+        "catalog_authoring:read",
+        "catalog_authoring:create",
+        "catalog_authoring:update",
+        "catalog_authoring:delete",
+        "catalog_taxonomy:read",
+        "catalog_taxonomy:create",
+        "catalog_taxonomy:update",
+        "catalog_taxonomy:delete",
+        "catalog_merchandising:read",
+        "catalog_merchandising:create",
+        "catalog_merchandising:update",
+      ]),
+    );
+  });
+
+  it("keeps authoring, taxonomy, and merchandising capabilities distinct", () => {
+    expect(catalogAdminResources).toEqual({
+      authoring: "catalog_authoring",
+      merchandising: "catalog_merchandising",
+      taxonomy: "catalog_taxonomy",
+    });
+    expect(adminPermissionKey(catalogAdminActions.authoring.update)).toBe(
+      "catalog_authoring:update",
+    );
+    expect(adminPermissionKey(catalogAdminActions.taxonomy.create)).toBe(
+      "catalog_taxonomy:create",
+    );
+    expect(adminPermissionKey(catalogAdminActions.merchandising.update)).toBe(
+      "catalog_merchandising:update",
+    );
+    expect(catalogAdminActions.merchandising).not.toHaveProperty("delete");
+  });
+
+  it("keeps every custom definition key and name globally unique", () => {
+    const definitions = [
+      ...catalogAdminPolicyDefinitions,
+      ...contentAdminPolicyDefinitions,
+      ...operationsAdminPolicyDefinitions,
+      ...productImportAdminPolicyDefinitions,
+    ];
+    expect(definitions).toHaveLength(27);
+    expect(new Set(definitions.map(adminPermissionKey)).size).toBe(
+      definitions.length,
+    );
+    expect(new Set(definitions.map(({ name }) => name)).size).toBe(
+      definitions.length,
+    );
+  });
+});
 
 describe("content Admin permission contract", () => {
   it("defines each CRUD operation once for each content resource", () => {

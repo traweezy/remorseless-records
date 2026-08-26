@@ -110,10 +110,11 @@ Stale versions, linked assets, and conflicting idempotency-key reuse fail
 closed. The Admin validates every response, times out stalled requests, and
 does not preview arbitrary external URLs in the operator's browser.
 
-`DELETE /admin/catalog/media/assets/:id` no longer removes only the database
-row. Physical object deletion and automatic purge are disabled. The review date
-is not a deletion schedule; adding a File Module purge remains separately gated
-on an operator-approved, fully reconciled workflow.
+There is no `DELETE /admin/catalog/media/assets/:id` method. Physical object
+deletion and automatic purge are disabled rather than leaving a dead endpoint
+available. The review date is not a deletion schedule; adding a File Module
+purge remains separately gated on an operator-approved, fully reconciled
+workflow.
 
 ```mermaid
 stateDiagram-v2
@@ -128,6 +129,46 @@ Workflow callers under `src/api` use relative imports so production code
 resolves the workflow already loaded from `.medusa/server`. ESLint rejects
 `@/workflows/**` imports, which would otherwise allow a second source-tree Core
 Flows graph to register during packaged startup.
+
+## Admin authorization manifest
+
+`src/lib/admin-authorization-manifest.ts` is the typed authorization inventory
+for all 64 active custom Admin methods: 41 under `/admin/catalog/**` and 23
+elsewhere. Inventory tests compare route exports to the manifest and fail on a
+missing, duplicate, or stale entry. The removed
+`/admin/custom` scaffold and the disabled physical media-asset DELETE export do
+not remain as unnecessary authenticated route surface.
+
+Each manifest entry declares one or more custom or native Medusa actions. The
+generated middleware arrays are conjunctive: every declared action must be
+granted. Route templates compile to exact, anchored, case-insensitive matchers
+with one non-empty segment per parameter and the router's optional trailing
+slash. The manifest generates policy middleware only; rate limits, request
+parsers, multipart handling, and terminal compatibility responses remain
+separate operational middleware in `src/api/middlewares.ts`.
+
+The catalog capability set is:
+
+- `catalog_authoring` read/create/update/delete for profiles, bundles, managed
+  media, and composite Product authoring;
+- `catalog_taxonomy` read/create/update/delete for artists and controlled
+  reference values; and
+- `catalog_merchandising` read/create/update for shelves. Archive is an update
+  because it preserves the shelf and its membership for restoration.
+
+Native Product, Product Variant, Price, Inventory Item, Inventory Level, and
+File actions are added to the custom action when a handler reads or mutates
+those authorities. These 11 catalog definitions bring the code-registered
+custom total to 27. The last accepted staging state remains 249 active
+policies, one wildcard, and 248 concrete Super Admin permissions. Acceptance
+for this catalog release must verify the expected 260 active policies, one
+wildcard, and 259 concrete Super Admin permissions with unchanged role and
+user-link counts; that acceptance is not yet deployment evidence.
+
+Dashboard `handle.permissions` is route metadata, not a fail-closed component
+boundary. Catalog routes and widgets still require explicit permission-aware
+render boundaries before restricted-role UI behavior is complete. The backend
+manifest is authoritative regardless of what the Dashboard renders.
 
 ## Checkout payment authority
 
@@ -426,6 +467,11 @@ records, and can archive or restore either source. Hard deletion is disabled.
 Each mutation requires an expected version and UUID idempotency key, runs in a
 serializable transaction, and records the actor, command hash, and result in
 `discography_operations`.
+
+Both Discography list and detail GET methods require `discography:read` and
+native `product:read`. Their handlers always return Product enrichment, so the
+native grant is a response prerequisite rather than a conditional link-only
+capability.
 
 The reconciliation command validates the complete Product projection before a
 serializable write. It updates existing linked rows, creates missing rows,

@@ -37,6 +37,7 @@ import {
 } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { ContentWorkspaceNavigation } from "../../features/content/content-navigation"
+import { discographyReadActions } from "../../features/content/content-permissions"
 import {
   replaceLegacyContentLocation,
   type ReplaceContentLocation,
@@ -715,7 +716,7 @@ DiscographyAdminPageContent.displayName = "DiscographyAdminPageContent"
 
 export const DiscographyAdminPage = memo(() => (
   <AdminPermissionBoundary
-    actions={contentAdminActions.discography.read}
+    actions={discographyReadActions}
     workspace="Discography"
   >
     <DiscographyAdminPageContent />

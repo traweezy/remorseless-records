@@ -23,6 +23,12 @@ export const productImportAdminResources = {
   productImport: "product_import",
 } as const;
 
+export const catalogAdminResources = {
+  authoring: "catalog_authoring",
+  merchandising: "catalog_merchandising",
+  taxonomy: "catalog_taxonomy",
+} as const;
+
 export type AdminPolicyAction = {
   operation: string;
   resource: string;
@@ -35,7 +41,9 @@ export const adminPermissionKey = ({
   resource,
 }: AdminPolicyAction): AdminPermissionKey => `${resource}:${operation}`;
 
-const createResourceActions = (resource: string) => ({
+const createResourceActions = <const TResource extends string>(
+  resource: TResource,
+) => ({
   create: {
     operation: adminPolicyOperations.create,
     resource,
@@ -107,11 +115,58 @@ export const productImportAdminActions = {
   },
 } as const;
 
+export const catalogAdminActions = {
+  authoring: createResourceActions(catalogAdminResources.authoring),
+  merchandising: {
+    create: {
+      operation: adminPolicyOperations.create,
+      resource: catalogAdminResources.merchandising,
+    },
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: catalogAdminResources.merchandising,
+    },
+    update: {
+      operation: adminPolicyOperations.update,
+      resource: catalogAdminResources.merchandising,
+    },
+  },
+  taxonomy: createResourceActions(catalogAdminResources.taxonomy),
+} as const;
+
 export const nativeAdminActions = {
   file: {
     create: {
       operation: adminPolicyOperations.create,
       resource: "file",
+    },
+  },
+  inventoryItem: {
+    create: {
+      operation: adminPolicyOperations.create,
+      resource: "inventory_item",
+    },
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "inventory_item",
+    },
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: "inventory_item",
+    },
+    update: {
+      operation: adminPolicyOperations.update,
+      resource: "inventory_item",
+    },
+  },
+  inventoryLevel: {
+    create: {
+      operation: adminPolicyOperations.create,
+      resource: "inventory_level",
+    },
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: "inventory_level",
     },
   },
   order: {
@@ -121,9 +176,29 @@ export const nativeAdminActions = {
     },
   },
   product: {
+    create: {
+      operation: adminPolicyOperations.create,
+      resource: "product",
+    },
     read: {
       operation: adminPolicyOperations.read,
       resource: "product",
+    },
+  },
+  productVariant: {
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: "product_variant",
+    },
+  },
+  price: {
+    create: {
+      operation: adminPolicyOperations.create,
+      resource: "price",
+    },
+    read: {
+      operation: adminPolicyOperations.read,
+      resource: "price",
     },
   },
   refundReason: {
@@ -228,6 +303,89 @@ export const productImportAdminPolicyDefinitions: PolicyDefinition[] = [
     operation: adminPolicyOperations.update,
     resource: productImportAdminResources.productImport,
   },
+];
+
+const createCatalogPolicyDefinition = ({
+  description,
+  name,
+  operation,
+  resource,
+}: Required<
+  Pick<PolicyDefinition, "description" | "name" | "operation" | "resource">
+>): PolicyDefinition => ({
+  description,
+  name,
+  operation,
+  resource,
+});
+
+export const catalogAdminPolicyDefinitions: PolicyDefinition[] = [
+  createCatalogPolicyDefinition({
+    description: "View catalog authoring profiles, bundles, and media",
+    name: "ReadCatalogAuthoring",
+    operation: adminPolicyOperations.read,
+    resource: catalogAdminResources.authoring,
+  }),
+  createCatalogPolicyDefinition({
+    description: "Create catalog authoring profiles, bundles, and media",
+    name: "CreateCatalogAuthoring",
+    operation: adminPolicyOperations.create,
+    resource: catalogAdminResources.authoring,
+  }),
+  createCatalogPolicyDefinition({
+    description: "Update catalog authoring profiles, bundles, and media",
+    name: "UpdateCatalogAuthoring",
+    operation: adminPolicyOperations.update,
+    resource: catalogAdminResources.authoring,
+  }),
+  createCatalogPolicyDefinition({
+    description: "Delete catalog authoring profiles, bundles, and media",
+    name: "DeleteCatalogAuthoring",
+    operation: adminPolicyOperations.delete,
+    resource: catalogAdminResources.authoring,
+  }),
+  createCatalogPolicyDefinition({
+    description: "View catalog artists and reference values",
+    name: "ReadCatalogTaxonomy",
+    operation: adminPolicyOperations.read,
+    resource: catalogAdminResources.taxonomy,
+  }),
+  createCatalogPolicyDefinition({
+    description: "Create catalog artists and reference values",
+    name: "CreateCatalogTaxonomy",
+    operation: adminPolicyOperations.create,
+    resource: catalogAdminResources.taxonomy,
+  }),
+  createCatalogPolicyDefinition({
+    description: "Update catalog artists and reference values",
+    name: "UpdateCatalogTaxonomy",
+    operation: adminPolicyOperations.update,
+    resource: catalogAdminResources.taxonomy,
+  }),
+  createCatalogPolicyDefinition({
+    description: "Delete catalog artists and reference values",
+    name: "DeleteCatalogTaxonomy",
+    operation: adminPolicyOperations.delete,
+    resource: catalogAdminResources.taxonomy,
+  }),
+  createCatalogPolicyDefinition({
+    description: "View catalog shelves and product placement",
+    name: "ReadCatalogMerchandising",
+    operation: adminPolicyOperations.read,
+    resource: catalogAdminResources.merchandising,
+  }),
+  createCatalogPolicyDefinition({
+    description: "Create catalog shelves and product placement",
+    name: "CreateCatalogMerchandising",
+    operation: adminPolicyOperations.create,
+    resource: catalogAdminResources.merchandising,
+  }),
+  createCatalogPolicyDefinition({
+    description: "Update and archive catalog shelves and product placement",
+    name: "UpdateCatalogMerchandising",
+    operation: adminPolicyOperations.update,
+    resource: catalogAdminResources.merchandising,
+  }),
 ];
 
 export const contentReadPermissionKeys = [

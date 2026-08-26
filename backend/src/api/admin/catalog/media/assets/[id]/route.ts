@@ -30,14 +30,3 @@ export const GET = async (
 
   res.status(200).json({ asset: serializeCatalogMediaAsset(asset) })
 }
-
-export const DELETE = async (
-  req: MedusaRequest,
-  _res: MedusaResponse
-): Promise<void> => {
-  getAssetId(req)
-  throw new MedusaError(
-    MedusaError.Types.NOT_ALLOWED,
-    "Physical catalog media deletion is disabled. Quarantine the asset instead."
-  )
-}

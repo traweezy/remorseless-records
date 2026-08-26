@@ -37,6 +37,7 @@ import {
 } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { ContentWorkspaceNavigation } from "../../features/content/content-navigation"
+import { hasDiscographyReadAccess } from "../../features/content/content-permissions"
 import {
   replaceLegacyContentLocation,
   type ReplaceContentLocation,
@@ -163,8 +164,8 @@ const NewsAdminPageContent = memo(() => {
   const canCreate = permissions.hasPermission(contentAdminActions.news.create)
   const canUpdate = permissions.hasPermission(contentAdminActions.news.update)
   const canUploadCover = permissions.hasPermission(nativeAdminActions.file.create)
-  const canReadDiscography = permissions.hasPermission(
-    contentAdminActions.discography.read,
+  const canReadDiscography = hasDiscographyReadAccess(
+    permissions.hasPermission,
   )
   const [view, setView] = useState<ArchiveView>("active")
   const [pageIndex, setPageIndex] = useState(0)

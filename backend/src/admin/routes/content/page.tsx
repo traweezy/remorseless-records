@@ -20,6 +20,10 @@ import {
   AdminSingleColumnLayout,
 } from "../../components/admin-page"
 import { ContentWorkspaceNavigation } from "../../features/content/content-navigation"
+import {
+  discographyReadActions,
+  hasDiscographyReadAccess,
+} from "../../features/content/content-permissions"
 import { contentRoutePaths } from "../../features/content/content-routes"
 import { useAdminPermissions } from "../../lib/admin-permissions"
 
@@ -67,10 +71,21 @@ ContentWorkspaceCard.displayName = "ContentWorkspaceCard"
 const ContentPageContent = memo(() => {
   const permissions = useAdminPermissions()
   const canReadNews = permissions.hasPermission(contentAdminActions.news.read)
-  const canReadDiscography = permissions.hasPermission(
-    contentAdminActions.discography.read,
+  const canReadDiscography = hasDiscographyReadAccess(
+    permissions.hasPermission,
   )
   const workspaceCount = Number(canReadNews) + Number(canReadDiscography)
+
+  if (workspaceCount === 0) {
+    return (
+      <AdminPermissionBoundary
+        actions={discographyReadActions}
+        workspace="Content"
+      >
+        {null}
+      </AdminPermissionBoundary>
+    )
+  }
 
   return (
     <AdminSingleColumnLayout>

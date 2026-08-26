@@ -5,7 +5,6 @@ import type {
 
 import { serializeCatalogMediaAsset } from "@/modules/catalog/serializers"
 import { mutateCatalogMediaLifecycleWorkflow } from "../../../../../workflows/catalog/mutate-media-lifecycle"
-import { DELETE } from "./[id]/route"
 import { runMediaLifecycleRoute } from "./lifecycle-route"
 
 jest.mock("@/modules/catalog/serializers", () => {
@@ -128,14 +127,5 @@ describe("catalog media lifecycle routes", () => {
         "catalog.media.restore",
       ),
     ).rejects.toThrow("authenticated Admin actor")
-  })
-
-  it("disables the legacy database-only physical DELETE", async () => {
-    const req = requestFixture({})
-
-    await expect(
-      DELETE(req, responseFixture()),
-    ).rejects.toThrow("Physical catalog media deletion is disabled")
-    expect(req.scope.resolve).not.toHaveBeenCalled()
   })
 })

@@ -154,9 +154,10 @@ window without requiring a database read for every visitor.
 
 ## Admin Access Control: Plain-English Guide
 
-The codebase uses Medusa 2.18's native roles and permissions for the custom
-**Content**, **News**, **Discography**, **Tax control**, **Tax records**,
-**Refund operations**, and **Media cleanup** workspaces. This is not a second
+The codebase uses Medusa 2.18's native roles and permissions for every custom
+Admin API, including **Catalog authoring**, **Catalog taxonomy**, **Catalog
+merchandising**, **Content**, **News**, **Discography**, **Tax control**, **Tax
+records**, **Refund operations**, and **Media cleanup**. This is not a second
 login system. Medusa still authenticates the administrator; RBAC decides what
 that authenticated administrator may read or change.
 
@@ -164,10 +165,18 @@ The permission model is deliberately small:
 
 - News and Discography each have read, create, update, and delete permissions.
 - Archive and restore count as updates because they change a record's lifecycle.
-- Hard deletion remains unavailable, but its endpoint still requires delete
-  permission so a future implementation cannot inherit an unguarded route.
+- The hard-disabled Content delete endpoints remain permission-protected. The
+  unused physical catalog-media DELETE method is removed entirely.
 - News cover upload also requires Medusa's native `file:create` permission.
-- Discography links to native Products appear only with `product:read`.
+- Discography list and detail reads require both `discography:read` and native
+  `product:read` because those responses always include Product enrichment.
+- Catalog authoring has read, create, update, and delete capabilities for
+  product profiles, bundles, managed media, and the composite Product workflow.
+- Catalog taxonomy has read, create, update, and delete capabilities for
+  artists and controlled reference values.
+- Catalog merchandising has read, create, and update capabilities for shelves.
+  Shelf archive is an update because it is recoverable; no merchandising
+  hard-delete capability exists.
 - Tax control separates read access from provider switching and metered quota
   refreshes. Both writes require `tax_control:update`.
 - Tax records and Refund operations are deliberately read-only custom
@@ -181,11 +190,20 @@ The permission model is deliberately small:
   `product_import:create`; confirming requires Product read plus
   `product_import:update`.
 
-The backend is the authority. A direct request without the required role gets a
-403 before the route handler runs. The Admin performs the same check earlier so
-it does not fetch protected data or show buttons that would fail. If the role
-can read only one Content workspace, the overview and workspace navigation show
-only that one.
+The backend is the authority. A typed manifest covers all 64 active custom
+Admin methods exactly once: 41 under `/admin/catalog/**` and 23 elsewhere. It
+generates exact, case-insensitive policy matchers that accept the same optional
+trailing slash as the router. When a route declares multiple custom and native
+permissions, all of them are required before the handler runs. Rate limits,
+body parsers, upload handling, and the other operational middleware remain
+separate from this policy-only manifest.
+
+Existing permission-aware Content and operations component boundaries avoid
+protected fetches and dead-end controls. Dashboard route
+`handle.permissions` is metadata, not a security or render boundary. Catalog
+routes and widgets still need explicit fail-closed component boundaries before
+restricted-role UI behavior can be called complete; direct requests are
+already protected by the backend manifest.
 
 The pinned Dashboard's native Product Import drawer is the current UI exception:
 it does not understand the custom import permission and begins with the
@@ -198,8 +216,10 @@ implemented.
 flowchart TD
   Login[Administrator signs in] --> Roles[Medusa resolves assigned roles]
   Roles --> Permission[Effective permissions]
-  Permission --> UI[Admin shows only allowed workspaces and actions]
+  Permission --> UI[Permission-aware Admin component boundary]
+  Permission --> Catalog[Catalog metadata; component boundary pending]
   UI --> API[Request reaches Medusa]
+  Catalog --> API
   API --> Check{Required route policy granted?}
   Check -- Yes --> Handler[Run the operation]
   Check -- No --> Deny[Return 403 without running it]
@@ -233,9 +253,12 @@ distinct administrator links, and one bootstrap ledger row. The operations
 authorization release adds six code-registered policies; Medusa synchronizes
 them at application start and the existing wildcard Super Admin grant covers
 them without adding per-user links. Product-import authorization adds two more
-task-specific policies, bringing the current expected totals to 249 non-deleted
-policies and 248 concrete Super Admin permissions. Deployment acceptance
-verifies those totals instead of assuming synchronization succeeded.
+task-specific policies. Its accepted staging rollout verified 249 non-deleted
+policies, one wildcard, and 248 concrete Super Admin permissions. The catalog
+manifest adds 11 definitions, bringing the code-registered custom total to 27.
+Its release acceptance must verify 260 non-deleted policies, one wildcard, and
+259 concrete Super Admin permissions before that catalog slice is considered
+deployed; those figures are expectations, not completed rollout evidence.
 The secured pre-activation snapshot and exact deployment evidence are recorded
 in [ADR 0006](docs/adr/0006-native-admin-rbac.md).
 
@@ -246,9 +269,11 @@ old signed session can use it; backend authorization still rejects the old
 session, so reauthentication is both the UX and security boundary. Medusa's
 public Admin extension API cannot yet hide custom top-level or nested sidebar
 items by permission, so a restricted user may still see a denied custom
-workspace in that shell. Selecting it shows the clear restricted-access page.
-That does not expose data; the page does not start its query and the backend
-independently rejects direct requests.
+workspace in that shell. Permission-aware Content and operations routes show a
+restricted-access page without starting their protected query. Catalog
+`handle.permissions` metadata alone does not provide that boundary; explicit
+catalog route and widget guards remain a follow-up. The backend independently
+rejects every unauthorized direct request.
 
 A non-production rehearsal with RBAC disabled can report the bootstrap script
 as pending. Medusa checks the script's feature predicate before inserting its

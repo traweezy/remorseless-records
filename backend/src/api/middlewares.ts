@@ -8,9 +8,11 @@ import {
 import multer from "multer";
 
 import {
-  contentAdminActions,
+  adminAuthorizationPolicyRoutes,
+  adminAuthorizationPolicyRoutesForArea,
+} from "../lib/admin-authorization-manifest";
+import {
   nativeAdminActions,
-  operationsAdminActions,
   productImportAdminActions,
 } from "../lib/admin-permissions";
 import { STORE_CORS } from "../lib/constants";
@@ -251,81 +253,16 @@ export const rejectDeprecatedProductImport = (
   });
 };
 
-export const contentAdminPolicyRoutes = [
-  {
-    matcher: /^\/admin\/news$/,
-    methods: ["GET"],
-    policies: contentAdminActions.news.read,
-  },
-  {
-    matcher: /^\/admin\/news$/,
-    methods: ["POST"],
-    policies: contentAdminActions.news.create,
-  },
-  {
-    matcher: /^\/admin\/news\/[^/]+$/,
-    methods: ["GET"],
-    policies: contentAdminActions.news.read,
-  },
-  {
-    matcher: /^\/admin\/news\/[^/]+$/,
-    methods: ["PUT"],
-    policies: contentAdminActions.news.update,
-  },
-  {
-    matcher: /^\/admin\/news\/[^/]+$/,
-    methods: ["DELETE"],
-    policies: contentAdminActions.news.delete,
-  },
-  {
-    matcher: /^\/admin\/news\/[^/]+\/(archive|restore)$/,
-    methods: ["POST"],
-    policies: contentAdminActions.news.update,
-  },
-  {
-    matcher: /^\/admin\/discography$/,
-    methods: ["GET"],
-    policies: contentAdminActions.discography.read,
-  },
-  {
-    matcher: /^\/admin\/discography$/,
-    methods: ["POST"],
-    policies: contentAdminActions.discography.create,
-  },
-  {
-    matcher: /^\/admin\/discography\/[^/]+$/,
-    methods: ["GET"],
-    policies: contentAdminActions.discography.read,
-  },
-  {
-    matcher: /^\/admin\/discography\/[^/]+$/,
-    methods: ["PUT"],
-    policies: contentAdminActions.discography.update,
-  },
-  {
-    matcher: /^\/admin\/discography\/[^/]+$/,
-    methods: ["DELETE"],
-    policies: contentAdminActions.discography.delete,
-  },
-  {
-    matcher: /^\/admin\/discography\/[^/]+\/(archive|restore)$/,
-    methods: ["POST"],
-    policies: contentAdminActions.discography.update,
-  },
-] satisfies MiddlewareRoute[];
-
-export const operationsAdminPolicyRoutes = [
+export const operationsAdminMiddlewareRoutes = [
   {
     matcher: "/admin/tax-control",
     methods: ["GET"],
     middlewares: [adminTaxControlRateLimit],
-    policies: operationsAdminActions.taxControl.read,
   },
   {
     matcher: "/admin/tax-control/switch",
     methods: ["POST"],
     middlewares: [adminTaxControlRateLimit],
-    policies: operationsAdminActions.taxControl.update,
     bodyParser: {
       sizeLimit: "8kb",
     },
@@ -334,7 +271,6 @@ export const operationsAdminPolicyRoutes = [
     matcher: "/admin/tax-control/taxrate-io/refresh",
     methods: ["POST"],
     middlewares: [adminTaxControlRateLimit],
-    policies: operationsAdminActions.taxControl.update,
     bodyParser: {
       sizeLimit: "8kb",
     },
@@ -343,34 +279,35 @@ export const operationsAdminPolicyRoutes = [
     matcher: "/admin/tax-records",
     methods: ["GET"],
     middlewares: [adminTaxRecordsRateLimit],
-    policies: operationsAdminActions.taxRecords.read,
   },
   {
     matcher: "/admin/tax-records/export",
     methods: ["GET"],
     middlewares: [adminTaxRecordsRateLimit],
-    policies: operationsAdminActions.taxRecords.read,
   },
   {
     matcher: "/admin/refund-operations",
     methods: ["GET"],
     middlewares: [adminRefundOperationsRateLimit],
-    policies: operationsAdminActions.refundOperations.read,
   },
   {
     matcher: "/admin/catalog/media/orphans",
     methods: ["GET"],
     middlewares: [adminCatalogMediaReadRateLimit],
-    policies: operationsAdminActions.mediaCleanup.read,
   },
   {
     matcher:
-      /^\/admin\/catalog\/media\/assets\/[^/]+\/(quarantine|restore)$/,
+      /^\/admin\/catalog\/media\/assets\/[^/]+\/(quarantine|restore)\/?$/i,
     methods: ["POST"],
     middlewares: [adminCatalogMediaMutationRateLimit],
-    policies: operationsAdminActions.mediaCleanup.update,
   },
 ] satisfies MiddlewareRoute[];
+
+export const contentAdminPolicyRoutes =
+  adminAuthorizationPolicyRoutesForArea("content");
+
+export const operationsAdminPolicyRoutes =
+  adminAuthorizationPolicyRoutesForArea("operations");
 
 const productImportPreparePolicies = [
   nativeAdminActions.product.read,
@@ -383,17 +320,12 @@ const productImportConfirmPolicies = [
   productImportAdminActions.productImport.update,
 ];
 
-export const productImportAdminPolicyRoutes = [
+export const deprecatedProductImportAdminRoutes = [
   {
     matcher: /^\/admin\/products\/import\/?$/i,
     methods: ["POST"],
     bodyParser: false,
     middlewares: [rejectDeprecatedProductImport],
-    policies: productImportPreparePolicies,
-  },
-  {
-    matcher: /^\/admin\/products\/imports\/?$/i,
-    methods: ["POST"],
     policies: productImportPreparePolicies,
   },
   {
@@ -403,12 +335,12 @@ export const productImportAdminPolicyRoutes = [
     middlewares: [rejectDeprecatedProductImport],
     policies: productImportConfirmPolicies,
   },
-  {
-    matcher: /^\/admin\/products\/imports\/[^/]+\/confirm\/?$/i,
-    methods: ["POST"],
-    policies: productImportConfirmPolicies,
-  },
 ] satisfies MiddlewareRoute[];
+
+export const productImportAdminPolicyRoutes = [
+  ...adminAuthorizationPolicyRoutesForArea("product_import"),
+  ...deprecatedProductImportAdminRoutes,
+];
 
 export default defineMiddlewares({
   routes: [
@@ -454,11 +386,10 @@ export default defineMiddlewares({
       matcher: "/admin/managed-uploads",
       methods: ["POST"],
       middlewares: [managedUpload.array("files")],
-      policies: nativeAdminActions.file.create,
     },
-    ...contentAdminPolicyRoutes,
-    ...operationsAdminPolicyRoutes,
-    ...productImportAdminPolicyRoutes,
+    ...adminAuthorizationPolicyRoutes,
+    ...operationsAdminMiddlewareRoutes,
+    ...deprecatedProductImportAdminRoutes,
     {
       matcher: "/admin/catalog/media/uploads",
       methods: ["POST"],

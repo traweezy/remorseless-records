@@ -7,12 +7,17 @@ import type {
 } from "@medusajs/framework/http";
 
 import {
+  adminAuthorizationManifest,
+  adminAuthorizationPolicyRoutes,
+} from "../lib/admin-authorization-manifest";
+import {
   nativeAdminActions,
   operationsAdminActions,
   productImportAdminActions,
 } from "../lib/admin-permissions";
 import middlewares, {
   contentAdminPolicyRoutes,
+  operationsAdminMiddlewareRoutes,
   operationsAdminPolicyRoutes,
   productImportAdminPolicyRoutes,
   rejectDeprecatedProductImport,
@@ -41,7 +46,7 @@ const policyFor = (
   path: string,
 ) => {
   const matches = routes.filter((route) =>
-    routeMatches(route, method, path),
+    route.policies !== undefined && routeMatches(route, method, path),
   );
   expect(matches).toHaveLength(1);
   return matches[0]?.policies;
@@ -84,20 +89,19 @@ describe("content Admin RBAC middleware", () => {
       "update",
     ],
   ])("maps %s %s to %s:%s", (method, path, resource, operation) => {
-    expect(policyFor(contentAdminPolicyRoutes, method, path)).toEqual({
-      operation,
-      resource,
-    });
+    const expectedPolicies = [{ operation, resource }];
+    if (resource === "discography" && operation === "read") {
+      expectedPolicies.push(nativeAdminActions.product.read);
+    }
+    expect(policyFor(contentAdminPolicyRoutes, method, path)).toEqual(
+      expectedPolicies,
+    );
   });
 
   it("protects managed uploads with Medusa's native file permission", () => {
-    const uploadRoute = (middlewares.routes ?? []).find(
-      (route) =>
-        route.matcher === "/admin/managed-uploads" &&
-        route.methods?.includes("POST"),
-    );
-
-    expect(uploadRoute?.policies).toEqual(nativeAdminActions.file.create);
+    expect(
+      policyFor(middlewares.routes ?? [], "POST", "/admin/managed-uploads"),
+    ).toEqual([nativeAdminActions.file.create]);
   });
 
   it("does not match nested or malformed content routes", () => {
@@ -141,30 +145,29 @@ describe("operations Admin RBAC middleware", () => {
       "update",
     ],
   ])("maps %s %s to %s:%s", (method, path, resource, operation) => {
-    expect(policyFor(operationsAdminPolicyRoutes, method, path)).toEqual({
-      operation,
-      resource,
-    });
+    expect(policyFor(operationsAdminPolicyRoutes, method, path)).toEqual([
+      { operation, resource },
+    ]);
   });
 
   it("uses distinct read and update capabilities for sensitive actions", () => {
     expect(
       policyFor(operationsAdminPolicyRoutes, "GET", "/admin/tax-control"),
-    ).toEqual(operationsAdminActions.taxControl.read);
+    ).toEqual([operationsAdminActions.taxControl.read]);
     expect(
       policyFor(
         operationsAdminPolicyRoutes,
         "POST",
         "/admin/tax-control/switch",
       ),
-    ).toEqual(operationsAdminActions.taxControl.update);
+    ).toEqual([operationsAdminActions.taxControl.update]);
     expect(
       policyFor(
         operationsAdminPolicyRoutes,
         "POST",
         "/admin/catalog/media/assets/media_01/quarantine",
       ),
-    ).toEqual(operationsAdminActions.mediaCleanup.update);
+    ).toEqual([operationsAdminActions.mediaCleanup.update]);
   });
 
   it("does not grant a policy to malformed or unsupported operations routes", () => {
@@ -183,6 +186,179 @@ describe("operations Admin RBAC middleware", () => {
       ),
     ).toBe(false);
   });
+});
+
+describe("Admin middleware composition", () => {
+  it("mounts every manifest policy exactly once", () => {
+    const configuredRoutes = middlewares.routes ?? [];
+
+    adminAuthorizationManifest.forEach((entry) => {
+      const renderedPath = entry.template.replace(
+        /:[a-z][a-z0-9_]*/gi,
+        "test_ID-01",
+      );
+      expect(policyFor(configuredRoutes, entry.method, renderedPath)).toEqual(
+        entry.policies,
+      );
+    });
+  });
+
+  it("sorts every generated policy before its matching route handler", () => {
+    const frameworkEntry = require.resolve("@medusajs/framework");
+    const routesSorterPath = path.join(
+      path.dirname(frameworkEntry),
+      "http/routes-sorter.js",
+    );
+    const { RoutesSorter } = jest.requireActual<{
+      RoutesSorter: PinnedRouteSorter;
+    }>(routesSorterPath);
+
+    adminAuthorizationManifest.forEach((entry, index) => {
+      const policyRoute = adminAuthorizationPolicyRoutes[index];
+      expect(policyRoute).toBeDefined();
+      if (!policyRoute) {
+        return;
+      }
+
+      const sorted = new RoutesSorter([
+        { ...policyRoute, marker: "project-policy" },
+        {
+          isRoute: true,
+          matcher: entry.template,
+          method: entry.method,
+          marker: "route-handler",
+        },
+      ]).sort();
+      const markers = sorted.map(({ marker }) => marker);
+
+      expect(markers.indexOf("project-policy")).toBeLessThan(
+        markers.indexOf("route-handler"),
+      );
+    });
+  });
+
+  it("keeps operational rate limits and body limits separate from policies", () => {
+    expect(operationsAdminMiddlewareRoutes).toHaveLength(8);
+    expect(
+      operationsAdminMiddlewareRoutes.every(
+        (route) => !Object.hasOwn(route, "policies"),
+      ),
+    ).toBe(true);
+    expect(
+      operationsAdminMiddlewareRoutes.find(
+        ({ matcher }) => matcher === "/admin/tax-control/switch",
+      )?.bodyParser,
+    ).toEqual({ sizeLimit: "8kb" });
+    expect(
+      operationsAdminMiddlewareRoutes.find(
+        ({ matcher }) =>
+          matcher === "/admin/tax-control/taxrate-io/refresh",
+      )?.bodyParser,
+    ).toEqual({ sizeLimit: "8kb" });
+  });
+
+  it.each([
+    "/admin/catalog/media/assets/media_01/quarantine",
+    "/admin/catalog/media/assets/media_01/restore/",
+    "/ADMIN/CATALOG/MEDIA/ASSETS/media_01/QuArAnTiNe/",
+  ])("rate limits equivalent media lifecycle path %s", (path) => {
+    const matches = operationsAdminMiddlewareRoutes.filter((route) =>
+      routeMatches(route, "POST", path),
+    );
+
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.middlewares).toHaveLength(1);
+  });
+
+  it.each([
+    "/admin/catalog/media/assets/media_01/purge",
+    "/admin/catalog/media/assets/media_01/restored",
+    "/admin/catalog/media/assets/media_01/quarantine/extra",
+    "/admin/catalog/media/assets//quarantine",
+  ])("does not rate limit near media lifecycle path %s", (path) => {
+    expect(
+      operationsAdminMiddlewareRoutes.some((route) =>
+        routeMatches(route, "POST", path),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps upload parsing after the catalog media rate limiter", () => {
+    const configuredRoutes = middlewares.routes ?? [];
+    const managedUploadRoute = configuredRoutes.find(
+      ({ matcher, methods, middlewares: routeMiddlewares }) =>
+        matcher === "/admin/managed-uploads" &&
+        methods?.includes("POST") &&
+        routeMiddlewares !== undefined,
+    );
+    const catalogUploadRoute = configuredRoutes.find(
+      ({ matcher, methods, middlewares: routeMiddlewares }) =>
+        matcher === "/admin/catalog/media/uploads" &&
+        methods?.includes("POST") &&
+        routeMiddlewares !== undefined,
+    );
+
+    expect(managedUploadRoute?.policies).toBeUndefined();
+    expect(managedUploadRoute?.middlewares).toHaveLength(1);
+    expect(catalogUploadRoute?.policies).toBeUndefined();
+    expect(catalogUploadRoute?.middlewares).toHaveLength(2);
+    expect(catalogUploadRoute?.middlewares?.[1]?.name).toBe(
+      managedUploadRoute?.middlewares?.[0]?.name,
+    );
+  });
+
+  it.each([
+    ["managed upload", "/admin/managed-uploads"],
+    ["catalog media upload", "/admin/catalog/media/uploads"],
+  ])(
+    "sorts the %s policy before multipart parsing and the handler",
+    (_name, requestPath) => {
+      const frameworkEntry = require.resolve("@medusajs/framework");
+      const routesSorterPath = path.join(
+        path.dirname(frameworkEntry),
+        "http/routes-sorter.js",
+      );
+      const { RoutesSorter } = jest.requireActual<{
+        RoutesSorter: PinnedRouteSorter;
+      }>(routesSorterPath);
+      const configuredRoutes = middlewares.routes ?? [];
+      const policyRoute = configuredRoutes.find(
+        (route) =>
+          route.policies !== undefined &&
+          routeMatches(route, "POST", requestPath),
+      );
+      const parserRoute = configuredRoutes.find(
+        (route) =>
+          route.middlewares !== undefined &&
+          routeMatches(route, "POST", requestPath),
+      );
+
+      expect(policyRoute).toBeDefined();
+      expect(parserRoute).toBeDefined();
+      if (!policyRoute || !parserRoute) {
+        return;
+      }
+
+      const sorted = new RoutesSorter([
+        { ...policyRoute, marker: "project-policy" },
+        { ...parserRoute, marker: "multipart-parser" },
+        {
+          isRoute: true,
+          matcher: requestPath,
+          method: "POST",
+          marker: "route-handler",
+        },
+      ]).sort();
+      const markers = sorted.map(({ marker }) => marker);
+
+      expect(markers.indexOf("project-policy")).toBeLessThan(
+        markers.indexOf("multipart-parser"),
+      );
+      expect(markers.indexOf("multipart-parser")).toBeLessThan(
+        markers.indexOf("route-handler"),
+      );
+    },
+  );
 });
 
 describe("product import Admin RBAC middleware", () => {

@@ -4,7 +4,8 @@
 - Date: 2026-08-02
 - Activation: 2026-08-08
 - Fail-closed hardening: 2026-08-15
-- Scope: custom Medusa Admin Content, operations, and product-import APIs
+- Scope: all custom Medusa Admin APIs, including catalog, Content, operations,
+  product import, and managed uploads
 
 ## Context
 
@@ -30,13 +31,20 @@ logs each user's email and ID. Production logs must not become a PII export.
 - `MEDUSA_FF_RBAC` can be enabled only after the isolated migration, access,
   and rollback rehearsal passes and activation is explicitly approved. That
   gate passed for Railway staging on 2026-08-08.
-- Custom policies are registered from `backend/src/policies/content.ts`,
-  `backend/src/policies/operations.ts`, and
-  `backend/src/policies/product-import.ts`, then synchronized by Medusa. Routes
-  declare policy requirements in the canonical
-  `backend/src/api/middlewares.ts` file.
+- Custom policies are registered from `backend/src/policies/catalog.ts`,
+  `backend/src/policies/content.ts`, `backend/src/policies/operations.ts`, and
+  `backend/src/policies/product-import.ts`, then synchronized by Medusa.
+- `backend/src/lib/admin-authorization-manifest.ts` classifies every active
+  custom Admin method and generates the policy-only middleware entries consumed
+  by `backend/src/api/middlewares.ts`. Operational middleware such as rate
+  limiting, parsing, uploads, and terminal compatibility responses stays
+  separate.
+- Route templates compile to exact, anchored, case-insensitive matchers with
+  one non-empty path segment per parameter and an optional trailing slash.
 - The backend policy check is authoritative. Admin-side permission checks only
-  prevent dead-end controls and protected-data fetches.
+  prevent dead-end controls and protected-data fetches when an explicit
+  component boundary performs the check; Dashboard `handle.permissions`
+  metadata alone is not such a boundary.
 - The Admin reuses the Dashboard's native feature-flag and effective-permission
   TanStack Query cache keys. Both responses are runtime-validated before use.
 - Production configuration requires RBAC to be explicitly enabled. A missing,
@@ -63,18 +71,34 @@ logs each user's email and ID. Production logs must not become a PII export.
 
 ## Permission contract
 
+For catalog rows, the **Admin behavior** column names capability intent; it does
+not claim that current Dashboard metadata already implements a component-level
+guard. Backend route behavior is authoritative.
+
 | Resource | Operation | Admin behavior | Protected route behavior |
 | --- | --- | --- | --- |
 | `news` | `read` | Open News, search, filter, and view active/archived posts | List and detail GET |
 | `news` | `create` | Show **Create post** | Collection POST |
 | `news` | `update` | Show Edit, Archive, and Restore | Detail PUT and archive/restore POST |
 | `news` | `delete` | No hard-delete control is exposed | The hard-disabled DELETE route remains guarded |
-| `discography` | `read` | Open Discography and view releases | List and detail GET |
+| `discography` | `read` | Open Discography and view releases | List and detail GET, conjunctively with native `product:read` |
 | `discography` | `create` | Show **Add historical release** | Collection POST |
 | `discography` | `update` | Show historical Edit, Archive, and Restore | Detail PUT and archive/restore POST |
 | `discography` | `delete` | No hard-delete control is exposed | The hard-disabled DELETE route remains guarded |
+| `catalog_authoring` | `read` | Inspect authoring status, profiles, bundles, and managed media | Catalog authoring GET methods, with route-specific native reads |
+| `catalog_authoring` | `create` | Create catalog profiles, bundles, media, or a composite Product | Catalog authoring POST methods, with exact native create/read prerequisites |
+| `catalog_authoring` | `update` | Change catalog profiles, bundles, or managed media | Catalog authoring PUT methods, with exact native read/write prerequisites |
+| `catalog_authoring` | `delete` | Remove catalog authoring relationships through guarded workflows | Catalog authoring DELETE methods; no physical media-asset deletion |
+| `catalog_taxonomy` | `read` | Inspect artists and controlled reference values | Taxonomy GET methods |
+| `catalog_taxonomy` | `create` | Create artists and controlled reference values | Taxonomy POST methods and route-specific aggregate prerequisites |
+| `catalog_taxonomy` | `update` | Change artists and controlled reference values | Taxonomy PUT methods |
+| `catalog_taxonomy` | `delete` | Remove artists and controlled reference values | Taxonomy DELETE methods |
+| `catalog_merchandising` | `read` | Inspect shelves and memberships | Shelf GET methods, with native `product:read` when Products are returned |
+| `catalog_merchandising` | `create` | Create a shelf and membership set | Shelf POST, conjunctively with native `product:read` |
+| `catalog_merchandising` | `update` | Edit, archive, or restore a shelf | Shelf PUT/archive/restore methods; no delete capability |
 | native `file` | `create` | Show News cover controls and permit validated CSV upload | Managed upload and import-prepare prerequisites |
-| native `product` | `read` | Show Product links and inspect import scope | Native Product reads and every import route |
+| native `product` | `read` | Read Product-backed custom projections and inspect import scope | Discography list/detail, route-specific catalog methods, and every import route |
+| native Product/Variant/Price/Inventory resources | route-specific | Permit only the native work an aggregate catalog handler performs | Conjunctive catalog prerequisites for Product, Variant, Price, Inventory Item, and Inventory Level actions |
 | `product_import` | `create` | Prepare a reviewable plan from CSV input | Current prepare POST; deprecated prepare rejects after authorization |
 | `product_import` | `update` | Confirm and execute an existing plan | Current confirm POST; deprecated confirm rejects after authorization |
 | `tax_control` | `read` | View provider readiness, usage, audit history, impact, and tax evidence | Tax control GET |
@@ -86,10 +110,21 @@ logs each user's email and ID. Production logs must not become a PII export.
 | `media_cleanup` | `read` | View unlinked and quarantined catalog media | Media orphan list GET |
 | `media_cleanup` | `update` | Show Quarantine and Restore controls | Quarantine and restore POST |
 
-All required actions in a single route declaration are conjunctive. The
-Content landing page is the intentional exception in the UI: it opens when the
-actor can read at least one workspace and only renders cards and navigation for
-the workspaces that actor can read.
+All required custom and native actions in a single route declaration are
+conjunctive. The Content landing page is the intentional exception in the UI:
+it opens when the actor can read at least one workspace and only renders cards
+and navigation for the workspaces that actor can read.
+
+The manifest covers exactly 64 active custom Admin methods once: 41 under
+`/admin/catalog/**` and 23 elsewhere. Its inventory test derives methods from
+the route source and fails on missing,
+duplicate, or stale entries rather than trusting a fixed count alone.
+
+Catalog authoring and taxonomy each use complete CRUD capability sets.
+Catalog merchandising deliberately has only read/create/update: shelf archive
+retains membership and can be restored, so it is an update rather than a hard
+delete. The dead `/admin/custom` scaffold and the permanently disabled physical
+media-asset DELETE method are removed from the route surface.
 
 Product import uses a dedicated task capability instead of granting arbitrary
 manual Product writes. A preparer needs `product:read`, `file:create`, and
@@ -113,12 +148,17 @@ flowchart LR
   D --> E{Role grants route policy?}
   E -- No --> F[403; route handler never runs]
   E -- Yes --> G[Run validated route handler]
-  H[Admin custom route] --> I[Resolve effective permissions]
+  H[Explicitly guarded Admin component] --> I[Resolve effective permissions]
   I --> J{Required permission granted?}
   J -- No --> K[No protected query; show restricted state]
   J -- Yes --> L[Mount workspace and capability-aware controls]
   L --> A
 ```
+
+The UI branch describes components that implement an explicit permission
+boundary. It does not describe catalog route `handle.permissions` metadata:
+catalog pages and Product/Variant widgets still need fail-closed component
+guards before they may claim the same no-fetch behavior.
 
 ## Controlled activation
 
@@ -269,11 +309,40 @@ non-deleted `workflow_execution` rows for the `import-products` and
 `import-products-as-chunks` workflow IDs. No transaction ID, workflow context,
 administrator, or customer data was selected.
 
-Release acceptance must verify 249 non-deleted policies, one wildcard policy,
-248 concrete effective Super Admin permissions, eight exact Content policies,
-six exact Operations policies, two exact Product Import policies, and unchanged
-role/user-link counts. A mismatch is a failed release, not a reason to insert
-policies or role links manually.
+Release acceptance verified 249 non-deleted policies, one wildcard policy, 248
+concrete effective Super Admin permissions, eight exact Content policies, six
+exact Operations policies, two exact Product Import policies, and unchanged
+role/user-link counts.
+
+### Catalog Admin authorization-manifest release candidate — 2026-08-15
+
+The catalog hardening release introduces a typed, default-deny inventory for
+all active custom Admin API methods. The manifest contains exactly 64 unique
+method/template pairs: 41 under `/admin/catalog/**` and 23 elsewhere. A source
+inventory test fails if a route method lacks an entry, appears more than once,
+or leaves a stale manifest entry after removal.
+
+Templates generate policy-only, exact, anchored, case-insensitive matchers with
+one non-empty segment for each parameter and an optional trailing slash.
+Operational middleware remains separately ordered so rate limiting, request
+parsing, multipart handling, and compatibility rejection cannot become an
+implicit authorization definition. Every custom and native action listed on a
+manifest entry is conjunctive.
+
+Eleven new policy definitions establish `catalog_authoring` CRUD,
+`catalog_taxonomy` CRUD, and `catalog_merchandising` read/create/update.
+Merchandising has no delete action because shelf removal is a versioned,
+recoverable archive. The release also removes the dead `/admin/custom` scaffold
+and the permanently disabled physical media-asset DELETE method. Discography
+list and detail GETs now require `discography:read` plus native `product:read`
+because their responses always load Product enrichment.
+
+The code-registered custom-policy total is now 27. This section is release
+acceptance criteria, not deployment evidence: staging must synchronize 260
+non-deleted policies, exactly one wildcard policy, and 259 concrete effective
+Super Admin permissions while preserving role and user-link counts. A mismatch
+fails the release; operators must not repair it through manual policy or link
+inserts.
 
 ## Rollback
 
@@ -294,8 +363,9 @@ do not edit RBAC rows by hand.
 ## Consequences and limitations
 
 The backend now has least-privilege enforcement that composes with Medusa's
-native permissions. Read-only roles do not see mutation controls, and denied
-custom pages do not start their data query.
+native permissions. Explicitly permission-aware Content and operations
+components hide mutation controls, and their denied pages do not start a
+protected query. Catalog UI components do not yet make that claim.
 
 Medusa Admin SDK 2.18 does not expose a supported permission predicate in a
 custom route's top-level or nested sidebar configuration. A restricted user can
@@ -304,6 +374,21 @@ in the surrounding shell, then reach a clear access-restricted page for a
 denied workspace. This is a navigation limitation, not an authorization bypass.
 A broad Dashboard patch is deliberately avoided; revisit this when the public
 Admin extension contract supports permission-aware navigation.
+
+The same limitation is more significant for current catalog extensions:
+Dashboard 2.18 does not wrap custom routes with its built-in permission guard,
+so `handle.permissions` is metadata only and a route or widget can mount
+without it being enforced. Catalog pages plus the Product summary and Variant
+widgets need explicit fail-closed component boundaries in a separate UI
+hardening slice. Backend manifest enforcement already prevents a direct
+unauthorized API request from reaching its handler.
+
+The custom manifest does not modify Medusa's pinned native routes. Native
+`POST /admin/products/:id` and
+`POST /admin/products/:id/variants/:variant_id` still need exact project
+overlays requiring `product:update` and `product_variant:update`; that adjacent
+native-route gap is a separate follow-up and is not covered by the 64
+custom-method inventory.
 
 The pinned Dashboard also renders its native Product Import action without the
 custom `product_import` permission and first calls the intentionally disabled
