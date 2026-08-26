@@ -236,7 +236,7 @@ connection or transaction occurred. This slice contains no policy definition,
 migration, or database change, and the live effective-permission contract is
 unchanged.
 
-## Active slice: browser-tooling archive extraction containment
+## Completed slice: browser-tooling archive extraction containment
 
 - [x] Trace `extract-zip@2.0.1` to the latest Pa11y and Lighthouse CI releases
       through their Puppeteer 24 browser-manager dependency.
@@ -256,7 +256,7 @@ unchanged.
 - [x] Run the verifier from Root CI after the frozen pnpm install.
 - [x] Pass the complete frozen-install, browser QA, quality, build, dependency,
       secret, and vulnerability gates.
-- [ ] Commit and push the atomic mitigation, then watch all GitHub workflows
+- [x] Commit and push the atomic mitigation, then watch all GitHub workflows
       and both Railway staging deployments to `SUCCESS` on the exact SHA.
 
 Discovery: `pa11y@9.1.1` and `@lhci/cli@0.15.1` are the current upstream
@@ -280,8 +280,22 @@ audit reported only the three documented ignored moderates, while Trivy found
 no high/critical production dependency, misconfiguration, or secret findings.
 Pa11y, Pixel 7/compact-phone mobile Chrome audits, and Lighthouse assertions
 passed on `/about`, `/accessibility`, `/cookies`, and `/terms` using the
-reviewed external Chrome binary. GitHub and Railway evidence remains pending
-until the implementation commit is pushed and accepted.
+reviewed external Chrome binary.
+
+Release evidence: Root CI `32968132026`, Backend CI `32968132003`, and
+Storefront CI `32968132047` passed for
+`5adac36c62a5cae0d448c19cbff87c8b47eed51c`. Railway Backend
+`1103e17c-151a-47fe-85bc-72eedec46101` and Storefront
+`4a0b6f42-6076-4a68-b9f4-1338719e17a7` reached `SUCCESS` on that exact SHA.
+The Railway installs re-verified the 1,956-entry frozen lockfile without a
+Puppeteer postinstall or browser download; the Backend runtime install skipped
+all development dependencies. Backend `/api/health`, `/live`, `/ready`, and
+`/app` returned 200. Storefront `/live`, `/ready`, `/`, `/about`,
+`/accessibility`, `/cookies`, `/terms`, `/catalog`, and `/api/healthcheck`
+returned 200; `/products` retained its expected 308 redirect to `/catalog`.
+Exact-deployment build and runtime warning/error scans found no application
+issue. The only filtered runtime output was the already tracked Railpack/pnpm
+command-banner severity misclassification.
 
 ## Remaining authorization work
 
