@@ -2,9 +2,9 @@ name: Backend CI
 
 on:
   push:
-    branches: [main]
+    branches: [staging, master]
   pull_request:
-    branches: [main]
+    branches: [staging, master]
   schedule:
     - cron: "0 4 * * 1"
   workflow_dispatch:

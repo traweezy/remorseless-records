@@ -9,10 +9,15 @@ tracks what is still required before production traffic is approved.
 
 ## Operating contract
 
-- Railway `staging` is the only authorized deployment target until the owner
-  separately approves production work.
+- `staging` is the default integration branch and the only branch connected to
+  automatic Railway staging deploys. Normal work is pushed to `staging`.
+- `master` is the production-candidate branch and advances only through a
+  reviewed pull request from an exact, accepted `staging` commit.
+- Production deploys are manual from an approved exact `master` SHA. A merge to
+  `master` never authorizes or automatically triggers production work.
 - Use Node 26.x, pnpm 11.17.0, and the single root lockfile.
-- Deliver one small Conventional Commit per logical hardening slice.
+- Deliver cohesive, reviewable Conventional Commits. Prefer larger hardening
+  slices when the bundled controls share one security or release boundary.
 - Before each push, pass the focused tests plus repository lint, strict
   typecheck, relevant coverage, security checks, and production builds.
 - After each push, watch all GitHub Actions jobs and the affected Railway
@@ -23,11 +28,12 @@ tracks what is still required before production traffic is approved.
 
 ## Verified baseline
 
-- Git branch: `main`; the repository has no `master` branch.
-- Deployed application source: `6ed952ffd03bb3879a626ef3e607039320742078`.
+- Git branches: `staging` is the default/integration branch; `master` is the
+  protected production-candidate branch. Retired `main` was deleted.
+- Deployed application source: `26a7c81101ba25a5a0570f959b84c6dc77625859`.
 - Railway project: `store`; only the `staging` environment exists.
-- Backend deployment: `13a45a21-a3af-472c-9c13-30ddc269d385` (`SUCCESS`).
-- Storefront deployment: `e8785c9a-7a7a-43b1-a3b0-97574fed1e37`
+- Backend deployment: `ebd34795-78cf-4f52-8a0e-095f49a52120` (`SUCCESS`).
+- Storefront deployment: `6a4e988e-fc24-429e-bc0b-f6a720a75dd7`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -302,7 +308,7 @@ command-banner severity misclassification.
 - [x] Trace CodeQL alert `1` across every analysis category instead of
       assuming its aggregate `open` state represented current source.
 - [x] Verify commit `b31c3369a07d9b2dda95c1a0501deaa839d7a421`
-      removed the full `medusaConfig` `console.log` sink and current `main`
+      removed the full `medusaConfig` `console.log` sink and current source
       contains no replacement config or secret-bearing log path.
 - [x] Confirm the active `.github/workflows/backend.yml:codeql` category marks
       the finding fixed and the only open instance came from the retired
@@ -318,6 +324,35 @@ the original monolithic CodeQL workflow stranded its last result. The scoped
 Backend CodeQL workflow remains the continuous regression gate. No application
 code change or risk acceptance was needed; alert `1` was dismissed on August
 26, 2026 only after the current source and per-category states were verified.
+
+## Active slice: staging-to-master release controls
+
+- [x] Fast-forward the historical `staging` branch to the last accepted SHA,
+      create `master` at that same SHA, and make `staging` the GitHub default.
+- [x] Connect both Railway application services to `staging`, then delete the
+      retired local and remote `main` references without rewriting history.
+- [x] Run all three CI workflows for pushes and pull requests targeting
+      `staging` or `master`.
+- [x] Require the full Storefront build, Playwright, accessibility, and
+      Lighthouse matrix for every production-candidate pull request.
+- [x] Add a fail-closed release-policy verifier and the promotion/manual deploy
+      runbook.
+- [x] Protect `staging` from deletion and force pushes; require pull requests,
+      conversation resolution, and deletion/force-push protection on `master`.
+- [ ] Commit and push the cohesive release-control slice to `staging`, then
+      verify all GitHub and exact Railway staging acceptance gates.
+
+Discovery: the remote `staging` branch already existed at the initial commit
+and was an ancestor of the accepted code, so it was safely fast-forwarded.
+Railway has only a `staging` environment; no production service, credential,
+domain, deployment, or traffic was created or changed. The manual production
+contract therefore records the intended boundary without pretending the
+production platform is ready. The source cutover redeployed accepted SHA
+`26a7c81101ba25a5a0570f959b84c6dc77625859` as Railway Backend
+`ebd34795-78cf-4f52-8a0e-095f49a52120` and Storefront
+`6a4e988e-fc24-429e-bc0b-f6a720a75dd7`, both from branch `staging`. Health,
+readiness, Admin, storefront, catalog, and API probes passed; filtered logs
+contained no application warning or error.
 
 ## Remaining authorization work
 
@@ -446,8 +481,9 @@ code change or risk acceptance was needed; alert `1` was dismissed on August
 
 ## GitHub, CI, supply chain, and test depth
 
-- [ ] Protect `main` with a ruleset requiring pull requests, current checks,
-      review/conversation resolution, and restricted force-push/delete.
+- [x] Protect `staging` and `master` according to the release runbook; require
+      pull requests and conversation resolution on `master`, and block
+      force-push/delete on both long-lived branches.
 - [ ] Consolidate duplicate GitHub deployment environments and add environment
       protection rules for production.
 - [ ] Enable Dependabot security updates or document an equivalent owned
@@ -460,8 +496,8 @@ code change or risk acceptance was needed; alert `1` was dismissed on August
 - [ ] Remove the local `extract-zip` patch and the vulnerable package version
       when Pa11y/Lighthouse ship a reviewed fixed chain or can be replaced
       without losing accessibility and performance coverage.
-- [ ] Make Storefront build, Playwright, accessibility, and Lighthouse jobs
-      required on relevant pull requests and scheduled runs.
+- [x] Run Storefront build, Playwright, accessibility, and Lighthouse jobs on
+      every `master` release pull request and every long-lived branch push.
 - [ ] Run Chromium, Firefox, and WebKit for critical home, catalog, product,
       cart, checkout, auth, and receipt paths; upload failure artifacts.
 - [ ] Expand Storefront coverage to cart, checkout, BFF routes, components, and

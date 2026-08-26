@@ -2,9 +2,9 @@ name: Storefront CI
 
 on:
   push:
-    branches: [main]
+    branches: [staging, master]
   pull_request:
-    branches: [main]
+    branches: [staging, master]
   schedule:
     - cron: "0 4 * * 1"
   workflow_dispatch:
@@ -253,7 +253,7 @@ jobs:
     name: Browser Smoke (storefront, Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: ${{ github.event_name == 'push' || vars.ENABLE_STOREFRONT_E2E == 'true' }}
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || vars.ENABLE_STOREFRONT_E2E == 'true' }}
     needs: [build]
     env:
       NEXT_PUBLIC_BASE_URL: http://127.0.0.1:3000
@@ -301,7 +301,7 @@ jobs:
     name: Accessibility (pa11y)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name == 'push' || vars.ENABLE_STOREFRONT_A11Y == 'true' }}
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || vars.ENABLE_STOREFRONT_A11Y == 'true' }}
     needs: [build]
     env:
       QA_BASE_URL: http://127.0.0.1:3000
@@ -360,7 +360,7 @@ jobs:
     name: Build (storefront)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name == 'push' || vars.ENABLE_STOREFRONT_BUILD == 'true' }}
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || vars.ENABLE_STOREFRONT_BUILD == 'true' }}
     needs: [unit]
     permissions:
       contents: read
@@ -396,7 +396,7 @@ jobs:
     name: Lighthouse (local build unless URL provided)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    if: ${{ github.event_name == 'push' || vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true' }}
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || vars.ENABLE_STOREFRONT_LIGHTHOUSE == 'true' }}
     needs: [build]
     permissions:
       contents: read

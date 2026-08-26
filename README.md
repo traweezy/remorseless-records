@@ -13,6 +13,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 - [Money and Price Units](#money-and-price-units)
 - [Prerequisites](#prerequisites)
 - [Repository Setup](#repository-setup)
+- [Release and Branch Workflow](#release-and-branch-workflow)
 - [Environment Variables](#environment-variables)
 - [Running the Backend Locally](#running-the-backend-locally)
 - [Running the Storefront Locally](#running-the-storefront-locally)
@@ -1410,10 +1411,11 @@ flowchart LR
 
 ## CI Pipelines
 
-We run three pipelines on push/PR (plus a weekly schedule):
+We run three pipelines for `staging` and `master` pushes/pull requests (plus a
+weekly schedule):
 
 - **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build, and an enforced Admin JavaScript bundle budget.
-- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, and a mandatory direct-to-`main` release gate containing a production build, non-destructive Pixel/iPhone Playwright smoke tests, pa11y, and Lighthouse. Pull requests can opt into the browser gates with repository variables.
+- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, and a production build. Pushes and `master` release pull requests also require non-destructive Pixel/iPhone Playwright smoke tests, pa11y, and Lighthouse; ordinary `staging` pull requests can opt into those browser gates with repository variables.
 - **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, and a retained CycloneDX SBOM plus production-license inventory.
 
 Actions are hardened with `step-security/harden-runner` and pinned to immutable
@@ -1424,6 +1426,16 @@ packages because the authoritative Medusa monorepo is MIT-licensed, and fails
 if any other production package lacks license metadata. Dependency Review runs
 when a pull request supplies a base/head diff. Keep `.env` files local (ignored
 by git) and rotate any secrets that were previously committed.
+
+## Release and Branch Workflow
+
+`staging` is the default integration branch and the only branch that
+automatically deploys to Railway staging. `master` advances only through a
+reviewed pull request from an accepted `staging` commit. Production deployment
+is always a separate manual action from an approved exact `master` SHA; merging
+does not deploy production. See
+[`docs/RELEASE_OPERATIONS.md`](docs/RELEASE_OPERATIONS.md) for the complete
+promotion, acceptance, and rollback contract.
 
 ---
 
