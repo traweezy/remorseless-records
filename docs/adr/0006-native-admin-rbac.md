@@ -450,7 +450,33 @@ parent before response remapping. This preserves native validation and the
 project's `product_variant:update` overlay while converting both missing-
 resource paths to stable 404 responses. Focused tests pin the initial miss,
 concurrent zero-row result, vanished parent, and successful response contract.
-The patch remains a release candidate until exact-commit staging acceptance.
+Exact-commit staging acceptance passed for
+`8b5553e539f772f511b28b0628100a1a7f52e61a`:
+
+- Root CI `32942014174`, Backend CI `32942014179`, and Storefront CI
+  `32942014231` completed successfully.
+- Railway Backend `937eac40-59b8-4d9e-bde7-6aed7d07e32b` and Storefront
+  `adb754a4-68b1-4845-a2f3-924142a87214` reached `SUCCESS` on the exact source
+  SHA.
+- Authorization still precedes validation: an unauthenticated malformed
+  Variant update returned 401, while the same authenticated malformed body
+  returned 400. An authenticated nonexistent Product/Variant pair and a
+  verified nonexistent Variant under a real Product both returned 404 without
+  mutating a record.
+- The effective-permission endpoint returned 259 unique concrete permissions,
+  including all 27 custom keys, with RBAC enabled. A read-only repeatable-read
+  transaction confirmed 260 active policies, one wildcard, 259 concrete
+  policies, 27 custom policies, one role, one role-policy link, and three
+  user-role links for three users.
+- Backend and Storefront `/live` and `/ready`, plus the Storefront root,
+  returned 200. Exact-deployment logs contained no application exception,
+  warning, failed operation, or leaked stack.
+
+Railway's structured runtime logs label successful pnpm command banners
+written to stderr as `error`, and Railpack emitted npm wrapper warnings while
+preparing its pnpm build environment. The accepted repository file manifests
+remain pnpm-only. This platform log noise is tracked separately so it cannot be
+mistaken for an application regression.
 
 The pinned Dashboard also renders its native Product Import action without the
 custom `product_import` permission and first calls the intentionally disabled

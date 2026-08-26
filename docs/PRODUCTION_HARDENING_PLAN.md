@@ -1,6 +1,6 @@
 # Production Hardening Plan
 
-Last verified: August 25, 2026
+Last verified: August 26, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
@@ -24,10 +24,10 @@ tracks what is still required before production traffic is approved.
 ## Verified baseline
 
 - Git branch: `main`; the repository has no `master` branch.
-- Deployed source: `797292b66d87e9919c68d9b9e25ebbb5a19982dd`.
+- Deployed application source: `8b5553e539f772f511b28b0628100a1a7f52e61a`.
 - Railway project: `store`; only the `staging` environment exists.
-- Backend deployment: `40fb5e6b-066b-4798-a60f-8b84a4f6b01a` (`SUCCESS`).
-- Storefront deployment: `7b28678f-81bd-4929-8cf6-052167e5e73e`
+- Backend deployment: `937eac40-59b8-4d9e-bde7-6aed7d07e32b` (`SUCCESS`).
+- Storefront deployment: `adb754a4-68b1-4845-a2f3-924142a87214`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -111,18 +111,18 @@ window contained no warning or error entries.
 An earlier empty-body probe intentionally used nonexistent IDs and could not
 mutate a record. The Product route returned 404, but Medusa 2.18's native
 Variant response remapper dereferenced the missing Product and returned 500.
-That operator-generated error is retained in the deployment log and tracked as
-the next hardening slice.
+That operator-generated error is retained in the deployment log and was
+resolved by the following hardening slice.
 
-## Current slice: native Variant missing-resource handling
+## Completed slice: native Variant missing-resource handling
 
 - [x] Pin the Medusa 2.18 failure for an authenticated Variant update whose
       Product or Variant ID does not exist.
 - [x] Return a stable 404 without leaking a stack or bypassing the exact
       `product_variant:update` authorization overlay.
-- [ ] Cover authorized, unauthorized, validation-failed, Product-missing, and
+- [x] Cover authorized, unauthorized, validation-failed, Product-missing, and
       Variant-missing paths without mutating staging data.
-- [ ] Pass local gates, push one atomic fix, and watch GitHub and both Railway
+- [x] Pass local gates, push one atomic fix, and watch GitHub and both Railway
       staging deployments before advancing.
 
 Current local evidence: the pinned route patch and its lockfile checksum are in
@@ -139,10 +139,30 @@ the workspace was repaired strictly from the offline frozen lockfile while
 browser downloads were disabled; pnpm reapplied the patch and restored the Git
 hooks without changing dependency versions. Cross-app lint and typecheck now
 pass, as do all 102 Storefront suites and 538 tests with 93.5% statement and
-85.71% branch coverage. Staging acceptance and documentation of the exact
-commit, CI, Railway, probe, and log evidence remain pending.
+85.71% branch coverage.
 
-## Authorization work after the current slice
+Release evidence: Root CI `32942014174`, Backend CI `32942014179`, and
+Storefront CI `32942014231` passed for
+`8b5553e539f772f511b28b0628100a1a7f52e61a`. Railway Backend
+`937eac40-59b8-4d9e-bde7-6aed7d07e32b` and Storefront
+`adb754a4-68b1-4845-a2f3-924142a87214` deployed the exact SHA successfully.
+The unauthenticated malformed probe returned 401, the authenticated malformed
+probe returned 400, and authenticated missing-pair and verified
+existing-Product/missing-Variant probes both returned 404 without changing a
+record. The administrator retained 259 unique concrete permissions, all 27
+custom keys, and `rbac: true`. A read-only repeatable-read transaction confirmed
+260 active policies, one wildcard, 259 concrete policies, 27 custom policies,
+one active role, one role-policy link, and three user-role links for three
+users. All five health/root probes returned 200.
+
+Exact-deployment log review found no application exception, warning, failed
+operation, or leaked stack. Railway classified five successful pnpm command
+banners written to stderr as `error`-level events, and Railpack emitted npm
+wrapper warnings about production configuration and forced installation. The
+accepted file manifests remain pnpm-only; removing or classifying this platform
+log noise remains an observability follow-up.
+
+## Remaining authorization work
 
 - [ ] Add explicit fail-closed component boundaries to Catalog Authoring,
       Catalog Merchandising, Product summary, and Variant widgets. Dashboard
@@ -312,6 +332,9 @@ commit, CI, Railway, probe, and log evidence remain pending.
 
 ## Observability and operations
 
+- [ ] Remove or classify Railpack npm wrapper warnings and successful pnpm
+      command banners currently recorded at error severity so deployment-log
+      alerts remain actionable.
 - [ ] Add structured JSON logging with redaction, request ID, trace ID, span ID,
       service, environment, and commit SHA.
 - [ ] Add OpenTelemetry traces and RED metrics for HTTP, database, Redis,
