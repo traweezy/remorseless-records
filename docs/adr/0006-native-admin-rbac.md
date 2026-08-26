@@ -412,8 +412,34 @@ require `product:update` and `product_variant:update`, respectively. The
 matchers accept only generated `prod_...` and `variant_...` identifiers; they
 cannot collide with Product import, batch, or export paths. Pinned route-sorter
 tests prove each overlay runs before native validation and handler execution.
-This overlay is a release candidate until its exact commit passes staging
-acceptance; it adds no policy definition or database migration.
+The overlay adds no policy definition or database migration.
+
+Release acceptance passed on Railway staging for
+`f411275b63d5aa8ee6f190b9dac318b4e6eef736`:
+
+- Root CI `32918827776`, Backend CI `32918827724`, and Storefront CI
+  `32918827742` completed successfully.
+- Railway Backend `fb3210d0-e045-40ef-8174-3c5a1ccb35bb` and Storefront
+  `401ecb5e-2c05-47a3-85d6-9947f780189c` reached `SUCCESS` on the exact source
+  SHA.
+- An unauthenticated strict-validation probe returned 401 for each overlaid
+  route. The same malformed body returned 400 for the existing Super Admin,
+  proving that authentication and authorization passed before native body
+  validation without reaching either nonexistent resource.
+- The effective-permission endpoint still returned 259 unique concrete
+  permissions and all 27 custom keys with RBAC enabled. A read-only database
+  transaction confirmed the unchanged 260 active policies, one wildcard, one
+  role-policy link, and three Super Admin user links.
+- Backend and Storefront `/live` and `/ready`, plus the Storefront root,
+  returned 200. Exact-deployment build logs and the final acceptance runtime
+  window contained no warning or error entries.
+
+The first non-mutating acceptance attempt sent an empty body to nonexistent
+Product and Variant IDs. The Product path returned 404, while the pinned native
+Variant handler returned 500 because its response remapper dereferenced the
+missing Product. No record could be changed, and the operator-generated stack
+is retained in the exact deployment log. A follow-up hardening slice must pin
+that behavior and provide a stable 404 while preserving authorization order.
 
 The pinned Dashboard also renders its native Product Import action without the
 custom `product_import` permission and first calls the intentionally disabled

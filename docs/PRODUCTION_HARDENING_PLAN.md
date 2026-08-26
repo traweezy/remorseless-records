@@ -77,7 +77,7 @@ authorized routes returned 200, unauthorized Catalog access returned 401, the
 two removed route surfaces returned 404, all health probes returned 200, and
 the exact-deployment build/runtime logs contained no warning or error entries.
 
-## Current slice: native Admin mutation overlays
+## Completed slice: native Admin mutation overlays
 
 - [x] Overlay `POST /admin/products/:id` with exact `product:update`
       authorization.
@@ -87,10 +87,43 @@ the exact-deployment build/runtime logs contained no warning or error entries.
       Product import, batch, and export routes cannot inherit an update grant.
 - [x] Pin Medusa 2.18's missing native policies and prove each project overlay
       sorts before native validation and handler execution.
-- [ ] Pass the full local gates, commit, push, and watch all GitHub and Railway
+- [x] Pass the full local gates, commit, push, and watch all GitHub and Railway
       staging checks to `SUCCESS` on the exact SHA.
-- [ ] Run authenticated staging allow/authentication probes and confirm policy
-      counts, role links, health checks, and logs remain unchanged.
+- [x] Run authenticated staging allow/authentication probes and confirm policy
+      counts, role links, health checks, and post-acceptance logs remain
+      unchanged.
+
+Release evidence: Root CI `32918827776`, Backend CI `32918827724`, and
+Storefront CI `32918827742` passed for
+`f411275b63d5aa8ee6f190b9dac318b4e6eef736`. Railway Backend
+`fb3210d0-e045-40ef-8174-3c5a1ccb35bb` and Storefront
+`401ecb5e-2c05-47a3-85d6-9947f780189c` deployed that exact SHA successfully.
+Unauthenticated Product and Variant update probes returned 401; authenticated
+strict-validation probes returned 400 before either nonexistent ID could reach
+a handler. The existing administrator still received 259 unique concrete
+permissions, including all 27 custom permissions, with `rbac: true`. A
+read-only transaction confirmed 260 active policies, one wildcard, 259
+concrete policies, one active role, one role-policy link, and the unchanged
+three Super Admin user links. Backend and Storefront `/live` and `/ready`, plus
+the Storefront root, returned 200. Build logs and the final acceptance runtime
+window contained no warning or error entries.
+
+An earlier empty-body probe intentionally used nonexistent IDs and could not
+mutate a record. The Product route returned 404, but Medusa 2.18's native
+Variant response remapper dereferenced the missing Product and returned 500.
+That operator-generated error is retained in the deployment log and tracked as
+the next hardening slice.
+
+## Current slice: native Variant missing-resource handling
+
+- [ ] Pin the Medusa 2.18 failure for an authenticated Variant update whose
+      Product or Variant ID does not exist.
+- [ ] Return a stable 404 without leaking a stack or bypassing the exact
+      `product_variant:update` authorization overlay.
+- [ ] Cover authorized, unauthorized, validation-failed, Product-missing, and
+      Variant-missing paths without mutating staging data.
+- [ ] Pass local gates, push one atomic fix, and watch GitHub and both Railway
+      staging deployments before advancing.
 
 ## Authorization work after the current slice
 
