@@ -405,12 +405,15 @@ widgets need explicit fail-closed component boundaries in a separate UI
 hardening slice. Backend manifest enforcement already prevents a direct
 unauthorized API request from reaching its handler.
 
-The custom manifest does not modify Medusa's pinned native routes. Native
-`POST /admin/products/:id` and
-`POST /admin/products/:id/variants/:variant_id` still need exact project
-overlays requiring `product:update` and `product_variant:update`; that adjacent
-native-route gap is a separate follow-up and is not covered by the 64
-custom-method inventory.
+The custom manifest does not inventory Medusa's pinned native routes. Medusa
+2.18 omits mutation policies from `POST /admin/products/:id` and
+`POST /admin/products/:id/variants/:variant_id`, so exact project overlays now
+require `product:update` and `product_variant:update`, respectively. The
+matchers accept only generated `prod_...` and `variant_...` identifiers; they
+cannot collide with Product import, batch, or export paths. Pinned route-sorter
+tests prove each overlay runs before native validation and handler execution.
+This overlay is a release candidate until its exact commit passes staging
+acceptance; it adds no policy definition or database migration.
 
 The pinned Dashboard also renders its native Product Import action without the
 custom `product_import` permission and first calls the intentionally disabled

@@ -342,6 +342,20 @@ export const productImportAdminPolicyRoutes = [
   ...deprecatedProductImportAdminRoutes,
 ];
 
+export const nativeAdminPolicyOverlayRoutes = [
+  {
+    matcher: /^\/admin\/products\/prod_[^/]+\/?$/i,
+    methods: ["POST"],
+    policies: [nativeAdminActions.product.update],
+  },
+  {
+    matcher:
+      /^\/admin\/products\/prod_[^/]+\/variants\/variant_[^/]+\/?$/i,
+    methods: ["POST"],
+    policies: [nativeAdminActions.productVariant.update],
+  },
+] satisfies MiddlewareRoute[];
+
 export default defineMiddlewares({
   routes: [
     {
@@ -388,6 +402,7 @@ export default defineMiddlewares({
       middlewares: [managedUpload.array("files")],
     },
     ...adminAuthorizationPolicyRoutes,
+    ...nativeAdminPolicyOverlayRoutes,
     ...operationsAdminMiddlewareRoutes,
     ...deprecatedProductImportAdminRoutes,
     {

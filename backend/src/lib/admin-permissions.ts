@@ -184,10 +184,18 @@ export const nativeAdminActions = {
       operation: adminPolicyOperations.read,
       resource: "product",
     },
+    update: {
+      operation: adminPolicyOperations.update,
+      resource: "product",
+    },
   },
   productVariant: {
     read: {
       operation: adminPolicyOperations.read,
+      resource: "product_variant",
+    },
+    update: {
+      operation: adminPolicyOperations.update,
       resource: "product_variant",
     },
   },

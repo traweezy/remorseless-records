@@ -159,11 +159,17 @@ The catalog capability set is:
 Native Product, Product Variant, Price, Inventory Item, Inventory Level, and
 File actions are added to the custom action when a handler reads or mutates
 those authorities. These 11 catalog definitions bring the code-registered
-custom total to 27. The last accepted staging state remains 249 active
-policies, one wildcard, and 248 concrete Super Admin permissions. Acceptance
-for this catalog release must verify the expected 260 active policies, one
-wildcard, and 259 concrete Super Admin permissions with unchanged role and
-user-link counts; that acceptance is not yet deployment evidence.
+custom total to 27. The accepted staging state is 260 active policies, one
+wildcard, 259 concrete Super Admin permissions, all 27 custom definitions, one
+role-policy link, and three unchanged user-role links.
+
+Medusa 2.18 omits update policies from its native single-Product and
+single-Variant POST middleware. Project overlays require `product:update` for
+generated `prod_...` Product IDs and `product_variant:update` for generated
+`variant_...` IDs. Prefix-constrained, exact matchers avoid the static Product
+import, batch, and export paths. Pinned route-order tests keep authorization
+ahead of native validation and handler execution. These overlays add no policy
+definitions and do not change the accepted 260-policy total.
 
 Dashboard `handle.permissions` is route metadata, not a fail-closed component
 boundary. Catalog routes and widgets still require explicit permission-aware

@@ -77,15 +77,26 @@ authorized routes returned 200, unauthorized Catalog access returned 401, the
 two removed route surfaces returned 404, all health probes returned 200, and
 the exact-deployment build/runtime logs contained no warning or error entries.
 
-## Next slice: Admin authorization overlays
+## Current slice: native Admin mutation overlays
+
+- [x] Overlay `POST /admin/products/:id` with exact `product:update`
+      authorization.
+- [x] Overlay `POST /admin/products/:id/variants/:variant_id` with exact
+      `product_variant:update` authorization.
+- [x] Constrain the matchers to generated `prod_...` and `variant_...` IDs so
+      Product import, batch, and export routes cannot inherit an update grant.
+- [x] Pin Medusa 2.18's missing native policies and prove each project overlay
+      sorts before native validation and handler execution.
+- [ ] Pass the full local gates, commit, push, and watch all GitHub and Railway
+      staging checks to `SUCCESS` on the exact SHA.
+- [ ] Run authenticated staging allow/authentication probes and confirm policy
+      counts, role links, health checks, and logs remain unchanged.
+
+## Authorization work after the current slice
 
 - [ ] Add explicit fail-closed component boundaries to Catalog Authoring,
       Catalog Merchandising, Product summary, and Variant widgets. Dashboard
       `handle.permissions` metadata is not an authorization boundary.
-- [ ] Overlay `POST /admin/products/:id` with exact `product:update`
-      authorization.
-- [ ] Overlay `POST /admin/products/:id/variants/:variant_id` with exact
-      `product_variant:update` authorization.
 - [ ] Replace or disable the native Dashboard import drawer path that begins
       with the intentionally disabled presigned-upload endpoint.
 - [ ] Route destructive catalog changes through audited, idempotent,

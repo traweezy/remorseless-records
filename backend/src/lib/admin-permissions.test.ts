@@ -8,6 +8,7 @@ import {
   contentAdminPolicyDefinitions,
   contentAdminResources,
   contentReadPermissionKeys,
+  nativeAdminActions,
   operationsAdminActions,
   operationsAdminPolicyDefinitions,
   operationsAdminResources,
@@ -109,6 +110,17 @@ describe("content Admin permission contract", () => {
       "news:read",
       "discography:read",
     ]);
+  });
+});
+
+describe("native Admin permission overlay contract", () => {
+  it("uses Medusa's stable Product mutation permission keys", () => {
+    expect(adminPermissionKey(nativeAdminActions.product.update)).toBe(
+      "product:update",
+    );
+    expect(adminPermissionKey(nativeAdminActions.productVariant.update)).toBe(
+      "product_variant:update",
+    );
   });
 });
 

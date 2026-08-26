@@ -232,3 +232,52 @@ describe("catalog Admin role contract", () => {
     },
   );
 });
+
+describe("native Product mutation overlay role contract", () => {
+  it.each([
+    {
+      expectedProduct: false,
+      expectedVariant: false,
+      grants: [],
+      name: "no update grants",
+    },
+    {
+      expectedProduct: true,
+      expectedVariant: false,
+      grants: [nativeAdminActions.product.update],
+      name: "Product update only",
+    },
+    {
+      expectedProduct: false,
+      expectedVariant: true,
+      grants: [nativeAdminActions.productVariant.update],
+      name: "Variant update only",
+    },
+    {
+      expectedProduct: true,
+      expectedVariant: true,
+      grants: [{ operation: "*", resource: "*" }],
+      name: "wildcard administrator",
+    },
+  ])(
+    "default-denies missing mutation capabilities for $name",
+    async ({ expectedProduct, expectedVariant, grants }) => {
+      const container = createPermissionContainer(grants);
+      const [productAllowed, variantAllowed] = await Promise.all([
+        hasPermission({
+          actions: [nativeAdminActions.product.update],
+          container,
+          roles: "role_test",
+        }),
+        hasPermission({
+          actions: [nativeAdminActions.productVariant.update],
+          container,
+          roles: "role_test",
+        }),
+      ]);
+
+      expect(productAllowed).toBe(expectedProduct);
+      expect(variantAllowed).toBe(expectedVariant);
+    },
+  );
+});

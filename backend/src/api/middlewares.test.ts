@@ -17,6 +17,7 @@ import {
 } from "../lib/admin-permissions";
 import middlewares, {
   contentAdminPolicyRoutes,
+  nativeAdminPolicyOverlayRoutes,
   operationsAdminMiddlewareRoutes,
   operationsAdminPolicyRoutes,
   productImportAdminPolicyRoutes,
@@ -185,6 +186,117 @@ describe("operations Admin RBAC middleware", () => {
         ),
       ),
     ).toBe(false);
+  });
+});
+
+describe("native Admin mutation policy overlays", () => {
+  it.each([
+    [
+      "/admin/products/prod_01",
+      nativeAdminActions.product.update,
+    ],
+    [
+      "/ADMIN/PRODUCTS/PROD_01/",
+      nativeAdminActions.product.update,
+    ],
+    [
+      "/admin/products/prod_01/variants/variant_01",
+      nativeAdminActions.productVariant.update,
+    ],
+    [
+      "/ADMIN/PRODUCTS/PROD_01/VARIANTS/VARIANT_01/",
+      nativeAdminActions.productVariant.update,
+    ],
+  ])("protects POST %s with the exact update action", (requestPath, action) => {
+    expect(
+      policyFor(nativeAdminPolicyOverlayRoutes, "POST", requestPath),
+    ).toEqual([action]);
+    expect(policyFor(middlewares.routes ?? [], "POST", requestPath)).toEqual([
+      action,
+    ]);
+  });
+
+  it.each([
+    ["GET", "/admin/products/prod_01"],
+    ["POST", "/admin/products/product_01"],
+    ["POST", "/admin/products/import"],
+    ["POST", "/admin/products/imports"],
+    ["POST", "/admin/products/batch"],
+    ["POST", "/admin/products/export"],
+    ["POST", "/admin/products/prod_01/variants/not-a-variant"],
+    ["POST", "/admin/products/prod_01/variants/variant_01/extra"],
+  ])("does not overlay unsupported or static %s %s", (method, requestPath) => {
+    expect(
+      nativeAdminPolicyOverlayRoutes.some((route) =>
+        routeMatches(route, method, requestPath),
+      ),
+    ).toBe(false);
+  });
+
+  it("sorts each overlay before the pinned native validator and handler", () => {
+    const frameworkEntry = require.resolve("@medusajs/framework");
+    const routesSorterPath = path.join(
+      path.dirname(frameworkEntry),
+      "http/routes-sorter.js",
+    );
+    const medusaEntry = require.resolve("@medusajs/medusa");
+    const productMiddlewarePath = path.join(
+      path.dirname(medusaEntry),
+      "api/admin/products/middlewares.js",
+    );
+    const { RoutesSorter } = jest.requireActual<{
+      RoutesSorter: PinnedRouteSorter;
+    }>(routesSorterPath);
+    const { adminProductRoutesMiddlewares } = jest.requireActual<{
+      adminProductRoutesMiddlewares: MiddlewareRoute[];
+    }>(productMiddlewarePath);
+    const cases = [
+      {
+        requestPath: "/admin/products/prod_01",
+        template: "/admin/products/:id",
+      },
+      {
+        requestPath: "/admin/products/prod_01/variants/variant_01",
+        template: "/admin/products/:id/variants/:variant_id",
+      },
+    ] as const;
+
+    cases.forEach(({ requestPath, template }) => {
+      const overlay = nativeAdminPolicyOverlayRoutes.find((route) =>
+        routeMatches(route, "POST", requestPath),
+      );
+      const coreValidator = adminProductRoutesMiddlewares.find((route) => {
+        const method = (
+          route as MiddlewareRoute & { method?: readonly string[] }
+        ).method;
+        return route.matcher === template && method?.includes("POST");
+      });
+      expect(overlay).toBeDefined();
+      expect(coreValidator).toBeDefined();
+      expect(coreValidator?.policies).toBeUndefined();
+      if (!overlay || !coreValidator) {
+        return;
+      }
+
+      const sorted = new RoutesSorter([
+        { ...overlay, marker: "project-overlay" },
+        { ...coreValidator, marker: "core-validator" },
+        {
+          isRoute: true,
+          matcher: template,
+          method: "POST",
+          marker: "core-handler",
+        },
+      ]).sort();
+      const markers = sorted.map(({ marker }) => marker);
+
+      expect(markers.indexOf("project-overlay")).toBeLessThan(
+        markers.indexOf("core-validator"),
+      );
+      expect(markers.indexOf("project-overlay")).toBeLessThan(
+        markers.indexOf("core-handler"),
+      );
+    });
   });
 });
 
