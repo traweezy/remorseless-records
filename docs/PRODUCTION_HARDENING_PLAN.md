@@ -30,10 +30,10 @@ tracks what is still required before production traffic is approved.
 
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
-- Deployed application source: `f277e975cb44d539639170594dd8d573b19316f4`.
+- Deployed application source: `91fd2d59ec8e267282e576cc2f6ce3d0fe8ac926`.
 - Railway project: `store`; only the `staging` environment exists.
-- Backend deployment: `8030caa9-82a0-4e98-a40c-b64260ce86c5` (`SUCCESS`).
-- Storefront deployment: `5ba61d4e-a267-4469-8b4b-f95274fbbf65`
+- Backend deployment: `48181b43-e2e4-4795-ab9f-578a7cef467e` (`SUCCESS`).
+- Storefront deployment: `2e682693-87dc-4311-9f8b-c04b9917b61c`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -371,7 +371,7 @@ trigger's wait-for-CI setting. Both application triggers were restored to
 exact deployment enters `WAITING` until its GitHub checks succeed before the
 branch/deploy cutover is considered fully regression-tested.
 
-## Active slice: remaining CodeQL alert closure
+## Completed slice: remaining CodeQL alert closure
 
 - [x] Classify all seven open alerts by rule, active analysis category, exact
       dataflow, current source, and existing regression coverage.
@@ -393,17 +393,19 @@ branch/deploy cutover is considered fully regression-tested.
 - [x] Add focused malformed-markup, traversal, symlink, private-mode,
       duplicate-handle, bounded-schema, and optional-file regression tests;
       strict Backend typecheck and all 19 focused Node/Jest tests pass.
-- [ ] Pass the full repository quality/security/build matrix, commit and push
+- [x] Pass the full repository quality/security/build matrix, commit and push
       the cohesive slice, confirm the six active findings close in both current
       CodeQL categories, prove Railway waits for CI, and complete exact-SHA
       staging acceptance.
 
 Discovery: alerts `16` and `18` describe intentional remote JSON evidence
 writes, not attacker-controlled output paths. The code now constrains the
-remote schemas and uses non-executable private atomic artifacts; if CodeQL
-still reports the content flow after current-category analysis, retain the
-control evidence and dismiss only those exact alerts with an auditable reopen
-condition. No repository-wide suppression is permitted.
+remote schemas and uses non-executable private atomic artifacts. The active
+analysis recognized those controls and marked both findings fixed without a
+dismissal or suppression. Alerts `7`, `10`, `11`, `16`, `17`, and `18` all
+closed automatically from the current analysis. Alert `2` remains the sole
+evidence-dismissed retired-category result, with its prior source fix,
+adversarial tests, provenance, and reopen condition recorded in GitHub.
 
 Current local evidence: release-policy and secure-artifact gates, cross-app
 ESLint and strict typecheck, all 161 Backend suites with 860 tests, and all 102
@@ -414,6 +416,26 @@ React Router behavioral security verifiers pass; Trivy reports zero
 high/critical dependency, misconfiguration, or secret findings. Both
 production builds pass. The Admin bundle remains within budget at 1,798,097
 gzip bytes for the main asset and 2,392,689 gzip bytes total.
+
+Release evidence: Root CI `33023621651`, Backend CI `33023621696`, and
+Storefront CI `33023621523` passed for
+`91fd2d59ec8e267282e576cc2f6ce3d0fe8ac926`. Railway Backend
+`48181b43-e2e4-4795-ab9f-578a7cef467e` and Storefront
+`2e682693-87dc-4311-9f8b-c04b9917b61c` entered `WAITING` while all three
+GitHub workflows were queued or running, changed to `BUILDING` only after the
+three suites succeeded, and reached `SUCCESS` on that exact SHA from
+`staging`. Both deployment triggers remained on `staging` with
+`checkSuites: true` and all three suites valid. GitHub reports zero open
+CodeQL alerts.
+
+Backend `/api/health`, `/live`, `/ready`, and `/app` returned 200. Storefront
+`/live`, `/ready`, `/`, `/about`, `/accessibility`, `/cookies`, `/terms`,
+`/catalog`, and `/api/healthcheck` returned 200; `/products` retained its
+expected 308 redirect to `/catalog`. Exact-deployment log scans found no
+application warning, error, non-2xx Backend request, or secret value. The only
+Railway `error` levels were the already tracked successful command banners;
+the build-log `secret` matches were Railpack hash/cache step labels without
+assignments or values.
 
 ## Remaining authorization work
 
@@ -549,7 +571,7 @@ gzip bytes for the main asset and 2,392,689 gzip bytes total.
       protection rules for production.
 - [ ] Enable Dependabot security updates or document an equivalent owned
       remediation SLA.
-- [ ] Complete exact-SHA CI acceptance for the six remediated active CodeQL
+- [x] Complete exact-SHA CI acceptance for the six remediated active CodeQL
       alerts; the stranded legacy search-analysis alert is evidence-dismissed.
 - [x] Mitigate `GHSA-jmr9-qjv8-65gv` in `extract-zip` with fail-closed symlink
       containment, a malicious-archive regression gate, and explicit denial of
