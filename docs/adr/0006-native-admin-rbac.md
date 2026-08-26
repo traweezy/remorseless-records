@@ -4,6 +4,7 @@
 - Date: 2026-08-02
 - Activation: 2026-08-08
 - Fail-closed hardening: 2026-08-15
+- Catalog UI boundaries: 2026-08-26
 - Scope: all custom Medusa Admin APIs, including catalog, Content, operations,
   product import, and managed uploads
 
@@ -47,6 +48,11 @@ logs each user's email and ID. Production logs must not become a PII export.
   metadata alone is not such a boundary.
 - The Admin reuses the Dashboard's native feature-flag and effective-permission
   TanStack Query cache keys. Both responses are runtime-validated before use.
+- Catalog routes and widgets wrap the implementation that owns protected hooks
+  in an explicit permission boundary. Their capability arrays are conjunctive
+  unions of every custom and native action reachable from that surface.
+  Pending/error checks do not mount protected content; denied pages explain the
+  restriction and denied widgets remain hidden.
 - Production configuration requires RBAC to be explicitly enabled. A missing,
   false, or malformed `MEDUSA_FF_RBAC` value fails startup instead of restoring
   authenticated-only administrator access.
@@ -73,9 +79,10 @@ logs each user's email and ID. Production logs must not become a PII export.
 
 ## Permission contract
 
-For catalog rows, the **Admin behavior** column names capability intent; it does
-not claim that current Dashboard metadata already implements a component-level
-guard. Backend route behavior is authoritative.
+For catalog rows, the **Admin behavior** column names capability intent. The
+Catalog workspace and widget boundaries enforce the complete per-surface
+capability unions before mounting protected hooks. Backend route behavior
+remains authoritative for every request.
 
 | Resource | Operation | Admin behavior | Protected route behavior |
 | --- | --- | --- | --- |
@@ -158,9 +165,9 @@ flowchart LR
 ```
 
 The UI branch describes components that implement an explicit permission
-boundary. It does not describe catalog route `handle.permissions` metadata:
-catalog pages and Product/Variant widgets still need fail-closed component
-guards before they may claim the same no-fetch behavior.
+boundary. Catalog route `handle.permissions` remains metadata; the actual
+Catalog page and Product/Variant widget implementations are now wrapped by the
+boundary before their protected hooks can mount.
 
 ## Controlled activation
 
@@ -368,6 +375,34 @@ Medusa's pinned permission resolver without writing disposable staging data.
 Operators must not repair a future count mismatch through manual policy or link
 inserts.
 
+### Catalog Admin component-boundary hardening — 2026-08-26
+
+Dashboard 2.18 does not enforce `handle.permissions` for custom route or widget
+extensions. The Catalog product-creation, product-editor, and merchandising
+routes therefore wrap their actual workspace implementations in
+`AdminPermissionBoundary`. Product summary and Variant profile extensions wrap
+their implementations in the same boundary's compact widget mode. This
+placement is deliberate: permission resolution completes before a protected
+query, effect, mutation, or browser draft can mount.
+
+Each surface consumes one centralized, conjunctive capability array. The
+arrays are the union of the custom Catalog policies and native Product,
+Product Variant, Price, Inventory Item, Inventory Level, and File actions used
+by all requests reachable from that surface. Route metadata carries only the
+primary capability for Dashboard compatibility and is not treated as the
+enforcement point.
+
+Focused local verification passes 22 tests covering exact capability keys,
+duplicates, route metadata, page and widget pending/denied/error/allowed
+states, protected-content mounting, and Catalog query-cache isolation. A denied
+Product summary registers no authoring-view query, and denied Catalog pages
+register no Catalog query keys. Cross-app lint and strict typecheck, Backend
+ESLint, 159 Backend suites/854 tests, 102 Storefront suites/538 tests and
+coverage, both production builds, the Admin bundle budget, the production
+dependency audit, the React Router backport verifier, and a Trivy source scan
+all pass. Rendered-screen validation and exact-SHA staging acceptance remain
+pending for this slice.
+
 ## Rollback
 
 In production, keep `MEDUSA_FF_RBAC=true` and roll back to the last validated
@@ -389,7 +424,9 @@ do not edit RBAC rows by hand.
 The backend now has least-privilege enforcement that composes with Medusa's
 native permissions. Explicitly permission-aware Content and operations
 components hide mutation controls, and their denied pages do not start a
-protected query. Catalog UI components do not yet make that claim.
+protected query. Catalog pages now provide the same fail-closed behavior, while
+denied Product summary and Variant profile widgets remain hidden without
+mounting their protected implementations.
 
 Medusa Admin SDK 2.18 does not expose a supported permission predicate in a
 custom route's top-level or nested sidebar configuration. A restricted user can
@@ -399,13 +436,12 @@ denied workspace. This is a navigation limitation, not an authorization bypass.
 A broad Dashboard patch is deliberately avoided; revisit this when the public
 Admin extension contract supports permission-aware navigation.
 
-The same limitation is more significant for current catalog extensions:
-Dashboard 2.18 does not wrap custom routes with its built-in permission guard,
-so `handle.permissions` is metadata only and a route or widget can mount
-without it being enforced. Catalog pages plus the Product summary and Variant
-widgets need explicit fail-closed component boundaries in a separate UI
-hardening slice. Backend manifest enforcement already prevents a direct
-unauthorized API request from reaching its handler.
+Dashboard 2.18 still does not wrap custom routes or widgets with its built-in
+permission guard, so Catalog `handle.permissions` values cannot enforce access
+or remove every surrounding navigation entry. The explicit project boundaries
+close the mount/fetch gap for Catalog workspaces and widgets. Backend manifest
+enforcement independently prevents a direct unauthorized API request from
+reaching its handler.
 
 The custom manifest does not inventory Medusa's pinned native routes. Medusa
 2.18 omits mutation policies from `POST /admin/products/:id` and

@@ -97,17 +97,22 @@ always includes Product enrichment.
 The old `/admin/custom` scaffold and the disabled physical media-asset DELETE
 method were removed instead of retaining dead authenticated surface. The 11
 catalog definitions bring the code-registered custom-policy total to 27. The
-catalog release has not yet completed staging acceptance: expected acceptance
-is 260 active policies, one wildcard, and 259 concrete Super Admin permissions,
-with role and user links unchanged.
+catalog release completed staging acceptance with 260 active policies, one
+wildcard, 259 concrete Super Admin permissions, all 27 custom definitions, and
+unchanged role and user links.
 
 Route `handle.permissions` is metadata only: Dashboard 2.18 does not wrap
 custom routes with its built-in permission guard. It therefore does not stop a
-route component or widget from mounting and fetching. Catalog pages, the
-Product summary widget, and the Variant widget still need explicit fail-closed
-component boundaries before restricted-role UI behavior is complete. Do not
-describe metadata-only declarations as authorization; the backend remains
-authoritative.
+route component or widget from mounting and fetching. Catalog product creation,
+product editing, and merchandising now wrap their actual workspace
+implementations in the shared fail-closed boundary. The Product summary and
+Variant profile widgets use the same boundary's compact widget mode. Pending or
+failed checks never mount protected content; denied pages explain the missing
+access, denied widgets stay hidden, and retry remains available when permission
+resolution fails. The centralized capability arrays are conjunctive and cover
+the complete request contract for each surface. Primary `handle.permissions`
+values remain navigation metadata only; the component boundary and Backend
+route policies are authoritative.
 
 ## Product import authorization
 

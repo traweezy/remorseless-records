@@ -162,11 +162,50 @@ wrapper warnings about production configuration and forced installation. The
 accepted file manifests remain pnpm-only; removing or classifying this platform
 log noise remains an observability follow-up.
 
+## Active slice: Catalog Admin fail-closed UI authorization
+
+- [x] Inventory the data dependencies and mount points for Catalog product
+      creation, product editing, merchandising, Product summary, and Variant
+      profile surfaces.
+- [x] Centralize the complete conjunctive capability contract for each surface,
+      including every custom Catalog action and native Product, Variant, Price,
+      Inventory, and File prerequisite that its reachable requests use.
+- [x] Wrap the actual page and widget implementations before their queries,
+      effects, mutations, or browser-draft access can mount.
+- [x] Extend the shared permission boundary with compact widget pending/retry
+      states and hidden denied widgets; denied pages retain the explicit access
+      explanation.
+- [x] Declare primary `handle.permissions` metadata for the three Catalog routes
+      while keeping the component boundary authoritative.
+- [x] Add focused pending, error/retry, denied, allowed, exact-contract,
+      metadata, and query-leakage coverage. All 22 focused tests and targeted
+      ESLint checks pass.
+- [x] Pass the complete repository lint, strict typecheck, tests, coverage,
+      production builds, bundle budget, dependency, router-security, and local
+      filesystem vulnerability/secret gates.
+- [ ] Inspect the exact deployed Admin states with a real desktop screenshot.
+- [ ] Push the atomic slice, watch every GitHub workflow and both Railway
+      staging deployments to `SUCCESS`, then complete staging acceptance.
+
+Discovery: Dashboard 2.18 treats custom-route `handle.permissions` as metadata
+and does not guard widgets. The reusable boundary must therefore wrap the
+implementation that owns the protected hooks, not only advertise a permission
+on its route or widget entry file. A denied Product summary now registers no
+authoring-view query, and every denied Catalog page registers zero Catalog
+query keys.
+
+Current local evidence: cross-app lint and strict typecheck pass, as does
+Backend ESLint. All 159 Backend suites and 854 tests pass. All 102 Storefront
+suites and 538 tests pass with 93.5% statement and 85.71% branch coverage.
+Backend and Storefront production builds pass; the Admin bundle remains within
+budget at 1,798,700 gzip bytes for the main asset and 2,393,631 gzip bytes
+total. The production audit reports only the three accepted ignored moderate
+findings and no high/critical finding, the React Router 6.30.4 backport verifier
+passes, and Trivy reports zero high/critical dependency, secret, or
+misconfiguration findings in the source scan.
+
 ## Remaining authorization work
 
-- [ ] Add explicit fail-closed component boundaries to Catalog Authoring,
-      Catalog Merchandising, Product summary, and Variant widgets. Dashboard
-      `handle.permissions` metadata is not an authorization boundary.
 - [ ] Replace or disable the native Dashboard import drawer path that begins
       with the intentionally disabled presigned-upload endpoint.
 - [ ] Route destructive catalog changes through audited, idempotent,

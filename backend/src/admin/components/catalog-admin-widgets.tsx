@@ -20,7 +20,9 @@ import {
   toast,
 } from "@medusajs/ui"
 import { LOW_STOCK_THRESHOLD } from "../../lib/catalog/stock"
+import { catalogVariantProfileActions } from "../features/catalog-permissions"
 
+import { AdminPermissionBoundary } from "./admin-permission-boundary"
 import RichTextEditor from "./rich-text-editor"
 
 const referenceKinds = [
@@ -2623,7 +2625,7 @@ export const ProductCatalogProfileWidget = memo<WidgetProps<AdminProduct>>(({ da
 
 ProductCatalogProfileWidget.displayName = "ProductCatalogProfileWidget"
 
-export const VariantCatalogProfileWidget = memo<WidgetProps<AdminProductVariant>>(
+const VariantCatalogProfileWidgetContent = memo<WidgetProps<AdminProductVariant>>(
   ({ data }) => {
     const variantId = data?.id
     const productId = data?.product_id
@@ -2919,6 +2921,21 @@ export const VariantCatalogProfileWidget = memo<WidgetProps<AdminProductVariant>
       </>
     )
   }
+)
+
+VariantCatalogProfileWidgetContent.displayName =
+  "VariantCatalogProfileWidgetContent"
+
+export const VariantCatalogProfileWidget = memo<WidgetProps<AdminProductVariant>>(
+  ({ data }) => (
+    <AdminPermissionBoundary
+      actions={catalogVariantProfileActions}
+      surface="widget"
+      workspace="Catalog variant profile"
+    >
+      <VariantCatalogProfileWidgetContent {...(data ? { data } : {})} />
+    </AdminPermissionBoundary>
+  ),
 )
 
 VariantCatalogProfileWidget.displayName = "VariantCatalogProfileWidget"

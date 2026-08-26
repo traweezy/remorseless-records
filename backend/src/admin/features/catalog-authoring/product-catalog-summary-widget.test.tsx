@@ -6,6 +6,12 @@ import {
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 
+import { adminPermissionKey } from "../../../lib/admin-permissions";
+import { catalogProductSummaryReadActions } from "../catalog-permissions";
+import {
+  adminFeatureFlagsQueryKey,
+  adminPermissionsQueryKey,
+} from "../../lib/admin-permissions";
 import {
   productAuthoringViewQueryKey,
   type ProductAuthoringView,
@@ -86,6 +92,10 @@ describe("ProductCatalogSummaryWidget", () => {
         },
       },
     });
+    queryClient.setQueryData(adminFeatureFlagsQueryKey, { rbac: true });
+    queryClient.setQueryData(adminPermissionsQueryKey, {
+      permissions: catalogProductSummaryReadActions.map(adminPermissionKey),
+    });
     queryClient.setQueryData(productAuthoringViewQueryKey(productId), view);
 
     const markup = renderToStaticMarkup(
@@ -107,5 +117,37 @@ describe("ProductCatalogSummaryWidget", () => {
     expect(markup).toContain("Offerings");
     expect(markup).toContain('href="/catalog/products/prod_01"');
     expect(markup).not.toContain("/app/catalog/products");
+    queryClient.clear();
+  });
+
+  it("does not register the protected query when a read capability is missing", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    queryClient.setQueryData(adminFeatureFlagsQueryKey, { rbac: true });
+    queryClient.setQueryData(adminPermissionsQueryKey, {
+      permissions: catalogProductSummaryReadActions
+        .slice(0, -1)
+        .map(adminPermissionKey),
+    });
+
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <ProductCatalogSummaryWidget
+            data={{ id: productId } as AdminProduct}
+          />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    expect(markup).toBe("");
+    expect(queryClient.getQueryState(productAuthoringViewQueryKey(productId)))
+      .toBeUndefined();
+    queryClient.clear();
   });
 });

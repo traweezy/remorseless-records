@@ -15,12 +15,13 @@ export type AdminPermissionBoundaryProps = {
   actions: AdminPolicyAction | readonly AdminPolicyAction[]
   children: ReactNode
   match?: "all" | "some"
+  surface?: "page" | "widget"
   workspace: string
 }
 
 export const AdminPermissionBoundary = memo<
   AdminPermissionBoundaryProps
->(({ actions, children, match = "all", workspace }) => {
+>(({ actions, children, match = "all", surface = "page", workspace }) => {
   const permissions = useAdminPermissions()
   const requiredActions = Array.isArray(actions) ? actions : [actions]
   const allowed =
@@ -29,6 +30,15 @@ export const AdminPermissionBoundary = memo<
       : requiredActions.every(permissions.hasPermission)
 
   if (permissions.isPending) {
+    if (surface === "widget") {
+      return (
+        <Container aria-busy="true" aria-label="Checking widget access">
+          <Skeleton className="h-6 w-40 max-w-full" />
+          <Skeleton className="mt-3 h-16 w-full" />
+        </Container>
+      )
+    }
+
     return (
       <AdminSingleColumnLayout aria-busy="true" aria-label="Checking access">
         <Container>
@@ -44,19 +54,31 @@ export const AdminPermissionBoundary = memo<
   }
 
   if (permissions.error) {
+    const retryState = (
+      <AdminRetryState
+        message="Your role could not be verified. No protected content was loaded."
+        onRetry={permissions.retry}
+        retrying={permissions.isRetrying}
+        title="Access check could not complete"
+      />
+    )
+
+    if (surface === "widget") {
+      return retryState
+    }
+
     return (
       <AdminSingleColumnLayout>
-        <AdminRetryState
-          message="Your role could not be verified. No protected content was loaded."
-          onRetry={permissions.retry}
-          retrying={permissions.isRetrying}
-          title="Access check could not complete"
-        />
+        {retryState}
       </AdminSingleColumnLayout>
     )
   }
 
   if (!allowed) {
+    if (surface === "widget") {
+      return null
+    }
+
     return (
       <AdminSingleColumnLayout>
         <Container>

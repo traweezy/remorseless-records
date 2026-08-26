@@ -14,7 +14,9 @@ import {
 } from "@medusajs/ui"
 import { Link } from "react-router-dom"
 
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import RichTextEditor from "../../components/rich-text-editor"
+import { catalogProductEditActions } from "../../features/catalog-permissions"
 import {
   getCatalogProductOptionPath,
   getPrimaryProductLoadPath,
@@ -611,7 +613,7 @@ type ProductAuthoringWorkspaceProps = {
   productId?: string
 }
 
-export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
+const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
   productId,
 }) => {
   const [products, setProducts] = useState<AdminProduct[]>([])
@@ -2224,6 +2226,21 @@ export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(({
     </div>
   )
 })
+
+ProductAuthoringWorkspaceContent.displayName = "ProductAuthoringWorkspaceContent"
+
+export const ProductAuthoringWorkspace = memo<ProductAuthoringWorkspaceProps>(
+  ({ productId }) => (
+    <AdminPermissionBoundary
+      actions={catalogProductEditActions}
+      workspace="Catalog Authoring"
+    >
+      <ProductAuthoringWorkspaceContent
+        {...(productId ? { productId } : {})}
+      />
+    </AdminPermissionBoundary>
+  ),
+)
 
 ProductAuthoringWorkspace.displayName = "ProductAuthoringWorkspace"
 

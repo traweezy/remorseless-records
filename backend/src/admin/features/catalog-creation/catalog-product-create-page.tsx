@@ -19,9 +19,11 @@ import {
 } from "react-router-dom"
 
 import { AdminPageHeader } from "../../components/admin-page"
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { ConfirmAction } from "../../components/confirm-action"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import { catalogProductCreateActions } from "../catalog-permissions"
 import type { CatalogControlledOption } from "./catalog-controlled-input"
 import {
   resolveCatalogCreationAvailability,
@@ -167,7 +169,7 @@ const selectedProduct = (
 ): CatalogCreationProductChoiceWithStock | undefined =>
   choices.find((choice) => choice.id === productId)
 
-export const CatalogProductCreatePage = memo(() => {
+const CatalogProductCreatePageContent = memo(() => {
   const initialDraft = useMemo(restoredDraft, [])
   const initialValues = useMemo(
     () => initialDraft?.values ?? createCatalogCreationDefaults(),
@@ -992,5 +994,16 @@ export const CatalogProductCreatePage = memo(() => {
     </div>
   )
 })
+
+CatalogProductCreatePageContent.displayName = "CatalogProductCreatePageContent"
+
+export const CatalogProductCreatePage = memo(() => (
+  <AdminPermissionBoundary
+    actions={catalogProductCreateActions}
+    workspace="Catalog product creation"
+  >
+    <CatalogProductCreatePageContent />
+  </AdminPermissionBoundary>
+))
 
 CatalogProductCreatePage.displayName = "CatalogProductCreatePage"

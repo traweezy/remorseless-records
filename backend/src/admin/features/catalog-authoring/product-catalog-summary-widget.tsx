@@ -18,9 +18,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
 import { AdminRetryState } from "../../components/admin-retry-state";
 import { AdminStatCard } from "../../components/admin-stat-card";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
+import { catalogProductSummaryReadActions } from "../catalog-permissions";
 import { productAuthoringViewQueryOptions } from "./product-authoring-query";
 import {
   buildProductCatalogSummary,
@@ -76,7 +78,7 @@ const ProductCatalogSummarySkeleton = memo(() => (
 
 ProductCatalogSummarySkeleton.displayName = "ProductCatalogSummarySkeleton";
 
-export const ProductCatalogSummaryWidget = memo<
+const ProductCatalogSummaryWidgetContent = memo<
   ProductCatalogSummaryWidgetProps
 >(({ data }) => {
   const productId = data.id;
@@ -175,5 +177,20 @@ export const ProductCatalogSummaryWidget = memo<
     </Container>
   );
 });
+
+ProductCatalogSummaryWidgetContent.displayName =
+  "ProductCatalogSummaryWidgetContent";
+
+export const ProductCatalogSummaryWidget = memo<
+  ProductCatalogSummaryWidgetProps
+>(({ data }) => (
+  <AdminPermissionBoundary
+    actions={catalogProductSummaryReadActions}
+    surface="widget"
+    workspace="Catalog product summary"
+  >
+    <ProductCatalogSummaryWidgetContent data={data} />
+  </AdminPermissionBoundary>
+));
 
 ProductCatalogSummaryWidget.displayName = "ProductCatalogSummaryWidget";

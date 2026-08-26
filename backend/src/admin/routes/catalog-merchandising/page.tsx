@@ -11,10 +11,16 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 
+import {
+  adminPermissionKey,
+  catalogAdminActions,
+} from "../../../lib/admin-permissions"
 import { AdminEmptyState } from "../../components/admin-empty-state"
 import { AdminPageHeader } from "../../components/admin-page"
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import { ConfirmAction } from "../../components/confirm-action"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import { catalogMerchandisingWorkspaceActions } from "../../features/catalog-permissions"
 import {
   CatalogShelfCreateModal,
   type CreateShelfField,
@@ -186,7 +192,7 @@ const toIntegerOrNull = (value: string): number | null => {
 const sortShelfLines = (lines: ShelfProductLine[]): ShelfProductLine[] =>
   lines.map((line, index) => ({ ...line, sortOrder: String(index) }))
 
-const CatalogMerchandisingPage = memo(() => {
+const CatalogMerchandisingPageContent = memo(() => {
   const [shelves, setShelves] = useState<ShelfResponse[]>([])
   const [pickedProducts, setPickedProducts] = useState<Map<string, AdminProduct>>(
     () => new Map(),
@@ -760,11 +766,26 @@ const CatalogMerchandisingPage = memo(() => {
   )
 })
 
+CatalogMerchandisingPageContent.displayName = "CatalogMerchandisingPageContent"
+
+export const CatalogMerchandisingPage = memo(() => (
+  <AdminPermissionBoundary
+    actions={catalogMerchandisingWorkspaceActions}
+    workspace="Catalog Merchandising"
+  >
+    <CatalogMerchandisingPageContent />
+  </AdminPermissionBoundary>
+))
+
 CatalogMerchandisingPage.displayName = "CatalogMerchandisingPage"
 
 export const config = defineRouteConfig({
   label: "Catalog Merchandising",
   icon: ArchiveBox,
 })
+
+export const handle = {
+  permissions: adminPermissionKey(catalogAdminActions.merchandising.read),
+}
 
 export default CatalogMerchandisingPage
