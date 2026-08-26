@@ -3,11 +3,10 @@ import {
   ContainerRegistrationKeys,
   ProductStatus,
 } from "@medusajs/framework/utils"
-import { mkdir, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
-import { join } from "node:path"
 
 import indexSettings from "../../config/meilisearch-settings.json"
+import { writePrivateJsonArtifact } from "../lib/security/private-json-artifact"
 import {
   assertConfiguredIndexSettings,
 } from "./sync-meilisearch-settings"
@@ -176,24 +175,39 @@ const ensureIndexExists = async ({
   return false
 }
 
-const writeCompletionReport = async (report: Record<string, unknown>) => {
-  const reportDirectory = join(
-    homedir(),
-    ".local",
-    "share",
-    "remorseless-records",
-    "search-rebuild"
-  )
-  await mkdir(reportDirectory, { recursive: true })
+type SearchRebuildCompletionReport = {
+  candidateIndex: string
+  completedAt: string
+  durationMs: number
+  indexedCount: number
+  liveIndex: typeof PRODUCTS_INDEX
+  liveValidation: {
+    indexedCount: number
+    publishedProductCount: number
+  }
+  prunedIndexes: string[]
+  reconciliation: {
+    removedCount: number
+    upsertedCount: number
+  }
+  rollbackIndex: string
+  stabilityPeriodDays: number
+  startedAt: string
+  swapTaskUid: number
+}
+
+export const writeCompletionReport = async (
+  report: SearchRebuildCompletionReport
+): Promise<string> => {
   const timestamp = new Date()
     .toISOString()
     .replaceAll(":", "-")
-  const reportPath = join(reportDirectory, `completed-${timestamp}.json`)
-  await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, {
-    encoding: "utf8",
-    mode: 0o600,
+  return writePrivateJsonArtifact({
+    baseDirectory: homedir(),
+    fileName: `completed-${timestamp}.json`,
+    relativeDirectory: ".local/share/remorseless-records/search-rebuild",
+    value: report,
   })
-  return reportPath
 }
 
 const reconcileLiveProductIndex = async ({
@@ -340,7 +354,7 @@ export default async function reindexMeilisearch({
   }
 
   const completedAt = new Date()
-  const report = {
+  const report: SearchRebuildCompletionReport = {
     candidateIndex,
     completedAt: completedAt.toISOString(),
     durationMs: completedAt.getTime() - startedAt.getTime(),

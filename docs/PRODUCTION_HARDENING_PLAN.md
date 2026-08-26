@@ -30,10 +30,10 @@ tracks what is still required before production traffic is approved.
 
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
-- Deployed application source: `26a7c81101ba25a5a0570f959b84c6dc77625859`.
+- Deployed application source: `f277e975cb44d539639170594dd8d573b19316f4`.
 - Railway project: `store`; only the `staging` environment exists.
-- Backend deployment: `ebd34795-78cf-4f52-8a0e-095f49a52120` (`SUCCESS`).
-- Storefront deployment: `6a4e988e-fc24-429e-bc0b-f6a720a75dd7`
+- Backend deployment: `8030caa9-82a0-4e98-a40c-b64260ce86c5` (`SUCCESS`).
+- Storefront deployment: `5ba61d4e-a267-4469-8b4b-f95274fbbf65`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -325,7 +325,7 @@ Backend CodeQL workflow remains the continuous regression gate. No application
 code change or risk acceptance was needed; alert `1` was dismissed on August
 26, 2026 only after the current source and per-category states were verified.
 
-## Active slice: staging-to-master release controls
+## Completed slice: staging-to-master release controls
 
 - [x] Fast-forward the historical `staging` branch to the last accepted SHA,
       create `master` at that same SHA, and make `staging` the GitHub default.
@@ -339,7 +339,7 @@ code change or risk acceptance was needed; alert `1` was dismissed on August
       runbook.
 - [x] Protect `staging` from deletion and force pushes; require pull requests,
       conversation resolution, and deletion/force-push protection on `master`.
-- [ ] Commit and push the cohesive release-control slice to `staging`, then
+- [x] Commit and push the cohesive release-control slice to `staging`, then
       verify all GitHub and exact Railway staging acceptance gates.
 
 Discovery: the remote `staging` branch already existed at the initial commit
@@ -353,6 +353,67 @@ production platform is ready. The source cutover redeployed accepted SHA
 `6a4e988e-fc24-429e-bc0b-f6a720a75dd7`, both from branch `staging`. Health,
 readiness, Admin, storefront, catalog, and API probes passed; filtered logs
 contained no application warning or error.
+
+Release evidence: Root CI `33021651528`, Backend CI `33021651592`, and
+Storefront CI `33021651476` passed for
+`f277e975cb44d539639170594dd8d573b19316f4`. Railway Backend
+`8030caa9-82a0-4e98-a40c-b64260ce86c5` and Storefront
+`5ba61d4e-a267-4469-8b4b-f95274fbbf65` deployed that exact SHA from
+`staging`. Backend `/api/health`, `/live`, `/ready`, and `/app` returned 200.
+Storefront `/live`, `/ready`, `/`, `/about`, `/accessibility`, `/cookies`,
+`/terms`, `/catalog`, and `/api/healthcheck` returned 200; `/products`
+retained its expected 308 redirect to `/catalog`. Exact-deployment log scans
+found no application warning or error.
+
+Discovery: reconnecting a Railway GitHub source reset each deployment
+trigger's wait-for-CI setting. Both application triggers were restored to
+`checkSuites: true` after this release. The next `staging` push must prove each
+exact deployment enters `WAITING` until its GitHub checks succeed before the
+branch/deploy cutover is considered fully regression-tested.
+
+## Active slice: remaining CodeQL alert closure
+
+- [x] Classify all seven open alerts by rule, active analysis category, exact
+      dataflow, current source, and existing regression coverage.
+- [x] Evidence-dismiss stale alert `2`: commit `240b543` replaced incomplete
+      quote-only escaping with `JSON.stringify`, adversarial tests cover quote,
+      backslash, control-character, and trailing-slash inputs, active analyses
+      mark the finding fixed, and only the retired workflow category remained.
+- [x] Replace the search document's regex HTML stripping and ordered entity
+      replacements with the shared allow-list sanitizer/plain-text boundary.
+- [x] Eliminate both post-build check/use races by opening the existing regular
+      file once with no-follow semantics, transforming that inode, and flushing
+      it through the same descriptor.
+- [x] Bound and validate remote category pages, identifiers, handles, counts,
+      pagination, authentication responses, URLs, and request duration before
+      building an exported category map.
+- [x] Write category-map and search-rebuild JSON artifacts through canonical,
+      contained directories, exclusive mode-0600 temporary files, durable
+      flushes, and same-directory atomic renames.
+- [x] Add focused malformed-markup, traversal, symlink, private-mode,
+      duplicate-handle, bounded-schema, and optional-file regression tests;
+      strict Backend typecheck and all 19 focused Node/Jest tests pass.
+- [ ] Pass the full repository quality/security/build matrix, commit and push
+      the cohesive slice, confirm the six active findings close in both current
+      CodeQL categories, prove Railway waits for CI, and complete exact-SHA
+      staging acceptance.
+
+Discovery: alerts `16` and `18` describe intentional remote JSON evidence
+writes, not attacker-controlled output paths. The code now constrains the
+remote schemas and uses non-executable private atomic artifacts; if CodeQL
+still reports the content flow after current-category analysis, retain the
+control evidence and dismiss only those exact alerts with an auditable reopen
+condition. No repository-wide suppression is permitted.
+
+Current local evidence: release-policy and secure-artifact gates, cross-app
+ESLint and strict typecheck, all 161 Backend suites with 860 tests, and all 102
+Storefront suites with 538 tests pass. Storefront coverage remains 93.5%
+statements, 85.71% branches, 94.41% functions, and 93.47% lines. The production
+audit reports only the three documented ignored moderates; extract-zip and
+React Router behavioral security verifiers pass; Trivy reports zero
+high/critical dependency, misconfiguration, or secret findings. Both
+production builds pass. The Admin bundle remains within budget at 1,798,097
+gzip bytes for the main asset and 2,392,689 gzip bytes total.
 
 ## Remaining authorization work
 
@@ -488,8 +549,8 @@ contained no application warning or error.
       protection rules for production.
 - [ ] Enable Dependabot security updates or document an equivalent owned
       remediation SLA.
-- [ ] Resolve or evidence-dismiss the seven remaining open CodeQL alerts,
-      including the stranded legacy search-analysis category.
+- [ ] Complete exact-SHA CI acceptance for the six remediated active CodeQL
+      alerts; the stranded legacy search-analysis alert is evidence-dismissed.
 - [x] Mitigate `GHSA-jmr9-qjv8-65gv` in `extract-zip` with fail-closed symlink
       containment, a malicious-archive regression gate, and explicit denial of
       Puppeteer browser-download install scripts.
@@ -512,8 +573,11 @@ contained no application warning or error.
       hooks and CI.
 - [ ] Tighten Backend ESLint unsafe-TypeScript rules incrementally without
       hiding existing debt.
-- [ ] Review the custom Backend post-build dependency install/patch process for
-      reproducibility and file-system races.
+- [x] Remove the two CodeQL-reported post-build file rewrite races with
+      same-descriptor, no-follow regular-file updates and symlink regression
+      coverage.
+- [ ] Complete the broader custom Backend post-build dependency install/patch
+      reproducibility review beyond the two remediated file rewrite races.
 - [ ] Scan final runtime images, generate image-linked SBOM/provenance, and sign
       or attest the deployed artifacts.
 - [ ] Move hardened-runner egress from audit mode to an explicit allowlist after

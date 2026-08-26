@@ -1264,8 +1264,10 @@ for the card, 3DS, decline, response-loss, webhook, and browser-close matrices.
   build, validates `products` again, and retains the former live index as the
   rollback target. Versioned indexes are eligible for automatic cleanup only
   after seven days based on their controlled UID timestamp.
-- Completion reports are written with owner-only permissions under
-  `~/.local/share/remorseless-records/search-rebuild/`.
+- Completion reports are schema-constrained, non-executable JSON artifacts
+  written through a canonical directory and atomic owner-only file under
+  `~/.local/share/remorseless-records/search-rebuild/`; symbolic-link output
+  directories are rejected.
 - To perform an emergency rollback, copy the exact `rollbackIndex` from the
   completion report and deliberately confirm it:
   ```bash

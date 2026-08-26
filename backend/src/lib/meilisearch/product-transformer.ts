@@ -10,6 +10,10 @@ import {
   isScheduledRecordActive,
 } from "../catalog/shelves"
 import { LOW_STOCK_THRESHOLD } from "../catalog/stock"
+import {
+  richTextToPlainText,
+  sanitizeRichTextHtml,
+} from "../content/rich-text"
 
 type DefaultTransformer = (
   product: Record<string, unknown>,
@@ -236,16 +240,7 @@ const stripHtml = (value: string | null): string | null => {
   if (!value) {
     return null
   }
-  const stripped = value
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/\s+/g, " ")
-    .trim()
+  const stripped = richTextToPlainText(value)
   return stripped.length ? stripped : null
 }
 
@@ -852,9 +847,12 @@ export const buildSearchDocument = (
     toNumberOrNull(profile?.release_year) ??
     toNumberOrNull(catalogImport?.release_year)
 
-  const descriptionHtml =
+  const rawDescriptionHtml =
     toStringOrNull(profile?.description_html) ??
     toStringOrNull(catalogImport?.description_html)
+  const descriptionHtml = rawDescriptionHtml
+    ? sanitizeRichTextHtml(rawDescriptionHtml)
+    : null
   const description =
     stripHtml(descriptionHtml) ??
     toStringOrNull(normalizedProduct.description ?? normalizedProduct.subtitle)

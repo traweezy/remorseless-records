@@ -18,6 +18,10 @@ It does not authorize a production deployment by itself.
   for ordinary pull requests targeting `staging`.
 - Railway production must have automatic GitHub deploys disabled. Deploying an
   exact `master` commit is a separate manual operation after release approval.
+- Both Railway staging deployment triggers must retain `checkSuites: true` so
+  a source commit waits for GitHub checks before either service builds. Railway
+  source reconnection can reset this field; verify it after every source or
+  repository-link change.
 
 ## Normal staging workflow
 
@@ -26,8 +30,11 @@ It does not authorize a production deployment by itself.
 3. Run focused checks plus lint, strict typecheck, relevant coverage, security
    scans, and both production builds.
 4. Create reviewable Conventional Commits and push only to `origin/staging`.
-5. Wait for Root, Backend, and Storefront CI to succeed on the exact SHA.
-6. Wait for both Railway staging services to deploy that exact SHA, then run
+5. Confirm both exact-SHA Railway deployments enter `WAITING` while GitHub
+   checks run. A deployment that starts building first is a release-control
+   failure even if it later succeeds.
+6. Wait for Root, Backend, and Storefront CI to succeed on the exact SHA.
+7. Wait for both Railway staging services to deploy that exact SHA, then run
    health, readiness, route/API, log, and applicable browser acceptance.
 
 Do not begin another slice while any exact-SHA staging gate is unresolved.

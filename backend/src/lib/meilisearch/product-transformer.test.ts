@@ -270,6 +270,29 @@ describe("buildSearchDocument", () => {
     expect(document.availability_states).toEqual(["sold_out"])
   })
 
+  it("sanitizes malformed executable description markup before indexing", () => {
+    const document = buildSearchDocument({
+      id: "prod_adversarial_description",
+      handle: "adversarial-description",
+      title: "Adversarial description",
+      metadata: {
+        catalog_import: {
+          description_html:
+            '<p>Safe &amp; sound</p><script>alert("indexed")</script ><p>&lt;strong&gt;literal&lt;/strong&gt;</p>',
+        },
+      },
+      variants: [],
+    })
+
+    expect(document.description_text).toBe(
+      "Safe &amp; sound&lt;strong&gt;literal&lt;/strong&gt;"
+    )
+    expect(document.description_text).not.toMatch(/alert|script/i)
+    expect(document.description_html).toBe(
+      "<p>Safe &amp; sound</p><p>&lt;strong&gt;literal&lt;/strong&gt;</p>"
+    )
+  })
+
   it("uses five as the verified low-stock threshold and hides import placeholders", () => {
     const document = buildSearchDocument({
       id: "prod_stock_threshold",

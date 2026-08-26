@@ -1,6 +1,7 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 const path = require('path');
+const { updateExistingRegularFile } = require('./secure-file-operations');
 
 const MEDUSA_SERVER_PATH = path.join(process.cwd(), '.medusa', 'server');
 const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
@@ -30,14 +31,13 @@ if (!fs.existsSync(MEDUSA_SERVER_PATH)) {
   throw new Error('.medusa/server directory not found. This indicates the Medusa build process failed. Please check for build errors.');
 }
 
-if (fs.existsSync(MEDUSA_ADMIN_INDEX)) {
-  const adminDocument = fs.readFileSync(MEDUSA_ADMIN_INDEX, 'utf-8');
-  const accessibleAdminDocument = adminDocument
+updateExistingRegularFile(
+  MEDUSA_ADMIN_INDEX,
+  (adminDocument) => adminDocument
     .replace('<html>', '<html lang="en">')
-    .replace(/,\s*user-scalable=no/g, '');
-
-  fs.writeFileSync(MEDUSA_ADMIN_INDEX, accessibleAdminDocument, 'utf-8');
-}
+    .replace(/,\s*user-scalable=no/g, ''),
+  { missingOkay: true }
+);
 
 // Copy pnpm-lock.yaml (scoped to the backend importer for frozen installs)
 const localLockPath = path.join(process.cwd(), 'pnpm-lock.yaml');
@@ -416,11 +416,15 @@ writePnpmWorkspaceConfig({
   patchedDependencies
 });
 
-if (fs.existsSync(MEDUSA_PACKAGE_JSON)) {
-  const packageJson = JSON.parse(fs.readFileSync(MEDUSA_PACKAGE_JSON, 'utf-8'));
-  delete packageJson.pnpm;
-  fs.writeFileSync(MEDUSA_PACKAGE_JSON, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf-8');
-}
+updateExistingRegularFile(
+  MEDUSA_PACKAGE_JSON,
+  (packageDocument) => {
+    const packageJson = JSON.parse(packageDocument);
+    delete packageJson.pnpm;
+    return `${JSON.stringify(packageJson, null, 2)}\n`;
+  },
+  { missingOkay: true }
+);
 
 // Install dependencies
 console.log('Installing dependencies in .medusa/server...');
