@@ -297,6 +297,28 @@ Exact-deployment build and runtime warning/error scans found no application
 issue. The only filtered runtime output was the already tracked Railpack/pnpm
 command-banner severity misclassification.
 
+## Completed slice: stale CodeQL clear-text logging alert
+
+- [x] Trace CodeQL alert `1` across every analysis category instead of
+      assuming its aggregate `open` state represented current source.
+- [x] Verify commit `b31c3369a07d9b2dda95c1a0501deaa839d7a421`
+      removed the full `medusaConfig` `console.log` sink and current `main`
+      contains no replacement config or secret-bearing log path.
+- [x] Confirm the active `.github/workflows/backend.yml:codeql` category marks
+      the finding fixed and the only open instance came from the retired
+      `.github/workflows/codeql.yml` analysis category removed by `010dac0`.
+- [x] Evidence-dismiss the stale aggregate alert as a current-code false
+      positive with the fix, retired-category provenance, and reopen condition
+      preserved in GitHub's audit comment.
+
+Discovery: the historical finding was valid when the Backend serialized the
+entire Medusa configuration, including provider and application secrets. The
+source fix had already shipped, but GitHub retained the alert because deleting
+the original monolithic CodeQL workflow stranded its last result. The scoped
+Backend CodeQL workflow remains the continuous regression gate. No application
+code change or risk acceptance was needed; alert `1` was dismissed on August
+26, 2026 only after the current source and per-category states were verified.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -430,8 +452,8 @@ command-banner severity misclassification.
       protection rules for production.
 - [ ] Enable Dependabot security updates or document an equivalent owned
       remediation SLA.
-- [ ] Resolve or evidence-dismiss every open CodeQL alert, including the
-      stranded legacy search-analysis category.
+- [ ] Resolve or evidence-dismiss the seven remaining open CodeQL alerts,
+      including the stranded legacy search-analysis category.
 - [x] Mitigate `GHSA-jmr9-qjv8-65gv` in `extract-zip` with fail-closed symlink
       containment, a malicious-archive regression gate, and explicit denial of
       Puppeteer browser-download install scripts.
@@ -465,16 +487,19 @@ command-banner severity misclassification.
 - [ ] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
       Stripe, AWS SDK, and other outdated dependency families.
 
-Discovery: GitHub Dependabot alert `27` classifies
-`GHSA-jmr9-qjv8-65gv` / `CVE-2026-56876` as a high-severity development-only
-`extract-zip@2.0.1` symlink path-traversal risk in the root lockfile. It is
-introduced by `@puppeteer/browsers` through Pa11y and Lighthouse, not by a
-runtime dependency, and GitHub currently lists no patched `extract-zip`
-version. Production-only pnpm audit and the Trivy source scan remain clean of
-high/critical findings; that does not close or dismiss the development-tooling
-alert. The checked mitigation contains the current behavior; the separate
-removal item remains open until the parent chain can be upgraded or replaced
-so the vulnerable package version leaves the lockfile.
+Discovery: GitHub Dependabot alerts `27` and `28` classify the same
+`GHSA-jmr9-qjv8-65gv` / `CVE-2026-56876` high-severity development-only
+`extract-zip@2.0.1` symlink path-traversal risk. Alert `27` tracks the root
+lockfile occurrence; alert `28` was created when the behavioral verifier made
+that already-transitive package explicit in `package.json`. The package is
+installed only for browser QA by `@puppeteer/browsers` through Pa11y and
+Lighthouse, not into either deployed application, and GitHub currently lists
+no patched `extract-zip` version. Production-only pnpm audit and the Trivy
+source scan remain clean of high/critical findings; that does not close or
+dismiss either development-tooling alert. The checked mitigation contains the
+current behavior; the separate removal item remains open until the parent chain
+can be upgraded or replaced so the vulnerable package version leaves the
+lockfile.
 
 ## Observability and operations
 
