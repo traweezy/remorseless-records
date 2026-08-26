@@ -230,8 +230,10 @@ journeys, session-change behavior, and flag-off rollback passed against a
 disposable clone on August 2, 2026. After a fresh snapshot and explicit owner
 approval, Railway staging activated RBAC on August 8, 2026. The first enabled
 migration assigned the native Super Admin role to all three existing
-administrators, and a version-pinned privacy patch prevented that bootstrap
-from writing user emails or IDs to release logs.
+administrators. A version-pinned Medusa patch prevents that bootstrap from
+writing user emails or IDs to release logs and makes native single-Variant
+updates return 404 instead of a false 200 or remapper 500 when the requested
+Product/Variant pair does not exist.
 
 The rehearsal also found a Medusa 2.18 startup-order trap: migration commands
 evaluate this project's config before Medusa registers its built-in feature

@@ -116,14 +116,31 @@ the next hardening slice.
 
 ## Current slice: native Variant missing-resource handling
 
-- [ ] Pin the Medusa 2.18 failure for an authenticated Variant update whose
+- [x] Pin the Medusa 2.18 failure for an authenticated Variant update whose
       Product or Variant ID does not exist.
-- [ ] Return a stable 404 without leaking a stack or bypassing the exact
+- [x] Return a stable 404 without leaking a stack or bypassing the exact
       `product_variant:update` authorization overlay.
 - [ ] Cover authorized, unauthorized, validation-failed, Product-missing, and
       Variant-missing paths without mutating staging data.
 - [ ] Pass local gates, push one atomic fix, and watch GitHub and both Railway
       staging deployments before advancing.
+
+Current local evidence: the pinned route patch and its lockfile checksum are in
+sync. Four focused native-handler tests cover the missing pair, a concurrent
+zero-row result, a vanished parent Product, and the successful response
+contract. The complete Backend gate passes with 156 suites and 836 tests, plus
+ESLint, strict typecheck, the React Router security verifier, production build,
+and production dependency audit. The built Backend artifact contains both the
+Variant safeguards and the existing privacy patch.
+
+Release preparation also exposed an incomplete cached Puppeteer Chrome
+installation during pnpm's automatic workspace refresh. With owner approval,
+the workspace was repaired strictly from the offline frozen lockfile while
+browser downloads were disabled; pnpm reapplied the patch and restored the Git
+hooks without changing dependency versions. Cross-app lint and typecheck now
+pass, as do all 102 Storefront suites and 538 tests with 93.5% statement and
+85.71% branch coverage. Staging acceptance and documentation of the exact
+commit, CI, Railway, probe, and log evidence remain pending.
 
 ## Authorization work after the current slice
 

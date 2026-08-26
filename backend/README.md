@@ -171,6 +171,13 @@ import, batch, and export paths. Pinned route-order tests keep authorization
 ahead of native validation and handler execution. These overlays add no policy
 definitions and do not change the accepted 260-policy total.
 
+The pinned Medusa 2.18 Variant update handler also verifies the exact
+Product/Variant pair before running its workflow, confirms that the workflow
+affected a Variant, and rejects a missing parent Product before response
+mapping. Missing or mismatched resources therefore return 404 instead of a
+false 200 or remapper 500. The preflight is one indexed Variant lookup per
+single-Variant update; list, batch, and read paths are unchanged.
+
 Dashboard `handle.permissions` is route metadata, not a fail-closed component
 boundary. Catalog routes and widgets still require explicit permission-aware
 render boundaries before restricted-role UI behavior is complete. The backend

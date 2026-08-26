@@ -55,7 +55,9 @@ logs each user's email and ID. Production logs must not become a PII export.
   release; RBAC tables remain additive and recoverable.
 - Existing administrators receive the native super-admin role during the first
   enabled migration. The version-pinned `@medusajs/medusa@2.18.0` patch retains
-  that behavior but replaces per-user log output with aggregate progress.
+  that behavior but replaces per-user log output with aggregate progress. The
+  same patch makes native single-Variant updates fail closed when the requested
+  Product/Variant pair does not exist.
 - A non-production flag-off rehearsal can list the bootstrap script as pending.
   Medusa evaluates the script's feature predicate before inserting its
   migration-ledger row, so a disabled no-op does not consume the later enabled
@@ -437,9 +439,18 @@ Release acceptance passed on Railway staging for
 The first non-mutating acceptance attempt sent an empty body to nonexistent
 Product and Variant IDs. The Product path returned 404, while the pinned native
 Variant handler returned 500 because its response remapper dereferenced the
-missing Product. No record could be changed, and the operator-generated stack
-is retained in the exact deployment log. A follow-up hardening slice must pin
-that behavior and provide a stable 404 while preserving authorization order.
+missing Product. A second non-mutating probe proved that a nonexistent Variant
+under a real Product returned a false 200 with the parent Product. No record
+could be changed by either probe, and the operator-generated stack is retained
+in the exact deployment log.
+
+The version-pinned patch now checks the exact Product/Variant pair before the
+workflow, verifies that the workflow affected a Variant, and rejects a missing
+parent before response remapping. This preserves native validation and the
+project's `product_variant:update` overlay while converting both missing-
+resource paths to stable 404 responses. Focused tests pin the initial miss,
+concurrent zero-row result, vanished parent, and successful response contract.
+The patch remains a release candidate until exact-commit staging acceptance.
 
 The pinned Dashboard also renders its native Product Import action without the
 custom `product_import` permission and first calls the intentionally disabled
@@ -447,9 +458,9 @@ presigned-upload route. Backend enforcement remains authoritative. Approved
 tooling must use the validated managed-upload endpoint plus the plural
 prepare/confirm API until a permission-aware custom import UI is implemented.
 
-The Medusa bootstrap privacy patch is pinned to exactly 2.18.0. Every Medusa
-upgrade must re-audit the upstream migration and either drop or rebase the
-patch before changing the pinned version.
+The Medusa privacy and Variant-update patch is pinned to exactly 2.18.0. Every
+Medusa upgrade must re-audit the upstream migration and native Variant route,
+then either drop or rebase the patch before changing the pinned version.
 
 Medusa 2.18's effective-permission endpoint resolves current database role
 links, while route middleware authorizes from role IDs embedded in the signed

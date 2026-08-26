@@ -51,3 +51,53 @@ diff --git a/dist/migration-scripts/create-super-admin-role.js b/dist/migration-
          throw error;
      }
  }
+diff --git a/dist/api/admin/products/[id]/variants/[variant_id]/route.js b/dist/api/admin/products/[id]/variants/[variant_id]/route.js
+--- a/dist/api/admin/products/[id]/variants/[variant_id]/route.js
++++ b/dist/api/admin/products/[id]/variants/[variant_id]/route.js
+@@ -3,6 +3,7 @@
+ exports.DELETE = exports.POST = exports.GET = void 0;
+ const core_flows_1 = require("@medusajs/core-flows");
+ const http_1 = require("@medusajs/framework/http");
++const utils_1 = require("@medusajs/framework/utils");
+ const helpers_1 = require("../../../helpers");
+ const GET = async (req, res) => {
+     const productId = req.params.id;
+@@ -21,13 +22,26 @@
+     const productId = req.params.id;
+     const variantId = req.params.variant_id;
+     const { additional_data, ...update } = req.validatedBody;
+-    await (0, core_flows_1.updateProductVariantsWorkflow)(req.scope).run({
++    const variables = { id: variantId, product_id: productId };
++    const existingVariant = await (0, http_1.refetchEntity)({
++        entity: "variant",
++        idOrFilter: variables,
++        scope: req.scope,
++        fields: ["id"],
++    });
++    if (!existingVariant) {
++        throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_FOUND, `Product variant with id "${variantId}" not found for product with id "${productId}"`);
++    }
++    const { result } = await (0, core_flows_1.updateProductVariantsWorkflow)(req.scope).run({
+         input: {
+-            selector: { id: variantId, product_id: productId },
++            selector: variables,
+             update: update,
+             additional_data,
+         },
+     });
++    if (!result.length) {
++        throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_FOUND, `Product variant with id "${variantId}" not found for product with id "${productId}"`);
++    }
+     const product = await (0, http_1.refetchEntity)({
+         entity: "product",
+         idOrFilter: productId,
+@@ -34,6 +48,9 @@
+         scope: req.scope,
+         fields: (0, helpers_1.remapKeysForProduct)(req.queryConfig.fields ?? []),
+     });
++    if (!product) {
++        throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_FOUND, `Product with id "${productId}" not found`);
++    }
+     res.status(200).json({ product: (0, helpers_1.remapProductResponse)(product) });
+ };
+ exports.POST = POST;
