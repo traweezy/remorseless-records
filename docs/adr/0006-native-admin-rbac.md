@@ -314,7 +314,7 @@ concrete effective Super Admin permissions, eight exact Content policies, six
 exact Operations policies, two exact Product Import policies, and unchanged
 role/user-link counts.
 
-### Catalog Admin authorization-manifest release candidate — 2026-08-15
+### Catalog Admin authorization-manifest release acceptance — 2026-08-25
 
 The catalog hardening release introduces a typed, default-deny inventory for
 all active custom Admin API methods. The manifest contains exactly 64 unique
@@ -337,11 +337,33 @@ and the permanently disabled physical media-asset DELETE method. Discography
 list and detail GETs now require `discography:read` plus native `product:read`
 because their responses always load Product enrichment.
 
-The code-registered custom-policy total is now 27. This section is release
-acceptance criteria, not deployment evidence: staging must synchronize 260
-non-deleted policies, exactly one wildcard policy, and 259 concrete effective
-Super Admin permissions while preserving role and user-link counts. A mismatch
-fails the release; operators must not repair it through manual policy or link
+The code-registered custom-policy total is now 27. Release acceptance passed on
+Railway staging without creating a role, user, link, or application record:
+
+- Root CI `32915688896`, Backend CI `32915688939`, and Storefront CI
+  `32915688961` completed successfully for commit
+  `797292b66d87e9919c68d9b9e25ebbb5a19982dd`.
+- Railway Backend `40fb5e6b-066b-4798-a60f-8b84a4f6b01a` and Storefront
+  `7b28678f-81bd-4929-8cf6-052167e5e73e` reached `SUCCESS` on that exact
+  source SHA.
+- A read-only database transaction verified 260 non-deleted policies, one
+  wildcard, 259 concrete policies, and all 27 custom definitions with the exact
+  per-resource totals. The database still has one active role, one active
+  role-policy link, and three user-role links for three distinct users.
+- A fresh existing-administrator login returned 200 for authentication and
+  `/admin/users/me`. The native effective-permission endpoint returned 259
+  unique concrete permissions, including all 27 custom permission keys, while
+  the feature-flag endpoint continued to report `rbac: true`.
+- Representative Catalog, Content, Media cleanup, and Tax control reads
+  returned 200. An unauthenticated Catalog request returned 401. The removed
+  `/admin/custom` route and physical media-asset DELETE method returned 404.
+- Backend and Storefront `/live` and `/ready`, plus the Storefront root,
+  returned 200. Exact-deployment build and runtime log filters contained no
+  warning or error entries.
+
+The restricted-role conjunction matrix remains source-derived and exercises
+Medusa's pinned permission resolver without writing disposable staging data.
+Operators must not repair a future count mismatch through manual policy or link
 inserts.
 
 ## Rollback

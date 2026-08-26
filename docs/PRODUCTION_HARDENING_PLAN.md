@@ -24,10 +24,10 @@ tracks what is still required before production traffic is approved.
 ## Verified baseline
 
 - Git branch: `main`; the repository has no `master` branch.
-- Deployed source: `4d408c4f354246cb64300d8a18277cab9c3a1e13`.
+- Deployed source: `797292b66d87e9919c68d9b9e25ebbb5a19982dd`.
 - Railway project: `store`; only the `staging` environment exists.
-- Backend deployment: `e31dac4c-c590-4a77-beae-fd832b53a8b5` (`SUCCESS`).
-- Storefront deployment: `5a83f5dd-3381-4ee8-a5e0-0257a380c91c`
+- Backend deployment: `40fb5e6b-066b-4798-a60f-8b84a4f6b01a` (`SUCCESS`).
+- Storefront deployment: `7b28678f-81bd-4929-8cf6-052167e5e73e`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -35,10 +35,10 @@ tracks what is still required before production traffic is approved.
 - Staging uses Stripe test mode, TaxRate.io, Redis, PostgreSQL, MinIO, and
   Meilisearch. No production environment or production domain has been
   provisioned.
-- The deployed RBAC baseline contains 249 active policies, one wildcard, and
-  248 concrete Super Admin permissions.
+- The deployed RBAC baseline contains 260 active policies, one wildcard, 259
+  concrete Super Admin permissions, and all 27 exact custom definitions.
 
-## Current slice: catalog Admin authorization manifest
+## Completed slice: catalog Admin authorization manifest
 
 - [x] Inventory all 64 active custom Admin methods exactly once: 41 catalog
       methods and 23 other methods.
@@ -51,20 +51,33 @@ tracks what is still required before production traffic is approved.
 - [x] Add source-inventory, route-equivalence, default-deny, policy-definition,
       role-contract, and Admin content-boundary tests.
 - [x] Update the root, Backend, Admin, and RBAC ADR documentation.
-- [ ] Fix the unrelated Lexical/React `EditorChildrenComponent` strict
-      typecheck failure that currently blocks the repository quality gate.
-- [ ] Run lint, strict typecheck, Backend tests, Storefront tests and coverage,
+- [x] Fix the unrelated Lexical/React `EditorChildrenComponent` strict
+      typecheck failure that blocked the repository quality gate.
+- [x] Run lint, strict typecheck, Backend tests, Storefront tests and coverage,
       dependency audit, secret scan, SBOM/image scans, and production builds.
-- [ ] Commit and push the catalog manifest as one atomic release.
-- [ ] Watch all GitHub workflows and both Railway staging deployments to
+- [x] Commit and push the catalog manifest as one atomic release.
+- [x] Watch all GitHub workflows and both Railway staging deployments to
       `SUCCESS` on the exact commit SHA.
-- [ ] Verify staging has 260 active policies, one wildcard, 259 concrete Super
+- [x] Verify staging has 260 active policies, one wildcard, 259 concrete Super
       Admin permissions, all 27 custom definitions, and unchanged role/user
       links.
-- [ ] Run authenticated role-matrix probes and confirm no unexpected Admin 4xx,
-      5xx, policy-sync, or authorization failures in deployment logs.
+- [x] Run the source-derived restricted-role matrix and authenticated staging
+      Super Admin route/effective-permission probes; confirm no unexpected
+      Admin 4xx, 5xx, policy-sync, or authorization failures in deployment
+      logs. No disposable role or user was created.
 
-## Authorization work after the current slice
+Release evidence: Root CI `32915688896`, Backend CI `32915688939`, and
+Storefront CI `32915688961` passed for `797292b`. Railway Backend
+`40fb5e6b-066b-4798-a60f-8b84a4f6b01a` and Storefront
+`7b28678f-81bd-4929-8cf6-052167e5e73e` deployed the exact SHA. Read-only
+database checks found one active role, one role-policy link, and the unchanged
+three user-role links for three users. The live effective-permission endpoint
+returned 259 unique concrete grants and all 27 custom keys. Representative
+authorized routes returned 200, unauthorized Catalog access returned 401, the
+two removed route surfaces returned 404, all health probes returned 200, and
+the exact-deployment build/runtime logs contained no warning or error entries.
+
+## Next slice: Admin authorization overlays
 
 - [ ] Add explicit fail-closed component boundaries to Catalog Authoring,
       Catalog Merchandising, Product summary, and Variant widgets. Dashboard
