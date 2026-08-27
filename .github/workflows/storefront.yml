@@ -34,6 +34,13 @@ env:
   MEILISEARCH_HOST: ${{ secrets.NEXT_PUBLIC_MEILI_HOST }}
   MEILISEARCH_SEARCH_KEY: ${{ secrets.NEXT_PUBLIC_MEILI_SEARCH_KEY }}
   MEDUSA_BACKEND_URL: ${{ secrets.MEDUSA_BACKEND_URL }}
+  # Non-production fixtures let `next start` exercise the fail-fast runtime
+  # policy. The production build also proves these values never reach static
+  # client assets via the post-build bundle scanner.
+  CART_COOKIE_SECRET: ci-runtime-cart-cookie-20260827-alpha
+  CHECKOUT_BFF_SECRET: ci-runtime-checkout-bff-20260827-bravo
+  CHECKOUT_RECEIPT_SECRET: ci-runtime-checkout-receipt-20260827-charlie
+  PUBLIC_FORM_BFF_SECRET: ci-runtime-public-form-bff-20260827-delta
   QA_BASE_URL: ""
   QA_PRODUCT_PATH: "/products"
   NODE_ENV: test

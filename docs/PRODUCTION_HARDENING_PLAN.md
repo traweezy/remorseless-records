@@ -1268,8 +1268,10 @@ runtime compute.
       all three workflows must reject high-severity pull-request additions.
 - [x] Pass focused and complete local lint, typecheck, test, security, build,
       and client-bundle secret scans.
-- [ ] Push the expand commit only to `staging`, then accept all three exact-SHA
-      workflows and both current-config Railway deployments.
+- [x] Push the initial expand commit only to `staging`; record the Storefront
+      startup-policy failure caught by browser CI before Railway deployment.
+- [ ] Land the corrective CI-runtime fixture commit, then accept all three
+      exact-SHA workflows and both current-config Railway deployments.
 - [ ] Apply only the reviewed staging variable migration after a guarded
       zero-create/zero-service-destroy plan; accept both exact deployments.
 - [ ] Remove the legacy `NEXT_PUBLIC_MEILI_*` fallback and Railway variables,
@@ -1298,6 +1300,18 @@ static assets contained neither a server-only secret value nor either legacy
 public Meilisearch input name. `pnpm audit --audit-level=high` found no high or
 critical issue; the three reported advisories are the existing policy-ignored
 moderate findings.
+
+CI discovery on August 27, 2026: initial expand SHA
+`4914622c12a3425ab4f930cd0dcf3a8683fc4d3c` passed Root CI `33067736606` and
+Backend CI `33067736623`, while Storefront CI `33067736598` correctly failed
+its Lighthouse, Playwright, and Pa11y jobs before deployment. Each production
+server launch rejected the omitted CI-only runtime values with
+`CART_COOKIE_SECRET must contain at least 32 UTF-8 bytes`; the ordinary build
+job remained green because the workflow explicitly builds under
+`NODE_ENV=test`. The correction supplies distinct non-production runtime
+fixtures at workflow scope so `next start` exercises the startup policy and
+the existing post-build scanner proves those exact values never enter client
+assets. No Railway configuration was applied after the failed gate.
 
 ## Remaining authorization work
 
