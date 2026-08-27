@@ -9,10 +9,16 @@ const storagePath = require.resolve(
 );
 const source = await readFile(storagePath, "utf8");
 const correctedTimestamp =
-  "const scheduledFor = new Date(job.timestamp + job.delay);";
+  "const scheduledFor = new Date(job.opts.prevMillis ?? job.timestamp + job.delay);";
 const enqueueTimestamp = "const scheduledFor = new Date(job.timestamp);";
+const delayOnlyTimestamp =
+  "const scheduledFor = new Date(job.timestamp + job.delay);";
 
-if (!source.includes(correctedTimestamp) || source.includes(enqueueTimestamp)) {
+if (
+  !source.includes(correctedTimestamp) ||
+  source.includes(enqueueTimestamp) ||
+  source.includes(delayOnlyTimestamp)
+) {
   throw new Error(
     "The Redis workflow worker must report BullMQ's delayed execution timestamp.",
   );

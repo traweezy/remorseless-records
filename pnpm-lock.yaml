@@ -74,7 +74,7 @@ packageExtensionsChecksum: sha256-YDsO09iY61h24iJheq3asBc17A5NAuuXqZHe9X2FQXI=
 patchedDependencies:
   '@medusajs/framework@2.18.0': e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a
   '@medusajs/medusa@2.18.0': dda198bc985a1653a8a00e37cc6b0728020c63f00e7790233d15ac703c18f8b3
-  '@medusajs/workflow-engine-redis@2.18.0': eef4afb2b9aca2e75c26519fd39c3ff17d124de7b76820bb46b3a9db8cfef503
+  '@medusajs/workflow-engine-redis@2.18.0': 7f5fc7004b0b5b8180edc268245e27d5d02d709f7a6fae86c5e68d5ff41a33df
   '@remix-run/router@1.23.3': cba02de04f5a5945f782a22652c0c6f20c7ad475ef713b567f9ad611c3dc4f60
   '@rokmohar/medusa-plugin-meilisearch@1.4.3': cf9d879ce3e7d0ef5b3d4cc4207d53a5629d93bdb141423df6d9c56f044cec1e
   extract-zip@2.0.1: edabcd4b0a5ac4e864edf63feaf4d90e0a7d2f64ffaab57393f67dd87803470a
@@ -206,7 +206,7 @@ importers:
         version: 2.18.0(@types/node@26.1.1)(express@4.22.2(supports-color@8.1.1))(supports-color@8.1.1)
       '@medusajs/workflow-engine-redis':
         specifier: ^2.18.0
-        version: 2.18.0(patch_hash=eef4afb2b9aca2e75c26519fd39c3ff17d124de7b76820bb46b3a9db8cfef503)(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)
+        version: 2.18.0(patch_hash=7f5fc7004b0b5b8180edc268245e27d5d02d709f7a6fae86c5e68d5ff41a33df)(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)
       '@mikro-orm/core':
         specifier: 6.6.14
         version: 6.6.14
@@ -12517,7 +12517,7 @@ snapshots:
       '@medusajs/translation': 2.18.0(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
       '@medusajs/user': 2.18.0(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
       '@medusajs/workflow-engine-inmemory': 2.18.0(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
-      '@medusajs/workflow-engine-redis': 2.18.0(patch_hash=eef4afb2b9aca2e75c26519fd39c3ff17d124de7b76820bb46b3a9db8cfef503)(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)
+      '@medusajs/workflow-engine-redis': 2.18.0(patch_hash=7f5fc7004b0b5b8180edc268245e27d5d02d709f7a6fae86c5e68d5ff41a33df)(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)
       boxen: 5.1.2
       chalk: 4.1.2
       chokidar: 4.0.3
@@ -12811,7 +12811,7 @@ snapshots:
       cron-parser: 4.9.0
       ulid: 2.4.0
 
-  '@medusajs/workflow-engine-redis@2.18.0(patch_hash=eef4afb2b9aca2e75c26519fd39c3ff17d124de7b76820bb46b3a9db8cfef503)(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)':
+  '@medusajs/workflow-engine-redis@2.18.0(patch_hash=7f5fc7004b0b5b8180edc268245e27d5d02d709f7a6fae86c5e68d5ff41a33df)(@medusajs/framework@2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))(supports-color@8.1.1)':
     dependencies:
       '@medusajs/framework': 2.18.0(patch_hash=e6a1a975d7aed5190d0bdf5f858f1dce606976695c19dad1cf0081037930158a)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3)
       bullmq: 5.13.0(supports-color@8.1.1)
