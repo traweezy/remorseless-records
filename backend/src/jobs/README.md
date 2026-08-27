@@ -6,6 +6,12 @@ BullMQ lock with a 30-second renewal setting. Checkout payment reconciliation
 also acquires a unique-owner, five-minute application lock so a stalled retry
 cannot overlap or release another run's lock.
 
+Medusa 2.18's Redis scheduler is pinned with a pnpm patch so `scheduledFor`
+includes BullMQ's job delay instead of reporting only its enqueue time. The
+root `qa:workflow-scheduler-timestamps` gate verifies that the installed root
+dependency retains this correction; the production Backend build applies
+the same pinned patch to its standalone dependency tree.
+
 | Job                                | Schedule (UTC)    | Default  | Purpose                                                                                                          |
 | ---------------------------------- | ----------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
 | `reconcile-checkout-payments`      | Every two minutes | Disabled | Complete an old incomplete cart with exactly one authorized/captured official Stripe session and no linked order |

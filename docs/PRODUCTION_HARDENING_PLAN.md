@@ -890,7 +890,7 @@ Storefront known successful command banners.
 - [x] Update the Backend guide, scheduled-job guide, checkout incident runbook,
       completed/discovered work, and remaining release backlog.
 - [x] Pass the complete local release gates.
-- [ ] Commit the implementation and documentation atomically by concern and
+- [x] Commit the implementation and documentation atomically by concern and
       push to `staging`.
 - [ ] Require Root, Backend, and Storefront CI plus both exact Railway staging
       deployments to reach `SUCCESS`; then verify a real scheduled job record,
@@ -910,6 +910,30 @@ this volume; the correctness risk is silent truncation that can hide an
 eligible paid cart. The default bounded window is now 2,000 and reaching it is
 an attention event.
 
+First staging acceptance discovery: head
+`5c44de36e48434b270e0d8f1a252bfb65cf90671` passed Root CI
+`33048089410`, Backend CI `33048089436`, and Storefront CI `33048089558`.
+Railway held both releases until those workflows passed, then Backend
+deployment `98eb28d7-538a-48c1-9630-1dd06bc91bec` and Storefront deployment
+`e3f1579c-82f5-4839-bc36-0fa8a3d545f9` reached `SUCCESS` on the exact SHA.
+The first public readiness probes returned 503 while dependencies converged;
+15 seconds later Backend database, Redis, search, and object-storage checks and
+Storefront Backend/Redis checks were all healthy. This startup interval remains
+alerting and deploy-readiness follow-up rather than being hidden by the
+less-complete Railway health aliases.
+
+The first real reconciliation record also caught a Medusa Redis scheduler
+timestamp defect before this slice was accepted. The job itself safely scanned
+1,306 carts in 127.629 ms, found no eligible cart, did no completion work,
+released its owned lock, stayed below the scan bound, and logged no failure.
+However, Medusa 2.18 supplied BullMQ's enqueue timestamp as `scheduledFor`
+without adding the delayed-job duration, so the record emitted a false
+91.296-second scheduler warning. A pinned pnpm patch now passes
+`job.timestamp + job.delay`, a checked repository verifier fails if the fix is
+missing, and the standalone Backend build was inspected to prove it contains
+both the patch and corrected runtime. Exact CI, Railway, live-job, smoke, and
+log acceptance must be repeated on the correction before closure.
+
 Current local evidence: 17 focused tests cover configuration bounds, candidate
 safety, time caps, full-window reporting, ambiguous response loss, owned-lock
 acquire/release, overlapping retry suppression, redacted failures, timing
@@ -917,9 +941,10 @@ alerts, and the workflow-worker lock contract. The complete Backend gate passes
 with 173 suites and 926 tests. The Storefront gate passes 112 suites and 587
 tests with 93.89% statement, 86.24% branch, 94.60% function, and 93.87% line
 coverage. Cross-app lint and strict typecheck, the checked release/security
-verifiers, production dependency audit, both production builds, and the Admin
-bundle budget pass. The Admin main bundle is 1,798,734 gzip bytes and total is
-2,393,502 gzip bytes. Exact staging acceptance remains before this slice is
+verifiers, the new delayed-scheduler timestamp verifier, production dependency
+audit, both production builds, and the Admin bundle budget pass. The Admin main
+bundle is 1,797,919 gzip bytes and total is 2,392,417 gzip bytes. Exact staging
+acceptance of the scheduler timestamp correction remains before this slice is
 closed.
 
 ## Remaining authorization work

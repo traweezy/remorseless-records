@@ -314,6 +314,16 @@ The bounded default is now 2,000 and a full window is an attention event. New
 schedule-delay, duration, event-loop, lock-wait, release, scan, and cap fields
 make another incident measurable before further tuning.
 
+The first hardened staging run safely scanned all 1,306 matching carts in
+127.629 ms, attempted no completion, released its owned lock, and reported no
+failure. It also exposed a Medusa 2.18 Redis scheduler instrumentation defect:
+the adapter passed BullMQ's enqueue timestamp as `scheduledFor` but omitted the
+job delay, creating a false 91.296-second schedule-delay warning. The checked
+pnpm patch now passes `job.timestamp + job.delay`, matching the intended
+delayed execution time. `qa:workflow-scheduler-timestamps` and the standalone
+Backend artifact check guard that correction until an accepted upstream
+version replaces it.
+
 ## Incident: amount or currency mismatch
 
 An amount mismatch is a stop-ship invariant failure.
