@@ -126,6 +126,7 @@ auditConfig:
 patchedDependencies:
   "@medusajs/framework@2.18.0": patches/@medusajs__framework@2.18.0.patch
   "@medusajs/medusa@2.18.0": patches/@medusajs__medusa@2.18.0.patch
+  "@medusajs/workflow-engine-redis@2.18.0": patches/@medusajs__workflow-engine-redis@2.18.0.patch
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
   "extract-zip@2.0.1": patches/extract-zip@2.0.1.patch

@@ -1,0 +1,11 @@
+diff --git a/dist/utils/workflow-orchestrator-storage.js b/dist/utils/workflow-orchestrator-storage.js
+--- a/dist/utils/workflow-orchestrator-storage.js
++++ b/dist/utils/workflow-orchestrator-storage.js
+@@ -135,6 +135,6 @@ class RedisDistributedTransactionStorage {
+             this.jobWorker = new bullmq_1.Worker(this.jobQueueName, async (job) => {
+                 this.logger_.debug(`executing scheduled job ${job.data.jobId} from queue ${this.jobQueueName} with the following options: ${JSON.stringify(job.data.schedulerOptions)}`);
+-                const scheduledFor = new Date(job.timestamp);
++                const scheduledFor = new Date(job.timestamp + job.delay);
+                 return await this.executeScheduledJob(job.data.jobId, job.data.schedulerOptions, scheduledFor);
+             }, jobWorkerOptions);
+             this.cleanerWorker_ = new bullmq_1.Worker(this.cleanerQueueName, async () => {
