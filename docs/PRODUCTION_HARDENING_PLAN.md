@@ -1270,8 +1270,10 @@ runtime compute.
       and client-bundle secret scans.
 - [x] Push the initial expand commit only to `staging`; record the Storefront
       startup-policy failure caught by browser CI before Railway deployment.
-- [ ] Land the corrective CI-runtime fixture commit, then accept all three
-      exact-SHA workflows and both current-config Railway deployments.
+- [x] Land the corrective CI-runtime fixture commit; accept all three exact-SHA
+      workflows and the Backend source deployment.
+- [ ] Land the search expand-order correction; accept its exact-SHA workflows
+      and the Storefront source deployment before changing staging variables.
 - [ ] Apply only the reviewed staging variable migration after a guarded
       zero-create/zero-service-destroy plan; accept both exact deployments.
 - [ ] Remove the legacy `NEXT_PUBLIC_MEILI_*` fallback and Railway variables,
@@ -1312,6 +1314,25 @@ job remained green because the workflow explicitly builds under
 fixtures at workflow scope so `next start` exercises the startup policy and
 the existing post-build scanner proves those exact values never enter client
 assets. No Railway configuration was applied after the failed gate.
+
+Deployment discovery on August 27, 2026: corrective SHA
+`774ea98e20a6065010cc2203676d29583c6040bf` passed Root CI `33068850778`,
+Backend CI `33068850761`, and Storefront CI `33068850768`, including the three
+corrected browser jobs. Railway Backend source deployment
+`570acede-db52-42f8-a7c8-ac341e1fb44c` then succeeded on that exact SHA and
+passed `/live`, `/ready`, and `/health`; readiness reported database, Redis,
+search, and object storage healthy, and the zero-downtime search rebuild
+validated all 461 published products. Storefront source deployment
+`a4f538e9-9051-4d9f-a22b-dc66bd35ecef` failed safely during build without
+replacing the running release: staging's intentionally preserved
+`MEILISEARCH_API_KEY` made the migration code select the preferred pair before
+`MEILISEARCH_HOST` had been applied. The correction makes the new host the
+explicit expand-phase switch, retains the complete legacy pair until that
+point, and still rejects invalid or incomplete host-enabled configuration.
+The correction passed all 5 focused search-environment tests and lint. A local
+build with variables injected read-only from the exact Storefront staging
+service generated all 53 routes and proved all 127 static assets contained no
+server-only secret or legacy public Meilisearch input name.
 
 ## Remaining authorization work
 

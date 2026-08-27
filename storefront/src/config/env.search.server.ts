@@ -7,9 +7,7 @@ const preferredKey =
   process.env.MEILISEARCH_SEARCH_KEY ?? process.env.MEILISEARCH_API_KEY
 const legacyHost = process.env.NEXT_PUBLIC_MEILI_HOST
 const legacyKey = process.env.NEXT_PUBLIC_MEILI_SEARCH_KEY
-const hasAnyPreferredConfiguration = [preferredHost, preferredKey].some(
-  (value) => Boolean(value)
-)
+const usePreferredConfiguration = Boolean(preferredHost)
 
 const searchServerSchema = z
   .object({
@@ -18,14 +16,14 @@ const searchServerSchema = z
   })
   .transform((value) => ({
     ...value,
-    usingLegacyPublicVariables: !hasAnyPreferredConfiguration,
+    usingLegacyPublicVariables: !usePreferredConfiguration,
   }))
 
 const parsed = searchServerSchema.safeParse({
-  meiliHost: hasAnyPreferredConfiguration
+  meiliHost: usePreferredConfiguration
     ? (preferredHost ?? "")
     : (legacyHost ?? ""),
-  meiliSearchKey: hasAnyPreferredConfiguration
+  meiliSearchKey: usePreferredConfiguration
     ? (preferredKey ?? "")
     : (legacyKey ?? ""),
 })
