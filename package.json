@@ -8,14 +8,17 @@
     "pnpm": ">=11.0.0 <12"
   },
   "scripts": {
-    "qa:lint": "pnpm run qa:release-policy && pnpm run qa:secure-artifacts && pnpm run qa:framework-response-headers && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
+    "qa:lint": "pnpm run qa:release-policy && pnpm run qa:railway-iac && pnpm run qa:secure-artifacts && pnpm run qa:framework-response-headers && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
     "qa:release-policy": "node scripts/verify-release-branch-policy.mjs",
+    "qa:railway-iac": "node --no-warnings scripts/verify-railway-iac.mjs",
     "qa:secure-artifacts": "node --test scripts/export-category-map.test.mjs",
     "qa:extract-zip-security": "node scripts/verify-extract-zip-security.mjs",
     "qa:framework-response-headers": "node scripts/verify-framework-response-headers.mjs",
     "qa:workflow-scheduler-timestamps": "node scripts/verify-workflow-scheduler-timestamp.mjs",
     "qa:railway-runtime-logs": "node --test scripts/verify-railway-runtime-log.test.mjs",
     "qa:react-router-security": "node scripts/verify-react-router-security.mjs",
+    "railway:plan:staging": "node scripts/railway-config.mjs plan",
+    "railway:apply:staging": "node scripts/railway-config.mjs apply",
     "qa:storefront:coverage": "pnpm --filter remorseless-records-storefront run test:coverage",
     "data:build-import": "go run ./scripts/generate_remorseless_import.go",
     "data:apply-import": "go run ./scripts/apply_remorseless_import.go",
@@ -28,10 +31,12 @@
   "devDependencies": {
     "@axe-core/puppeteer": "4.12.1",
     "@lhci/cli": "0.15.1",
+    "@railway/cli": "5.45.0",
     "esbuild": "^0.28.1",
     "extract-zip": "2.0.1",
     "lefthook": "^2.1.10",
     "pa11y": "^9.1.1",
-    "puppeteer": "25.3.0"
+    "puppeteer": "25.3.0",
+    "railway": "3.11.0"
   }
 }

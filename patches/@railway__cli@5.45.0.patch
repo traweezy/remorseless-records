@@ -1,0 +1,59 @@
+diff --git a/npm-install/postinstall.js b/npm-install/postinstall.js
+index 03078973e5e9c0ab2712c7f28087709f060d5058..cdd49d7736fc48fef3aabc38247a8516e2a9a408 100644
+--- a/npm-install/postinstall.js
++++ b/npm-install/postinstall.js
+@@ -1,10 +1,11 @@
+ import { createWriteStream } from "fs";
+ import * as fs from "fs/promises";
++import { createHash } from "crypto";
+ import fetch from "node-fetch";
+ import path from "path";
+ import { pipeline } from "stream/promises";
+ import { fileURLToPath } from "url";
+-import tar from "tar";
++import { x as extract } from "tar";
+ 
+ import { CONFIG } from "./config.js";
+ 
+@@ -41,6 +42,20 @@ const TARGETS = {
+     },
+ };
+ 
++// GitHub's immutable release-asset digests for Railway CLI v5.45.0.
++// Keep this package patch version-locked with package.json.
++const ASSET_SHA256 = {
++    "aarch64-apple-darwin": "617b9d9db29d55616e4fe59b55e3586e8d8b994e11a665190384c74e235481d6",
++    "aarch64-pc-windows-msvc": "d57b6d1c85361a0858ab006953d4f1b680485d90513c755e0346a179f6ec2b20",
++    "aarch64-unknown-linux-musl": "f8d962a6011cc850ee0a3e1af0c03a5d59a1117e4f32ae77d968d557a4d6fbe9",
++    "arm-unknown-linux-musleabihf": "2e8325264c7171899c9d575ed30a62a8b78032d01fc24a3764d76d730fe83a37",
++    "i686-pc-windows-gnu": "5abe40f3866d29922f9d58e8415c203311dca1c4b8225d6746d36b3d57472aea",
++    "i686-unknown-linux-musl": "e830a83e264684ab7dcbb1a4aa9e54f593af2884f99c701ba206c970f4610f10",
++    "x86_64-apple-darwin": "9390030839753ab654a1b6b94a491cc14dc92f6be594b57a1f3cbe067f783955",
++    "x86_64-pc-windows-gnu": "4110554cfe69a73ce3802e869b301bc2effcbdc491471bf4901644e0523802a5",
++    "x86_64-unknown-linux-musl": "68688cd8ddcffbfcd3e117f7261758ac281727981c2698b5573223694f1d8ad4",
++};
++
+ function resolveTarget() {
+     const { platform, arch } = process;
+     const triple = TARGETS[platform]?.[arch];
+@@ -93,7 +108,19 @@ async function install() {
+ 
+     await fs.mkdir(destDir, { recursive: true });
+     await pipeline(response.body, createWriteStream(tarFile));
+-    await tar.x({ file: tarFile, cwd: destDir });
++    const expectedDigest = ASSET_SHA256[triple];
++    if (!expectedDigest) {
++        throw new Error(`Missing reviewed release digest for ${triple}`);
++    }
++    const actualDigest = createHash("sha256")
++        .update(await fs.readFile(tarFile))
++        .digest("hex");
++    if (actualDigest !== expectedDigest) {
++        throw new Error(
++            `Railway CLI archive digest mismatch for ${triple}: expected ${expectedDigest}, received ${actualDigest}`,
++        );
++    }
++    await extract({ file: tarFile, cwd: destDir });
+     await fs.rm(tarFile);
+ 
+     // Fail loudly here rather than leaving a package whose `railway` shim exits

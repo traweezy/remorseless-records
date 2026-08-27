@@ -9,6 +9,7 @@ hoistPattern:
 
 allowBuilds:
   "@medusajs/telemetry": true
+  "@railway/cli": true
   "@swc/core": true
   esbuild: true
   lefthook: true
@@ -53,6 +54,7 @@ packageExtensions:
         optional: true
 
 overrides:
+  "@railway/cli>tar": 7.5.22
   "@babel/core": 7.29.7
   "@mikro-orm/cli": 6.6.14
   "@mikro-orm/core": 6.6.14
@@ -127,12 +129,14 @@ patchedDependencies:
   "@medusajs/framework@2.18.0": patches/@medusajs__framework@2.18.0.patch
   "@medusajs/medusa@2.18.0": patches/@medusajs__medusa@2.18.0.patch
   "@medusajs/workflow-engine-redis@2.18.0": patches/@medusajs__workflow-engine-redis@2.18.0.patch
+  '@railway/cli@5.45.0': patches/@railway__cli@5.45.0.patch
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
   "extract-zip@2.0.1": patches/extract-zip@2.0.1.patch
   react-router-dom@6.30.4: patches/react-router-dom@6.30.4.patch
 
 minimumReleaseAgeExclude:
+  - "@railway/cli@5.45.0"
   - "brace-expansion@2.1.4"
   - "brace-expansion@5.0.9"
   - "fast-uri@3.1.5"

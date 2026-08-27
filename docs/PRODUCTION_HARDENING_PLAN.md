@@ -975,6 +975,85 @@ audit, both production builds, and the Admin bundle budget pass. The Admin main
 bundle is 1,797,919 gzip bytes and total is 2,392,417 gzip bytes. Exact staging
 acceptance of the scheduler timestamp correction is complete.
 
+## Active slice: staging Railway IaC and dependency readiness
+
+- [x] Inventory the committed and effective Railway configuration for every
+      staging service without reading or exporting secret values.
+- [x] Replace the deprecated per-service `railway.json` files with Railway's
+      current TypeScript Infrastructure as Code model before the December 1,
+      2026 Config as Code cutoff.
+- [x] Scope the stable `applications` partial to Backend and Storefront so a
+      Railway beta importer defect cannot rewrite databases, volumes, storage,
+      search, or console resources.
+- [x] Fail closed outside the exact staging project/environment and provide
+      guarded, pinned plan/apply commands.
+- [x] Remove Storefront's unpinned `npm i -g pnpm` predeploy and use only the
+      repository-pinned pnpm workspace commands.
+- [x] Gate both services on dependency-aware `/ready`; reduce Backend's deploy
+      window from 720 to 300 seconds and make Storefront's 180 seconds explicit.
+- [x] Pin Railway SDK 3.11.0 and CLI 5.45.0; replace CLI's vulnerable
+      `tar@6.2.1` with 7.5.22 and verify every supported release archive against
+      Railway's immutable SHA-256 asset digest before extraction.
+- [x] Add a fail-closed CI verifier for ownership scope, preserved variables,
+      application commands, readiness, tool versions, archive digests, and the
+      absence of legacy config files.
+- [x] Pass the complete local release gate.
+- [ ] Commit the cohesive infrastructure slice.
+- [ ] Push only to `staging`; require exact-SHA Root, Backend, and Storefront CI
+      plus both Railway deployments, readiness, route, manifest, and log
+      acceptance before closing the slice.
+
+Discovery: Railway's legacy Config as Code files are deprecated and stop being
+read on December 1, 2026. The live services were explicitly bound to
+`/backend/railway.json` and `/storefront/railway.json`; deleting the files alone
+would not transfer ownership. The staged migration therefore cleared both
+paths in the same environment patch that installed equivalent dashboard
+fallbacks. No variable, database, volume, domain, replica, credential, or
+support-service field was changed. See Railway's
+[Infrastructure as Code guide](https://docs.railway.com/infrastructure-as-code)
+and [Config as Code migration guidance](https://docs.railway.com/config-as-code).
+
+Discovery: the generated whole-project import was not idempotent. Its first
+plan proposed replacing the existing Redis and PostgreSQL sources and nulling
+the Bucket, Meilisearch, and Console builders. None of those changes was
+applied. A stable `applications` partial now owns only Backend and Storefront;
+the verifier fails if data or support resources enter that ownership boundary.
+
+Migration acceptance: configuration-triggered Backend deployment
+`a2dce79a-6e0a-4756-9636-6ad379591abc` and Storefront deployment
+`df4d1610-3242-4df7-943e-a61b4b5a73e0` reached `SUCCESS`. The final IaC apply
+produced Backend `f12f5c0f-797b-4218-8e9b-349ea9d0b940` and Storefront
+`8bc23ef4-34e3-41bb-8c9f-64453736ab89`, both `SUCCESS`. Their effective
+manifests contain the exact pnpm build/start commands, no Storefront predeploy,
+`/ready`, 300/180-second windows, and `ON_FAILURE` with 10 retries. Railway's
+build logs show `/ready` succeeded after 11.34 seconds for Backend and 3.02
+seconds for Storefront; all eight health/public probes returned 200 and no
+`npm i -g pnpm` record exists.
+
+Discovery: Railway's IaC apply reports the two restart-policy updates as
+applied and the effective deployment manifests prove them, but its environment
+read model omits those fields. A subsequent plan therefore repeats only those
+two already-effective updates. Do not loop the apply solely to clear that
+platform phantom drift; retain manifest verification until Railway's plan/read
+model converges.
+
+Supply-chain discovery: Railway CLI 5.45.0's npm wrapper still declared
+vulnerable `tar@6.2.1` and downloaded release archives without verifying a
+digest. The checked package patch uses `tar@7.5.22`, selects its named ESM
+extractor, and verifies the exact official SHA-256 digest for all nine supported
+platform archives before extraction. The production audit remains at the three
+documented ignored moderates; the CLI's vulnerable tar chain is absent.
+
+Current local evidence: frozen installation and supply-chain policy checks
+pass; the pinned, checksum-verified CLI reports 5.45.0 and resolves only
+`tar@7.5.22`. Repository lint, both strict typechecks, release/IaC/artifact/
+framework/scheduler/runtime-log/extract-zip/React Router verifiers, and the
+production audit pass. All 173 Backend suites with 926 tests and all 112
+Storefront suites with 587 tests pass; Storefront coverage remains 93.89%
+statements, 86.24% branches, 94.60% functions, and 93.87% lines. Both
+production builds pass. The Admin main bundle is 1,798,588 gzip bytes and
+total JavaScript is 2,393,325 gzip bytes, within the checked budgets.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -1107,11 +1186,16 @@ acceptance of the scheduler timestamp correction is complete.
       database/volume metrics with an overhead budget.
 - [ ] Define availability, latency, recovery-time, and recovery-point goals
       before adding replicas, PgBouncer, overlap/draining, or paid monitoring.
-- [ ] Gate Backend Railway releases on `/ready` rather than the less-complete
+- [x] Gate Backend Railway releases on `/ready` rather than the less-complete
       `/api/health` alias after migration and dependency startup budgets are
       measured; keep `/live` as the liveness-only signal.
-- [ ] Reduce the Backend 720-second deploy health timeout after startup and
+- [x] Reduce the Backend 720-second deploy health timeout after startup and
       migration behavior is measured.
+- [ ] Replace the temporary `applications` partial with a clean whole-project
+      import after Railway's beta importer can represent the existing database
+      and support-service sources idempotently.
+- [ ] Remove the restart-policy phantom drift after Railway's IaC read model
+      returns the settings already present in effective deployment manifests.
 
 ## GitHub, CI, supply chain, and test depth
 
@@ -1151,9 +1235,11 @@ acceptance of the scheduler timestamp correction is complete.
       coverage.
 - [ ] Complete the broader custom Backend post-build dependency install/patch
       reproducibility review beyond the two remediated file rewrite races.
-- [ ] Remove the Storefront Railway `npm i -g pnpm` pre-deploy bootstrap and
+- [x] Remove the Storefront Railway `npm i -g pnpm` pre-deploy bootstrap and
       use the repository-pinned pnpm/Corepack toolchain without an unpinned
       package-manager install.
+- [ ] Remove the Railway CLI package patch when upstream uses a non-vulnerable
+      archive extractor and verifies immutable release digests itself.
 - [ ] Scan final runtime images, generate image-linked SBOM/provenance, and sign
       or attest the deployed artifacts.
 - [ ] Move hardened-runner egress from audit mode to an explicit allowlist after
