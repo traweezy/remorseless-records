@@ -68,17 +68,20 @@ describe("POST /api/cart/items", () => {
       created: false,
     })
     cartApiMocks.addLineItem.mockResolvedValue(cart)
+    const apiRequest = createRequest({
+      variant_id: "variant_01ABC",
+      quantity: 2,
+    })
 
-    const response = await POST(
-      createRequest({ variant_id: "variant_01ABC", quantity: 2 })
-    )
+    const response = await POST(apiRequest)
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ cart })
     expect(cartApiMocks.addLineItem).toHaveBeenCalledWith(
       "cart_active",
       "variant_01ABC",
-      2
+      2,
+      apiRequest
     )
   })
 
@@ -99,10 +102,12 @@ describe("POST /api/cart/items", () => {
       .mockRejectedValueOnce(staleError)
       .mockResolvedValueOnce(populatedCart)
     cartApiMocks.createCart.mockResolvedValue(freshCart)
+    const apiRequest = createRequest({
+      variant_id: "variant_01ABC",
+      quantity: 1,
+    })
 
-    const response = await POST(
-      createRequest({ variant_id: "variant_01ABC", quantity: 1 })
-    )
+    const response = await POST(apiRequest)
 
     expect(response.status).toBe(200)
     expect(cartCookieMocks.syncCartCookie).toHaveBeenCalledWith(
@@ -113,7 +118,8 @@ describe("POST /api/cart/items", () => {
       2,
       "cart_fresh",
       "variant_01ABC",
-      1
+      1,
+      apiRequest
     )
   })
 
@@ -127,17 +133,20 @@ describe("POST /api/cart/items", () => {
     cartApiMocks.addLineItem.mockResolvedValue(cart)
     cartApiMocks.getCart.mockResolvedValue(cart)
     const payload = { variant_id: "variant_01ABC", quantity: 1 }
+    const firstRequest = createRequest(payload, { "idempotency-key": key })
+    const replayRequest = createRequest(payload, { "idempotency-key": key })
 
-    const first = await POST(createRequest(payload, { "idempotency-key": key }))
-    const replayed = await POST(
-      createRequest(payload, { "idempotency-key": key })
-    )
+    const first = await POST(firstRequest)
+    const replayed = await POST(replayRequest)
 
     expect(first.status).toBe(200)
     expect(replayed.status).toBe(200)
     expect(replayed.headers.get("Idempotency-Replayed")).toBe("true")
     expect(cartApiMocks.addLineItem).toHaveBeenCalledOnce()
-    expect(cartApiMocks.getCart).toHaveBeenCalledWith("cart_replayed")
+    expect(cartApiMocks.getCart).toHaveBeenCalledWith(
+      "cart_replayed",
+      replayRequest
+    )
   })
 
   it("rejects cross-site mutation requests before reading cart state", async () => {

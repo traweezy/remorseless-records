@@ -61,9 +61,19 @@ describe("route guards", () => {
     const response = enforceTrustedOrigin(request)
 
     expect(response?.status).toBe(403)
-    await expect(response?.json()).resolves.toEqual({
-      error: "Request origin is not allowed.",
+    await expect(response?.json()).resolves.toMatchObject({
+      code: "invalid_origin",
+      detail: "Request origin is not allowed.",
+      status: 403,
+      type: "https://remorselessrecords.com/problems/invalid_origin",
     })
+    expect(response?.headers.get("content-type")).toContain(
+      "application/problem+json"
+    )
+    expect(response?.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/)
+    expect(response?.headers.get("traceparent")).toMatch(
+      /^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/
+    )
   })
 
   it("blocks invalid referer values", async () => {
@@ -80,8 +90,10 @@ describe("route guards", () => {
     const response = enforceTrustedOrigin(request)
 
     expect(response?.status).toBe(403)
-    await expect(response?.json()).resolves.toEqual({
-      error: "Request referer is not allowed.",
+    await expect(response?.json()).resolves.toMatchObject({
+      code: "invalid_referer",
+      detail: "Request referer is not allowed.",
+      status: 403,
     })
   })
 
@@ -128,8 +140,10 @@ describe("route guards", () => {
 
     const response = enforceTrustedOrigin(request)
     expect(response?.status).toBe(403)
-    await expect(response?.json()).resolves.toEqual({
-      error: "Request source is required.",
+    await expect(response?.json()).resolves.toMatchObject({
+      code: "request_source_required",
+      detail: "Request source is required.",
+      status: 403,
     })
   })
 
@@ -146,8 +160,10 @@ describe("route guards", () => {
 
     const response = enforceTrustedOrigin(request)
     expect(response?.status).toBe(403)
-    await expect(response?.json()).resolves.toEqual({
-      error: "Cross-site requests are not allowed.",
+    await expect(response?.json()).resolves.toMatchObject({
+      code: "cross_site_request",
+      detail: "Cross-site requests are not allowed.",
+      status: 403,
     })
   })
 
@@ -338,7 +354,13 @@ describe("route guards", () => {
     if (!result.ok) {
       expect(result.response.status).toBe(400)
       await expect(result.response.json()).resolves.toMatchObject({
-        error: "Invalid request body.",
+        code: "invalid_request",
+        detail: "Invalid request body.",
+        errors: [
+          {
+            field: "quantity",
+          },
+        ],
       })
     }
   })
@@ -374,7 +396,11 @@ describe("route guards", () => {
     expect(success.status).toBe(201)
     expect(success.headers.get("Cache-Control")).toContain("no-store")
 
-    const failure = jsonApiError("nope", 500)
+    const failure = jsonApiError(
+      createRequest("https://storefront.test/api/failure"),
+      "nope",
+      500
+    )
     expect(failure.status).toBe(500)
     expect(failure.headers.get("Cache-Control")).toContain("no-store")
   })

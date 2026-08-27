@@ -20,6 +20,11 @@ export const GET = async (request: Request) => {
     return jsonApiResponse({ options })
   } catch {
     console.error("/api/catalog/filters/formats failed")
-    return jsonApiError("Unable to load format filters", 500)
+    return jsonApiError(
+      request,
+      "Unable to load format filters",
+      500,
+      "catalog_unavailable"
+    )
   }
 }

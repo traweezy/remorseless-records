@@ -31,6 +31,7 @@ const checkoutChanged = (
   checkout: ReturnType<typeof createCheckoutProjection>
 ): Response =>
   jsonApiProblem({
+    request,
     status: 409,
     code: "checkout_changed",
     title: "Your order changed",
@@ -44,6 +45,7 @@ const paymentProblem = (
   error: CheckoutPaymentError
 ): Response =>
   jsonApiProblem({
+    request,
     status: error.code === "payment_result_unknown" ? 409 : 503,
     code: error.code,
     title:
@@ -91,7 +93,10 @@ export const POST = async (request: NextRequest): Promise<Response> => {
       )
     }
 
-    const recalculatedCart = await revalidateShippingAndTaxes(active.value.cart)
+    const recalculatedCart = await revalidateShippingAndTaxes(
+      active.value.cart,
+      request
+    )
     const recalculatedProjection = createCheckoutProjection(recalculatedCart)
     if (recalculatedProjection.revision !== parsed.data.revision) {
       return checkoutChanged(request, recalculatedProjection)
@@ -110,12 +115,13 @@ export const POST = async (request: NextRequest): Promise<Response> => {
       await initiatePaymentSession(
         active.value.cart.id,
         "pp_stripe_stripe",
-        recalculatedCart
+        recalculatedCart,
+        request
       )
-      preparedCart = await getCart(active.value.cart.id)
+      preparedCart = await getCart(active.value.cart.id, request)
     }
     assertPreparedPayment(preparedCart)
-    await linkCheckoutTax(preparedCart.id)
+    await linkCheckoutTax(preparedCart.id, request)
 
     return checkoutProjectionResponse(
       {
@@ -127,6 +133,7 @@ export const POST = async (request: NextRequest): Promise<Response> => {
   } catch (error: unknown) {
     if (error instanceof CheckoutRevalidationError) {
       return jsonApiProblem({
+        request,
         status: 409,
         code: error.code,
         title: "Delivery method changed",

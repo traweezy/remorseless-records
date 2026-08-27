@@ -3,6 +3,8 @@ import type {
   MedusaResponse,
 } from "@medusajs/framework/http";
 
+import { sendApiProblem } from "../../../lib/http/correlation";
+
 import {
   taxReportErrorName,
   taxReportProblem,
@@ -17,14 +19,19 @@ const searchParamsFrom = (req: AuthenticatedMedusaRequest): URLSearchParams =>
   new URL(req.originalUrl, "http://medusa.local").searchParams;
 
 const problemResponse = (
+  req: AuthenticatedMedusaRequest,
   res: MedusaResponse,
   error: unknown,
-): MedusaResponse => {
+): void => {
   const problem = taxReportProblem({ error, operation: "report" });
-  return res
-    .status(problem.status)
-    .type("application/problem+json")
-    .json(problem.body);
+  sendApiProblem(req, res, {
+    code: problem.body.type.split("/").at(-1) ?? "tax-report-unavailable",
+    detail: problem.body.detail,
+    instance: req.path,
+    status: problem.status,
+    title: problem.body.title,
+    type: problem.body.type,
+  });
 };
 
 export const GET = async (
@@ -56,6 +63,6 @@ export const GET = async (
         `[tax-records] Report generation failed (${taxReportErrorName(error)}).`,
       );
     }
-    problemResponse(res, error);
+    problemResponse(req, res, error);
   }
 };

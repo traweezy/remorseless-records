@@ -75,12 +75,13 @@ describe("active checkout cart identity", () => {
       needsRotation: false,
     })
     cartApiMocks.getCart.mockResolvedValue(cart)
+    const apiRequest = request()
 
-    await expect(resolveActiveCheckoutCart(request())).resolves.toEqual({
+    await expect(resolveActiveCheckoutCart(apiRequest)).resolves.toEqual({
       ok: true,
       value: { cart, needsCookieRotation: false },
     })
-    expect(cartApiMocks.getCart).toHaveBeenCalledWith("cart_signed")
+    expect(cartApiMocks.getCart).toHaveBeenCalledWith("cart_signed", apiRequest)
   })
 
   it("resolves signed identity without an upstream lookup", () => {

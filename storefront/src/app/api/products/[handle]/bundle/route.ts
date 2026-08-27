@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { z } from "zod"
 
-import { getBundleComposition } from "@/lib/data/bundles"
+import { getCorrelatedBundleComposition } from "@/lib/data/bundles"
 import {
   enforceRateLimit,
   jsonApiProblem,
@@ -30,6 +30,7 @@ export const GET = async (
   const parsed = handleSchema.safeParse((await params).handle)
   if (!parsed.success) {
     return jsonApiProblem({
+      request,
       status: 400,
       code: "product_handle_invalid",
       title: "Invalid product handle",
@@ -38,6 +39,6 @@ export const GET = async (
     })
   }
 
-  const bundle = await getBundleComposition(parsed.data)
+  const bundle = await getCorrelatedBundleComposition(parsed.data, request)
   return jsonApiResponse({ bundle })
 }

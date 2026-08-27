@@ -10,6 +10,8 @@ type PrivacyPayload = {
   honeypot?: string
 }
 
+const traceId = "0123456789abcdef0123456789abcdef"
+
 const createRequest = (payload: PrivacyPayload): Request =>
   new Request("https://storefront.test/api/privacy-request", {
     method: "POST",
@@ -20,6 +22,8 @@ const createRequest = (payload: PrivacyPayload): Request =>
       host: "storefront.test",
       "x-forwarded-host": "storefront.test",
       "x-forwarded-for": faker.internet.ip(),
+      "x-request-id": "request_privacy_01",
+      traceparent: `00-${traceId}-0123456789abcdef-01`,
     },
     body: JSON.stringify(payload),
   })
@@ -53,6 +57,11 @@ describe("privacy request route", () => {
     await expect(response.json()).resolves.toEqual({ ok: true })
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     expect(fetchSpy.mock.calls[0]?.[0]).toContain("/store/privacy-request")
+    const upstreamHeaders = new Headers(fetchSpy.mock.calls[0]?.[1]?.headers)
+    expect(upstreamHeaders.get("x-request-id")).toBe("request_privacy_01")
+    expect(upstreamHeaders.get("traceparent")).toMatch(
+      new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`)
+    )
   })
 
   it("silently accepts honeypot payloads without backend forwarding", async () => {
@@ -97,7 +106,13 @@ describe("privacy request route", () => {
     const response = await POST(createRequest(payload))
 
     expect(response.status).toBe(502)
-    await expect(response.json()).resolves.toEqual({ message: errorMessage })
+    const problem: unknown = await response.json()
+    expect(problem).toMatchObject({
+      code: "privacy_request_upstream_unavailable",
+      detail: "Unable to submit privacy request right now.",
+      status: 502,
+    })
+    expect(JSON.stringify(problem)).not.toContain(errorMessage)
   })
 
   it("rejects invalid payloads before any backend call", async () => {

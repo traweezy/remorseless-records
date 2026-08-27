@@ -3,6 +3,7 @@ import "server-only"
 import type { HttpTypes } from "@medusajs/types"
 
 import type { CheckoutReceipt } from "@/features/checkout/types/checkout"
+import { createUpstreamHeaders } from "@/lib/http/correlation"
 import { medusa } from "@/lib/medusa/client"
 
 const ORDER_RECEIPT_FIELDS = [
@@ -119,13 +120,21 @@ const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
 }
 
 export const getOrderReceipt = async (
-  orderId: string
+  orderId: string,
+  request?: Request
 ): Promise<CheckoutReceipt> => {
   const { order } = await medusa.client.fetch<HttpTypes.StoreOrderResponse>(
     `/store/orders/${encodeURIComponent(orderId)}`,
     {
       method: "GET",
       query: { fields: ORDER_RECEIPT_FIELDS },
+      ...(request
+        ? {
+            headers: Object.fromEntries(
+              createUpstreamHeaders(request).entries()
+            ),
+          }
+        : {}),
       signal: AbortSignal.timeout(ORDER_RECEIPT_TIMEOUT_MS),
     }
   )

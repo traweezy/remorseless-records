@@ -20,6 +20,11 @@ export const GET = async (request: Request) => {
     return jsonApiResponse({ options })
   } catch {
     console.error("/api/catalog/filters/product-types failed")
-    return jsonApiError("Unable to load product type filters", 500)
+    return jsonApiError(
+      request,
+      "Unable to load product type filters",
+      500,
+      "catalog_unavailable"
+    )
   }
 }

@@ -1,8 +1,9 @@
+import type { HttpTypes } from "@medusajs/types"
 import { z } from "zod"
 
-import { storeClient } from "@/lib/medusa"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
+import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { resolveRegionId } from "@/lib/regions"
 import {
   enforceRateLimit,
@@ -36,7 +37,12 @@ export const GET = async (request: Request) => {
       Object.fromEntries(url.searchParams.entries())
     )
     if (!parsedQuery.success) {
-      return jsonApiError("Invalid products query.", 400)
+      return jsonApiError(
+        request,
+        "Invalid products query.",
+        400,
+        "invalid_query"
+      )
     }
 
     const limit = parsedQuery.data.limit ?? 24
@@ -44,7 +50,7 @@ export const GET = async (request: Request) => {
     const sortParam = parsedQuery.data.sort
     const inStockOnly = parsedQuery.data.inStock === "true"
 
-    const regionId = await resolveRegionId()
+    const regionId = await resolveRegionId(request)
     const options: Record<string, unknown> = {
       limit,
       offset,
@@ -63,13 +69,19 @@ export const GET = async (request: Request) => {
       }
     }
 
-    const { products, count } = await storeClient.product.list(options)
+    const { products, count } =
+      await correlatedMedusaFetch<HttpTypes.StoreProductListResponse>(
+        request,
+        "/store/products",
+        { query: options }
+      )
 
     const hits = products.map(mapStoreProductToSearchHit)
     const filteredHits = inStockOnly
       ? hits.filter((hit) => {
           const status =
-            hit.stockStatus ?? (hit.defaultVariant?.inStock ? "in_stock" : "sold_out")
+            hit.stockStatus ??
+            (hit.defaultVariant?.inStock ? "in_stock" : "sold_out")
           return status !== "sold_out"
         })
       : hits
@@ -87,6 +99,11 @@ export const GET = async (request: Request) => {
     })
   } catch {
     console.error("Product fallback endpoint failed")
-    return jsonApiError("Unable to load products", 500)
+    return jsonApiError(
+      request,
+      "Unable to load products",
+      500,
+      "catalog_unavailable"
+    )
   }
 }

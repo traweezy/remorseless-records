@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
+import {
+  applyCorrelationToResponse,
+  getRequestCorrelation,
+} from "@/lib/http/correlation"
+
 type RateLimitPolicy = {
   key: string
   max: number
@@ -30,6 +35,7 @@ type ParseBodyFailure = {
 type ParseBodyResult<T> = ParseBodySuccess<T> | ParseBodyFailure
 
 type ApiProblem = {
+  request: Request
   status: number
   code: string
   title: string
@@ -42,6 +48,16 @@ const rateLimitBuckets = new Map<string, RateLimitBucket>()
 
 const DEFAULT_MAX_BODY_BYTES = 32 * 1024
 const MAX_RATE_LIMIT_BUCKETS = 10_000
+
+const deploymentIdentity = {
+  commit_sha:
+    process.env.RAILWAY_GIT_COMMIT_SHA ??
+    process.env.GIT_COMMIT_SHA ??
+    "unknown",
+  environment:
+    process.env.RAILWAY_ENVIRONMENT_NAME ?? process.env.NODE_ENV ?? "unknown",
+  service: "storefront",
+} as const
 
 const jsonNoStore = <T>(body: T, init?: ResponseInit): Response => {
   const response = NextResponse.json(body, init)
@@ -133,31 +149,43 @@ const isTrustedSourceHeader = (
 export const enforceTrustedOrigin = (request: Request): Response | null => {
   const fetchSite = request.headers.get("sec-fetch-site")?.toLowerCase()
   if (fetchSite === "cross-site") {
-    return jsonNoStore(
-      { error: "Cross-site requests are not allowed." },
-      { status: 403 }
-    )
+    return jsonApiProblem({
+      request,
+      status: 403,
+      code: "cross_site_request",
+      title: "Cross-site request is not allowed",
+      detail: "Cross-site requests are not allowed.",
+    })
   }
 
   if (!request.headers.get("origin") && !request.headers.get("referer")) {
-    return jsonNoStore(
-      { error: "Request source is required." },
-      { status: 403 }
-    )
+    return jsonApiProblem({
+      request,
+      status: 403,
+      code: "request_source_required",
+      title: "Request source is required",
+      detail: "Request source is required.",
+    })
   }
 
   if (!isTrustedSourceHeader(request, "origin")) {
-    return jsonNoStore(
-      { error: "Request origin is not allowed." },
-      { status: 403 }
-    )
+    return jsonApiProblem({
+      request,
+      status: 403,
+      code: "invalid_origin",
+      title: "Request origin is not allowed",
+      detail: "Request origin is not allowed.",
+    })
   }
 
   if (!isTrustedSourceHeader(request, "referer")) {
-    return jsonNoStore(
-      { error: "Request referer is not allowed." },
-      { status: 403 }
-    )
+    return jsonApiProblem({
+      request,
+      status: 403,
+      code: "invalid_referer",
+      title: "Request referer is not allowed",
+      detail: "Request referer is not allowed.",
+    })
   }
 
   return null
@@ -199,10 +227,13 @@ export const enforceRateLimit = (
       Math.ceil((current.resetAt - now) / 1000)
     )
 
-    const response = jsonNoStore(
-      { error: "Too many requests. Please try again shortly." },
-      { status: 429 }
-    )
+    const response = jsonApiProblem({
+      request,
+      status: 429,
+      code: "rate_limit_exceeded",
+      title: "Too many requests",
+      detail: "Too many requests. Please try again shortly.",
+    })
     response.headers.set("Retry-After", String(retryAfterSeconds))
     return response
   }
@@ -224,10 +255,13 @@ export const parseJsonBody = async <T>(
   if (requireJsonContentType && !contentType.includes("application/json")) {
     return {
       ok: false,
-      response: jsonNoStore(
-        { error: "Content-Type must be application/json." },
-        { status: 415 }
-      ),
+      response: jsonApiProblem({
+        request,
+        status: 415,
+        code: "unsupported_media_type",
+        title: "Unsupported media type",
+        detail: "Content-Type must be application/json.",
+      }),
     }
   }
 
@@ -235,10 +269,13 @@ export const parseJsonBody = async <T>(
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     return {
       ok: false,
-      response: jsonNoStore(
-        { error: "Request body is too large." },
-        { status: 413 }
-      ),
+      response: jsonApiProblem({
+        request,
+        status: 413,
+        code: "payload_too_large",
+        title: "Request body is too large",
+        detail: "Request body is too large.",
+      }),
     }
   }
 
@@ -262,10 +299,13 @@ export const parseJsonBody = async <T>(
           await reader.cancel()
           return {
             ok: false,
-            response: jsonNoStore(
-              { error: "Request body is too large." },
-              { status: 413 }
-            ),
+            response: jsonApiProblem({
+              request,
+              status: 413,
+              code: "payload_too_large",
+              title: "Request body is too large",
+              detail: "Request body is too large.",
+            }),
           }
         }
         chunks.push(value)
@@ -282,7 +322,13 @@ export const parseJsonBody = async <T>(
   } catch {
     return {
       ok: false,
-      response: jsonNoStore({ error: "Malformed JSON body." }, { status: 400 }),
+      response: jsonApiProblem({
+        request,
+        status: 400,
+        code: "malformed_json",
+        title: "Malformed JSON body",
+        detail: "Malformed JSON body.",
+      }),
     }
   }
 
@@ -292,34 +338,62 @@ export const parseJsonBody = async <T>(
   } catch {
     return {
       ok: false,
-      response: jsonNoStore({ error: "Malformed JSON body." }, { status: 400 }),
+      response: jsonApiProblem({
+        request,
+        status: 400,
+        code: "malformed_json",
+        title: "Malformed JSON body",
+        detail: "Malformed JSON body.",
+      }),
     }
   }
 
   const parsed = schema.safeParse(payload)
   if (!parsed.success) {
+    const errors = Object.entries(
+      z.flattenError(parsed.error).fieldErrors
+    ).flatMap(([field, messages]) =>
+      Array.isArray(messages)
+        ? messages
+            .filter((message): message is string => typeof message === "string")
+            .map((message) => ({ field, message }))
+        : []
+    )
     return {
       ok: false,
-      response: jsonNoStore(
-        {
-          error: "Invalid request body.",
-          fields: z.flattenError(parsed.error).fieldErrors,
-        },
-        { status: 400 }
-      ),
+      response: jsonApiProblem({
+        request,
+        status: 400,
+        code: "invalid_request",
+        title: "Invalid request body",
+        detail: "Invalid request body.",
+        extensions: { errors },
+      }),
     }
   }
 
   return { ok: true, data: parsed.data }
 }
 
-export const jsonApiError = (message: string, status: number): Response =>
-  jsonNoStore({ error: message }, { status })
+export const jsonApiError = (
+  request: Request,
+  message: string,
+  status: number,
+  code = "request_failed"
+): Response =>
+  jsonApiProblem({
+    request,
+    status,
+    code,
+    title: "Request failed",
+    detail: message,
+  })
 
 export const jsonApiResponse = <T>(body: T, init?: ResponseInit): Response =>
   jsonNoStore(body, init)
 
 export const jsonApiProblem = ({
+  request,
   status,
   code,
   title,
@@ -327,6 +401,8 @@ export const jsonApiProblem = ({
   instance,
   extensions,
 }: ApiProblem): Response => {
+  const correlation = getRequestCorrelation(request)
+  const resolvedInstance = instance ?? new URL(request.url).pathname
   const response = jsonNoStore(
     {
       ...extensions,
@@ -335,10 +411,32 @@ export const jsonApiProblem = ({
       status,
       detail,
       code,
-      ...(instance ? { instance } : {}),
+      instance: resolvedInstance,
+      request_id: correlation.requestId,
+      trace_id: correlation.traceId,
     },
     { status }
   )
   response.headers.set("Content-Type", "application/problem+json")
+  applyCorrelationToResponse(response, correlation)
+
+  if (process.env.NODE_ENV !== "test") {
+    const event = JSON.stringify({
+      ...deploymentIdentity,
+      event: "api.problem",
+      method: request.method,
+      problem_code: code,
+      request_id: correlation.requestId,
+      span_id: correlation.spanId,
+      status,
+      trace_id: correlation.traceId,
+    })
+    if (status >= 500) {
+      console.error(event)
+    } else {
+      console.warn(event)
+    }
+  }
+
   return response
 }

@@ -68,30 +68,28 @@ describe("/api/cart/items/[itemId]", () => {
   })
 
   it("treats a quantity of zero as a removal", async () => {
-    const response = await PATCH(
-      createRequest("PATCH", { quantity: 0 }),
-      context("cali_01ABC")
-    )
+    const apiRequest = createRequest("PATCH", { quantity: 0 })
+    const response = await PATCH(apiRequest, context("cali_01ABC"))
 
     expect(response.status).toBe(200)
     expect(cartApiMocks.removeLineItem).toHaveBeenCalledWith(
       "cart_active",
-      "cali_01ABC"
+      "cali_01ABC",
+      apiRequest
     )
     expect(cartApiMocks.updateLineItem).not.toHaveBeenCalled()
   })
 
   it("updates positive quantities on the signed active cart", async () => {
-    const response = await PATCH(
-      createRequest("PATCH", { quantity: 3 }),
-      context("cali_01ABC")
-    )
+    const apiRequest = createRequest("PATCH", { quantity: 3 })
+    const response = await PATCH(apiRequest, context("cali_01ABC"))
 
     expect(response.status).toBe(200)
     expect(cartApiMocks.updateLineItem).toHaveBeenCalledWith(
       "cart_active",
       "cali_01ABC",
-      3
+      3,
+      apiRequest
     )
     expect(cartCookieMocks.syncCartCookie).toHaveBeenCalledWith(
       expect.any(Response),

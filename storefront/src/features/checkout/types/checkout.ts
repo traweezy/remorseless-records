@@ -92,7 +92,12 @@ export type CheckoutProblemCode =
   | "checkout_changed"
   | "completion_in_progress"
   | "contact_invalid"
+  | "cross_site_request"
+  | "invalid_origin"
+  | "invalid_referer"
+  | "invalid_request"
   | "inventory_changed"
+  | "malformed_json"
   | "order_finalizing"
   | "payment_action_required"
   | "payment_declined"
@@ -100,11 +105,14 @@ export type CheckoutProblemCode =
   | "payment_processing"
   | "payment_result_unknown"
   | "payment_session_stale"
+  | "payload_too_large"
   | "rate_limited"
   | "recovery_required"
+  | "request_source_required"
   | "shipping_changed"
   | "shipping_unavailable"
   | "tax_unavailable"
+  | "unsupported_media_type"
 
 export type CheckoutProblem = {
   type: string
@@ -113,6 +121,8 @@ export type CheckoutProblem = {
   detail: string
   code: CheckoutProblemCode
   instance?: string | undefined
+  request_id?: string | undefined
+  trace_id?: string | undefined
   checkout?: CheckoutProjection | undefined
 }
 

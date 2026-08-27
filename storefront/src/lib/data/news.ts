@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache"
 
 import { runtimeEnv } from "@/config/env"
+import { createUpstreamHeaders } from "@/lib/http/correlation"
 
 export const NEWS_PAGE_SIZE = 6
 
@@ -82,9 +83,11 @@ const normalizeEntry = (entry: NewsApiEntry): NewsEntry => ({
 export const fetchNewsEntries = async ({
   limit,
   offset,
+  request,
 }: {
   limit: number
   offset: number
+  request?: Request
 }): Promise<NewsListResponse> => {
   if (!runtimeEnv.medusaBackendUrl || !runtimeEnv.medusaPublishableKey) {
     console.error("[news] Missing Medusa configuration")
@@ -97,10 +100,14 @@ export const fetchNewsEntries = async ({
     url.searchParams.set("offset", String(offset))
 
     const response = await fetch(url.toString(), {
-      headers: {
-        "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
-      },
-      next: { revalidate: 300, tags: ["news"] },
+      headers: request
+        ? createUpstreamHeaders(request, {
+            "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
+          })
+        : { "x-publishable-api-key": runtimeEnv.medusaPublishableKey },
+      ...(request
+        ? { cache: "no-store" as const }
+        : { next: { revalidate: 300, tags: ["news"] } }),
     })
 
     if (!response.ok) {
@@ -141,7 +148,10 @@ export const fetchNewsEntryBySlug = async (
   }
 
   try {
-    const url = new URL(`/store/news/${normalizedSlug}`, runtimeEnv.medusaBackendUrl)
+    const url = new URL(
+      `/store/news/${normalizedSlug}`,
+      runtimeEnv.medusaBackendUrl
+    )
 
     const response = await fetch(url.toString(), {
       headers: {

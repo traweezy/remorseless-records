@@ -246,6 +246,7 @@ const parseCompleted = (value: string | null) => {
 
 const conflictResponse = (request: NextRequest): Response =>
   jsonApiProblem({
+    request,
     status: 409,
     code: "idempotency_key_reused",
     title: "Request key already used",
@@ -255,6 +256,7 @@ const conflictResponse = (request: NextRequest): Response =>
 
 const inProgressResponse = (request: NextRequest): Response => {
   const response = jsonApiProblem({
+    request,
     status: 409,
     code: "cart_mutation_in_progress",
     title: "Cart update still processing",
@@ -312,6 +314,7 @@ export const runIdempotentCartMutation = async (
     return {
       ok: false,
       response: jsonApiProblem({
+        request: options.request,
         status: 400,
         code: "idempotency_key_invalid",
         title: "Request key required",
@@ -401,6 +404,7 @@ export const runIdempotentCartMutation = async (
     return {
       ok: false,
       response: jsonApiProblem({
+        request: options.request,
         status: 503,
         code: "cart_idempotency_unavailable",
         title: "Cart updates temporarily unavailable",

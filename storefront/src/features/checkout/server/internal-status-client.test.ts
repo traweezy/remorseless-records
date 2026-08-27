@@ -35,6 +35,13 @@ afterEach(() => {
 
 describe("internal checkout status client", () => {
   it("sends a signed, bounded server-to-server request", async () => {
+    const traceId = "0123456789abcdef0123456789abcdef"
+    const request = new Request("https://storefront.test/api/checkout/status", {
+      headers: {
+        traceparent: `00-${traceId}-0123456789abcdef-01`,
+        "x-request-id": "request_status_01",
+      },
+    })
     const fetchMock = vi.fn<
       (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
     >(() =>
@@ -47,7 +54,7 @@ describe("internal checkout status client", () => {
     vi.stubGlobal("fetch", fetchMock)
 
     await expect(
-      fetchInternalCheckoutStatus("cart_01K123ABC")
+      fetchInternalCheckoutStatus("cart_01K123ABC", request)
     ).resolves.toEqual({ state: "finalizing_order" })
 
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -64,12 +71,14 @@ describe("internal checkout status client", () => {
       method: "POST",
       cache: "no-store",
       body: JSON.stringify({ cart_id: "cart_01K123ABC" }),
-      headers: {
-        "x-publishable-api-key": "pk_test_public",
-      },
     })
     const headers = new Headers(init?.headers)
+    expect(headers.get("x-publishable-api-key")).toBe("pk_test_public")
     expect(headers.get("x-rr-checkout-proof")).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(headers.get("x-request-id")).toBe("request_status_01")
+    expect(headers.get("traceparent")).toMatch(
+      new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`)
+    )
     expect(init?.signal).toBeInstanceOf(AbortSignal)
   })
 

@@ -62,6 +62,19 @@ framework-owned routes. Project route middleware repeats the boundary for
 custom APIs, while the Admin and static-file servers remain free to replace
 the conservative `no-store` default with their reviewed cache policies.
 
+Project API observability middleware validates or creates `X-Request-Id`,
+continues valid W3C trace IDs with a new service span, and returns
+`traceparent`. Backend completion logs are structured and intentionally omit
+paths, queries, headers, bodies, and exception text. Project-owned guard,
+checkout, and tax errors use the correlated RFC 7807 contract in
+[`docs/API_PROBLEM_CONTRACT.md`](../docs/API_PROBLEM_CONTRACT.md). Native Medusa
+errors retain their framework envelope for Admin SDK compatibility.
+
+Framework-owned early responses currently inherit the static security and
+cache boundary but bypass project API observability middleware. Dynamic
+correlation at that earlier framework seam remains tracked hardening work; do
+not describe Admin static responses or built-in pre-router failures as traced.
+
 The Admin build keeps `script-src 'self'` without `unsafe-eval`. A fail-closed
 Vite transform disables Zod's empty-`Function` capability probe in direct and
 prebundled Dashboard copies, and the post-build package step rejects any Admin
@@ -103,8 +116,7 @@ plan through the current plural endpoint requires `product:read`, `file:create`,
 and `product_import:create`; confirming it requires `product:read` and
 `product_import:update`. The deprecated singular prepare endpoint checks the
 same permissions and then returns 410 before multipart parsing; singular
-confirm checks `product:read` and `product_import:update` before also returning
-410. Legacy plans must be re-prepared through the validated plural workflow.
+confirm checks `product:read` and `product_import:update` before also returning 410. Legacy plans must be re-prepared through the validated plural workflow.
 Approved tooling uses the managed upload followed by the plural prepare/confirm
 endpoints. The stock Dashboard import drawer is not supported because it still
 begins with the disabled presigned-upload route.

@@ -67,11 +67,13 @@ describe("GET /api/checkout/confirmation", () => {
   })
 
   it("returns a customer-safe receipt only for the signed grant", async () => {
-    const response = await GET(request())
+    const apiRequest = request()
+    const response = await GET(apiRequest)
 
     expect(response.status).toBe(200)
     expect(orderReceiptMocks.getOrderReceipt).toHaveBeenCalledWith(
-      "order_01K123ABC"
+      "order_01K123ABC",
+      apiRequest
     )
     const payload: unknown = await response.json()
     expect(payload).toEqual({ receipt })

@@ -19,10 +19,7 @@ export type ActiveCheckoutCart = {
 }
 
 export type CheckoutCartProblemCode =
-  | "cart_completed"
-  | "cart_empty"
-  | "cart_missing"
-  | "checkout_unavailable"
+  "cart_completed" | "cart_empty" | "cart_missing" | "checkout_unavailable"
 
 export type ActiveCheckoutCartResult =
   | { ok: true; value: ActiveCheckoutCart }
@@ -49,6 +46,7 @@ const problem = (
   }
 ): Response =>
   jsonApiProblem({
+    request,
     ...input,
     instance: request.nextUrl.pathname,
   })
@@ -62,7 +60,7 @@ export const resolveActiveCheckoutCart = async (
   }
 
   try {
-    const cart = await getCart(identity.value.cartId)
+    const cart = await getCart(identity.value.cartId, request)
     if (cart.completed_at) {
       return {
         ok: false,

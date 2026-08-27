@@ -20,6 +20,11 @@ export const GET = async (request: Request) => {
     return jsonApiResponse({ range })
   } catch {
     console.error("/api/catalog/filters/price-range failed")
-    return jsonApiError("Unable to load price range", 500)
+    return jsonApiError(
+      request,
+      "Unable to load price range",
+      500,
+      "catalog_unavailable"
+    )
   }
 }

@@ -33,7 +33,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
   }
 
   try {
-    const cart = await getCart(cookie.cartId)
+    const cart = await getCart(cookie.cartId, request)
     if (cart.completed_at || cart.items?.length === 0) {
       return clearCartCookie(jsonApiResponse({ cart: null }))
     }
@@ -50,6 +50,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
 
     console.error("Failed to retrieve cart", { code: problem.code })
     return jsonApiProblem({
+      request,
       ...problem,
       instance: request.nextUrl.pathname,
     })

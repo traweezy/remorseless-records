@@ -34,4 +34,25 @@ describe("Storefront security proxy", () => {
       second.headers.get("x-middleware-request-x-nonce")
     )
   })
+
+  it("correlates API requests without attaching document CSP", () => {
+    const traceId = "0123456789abcdef0123456789abcdef"
+    const response = proxy(
+      new NextRequest("https://storefront.example.com/api/cart", {
+        headers: {
+          traceparent: `00-${traceId}-0123456789abcdef-01`,
+          "x-request-id": "request_01",
+        },
+      })
+    )
+
+    expect(response.headers.get("X-Request-Id")).toBe("request_01")
+    expect(response.headers.get("traceparent")).toMatch(
+      new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`)
+    )
+    expect(response.headers.get("x-middleware-request-x-request-id")).toBe(
+      "request_01"
+    )
+    expect(response.headers.get("Content-Security-Policy")).toBeNull()
+  })
 })

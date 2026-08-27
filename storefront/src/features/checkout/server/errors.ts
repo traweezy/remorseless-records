@@ -21,6 +21,7 @@ export const checkoutOperationError = (
     status: mapped.status,
   })
   return jsonApiProblem({
+    request,
     status: mapped.status,
     code: fallback.code,
     title: fallback.title,

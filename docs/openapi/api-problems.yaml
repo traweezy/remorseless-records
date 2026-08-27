@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: Remorseless Records API problem contract
+  version: 1.0.0
+  description: >-
+    Shared RFC 7807-compatible error and correlation components for custom
+    Backend and Storefront APIs. Endpoint enumeration remains in the production
+    hardening backlog.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+paths: {}
+components:
+  headers:
+    RequestId:
+      description: Bounded request correlation identifier.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    Traceparent:
+      description: W3C trace context for the service response span.
+      required: true
+      schema:
+        type: string
+        pattern: "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+  schemas:
+    ApiProblemFieldError:
+      type: object
+      additionalProperties: false
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+    ApiProblem:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - code
+        - instance
+        - request_id
+        - trace_id
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+          minLength: 1
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          pattern: "^[a-z][a-z0-9_-]{1,79}$"
+        instance:
+          type: string
+          minLength: 1
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        trace_id:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        errors:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ApiProblemFieldError"
+      additionalProperties: true

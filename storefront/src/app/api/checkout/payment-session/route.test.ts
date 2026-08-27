@@ -144,18 +144,29 @@ describe("POST /api/checkout/payment-session", () => {
   })
 
   it("rechecks shipping and tax before reusing an exact session", async () => {
-    const response = await POST(request())
+    const apiRequest = request()
+    const response = await POST(apiRequest)
 
     expect(response.status).toBe(200)
-    expect(cartApiMocks.listShippingOptions).toHaveBeenCalledWith("cart_signed")
+    expect(cartApiMocks.listShippingOptions).toHaveBeenCalledWith(
+      "cart_signed",
+      apiRequest
+    )
     expect(cartApiMocks.addShippingMethod).toHaveBeenCalledWith(
       "cart_signed",
-      "so_standard"
+      "so_standard",
+      apiRequest
     )
-    expect(cartApiMocks.calculateTaxes).toHaveBeenCalledWith("cart_signed")
+    expect(cartApiMocks.calculateTaxes).toHaveBeenCalledWith(
+      "cart_signed",
+      apiRequest
+    )
     expect(cartApiMocks.initiatePaymentSession).not.toHaveBeenCalled()
     expect(paymentMocks.assertPreparedPayment).toHaveBeenCalledWith(cart)
-    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith("cart_signed")
+    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith(
+      "cart_signed",
+      apiRequest
+    )
     expect(activeCartMocks.checkoutProjectionResponse).toHaveBeenCalledWith(
       expect.objectContaining({ cart }),
       { includeClientSecret: true }
@@ -166,21 +177,26 @@ describe("POST /api/checkout/payment-session", () => {
     paymentMocks.reusablePreparedPayment.mockReturnValue(null)
     const preparedCart = { ...cart, id: "cart_signed" }
     cartApiMocks.getCart.mockResolvedValue(preparedCart)
+    const apiRequest = request()
 
-    const response = await POST(request())
+    const response = await POST(apiRequest)
 
     expect(response.status).toBe(200)
     expect(cartApiMocks.initiatePaymentSession).toHaveBeenCalledOnce()
     expect(cartApiMocks.initiatePaymentSession).toHaveBeenCalledWith(
       "cart_signed",
       "pp_stripe_stripe",
-      cart
+      cart,
+      apiRequest
     )
-    expect(cartApiMocks.getCart).toHaveBeenCalledWith("cart_signed")
+    expect(cartApiMocks.getCart).toHaveBeenCalledWith("cart_signed", apiRequest)
     expect(paymentMocks.assertPreparedPayment).toHaveBeenCalledWith(
       preparedCart
     )
-    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith("cart_signed")
+    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith(
+      "cart_signed",
+      apiRequest
+    )
   })
 
   it("does not replace an authorized or captured payment", async () => {

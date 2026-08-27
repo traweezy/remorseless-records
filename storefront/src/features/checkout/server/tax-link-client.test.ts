@@ -32,6 +32,16 @@ afterEach(() => {
 
 describe("checkout tax-link client", () => {
   it("sends a purpose-bound, server-to-server request", async () => {
+    const traceId = "0123456789abcdef0123456789abcdef"
+    const request = new Request(
+      "https://storefront.test/api/checkout/payment-session",
+      {
+        headers: {
+          traceparent: `00-${traceId}-0123456789abcdef-01`,
+          "x-request-id": "request_tax_01",
+        },
+      }
+    )
     const fetchMock = vi.fn<
       (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
     >(() =>
@@ -46,7 +56,9 @@ describe("checkout tax-link client", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
 
-    await expect(linkCheckoutTax("cart_01K123ABC")).resolves.toBeUndefined()
+    await expect(
+      linkCheckoutTax("cart_01K123ABC", request)
+    ).resolves.toBeUndefined()
 
     const [url, init] = fetchMock.mock.calls[0]!
     expect(url).toBeInstanceOf(URL)
@@ -63,6 +75,10 @@ describe("checkout tax-link client", () => {
     })
     const headers = new Headers(init?.headers)
     expect(headers.get("x-rr-checkout-proof")).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(headers.get("x-request-id")).toBe("request_tax_01")
+    expect(headers.get("traceparent")).toMatch(
+      new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`)
+    )
   })
 
   it.each([

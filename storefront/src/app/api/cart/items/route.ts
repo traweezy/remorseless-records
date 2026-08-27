@@ -29,10 +29,11 @@ const addLineItemSchema = z
 
 const addToFreshCart = async (
   variantId: string,
-  quantity: number
+  quantity: number,
+  request: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const cart = await createCart()
-  return addLineItem(cart.id, variantId, quantity)
+  const cart = await createCart(undefined, request)
+  return addLineItem(cart.id, variantId, quantity, request)
 }
 
 export const POST = async (request: NextRequest): Promise<Response> => {
@@ -73,7 +74,8 @@ export const POST = async (request: NextRequest): Promise<Response> => {
           return await addLineItem(
             active.cartId,
             parsed.data.variant_id,
-            quantity
+            quantity,
+            request
           )
         } catch (error: unknown) {
           const problem = mapCartError(
@@ -84,10 +86,10 @@ export const POST = async (request: NextRequest): Promise<Response> => {
             throw error
           }
 
-          return addToFreshCart(parsed.data.variant_id, quantity)
+          return addToFreshCart(parsed.data.variant_id, quantity, request)
         }
       },
-      replay: getCart,
+      replay: (replayCartId) => getCart(replayCartId, request),
     })
     if (!result.ok) {
       return result.response
@@ -105,6 +107,7 @@ export const POST = async (request: NextRequest): Promise<Response> => {
     const problem = mapCartError(error, "Unable to add this item to the cart.")
     console.error("Failed to add line item", { code: problem.code })
     return jsonApiProblem({
+      request,
       ...problem,
       instance: request.nextUrl.pathname,
     })

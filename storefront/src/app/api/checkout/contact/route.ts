@@ -34,7 +34,11 @@ export const PUT = async (request: NextRequest): Promise<Response> => {
   }
 
   try {
-    const cart = await setCartEmail(active.value.cart.id, parsed.data.email)
+    const cart = await setCartEmail(
+      active.value.cart.id,
+      parsed.data.email,
+      request
+    )
     return checkoutProjectionResponse({
       cart,
       needsCookieRotation: active.value.needsCookieRotation,

@@ -23,16 +23,18 @@ export const GET = async (request: Request) => {
   }
 
   const { searchParams } = new URL(request.url)
-  const parsed = querySchema.safeParse(Object.fromEntries(searchParams.entries()))
+  const parsed = querySchema.safeParse(
+    Object.fromEntries(searchParams.entries())
+  )
 
   if (!parsed.success) {
-    return jsonApiError("Invalid query", 400)
+    return jsonApiError(request, "Invalid query", 400, "invalid_query")
   }
 
   const limit = parsed.data.limit ?? NEWS_PAGE_SIZE
   const offset = parsed.data.offset ?? 0
 
-  const payload = await fetchNewsEntries({ limit, offset })
+  const payload = await fetchNewsEntries({ limit, offset, request })
 
   return jsonApiResponse(payload)
 }

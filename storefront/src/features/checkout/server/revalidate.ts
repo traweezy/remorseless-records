@@ -18,7 +18,8 @@ export class CheckoutRevalidationError extends Error {
 }
 
 export const revalidateShippingAndTaxes = async (
-  cart: HttpTypes.StoreCart
+  cart: HttpTypes.StoreCart,
+  request?: Request
 ): Promise<HttpTypes.StoreCart> => {
   const selectedOptionId = cart.shipping_methods?.[0]?.shipping_option_id
   if (!selectedOptionId) {
@@ -27,7 +28,7 @@ export const revalidateShippingAndTaxes = async (
     )
   }
 
-  const available = await listShippingOptions(cart.id)
+  const available = await listShippingOptions(cart.id, request)
   const selected = available.shipping_options?.find(
     (option) => option.id === selectedOptionId && !option.insufficient_inventory
   )
@@ -37,6 +38,6 @@ export const revalidateShippingAndTaxes = async (
     )
   }
 
-  await addShippingMethod(cart.id, selected.id)
-  return calculateTaxes(cart.id)
+  await addShippingMethod(cart.id, selected.id, request)
+  return calculateTaxes(cart.id, request)
 }

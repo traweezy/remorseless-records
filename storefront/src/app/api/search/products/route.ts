@@ -168,6 +168,11 @@ export const POST = async (request: Request) => {
     return jsonApiResponse(response)
   } catch {
     console.error("/api/search/products failed")
-    return jsonApiError("Unable to perform search", 500)
+    return jsonApiError(
+      request,
+      "Unable to perform search",
+      500,
+      "search_unavailable"
+    )
   }
 }

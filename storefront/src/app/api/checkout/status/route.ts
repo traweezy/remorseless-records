@@ -36,7 +36,10 @@ export const GET = async (request: NextRequest): Promise<Response> => {
       return identity.response
     }
 
-    const status = await fetchInternalCheckoutStatus(identity.value.cartId)
+    const status = await fetchInternalCheckoutStatus(
+      identity.value.cartId,
+      request
+    )
     if (status.state === "order_confirmed") {
       return clearCartCookie(
         setReceiptGrant(
@@ -51,6 +54,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
       : response
   } catch (error: unknown) {
     return jsonApiProblem({
+      request,
       status: 503,
       code: "recovery_required",
       title: "Checkout status is temporarily unavailable",

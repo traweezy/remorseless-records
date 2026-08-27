@@ -131,15 +131,23 @@ describe("POST /api/checkout/complete", () => {
   })
 
   it("revalidates the revision, shipping, tax, and payment before completion", async () => {
-    const response = await POST(request())
+    const apiRequest = request()
+    const response = await POST(apiRequest)
 
     expect(response.status).toBe(200)
     expect(revalidationMocks.revalidateShippingAndTaxes).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "cart_signed" })
+      expect.objectContaining({ id: "cart_signed" }),
+      apiRequest
     )
     expect(paymentMocks.assertCompletablePayment).toHaveBeenCalledOnce()
-    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith("cart_signed")
-    expect(cartApiMocks.completeCart).toHaveBeenCalledWith("cart_signed")
+    expect(taxLinkMocks.linkCheckoutTax).toHaveBeenCalledWith(
+      "cart_signed",
+      apiRequest
+    )
+    expect(cartApiMocks.completeCart).toHaveBeenCalledWith(
+      "cart_signed",
+      apiRequest
+    )
     expect(responseMocks.orderConfirmedResponse).toHaveBeenCalledWith({
       orderId: "order_01K123ABC",
       orderNumber: "1042",
@@ -214,13 +222,15 @@ describe("POST /api/checkout/complete", () => {
     statusMocks.fetchInternalCheckoutStatus.mockResolvedValue({
       state: "finalizing_order",
     })
+    const apiRequest = request()
 
-    const response = await POST(request())
+    const response = await POST(apiRequest)
 
     expect(response.status).toBe(409)
     expect(cartApiMocks.completeCart).toHaveBeenCalledOnce()
     expect(statusMocks.fetchInternalCheckoutStatus).toHaveBeenCalledWith(
-      "cart_signed"
+      "cart_signed",
+      apiRequest
     )
     expect(responseMocks.orderConfirmedResponse).not.toHaveBeenCalled()
   })
@@ -261,10 +271,14 @@ describe("POST /api/checkout/complete", () => {
     cartApiMocks.getCart.mockResolvedValue(
       cartFixture({ completed_at: "2026-07-25T12:00:00.000Z" })
     )
-    const response = await POST(request())
+    const apiRequest = request()
+    const response = await POST(apiRequest)
 
     expect(response.status).toBe(200)
-    expect(cartApiMocks.completeCart).toHaveBeenCalledWith("cart_signed")
+    expect(cartApiMocks.completeCart).toHaveBeenCalledWith(
+      "cart_signed",
+      apiRequest
+    )
     expect(statusMocks.fetchInternalCheckoutStatus).not.toHaveBeenCalled()
   })
 

@@ -31,6 +31,7 @@ const checkoutChanged = (
   cart: HttpTypes.StoreCart
 ): Response =>
   jsonApiProblem({
+    request,
     status: 409,
     code: "checkout_changed",
     title: "Your order changed",
@@ -49,6 +50,7 @@ const completionProblem = (
   }
 ): Response =>
   jsonApiProblem({
+    request,
     ...input,
     instance: request.nextUrl.pathname,
   })
@@ -58,7 +60,7 @@ const recoverUncertainCompletion = async (
   cartId: string
 ): Promise<Response> => {
   try {
-    const status = await fetchInternalCheckoutStatus(cartId)
+    const status = await fetchInternalCheckoutStatus(cartId, request)
     if (status.state === "order_confirmed") {
       return orderConfirmedResponse({
         orderId: status.orderId,
@@ -156,10 +158,10 @@ export const POST = async (request: NextRequest): Promise<Response> => {
 
   let completionAttempted = false
   try {
-    const cart = await getCart(identity.value.cartId)
+    const cart = await getCart(identity.value.cartId, request)
     if (cart.completed_at) {
       completionAttempted = true
-      const result = await completeCart(cart.id)
+      const result = await completeCart(cart.id, request)
       if (result.type === "cart") {
         return handleCartCompletionError(request, result)
       }
@@ -177,7 +179,7 @@ export const POST = async (request: NextRequest): Promise<Response> => {
       return checkoutChanged(request, cart)
     }
 
-    const revalidatedCart = await revalidateShippingAndTaxes(cart)
+    const revalidatedCart = await revalidateShippingAndTaxes(cart, request)
     const revalidated = createCheckoutProjection(revalidatedCart)
     if (revalidated.revision !== parsed.data.revision) {
       return checkoutChanged(request, revalidatedCart)
@@ -185,11 +187,11 @@ export const POST = async (request: NextRequest): Promise<Response> => {
 
     if (revalidated.cart.totals.total > 0) {
       assertCompletablePayment(revalidatedCart)
-      await linkCheckoutTax(revalidatedCart.id)
+      await linkCheckoutTax(revalidatedCart.id, request)
     }
 
     completionAttempted = true
-    const result = await completeCart(revalidatedCart.id)
+    const result = await completeCart(revalidatedCart.id, request)
     if (result.type === "cart") {
       return handleCartCompletionError(request, result)
     }

@@ -72,6 +72,7 @@ const clientHash = (request: NextRequest): string =>
 
 const unavailableResponse = (request: NextRequest): Response =>
   jsonApiProblem({
+    request,
     status: 503,
     code: "cart_rate_limit_unavailable",
     title: "Cart service temporarily unavailable",
@@ -112,6 +113,7 @@ export const enforceCartRateLimit = async (
       retry_after_seconds: retryAfterSeconds,
     })
     const response = jsonApiProblem({
+      request,
       status: 429,
       code: "cart_rate_limited",
       title: "Too many cart requests",

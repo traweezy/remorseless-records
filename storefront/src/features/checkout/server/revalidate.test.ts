@@ -35,9 +35,13 @@ describe("checkout shipping and tax revalidation", () => {
     await expect(revalidateShippingAndTaxes(cart)).resolves.toBe(recalculated)
     expect(cartApiMocks.addShippingMethod).toHaveBeenCalledWith(
       "cart_signed",
-      "so_standard"
+      "so_standard",
+      undefined
     )
-    expect(cartApiMocks.calculateTaxes).toHaveBeenCalledWith("cart_signed")
+    expect(cartApiMocks.calculateTaxes).toHaveBeenCalledWith(
+      "cart_signed",
+      undefined
+    )
     expect(
       cartApiMocks.addShippingMethod.mock.invocationCallOrder[0]
     ).toBeLessThan(cartApiMocks.calculateTaxes.mock.invocationCallOrder[0]!)

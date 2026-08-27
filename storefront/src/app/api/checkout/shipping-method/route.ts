@@ -38,13 +38,14 @@ export const PUT = async (request: NextRequest): Promise<Response> => {
   }
 
   try {
-    const available = await listShippingOptions(active.value.cart.id)
+    const available = await listShippingOptions(active.value.cart.id, request)
     const selected = available.shipping_options?.find(
       (option) =>
         option.id === parsed.data.option_id && !option.insufficient_inventory
     )
     if (!selected) {
       return jsonApiProblem({
+        request,
         status: 409,
         code: "shipping_changed",
         title: "Delivery method changed",
@@ -53,8 +54,8 @@ export const PUT = async (request: NextRequest): Promise<Response> => {
       })
     }
 
-    await addShippingMethod(active.value.cart.id, selected.id)
-    const cart = await calculateTaxes(active.value.cart.id)
+    await addShippingMethod(active.value.cart.id, selected.id, request)
+    const cart = await calculateTaxes(active.value.cart.id, request)
     return checkoutProjectionResponse({
       cart,
       needsCookieRotation: active.value.needsCookieRotation,

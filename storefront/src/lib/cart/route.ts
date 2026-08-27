@@ -13,6 +13,7 @@ export const readActiveCartId = (request: NextRequest): string | Response => {
   }
 
   const response = jsonApiProblem({
+    request,
     status: 409,
     code: "cart_session_missing",
     title: "Cart session missing",
@@ -29,6 +30,6 @@ export const readOrCreateCartId = async (
     return { cartId: cookie.cartId, created: false }
   }
 
-  const cart = await createCart()
+  const cart = await createCart(undefined, request)
   return { cartId: cart.id, created: true }
 }

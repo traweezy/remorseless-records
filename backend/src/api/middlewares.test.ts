@@ -523,14 +523,19 @@ describe("product import Admin RBAC middleware", () => {
     );
     expect(type).toHaveBeenCalledWith("application/problem+json");
     expect(status).toHaveBeenCalledWith(410);
-    expect(json).toHaveBeenCalledWith({
-      type: "urn:remorseless-records:problem:deprecated-product-import",
-      title: "Deprecated product import route",
-      status: 410,
-      detail:
-        "Upload a validated CSV and prepare it through POST /admin/products/imports.",
-      instance: "/admin/products/import",
-    });
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "urn:remorseless-records:problem:deprecated-product-import",
+        title: "Deprecated product import route",
+        status: 410,
+        detail:
+          "Upload a validated CSV and prepare it through POST /admin/products/imports.",
+        code: "deprecated_product_import",
+        instance: "/admin/products/import",
+        request_id: expect.any(String),
+        trace_id: expect.stringMatching(/^[0-9a-f]{32}$/u),
+      }),
+    );
   });
 
   it("sorts the legacy rejection before Medusa's multipart parser", () => {

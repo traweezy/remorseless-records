@@ -3,6 +3,7 @@ import "server-only"
 import type { HttpTypes } from "@medusajs/types"
 
 import { siteMetadata } from "@/config/site"
+import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { storeClient } from "@/lib/medusa/client"
 
 let cachedRegionId: string | null = null
@@ -31,12 +32,18 @@ const resolvePreferredRegion = (
   return regions[0]
 }
 
-export const resolveRegionId = async (): Promise<string> => {
+export const resolveRegionId = async (request?: Request): Promise<string> => {
   if (cachedRegionId) {
     return cachedRegionId
   }
 
-  const { regions } = await storeClient.region.list({ limit: 100 })
+  const { regions } = request
+    ? await correlatedMedusaFetch<HttpTypes.StoreRegionListResponse>(
+        request,
+        "/store/regions",
+        { query: { limit: 100 } }
+      )
+    : await storeClient.region.list({ limit: 100 })
   const preferredCountry = siteMetadata.contact.address.country ?? null
   const region = resolvePreferredRegion(regions ?? [], preferredCountry)
 

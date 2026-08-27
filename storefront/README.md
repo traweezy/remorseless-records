@@ -109,6 +109,15 @@ heading, log only a validated framework digest, and support retry or a plain
 home navigation even when the router itself failed. Cookie-consent parsing
 contains malformed percent encoding and rejects oversized values.
 
+The proxy also validates or creates `X-Request-Id` and W3C `traceparent`
+context for every `/api/*` request and returns both headers to the caller.
+Storefront BFF calls create child spans while preserving the request and trace
+IDs across Medusa cart, checkout, catalog, contact, and privacy requests.
+Project-owned failures use the correlated RFC 7807 contract documented in
+[`docs/API_PROBLEM_CONTRACT.md`](../docs/API_PROBLEM_CONTRACT.md); structured
+problem logs contain correlation and deployment metadata but no paths, bodies,
+PII, credentials, or provider payloads.
+
 ## Quality gates
 
 Before committing storefront changes, run:

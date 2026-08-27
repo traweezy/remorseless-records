@@ -72,6 +72,7 @@ export const PATCH = async (
   const parsedItemId = itemIdSchema.safeParse((await params).itemId)
   if (!parsedItemId.success) {
     return jsonApiProblem({
+      request,
       status: 400,
       code: "cart_item_id_invalid",
       title: "Invalid cart item",
@@ -90,9 +91,14 @@ export const PATCH = async (
       },
       execute: () =>
         parsed.data.quantity === 0
-          ? removeLineItem(cartId, parsedItemId.data)
-          : updateLineItem(cartId, parsedItemId.data, parsed.data.quantity),
-      replay: getCart,
+          ? removeLineItem(cartId, parsedItemId.data, request)
+          : updateLineItem(
+              cartId,
+              parsedItemId.data,
+              parsed.data.quantity,
+              request
+            ),
+      replay: (replayCartId) => getCart(replayCartId, request),
     })
     if (!result.ok) {
       return result.response
@@ -109,6 +115,7 @@ export const PATCH = async (
     const problem = mapCartError(error, "Unable to update this cart item.")
     console.error("Failed to update line item", { code: problem.code })
     return jsonApiProblem({
+      request,
       ...problem,
       instance: request.nextUrl.pathname,
     })
@@ -128,6 +135,7 @@ export const DELETE = async (
   const parsedItemId = itemIdSchema.safeParse((await params).itemId)
   if (!parsedItemId.success) {
     return jsonApiProblem({
+      request,
       status: 400,
       code: "cart_item_id_invalid",
       title: "Invalid cart item",
@@ -143,8 +151,8 @@ export const DELETE = async (
         cartId,
         itemId: parsedItemId.data,
       },
-      execute: () => removeLineItem(cartId, parsedItemId.data),
-      replay: getCart,
+      execute: () => removeLineItem(cartId, parsedItemId.data, request),
+      replay: (replayCartId) => getCart(replayCartId, request),
     })
     if (!result.ok) {
       return result.response
@@ -161,6 +169,7 @@ export const DELETE = async (
     const problem = mapCartError(error, "Unable to remove this cart item.")
     console.error("Failed to remove line item", { code: problem.code })
     return jsonApiProblem({
+      request,
       ...problem,
       instance: request.nextUrl.pathname,
     })

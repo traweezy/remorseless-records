@@ -4,6 +4,7 @@ import type {
 } from "@medusajs/framework/http";
 import { z } from "zod";
 
+import { sendApiProblem } from "../../../../lib/http/correlation";
 import {
   taxDestinationsCsv,
   taxTransactionsCsv,
@@ -20,14 +21,19 @@ const exportSchema = z.enum(["destinations", "transactions"]);
 const filingStateSchema = z.enum(TAX_FILING_STATES);
 
 const problemResponse = (
+  req: AuthenticatedMedusaRequest,
   res: MedusaResponse,
   error: unknown,
-): MedusaResponse => {
+): void => {
   const problem = taxReportProblem({ error, operation: "export" });
-  return res
-    .status(problem.status)
-    .type("application/problem+json")
-    .json(problem.body);
+  sendApiProblem(req, res, {
+    code: problem.body.type.split("/").at(-1) ?? "tax-export-unavailable",
+    detail: problem.body.detail,
+    instance: req.path,
+    status: problem.status,
+    title: problem.body.title,
+    type: problem.body.type,
+  });
 };
 
 export const GET = async (
@@ -37,10 +43,8 @@ export const GET = async (
   res.setHeader("Cache-Control", "private, no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   try {
-    const searchParams = new URL(
-      req.originalUrl,
-      "http://medusa.local",
-    ).searchParams;
+    const searchParams = new URL(req.originalUrl, "http://medusa.local")
+      .searchParams;
     const format = exportSchema.parse(searchParams.get("format"));
     const period = parseTaxReportPeriod({
       endDate: searchParams.get("end"),
@@ -55,29 +59,25 @@ export const GET = async (
       period,
     });
     if (report.source.truncated) {
-      res
-        .status(409)
-        .type("application/problem+json")
-        .json({
-          detail:
-            "The export reached its bounded source-scan limit and would be incomplete. Use an earlier period end or contact an engineer before filing.",
-          status: 409,
-          title: "Tax export is incomplete",
-          type: "https://remorselessrecords.com/problems/tax-export-truncated",
-        });
+      sendApiProblem(req, res, {
+        code: "tax-export-truncated",
+        detail:
+          "The export reached its bounded source-scan limit and would be incomplete. Use an earlier period end or contact an engineer before filing.",
+        instance: req.path,
+        status: 409,
+        title: "Tax export is incomplete",
+      });
       return;
     }
     if (report.source.unassignedStateRecords > 0) {
-      res
-        .status(409)
-        .type("application/problem+json")
-        .json({
-          detail:
-            "At least one United States or country-unknown tax record has no destination state. Correct the source address before relying on a state filing export.",
-          status: 409,
-          title: "Tax export has unassigned records",
-          type: "https://remorselessrecords.com/problems/tax-export-unassigned-state",
-        });
+      sendApiProblem(req, res, {
+        code: "tax-export-unassigned-state",
+        detail:
+          "At least one United States or country-unknown tax record has no destination state. Correct the source address before relying on a state filing export.",
+        instance: req.path,
+        status: 409,
+        title: "Tax export has unassigned records",
+      });
       return;
     }
 
@@ -100,6 +100,6 @@ export const GET = async (
         `[tax-records] Export generation failed (${taxReportErrorName(error)}).`,
       );
     }
-    problemResponse(res, error);
+    problemResponse(req, res, error);
   }
 };

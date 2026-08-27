@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server"
+import type { HttpTypes } from "@medusajs/types"
 import { z } from "zod"
 
-import { getProductByHandle } from "@/lib/data/products"
+import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
+import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
+import { resolveRegionId } from "@/lib/regions"
 import {
   enforceRateLimit,
   enforceTrustedOrigin,
@@ -11,9 +14,11 @@ import {
   parseJsonBody,
 } from "@/lib/security/route-guards"
 
-const requestSchema = z.object({
-  handles: z.array(z.string().min(1)).max(50),
-}).strict()
+const requestSchema = z
+  .object({
+    handles: z.array(z.string().min(1)).max(50),
+  })
+  .strict()
 
 export async function POST(request: Request) {
   try {
@@ -50,9 +55,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ hits: [] })
     }
 
+    const regionId = await resolveRegionId(request)
     const hydrated = await Promise.all(
       normalizedHandles.map(async (handle) => {
-        const product = await getProductByHandle(handle)
+        const { products } =
+          await correlatedMedusaFetch<HttpTypes.StoreProductListResponse>(
+            request,
+            "/store/products",
+            {
+              query: {
+                fields: PRODUCT_DETAIL_FIELDS,
+                handle,
+                limit: 1,
+                region_id: regionId,
+              },
+            }
+          )
+        const product = products[0]
         if (!product) {
           return null
         }
@@ -61,12 +80,17 @@ export async function POST(request: Request) {
     )
 
     return jsonApiResponse({
-      hits: hydrated.filter(
-        (hit): hit is NonNullable<typeof hit> => Boolean(hit)
+      hits: hydrated.filter((hit): hit is NonNullable<typeof hit> =>
+        Boolean(hit)
       ),
     })
   } catch {
     console.error("[api/catalog/hydrate] Failed to hydrate handles")
-    return jsonApiError("Failed to hydrate catalog entries", 500)
+    return jsonApiError(
+      request,
+      "Failed to hydrate catalog entries",
+      500,
+      "catalog_unavailable"
+    )
   }
 }

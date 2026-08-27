@@ -1,10 +1,12 @@
 import { z } from "zod"
 
 import { runtimeEnv } from "@/config/env"
+import { createUpstreamHeaders } from "@/lib/http/correlation"
 import {
   enforceRateLimit,
   enforceTrustedOrigin,
   jsonApiError,
+  jsonApiProblem,
   jsonApiResponse,
   parseJsonBody,
 } from "@/lib/security/route-guards"
@@ -52,25 +54,31 @@ export async function POST(request: Request) {
     const response = await fetch(`${backendBase}/store/privacy-request`, {
       method: "POST",
       cache: "no-store",
-      headers: {
+      headers: createUpstreamHeaders(request, {
         "Content-Type": "application/json",
         "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
-      },
+      }),
       body: JSON.stringify(parsed.data),
     })
 
     if (!response.ok) {
-      const payload = (await response.json().catch(() => ({}))) as { message?: string }
-      return jsonApiResponse(
-        { message: payload.message ?? "Unable to submit privacy request right now." },
-        { status: 502 }
-      )
+      return jsonApiProblem({
+        request,
+        status: 502,
+        code: "privacy_request_upstream_unavailable",
+        title: "Privacy request service is unavailable",
+        detail: "Unable to submit privacy request right now.",
+      })
     }
 
     return jsonApiResponse({ ok: true })
   } catch {
     console.error("[privacy-request] Failed to submit request")
-    return jsonApiError("Unable to submit privacy request right now.", 500)
+    return jsonApiError(
+      request,
+      "Unable to submit privacy request right now.",
+      500,
+      "privacy_request_unavailable"
+    )
   }
 }
-

@@ -17,6 +17,11 @@ import {
 } from "../lib/admin-permissions";
 import { STORE_CORS } from "../lib/constants";
 import {
+  attachRequestCorrelation,
+  logCompletedRequest,
+  sendApiProblem,
+} from "../lib/http/correlation";
+import {
   buildBackendSecurityHeaders,
   shouldDefaultToNoStore,
 } from "../lib/security/security-headers";
@@ -53,6 +58,19 @@ export const applySecurityBoundaryHeaders = (
   if (shouldDefaultToNoStore(req.method, req.path)) {
     res.setHeader("Cache-Control", "no-store");
   }
+  next();
+};
+
+export const applyRequestObservability = (
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+): void => {
+  const startedAt = process.hrtime.bigint();
+  attachRequestCorrelation(req, res);
+  res.once("finish", () => {
+    logCompletedRequest(req, res, startedAt);
+  });
   next();
 };
 
@@ -127,9 +145,12 @@ const createRateLimitMiddleware =
         Math.ceil((current.resetAt - now) / 1000),
       );
       res.setHeader("Retry-After", String(retryAfterSeconds));
-      res.status(429).json({
-        type: "rate_limit_exceeded",
-        message: "Too many requests. Please try again shortly.",
+      sendApiProblem(req, res, {
+        code: "rate_limit_exceeded",
+        title: "Too many requests",
+        status: 429,
+        detail: "Too many requests. Please try again shortly.",
+        instance: req.path,
       });
       return;
     }
@@ -155,17 +176,23 @@ const enforceStoreOrigin = (
   try {
     originHost = new URL(origin).host.toLowerCase();
   } catch {
-    res.status(403).json({
-      type: "invalid_origin",
-      message: "Origin is not allowed.",
+    sendApiProblem(req, res, {
+      code: "invalid_origin",
+      title: "Origin is not allowed",
+      status: 403,
+      detail: "Origin is not allowed.",
+      instance: req.path,
     });
     return;
   }
 
   if (!allowedStoreOriginHosts.has(originHost)) {
-    res.status(403).json({
-      type: "invalid_origin",
-      message: "Origin is not allowed.",
+    sendApiProblem(req, res, {
+      code: "invalid_origin",
+      title: "Origin is not allowed",
+      status: 403,
+      detail: "Origin is not allowed.",
+      instance: req.path,
     });
     return;
   }
@@ -239,13 +266,16 @@ const managedUpload = multer({
 });
 
 const rejectPresignedUploads = (
-  _req: MedusaRequest,
+  req: MedusaRequest,
   res: MedusaResponse,
 ): void => {
-  res.status(400).json({
-    type: "not_allowed",
-    message:
+  sendApiProblem(req, res, {
+    code: "not_allowed",
+    title: "Presigned uploads are disabled",
+    status: 400,
+    detail:
       "Presigned uploads are disabled; use the validated managed upload endpoint.",
+    instance: req.path,
   });
 };
 
@@ -254,8 +284,8 @@ export const rejectDeprecatedProductImport = (
   res: MedusaResponse,
 ): void => {
   res.setHeader("Cache-Control", "private, no-store");
-  res.type("application/problem+json");
-  res.status(410).json({
+  sendApiProblem(req, res, {
+    code: "deprecated_product_import",
     type: "urn:remorseless-records:problem:deprecated-product-import",
     title: "Deprecated product import route",
     status: 410,
@@ -371,7 +401,7 @@ export default defineMiddlewares({
   routes: [
     {
       matcher: /.*/,
-      middlewares: [applySecurityBoundaryHeaders],
+      middlewares: [applySecurityBoundaryHeaders, applyRequestObservability],
     },
     {
       matcher: /^\/store\/(carts|checkout)(\/.*)?$/,

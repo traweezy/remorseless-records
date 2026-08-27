@@ -136,7 +136,12 @@ const checkoutProblemCodeSchema = z.enum([
   "checkout_changed",
   "completion_in_progress",
   "contact_invalid",
+  "cross_site_request",
+  "invalid_origin",
+  "invalid_referer",
+  "invalid_request",
   "inventory_changed",
+  "malformed_json",
   "order_finalizing",
   "payment_action_required",
   "payment_declined",
@@ -144,11 +149,14 @@ const checkoutProblemCodeSchema = z.enum([
   "payment_processing",
   "payment_result_unknown",
   "payment_session_stale",
+  "payload_too_large",
   "rate_limited",
   "recovery_required",
+  "request_source_required",
   "shipping_changed",
   "shipping_unavailable",
   "tax_unavailable",
+  "unsupported_media_type",
 ])
 
 const checkoutProblemSchema: z.ZodType<CheckoutProblem> = z
@@ -159,6 +167,11 @@ const checkoutProblemSchema: z.ZodType<CheckoutProblem> = z
     detail: z.string().min(1),
     code: checkoutProblemCodeSchema,
     instance: z.string().min(1).optional(),
+    request_id: z.string().min(1).max(128).optional(),
+    trace_id: z
+      .string()
+      .regex(/^[0-9a-f]{32}$/)
+      .optional(),
     checkout: checkoutProjectionSchema.optional(),
   })
   .passthrough()

@@ -36,7 +36,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
   }
 
   try {
-    const response = await listShippingOptions(active.value.cart.id)
+    const response = await listShippingOptions(active.value.cart.id, request)
     return jsonApiResponse({
       shippingOptions: (response.shipping_options ?? []).map(toCheckoutOption),
     })

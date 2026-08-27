@@ -78,6 +78,45 @@ describe("news data layer", () => {
     })
   })
 
+  it("keeps correlation headers out of the shared news cache", async () => {
+    const backendUrl = faker.internet.url()
+    const publishableKey = faker.string.alphanumeric(16)
+    const traceId = "0123456789abcdef0123456789abcdef"
+
+    vi.doMock("next/cache", () => ({
+      unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
+    }))
+    vi.doMock("@/config/env", () => ({
+      runtimeEnv: {
+        medusaBackendUrl: backendUrl,
+        medusaPublishableKey: publishableKey,
+      },
+    }))
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ entries: [] }),
+    } as Response)
+    const request = new Request("https://storefront.test/api/news", {
+      headers: {
+        traceparent: `00-${traceId}-0123456789abcdef-01`,
+        "x-request-id": "request_news_01",
+      },
+    })
+
+    const { fetchNewsEntries } = await import("@/lib/data/news")
+    await fetchNewsEntries({ limit: 6, offset: 0, request })
+
+    const init = fetchSpy.mock.calls[0]?.[1]
+    const headers = new Headers(init?.headers)
+    expect(init?.cache).toBe("no-store")
+    expect(init).not.toHaveProperty("next")
+    expect(headers.get("x-request-id")).toBe("request_news_01")
+    expect(headers.get("traceparent")).toMatch(
+      new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`)
+    )
+    expect(headers.get("x-publishable-api-key")).toBe(publishableKey)
+  })
+
   it("fetches a single entry by slug and handles 404", async () => {
     const backendUrl = faker.internet.url()
     const publishableKey = faker.string.alphanumeric(18)

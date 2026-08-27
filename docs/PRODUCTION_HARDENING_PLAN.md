@@ -32,6 +32,8 @@ tracks what is still required before production traffic is approved.
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
   `2818d6540aa0f7f200d3c7e81e39b48d3c860b2d`.
+- Latest documentation-only staging SHA accepted:
+  `6fed27f6140bef24c193272658312a3887483867`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
   `3eae1057-6432-4218-a7e6-8334345b4d7d` (`SUCCESS`).
@@ -222,8 +224,7 @@ Storefront CI `32962293567` passed for
 `6ed952ffd03bb3879a626ef3e607039320742078`. Railway Backend
 `13a45a21-a3af-472c-9c13-30ddc269d385` and Storefront
 `e8785c9a-7a7a-43b1-a3b0-97574fed1e37` reached `SUCCESS` on that exact SHA.
-Backend and Storefront `/live` and `/ready`, plus the Storefront root, returned
-200. Fresh administrator authentication, feature flags, and effective
+Backend and Storefront `/live` and `/ready`, plus the Storefront root, returned 200. Fresh administrator authentication, feature flags, and effective
 permissions returned 200; RBAC remained enabled with 259 unique concrete
 permissions and all 27 custom keys. Exact-deployment runtime logs contained no
 application warning, error, exception, failed operation, or stack. Build-log
@@ -606,25 +607,81 @@ reclassifying that platform noise remains an observability task. The inspected
 cookie controls, navigation, and both login fields render without clipping or
 broken assets. This completes the browser and HTTP response-boundary slice.
 
+Documentation commit `6fed27f6140bef24c193272658312a3887483867`
+passed Root CI `33034396434`, Backend CI `33034396006`, and Storefront CI
+`33034396200`. Railway held Backend
+`40ece483-2486-4884-93f7-a19adf300464` and Storefront
+`c3ca2efa-d749-4964-960e-ac3a92b8ddf6` until all three workflows passed, then
+both exact-SHA deployments reached `SUCCESS`. Backend and Storefront `/live`,
+`/ready`, plus both compatibility health aliases returned HTTP 200; every
+dependency check was `ok`, and neither exact deployment emitted an error-level
+startup log.
+
 ## Active slice: correlated API problems and request observability
 
-- [ ] Inventory custom Backend and Storefront API error envelopes, request-ID
-      handling, trace propagation, logs, OpenAPI contracts, and tests.
-- [ ] Standardize custom API failures on RFC 7807-compatible
-      `application/problem+json` responses with stable types, safe detail,
-      instance, status, request ID, trace ID, and field errors where relevant.
-- [ ] Validate bounded incoming request IDs or generate secure IDs, return them
-      consistently, and propagate correlation plus W3C trace context across
-      Storefront BFF-to-Backend calls.
-- [ ] Add structured, redacted request/problem logs containing service,
-      environment, commit SHA, request ID, trace ID, and span ID without PII,
-      credentials, provider bodies, or stack leakage.
-- [ ] Cover validation, authentication, authorization, rate-limit, not-found,
-      conflict, timeout, provider, and unexpected failures at both HTTP
-      boundaries; update OpenAPI, runbooks, and client error mapping.
-- [ ] Pass the complete local quality/security/build matrix, deploy only through
-      `staging`, and repeat exact-SHA CI, Railway, route, log, and browser
-      acceptance before advancing.
+- [x] Inventory 25 Storefront and 55 Backend custom route handlers, existing
+      envelopes, request-ID handling, trace propagation, logs, contracts, and
+      tests. No OpenAPI document existed and only eight files emitted
+      `application/problem+json`.
+- [x] Validate bounded incoming request IDs or generate UUIDs, reject malformed
+      W3C trace context, create a new span per hop, and return correlation
+      headers from the global Backend middleware and Storefront proxy.
+- [x] Propagate request and trace context through Storefront Medusa cart,
+      checkout, product, bundle, news, contact, privacy, region, receipt,
+      status, and tax-link calls.
+- [x] Standardize shared Storefront guard/BFF failures and Backend security,
+      checkout-status, and tax-reporting failures on correlated RFC
+      7807-compatible responses with stable codes, safe detail, instance,
+      status, request ID, trace ID, and bounded field errors.
+- [x] Add structured, redacted Backend completion logs and Storefront problem
+      logs containing service, environment, commit SHA, request ID, trace ID,
+      and span ID without paths, queries, PII, credentials, provider bodies, or
+      stack leakage.
+- [x] Add request/trace validation, child-span propagation, redaction,
+      validation-problem, proxy, middleware, checkout client, and route tests;
+      add reusable OpenAPI 3.1 components and update client problem mapping.
+- [x] Pass the complete locally runnable quality, security, coverage, and
+      production-build matrix.
+- [ ] Convert the remaining handler-specific custom Backend error envelopes
+      without changing the native Medusa envelope consumed by the Admin SDK.
+- [ ] Add a supported Storefront request-completion timing hook. The Next proxy
+      can correlate every response but cannot observe final route status and
+      duration.
+- [ ] Add dynamic request correlation at Medusa's early Express loader.
+      Framework-owned Admin static responses and built-in pre-router failures
+      receive the patched static security/cache headers but bypass project API
+      observability middleware.
+- [ ] Complete the authentication, authorization, timeout, provider, and
+      unexpected-error contract matrix across both boundaries and enumerate all
+      custom endpoint responses in generated or contract-first OpenAPI.
+- [ ] Deploy only through `staging`, and repeat exact-SHA CI, Railway, route,
+      log, and browser acceptance before advancing.
+
+Current local evidence: the OpenAPI 3.1 YAML parses and exposes the required
+`ApiProblem` schema; release-policy, private-artifact, framework-header,
+Storefront ESLint, and both strict typecheck gates pass. All 165 Backend suites
+with 882 tests and all 109 Storefront suites with 570 tests pass. Storefront
+coverage is 93.65% statements, 85.99% branches, 94.55% functions, and 93.62%
+lines. Both production builds pass; the Admin main bundle is 1,798,873 gzip
+bytes and the total is 2,393,961 gzip bytes, both within budget. The production
+audit reports only the three documented ignored moderates, and both extract-zip
+containment and React Router backport verifiers pass. During the full-suite
+repeat, 16 existing call assertions exposed the new correlation argument; the
+tests now prove that each route forwards its exact request context instead of
+loosening the propagation contract.
+
+Review discovery: the earlier Medusa response-boundary work established that
+framework-owned `/app` and built-in pre-router responses mount before project
+API middleware. The static framework patch covers their security and cache
+headers, but the new request-dependent IDs and completion timing cannot be
+supplied by that static map. This slice therefore scopes Backend correlation to
+responses traversing project API middleware and records the earlier dynamic
+framework seam as remaining work rather than overstating coverage.
+
+Cache review discovery: Next includes request headers in server-fetch cache
+identity. The correlated `/api/news` Backend request therefore uses `no-store`
+instead of creating high-cardinality cache entries from request and trace IDs;
+uncorrelated page data retains the existing tagged five-minute cache.
 
 ## Remaining authorization work
 

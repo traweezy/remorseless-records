@@ -57,10 +57,14 @@ export const PUT = async (request: NextRequest): Promise<Response> => {
     : shippingAddress
 
   try {
-    const cart = await setCartAddresses(active.value.cart.id, {
-      shipping_address: shippingAddress,
-      billing_address: billingAddress,
-    })
+    const cart = await setCartAddresses(
+      active.value.cart.id,
+      {
+        shipping_address: shippingAddress,
+        billing_address: billingAddress,
+      },
+      request
+    )
     return checkoutProjectionResponse({
       cart,
       needsCookieRotation: active.value.needsCookieRotation,

@@ -21,6 +21,7 @@ const checkoutRateLimitResponse = (
 ): Response => {
   const rateLimited = response.status === 429
   const semanticResponse = jsonApiProblem({
+    request,
     status: response.status,
     code: rateLimited ? "rate_limited" : "recovery_required",
     title: rateLimited

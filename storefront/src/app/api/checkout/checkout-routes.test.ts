@@ -123,17 +123,17 @@ describe("semantic checkout routes", () => {
 
   it("persists contact against the signed cart only", async () => {
     cartApiMocks.setCartEmail.mockResolvedValue(cart)
+    const apiRequest = request("/api/checkout/contact", "PUT", {
+      email: " buyer@example.test ",
+    })
 
-    const response = await putContact(
-      request("/api/checkout/contact", "PUT", {
-        email: " buyer@example.test ",
-      })
-    )
+    const response = await putContact(apiRequest)
 
     expect(response.status).toBe(200)
     expect(cartApiMocks.setCartEmail).toHaveBeenCalledWith(
       "cart_signed",
-      "buyer@example.test"
+      "buyer@example.test",
+      apiRequest
     )
   })
 
@@ -151,20 +151,19 @@ describe("semantic checkout routes", () => {
 
   it("normalizes delivery and defaults billing to shipping", async () => {
     cartApiMocks.setCartAddresses.mockResolvedValue(cart)
+    const apiRequest = request("/api/checkout/delivery-address", "PUT", {
+      shipping_address: {
+        first_name: " Test ",
+        last_name: " Buyer ",
+        address_1: " 354 Oyster Point Boulevard ",
+        city: " South San Francisco ",
+        province: " ca ",
+        postal_code: "94080",
+        country_code: "US",
+      },
+    })
 
-    const response = await putDeliveryAddress(
-      request("/api/checkout/delivery-address", "PUT", {
-        shipping_address: {
-          first_name: " Test ",
-          last_name: " Buyer ",
-          address_1: " 354 Oyster Point Boulevard ",
-          city: " South San Francisco ",
-          province: " ca ",
-          postal_code: "94080",
-          country_code: "US",
-        },
-      })
-    )
+    const response = await putDeliveryAddress(apiRequest)
 
     expect(response.status).toBe(200)
     const normalized = {
@@ -176,10 +175,14 @@ describe("semantic checkout routes", () => {
       postal_code: "94080",
       country_code: "us",
     }
-    expect(cartApiMocks.setCartAddresses).toHaveBeenCalledWith("cart_signed", {
-      shipping_address: normalized,
-      billing_address: normalized,
-    })
+    expect(cartApiMocks.setCartAddresses).toHaveBeenCalledWith(
+      "cart_signed",
+      {
+        shipping_address: normalized,
+        billing_address: normalized,
+      },
+      apiRequest
+    )
   })
 
   it("rejects an invalid delivery region", async () => {
@@ -263,18 +266,21 @@ describe("semantic checkout routes", () => {
     })
     cartApiMocks.addShippingMethod.mockResolvedValue(cart)
     cartApiMocks.calculateTaxes.mockResolvedValue(cart)
+    const apiRequest = request("/api/checkout/shipping-method", "PUT", {
+      option_id: "so_standard",
+    })
 
-    const response = await putShippingMethod(
-      request("/api/checkout/shipping-method", "PUT", {
-        option_id: "so_standard",
-      })
-    )
+    const response = await putShippingMethod(apiRequest)
 
     expect(response.status).toBe(200)
     expect(cartApiMocks.addShippingMethod).toHaveBeenCalledWith(
       "cart_signed",
-      "so_standard"
+      "so_standard",
+      apiRequest
     )
-    expect(cartApiMocks.calculateTaxes).toHaveBeenCalledWith("cart_signed")
+    expect(cartApiMocks.calculateTaxes).toHaveBeenCalledWith(
+      "cart_signed",
+      apiRequest
+    )
   })
 })

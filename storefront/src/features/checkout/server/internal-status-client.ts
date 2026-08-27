@@ -5,6 +5,7 @@ import { z } from "zod"
 import { clientEnv } from "@/config/env.client"
 import { checkoutServerEnv } from "@/config/env.checkout.server"
 import { createCheckoutStatusProof } from "@/features/checkout/server/internal-status-auth"
+import { createUpstreamHeaders } from "@/lib/http/correlation"
 
 const CHECKOUT_STATUS_TIMEOUT_MS = 5_000
 
@@ -39,7 +40,8 @@ export class CheckoutStatusUnavailableError extends Error {
 }
 
 export const fetchInternalCheckoutStatus = async (
-  cartId: string
+  cartId: string,
+  request?: Request
 ): Promise<InternalCheckoutStatus> => {
   const secret = checkoutServerEnv.checkoutBffSecret
   if (!secret) {
@@ -52,17 +54,18 @@ export const fetchInternalCheckoutStatus = async (
   const proof = createCheckoutStatusProof({ cartId, timestamp, secret })
   const baseUrl = checkoutServerEnv.medusaBackendUrl ?? clientEnv.medusaUrl
 
+  const headers = {
+    accept: "application/json",
+    "content-type": "application/json",
+    "x-publishable-api-key": clientEnv.medusaPublishableKey,
+    "x-rr-checkout-proof": proof,
+    "x-rr-checkout-timestamp": String(timestamp),
+  }
   let response: Response
   try {
     response = await fetch(new URL("/store/checkout/status", baseUrl), {
       method: "POST",
-      headers: {
-        accept: "application/json",
-        "content-type": "application/json",
-        "x-publishable-api-key": clientEnv.medusaPublishableKey,
-        "x-rr-checkout-proof": proof,
-        "x-rr-checkout-timestamp": String(timestamp),
-      },
+      headers: request ? createUpstreamHeaders(request, headers) : headers,
       body: JSON.stringify({ cart_id: cartId }),
       cache: "no-store",
       signal: AbortSignal.timeout(CHECKOUT_STATUS_TIMEOUT_MS),

@@ -20,6 +20,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
     const receiptGrant = readReceiptGrant(request)
     if (!receiptGrant) {
       return jsonApiProblem({
+        request,
         status: 404,
         code: "receipt_missing",
         title: "Receipt is unavailable",
@@ -29,10 +30,11 @@ export const GET = async (request: NextRequest): Promise<Response> => {
       })
     }
 
-    const receipt = await getOrderReceipt(receiptGrant.orderId)
+    const receipt = await getOrderReceipt(receiptGrant.orderId, request)
     return jsonApiResponse({ receipt })
   } catch {
     return jsonApiProblem({
+      request,
       status: 503,
       code: "receipt_unavailable",
       title: "Receipt is temporarily unavailable",
