@@ -19,6 +19,12 @@ This document outlines repeatable steps for validating Remorseless Records befor
 > Puppeteer install scripts and bundled-browser downloads are explicitly
 > blocked in every workspace. Keep using a reviewed external Chrome binary;
 > do not re-enable Puppeteer builds to repair a missing local browser.
+> Pa11y and Lighthouse must resolve the single reviewed
+> `@puppeteer/browsers@3.0.6` manager. Run
+> `pnpm run qa:browser-toolchain-security` after browser-tooling changes; it
+> fails if the removed `extract-zip` package returns, required Puppeteer 24
+> runtime symbols disappear, or a Puppeteer browser-download install script
+> becomes enabled.
 
 ### 1.1 Keyboard / Screen-reader
 

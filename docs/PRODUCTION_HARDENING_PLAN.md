@@ -1150,12 +1150,12 @@ bytes, and zero drops.
       post-build packaging.
 - [x] Pass the complete local release gate.
 - [x] Commit the cohesive source slice.
-- [ ] Push only to `staging`; require exact-SHA Root, Backend, Storefront, and
+- [x] Push only to `staging`; require exact-SHA Root, Backend, Storefront, and
       both current-config Railway deployment acceptance before applying IaC.
-- [ ] Re-run the guarded Railway plan, require zero creates/deletes, apply only
+- [x] Re-run the guarded Railway plan, require zero creates/deletes, apply only
       the two reviewed watch lists plus known phantom restart fields, and
       accept both exact staging deployments.
-- [ ] Enable GitHub Dependabot security updates, verify alerts `27` and `28`
+- [x] Enable GitHub Dependabot security updates, verify alerts `27` and `28`
       close without dismissal, and document the owned remediation boundary.
 - [ ] Push the final documentation-only closure, require all exact-SHA GitHub
       checks, and prove the effective watch paths create no Railway deployment
@@ -1207,6 +1207,40 @@ read-model-only restart-policy drift. Documentation and IaC source are not
 runtime build inputs. IaC changes must be applied explicitly through the exact
 staging wrapper after CI, while documentation-only pushes must not spend two
 application rebuilds.
+
+Exact source acceptance: staging SHA
+`a41e21a0d2ab37c5545d81958a50f6ec3528a4b9` passed Root CI `33063172516`,
+Backend CI `33063172420`, and Storefront CI `33063172427`. Railway held
+Backend deployment `32d54a4f-35ae-4953-a504-ad24a5fa3510` and Storefront
+deployment `b59d66c1-418b-4703-8d56-dc64367e6a19` until those checks passed;
+both then reached `SUCCESS`. The current-config manifests retained empty watch
+lists as expected. All 207 Backend and 186 Storefront build log entries were
+info-level, the missing TypeScript API exception and legacy pnpm bootstrap were
+absent, and all eight public route probes returned 200. The Storefront
+deployment emitted eight exact private Redis flows with 17 packets, 1,804
+bytes, and zero drops.
+
+Exact IaC acceptance: the reviewed `0 add / 4 change / 0 destroy` plan applied
+only patch
+`iac-change-set/799a2f98-f819-495d-b8b6-12e71af86568/a2286fed3ab815ac1c562169134799de`.
+Backend deployment `4fdcf364-5fb4-4e8c-9f93-508d70b5c1e8` and Storefront
+deployment `6c4eccb0-f9bb-49af-aa15-17ee6eee16b9` reached `SUCCESS` with the
+exact service-specific watch lists, effective `ON_FAILURE`/10 restart policy,
+empty file manifests, and accepted source SHA. Their 108 and 177 build log
+entries were info-only with no banned build pattern. All eight routes returned
+200, and the exact Storefront deployment emitted three private Redis flows
+with 11 packets, 1,288 bytes, and zero drops. The post-apply plan is `0 add / 2
+change / 0 destroy`; only the documented restart-policy readback defect
+remains. No production environment exists, and no other Railway project was
+accessed or changed.
+
+GitHub marked Dependabot alerts `27` and `28` `fixed` at
+`2026-08-27T10:28:22Z`; neither has a dismissal timestamp or reason. Automated
+security fixes are enabled and unpaused, and the repository has zero open
+high-severity Dependabot alerts. The remaining acceptance item is the final
+documentation-only staging push: all three exact-SHA workflows must pass, and
+neither application service may create a deployment for that documentation
+SHA.
 
 ## Remaining authorization work
 
@@ -1351,8 +1385,9 @@ application rebuilds.
       and support-service sources idempotently.
 - [ ] Remove the restart-policy phantom drift after Railway's IaC read model
       returns the settings already present in effective deployment manifests.
-- [ ] Apply and accept service-specific Railway watch paths, then prove a
-      documentation-only staging push triggers no application rebuild.
+- [x] Apply and accept service-specific Railway watch paths.
+- [ ] Prove a documentation-only staging push triggers no application
+      rebuild.
 
 ## GitHub, CI, supply chain, and test depth
 
@@ -1361,7 +1396,7 @@ application rebuilds.
       force-push/delete on both long-lived branches.
 - [ ] Consolidate duplicate GitHub deployment environments and add environment
       protection rules for production.
-- [ ] Enable Dependabot security updates or document an equivalent owned
+- [x] Enable Dependabot security updates or document an equivalent owned
       remediation SLA.
 - [x] Complete exact-SHA CI acceptance for the six remediated active CodeQL
       alerts; the stranded legacy search-analysis alert is evidence-dismissed.
@@ -1410,19 +1445,19 @@ application rebuilds.
 - [ ] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
       Stripe, AWS SDK, and other outdated dependency families.
 
-Discovery: GitHub Dependabot alerts `27` and `28` classify the same
+Resolved discovery: GitHub Dependabot alerts `27` and `28` classified the same
 `GHSA-jmr9-qjv8-65gv` / `CVE-2026-56876` high-severity development-only
 `extract-zip@2.0.1` symlink path-traversal risk. Alert `27` tracks the root
 lockfile occurrence; alert `28` was created when the behavioral verifier made
-that already-transitive package explicit in `package.json`. The package is
+that already-transitive package explicit in `package.json`. The package was
 installed only for browser QA by `@puppeteer/browsers` through Pa11y and
-Lighthouse, not into either deployed application, and GitHub currently lists
-no patched `extract-zip` version. Production-only pnpm audit and the Trivy
-source scan remain clean of high/critical findings; that does not close or
-dismiss either development-tooling alert. The checked mitigation contains the
-current behavior; the separate removal item remains open until the parent chain
-can be upgraded or replaced so the vulnerable package version leaves the
-lockfile.
+Lighthouse, not into either deployed application, and no patched
+`extract-zip` release exists. Consolidating those consumers on the compatible
+browser-manager 3 API removed the vulnerable package from both manifests and
+the lockfile. GitHub marked both alerts fixed without dismissal, while the
+production-only pnpm audit and Trivy source scan remained clean of
+high/critical findings. Automated security fixes are now enabled as the owned
+remediation boundary for future supported updates.
 
 CI discovery: pinned Shai-Hulud detector `v2.1.0` passed in Root, Backend, and
 Storefront CI, but GitHub annotated each run because the action still declares

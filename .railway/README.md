@@ -75,6 +75,11 @@ pnpm run railway:apply:staging
   Railway IaC changes through the guarded staging wrapper after their source
   commit passes CI. A documentation-only staging push must run GitHub checks
   without spending a Backend or Storefront rebuild.
+- The service-specific watch paths were accepted in staging on August 27,
+  2026. The effective Backend and Storefront manifests contain the reviewed
+  path lists; the post-apply plan contains only the known restart-policy
+  readback drift. Retain a no-deployment assertion for documentation-only
+  staging pushes as an ongoing cost regression gate.
 - Services already managed by `railway.json` must be migrated before `.railway/railway.ts` can manage them.
 - Keep one `.railway` file for the whole project. A named `export const partial` (or `PARTIAL` / `const Partial`) is a last resort for separate repos that cannot share that file. Do not add it unless omit=delete across repos is a blocker.
 - Use `replicas` for scaling; advanced placement can still specify region names.
