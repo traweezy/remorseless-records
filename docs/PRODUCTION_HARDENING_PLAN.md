@@ -658,7 +658,7 @@ startup log.
 - [ ] Complete the authentication, authorization, timeout, provider, and
       unexpected-error contract matrix across both boundaries and enumerate all
       custom endpoint responses in generated or contract-first OpenAPI.
-- [ ] Deploy only through `staging`, and repeat exact-SHA CI, Railway, route,
+- [x] Deploy only through `staging`, and repeat exact-SHA CI, Railway, route,
       log, and browser acceptance before advancing.
 
 Current local evidence: the OpenAPI 3.1 YAML parses and exposes the required
@@ -692,8 +692,33 @@ proved that the correlated, redacted Storefront `api.problem` event was present,
 but Railway mapped the `console.warn` stream to `level:error` even for the
 intentional 400 `invalid_query` probe. Expected 4xx problem events now write to
 stdout/info so alerting can distinguish client validation traffic from 5xx
-failures; the exact-SHA staging gate remains open until the correction is
-redeployed and its parsed Railway level is verified.
+failures. The correction was redeployed and Railway now parses the same probe as
+`level:info`.
+
+Exact staging acceptance: the foundational observability commit
+`d28ecec5d2aa932e39edc600f0fa187a218f8817` passed Root CI `33036915886`,
+Backend CI `33036915878`, and Storefront CI `33036915908`; Railway held both
+services until all three suites passed, then Backend deployment
+`f35f0536-4ad9-4ca1-9b00-9477294ade6a` and Storefront deployment
+`6b0fafb0-4824-40ac-b79a-d2012b248cbe` reached `SUCCESS`. Live acceptance
+found the 4xx severity issue above. Correction commit
+`66064a0e3b5937c0c857a63452d587d4006723fb` then passed Root CI
+`33037886660`, Backend CI `33037886752`, and Storefront CI `33037886661`;
+Railway again held the release before Backend deployment
+`73555e01-1359-4eeb-9eb0-3cc824c210ed` and Storefront deployment
+`f7f24ab2-f8b9-4b27-bd4d-d8cfe2e2d834` reached `SUCCESS` on that exact SHA.
+Backend `/live`, `/ready`, and `/api/health`; Storefront `/live`, `/ready`, and
+`/api/healthcheck`; and Storefront `/` and `/catalog` all returned 200. The
+deterministic `acceptance_66064a0_01` probe preserved its request ID and trace
+ID across both services, returned a correlated 400 `application/problem+json`
+`invalid_query` response, produced an info-level Backend completion event, and
+produced a parsed info-level Storefront problem event without URL, query, body,
+headers, provider detail, credentials, PII, or stack data. The exact-deployment
+error sweep contained only the already tracked successful pnpm command banners,
+not application failures. GitHub's two high alerts remain the documented
+development-only `extract-zip` alerts `27` and `28` for
+`GHSA-jmr9-qjv8-65gv`; no patched version exists and the fail-closed behavioral
+verifier remains green.
 
 ## Remaining authorization work
 
