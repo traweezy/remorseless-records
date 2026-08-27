@@ -62,6 +62,10 @@ pnpm run railway:apply:staging
   `tar@7.5.22` and verify Railway's immutable SHA-256 release-asset digest
   before extraction. Update the version, all platform digests, and the package
   patch together.
+- Storefront `REDIS_URL` must compose the Redis user/password references with
+  `${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379`. This keeps server-side cache and
+  rate-limit traffic on Railway's private network; do not replace it with the
+  provider's public `REDIS_URL`, `REDIS_PUBLIC_URL`, or TCP proxy port.
 - Services already managed by `railway.json` must be migrated before `.railway/railway.ts` can manage them.
 - Keep one `.railway` file for the whole project. A named `export const partial` (or `PARTIAL` / `const Partial`) is a last resort for separate repos that cannot share that file. Do not add it unless omit=delete across repos is a blocker.
 - Use `replicas` for scaling; advanced placement can still specify region names.

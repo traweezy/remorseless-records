@@ -15,6 +15,9 @@ tracks what is still required before production traffic is approved.
   reviewed pull request from an exact, accepted `staging` commit.
 - Production deploys are manual from an approved exact `master` SHA. A merge to
   `master` never authorizes or automatically triggers production work.
+- Until launch is explicitly approved, any separately approved production
+  validation deployment must be stopped after validation and verified to have
+  zero running instances so it does not continue accruing compute cost.
 - Use Node 26.x, pnpm 11.17.0, and the single root lockfile.
 - Deliver cohesive, reviewable Conventional Commits. Prefer larger hardening
   slices when the bundled controls share one security or release boundary.
@@ -998,7 +1001,7 @@ acceptance of the scheduler timestamp correction is complete.
       application commands, readiness, tool versions, archive digests, and the
       absence of legacy config files.
 - [x] Pass the complete local release gate.
-- [ ] Commit the cohesive infrastructure slice.
+- [x] Commit the cohesive infrastructure slice.
 - [ ] Push only to `staging`; require exact-SHA Root, Backend, and Storefront CI
       plus both Railway deployments, readiness, route, manifest, and log
       acceptance before closing the slice.
@@ -1036,6 +1039,44 @@ read model omits those fields. A subsequent plan therefore repeats only those
 two already-effective updates. Do not loop the apply solely to clear that
 platform phantom drift; retain manifest verification until Railway's plan/read
 model converges.
+
+Acceptance discovery: exact-SHA Storefront deployment
+`7fabfc0c-affa-4118-9fd1-93d76302b37d` built successfully but failed its
+dependency-aware `/ready` gate after 180 seconds. Bounded deploy and network
+logs showed repeated Redis connection failures through the public TCP proxy
+embedded in the provider's `REDIS_URL`, while Backend already used private
+`redis.railway.internal:6379`. Storefront already referenced
+`${{Redis.REDIS_URL}}`, but that provider variable itself contained the public
+TCP proxy URL. The Storefront contract now composes Redis's referenced user and
+password with `${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379` explicitly. This removes
+public service-to-service egress and keeps rotated Redis credentials in sync
+without exposing them to source or logs. Corrective source-commit exact-SHA
+staging acceptance remains required before this slice closes.
+
+Corrective configuration acceptance: the guarded plan contained zero creates,
+one intentional private Redis variable change, the two known restart-policy
+read-model artifacts, and zero destroys. Change set
+`0ef86dac5b309309b01d169b9d94b151` produced Backend deployment
+`bc015992-24ba-420f-8310-fde378ed0ea1` and Storefront deployment
+`5ede0616-78e6-42ed-b141-c402b202fae0`, both `SUCCESS`. Their `/ready` gates
+succeeded after 3.268 and 1.552 seconds respectively. The rendered Storefront
+URL is `redis.railway.internal:6379`; network telemetry recorded private
+service-to-service Redis flows with no drops. All eight health/public probes
+returned 200. Build logs were info-only with no unpinned pnpm bootstrap, and
+deploy warning/error levels contained only successful command banners. The
+post-apply plan now contains only the two documented phantom restart updates.
+
+CLI/API review: npm, the global binary, and the repository pin all resolve to
+Railway CLI 5.45.0, the latest published version on August 27, 2026. The new
+`railway api` surface was checked against live introspection and Railway's
+[official CLI API guide](https://docs.railway.com/cli/api). Acceptance reads now
+use exact project, environment, service, and deployment IDs with bounded JSON
+queries instead of account-wide payloads. No Railway Agent/MCP configuration
+was installed, no other project was read or changed, and the `store` project
+still has only `staging`; production remains absent and untouched. Railway's
+[variable guidance](https://docs.railway.com/variables) and
+[private-networking recommendation](https://docs.railway.com/overview/best-practices)
+support the corrected reference contract.
 
 Supply-chain discovery: Railway CLI 5.45.0's npm wrapper still declared
 vulnerable `tar@6.2.1` and downloaded release archives without verifying a

@@ -5,6 +5,8 @@ import railwayProgram, { partial } from "../.railway/railway.ts";
 import { createRailwayContext } from "railway/iac";
 
 const legacyConfigPaths = ["backend/railway.json", "storefront/railway.json"];
+const STOREFRONT_PRIVATE_REDIS_URL =
+  "redis://${{Redis.REDISUSER}}:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379";
 
 for (const legacyConfigPath of legacyConfigPaths) {
   assert.equal(
@@ -103,6 +105,12 @@ const getService = (name) => {
 const backend = getService("Backend");
 const storefront = getService("Storefront");
 
+assert.deepEqual(
+  storefront.variables.REDIS_URL,
+  { type: "literal", value: STOREFRONT_PRIVATE_REDIS_URL },
+  "Storefront Redis must use Railway's private service reference",
+);
+
 for (const service of [backend, storefront]) {
   assert.deepEqual(service.source, {
     type: "github",
@@ -122,6 +130,10 @@ for (const service of [backend, storefront]) {
   );
 
   for (const [name, value] of Object.entries(service.variables)) {
+    if (service.name === "Storefront" && name === "REDIS_URL") {
+      continue;
+    }
+
     assert.deepEqual(
       value,
       { type: "preserve" },
