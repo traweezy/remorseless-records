@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Bebas_Neue, Inter, JetBrains_Mono, Teko } from "next/font/google"
+import { headers } from "next/headers"
+import { Suspense } from "react"
 
 import "@/styles/globals.css"
 import BackToTopButton from "@/components/back-to-top-button"
@@ -13,7 +15,6 @@ import CookieConsentBanner from "@/components/legal/cookie-consent-banner"
 import { CookieConsentProvider } from "@/components/legal/cookie-consent-provider"
 import { siteMetadata } from "@/config/site"
 import { organizationJsonLd, webSiteJsonLd } from "@/lib/seo/structured-data"
-import { Suspense } from "react"
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -117,7 +118,9 @@ type RootLayoutProps = {
   readonly children: React.ReactNode
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+const RootLayout = async ({ children }: RootLayoutProps) => {
+  const nonce = (await headers()).get("x-nonce") ?? undefined
+
   return (
     <html
       lang="en"
@@ -155,9 +158,19 @@ export default function RootLayout({ children }: RootLayoutProps) {
           </CartProvider>
           <Toaster />
         </QueryProvider>
-        <JsonLd id="remorseless-organization" data={organizationJsonLd} />
-        <JsonLd id="remorseless-website" data={webSiteJsonLd} />
+        <JsonLd
+          id="remorseless-organization"
+          data={organizationJsonLd}
+          {...(nonce ? { nonce } : {})}
+        />
+        <JsonLd
+          id="remorseless-website"
+          data={webSiteJsonLd}
+          {...(nonce ? { nonce } : {})}
+        />
       </body>
     </html>
   )
 }
+
+export default RootLayout

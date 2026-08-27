@@ -84,9 +84,24 @@ availability, price, and other facets are applied as filters.
 The storefront uses a version-controlled subset of the backend's filterable
 index contract instead of reading index settings on every request. The backend
 release rebuild validates that contract before its atomic index swap. Initial
-catalog results are cached with Next Cache Components for 15 minutes, expire
-after one day without traffic, and carry the `products` cache tag; interactive
-search requests remain server-side and current.
+catalog results use an explicit five-minute Next data cache carrying the
+`products` cache tag; catalog-wide filters retain their 15-minute data caches.
+Interactive search requests remain server-side and current.
+
+Every HTML document is rendered behind `src/proxy.ts`, which generates a fresh
+request nonce and sends the same strict Content Security Policy to Next and the
+browser. Production scripts require that nonce and `strict-dynamic`; inline
+event handlers are disabled, `base-uri` is `none`, and webpack adds SRI to its
+bootstrap assets. Document rendering is intentionally dynamic so a nonce is
+never reused, while Medusa and Meilisearch reads keep their explicit tagged
+data caches. Only configured application/media origins enter the policy or
+Next Image allowlist; production requires HTTPS, and sample S3 and Unsplash
+origins are not trusted. Local development may still use HTTP services.
+
+Route and root error boundaries expose neutral recovery copy, focus the error
+heading, log only a validated framework digest, and support retry or a plain
+home navigation even when the router itself failed. Cookie-consent parsing
+contains malformed percent encoding and rejects oversized values.
 
 ## Quality gates
 

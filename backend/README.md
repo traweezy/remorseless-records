@@ -45,6 +45,16 @@ changes bucket policy, or rebuilds search.
   bounded timeouts. It returns `503` when any configured dependency fails.
 - `GET /api/health` is a temporary liveness alias for older monitors.
 
+All Backend, Store API, and Admin responses pass through the global security
+header boundary. It removes framework disclosure, applies HSTS outside local
+development, a default-deny CSP for the same-origin Admin, clickjacking and
+MIME protections, a strict referrer policy, and a restrictive Permissions
+Policy. Dynamic and mutating responses default to `Cache-Control: no-store`;
+versioned `/app/assets/` and `/static/` files retain their framework-managed
+cache policy. Configured media URLs are reduced to validated HTTP(S) origins
+before entering the Admin image/media allowlist, and production accepts only
+HTTPS origins. Local development may still use HTTP services.
+
 Production uses Medusa's official `@medusajs/file-s3` provider in
 S3-compatible path-style mode. The provider keeps the historical `minio` ID so
 existing file records remain valid. The bucket and public-read policy are

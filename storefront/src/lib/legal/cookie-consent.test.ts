@@ -131,4 +131,21 @@ describe("cookie consent utilities", () => {
       )
     ).toBeNull()
   })
+
+  it.each(["%", "%E0%A4%A", "%GG", "%F0%28%8C%28"])(
+    "contains malformed percent encoding without throwing: %s",
+    (value) => {
+      expect(() => parseCookiePreferences(value)).not.toThrow()
+      expect(parseCookiePreferences(value)).toBeNull()
+      expect(
+        parseCookiePreferencesFromHeader(
+          `${COOKIE_PREFERENCES_COOKIE_NAME}=${value}`
+        )
+      ).toBeNull()
+    }
+  )
+
+  it("rejects oversized cookie preference payloads before decoding", () => {
+    expect(parseCookiePreferences(`%41${"A".repeat(4_096)}`)).toBeNull()
+  })
 })

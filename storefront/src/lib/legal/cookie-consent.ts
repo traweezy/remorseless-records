@@ -2,6 +2,7 @@ export const COOKIE_PREFERENCES_COOKIE_NAME = "rr_cookie_preferences"
 export const COOKIE_PREFERENCES_STORAGE_KEY = "rr.cookie.preferences"
 export const COOKIE_PREFERENCES_VERSION = 1
 export const COOKIE_PREFERENCES_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
+const MAX_COOKIE_PREFERENCES_VALUE_LENGTH = 4_096
 const DEFAULT_PREFERENCES_TIMESTAMP = "1970-01-01T00:00:00.000Z"
 
 export type CookiePreferences = {
@@ -86,8 +87,18 @@ export const parseCookiePreferences = (
     return null
   }
 
-  const decoded = decodeURIComponent(value)
-  return tryParseCookiePreferences(decoded) ?? tryParseCookiePreferences(value)
+  if (value.length > MAX_COOKIE_PREFERENCES_VALUE_LENGTH) {
+    return null
+  }
+
+  try {
+    const decoded = decodeURIComponent(value)
+    return (
+      tryParseCookiePreferences(decoded) ?? tryParseCookiePreferences(value)
+    )
+  } catch {
+    return tryParseCookiePreferences(value)
+  }
 }
 
 export const buildCookiePreferencesHeader = (

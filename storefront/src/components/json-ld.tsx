@@ -1,6 +1,7 @@
 type JsonLdProps = {
   data: Record<string, unknown> | Array<Record<string, unknown>>
   id?: string
+  nonce?: string
 }
 
 export const serializeJsonLd = (data: JsonLdProps["data"]): string =>
@@ -11,11 +12,12 @@ export const serializeJsonLd = (data: JsonLdProps["data"]): string =>
     .replaceAll("\u2028", "\\u2028")
     .replaceAll("\u2029", "\\u2029")
 
-const JsonLd = ({ data, id }: JsonLdProps) => (
+const JsonLd = ({ data, id, nonce }: JsonLdProps) => (
   <script
     type="application/ld+json"
     suppressHydrationWarning
     {...(id ? { id } : {})}
+    {...(nonce ? { nonce } : {})}
     dangerouslySetInnerHTML={{
       __html: serializeJsonLd(data),
     }}

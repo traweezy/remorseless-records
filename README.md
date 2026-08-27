@@ -1239,9 +1239,9 @@ for the card, 3DS, decline, response-loss, webhook, and browser-close matrices.
 - The server-side storefront uses a version-controlled filter contract rather
   than fetching Meilisearch settings per request; release validation proves the
   live index supports that contract before the atomic swap.
-- Initial catalog search is cached through Next Cache Components for 15 minutes
-  with product-tag invalidation, while interactive searches continue through
-  the validated same-origin server route.
+- Initial catalog search uses a five-minute tagged Next data cache, while
+  catalog-wide filters retain 15-minute caches and interactive searches
+  continue through the validated same-origin server route.
 - Medusa events keep the live `products` index current. Bulk rebuilds never
   clear that live index.
 - Local Meilisearch:
@@ -1346,6 +1346,17 @@ returns only dependency names, status, and duration. Storefront `GET /ready`
 checks its backend and shared Redis; both Railway services route health checks
 to `/ready`. Responses are non-cacheable and never include connection strings
 or raw dependency errors.
+
+The Backend/Admin applies global HSTS, CSP, MIME, frame, referrer,
+permissions, and dynamic-response no-store defaults. The Storefront creates a
+fresh nonce for every HTML request, forwards it to Next rendering, and returns
+a matching CSP with `strict-dynamic`, `script-src-attr 'none'`, and
+`base-uri 'none'`; production `script-src` does not use `unsafe-inline`.
+Webpack SRI remains enabled for bootstrap assets. Because nonces cannot be
+reused in static HTML, document rendering is dynamic while tagged Backend and
+search data retain explicit caches. Only environment-configured application
+and media origins are permitted; production requires HTTPS, and sample image
+hosts are not allowlisted. Local development may still use HTTP services.
 
 Catalog product images upload through
 `POST /admin/catalog/media/uploads`. This authenticated route requires a UUID

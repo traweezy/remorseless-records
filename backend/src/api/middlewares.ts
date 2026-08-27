@@ -17,9 +17,10 @@ import {
 } from "../lib/admin-permissions";
 import { STORE_CORS } from "../lib/constants";
 import {
-  MAX_UPLOAD_BYTES,
-  MAX_UPLOAD_FILES,
-} from "../lib/uploads/validation";
+  buildBackendSecurityHeaders,
+  shouldDefaultToNoStore,
+} from "../lib/security/security-headers";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_FILES } from "../lib/uploads/validation";
 
 type RateLimitRule = {
   key: string;
@@ -35,12 +36,23 @@ type RateLimitBucket = {
 const buckets = new Map<string, RateLimitBucket>();
 const MAX_RATE_LIMIT_BUCKETS = 10_000;
 
-const removeFrameworkHeader = (
-  _req: MedusaRequest,
+const backendSecurityHeaders = buildBackendSecurityHeaders({
+  isDevelopment: process.env.NODE_ENV === "development",
+  mediaUrls: [process.env.MINIO_FILE_URL, process.env.BACKEND_PUBLIC_URL],
+});
+
+export const applySecurityBoundaryHeaders = (
+  req: MedusaRequest,
   res: MedusaResponse,
   next: MedusaNextFunction,
 ): void => {
   res.removeHeader("X-Powered-By");
+  Object.entries(backendSecurityHeaders).forEach(([name, value]) => {
+    res.setHeader(name, value);
+  });
+  if (shouldDefaultToNoStore(req.method, req.path)) {
+    res.setHeader("Cache-Control", "no-store");
+  }
   next();
 };
 
@@ -349,8 +361,7 @@ export const nativeAdminPolicyOverlayRoutes = [
     policies: [nativeAdminActions.product.update],
   },
   {
-    matcher:
-      /^\/admin\/products\/prod_[^/]+\/variants\/variant_[^/]+\/?$/i,
+    matcher: /^\/admin\/products\/prod_[^/]+\/variants\/variant_[^/]+\/?$/i,
     methods: ["POST"],
     policies: [nativeAdminActions.productVariant.update],
   },
@@ -360,7 +371,7 @@ export default defineMiddlewares({
   routes: [
     {
       matcher: /.*/,
-      middlewares: [removeFrameworkHeader],
+      middlewares: [applySecurityBoundaryHeaders],
     },
     {
       matcher: /^\/store\/(carts|checkout)(\/.*)?$/,

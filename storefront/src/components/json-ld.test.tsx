@@ -23,17 +23,20 @@ describe("JsonLd", () => {
     })
   })
 
-  it("renders a parseable application/ld+json script with an optional id", () => {
+  it("renders parseable nonce-authorized application/ld+json", () => {
     const data = {
       "@context": "https://schema.org",
       name: "Remorseless Records",
     }
-    const { container } = render(<JsonLd id="organization" data={data} />)
+    const { container } = render(
+      <JsonLd id="organization" data={data} nonce="test-nonce" />
+    )
     const script = container.querySelector(
       "script#organization[type='application/ld+json']"
     )
 
     expect(script).not.toBeNull()
+    expect(script).toHaveAttribute("nonce", "test-nonce")
     expect(JSON.parse(script?.textContent ?? "")).toEqual(data)
   })
 })

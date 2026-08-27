@@ -17,6 +17,7 @@ import {
 } from "../lib/admin-permissions";
 import middlewares, {
   contentAdminPolicyRoutes,
+  applySecurityBoundaryHeaders,
   nativeAdminPolicyOverlayRoutes,
   operationsAdminMiddlewareRoutes,
   operationsAdminPolicyRoutes,
@@ -41,13 +42,10 @@ const routeMatches = (
     : route.matcher.test(path);
 };
 
-const policyFor = (
-  routes: MiddlewareRoute[],
-  method: string,
-  path: string,
-) => {
-  const matches = routes.filter((route) =>
-    route.policies !== undefined && routeMatches(route, method, path),
+const policyFor = (routes: MiddlewareRoute[], method: string, path: string) => {
+  const matches = routes.filter(
+    (route) =>
+      route.policies !== undefined && routeMatches(route, method, path),
   );
   expect(matches).toHaveLength(1);
   return matches[0]?.policies;
@@ -77,18 +75,8 @@ describe("content Admin RBAC middleware", () => {
     ["GET", "/admin/discography/disco_01", "discography", "read"],
     ["PUT", "/admin/discography/disco_01", "discography", "update"],
     ["DELETE", "/admin/discography/disco_01", "discography", "delete"],
-    [
-      "POST",
-      "/admin/discography/disco_01/archive",
-      "discography",
-      "update",
-    ],
-    [
-      "POST",
-      "/admin/discography/disco_01/restore",
-      "discography",
-      "update",
-    ],
+    ["POST", "/admin/discography/disco_01/archive", "discography", "update"],
+    ["POST", "/admin/discography/disco_01/restore", "discography", "update"],
   ])("maps %s %s to %s:%s", (method, path, resource, operation) => {
     const expectedPolicies = [{ operation, resource }];
     if (resource === "discography" && operation === "read") {
@@ -123,12 +111,7 @@ describe("operations Admin RBAC middleware", () => {
   it.each([
     ["GET", "/admin/tax-control", "tax_control", "read"],
     ["POST", "/admin/tax-control/switch", "tax_control", "update"],
-    [
-      "POST",
-      "/admin/tax-control/taxrate-io/refresh",
-      "tax_control",
-      "update",
-    ],
+    ["POST", "/admin/tax-control/taxrate-io/refresh", "tax_control", "update"],
     ["GET", "/admin/tax-records", "tax_records", "read"],
     ["GET", "/admin/tax-records/export", "tax_records", "read"],
     ["GET", "/admin/refund-operations", "refund_operations", "read"],
@@ -191,14 +174,8 @@ describe("operations Admin RBAC middleware", () => {
 
 describe("native Admin mutation policy overlays", () => {
   it.each([
-    [
-      "/admin/products/prod_01",
-      nativeAdminActions.product.update,
-    ],
-    [
-      "/ADMIN/PRODUCTS/PROD_01/",
-      nativeAdminActions.product.update,
-    ],
+    ["/admin/products/prod_01", nativeAdminActions.product.update],
+    ["/ADMIN/PRODUCTS/PROD_01/", nativeAdminActions.product.update],
     [
       "/admin/products/prod_01/variants/variant_01",
       nativeAdminActions.productVariant.update,
@@ -301,6 +278,31 @@ describe("native Admin mutation policy overlays", () => {
 });
 
 describe("Admin middleware composition", () => {
+  it("applies global security and default no-store headers", () => {
+    const next = jest.fn();
+    const removeHeader = jest.fn();
+    const setHeader = jest.fn();
+
+    applySecurityBoundaryHeaders(
+      {
+        method: "GET",
+        path: "/admin/products",
+      } as MedusaRequest,
+      { removeHeader, setHeader } as unknown as MedusaResponse,
+      next,
+    );
+
+    expect(removeHeader).toHaveBeenCalledWith("X-Powered-By");
+    expect(setHeader).toHaveBeenCalledWith("X-Frame-Options", "DENY");
+    expect(setHeader).toHaveBeenCalledWith("X-Content-Type-Options", "nosniff");
+    expect(setHeader).toHaveBeenCalledWith(
+      "Content-Security-Policy",
+      expect.stringContaining("base-uri 'none'"),
+    );
+    expect(setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
   it("mounts every manifest policy exactly once", () => {
     const configuredRoutes = middlewares.routes ?? [];
 
@@ -363,8 +365,7 @@ describe("Admin middleware composition", () => {
     ).toEqual({ sizeLimit: "8kb" });
     expect(
       operationsAdminMiddlewareRoutes.find(
-        ({ matcher }) =>
-          matcher === "/admin/tax-control/taxrate-io/refresh",
+        ({ matcher }) => matcher === "/admin/tax-control/taxrate-io/refresh",
       )?.bodyParser,
     ).toEqual({ sizeLimit: "8kb" });
   });

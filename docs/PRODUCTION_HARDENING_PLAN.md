@@ -437,6 +437,69 @@ Railway `error` levels were the already tracked successful command banners;
 the build-log `secret` matches were Railpack hash/cache step labels without
 assignments or values.
 
+## Active slice: browser and HTTP response boundaries
+
+- [x] Replace the Storefront production script policy with a per-document,
+      cryptographically random nonce and `strict-dynamic`; forward the same CSP
+      in the request so Next can authorize framework scripts, and return it in
+      the response with `script-src-attr 'none'` and `base-uri 'none'`.
+- [x] Retain webpack SRI for bootstrap assets and replace the one Cache
+      Components-only catalog function with an explicit five-minute tagged
+      data cache so strict nonces can make documents dynamic without discarding
+      Backend/search caching.
+- [x] Remove sample Medusa S3 and Unsplash origins from both the production CSP
+      and Next Image allowlist; validate and normalize every configured dynamic
+      origin, require HTTPS outside local development, and reject credentials
+      or non-HTTP schemes.
+- [x] Add global Backend/Admin HSTS, CSP, `nosniff`, frame, referrer,
+      permissions, framework-disclosure removal, and default no-store response
+      headers without overriding static-asset caching.
+- [x] Add safe App Router route/root recovery boundaries with deterministic
+      focus, redacted digests, retry/home actions, and unit coverage.
+- [x] Contain malformed and oversized cookie-consent values at the parser
+      boundary with adversarial regression coverage.
+- [x] Pass focused Backend lint, strict typecheck, build, and 75 header tests;
+      pass Storefront lint, strict typecheck, the production build, and 23
+      focused CSP/proxy/error/JSON-LD/cookie tests.
+- [x] Pass the complete local quality, coverage, security, and production-build
+      matrix; validate the recovery surface in real Chromium and capture both
+      browser and full-desktop `flameshot` screenshots.
+- [ ] Commit and push the cohesive slice, prove Railway waits for all three
+      GitHub suites, accept both exact staging deployments, and run CSP/header,
+      browser-console, health, route, log, and cache-behavior probes.
+
+Discovery: webpack SRI alone does not authorize Next's inline React Flight
+bootstrap scripts. A production Chromium proof blocked 18 inline scripts and
+rendered an empty body under the otherwise strict policy, so that design was
+rejected before commit. Request nonces require dynamic HTML by design. Existing
+Medusa, Meilisearch, product, news, shelf, category, discography, and filter
+data caches remain explicit; the catalog initial-search cache is now an
+explicit tagged five-minute cache.
+
+Current local evidence: cross-app lint and strict typecheck, all 162 Backend
+suites with 865 tests, and all 105 Storefront suites with 552 tests pass.
+Storefront coverage is 93.6% statements, 85.8% branches, 94.5% functions, and
+93.57% lines. The production audit reports only the three documented ignored
+moderates; extract-zip and React Router behavioral security verifiers pass;
+Trivy reports zero high/critical dependency, misconfiguration, or secret
+findings; Gitleaks reports no leaks across 752 commits; and the CycloneDX SBOM
+and production-license inventory verify. Both production builds pass. The
+Admin main bundle is 1,799,024 gzip bytes and the total is 2,394,058 gzip bytes,
+both within budget.
+
+Local runtime preview is isolated from release evidence: Console Ninja had
+rewritten Next server files inside the untracked local `node_modules`, so
+`next start` could not boot despite a successful production build. No tracked
+dependency or application source was changed to hide that workstation issue.
+The clean GitHub runner and Railway build must provide the authoritative
+production CSP/browser proof before the slice is accepted.
+
+Trusted Types enforcement is not included in this slice. Stripe dynamically
+loads additional approved scripts and documents the need for a compatible
+default policy when Trusted Types are required; Next and every checkout path
+must first pass a report-only staging rollout. That follow-up remains below
+rather than introducing an untested production-enforced policy.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -492,15 +555,18 @@ assignments or values.
 
 ## Application and API security
 
-- [ ] Replace Storefront production `script-src 'unsafe-inline'` with a
+- [x] Replace Storefront production `script-src 'unsafe-inline'` with a
       nonce/hash policy; set `base-uri 'none'` and evaluate Trusted Types.
-- [ ] Remove unused sample S3 and Unsplash image origins from the production
+- [x] Remove unused sample S3 and Unsplash image origins from the production
       allowlist.
-- [ ] Add global Backend/Admin HSTS, CSP, `nosniff`, frame, referrer,
+- [x] Add global Backend/Admin HSTS, CSP, `nosniff`, frame, referrer,
       permissions, and cache headers.
+- [ ] Run Trusted Types in report-only mode across Storefront navigation and
+      checkout, define the narrow Stripe-compatible policy if violations are
+      understood, and enforce only after browser acceptance.
 - [ ] Standardize RFC 7807 responses with request and trace IDs across custom
       Backend and Storefront APIs.
-- [ ] Add App Router `error.tsx` and `global-error.tsx` boundaries with safe,
+- [x] Add App Router `error.tsx` and `global-error.tsx` boundaries with safe,
       observable recovery UX.
 - [ ] Validate strong, distinct JWT, cookie, cart, checkout-BFF, receipt, and
       webhook secrets at startup and support controlled rotation.
@@ -523,7 +589,7 @@ assignments or values.
 - [ ] Add outbound deadlines, cancellation, bounded retries, and redacted
       provider errors for content, search, email, Stripe, tax, storage,
       contact, and privacy calls.
-- [ ] Harden malformed cookie decoding so invalid percent encoding cannot throw
+- [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.
 
