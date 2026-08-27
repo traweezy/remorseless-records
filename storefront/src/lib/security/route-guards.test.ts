@@ -29,6 +29,8 @@ describe("route guards", () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
     process.env.NEXT_PUBLIC_SITE_URL = originalSiteUrl
     process.env.NEXT_PUBLIC_BASE_URL = originalBaseUrl
   })
@@ -403,5 +405,40 @@ describe("route guards", () => {
     )
     expect(failure.status).toBe(500)
     expect(failure.headers.get("Cache-Control")).toContain("no-store")
+  })
+
+  it("logs client problems to stdout and server problems to stderr", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    const infoLog = vi.spyOn(console, "info").mockImplementation(() => undefined)
+    const warningLog = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+    const errorLog = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    const { jsonApiError } = await import("@/lib/security/route-guards")
+    const request = createRequest("https://storefront.test/api/failure")
+
+    jsonApiError(request, "Invalid query", 400, "invalid_query")
+
+    expect(infoLog).toHaveBeenCalledTimes(1)
+    expect(warningLog).not.toHaveBeenCalled()
+    expect(errorLog).not.toHaveBeenCalled()
+    expect(JSON.parse(String(infoLog.mock.calls.at(0)?.at(0)))).toMatchObject({
+      event: "api.problem",
+      method: "POST",
+      problem_code: "invalid_query",
+      status: 400,
+    })
+
+    jsonApiError(request, "Request failed", 500, "request_failed")
+
+    expect(errorLog).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(String(errorLog.mock.calls.at(0)?.at(0)))).toMatchObject({
+      event: "api.problem",
+      method: "POST",
+      problem_code: "request_failed",
+      status: 500,
+    })
   })
 })

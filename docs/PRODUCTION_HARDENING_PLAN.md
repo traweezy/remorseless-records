@@ -642,6 +642,10 @@ startup log.
       add reusable OpenAPI 3.1 components and update client problem mapping.
 - [x] Pass the complete locally runnable quality, security, coverage, and
       production-build matrix.
+- [x] Correct Storefront problem-log severity after staging proved that Railway
+      classifies `console.warn` as `level:error`: expected 4xx problems now use
+      stdout/info while 5xx problems remain on stderr/error, with regression
+      coverage for both branches.
 - [ ] Convert the remaining handler-specific custom Backend error envelopes
       without changing the native Medusa envelope consumed by the Admin SDK.
 - [ ] Add a supported Storefront request-completion timing hook. The Next proxy
@@ -660,8 +664,8 @@ startup log.
 Current local evidence: the OpenAPI 3.1 YAML parses and exposes the required
 `ApiProblem` schema; release-policy, private-artifact, framework-header,
 Storefront ESLint, and both strict typecheck gates pass. All 165 Backend suites
-with 882 tests and all 109 Storefront suites with 570 tests pass. Storefront
-coverage is 93.65% statements, 85.99% branches, 94.55% functions, and 93.62%
+with 882 tests and all 109 Storefront suites with 571 tests pass. Storefront
+coverage is 93.82% statements, 86.15% branches, 94.55% functions, and 93.80%
 lines. Both production builds pass; the Admin main bundle is 1,798,873 gzip
 bytes and the total is 2,393,961 gzip bytes, both within budget. The production
 audit reports only the three documented ignored moderates, and both extract-zip
@@ -682,6 +686,14 @@ Cache review discovery: Next includes request headers in server-fetch cache
 identity. The correlated `/api/news` Backend request therefore uses `no-store`
 instead of creating high-cardinality cache entries from request and trace IDs;
 uncorrelated page data retains the existing tagged five-minute cache.
+
+Staging observability discovery: exact deployment acceptance for `d28ecec`
+proved that the correlated, redacted Storefront `api.problem` event was present,
+but Railway mapped the `console.warn` stream to `level:error` even for the
+intentional 400 `invalid_query` probe. Expected 4xx problem events now write to
+stdout/info so alerting can distinguish client validation traffic from 5xx
+failures; the exact-SHA staging gate remains open until the correction is
+redeployed and its parsed Railway level is verified.
 
 ## Remaining authorization work
 

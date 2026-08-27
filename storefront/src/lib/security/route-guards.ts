@@ -434,7 +434,7 @@ export const jsonApiProblem = ({
     if (status >= 500) {
       console.error(event)
     } else {
-      console.warn(event)
+      console.info(event)
     }
   }
 
