@@ -1,3 +1,5 @@
+import { headers } from "next/headers"
+
 type JsonLdProps = {
   data: Record<string, unknown> | Array<Record<string, unknown>>
   id?: string
@@ -12,16 +14,20 @@ export const serializeJsonLd = (data: JsonLdProps["data"]): string =>
     .replaceAll("\u2028", "\\u2028")
     .replaceAll("\u2029", "\\u2029")
 
-const JsonLd = ({ data, id, nonce }: JsonLdProps) => (
-  <script
-    type="application/ld+json"
-    suppressHydrationWarning
-    {...(id ? { id } : {})}
-    {...(nonce ? { nonce } : {})}
-    dangerouslySetInnerHTML={{
-      __html: serializeJsonLd(data),
-    }}
-  />
-)
+const JsonLd = async ({ data, id, nonce }: JsonLdProps) => {
+  const requestNonce = nonce ?? (await headers()).get("x-nonce") ?? undefined
+
+  return (
+    <script
+      type="application/ld+json"
+      suppressHydrationWarning
+      {...(id ? { id } : {})}
+      {...(requestNonce ? { nonce: requestNonce } : {})}
+      dangerouslySetInnerHTML={{
+        __html: serializeJsonLd(data),
+      }}
+    />
+  )
+}
 
 export default JsonLd

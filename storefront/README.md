@@ -91,12 +91,17 @@ Interactive search requests remain server-side and current.
 Every HTML document is rendered behind `src/proxy.ts`, which generates a fresh
 request nonce and sends the same strict Content Security Policy to Next and the
 browser. Production scripts require that nonce and `strict-dynamic`; inline
-event handlers are disabled, `base-uri` is `none`, and webpack adds SRI to its
-bootstrap assets. Document rendering is intentionally dynamic so a nonce is
-never reused, while Medusa and Meilisearch reads keep their explicit tagged
-data caches. Only configured application/media origins enter the policy or
-Next Image allowlist; production requires HTTPS, and sample S3 and Unsplash
-origins are not trusted. Local development may still use HTTP services.
+event handlers are disabled, `base-uri` is `none`, and webpack generates SRI
+metadata for eligible static bootstrap assets. Dynamic App Router documents
+authorize executable scripts with the request nonce because Next does not
+serialize its SRI metadata on that path. A nonce-authorized bootstrap opts Zod
+into its strict-CSP `jitless` mode before client bundles load, avoiding Zod's
+otherwise harmless but reportable eval capability probe. Document rendering is
+intentionally dynamic so a nonce is never reused, while Medusa and Meilisearch
+reads keep their explicit tagged data caches. Only configured
+application/media origins enter the policy or Next Image allowlist; production
+requires HTTPS, and sample S3 and Unsplash origins are not trusted. Local
+development may still use HTTP services.
 
 Route and root error boundaries expose neutral recovery copy, focus the error
 heading, log only a validated framework digest, and support retry or a plain

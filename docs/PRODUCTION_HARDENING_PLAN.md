@@ -443,10 +443,15 @@ assignments or values.
       cryptographically random nonce and `strict-dynamic`; forward the same CSP
       in the request so Next can authorize framework scripts, and return it in
       the response with `script-src-attr 'none'` and `base-uri 'none'`.
-- [x] Retain webpack SRI for bootstrap assets and replace the one Cache
-      Components-only catalog function with an explicit five-minute tagged
-      data cache so strict nonces can make documents dynamic without discarding
-      Backend/search caching.
+- [x] Retain webpack SRI manifest generation for eligible static bootstrap
+      assets and replace the one Cache Components-only catalog function with an
+      explicit five-minute tagged data cache so strict nonces can make dynamic
+      documents without discarding Backend/search caching.
+- [x] Preconfigure Zod's supported `jitless` mode in a nonce-authorized bootstrap
+      before client bundles load, preventing its eval capability probe from
+      generating an enforced CSP event during hydrated catalog navigation.
+- [x] Make every JSON-LD data block inherit the request nonce at the component
+      boundary, including page-level product and catalog structured data.
 - [x] Remove sample Medusa S3 and Unsplash origins from both the production CSP
       and Next Image allowlist; validate and normalize every configured dynamic
       origin, require HTTPS outside local development, and reject credentials
@@ -463,7 +468,7 @@ assignments or values.
 - [x] Contain malformed and oversized cookie-consent values at the parser
       boundary with adversarial regression coverage.
 - [x] Pass focused Backend lint, strict typecheck, build, and 76 header tests;
-      pass Storefront lint, strict typecheck, the production build, and 23
+      pass Storefront lint, strict typecheck, the production build, and 25
       focused CSP/proxy/error/JSON-LD/cookie tests.
 - [x] Pass the complete local quality, coverage, security, and production-build
       matrix; validate the recovery surface in real Chromium and capture both
@@ -480,10 +485,18 @@ Medusa, Meilisearch, product, news, shelf, category, discography, and filter
 data caches remain explicit; the catalog initial-search cache is now an
 explicit tagged five-minute cache.
 
+Live staging discovery: dynamic App Router HTML does not serialize the
+generated webpack SRI metadata, so executable scripts are authorized by the
+per-request nonce instead; eligible static error/bootstrap output retains the
+manifest-generated integrity metadata. Real Chromium also surfaced Zod 4.4's
+caught eval capability probe as an enforced CSP event during hydrated catalog
+navigation. Production does not add `unsafe-eval`: the documented Zod
+`jitless` configuration now skips the probe before any client schema loads.
+
 Current local evidence: cross-app lint and strict typecheck, all 162 Backend
-suites with 866 tests, and all 105 Storefront suites with 552 tests pass.
+suites with 866 tests, and all 106 Storefront suites with 554 tests pass.
 Storefront coverage is 93.6% statements, 85.8% branches, 94.5% functions, and
-93.57% lines. The production audit reports only the three documented ignored
+93.58% lines. The production audit reports only the three documented ignored
 moderates; extract-zip and React Router behavioral security verifiers pass;
 Trivy reports zero high/critical dependency, misconfiguration, or secret
 findings; Gitleaks reports no leaks across 752 commits; and the CycloneDX SBOM

@@ -11,6 +11,7 @@ import QueryProvider from "@/components/providers/query-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { CartProvider } from "@/providers/cart-provider"
 import JsonLd from "@/components/json-ld"
+import ZodStrictCspBootstrap from "@/components/zod-strict-csp-bootstrap"
 import CookieConsentBanner from "@/components/legal/cookie-consent-banner"
 import { CookieConsentProvider } from "@/components/legal/cookie-consent-provider"
 import { siteMetadata } from "@/config/site"
@@ -127,6 +128,9 @@ const RootLayout = async ({ children }: RootLayoutProps) => {
       suppressHydrationWarning
       className="bg-background text-foreground"
     >
+      <head>
+        <ZodStrictCspBootstrap {...(nonce ? { nonce } : {})} />
+      </head>
       <body
         className={[
           bebasNeue.variable,
