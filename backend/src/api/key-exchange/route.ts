@@ -1,20 +1,41 @@
-import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
-import { IApiKeyModuleService } from '@medusajs/framework/types';
-import { Modules } from '@medusajs/framework/utils';
+import type {
+  MedusaRequest,
+  MedusaResponse,
+} from "@medusajs/framework/http"
+import type { IApiKeyModuleService } from "@medusajs/framework/types"
+import { Modules } from "@medusajs/framework/utils"
 
-export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+import { sendApiProblem } from "../../lib/http/correlation"
+
+const unavailable = (req: MedusaRequest, res: MedusaResponse): void => {
+  res.setHeader("Cache-Control", "no-store")
+  sendApiProblem(req, res, {
+    code: "publishable_key_unavailable",
+    title: "Publishable key is unavailable",
+    status: 503,
+    detail: "The Store API publishable key is unavailable. Try again shortly.",
+    instance: req.path,
+  })
+}
+
+export const GET = async (
+  req: MedusaRequest,
+  res: MedusaResponse,
+): Promise<void> => {
   try {
-    const apiKeyModuleService: IApiKeyModuleService = req.scope.resolve(Modules.API_KEY);
-    const apiKeys = await apiKeyModuleService.listApiKeys();
-    const defaultApiKey = apiKeys.find((apiKey) => apiKey.title === 'Webshop');
+    const apiKeyModuleService = req.scope.resolve<IApiKeyModuleService>(
+      Modules.API_KEY,
+    )
+    const apiKeys = await apiKeyModuleService.listApiKeys()
+    const defaultApiKey = apiKeys.find((apiKey) => apiKey.title === "Webshop")
     if (!defaultApiKey) {
-      res.json({});
-    } else {
-      res.json({ publishableApiKey: defaultApiKey.token });
+      unavailable(req, res)
+      return
     }
-  } catch (error: unknown) {
-    res.status(500).json({
-      error: "Unable to fetch publishable API key",
-    });
+
+    res.setHeader("Cache-Control", "no-store")
+    res.status(200).json({ publishableApiKey: defaultApiKey.token })
+  } catch {
+    unavailable(req, res)
   }
-};
+}

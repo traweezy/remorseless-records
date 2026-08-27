@@ -10,7 +10,7 @@ import {
   STRIPE_LIFECYCLE_RECEIVED_EVENT,
 } from "../../../../modules/payment-lifecycle/constants";
 
-import { POST } from "./route";
+import { createStripeLifecyclePost, POST } from "./route";
 
 jest.mock("../../../../lib/constants", () => ({
   STRIPE_LIFECYCLE_WEBHOOK_SECRET: "whsec_lifecycle_unit_test",
@@ -34,6 +34,10 @@ const responseFixture = (): {
     state.headers[name.toLowerCase()] = value;
     return response;
   }) as MedusaResponse["setHeader"];
+  response.type = jest.fn((value: string) => {
+    state.headers["content-type"] = value;
+    return response;
+  }) as MedusaResponse["type"];
   response.status = jest.fn((status: number) => {
     state.status = status;
     return response;
@@ -42,6 +46,7 @@ const responseFixture = (): {
     state.body = body;
     return response;
   }) as MedusaResponse["json"];
+  response.locals = {};
   return { res: response, state };
 };
 
@@ -109,7 +114,13 @@ const requestFixture = ({
     throw new Error(`Unexpected dependency: ${key}`);
   });
   const req = {
-    headers: { "stripe-signature": signature },
+    headers: {
+      "stripe-signature": signature,
+      "x-request-id": "webhook-contract-test",
+      traceparent:
+        "00-11111111111111111111111111111111-2222222222222222-01",
+    },
+    path: "/webhooks/stripe/lifecycle",
     rawBody: Buffer.from(payload),
     scope: { resolve },
   } as unknown as MedusaRequest;
@@ -175,10 +186,25 @@ describe("POST /webhooks/stripe/lifecycle", () => {
     expect(
       request.lifecycleService.markStripeLifecycleEventFailed,
     ).toHaveBeenCalledWith("stripelinevt_01", "event_bus_unavailable");
-    expect(state.status).toBe(500);
+    expect(state.status).toBe(503);
+    expect(state.headers).toEqual({
+      "cache-control": "no-store",
+      "content-type": "application/problem+json",
+      "x-request-id": "webhook-contract-test",
+      traceparent: expect.stringMatching(
+        /^00-11111111111111111111111111111111-[0-9a-f]{16}-01$/u,
+      ),
+    });
     expect(state.body).toEqual({
-      type: "webhook_processing_unavailable",
-      message: "The webhook event could not be queued.",
+      type:
+        "https://remorselessrecords.com/problems/webhook_processing_unavailable",
+      title: "Payment lifecycle processing is unavailable",
+      status: 503,
+      detail: "The webhook event could not be queued.",
+      code: "webhook_processing_unavailable",
+      instance: "/webhooks/stripe/lifecycle",
+      request_id: "webhook-contract-test",
+      trace_id: "11111111111111111111111111111111",
     });
   });
 
@@ -195,8 +221,63 @@ describe("POST /webhooks/stripe/lifecycle", () => {
     expect(request.lifecycleService.recordStripeLifecycleEvent).not.toHaveBeenCalled();
     expect(state.status).toBe(400);
     expect(state.body).toEqual({
-      type: "invalid_webhook",
-      message: "The webhook signature or payload is invalid.",
+      type: "https://remorselessrecords.com/problems/invalid_webhook",
+      title: "Invalid payment lifecycle webhook",
+      status: 400,
+      detail: "The webhook signature or payload is invalid.",
+      code: "invalid_webhook",
+      instance: "/webhooks/stripe/lifecycle",
+      request_id: "webhook-contract-test",
+      trace_id: "11111111111111111111111111111111",
     });
+  });
+
+  it("returns a retryable problem when the webhook secret is unavailable", async () => {
+    const signed = signedPayload();
+    const request = requestFixture({
+      payload: signed.payload,
+      signature: signed.signature,
+    });
+    const { res, state } = responseFixture();
+
+    await createStripeLifecyclePost(undefined)(request.req, res);
+
+    expect(request.lifecycleService.recordStripeLifecycleEvent).not.toHaveBeenCalled();
+    expect(state.status).toBe(503);
+    expect(state.body).toEqual(
+      expect.objectContaining({
+        code: "lifecycle_webhook_unavailable",
+        detail: "The payment lifecycle webhook is not configured.",
+        request_id: "webhook-contract-test",
+        status: 503,
+      }),
+    );
+  });
+
+  it("redacts unexpected persistence failures and asks Stripe to retry", async () => {
+    const signed = signedPayload();
+    const request = requestFixture({
+      payload: signed.payload,
+      signature: signed.signature,
+    });
+    request.lifecycleService.recordStripeLifecycleEvent.mockRejectedValueOnce(
+      new Error("postgresql://operator:secret@database.internal/events"),
+    );
+    const { res, state } = responseFixture();
+
+    await POST(request.req, res);
+
+    expect(state.status).toBe(503);
+    expect(state.body).toEqual(
+      expect.objectContaining({
+        code: "webhook_processing_unavailable",
+        detail:
+          "The webhook event could not be recorded. Try again shortly.",
+        request_id: "webhook-contract-test",
+        status: 503,
+      }),
+    );
+    expect(JSON.stringify(state.body)).not.toContain("operator:secret");
+    expect(request.eventBus.emit).not.toHaveBeenCalled();
   });
 });
