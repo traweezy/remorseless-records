@@ -31,14 +31,14 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `13941ed6bc553bfa3a31dd00b41391a0111c38fb`.
+  `40b2cc06ecd981b61150002a009c327ac0c8679e`.
 - Latest documentation-bearing staging SHA accepted:
-  `c56e2f4a59d2cfb5c831aa6e703568cc57ea8869`.
+  `40b2cc06ecd981b61150002a009c327ac0c8679e`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `9dcb3fe4-46fc-4262-adaf-538b1afdcf8a` (`SUCCESS`).
+  `a3c75368-26d1-484f-a3c7-a0c9ea073b21` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `629b1905-ca52-41c9-b789-1245cf4b78ee`
+  `69497ac3-6c3f-4a19-b0f0-5d34f7307147`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -865,7 +865,7 @@ contained no path, query, header, body, PII, error, stack, or provider keys.
 The exact-deployment warning/error sweep contained only four Backend and one
 Storefront known successful command banners.
 
-## Active slice: checkout reconciliation scheduler-lock hardening
+## Completed slice: checkout reconciliation scheduler-lock hardening
 
 - [x] Recover the exact August 24 and 25 BullMQ repeat-job IDs, scheduled
       timestamps, handler-entry evidence, missing-lock errors, and stalled
@@ -892,7 +892,7 @@ Storefront known successful command banners.
 - [x] Pass the complete local release gates.
 - [x] Commit the implementation and documentation atomically by concern and
       push to `staging`.
-- [ ] Require Root, Backend, and Storefront CI plus both exact Railway staging
+- [x] Require Root, Backend, and Storefront CI plus both exact Railway staging
       deployments to reach `SUCCESS`; then verify a real scheduled job record,
       the health/public route matrix, and the exact deployment logs.
 
@@ -942,6 +942,27 @@ job becomes active and retains the intended execution timestamp in
 checked verifier fails on either incomplete implementation. Exact CI, Railway,
 live-job, smoke, and log acceptance must be repeated before closure.
 
+Final exact staging acceptance: head
+`40b2cc06ecd981b61150002a009c327ac0c8679e` passed Root CI
+`33051519732`, Backend CI `33051519699`, and Storefront CI `33051519764`,
+including the scheduler verifier, CodeQL, Trivy, secret and dependency scans,
+complete tests and coverage, both production builds, the Admin bundle budget,
+pa11y, Lighthouse, and Playwright. Railway released only after those workflows
+passed; Backend deployment `a3c75368-26d1-484f-a3c7-a0c9ea073b21` and
+Storefront deployment `69497ac3-6c3f-4a19-b0f0-5d34f7307147` reached
+`SUCCESS` on the exact SHA. All eight health/public smoke routes returned 200.
+The `08:06 UTC` reconciliation tick emitted an info-level `.completed` event
+for its intended `08:06:00.000Z` schedule with 79 ms delay, 159.645 ms total
+duration, 21.660 ms maximum event-loop delay, 2.136 ms lock wait, and successful
+owned-lock release. It scanned all 1,306 candidates below the 2,000 bound,
+found none eligible, attempted/completed/failed zero, and hit no scan, attempt,
+or run-time cap. The checked event carried the exact SHA, environment, service,
+run ID, and aggregate timing/result contract with none of the prohibited cart,
+payment, order, email, address, provider, error, stack, request, credential, or
+signature fields. The exact deployments contained zero lock/stall records and
+only the four Backend plus one Storefront already tracked successful command
+banners at warning/error severity.
+
 Current local evidence: 17 focused tests cover configuration bounds, candidate
 safety, time caps, full-window reporting, ambiguous response loss, owned-lock
 acquire/release, overlapping retry suppression, redacted failures, timing
@@ -952,8 +973,7 @@ coverage. Cross-app lint and strict typecheck, the checked release/security
 verifiers, the new delayed-scheduler timestamp verifier, production dependency
 audit, both production builds, and the Admin bundle budget pass. The Admin main
 bundle is 1,797,919 gzip bytes and total is 2,392,417 gzip bytes. Exact staging
-acceptance of the scheduler timestamp correction remains before this slice is
-closed.
+acceptance of the scheduler timestamp correction is complete.
 
 ## Remaining authorization work
 
@@ -971,9 +991,10 @@ closed.
 - [x] Measure retained scheduler delay/recovery plus current Redis latency,
       reconnect-log, AOF, memory, eviction, and PostgreSQL predicate baselines
       before tuning the scheduled-workflow lock.
-- [ ] Observe the accepted structured job duration, event-loop delay,
-      lock-wait/release, scan, and cap fields in staging, then add external
-      BullMQ/Redis alerts and retain a no-recurrence observation window.
+- [x] Observe the accepted structured job duration, event-loop delay,
+      lock-wait/release, scan, and cap fields in staging.
+- [ ] Add external BullMQ/Redis alerts and retain a no-recurrence observation
+      window for the hardened scheduler.
 - [ ] Prove every scheduled money-moving job is idempotent and stalled-job
       recovery cannot duplicate a charge, completion, order, refund, or email.
 - [ ] Configure a separate staging Stripe lifecycle webhook secret and the
@@ -1086,6 +1107,9 @@ closed.
       database/volume metrics with an overhead budget.
 - [ ] Define availability, latency, recovery-time, and recovery-point goals
       before adding replicas, PgBouncer, overlap/draining, or paid monitoring.
+- [ ] Gate Backend Railway releases on `/ready` rather than the less-complete
+      `/api/health` alias after migration and dependency startup budgets are
+      measured; keep `/live` as the liveness-only signal.
 - [ ] Reduce the Backend 720-second deploy health timeout after startup and
       migration behavior is measured.
 
@@ -1127,6 +1151,9 @@ closed.
       coverage.
 - [ ] Complete the broader custom Backend post-build dependency install/patch
       reproducibility review beyond the two remediated file rewrite races.
+- [ ] Remove the Storefront Railway `npm i -g pnpm` pre-deploy bootstrap and
+      use the repository-pinned pnpm/Corepack toolchain without an unpinned
+      package-manager install.
 - [ ] Scan final runtime images, generate image-linked SBOM/provenance, and sign
       or attest the deployed artifacts.
 - [ ] Move hardened-runner egress from audit mode to an explicit allowlist after

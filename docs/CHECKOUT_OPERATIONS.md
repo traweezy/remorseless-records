@@ -326,6 +326,15 @@ falling back to `job.timestamp + job.delay` for non-repeat jobs.
 `qa:workflow-scheduler-timestamps` and the standalone Backend artifact check
 guard that correction until an accepted upstream version replaces it.
 
+Final staging acceptance on `40b2cc06ecd981b61150002a009c327ac0c8679e`
+produced an info-level `.completed` record for the exact `08:06:00.000Z` tick.
+The worker started 79 ms later, completed in 159.645 ms, observed 21.660 ms
+maximum event-loop delay and 2.136 ms lock wait, released the owned lock, and
+scanned all 1,306 candidates below the 2,000 limit. Eligible, attempted,
+completed, and failed counts were zero; no cap or full-window condition fired.
+The exact deployment contained no missing-lock or stalled-job record. External
+BullMQ/Redis alerts and a retained no-recurrence window remain required.
+
 ## Incident: amount or currency mismatch
 
 An amount mismatch is a stop-ship invariant failure.
