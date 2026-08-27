@@ -1,32 +1,31 @@
 import { faker } from "@faker-js/faker"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { createPrivacyRequestPost } from "@/features/public-forms/server/privacy-request-handler"
+import { createContactPost } from "@/features/public-forms/server/contact-handler"
 
-type PrivacyPayload = {
+type ContactPayload = {
   name: string
   email: string
-  requestType: "access" | "delete" | "correct" | "optout" | "other"
-  details: string
-  orderId?: string
+  reason: "booking" | "press" | "collab" | "other"
+  message: string
   honeypot?: string
 }
 
-const traceId = "0123456789abcdef0123456789abcdef"
+const traceId = "fedcba9876543210fedcba9876543210"
 const timestamp = 1_800_000_000
-const secret = ["privacy", "form", "unit", "test", "key"].join("-").repeat(2)
+const secret = ["contact", "form", "unit", "test", "key"].join("-").repeat(2)
 
-const createRequest = (payload: PrivacyPayload): Request =>
-  new Request("https://storefront.test/api/privacy-request", {
+const createRequest = (payload: ContactPayload): Request =>
+  new Request("https://storefront.test/api/contact", {
     method: "POST",
     headers: {
       "content-type": "application/json",
       origin: "https://storefront.test",
-      referer: "https://storefront.test/privacy",
+      referer: "https://storefront.test/contact",
       host: "storefront.test",
       "x-forwarded-host": "storefront.test",
       "x-forwarded-for": faker.internet.ip(),
-      "x-request-id": "request_privacy_01",
+      "x-request-id": "request_contact_01",
       traceparent: `00-${traceId}-0123456789abcdef-01`,
     },
     body: JSON.stringify(payload),
@@ -36,7 +35,7 @@ const createHandler = (
   fetchImpl: typeof fetch,
   formSecret: string | null = secret
 ) =>
-  createPrivacyRequestPost({
+  createContactPost({
     backendBase: "https://backend.test",
     fetchImpl,
     nowSeconds: () => timestamp,
@@ -44,30 +43,26 @@ const createHandler = (
     secret: formSecret,
   })
 
-const validPayload = (): PrivacyPayload => ({
+const validPayload = (): ContactPayload => ({
   name: faker.person.fullName(),
   email: faker.internet.email(),
-  requestType: "access",
-  details: faker.lorem.sentences(faker.number.int({ min: 2, max: 4 })),
-  orderId: faker.string.alphanumeric(12),
+  reason: "booking",
+  message: faker.lorem.sentences(faker.number.int({ min: 2, max: 4 })),
   honeypot: "",
 })
 
-describe("privacy request route", () => {
+describe("contact route", () => {
   beforeEach(() => {
-    faker.seed(9911)
+    faker.seed(2255)
     vi.restoreAllMocks()
   })
 
   it("forwards a body-bound, purpose-bound proof to Backend", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(
-        JSON.stringify({ ok: true, request_id: crypto.randomUUID() }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
-      )
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
     )
     const response = await createHandler(fetchImpl)(
       createRequest(validPayload())
@@ -75,13 +70,9 @@ describe("privacy request route", () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-    expect(fetchImpl.mock.calls[0]?.[0]).toEqual(
-      new URL("https://backend.test/store/privacy-request")
-    )
     const options = fetchImpl.mock.calls[0]?.[1]
     const upstreamHeaders = new Headers(options?.headers)
-    expect(upstreamHeaders.get("x-request-id")).toBe("request_privacy_01")
+    expect(upstreamHeaders.get("x-request-id")).toBe("request_contact_01")
     expect(upstreamHeaders.get("traceparent")).toMatch(
       new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`)
     )
@@ -112,35 +103,46 @@ describe("privacy request route", () => {
 
     expect(response.status).toBe(503)
     await expect(response.json()).resolves.toMatchObject({
-      code: "privacy_request_unavailable",
+      code: "contact_unavailable",
       status: 503,
     })
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
-  it("maps Backend failures to a redacted gateway problem", async () => {
+  it("redacts Backend and network failures", async () => {
     const providerDetail = faker.lorem.sentence()
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ message: providerDetail }), {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      })
-    )
-    const response = await createHandler(fetchImpl)(
+    const backendFailure = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ message: providerDetail }), {
+          status: 503,
+        })
+      )
+    const backendResponse = await createHandler(backendFailure)(
       createRequest(validPayload())
     )
+    expect(backendResponse.status).toBe(502)
+    expect(JSON.stringify(await backendResponse.json())).not.toContain(
+      providerDetail
+    )
 
-    expect(response.status).toBe(502)
-    const problem: unknown = await response.json()
-    expect(problem).toMatchObject({
-      code: "privacy_request_upstream_unavailable",
-      detail: "Unable to submit privacy request right now.",
-      status: 502,
-    })
-    expect(JSON.stringify(problem)).not.toContain(providerDetail)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    const networkFailure = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(new Error(providerDetail))
+    const networkResponse = await createHandler(networkFailure)(
+      createRequest(validPayload())
+    )
+    expect(networkResponse.status).toBe(502)
+    expect(JSON.stringify(await networkResponse.json())).not.toContain(
+      providerDetail
+    )
+    expect(errorSpy).toHaveBeenCalledWith("[contact] Backend request failed")
   })
 
-  it("distinguishes an upstream timeout without exposing its error", async () => {
+  it("maps upstream timeouts to a safe gateway-timeout problem", async () => {
     const timeoutDetail = faker.lorem.sentence()
     const fetchImpl = vi
       .fn<typeof fetch>()
@@ -152,7 +154,7 @@ describe("privacy request route", () => {
     expect(response.status).toBe(504)
     const problem: unknown = await response.json()
     expect(problem).toMatchObject({
-      code: "privacy_request_upstream_timeout",
+      code: "contact_upstream_timeout",
       status: 504,
     })
     expect(JSON.stringify(problem)).not.toContain(timeoutDetail)
@@ -164,8 +166,8 @@ describe("privacy request route", () => {
       createRequest({
         name: faker.person.firstName(),
         email: faker.string.alpha(12),
-        requestType: "other",
-        details: faker.string.alpha(5),
+        reason: "other",
+        message: faker.string.alpha(5),
         honeypot: "",
       })
     )

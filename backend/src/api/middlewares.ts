@@ -218,8 +218,8 @@ const checkoutStatusRateLimit = createRateLimitMiddleware({
   windowMs: 60_000,
 });
 
-const contactRateLimit = createRateLimitMiddleware({
-  key: "store:contact",
+const publicFormRateLimit = createRateLimitMiddleware({
+  key: "store:public-form",
   max: 15,
   windowMs: 60_000,
 });
@@ -430,10 +430,11 @@ export default defineMiddlewares({
       },
     },
     {
-      matcher: "/store/contact",
+      matcher: /^\/store\/(contact|privacy-request)$/,
       methods: ["POST"],
-      middlewares: [contactRateLimit, enforceStoreOrigin],
+      middlewares: [publicFormRateLimit, enforceStoreOrigin],
       bodyParser: {
+        preserveRawBody: true,
         sizeLimit: "16kb",
       },
     },

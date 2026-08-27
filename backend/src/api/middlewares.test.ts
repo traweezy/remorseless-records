@@ -370,6 +370,21 @@ describe("Admin middleware composition", () => {
     ).toEqual({ sizeLimit: "8kb" });
   });
 
+  it("shares a bounded raw-body boundary across public form routes", () => {
+    const publicFormRoute = (middlewares.routes ?? []).find(
+      (route) =>
+        route.bodyParser !== undefined &&
+        routeMatches(route, "POST", "/store/contact") &&
+        routeMatches(route, "POST", "/store/privacy-request"),
+    );
+
+    expect(publicFormRoute?.middlewares).toHaveLength(2);
+    expect(publicFormRoute?.bodyParser).toEqual({
+      preserveRawBody: true,
+      sizeLimit: "16kb",
+    });
+  });
+
   it.each([
     "/admin/catalog/media/assets/media_01/quarantine",
     "/admin/catalog/media/assets/media_01/restore/",
