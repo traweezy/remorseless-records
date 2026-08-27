@@ -641,13 +641,18 @@ startup log.
       validation-problem, proxy, middleware, checkout client, and route tests;
       add reusable OpenAPI 3.1 components and update client problem mapping.
 - [x] Pass the complete locally runnable quality, security, coverage, and
-      production-build matrix.
+production-build matrix.
 - [x] Correct Storefront problem-log severity after staging proved that Railway
       classifies `console.warn` as `level:error`: expected 4xx problems now use
       stdout/info while 5xx problems remain on stderr/error, with regression
       coverage for both branches.
-- [ ] Convert the remaining handler-specific custom Backend error envelopes
+- [x] Convert the remaining handler-specific custom Backend error envelopes
       without changing the native Medusa envelope consumed by the Admin SDK.
+      The only direct outliers were `/key-exchange` and the Stripe lifecycle
+      webhook; both now return correlated, redacted, no-store problems.
+- [x] Add the Backend authentication, authorization, validation, provider, and
+      unexpected-error ownership matrix plus installed Medusa-handler
+      compatibility tests for native 401, 403, 400, and redacted 500 responses.
 - [ ] Add a supported Storefront request-completion timing hook. The Next proxy
       can correlate every response but cannot observe final route status and
       duration.
@@ -655,19 +660,21 @@ startup log.
       Framework-owned Admin static responses and built-in pre-router failures
       receive the patched static security/cache headers but bypass project API
       observability middleware.
-- [ ] Complete the authentication, authorization, timeout, provider, and
-      unexpected-error contract matrix across both boundaries and enumerate all
-      custom endpoint responses in generated or contract-first OpenAPI.
+- [ ] Complete the timeout, provider, and unexpected-error contract matrix for
+      the remaining Storefront boundary paths and enumerate all remaining
+      custom endpoint responses in generated or contract-first OpenAPI. The two
+      explicit Backend outliers are now the first enumerated paths.
 - [x] Deploy only through `staging`, and repeat exact-SHA CI, Railway, route,
       log, and browser acceptance before advancing.
 
 Current local evidence: the OpenAPI 3.1 YAML parses and exposes the required
-`ApiProblem` schema; release-policy, private-artifact, framework-header,
-Storefront ESLint, and both strict typecheck gates pass. All 165 Backend suites
-with 882 tests and all 109 Storefront suites with 571 tests pass. Storefront
+`ApiProblem` and `NativeMedusaError` schemas plus the two enumerated Backend
+paths; release-policy, private-artifact, framework-header,
+Storefront ESLint, and both strict typecheck gates pass. All 167 Backend suites
+with 892 tests and all 109 Storefront suites with 571 tests pass. Storefront
 coverage is 93.82% statements, 86.15% branches, 94.55% functions, and 93.80%
-lines. Both production builds pass; the Admin main bundle is 1,798,873 gzip
-bytes and the total is 2,393,961 gzip bytes, both within budget. The production
+lines. Both production builds pass; the Admin main bundle is 1,799,150 gzip
+bytes and the total is 2,394,099 gzip bytes, both within budget. The production
 audit reports only the three documented ignored moderates, and both extract-zip
 containment and React Router backport verifiers pass. During the full-suite
 repeat, 16 existing call assertions exposed the new correlation argument; the
@@ -719,6 +726,28 @@ not application failures. GitHub's two high alerts remain the documented
 development-only `extract-zip` alerts `27` and `28` for
 `GHSA-jmr9-qjv8-65gv`; no patched version exists and the fail-closed behavioral
 verifier remains green.
+
+Final-ledger acceptance: documentation head
+`86374df78868c69217bfd96f93dde27dc8aebf2c` passed Root CI `33038755813`,
+Backend CI `33038755691`, and Storefront CI `33038755660`, including unit
+coverage, both production builds, Admin bundle budget, Playwright, pa11y, and
+Lighthouse. Railway released only after those workflows passed; Backend
+deployment `e8c87ecb-314e-4bd9-83a6-86926d57e7fe` and Storefront deployment
+`8fd3252a-a197-4db4-b918-a268e9a50a40` both reached `SUCCESS` on the exact SHA.
+All Backend and Storefront live/readiness/health routes plus Storefront `/` and
+`/catalog` returned 200.
+
+Backend envelope discovery: the exhaustive `status(4xx|5xx)` and shared-helper
+inventory found only two project handlers still writing direct custom errors:
+the legacy public `/key-exchange` route and the Stripe lifecycle webhook.
+`/key-exchange` is not used by the current Storefront, which reads its validated
+publishable key from environment; external-consumer review remains before
+retirement. The webhook now returns 503 for persistence or queue unavailability
+so Stripe receives an explicit retry signal, while invalid signatures and
+payloads remain safe 400 problems. Native Medusa authentication, RBAC,
+validation, and unexpected failures deliberately retain the installed
+Dashboard/Admin SDK envelope, with a regression test preventing an accidental
+global replacement.
 
 ## Remaining authorization work
 

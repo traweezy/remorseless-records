@@ -13,8 +13,31 @@ handlers. The repository had no OpenAPI document and only eight files emitted
 `application/problem+json`. This slice introduces the reusable OpenAPI 3.1
 components and converts the shared Storefront guards, Storefront BFF errors,
 Backend security/rate-limit guards, checkout-status errors, and tax-reporting
-errors. Remaining handler-specific Backend envelopes are tracked in
-`docs/PRODUCTION_HARDENING_PLAN.md`.
+errors. The follow-up inventory found only two direct custom Backend envelopes:
+`GET /key-exchange` and `POST /webhooks/stripe/lifecycle`. Both now use the
+same correlated problem contract, and their success and failure responses are
+the first enumerated paths in the OpenAPI document.
+
+## Error ownership matrix
+
+| Boundary | Failure class | Status | Envelope owner |
+| --- | --- | ---: | --- |
+| Project custom route | validation or malformed provider input | 400 | `ApiProblem` |
+| Project custom route | proof/authentication failure | 401 | `ApiProblem` |
+| Project custom guard | origin/authorization rejection | 403 | `ApiProblem` |
+| Project custom route | conflict | 409 | `ApiProblem` |
+| Project custom route | upstream/provider failure | 502 or 503 | `ApiProblem` |
+| Project custom route | unexpected internal failure | 500 or retryable 503 | redacted `ApiProblem` |
+| Native Medusa auth | unauthenticated | 401 | `NativeMedusaError` |
+| Native Medusa Admin/RBAC | forbidden | 403 | `NativeMedusaError` |
+| Native Medusa route | validation, conflict, or not found | mapped 4xx | `NativeMedusaError` |
+| Native Medusa route | unexpected failure | 500 | redacted `NativeMedusaError` |
+
+The Backend regression suite invokes Medusa's installed error handler for
+native unauthenticated, forbidden, invalid-data, and unexpected failures and
+also proves the project has not registered a replacement global error handler.
+This guards Dashboard/Admin SDK compatibility while custom handlers migrate
+independently.
 
 ## Correlation rules
 
@@ -64,8 +87,10 @@ Backend completion events contain only:
 
 Storefront problem events use the same deployment and correlation fields plus
 the status and problem code. They intentionally omit paths, query strings,
-headers, bodies, exception messages, and provider data. HTTP 5xx events log at
-error, 4xx at warning, and successful Backend requests at info.
+headers, bodies, exception messages, and provider data. Backend completion
+events log 5xx at error, 4xx at warning, and successful requests at info.
+Storefront problem events log 5xx at error and expected 4xx at stdout/info
+because Railway classifies `console.warn` output as an error-level record.
 
 ## SLO-ish acceptance targets
 
@@ -85,9 +110,13 @@ When investigating an incident, search by `request_id` first, then use
 ## Remaining work
 
 - Enumerate custom endpoints and their response references in a complete
-  generated or contract-first OpenAPI document.
-- Convert remaining explicit custom Backend route errors without changing
-  native Medusa response compatibility.
+  generated or contract-first OpenAPI document; the two explicit custom
+  Backend envelope routes are now covered.
+- Verify whether any external consumer still calls the legacy `/key-exchange`
+  route, then retire it if the validated Storefront environment key is the sole
+  consumer path.
+- Complete timeout, provider, and unexpected-error contract coverage for the
+  remaining Storefront boundary paths.
 - Add a supported Storefront request-completion timing hook; the current proxy
   can correlate responses but cannot observe the final route status/duration.
 - Add dynamic correlation at Medusa's early Express loader so framework-owned

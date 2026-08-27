@@ -1,15 +1,82 @@
 openapi: 3.1.0
 info:
   title: Remorseless Records API problem contract
-  version: 1.0.0
+  version: 1.1.0
   description: >-
     Shared RFC 7807-compatible error and correlation components for custom
-    Backend and Storefront APIs. Endpoint enumeration remains in the production
-    hardening backlog.
+    Backend and Storefront APIs. This document begins endpoint enumeration with
+    the remaining explicit Backend error-envelope routes; complete endpoint
+    coverage remains in the production hardening backlog.
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
-paths: {}
+paths:
+  /key-exchange:
+    get:
+      operationId: getPublishableApiKey
+      summary: Resolve the legacy Webshop publishable API key
+      description: >-
+        Legacy discovery endpoint. The current Storefront uses its validated
+        environment key instead; external-consumer review is required before
+        this endpoint can be retired.
+      responses:
+        "200":
+          description: The browser-safe Store API publishable key.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            traceparent:
+              $ref: "#/components/headers/Traceparent"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishableKeyResponse"
+        "503":
+          $ref: "#/components/responses/ApiProblemResponse"
+  /webhooks/stripe/lifecycle:
+    post:
+      operationId: receiveStripeLifecycleWebhook
+      summary: Record and queue a Stripe payment lifecycle event
+      parameters:
+        - in: header
+          name: Stripe-Signature
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: The signed event was accepted or intentionally ignored.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            traceparent:
+              $ref: "#/components/headers/Traceparent"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeLifecycleWebhookAck"
+        "400":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "503":
+          $ref: "#/components/responses/ApiProblemResponse"
 components:
   headers:
+    NoStore:
+      description: Prevents storage of security- or retry-sensitive responses.
+      required: true
+      schema:
+        type: string
+        const: no-store
     RequestId:
       description: Bounded request correlation identifier.
       required: true
@@ -24,7 +91,61 @@ components:
       schema:
         type: string
         pattern: "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+  responses:
+    ApiProblemResponse:
+      description: A safe, correlated project-owned API problem.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+        traceparent:
+          $ref: "#/components/headers/Traceparent"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ApiProblem"
   schemas:
+    PublishableKeyResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - publishableApiKey
+      properties:
+        publishableApiKey:
+          type: string
+          minLength: 1
+    StripeLifecycleWebhookAck:
+      type: object
+      additionalProperties: false
+      required:
+        - received
+      properties:
+        received:
+          type: boolean
+          const: true
+        ignored:
+          type: boolean
+        replayed:
+          type: boolean
+    NativeMedusaError:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - type
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          minLength: 1
+      description: >-
+        Native Medusa error envelope retained for Admin SDK, Dashboard,
+        authentication, authorization, and ordinary Medusa route compatibility.
     ApiProblemFieldError:
       type: object
       additionalProperties: false
