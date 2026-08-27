@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "next build --webpack && node scripts/verify-client-bundle-secrets.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --project tsconfig.json --noEmit",

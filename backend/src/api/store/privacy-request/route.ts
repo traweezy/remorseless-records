@@ -34,6 +34,7 @@ type PrivacyRequestPostDependencies = {
   createSubmissionId: () => string;
   fromEmail: string | undefined;
   now: () => Date;
+  previousSecret?: string | undefined;
   secret: string | undefined;
   sendEmail: PublicFormEmailSender | null;
 };
@@ -69,6 +70,7 @@ export const createPrivacyRequestPost =
     createSubmissionId,
     fromEmail,
     now,
+    previousSecret,
     secret,
     sendEmail,
   }: PrivacyRequestPostDependencies) =>
@@ -95,6 +97,7 @@ export const createPrivacyRequestPost =
         body,
         purpose: PURPOSE,
         secret: normalizedSecret,
+        previousSecret,
         timestamp,
         proof,
         nowSeconds: Math.floor(now().getTime() / 1000),
@@ -191,6 +194,7 @@ export const POST = createPrivacyRequestPost({
   createSubmissionId: randomUUID,
   fromEmail: RESEND_FROM_EMAIL,
   now: () => new Date(),
+  previousSecret: process.env.PUBLIC_FORM_BFF_SECRET_PREVIOUS,
   secret: process.env.PUBLIC_FORM_BFF_SECRET,
   sendEmail: publicFormEmailSender,
 });

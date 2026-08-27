@@ -1249,6 +1249,56 @@ deploy, or runtime release. This is Railway's exact watch-path contract: an
 ignored commit remains visible for audit but spends no application build or
 runtime compute.
 
+## Active slice: runtime secrets and server-only search configuration
+
+- [x] Run a names-only staging preflight against the exact Backend and
+      Storefront services without printing secret values.
+- [x] Add production startup policies that require distinct, non-placeholder
+      JWT, cookie, cart, checkout, receipt, public-form, and configured webhook
+      secrets of at least 32 UTF-8 bytes.
+- [x] Add bounded prior-key verification for checkout/public-form BFF proofs
+      and 30-minute receipt grants; retain current-key-only signing.
+- [x] Remove Meilisearch host/key data from the public client environment,
+      CSP, image allowlist, and browser bundles; isolate search configuration
+      in a server-only module with a migration fallback.
+- [x] Extend staging IaC with the server-only search-host reference and optional
+      prior-key slots, and remove persistent Admin email/password from normal
+      Backend runtime.
+- [x] Correct the missed Backend and Storefront dependency-review thresholds;
+      all three workflows must reject high-severity pull-request additions.
+- [x] Pass focused and complete local lint, typecheck, test, security, build,
+      and client-bundle secret scans.
+- [ ] Push the expand commit only to `staging`, then accept all three exact-SHA
+      workflows and both current-config Railway deployments.
+- [ ] Apply only the reviewed staging variable migration after a guarded
+      zero-create/zero-service-destroy plan; accept both exact deployments.
+- [ ] Remove the legacy `NEXT_PUBLIC_MEILI_*` fallback and Railway variables,
+      then repeat exact-SHA CI, deployment, route, log, and search acceptance.
+
+Discovery: the staging names-only validator found no missing, weak, or reused
+current application secret and confirmed the two Stripe webhook keys are
+distinct. It also proved `MEDUSA_ADMIN_EMAIL`/`MEDUSA_ADMIN_PASSWORD` persisted
+in normal Backend runtime, while Storefront search had no server-only host/key
+pair and depended on the two legacy public-prefixed values. The existing
+server-only `MEILISEARCH_API_KEY` can remain the search-only credential; the
+expand phase references Backend's host without copying a secret. A second
+workflow audit found that the earlier dependency-review change covered Root
+CI only: Backend and Storefront still used the critical threshold. This slice
+corrects all three measured gaps.
+
+Local acceptance on August 27, 2026: `pnpm run qa:lint` passed every release,
+IaC, supply-chain, response-header, scheduler, runtime-log, ESLint, and
+typecheck gate. Backend passed 174 suites / 935 tests; its complete coverage
+run measured 66.1% statements and 52.22% branches across the application
+(there is no configured global Backend threshold), while every changed secret
+and prior-key path has direct tests. Storefront passed 114 files / 599 tests at
+94% statements and 86.3% branches. Both builds passed with distinct synthetic
+validation-only secrets, and the Storefront post-build scanner proved 127
+static assets contained neither a server-only secret value nor either legacy
+public Meilisearch input name. `pnpm audit --audit-level=high` found no high or
+critical issue; the three reported advisories are the existing policy-ignored
+moderate findings.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins

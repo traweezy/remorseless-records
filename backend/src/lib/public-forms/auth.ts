@@ -17,6 +17,7 @@ type PublicFormProofInput = {
 
 type VerifyPublicFormProofInput = PublicFormProofInput & {
   nowSeconds?: number;
+  previousSecret?: string | undefined;
   proof: string;
 };
 
@@ -59,6 +60,7 @@ export const createPublicFormProof = (
 
 export const verifyPublicFormProof = ({
   nowSeconds = Math.floor(Date.now() / 1000),
+  previousSecret,
   proof,
   ...input
 }: VerifyPublicFormProofInput): boolean => {
@@ -77,9 +79,23 @@ export const verifyPublicFormProof = ({
     return false;
   }
 
-  const expected = Buffer.from(createPublicFormProof(input));
   const supplied = Buffer.from(proof);
+  const verifiesWith = (candidate: string): boolean => {
+    try {
+      validateProofInput({ ...input, secret: candidate });
+    } catch {
+      return false;
+    }
+    const expected = Buffer.from(
+      createPublicFormProof({ ...input, secret: candidate }),
+    );
+    return (
+      expected.length === supplied.length && timingSafeEqual(expected, supplied)
+    );
+  };
+
   return (
-    expected.length === supplied.length && timingSafeEqual(expected, supplied)
+    verifiesWith(input.secret) ||
+    (previousSecret ? verifiesWith(previousSecret) : false)
   );
 };

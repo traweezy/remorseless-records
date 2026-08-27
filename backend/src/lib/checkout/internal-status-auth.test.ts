@@ -111,4 +111,34 @@ describe("internal checkout status proof", () => {
       }),
     ).toBe(false)
   })
+
+  it("accepts the previous key only inside the replay window", () => {
+    const proof = createCheckoutStatusProof({
+      cartId,
+      timestamp,
+      secret: alternateSecret,
+    })
+
+    expect(
+      verifyCheckoutStatusProof({
+        cartId,
+        timestamp,
+        secret,
+        previousSecret: alternateSecret,
+        proof,
+        nowSeconds: timestamp,
+      }),
+    ).toBe(true)
+    expect(
+      verifyCheckoutStatusProof({
+        cartId,
+        timestamp,
+        secret,
+        previousSecret: alternateSecret,
+        proof,
+        nowSeconds:
+          timestamp + CHECKOUT_STATUS_PROOF_MAX_SKEW_SECONDS + 1,
+      }),
+    ).toBe(false)
+  })
 })

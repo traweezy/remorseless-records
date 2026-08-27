@@ -11,8 +11,6 @@ describe("runtimeEnv", () => {
     const medusaUrl = faker.internet.url()
     const medusaPublishableKey = faker.string.alphanumeric(12)
     const stripePublishableKey = faker.string.alphanumeric(12)
-    const meiliHost = faker.internet.url()
-    const meiliSearchKey = faker.string.alphanumeric(12)
 
     vi.resetModules()
     vi.doMock("@/config/env.client", () => ({
@@ -21,8 +19,6 @@ describe("runtimeEnv", () => {
         medusaUrl,
         medusaPublishableKey,
         stripePublishableKey,
-        meiliHost,
-        meiliSearchKey,
         mediaUrl: null,
         assetHost: null,
       },

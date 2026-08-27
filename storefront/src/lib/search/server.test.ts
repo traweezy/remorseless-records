@@ -52,8 +52,8 @@ describe("searchProductsServer", () => {
     })
 
     vi.doMock("meilisearch", () => ({ Meilisearch: MeilisearchMock }))
-    vi.doMock("@/config/env", () => ({
-      runtimeEnv: {
+    vi.doMock("@/config/env.search.server", () => ({
+      searchServerEnv: {
         meiliHost,
         meiliSearchKey: meiliKey,
       },
@@ -78,24 +78,4 @@ describe("searchProductsServer", () => {
     expect(result.hits).toEqual([{ id: hitId }])
   })
 
-  it("throws when server meilisearch config is missing", async () => {
-    vi.doMock("meilisearch", () => ({ Meilisearch: vi.fn() }))
-    vi.doMock("@/config/env", () => ({
-      runtimeEnv: {
-        meiliHost: "",
-        meiliSearchKey: "",
-      },
-    }))
-    vi.doMock("@/lib/search/search", () => ({
-      searchProductsWithClient: vi.fn(),
-    }))
-    vi.doMock("@/lib/search/enrich", () => ({
-      enrichSearchResponse: vi.fn(),
-    }))
-
-    const { searchProductsServer } = await import("@/lib/search/server")
-    await expect(searchProductsServer({ query: "doom" })).rejects.toThrow(
-      "Meilisearch configuration missing"
-    )
-  })
 })

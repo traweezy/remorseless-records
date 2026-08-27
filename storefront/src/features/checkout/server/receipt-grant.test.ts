@@ -6,6 +6,7 @@ import {
   CHECKOUT_RECEIPT_TTL_SECONDS,
   createReceiptGrant,
   verifyReceiptGrant,
+  verifyReceiptGrantWithRotation,
 } from "@/features/checkout/server/receipt-grant"
 
 const secret = ["unit", "test", "receipt", "key"].join("-").repeat(2)
@@ -41,6 +42,23 @@ describe("checkout receipt grant", () => {
     const token = createReceiptGrant("order_01K123ABC", secret, now)
 
     expect(verifyReceiptGrant(token, alternateSecret, now)).toBeNull()
+  })
+
+  it("accepts an unexpired grant signed by the previous key", () => {
+    const token = createReceiptGrant("order_01K123ABC", alternateSecret, now)
+
+    expect(
+      verifyReceiptGrantWithRotation(
+        token,
+        secret,
+        alternateSecret,
+        now
+      )
+    ).toEqual({
+      orderId: "order_01K123ABC",
+      issuedAt: now,
+      expiresAt: now + CHECKOUT_RECEIPT_TTL_SECONDS,
+    })
   })
 
   it("rejects an expired grant", () => {

@@ -16,6 +16,7 @@ type CheckoutStatusProofInput = {
 type VerifyCheckoutStatusProofInput = CheckoutStatusProofInput & {
   proof: string
   nowSeconds?: number
+  previousSecret?: string | undefined
 }
 
 type CheckoutProofPurpose = "checkout-status" | "checkout-tax-link"
@@ -63,6 +64,7 @@ const verifyCheckoutProof = ({
   cartId,
   timestamp,
   secret,
+  previousSecret,
   proof,
   purpose,
   nowSeconds = Math.floor(Date.now() / 1000),
@@ -83,12 +85,25 @@ const verifyCheckoutProof = ({
     return false
   }
 
-  const expected = Buffer.from(
-    createCheckoutProof({ cartId, timestamp, secret, purpose }),
-  )
   const supplied = Buffer.from(proof)
+  const verifiesWith = (candidate: string): boolean => {
+    try {
+      validateSigningInput({ cartId, timestamp, secret: candidate })
+    } catch {
+      return false
+    }
+    const expected = Buffer.from(
+      createCheckoutProof({ cartId, timestamp, secret: candidate, purpose }),
+    )
+    return (
+      expected.length === supplied.length &&
+      timingSafeEqual(expected, supplied)
+    )
+  }
+
   return (
-    expected.length === supplied.length && timingSafeEqual(expected, supplied)
+    verifiesWith(secret) ||
+    (previousSecret ? verifiesWith(previousSecret) : false)
   )
 }
 

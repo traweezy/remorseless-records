@@ -3,9 +3,13 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { resolveRemoteImagePatterns } from "./src/config/image-optimization"
+import { validateStorefrontRuntimeSecrets } from "./src/config/runtime-secret-policy"
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const isDevelopment = process.env.NODE_ENV === "development"
+validateStorefrontRuntimeSecrets({
+  isProduction: process.env.NODE_ENV === "production",
+})
 
 const BUILD_YEAR = new Date().getUTCFullYear().toString()
 const experimentalConfig: NonNullable<NextConfig["experimental"]> = {

@@ -104,4 +104,25 @@ describe("public-form BFF proof", () => {
       }),
     ).toThrow();
   });
+
+  it("accepts a proof signed by the previous key during rotation", () => {
+    const proof = createPublicFormProof({
+      body,
+      purpose: "contact",
+      secret: alternateSecret,
+      timestamp,
+    });
+
+    expect(
+      verifyPublicFormProof({
+        body,
+        purpose: "contact",
+        secret,
+        previousSecret: alternateSecret,
+        timestamp,
+        proof,
+        nowSeconds: timestamp,
+      }),
+    ).toBe(true);
+  });
 });

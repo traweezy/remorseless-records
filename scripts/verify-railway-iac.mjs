@@ -7,6 +7,8 @@ import { createRailwayContext } from "railway/iac";
 const legacyConfigPaths = ["backend/railway.json", "storefront/railway.json"];
 const STOREFRONT_PRIVATE_REDIS_URL =
   "redis://${{Redis.REDISUSER}}:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379";
+const STOREFRONT_PRIVATE_MEILISEARCH_HOST =
+  "${{Backend.MEILISEARCH_HOST}}";
 const SHARED_BUILD_WATCH_PATTERNS = [
   "/.nvmrc",
   "/package.json",
@@ -117,6 +119,18 @@ assert.deepEqual(
   { type: "literal", value: STOREFRONT_PRIVATE_REDIS_URL },
   "Storefront Redis must use Railway's private service reference",
 );
+assert.deepEqual(
+  storefront.variables.MEILISEARCH_HOST,
+  { type: "literal", value: STOREFRONT_PRIVATE_MEILISEARCH_HOST },
+  "Storefront search must use the Backend's server-only Meilisearch host",
+);
+for (const name of ["MEDUSA_ADMIN_EMAIL", "MEDUSA_ADMIN_PASSWORD"]) {
+  assert.equal(
+    Object.hasOwn(backend.variables, name),
+    false,
+    `Backend.${name} must not persist in the normal application runtime`,
+  );
+}
 
 for (const service of [backend, storefront]) {
   assert.deepEqual(service.source, {
@@ -137,7 +151,10 @@ for (const service of [backend, storefront]) {
   );
 
   for (const [name, value] of Object.entries(service.variables)) {
-    if (service.name === "Storefront" && name === "REDIS_URL") {
+    if (
+      service.name === "Storefront" &&
+      ["MEILISEARCH_HOST", "REDIS_URL"].includes(name)
+    ) {
       continue;
     }
 

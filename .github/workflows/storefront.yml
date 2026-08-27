@@ -31,8 +31,8 @@ env:
   NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${{ secrets.NEXT_PUBLIC_MEDUSA_BACKEND_URL }}
   NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY }}
   NEXT_PUBLIC_STRIPE_PK: ${{ secrets.NEXT_PUBLIC_STRIPE_PK }}
-  NEXT_PUBLIC_MEILI_HOST: ${{ secrets.NEXT_PUBLIC_MEILI_HOST }}
-  NEXT_PUBLIC_MEILI_SEARCH_KEY: ${{ secrets.NEXT_PUBLIC_MEILI_SEARCH_KEY }}
+  MEILISEARCH_HOST: ${{ secrets.NEXT_PUBLIC_MEILI_HOST }}
+  MEILISEARCH_SEARCH_KEY: ${{ secrets.NEXT_PUBLIC_MEILI_SEARCH_KEY }}
   MEDUSA_BACKEND_URL: ${{ secrets.MEDUSA_BACKEND_URL }}
   QA_BASE_URL: ""
   QA_PRODUCT_PATH: "/products"
@@ -53,7 +53,7 @@ jobs:
       - name: Dependency Review
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
-          fail-on-severity: critical
+          fail-on-severity: high
 
   security:
     name: Security & Audit (Shai-Hulud, pnpm audit)

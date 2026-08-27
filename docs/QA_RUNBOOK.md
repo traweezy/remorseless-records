@@ -136,6 +136,13 @@ pnpm run qa:browser-toolchain-security
 - Ensure backend and storefront share a separate `PUBLIC_FORM_BFF_SECRET` for
   body-bound contact/privacy calls. It must not reuse checkout, receipt, cookie,
   JWT, or webhook secrets.
+- In production mode, confirm startup rejects a missing, placeholder,
+  shorter-than-32-byte, or reused runtime secret without logging any value.
+- During rotation, exercise Backend verification through
+  `CHECKOUT_BFF_SECRET_PREVIOUS` and `PUBLIC_FORM_BFF_SECRET_PREVIOUS`, and
+  Storefront receipt verification through
+  `CHECKOUT_RECEIPT_SECRET_PREVIOUS`. Remove prior keys after their documented
+  drain windows.
 - Verify every key/object is test mode before continuing. Do not use real card
   details or a live Stripe object.
 - Start backend and listen for Stripe webhooks:

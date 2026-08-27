@@ -2,7 +2,7 @@ import "server-only"
 
 import { Meilisearch } from "meilisearch"
 
-import { runtimeEnv } from "@/config/env"
+import { searchServerEnv } from "@/config/env.search.server"
 import { enrichSearchResponse } from "@/lib/search/enrich"
 import {
   type ProductSearchRequest,
@@ -17,15 +17,9 @@ const getServerClient = (): Meilisearch => {
     return serverClient
   }
 
-  if (!runtimeEnv.meiliHost || !runtimeEnv.meiliSearchKey) {
-    throw new Error(
-      "Meilisearch configuration missing. Ensure NEXT_PUBLIC_MEILI_HOST and NEXT_PUBLIC_MEILI_SEARCH_KEY are set."
-    )
-  }
-
   serverClient = new Meilisearch({
-    host: runtimeEnv.meiliHost,
-    apiKey: runtimeEnv.meiliSearchKey,
+    host: searchServerEnv.meiliHost,
+    apiKey: searchServerEnv.meiliSearchKey,
   })
 
   return serverClient

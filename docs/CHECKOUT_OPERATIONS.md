@@ -437,13 +437,27 @@ procedure; never click refund again to make the totals match.
 Cart signing supports `CART_COOKIE_SECRET_PREVIOUS`; keep the prior secret for
 one 30-day cart lifetime during a planned rotation.
 
-`CHECKOUT_BFF_SECRET` must change on backend and storefront together. During
-cutover, expect recovery requests signed with a mismatched key to fail closed.
-Use a coordinated staging deployment and complete an in-flight recovery smoke
-test.
+For `CHECKOUT_BFF_SECRET`, deploy Backend first with the new current key and
+the old key in `CHECKOUT_BFF_SECRET_PREVIOUS`. Backend then accepts both while
+Storefront still signs with the old key. Deploy Storefront with the new current
+key, complete an in-flight recovery and tax-link smoke test, wait for old
+instances plus the 30-second replay window to drain, then remove the Backend
+previous key. Storefront never signs new requests with a previous key.
 
-`CHECKOUT_RECEIPT_SECRET` is storefront-only. Rotating it invalidates existing
-30-minute receipt grants; email remains the durable receipt.
+For `PUBLIC_FORM_BFF_SECRET`, use the same Backend-first sequence with
+`PUBLIC_FORM_BFF_SECRET_PREVIOUS`, then smoke-test both contact and privacy
+proofs before removing the old key.
+
+`CHECKOUT_RECEIPT_SECRET` is Storefront-only. Put the old key in
+`CHECKOUT_RECEIPT_SECRET_PREVIOUS`, deploy the new current key, retain the old
+key for the 30-minute grant lifetime, then remove it. New grants are always
+signed by the current key; email remains the durable receipt.
+
+Production startup rejects missing, placeholder, shorter-than-32-byte, or
+reused JWT, cookie, cart, checkout, receipt, public-form, and configured webhook
+secrets. Medusa does not provide dual-key JWT/cookie verification in this
+version, so rotating those two secrets is an explicit session-invalidating
+maintenance event rather than a zero-downtime key overlap.
 
 `STRIPE_LIFECYCLE_WEBHOOK_SECRET` belongs only to
 `POST /webhooks/stripe/lifecycle` and must not reuse

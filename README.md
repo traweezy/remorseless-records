@@ -1013,7 +1013,9 @@ Key variables (non-empty values required for full functionality):
 | `STRIPE_LIFECYCLE_WEBHOOK_SECRET`            | Separate secret for the refund/dispute lifecycle endpoint                    |
 | `STRIPE_PAYMENT_METHOD_CONFIGURATION`        | Active Stripe `pmc_...` limited to card, Link, Apple Pay, and Google Pay     |
 | `CHECKOUT_BFF_SECRET`                        | Shared 32+ character HMAC key; identical on backend and storefront           |
+| `CHECKOUT_BFF_SECRET_PREVIOUS`               | Optional former BFF key accepted only during a coordinated rotation           |
 | `PUBLIC_FORM_BFF_SECRET`                     | Different shared 32+ byte HMAC key for contact/privacy BFF proofs             |
+| `PUBLIC_FORM_BFF_SECRET_PREVIOUS`            | Optional former public-form key accepted during a coordinated rotation        |
 | `CHECKOUT_RECONCILIATION_ENABLED`            | Enables the bounded missed-completion safety net (default `false`)           |
 | `CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS`    | Minimum finalized-payment age before retry; default `120`, minimum `60`      |
 | `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS`       | Per-run completion-attempt cap; default `50`, maximum `250`                  |
@@ -1055,8 +1057,8 @@ Required values:
 | `NEXT_PUBLIC_MEDUSA_URL`                           | Public Medusa Base URL (e.g., `http://localhost:9000`)                    |
 | `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`               | Publishable API key created in Medusa (Admin > Settings > API Keys)       |
 | `NEXT_PUBLIC_STRIPE_PK`                            | Stripe publishable key (_pk\_..._)                                        |
-| `NEXT_PUBLIC_MEILI_HOST`                           | Meilisearch host (match backend)                                          |
-| `NEXT_PUBLIC_MEILI_SEARCH_KEY`                     | Meili search-only key (never commit admin keys)                           |
+| `MEILISEARCH_HOST`                                 | Server-only Meilisearch host (match backend)                              |
+| `MEILISEARCH_SEARCH_KEY`                           | Server-only search key (never use an admin key)                           |
 | `NEXT_PUBLIC_MEDIA_URL` / `NEXT_PUBLIC_ASSET_HOST` | Optional CDN overrides                                                    |
 | `MEDUSA_BACKEND_URL`                               | (server-only) override when the backend runs on a different domain        |
 | `REDIS_URL`                                        | Server-only Redis connection used for cart retries and shared rate limits |
@@ -1064,6 +1066,7 @@ Required values:
 | `CART_COOKIE_SECRET_PREVIOUS`                      | Optional former signing secret used only during a planned rotation        |
 | `CHECKOUT_BFF_SECRET`                              | Same server-only HMAC key configured on the backend                       |
 | `CHECKOUT_RECEIPT_SECRET`                          | Different server-only 32+ character receipt-signing key                   |
+| `CHECKOUT_RECEIPT_SECRET_PREVIOUS`                 | Optional former receipt key for the 30-minute rotation window             |
 | `PUBLIC_FORM_BFF_SECRET`                           | Different shared 32+ byte contact/privacy proof key configured on Backend |
 
 ### Example local `.env`
@@ -1079,7 +1082,9 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_LIFECYCLE_WEBHOOK_SECRET=whsec_...
 STRIPE_PAYMENT_METHOD_CONFIGURATION=pmc_...
 CHECKOUT_BFF_SECRET=replace-with-at-least-32-random-characters
+CHECKOUT_BFF_SECRET_PREVIOUS=
 PUBLIC_FORM_BFF_SECRET=replace-with-a-different-32-byte-secret
+PUBLIC_FORM_BFF_SECRET_PREVIOUS=
 CHECKOUT_RECONCILIATION_ENABLED=false
 TAX_RATE_LOOKUP_API_KEY=
 TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE=
@@ -1098,11 +1103,12 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 NEXT_PUBLIC_MEDUSA_URL=http://localhost:9000
 NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_medusa_public_client
 NEXT_PUBLIC_STRIPE_PK=pk_test_...
-NEXT_PUBLIC_MEILI_HOST=http://127.0.0.1:7700
-NEXT_PUBLIC_MEILI_SEARCH_KEY=searchKey
+MEILISEARCH_HOST=http://127.0.0.1:7700
+MEILISEARCH_SEARCH_KEY=searchKey
 MEDUSA_BACKEND_URL=http://localhost:9000
 CHECKOUT_BFF_SECRET=replace-with-the-same-backend-secret
 CHECKOUT_RECEIPT_SECRET=replace-with-a-different-32-character-secret
+CHECKOUT_RECEIPT_SECRET_PREVIOUS=
 PUBLIC_FORM_BFF_SECRET=replace-with-the-same-distinct-backend-form-secret
 ```
 

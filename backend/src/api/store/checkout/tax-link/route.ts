@@ -66,6 +66,7 @@ export const POST = async (
       cartId: parsed.data.cart_id,
       timestamp,
       secret,
+      previousSecret: process.env.CHECKOUT_BFF_SECRET_PREVIOUS,
       proof,
     })
   ) {

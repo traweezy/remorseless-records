@@ -29,6 +29,7 @@ import {
 import productSearchTransformer from './src/lib/meilisearch/product-transformer';
 import { resolveAdminRbacModuleConfig } from './src/lib/admin-rbac-config';
 import { buildBackendResponseHeaders } from './src/lib/security/security-headers';
+import { validateBackendRuntimeSecrets } from './src/lib/security/runtime-secret-policy';
 import { resolveObjectStorageConfig } from './src/lib/storage/config';
 import { WORKFLOW_JOB_WORKER_OPTIONS } from './src/lib/workflow-worker-options';
 import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
@@ -38,6 +39,7 @@ loadEnv(process.env.NODE_ENV, process.cwd());
 
 const isDevelopment = process.env.NODE_ENV === "development";
 const isProduction = process.env.NODE_ENV === "production";
+validateBackendRuntimeSecrets({ isProduction });
 const objectStorageConfig = resolveObjectStorageConfig({
   required: isProduction,
 });

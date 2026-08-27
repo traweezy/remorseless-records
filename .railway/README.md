@@ -66,6 +66,15 @@ pnpm run railway:apply:staging
   `${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379`. This keeps server-side cache and
   rate-limit traffic on Railway's private network; do not replace it with the
   provider's public `REDIS_URL`, `REDIS_PUBLIC_URL`, or TCP proxy port.
+- Normal Backend runtime must not retain `MEDUSA_ADMIN_EMAIL` or
+  `MEDUSA_ADMIN_PASSWORD`. Supply maintenance credentials only to the explicit
+  one-shot operator command, then revoke/unset them; the application service
+  environment is not a credential vault.
+- Storefront search must use server-only `MEILISEARCH_HOST` plus the existing
+  search-only `MEILISEARCH_API_KEY`. During the expand phase, the new host is a
+  Railway reference to `Backend.MEILISEARCH_HOST`; legacy
+  `NEXT_PUBLIC_MEILI_*` values remain only until the accepted contract commit
+  removes the fallback and variables.
 - Backend and Storefront watch paths include their own workspace plus the root
   Node/pnpm version, manifest, lockfile, workspace policy, and dependency patch
   inputs consumed by both builds. A root lockfile or toolchain change must

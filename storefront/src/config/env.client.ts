@@ -5,8 +5,6 @@ const clientSchema = z.object({
   medusaUrl: z.string().url(),
   medusaPublishableKey: z.string().min(1),
   stripePublishableKey: z.string().min(1),
-  meiliHost: z.string().url(),
-  meiliSearchKey: z.string().min(1),
   mediaUrl: z.string().url().nullable(),
   assetHost: z.string().url().nullable(),
 })
@@ -30,11 +28,6 @@ const rawEnv = {
     process.env.NEXT_PUBLIC_STRIPE_PK ??
     process.env.NEXT_PUBLIC_STRIPE_KEY ??
     process.env.STRIPE_PUBLISHABLE_KEY ??
-    "",
-  meiliHost: process.env.NEXT_PUBLIC_MEILI_HOST ?? "",
-  meiliSearchKey:
-    process.env.NEXT_PUBLIC_MEILI_SEARCH_KEY ??
-    process.env.MEILI_SEARCH_KEY ??
     "",
   mediaUrl: process.env.NEXT_PUBLIC_MEDIA_URL ?? null,
   assetHost: process.env.NEXT_PUBLIC_ASSET_HOST ?? null,

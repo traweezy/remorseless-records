@@ -38,8 +38,8 @@ Required values:
 | `MEDUSA_BACKEND_URL`                 | Server-side Medusa URL override        |
 | `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` | Store API publishable key              |
 | `NEXT_PUBLIC_STRIPE_PK`              | Browser-safe Stripe publishable key    |
-| `NEXT_PUBLIC_MEILI_HOST`             | Meilisearch host                       |
-| `NEXT_PUBLIC_MEILI_SEARCH_KEY`       | Meilisearch search-only key            |
+| `MEILISEARCH_HOST`                   | Server-only Meilisearch host           |
+| `MEILISEARCH_SEARCH_KEY`             | Server-only search key (never admin)   |
 
 Optional media origins and Bandcamp configuration are documented in
 `.env.local.template`.

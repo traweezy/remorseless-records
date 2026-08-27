@@ -33,6 +33,7 @@ type ContactPostDependencies = {
   createSubmissionId: () => string;
   fromEmail: string | undefined;
   nowSeconds: () => number;
+  previousSecret?: string | undefined;
   secret: string | undefined;
   sendEmail: PublicFormEmailSender | null;
 };
@@ -68,6 +69,7 @@ export const createContactPost =
     createSubmissionId,
     fromEmail,
     nowSeconds,
+    previousSecret,
     secret,
     sendEmail,
   }: ContactPostDependencies) =>
@@ -94,6 +96,7 @@ export const createContactPost =
         body,
         purpose: PURPOSE,
         secret: normalizedSecret,
+        previousSecret,
         timestamp,
         proof,
         nowSeconds: nowSeconds(),
@@ -176,6 +179,7 @@ export const POST = createContactPost({
   createSubmissionId: randomUUID,
   fromEmail: RESEND_FROM_EMAIL,
   nowSeconds: () => Math.floor(Date.now() / 1000),
+  previousSecret: process.env.PUBLIC_FORM_BFF_SECRET_PREVIOUS,
   secret: process.env.PUBLIC_FORM_BFF_SECRET,
   sendEmail: publicFormEmailSender,
 });

@@ -129,6 +129,17 @@ export const verifyReceiptGrant = (
   }
 }
 
+export const verifyReceiptGrantWithRotation = (
+  token: string | null | undefined,
+  currentSecret: string,
+  previousSecret: string | null,
+  nowSeconds = Math.floor(Date.now() / 1000)
+): ReceiptGrant | null =>
+  verifyReceiptGrant(token, currentSecret, nowSeconds) ??
+  (previousSecret
+    ? verifyReceiptGrant(token, previousSecret, nowSeconds)
+    : null)
+
 const resolveSecret = (): string => {
   if (!checkoutServerEnv.checkoutReceiptSecret) {
     throw new Error("Checkout receipt grants are not configured")
@@ -154,9 +165,10 @@ const mutableResponse = (response: Response): NextResponse =>
       })
 
 export const readReceiptGrant = (request: NextRequest): ReceiptGrant | null =>
-  verifyReceiptGrant(
+  verifyReceiptGrantWithRotation(
     request.cookies.get(CHECKOUT_RECEIPT_COOKIE_NAME)?.value,
-    resolveSecret()
+    resolveSecret(),
+    checkoutServerEnv.checkoutReceiptSecretPrevious
   )
 
 export const setReceiptGrant = (
