@@ -1,9 +1,16 @@
+import { performance } from "node:perf_hooks";
+
 const DEFAULT_MINIMUM_AGE_SECONDS = 120;
 const MINIMUM_AGE_SECONDS = 60;
 const MAXIMUM_AGE_SECONDS = 3_600;
 const DEFAULT_MAX_ATTEMPTS_PER_RUN = 50;
 const MAX_ATTEMPTS_PER_RUN_LIMIT = 250;
-const MAX_SCAN_PER_RUN = 500;
+const DEFAULT_MAX_SCAN_PER_RUN = 2_000;
+const MIN_SCAN_PER_RUN = 500;
+const MAX_SCAN_PER_RUN_LIMIT = 5_000;
+const DEFAULT_MAX_RUN_SECONDS = 90;
+const MIN_RUN_SECONDS = 30;
+const MAX_RUN_SECONDS = 240;
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe";
 const FINALIZED_PAYMENT_STATUSES = new Set(["authorized", "captured"]);
 const PROCESSABLE_PAYMENT_STATUSES = new Set([
@@ -20,6 +27,8 @@ export type CheckoutReconciliationConfig = {
   enabled: boolean;
   minimumAgeSeconds: number;
   maxAttemptsPerRun: number;
+  maxRunSeconds: number;
+  maxScanPerRun: number;
 };
 
 export type CheckoutReconciliationResult = {
@@ -32,6 +41,7 @@ export type CheckoutReconciliationResult = {
   protectedByOrder: number;
   failed: number;
   capped: boolean;
+  timeCapped: boolean;
 };
 
 export type CheckoutReconciliationQuery = {
@@ -97,6 +107,20 @@ export const resolveCheckoutReconciliationConfig = (
     minimum: 1,
     maximum: MAX_ATTEMPTS_PER_RUN_LIMIT,
   }),
+  maxRunSeconds: parseBoundedInteger({
+    name: "CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS",
+    value: environment.CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS,
+    defaultValue: DEFAULT_MAX_RUN_SECONDS,
+    minimum: MIN_RUN_SECONDS,
+    maximum: MAX_RUN_SECONDS,
+  }),
+  maxScanPerRun: parseBoundedInteger({
+    name: "CHECKOUT_RECONCILIATION_MAX_SCAN",
+    value: environment.CHECKOUT_RECONCILIATION_MAX_SCAN,
+    defaultValue: DEFAULT_MAX_SCAN_PER_RUN,
+    minimum: MIN_SCAN_PER_RUN,
+    maximum: MAX_SCAN_PER_RUN_LIMIT,
+  }),
 });
 
 const asRecord = (value: unknown): UnknownRecord | null =>
@@ -157,6 +181,7 @@ const cartFields = [
 const listCandidates = (
   query: CheckoutReconciliationQuery,
   cutoff: string,
+  maxScanPerRun: number,
 ): Promise<{ data: UnknownRecord[] }> =>
   query.graph({
     entity: "cart",
@@ -166,7 +191,7 @@ const listCandidates = (
       updated_at: { $lt: cutoff },
     },
     pagination: {
-      take: MAX_SCAN_PER_RUN,
+      take: maxScanPerRun,
       order: { updated_at: "DESC" },
     },
   });
@@ -201,15 +226,22 @@ export const reconcileCheckoutPayments = async ({
   completeCart,
   config,
   now = new Date(),
+  monotonicNow = () => performance.now(),
   query,
 }: ReconciliationServices & {
   config: CheckoutReconciliationConfig;
+  monotonicNow?: () => number;
   now?: Date;
 }): Promise<CheckoutReconciliationResult> => {
+  const startedAt = monotonicNow();
   const cutoff = new Date(
     now.getTime() - config.minimumAgeSeconds * 1_000,
   ).toISOString();
-  const { data } = await listCandidates(query, cutoff);
+  const { data } = await listCandidates(
+    query,
+    cutoff,
+    config.maxScanPerRun,
+  );
   const candidates = data.filter((cart) =>
     checkoutNeedsReconciliation(cart, cutoff),
   );
@@ -218,9 +250,14 @@ export const reconcileCheckoutPayments = async ({
   let protectedByOrder = 0;
   let failed = 0;
   let inspectedEligible = 0;
+  let timeCapped = false;
 
   for (const candidate of candidates) {
     if (attempted >= config.maxAttemptsPerRun) {
+      break;
+    }
+    if (monotonicNow() - startedAt >= config.maxRunSeconds * 1_000) {
+      timeCapped = true;
       break;
     }
     inspectedEligible += 1;
@@ -249,13 +286,14 @@ export const reconcileCheckoutPayments = async ({
   return {
     cutoff,
     scanned: data.length,
-    scanWindowFull: data.length >= MAX_SCAN_PER_RUN,
+    scanWindowFull: data.length >= config.maxScanPerRun,
     eligible: candidates.length,
     attempted,
     completed,
     protectedByOrder,
     failed,
     capped: candidates.length > inspectedEligible,
+    timeCapped,
   };
 };
 

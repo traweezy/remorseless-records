@@ -30,6 +30,7 @@ import productSearchTransformer from './src/lib/meilisearch/product-transformer'
 import { resolveAdminRbacModuleConfig } from './src/lib/admin-rbac-config';
 import { buildBackendResponseHeaders } from './src/lib/security/security-headers';
 import { resolveObjectStorageConfig } from './src/lib/storage/config';
+import { WORKFLOW_JOB_WORKER_OPTIONS } from './src/lib/workflow-worker-options';
 import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
 import zodStrictCspVitePlugin from './src/admin/lib/zod-strict-csp-vite-plugin.cjs';
 
@@ -217,6 +218,7 @@ const medusaConfig = {
       options: {
         redis: {
           redisUrl: REDIS_URL,
+          jobWorkerOptions: WORKFLOW_JOB_WORKER_OPTIONS,
         }
       }
     },

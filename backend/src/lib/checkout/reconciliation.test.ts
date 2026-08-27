@@ -11,6 +11,8 @@ const config: CheckoutReconciliationConfig = {
   enabled: true,
   minimumAgeSeconds: 120,
   maxAttemptsPerRun: 50,
+  maxRunSeconds: 90,
+  maxScanPerRun: 2_000,
 };
 
 const cart = (overrides: RecordFixture = {}): RecordFixture => ({
@@ -64,7 +66,7 @@ const services = ({
   );
   return {
     query: { graph } as CheckoutReconciliationQuery,
-    completeCart: jest.fn(async () => undefined),
+    completeCart: jest.fn(async (_cartId: string) => undefined),
   };
 };
 
@@ -74,12 +76,24 @@ describe("checkout payment reconciliation", () => {
       enabled: false,
       minimumAgeSeconds: 120,
       maxAttemptsPerRun: 50,
+      maxRunSeconds: 90,
+      maxScanPerRun: 2_000,
     });
     expect(() =>
       resolveCheckoutReconciliationConfig({
         CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS: "30",
       }),
     ).toThrow("between 60 and 3600");
+    expect(() =>
+      resolveCheckoutReconciliationConfig({
+        CHECKOUT_RECONCILIATION_MAX_SCAN: "499",
+      }),
+    ).toThrow("between 500 and 5000");
+    expect(() =>
+      resolveCheckoutReconciliationConfig({
+        CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS: "241",
+      }),
+    ).toThrow("between 30 and 240");
   });
 
   it.each(["authorized", "captured"])(
@@ -231,9 +245,9 @@ describe("checkout payment reconciliation", () => {
     expect(JSON.stringify(result)).not.toContain("provider detail");
   });
 
-  it("scans the most recently aged carts without alerting on irrelevant volume", async () => {
+  it("scans the configured window and reports when it is full", async () => {
     const fixture = services({
-      carts: Array.from({ length: 500 }, (_, index) =>
+      carts: Array.from({ length: 2_000 }, (_, index) =>
         cart({
           id: `cart_pending_${index}`,
           payment_collection: {
@@ -260,7 +274,7 @@ describe("checkout payment reconciliation", () => {
       expect.objectContaining({
         pagination: {
           order: { updated_at: "DESC" },
-          take: 500,
+          take: 2_000,
         },
       }),
     );
@@ -268,7 +282,58 @@ describe("checkout payment reconciliation", () => {
       capped: false,
       eligible: 0,
       scanWindowFull: true,
-      scanned: 500,
+      scanned: 2_000,
     });
+  });
+
+  it("stops starting attempts when the run-time budget is exhausted", async () => {
+    const fixture = services({
+      carts: [cart({ id: "cart_first" }), cart({ id: "cart_second" })],
+    });
+    const monotonicNow = jest
+      .fn()
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(1)
+      .mockReturnValueOnce(90_000);
+
+    const result = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      monotonicNow,
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    });
+
+    expect(fixture.completeCart).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      attempted: 1,
+      capped: true,
+      timeCapped: true,
+    });
+  });
+
+  it("does not repeat completion after an ambiguous response loss", async () => {
+    const durableCart = cart();
+    const orderCartIds: string[] = [];
+    const fixture = services({ carts: [durableCart], orderCartIds });
+    fixture.completeCart.mockImplementationOnce(async (cartId) => {
+      durableCart.completed_at = "2026-07-25T12:00:01.000Z";
+      orderCartIds.push(cartId);
+      throw new Error("response lost after durable completion");
+    });
+
+    const first = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    });
+    const second = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      now: new Date("2026-07-25T12:02:00.000Z"),
+    });
+
+    expect(first).toMatchObject({ attempted: 1, failed: 1 });
+    expect(second).toMatchObject({ attempted: 0, completed: 0, failed: 0 });
+    expect(fixture.completeCart).toHaveBeenCalledTimes(1);
   });
 });
