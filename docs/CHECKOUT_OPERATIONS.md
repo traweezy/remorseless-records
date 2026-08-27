@@ -25,13 +25,22 @@ Initial staging objectives:
 
 Useful aggregate log events:
 
-- `Checkout reconciliation completed`
-- `Checkout reconciliation needs attention`
-- `Checkout reconciliation failed`
+- `job.checkout_reconciliation.completed`
+- `job.checkout_reconciliation.attention`
+- `job.checkout_reconciliation.skipped`
+- `job.checkout_reconciliation.failed`
 - `Anonymous cart retention completed`
 - `Abandoned checkout retention completed`
 - `checkout_payment_*` validation errors from the complete-cart hook
 - `[stripe-order-sync] synchronized <count> payment reference(s)`
+
+Checkout reconciliation records contain the fixed safe `message`, exact
+deployment identity, `run_id`, `scheduled_for`, `started_at`,
+`schedule_delay_ms`, `duration_ms`, `event_loop_delay_max_ms`, `lock_wait_ms`,
+`lock_released`, and aggregate result fields. They intentionally omit cart,
+payment, order, customer, address, email, request payload, provider-error, and
+stack values. Alert on `.attention`, `.skipped`, or `.failed`; a healthy idle
+run emits `.completed` at info level.
 
 ## Verify that an environment is safe to test
 
@@ -230,6 +239,80 @@ still does not prove that a Medusa order exists.
    Medusa and Stripe before asking the shopper to try again.
 8. Do not manually create an order or directly capture/refund in Stripe unless
    a separately approved incident procedure establishes the Medusa state.
+
+## Incident: checkout scheduler delay or missing BullMQ lock
+
+1. Keep shoppers from submitting another payment for any affected paid cart.
+2. Correlate the exact repeat-job timestamp with the nearest
+   `job.checkout_reconciliation.*` record. Review `schedule_delay_ms`,
+   `duration_ms`, `event_loop_delay_max_ms`, `lock_wait_ms`, and
+   `lock_released`; do not search only the display message.
+3. Check for a following `.skipped` record or a second aggregate completion.
+   A stalled retry is expected to re-read the cart and order before any action.
+4. Review Redis latency, reconnects, AOF delayed-fsync growth, memory, evictions,
+   rejected connections, and BullMQ stalled events for the same window.
+5. Review PostgreSQL query latency and saturation. Do not add an index or raise
+   a lock duration without a measured plan and retained timing evidence.
+6. If the scan window is full, raise an incident: eligible carts may exist
+   beyond the bounded result. Do not remove the bound.
+7. Disable future reconciliation with
+   `CHECKOUT_RECONCILIATION_ENABLED=false` only if the job is unsafe. Keep the
+   official Stripe webhook and checkout recovery paths available.
+8. Never delete BullMQ keys, complete a cart directly in PostgreSQL, create an
+   order manually, or issue another Stripe payment/refund as a queue repair.
+
+The scheduled-workflow worker lock is five minutes with a 30-second renewal
+setting. The handler separately holds a uniquely owned five-minute lock. The
+job warns at 30 seconds of scheduler delay or handler duration, at one second
+of maximum event-loop delay, on a failed lock release, and on every scan,
+attempt, or 90-second run-time cap. Configuration is bounded by:
+
+- `CHECKOUT_RECONCILIATION_MAX_SCAN` (default `2000`, range `500–5000`);
+- `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS` (default `50`, range `1–250`); and
+- `CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS` (default `90`, range `30–240`).
+
+## August 27, 2026 scheduler-lock investigation
+
+Scope was Railway `staging` only. Production was not queried or changed.
+
+The retained Backend deployment
+`e31dac4c-c590-4a77-beae-fd832b53a8b5` contained two exact BullMQ
+`Missing lock ... moveToFinished` failures for the scheduled
+`reconcile-checkout-payments` workflow:
+
+- the August 24 `17:02 UTC` repeat job did not enter the handler until
+  `17:06:01`, logged the missing lock at `17:06:05`, and ran again at
+  `17:06:31`; and
+- the August 25 `22:32 UTC` repeat job did not enter the handler until
+  `22:32:35`, logged the missing lock at `22:32:44`, and ran again at
+  `22:33:05`.
+
+The handler timestamp is proven by its two-minute cutoff. Both first and retry
+runs scanned 500 carts and reported zero eligible, attempted, completed, or
+failed carts, so these incidents did not move money or create an order. The
+retained window had no Redis reconnect/stalled diagnostic. Installed Medusa
+2.18 routes scheduled workflows through its Redis workflow job worker; its
+installed BullMQ 5.13 defaults were a 30-second lock, 15-second renewal setting,
+30-second stalled check, and one stalled recovery. The timing and duplicate
+execution therefore match an expired scheduler lock, not a long-running
+checkout handler.
+
+Current read-only staging baselines found:
+
+- 20 in-container Redis PINGs at 0.81 ms p50, 2.40 ms p95, and 3.13 ms max;
+- 6.92 MB Redis memory in use, 14.16 MB peak, zero evictions, zero rejected
+  connections, AOF enabled/healthy, 940 cumulative delayed fsyncs over
+  15,123,932 seconds of uptime, and no current latency events; and
+- a PostgreSQL 16.11 reconciliation predicate plan returning the 500-row limit
+  from 1,306 matching carts in 1.446 ms, with 56 shared-buffer hits, no reads,
+  and no temp I/O.
+
+The cart predicate has no matching partial index, but the measured plan is not
+an index problem at current staging volume. The actual correctness issue was
+the fixed 500-row scan window: it could repeatedly hide an eligible paid cart.
+The bounded default is now 2,000 and a full window is an attention event. New
+schedule-delay, duration, event-loop, lock-wait, release, scan, and cap fields
+make another incident measurable before further tuning.
 
 ## Incident: amount or currency mismatch
 

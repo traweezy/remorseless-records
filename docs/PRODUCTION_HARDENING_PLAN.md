@@ -30,13 +30,15 @@ tracks what is still required before production traffic is approved.
 
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
-- Latest application-changing and documentation-bearing staging SHA accepted:
-  `c5aab7364e4fa0db1cae0378e00049f5e0cf0d04`.
+- Latest application-changing staging SHA accepted:
+  `13941ed6bc553bfa3a31dd00b41391a0111c38fb`.
+- Latest documentation-bearing staging SHA accepted:
+  `c56e2f4a59d2cfb5c831aa6e703568cc57ea8869`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `43b52bb3-e273-4a11-ada1-9abc1d6d661d` (`SUCCESS`).
+  `9dcb3fe4-46fc-4262-adaf-538b1afdcf8a` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `bc591bec-a6de-470a-9078-c77aba555940`
+  `629b1905-ca52-41c9-b789-1245cf4b78ee`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -863,6 +865,63 @@ contained no path, query, header, body, PII, error, stack, or provider keys.
 The exact-deployment warning/error sweep contained only four Backend and one
 Storefront known successful command banners.
 
+## Active slice: checkout reconciliation scheduler-lock hardening
+
+- [x] Recover the exact August 24 and 25 BullMQ repeat-job IDs, scheduled
+      timestamps, handler-entry evidence, missing-lock errors, and stalled
+      retries from the retained Railway Backend deployment.
+- [x] Trace Medusa 2.18 scheduled jobs to the Redis workflow job worker and pin
+      the installed BullMQ 5.13 lock, renewal, stalled-check, and retry defaults.
+- [x] Measure current staging Redis latency, memory, persistence, connection,
+      eviction, error, and latency-event baselines without exposing the Redis
+      address or credentials.
+- [x] Measure the current PostgreSQL cart predicate with `EXPLAIN ANALYZE` and
+      retain the row count, buffer, sort, and execution-time evidence.
+- [x] Give only the scheduled-workflow worker a measured five-minute lock with
+      a 30-second renewal setting; leave event-bus and primary workflow workers
+      unchanged.
+- [x] Replace the reconciliation helper's shared-owner five-second lock with a
+      unique-owner five-minute lock that cannot release a successor's lock.
+- [x] Add bounded scan and run-time configuration, alert on a full scan window,
+      and cover an ambiguous post-completion response loss without a second
+      completion attempt.
+- [x] Emit redacted structured schedule-delay, duration, event-loop, lock-wait,
+      lock-release, deployment, run, cap, and aggregate-result telemetry.
+- [x] Update the Backend guide, scheduled-job guide, checkout incident runbook,
+      completed/discovered work, and remaining release backlog.
+- [x] Pass the complete local release gates.
+- [ ] Commit the implementation and documentation atomically by concern and
+      push to `staging`.
+- [ ] Require Root, Backend, and Storefront CI plus both exact Railway staging
+      deployments to reach `SUCCESS`; then verify a real scheduled job record,
+      the health/public route matrix, and the exact deployment logs.
+
+Discovery: the two failure paths delayed handler entry by approximately 241
+seconds and 35 seconds. Each handler then returned an idle aggregate result,
+BullMQ reported its missing 30-second lock, and the job ran again about 30
+seconds later. No cart was eligible or attempted in either first/retry pair.
+The retained window had no Redis reconnect record. This proves scheduler lock
+expiry and stalled recovery, not duplicate payment or order creation.
+
+Discovery: staging currently has 1,306 old incomplete carts matching the base
+predicate, while the job always selected the newest 500. The read-only query
+plan completes in 1.446 ms from shared buffers, so an index is not justified at
+this volume; the correctness risk is silent truncation that can hide an
+eligible paid cart. The default bounded window is now 2,000 and reaching it is
+an attention event.
+
+Current local evidence: 17 focused tests cover configuration bounds, candidate
+safety, time caps, full-window reporting, ambiguous response loss, owned-lock
+acquire/release, overlapping retry suppression, redacted failures, timing
+alerts, and the workflow-worker lock contract. The complete Backend gate passes
+with 173 suites and 926 tests. The Storefront gate passes 112 suites and 587
+tests with 93.89% statement, 86.24% branch, 94.60% function, and 93.87% line
+coverage. Cross-app lint and strict typecheck, the checked release/security
+verifiers, production dependency audit, both production builds, and the Admin
+bundle budget pass. The Admin main bundle is 1,798,734 gzip bytes and total is
+2,393,502 gzip bytes. Exact staging acceptance remains before this slice is
+closed.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -874,19 +933,24 @@ Storefront known successful command banners.
 
 ## Checkout, payment, refund, and job reliability
 
-- [ ] Diagnose the recurring BullMQ `Missing lock ... moveToFinished` failures
+- [x] Diagnose the recurring BullMQ `Missing lock ... moveToFinished` failures
       for `reconcile-checkout-payments` observed on August 24 and 25, 2026.
-- [ ] Measure job duration, Redis latency, event-loop delay, lock renewal,
-      reconnects, AOF latency, memory pressure, and stalled-job behavior before
-      tuning lock settings.
+- [x] Measure retained scheduler delay/recovery plus current Redis latency,
+      reconnect-log, AOF, memory, eviction, and PostgreSQL predicate baselines
+      before tuning the scheduled-workflow lock.
+- [ ] Observe the accepted structured job duration, event-loop delay,
+      lock-wait/release, scan, and cap fields in staging, then add external
+      BullMQ/Redis alerts and retain a no-recurrence observation window.
 - [ ] Prove every scheduled money-moving job is idempotent and stalled-job
       recovery cannot duplicate a charge, completion, order, refund, or email.
 - [ ] Configure a separate staging Stripe lifecycle webhook secret and the
       `/webhooks/stripe/lifecycle` endpoint.
 - [ ] Exercise signed, duplicate, delayed, out-of-order, queue-failed, refund,
       repeated-partial-refund, and dispute events.
-- [ ] Prove checkout reconciliation handles response loss without a duplicate
-      payment or order.
+- [x] Prove in code that an ambiguous response loss after durable cart/order
+      completion is re-read and does not make a second completion attempt.
+- [ ] Exercise the same response-loss recovery against a disposable Stripe
+      test-mode checkout in staging and verify one PaymentIntent and one order.
 - [ ] Complete the exact-amount, success, 3DS, decline, browser-close,
       response-loss, duplicate-submit, concurrency, and recovery matrix in
       `docs/CHECKOUT_OPERATIONS.md`.

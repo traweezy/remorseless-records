@@ -1017,6 +1017,8 @@ Key variables (non-empty values required for full functionality):
 | `CHECKOUT_RECONCILIATION_ENABLED`            | Enables the bounded missed-completion safety net (default `false`)           |
 | `CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS`    | Minimum finalized-payment age before retry; default `120`, minimum `60`      |
 | `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS`       | Per-run completion-attempt cap; default `50`, maximum `250`                  |
+| `CHECKOUT_RECONCILIATION_MAX_SCAN`           | Per-run old-cart scan cap; default `2000`, range `500–5000`                  |
+| `CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS`    | Stops starting attempts after this budget; default `90`, range `30–240`      |
 | `TAX_RATE_LOOKUP_API_KEY`                    | TaxRate.io key; its returned quota is recorded, never estimated              |
 | `TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE`        | Reviewed ZIP for deliberate one-call Admin quota refresh                     |
 | `TAX_RATE_LOOKUP_CACHE_TTL_MS`               | TaxRate.io percentage cache TTL; default `300000`                            |

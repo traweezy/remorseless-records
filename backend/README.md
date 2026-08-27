@@ -307,7 +307,7 @@ Use that process's different signing secret as
 The `reconcile-checkout-payments` job is a safety net for a lost browser
 completion request/response and delayed payment-state processing. Every two
 minutes it can inspect a bounded set of old incomplete carts. It calls Medusa's
-idempotent complete-cart workflow only when a fresh read shows:
+official complete-cart workflow only when a fresh read shows:
 
 - exactly one processable official Stripe session;
 - that session is `authorized` or `captured`;
@@ -320,9 +320,15 @@ directly. It is disabled by default:
 - `CHECKOUT_RECONCILIATION_ENABLED` (default `false`)
 - `CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS` (default `120`, range `60–3600`)
 - `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS` (default `50`, maximum `250`)
+- `CHECKOUT_RECONCILIATION_MAX_SCAN` (default `2000`, range `500–5000`)
+- `CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS` (default `90`, range `30–240`)
 
-An aggregate warning is emitted if any completion fails or the safety cap is
-reached. The summary excludes cart, payment, order, email, and address values.
+The job uses a uniquely owned, five-minute application lock in addition to the
+scheduled-workflow worker lock. An aggregate warning is emitted for a failed
+completion, scan/attempt/time cap, lock-release failure, scheduler delay, slow
+run, or large event-loop delay. The structured summary includes deployment,
+schedule, duration, event-loop, lock, and aggregate reconciliation fields but
+excludes cart, payment, order, email, address, provider-error, and stack values.
 
 ## Cart and checkout retention
 
