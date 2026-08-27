@@ -426,6 +426,7 @@ describe("route guards", () => {
     expect(errorLog).not.toHaveBeenCalled()
     expect(JSON.parse(String(infoLog.mock.calls.at(0)?.at(0)))).toMatchObject({
       event: "api.problem",
+      message: "Storefront API problem response",
       method: "POST",
       problem_code: "invalid_query",
       status: 400,
@@ -436,6 +437,7 @@ describe("route guards", () => {
     expect(errorLog).toHaveBeenCalledTimes(1)
     expect(JSON.parse(String(errorLog.mock.calls.at(0)?.at(0)))).toMatchObject({
       event: "api.problem",
+      message: "Storefront API problem response",
       method: "POST",
       problem_code: "request_failed",
       status: 500,

@@ -424,6 +424,7 @@ export const jsonApiProblem = ({
     const event = JSON.stringify({
       ...deploymentIdentity,
       event: "api.problem",
+      message: "Storefront API problem response",
       method: request.method,
       problem_code: code,
       request_id: correlation.requestId,
