@@ -30,10 +30,13 @@ tracks what is still required before production traffic is approved.
 
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
-- Deployed application source: `91fd2d59ec8e267282e576cc2f6ce3d0fe8ac926`.
+- Latest application-changing staging SHA accepted:
+  `2818d6540aa0f7f200d3c7e81e39b48d3c860b2d`.
 - Railway project: `store`; only the `staging` environment exists.
-- Backend deployment: `48181b43-e2e4-4795-ab9f-578a7cef467e` (`SUCCESS`).
-- Storefront deployment: `2e682693-87dc-4311-9f8b-c04b9917b61c`
+- Application acceptance Backend deployment:
+  `3eae1057-6432-4218-a7e6-8334345b4d7d` (`SUCCESS`).
+- Application acceptance Storefront deployment:
+  `87da9b5b-bce1-4d0c-a9b7-b752e57543a4`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -437,7 +440,7 @@ Railway `error` levels were the already tracked successful command banners;
 the build-log `secret` matches were Railpack hash/cache step labels without
 assignments or values.
 
-## Active slice: browser and HTTP response boundaries
+## Completed slice: browser and HTTP response boundaries
 
 - [x] Replace the Storefront production script policy with a per-document,
       cryptographically random nonce and `strict-dynamic`; forward the same CSP
@@ -477,7 +480,7 @@ assignments or values.
 - [x] Pass the complete local quality, coverage, security, and production-build
       matrix; validate the recovery surface in real Chromium and capture both
       browser and full-desktop `flameshot` screenshots.
-- [ ] Commit and push the cohesive slice, prove Railway waits for all three
+- [x] Commit and push the cohesive slice, prove Railway waits for all three
       GitHub suites, accept both exact staging deployments, and run CSP/header,
       browser-console, health, route, log, and cache-behavior probes.
 
@@ -509,8 +512,8 @@ gzip bytes, both within budget.
 
 The corrected local production preview served a representative seeded
 Unsplash URL through `/_next/image` as HTTP 200 `image/jpeg` with a one-year
-cache policy. The clean GitHub runner and Railway deployment remain the
-authoritative production CSP/browser proof before the slice is accepted.
+cache policy. The exact GitHub and Railway acceptance below corroborates that
+local proof.
 
 Trusted Types enforcement is not included in this slice. Stripe dynamically
 loads additional approved scripts and documents the need for a compatible
@@ -549,8 +552,8 @@ seed URLs. The optimizer returned `"url" parameter is not allowed` because the
 seed host had been removed with unused sample origins. The local correction
 now admits only exact HTTPS `images.unsplash.com`, deduplicates configured
 hosts, retains the direct-browser CSP exclusion, and passes four focused
-configuration tests. This corrective image deployment and a zero-400 browser
-repeat remain required before the slice can close.
+configuration tests. The following exact deployment completed the required
+image and browser repeat.
 
 Image correction commit `c5699aba8a641dbb1fa8d7c2f7c7f915dd06fc97`
 passed Root CI `33031725836`, Backend CI `33031725848`, and Storefront CI
@@ -575,8 +578,53 @@ probe shape. The full Backend build, frozen packaged install, bundle budget,
 164 suites/873 tests, lint, strict typecheck, and production audit pass. Real
 Chromium loaded the generated login UI under strict `script-src 'self'` with
 zero CSP events and zero page errors; the 1440×1000 screenshot was inspected
-for clipping, hierarchy, and legibility. Exact staging deployment and repeat
-Admin browser/log acceptance remain required before this slice can close.
+for clipping, hierarchy, and legibility. The exact staging deployment and
+repeat Admin browser/log acceptance below close that final gate.
+
+Admin CSP commit `2818d6540aa0f7f200d3c7e81e39b48d3c860b2d` passed
+Root CI `33033295428`, Backend CI `33033295370`, and Storefront CI
+`33033295409`. Railway kept Backend
+`3eae1057-6432-4218-a7e6-8334345b4d7d` and Storefront
+`87da9b5b-bce1-4d0c-a9b7-b752e57543a4` in `WAITING` until all three suites
+passed, then both exact-SHA deployments reached `SUCCESS`. The deployed Admin
+asset `/app/assets/index-Gvlwi6_m.js` contains zero reviewed eval capability
+probes. Real Chromium loaded `/app/login` with zero CSP events, page errors, or
+request failures; the only non-2xx responses were the two expected anonymous
+`/admin/users/me` 401s. The Storefront repeat reported zero CSP events, 4xx/5xx
+responses, page errors, unexpected request failures, or console errors across
+Home, hydrated Catalog navigation, About, and Checkout. Navigation-cancelled
+RSC prefetch and lazy-image requests were classified separately from failures.
+
+The exact Backend and Storefront build logs contain only `info` entries, no
+failure/exception terms, and no secret-like assignments. Railway's four
+Backend and one Storefront runtime `error` entries are successful
+`release:prepare`/storage/search and `next start` command banners; removing or
+reclassifying that platform noise remains an observability task. The inspected
+1440-pixel Storefront and Admin captures are
+`/tmp/remorseless-staging-home-security-2818d65.png` and
+`/tmp/remorseless-staging-admin-security-2818d65.png`; product/news images,
+cookie controls, navigation, and both login fields render without clipping or
+broken assets. This completes the browser and HTTP response-boundary slice.
+
+## Active slice: correlated API problems and request observability
+
+- [ ] Inventory custom Backend and Storefront API error envelopes, request-ID
+      handling, trace propagation, logs, OpenAPI contracts, and tests.
+- [ ] Standardize custom API failures on RFC 7807-compatible
+      `application/problem+json` responses with stable types, safe detail,
+      instance, status, request ID, trace ID, and field errors where relevant.
+- [ ] Validate bounded incoming request IDs or generate secure IDs, return them
+      consistently, and propagate correlation plus W3C trace context across
+      Storefront BFF-to-Backend calls.
+- [ ] Add structured, redacted request/problem logs containing service,
+      environment, commit SHA, request ID, trace ID, and span ID without PII,
+      credentials, provider bodies, or stack leakage.
+- [ ] Cover validation, authentication, authorization, rate-limit, not-found,
+      conflict, timeout, provider, and unexpected failures at both HTTP
+      boundaries; update OpenAPI, runbooks, and client error mapping.
+- [ ] Pass the complete local quality/security/build matrix, deploy only through
+      `staging`, and repeat exact-SHA CI, Railway, route, log, and browser
+      acceptance before advancing.
 
 ## Remaining authorization work
 
@@ -635,15 +683,15 @@ Admin browser/log acceptance remain required before this slice can close.
 
 - [x] Replace Storefront production `script-src 'unsafe-inline'` with a
       nonce/hash policy; set `base-uri 'none'` and evaluate Trusted Types.
-- [x] Remove unused sample S3 and Unsplash image origins from the production
-      allowlist.
+- [x] Remove unused sample S3 and direct Unsplash browser origins from the
+      production allowlist; permit only exact HTTPS `images.unsplash.com`
+      through the same-origin Next Image optimizer for version-controlled seed
+      data.
 - [x] Add global Backend/Admin HSTS, CSP, `nosniff`, frame, referrer,
       permissions, and cache headers.
 - [ ] Run Trusted Types in report-only mode across Storefront navigation and
       checkout, define the narrow Stripe-compatible policy if violations are
       understood, and enforce only after browser acceptance.
-- [ ] Standardize RFC 7807 responses with request and trace IDs across custom
-      Backend and Storefront APIs.
 - [x] Add App Router `error.tsx` and `global-error.tsx` boundaries with safe,
       observable recovery UX.
 - [ ] Validate strong, distinct JWT, cookie, cart, checkout-BFF, receipt, and
