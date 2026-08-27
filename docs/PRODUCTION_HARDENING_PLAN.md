@@ -1122,7 +1122,7 @@ banner, with no Redis connection error. Fourteen exact-deployment Storefront
 flows reached the private Redis service on port 6379 with 21 packets, 2,148
 bytes, and zero drops.
 
-## Active slice: supply-chain alert closure and deployment trigger scoping
+## Completed slice: supply-chain alert closure and deployment trigger scoping
 
 - [x] Reconcile GitHub's two high Dependabot alerts with the production audit
       and prove alerts `27` and `28` are duplicate manifest/lockfile views of
@@ -1157,9 +1157,9 @@ bytes, and zero drops.
       accept both exact staging deployments.
 - [x] Enable GitHub Dependabot security updates, verify alerts `27` and `28`
       close without dismissal, and document the owned remediation boundary.
-- [ ] Push the final documentation-only closure, require all exact-SHA GitHub
-      checks, and prove the effective watch paths create no Railway deployment
-      for that documentation SHA.
+- [x] Push the final documentation-only closure, require all exact-SHA GitHub
+      checks, and prove Railway marks both application records `SKIPPED`
+      without building an image or deploying runtime compute.
 
 Discovery: GitHub currently reports two high alerts, but both identify the
 same `extract-zip@2.0.1` development dependency and the production audit has
@@ -1237,10 +1237,17 @@ accessed or changed.
 GitHub marked Dependabot alerts `27` and `28` `fixed` at
 `2026-08-27T10:28:22Z`; neither has a dismissal timestamp or reason. Automated
 security fixes are enabled and unpaused, and the repository has zero open
-high-severity Dependabot alerts. The remaining acceptance item is the final
-documentation-only staging push: all three exact-SHA workflows must pass, and
-neither application service may create a deployment for that documentation
-SHA.
+high-severity Dependabot alerts.
+
+Documentation-only acceptance: closure SHA
+`0a4cbf7935d3f7286e6f484cadc329eab987f13d` passed Root CI `33064867989`,
+Backend CI `33064868030`, and Storefront CI `33064868073`. Railway created
+Backend record `85eefa81-b2c7-4707-8455-77138b405d95` and Storefront record
+`5d7349e4-a24f-42c3-829e-0e83406e8374` as terminal `SKIPPED` metadata. Neither
+record has an image digest or IaC patch, and neither service entered build,
+deploy, or runtime release. This is Railway's exact watch-path contract: an
+ignored commit remains visible for audit but spends no application build or
+runtime compute.
 
 ## Remaining authorization work
 
@@ -1386,7 +1393,7 @@ SHA.
 - [ ] Remove the restart-policy phantom drift after Railway's IaC read model
       returns the settings already present in effective deployment manifests.
 - [x] Apply and accept service-specific Railway watch paths.
-- [ ] Prove a documentation-only staging push triggers no application
+- [x] Prove a documentation-only staging push triggers no application
       rebuild.
 
 ## GitHub, CI, supply chain, and test depth
