@@ -8,10 +8,11 @@
     "pnpm": ">=11.0.0 <12"
   },
   "scripts": {
-    "qa:lint": "pnpm run qa:release-policy && pnpm run qa:secure-artifacts && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
+    "qa:lint": "pnpm run qa:release-policy && pnpm run qa:secure-artifacts && pnpm run qa:framework-response-headers && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
     "qa:release-policy": "node scripts/verify-release-branch-policy.mjs",
     "qa:secure-artifacts": "node --test scripts/export-category-map.test.mjs",
     "qa:extract-zip-security": "node scripts/verify-extract-zip-security.mjs",
+    "qa:framework-response-headers": "node scripts/verify-framework-response-headers.mjs",
     "qa:react-router-security": "node scripts/verify-react-router-security.mjs",
     "qa:storefront:coverage": "pnpm --filter remorseless-records-storefront run test:coverage",
     "data:build-import": "go run ./scripts/generate_remorseless_import.go",

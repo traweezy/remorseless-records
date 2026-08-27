@@ -454,11 +454,15 @@ assignments or values.
 - [x] Add global Backend/Admin HSTS, CSP, `nosniff`, frame, referrer,
       permissions, framework-disclosure removal, and default no-store response
       headers without overriding static-asset caching.
+- [x] Correct the staging-only boundary gap found during acceptance: install
+      the configured Backend header map in Medusa's earliest Express loader so
+      framework-owned Admin and built-in API responses cannot bypass project
+      route middleware; retain downstream Admin/static cache overrides.
 - [x] Add safe App Router route/root recovery boundaries with deterministic
       focus, redacted digests, retry/home actions, and unit coverage.
 - [x] Contain malformed and oversized cookie-consent values at the parser
       boundary with adversarial regression coverage.
-- [x] Pass focused Backend lint, strict typecheck, build, and 75 header tests;
+- [x] Pass focused Backend lint, strict typecheck, build, and 76 header tests;
       pass Storefront lint, strict typecheck, the production build, and 23
       focused CSP/proxy/error/JSON-LD/cookie tests.
 - [x] Pass the complete local quality, coverage, security, and production-build
@@ -477,7 +481,7 @@ data caches remain explicit; the catalog initial-search cache is now an
 explicit tagged five-minute cache.
 
 Current local evidence: cross-app lint and strict typecheck, all 162 Backend
-suites with 865 tests, and all 105 Storefront suites with 552 tests pass.
+suites with 866 tests, and all 105 Storefront suites with 552 tests pass.
 Storefront coverage is 93.6% statements, 85.8% branches, 94.5% functions, and
 93.57% lines. The production audit reports only the three documented ignored
 moderates; extract-zip and React Router behavioral security verifiers pass;
@@ -499,6 +503,21 @@ loads additional approved scripts and documents the need for a compatible
 default policy when Trusted Types are required; Next and every checkout path
 must first pass a report-only staging rollout. That follow-up remains below
 rather than introducing an untested production-enforced policy.
+
+Staging acceptance discovery: commit
+`29f2d59666b5571ca53b791a1d8ca06135fa3ca1` passed Root CI `33027448458`,
+Backend CI `33027448442`, and Storefront CI `33027448466`; Railway correctly
+held Backend `b39fbf89-b26f-4aa3-b114-79f383c8cab3` and Storefront
+`82ca5fe3-16f4-4efb-826e-ee512c0cb444` in `WAITING` until all three succeeded,
+then both deployments reached `SUCCESS`. Health and public-route probes passed,
+and Storefront returned distinct per-request CSP nonces. Acceptance remains
+open because the live probe also proved that Medusa's framework-owned `/app`
+and early built-in API responses bypass project route middleware. The pinned
+framework patch and config-owned global response policy now close that exact
+gap; the corrective commit must pass the same CI, deploy, header, browser, and
+log gates before this slice is complete. A clean local package build contains
+the new framework patch hash and compiled response-header configuration; its
+frozen production dependency install and executable early-loader verifier pass.
 
 ## Remaining authorization work
 

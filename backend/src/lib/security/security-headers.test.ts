@@ -1,5 +1,6 @@
 import {
   buildBackendContentSecurityPolicy,
+  buildBackendResponseHeaders,
   buildBackendSecurityHeaders,
   parseSecurityHeaderOrigin,
   shouldDefaultToNoStore,
@@ -49,6 +50,23 @@ describe("Backend security headers", () => {
     expect(development["Content-Security-Policy"]).toContain(
       "http://localhost:9000",
     );
+  });
+
+  it("provides one global response policy with a safe cache default", () => {
+    expect(
+      buildBackendResponseHeaders({
+        isDevelopment: false,
+        mediaUrls: ["https://media.example.com/uploads"],
+      }),
+    ).toMatchObject({
+      "Cache-Control": "no-store",
+      "Content-Security-Policy": expect.stringContaining(
+        "img-src 'self' data: blob: https://media.example.com",
+      ),
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+    });
   });
 
   it("rejects credential-bearing and non-HTTP media origins", () => {

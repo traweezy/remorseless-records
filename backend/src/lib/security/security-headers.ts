@@ -94,6 +94,13 @@ export const buildBackendSecurityHeaders = (
   return headers;
 };
 
+export const buildBackendResponseHeaders = (
+  options: SecurityHeaderOptions,
+): Readonly<Record<string, string>> => ({
+  ...buildBackendSecurityHeaders(options),
+  "Cache-Control": "no-store",
+});
+
 export const shouldDefaultToNoStore = (
   method: string | undefined,
   path: string | undefined,

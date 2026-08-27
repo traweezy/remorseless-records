@@ -55,6 +55,13 @@ cache policy. Configured media URLs are reduced to validated HTTP(S) origins
 before entering the Admin image/media allowlist, and production accepts only
 HTTPS origins. Local development may still use HTTP services.
 
+Medusa mounts its Admin and some built-in guards outside project API route
+middleware. The pinned `@medusajs/framework` patch therefore installs the
+configured response-header map in the earliest Express loader, before those
+framework-owned routes. Project route middleware repeats the boundary for
+custom APIs, while the Admin and static-file servers remain free to replace
+the conservative `no-store` default with their reviewed cache policies.
+
 Production uses Medusa's official `@medusajs/file-s3` provider in
 S3-compatible path-style mode. The provider keeps the historical `minio` ID so
 existing file records remain valid. The bucket and public-read policy are

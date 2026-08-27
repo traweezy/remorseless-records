@@ -28,14 +28,20 @@ import {
 } from './src/lib/constants';
 import productSearchTransformer from './src/lib/meilisearch/product-transformer';
 import { resolveAdminRbacModuleConfig } from './src/lib/admin-rbac-config';
+import { buildBackendResponseHeaders } from './src/lib/security/security-headers';
 import { resolveObjectStorageConfig } from './src/lib/storage/config';
 import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
 
 loadEnv(process.env.NODE_ENV, process.cwd());
 
+const isDevelopment = process.env.NODE_ENV === "development";
 const isProduction = process.env.NODE_ENV === "production";
 const objectStorageConfig = resolveObjectStorageConfig({
   required: isProduction,
+});
+const responseHeaders = buildBackendResponseHeaders({
+  isDevelopment,
+  mediaUrls: [process.env.MINIO_FILE_URL, BACKEND_URL],
 });
 const productIndexSettings = meilisearchSettings.products;
 const meilisearchCandidateIndex = process.env.MEILISEARCH_CANDIDATE_INDEX?.trim();
@@ -110,7 +116,8 @@ const medusaConfig = {
       authCors: AUTH_CORS,
       storeCors: STORE_CORS,
       jwtSecret: JWT_SECRET,
-      cookieSecret: COOKIE_SECRET
+      cookieSecret: COOKIE_SECRET,
+      responseHeaders
     },
     build: {
       rollupOptions: {
