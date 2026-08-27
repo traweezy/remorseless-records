@@ -7,6 +7,13 @@ import { createRailwayContext } from "railway/iac";
 const legacyConfigPaths = ["backend/railway.json", "storefront/railway.json"];
 const STOREFRONT_PRIVATE_REDIS_URL =
   "redis://${{Redis.REDISUSER}}:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379";
+const SHARED_BUILD_WATCH_PATTERNS = [
+  "/.nvmrc",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/patches/**",
+];
 
 for (const legacyConfigPath of legacyConfigPaths) {
   assert.equal(
@@ -39,7 +46,7 @@ assert.match(pnpmWorkspace, /^  "@railway\/cli": true$/mu);
 assert.match(pnpmWorkspace, /^  "@railway\/cli>tar": 7\.5\.22$/mu);
 assert.match(
   pnpmWorkspace,
-  /^  '@railway\/cli@5\.45\.0': patches\/@railway__cli@5\.45\.0\.patch$/mu,
+  /^  "@railway\/cli@5\.45\.0": patches\/@railway__cli@5\.45\.0\.patch$/mu,
 );
 assert.doesNotMatch(pnpmLock, /tar@6\.2\.1/u);
 assert.match(pnpmLock, /tar@7\.5\.22/u);
@@ -146,6 +153,7 @@ assert.deepEqual(backend.build, {
   builder: "RAILPACK",
   buildCommand: "pnpm --filter backend run build",
   buildEnvironment: "V3",
+  watchPatterns: ["/backend/**", ...SHARED_BUILD_WATCH_PATTERNS],
 });
 assert.deepEqual(
   {
@@ -169,7 +177,18 @@ assert.deepEqual(
 assert.deepEqual(storefront.build, {
   builder: "RAILPACK",
   buildCommand: "pnpm --filter remorseless-records-storefront run build",
+  watchPatterns: ["/storefront/**", ...SHARED_BUILD_WATCH_PATTERNS],
 });
+
+assert.deepEqual(
+  backend.build.watchPatterns.filter((pattern) =>
+    storefront.build.watchPatterns.includes(pattern),
+  ),
+  SHARED_BUILD_WATCH_PATTERNS,
+  "Both application builds must follow every shared toolchain input",
+);
+assert.equal(storefront.build.watchPatterns.includes("/backend/**"), false);
+assert.equal(backend.build.watchPatterns.includes("/storefront/**"), false);
 assert.deepEqual(
   {
     startCommand: storefront.deploy.startCommand,

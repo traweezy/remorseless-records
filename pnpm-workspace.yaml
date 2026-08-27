@@ -22,6 +22,9 @@ allowBuilds:
 resolvePeersFromWorkspaceRoot: false
 
 packageExtensions:
+  "@medusajs/framework@2.18.0":
+    dependencies:
+      typescript: 5.9.3
   "@medusajs/icons@2.18.0":
     peerDependencies:
       "@types/react": "*"
@@ -43,6 +46,9 @@ packageExtensions:
     peerDependenciesMeta:
       "@types/react":
         optional: true
+  "puppeteer-core@>=24.43.1 <26.0.0":
+    dependencies:
+      proxy-agent: 8.0.2
   "next@16.2.12":
     peerDependencies:
       "@types/react": "*"
@@ -54,6 +60,7 @@ packageExtensions:
         optional: true
 
 overrides:
+  "@puppeteer/browsers@<3.0.0": 3.0.6
   "@railway/cli>tar": 7.5.22
   "@babel/core": 7.29.7
   "@mikro-orm/cli": 6.6.14
@@ -129,10 +136,9 @@ patchedDependencies:
   "@medusajs/framework@2.18.0": patches/@medusajs__framework@2.18.0.patch
   "@medusajs/medusa@2.18.0": patches/@medusajs__medusa@2.18.0.patch
   "@medusajs/workflow-engine-redis@2.18.0": patches/@medusajs__workflow-engine-redis@2.18.0.patch
-  '@railway/cli@5.45.0': patches/@railway__cli@5.45.0.patch
+  "@railway/cli@5.45.0": patches/@railway__cli@5.45.0.patch
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
-  "extract-zip@2.0.1": patches/extract-zip@2.0.1.patch
   react-router-dom@6.30.4: patches/react-router-dom@6.30.4.patch
 
 minimumReleaseAgeExclude:

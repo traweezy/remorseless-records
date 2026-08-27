@@ -36,12 +36,12 @@ tracks what is still required before production traffic is approved.
 - Latest application-changing staging SHA accepted:
   `362dd3bd58942b2a86b4773dd16095c000cab606`.
 - Latest documentation-bearing staging SHA accepted:
-  `362dd3bd58942b2a86b4773dd16095c000cab606`.
+  `c138a7e555f9372bbbc11e538730f8b2affcd8b2`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `45d31915-876f-43a1-a16c-bca41109e568` (`SUCCESS`).
+  `14304b34-8231-4f61-b7ff-932c2dc3b309` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `fff6e581-5c99-4a6d-bc49-3348ca5aaa24`
+  `bd5c4687-5093-44cc-8e45-f2c07bd3d3dd`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -644,7 +644,7 @@ startup log.
       validation-problem, proxy, middleware, checkout client, and route tests;
       add reusable OpenAPI 3.1 components and update client problem mapping.
 - [x] Pass the complete locally runnable quality, security, coverage, and
-production-build matrix.
+      production-build matrix.
 - [x] Correct Storefront problem-log severity after staging proved that Railway
       classifies `console.warn` as `level:error`: expected 4xx problems now use
       stdout/info while 5xx problems remain on stderr/error, with regression
@@ -1110,6 +1110,104 @@ info-only, contained no `npm i -g pnpm`, and deploy warning/error levels held
 only the reviewed successful command banners. Production remained absent and
 untouched, and no other Railway project was accessed or changed.
 
+The documentation closure commit
+`c138a7e555f9372bbbc11e538730f8b2affcd8b2` subsequently passed Root CI
+`33060235931`, Backend CI `33060236032`, and Storefront CI `33060235950`.
+Backend deployment `14304b34-8231-4f61-b7ff-932c2dc3b309` and Storefront
+deployment `bd5c4687-5093-44cc-8e45-f2c07bd3d3dd` reached `SUCCESS` on that
+exact SHA. All eight route probes returned 200. Both builds were info-only and
+contained no legacy pnpm bootstrap. Runtime warning/error levels contained
+only the four reviewed Backend release commands and Storefront's `next start`
+banner, with no Redis connection error. Fourteen exact-deployment Storefront
+flows reached the private Redis service on port 6379 with 21 packets, 2,148
+bytes, and zero drops.
+
+## Active slice: supply-chain alert closure and deployment trigger scoping
+
+- [x] Reconcile GitHub's two high Dependabot alerts with the production audit
+      and prove alerts `27` and `28` are duplicate manifest/lockfile views of
+      the same development-only `GHSA-jmr9-qjv8-65gv` occurrence.
+- [x] Trace Pa11y and Lighthouse CI through Puppeteer/Core 24 to
+      `@puppeteer/browsers@2.13.2`, while Puppeteer 25 already consumes the
+      archive-safe browser-manager 3 line.
+- [x] Replace every browser-manager version below 3 with the reviewed 3.0.6
+      API-compatible resolution; remove direct `extract-zip@2.0.1`, its local
+      patch, and the vulnerable lockfile occurrence.
+- [x] Replace the exploit-specific package-patch test with a fail-closed gate
+      that proves Pa11y and Lighthouse resolve one browser-manager 3.0.6
+      instance, expose every Puppeteer 24 runtime symbol, contain no
+      `extract-zip`, and retain blocked browser-download install scripts.
+- [x] Raise pull-request dependency review from critical to high severity.
+- [x] Add service-specific Railway watch paths with the complete shared pnpm,
+      Node, lockfile, workspace-policy, and patch inputs consumed by both
+      builds.
+- [x] Exercise the real Pa11y and Lighthouse staging runners across `/about`,
+      `/accessibility`, `/cookies`, and `/terms` using the external browser.
+- [x] Fix the newly exposed Medusa build compiler ambiguity by declaring
+      Framework's missing TypeScript 5.9.3 dependency and replace the
+      fail-open build chain with a wrapper that removes only generated output,
+      compiles, and requires fresh regular-file server artifacts before
+      post-build packaging.
+- [x] Pass the complete local release gate.
+- [x] Commit the cohesive source slice.
+- [ ] Push only to `staging`; require exact-SHA Root, Backend, Storefront, and
+      both current-config Railway deployment acceptance before applying IaC.
+- [ ] Re-run the guarded Railway plan, require zero creates/deletes, apply only
+      the two reviewed watch lists plus known phantom restart fields, and
+      accept both exact staging deployments.
+- [ ] Enable GitHub Dependabot security updates, verify alerts `27` and `28`
+      close without dismissal, and document the owned remediation boundary.
+- [ ] Push the final documentation-only closure, require all exact-SHA GitHub
+      checks, and prove the effective watch paths create no Railway deployment
+      for that documentation SHA.
+
+Discovery: GitHub currently reports two high alerts, but both identify the
+same `extract-zip@2.0.1` development dependency and the production audit has
+zero high or critical findings. Upstream still publishes no patched
+`extract-zip` release. The installed Puppeteer 24 consumers use only runtime
+exports preserved by `@puppeteer/browsers@3.0.6`; Node 26 can load that ESM
+package through Puppeteer's CommonJS path. The frozen offline install now
+resolves one v3 browser manager and no `extract-zip`. The replacement verifier,
+Pa11y WCAG2AA audits, and Lighthouse assertions all pass on the four reviewed
+staging routes. The first local browser launch correctly failed because this
+host disables Chromium user namespaces; the documented CI no-sandbox mode
+then passed without changing application data.
+
+The first complete Backend gate exposed a separate fail-open build defect:
+`@medusajs/framework@2.18.0` uses the TypeScript compiler without declaring it,
+resolved the unrelated TypeScript 7 version shim introduced through Pa11y's
+Cosmiconfig chain, logged a missing compiler API exception, and still returned
+success before the old command packaged stale `.medusa` output. The package
+extension now gives Framework the complete TypeScript 5.9.3 compiler directly.
+The build wrapper removes only the ignored generated `.medusa` directory,
+requires a zero-status compiler plus fresh non-symlink server artifacts, and
+only then runs the existing hardened post-build packager. A dedicated fast
+gate verifies both the declared dependency and the compiler API at Framework's
+actual resolution boundary.
+
+Final local validation: the frozen install and supply-chain policy accepted
+1,961 lockfile entries with no peer issue. Root release, IaC, browser-manager,
+Medusa compiler, private-artifact, framework-header, scheduler, runtime-log,
+and React Router gates pass. The production audit retains only the three
+documented ignored moderates and reports zero high/critical findings; Trivy
+reports zero high/critical vulnerability, secret, or misconfiguration finding.
+Backend ESLint, all 173 suites/926 tests, and the fresh Medusa/Admin production
+build pass without a compiler exception. Storefront ESLint, strict typecheck,
+all 112 suites/587 tests, and its 53-route production build pass at 93.89%
+statements, 86.24% branches, 94.60% functions, and 93.87% lines. Pa11y and
+Lighthouse pass the four reviewed staging routes, and the mobile Chrome audit
+passes all 17 routes at both Pixel 7 and 320-pixel compact-phone viewports.
+
+Railway's official monorepo contract defines watch paths as gitignore-style
+deployment triggers. The guarded staging plan contains zero creates, four
+changes, and zero destroys: Backend and Storefront receive their own workspace
+path plus `/.nvmrc`, `/package.json`, `/pnpm-lock.yaml`,
+`/pnpm-workspace.yaml`, and `/patches/**`; the other two changes are the known
+read-model-only restart-policy drift. Documentation and IaC source are not
+runtime build inputs. IaC changes must be applied explicitly through the exact
+staging wrapper after CI, while documentation-only pushes must not spend two
+application rebuilds.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -1228,7 +1326,8 @@ untouched, and no other Railway project was accessed or changed.
 - [ ] Replace the Backend PostgreSQL superuser connection with a least-privilege
       runtime role and a separate migration/DDL role.
 - [ ] Require TLS for every non-private database connection.
-- [ ] Move Storefront Redis to the Railway private service reference.
+- [x] Move Storefront Redis to the Railway private service reference and prove
+      exact-deployment port-6379 service flows complete without drops.
 - [ ] Remove public Redis and PostgreSQL TCP proxies unless a reviewed,
       encrypted administrative path requires them.
 - [ ] Put MinIO Console behind private access/SSO or remove its public domain.
@@ -1252,6 +1351,8 @@ untouched, and no other Railway project was accessed or changed.
       and support-service sources idempotently.
 - [ ] Remove the restart-policy phantom drift after Railway's IaC read model
       returns the settings already present in effective deployment manifests.
+- [ ] Apply and accept service-specific Railway watch paths, then prove a
+      documentation-only staging push triggers no application rebuild.
 
 ## GitHub, CI, supply chain, and test depth
 
@@ -1267,9 +1368,9 @@ untouched, and no other Railway project was accessed or changed.
 - [x] Mitigate `GHSA-jmr9-qjv8-65gv` in `extract-zip` with fail-closed symlink
       containment, a malicious-archive regression gate, and explicit denial of
       Puppeteer browser-download install scripts.
-- [ ] Remove the local `extract-zip` patch and the vulnerable package version
-      when Pa11y/Lighthouse ship a reviewed fixed chain or can be replaced
-      without losing accessibility and performance coverage.
+- [x] Remove the local `extract-zip` patch and vulnerable package version by
+      consolidating Pa11y/Lighthouse on the reviewed browser-manager 3 API,
+      without losing accessibility or performance coverage.
 - [x] Run Storefront build, Playwright, accessibility, and Lighthouse jobs on
       every `master` release pull request and every long-lived branch push.
 - [ ] Run Chromium, Firefox, and WebKit for critical home, catalog, product,

@@ -66,6 +66,15 @@ pnpm run railway:apply:staging
   `${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379`. This keeps server-side cache and
   rate-limit traffic on Railway's private network; do not replace it with the
   provider's public `REDIS_URL`, `REDIS_PUBLIC_URL`, or TCP proxy port.
+- Backend and Storefront watch paths include their own workspace plus the root
+  Node/pnpm version, manifest, lockfile, workspace policy, and dependency patch
+  inputs consumed by both builds. A root lockfile or toolchain change must
+  rebuild both services; an application-only change must rebuild only its
+  owning service.
+- Documentation and `.railway/**` are intentionally not build inputs. Apply
+  Railway IaC changes through the guarded staging wrapper after their source
+  commit passes CI. A documentation-only staging push must run GitHub checks
+  without spending a Backend or Storefront rebuild.
 - Services already managed by `railway.json` must be migrated before `.railway/railway.ts` can manage them.
 - Keep one `.railway` file for the whole project. A named `export const partial` (or `PARTIAL` / `const Partial`) is a last resort for separate repos that cannot share that file. Do not add it unless omit=delete across repos is a blocker.
 - Use `replicas` for scaling; advanced placement can still specify region names.

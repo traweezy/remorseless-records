@@ -112,8 +112,8 @@ pnpm run typecheck
 # Backend type safety (ensures transformers stay in sync)
 pnpm --filter backend exec tsc --noEmit
 
-# Patched archive extraction and blocked browser-download install scripts
-pnpm run qa:extract-zip-security
+# Browser QA dependency resolution and blocked browser-download install scripts
+pnpm run qa:browser-toolchain-security
 ```
 
 ---
