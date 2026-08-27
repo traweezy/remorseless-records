@@ -825,11 +825,24 @@ error sweep was empty for Backend and contained only Storefront's known
 successful `$ next start` command banner.
 
 Acceptance discovery: the two Storefront 400 responses preserved their request
-and trace context, but their expected `api.problem` info events did not appear
-in the current or prior Railway deployment logs even after a direct
-request-ID search. Earlier staging acceptance proved this event path, so the
-missing current capture is retained as an explicit observability investigation
-instead of being treated as complete logging evidence.
+and trace context. Follow-up raw-record inspection found the expected event on
+exact request ID `storefront-log-repro-ae968321-20260827`: Railway had promoted
+the JSON properties to top-level fields and left the display `message` empty,
+while the earlier acceptance query searched only the display message. The
+event therefore was not lost. Storefront problem logs now include a fixed,
+non-sensitive message, and the checked exact-request verifier normalizes both
+Railway's promoted Storefront shape and Backend JSON nested inside `message`.
+Four fail-closed verifier regressions plus the existing Storefront route-guard
+test cover present, absent, mismatched, malformed, and both-shape cases. The
+verifier passed against the real ae968 event and its exact SHA, request ID,
+trace ID, service, environment, severity, status, event, and problem code.
+
+The documentation-only acceptance head
+`ae968321e8854e202e6118eb4df8a7a39109dfea` subsequently passed Root CI
+`33043262356`, Backend CI `33043262376`, and Storefront CI `33043262361`.
+Railway Backend deployment `9f255efd-e9d5-495a-9782-9570ea409cdf` and
+Storefront deployment `e9199859-4369-4e24-97c6-84c873fda73a` reached
+`SUCCESS`; all eight health and public smoke endpoints returned 200.
 
 ## Remaining authorization work
 
@@ -1026,9 +1039,9 @@ lockfile.
 - [ ] Remove or classify Railpack npm wrapper warnings and successful pnpm
       command banners currently recorded at error severity so deployment-log
       alerts remain actionable.
-- [ ] Diagnose why Storefront `api.problem` stdout events are absent from the
-      current Railway runtime log stream, then add an exact-request-ID
-      deployment acceptance check that fails when correlated events disappear.
+- [x] Correct the misleading blank Storefront `api.problem` display record and
+      add a tested exact-request-ID Railway verifier that fails when correlated
+      events disappear or their deployment/correlation fields mismatch.
 - [ ] Add structured JSON logging with redaction, request ID, trace ID, span ID,
       service, environment, and commit SHA.
 - [ ] Add OpenTelemetry traces and RED metrics for HTTP, database, Redis,

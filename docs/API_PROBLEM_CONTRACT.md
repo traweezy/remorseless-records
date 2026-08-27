@@ -109,11 +109,37 @@ Backend completion events contain only:
 - `problem_code` when a shared problem helper handled the failure.
 
 Storefront problem events use the same deployment and correlation fields plus
-the status and problem code. They intentionally omit paths, query strings,
-headers, bodies, exception messages, and provider data. Backend completion
-events log 5xx at error, 4xx at warning, and successful requests at info.
-Storefront problem events log 5xx at error and expected 4xx at stdout/info
-because Railway classifies `console.warn` output as an error-level record.
+the status and problem code, with a fixed non-sensitive `message` so Railway's
+human-readable log view is not blank after it promotes JSON fields into the
+record. They intentionally omit paths, query strings, headers, bodies,
+exception messages, and provider data. Backend completion events log 5xx at
+error, 4xx at warning, and successful requests at info. Storefront problem
+events log 5xx at error and expected 4xx at stdout/info because Railway
+classifies `console.warn` output as an error-level record.
+
+Railway may expose application JSON fields directly on the log record or retain
+a Backend logger event as JSON inside `message`. Do not accept a deployment by
+searching only the display message. Pipe the bounded exact-deployment JSONL
+through the checked verifier, supplying values from the response and deployment:
+
+```bash
+railway logs --service Storefront --environment staging --json --lines 200 \
+  | node scripts/verify-railway-runtime-log.mjs \
+      --commit-sha "$STAGING_COMMIT_SHA" \
+      --environment staging \
+      --event api.problem \
+      --level info \
+      --problem-code invalid_request \
+      --request-id "$ACCEPTANCE_REQUEST_ID" \
+      --service storefront \
+      --status 400 \
+      --trace-id "$ACCEPTANCE_TRACE_ID"
+```
+
+The verifier normalizes both record shapes and fails closed when the exact
+request ID is absent or any expected event, severity, service, environment,
+problem, status, correlation, or commit field differs. Its parser is bounded to
+10 MiB and never echoes rejected log contents.
 
 ## SLO-ish acceptance targets
 
