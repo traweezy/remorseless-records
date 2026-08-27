@@ -34,14 +34,14 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `40b2cc06ecd981b61150002a009c327ac0c8679e`.
+  `362dd3bd58942b2a86b4773dd16095c000cab606`.
 - Latest documentation-bearing staging SHA accepted:
-  `40b2cc06ecd981b61150002a009c327ac0c8679e`.
+  `362dd3bd58942b2a86b4773dd16095c000cab606`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `a3c75368-26d1-484f-a3c7-a0c9ea073b21` (`SUCCESS`).
+  `45d31915-876f-43a1-a16c-bca41109e568` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `69497ac3-6c3f-4a19-b0f0-5d34f7307147`
+  `fff6e581-5c99-4a6d-bc49-3348ca5aaa24`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -978,7 +978,7 @@ audit, both production builds, and the Admin bundle budget pass. The Admin main
 bundle is 1,797,919 gzip bytes and total is 2,392,417 gzip bytes. Exact staging
 acceptance of the scheduler timestamp correction is complete.
 
-## Active slice: staging Railway IaC and dependency readiness
+## Completed slice: staging Railway IaC and dependency readiness
 
 - [x] Inventory the committed and effective Railway configuration for every
       staging service without reading or exporting secret values.
@@ -1002,7 +1002,7 @@ acceptance of the scheduler timestamp correction is complete.
       absence of legacy config files.
 - [x] Pass the complete local release gate.
 - [x] Commit the cohesive infrastructure slice.
-- [ ] Push only to `staging`; require exact-SHA Root, Backend, and Storefront CI
+- [x] Push only to `staging`; require exact-SHA Root, Backend, and Storefront CI
       plus both Railway deployments, readiness, route, manifest, and log
       acceptance before closing the slice.
 
@@ -1051,7 +1051,7 @@ TCP proxy URL. The Storefront contract now composes Redis's referenced user and
 password with `${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379` explicitly. This removes
 public service-to-service egress and keeps rotated Redis credentials in sync
 without exposing them to source or logs. Corrective source-commit exact-SHA
-staging acceptance remains required before this slice closes.
+staging acceptance is recorded below.
 
 Corrective configuration acceptance: the guarded plan contained zero creates,
 one intentional private Redis variable change, the two known restart-policy
@@ -1094,6 +1094,21 @@ Storefront suites with 587 tests pass; Storefront coverage remains 93.89%
 statements, 86.24% branches, 94.60% functions, and 93.87% lines. Both
 production builds pass. The Admin main bundle is 1,798,588 gzip bytes and
 total JavaScript is 2,393,325 gzip bytes, within the checked budgets.
+
+Final exact staging acceptance: source commit
+`362dd3bd58942b2a86b4773dd16095c000cab606` passed Root CI
+`33058788745`, Backend CI `33058788794`, and Storefront CI `33058788810`.
+Backend deployment `45d31915-876f-43a1-a16c-bca41109e568` and Storefront
+deployment `fff6e581-5c99-4a6d-bc49-3348ca5aaa24` reached `SUCCESS` from that
+exact SHA. Their effective manifests contain no legacy config file, use the
+reviewed pnpm commands, gate on `/ready` for 300/180 seconds, and retain
+`ON_FAILURE` with 10 retries. Readiness succeeded after 4.335 seconds for
+Backend and 1.691 seconds for Storefront. All eight health/public probes
+returned 200. Storefront emitted five private service-to-service Redis flows on
+port 6379 with no drops and no connection-error logs. Both build logs were
+info-only, contained no `npm i -g pnpm`, and deploy warning/error levels held
+only the reviewed successful command banners. Production remained absent and
+untouched, and no other Railway project was accessed or changed.
 
 ## Remaining authorization work
 
