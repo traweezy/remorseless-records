@@ -1,6 +1,6 @@
 # Production Hardening Plan
 
-Last verified: August 26, 2026
+Last verified: August 27, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
@@ -30,15 +30,13 @@ tracks what is still required before production traffic is approved.
 
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
-- Latest application-changing staging SHA accepted:
-  `2818d6540aa0f7f200d3c7e81e39b48d3c860b2d`.
-- Latest documentation-only staging SHA accepted:
-  `6fed27f6140bef24c193272658312a3887483867`.
+- Latest application-changing and documentation-bearing staging SHA accepted:
+  `d76124cd31e1258725c14d8b928044017de283c3`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `3eae1057-6432-4218-a7e6-8334345b4d7d` (`SUCCESS`).
+  `5d89d2cc-df5f-43dd-9a77-f513083d5722` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `87da9b5b-bce1-4d0c-a9b7-b752e57543a4`
+  `17d99d94-b3b3-44c4-b88d-f1833476a307`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -749,6 +747,65 @@ validation, and unexpected failures deliberately retain the installed
 Dashboard/Admin SDK envelope, with a regression test preventing an accidental
 global replacement.
 
+Final error-contract acceptance: documentation head
+`d76124cd31e1258725c14d8b928044017de283c3` passed Root CI `33040142472`,
+Backend CI `33040142388`, and Storefront CI `33040142439`, including CodeQL,
+Trivy, complete tests and coverage, both production builds, Admin bundle budget,
+Playwright, pa11y, and Lighthouse. Railway held both services until the three
+workflows passed; Backend deployment `5d89d2cc-df5f-43dd-9a77-f513083d5722`
+and Storefront deployment `17d99d94-b3b3-44c4-b88d-f1833476a307` then reached
+`SUCCESS` on that exact SHA. Backend `/live`, `/ready`, and `/api/health`;
+Storefront `/live`, `/ready`, `/api/healthcheck`, `/`, and `/catalog` all
+returned 200. A safe `/key-exchange` probe exposed only the expected field,
+returned `no-store`, preserved request ID and trace ID, and produced an
+info-level completion event. The exact-deployment error sweep contained only
+the known successful pnpm/Medusa and `next start` command banners.
+
+## Active slice: public form write-boundary hardening
+
+- [x] Inventory the browser forms, Storefront BFFs, Backend targets, rate
+      limits, proof patterns, Resend adapter, configuration, tests, and docs.
+- [x] Add a distinct server-only `PUBLIC_FORM_BFF_SECRET` and deterministic
+      Storefront/Backend interoperability fixtures.
+- [x] Bind HMAC proofs to version, endpoint purpose, exact serialized body, and
+      a 30-second timestamp window; verify with constant-time comparison.
+- [x] Preserve a bounded raw body on both Backend routes, share their abuse
+      bucket, and fail closed before validation or provider access.
+- [x] Add eight-second Storefront-to-Backend cancellation and five-second
+      Backend-to-Resend cancellation with provider idempotency keys.
+- [x] Treat resolved Resend error objects as failures and map configuration,
+      authentication, validation, provider, timeout, and unexpected failures to
+      correlated neutral problems without PII or provider diagnostics.
+- [x] Add Backend route, proof, middleware, adapter, redaction, and replay tests;
+      add Storefront proof, environment, route, timeout, and propagation tests.
+- [x] Configure the same generated secret on Backend and Storefront staging
+      with Railway deploys skipped; no value was printed or stored in VCS.
+- [x] Expand environment templates, READMEs, the QA runbook, problem contract,
+      and OpenAPI path enumeration.
+- [x] Pass complete local release-policy, lint, strict typecheck, full test,
+      coverage, audit, security-regression, production-build, and Admin bundle
+      budget gates.
+- [ ] Commit the cohesive implementation and docs, push `staging`, and accept
+      exact GitHub/Railway deployments.
+
+Current local evidence: 171 Backend suites with 919 tests and 112 Storefront
+suites with 587 tests pass. Storefront coverage is 93.89% statements, 86.24%
+branches, 94.60% functions, and 93.87% lines. Repository policy, private
+artifact, framework-header, ESLint, and both strict typecheck gates pass, as do
+the production dependency audit (only three documented ignored moderates),
+extract-zip containment, React Router backports, OpenAPI parsing, and both
+production builds. The Admin main bundle is 1,799,070 gzip bytes and the total
+is 2,393,760 gzip bytes, both within budget.
+
+Discovery: the Resend SDK resolves provider HTTP errors as `{ error }` rather
+than rejecting, so the previous routes could acknowledge a failed delivery.
+Contact had a Backend limiter while privacy did not, and both Backend targets
+were callable with only the browser-safe publishable key. The new boundary
+closes all three gaps. A Backend-directory pnpm invocation also recreated a
+standalone store and lockfile; it was quarantined, the untracked lock removed,
+and the workspace restored from the root frozen lockfile with the Medusa patch
+verified. All further pnpm commands run through root workspace filters.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -824,7 +881,7 @@ global replacement.
 - [ ] Move all generic abuse controls to Redis-backed atomic rate limits.
 - [ ] Trust client IP headers only behind a documented Railway proxy boundary.
 - [ ] Remove User-Agent from the cart rate-limit identity.
-- [ ] Protect Backend contact and privacy routes with shared limiting, bounded
+- [x] Protect Backend contact and privacy routes with shared limiting, bounded
       email timeouts, neutral responses, and purpose-bound BFF authentication.
 - [ ] Persist privacy requests in a protected audit store if required by the
       approved retention policy.
@@ -837,7 +894,8 @@ global replacement.
       sales-channel boundaries.
 - [ ] Add outbound deadlines, cancellation, bounded retries, and redacted
       provider errors for content, search, email, Stripe, tax, storage,
-      contact, and privacy calls.
+      contact, and privacy calls. Contact/privacy Backend and Resend deadlines
+      are complete; the other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.

@@ -245,6 +245,14 @@ receive that secret or call the endpoint directly. It returns an order ID only
 to the storefront server and only after the cart is durably completed and
 linked to the order.
 
+`POST /store/contact` and `POST /store/privacy-request` are also internal
+Storefront BFF targets. They require a separate `PUBLIC_FORM_BFF_SECRET` proof
+that is bound to the exact serialized body, endpoint purpose, and a 30-second
+timestamp window. The routes share a Backend abuse bucket, retain the 16 KiB
+body ceiling, and abort Resend delivery after five seconds. Provider and
+configuration failures return correlated, neutral problems without copying
+email addresses, request bodies, provider diagnostics, or credentials.
+
 ## Stripe configuration
 
 Configure all Stripe values together or leave all three empty:

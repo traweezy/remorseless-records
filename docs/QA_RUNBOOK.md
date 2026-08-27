@@ -127,6 +127,9 @@ pnpm run qa:extract-zip-security
   `STRIPE_PAYMENT_METHOD_CONFIGURATION`.
 - Ensure backend and storefront share `CHECKOUT_BFF_SECRET`; the storefront
   also needs a different `CHECKOUT_RECEIPT_SECRET`.
+- Ensure backend and storefront share a separate `PUBLIC_FORM_BFF_SECRET` for
+  body-bound contact/privacy calls. It must not reuse checkout, receipt, cookie,
+  JWT, or webhook secrets.
 - Verify every key/object is test mode before continuing. Do not use real card
   details or a live Stripe object.
 - Start backend and listen for Stripe webhooks:

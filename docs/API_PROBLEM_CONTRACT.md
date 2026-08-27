@@ -16,7 +16,9 @@ Backend security/rate-limit guards, checkout-status errors, and tax-reporting
 errors. The follow-up inventory found only two direct custom Backend envelopes:
 `GET /key-exchange` and `POST /webhooks/stripe/lifecycle`. Both now use the
 same correlated problem contract, and their success and failure responses are
-the first enumerated paths in the OpenAPI document.
+the first enumerated paths in the OpenAPI document. The contact/privacy
+hardening slice adds the two Storefront BFF routes and their two internal
+Backend targets, bringing the enumerated total to six custom paths.
 
 ## Error ownership matrix
 
@@ -26,7 +28,7 @@ the first enumerated paths in the OpenAPI document.
 | Project custom route | proof/authentication failure | 401 | `ApiProblem` |
 | Project custom guard | origin/authorization rejection | 403 | `ApiProblem` |
 | Project custom route | conflict | 409 | `ApiProblem` |
-| Project custom route | upstream/provider failure | 502 or 503 | `ApiProblem` |
+| Project custom route | upstream/provider failure | 502, 503, or timeout 504 | `ApiProblem` |
 | Project custom route | unexpected internal failure | 500 or retryable 503 | redacted `ApiProblem` |
 | Native Medusa auth | unauthenticated | 401 | `NativeMedusaError` |
 | Native Medusa Admin/RBAC | forbidden | 403 | `NativeMedusaError` |
@@ -60,6 +62,25 @@ Never put per-request correlation headers into a shared-cache key. A correlated
 API fetch must be explicitly uncached or use a cache layer whose identity omits
 the request and trace headers.
 
+## Public form BFF proof rules
+
+- `PUBLIC_FORM_BFF_SECRET` is a distinct, server-only 32+ byte secret shared by
+  Backend and Storefront. It must not use a `NEXT_PUBLIC_*` name or reuse a
+  checkout, receipt, cookie, JWT, or webhook key.
+- The Storefront signs `v1`, the endpoint purpose, Unix timestamp, and a SHA-256
+  digest of the exact serialized request body. Contact and privacy use different
+  purpose strings, so a proof cannot cross endpoints.
+- Backend requires the preserved raw body and accepts a proof only within a
+  30-second clock-skew window using constant-time signature comparison.
+- The publishable Store API key remains necessary for Medusa routing but is not
+  authorization for email delivery. Missing, stale, malformed, body-mismatched,
+  or cross-purpose proofs fail closed before validation or provider access.
+- Both Backend routes share a rate-limit bucket and a 16 KiB body ceiling. The
+  Storefront keeps its endpoint-specific origin and abuse guards.
+- Storefront-to-Backend fetches abort after eight seconds. Backend-to-Resend
+  fetches abort after five seconds and carry an idempotency key. A provider
+  response with an error object is a failure even when the SDK call resolves.
+
 ## Problem response rules
 
 Problem responses use `Content-Type: application/problem+json`, `Cache-Control:
@@ -73,8 +94,10 @@ provider response bodies, credentials, or PII. Purpose-bound semantic
 extensions, such as the signed-cart checkout projection, may retain fields
 required by the existing client contract; those responses remain `no-store`
 and the extension data is never copied into problem logs. A failed
-Storefront-to-Backend contact or privacy request is mapped to a safe 502 problem
-even when the Backend returns a more detailed message.
+Storefront-to-Backend contact or privacy request is mapped to a safe 502
+problem, or a 504 when the deadline expires, even when the Backend returns a
+more detailed message. Backend configuration, proof, validation, timeout, and
+provider failures use correlated safe problems and never include form values.
 
 ## Structured logs
 
@@ -110,8 +133,8 @@ When investigating an incident, search by `request_id` first, then use
 ## Remaining work
 
 - Enumerate custom endpoints and their response references in a complete
-  generated or contract-first OpenAPI document; the two explicit custom
-  Backend envelope routes are now covered.
+  generated or contract-first OpenAPI document; six custom paths are now
+  covered, including the complete contact/privacy BFF boundary.
 - Verify whether any external consumer still calls the legacy `/key-exchange`
   route, then retire it if the validated Storefront environment key is the sole
   consumer path.

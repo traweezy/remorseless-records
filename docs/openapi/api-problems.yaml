@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
   title: Remorseless Records API problem contract
-  version: 1.1.0
+  version: 1.2.0
   description: >-
     Shared RFC 7807-compatible error and correlation components for custom
-    Backend and Storefront APIs. This document begins endpoint enumeration with
-    the remaining explicit Backend error-envelope routes; complete endpoint
-    coverage remains in the production hardening backlog.
+    Backend and Storefront APIs. Endpoint enumeration now covers the legacy key
+    exchange, Stripe lifecycle webhook, and the complete contact/privacy BFF
+    boundary; complete custom-endpoint coverage remains in the hardening backlog.
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 paths:
   /key-exchange:
@@ -69,6 +69,175 @@ paths:
           $ref: "#/components/responses/ApiProblemResponse"
         "503":
           $ref: "#/components/responses/ApiProblemResponse"
+  /api/contact:
+    post:
+      operationId: submitStorefrontContactForm
+      summary: Validate and forward a public contact form
+      description: >-
+        Storefront same-origin BFF. It applies a 16 KiB body limit, local abuse
+        control, and an eight-second Backend deadline before generating the
+        server-only, body-bound proof.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactRequest"
+      responses:
+        "200":
+          description: The message was accepted or silently dropped as spam.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            traceparent:
+              $ref: "#/components/headers/Traceparent"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "403":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "413":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "415":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "429":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "502":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "503":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "504":
+          $ref: "#/components/responses/ApiProblemResponse"
+  /api/privacy-request:
+    post:
+      operationId: submitStorefrontPrivacyRequest
+      summary: Validate and forward a public privacy request
+      description: >-
+        Storefront same-origin BFF. It applies a 16 KiB body limit, local abuse
+        control, and an eight-second Backend deadline before generating the
+        server-only, body-bound proof.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrivacyRequest"
+      responses:
+        "200":
+          description: The request was accepted or silently dropped as spam.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            traceparent:
+              $ref: "#/components/headers/Traceparent"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "403":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "413":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "415":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "429":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "502":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "503":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "504":
+          $ref: "#/components/responses/ApiProblemResponse"
+  /store/contact:
+    post:
+      operationId: deliverContactForm
+      summary: Deliver an authenticated Storefront contact form
+      description: >-
+        Internal Storefront-to-Backend target. The HMAC proof is bound to the
+        contact purpose, exact request body, and a 30-second timestamp window.
+      parameters:
+        - $ref: "#/components/parameters/PublishableApiKey"
+        - $ref: "#/components/parameters/PublicFormTimestamp"
+        - $ref: "#/components/parameters/PublicFormProof"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactRequest"
+      responses:
+        "200":
+          description: The message was delivered or silently dropped as spam.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            traceparent:
+              $ref: "#/components/headers/Traceparent"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "401":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "429":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "503":
+          $ref: "#/components/responses/ApiProblemResponse"
+  /store/privacy-request:
+    post:
+      operationId: deliverPrivacyRequest
+      summary: Deliver an authenticated Storefront privacy request
+      description: >-
+        Internal Storefront-to-Backend target. The HMAC proof is bound to the
+        privacy-request purpose, exact request body, and a 30-second timestamp
+        window.
+      parameters:
+        - $ref: "#/components/parameters/PublishableApiKey"
+        - $ref: "#/components/parameters/PublicFormTimestamp"
+        - $ref: "#/components/parameters/PublicFormProof"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrivacyRequest"
+      responses:
+        "200":
+          description: The request was delivered or silently dropped as spam.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            traceparent:
+              $ref: "#/components/headers/Traceparent"
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/OkResponse"
+                  - $ref: "#/components/schemas/PrivacyRequestAccepted"
+        "400":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "401":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "429":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "503":
+          $ref: "#/components/responses/ApiProblemResponse"
 components:
   headers:
     NoStore:
@@ -76,7 +245,9 @@ components:
       required: true
       schema:
         type: string
-        const: no-store
+        enum:
+          - no-store
+          - no-store, max-age=0
     RequestId:
       description: Bounded request correlation identifier.
       required: true
@@ -91,6 +262,31 @@ components:
       schema:
         type: string
         pattern: "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+  parameters:
+    PublishableApiKey:
+      in: header
+      name: x-publishable-api-key
+      required: true
+      description: Browser-safe Medusa Store API key for the intended channel.
+      schema:
+        type: string
+        minLength: 1
+    PublicFormTimestamp:
+      in: header
+      name: x-rr-form-timestamp
+      required: true
+      description: Unix timestamp covered by the short-lived BFF proof.
+      schema:
+        type: integer
+        minimum: 1
+    PublicFormProof:
+      in: header
+      name: x-rr-form-proof
+      required: true
+      description: Base64url HMAC generated only by the Storefront server.
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{43}$"
   responses:
     ApiProblemResponse:
       description: A safe, correlated project-owned API problem.
@@ -106,6 +302,90 @@ components:
           schema:
             $ref: "#/components/schemas/ApiProblem"
   schemas:
+    OkResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+          const: true
+    ContactRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - email
+        - reason
+        - message
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        reason:
+          type: string
+          enum:
+            - booking
+            - press
+            - collab
+            - other
+        message:
+          type: string
+          minLength: 10
+          maxLength: 5000
+        honeypot:
+          type: string
+    PrivacyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - email
+        - requestType
+        - details
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        requestType:
+          type: string
+          enum:
+            - access
+            - delete
+            - correct
+            - optout
+            - other
+        details:
+          type: string
+          minLength: 10
+          maxLength: 5000
+        orderId:
+          type: string
+          maxLength: 120
+        honeypot:
+          type: string
+    PrivacyRequestAccepted:
+      type: object
+      additionalProperties: false
+      required:
+        - ok
+        - request_id
+      properties:
+        ok:
+          type: boolean
+          const: true
+        request_id:
+          type: string
+          format: uuid
     PublishableKeyResponse:
       type: object
       additionalProperties: false
