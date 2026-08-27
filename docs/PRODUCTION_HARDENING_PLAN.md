@@ -844,6 +844,25 @@ Railway Backend deployment `9f255efd-e9d5-495a-9782-9570ea409cdf` and
 Storefront deployment `e9199859-4369-4e24-97c6-84c873fda73a` reached
 `SUCCESS`; all eight health and public smoke endpoints returned 200.
 
+Exact structured-log closure: staging head
+`13941ed6bc553bfa3a31dd00b41391a0111c38fb` passed Root CI
+`33044631306`, Backend CI `33044631314`, and Storefront CI `33044631336`,
+including the new runtime-log regression gate, CodeQL, Trivy, secret scans,
+SBOM/license verification, both complete test suites and production builds,
+the Admin bundle budget, Playwright, pa11y, and Lighthouse. Railway held
+Backend deployment `f1978b37-4464-48be-8341-136b83bf61e8` and Storefront
+deployment `bdc001a2-f8a7-480c-905a-d8b73bf77f0f` until all three workflows
+passed, then deployed that exact SHA to `SUCCESS`. All eight Backend/Storefront
+health and public smoke endpoints returned 200. A deliberately empty contact
+body returned a correlated, no-store 400 `invalid_request` problem before any
+Backend or email-provider access. The checked verifier found the corresponding
+info-level `api.problem` event on exact request ID
+`acceptance_13941ed_railway_log_01`, with the expected readable message, SHA,
+service, environment, trace, status, and problem fields. The promoted record
+contained no path, query, header, body, PII, error, stack, or provider keys.
+The exact-deployment warning/error sweep contained only four Backend and one
+Storefront known successful command banners.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -1017,6 +1036,10 @@ Storefront deployment `e9199859-4369-4e24-97c6-84c873fda73a` reached
       observing required endpoints.
 - [ ] Add a real dependency cooling window and keep only narrowly justified
       security exceptions.
+- [ ] Update or replace the pinned Shai-Hulud detector action when an upstream
+      release declares a supported Node 24 action runtime; GitHub currently
+      forces its deprecated Node 20 action runtime onto Node 24 and annotates
+      all three otherwise-successful workflows.
 - [ ] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
       Stripe, AWS SDK, and other outdated dependency families.
 
@@ -1033,6 +1056,12 @@ dismiss either development-tooling alert. The checked mitigation contains the
 current behavior; the separate removal item remains open until the parent chain
 can be upgraded or replaced so the vulnerable package version leaves the
 lockfile.
+
+CI discovery: pinned Shai-Hulud detector `v2.1.0` passed in Root, Backend, and
+Storefront CI, but GitHub annotated each run because the action still declares
+the deprecated Node 20 action runtime and is being forced onto Node 24. This is
+not a current scan failure, but it is retained as explicit supply-chain
+maintenance rather than suppressing the platform warning.
 
 ## Observability and operations
 
