@@ -31,12 +31,12 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing and documentation-bearing staging SHA accepted:
-  `d76124cd31e1258725c14d8b928044017de283c3`.
+  `c5aab7364e4fa0db1cae0378e00049f5e0cf0d04`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `5d89d2cc-df5f-43dd-9a77-f513083d5722` (`SUCCESS`).
+  `43b52bb3-e273-4a11-ada1-9abc1d6d661d` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `17d99d94-b3b3-44c4-b88d-f1833476a307`
+  `bc591bec-a6de-470a-9078-c77aba555940`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -785,7 +785,7 @@ the known successful pnpm/Medusa and `next start` command banners.
 - [x] Pass complete local release-policy, lint, strict typecheck, full test,
       coverage, audit, security-regression, production-build, and Admin bundle
       budget gates.
-- [ ] Commit the cohesive implementation and docs, push `staging`, and accept
+- [x] Commit the cohesive implementation and docs, push `staging`, and accept
       exact GitHub/Railway deployments.
 
 Current local evidence: 171 Backend suites with 919 tests and 112 Storefront
@@ -805,6 +805,31 @@ closes all three gaps. A Backend-directory pnpm invocation also recreated a
 standalone store and lockfile; it was quarantined, the untracked lock removed,
 and the workspace restored from the root frozen lockfile with the Medusa patch
 verified. All further pnpm commands run through root workspace filters.
+
+Final public-form acceptance: staging head
+`c5aab7364e4fa0db1cae0378e00049f5e0cf0d04` passed Root CI `33042203488`,
+Backend CI `33042203479`, and Storefront CI `33042203378`, including CodeQL,
+Trivy, secret scanning, all tests and coverage, both production builds, the
+Admin bundle budget, Playwright, pa11y, and Lighthouse. Railway held both exact
+deployments in `WAITING` until all three workflows passed; Backend deployment
+`43b52bb3-e273-4a11-ada1-9abc1d6d661d` and Storefront deployment
+`bc591bec-a6de-470a-9078-c77aba555940` then reached `SUCCESS`. All eight
+Backend/Storefront health and public smoke endpoints returned 200, and
+`/key-exchange` retained its safe one-field response. Direct Backend contact
+and privacy calls with the browser-safe publishable key but no proof returned
+correlated, no-store 401 problems before provider access. Invalid Storefront
+contact and privacy bodies returned correlated, no-store 400 problems before
+forwarding, so no acceptance email was sent. Backend recorded both expected
+401 completions as redacted exact-SHA warning events. The exact-deployment
+error sweep was empty for Backend and contained only Storefront's known
+successful `$ next start` command banner.
+
+Acceptance discovery: the two Storefront 400 responses preserved their request
+and trace context, but their expected `api.problem` info events did not appear
+in the current or prior Railway deployment logs even after a direct
+request-ID search. Earlier staging acceptance proved this event path, so the
+missing current capture is retained as an explicit observability investigation
+instead of being treated as complete logging evidence.
 
 ## Remaining authorization work
 
@@ -1001,6 +1026,9 @@ lockfile.
 - [ ] Remove or classify Railpack npm wrapper warnings and successful pnpm
       command banners currently recorded at error severity so deployment-log
       alerts remain actionable.
+- [ ] Diagnose why Storefront `api.problem` stdout events are absent from the
+      current Railway runtime log stream, then add an exact-request-ID
+      deployment acceptance check that fails when correlated events disappear.
 - [ ] Add structured JSON logging with redaction, request ID, trace ID, span ID,
       service, environment, and commit SHA.
 - [ ] Add OpenTelemetry traces and RED metrics for HTTP, database, Redis,
