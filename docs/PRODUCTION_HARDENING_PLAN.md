@@ -443,19 +443,19 @@ assignments or values.
       cryptographically random nonce and `strict-dynamic`; forward the same CSP
       in the request so Next can authorize framework scripts, and return it in
       the response with `script-src-attr 'none'` and `base-uri 'none'`.
-- [x] Retain webpack SRI manifest generation for eligible static bootstrap
-      assets and replace the one Cache Components-only catalog function with an
-      explicit five-minute tagged data cache so strict nonces can make dynamic
-      documents without discarding Backend/search caching.
+- [x] Retain webpack SRI manifest generation for eligible assets and replace
+      the one Cache Components-only catalog function with an explicit
+      five-minute tagged data cache so strict nonces can make dynamic documents
+      without discarding Backend/search caching.
 - [x] Preconfigure Zod's supported `jitless` mode in a nonce-authorized bootstrap
       before client bundles load, preventing its eval capability probe from
       generating an enforced CSP event during hydrated catalog navigation.
 - [x] Make every JSON-LD data block inherit the request nonce at the component
       boundary, including page-level product and catalog structured data.
-- [x] Remove sample Medusa S3 and Unsplash origins from both the production CSP
-      and Next Image allowlist; validate and normalize every configured dynamic
-      origin, require HTTPS outside local development, and reject credentials
-      or non-HTTP schemes.
+- [x] Remove sample Medusa S3 and direct Unsplash access from the production
+      CSP; retain an exact HTTPS-only Next Image allowlist entry for the
+      version-controlled Unsplash news seed data, validate every configured
+      dynamic image origin, and reject credentials or non-HTTP schemes.
 - [x] Add global Backend/Admin HSTS, CSP, `nosniff`, frame, referrer,
       permissions, framework-disclosure removal, and default no-store response
       headers without overriding static-asset caching.
@@ -468,8 +468,8 @@ assignments or values.
 - [x] Contain malformed and oversized cookie-consent values at the parser
       boundary with adversarial regression coverage.
 - [x] Pass focused Backend lint, strict typecheck, build, and 76 header tests;
-      pass Storefront lint, strict typecheck, the production build, and 25
-      focused CSP/proxy/error/JSON-LD/cookie tests.
+      pass Storefront lint, strict typecheck, the production build, and 29
+      focused CSP/proxy/error/JSON-LD/cookie/image-configuration tests.
 - [x] Pass the complete local quality, coverage, security, and production-build
       matrix; validate the recovery surface in real Chromium and capture both
       browser and full-desktop `flameshot` screenshots.
@@ -485,31 +485,28 @@ Medusa, Meilisearch, product, news, shelf, category, discography, and filter
 data caches remain explicit; the catalog initial-search cache is now an
 explicit tagged five-minute cache.
 
-Live staging discovery: dynamic App Router HTML does not serialize the
-generated webpack SRI metadata, so executable scripts are authorized by the
-per-request nonce instead; eligible static error/bootstrap output retains the
-manifest-generated integrity metadata. Real Chromium also surfaced Zod 4.4's
-caught eval capability probe as an enforced CSP event during hydrated catalog
+Live staging discovery: executable scripts are authorized by the per-request
+nonce; after the Zod bootstrap correction, 5 of 24 eligible Next asset tags
+also serialize generated SRI metadata. Real Chromium surfaced Zod 4.4's caught
+eval capability probe as an enforced CSP event during hydrated catalog
 navigation. Production does not add `unsafe-eval`: the documented Zod
 `jitless` configuration now skips the probe before any client schema loads.
 
 Current local evidence: cross-app lint and strict typecheck, all 162 Backend
-suites with 866 tests, and all 106 Storefront suites with 554 tests pass.
-Storefront coverage is 93.6% statements, 85.8% branches, 94.5% functions, and
-93.58% lines. The production audit reports only the three documented ignored
-moderates; extract-zip and React Router behavioral security verifiers pass;
-Trivy reports zero high/critical dependency, misconfiguration, or secret
-findings; Gitleaks reports no leaks across 752 commits; and the CycloneDX SBOM
-and production-license inventory verify. Both production builds pass. The
-Admin main bundle is 1,799,024 gzip bytes and the total is 2,394,058 gzip bytes,
-both within budget.
+suites with 866 tests, and all 107 Storefront suites with 558 tests pass.
+Storefront coverage is 93.67% statements, 85.98% branches, 94.59% functions,
+and 93.64% lines. The production audit reports only the three documented
+ignored moderates; extract-zip and React Router behavioral security verifiers
+pass; Trivy reports zero high/critical dependency, misconfiguration, or secret
+findings; Gitleaks reports no leaks across the full tracked history; and the
+CycloneDX SBOM and production-license inventory verify. Both production builds
+pass. The Admin main bundle is 1,799,024 gzip bytes and the total is 2,394,058
+gzip bytes, both within budget.
 
-Local runtime preview is isolated from release evidence: Console Ninja had
-rewritten Next server files inside the untracked local `node_modules`, so
-`next start` could not boot despite a successful production build. No tracked
-dependency or application source was changed to hide that workstation issue.
-The clean GitHub runner and Railway build must provide the authoritative
-production CSP/browser proof before the slice is accepted.
+The corrected local production preview served a representative seeded
+Unsplash URL through `/_next/image` as HTTP 200 `image/jpeg` with a one-year
+cache policy. The clean GitHub runner and Railway deployment remain the
+authoritative production CSP/browser proof before the slice is accepted.
 
 Trusted Types enforcement is not included in this slice. Stripe dynamically
 loads additional approved scripts and documents the need for a compatible
@@ -531,6 +528,25 @@ gap; the corrective commit must pass the same CI, deploy, header, browser, and
 log gates before this slice is complete. A clean local package build contains
 the new framework patch hash and compiled response-header configuration; its
 frozen production dependency install and executable early-loader verifier pass.
+
+Corrective commit `e303d4cf9a293252ae66362e7514c9c695658c0e` passed Root CI
+`33030346851`, Backend CI `33030346849`, and Storefront CI `33030346839`.
+Railway again waited for all three suites, then Backend
+`29236a59-7a58-4ba8-bc29-2d383c43c9b5` and Storefront
+`15098486-9576-4a21-9a9d-a91992250f0d` reached `SUCCESS` on that exact SHA.
+Backend framework and Admin headers, API no-store behavior, Admin no-cache,
+and one-year immutable versioned assets all pass live probes. Storefront health
+and public-route probes pass; two documents returned distinct 32-character
+nonces, all 44 executable scripts and all 3 JSON-LD blocks carried the matching
+request nonce, and the Zod bootstrap preceded client bundles in the document
+head. Real Chromium then confirmed the prior Zod CSP event is gone, but exposed
+ten HTTP 400 responses from Next Image for the version-controlled Unsplash news
+seed URLs. The optimizer returned `"url" parameter is not allowed` because the
+seed host had been removed with unused sample origins. The local correction
+now admits only exact HTTPS `images.unsplash.com`, deduplicates configured
+hosts, retains the direct-browser CSP exclusion, and passes four focused
+configuration tests. This corrective image deployment and a zero-400 browser
+repeat remain required before the slice can close.
 
 ## Remaining authorization work
 

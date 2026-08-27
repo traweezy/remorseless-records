@@ -1,44 +1,11 @@
 import type { NextConfig } from "next"
-import type { RemotePattern } from "next/dist/shared/lib/image-config"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { parseAllowedOrigin } from "./src/config/content-security-policy"
+import { resolveRemoteImagePatterns } from "./src/config/image-optimization"
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const isDevelopment = process.env.NODE_ENV === "development"
-
-const parseRemotePattern = (value?: string | null): RemotePattern | null => {
-  const origin = parseAllowedOrigin(value)
-  if (!origin) {
-    return null
-  }
-
-  const url = new URL(origin)
-  if (!isDevelopment && url.protocol !== "https:") {
-    return null
-  }
-
-  const pattern: RemotePattern = {
-    protocol: url.protocol === "http:" ? "http" : "https",
-    hostname: url.hostname,
-  }
-  if (url.port) {
-    pattern.port = url.port
-  }
-  return pattern
-}
-
-const dynamicRemotePatterns: RemotePattern[] = [
-  parseRemotePattern(process.env.NEXT_PUBLIC_MEDUSA_URL),
-  parseRemotePattern(process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL),
-  parseRemotePattern(process.env.MEDUSA_BACKEND_URL),
-  parseRemotePattern(process.env.NEXT_PUBLIC_MEDIA_URL),
-  parseRemotePattern(process.env.NEXT_PUBLIC_ASSET_HOST),
-  parseRemotePattern(process.env.NEXT_PUBLIC_CDN_HOST),
-  parseRemotePattern(process.env.NEXT_PUBLIC_MEILI_HOST),
-  parseRemotePattern(process.env.NEXT_PUBLIC_SEARCH_ENDPOINT),
-].filter((pattern): pattern is RemotePattern => Boolean(pattern))
 
 const BUILD_YEAR = new Date().getUTCFullYear().toString()
 const experimentalConfig: NonNullable<NextConfig["experimental"]> = {
@@ -55,7 +22,7 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ["image/avif", "image/webp"],
-    remotePatterns: dynamicRemotePatterns,
+    remotePatterns: resolveRemoteImagePatterns({ isDevelopment }),
   },
   experimental: experimentalConfig,
   reactCompiler: true,
