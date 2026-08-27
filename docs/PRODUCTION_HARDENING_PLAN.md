@@ -926,13 +926,21 @@ The first real reconciliation record also caught a Medusa Redis scheduler
 timestamp defect before this slice was accepted. The job itself safely scanned
 1,306 carts in 127.629 ms, found no eligible cart, did no completion work,
 released its owned lock, stayed below the scan bound, and logged no failure.
-However, Medusa 2.18 supplied BullMQ's enqueue timestamp as `scheduledFor`
-without adding the delayed-job duration, so the record emitted a false
-91.296-second scheduler warning. A pinned pnpm patch now passes
-`job.timestamp + job.delay`, a checked repository verifier fails if the fix is
-missing, and the standalone Backend build was inspected to prove it contains
-both the patch and corrected runtime. Exact CI, Railway, live-job, smoke, and
-log acceptance must be repeated on the correction before closure.
+However, Medusa 2.18 supplied BullMQ's enqueue timestamp as `scheduledFor`, so
+the record emitted a false 91.296-second scheduler warning. The first
+correction added `job.delay`; exact head
+`0649fc643ae458dfae3b7d854f14c6c6a7d64427` passed Root CI `33050059796`,
+Backend CI `33050059733`, and Storefront CI `33050059770`, and exact Backend
+deployment `c1323cac-e6ea-44cc-afeb-c3ecb96974ea` and Storefront deployment
+`250f3d2a-2554-4fa2-97e1-40c4bf0acfab` reached `SUCCESS`. All eight smoke
+routes returned 200. Its real job safely scanned 1,306 carts in 86.881 ms,
+attempted no completion, released its lock, and reported no failure, but still
+produced a false 48.474-second warning: BullMQ clears `job.delay` when a repeat
+job becomes active and retains the intended execution timestamp in
+`job.opts.prevMillis` and the repeat job ID. The final patch now prefers
+`prevMillis`, with enqueue time plus delay only as the non-repeat fallback. The
+checked verifier fails on either incomplete implementation. Exact CI, Railway,
+live-job, smoke, and log acceptance must be repeated before closure.
 
 Current local evidence: 17 focused tests cover configuration bounds, candidate
 safety, time caps, full-window reporting, ambiguous response loss, owned-lock

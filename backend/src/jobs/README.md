@@ -7,7 +7,8 @@ also acquires a unique-owner, five-minute application lock so a stalled retry
 cannot overlap or release another run's lock.
 
 Medusa 2.18's Redis scheduler is pinned with a pnpm patch so `scheduledFor`
-includes BullMQ's job delay instead of reporting only its enqueue time. The
+uses BullMQ's repeat-job `prevMillis` execution time, with enqueue time plus
+delay as the non-repeat fallback. The
 root `qa:workflow-scheduler-timestamps` gate verifies that the installed root
 dependency retains this correction; the production Backend build applies
 the same pinned patch to its standalone dependency tree.

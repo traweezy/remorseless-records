@@ -318,11 +318,13 @@ The first hardened staging run safely scanned all 1,306 matching carts in
 127.629 ms, attempted no completion, released its owned lock, and reported no
 failure. It also exposed a Medusa 2.18 Redis scheduler instrumentation defect:
 the adapter passed BullMQ's enqueue timestamp as `scheduledFor` but omitted the
-job delay, creating a false 91.296-second schedule-delay warning. The checked
-pnpm patch now passes `job.timestamp + job.delay`, matching the intended
-delayed execution time. `qa:workflow-scheduler-timestamps` and the standalone
-Backend artifact check guard that correction until an accepted upstream
-version replaces it.
+job's intended execution metadata, creating a false 91.296-second
+schedule-delay warning. Adding `job.delay` alone still produced a false
+48.474-second warning because BullMQ clears that value when a repeatable job
+becomes active. The checked pnpm patch therefore uses repeat-job `prevMillis`,
+falling back to `job.timestamp + job.delay` for non-repeat jobs.
+`qa:workflow-scheduler-timestamps` and the standalone Backend artifact check
+guard that correction until an accepted upstream version replaces it.
 
 ## Incident: amount or currency mismatch
 

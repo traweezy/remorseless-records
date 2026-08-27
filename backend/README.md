@@ -330,8 +330,9 @@ run, or large event-loop delay. The structured summary includes deployment,
 schedule, duration, event-loop, lock, and aggregate reconciliation fields but
 excludes cart, payment, order, email, address, provider-error, and stack values.
 The pinned Medusa Redis workflow patch calculates the scheduled time from
-BullMQ's enqueue timestamp plus delay; `qa:workflow-scheduler-timestamps`
-prevents the false scheduler-delay regression from returning.
+BullMQ's repeat-job `prevMillis`, with enqueue time plus delay as the fallback;
+`qa:workflow-scheduler-timestamps` prevents the false scheduler-delay
+regression from returning.
 
 ## Cart and checkout retention
 
