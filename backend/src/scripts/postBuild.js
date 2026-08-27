@@ -2,6 +2,7 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 const path = require('path');
 const { updateExistingRegularFile } = require('./secure-file-operations');
+const { verifyAdminCspBuild } = require('./verify-admin-csp-build');
 
 const MEDUSA_SERVER_PATH = path.join(process.cwd(), '.medusa', 'server');
 const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, 'package.json');
@@ -12,6 +13,7 @@ const LOCAL_PACKAGE_JSON = path.join(process.cwd(), 'package.json');
 const REPOSITORY_ROOT = path.resolve(process.cwd(), '..');
 const ROOT_PACKAGE_JSON = path.join(REPOSITORY_ROOT, 'package.json');
 const ROOT_WORKSPACE_YAML = path.join(REPOSITORY_ROOT, 'pnpm-workspace.yaml');
+const ADMIN_IS_DISABLED = ['true', '1'].includes(process.env.MEDUSA_DISABLE_ADMIN);
 const PNPM_CONFIG_CWD = fs.existsSync(ROOT_WORKSPACE_YAML)
   ? REPOSITORY_ROOT
   : process.cwd();
@@ -31,13 +33,19 @@ if (!fs.existsSync(MEDUSA_SERVER_PATH)) {
   throw new Error('.medusa/server directory not found. This indicates the Medusa build process failed. Please check for build errors.');
 }
 
-updateExistingRegularFile(
+const adminDocumentFound = updateExistingRegularFile(
   MEDUSA_ADMIN_INDEX,
   (adminDocument) => adminDocument
     .replace('<html>', '<html lang="en">')
     .replace(/,\s*user-scalable=no/g, ''),
   { missingOkay: true }
 );
+
+if (adminDocumentFound) {
+  verifyAdminCspBuild(path.join(MEDUSA_SERVER_PATH, 'public', 'admin', 'assets'));
+} else if (!ADMIN_IS_DISABLED) {
+  throw new Error('Admin index is required when MEDUSA_DISABLE_ADMIN is not enabled.');
+}
 
 // Copy pnpm-lock.yaml (scoped to the backend importer for frozen installs)
 const localLockPath = path.join(process.cwd(), 'pnpm-lock.yaml');

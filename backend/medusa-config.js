@@ -31,6 +31,7 @@ import { resolveAdminRbacModuleConfig } from './src/lib/admin-rbac-config';
 import { buildBackendResponseHeaders } from './src/lib/security/security-headers';
 import { resolveObjectStorageConfig } from './src/lib/storage/config';
 import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
+import zodStrictCspVitePlugin from './src/admin/lib/zod-strict-csp-vite-plugin.cjs';
 
 loadEnv(process.env.NODE_ENV, process.cwd());
 
@@ -129,6 +130,7 @@ const medusaConfig = {
     backendUrl: BACKEND_URL,
     disable: SHOULD_DISABLE_ADMIN,
     vite: () => ({
+      plugins: [zodStrictCspVitePlugin.createZodStrictCspVitePlugin()],
       build: {
         target: [
           "es2020",

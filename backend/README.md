@@ -62,6 +62,12 @@ framework-owned routes. Project route middleware repeats the boundary for
 custom APIs, while the Admin and static-file servers remain free to replace
 the conservative `no-store` default with their reviewed cache policies.
 
+The Admin build keeps `script-src 'self'` without `unsafe-eval`. A fail-closed
+Vite transform disables Zod's empty-`Function` capability probe in direct and
+prebundled Dashboard copies, and the post-build package step rejects any Admin
+index asset that still contains that probe shape. This preserves normal schema
+validation while selecting Zod's CSP-compatible non-JIT parser path.
+
 Production uses Medusa's official `@medusajs/file-s3` provider in
 S3-compatible path-style mode. The provider keeps the historical `minio` ID so
 existing file records remain valid. The bucket and public-read policy are

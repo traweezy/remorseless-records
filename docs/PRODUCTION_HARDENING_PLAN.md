@@ -470,6 +470,10 @@ assignments or values.
 - [x] Pass focused Backend lint, strict typecheck, build, and 76 header tests;
       pass Storefront lint, strict typecheck, the production build, and 29
       focused CSP/proxy/error/JSON-LD/cookie/image-configuration tests.
+- [x] Remove all direct and prebundled Admin Zod eval capability probes at Vite
+      build time without adding `unsafe-eval`; fail the packaged build if any
+      reviewed empty-`Function` probe remains, with seven focused regression
+      tests.
 - [x] Pass the complete local quality, coverage, security, and production-build
       matrix; validate the recovery surface in real Chromium and capture both
       browser and full-desktop `flameshot` screenshots.
@@ -492,15 +496,15 @@ eval capability probe as an enforced CSP event during hydrated catalog
 navigation. Production does not add `unsafe-eval`: the documented Zod
 `jitless` configuration now skips the probe before any client schema loads.
 
-Current local evidence: cross-app lint and strict typecheck, all 162 Backend
-suites with 866 tests, and all 107 Storefront suites with 558 tests pass.
+Current local evidence: cross-app lint and strict typecheck, all 164 Backend
+suites with 873 tests, and all 107 Storefront suites with 558 tests pass.
 Storefront coverage is 93.67% statements, 85.98% branches, 94.59% functions,
 and 93.64% lines. The production audit reports only the three documented
 ignored moderates; extract-zip and React Router behavioral security verifiers
 pass; Trivy reports zero high/critical dependency, misconfiguration, or secret
 findings; Gitleaks reports no leaks across the full tracked history; and the
 CycloneDX SBOM and production-license inventory verify. Both production builds
-pass. The Admin main bundle is 1,799,024 gzip bytes and the total is 2,394,058
+pass. The Admin main bundle is 1,798,138 gzip bytes and the total is 2,392,949
 gzip bytes, both within budget.
 
 The corrected local production preview served a representative seeded
@@ -547,6 +551,32 @@ now admits only exact HTTPS `images.unsplash.com`, deduplicates configured
 hosts, retains the direct-browser CSP exclusion, and passes four focused
 configuration tests. This corrective image deployment and a zero-400 browser
 repeat remain required before the slice can close.
+
+Image correction commit `c5699aba8a641dbb1fa8d7c2f7c7f915dd06fc97`
+passed Root CI `33031725836`, Backend CI `33031725848`, and Storefront CI
+`33031725903`. Railway held Backend
+`0eac659b-08d7-420e-a3fa-d64e4b7674fb` and Storefront
+`9db48aba-8561-4e4d-8e3e-0ca4a3c5e248` until all three suites passed, then
+deployed that exact SHA successfully. All six seeded Unsplash images returned
+HTTP 200 `image/jpeg` through `/_next/image`; the complete route, header, nonce,
+SRI, JSON-LD, cache, and redirect matrix remained green. Real Chromium reported
+zero Storefront CSP events, HTTP errors, page errors, unexpected request
+failures, or console errors across Home, hydrated Catalog navigation, About,
+and Checkout. Next's cancelled speculative RSC prefetches were classified
+separately from request failures.
+
+The same exact-SHA browser run discovered three enforced `script-src` events
+on the unauthenticated Admin: three bundled Zod copies independently ran their
+caught empty-`Function` capability probes. Production still does not add
+`unsafe-eval`. A fail-closed Admin Vite transform now selects the non-JIT Zod
+path in both direct modules and the prebundled Dashboard copy, while the
+post-build verifier rejects any generated Admin index containing a reviewed
+probe shape. The full Backend build, frozen packaged install, bundle budget,
+164 suites/873 tests, lint, strict typecheck, and production audit pass. Real
+Chromium loaded the generated login UI under strict `script-src 'self'` with
+zero CSP events and zero page errors; the 1440×1000 screenshot was inspected
+for clipping, hierarchy, and legibility. Exact staging deployment and repeat
+Admin browser/log acceptance remain required before this slice can close.
 
 ## Remaining authorization work
 
