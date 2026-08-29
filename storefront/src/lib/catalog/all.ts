@@ -49,8 +49,8 @@ export const getFullCatalogHits = unstable_cache(
       }
 
       return hits
-    } catch (error) {
-      console.error("[getFullCatalogHits] Failed to load catalog", error)
+    } catch {
+      console.error("[getFullCatalogHits] Failed to load catalog")
       return []
     }
   },

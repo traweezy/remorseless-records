@@ -13,13 +13,22 @@ describe("medusa client initialization", () => {
   })
 
   it("creates medusa sdk and exposes store client", async () => {
-    const sdkInstance = {
-      store: { product: { list: vi.fn() } },
-    }
+    const fetch = vi.fn<
+      (
+        input: string,
+        init?: { query?: Record<string, unknown>; signal?: AbortSignal }
+      ) => Promise<Response>
+    >()
     const ctorSpy = vi.fn()
 
     class MedusaMock {
-      store = sdkInstance.store
+      client = { fetch }
+      store = {
+        product: {
+          list: (query: Record<string, unknown>) =>
+            this.client.fetch("/store/products", { query }),
+        },
+      }
 
       constructor(config: Record<string, unknown>) {
         ctorSpy(config)
@@ -41,12 +50,27 @@ describe("medusa client initialization", () => {
 
     const { medusa, storeClient } = await import("@/lib/medusa/client")
     expect(medusa).toBeInstanceOf(MedusaMock)
-    expect(storeClient).toBe(sdkInstance.store)
+    expect(storeClient).toBe(medusa.store)
     expect(ctorSpy).toHaveBeenCalledWith({
       baseUrl: backendUrl,
       publishableKey,
       debug: false,
     })
+
+    const response = new Response(null, { status: 204 })
+    fetch.mockResolvedValue(response)
+    await expect(medusa.client.fetch("/store/products")).resolves.toBe(response)
+    expect(fetch.mock.calls[0]?.[0]).toBe("/store/products")
+    const init = fetch.mock.calls[0]?.[1] as
+      | { signal?: unknown }
+      | undefined
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+
+    await storeClient.product.list({ limit: 1 })
+    const storeInit = fetch.mock.calls[1]?.[1] as
+      | { signal?: unknown }
+      | undefined
+    expect(storeInit?.signal).toBeInstanceOf(AbortSignal)
   })
 
   it("throws when publishable key is missing", async () => {

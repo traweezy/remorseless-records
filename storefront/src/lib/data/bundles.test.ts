@@ -50,15 +50,18 @@ describe("getBundleComposition", () => {
     await expect(getBundleComposition("single")).resolves.toBeNull()
   })
 
-  it("fails closed and reports a safe error reason", async () => {
+  it("fails closed and reports only a safe failure class", async () => {
     const fetch = vi.fn().mockRejectedValue(new Error("service unavailable"))
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
     const { getBundleComposition } = await loadBundleModule(fetch)
 
     await expect(getBundleComposition("broken")).resolves.toBeNull()
     expect(errorSpy).toHaveBeenCalledWith(
-      "[bundle:broken] Failed to load composition",
-      { reason: "service unavailable" }
+      "[bundle] Failed to load composition",
+      { failure: "unavailable" }
+    )
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(
+      "service unavailable"
     )
   })
 
@@ -69,8 +72,8 @@ describe("getBundleComposition", () => {
 
     await expect(getBundleComposition("offline")).resolves.toBeNull()
     expect(errorSpy).toHaveBeenCalledWith(
-      "[bundle:offline] Failed to load composition",
-      { reason: "offline" }
+      "[bundle] Failed to load composition",
+      { failure: "unavailable" }
     )
   })
 })

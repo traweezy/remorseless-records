@@ -9,6 +9,10 @@ import {
   getRecentProducts,
 } from "@/lib/data/products"
 import { normalizeRibbonLabel } from "@/lib/products/ribbons"
+import {
+  createProviderSignal,
+  toProviderRequestError,
+} from "@/lib/http/provider-boundary"
 
 type StoreProduct = HttpTypes.StoreProduct
 
@@ -76,6 +80,7 @@ const fetchCatalogShelves = async (): Promise<
         "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
       },
       next: { revalidate: 60, tags: ["catalog-shelves"] },
+      signal: createProviderSignal(),
     })
     if (!response.ok) {
       console.error(
@@ -92,7 +97,9 @@ const fetchCatalogShelves = async (): Promise<
     }
     return parsed.data.shelves
   } catch (error) {
-    console.error("[catalog-shelves] Failed to fetch shelves", error)
+    console.error("[catalog-shelves] Failed to fetch shelves", {
+      failure: toProviderRequestError(error).kind,
+    })
     return null
   }
 }

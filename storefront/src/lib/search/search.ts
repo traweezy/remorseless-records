@@ -5,7 +5,12 @@ import {
   normalizeSearchHit,
 } from "@/lib/search/normalize"
 import type { ProductSearchHit } from "@/types/product"
-import type { Filter, Meilisearch, SearchResponse } from "meilisearch"
+import type {
+  Filter,
+  Meilisearch,
+  SearchParams,
+  SearchResponse,
+} from "meilisearch"
 
 export const PRODUCTS_INDEX = "products"
 export const CATALOG_PAGE_SIZE = 60
@@ -488,9 +493,17 @@ export const searchProductsWithClient = async (
     sort,
     inStockOnly,
   }: ProductSearchRequest,
-  filterableAttributes: readonly string[] = CATALOG_FILTERABLE_ATTRIBUTES
+  filterableAttributes: readonly string[] = CATALOG_FILTERABLE_ATTRIBUTES,
+  signal?: AbortSignal
 ): Promise<ProductSearchResponse> => {
   const index = client.index(PRODUCTS_INDEX)
+  const searchIndex = (
+    searchQuery: string,
+    options: SearchParams
+  ): Promise<SearchResponse<Record<string, unknown>>> =>
+    signal
+      ? index.search<Record<string, unknown>>(searchQuery, options, { signal })
+      : index.search<Record<string, unknown>>(searchQuery, options)
   const filterable = new Set(filterableAttributes)
   const { filterExpression, postFilters } = buildFilter(
     filters,
@@ -589,7 +602,7 @@ export const searchProductsWithClient = async (
   )
 
   if (!postFilters.length) {
-    const response = await index.search<Record<string, unknown>>(query ?? "", {
+    const response = await searchIndex(query ?? "", {
       limit: requestedLimit,
       offset: requestedOffset,
       attributesToSearchOn: [...CATALOG_SEARCH_ATTRIBUTES],
@@ -641,7 +654,7 @@ export const searchProductsWithClient = async (
     }
     const rawBatchSize = Math.min(batchSize, remainingRawWork)
     const response: SearchResponse<Record<string, unknown>> =
-      await index.search<Record<string, unknown>>(query ?? "", {
+      await searchIndex(query ?? "", {
         limit: rawBatchSize,
         offset: rawOffset,
         attributesToSearchOn: [...CATALOG_SEARCH_ATTRIBUTES],

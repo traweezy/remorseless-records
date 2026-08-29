@@ -3,6 +3,10 @@ import "server-only"
 import { Meilisearch } from "meilisearch"
 
 import { searchServerEnv } from "@/config/env.search.server"
+import {
+  createProviderSignal,
+  toProviderRequestError,
+} from "@/lib/http/provider-boundary"
 import { enrichSearchResponse } from "@/lib/search/enrich"
 import {
   type ProductSearchRequest,
@@ -29,6 +33,16 @@ export const searchProductsServer = async (
   request: ProductSearchRequest
 ): Promise<ProductSearchResponse> => {
   const client = getServerClient()
-  const response = await searchProductsWithClient(client, request)
+  let response: ProductSearchResponse
+  try {
+    response = await searchProductsWithClient(
+      client,
+      request,
+      undefined,
+      createProviderSignal()
+    )
+  } catch (error) {
+    throw toProviderRequestError(error)
+  }
   return enrichSearchResponse(response)
 }

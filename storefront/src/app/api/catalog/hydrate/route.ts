@@ -3,6 +3,7 @@ import type { HttpTypes } from "@medusajs/types"
 import { z } from "zod"
 
 import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
+import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { resolveRegionId } from "@/lib/regions"
@@ -85,8 +86,17 @@ export async function POST(request: Request) {
         Boolean(hit)
       ),
     })
-  } catch {
+  } catch (error) {
     console.error("[api/catalog/hydrate] Failed to hydrate handles")
+    const problem = providerProblem(error, "catalog")
+    if (problem) {
+      return jsonApiError(
+        request,
+        problem.detail,
+        problem.status,
+        problem.code
+      )
+    }
     return jsonApiError(
       request,
       "Failed to hydrate catalog entries",

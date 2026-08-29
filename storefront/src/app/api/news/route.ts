@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { fetchNewsEntries, NEWS_PAGE_SIZE } from "@/lib/data/news"
+import { providerProblem } from "@/lib/http/provider-boundary"
 import {
   enforceRateLimit,
   jsonApiError,
@@ -35,7 +36,25 @@ export const GET = async (request: Request) => {
   const limit = parsed.data.limit ?? NEWS_PAGE_SIZE
   const offset = parsed.data.offset ?? 0
 
-  const payload = await fetchNewsEntries({ limit, offset, request })
-
-  return jsonApiResponse(payload)
+  try {
+    const payload = await fetchNewsEntries({ limit, offset, request })
+    return jsonApiResponse(payload)
+  } catch (error) {
+    console.error("[api/news] Failed to load entries")
+    const problem = providerProblem(error, "news")
+    if (problem) {
+      return jsonApiError(
+        request,
+        problem.detail,
+        problem.status,
+        problem.code
+      )
+    }
+    return jsonApiError(
+      request,
+      "Unable to load news entries.",
+      500,
+      "news_internal_error"
+    )
+  }
 }

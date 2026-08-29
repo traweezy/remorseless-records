@@ -74,6 +74,11 @@ describe("searchProductsServer", () => {
       apiKey: meiliKey,
     })
     expect(searchProductsWithClient).toHaveBeenCalledTimes(1)
+    const searchCall = searchProductsWithClient.mock.calls[0]
+    expect(searchCall?.[0]).toBeInstanceOf(MeilisearchMock)
+    expect(searchCall?.[1]).toEqual({ query })
+    expect(searchCall?.[2]).toBeUndefined()
+    expect(searchCall?.[3]).toBeInstanceOf(AbortSignal)
     expect(enrichSearchResponse).toHaveBeenCalledTimes(1)
     expect(result.hits).toEqual([{ id: hitId }])
   })

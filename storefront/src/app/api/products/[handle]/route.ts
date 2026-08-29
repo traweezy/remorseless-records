@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server"
 import { z } from "zod"
 
 import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
+import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { resolveRegionId } from "@/lib/regions"
 import {
@@ -73,8 +74,17 @@ export const GET = async (
     }
 
     return jsonApiResponse({ product })
-  } catch {
+  } catch (error) {
     console.error("Failed to load product for quick shop")
+    const problem = providerProblem(error, "catalog")
+    if (problem) {
+      return jsonApiError(
+        _request,
+        problem.detail,
+        problem.status,
+        problem.code
+      )
+    }
     return jsonApiError(
       _request,
       "Unable to load product",

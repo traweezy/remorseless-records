@@ -1,9 +1,14 @@
 import { unstable_cache } from "next/cache"
 
 import { runtimeEnv } from "@/config/env"
+import {
+  createProviderSignal,
+  toProviderRequestError,
+} from "@/lib/http/provider-boundary"
 import { buildPublicProductPath } from "@/lib/products/routes"
 
 const DISCOGRAPHY_REVALIDATE_SECONDS = 60
+const DISCOGRAPHY_MAX_PAGES = 25
 
 export type DiscographyAvailability =
   "in_print" | "out_of_print" | "preorder" | "digital_only" | "unknown"
@@ -228,7 +233,7 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
     let offset = 0
     let total: number | null = null
 
-    while (true) {
+    for (let page = 0; page < DISCOGRAPHY_MAX_PAGES; page += 1) {
       const url = new URL("/store/discography", runtimeEnv.medusaBackendUrl)
       url.searchParams.set("limit", String(limit))
       url.searchParams.set("offset", String(offset))
@@ -241,6 +246,7 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
           revalidate: DISCOGRAPHY_REVALIDATE_SECONDS,
           tags: ["discography"],
         },
+        signal: createProviderSignal(),
       })
 
       if (!response.ok) {
@@ -258,13 +264,16 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
       offset += entries.length
 
       if (!entries.length || (total !== null && offset >= total)) {
-        break
+        return collected.map(normalizeEntry)
       }
     }
 
-    return collected.map(normalizeEntry)
+    console.error("[discography] Reached the provider pagination ceiling")
+    return []
   } catch (error) {
-    console.error("[discography] Failed to load discography", error)
+    console.error("[discography] Failed to load discography", {
+      failure: toProviderRequestError(error).kind,
+    })
     return []
   }
 }

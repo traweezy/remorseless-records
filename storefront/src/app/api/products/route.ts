@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
+import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { resolveRegionId } from "@/lib/regions"
 import {
@@ -118,8 +119,17 @@ export const GET = async (request: Request) => {
       offset: options.offset as number,
       total,
     })
-  } catch {
+  } catch (error) {
     console.error("Product fallback endpoint failed")
+    const problem = providerProblem(error, "catalog")
+    if (problem) {
+      return jsonApiError(
+        request,
+        problem.detail,
+        problem.status,
+        problem.code
+      )
+    }
     return jsonApiError(
       request,
       "Unable to load products",

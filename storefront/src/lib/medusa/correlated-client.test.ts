@@ -52,5 +52,31 @@ describe("correlatedMedusaFetch", () => {
       new RegExp(`^00-${TRACE_ID}-[0-9a-f]{16}-01$`)
     )
     expect(init.headers.traceparent).not.toBe(`00-${TRACE_ID}-${PARENT_ID}-01`)
+    expect((init as { signal?: unknown }).signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it("preserves cancellation and redacts provider failures", async () => {
+    const caller = new AbortController()
+    fetchMock.mockRejectedValue(
+      new Error("https://provider.test/private?email=customer@example.test")
+    )
+    const request = new Request("https://storefront.test/api/products")
+
+    const failure = await correlatedMedusaFetch(
+      request,
+      "/store/products",
+      { signal: caller.signal }
+    ).catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({
+      kind: "unavailable",
+      message: "The upstream provider request failed",
+      name: "ProviderRequestError",
+    })
+    expect(JSON.stringify(failure)).not.toContain("customer")
+    const init = fetchMock.mock.calls[0]?.[1] as { signal?: AbortSignal }
+    expect(init.signal).toBeInstanceOf(AbortSignal)
+    caller.abort()
+    expect(init.signal?.aborted).toBe(true)
   })
 })

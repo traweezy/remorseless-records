@@ -85,8 +85,8 @@ const getCollectionByHandle = unstable_cache(
       })
 
       return collections[0] ?? null
-    } catch (error) {
-      console.error(`[getCollectionByHandle:${handle}] Failed to load collection`, error)
+    } catch {
+      console.error("[getCollectionByHandle] Failed to load collection")
       return null
     }
   },
@@ -142,8 +142,8 @@ export const getCollectionProductsByHandle = unstable_cache(
       }
 
       return collected
-    } catch (error) {
-      console.error(`[getCollectionProductsByHandle:${handle}] Failed to load`, error)
+    } catch {
+      console.error("[getCollectionProductsByHandle] Failed to load products")
       return []
     }
   },
@@ -158,8 +158,8 @@ export const getHomepageProducts = unstable_cache(
         limit: 16,
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)
-    } catch (error) {
-      console.error("[getHomepageProducts] Failed to load products", error)
+    } catch {
+      console.error("[getHomepageProducts] Failed to load products")
       return []
     }
   },
@@ -176,8 +176,8 @@ export const getProductByHandle = unstable_cache(
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)
       return products[0] ?? null
-    } catch (error) {
-      console.error("[getProductByHandle] Failed to load product", error)
+    } catch {
+      console.error("[getProductByHandle] Failed to load product")
       return null
     }
   },
@@ -193,8 +193,8 @@ export const getProductsByCollection = unstable_cache(
         limit,
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)
-    } catch (error) {
-      console.error("[getProductsByCollection] Failed to load products", error)
+    } catch {
+      console.error("[getProductsByCollection] Failed to load products")
       return []
     }
   },
@@ -209,8 +209,8 @@ export const getRecentProducts = unstable_cache(
         limit,
         fields: PRODUCT_DETAIL_FIELDS,
       } satisfies HttpTypes.StoreProductListParams)
-    } catch (error) {
-      console.error("[getRecentProducts] Failed to load products", error)
+    } catch {
+      console.error("[getRecentProducts] Failed to load products")
       return []
     }
   },
@@ -241,8 +241,8 @@ export const getProductsByIds = async (
           const product = byId.get(id)
           return product ? [product] : []
         })
-      } catch (error) {
-        console.error("[getProductsByIds] Failed to load products", error)
+      } catch {
+        console.error("[getProductsByIds] Failed to load products")
         return []
       }
     },
@@ -372,8 +372,8 @@ export const getAllProductHandles = unstable_cache(
       }
 
       return handles
-    } catch (error) {
-      console.error("[getAllProductHandles] Failed to load products", error)
+    } catch {
+      console.error("[getAllProductHandles] Failed to load products")
       return []
     }
   },

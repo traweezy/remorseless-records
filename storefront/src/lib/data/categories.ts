@@ -104,8 +104,8 @@ export const getMetalGenreCategories = unstable_cache(
         metalRoot.category_children,
         [coerceLabel(metalRoot, METAL_HANDLE)]
       )
-    } catch (error) {
-      console.error("[getMetalGenreCategories] Failed to load categories", error)
+    } catch {
+      console.error("[getMetalGenreCategories] Failed to load categories")
       return []
     }
   },

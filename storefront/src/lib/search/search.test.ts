@@ -220,6 +220,32 @@ describe("searchProductsWithClient", () => {
     expect(response.facets.productTypes).toEqual({ album: 1 })
   })
 
+  it("passes caller cancellation to every Meilisearch request", async () => {
+    const index: MockIndex = {
+      uid: "products-deadline",
+      getSettings: vi.fn(),
+      search: vi.fn().mockResolvedValue({
+        hits: [],
+        estimatedTotalHits: 0,
+        facetDistribution: undefined,
+      }),
+    }
+    const controller = new AbortController()
+
+    await searchProductsWithClient(
+      makeClient(index),
+      { query: "deadline", limit: 1 },
+      undefined,
+      controller.signal
+    )
+
+    expect(index.search).toHaveBeenCalledWith(
+      "deadline",
+      expect.any(Object),
+      { signal: controller.signal }
+    )
+  })
+
   it.each([
     {
       label: "generic facet",

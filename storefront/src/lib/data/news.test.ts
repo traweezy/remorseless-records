@@ -115,6 +115,39 @@ describe("news data layer", () => {
       new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`)
     )
     expect(headers.get("x-publishable-api-key")).toBe(publishableKey)
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it("surfaces a redacted provider timeout for request-bound reads", async () => {
+    const backendUrl = faker.internet.url()
+    const publishableKey = faker.string.alphanumeric(16)
+
+    vi.doMock("next/cache", () => ({
+      unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
+    }))
+    vi.doMock("@/config/env", () => ({
+      runtimeEnv: {
+        medusaBackendUrl: backendUrl,
+        medusaPublishableKey: publishableKey,
+      },
+    }))
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new DOMException("provider URL and request leaked", "TimeoutError")
+    )
+
+    const { fetchNewsEntries } = await import("@/lib/data/news")
+    const failure = await fetchNewsEntries({
+      limit: 6,
+      offset: 0,
+      request: new Request("https://storefront.test/api/news"),
+    }).catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({
+      kind: "timeout",
+      message: "The upstream provider request timed out",
+      name: "ProviderRequestError",
+    })
+    expect(JSON.stringify(failure)).not.toContain("provider URL")
   })
 
   it("fetches a single entry by slug and handles 404", async () => {

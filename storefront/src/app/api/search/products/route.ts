@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { providerProblem } from "@/lib/http/provider-boundary"
 import { searchProductsServer } from "@/lib/search/server"
 import {
   CATALOG_PAGE_SIZE,
@@ -184,8 +185,17 @@ export const POST = async (request: Request) => {
     const normalized = normalizeRequest(parsed.data)
     const response = await searchProductsServer(normalized)
     return jsonApiResponse(response)
-  } catch {
+  } catch (error) {
     console.error("/api/search/products failed")
+    const problem = providerProblem(error, "search")
+    if (problem) {
+      return jsonApiError(
+        request,
+        problem.detail,
+        problem.status,
+        problem.code
+      )
+    }
     return jsonApiError(
       request,
       "Unable to perform search",

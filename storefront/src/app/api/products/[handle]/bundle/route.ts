@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server"
 import { z } from "zod"
 
 import { getCorrelatedBundleComposition } from "@/lib/data/bundles"
+import { providerProblem } from "@/lib/http/provider-boundary"
 import {
   enforceRateLimit,
   jsonApiProblem,
@@ -40,6 +41,21 @@ export const GET = async (
     })
   }
 
-  const bundle = await getCorrelatedBundleComposition(parsed.data, request)
-  return jsonApiResponse({ bundle })
+  try {
+    const bundle = await getCorrelatedBundleComposition(parsed.data, request)
+    return jsonApiResponse({ bundle })
+  } catch (error) {
+    const problem = providerProblem(error, "catalog")
+    if (problem) {
+      return jsonApiProblem({
+        request,
+        status: problem.status,
+        code: problem.code,
+        title: "Catalog service unavailable",
+        detail: problem.detail,
+        instance: request.nextUrl.pathname,
+      })
+    }
+    throw error
+  }
 }

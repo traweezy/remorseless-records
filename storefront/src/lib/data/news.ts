@@ -2,6 +2,11 @@ import { unstable_cache } from "next/cache"
 
 import { runtimeEnv } from "@/config/env"
 import { createUpstreamHeaders } from "@/lib/http/correlation"
+import {
+  createProviderSignal,
+  ProviderRequestError,
+  toProviderRequestError,
+} from "@/lib/http/provider-boundary"
 
 export const NEWS_PAGE_SIZE = 6
 
@@ -108,10 +113,16 @@ export const fetchNewsEntries = async ({
       ...(request
         ? { cache: "no-store" as const }
         : { next: { revalidate: 300, tags: ["news"] } }),
+      signal: createProviderSignal(request?.signal),
     })
 
     if (!response.ok) {
-      console.error("[news] Failed to fetch entries", response.status)
+      if (request) {
+        throw new ProviderRequestError("unavailable")
+      }
+      console.error("[news] Failed to fetch entries", {
+        status: response.status,
+      })
       return { entries: [], count: 0, offset, limit }
     }
 
@@ -129,7 +140,13 @@ export const fetchNewsEntries = async ({
       limit: typeof payload.limit === "number" ? payload.limit : limit,
     }
   } catch (error) {
-    console.error("[news] Failed to fetch entries", error)
+    const providerError = toProviderRequestError(error)
+    if (request) {
+      throw providerError
+    }
+    console.error("[news] Failed to fetch entries", {
+      failure: providerError.kind,
+    })
     return { entries: [], count: 0, offset, limit }
   }
 }
@@ -149,7 +166,7 @@ export const fetchNewsEntryBySlug = async (
 
   try {
     const url = new URL(
-      `/store/news/${normalizedSlug}`,
+      `/store/news/${encodeURIComponent(normalizedSlug)}`,
       runtimeEnv.medusaBackendUrl
     )
 
@@ -158,11 +175,14 @@ export const fetchNewsEntryBySlug = async (
         "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
       },
       next: { revalidate: 300, tags: ["news"] },
+      signal: createProviderSignal(),
     })
 
     if (!response.ok) {
       if (response.status !== 404) {
-        console.error("[news] Failed to fetch entry", response.status)
+        console.error("[news] Failed to fetch entry", {
+          status: response.status,
+        })
       }
       return null
     }
@@ -170,7 +190,9 @@ export const fetchNewsEntryBySlug = async (
     const payload = (await response.json()) as { entry?: NewsApiEntry | null }
     return payload.entry ? normalizeEntry(payload.entry) : null
   } catch (error) {
-    console.error("[news] Failed to fetch entry", error)
+    console.error("[news] Failed to fetch entry", {
+      failure: toProviderRequestError(error).kind,
+    })
     return null
   }
 }

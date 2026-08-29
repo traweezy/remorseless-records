@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache"
 import { medusa } from "@/lib/medusa"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import type { BundleComposition } from "@/types/bundle"
+import { toProviderRequestError } from "@/lib/http/provider-boundary"
 
 type BundleCompositionResponse = {
   bundle: BundleComposition
@@ -23,9 +24,13 @@ const fetchBundleComposition = async (
         })
     return response.bundle.componentCount > 0 ? response.bundle : null
   } catch (error) {
-    console.error(`[bundle:${handle}] Failed to load composition`, {
-      reason: error instanceof Error ? error.message : error,
+    const providerError = toProviderRequestError(error)
+    console.error("[bundle] Failed to load composition", {
+      failure: providerError.kind,
     })
+    if (request) {
+      throw providerError
+    }
     return null
   }
 }
