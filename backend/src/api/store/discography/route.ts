@@ -1,11 +1,14 @@
-import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
+import type {
+  MedusaResponse,
+  MedusaStoreRequest,
+} from "@medusajs/framework/http"
 import { z } from "@medusajs/framework/zod"
-import { MedusaError, Modules } from "@medusajs/framework/utils"
+import { MedusaError } from "@medusajs/framework/utils"
 
 import {
-  loadDiscographyProductLinks,
-  type DiscographyProductReader,
-} from "@/lib/discography/product-links"
+  listVisibleProductsByIds,
+  resolveStoreProductVisibility,
+} from "@/lib/store-product-visibility"
 import type DiscographyModuleService from "@/modules/discography/service"
 import { withStableDiscographyOrder } from "@/modules/discography/list-order"
 import {
@@ -21,7 +24,7 @@ const listQuerySchema = z.object({
 })
 
 export const GET = async (
-  req: MedusaRequest,
+  req: MedusaStoreRequest,
   res: MedusaResponse
 ): Promise<void> => {
   const parsed = listQuerySchema.safeParse(req.query)
@@ -35,9 +38,7 @@ export const GET = async (
   const discographyService = req.scope.resolve(
     "discography"
   ) as DiscographyService
-  const productService = req.scope.resolve(
-    Modules.PRODUCT
-  ) as DiscographyProductReader
+  const { query, salesChannelIds } = resolveStoreProductVisibility(req)
 
   const take = limit ?? 200
   const skip = offset ?? 0
@@ -54,16 +55,41 @@ export const GET = async (
           created_at: "DESC",
         }),
       }
-    )
+  )
   const records = entries as DiscographyEntryRecord[]
-  const productsById = await loadDiscographyProductLinks(
-    productService,
-    records
+  const productIds = Array.from(
+    new Set(
+      records.flatMap((entry) =>
+        entry.source_mode === "catalog_product" && entry.product_id
+          ? [entry.product_id]
+          : []
+      )
+    )
+  )
+  const visibleProducts = await listVisibleProductsByIds<
+    Record<string, unknown> & {
+      handle?: string | null
+      id: string
+      status?: string | null
+    }
+  >({
+    fields: ["id", "handle", "status"],
+    productIds,
+    query,
+    salesChannelIds,
+  })
+  const productsById = new Map(
+    visibleProducts.map((product) => [product.id, product])
   )
 
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+  )
+  res.setHeader("Vary", "x-publishable-api-key")
   res.status(200).json({
-    entries: records.map((entry) =>
-      serializeDiscographyEntry(
+    entries: records.map((entry) => {
+      const serialized = serializeDiscographyEntry(
         entry,
         entry.source_mode === "catalog_product"
           ? {
@@ -73,7 +99,10 @@ export const GET = async (
             }
           : {}
       )
-    ),
+      return serialized.linkHealth === "healthy"
+        ? serialized
+        : { ...serialized, productId: null, productHandle: null }
+    }),
     count,
     offset: skip,
     limit: take,

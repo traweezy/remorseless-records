@@ -75,6 +75,15 @@ cache boundary but bypass project API observability middleware. Dynamic
 correlation at that earlier framework seam remains tracked hardening work; do
 not describe Admin static responses or built-in pre-router failures as traced.
 
+Public Product visibility follows Medusa's Store boundary: a Product must be
+published and linked to at least one sales channel carried by the request's
+publishable key. Native Store Product routes enforce that boundary in Medusa.
+The shared `src/lib/store-product-visibility.ts` helper applies the same rule to
+the custom bundle, shelf, discography, related-product, and product-handle
+routes. Their cacheable responses vary on `x-publishable-api-key`; callers must
+not reuse a response across keys. The product-handle feed is an opaque,
+100-row keyset API rather than an unbounded offset scan.
+
 The Admin build keeps `script-src 'self'` without `unsafe-eval`. A fail-closed
 Vite transform disables Zod's empty-`Function` capability probe in direct and
 prebundled Dashboard copies, and the post-build package step rejects any Admin
@@ -515,10 +524,11 @@ Discography has two explicit sources. Every published custom catalog profile
 whose controlled product type is `music-release` produces one store-linked
 record. Historical releases that are not currently sold are independent manual
 records. Store-linked records use the stable Product ID; the customer API
-hydrates all referenced Products in one batch and exposes a handle only while
-the current Product exists and is published. A missing or unpublished Product
-therefore leaves a useful discography record without creating a broken purchase
-link.
+hydrates all referenced Products in one bounded batch and exposes an ID and
+handle only while the current Product is published and linked to the requesting
+publishable key's sales channel. A missing, unpublished, or out-of-channel
+Product therefore leaves a useful discography record without creating a broken
+purchase link.
 
 The Storefront cache revalidates this read model every 60 seconds, bounding the
 customer-visible lifetime of a recently unpublished or archived link while

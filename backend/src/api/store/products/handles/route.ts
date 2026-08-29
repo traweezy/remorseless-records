@@ -1,84 +1,92 @@
-import { MedusaError, Modules } from "@medusajs/framework/utils"
-import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
-const PRODUCT_RELATIONS: string[] = []
-const PRODUCT_FIELDS = ["id", "handle", "title", "collection_id", "metadata", "updated_at", "created_at"]
+import type {
+  MedusaResponse,
+  MedusaStoreRequest,
+} from "@medusajs/framework/http";
+import { MedusaError } from "@medusajs/framework/utils";
+import { z } from "zod";
 
-export const GET = async (_req: MedusaRequest, res: MedusaResponse): Promise<void> => {
-  const productModule = _req.scope.resolve(Modules.PRODUCT) as {
-    listAndCountProducts: (
-      filters?: Record<string, unknown>,
-      config?: {
-        relations?: string[]
-        select?: string[]
-        skip?: number
-        take?: number
-        order?: Record<string, "ASC" | "DESC">
-      }
-    ) => Promise<
-      [
-        Array<{
-          handle?: string | null
-          id?: string | null
-          updated_at?: string | null
-          created_at?: string | null
-        }>,
-        number
-      ]
-    >
-  }
+import {
+  decodeStoreProductCursor,
+  encodeStoreProductCursor,
+  listVisibleProductPage,
+  resolveStoreProductVisibility,
+  STORE_PRODUCT_PAGE_LIMIT,
+} from "@/lib/store-product-visibility";
 
-  try {
-    const handles: Array<{
-      handle: string
-      id: string
-      updated_at: string | null
-      created_at: string | null
-    }> = []
+type ProductHandleRecord = Record<string, unknown> & {
+  created_at?: string | null;
+  handle?: string | null;
+  id?: string | null;
+  updated_at?: string | null;
+};
 
-    const pageSize = 200
-    let offset = 0
-    // paginate through all products
-    for (;;) {
-      const [products] = await productModule.listAndCountProducts(
-        {},
-        {
-          relations: PRODUCT_RELATIONS,
-          select: PRODUCT_FIELDS,
-          skip: offset,
-          take: pageSize,
-          order: { created_at: "ASC" },
-        }
-      )
+const PRODUCT_HANDLE_FIELDS = [
+  "id",
+  "handle",
+  "updated_at",
+  "created_at",
+] as const;
 
-      if (!products.length) {
-        break
-      }
+const listQuerySchema = z
+  .object({
+    cursor: z.string().trim().min(1).max(256).optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(STORE_PRODUCT_PAGE_LIMIT)
+      .optional(),
+  })
+  .strict();
 
-      products.forEach((product) => {
-        if (!product.handle || !product.id) {
-          return
-        }
-        handles.push({
-          handle: product.handle,
-          id: product.id,
-          updated_at: (product as { updated_at?: string | null }).updated_at ?? null,
-          created_at: (product as { created_at?: string | null }).created_at ?? null,
-        })
-      })
+const asString = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length ? value.trim() : null;
 
-      if (products.length < pageSize) {
-        break
-      }
-
-      offset += products.length
-    }
-
-    res.status(200).json({ handles })
-  } catch (error) {
+export const GET = async (
+  req: MedusaStoreRequest,
+  res: MedusaResponse,
+): Promise<void> => {
+  const parsed = listQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
     throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Unable to list product handles",
-      error instanceof Error ? error.message : String(error ?? "unknown error")
-    )
+      MedusaError.Types.INVALID_DATA,
+      "Invalid product handle page query",
+    );
   }
-}
+
+  const { query, salesChannelIds } = resolveStoreProductVisibility(req);
+  const cursor = decodeStoreProductCursor(parsed.data.cursor);
+  const { nextCursor, products } =
+    await listVisibleProductPage<ProductHandleRecord>({
+      ...(cursor ? { cursor } : {}),
+      fields: PRODUCT_HANDLE_FIELDS,
+      limit: parsed.data.limit ?? STORE_PRODUCT_PAGE_LIMIT,
+      query,
+      salesChannelIds,
+    });
+  const handles = products.flatMap((product) => {
+    const handle = asString(product.handle);
+    const id = asString(product.id);
+    if (!handle || !id) {
+      return [];
+    }
+    return [
+      {
+        created_at: asString(product.created_at),
+        handle,
+        id,
+        updated_at: asString(product.updated_at),
+      },
+    ];
+  });
+
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=60, s-maxage=900, stale-while-revalidate=1800",
+  );
+  res.setHeader("Vary", "x-publishable-api-key");
+  res.status(200).json({
+    handles,
+    next_cursor: nextCursor ? encodeStoreProductCursor(nextCursor) : null,
+  });
+};

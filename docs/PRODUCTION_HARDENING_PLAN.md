@@ -36,7 +36,7 @@ tracks what is still required before production traffic is approved.
 - Latest application-changing staging SHA accepted:
   `3b7a48408b5cf419bc37672317c8d6f627816b8e`.
 - Latest documentation-bearing staging SHA accepted:
-  `3b7a48408b5cf419bc37672317c8d6f627816b8e`.
+  `40b5a3a5777677dd4af49e3dba091f4b9bcc9c7d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
   `ae4838b9-808e-46f2-9f6d-ddde0598d937` (`SUCCESS`).
@@ -766,7 +766,7 @@ returned `no-store`, preserved request ID and trace ID, and produced an
 info-level completion event. The exact-deployment error sweep contained only
 the known successful pnpm/Medusa and `next start` command banners.
 
-## Active slice: public form write-boundary hardening
+## Completed slice: public form write-boundary hardening
 
 - [x] Inventory the browser forms, Storefront BFFs, Backend targets, rate
       limits, proof patterns, Resend adapter, configuration, tests, and docs.
@@ -1437,6 +1437,80 @@ plan is `0 add / 2 change / 0 destroy`; only Railway's documented restart-
 policy readback defect remains, so it was not reapplied. No production
 environment or other Railway project was accessed or changed.
 
+Documentation closure SHA
+`40b5a3a5777677dd4af49e3dba091f4b9bcc9c7d` passed Root CI `33252304079`,
+Backend CI `33252304111`, and Storefront CI `33252304036`. Railway created
+Backend record `d73afd1b-5cbc-45d8-b556-026062dbd512` and Storefront record
+`4ce5cd3d-d264-4289-9621-a8cbc051e225` as terminal `SKIPPED` metadata with no
+image digest or IaC patch. Neither service entered build, deploy, or runtime
+release.
+
+## Active slice: public catalog read-boundary hardening
+
+- [x] Inventory native Medusa Store Product filtering and every custom public
+      helper that reads Product records.
+- [x] Add one bounded visibility helper that requires a publishable-key sales
+      channel, filters published Products, and preserves requested ordering.
+- [x] Apply the shared boundary to bundle, shelf, discography, related-product,
+      and product-handle responses; vary their cacheable responses by key.
+- [x] Replace the Backend's unbounded all-Product handle route with opaque
+      100-row keyset pages.
+- [ ] Switch sitemap and catalog fallback callers to the keyset feed with an
+      eight-second page deadline and explicit 5,000/1,000 ceilings.
+- [ ] Cap search pages at 60 results, the visible result window at 1,000, and
+      non-index post-filter work at 2,048 raw hits; apply the same result-window
+      contract to the Medusa fallback route.
+- [x] Add Backend route, helper, source-inventory, cursor, and hidden-bundle
+      identifier regressions; document its public visibility rule and feed.
+- [ ] Add Storefront fallback and search regressions; document both public
+      contracts in OpenAPI and the Storefront README.
+- [x] Pass complete repository lint, strict typecheck, Backend tests,
+      Storefront coverage, dependency/security checks, and production builds.
+- [ ] Commit and accept the Backend expand phase on exact `staging` GitHub and
+      Railway evidence before committing the Storefront consumer phase.
+- [ ] Commit and accept the Storefront phase on exact `staging` GitHub and
+      Railway evidence before another hardening slice.
+
+Discovery: Medusa 2.18's native Store Product route already injects
+`published` status and the publishable key's sales-channel link. Five custom
+routes bypassed that native query boundary: the handle feed offset-scanned the
+entire Product module, related Products scanned 1,000 unscoped records, and the
+bundle, shelf, and discography helpers did not consistently require both
+publication and channel membership. Search also accepted an unbounded offset
+and could perform repeated application-side post-filter batches. The Backend
+expand phase closes the custom visibility gaps without changing native Store
+API behavior; the ordered Storefront phase adds the explicit work ceilings.
+Final route review found that an out-of-channel
+bundle component could still expose its stored Product, Variant, inventory, or
+SKU identifiers after its hydrated Product details were removed. Bundle
+availability now queries only variants belonging to visible component Products
+and emits no hidden component identifiers; a direct route regression pins that
+redaction.
+
+Local candidate evidence: repository policy, IaC, private-artifact, framework-
+header, scheduler, runtime-log, ESLint, and both strict typecheck gates pass.
+All 180 Backend suites / 952 tests and 114 Storefront files / 602 tests pass;
+Storefront coverage is 93.74% statements, 86.23% branches, 94.65% functions,
+and 93.71% lines. Both production builds pass, the Storefront scanner found no
+server-only value or retired public search input in 127 static assets, and the
+Admin main/total gzip bundles remain within budget at 1,798,512/2,393,648
+bytes. The production audit reports only the three policy-ignored moderates;
+Trivy reports zero high/critical findings; changed-source Gitleaks is clean;
+and the generated SBOM/license pair verifies 1,321 components, 1,322
+dependency nodes, 1,004 packages, and 16 license groups.
+
+Rollout discovery: the local Storefront production build safely rejected the
+currently deployed legacy handle-feed response and completed with an empty
+fallback, but that would transiently omit sitemap/fallback Products if the
+Storefront deployed first. This slice therefore uses an explicit expand order:
+deploy and accept the backward-compatible Backend route before committing the
+Storefront consumer.
+
+Remaining for this slice: commit and push the reviewed Backend phase, verify
+exact-SHA CI, deployment, visibility, logs, and health, then repeat those gates
+for the Storefront search/keyset phase. No production environment or other
+Railway project is in scope.
+
 ## Remaining authorization work
 
 - [ ] Replace or disable the native Dashboard import drawer path that begins
@@ -1511,9 +1585,12 @@ environment or other Railway project was accessed or changed.
       understood, and enforce only after browser acceptance.
 - [x] Add App Router `error.tsx` and `global-error.tsx` boundaries with safe,
       observable recovery UX.
-- [ ] Validate strong, distinct JWT, cookie, cart, checkout-BFF, receipt, and
-      webhook secrets at startup and support controlled rotation.
-- [ ] Remove persistent bootstrap Admin credentials from normal Backend
+- [x] Validate strong, distinct JWT, cookie, cart, checkout-BFF, receipt,
+      public-form, and configured webhook secrets at production startup.
+- [ ] Document and exercise remaining JWT and direct Stripe webhook rotation;
+      cart, checkout-BFF, receipt, and public-form prior-key verification is
+      implemented and bounded.
+- [x] Remove persistent bootstrap Admin credentials from normal Backend
       runtime.
 - [ ] Move all generic abuse controls to Redis-backed atomic rate limits.
 - [ ] Trust client IP headers only behind a documented Railway proxy boundary.
@@ -1523,11 +1600,13 @@ environment or other Railway project was accessed or changed.
 - [ ] Persist privacy requests in a protected audit store if required by the
       approved retention policy.
 - [ ] Cap search offset and total work.
-- [ ] Rename Meilisearch host/search-key inputs to server-only variables and
-      remove its public domain if browser-direct search is not intentional.
+- [x] Rename Meilisearch host/search-key inputs to server-only variables and
+      remove them from browser configuration and client bundles.
+- [ ] Remove any public Meilisearch domain if exact service inspection finds
+      one; browser-direct search is not part of the accepted architecture.
 - [ ] Replace the all-product handles scan with bounded keyset pagination,
       published-status filtering, and publishable-key sales-channel filtering.
-- [ ] Verify every public helper applies published-status and publishable-key
+- [x] Verify every public helper applies published-status and publishable-key
       sales-channel boundaries.
 - [ ] Add outbound deadlines, cancellation, bounded retries, and redacted
       provider errors for content, search, email, Stripe, tax, storage,

@@ -2,10 +2,6 @@ import type {
   MedusaResponse,
   MedusaStoreRequest,
 } from "@medusajs/framework/http"
-import {
-  ContainerRegistrationKeys,
-  ProductStatus,
-} from "@medusajs/framework/utils"
 import { z } from "zod"
 
 import {
@@ -20,19 +16,14 @@ import {
   type CatalogShelfRecord,
   serializeCatalogShelf,
 } from "@/modules/catalog/serializers"
+import {
+  listVisibleProductsByIds,
+  resolveStoreProductVisibility,
+} from "@/lib/store-product-visibility"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
 type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
 type CatalogServiceMethods = Record<string, CatalogServiceMethod | undefined>
-type QueryGraph = {
-  graph: (query: {
-    entity: string
-    fields: string[]
-    filters?: Record<string, unknown>
-    pagination?: { take?: number; skip?: number }
-  }) => Promise<{ data: Array<Record<string, unknown>> }>
-}
-
 const listQuerySchema = z.object({
   handles: z
     .string()
@@ -88,7 +79,7 @@ export const GET = async (
   const { handles } = listQuerySchema.parse(req.query)
   const now = new Date()
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  const { query, salesChannelIds } = resolveStoreProductVisibility(req)
   const shelfFilters: Record<string, unknown> = { is_active: true }
   if (handles?.length) {
     shelfFilters.handle = handles
@@ -137,24 +128,21 @@ export const GET = async (
       ...profiles.map((profile) => profile.product_id),
     ].filter(Boolean))
   )
-  const productResult = candidateIds.length
-    ? await query.graph({
-        entity: "product",
+  const visibleProducts = candidateIds.length
+    ? await listVisibleProductsByIds({
         fields: ["id", "created_at"],
-        filters: {
-          id: candidateIds,
-          status: ProductStatus.PUBLISHED,
-        },
-        pagination: { take: Math.min(candidateIds.length + 10, 3_000) },
+        productIds: candidateIds,
+        query,
+        salesChannelIds,
       })
-    : { data: [] }
+    : []
   const visibleProductIds = new Set(
-    productResult.data
+    visibleProducts
       .map((product) => toString(product.id))
       .filter((id): id is string => Boolean(id))
   )
   const productCreatedAt = new Map(
-    productResult.data.flatMap((product) => {
+    visibleProducts.flatMap((product) => {
       const id = toString(product.id)
       return id ? [[id, product.created_at] as const] : []
     })

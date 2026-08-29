@@ -3,25 +3,21 @@ import type {
   MedusaStoreRequest,
 } from "@medusajs/framework/http";
 import {
-  ContainerRegistrationKeys,
   getVariantAvailability,
   MedusaError,
+  ProductStatus,
 } from "@medusajs/framework/utils";
 
 import {
   parseResolvedVariantMappings,
   type CatalogBundleComponentRecord,
 } from "@/lib/catalog/bundle-inventory";
+import {
+  listVisibleProductsByIds,
+  resolveStoreProductVisibility,
+} from "@/lib/store-product-visibility";
 
 type JsonRecord = Record<string, unknown>;
-type QueryGraph = {
-  graph: (query: {
-    entity: string;
-    fields: string[];
-    filters?: Record<string, unknown>;
-    pagination?: { take?: number; skip?: number };
-  }) => Promise<{ data: JsonRecord[] }>;
-};
 type CatalogBundleProfile = {
   id: string;
   product_id: string;
@@ -64,7 +60,7 @@ export const GET = async (
     );
   }
 
-  const salesChannelIds = req.publishable_key_context.sales_channel_ids;
+  const { query, salesChannelIds } = resolveStoreProductVisibility(req);
   if (salesChannelIds.length !== 1 || !salesChannelIds[0]) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
@@ -72,21 +68,29 @@ export const GET = async (
     );
   }
 
-  const query = req.scope.resolve(
-    ContainerRegistrationKeys.QUERY,
-  ) as QueryGraph;
-  const productResult = await query.graph({
+  const productCandidateResult = await query.graph({
     entity: "product",
-    fields: ["id", "handle", "title", "variants.id", "variants.title"],
-    filters: { handle },
+    fields: ["id"],
+    filters: { handle, status: ProductStatus.PUBLISHED },
     pagination: { take: 1 },
   });
-  const product = productResult.data[0];
-  if (!product) {
-    throw new MedusaError(MedusaError.Types.NOT_FOUND, "Product not found");
-  }
+  const productCandidateId = asString(productCandidateResult.data[0]?.id);
+  const [product] = productCandidateId
+    ? await listVisibleProductsByIds<JsonRecord>({
+        fields: [
+          "id",
+          "handle",
+          "title",
+          "variants.id",
+          "variants.title",
+        ],
+        productIds: [productCandidateId],
+        query,
+        salesChannelIds,
+      })
+    : [];
   const productId = asString(product?.id);
-  if (!productId) {
+  if (!product || !productId) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "Product not found");
   }
 
@@ -114,53 +118,36 @@ export const GET = async (
   const mappingsByComponent = components.map((component) =>
     parseResolvedVariantMappings(component),
   );
-  const mappedVariantIds = unique(
-    mappingsByComponent.flatMap((mappings) =>
-      mappings.flatMap((mapping) =>
-        mapping.componentVariants.map((variant) => variant.variantId),
-      ),
-    ),
-  );
   const componentProductIds = unique(
     components.map((component) =>
       asString((component as JsonRecord).component_product_id),
     ),
   );
 
-  const [availability, componentProductResult] = await Promise.all([
-    mappedVariantIds.length
-      ? getVariantAvailability(
-          query as Parameters<typeof getVariantAvailability>[0],
-          {
-            variant_ids: mappedVariantIds,
-            sales_channel_id: salesChannelIds[0],
-          },
-        )
-      : Promise.resolve({} as Record<string, { availability: number | null }>),
-    componentProductIds.length
-      ? query.graph({
-          entity: "product",
-          fields: [
-            "id",
-            "handle",
-            "title",
-            "variants.id",
-            "variants.title",
-            "variants.sku",
-          ],
-          filters: { id: componentProductIds },
-        })
-      : Promise.resolve({ data: [] }),
-  ]);
+  const componentProductResult = componentProductIds.length
+    ? await listVisibleProductsByIds<JsonRecord>({
+        fields: [
+          "id",
+          "handle",
+          "title",
+          "variants.id",
+          "variants.title",
+          "variants.sku",
+        ],
+        productIds: componentProductIds,
+        query,
+        salesChannelIds,
+      })
+    : [];
 
   const componentProductsById = new Map(
-    componentProductResult.data.flatMap((candidate) => {
+    componentProductResult.flatMap((candidate) => {
       const id = asString(candidate.id);
       return id ? [[id, candidate] as const] : [];
     }),
   );
   const variantDetailsById = new Map<string, JsonRecord>();
-  componentProductResult.data.forEach((candidate) => {
+  componentProductResult.forEach((candidate) => {
     const variants = Array.isArray(candidate.variants)
       ? candidate.variants
       : [];
@@ -174,6 +161,24 @@ export const GET = async (
       }
     });
   });
+  const visibleMappedVariantIds = unique(
+    mappingsByComponent.flatMap((mappings) =>
+      mappings.flatMap((mapping) =>
+        mapping.componentVariants.flatMap((variant) =>
+          variantDetailsById.has(variant.variantId) ? [variant.variantId] : [],
+        ),
+      ),
+    ),
+  );
+  const availability = visibleMappedVariantIds.length
+    ? await getVariantAvailability(
+        query as Parameters<typeof getVariantAvailability>[0],
+        {
+          variant_ids: visibleMappedVariantIds,
+          sales_channel_id: salesChannelIds[0],
+        },
+      )
+    : ({} as Record<string, { availability: number | null }>);
   const bundleVariantTitles = new Map<string, string>();
   const rawBundleVariants = Array.isArray(product.variants)
     ? product.variants
@@ -199,24 +204,30 @@ export const GET = async (
       : undefined;
     const mappings = mappingsByComponent[componentIndex] ?? [];
     const availabilityByBundleVariant = mappings.map((mapping) => {
-      const options = mapping.componentVariants.map((variant) => {
+      const options = mapping.componentVariants.flatMap((variant) => {
         const detail = variantDetailsById.get(variant.variantId);
+        if (!detail) {
+          return [];
+        }
         const availableQuantity =
           availability[variant.variantId]?.availability ?? null;
-        return {
-          variantId: variant.variantId,
-          title: asString(detail?.title) ?? variant.sku ?? "Component",
-          sku: asString(detail?.sku) ?? variant.sku,
-          availableQuantity,
-          available:
-            typeof availableQuantity === "number" &&
-            availableQuantity >= quantity,
-        };
+        return [
+          {
+            variantId: variant.variantId,
+            title: asString(detail.title) ?? variant.sku ?? "Component",
+            sku: asString(detail.sku) ?? variant.sku,
+            availableQuantity,
+            available:
+              typeof availableQuantity === "number" &&
+              availableQuantity >= quantity,
+          },
+        ];
       });
       const available =
         mapping.selectionMode === "any"
-          ? (options[0]?.available ?? false)
-          : options.every((option) => option.available);
+          ? options.some((option) => option.available)
+          : options.length === mapping.componentVariants.length &&
+            options.every((option) => option.available);
       if (!available) {
         unavailableMappingCount += 1;
       }
@@ -240,7 +251,7 @@ export const GET = async (
       quantity,
       required: component.is_required !== false,
       product: {
-        id: componentProductId,
+        id: componentProduct ? componentProductId : null,
         handle: asString(componentProduct?.handle),
         title: asString(componentProduct?.title),
       },
@@ -248,6 +259,11 @@ export const GET = async (
     };
   });
 
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
+  );
+  res.setHeader("Vary", "x-publishable-api-key");
   res.status(200).json({
     bundle: {
       productId,
