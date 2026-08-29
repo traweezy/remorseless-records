@@ -64,9 +64,18 @@ const services = ({
       };
     },
   );
+  const updateCartMetadata = jest.fn(
+    async (cartId: string, metadata: Record<string, unknown>) => {
+      const target = carts.find((value) => value.id === cartId);
+      if (target) {
+        target.metadata = metadata;
+      }
+    },
+  );
   return {
     query: { graph } as CheckoutReconciliationQuery,
     completeCart: jest.fn(async (_cartId: string) => undefined),
+    updateCartMetadata,
   };
 };
 
@@ -193,6 +202,95 @@ describe("checkout payment reconciliation", () => {
 
     expect(fixture.completeCart).not.toHaveBeenCalled();
     expect(result.protectedByOrder).toBe(1);
+  });
+
+  it("persists an attempt marker before invoking cart completion", async () => {
+    const fixture = services({
+      carts: [cart({ metadata: { existing: "preserved" } })],
+    });
+
+    await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      createAttemptId: () => "attempt_01",
+      currentTime: () => new Date("2026-07-25T12:00:01.000Z"),
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    });
+
+    expect(fixture.updateCartMetadata).toHaveBeenCalledWith(
+      "cart_reconcile",
+      {
+        existing: "preserved",
+        rr_checkout_reconciliation: {
+          attempt_id: "attempt_01",
+          started_at: "2026-07-25T12:00:01.000Z",
+          state: "started",
+          updated_at: "2026-07-25T12:00:01.000Z",
+        },
+      },
+    );
+    expect(
+      fixture.updateCartMetadata.mock.invocationCallOrder[0],
+    ).toBeLessThan(fixture.completeCart.mock.invocationCallOrder[0] ?? 0);
+  });
+
+  it("holds a prior scheduled attempt for review instead of repeating it", async () => {
+    const fixture = services({
+      carts: [
+        cart({
+          metadata: {
+            rr_checkout_reconciliation: {
+              attempt_id: "attempt_stalled",
+              started_at: "2026-07-25T11:55:00.000Z",
+              state: "started",
+              updated_at: "2026-07-25T11:55:00.000Z",
+            },
+          },
+        }),
+      ],
+    });
+
+    const result = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    });
+
+    expect(fixture.updateCartMetadata).not.toHaveBeenCalled();
+    expect(fixture.completeCart).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      attempted: 0,
+      failed: 0,
+      heldForReview: 1,
+    });
+  });
+
+  it("does not complete after an ambiguous attempt-marker write", async () => {
+    const durableCart = cart();
+    const fixture = services({ carts: [durableCart] });
+    fixture.updateCartMetadata.mockImplementationOnce(
+      async (_cartId, metadata) => {
+        durableCart.metadata = metadata;
+        throw new Error("response lost after durable marker write");
+      },
+    );
+
+    const first = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      createAttemptId: () => "attempt_ambiguous",
+      currentTime: () => new Date("2026-07-25T12:00:01.000Z"),
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    });
+    const second = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      now: new Date("2026-07-25T12:02:00.000Z"),
+    });
+
+    expect(first).toMatchObject({ attempted: 0, failed: 1 });
+    expect(second).toMatchObject({ attempted: 0, heldForReview: 1 });
+    expect(fixture.completeCart).not.toHaveBeenCalled();
   });
 
   it("rechecks payment state immediately before completion", async () => {

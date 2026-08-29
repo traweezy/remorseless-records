@@ -18,7 +18,7 @@ import type TaxControlModuleService from "../modules/tax-control/service";
 const RECONCILIATION_LIMIT = 100;
 const PROCESSING_STALE_MS = 15 * 60 * 1_000;
 
-const isDue = (
+export const stripeLifecycleEventIsDue = (
   record: {
     next_retry_at: Date | null;
     processing_started_at: Date | null;
@@ -68,7 +68,9 @@ export default async function reconcileStripeLifecycleEventsJob(
       take: RECONCILIATION_LIMIT,
     },
   );
-  const due = candidates.filter((record) => isDue(record, now));
+  const due = candidates.filter((record) =>
+    stripeLifecycleEventIsDue(record, now),
+  );
   const client = new Stripe(STRIPE_API_KEY, {
     appInfo: {
       name: "remorseless-records-medusa",

@@ -8,7 +8,7 @@
     "pnpm": ">=11.0.0 <12"
   },
   "scripts": {
-    "qa:lint": "pnpm run qa:release-policy && pnpm run qa:railway-iac && pnpm run qa:browser-toolchain-security && pnpm run qa:medusa-build-toolchain && pnpm run qa:dashboard-product-import && pnpm run qa:dashboard-product-deletion && pnpm run qa:secure-artifacts && pnpm run qa:api-contract && pnpm run qa:framework-response-headers && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
+    "qa:lint": "pnpm run qa:release-policy && pnpm run qa:railway-iac && pnpm run qa:browser-toolchain-security && pnpm run qa:medusa-build-toolchain && pnpm run qa:dashboard-product-import && pnpm run qa:dashboard-product-deletion && pnpm run qa:secure-artifacts && pnpm run qa:api-contract && pnpm run qa:framework-response-headers && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:checkout-recovery && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
     "api:contract:generate": "node scripts/generate-api-contract.mjs --write",
     "qa:api-contract": "node --test scripts/generate-api-contract.test.mjs && node scripts/generate-api-contract.mjs --check",
     "qa:release-policy": "node scripts/verify-release-branch-policy.mjs",
@@ -20,6 +20,7 @@
     "qa:dashboard-product-deletion": "node scripts/verify-dashboard-product-deletion-boundary.mjs",
     "qa:framework-response-headers": "node scripts/verify-framework-response-headers.mjs",
     "qa:workflow-scheduler-timestamps": "node scripts/verify-workflow-scheduler-timestamp.mjs",
+    "qa:checkout-recovery": "node scripts/verify-checkout-recovery-boundary.mjs",
     "qa:railway-runtime-logs": "node --test scripts/verify-railway-runtime-log.test.mjs",
     "qa:react-router-security": "node scripts/verify-react-router-security.mjs",
     "railway:plan:staging": "node scripts/railway-config.mjs plan",

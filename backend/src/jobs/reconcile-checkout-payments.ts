@@ -3,6 +3,7 @@ import { monitorEventLoopDelay, performance } from "node:perf_hooks"
 
 import { completeCartWorkflow } from "@medusajs/core-flows"
 import type {
+  ICartModuleService,
   ILockingModule,
   Logger,
   MedusaContainer,
@@ -88,6 +89,7 @@ export default async function reconcileCheckoutPaymentsJob(
   const eventLoopDelay = monitorEventLoopDelay({ resolution: 20 })
   eventLoopDelay.enable()
   const lockingService = container.resolve<ILockingModule>(Modules.LOCKING)
+  const cartService = container.resolve<ICartModuleService>(Modules.CART)
   const query = container.resolve<CheckoutReconciliationQuery>(
     ContainerRegistrationKeys.QUERY
   )
@@ -145,6 +147,9 @@ export default async function reconcileCheckoutPaymentsJob(
           input: { id: cartId },
         })
       },
+      updateCartMetadata: async (cartId, metadata) => {
+        await cartService.updateCarts(cartId, { metadata })
+      },
     })
   } catch (error) {
     runError = error
@@ -197,6 +202,7 @@ export default async function reconcileCheckoutPaymentsJob(
 
   const needsAttention =
     result.failed > 0 ||
+    result.heldForReview > 0 ||
     result.capped ||
     result.timeCapped ||
     result.scanWindowFull ||

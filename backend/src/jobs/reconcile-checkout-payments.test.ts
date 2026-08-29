@@ -50,6 +50,9 @@ const fixtures = () => {
   const query = {
     graph: jest.fn(async () => ({ data: [] })),
   };
+  const cartService = {
+    updateCarts: jest.fn(async () => undefined),
+  };
   const container = {
     resolve: jest.fn((key: string) => {
       if (key === "logger") {
@@ -58,6 +61,9 @@ const fixtures = () => {
       if (key === Modules.LOCKING) {
         return lockingService as unknown as ILockingModule;
       }
+      if (key === Modules.CART) {
+        return cartService;
+      }
       if (key === ContainerRegistrationKeys.QUERY) {
         return query;
       }
@@ -65,7 +71,7 @@ const fixtures = () => {
     }),
   } as unknown as MedusaContainer;
 
-  return { container, lockingService, logger, query };
+  return { cartService, container, lockingService, logger, query };
 };
 
 describe("checkout reconciliation scheduled job", () => {
@@ -118,6 +124,7 @@ describe("checkout reconciliation scheduled job", () => {
       scanned: 0,
       service: "backend",
       timeCapped: false,
+      heldForReview: 0,
     });
   });
 

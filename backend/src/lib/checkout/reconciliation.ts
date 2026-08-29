@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
 const DEFAULT_MINIMUM_AGE_SECONDS = 120;
@@ -40,6 +41,7 @@ export type CheckoutReconciliationResult = {
   completed: number;
   protectedByOrder: number;
   failed: number;
+  heldForReview: number;
   capped: boolean;
   timeCapped: boolean;
 };
@@ -59,6 +61,19 @@ export type CheckoutReconciliationQuery = {
 type ReconciliationServices = {
   query: CheckoutReconciliationQuery;
   completeCart: (cartId: string) => Promise<void>;
+  updateCartMetadata: (
+    cartId: string,
+    metadata: Record<string, unknown>,
+  ) => Promise<void>;
+};
+
+type CheckoutReconciliationAttemptState = "review_required" | "started";
+
+type CheckoutReconciliationAttempt = {
+  attempt_id: string;
+  started_at: string;
+  state: CheckoutReconciliationAttemptState;
+  updated_at: string;
 };
 
 const parseBoolean = (value: string | undefined): boolean =>
@@ -129,6 +144,25 @@ const asRecord = (value: unknown): UnknownRecord | null =>
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null;
 
+const cartHasReconciliationAttempt = (cart: UnknownRecord): boolean => {
+  const metadata = asRecord(cart.metadata);
+  return Boolean(
+    metadata &&
+      Object.prototype.hasOwnProperty.call(
+        metadata,
+        CHECKOUT_RECONCILIATION_METADATA_KEY,
+      ),
+  );
+};
+
+const metadataWithAttempt = (
+  cart: UnknownRecord,
+  attempt: CheckoutReconciliationAttempt,
+): UnknownRecord => ({
+  ...(asRecord(cart.metadata) ?? {}),
+  [CHECKOUT_RECONCILIATION_METADATA_KEY]: attempt,
+});
+
 const checkoutNeedsReconciliation = (
   cart: UnknownRecord,
   cutoff: string,
@@ -172,6 +206,7 @@ const checkoutNeedsReconciliation = (
 const cartFields = [
   "id",
   "completed_at",
+  "metadata",
   "updated_at",
   "payment_collection.payment_sessions.id",
   "payment_collection.payment_sessions.status",
@@ -225,11 +260,16 @@ const hasOrder = async (
 export const reconcileCheckoutPayments = async ({
   completeCart,
   config,
+  createAttemptId = randomUUID,
+  currentTime = () => new Date(),
   now = new Date(),
   monotonicNow = () => performance.now(),
   query,
+  updateCartMetadata,
 }: ReconciliationServices & {
   config: CheckoutReconciliationConfig;
+  createAttemptId?: () => string;
+  currentTime?: () => Date;
   monotonicNow?: () => number;
   now?: Date;
 }): Promise<CheckoutReconciliationResult> => {
@@ -249,6 +289,7 @@ export const reconcileCheckoutPayments = async ({
   let completed = 0;
   let protectedByOrder = 0;
   let failed = 0;
+  let heldForReview = 0;
   let inspectedEligible = 0;
   let timeCapped = false;
 
@@ -273,6 +314,28 @@ export const reconcileCheckoutPayments = async ({
       protectedByOrder += 1;
       continue;
     }
+    if (cartHasReconciliationAttempt(fresh)) {
+      heldForReview += 1;
+      continue;
+    }
+
+    const attemptId = createAttemptId();
+    const attemptStartedAt = currentTime().toISOString();
+    const startedAttempt: CheckoutReconciliationAttempt = {
+      attempt_id: attemptId,
+      started_at: attemptStartedAt,
+      state: "started",
+      updated_at: attemptStartedAt,
+    };
+    try {
+      await updateCartMetadata(
+        cartId,
+        metadataWithAttempt(fresh, startedAttempt),
+      );
+    } catch {
+      failed += 1;
+      continue;
+    }
 
     attempted += 1;
     try {
@@ -280,6 +343,15 @@ export const reconcileCheckoutPayments = async ({
       completed += 1;
     } catch {
       failed += 1;
+      const reviewRequiredAt = currentTime().toISOString();
+      await updateCartMetadata(
+        cartId,
+        metadataWithAttempt(fresh, {
+          ...startedAttempt,
+          state: "review_required",
+          updated_at: reviewRequiredAt,
+        }),
+      ).catch(() => undefined);
     }
   }
 
@@ -292,9 +364,12 @@ export const reconcileCheckoutPayments = async ({
     completed,
     protectedByOrder,
     failed,
+    heldForReview,
     capped: candidates.length > inspectedEligible,
     timeCapped,
   };
 };
 
 export const CHECKOUT_RECONCILIATION_JOB_LOCK = "jobs:checkout-reconciliation";
+export const CHECKOUT_RECONCILIATION_METADATA_KEY =
+  "rr_checkout_reconciliation";
