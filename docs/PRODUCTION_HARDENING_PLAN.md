@@ -1823,7 +1823,7 @@ Exact-SHA staging acceptance passed on August 29, 2026:
       recovery cannot duplicate a charge, completion, order, refund, or email.
 - [x] Configure a separate staging Stripe lifecycle webhook secret and the
       `/webhooks/stripe/lifecycle` endpoint.
-- [ ] Exercise signed, duplicate, delayed, out-of-order, queue-failed, refund,
+- [x] Exercise signed, duplicate, delayed, out-of-order, queue-failed, refund,
       repeated-partial-refund, and dispute events.
 - [x] Prove in code that an ambiguous response loss after durable cart/order
       completion is re-read and does not make a second completion attempt.
@@ -1951,6 +1951,67 @@ at exact source SHA `bbb1b53922ef8552fdefd6ad7e815959488bda83`:
 
 No production environment, credential, endpoint, object, or traffic was
 accessed or changed.
+
+Staging Stripe lifecycle event acceptance passed on August 29, 2026 across
+exact source SHAs `6813b79e68e4b3c90555faf5f93e7476d8d24d7e` and
+`1413aabbe009729c5f10f6d35b3e38d8f34108f5`:
+
+- Signed delivery of four genuine refund events exposed that Stripe's Refund
+  retrieval can omit `livemode`. The fail-closed integrity check retained each
+  receipt as retryable instead of processing unverifiable state. Fix
+  `6813b79e68e4b3c90555faf5f93e7476d8d24d7e` now compares the retrieved mode
+  when Stripe supplies it and still rejects a present non-boolean or incorrect
+  value. Root CI `33277187996`, Backend CI `33277187994`, and Storefront CI
+  `33277187990` passed; Railway Backend deployment
+  `cc73a3fa-2304-4f3f-800d-d9d662919016` reached `SUCCESS` with image digest
+  `sha256:9e58ee1869b97ce24e46269ac8f0d031fc9ff63f4016fa1adad2ea0bac9d7532`.
+  `/live` and `/ready` returned HTTP 200.
+- Genuine dispute delivery then exposed Stripe's canonical `du_` dispute ID
+  prefix. Fix `1413aabbe009729c5f10f6d35b3e38d8f34108f5` accepts exact `du_`
+  identifiers while rejecting the incorrect legacy `dp_` shape. Root CI
+  `33278061101`, Backend CI `33278061100`, and Storefront CI `33278061110`
+  passed; Railway Backend deployment
+  `c897667d-3d19-47e5-bd89-abca20563e10` reached `SUCCESS` with image digest
+  `sha256:25b55b29008ed36d13c5beb621515a4a23ede43cc48599842b662cc009187bca`.
+  `/ready` returned HTTP 200 with PostgreSQL, Redis, search, and object storage
+  healthy.
+- The disposable refund PaymentIntent
+  `pi_3U9u2sIM4tTeFQ3W0Ep3Xz1Q` succeeded for 900 USD minor units in Stripe
+  test mode. Partial refunds `re_3U9u2sIM4tTeFQ3W0YIBrxcI` and
+  `re_3U9u2sIM4tTeFQ3W0Jh6fKuG` succeeded for 200 and 300 minor units. The four
+  genuine `refund.created`/`refund.updated` receipts recovered from the
+  integrity failure and reconciled on attempt five after signed replay. This
+  proves repeated partial refunds without issuing a duplicate refund.
+- A signed synthetic `refund.updated` receipt arrived 7,201 seconds late. Its
+  exact duplicate returned `replayed: true` and retained one durable receipt.
+  A newer `refund.updated` event with 63 seconds of delay was delivered before
+  an older `refund.created` event with 3,603 seconds of delay; both reconciled
+  current Stripe state independently and reached the same terminal result.
+- The route's deterministic queue-unavailable test returned HTTP 503 only
+  after persisting `event_bus_unavailable`. A guarded, transactional staging
+  drill then placed only the synthetic delayed receipt in that retryable state.
+  The `22:30:00Z` five-minute reconciliation pass claimed it once, advanced
+  the attempt count from one to two, cleared the error and retry timestamp,
+  and restored the expected terminal result. No retryable receipt remained.
+- A separate disposable 700-minor-unit Stripe test PaymentIntent
+  `pi_3U9uRhIM4tTeFQ3W1B0RcExZ` produced dispute
+  `du_1U9uRhIM4tTeFQ3WuxqeRa3T`. Genuine `charge.dispute.created` and
+  `charge.dispute.funds_withdrawn` events reconciled on attempt one against
+  current `needs_response` state. Both PaymentIntents had no customer, and no
+  order or email was created.
+- The final bounded database matrix contains nine unique receipts: seven
+  refund and two dispute receipts. All are terminal `ignored`, with zero linked
+  orders, errors, scheduled retries, or retryable statuses. Every receipt
+  records `tax_evidence_not_found` and `tax_association_status: not_tracked`,
+  which is the expected result because these direct provider fixtures had no
+  Medusa order or tax evidence. Apart from the explicitly described Stripe
+  test fixtures and lifecycle receipts, the processor made no Stripe, payment,
+  refund, order, tax, email, or ledger mutation.
+- The two exact runtime acceptance windows contained no error-level log record
+  and no webhook secret, signature, client secret, or raw-body term. Correlated
+  lifecycle logs contained only internal receipt IDs, evidence presence, and
+  terminal status. No production environment, credential, endpoint, object,
+  funds, or traffic was accessed or changed.
 
 ## Tax readiness
 
