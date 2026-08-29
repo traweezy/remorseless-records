@@ -34,14 +34,14 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `1474dd785aab5a1c0914ad9a067fc277fa9d34cd`.
+  `64a2253842acf054e3e643c9ad12468def5c18b4`.
 - Latest documentation-bearing staging SHA accepted:
-  `050cf4ea4c88f403b48320e981e1b57a899a37e9`.
+  `64a2253842acf054e3e643c9ad12468def5c18b4`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `2217f6e9-c2fb-461e-9ab7-fba90a9ab585` (`SUCCESS`).
+  `2e7a3db4-f7fc-4e5a-b1a8-c46c44ac4dfa` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `c558abc0-9b68-4809-9195-297bc01aacfd`
+  `e089254d-b479-4588-8b46-f13fedaf0529`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -724,7 +724,7 @@ both exact-SHA deployments reached `SUCCESS`. Backend and Storefront `/live`,
 dependency check was `ok`, and neither exact deployment emitted an error-level
 startup log.
 
-## Active slice: complete correlated API and request observability boundary
+## Completed slice: correlated API and request observability boundary
 
 - [x] Inventory 30 Storefront and 55 Backend custom route files, existing
       envelopes, request-ID handling, trace propagation, logs, contracts, and
@@ -776,7 +776,7 @@ startup log.
       112 source operations, 110 unique operations, path parameters, service
       ownership, problem-envelope references, and the Storefront provider
       failure matrix; fail `qa:lint` when it becomes stale.
-- [ ] Push the current candidate only to `staging`; repeat exact-SHA CI,
+- [x] Push the current candidate only to `staging`; repeat exact-SHA CI,
       Railway, route, log, and browser acceptance before advancing.
 
 Earlier accepted evidence: the OpenAPI 3.1 YAML parses and exposes the required
@@ -814,7 +814,7 @@ wired into both the repository lint gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
 typechecks pass. Backend passes 964 tests across 182 suites. Storefront passes
-631 tests across 119 files with 93.08% statement, 85.74% branch, 93.77%
+633 tests across 119 files with 93.09% statement, 85.77% branch, 93.77%
 function, and 93.04% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
 bundle is 1,702,695 gzip bytes and 6,708,946 raw bytes; all 336 Admin assets are
@@ -822,12 +822,12 @@ bundle is 1,702,695 gzip bytes and 6,708,946 raw bytes; all 336 Admin assets are
 budgets. The production dependency audit has no actionable moderate-or-higher
 finding beyond the three documented ignores; Trivy reports zero high/critical
 filesystem vulnerability or secret findings. Checksum-verified Gitleaks 8.30.1
-finds no leak across all 796 commits. The generated CycloneDX inventory
+finds no leak across all 798 commits. The generated CycloneDX inventory
 verifies 2,488 components and 2,489 dependency entries; the production license
 inventory verifies 1,005 packages in 16 groups with only the five documented
 upstream Medusa packages lacking manifest SPDX metadata. Exact-SHA staging CI,
-Railway deployment, live-route, lifecycle-log, and browser acceptance remain
-before this slice can be marked completed.
+Railway deployment, live-route, lifecycle-log, and browser acceptance all
+passed on the final application commit recorded below.
 
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
@@ -839,8 +839,8 @@ when the proxy loaded. The registry now stores its bounded entries in one
 `globalThis` `Map`, whose built-in identity is shared across the bundles, while
 each wrapper retains the same validation, TTL, cardinality, and consume-once
 behavior. Cross-wrapper regression coverage pins the production bundling
-boundary. A corrected exact-SHA staging release and lifecycle-log acceptance
-remain required.
+boundary. The first corrected exact-SHA staging release then exposed the
+nested-span lifecycle boundary described below.
 
 The corrected `4b91dec` deployment emitted redacted Storefront completion
 events, proving that the cross-bundle state fix works, but the invalid-query
@@ -850,8 +850,23 @@ then ends the route-bearing application span with the public response status.
 Consuming correlation on the first span therefore misreported a public `400`
 as `200`. The processor now ignores route-less root spans and consumes the
 request only on the route-bearing root. Regression coverage pins both the
-deferred consume and final status. A final exact-SHA staging release must prove
-the `400` completion status before this slice closes.
+deferred consume and final status.
+
+Final exact staging acceptance: fix commit
+`64a2253842acf054e3e643c9ad12468def5c18b4` passed Root CI `33266599029`,
+Backend CI `33266599004`, and Storefront CI `33266598957`, including the
+Storefront production build, Playwright browser smoke, pa11y, and Lighthouse.
+Railway held Storefront deployment
+`e089254d-b479-4588-8b46-f13fedaf0529` until all three workflows passed, then
+released it to `SUCCESS` on that exact SHA; Backend deployment record
+`d445cd56-42b1-47af-8bc1-18838372db22` was correctly `SKIPPED` because no
+Backend watch path changed. Storefront `/live`, `/ready`, `/api/healthcheck`,
+`/`, and `/catalog` all returned 200. The deterministic
+`acceptance_64a2253_completion_01` probe preserved its request ID and trace ID
+in the public 400 `application/problem+json` `invalid_query` response. Railway
+then emitted exact-SHA, info-level `api.problem` and `http.request.completed`
+events with the same request ID, trace ID, method, and corrected status 400.
+This completes the correlated API and request-observability slice.
 
 Cache review discovery: Next includes request headers in server-fetch cache
 identity. The correlated `/api/news` Backend request therefore uses `no-store`
