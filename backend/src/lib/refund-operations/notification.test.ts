@@ -26,6 +26,9 @@ describe("refund customer notification payloads", () => {
           referenceLabel: "order #42",
         }),
         idempotency_key: "refund-issued:refund_01",
+        provider_data: {
+          idempotency_key: "refund-issued:refund_01",
+        },
         receiver_id: "cus_01",
         resource_id: "order_01",
         resource_type: "order",
@@ -38,6 +41,9 @@ describe("refund customer notification payloads", () => {
           note: null,
         }),
         idempotency_key: "refund-issued:refund_02",
+        provider_data: {
+          idempotency_key: "refund-issued:refund_02",
+        },
       }),
     ]);
   });

@@ -1,5 +1,7 @@
 import type { CreateNotificationDTO } from "@medusajs/framework/types";
 
+import { emailIdempotencyFields } from "../../modules/email-notifications/idempotency";
+
 type RefundNotificationRefund = {
   amount: unknown;
   id: string;
@@ -55,8 +57,10 @@ export const buildRefundNotificationPayloads = ({
     if (!formattedAmount || !refund.id.trim() || !context.email.trim()) {
       return [];
     }
+    const idempotencyKey = `refund-issued:${refund.id}`;
     return [
       {
+        ...emailIdempotencyFields(idempotencyKey),
         channel: "email",
         data: {
           emailOptions: {
@@ -67,7 +71,6 @@ export const buildRefundNotificationPayloads = ({
           preview: `${formattedAmount} has been refunded.`,
           referenceLabel: context.referenceLabel,
         },
-        idempotency_key: `refund-issued:${refund.id}`,
         receiver_id: context.customerId,
         resource_id: context.resourceId,
         resource_type: context.resourceType,

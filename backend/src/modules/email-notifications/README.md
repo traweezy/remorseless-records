@@ -26,6 +26,21 @@ This ensures a unified look and feel across all email communications while allow
 
 ## Usage
 
+### Commerce notification delivery safety
+
+Order confirmations and refund notices are side effects of retryable commerce
+events. Build both with `emailIdempotencyFields`: it stores one validated key in
+Medusa's `idempotency_key` and forwards the same key through
+`provider_data.idempotency_key` to Resend. Use a stable business identifier
+(`order-placed:<order_id>` or `refund-issued:<refund_id>`), never a random value
+or customer PII.
+
+The Resend provider rejects either sensitive template when this key is absent,
+applies a five-second provider deadline, and treats a resolved `{ error }`
+response as a failed delivery. Errors and logs include no recipient, provider
+message, or response payload. Subscribers must let delivery failure propagate
+so Medusa can retry the same idempotent operation.
+
 ### Trigger an email notification
 
 To send a notification using an email template, specify the template key and required data when calling `createNotifications`:

@@ -2,7 +2,9 @@ import { Logger, NotificationTypes } from '@medusajs/framework/types'
 import { AbstractNotificationProviderService, MedusaError } from '@medusajs/framework/utils'
 import { Resend, type CreateEmailOptions } from 'resend'
 import type { ReactElement } from 'react'
-import { generateEmailTemplate } from '../templates'
+
+import { emailProviderIdempotencyKey } from '../idempotency'
+import { EmailTemplates, generateEmailTemplate } from '../templates'
 
 type InjectedDependencies = {
   logger: Logger
@@ -21,6 +23,13 @@ export interface ResendNotificationServiceOptions {
 type NotificationEmailOptions = Partial<
   Omit<CreateEmailOptions, 'to' | 'from' | 'react' | 'html'>
 >
+
+export const RESEND_NOTIFICATION_TIMEOUT_MS = 5_000
+
+const IDEMPOTENCY_REQUIRED_TEMPLATES = new Set<string>([
+  EmailTemplates.ORDER_PLACED,
+  EmailTemplates.REFUND_ISSUED,
+])
 
 /**
  * Service to handle email notifications using the Resend API.
@@ -102,6 +111,19 @@ export class ResendNotificationService extends AbstractNotificationProviderServi
       )
     }
 
+    const providerIdempotencyKey = emailProviderIdempotencyKey(
+      notification.provider_data
+    )
+    if (
+      IDEMPOTENCY_REQUIRED_TEMPLATES.has(notification.template) &&
+      !providerIdempotencyKey
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        `Email template "${notification.template}" requires provider idempotency.`
+      )
+    }
+
     const to: CreateEmailOptions['to'] =
       recipients.length === 1 ? recipients[0]! : recipients
     const attachments = mapAttachments(notification.attachments)
@@ -122,16 +144,28 @@ export class ResendNotificationService extends AbstractNotificationProviderServi
     }
 
     try {
-      await this.resendClient.emails.send(message)
-      this.logger.info(
-        `Sent "${notification.template}" email to ${recipients.join(', ')} via Resend`
+      const requestOptions = {
+        ...(providerIdempotencyKey
+          ? { idempotencyKey: providerIdempotencyKey }
+          : {}),
+        signal: AbortSignal.timeout(RESEND_NOTIFICATION_TIMEOUT_MS),
+      }
+      const result = await this.resendClient.emails.send(
+        message,
+        requestOptions
       )
-      return {}
+      if (result.error) {
+        throw result.error
+      }
+      this.logger.info(
+        `Sent "${notification.template}" email to ${recipients.length} recipient(s) via Resend`
+      )
+      return result.data?.id ? { id: result.data.id } : {}
     } catch (error: unknown) {
-      const { code, detail } = parseResendError(error)
+      const code = parseResendErrorCode(error)
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        `Failed to send "${notification.template}" email (${code ?? 'unknown code'}): ${detail}`
+        `Failed to send "${notification.template}" email (${code})`
       )
     }
   }
@@ -140,29 +174,17 @@ export class ResendNotificationService extends AbstractNotificationProviderServi
 type ResendError = {
   name?: string
   code?: string
-  response?: {
-    statusCode?: number
-    body?: { errors?: Array<{ message?: string }> }
-  }
-  message?: string
 }
 
-const parseResendError = (error: unknown): { code?: string; detail: string } => {
-  if (typeof error === 'string') {
-    return { detail: error }
-  }
-
+const parseResendErrorCode = (error: unknown): string => {
   if (error && typeof error === 'object') {
-    const { name, code, message, response } = error as ResendError
-    const responseMessage = response?.body?.errors?.[0]?.message
-    const codeValue = code ?? name
-    return {
-      ...(codeValue ? { code: codeValue } : {}),
-      detail: responseMessage ?? message ?? 'Unknown error from Resend',
+    const { name, code } = error as ResendError
+    const candidate = code ?? name
+    if (candidate && /^[A-Za-z0-9_-]{2,64}$/.test(candidate)) {
+      return candidate
     }
   }
-
-  return { detail: 'Unknown error from Resend' }
+  return 'provider_error'
 }
 
 const mapAttachments = (

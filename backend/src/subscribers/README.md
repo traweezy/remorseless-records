@@ -16,6 +16,12 @@ Medusa actually recorded. A direct Stripe refund deliberately does not pretend
 that Medusa emitted `payment.refunded`; it becomes an operator-visible ledger
 mismatch so a second refund is not issued accidentally.
 
+`order-placed.ts` and `refund-issued.ts` derive stable business keys from the
+Medusa order or refund ID. Each key is persisted as Medusa notification
+idempotency and forwarded unchanged to Resend provider idempotency. Delivery
+errors propagate to the event worker, so a retry reuses the same key and cannot
+create a second provider message after an ambiguous response.
+
 Subscribers handle events emitted in the Medusa application.
 
 The subscriber is created in a TypeScript or JavaScript file under the `src/subscribers` directory.

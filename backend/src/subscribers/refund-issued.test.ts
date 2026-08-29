@@ -84,6 +84,9 @@ describe("payment refund notification subscriber", () => {
     expect(fixture.createNotifications).toHaveBeenCalledWith([
       expect.objectContaining({
         idempotency_key: "refund-issued:refund_01",
+        provider_data: {
+          idempotency_key: "refund-issued:refund_01",
+        },
         resource_id: "order_01",
         resource_type: "order",
         to: "customer@example.com",
