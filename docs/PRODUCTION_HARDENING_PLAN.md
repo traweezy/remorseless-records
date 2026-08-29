@@ -1821,7 +1821,7 @@ Exact-SHA staging acceptance passed on August 29, 2026:
       window for the hardened scheduler.
 - [x] Prove every scheduled money-moving job is idempotent and stalled-job
       recovery cannot duplicate a charge, completion, order, refund, or email.
-- [ ] Configure a separate staging Stripe lifecycle webhook secret and the
+- [x] Configure a separate staging Stripe lifecycle webhook secret and the
       `/webhooks/stripe/lifecycle` endpoint.
 - [ ] Exercise signed, duplicate, delayed, out-of-order, queue-failed, refund,
       repeated-partial-refund, and dispute events.
@@ -1919,6 +1919,38 @@ daily/manual/alert evidence, and will reopen the exact issue on Redis failure,
 missing or stale heartbeat, incident latch, invalid response, or source error.
 The checklist item remains open until that full window completes without an
 unrecovered alert or scheduler incident.
+
+Staging Stripe lifecycle configuration acceptance passed on August 29, 2026
+at exact source SHA `bbb1b53922ef8552fdefd6ad7e815959488bda83`:
+
+- Root CI `33275559472`, Backend CI `33275559473`, and Storefront CI
+  `33275559492` completed successfully, including security scans, CodeQL,
+  tests, coverage, production builds, Playwright, accessibility, and
+  Lighthouse. The guarded Railway plan remained `0 add / 2 known phantom
+  updates / 0 destroy`.
+- The `.railway/**` source change correctly produced skipped Backend deployment
+  `ff98811e-5d18-4320-969d-34b63988ff4c` and skipped Storefront deployment
+  `08d57abe-2450-4b1a-84a1-cb7c99b5b035`, with no image build. The subsequent
+  secret-only Backend deployment `dd996c4d-236b-4446-a4db-b9654a6e2b13`
+  reached `SUCCESS` on the exact SHA with image digest
+  `sha256:01ae9b0efc54782ef4cea3afe972e2ce4cbfce803781638ce37a45d1c6a001e7`.
+- Stripe test endpoint `we_1U9tacIM4tTeFQ3WAAK3i2cD` is enabled with
+  `livemode: false` and only the three refund plus five dispute event types in
+  the committed allowlist. Its one-time endpoint secret was streamed directly
+  into Railway, is `whsec_`-formatted, and is distinct from Medusa's official
+  Stripe webhook secret; no secret value was printed or persisted locally.
+- Backend `/live` and `/ready` returned HTTP 200. An unsigned lifecycle request
+  returned the expected 400 `invalid_webhook`; a correctly signed unsupported
+  event returned HTTP 200 with `received: true` and `ignored: true`. Exact
+  runtime logs retained the correlated 400/200 records with commit, request,
+  trace, and span fields and no payload, signature, or secret.
+- The ignored-event smoke returned before resolving the payment-lifecycle
+  service, so it created no receipt and made no Stripe, payment, refund, order,
+  tax, email, or ledger mutation. The first subsequent scheduler heartbeat at
+  `21:32:00.221Z` carried the exact SHA, Redis `ok`, and no incident latch.
+
+No production environment, credential, endpoint, object, or traffic was
+accessed or changed.
 
 ## Tax readiness
 

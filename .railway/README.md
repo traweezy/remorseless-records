@@ -73,6 +73,11 @@ pnpm run railway:apply:staging
   `MEDUSA_ADMIN_PASSWORD`. Supply maintenance credentials only to the explicit
   one-shot operator command, then revoke/unset them; the application service
   environment is not a credential vault.
+- Keep `STRIPE_LIFECYCLE_WEBHOOK_SECRET` as a preserved Backend secret that is
+  distinct from `STRIPE_WEBHOOK_SECRET`. Provision it through Railway stdin
+  only after creating the separate Stripe test-mode lifecycle endpoint; never
+  put either endpoint secret in `.railway/railway.ts`, source, logs, or command
+  output.
 - Storefront search must use server-only `MEILISEARCH_HOST` plus the existing
   search-only `MEILISEARCH_API_KEY`. The host is a Railway reference to
   `Backend.MEILISEARCH_HOST`; legacy `NEXT_PUBLIC_MEILI_*` runtime variables
