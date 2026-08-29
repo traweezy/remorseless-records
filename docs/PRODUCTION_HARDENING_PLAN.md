@@ -34,12 +34,12 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `3b7a48408b5cf419bc37672317c8d6f627816b8e`.
+  `707d50e2a37dac3613a9d185b91aa2ed5112e1bc`.
 - Latest documentation-bearing staging SHA accepted:
   `40b5a3a5777677dd4af49e3dba091f4b9bcc9c7d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `ae4838b9-808e-46f2-9f6d-ddde0598d937` (`SUCCESS`).
+  `00819624-47ee-4a84-9862-f1559191e695` (`SUCCESS`).
 - Application acceptance Storefront deployment:
   `ffd4c174-4b28-4bcc-8905-5998aaa94fcf`
   (`SUCCESS`).
@@ -1455,18 +1455,18 @@ release.
       and product-handle responses; vary their cacheable responses by key.
 - [x] Replace the Backend's unbounded all-Product handle route with opaque
       100-row keyset pages.
-- [ ] Switch sitemap and catalog fallback callers to the keyset feed with an
+- [x] Switch sitemap and catalog fallback callers to the keyset feed with an
       eight-second page deadline and explicit 5,000/1,000 ceilings.
-- [ ] Cap search pages at 60 results, the visible result window at 1,000, and
+- [x] Cap search pages at 60 results, the visible result window at 1,000, and
       non-index post-filter work at 2,048 raw hits; apply the same result-window
       contract to the Medusa fallback route.
 - [x] Add Backend route, helper, source-inventory, cursor, and hidden-bundle
       identifier regressions; document its public visibility rule and feed.
-- [ ] Add Storefront fallback and search regressions; document both public
+- [x] Add Storefront fallback and search regressions; document both public
       contracts in OpenAPI and the Storefront README.
 - [x] Pass complete repository lint, strict typecheck, Backend tests,
       Storefront coverage, dependency/security checks, and production builds.
-- [ ] Commit and accept the Backend expand phase on exact `staging` GitHub and
+- [x] Commit and accept the Backend expand phase on exact `staging` GitHub and
       Railway evidence before committing the Storefront consumer phase.
 - [ ] Commit and accept the Storefront phase on exact `staging` GitHub and
       Railway evidence before another hardening slice.
@@ -1485,13 +1485,18 @@ bundle component could still expose its stored Product, Variant, inventory, or
 SKU identifiers after its hydrated Product details were removed. Bundle
 availability now queries only variants belonging to visible component Products
 and emits no hidden component identifiers; a direct route regression pins that
-redaction.
+redaction. Final Storefront review also found that bounded post-filter search
+could advertise a page beyond offset 1,000 or a non-advancing page when its
+2,048-hit raw-work budget found no visible match. `hasMore` now requires an
+advancing page within the accepted result window, and direct regressions cover
+both boundaries. Storefront also rejects a non-base64url Backend cursor before
+following it.
 
 Local candidate evidence: repository policy, IaC, private-artifact, framework-
 header, scheduler, runtime-log, ESLint, and both strict typecheck gates pass.
-All 180 Backend suites / 952 tests and 114 Storefront files / 602 tests pass;
-Storefront coverage is 93.74% statements, 86.23% branches, 94.65% functions,
-and 93.71% lines. Both production builds pass, the Storefront scanner found no
+All 180 Backend suites / 952 tests and 114 Storefront files / 605 tests pass;
+Storefront coverage is 93.82% statements, 86.35% branches, 94.65% functions,
+and 93.80% lines. Both production builds pass, the Storefront scanner found no
 server-only value or retired public search input in 127 static assets, and the
 Admin main/total gzip bundles remain within budget at 1,798,512/2,393,648
 bytes. The production audit reports only the three policy-ignored moderates;
@@ -1506,10 +1511,32 @@ Storefront deployed first. This slice therefore uses an explicit expand order:
 deploy and accept the backward-compatible Backend route before committing the
 Storefront consumer.
 
-Remaining for this slice: commit and push the reviewed Backend phase, verify
-exact-SHA CI, deployment, visibility, logs, and health, then repeat those gates
-for the Storefront search/keyset phase. No production environment or other
-Railway project is in scope.
+Backend expand acceptance: exact SHA
+`707d50e2a37dac3613a9d185b91aa2ed5112e1bc` passed Root CI `33253902478`,
+Backend CI `33253902418`, and Storefront CI `33253902385`, including build,
+coverage, Playwright, accessibility, and Lighthouse gates. Railway correctly
+skipped unchanged Storefront record `861ee38f-cf20-4703-b478-12cd17e926a5`
+and released Backend record `00819624-47ee-4a84-9862-f1559191e695` as
+`SUCCESS` with image digest
+`sha256:3d38f2cb27815bd326836d4c6113fc2b09b572847a61852ebf7add3735840b3c`.
+Its 196-line build log contained zero warning/error entries. Runtime contained
+no failure markers, secrets, or HTTP 5xx responses; Railway classified four
+successful startup command echoes as errors, and the only warning was the
+intentional invalid-cursor 400 acceptance probe.
+
+Backend `/live`, `/ready`, and `/api/health` returned HTTP 200. Two bounded
+two-record handle pages returned HTTP 200 with opaque cursors, no overlap, the
+required publishable-key `Vary`, and exact agreement with the native Store
+visibility boundary. An invalid cursor returned a safe HTTP 400. Shelves,
+discography, related Products, and bundle routes returned HTTP 200 for a visible
+Product. The exact Storefront `/live`, `/ready`, `/api/healthcheck`, root, and
+catalog routes remained HTTP 200; `/products` retained its intentional HTTP
+308 redirect to `/catalog`.
+
+Remaining for this slice: commit and push the reviewed Storefront search/keyset
+consumer, verify exact-SHA CI, Storefront deployment, bounded search/fallback,
+sitemap, logs, and health, then record closure evidence. No production
+environment or other Railway project is in scope.
 
 ## Remaining authorization work
 

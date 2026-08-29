@@ -9,6 +9,9 @@ import type { Filter, Meilisearch, SearchResponse } from "meilisearch"
 
 export const PRODUCTS_INDEX = "products"
 export const CATALOG_PAGE_SIZE = 60
+export const SEARCH_MAX_LIMIT = CATALOG_PAGE_SIZE
+export const SEARCH_MAX_RESULT_WINDOW = 1_000
+export const SEARCH_MAX_POST_FILTER_HITS = 2_048
 export const CATALOG_SEARCH_ATTRIBUTES = [
   "title",
   "release_title",
@@ -575,8 +578,15 @@ export const searchProductsWithClient = async (
     }
   }
 
-  const requestedLimit = Math.max(0, Math.trunc(limit))
-  const requestedOffset = Math.max(0, Math.trunc(offset ?? 0))
+  const requestedOffset = Math.min(
+    Math.max(0, Math.trunc(offset ?? 0)),
+    SEARCH_MAX_RESULT_WINDOW - 1
+  )
+  const requestedLimit = Math.min(
+    Math.max(0, Math.trunc(limit)),
+    SEARCH_MAX_LIMIT,
+    SEARCH_MAX_RESULT_WINDOW - requestedOffset
+  )
 
   if (!postFilters.length) {
     const response = await index.search<Record<string, unknown>>(query ?? "", {
@@ -592,10 +602,12 @@ export const searchProductsWithClient = async (
       .filter((hit) => hit.handle.trim().length > 0)
       .slice(0, requestedLimit)
     const estimatedTotal = response.estimatedTotalHits
-    const total =
+    const total = Math.min(
       typeof estimatedTotal === "number" && Number.isFinite(estimatedTotal)
         ? Math.max(0, Math.trunc(estimatedTotal))
-        : requestedOffset + hits.length
+        : requestedOffset + hits.length,
+      SEARCH_MAX_RESULT_WINDOW
+    )
     const nextOffset = requestedOffset + hits.length
 
     return {
@@ -616,15 +628,21 @@ export const searchProductsWithClient = async (
   let collected: ProductSearchHit[] = []
   let hasMore = false
   let rawOffset = 0
+  let rawHitsExamined = 0
   let facetDistribution: SearchResponse<
     Record<string, unknown>
   >["facetDistribution"]
-  const maxBatches = 40
+  const maxBatches = Math.ceil(SEARCH_MAX_POST_FILTER_HITS / batchSize)
 
   for (let batch = 0; batch < maxBatches; batch++) {
+    const remainingRawWork = SEARCH_MAX_POST_FILTER_HITS - rawHitsExamined
+    if (remainingRawWork <= 0) {
+      break
+    }
+    const rawBatchSize = Math.min(batchSize, remainingRawWork)
     const response: SearchResponse<Record<string, unknown>> =
       await index.search<Record<string, unknown>>(query ?? "", {
-        limit: batchSize,
+        limit: rawBatchSize,
         offset: rawOffset,
         attributesToSearchOn: [...CATALOG_SEARCH_ATTRIBUTES],
         facets: facetsToRequest,
@@ -635,6 +653,7 @@ export const searchProductsWithClient = async (
     if (!response.hits.length) {
       break
     }
+    rawHitsExamined += response.hits.length
 
     facetDistribution ??= response.facetDistribution
 
@@ -668,19 +687,31 @@ export const searchProductsWithClient = async (
 
     rawOffset += response.hits.length
 
-    if (response.hits.length < batchSize) {
+    if (response.hits.length < rawBatchSize) {
       break
     }
   }
 
-  hasMore = hasMore || totalFiltered > filteredOffset + collected.length
+  const nextOffset = filteredOffset + collected.length
+  const reachedRawWorkLimit =
+    rawHitsExamined >= SEARCH_MAX_POST_FILTER_HITS
+  hasMore =
+    collected.length > 0 &&
+    nextOffset < SEARCH_MAX_RESULT_WINDOW &&
+    (hasMore || totalFiltered > nextOffset || reachedRawWorkLimit)
+  const minimumTotal = collected.length
+    ? nextOffset + (hasMore ? 1 : 0)
+    : totalFiltered
 
   return {
     hits: collected,
-    total: totalFiltered,
+    total: Math.min(
+      Math.max(totalFiltered, minimumTotal),
+      SEARCH_MAX_RESULT_WINDOW
+    ),
     offset: filteredOffset,
     facets: buildFacets(facetDistribution, collected),
     hasMore,
-    nextOffset: filteredOffset + collected.length,
+    nextOffset,
   }
 }

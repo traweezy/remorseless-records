@@ -553,6 +553,123 @@ describe("searchProductsWithClient", () => {
     expect(response.nextOffset).toBe(70)
   })
 
+  it("caps direct callers to the bounded result window", async () => {
+    const index: MockIndex = {
+      uid: "products-bounded-window",
+      getSettings: vi.fn(),
+      search: vi.fn().mockResolvedValue({
+        estimatedTotalHits: 20_000,
+        facetDistribution: undefined,
+        hits: [makeHit()],
+      }),
+    }
+
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      {
+        query: "release",
+        limit: 500,
+        offset: 50_000,
+      },
+      ["status"]
+    )
+
+    expect(index.search).toHaveBeenCalledWith(
+      "release",
+      expect.objectContaining({ limit: 1, offset: 999 })
+    )
+    expect(response).toMatchObject({
+      offset: 999,
+      total: 1_000,
+      hasMore: false,
+      nextOffset: 1_000,
+    })
+  })
+
+  it("caps client-side post-filter work at 2048 raw hits", async () => {
+    const rawBatch = Array.from({ length: 64 }, (_, index) =>
+      makeHit({ handle: `bounded-release-${index}`, status: "published" })
+    )
+    const index: MockIndex = {
+      uid: "products-bounded-post-filter",
+      getSettings: vi.fn(),
+      search: vi.fn().mockResolvedValue({
+        facetDistribution: undefined,
+        hits: rawBatch,
+      }),
+    }
+
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      { query: "release", limit: 60, offset: 0 },
+      []
+    )
+
+    expect(index.search).toHaveBeenCalledTimes(32)
+    expect(index.search).toHaveBeenLastCalledWith(
+      "release",
+      expect.objectContaining({ limit: 64, offset: 1_984 })
+    )
+    expect(response.hits).toHaveLength(60)
+    expect(response.total).toBe(1_000)
+    expect(response.hasMore).toBe(true)
+  })
+
+  it("does not advertise a post-filter page beyond the result window", async () => {
+    const rawBatch = Array.from({ length: 64 }, (_, index) =>
+      makeHit({ handle: `windowed-release-${index}`, status: "published" })
+    )
+    const index: MockIndex = {
+      uid: "products-post-filter-window",
+      getSettings: vi.fn(),
+      search: vi.fn().mockResolvedValue({
+        facetDistribution: undefined,
+        hits: rawBatch,
+      }),
+    }
+
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      { query: "release", limit: 500, offset: 50_000 },
+      []
+    )
+
+    expect(response).toMatchObject({
+      offset: 999,
+      total: 1_000,
+      hasMore: false,
+      nextOffset: 1_000,
+    })
+    expect(response.hits).toHaveLength(1)
+  })
+
+  it("does not advertise a non-advancing post-filter page", async () => {
+    const rawBatch = Array.from({ length: 64 }, (_, index) =>
+      makeHit({ handle: `draft-release-${index}`, status: "draft" })
+    )
+    const index: MockIndex = {
+      uid: "products-empty-post-filter-window",
+      getSettings: vi.fn(),
+      search: vi.fn().mockResolvedValue({
+        facetDistribution: undefined,
+        hits: rawBatch,
+      }),
+    }
+
+    const response = await searchProductsWithClient(
+      makeClient(index),
+      { query: "release", limit: 60, offset: 0 },
+      []
+    )
+
+    expect(response).toMatchObject({
+      hits: [],
+      total: 0,
+      hasMore: false,
+      nextOffset: 0,
+    })
+  })
+
   it("uses the versioned filter contract without reading index settings", async () => {
     const index: MockIndex = {
       uid: "products-cached-settings",

@@ -1,12 +1,10 @@
 import type { HttpTypes } from "@medusajs/types"
 import { unstable_cache } from "next/cache"
+import { z } from "zod"
 
+import { runtimeEnv } from "@/config/env"
 import { storeClient } from "@/lib/medusa"
 import { resolveRegionId } from "@/lib/regions"
-import {
-  buildProductSlugParts,
-  type ProductSlug,
-} from "@/lib/products/slug"
 
 type StoreProduct = HttpTypes.StoreProduct
 
@@ -257,55 +255,120 @@ export const getProductsByIds = async (
 
 type ProductHandleSummary = {
   handle: string
-  slug: ProductSlug
+  id: string
   updatedAt: string | null
 }
 
-export const getAllProductHandles = unstable_cache(
-  async (): Promise<ProductHandleSummary[]> => {
-    try {
-      const handles: ProductHandleSummary[] = []
-      const pageSize = 100
-      let offset = 0
+const PRODUCT_HANDLE_PAGE_SIZE = 100
+const PRODUCT_HANDLE_MAX_PAGES = 50
+const PRODUCT_HANDLE_MAX_ENTRIES =
+  PRODUCT_HANDLE_PAGE_SIZE * PRODUCT_HANDLE_MAX_PAGES
+const productHandlePageSchema = z.object({
+  handles: z
+    .array(
+      z.object({
+        created_at: z.string().datetime().nullable(),
+        handle: z.string().trim().min(1).max(200),
+        id: z.string().trim().min(1).max(200),
+        updated_at: z.string().datetime().nullable(),
+      })
+    )
+    .max(PRODUCT_HANDLE_PAGE_SIZE),
+  next_cursor: z
+    .string()
+    .trim()
+    .min(1)
+    .max(256)
+    .regex(/^[A-Za-z0-9_-]+$/u)
+    .nullable(),
+})
 
-      // Medusa paginates products; loop until we exhaust the catalog.
-      // We request moderate batches to avoid stressing the API during build time.
-      for (;;) {
-        const products = await listProducts({
-          limit: pageSize,
-          offset,
-          order: "created_at",
-        } satisfies HttpTypes.StoreProductListParams)
-        if (!products?.length) {
-          break
+export const getAllProductHandles = unstable_cache(
+  async (
+    maxEntries: number = PRODUCT_HANDLE_MAX_ENTRIES
+  ): Promise<ProductHandleSummary[]> => {
+    try {
+      if (!runtimeEnv.medusaBackendUrl || !runtimeEnv.medusaPublishableKey) {
+        throw new Error("Medusa product-handle configuration is unavailable")
+      }
+
+      const handles: ProductHandleSummary[] = []
+      const seenCursors = new Set<string>()
+      const seenProductIds = new Set<string>()
+      let cursor: string | null = null
+      const boundedMaxEntries = Math.min(
+        Math.max(Math.trunc(maxEntries), 1),
+        PRODUCT_HANDLE_MAX_ENTRIES
+      )
+      const maxPages = Math.ceil(
+        boundedMaxEntries / PRODUCT_HANDLE_PAGE_SIZE
+      )
+
+      for (let page = 0; page < maxPages; page += 1) {
+        const url = new URL(
+          "/store/products/handles",
+          runtimeEnv.medusaBackendUrl
+        )
+        url.searchParams.set(
+          "limit",
+          String(
+            Math.min(
+              PRODUCT_HANDLE_PAGE_SIZE,
+              boundedMaxEntries - handles.length
+            )
+          )
+        )
+        if (cursor) {
+          url.searchParams.set("cursor", cursor)
+        }
+        const response = await fetch(url.toString(), {
+          headers: {
+            "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
+          },
+          next: { revalidate: 1800, tags: ["products"] },
+          signal: AbortSignal.timeout(8_000),
+        })
+        if (!response.ok) {
+          throw new Error(`Product handle feed failed with ${response.status}`)
+        }
+        const parsed = productHandlePageSchema.safeParse(await response.json())
+        if (!parsed.success) {
+          throw new Error("Product handle feed returned an invalid response")
         }
 
-        for (const product of products) {
-          if (!product?.handle) {
-            continue
+        parsed.data.handles.forEach((product) => {
+          if (seenProductIds.has(product.id)) {
+            return
           }
-
-          const updatedAt =
-            (product as unknown as { updated_at?: string }).updated_at ??
-            (product as unknown as { updatedAt?: string }).updatedAt ??
-            (product as unknown as { created_at?: string }).created_at ??
-            (product as unknown as { createdAt?: string }).createdAt ??
-            null
-
-          const slug = buildProductSlugParts(product)
-
+          seenProductIds.add(product.id)
           handles.push({
             handle: product.handle,
-            slug,
-            updatedAt,
+            id: product.id,
+            updatedAt: product.updated_at ?? product.created_at,
           })
-        }
+        })
 
-        if (products.length < pageSize) {
+        if (handles.length >= boundedMaxEntries) {
+          cursor = parsed.data.next_cursor
           break
         }
 
-        offset += products.length
+        const nextCursor = parsed.data.next_cursor
+        if (!nextCursor) {
+          cursor = null
+          break
+        }
+        if (seenCursors.has(nextCursor)) {
+          throw new Error("Product handle feed repeated a cursor")
+        }
+        seenCursors.add(nextCursor)
+        cursor = nextCursor
+      }
+
+      if (cursor && boundedMaxEntries === PRODUCT_HANDLE_MAX_ENTRIES) {
+        console.error(
+          `[getAllProductHandles] Stopped after ${PRODUCT_HANDLE_MAX_ENTRIES} products`
+        )
       }
 
       return handles

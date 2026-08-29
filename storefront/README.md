@@ -81,6 +81,18 @@ queries Meilisearch and returns the normalized catalog response. Text queries
 match configured title and artist fields, while format, genre, type,
 availability, price, and other facets are applied as filters.
 
+The search boundary accepts at most 60 results per request and only the first
+1,000 matches. Filters that cannot run in Meilisearch may examine at most 2,048
+raw hits before returning a conservative bounded result. The Medusa fallback
+route applies the same 60-result and 1,000-result-window limits.
+
+Sitemap generation and the bounded catalog fallback consume
+`GET /store/products/handles`, not an offset scan over every Product. The feed
+uses opaque 100-row keyset pages and the configured publishable key, so it
+contains only published Products in the Storefront sales channel. Every page
+has an eight-second deadline. Sitemap generation stops after 5,000 Products;
+the in-process fallback hydrates at most 1,000 through native Store API batches.
+
 The storefront uses a version-controlled subset of the backend's filterable
 index contract instead of reading index settings on every request. The backend
 release rebuild validates that contract before its atomic index swap. Initial

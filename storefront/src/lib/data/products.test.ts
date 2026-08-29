@@ -9,6 +9,7 @@ describe("products data layer", () => {
   afterEach(() => {
     vi.resetModules()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it("loads homepage products and product by handle", async () => {
@@ -95,37 +96,40 @@ describe("products data layer", () => {
     expect(products.map((product) => product.handle)).toEqual([validFirst, validSecond])
   })
 
-  it("collects all product handles with slug and updatedAt fallback", async () => {
-    const regionId = faker.string.uuid()
+  it("collects all product handles with updatedAt metadata", async () => {
     const updatedAt = faker.date.recent().toISOString()
     const handle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
-    const title = `${faker.person.lastName()} - ${faker.music.songName()}`
-
-    const list = vi
-      .fn()
-      .mockResolvedValueOnce({
-        products: [
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
+        handles: [
           {
-            id: faker.string.uuid(),
+            created_at: faker.date.past().toISOString(),
             handle,
-            title,
+            id: faker.string.uuid(),
             updated_at: updatedAt,
           },
         ],
-      })
-      .mockResolvedValueOnce({ products: [] })
+        next_cursor: null,
+      }),
+      ok: true,
+      status: 200,
+    })
+    vi.stubGlobal("fetch", fetchMock)
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list },
-        collection: { list: vi.fn() },
+    vi.doMock("@/config/env", () => ({
+      runtimeEnv: {
+        medusaBackendUrl: "https://backend.test",
+        medusaPublishableKey: "pk_test",
       },
     }))
-    vi.doMock("@/lib/regions", () => ({
-      resolveRegionId: vi.fn().mockResolvedValue(regionId),
+    vi.doMock("@/lib/medusa", () => ({
+      storeClient: {
+        product: { list: vi.fn() },
+        collection: { list: vi.fn() },
+      },
     }))
 
     const { getAllProductHandles } = await import("@/lib/data/products")
@@ -136,7 +140,12 @@ describe("products data layer", () => {
       handle,
       updatedAt,
     })
-    expect(handles[0]?.slug.artistSlug.length).toBeGreaterThan(0)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://backend.test/store/products/handles?limit=100",
+      expect.objectContaining({
+        headers: { "x-publishable-api-key": "pk_test" },
+      })
+    )
   })
 
   it("returns empty collection products when collection handle is unknown", async () => {
@@ -194,6 +203,7 @@ describe("products data layer", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
     const list = vi.fn().mockRejectedValue(new Error("boom"))
     const collectionList = vi.fn().mockRejectedValue(new Error("boom"))
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("boom")))
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
@@ -226,60 +236,102 @@ describe("products data layer", () => {
     expect(errorSpy).toHaveBeenCalled()
   })
 
-  it("uses createdAt fallback and skips products with missing handles", async () => {
-    const regionId = faker.string.uuid()
+  it("uses createdAt fallback and follows the bounded keyset cursor", async () => {
     const pageSize = 100
     const firstHandle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
     const createdAt = faker.date.past().toISOString()
-    const paddedBatch = Array.from({ length: pageSize - 2 }, () => ({
+    const firstPage = Array.from({ length: pageSize }, (_, index) => ({
+      created_at: createdAt,
+      handle:
+        index === 0
+          ? firstHandle
+          : faker.helpers.slugify(faker.music.songName()).toLowerCase(),
       id: faker.string.uuid(),
-      handle: faker.helpers.slugify(faker.music.songName()).toLowerCase(),
-      title: `${faker.person.lastName()} - ${faker.music.songName()}`,
-      createdAt,
+      updated_at: null,
     }))
-
-    const list = vi
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
-        products: [
-          {
-            id: faker.string.uuid(),
-            handle: firstHandle,
-            title: `${faker.person.lastName()} - ${faker.music.songName()}`,
-            createdAt,
-          },
-          { id: faker.string.uuid(), handle: "", title: faker.music.songName() },
-          ...paddedBatch,
-        ],
+        json: vi.fn().mockResolvedValue({
+          handles: firstPage,
+          next_cursor: "cursor_2",
+        }),
+        ok: true,
+        status: 200,
       })
-      .mockResolvedValueOnce({ products: [] })
+      .mockResolvedValueOnce({
+        json: vi.fn().mockResolvedValue({
+          handles: [],
+          next_cursor: null,
+        }),
+        ok: true,
+        status: 200,
+      })
+    vi.stubGlobal("fetch", fetchMock)
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list },
-        collection: { list: vi.fn() },
+    vi.doMock("@/config/env", () => ({
+      runtimeEnv: {
+        medusaBackendUrl: "https://backend.test",
+        medusaPublishableKey: "pk_test",
       },
     }))
-    vi.doMock("@/lib/regions", () => ({
-      resolveRegionId: vi.fn().mockResolvedValue(regionId),
+    vi.doMock("@/lib/medusa", () => ({
+      storeClient: {
+        product: { list: vi.fn() },
+        collection: { list: vi.fn() },
+      },
     }))
 
     const { getAllProductHandles } = await import("@/lib/data/products")
     const handles = await getAllProductHandles()
-    expect(handles.length).toBe(pageSize - 1)
+    expect(handles.length).toBe(pageSize)
     expect(handles[0]).toMatchObject({
       handle: firstHandle,
       updatedAt: createdAt,
     })
-    expect(list).toHaveBeenNthCalledWith(
+    expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({
-        offset: pageSize,
-      })
+      "https://backend.test/store/products/handles?limit=100&cursor=cursor_2",
+      expect.any(Object)
     )
+  })
+
+  it("rejects a non-base64url cursor from the handle feed", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
+        handles: [],
+        next_cursor: "../../invalid",
+      }),
+      ok: true,
+      status: 200,
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    vi.doMock("next/cache", () => ({
+      unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
+    }))
+    vi.doMock("@/config/env", () => ({
+      runtimeEnv: {
+        medusaBackendUrl: "https://backend.test",
+        medusaPublishableKey: "pk_test",
+      },
+    }))
+    vi.doMock("@/lib/medusa", () => ({
+      storeClient: {
+        product: { list: vi.fn() },
+        collection: { list: vi.fn() },
+      },
+    }))
+
+    const { getAllProductHandles } = await import("@/lib/data/products")
+
+    await expect(getAllProductHandles()).resolves.toEqual([])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(errorSpy).toHaveBeenCalled()
   })
 
   it("loads product ids once and restores the requested order", async () => {

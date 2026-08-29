@@ -36,9 +36,8 @@ const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
 
   const products = await getAllProductHandles()
   products.forEach((product) => {
-    const fallbackHandle = `${product.slug.artistSlug}-${product.slug.albumSlug}`
     const productUrl = `${siteMetadata.siteUrl}${buildPublicProductPath({
-      handle: product.handle?.trim() || fallbackHandle,
+      handle: product.handle,
     })}`
     entries.push({
       url: productUrl,

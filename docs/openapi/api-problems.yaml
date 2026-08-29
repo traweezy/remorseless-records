@@ -1,12 +1,13 @@
 openapi: 3.1.0
 info:
   title: Remorseless Records API problem contract
-  version: 1.2.0
+  version: 1.3.0
   description: >-
     Shared RFC 7807-compatible error and correlation components for custom
     Backend and Storefront APIs. Endpoint enumeration now covers the legacy key
-    exchange, Stripe lifecycle webhook, and the complete contact/privacy BFF
-    boundary; complete custom-endpoint coverage remains in the hardening backlog.
+    exchange, Stripe lifecycle webhook, the complete contact/privacy BFF
+    boundary, bounded Storefront search, and the channel-scoped product-handle
+    feed; complete custom-endpoint coverage remains in the hardening backlog.
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 paths:
   /key-exchange:
@@ -68,6 +69,47 @@ paths:
         "400":
           $ref: "#/components/responses/ApiProblemResponse"
         "503":
+          $ref: "#/components/responses/ApiProblemResponse"
+  /api/search/products:
+    post:
+      operationId: searchStorefrontProducts
+      summary: Search the public catalog through the Storefront BFF
+      description: >-
+        Same-origin, server-only Meilisearch boundary. Requests are limited to
+        60 results and the first 1,000 matches. When a filter cannot run in the
+        index, at most 2,048 raw hits are examined. The route accepts at most
+        24 KiB per request and 120 requests per source address per minute.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductSearchRequest"
+      responses:
+        "200":
+          description: A bounded page of normalized public catalog results.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            traceparent:
+              $ref: "#/components/headers/Traceparent"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductSearchResponse"
+        "400":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "403":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "413":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "415":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "429":
+          $ref: "#/components/responses/ApiProblemResponse"
+        "500":
           $ref: "#/components/responses/ApiProblemResponse"
   /api/contact:
     post:
@@ -238,6 +280,62 @@ paths:
           $ref: "#/components/responses/ApiProblemResponse"
         "503":
           $ref: "#/components/responses/ApiProblemResponse"
+  /store/products/handles:
+    get:
+      operationId: listStoreProductHandles
+      summary: List a keyset page of visible product handles
+      description: >-
+        Returns only published products linked to a sales channel carried by
+        the supplied publishable key. The opaque cursor advances over the
+        Product-to-Sales-Channel link key and must be returned unchanged.
+      parameters:
+        - $ref: "#/components/parameters/PublishableApiKey"
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - in: query
+          name: cursor
+          required: false
+          description: Opaque cursor from the preceding page.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+            pattern: "^[A-Za-z0-9_-]+$"
+      responses:
+        "200":
+          description: A bounded page of visible product handles.
+          headers:
+            Cache-Control:
+              description: Shared-cache policy for the channel-scoped feed.
+              required: true
+              schema:
+                type: string
+            Vary:
+              description: Prevents cache reuse across publishable keys.
+              required: true
+              schema:
+                type: string
+                const: x-publishable-api-key
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            traceparent:
+              $ref: "#/components/headers/Traceparent"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductHandlePage"
+        "400":
+          $ref: "#/components/responses/NativeMedusaErrorResponse"
+        "401":
+          $ref: "#/components/responses/NativeMedusaErrorResponse"
+        "403":
+          $ref: "#/components/responses/NativeMedusaErrorResponse"
 components:
   headers:
     NoStore:
@@ -301,6 +399,12 @@ components:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ApiProblem"
+    NativeMedusaErrorResponse:
+      description: A native Medusa validation or Store authentication error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/NativeMedusaError"
   schemas:
     OkResponse:
       type: object
@@ -408,6 +512,234 @@ components:
           type: boolean
         replayed:
           type: boolean
+    ProductSearchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        query:
+          type: string
+          maxLength: 160
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 60
+          default: 24
+        offset:
+          type: integer
+          minimum: 0
+          maximum: 999
+          default: 0
+          description: Must satisfy offset + limit <= 1,000.
+        sort:
+          type: string
+          default: newest
+          enum:
+            - artist-asc
+            - artist-desc
+            - title-asc
+            - title-desc
+            - newest
+            - price-low
+            - price-high
+        inStockOnly:
+          type: boolean
+          default: false
+        filters:
+          $ref: "#/components/schemas/ProductSearchFilters"
+    ProductSearchFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        genres:
+          type: array
+          maxItems: 30
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        formats:
+          type: array
+          maxItems: 30
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        categories:
+          type: array
+          maxItems: 40
+          items:
+            type: string
+            minLength: 1
+            maxLength: 160
+        variants:
+          type: array
+          maxItems: 40
+          items:
+            type: string
+            minLength: 1
+            maxLength: 160
+        productTypes:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        availability:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+            maxLength: 80
+        price:
+          type: object
+          additionalProperties: false
+          description: Minimum price must not exceed maximum price.
+          properties:
+            min:
+              type: integer
+              minimum: 0
+              maximum: 1000000
+            max:
+              type: integer
+              minimum: 0
+              maximum: 1000000
+    ProductSearchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - hits
+        - total
+        - facets
+        - offset
+      properties:
+        hits:
+          type: array
+          maxItems: 60
+          items:
+            $ref: "#/components/schemas/ProductSearchHit"
+        total:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        facets:
+          $ref: "#/components/schemas/ProductSearchFacets"
+        offset:
+          type: integer
+          minimum: 0
+          maximum: 999
+        hasMore:
+          type: boolean
+        nextOffset:
+          type: integer
+          minimum: 1
+          maximum: 1000
+    ProductSearchHit:
+      type: object
+      required:
+        - id
+        - handle
+        - title
+        - artist
+        - album
+      properties:
+        id:
+          type: string
+          minLength: 1
+        handle:
+          type: string
+          minLength: 1
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+      additionalProperties: true
+    ProductSearchFacets:
+      type: object
+      additionalProperties: false
+      required:
+        - genres
+        - metalGenres
+        - format
+        - categories
+        - variants
+        - productTypes
+        - availabilityStates
+        - stockStatuses
+        - bundleTypes
+      properties:
+        genres:
+          $ref: "#/components/schemas/FacetMap"
+        metalGenres:
+          $ref: "#/components/schemas/FacetMap"
+        format:
+          $ref: "#/components/schemas/FacetMap"
+        categories:
+          $ref: "#/components/schemas/FacetMap"
+        variants:
+          $ref: "#/components/schemas/FacetMap"
+        productTypes:
+          $ref: "#/components/schemas/FacetMap"
+        availabilityStates:
+          $ref: "#/components/schemas/FacetMap"
+        stockStatuses:
+          $ref: "#/components/schemas/FacetMap"
+        bundleTypes:
+          $ref: "#/components/schemas/FacetMap"
+    FacetMap:
+      type: object
+      additionalProperties:
+        type: integer
+        minimum: 0
+    ProductHandlePage:
+      type: object
+      additionalProperties: false
+      required:
+        - handles
+        - next_cursor
+      properties:
+        handles:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ProductHandleRecord"
+        next_cursor:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 256
+          pattern: "^[A-Za-z0-9_-]+$"
+    ProductHandleRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - handle
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 200
+        handle:
+          type: string
+          minLength: 1
+          maxLength: 200
+        created_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        updated_at:
+          type:
+            - string
+            - "null"
+          format: date-time
     NativeMedusaError:
       type: object
       additionalProperties: false

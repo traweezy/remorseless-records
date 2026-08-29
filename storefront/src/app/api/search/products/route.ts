@@ -1,9 +1,12 @@
 import { z } from "zod"
 
 import { searchProductsServer } from "@/lib/search/server"
-import type {
-  ProductSearchFilters,
-  ProductSearchRequest,
+import {
+  CATALOG_PAGE_SIZE,
+  SEARCH_MAX_LIMIT,
+  SEARCH_MAX_RESULT_WINDOW,
+  type ProductSearchFilters,
+  type ProductSearchRequest,
 } from "@/lib/search/search"
 import {
   enforceRateLimit,
@@ -16,8 +19,13 @@ import {
 const searchRequestSchema = z
   .object({
     query: z.string().max(160).optional(),
-    limit: z.coerce.number().int().min(1).max(200).optional(),
-    offset: z.coerce.number().int().min(0).optional(),
+    limit: z.coerce.number().int().min(1).max(SEARCH_MAX_LIMIT).optional(),
+    offset: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(SEARCH_MAX_RESULT_WINDOW - 1)
+      .optional(),
     sort: z
       .enum([
         "artist-asc",
@@ -60,6 +68,15 @@ const searchRequestSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    const limit = value.limit ?? 24
+    const offset = value.offset ?? 0
+    if (limit + offset > SEARCH_MAX_RESULT_WINDOW) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["offset"],
+        message: `Search results are limited to the first ${SEARCH_MAX_RESULT_WINDOW} matches`,
+      })
+    }
     const min = value.filters?.price?.min
     const max = value.filters?.price?.max
     if (typeof min === "number" && typeof max === "number" && min > max) {
@@ -120,11 +137,11 @@ const normalizeRequest = (
   const query = typeof payload.query === "string" ? payload.query : ""
   const limit =
     typeof payload.limit === "number" && Number.isFinite(payload.limit)
-      ? Math.max(1, Math.min(payload.limit, 200))
-      : 24
+      ? Math.max(1, Math.min(payload.limit, SEARCH_MAX_LIMIT))
+      : Math.min(24, CATALOG_PAGE_SIZE)
   const offset =
     typeof payload.offset === "number" && Number.isFinite(payload.offset)
-      ? Math.max(0, payload.offset)
+      ? Math.max(0, Math.min(payload.offset, SEARCH_MAX_RESULT_WINDOW - limit))
       : 0
   const sort = payload.sort ?? "newest"
   const filters = sanitizeFilters(payload.filters)

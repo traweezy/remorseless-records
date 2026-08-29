@@ -18,15 +18,15 @@ describe("getFullCatalogHits", () => {
       id: faker.string.uuid(),
       handle: validHandle,
     }
+    const firstProductId = faker.string.uuid()
+    const secondProductId = faker.string.uuid()
 
-    const list = vi
-      .fn()
-      .mockResolvedValueOnce({
-        products: [{ id: faker.string.uuid(), handle: validHandle }, { id: faker.string.uuid(), handle: "" }],
-      })
-      .mockResolvedValueOnce({
-        products: [],
-      })
+    const list = vi.fn().mockResolvedValueOnce({
+      products: [
+        { id: firstProductId, handle: validHandle },
+        { id: secondProductId, handle: "" },
+      ],
+    })
     const mapStoreProductToSearchHit = vi.fn().mockReturnValue(mappedHit)
 
     vi.doMock("next/cache", () => ({
@@ -39,6 +39,13 @@ describe("getFullCatalogHits", () => {
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
+    }))
+    vi.doMock("@/lib/data/products", () => ({
+      getAllProductHandles: vi.fn().mockResolvedValue([
+        { handle: validHandle, id: firstProductId, updatedAt: null },
+        { handle: "missing", id: secondProductId, updatedAt: null },
+      ]),
+      PRODUCT_LIST_FIELDS: "id,handle",
     }))
     vi.doMock("@/lib/products/transformers", () => ({
       mapStoreProductToSearchHit,
@@ -65,6 +72,12 @@ describe("getFullCatalogHits", () => {
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue("region_us"),
     }))
+    vi.doMock("@/lib/data/products", () => ({
+      getAllProductHandles: vi
+        .fn()
+        .mockRejectedValue(new Error("handle feed failed")),
+      PRODUCT_LIST_FIELDS: "id,handle",
+    }))
     vi.doMock("@/lib/products/transformers", () => ({
       mapStoreProductToSearchHit: vi.fn(),
     }))
@@ -80,6 +93,12 @@ describe("getFullCatalogHits", () => {
       id: faker.string.uuid(),
       handle: faker.helpers.slugify(faker.music.songName()).toLowerCase(),
     }))
+    const firstHandleRecords = firstBatch.map((product) => ({
+      handle: product.handle,
+      id: product.id,
+      updatedAt: null,
+    }))
+    const secondProductId = faker.string.uuid()
     const secondHandle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
 
     const list = vi
@@ -88,7 +107,7 @@ describe("getFullCatalogHits", () => {
         products: firstBatch,
       })
       .mockResolvedValueOnce({
-        products: [{ id: faker.string.uuid(), handle: secondHandle }],
+        products: [{ id: secondProductId, handle: secondHandle }],
       })
     const mapStoreProductToSearchHit = vi
       .fn()
@@ -108,6 +127,13 @@ describe("getFullCatalogHits", () => {
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
+    vi.doMock("@/lib/data/products", () => ({
+      getAllProductHandles: vi.fn().mockResolvedValue([
+        ...firstHandleRecords,
+        { handle: secondHandle, id: secondProductId, updatedAt: null },
+      ]),
+      PRODUCT_LIST_FIELDS: "id,handle",
+    }))
     vi.doMock("@/lib/products/transformers", () => ({
       mapStoreProductToSearchHit,
     }))
@@ -119,14 +145,14 @@ describe("getFullCatalogHits", () => {
     expect(list).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        offset: 0,
+        id: firstBatch.map((product) => product.id),
         region_id: regionId,
       })
     )
     expect(list).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        offset: 100,
+        id: [secondProductId],
         region_id: regionId,
       })
     )

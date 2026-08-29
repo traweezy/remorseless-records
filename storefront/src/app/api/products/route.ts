@@ -6,6 +6,10 @@ import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { resolveRegionId } from "@/lib/regions"
 import {
+  SEARCH_MAX_LIMIT,
+  SEARCH_MAX_RESULT_WINDOW,
+} from "@/lib/search/search"
+import {
   enforceRateLimit,
   jsonApiError,
   jsonApiResponse,
@@ -13,12 +17,26 @@ import {
 
 const querySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(200).optional(),
-    offset: z.coerce.number().int().min(0).optional(),
+    limit: z.coerce.number().int().min(1).max(SEARCH_MAX_LIMIT).optional(),
+    offset: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(SEARCH_MAX_RESULT_WINDOW - 1)
+      .optional(),
     sort: z.enum(["newest", "title-asc", "title-desc"]).optional(),
     inStock: z.enum(["true", "false"]).optional(),
   })
   .strict()
+  .superRefine((value, ctx) => {
+    if ((value.limit ?? 24) + (value.offset ?? 0) > SEARCH_MAX_RESULT_WINDOW) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["offset"],
+        message: `Product results are limited to the first ${SEARCH_MAX_RESULT_WINDOW} matches`,
+      })
+    }
+  })
 
 export const GET = async (request: Request) => {
   const url = new URL(request.url)
@@ -86,10 +104,12 @@ export const GET = async (request: Request) => {
         })
       : hits
 
-    const total =
+    const total = Math.min(
       typeof count === "number"
         ? count
-        : (options.offset as number) + filteredHits.length
+        : (options.offset as number) + filteredHits.length,
+      SEARCH_MAX_RESULT_WINDOW
+    )
 
     return jsonApiResponse({
       products,

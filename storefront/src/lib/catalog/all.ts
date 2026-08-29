@@ -1,34 +1,41 @@
 import { unstable_cache } from "next/cache"
 
-import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
+import {
+  getAllProductHandles,
+  PRODUCT_LIST_FIELDS,
+} from "@/lib/data/products"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import type { ProductSearchHit } from "@/types/product"
 import { storeClient } from "@/lib/medusa"
 import { resolveRegionId } from "@/lib/regions"
 
 const CATALOG_CACHE_KEY = "full-catalog-hits-v2"
+const FULL_CATALOG_MAX_PRODUCTS = 1_000
+const FULL_CATALOG_BATCH_SIZE = 100
 
 export const getFullCatalogHits = unstable_cache(
   async (): Promise<ProductSearchHit[]> => {
     try {
       const hits: ProductSearchHit[] = []
-      const batchSize = 100
-      let offset = 0
-
+      const handleRecords = await getAllProductHandles(
+        FULL_CATALOG_MAX_PRODUCTS
+      )
       const regionId = await resolveRegionId()
 
-      for (;;) {
+      for (
+        let index = 0;
+        index < handleRecords.length;
+        index += FULL_CATALOG_BATCH_SIZE
+      ) {
+        const productIds = handleRecords
+          .slice(index, index + FULL_CATALOG_BATCH_SIZE)
+          .map((record) => record.id)
         const { products } = await storeClient.product.list({
-          limit: batchSize,
-          offset,
-          order: "-created_at",
+          id: productIds,
+          limit: productIds.length,
           fields: PRODUCT_LIST_FIELDS,
           region_id: regionId,
         })
-
-        if (!products?.length) {
-          break
-        }
 
         products.forEach((product) => {
           if (
@@ -39,12 +46,6 @@ export const getFullCatalogHits = unstable_cache(
           }
           hits.push(mapStoreProductToSearchHit(product))
         })
-
-        if (products.length < batchSize) {
-          break
-        }
-
-        offset += products.length
       }
 
       return hits
