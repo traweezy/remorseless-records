@@ -34,14 +34,14 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `4ec7389a74326e6712799ad4102d08e93ae04bc5`.
+  `3b7a48408b5cf419bc37672317c8d6f627816b8e`.
 - Latest documentation-bearing staging SHA accepted:
-  `3e87cff062a5834925e9699ce0fff1ea11fd3a05`.
+  `3b7a48408b5cf419bc37672317c8d6f627816b8e`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `e0e3718d-5f3d-4b27-8847-c0794a068e1a` (`SUCCESS`).
+  `ae4838b9-808e-46f2-9f6d-ddde0598d937` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `4967d9d6-0d82-4286-ba7f-fa3fb295c4d4`
+  `ffd4c174-4b28-4bcc-8905-5998aaa94fcf`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -1249,7 +1249,7 @@ deploy, or runtime release. This is Railway's exact watch-path contract: an
 ignored commit remains visible for audit but spends no application build or
 runtime compute.
 
-## Active slice: runtime secrets and server-only search configuration
+## Completed slice: runtime secrets and server-only search configuration
 
 - [x] Run a names-only staging preflight against the exact Backend and
       Storefront services without printing secret values.
@@ -1276,7 +1276,7 @@ runtime compute.
       and the Storefront source deployment before changing staging variables.
 - [x] Apply only the reviewed staging variable migration after a guarded
       zero-create/zero-service-destroy plan; accept both exact deployments.
-- [ ] Remove the legacy `NEXT_PUBLIC_MEILI_*` fallback and Railway variables,
+- [x] Remove the legacy `NEXT_PUBLIC_MEILI_*` fallback and Railway variables,
       then repeat exact-SHA CI, deployment, route, log, and search acceptance.
 
 Discovery: the staging names-only validator found no missing, weak, or reused
@@ -1379,7 +1379,7 @@ known `$ next start` banner. The eight established health/route probes plus
 the `/products` redirect returned HTTP 200, and the trusted-origin server-only
 search POST returned HTTP 200 with one hit and total count seven.
 
-Contract candidate local evidence: all five focused search-environment tests
+Contract local evidence: all five focused search-environment tests
 pass, including rejection of the retired public pair when server-only values
 are absent. The complete repository lint, strict Storefront and Backend
 typechecks, and guarded IaC verifier pass. All 114 Storefront test files and
@@ -1392,12 +1392,50 @@ passes with only the three existing policy-ignored moderate findings. The
 reviewed post-contract plan has zero creates, two updates, and exactly the two
 expected legacy-variable deletes.
 
-Remaining in this slice: accept the contract source commit that rejects the
-legacy public search pair, then apply a second reviewed staging plan that
-deletes only `Storefront.NEXT_PUBLIC_MEILI_HOST` and
-`Storefront.NEXT_PUBLIC_MEILI_SEARCH_KEY` in addition to the known restart-
-policy readback entries. Re-run exact deployment, log, route, bundle, and
-search acceptance before closing the slice.
+Contract source acceptance on August 29, 2026: SHA
+`3b7a48408b5cf419bc37672317c8d6f627816b8e` passed Root CI `33251365470`,
+Backend CI `33251365476`, and Storefront CI `33251365478`, including the
+complete browser, accessibility, security, coverage, build, SBOM, and license
+gates. Railway correctly created Backend record
+`6ea50fc2-2ed0-4511-8759-f60e6bcf1326` as terminal `SKIPPED` metadata and
+deployed Storefront record `a8cf8f67-d40a-442f-b13c-dd644d5a0fb7` from the
+exact SHA. The Storefront build compiled all 53 routes, verified all 127 client
+assets, exported image
+`sha256:b5a76366e56366d5202e7d865c9f5913b897d2c7faacb63964ca0393f1ddced4`,
+and reached `SUCCESS` with zero build warning/error entries. Its runtime became
+ready with no unknown warning, error, failure, exception, fatal, panic, or
+stack terms. Before variable deletion, all nine health/route probes and the
+trusted-origin search acceptance returned HTTP 200; search returned one hit
+and total count seven.
+
+Contract apply acceptance on August 29, 2026: the exact-ID wrapper rechecked a
+zero-create/two-update/two-delete plan, then patch
+`79108384bf02424580607893ed02f623` deleted only
+`Storefront.NEXT_PUBLIC_MEILI_HOST` and
+`Storefront.NEXT_PUBLIC_MEILI_SEARCH_KEY` and reasserted the known restart-
+policy readback entries. Names-and-predicates-only verification proved both
+retired variables absent, the server-only host/key present, all required
+current Backend and Storefront secrets present, non-placeholder, distinct
+within each service, and at least 32 UTF-8 bytes, the two maintenance
+credentials absent, and the two Backend prior-key slots intentionally unset.
+
+Backend deployment `ae4838b9-808e-46f2-9f6d-ddde0598d937` and Storefront
+deployment `ffd4c174-4b28-4bcc-8905-5998aaa94fcf` reached `SUCCESS` on the
+exact patch and source SHA, with images
+`sha256:e6e8bf0b5845e21b9ba08d0f0187e6a1d3d34e79c6cced765b18b79a412b8b51`
+and
+`sha256:f118fa62772348259407d2ba59546c8d1304dccef9cf5cf02f92bb2e37fc3c1d`.
+Backend's 203-record and Storefront's 1,000-record build-log windows contained
+zero warning/error entries, used pnpm, and exported their images; Storefront
+again compiled all 53 routes and verified all 127 client assets. Backend's
+309-record and Storefront's six-record runtime windows contained zero warning,
+error, or suspicious failure terms. Backend became ready, rebuilt search, and
+reported all 461 published products; Storefront became ready. All nine health,
+route, and redirect probes again returned HTTP 200, and the trusted-origin
+search returned HTTP 200 with one hit and total count seven. The post-apply
+plan is `0 add / 2 change / 0 destroy`; only Railway's documented restart-
+policy readback defect remains, so it was not reapplied. No production
+environment or other Railway project was accessed or changed.
 
 ## Remaining authorization work
 
