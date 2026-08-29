@@ -3507,6 +3507,47 @@
         ]
       }
     },
+    "/health/scheduler": {
+      "get": {
+        "operationId": "backend_get_health_scheduler",
+        "summary": "GET /health/scheduler",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "5XX": {
+            "description": "The service is not ready or healthy."
+          }
+        },
+        "x-error-contract": {
+          "envelope": "health-json",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/health/scheduler/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
     "/key-exchange": {
       "get": {
         "operationId": "backend_get_key_exchange",
@@ -5431,12 +5472,12 @@
     }
   },
   "x-inventory": {
-    "routeFileCount": 85,
+    "routeFileCount": 86,
     "routeFileCounts": {
-      "backend": 55,
+      "backend": 56,
       "storefront": 30
     },
-    "routeOperationCount": 112,
-    "uniqueOperationCount": 110
+    "routeOperationCount": 113,
+    "uniqueOperationCount": 111
   }
 }

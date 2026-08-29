@@ -20,6 +20,7 @@ import {
   reconcileCheckoutPayments,
   resolveCheckoutReconciliationConfig,
 } from "../lib/checkout/reconciliation"
+import { recordCheckoutSchedulerHealth } from "../lib/health/scheduler"
 import { CHECKOUT_RECONCILIATION_LOCK_TTL_SECONDS } from "../lib/workflow-worker-options"
 
 type ScheduledJobContext = {
@@ -45,12 +46,24 @@ const deploymentIdentity = () => ({
   service: "backend",
 })
 
-const writeJobLog = (
+const writeJobLog = async (
   logger: Logger,
   level: JobLogLevel,
   event: Record<string, unknown>
-): void => {
-  const payload = JSON.stringify({ ...deploymentIdentity(), ...event })
+): Promise<void> => {
+  const completeEvent = { ...deploymentIdentity(), ...event }
+  try {
+    await recordCheckoutSchedulerHealth(completeEvent)
+  } catch {
+    logger.error(
+      JSON.stringify({
+        ...deploymentIdentity(),
+        event: "job.checkout_reconciliation.monitor_failed",
+        message: "Checkout reconciliation health persistence failed",
+      })
+    )
+  }
+  const payload = JSON.stringify(completeEvent)
   if (level === "error") {
     logger.error(payload)
     return
@@ -119,7 +132,7 @@ export default async function reconcileCheckoutPaymentsJob(
       started_at: startedAt.toISOString(),
     }
     if (isLockConflict(error)) {
-      writeJobLog(logger, "warn", {
+      await writeJobLog(logger, "warn", {
         event: "job.checkout_reconciliation.skipped",
         message: "Checkout reconciliation skipped because a run holds the lock",
         reason: "lock_held",
@@ -127,7 +140,7 @@ export default async function reconcileCheckoutPaymentsJob(
       })
       return
     }
-    writeJobLog(logger, "error", {
+    await writeJobLog(logger, "error", {
       event: "job.checkout_reconciliation.failed",
       failure_stage: "lock_acquisition",
       message: "Checkout reconciliation failed",
@@ -182,7 +195,7 @@ export default async function reconcileCheckoutPaymentsJob(
   }
 
   if (runError) {
-    writeJobLog(logger, "error", {
+    await writeJobLog(logger, "error", {
       event: "job.checkout_reconciliation.failed",
       failure_stage: "reconciliation",
       message: "Checkout reconciliation failed",
@@ -191,7 +204,7 @@ export default async function reconcileCheckoutPaymentsJob(
     throw runError
   }
   if (!result) {
-    writeJobLog(logger, "error", {
+    await writeJobLog(logger, "error", {
       event: "job.checkout_reconciliation.failed",
       failure_stage: "result",
       message: "Checkout reconciliation failed",
@@ -210,7 +223,7 @@ export default async function reconcileCheckoutPaymentsJob(
     scheduleDelayMs >= SCHEDULE_DELAY_WARNING_MS ||
     durationMs >= DURATION_WARNING_MS ||
     timing.event_loop_delay_max_ms >= EVENT_LOOP_DELAY_WARNING_MS
-  writeJobLog(logger, needsAttention ? "warn" : "info", {
+  await writeJobLog(logger, needsAttention ? "warn" : "info", {
     event: needsAttention
       ? "job.checkout_reconciliation.attention"
       : "job.checkout_reconciliation.completed",

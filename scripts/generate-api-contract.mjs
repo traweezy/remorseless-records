@@ -33,6 +33,7 @@ const ROUTE_ROOTS = [
 const HEALTH_PATHS = new Set([
   "/api/health",
   "/api/healthcheck",
+  "/health/scheduler",
   "/live",
   "/ready",
 ])
