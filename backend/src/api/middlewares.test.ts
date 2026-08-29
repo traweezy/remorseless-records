@@ -19,11 +19,13 @@ import middlewares, {
   contentAdminPolicyRoutes,
   applySecurityBoundaryHeaders,
   createRateLimitMiddleware,
+  disabledNativeCatalogDeletionAdminRoutes,
   nativeAdminPolicyOverlayRoutes,
   operationsAdminMiddlewareRoutes,
   operationsAdminPolicyRoutes,
   productImportAdminPolicyRoutes,
   rejectDeprecatedProductImport,
+  rejectUnsafeNativeCatalogDeletion,
 } from "./middlewares";
 
 jest.mock("../lib/constants", () => ({
@@ -488,6 +490,155 @@ describe("Admin middleware composition", () => {
       );
     },
   );
+});
+
+describe("disabled native catalog deletion boundary", () => {
+  it.each([
+    [
+      "/admin/collections/pcol_01",
+      [nativeAdminActions.productCollection.delete],
+    ],
+    [
+      "/ADMIN/PRODUCT-CATEGORIES/PCAT_01/",
+      [nativeAdminActions.productCategory.delete],
+    ],
+    [
+      "/admin/product-options/opt_01",
+      [nativeAdminActions.productOption.delete],
+    ],
+    [
+      "/admin/product-options/opt_01/values/optval_01",
+      [
+        nativeAdminActions.productOption.update,
+        nativeAdminActions.productOptionValue.delete,
+      ],
+    ],
+    ["/admin/product-tags/ptag_01", [nativeAdminActions.productTag.delete]],
+    ["/admin/product-types/ptyp_01", [nativeAdminActions.productType.delete]],
+    ["/admin/products/custom-id", [nativeAdminActions.product.delete]],
+    [
+      "/admin/products/custom-id/variants/custom-variant-id",
+      [nativeAdminActions.productVariant.delete],
+    ],
+  ])("blocks DELETE %s behind its native delete policies", (requestPath, policies) => {
+    const matches = disabledNativeCatalogDeletionAdminRoutes.filter((route) =>
+      routeMatches(route, "DELETE", requestPath),
+    );
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.bodyParser).toBe(false);
+    expect(matches[0]?.middlewares).toEqual([
+      rejectUnsafeNativeCatalogDeletion,
+    ]);
+    expect(policyFor(disabledNativeCatalogDeletionAdminRoutes, "DELETE", requestPath)).toEqual(
+      policies,
+    );
+    expect(policyFor(middlewares.routes ?? [], "DELETE", requestPath)).toEqual(
+      policies,
+    );
+  });
+
+  it.each([
+    ["GET", "/admin/products/prod_01"],
+    ["DELETE", "/admin/products"],
+    ["DELETE", "/admin/products/prod_01/variants"],
+    [
+      "DELETE",
+      "/admin/products/prod_01/variants/variant_01/inventory-items/iitem_01",
+    ],
+    ["DELETE", "/admin/product-options/opt_01/values"],
+    ["DELETE", "/admin/product-options/opt_01/values/optval_01/extra"],
+    ["DELETE", "/admin/sales-channels/sc_01"],
+  ])("does not intercept unsupported %s %s", (method, requestPath) => {
+    expect(
+      disabledNativeCatalogDeletionAdminRoutes.some((route) =>
+        routeMatches(route, method, requestPath),
+      ),
+    ).toBe(false);
+  });
+
+  it("returns a private Problem Details response without invoking a handler", () => {
+    const json = jest.fn();
+    const status = jest.fn(() => ({ json }));
+    const setHeader = jest.fn();
+    const type = jest.fn();
+
+    rejectUnsafeNativeCatalogDeletion(
+      { path: "/admin/products/prod_01" } as MedusaRequest,
+      { json, setHeader, status, type } as unknown as MedusaResponse,
+    );
+
+    expect(setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
+    expect(type).toHaveBeenCalledWith("application/problem+json");
+    expect(status).toHaveBeenCalledWith(409);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "catalog_hard_deletion_disabled",
+        detail:
+          "Use an audited, version-checked update, archive, restore, or quarantine workflow.",
+        instance: "/admin/products/prod_01",
+        request_id: expect.any(String),
+        status: 409,
+        title: "Catalog hard deletion is disabled",
+        trace_id: expect.stringMatching(/^[0-9a-f]{32}$/u),
+        type: "urn:remorseless-records:problem:catalog-hard-deletion-disabled",
+      }),
+    );
+  });
+
+  it("sorts the rejection before pinned native handlers", () => {
+    const frameworkEntry = require.resolve("@medusajs/framework");
+    const routesSorterPath = path.join(
+      path.dirname(frameworkEntry),
+      "http/routes-sorter.js",
+    );
+    const medusaEntry = require.resolve("@medusajs/medusa");
+    const productMiddlewarePath = path.join(
+      path.dirname(medusaEntry),
+      "api/admin/products/middlewares.js",
+    );
+    const { RoutesSorter } = jest.requireActual<{
+      RoutesSorter: PinnedRouteSorter;
+    }>(routesSorterPath);
+    const { adminProductRoutesMiddlewares } = jest.requireActual<{
+      adminProductRoutesMiddlewares: MiddlewareRoute[];
+    }>(productMiddlewarePath);
+    const coreDelete = adminProductRoutesMiddlewares.find((route) => {
+      const method = (
+        route as MiddlewareRoute & { method?: readonly string[] }
+      ).method;
+      return route.matcher === "/admin/products/:id" && method?.includes("DELETE");
+    });
+    const projectRejection = disabledNativeCatalogDeletionAdminRoutes.find(
+      (route) => routeMatches(route, "DELETE", "/admin/products/prod_01"),
+    );
+    expect(coreDelete).toBeDefined();
+    expect(projectRejection).toBeDefined();
+    if (!coreDelete || !projectRejection) {
+      return;
+    }
+
+    const sorted = new RoutesSorter([
+      { ...coreDelete, marker: "core-delete-policy" },
+      {
+        isRoute: true,
+        matcher: "/admin/products/:id",
+        method: "DELETE",
+        marker: "core-delete-handler",
+      },
+      { ...projectRejection, marker: "project-rejection" },
+    ]).sort();
+    const markers = sorted.map(({ marker }) => marker);
+
+    expect(markers.indexOf("project-rejection")).toBeLessThan(
+      markers.indexOf("core-delete-policy"),
+    );
+    expect(markers.indexOf("project-rejection")).toBeLessThan(
+      markers.indexOf("core-delete-handler"),
+    );
+  });
 });
 
 describe("product import Admin RBAC middleware", () => {

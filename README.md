@@ -214,6 +214,18 @@ presigned-upload route. Approved tooling uses the validated managed upload and
 plural prepare/confirm APIs until a permission-aware replacement is
 implemented.
 
+Catalog hard deletion is also fail-closed at the backend. Native Product,
+Variant, Collection, Category, Option, Option value, Tag, and Type DELETE routes
+require their normal native policies and then return a private 409 Problem
+Details response. Direct deletion of custom artists, reference values, Product
+or Variant profiles, and Product media returns the same stable problem contract.
+The pinned Dashboard patch removes Product and Variant delete controls from its
+source and production bundles, and CI verifies those artifacts separately.
+Operators must use the versioned catalog workflows, reversible shelf archive or
+restore, and media quarantine or restore paths. Inventory-item unlinking remains
+available because it removes a relationship rather than physically deleting a
+catalog entity.
+
 ```mermaid
 flowchart TD
   Login[Administrator signs in] --> Roles[Medusa resolves assigned roles]

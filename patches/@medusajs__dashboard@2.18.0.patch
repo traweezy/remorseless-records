@@ -1,8 +1,63 @@
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..033e528248cae6e59966b780590c265d52cdcbe2 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a08164058d 100644
 --- a/dist/app.js
 +++ b/dist/app.js
-@@ -117626,7 +117626,6 @@ var init_product_list_table = __esm({
+@@ -116865,36 +116865,7 @@ var init_product_list_table_actions = __esm({
+       product
+     }) => {
+       const { t: t5 } = (0, import_react_i18next32.useTranslation)();
+-      const prompt = (0, import_ui37.usePrompt)();
+-      const { mutateAsync } = useDeleteProduct(product.id);
+       const isTranslationsEnabled = useFeatureFlag("translation");
+-      const handleDelete = async () => {
+-        const res = await prompt({
+-          title: t5("general.areYouSure"),
+-          description: t5("products.deleteWarning", {
+-            title: product.title
+-          }),
+-          confirmText: t5("actions.delete"),
+-          cancelText: t5("actions.cancel")
+-        });
+-        if (!res) {
+-          return;
+-        }
+-        await mutateAsync(void 0, {
+-          onSuccess: () => {
+-            import_ui37.toast.success(t5("products.toasts.delete.success.header"), {
+-              description: t5("products.toasts.delete.success.description", {
+-                title: product.title
+-              })
+-            });
+-          },
+-          onError: (e) => {
+-            import_ui37.toast.error(t5("products.toasts.delete.error.header"), {
+-              description: e.message
+-            });
+-          }
+-        });
+-      };
+       return /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(
+         ActionMenu,
+         {
+@@ -116918,16 +116889,7 @@ var init_product_list_table_actions = __esm({
+                   }
+                 ]
+               }
+-            ] : [],
+-            {
+-              actions: [
+-                {
+-                  icon: /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(import_icons25.Trash, {}),
+-                  label: t5("actions.delete"),
+-                  onClick: handleDelete
+-                }
+-              ]
+-            }
++            ] : []
+           ]
+         }
+       );
+@@ -117626,7 +117588,6 @@ var init_product_list_table = __esm({
            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Heading, { level: "h1", children: t5("products.domain") }),
            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "flex items-center justify-center gap-x-2", children: [
              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: `export${location.search}`, children: t5("actions.export") }) }),
@@ -10,7 +65,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..033e528248cae6e59966b780590c265d
              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: "create", children: t5("actions.create") }) })
            ] })
          ] }),
-@@ -123459,7 +123458,6 @@ var init_configurable_product_list_table = __esm({
+@@ -123459,7 +123420,6 @@ var init_configurable_product_list_table = __esm({
              heading: t5("products.domain"),
              actions: [
                { label: t5("actions.export"), to: `export${location.search}` },
@@ -18,7 +73,168 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..033e528248cae6e59966b780590c265d
                { label: t5("actions.create"), to: "create" }
              ]
            }
-@@ -218601,10 +218599,6 @@ function getRouteMap({
+@@ -134419,35 +134379,9 @@ var init_product_general_section = __esm({
+       product
+     }) => {
+       const { t: t5 } = (0, import_react_i18next88.useTranslation)();
+-      const prompt = (0, import_ui99.usePrompt)();
+-      const navigate = (0, import_react_router_dom35.useNavigate)();
+       const { getDisplays } = useExtension();
+       const isTranslationsEnabled = useFeatureFlag("translation");
+       const displays = getDisplays("product", "general");
+-      const { mutateAsync } = useDeleteProduct(product.id);
+-      const handleDelete = async () => {
+-        const res = await prompt({
+-          title: t5("general.areYouSure"),
+-          description: t5("products.deleteWarning", {
+-            title: product.title
+-          }),
+-          confirmText: t5("actions.delete"),
+-          cancelText: t5("actions.cancel")
+-        });
+-        if (!res) {
+-          return;
+-        }
+-        await mutateAsync(void 0, {
+-          onSuccess: () => {
+-            navigate("..");
+-          },
+-          onError: (e) => {
+-            import_ui99.toast.error(t5("products.toasts.delete.error.header"), {
+-              description: e.message
+-            });
+-          }
+-        });
+-      };
+       return /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)(import_ui99.Container, { className: "divide-y p-0", children: [
+         /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
+           /* @__PURE__ */ (0, import_jsx_runtime136.jsx)(import_ui99.Heading, { children: product.title }),
+@@ -134476,16 +134410,7 @@ var init_product_general_section = __esm({
+                         }
+                       ]
+                     }
+-                  ] : [],
+-                  {
+-                    actions: [
+-                      {
+-                        label: t5("actions.delete"),
+-                        onClick: handleDelete,
+-                        icon: /* @__PURE__ */ (0, import_jsx_runtime136.jsx)(import_icons45.Trash, {})
+-                      }
+-                    ]
+-                  }
++                  ] : []
+                 ]
+               }
+             )
+@@ -135147,8 +135072,6 @@ var init_product_variant_section = __esm({
+     useColumns4 = (product) => {
+       const { t: t5 } = (0, import_react_i18next93.useTranslation)();
+       const navigate = (0, import_react_router_dom38.useNavigate)();
+-      const { mutateAsync } = useDeleteVariantLazy(product.id);
+-      const prompt = (0, import_ui104.usePrompt)();
+       const [searchParams] = (0, import_react_router_dom38.useSearchParams)();
+       const tableSearchParams = (0, import_react140.useMemo)(() => {
+         const filtered = new URLSearchParams();
+@@ -135159,23 +135082,6 @@ var init_product_variant_section = __esm({
+         }
+         return filtered;
+       }, [searchParams]);
+-      const handleDelete = (0, import_react140.useCallback)(
+-        async (id2, title) => {
+-          const res = await prompt({
+-            title: t5("general.areYouSure"),
+-            description: t5("products.deleteVariantWarning", {
+-              title
+-            }),
+-            confirmText: t5("actions.delete"),
+-            cancelText: t5("actions.cancel")
+-          });
+-          if (!res) {
+-            return;
+-          }
+-          await mutateAsync({ variantId: id2 });
+-        },
+-        [mutateAsync, prompt, t5]
+-      );
+       const optionColumns = (0, import_react140.useMemo)(() => {
+         if (!product?.options) {
+           return [];
+@@ -135232,13 +135138,6 @@ var init_product_variant_section = __esm({
+               }
+             }
+           ];
+-          const secondaryActions = [
+-            {
+-              icon: /* @__PURE__ */ (0, import_jsx_runtime141.jsx)(import_icons50.Trash, {}),
+-              label: t5("actions.delete"),
+-              onClick: () => handleDelete(variant.id, variant.title)
+-            }
+-          ];
+           const inventoryItemsCount = variant.inventory_items?.length || 0;
+           switch (inventoryItemsCount) {
+             case 0:
+@@ -135271,9 +135170,9 @@ var init_product_variant_section = __esm({
+               });
+             }
+           }
+-          return [mainActions, secondaryActions];
++          return [mainActions];
+         },
+-        [handleDelete, navigate, t5, tableSearchParams]
++        [navigate, t5, tableSearchParams]
+       );
+       const getInventory = (0, import_react140.useCallback)(
+         (variant) => {
+@@ -141169,29 +141068,8 @@ var init_loader5 = __esm({
+ // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
+ function VariantGeneralSection({ variant }) {
+   const { t: t5 } = (0, import_react_i18next124.useTranslation)();
+-  const prompt = (0, import_ui133.usePrompt)();
+-  const navigate = (0, import_react_router_dom58.useNavigate)();
+   const isTranslationsEnabled = useFeatureFlag("translation");
+   const hasInventoryKit = (variant.inventory?.length ?? 0) > 1;
+-  const { mutateAsync } = useDeleteVariant(variant.product_id, variant.id);
+-  const handleDelete = async () => {
+-    const res = await prompt({
+-      title: t5("general.areYouSure"),
+-      description: t5("products.variant.deleteWarning", {
+-        title: variant.title
+-      }),
+-      confirmText: t5("actions.delete"),
+-      cancelText: t5("actions.cancel")
+-    });
+-    if (!res) {
+-      return;
+-    }
+-    await mutateAsync(void 0, {
+-      onSuccess: () => {
+-        navigate("..", { replace: true });
+-      }
+-    });
+-  };
+   return /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)(import_ui133.Container, { className: "divide-y p-0", children: [
+     /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
+       /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { children: [
+@@ -141224,16 +141102,7 @@ function VariantGeneralSection({ variant }) {
+                   }
+                 ]
+               }
+-            ] : [],
+-            {
+-              actions: [
+-                {
+-                  label: t5("actions.delete"),
+-                  onClick: handleDelete,
+-                  icon: /* @__PURE__ */ (0, import_jsx_runtime183.jsx)(import_icons59.Trash, {})
+-                }
+-              ]
+-            }
++            ] : []
+           ]
+         }
+       ) })
+@@ -218601,10 +218470,6 @@ function getRouteMap({
                        path: "create",
                        lazy: () => Promise.resolve().then(() => (init_product_create2(), product_create_exports))
                      },
@@ -44,11 +260,242 @@ index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..19f9fb35a3e1afc8dec066b1e2e6d197
                      {
                        path: "export",
                        lazy: () => import("./product-export-GZQF56AL.mjs")
+diff --git a/dist/product-detail-7UDXNUGN.mjs b/dist/product-detail-7UDXNUGN.mjs
+index a22703f8d12bb735ac61a3d63cf54bd3dc2eaa7a..5c90bfd6682ba45d93d4e11168c68e41bbb7fbe5 100644
+--- a/dist/product-detail-7UDXNUGN.mjs
++++ b/dist/product-detail-7UDXNUGN.mjs
+@@ -87,8 +87,6 @@ import {
+ import "./chunk-D3TDNKSZ.mjs";
+ import {
+   productsQueryKeys,
+-  useDeleteProduct,
+-  useDeleteVariantLazy,
+   useProduct,
+   useProductVariants,
+   useUpdateProduct
+@@ -201,10 +199,9 @@ var ProductAttributeSection = ({
+ };
+ 
+ // src/routes/products/product-detail/components/product-general-section/product-general-section.tsx
+-import { GlobeEurope, PencilSquare as PencilSquare2, Trash } from "@medusajs/icons";
+-import { Container as Container2, Heading as Heading2, StatusBadge, toast, usePrompt } from "@medusajs/ui";
++import { GlobeEurope, PencilSquare as PencilSquare2 } from "@medusajs/icons";
++import { Container as Container2, Heading as Heading2, StatusBadge } from "@medusajs/ui";
+ import { useTranslation as useTranslation2 } from "react-i18next";
+-import { useNavigate } from "react-router-dom";
+ import { jsx as jsx3, jsxs as jsxs2 } from "react/jsx-runtime";
+ var productStatusColor = (status) => {
+   switch (status) {
+@@ -224,35 +221,9 @@ var ProductGeneralSection = ({
+   product
+ }) => {
+   const { t } = useTranslation2();
+-  const prompt = usePrompt();
+-  const navigate = useNavigate();
+   const { getDisplays } = useExtension();
+   const isTranslationsEnabled = useFeatureFlag("translation");
+   const displays = getDisplays("product", "general");
+-  const { mutateAsync } = useDeleteProduct(product.id);
+-  const handleDelete = async () => {
+-    const res = await prompt({
+-      title: t("general.areYouSure"),
+-      description: t("products.deleteWarning", {
+-        title: product.title
+-      }),
+-      confirmText: t("actions.delete"),
+-      cancelText: t("actions.cancel")
+-    });
+-    if (!res) {
+-      return;
+-    }
+-    await mutateAsync(void 0, {
+-      onSuccess: () => {
+-        navigate("..");
+-      },
+-      onError: (e) => {
+-        toast.error(t("products.toasts.delete.error.header"), {
+-          description: e.message
+-        });
+-      }
+-    });
+-  };
+   return /* @__PURE__ */ jsxs2(Container2, { className: "divide-y p-0", children: [
+     /* @__PURE__ */ jsxs2("div", { className: "flex items-center justify-between px-6 py-4", children: [
+       /* @__PURE__ */ jsx3(Heading2, { children: product.title }),
+@@ -281,16 +252,7 @@ var ProductGeneralSection = ({
+                     }
+                   ]
+                 }
+-              ] : [],
+-              {
+-                actions: [
+-                  {
+-                    label: t("actions.delete"),
+-                    onClick: handleDelete,
+-                    icon: /* @__PURE__ */ jsx3(Trash, {})
+-                  }
+-                ]
+-              }
++              ] : []
+             ]
+           }
+         )
+@@ -767,8 +729,7 @@ import {
+   Buildings,
+   Component,
+   GlobeEurope as GlobeEurope2,
+-  PencilSquare as PencilSquare7,
+-  Trash as Trash2
++  PencilSquare as PencilSquare7
+ } from "@medusajs/icons";
+ import {
+   Badge as Badge3,
+@@ -777,8 +738,7 @@ import {
+   createDataTableColumnHelper,
+   createDataTableCommandHelper,
+   createDataTableFilterHelper,
+-  Tooltip as Tooltip4,
+-  usePrompt as usePrompt3
++  Tooltip as Tooltip4
+ } from "@medusajs/ui";
+ import { keepPreviousData } from "@tanstack/react-query";
+ import { useCallback, useMemo } from "react";
+@@ -882,8 +842,6 @@ var columnHelper = createDataTableColumnHelper();
+ var useColumns = (product) => {
+   const { t } = useTranslation7();
+   const navigate = useNavigate3();
+-  const { mutateAsync } = useDeleteVariantLazy(product.id);
+-  const prompt = usePrompt3();
+   const [searchParams] = useSearchParams();
+   const tableSearchParams = useMemo(() => {
+     const filtered = new URLSearchParams();
+@@ -894,23 +852,6 @@ var useColumns = (product) => {
+     }
+     return filtered;
+   }, [searchParams]);
+-  const handleDelete = useCallback(
+-    async (id, title) => {
+-      const res = await prompt({
+-        title: t("general.areYouSure"),
+-        description: t("products.deleteVariantWarning", {
+-          title
+-        }),
+-        confirmText: t("actions.delete"),
+-        cancelText: t("actions.cancel")
+-      });
+-      if (!res) {
+-        return;
+-      }
+-      await mutateAsync({ variantId: id });
+-    },
+-    [mutateAsync, prompt, t]
+-  );
+   const optionColumns = useMemo(() => {
+     if (!product?.options) {
+       return [];
+@@ -967,13 +908,6 @@ var useColumns = (product) => {
+           }
+         }
+       ];
+-      const secondaryActions = [
+-        {
+-          icon: /* @__PURE__ */ jsx8(Trash2, {}),
+-          label: t("actions.delete"),
+-          onClick: () => handleDelete(variant.id, variant.title)
+-        }
+-      ];
+       const inventoryItemsCount = variant.inventory_items?.length || 0;
+       switch (inventoryItemsCount) {
+         case 0:
+@@ -1006,9 +940,9 @@ var useColumns = (product) => {
+           });
+         }
+       }
+-      return [mainActions, secondaryActions];
++      return [mainActions];
+     },
+-    [handleDelete, navigate, t, tableSearchParams]
++    [navigate, t, tableSearchParams]
+   );
+   const getInventory = useCallback(
+     (variant) => {
 diff --git a/dist/product-list-KFP2GKHN.mjs b/dist/product-list-KFP2GKHN.mjs
-index 28522b73fefac055a0ab3031851587f77e65e7d8..b7f3cf9324c3e48647fd8824ceaee00a6e98afe8 100644
+index 28522b73fefac055a0ab3031851587f77e65e7d8..42604281f4e8afdb7930f434917c0cd5024a69a8 100644
 --- a/dist/product-list-KFP2GKHN.mjs
 +++ b/dist/product-list-KFP2GKHN.mjs
-@@ -244,7 +244,6 @@ var ProductListTable = () => {
+@@ -84,7 +84,6 @@ import "./chunk-LYZ7OUA3.mjs";
+ import "./chunk-D3TDNKSZ.mjs";
+ import {
+   productsQueryKeys,
+-  useDeleteProduct,
+   useProducts
+ } from "./chunk-TPANFD43.mjs";
+ import "./chunk-7AXHHXCX.mjs";
+@@ -132,44 +131,14 @@ import { useTranslation as useTranslation2 } from "react-i18next";
+ import { Link, Outlet, useLoaderData, useLocation } from "react-router-dom";
+ 
+ // src/routes/products/product-list/components/product-list-table/product-list-table-actions.tsx
+-import { GlobeEurope, PencilSquare, Trash } from "@medusajs/icons";
+-import { toast, usePrompt } from "@medusajs/ui";
++import { GlobeEurope, PencilSquare } from "@medusajs/icons";
+ import { useTranslation } from "react-i18next";
+ import { jsx } from "react/jsx-runtime";
+ var ProductActions = ({
+   product
+ }) => {
+   const { t } = useTranslation();
+-  const prompt = usePrompt();
+-  const { mutateAsync } = useDeleteProduct(product.id);
+   const isTranslationsEnabled = useFeatureFlag("translation");
+-  const handleDelete = async () => {
+-    const res = await prompt({
+-      title: t("general.areYouSure"),
+-      description: t("products.deleteWarning", {
+-        title: product.title
+-      }),
+-      confirmText: t("actions.delete"),
+-      cancelText: t("actions.cancel")
+-    });
+-    if (!res) {
+-      return;
+-    }
+-    await mutateAsync(void 0, {
+-      onSuccess: () => {
+-        toast.success(t("products.toasts.delete.success.header"), {
+-          description: t("products.toasts.delete.success.description", {
+-            title: product.title
+-          })
+-        });
+-      },
+-      onError: (e) => {
+-        toast.error(t("products.toasts.delete.error.header"), {
+-          description: e.message
+-        });
+-      }
+-    });
+-  };
+   return /* @__PURE__ */ jsx(
+     ActionMenu,
+     {
+@@ -193,16 +162,7 @@ var ProductActions = ({
+               }
+             ]
+           }
+-        ] : [],
+-        {
+-          actions: [
+-            {
+-              icon: /* @__PURE__ */ jsx(Trash, {}),
+-              label: t("actions.delete"),
+-              onClick: handleDelete
+-            }
+-          ]
+-        }
++        ] : []
+       ]
+     }
+   );
+@@ -244,7 +204,6 @@ var ProductListTable = () => {
        /* @__PURE__ */ jsx2(Heading, { level: "h1", children: t("products.domain") }),
        /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-center gap-x-2", children: [
          /* @__PURE__ */ jsx2(Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ jsx2(Link, { to: `export${location.search}`, children: t("actions.export") }) }),
@@ -56,7 +503,7 @@ index 28522b73fefac055a0ab3031851587f77e65e7d8..b7f3cf9324c3e48647fd8824ceaee00a
          /* @__PURE__ */ jsx2(Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ jsx2(Link, { to: "create", children: t("actions.create") }) })
        ] })
      ] }),
-@@ -371,7 +370,6 @@ var ConfigurableProductListTable = () => {
+@@ -371,7 +330,6 @@ var ConfigurableProductListTable = () => {
          heading: t("products.domain"),
          actions: [
            { label: t("actions.export"), to: `export${location.search}` },
@@ -64,6 +511,75 @@ index 28522b73fefac055a0ab3031851587f77e65e7d8..b7f3cf9324c3e48647fd8824ceaee00a
            { label: t("actions.create"), to: "create" }
          ]
        }
+diff --git a/dist/product-variant-detail-UNS5EC7C.mjs b/dist/product-variant-detail-UNS5EC7C.mjs
+index 736e26e394ddf9ae9c9e04637cba9f12bde0a01d..e8c799ff5cd5c25a2feabceff2c2c4ea00e3e497 100644
+--- a/dist/product-variant-detail-UNS5EC7C.mjs
++++ b/dist/product-variant-detail-UNS5EC7C.mjs
+@@ -68,7 +68,6 @@ import "./chunk-SKQPG6BC.mjs";
+ import "./chunk-LYZ7OUA3.mjs";
+ import "./chunk-D3TDNKSZ.mjs";
+ import {
+-  useDeleteVariant,
+   useProductVariant,
+   variantsQueryKeys
+ } from "./chunk-TPANFD43.mjs";
+@@ -132,36 +131,14 @@ import { CORE_LAYOUT_IDS } from "@medusajs/admin-shared";
+ import { useLoaderData, useParams } from "react-router-dom";
+ 
+ // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
+-import { Component, GlobeEurope, PencilSquare, Trash } from "@medusajs/icons";
+-import { Badge, Container, Heading, usePrompt } from "@medusajs/ui";
++import { Component, GlobeEurope, PencilSquare } from "@medusajs/icons";
++import { Badge, Container, Heading } from "@medusajs/ui";
+ import { useTranslation } from "react-i18next";
+-import { useNavigate } from "react-router-dom";
+ import { jsx as jsx2, jsxs } from "react/jsx-runtime";
+ function VariantGeneralSection({ variant }) {
+   const { t } = useTranslation();
+-  const prompt = usePrompt();
+-  const navigate = useNavigate();
+   const isTranslationsEnabled = useFeatureFlag("translation");
+   const hasInventoryKit = (variant.inventory?.length ?? 0) > 1;
+-  const { mutateAsync } = useDeleteVariant(variant.product_id, variant.id);
+-  const handleDelete = async () => {
+-    const res = await prompt({
+-      title: t("general.areYouSure"),
+-      description: t("products.variant.deleteWarning", {
+-        title: variant.title
+-      }),
+-      confirmText: t("actions.delete"),
+-      cancelText: t("actions.cancel")
+-    });
+-    if (!res) {
+-      return;
+-    }
+-    await mutateAsync(void 0, {
+-      onSuccess: () => {
+-        navigate("..", { replace: true });
+-      }
+-    });
+-  };
+   return /* @__PURE__ */ jsxs(Container, { className: "divide-y p-0", children: [
+     /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-6 py-4", children: [
+       /* @__PURE__ */ jsxs("div", { children: [
+@@ -194,16 +171,7 @@ function VariantGeneralSection({ variant }) {
+                   }
+                 ]
+               }
+-            ] : [],
+-            {
+-              actions: [
+-                {
+-                  label: t("actions.delete"),
+-                  onClick: handleDelete,
+-                  icon: /* @__PURE__ */ jsx2(Trash, {})
+-                }
+-              ]
+-            }
++            ] : []
+           ]
+         }
+       ) })
 diff --git a/src/dashboard-app/routes/get-route.map.tsx b/src/dashboard-app/routes/get-route.map.tsx
 index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..1a1a87dc382445ce8d6fa6e99dec33a5b55ccfae 100644
 --- a/src/dashboard-app/routes/get-route.map.tsx
@@ -80,6 +596,249 @@ index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..1a1a87dc382445ce8d6fa6e99dec33a5
                      {
                        path: "export",
                        lazy: () =>
+diff --git a/src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx b/src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
+index 4f02029ff0cb1378fc9be20fc5495b98dd2c5729..2fd28c4bddf552aa38e5fbade8b9b556606d762c 100644
+--- a/src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
++++ b/src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
+@@ -1,11 +1,9 @@
+-import { Component, GlobeEurope, PencilSquare, Trash } from "@medusajs/icons"
+-import { Badge, Container, Heading, usePrompt } from "@medusajs/ui"
++import { Component, GlobeEurope, PencilSquare } from "@medusajs/icons"
++import { Badge, Container, Heading } from "@medusajs/ui"
+ import { useTranslation } from "react-i18next"
+-import { useNavigate } from "react-router-dom"
+ 
+ import { ActionMenu } from "../../../../../components/common/action-menu"
+ import { SectionRow } from "../../../../../components/common/section"
+-import { useDeleteVariant } from "../../../../../hooks/api/products"
+ import { useFeatureFlag } from "../../../../../providers/feature-flag-provider"
+ import { ExtendedVariant } from "../../constants"
+ 
+@@ -15,35 +13,10 @@ type VariantGeneralSectionProps = {
+ 
+ export function VariantGeneralSection({ variant }: VariantGeneralSectionProps) {
+   const { t } = useTranslation()
+-  const prompt = usePrompt()
+-  const navigate = useNavigate()
+   const isTranslationsEnabled = useFeatureFlag("translation")
+ 
+   const hasInventoryKit = (variant.inventory?.length ?? 0) > 1
+ 
+-  const { mutateAsync } = useDeleteVariant(variant.product_id!, variant.id)
+-
+-  const handleDelete = async () => {
+-    const res = await prompt({
+-      title: t("general.areYouSure"),
+-      description: t("products.variant.deleteWarning", {
+-        title: variant.title,
+-      }),
+-      confirmText: t("actions.delete"),
+-      cancelText: t("actions.cancel"),
+-    })
+-
+-    if (!res) {
+-      return
+-    }
+-
+-    await mutateAsync(undefined, {
+-      onSuccess: () => {
+-        navigate("..", { replace: true })
+-      },
+-    })
+-  }
+-
+   return (
+     <Container className="divide-y p-0">
+       <div className="flex items-center justify-between px-6 py-4">
+@@ -85,15 +58,6 @@ export function VariantGeneralSection({ variant }: VariantGeneralSectionProps) {
+                     },
+                   ]
+                 : []),
+-              {
+-                actions: [
+-                  {
+-                    label: t("actions.delete"),
+-                    onClick: handleDelete,
+-                    icon: <Trash />,
+-                  },
+-                ],
+-              },
+             ]}
+           />
+         </div>
+diff --git a/src/routes/products/product-detail/components/product-general-section/product-general-section.tsx b/src/routes/products/product-detail/components/product-general-section/product-general-section.tsx
+index 17b276e2e45db3b8c891226c0a6ee77913c43f20..c0d74da288f74e761737cbe28d02b6c06b98707a 100644
+--- a/src/routes/products/product-detail/components/product-general-section/product-general-section.tsx
++++ b/src/routes/products/product-detail/components/product-general-section/product-general-section.tsx
+@@ -1,12 +1,10 @@
+-import { GlobeEurope, PencilSquare, Trash } from "@medusajs/icons"
++import { GlobeEurope, PencilSquare } from "@medusajs/icons"
+ import { HttpTypes } from "@medusajs/types"
+-import { Container, Heading, StatusBadge, toast, usePrompt } from "@medusajs/ui"
++import { Container, Heading, StatusBadge } from "@medusajs/ui"
+ import { useTranslation } from "react-i18next"
+-import { useNavigate } from "react-router-dom"
+ 
+ import { ActionMenu } from "../../../../../components/common/action-menu"
+ import { SectionRow } from "../../../../../components/common/section"
+-import { useDeleteProduct } from "../../../../../hooks/api/products"
+ import { useExtension } from "../../../../../providers/extension-provider"
+ import { useFeatureFlag } from "../../../../../providers/feature-flag-provider"
+ 
+@@ -33,41 +31,11 @@ export const ProductGeneralSection = ({
+   product,
+ }: ProductGeneralSectionProps) => {
+   const { t } = useTranslation()
+-  const prompt = usePrompt()
+-  const navigate = useNavigate()
+   const { getDisplays } = useExtension()
+   const isTranslationsEnabled = useFeatureFlag("translation")
+ 
+   const displays = getDisplays("product", "general")
+ 
+-  const { mutateAsync } = useDeleteProduct(product.id)
+-
+-  const handleDelete = async () => {
+-    const res = await prompt({
+-      title: t("general.areYouSure"),
+-      description: t("products.deleteWarning", {
+-        title: product.title,
+-      }),
+-      confirmText: t("actions.delete"),
+-      cancelText: t("actions.cancel"),
+-    })
+-
+-    if (!res) {
+-      return
+-    }
+-
+-    await mutateAsync(undefined, {
+-      onSuccess: () => {
+-        navigate("..")
+-      },
+-      onError: (e) => {
+-        toast.error(t("products.toasts.delete.error.header"), {
+-          description: e.message,
+-        })
+-      },
+-    })
+-  }
+-
+   return (
+     <Container className="divide-y p-0">
+       <div className="flex items-center justify-between px-6 py-4">
+@@ -100,15 +68,6 @@ export const ProductGeneralSection = ({
+                     },
+                   ]
+                 : []),
+-              {
+-                actions: [
+-                  {
+-                    label: t("actions.delete"),
+-                    onClick: handleDelete,
+-                    icon: <Trash />,
+-                  },
+-                ],
+-              },
+             ]}
+           />
+         </div>
+diff --git a/src/routes/products/product-detail/components/product-variant-section/product-variant-section.tsx b/src/routes/products/product-detail/components/product-variant-section/product-variant-section.tsx
+index e513df378437acb4bc5432847a242f1bb9c4bdf7..377b4d9cb3b401ebeecbbc3fca651c52f55b8ac1 100644
+--- a/src/routes/products/product-detail/components/product-variant-section/product-variant-section.tsx
++++ b/src/routes/products/product-detail/components/product-variant-section/product-variant-section.tsx
+@@ -3,7 +3,6 @@ import {
+   Component,
+   GlobeEurope,
+   PencilSquare,
+-  Trash,
+ } from "@medusajs/icons"
+ import { HttpTypes } from "@medusajs/types"
+ import {
+@@ -15,7 +14,6 @@ import {
+   createDataTableFilterHelper,
+   DataTableAction,
+   Tooltip,
+-  usePrompt,
+ } from "@medusajs/ui"
+ import { keepPreviousData } from "@tanstack/react-query"
+ import { useCallback, useMemo } from "react"
+@@ -25,10 +23,7 @@ import { CellContext } from "@tanstack/react-table"
+ import { useNavigate, useSearchParams } from "react-router-dom"
+ import { DataTable } from "../../../../../components/data-table"
+ import { useDataTableDateFilters } from "../../../../../components/data-table/helpers/general/use-data-table-date-filters"
+-import {
+-  useDeleteVariantLazy,
+-  useProductVariants,
+-} from "../../../../../hooks/api/products"
++import { useProductVariants } from "../../../../../hooks/api/products"
+ import { useQueryParams } from "../../../../../hooks/use-query-params"
+ import { PRODUCT_VARIANT_IDS_KEY } from "../../../common/constants"
+ import { Thumbnail } from "../../../../../components/common/thumbnail"
+@@ -154,8 +149,6 @@ const columnHelper =
+ const useColumns = (product: HttpTypes.AdminProduct) => {
+   const { t } = useTranslation()
+   const navigate = useNavigate()
+-  const { mutateAsync } = useDeleteVariantLazy(product.id)
+-  const prompt = usePrompt()
+   const [searchParams] = useSearchParams()
+ 
+   const tableSearchParams = useMemo(() => {
+@@ -168,26 +161,6 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
+     return filtered
+   }, [searchParams])
+ 
+-  const handleDelete = useCallback(
+-    async (id: string, title: string) => {
+-      const res = await prompt({
+-        title: t("general.areYouSure"),
+-        description: t("products.deleteVariantWarning", {
+-          title,
+-        }),
+-        confirmText: t("actions.delete"),
+-        cancelText: t("actions.cancel"),
+-      })
+-
+-      if (!res) {
+-        return
+-      }
+-
+-      await mutateAsync({ variantId: id })
+-    },
+-    [mutateAsync, prompt, t]
+-  )
+-
+   const optionColumns = useMemo(() => {
+     if (!product?.options) {
+       return []
+@@ -258,15 +231,6 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
+         },
+       ]
+ 
+-      const secondaryActions: DataTableAction<HttpTypes.AdminProductVariant>[] =
+-        [
+-          {
+-            icon: <Trash />,
+-            label: t("actions.delete"),
+-            onClick: () => handleDelete(variant.id, variant.title!),
+-          },
+-        ]
+-
+       const inventoryItemsCount = variant.inventory_items?.length || 0
+ 
+       switch (inventoryItemsCount) {
+@@ -307,9 +271,9 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
+         }
+       }
+ 
+-      return [mainActions, secondaryActions]
++      return [mainActions]
+     },
+-    [handleDelete, navigate, t, tableSearchParams]
++    [navigate, t, tableSearchParams]
+   )
+ 
+   const getInventory = useCallback(
 diff --git a/src/routes/products/product-list/components/product-list-table/configurable-product-list-table.tsx b/src/routes/products/product-list/components/product-list-table/configurable-product-list-table.tsx
 index a314648b4d67f3de565d2dbb5b7d4af1cefd1d7d..65a010a7583038483df718f8d32567fde4c3e84b 100644
 --- a/src/routes/products/product-list/components/product-list-table/configurable-product-list-table.tsx
@@ -92,6 +851,79 @@ index a314648b4d67f3de565d2dbb5b7d4af1cefd1d7d..65a010a7583038483df718f8d32567fd
            { label: t("actions.create"), to: "create" },
          ]}
        />
+diff --git a/src/routes/products/product-list/components/product-list-table/product-list-table-actions.tsx b/src/routes/products/product-list/components/product-list-table/product-list-table-actions.tsx
+index 407eb26cb0ab6b39d0be1d7bc7056a279c19e7eb..7ad03dc34067bf714089bea4e56fbf34e2993ad9 100644
+--- a/src/routes/products/product-list/components/product-list-table/product-list-table-actions.tsx
++++ b/src/routes/products/product-list/components/product-list-table/product-list-table-actions.tsx
+@@ -1,10 +1,8 @@
+-import { GlobeEurope, PencilSquare, Trash } from "@medusajs/icons"
++import { GlobeEurope, PencilSquare } from "@medusajs/icons"
+ import { HttpTypes } from "@medusajs/types"
+-import { toast, usePrompt } from "@medusajs/ui"
+ import { useTranslation } from "react-i18next"
+ 
+ import { ActionMenu } from "../../../../../components/common/action-menu"
+-import { useDeleteProduct } from "../../../../../hooks/api/products"
+ import { useFeatureFlag } from "../../../../../providers/feature-flag-provider"
+ 
+ export const ProductActions = ({
+@@ -13,40 +11,8 @@ export const ProductActions = ({
+   product: HttpTypes.AdminProduct
+ }) => {
+   const { t } = useTranslation()
+-  const prompt = usePrompt()
+-  const { mutateAsync } = useDeleteProduct(product.id)
+   const isTranslationsEnabled = useFeatureFlag("translation")
+ 
+-  const handleDelete = async () => {
+-    const res = await prompt({
+-      title: t("general.areYouSure"),
+-      description: t("products.deleteWarning", {
+-        title: product.title,
+-      }),
+-      confirmText: t("actions.delete"),
+-      cancelText: t("actions.cancel"),
+-    })
+-
+-    if (!res) {
+-      return
+-    }
+-
+-    await mutateAsync(undefined, {
+-      onSuccess: () => {
+-        toast.success(t("products.toasts.delete.success.header"), {
+-          description: t("products.toasts.delete.success.description", {
+-            title: product.title,
+-          }),
+-        })
+-      },
+-      onError: (e) => {
+-        toast.error(t("products.toasts.delete.error.header"), {
+-          description: e.message,
+-        })
+-      },
+-    })
+-  }
+-
+   return (
+     <ActionMenu
+       groups={[
+@@ -72,15 +38,6 @@ export const ProductActions = ({
+               },
+             ]
+           : []),
+-        {
+-          actions: [
+-            {
+-              icon: <Trash />,
+-              label: t("actions.delete"),
+-              onClick: handleDelete,
+-            },
+-          ],
+-        },
+       ]}
+     />
+   )
 diff --git a/src/routes/products/product-list/components/product-list-table/product-list-table.tsx b/src/routes/products/product-list/components/product-list-table/product-list-table.tsx
 index 0d9c1b8b2602ef58fbfe66dc2a208f05622b092a..abc15915cf2a9fd1638fd1f2788e69a37fea62c5 100644
 --- a/src/routes/products/product-list/components/product-list-table/product-list-table.tsx

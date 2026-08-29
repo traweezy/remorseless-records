@@ -275,6 +275,22 @@ export const rejectDeprecatedProductImport = (
   });
 };
 
+export const rejectUnsafeNativeCatalogDeletion = (
+  req: MedusaRequest,
+  res: MedusaResponse,
+): void => {
+  res.setHeader("Cache-Control", "private, no-store");
+  sendApiProblem(req, res, {
+    code: "catalog_hard_deletion_disabled",
+    type: "urn:remorseless-records:problem:catalog-hard-deletion-disabled",
+    title: "Catalog hard deletion is disabled",
+    status: 409,
+    detail:
+      "Use an audited, version-checked update, archive, restore, or quarantine workflow.",
+    instance: req.path,
+  });
+};
+
 export const operationsAdminMiddlewareRoutes = [
   {
     matcher: "/admin/tax-control",
@@ -377,6 +393,68 @@ export const nativeAdminPolicyOverlayRoutes = [
   },
 ] satisfies MiddlewareRoute[];
 
+export const disabledNativeCatalogDeletionAdminRoutes = [
+  {
+    matcher: /^\/admin\/collections\/[^/]+\/?$/i,
+    methods: ["DELETE"],
+    bodyParser: false,
+    middlewares: [rejectUnsafeNativeCatalogDeletion],
+    policies: [nativeAdminActions.productCollection.delete],
+  },
+  {
+    matcher: /^\/admin\/product-categories\/[^/]+\/?$/i,
+    methods: ["DELETE"],
+    bodyParser: false,
+    middlewares: [rejectUnsafeNativeCatalogDeletion],
+    policies: [nativeAdminActions.productCategory.delete],
+  },
+  {
+    matcher: /^\/admin\/product-options\/[^/]+\/?$/i,
+    methods: ["DELETE"],
+    bodyParser: false,
+    middlewares: [rejectUnsafeNativeCatalogDeletion],
+    policies: [nativeAdminActions.productOption.delete],
+  },
+  {
+    matcher: /^\/admin\/product-options\/[^/]+\/values\/[^/]+\/?$/i,
+    methods: ["DELETE"],
+    bodyParser: false,
+    middlewares: [rejectUnsafeNativeCatalogDeletion],
+    policies: [
+      nativeAdminActions.productOption.update,
+      nativeAdminActions.productOptionValue.delete,
+    ],
+  },
+  {
+    matcher: /^\/admin\/product-tags\/[^/]+\/?$/i,
+    methods: ["DELETE"],
+    bodyParser: false,
+    middlewares: [rejectUnsafeNativeCatalogDeletion],
+    policies: [nativeAdminActions.productTag.delete],
+  },
+  {
+    matcher: /^\/admin\/product-types\/[^/]+\/?$/i,
+    methods: ["DELETE"],
+    bodyParser: false,
+    middlewares: [rejectUnsafeNativeCatalogDeletion],
+    policies: [nativeAdminActions.productType.delete],
+  },
+  {
+    matcher: /^\/admin\/products\/[^/]+\/?$/i,
+    methods: ["DELETE"],
+    bodyParser: false,
+    middlewares: [rejectUnsafeNativeCatalogDeletion],
+    policies: [nativeAdminActions.product.delete],
+  },
+  {
+    matcher: /^\/admin\/products\/[^/]+\/variants\/[^/]+\/?$/i,
+    methods: ["DELETE"],
+    bodyParser: false,
+    middlewares: [rejectUnsafeNativeCatalogDeletion],
+    policies: [nativeAdminActions.productVariant.delete],
+  },
+] satisfies MiddlewareRoute[];
+
 export default defineMiddlewares({
   routes: [
     {
@@ -425,6 +503,7 @@ export default defineMiddlewares({
     },
     ...adminAuthorizationPolicyRoutes,
     ...nativeAdminPolicyOverlayRoutes,
+    ...disabledNativeCatalogDeletionAdminRoutes,
     ...operationsAdminMiddlewareRoutes,
     ...deprecatedProductImportAdminRoutes,
     {

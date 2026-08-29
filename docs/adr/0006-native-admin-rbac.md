@@ -97,17 +97,17 @@ remains authoritative for every request.
 | `catalog_authoring` | `read` | Inspect authoring status, profiles, bundles, and managed media | Catalog authoring GET methods, with route-specific native reads |
 | `catalog_authoring` | `create` | Create catalog profiles, bundles, media, or a composite Product | Catalog authoring POST methods, with exact native create/read prerequisites |
 | `catalog_authoring` | `update` | Change catalog profiles, bundles, or managed media | Catalog authoring PUT methods, with exact native read/write prerequisites |
-| `catalog_authoring` | `delete` | Remove catalog authoring relationships through guarded workflows | Catalog authoring DELETE methods; no physical media-asset deletion |
+| `catalog_authoring` | `delete` | Remove bundle relationships through the guarded mutation workflow | Bundle DELETE remains versioned; direct profile and media DELETE methods return 409 |
 | `catalog_taxonomy` | `read` | Inspect artists and controlled reference values | Taxonomy GET methods |
 | `catalog_taxonomy` | `create` | Create artists and controlled reference values | Taxonomy POST methods and route-specific aggregate prerequisites |
 | `catalog_taxonomy` | `update` | Change artists and controlled reference values | Taxonomy PUT methods |
-| `catalog_taxonomy` | `delete` | Remove artists and controlled reference values | Taxonomy DELETE methods |
+| `catalog_taxonomy` | `delete` | No hard-delete control is supported | Artist and controlled-reference DELETE methods authorize, then return 409 |
 | `catalog_merchandising` | `read` | Inspect shelves and memberships | Shelf GET methods, with native `product:read` when Products are returned |
 | `catalog_merchandising` | `create` | Create a shelf and membership set | Shelf POST, conjunctively with native `product:read` |
 | `catalog_merchandising` | `update` | Edit, archive, or restore a shelf | Shelf PUT/archive/restore methods; no delete capability |
 | native `file` | `create` | Show News cover controls and permit validated CSV upload | Managed upload and import-prepare prerequisites |
 | native `product` | `read` | Read Product-backed custom projections and inspect import scope | Discography list/detail, route-specific catalog methods, and every import route |
-| native Product/Variant/Price/Inventory resources | route-specific | Permit only the native work an aggregate catalog handler performs | Conjunctive catalog prerequisites for Product, Variant, Price, Inventory Item, and Inventory Level actions |
+| native Product/Variant/Price/Inventory resources | route-specific | Permit only the native work an aggregate catalog handler performs | Conjunctive catalog prerequisites for Product, Variant, Price, Inventory Item, and Inventory Level actions; Product and Variant hard DELETE return 409 |
 | `product_import` | `create` | Prepare a reviewable plan from CSV input | Current prepare POST; deprecated prepare rejects after authorization |
 | `product_import` | `update` | Confirm and execute an existing plan | Current confirm POST; deprecated confirm rejects after authorization |
 | `tax_control` | `read` | View provider readiness, usage, audit history, impact, and tax evidence | Tax control GET |
@@ -546,6 +546,23 @@ intentionally disabled presigned-upload route. The exact-version
 variant, or route boundary disappears. Approved tooling must use the validated
 managed-upload endpoint plus the plural prepare/confirm API until a
 permission-aware custom import UI is implemented.
+
+The same version-pinned patch removes Product and Variant delete actions from
+the Product list, Product detail, nested Variant table, and Variant detail.
+`qa:dashboard-product-deletion` checks each source component and its CommonJS
+and ESM production artifact. Server enforcement does not depend on those UI
+controls: exact native DELETE matchers for Products, Variants, Collections,
+Categories, Options, Option values, Tags, and Types duplicate their native
+delete policies and terminate with a private 409 Problem Details response before
+the core handler. Direct custom artist, reference-value, Product-profile,
+Variant-profile, and Product-media DELETE handlers use the same stable response.
+
+Audited, idempotent, version-checked bundle mutation remains supported. Shelf
+archive/restore and media quarantine/restore remain the recovery workflows, and
+inventory-item unlinking remains available because it does not destroy either
+entity. A pinned route-ordering test proves the project rejection runs before
+the core Product delete policy and handler; matcher tests protect the other
+native paths and exclude relationship unlink routes.
 
 The Medusa privacy and Variant-update patch is pinned to exactly 2.18.0. Every
 Medusa upgrade must re-audit the upstream migration and native Variant route,

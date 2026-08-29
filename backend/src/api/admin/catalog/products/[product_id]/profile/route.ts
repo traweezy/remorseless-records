@@ -6,6 +6,7 @@ import {
   resolveCatalogProductProfile,
   serializeCatalogProductProfileResponse,
 } from "@/lib/catalog/product-profile-authoring"
+import { rejectCatalogHardDeletion } from "@/lib/catalog/hard-deletion"
 import type { CatalogService } from "@/lib/catalog/reference-resolution"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import { mutateCatalogProductProfileWorkflow } from "../../../../../../workflows/catalog/mutate-product-profile"
@@ -100,112 +101,5 @@ export const PUT = async (
 export const DELETE = async (
   req: MedusaRequest,
   res: MedusaResponse,
-): Promise<void> => {
-  const productId = productIdFromRequest(req)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
-  await catalogService.runCatalogTransaction(async (sharedContext) => {
-    const profile = await resolveCatalogProductProfile(
-      catalogService,
-      productId,
-      sharedContext,
-    )
-    if (!profile) {
-      return
-    }
-
-    const [
-      artists,
-      references,
-      variantProfiles,
-      bundleProfiles,
-      mediaItems,
-      shelfProducts,
-    ] = await Promise.all([
-      catalogService.listCatalogProductArtists(
-        { product_profile_id: profile.id },
-        {},
-        sharedContext,
-      ),
-      catalogService.listCatalogProductReferences(
-        { product_profile_id: profile.id },
-        {},
-        sharedContext,
-      ),
-      catalogService.listCatalogVariantProfiles(
-        { product_profile_id: profile.id },
-        {},
-        sharedContext,
-      ),
-      catalogService.listCatalogBundleProfiles(
-        { product_profile_id: profile.id },
-        {},
-        sharedContext,
-      ),
-      catalogService.listCatalogProductMediaItems(
-        { product_profile_id: profile.id },
-        {},
-        sharedContext,
-      ),
-      catalogService.listCatalogShelfProducts(
-        { product_profile_id: profile.id },
-        {},
-        sharedContext,
-      ),
-    ])
-    if (artists.length) {
-      await catalogService.deleteCatalogProductArtists(
-        artists.map(({ id }) => id),
-        sharedContext,
-      )
-    }
-    if (references.length) {
-      await catalogService.deleteCatalogProductReferences(
-        references.map(({ id }) => id),
-        sharedContext,
-      )
-    }
-    await Promise.all([
-      variantProfiles.length
-        ? catalogService.updateCatalogVariantProfiles(
-            variantProfiles.map(({ id }) => ({
-              id,
-              product_profile_id: null,
-            })),
-            sharedContext,
-          )
-        : Promise.resolve([]),
-      bundleProfiles.length
-        ? catalogService.updateCatalogBundleProfiles(
-            bundleProfiles.map(({ id }) => ({
-              id,
-              product_profile_id: null,
-            })),
-            sharedContext,
-          )
-        : Promise.resolve([]),
-      mediaItems.length
-        ? catalogService.updateCatalogProductMediaItems(
-            mediaItems.map(({ id }) => ({
-              id,
-              product_profile_id: null,
-            })),
-            sharedContext,
-          )
-        : Promise.resolve([]),
-      shelfProducts.length
-        ? catalogService.updateCatalogShelfProducts(
-            shelfProducts.map(({ id }) => ({
-              id,
-              product_profile_id: null,
-            })),
-            sharedContext,
-          )
-        : Promise.resolve([]),
-    ])
-    await catalogService.deleteCatalogProductProfiles(
-      profile.id,
-      sharedContext,
-    )
-  })
-  res.sendStatus(204)
-}
+): Promise<void> =>
+  rejectCatalogHardDeletion(req, res, "catalog product profiles")

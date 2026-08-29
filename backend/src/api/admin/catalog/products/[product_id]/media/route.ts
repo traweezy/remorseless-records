@@ -5,7 +5,7 @@ import {
   catalogProductMediaReplaceSchema,
   loadCatalogProductMediaResponse,
 } from "@/lib/catalog/product-media-authoring"
-import { listProductMediaItems } from "@/lib/catalog/product-media-read"
+import { rejectCatalogHardDeletion } from "@/lib/catalog/hard-deletion"
 import { toCatalogNullableString } from "@/lib/catalog/normalization"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import { mutateCatalogProductMediaWorkflow } from "../../../../../../workflows/catalog/mutate-product-media"
@@ -99,21 +99,5 @@ export const PUT = async (
 export const DELETE = async (
   req: MedusaRequest,
   res: MedusaResponse,
-): Promise<void> => {
-  const productId = productIdFromRequest(req)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
-  await catalogService.runCatalogTransaction(async (sharedContext) => {
-    const items = await listProductMediaItems(
-      catalogService,
-      productId,
-      sharedContext,
-    )
-    if (items.length) {
-      await catalogService.deleteCatalogProductMediaItems(
-        items.map(({ id }) => id),
-        sharedContext,
-      )
-    }
-  })
-  res.sendStatus(204)
-}
+): Promise<void> =>
+  rejectCatalogHardDeletion(req, res, "catalog product media")

@@ -135,6 +135,18 @@ export const catalogAdminActions = {
 } as const;
 
 export const nativeAdminActions = {
+  productCategory: {
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "product_category",
+    },
+  },
+  productCollection: {
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "product_collection",
+    },
+  },
   file: {
     create: {
       operation: adminPolicyOperations.create,
@@ -180,6 +192,10 @@ export const nativeAdminActions = {
       operation: adminPolicyOperations.create,
       resource: "product",
     },
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "product",
+    },
     read: {
       operation: adminPolicyOperations.read,
       resource: "product",
@@ -190,6 +206,10 @@ export const nativeAdminActions = {
     },
   },
   productVariant: {
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "product_variant",
+    },
     read: {
       operation: adminPolicyOperations.read,
       resource: "product_variant",
@@ -197,6 +217,34 @@ export const nativeAdminActions = {
     update: {
       operation: adminPolicyOperations.update,
       resource: "product_variant",
+    },
+  },
+  productOption: {
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "product_option",
+    },
+    update: {
+      operation: adminPolicyOperations.update,
+      resource: "product_option",
+    },
+  },
+  productOptionValue: {
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "product_option_value",
+    },
+  },
+  productTag: {
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "product_tag",
+    },
+  },
+  productType: {
+    delete: {
+      operation: adminPolicyOperations.delete,
+      resource: "product_type",
     },
   },
   price: {

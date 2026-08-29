@@ -73,6 +73,8 @@ jobs:
         run: pnpm run qa:medusa-build-toolchain
       - name: Verify Dashboard product import boundary
         run: pnpm run qa:dashboard-product-import
+      - name: Verify Dashboard product deletion boundary
+        run: pnpm run qa:dashboard-product-deletion
       - name: Verify React Router security backports
         run: pnpm run qa:react-router-security
 

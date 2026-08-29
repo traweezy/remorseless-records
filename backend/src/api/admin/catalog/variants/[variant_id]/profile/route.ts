@@ -6,6 +6,7 @@ import {
   resolveCatalogVariantProfile,
   serializeCatalogVariantProfileResponse,
 } from "@/lib/catalog/variant-profile-authoring"
+import { rejectCatalogHardDeletion } from "@/lib/catalog/hard-deletion"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import { mutateCatalogVariantProfileWorkflow } from "../../../../../../workflows/catalog/mutate-variant-profile"
 import { assertVariantExists, type CatalogService } from "../../../utils"
@@ -87,21 +88,5 @@ export const PUT = async (
 export const DELETE = async (
   req: MedusaRequest,
   res: MedusaResponse,
-): Promise<void> => {
-  const variantId = variantIdFromRequest(req)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
-  await catalogService.runCatalogTransaction(async (sharedContext) => {
-    const profile = await resolveCatalogVariantProfile(
-      catalogService,
-      variantId,
-      sharedContext,
-    )
-    if (profile) {
-      await catalogService.deleteCatalogVariantProfiles(
-        profile.id,
-        sharedContext,
-      )
-    }
-  })
-  res.sendStatus(204)
-}
+): Promise<void> =>
+  rejectCatalogHardDeletion(req, res, "catalog variant profiles")

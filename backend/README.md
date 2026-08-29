@@ -148,6 +148,19 @@ action and route because that drawer begins with the disabled presigned-upload
 route. `pnpm run qa:dashboard-product-import` verifies the source and production
 bundles fail closed.
 
+Physical catalog deletion is disabled independently of the Admin UI. Native
+DELETE routes for Products, Variants, Collections, Categories, Options, Option
+values, Tags, and Types retain their exact native policies and then return a
+private, no-store 409 Problem Details response. Custom artist, reference-value,
+Product-profile, Variant-profile, and Product-media DELETE handlers return the
+same contract. The custom bundle mutation workflow remains available because it
+is audited, idempotent, version checked, and compensating. Shelf archive/restore,
+media quarantine/restore, and inventory relationship unlinking also remain
+available because they are recoverable or do not destroy the underlying catalog
+entity. `pnpm run qa:dashboard-product-deletion` verifies that the pinned
+Dashboard source and both production bundle formats expose no Product or Variant
+delete action.
+
 The Admin **Operations → Media cleanup** route is the safe review surface for catalog assets
 that are not linked to any product. Its server-side anti-join returns exact,
 paginated active or quarantined results instead of filtering an arbitrary

@@ -135,6 +135,24 @@ presigned-upload endpoint. Approved tooling uploads validated UTF-8 CSV through
 `POST /admin/products/imports/:transaction_id/confirm`. A later custom import UI
 must gate its query and controls on the same exact capabilities.
 
+## Catalog deletion boundary
+
+The pinned Dashboard 2.18 patch also removes Product and Variant destructive
+actions from list, detail, and nested Variant action menus. A repository verifier
+checks all four source components plus CommonJS and ESM production artifacts, so
+an upstream bundle or route change fails CI instead of silently restoring those
+controls.
+
+The server remains authoritative. Direct native hard deletion of Products,
+Variants, Collections, Categories, Options, Option values, Tags, and Types
+returns a private 409 Problem Details response after authentication and the exact
+native delete policies. Direct custom deletion of artists, reference values,
+Product or Variant profiles, and Product media uses the same response contract.
+Use the versioned Product, Variant, media, and bundle workflows for catalog
+changes; use shelf archive/restore and media quarantine/restore when recovery is
+required. Inventory-item unlinking is intentionally unaffected because it
+removes a relationship without deleting either entity.
+
 ## Catalog authoring cutover audit
 
 `GET /admin/catalog/authoring-audit` is the read-only classification and

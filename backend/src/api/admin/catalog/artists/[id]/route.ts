@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
+import { rejectCatalogHardDeletion } from "@/lib/catalog/hard-deletion"
 import { serializeCatalogArtist } from "@/modules/catalog/serializers"
 import {
   coerceJsonRecord,
@@ -114,16 +115,4 @@ export const PUT = async (
 export const DELETE = async (
   req: MedusaRequest,
   res: MedusaResponse
-): Promise<void> => {
-  const id = req.params.id
-  if (!id) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "Catalog artist id is required"
-    )
-  }
-
-  const catalogService = req.scope.resolve("catalog") as CatalogService
-  await catalogService.deleteCatalogArtists(id)
-  res.sendStatus(204)
-}
+): Promise<void> => rejectCatalogHardDeletion(req, res, "catalog artists")
