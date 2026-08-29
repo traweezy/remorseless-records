@@ -42,6 +42,40 @@ intentionally omit cart, payment, order, customer, address, email, request
 payload, provider-error, and stack values. Alert on `.attention`, `.skipped`,
 or `.failed`; a healthy idle run emits `.completed` at info level.
 
+### External scheduler and Redis monitor
+
+Every reconciliation result also writes a bounded, allowlisted snapshot to
+Redis. The latest snapshot expires after 15 minutes. Any `.attention`,
+`.skipped`, or `.failed` result additionally writes a 24-hour incident latch;
+later successful runs refresh the heartbeat but do not erase that evidence.
+Persistence failures never suppress the original structured job record. They
+instead make the health endpoint fail closed when its heartbeat expires.
+
+`GET /health/scheduler` returns only aggregate scheduler fields and one of two
+states:
+
+- HTTP 200 with `status: healthy` requires Redis `PONG`, a completed heartbeat
+  no older than 10 minutes, valid stored state, and no incident latch.
+- HTTP 503 with `status: degraded` reports machine reason codes for unavailable
+  Redis, missing/stale/future heartbeat, invalid state, an unhealthy latest
+  result, or a latched incident.
+
+The endpoint is intentionally public and `Cache-Control: no-store` so an
+observer outside Railway can detect a shared Redis, BullMQ, worker, or Backend
+failure. Its schema excludes run IDs, cart/payment/order/customer identifiers,
+messages, request data, provider errors, and stacks.
+
+The `Staging Scheduler Monitor` GitHub workflow polls this endpoint every 10
+minutes. It fails closed on network errors, non-200 responses, or an invalid
+schema. It also checks endpoint and heartbeat time independently, rejecting
+replayed, future, or internally inconsistent ages. It stores only a sanitized
+JSON/Markdown projection and creates or updates the exact
+`Staging scheduler/Redis monitor alert` issue. A later healthy run comments on
+and closes that issue. Manual, daily, and alert runs retain sanitized artifacts
+for 30 days. Use the manual `force_alert` input to prove issue creation, then
+run it normally to prove recovery closure; do not modify Redis keys to exercise
+the alert path.
+
 ## Verify that an environment is safe to test
 
 Do this before every staging payment session:
@@ -265,6 +299,13 @@ still does not prove that a Medusa order exists.
    official Stripe webhook and checkout recovery paths available.
 8. Never delete BullMQ keys, complete a cart directly in PostgreSQL, create an
    order manually, or issue another Stripe payment/refund as a queue repair.
+
+The GitHub alert issue and its linked workflow artifact are the first external
+evidence to inspect. A healthy job after an anomalous result does not clear the
+24-hour latch; investigate the original event and keep the issue open until the
+endpoint is healthy after the complete observation window. Treat
+`scheduler_heartbeat_stale` or `redis_unavailable` as a worker/Redis outage,
+not as permission to retry money movement manually.
 
 The scheduled-workflow worker lock is five minutes with a 30-second renewal
 setting. The handler separately holds a uniquely owned five-minute lock. The

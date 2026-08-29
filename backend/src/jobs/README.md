@@ -35,5 +35,14 @@ Retention never deletes completed, order-linked, customer-owned, recently
 updated, or unresolved/successful-payment carts; it removes only unused
 pending, canceled, or error sessions through Medusa's workflow.
 
+Each checkout reconciliation record refreshes an allowlisted Redis heartbeat
+with a 15-minute TTL. Attention, skipped, and failed records also create a
+24-hour incident latch that a later healthy run cannot erase. The public
+`GET /health/scheduler` route returns 200 only when Redis responds, the latest
+completed heartbeat is at most 10 minutes old, and no incident is latched; all
+other states return a bounded 503 response. The external staging workflow polls
+that route every 10 minutes and reconciles a deduplicated GitHub issue without
+requiring Redis or Railway credentials.
+
 Configuration and incident procedures are documented in
 [`../../../docs/CHECKOUT_OPERATIONS.md`](../../../docs/CHECKOUT_OPERATIONS.md).
