@@ -829,6 +829,19 @@ upstream Medusa packages lacking manifest SPDX metadata. Exact-SHA staging CI,
 Railway deployment, live-route, lifecycle-log, and browser acceptance remain
 before this slice can be marked completed.
 
+Staging lifecycle discovery: the first `843c954` deployment proved Backend
+completion logging and all live provider routes, but emitted no Storefront
+completion event. Next compiles instrumentation and proxy code into separate
+server bundles. Each bundle therefore has a distinct
+`BoundedRequestRegistry` class identity, so the original cross-bundle
+`instanceof` reuse check replaced the instrumentation processor's registry
+when the proxy loaded. The registry now stores its bounded entries in one
+`globalThis` `Map`, whose built-in identity is shared across the bundles, while
+each wrapper retains the same validation, TTL, cardinality, and consume-once
+behavior. Cross-wrapper regression coverage pins the production bundling
+boundary. A corrected exact-SHA staging release and lifecycle-log acceptance
+remain required.
+
 Cache review discovery: Next includes request headers in server-fetch cache
 identity. The correlated `/api/news` Backend request therefore uses `no-store`
 instead of creating high-cardinality cache entries from request and trace IDs;

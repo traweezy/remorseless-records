@@ -21,6 +21,7 @@ type RegisteredRequest = {
 type RequestRegistryOptions = {
   maxEntries?: number
   now?: () => number
+  requests?: Map<string, RegisteredRequest>
   ttlMs?: number
 }
 
@@ -43,12 +44,13 @@ const REGISTRY_SYMBOL = Symbol.for(
 export class BoundedRequestRegistry {
   readonly #maxEntries: number
   readonly #now: () => number
-  readonly #requests = new Map<string, RegisteredRequest>()
+  readonly #requests: Map<string, RegisteredRequest>
   readonly #ttlMs: number
 
   constructor(options: RequestRegistryOptions = {}) {
     this.#maxEntries = options.maxEntries ?? DEFAULT_MAX_ENTRIES
     this.#now = options.now ?? Date.now
+    this.#requests = options.requests ?? new Map<string, RegisteredRequest>()
     this.#ttlMs = options.ttlMs ?? DEFAULT_TTL_MS
 
     if (!Number.isSafeInteger(this.#maxEntries) || this.#maxEntries < 1) {
@@ -120,12 +122,13 @@ type SymbolRegistry = {
 }
 
 const registryGlobal = globalThis as typeof globalThis & SymbolRegistry
-const existingRegistry = registryGlobal[REGISTRY_SYMBOL]
-const requestRegistry =
-  existingRegistry instanceof BoundedRequestRegistry
-    ? existingRegistry
-    : new BoundedRequestRegistry()
-registryGlobal[REGISTRY_SYMBOL] = requestRegistry
+const existingRequests = registryGlobal[REGISTRY_SYMBOL]
+const sharedRequests =
+  existingRequests instanceof Map
+    ? (existingRequests as Map<string, RegisteredRequest>)
+    : new Map<string, RegisteredRequest>()
+registryGlobal[REGISTRY_SYMBOL] = sharedRequests
+const requestRegistry = new BoundedRequestRegistry({ requests: sharedRequests })
 
 export const getActiveTraceContext = ():
   | { traceFlags: string; traceId: string }

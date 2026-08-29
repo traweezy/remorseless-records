@@ -59,6 +59,22 @@ describe("Storefront request completion registry", () => {
     expect(registry.lookup(TRACE_TWO)).toBe("request_02")
     expect(registry.lookup(TRACE_THREE)).toBe("request_03")
   })
+
+  it("shares request state across separately bundled registry wrappers", () => {
+    const requests = new Map<
+      string,
+      { expiresAt: number; requestId: string }
+    >()
+    const proxyRegistry = new BoundedRequestRegistry({ requests })
+    const instrumentationRegistry = new BoundedRequestRegistry({ requests })
+
+    proxyRegistry.register(TRACE_ONE, "request_cross_bundle_01")
+
+    expect(instrumentationRegistry.consume(TRACE_ONE)).toBe(
+      "request_cross_bundle_01"
+    )
+    expect(proxyRegistry.size).toBe(0)
+  })
 })
 
 describe("Storefront HTTP completion processor", () => {
@@ -136,4 +152,3 @@ describe("Storefront HTTP completion processor", () => {
     )
   })
 })
-
