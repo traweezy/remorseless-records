@@ -34,14 +34,14 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `707d50e2a37dac3613a9d185b91aa2ed5112e1bc`.
+  `ab51f7b6a8447fed0d476bde7f3af56c4826cf3d`.
 - Latest documentation-bearing staging SHA accepted:
-  `40b5a3a5777677dd4af49e3dba091f4b9bcc9c7d`.
+  `ab51f7b6a8447fed0d476bde7f3af56c4826cf3d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
   `00819624-47ee-4a84-9862-f1559191e695` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `ffd4c174-4b28-4bcc-8905-5998aaa94fcf`
+  `f6174e16-f972-4f73-a4d2-51a7bd0f23c8`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -1445,7 +1445,7 @@ Backend record `d73afd1b-5cbc-45d8-b556-026062dbd512` and Storefront record
 image digest or IaC patch. Neither service entered build, deploy, or runtime
 release.
 
-## Active slice: public catalog read-boundary hardening
+## Completed slice: public catalog read-boundary hardening
 
 - [x] Inventory native Medusa Store Product filtering and every custom public
       helper that reads Product records.
@@ -1468,7 +1468,7 @@ release.
       Storefront coverage, dependency/security checks, and production builds.
 - [x] Commit and accept the Backend expand phase on exact `staging` GitHub and
       Railway evidence before committing the Storefront consumer phase.
-- [ ] Commit and accept the Storefront phase on exact `staging` GitHub and
+- [x] Commit and accept the Storefront phase on exact `staging` GitHub and
       Railway evidence before another hardening slice.
 
 Discovery: Medusa 2.18's native Store Product route already injects
@@ -1533,10 +1533,43 @@ Product. The exact Storefront `/live`, `/ready`, `/api/healthcheck`, root, and
 catalog routes remained HTTP 200; `/products` retained its intentional HTTP
 308 redirect to `/catalog`.
 
-Remaining for this slice: commit and push the reviewed Storefront search/keyset
-consumer, verify exact-SHA CI, Storefront deployment, bounded search/fallback,
-sitemap, logs, and health, then record closure evidence. No production
-environment or other Railway project is in scope.
+Storefront consumer acceptance: exact SHA
+`ab51f7b6a8447fed0d476bde7f3af56c4826cf3d` passed Root CI `33255244572`,
+Backend CI `33255244570`, and Storefront CI `33255244584`. The gates included
+audits, release-policy and Railway-IaC checks, Gitleaks, TruffleHog, CodeQL,
+Trivy, lint, strict typecheck, all 605 Storefront tests with coverage, the
+production build, Playwright, Pa11y, and Lighthouse. Railway correctly skipped
+unchanged Backend record `febe21da-e524-4502-b78c-9834366a2135` and released
+Storefront record `f6174e16-f972-4f73-a4d2-51a7bd0f23c8` as `SUCCESS` with
+image digest
+`sha256:abe993862e646bc07d578bf4234825e64105f75415fdf3635d88d86d32d8ae29`.
+
+The Storefront's 196-line build log was entirely info-level. Four messages
+contained failure terms only because the Railway build sandbox could not
+resolve the runtime-only private Meilisearch hostname; the intentional Medusa
+fallback completed and the image exported successfully. Runtime became ready
+in 69 milliseconds. Its six-line startup log contained five info records and
+one Railway error-level classification for the successful literal
+`$ next start` command echo. The exact deployment had zero HTTP 5xx records,
+and no runtime warning, exception, failed operation, secret, or stack leak was
+observed.
+
+Storefront `/live`, `/ready`, `/api/healthcheck`, root, catalog, and sitemap
+returned HTTP 200; `/products` retained its intentional HTTP 308 redirect to
+`/catalog`. Security headers included nonce-based CSP, HSTS, `nosniff`, frame
+denial, strict referrer policy, and a bounded permissions policy. Dynamic page
+responses remained private/no-store, API responses were no-store, and the
+sitemap retained public revalidation semantics.
+
+The fallback endpoint returned 60 of 461 visible Products at its maximum page
+size and rejected a 61-row page plus a result window beyond 1,000 with HTTP 400
+Problem Details. Search returned 24 of 461 visible Products, rejected the same
+page/window violations and an inverted price range with HTTP 400 Problem
+Details, and returned zero hits with `hasMore: false` at offset 999. The live
+handle feed completed in five bounded pages with 461 unique Product IDs. The
+sitemap contained 476 unique URLs: all 461 feed Products plus 15 static routes,
+with zero missing feed URLs or duplicates. No production environment or other
+Railway project was accessed or changed.
 
 ## Remaining authorization work
 
@@ -1626,12 +1659,12 @@ environment or other Railway project is in scope.
       email timeouts, neutral responses, and purpose-bound BFF authentication.
 - [ ] Persist privacy requests in a protected audit store if required by the
       approved retention policy.
-- [ ] Cap search offset and total work.
+- [x] Cap search offset and total work.
 - [x] Rename Meilisearch host/search-key inputs to server-only variables and
       remove them from browser configuration and client bundles.
 - [ ] Remove any public Meilisearch domain if exact service inspection finds
       one; browser-direct search is not part of the accepted architecture.
-- [ ] Replace the all-product handles scan with bounded keyset pagination,
+- [x] Replace the all-product handles scan with bounded keyset pagination,
       published-status filtering, and publishable-key sales-channel filtering.
 - [x] Verify every public helper applies published-status and publishable-key
       sales-channel boundaries.
