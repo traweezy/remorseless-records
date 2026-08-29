@@ -32,7 +32,6 @@ const fixture = ({
     charge: "ch_01CHARGE",
     currency: "usd",
     id: "re_01REFUND",
-    livemode: false,
     payment_intent: "pi_01PAYMENT",
     status: "succeeded",
   },
@@ -109,7 +108,7 @@ describe("Stripe lifecycle event processing", () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("retrieves current Stripe state and reconciles tracked evidence", async () => {
+  it("accepts the current Refund shape and reconciles tracked evidence", async () => {
     const input = fixture();
 
     await expect(
@@ -181,6 +180,35 @@ describe("Stripe lifecycle event processing", () => {
         currency: "usd",
         id: "re_01REFUND",
         livemode: false,
+        payment_intent: "pi_01PAYMENT",
+        status: "succeeded",
+      },
+    });
+
+    await expect(
+      processStripeLifecycleEvent({
+        client: input.client,
+        eventId: "stripelinevt_01",
+        lifecycleService: input.lifecycleService,
+        taxControlService: input.taxControlService,
+      }),
+    ).rejects.toThrow("stripe_object_integrity_mismatch");
+    expect(
+      input.lifecycleServiceMocks.markStripeLifecycleEventFailed,
+    ).toHaveBeenCalledWith(
+      "stripelinevt_01",
+      "stripe_object_integrity_mismatch",
+    );
+    expect(reconcileMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a provider object exposes a different mode", async () => {
+    const input = fixture({
+      currentObject: {
+        amount: 2_500,
+        currency: "usd",
+        id: "re_01REFUND",
+        livemode: true,
         payment_intent: "pi_01PAYMENT",
         status: "succeeded",
       },

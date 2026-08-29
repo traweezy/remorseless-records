@@ -74,9 +74,13 @@ const assertCurrentObjectMatches = ({
   const currentPaymentIntentId = paymentIntentIdFrom(current.payment_intent);
   const currentAmount = Number(current.amount);
   const currentCurrency = text(current.currency)?.toLowerCase() ?? null;
+  const currentLivemodeMismatch =
+    current.livemode !== undefined &&
+    (typeof current.livemode !== "boolean" ||
+      current.livemode !== lifecycleEvent.livemode);
   const immutableMismatch =
     currentId !== lifecycleEvent.object_id ||
-    current.livemode !== lifecycleEvent.livemode ||
+    currentLivemodeMismatch ||
     (lifecycleEvent.payment_intent_id !== null &&
       currentPaymentIntentId !== lifecycleEvent.payment_intent_id) ||
     (lifecycleEvent.amount_minor !== null &&
