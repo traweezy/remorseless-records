@@ -538,11 +538,14 @@ preparing its pnpm build environment. The accepted repository file manifests
 remain pnpm-only. This platform log noise is tracked separately so it cannot be
 mistaken for an application regression.
 
-The pinned Dashboard also renders its native Product Import action without the
-custom `product_import` permission and first calls the intentionally disabled
-presigned-upload route. Backend enforcement remains authoritative. Approved
-tooling must use the validated managed-upload endpoint plus the plural
-prepare/confirm API until a permission-aware custom import UI is implemented.
+The pinned Dashboard patch removes its native Product Import action and route
+from source plus CommonJS and ESM production bundles. The removed drawer did
+not understand the custom `product_import` permission and first called the
+intentionally disabled presigned-upload route. The exact-version
+`qa:dashboard-product-import` check fails if the package patch, either list
+variant, or route boundary disappears. Approved tooling must use the validated
+managed-upload endpoint plus the plural prepare/confirm API until a
+permission-aware custom import UI is implemented.
 
 The Medusa privacy and Variant-update patch is pinned to exactly 2.18.0. Every
 Medusa upgrade must re-audit the upstream migration and native Variant route,

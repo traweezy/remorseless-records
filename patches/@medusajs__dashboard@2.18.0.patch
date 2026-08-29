@@ -1,0 +1,108 @@
+diff --git a/dist/app.js b/dist/app.js
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..033e528248cae6e59966b780590c265d52cdcbe2 100644
+--- a/dist/app.js
++++ b/dist/app.js
+@@ -117626,7 +117626,6 @@ var init_product_list_table = __esm({
+           /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Heading, { level: "h1", children: t5("products.domain") }),
+           /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "flex items-center justify-center gap-x-2", children: [
+             /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: `export${location.search}`, children: t5("actions.export") }) }),
+-            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: `import${location.search}`, children: t5("actions.import") }) }),
+             /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: "create", children: t5("actions.create") }) })
+           ] })
+         ] }),
+@@ -123459,7 +123458,6 @@ var init_configurable_product_list_table = __esm({
+             heading: t5("products.domain"),
+             actions: [
+               { label: t5("actions.export"), to: `export${location.search}` },
+-              { label: t5("actions.import"), to: `import${location.search}` },
+               { label: t5("actions.create"), to: "create" }
+             ]
+           }
+@@ -218601,10 +218599,6 @@ function getRouteMap({
+                       path: "create",
+                       lazy: () => Promise.resolve().then(() => (init_product_create2(), product_create_exports))
+                     },
+-                    {
+-                      path: "import",
+-                      lazy: () => Promise.resolve().then(() => (init_product_import2(), product_import_exports))
+-                    },
+                     {
+                       path: "export",
+                       lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
+diff --git a/dist/chunk-QIJSUXW3.mjs b/dist/chunk-QIJSUXW3.mjs
+index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..19f9fb35a3e1afc8dec066b1e2e6d197a83e84f4 100644
+--- a/dist/chunk-QIJSUXW3.mjs
++++ b/dist/chunk-QIJSUXW3.mjs
+@@ -107506,10 +107506,6 @@ function getRouteMap({
+                       path: "create",
+                       lazy: () => import("./product-create-USIRFWXQ.mjs")
+                     },
+-                    {
+-                      path: "import",
+-                      lazy: () => import("./product-import-ZIP6MEEQ.mjs")
+-                    },
+                     {
+                       path: "export",
+                       lazy: () => import("./product-export-GZQF56AL.mjs")
+diff --git a/dist/product-list-KFP2GKHN.mjs b/dist/product-list-KFP2GKHN.mjs
+index 28522b73fefac055a0ab3031851587f77e65e7d8..b7f3cf9324c3e48647fd8824ceaee00a6e98afe8 100644
+--- a/dist/product-list-KFP2GKHN.mjs
++++ b/dist/product-list-KFP2GKHN.mjs
+@@ -244,7 +244,6 @@ var ProductListTable = () => {
+       /* @__PURE__ */ jsx2(Heading, { level: "h1", children: t("products.domain") }),
+       /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-center gap-x-2", children: [
+         /* @__PURE__ */ jsx2(Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ jsx2(Link, { to: `export${location.search}`, children: t("actions.export") }) }),
+-        /* @__PURE__ */ jsx2(Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ jsx2(Link, { to: `import${location.search}`, children: t("actions.import") }) }),
+         /* @__PURE__ */ jsx2(Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ jsx2(Link, { to: "create", children: t("actions.create") }) })
+       ] })
+     ] }),
+@@ -371,7 +370,6 @@ var ConfigurableProductListTable = () => {
+         heading: t("products.domain"),
+         actions: [
+           { label: t("actions.export"), to: `export${location.search}` },
+-          { label: t("actions.import"), to: `import${location.search}` },
+           { label: t("actions.create"), to: "create" }
+         ]
+       }
+diff --git a/src/dashboard-app/routes/get-route.map.tsx b/src/dashboard-app/routes/get-route.map.tsx
+index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..1a1a87dc382445ce8d6fa6e99dec33a5b55ccfae 100644
+--- a/src/dashboard-app/routes/get-route.map.tsx
++++ b/src/dashboard-app/routes/get-route.map.tsx
+@@ -44,11 +44,6 @@ export function getRouteMap({
+                       lazy: () =>
+                         import("../../routes/products/product-create"),
+                     },
+-                    {
+-                      path: "import",
+-                      lazy: () =>
+-                        import("../../routes/products/product-import"),
+-                    },
+                     {
+                       path: "export",
+                       lazy: () =>
+diff --git a/src/routes/products/product-list/components/product-list-table/configurable-product-list-table.tsx b/src/routes/products/product-list/components/product-list-table/configurable-product-list-table.tsx
+index a314648b4d67f3de565d2dbb5b7d4af1cefd1d7d..65a010a7583038483df718f8d32567fde4c3e84b 100644
+--- a/src/routes/products/product-list/components/product-list-table/configurable-product-list-table.tsx
++++ b/src/routes/products/product-list/components/product-list-table/configurable-product-list-table.tsx
+@@ -16,7 +16,6 @@ export const ConfigurableProductListTable = () => {
+         heading={t("products.domain")}
+         actions={[
+           { label: t("actions.export"), to: `export${location.search}` },
+-          { label: t("actions.import"), to: `import${location.search}` },
+           { label: t("actions.create"), to: "create" },
+         ]}
+       />
+diff --git a/src/routes/products/product-list/components/product-list-table/product-list-table.tsx b/src/routes/products/product-list/components/product-list-table/product-list-table.tsx
+index 0d9c1b8b2602ef58fbfe66dc2a208f05622b092a..abc15915cf2a9fd1638fd1f2788e69a37fea62c5 100644
+--- a/src/routes/products/product-list/components/product-list-table/product-list-table.tsx
++++ b/src/routes/products/product-list/components/product-list-table/product-list-table.tsx
+@@ -61,9 +61,6 @@ export const ProductListTable = () => {
+           <Button size="small" variant="secondary" asChild>
+             <Link to={`export${location.search}`}>{t("actions.export")}</Link>
+           </Button>
+-          <Button size="small" variant="secondary" asChild>
+-            <Link to={`import${location.search}`}>{t("actions.import")}</Link>
+-          </Button>
+           <Button size="small" variant="secondary" asChild>
+             <Link to="create">{t("actions.create")}</Link>
+           </Button>

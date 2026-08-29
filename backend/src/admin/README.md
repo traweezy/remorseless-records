@@ -126,10 +126,11 @@ singular prepare and confirm routes both return 410 after authorization. A
 legacy plan predates this task-specific policy and must be re-prepared through
 the validated plural workflow rather than being trusted for execution.
 
-The stock Dashboard 2.18 Product Import drawer is not the supported path: it
-does not understand the custom permission and first calls the intentionally
-disabled presigned-upload endpoint. Approved tooling uploads validated UTF-8
-CSV through `POST /admin/managed-uploads`, sends the returned file key to
+The pinned Dashboard 2.18 patch removes the unsupported stock Product Import
+action and route from its source and production bundles. That drawer does not
+understand the custom permission and first calls the intentionally disabled
+presigned-upload endpoint. Approved tooling uploads validated UTF-8 CSV through
+`POST /admin/managed-uploads`, sends the returned file key to
 `POST /admin/products/imports`, reviews the plan, and confirms through
 `POST /admin/products/imports/:transaction_id/confirm`. A later custom import UI
 must gate its query and controls on the same exact capabilities.

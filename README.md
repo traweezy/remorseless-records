@@ -206,11 +206,12 @@ routes and widgets still need explicit fail-closed component boundaries before
 restricted-role UI behavior can be called complete; direct requests are
 already protected by the backend manifest.
 
-The pinned Dashboard's native Product Import drawer is the current UI exception:
-it does not understand the custom import permission and begins with the
-intentionally disabled presigned-upload route. Backend enforcement still
-rejects unauthorized imports. Approved tooling uses the validated managed
-upload and plural prepare/confirm APIs until a permission-aware replacement is
+The pinned Dashboard's unsupported native Product Import action and route are
+removed from both source and production bundles. A fail-closed repository check
+verifies the exact 2.18.0 patch during CI so a dependency upgrade cannot
+silently expose the drawer that begins with the intentionally disabled
+presigned-upload route. Approved tooling uses the validated managed upload and
+plural prepare/confirm APIs until a permission-aware replacement is
 implemented.
 
 ```mermaid

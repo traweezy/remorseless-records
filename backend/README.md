@@ -143,8 +143,10 @@ and `product_import:create`; confirming it requires `product:read` and
 same permissions and then returns 410 before multipart parsing; singular
 confirm checks `product:read` and `product_import:update` before also returning 410. Legacy plans must be re-prepared through the validated plural workflow.
 Approved tooling uses the managed upload followed by the plural prepare/confirm
-endpoints. The stock Dashboard import drawer is not supported because it still
-begins with the disabled presigned-upload route.
+endpoints. The pinned Dashboard patch removes the unsupported stock import
+action and route because that drawer begins with the disabled presigned-upload
+route. `pnpm run qa:dashboard-product-import` verifies the source and production
+bundles fail closed.
 
 The Admin **Operations → Media cleanup** route is the safe review surface for catalog assets
 that are not linked to any product. Its server-side anti-join returns exact,
