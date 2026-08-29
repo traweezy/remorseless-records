@@ -1747,14 +1747,66 @@ sitemap contained 476 unique URLs: all 461 feed Products plus 15 static routes,
 with zero missing feed URLs or duplicates. No production environment or other
 Railway project was accessed or changed.
 
-## Remaining authorization work
+## Completed catalog authorization work
 
-- [ ] Replace or disable the native Dashboard import drawer path that begins
+- [x] Replace or disable the native Dashboard import drawer path that begins
       with the intentionally disabled presigned-upload endpoint.
-- [ ] Route destructive catalog changes through audited, idempotent,
+- [x] Route destructive catalog changes through audited, idempotent,
       version-checked workflows.
-- [ ] Prefer archive or quarantine over hard deletion where recovery is
+- [x] Prefer archive or quarantine over hard deletion where recovery is
       required.
+
+The pinned Dashboard commit
+`4d6e313dc726a2baf53a18a9c76bd8c5ba8899a3` removes the unsupported
+Product Import actions and route from source, CommonJS, and ESM artifacts. The
+catalog boundary commit `98d128320885c76dc037dfbe03fed5efc43d5abe`
+removes Product and Variant delete actions from the same shipped artifact set.
+The server independently rejects native Product, Variant, Collection,
+Category, Option, Option-value, Tag, and Type hard deletion after the exact
+native policy check. Direct custom artist, reference-value, Product-profile,
+Variant-profile, and Product-media deletion uses the same private 409 Problem
+Details contract. Audited/versioned bundle mutation, shelf archive/restore,
+media quarantine/restore, and non-destructive inventory unlinking remain
+available.
+
+Exact-SHA staging acceptance passed on August 29, 2026:
+
+- Root CI `33269499815`, Backend CI `33269499853`, and Storefront CI
+  `33269499816` completed successfully, including security scans, CodeQL,
+  secret scans, coverage, production builds, SBOM/license inventory,
+  Playwright, accessibility, and Lighthouse.
+- Railway Backend deployment `db3e7d9c-44a4-4986-8d66-3b231fb16d90`
+  and Storefront deployment `8829ffdd-adc4-485f-8960-7c772067f10b`
+  reached `SUCCESS` on the exact source SHA. Their image digests are
+  `sha256:6afa7f10f137ac6d22840b8381f6aa79990a0403ea70d30d992c07b6f2ae0e26`
+  and
+  `sha256:cbd6f0aa9cd78154ff0da5f070053fc8e0c67cef036fff9604e6613fb9978191`.
+- Backend `/live`, `/ready`, and `/health`; Storefront `/live`, `/ready`,
+  `/api/healthcheck`, `/`, and `/catalog` all returned HTTP 200.
+- Two read-only acceptance runs used an in-memory, ten-minute staging token
+  derived from one existing actor and role link. Each run proved
+  authentication precedes the blocker with a 401, then received thirteen
+  private, no-store 409 Problem Details responses using guaranteed-nonexistent
+  identifiers. No catalog row or persistent credential was created, changed,
+  or deleted.
+- Exact Backend HTTP logs contained two DELETE 401 responses, twenty-six
+  DELETE 409 responses, and zero 5xx responses. Runtime logs contained the
+  matching twenty-six `catalog_hard_deletion_disabled` completion records with
+  exact commit SHA, request, trace, status, and problem fields. The remaining
+  warning/error-level records were those intentional 4xx completions and four
+  pnpm command banners; no exception, fatal, failed-operation, or stack term
+  appeared. Storefront's only error-level record was its known `$ next start`
+  banner. Both 1,000-record build-log scans had zero warning/error records and
+  zero failure terms.
+- A headful Brave session rendered the exact staging Product list and opened a
+  row action menu. Export and Create remained visible, Import was absent, and
+  the menu contained Edit without Delete. The result was inspected in a real
+  Flameshot desktop capture at
+  `/tmp/remorseless-catalog-deletion-after-98d1283.png` and a clean browser
+  capture at
+  `/tmp/remorseless-catalog-deletion-after-98d1283-browser.png`; the Wayland
+  monitor selector produced a full-desktop capture, so the separate browser
+  image retained the focused review artifact.
 
 ## Checkout, payment, refund, and job reliability
 
