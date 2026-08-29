@@ -1881,6 +1881,45 @@ state-changing sandbox exercises remain separately tracked below; this item
 closes the code, retry, installed-runtime, and zero-side-effect scheduled-run
 proof only.
 
+External scheduler-alert acceptance began on August 29, 2026 at exact source
+SHA `151f635374adc0d0bdf337ccdf90876d1f2dbce4`:
+
+- Root CI `33274362389`, Backend CI `33274362391`, and Storefront CI
+  `33274362399` completed successfully, including CodeQL, vulnerability,
+  secret, image, dependency, test, coverage, build, accessibility, browser,
+  and Lighthouse gates.
+- Railway Backend deployment `55c29958-ae9d-482d-af33-6371d1ec6ec6` and
+  Storefront deployment `605b9555-2d09-4e93-ade8-0773d9da0f87` reached
+  `SUCCESS` on that exact SHA. Their image digests are
+  `sha256:c7123d950ac40241916740fd54012d1814f6ee244bf2e327ecc5c5f71960ffd2`
+  and
+  `sha256:c1264b40ff97c030715ebffaed96777cce6a405c74797053a2611c6ffa5d4e38`.
+  Backend `/live`, `/ready`, and `/api/health`; Storefront `/live`, `/ready`,
+  `/api/healthcheck`, and `/` returned HTTP 200.
+- The first exact-release reconciliation tick started at `21:02:00.053Z`,
+  scanned all 797 candidates, and completed in 94.505 ms with 53 ms scheduler
+  delay and 20.087 ms maximum event-loop delay. It found zero eligible,
+  attempted, completed, protected, failed, or held-for-review carts and
+  released its owned lock after a 2.263 ms wait.
+- The public scheduler health evaluator returned HTTP 200 at
+  `21:02:31.708Z`, Redis `ok`, no incident latch, and a 31.484-second-old
+  completed heartbeat carrying the exact source SHA. The endpoint and the
+  independent evaluator both enforce a ten-minute heartbeat maximum and reject
+  invalid, future, stale, replayed, or unavailable state.
+- Forced-alert workflow run `33275028434` intentionally failed after fetching
+  and redacting the healthy response, opened deduplicated issue `#3`, and
+  retained artifact `staging-scheduler-observation-33275028434` through
+  September 28. Healthy recovery run `33275062236` then succeeded, closed issue
+  `#3` at `21:03:45Z`, and retained its independent redacted artifact for the
+  same 30-day policy.
+
+The 24-hour no-recurrence window therefore runs through
+`2026-08-30T21:03:45Z`. The external workflow polls every ten minutes, retains
+daily/manual/alert evidence, and will reopen the exact issue on Redis failure,
+missing or stale heartbeat, incident latch, invalid response, or source error.
+The checklist item remains open until that full window completes without an
+unrecovered alert or scheduler incident.
+
 ## Tax readiness
 
 - [ ] Obtain business approval and qualified tax advice for provider choice,
