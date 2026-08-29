@@ -31,6 +31,19 @@ describe("HTTP request correlation", () => {
     )
   })
 
+  it("joins the active Next trace when no valid parent is supplied", () => {
+    const correlation = createRequestCorrelation(new Headers(), {
+      traceFlags: "00",
+      traceId: TRACE_ID,
+    })
+
+    expect(correlation.traceId).toBe(TRACE_ID)
+    expect(correlation.traceFlags).toBe("00")
+    expect(correlation.traceparent).toBe(
+      `00-${TRACE_ID}-${correlation.spanId}-00`
+    )
+  })
+
   it.each([
     ["request ID with spaces", `00-${TRACE_ID}-${PARENT_ID}-01`],
     ["a".repeat(129), `00-${TRACE_ID}-${PARENT_ID}-01`],

@@ -10,9 +10,17 @@ import {
   applyCorrelationToResponse,
   createRequestCorrelation,
 } from "@/lib/http/correlation"
+import {
+  getActiveTraceContext,
+  registerRequestCompletion,
+} from "@/lib/observability/request-completion"
 
 export const proxy = (request: NextRequest): NextResponse => {
-  const correlation = createRequestCorrelation(request.headers)
+  const correlation = createRequestCorrelation(
+    request.headers,
+    getActiveTraceContext()
+  )
+  registerRequestCompletion(correlation)
   const requestHeaders = new Headers(request.headers)
   applyCorrelationToRequestHeaders(requestHeaders, correlation)
 

@@ -6,11 +6,18 @@ export type RequestCorrelation = {
   traceparent: string
 }
 
+type ActiveTraceContext = {
+  traceFlags: string
+  traceId: string
+}
+
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u
 const TRACEPARENT_PATTERN =
   /^(?<version>[0-9a-f]{2})-(?<traceId>[0-9a-f]{32})-(?<parentId>[0-9a-f]{16})-(?<traceFlags>[0-9a-f]{2})$/u
 const ZERO_TRACE_ID = "0".repeat(32)
 const ZERO_SPAN_ID = "0".repeat(16)
+const TRACE_ID_PATTERN = /^[0-9a-f]{32}$/u
+const TRACE_FLAGS_PATTERN = /^[0-9a-f]{2}$/u
 const requestCorrelations = new WeakMap<Request, RequestCorrelation>()
 
 const randomHex = (bytes: number): string => {
@@ -58,12 +65,22 @@ const acceptedTraceparent = (
 }
 
 export const createRequestCorrelation = (
-  headers: Headers
+  headers: Headers,
+  activeTrace?: ActiveTraceContext
 ): RequestCorrelation => {
   const incomingTrace = acceptedTraceparent(headers.get("traceparent"))
-  const traceId = incomingTrace?.traceId ?? randomHex(16)
+  const validActiveTrace =
+    activeTrace &&
+    TRACE_ID_PATTERN.test(activeTrace.traceId) &&
+    activeTrace.traceId !== ZERO_TRACE_ID &&
+    TRACE_FLAGS_PATTERN.test(activeTrace.traceFlags)
+      ? activeTrace
+      : undefined
+  const traceId =
+    incomingTrace?.traceId ?? validActiveTrace?.traceId ?? randomHex(16)
   const spanId = randomHex(8)
-  const traceFlags = incomingTrace?.traceFlags ?? "01"
+  const traceFlags =
+    incomingTrace?.traceFlags ?? validActiveTrace?.traceFlags ?? "01"
 
   return {
     requestId:

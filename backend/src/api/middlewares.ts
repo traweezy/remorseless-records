@@ -18,7 +18,6 @@ import {
 import { STORE_CORS } from "../lib/constants";
 import {
   attachRequestCorrelation,
-  logCompletedRequest,
   sendApiProblem,
 } from "../lib/http/correlation";
 import { resolveClientIp } from "../lib/security/client-ip";
@@ -63,11 +62,7 @@ export const applyRequestObservability = (
   res: MedusaResponse,
   next: MedusaNextFunction,
 ): void => {
-  const startedAt = process.hrtime.bigint();
   attachRequestCorrelation(req, res);
-  res.once("finish", () => {
-    logCompletedRequest(req, res, startedAt);
-  });
   next();
 };
 

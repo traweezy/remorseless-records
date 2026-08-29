@@ -1,60 +1,8 @@
-diff --git a/dist/migration-scripts/create-super-admin-role.js b/dist/migration-scripts/create-super-admin-role.js
---- a/dist/migration-scripts/create-super-admin-role.js
-+++ b/dist/migration-scripts/create-super-admin-role.js
-@@ -30,10 +30,6 @@ async function assignSuperAdminRoleToUsers(container) {
-             return;
-         }
-         logger.info(`Found ${users.length} users`);
--        logger.info("\nUsers found:");
--        users.forEach((user, index) => {
--            logger.info(`  ${index + 1}. ${user.email || user.id} (${user.id})`);
--        });
-         logger.info("\nLooking for super admin role...");
-         // Get the pre-created super admin role
-         let superAdminRole;
-@@ -69,8 +65,8 @@ async function assignSuperAdminRoleToUsers(container) {
-         let errorCount = 0;
-         const link = container.resolve(utils_1.ContainerRegistrationKeys.LINK);
--        for (const user of users) {
-+        for (const [index, user] of users.entries()) {
-             try {
--                logger.info(`  Processing user: ${user.email || user.id}`);
-+                logger.info(`  Processing user ${index + 1} of ${users.length}`);
-                 // Link the user to the super admin role
-                 await link.create({
-                     [utils_1.Modules.USER]: {
-@@ -84,7 +80,7 @@ async function assignSuperAdminRoleToUsers(container) {
-                 successCount++;
-             }
-             catch (error) {
--                console.error(`    Failed to assign role to user ${user.id}:`, error.message);
-+                logger.error("    Failed to assign role to a user");
-                 errorCount++;
-             }
-         }
-@@ -98,8 +94,7 @@ async function assignSuperAdminRoleToUsers(container) {
-         }
-     }
-     catch (error) {
--        console.error("\nFatal error:", error.message);
--        console.error("Stack trace:", error.stack);
-+        console.error("\nFatal error during super admin role assignment");
-         throw error;
-     }
- }
-@@ -118,7 +113,7 @@ async function createSuperAdminRole({ container }) {
-     }
-     catch (error) {
-         const logger = container.resolve(utils_1.ContainerRegistrationKeys.LOGGER);
--        logger.error("Failed to assign super admin role:", error);
-+        logger.error("Failed to assign super admin role");
-         throw error;
-     }
- }
 diff --git a/dist/api/admin/products/[id]/variants/[variant_id]/route.js b/dist/api/admin/products/[id]/variants/[variant_id]/route.js
+index e957a37097d4d2cc826f376005d04b024d00d1cf..b4695cd07a667f2331b9c122c5231891aa887db0 100644
 --- a/dist/api/admin/products/[id]/variants/[variant_id]/route.js
 +++ b/dist/api/admin/products/[id]/variants/[variant_id]/route.js
-@@ -3,6 +3,7 @@
+@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
  exports.DELETE = exports.POST = exports.GET = void 0;
  const core_flows_1 = require("@medusajs/core-flows");
  const http_1 = require("@medusajs/framework/http");
@@ -62,7 +10,7 @@ diff --git a/dist/api/admin/products/[id]/variants/[variant_id]/route.js b/dist/
  const helpers_1 = require("../../../helpers");
  const GET = async (req, res) => {
      const productId = req.params.id;
-@@ -21,13 +22,26 @@
+@@ -21,19 +22,35 @@ const POST = async (req, res) => {
      const productId = req.params.id;
      const variantId = req.params.variant_id;
      const { additional_data, ...update } = req.validatedBody;
@@ -91,7 +39,6 @@ diff --git a/dist/api/admin/products/[id]/variants/[variant_id]/route.js b/dist/
      const product = await (0, http_1.refetchEntity)({
          entity: "product",
          idOrFilter: productId,
-@@ -34,6 +48,9 @@
          scope: req.scope,
          fields: (0, helpers_1.remapKeysForProduct)(req.queryConfig.fields ?? []),
      });
@@ -101,3 +48,158 @@ diff --git a/dist/api/admin/products/[id]/variants/[variant_id]/route.js b/dist/
      res.status(200).json({ product: (0, helpers_1.remapProductResponse)(product) });
  };
  exports.POST = POST;
+diff --git a/dist/loaders/index.d.ts b/dist/loaders/index.d.ts
+index 3b57398422d468f92fb954f9a6e6c6ae55e9e687..f72712a2284c836292d2b83ad86e93cabccc1479 100644
+--- a/dist/loaders/index.d.ts
++++ b/dist/loaders/index.d.ts
+@@ -6,6 +6,13 @@ type Options = {
+     expressApp: Express;
+     skipLoadingEntryPoints?: boolean;
+ };
++export declare function resolveRequestCorrelation(headers: Record<string, string | string[] | undefined>): {
++    requestId: string;
++    spanId: string;
++    traceFlags: string;
++    traceId: string;
++    traceparent: string;
++};
+ export declare function initializeContainer(rootDirectory: string, options?: {
+     skipDbConnection?: boolean;
+     throwOnValidationError?: boolean;
+diff --git a/dist/loaders/index.js b/dist/loaders/index.js
+index 109e3936fedaa059da4c8c1650c281ec5bf0a5bf..1200a6b776600be49a9880b69aa051eeb5940c0b 100644
+--- a/dist/loaders/index.js
++++ b/dist/loaders/index.js
+@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+ };
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.initializeContainer = initializeContainer;
++exports.resolveRequestCorrelation = resolveRequestCorrelation;
+ const framework_1 = require("@medusajs/framework");
+ const awilix_1 = require("@medusajs/framework/awilix");
+ const config_1 = require("@medusajs/framework/config");
+@@ -16,9 +17,9 @@ const logger_1 = require("@medusajs/framework/logger");
+ const subscribers_1 = require("@medusajs/framework/subscribers");
+ const utils_1 = require("@medusajs/framework/utils");
+ const workflows_1 = require("@medusajs/framework/workflows");
++const crypto_1 = require("crypto");
+ const path_1 = require("path");
+ const request_ip_1 = __importDefault(require("request-ip"));
+-const uuid_1 = require("uuid");
+ const admin_1 = __importDefault(require("./admin"));
+ const api_1 = __importDefault(require("./api"));
+ const isWorkerMode = (configModule) => {
+@@ -28,6 +29,44 @@ const shouldLoadBackgroundProcessors = (configModule) => {
+     return (configModule.projectConfig.workerMode === "worker" ||
+         configModule.projectConfig.workerMode === "shared");
+ };
++const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
++const TRACEPARENT_PATTERN = /^(?<version>[0-9a-f]{2})-(?<traceId>[0-9a-f]{32})-(?<parentId>[0-9a-f]{16})-(?<traceFlags>[0-9a-f]{2})$/u;
++const ZERO_TRACE_ID = "0".repeat(32);
++const ZERO_SPAN_ID = "0".repeat(16);
++const firstHeader = (value) => typeof value === "string" ? value.trim() : undefined;
++function resolveRequestCorrelation(headers) {
++    const requestIdCandidate = firstHeader(headers["x-request-id"]);
++    const requestId = requestIdCandidate && REQUEST_ID_PATTERN.test(requestIdCandidate)
++        ? requestIdCandidate
++        : (0, crypto_1.randomUUID)();
++    const traceparentCandidate = firstHeader(headers.traceparent)?.toLowerCase();
++    const traceparentMatch = traceparentCandidate
++        ? TRACEPARENT_PATTERN.exec(traceparentCandidate)
++        : undefined;
++    const version = traceparentMatch?.groups?.version;
++    const incomingTraceId = traceparentMatch?.groups?.traceId;
++    const incomingParentId = traceparentMatch?.groups?.parentId;
++    const incomingTraceFlags = traceparentMatch?.groups?.traceFlags;
++    const validTraceparent = version &&
++        incomingTraceId &&
++        incomingParentId &&
++        incomingTraceFlags &&
++        version !== "ff" &&
++        incomingTraceId !== ZERO_TRACE_ID &&
++        incomingParentId !== ZERO_SPAN_ID;
++    const traceId = validTraceparent
++        ? incomingTraceId
++        : (0, crypto_1.randomBytes)(16).toString("hex");
++    const spanId = (0, crypto_1.randomBytes)(8).toString("hex");
++    const traceFlags = validTraceparent ? incomingTraceFlags : "01";
++    return {
++        requestId,
++        spanId,
++        traceFlags,
++        traceId,
++        traceparent: `00-${traceId}-${spanId}-${traceFlags}`,
++    };
++}
+ async function subscribersLoader(plugins, container) {
+     const pluginSubscribersSourcePaths = [
+         /**
+@@ -59,7 +98,12 @@ async function loadEntrypoints(plugins, container, expressApp, rootDirectory) {
+      */
+     expressApp.use((req, res, next) => {
+         req.scope = container.createScope();
+-        req.requestId = req.headers["x-request-id"] ?? (0, uuid_1.v4)();
++        const correlation = resolveRequestCorrelation(req.headers);
++        req.requestId = correlation.requestId;
++        req.headers["x-request-id"] = correlation.requestId;
++        req.headers.traceparent = correlation.traceparent;
++        res.setHeader("X-Request-Id", correlation.requestId);
++        res.setHeader("traceparent", correlation.traceparent);
+         next();
+     });
+     // Add additional information to context of request
+diff --git a/dist/migration-scripts/create-super-admin-role.js b/dist/migration-scripts/create-super-admin-role.js
+index 1ed0669c75e4306f4ddc1184a15856f1e8e73f44..82b8c9512d91356cf80f7517a05b14502e3a5818 100644
+--- a/dist/migration-scripts/create-super-admin-role.js
++++ b/dist/migration-scripts/create-super-admin-role.js
+@@ -29,10 +29,6 @@ async function assignSuperAdminRoleToUsers(container) {
+             return;
+         }
+         logger.info(`Found ${users.length} users`);
+-        logger.info("\nUsers found:");
+-        users.forEach((user, index) => {
+-            logger.info(`  ${index + 1}. ${user.email || user.id} (${user.id})`);
+-        });
+         logger.info("\nLooking for super admin role...");
+         // Get the pre-created super admin role
+         let superAdminRole;
+@@ -71,9 +67,9 @@ async function assignSuperAdminRoleToUsers(container) {
+         let successCount = 0;
+         let errorCount = 0;
+         const link = container.resolve(utils_1.ContainerRegistrationKeys.LINK);
+-        for (const user of users) {
++        for (const [index, user] of users.entries()) {
+             try {
+-                logger.info(`  Processing user: ${user.email || user.id}`);
++                logger.info(`  Processing user ${index + 1} of ${users.length}`);
+                 // Link the user to the super admin role
+                 await link.create({
+                     [utils_1.Modules.USER]: {
+@@ -87,7 +83,7 @@ async function assignSuperAdminRoleToUsers(container) {
+                 successCount++;
+             }
+             catch (error) {
+-                console.error(`    Failed to assign role to user ${user.id}:`, error.message);
++                logger.error("    Failed to assign role to a user");
+                 errorCount++;
+             }
+         }
+@@ -102,8 +98,7 @@ async function assignSuperAdminRoleToUsers(container) {
+         }
+     }
+     catch (error) {
+-        console.error("\nFatal error:", error.message);
+-        console.error("Stack trace:", error.stack);
++        console.error("\nFatal error during super admin role assignment");
+         throw error;
+     }
+ }
+@@ -120,7 +115,7 @@ async function createSuperAdminRole({ container }) {
+     }
+     catch (error) {
+         const logger = container.resolve(utils_1.ContainerRegistrationKeys.LOGGER);
+-        logger.error("Failed to assign super admin role:", error);
++        logger.error("Failed to assign super admin role");
+         throw error;
+     }
+ }

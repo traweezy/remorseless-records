@@ -1,8 +1,85 @@
+diff --git a/dist/http/express-loader.d.ts b/dist/http/express-loader.d.ts
+index f31efe196cec67342e4f671a2469e825d4433137..5d570ddc9130685c0fca0d5ae655a915f9059ab6 100644
+--- a/dist/http/express-loader.d.ts
++++ b/dist/http/express-loader.d.ts
+@@ -1,5 +1,21 @@
+ import { MedusaContainer } from "@medusajs/framework/types";
+-import { Express } from "express";
++import { Express, Request, Response } from "express";
++export declare function createSafeHttpCompletion(req: Request & {
++    requestId?: string;
++}, res: Response, durationMs: number): {
++    problem_code?: string;
++    duration_ms: number;
++    event: string;
++    message: string;
++    method: string;
++    request_id: string;
++    span_id: string;
++    status: number;
++    trace_id: string;
++    commit_sha: string;
++    environment: string;
++    service: string;
++};
+ /**
+  * Resolves the `sameSite` and `secure` flags used for the session cookie.
+  *
 diff --git a/dist/http/express-loader.js b/dist/http/express-loader.js
-index 28ce900e452093579520516527ab3ac3eef7ce45..5fe6af7523e07378901127d3e27d60c9e82043dd 100644
+index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e169007b7 100644
 --- a/dist/http/express-loader.js
 +++ b/dist/http/express-loader.js
-@@ -81,6 +81,21 @@ async function expressLoader({ app, container, }) {
+@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+     return (mod && mod.__esModule) ? mod : { "default": mod };
+ };
+ Object.defineProperty(exports, "__esModule", { value: true });
++exports.createSafeHttpCompletion = createSafeHttpCompletion;
+ exports.resolveSessionCookieSecurity = resolveSessionCookieSecurity;
+ exports.expressLoader = expressLoader;
+ const utils_1 = require("@medusajs/framework/utils");
+@@ -19,6 +20,41 @@ const config_1 = require("../config");
+ const http_compression_1 = require("./utils/http-compression");
+ const NOISY_ENDPOINTS_CHUNKS = ["@fs", "@id", "@vite", "@react", "node_modules"];
+ const isHealthCheck = (req) => req.path === "/health";
++const TRACEPARENT_PATTERN = /^[0-9a-f]{2}-(?<traceId>[0-9a-f]{32})-(?<spanId>[0-9a-f]{16})-[0-9a-f]{2}$/u;
++const deploymentIdentity = {
++    commit_sha: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? "unknown",
++    environment: process.env.RAILWAY_ENVIRONMENT_NAME ?? process.env.NODE_ENV ?? "unknown",
++    service: "backend",
++};
++function createSafeHttpCompletion(req, res, durationMs) {
++    const traceparent = typeof req.headers.traceparent === "string"
++        ? req.headers.traceparent.toLowerCase()
++        : "";
++    const traceContext = TRACEPARENT_PATTERN.exec(traceparent);
++    const problemCode = typeof res.locals?.problemCode === "string" &&
++        /^[a-z0-9][a-z0-9_:-]{0,127}$/u.test(res.locals.problemCode)
++        ? res.locals.problemCode
++        : undefined;
++    const status = Number.isSafeInteger(res.statusCode) && res.statusCode >= 100 && res.statusCode <= 599
++        ? res.statusCode
++        : 0;
++    return {
++        ...deploymentIdentity,
++        duration_ms: Number.isFinite(durationMs) && durationMs >= 0
++            ? Number(durationMs.toFixed(3))
++            : 0,
++        event: "http.request.completed",
++        message: "Backend request completed",
++        method: typeof req.method === "string" && /^[A-Z]{3,10}$/u.test(req.method)
++            ? req.method
++            : "UNKNOWN",
++        request_id: typeof req.requestId === "string" ? req.requestId : "unknown",
++        span_id: traceContext?.groups?.spanId ?? "unknown",
++        status,
++        trace_id: traceContext?.groups?.traceId ?? "unknown",
++        ...(problemCode ? { problem_code: problemCode } : {}),
++    };
++}
+ /**
+  * Resolves the `sameSite` and `secure` flags used for the session cookie.
+  *
+@@ -81,6 +117,21 @@ async function expressLoader({ app, container, }) {
          });
      }
      app.set("trust proxy", 1);
@@ -24,3 +101,65 @@ index 28ce900e452093579520516527ab3ac3eef7ce45..5fe6af7523e07378901127d3e27d60c9
      /**
       * Register the HTTP compression middleware when it's enabled through
       * `projectConfig.http.compression`. It has to be registered before the
+@@ -108,41 +159,32 @@ async function expressLoader({ app, container, }) {
+     function shouldSkipHttpLog(req, res) {
+         return (isTest ||
+             isHealthCheck(req) ||
+-            NOISY_ENDPOINTS_CHUNKS.some((chunk) => req.url.includes(chunk)) ||
+-            !logger.shouldLog("http"));
++            NOISY_ENDPOINTS_CHUNKS.some((chunk) => req.url.includes(chunk)));
+     }
+     let loggingMiddleware;
+     /**
+-     * The middleware to use for logging. We write the log messages
+-     * using winston, but rely on morgan to hook into HTTP requests
++     * Production completion logs deliberately exclude URLs, client addresses,
++     * referrers, user agents, request sizes, and response bodies.
+      */
+     if (!IS_DEV) {
+-        const jsonFormat = (tokens, req, res) => {
+-            const result = {
+-                level: "http",
+-                // client ip
+-                client_ip: req.ip || "-",
+-                // Request ID can be correlated with other logs (like error reports)
+-                request_id: req.requestId || "-",
+-                // Standard HTTP request properties
+-                http_version: tokens["http-version"](req, res),
+-                method: tokens.method(req, res),
+-                path: tokens.url(req, res),
+-                // Response details
+-                status: Number(tokens.status(req, res)),
+-                response_size: tokens.res(req, res, "content-length") || 0,
+-                request_size: tokens.req(req, res, "content-length") || 0,
+-                duration: Number(tokens["response-time"](req, res)),
+-                // Useful headers that might help in debugging or tracing
+-                referrer: tokens.referrer(req, res) || "-",
+-                user_agent: tokens["user-agent"](req, res),
+-                timestamp: new Date().toISOString(),
+-            };
+-            return JSON.stringify(result);
++        loggingMiddleware = (req, res, next) => {
++            if (shouldSkipHttpLog(req, res)) {
++                next();
++                return;
++            }
++            const startedAt = process.hrtime.bigint();
++            res.once("finish", () => {
++                const event = createSafeHttpCompletion(req, res, Number(process.hrtime.bigint() - startedAt) / 1_000_000);
++                const level = event.status >= 500 || event.status === 0
++                    ? "error"
++                    : event.status >= 400
++                        ? "warn"
++                        : "info";
++                const write = logger[level] ?? logger.info;
++                write.call(logger, JSON.stringify(event));
++            });
++            next();
+         };
+-        loggingMiddleware = (0, morgan_1.default)(jsonFormat, {
+-            skip: shouldSkipHttpLog,
+-        });
+     }
+     else {
+         loggingMiddleware = (0, morgan_1.default)(":method :url ← :referrer (:status) - :response-time ms", {

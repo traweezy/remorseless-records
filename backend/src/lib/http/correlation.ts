@@ -24,12 +24,6 @@ export type ApiProblemInput = {
   extensions?: Record<string, unknown>;
 };
 
-type StructuredLogger = {
-  info?: (message: string) => void;
-  warn?: (message: string) => void;
-  error?: (message: string) => void;
-};
-
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const TRACEPARENT_PATTERN =
   /^(?<version>[0-9a-f]{2})-(?<traceId>[0-9a-f]{32})-(?<parentId>[0-9a-f]{16})-(?<traceFlags>[0-9a-f]{2})$/u;
@@ -103,6 +97,7 @@ export const attachRequestCorrelation = (
 ): RequestCorrelation => {
   const correlation = createRequestCorrelation(req.headers ?? {});
   requestCorrelations.set(req, correlation);
+  req.requestId = correlation.requestId;
   req.headers["x-request-id"] = correlation.requestId;
   req.headers.traceparent = correlation.traceparent;
   res.setHeader("X-Request-Id", correlation.requestId);
@@ -121,56 +116,6 @@ export const getRequestCorrelation = (
   const correlation = createRequestCorrelation(req.headers ?? {});
   requestCorrelations.set(req, correlation);
   return correlation;
-};
-
-const resolveLogger = (req: MedusaRequest): StructuredLogger => {
-  try {
-    const logger = req.scope?.resolve("logger") as StructuredLogger | undefined;
-    return logger ?? console;
-  } catch {
-    return console;
-  }
-};
-
-const deploymentIdentity = {
-  commit_sha:
-    process.env.RAILWAY_GIT_COMMIT_SHA ??
-    process.env.GIT_COMMIT_SHA ??
-    "unknown",
-  environment:
-    process.env.RAILWAY_ENVIRONMENT_NAME ?? process.env.NODE_ENV ?? "unknown",
-  service: "backend",
-} as const;
-
-const writeStructuredLog = (
-  req: MedusaRequest,
-  level: "info" | "warn" | "error",
-  event: Record<string, unknown>,
-): void => {
-  const logger = resolveLogger(req);
-  const write = logger[level] ?? logger.info;
-  write?.call(logger, JSON.stringify({ ...deploymentIdentity, ...event }));
-};
-
-export const logCompletedRequest = (
-  req: MedusaRequest,
-  res: MedusaResponse,
-  startedAt: bigint,
-): void => {
-  const correlation = getRequestCorrelation(req);
-  const status = res.statusCode;
-  const level = status >= 500 ? "error" : status >= 400 ? "warn" : "info";
-  const problemCode = res.locals?.problemCode;
-  writeStructuredLog(req, level, {
-    duration_ms: Number(process.hrtime.bigint() - startedAt) / 1_000_000,
-    event: "http.request.completed",
-    method: req.method,
-    request_id: correlation.requestId,
-    span_id: correlation.spanId,
-    status,
-    trace_id: correlation.traceId,
-    ...(typeof problemCode === "string" ? { problem_code: problemCode } : {}),
-  });
 };
 
 export const sendApiProblem = (

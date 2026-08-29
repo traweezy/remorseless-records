@@ -3,7 +3,6 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import {
   attachRequestCorrelation,
   createRequestCorrelation,
-  logCompletedRequest,
   sendApiProblem,
 } from "./correlation";
 
@@ -89,37 +88,4 @@ describe("Backend HTTP request correlation", () => {
     });
   });
 
-  it("writes redacted structured completion logs", () => {
-    const logger = { error: jest.fn(), info: jest.fn(), warn: jest.fn() };
-    const request = {
-      headers: { "x-request-id": "request_03" },
-      method: "POST",
-      scope: { resolve: jest.fn(() => logger) },
-    } as unknown as MedusaRequest;
-    const response = {
-      locals: { problemCode: "provider_unavailable" },
-      setHeader: jest.fn(),
-      statusCode: 503,
-    } as unknown as MedusaResponse;
-
-    attachRequestCorrelation(request, response);
-    logCompletedRequest(request, response, process.hrtime.bigint());
-
-    expect(logger.error).toHaveBeenCalledTimes(1);
-    expect(logger.error.mock.contexts[0]).toBe(logger);
-    const event = JSON.parse(logger.error.mock.calls[0]?.[0] ?? "{}") as Record<
-      string,
-      unknown
-    >;
-    expect(event).toMatchObject({
-      event: "http.request.completed",
-      method: "POST",
-      problem_code: "provider_unavailable",
-      request_id: "request_03",
-      service: "backend",
-      status: 503,
-    });
-    expect(event).not.toHaveProperty("headers");
-    expect(event).not.toHaveProperty("path");
-  });
 });
