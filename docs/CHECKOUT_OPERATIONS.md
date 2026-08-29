@@ -20,8 +20,8 @@ Initial staging objectives:
 - A payment confirmed without an order reaches a durable order or an
   actionable alert within 10 minutes.
 - No duplicate charge or order is acceptable.
-- Any checkout reconciliation `failed > 0`, safety cap, webhook failure, or
-  amount-validation failure requires investigation.
+- Any checkout reconciliation `failed > 0`, `heldForReview > 0`, safety cap,
+  webhook failure, or amount-validation failure requires investigation.
 
 Useful aggregate log events:
 
@@ -37,10 +37,10 @@ Useful aggregate log events:
 Checkout reconciliation records contain the fixed safe `message`, exact
 deployment identity, `run_id`, `scheduled_for`, `started_at`,
 `schedule_delay_ms`, `duration_ms`, `event_loop_delay_max_ms`, `lock_wait_ms`,
-`lock_released`, and aggregate result fields. They intentionally omit cart,
-payment, order, customer, address, email, request payload, provider-error, and
-stack values. Alert on `.attention`, `.skipped`, or `.failed`; a healthy idle
-run emits `.completed` at info level.
+`lock_released`, and aggregate result fields, including `heldForReview`. They
+intentionally omit cart, payment, order, customer, address, email, request
+payload, provider-error, and stack values. Alert on `.attention`, `.skipped`,
+or `.failed`; a healthy idle run emits `.completed` at info level.
 
 ## Verify that an environment is safe to test
 
@@ -230,14 +230,17 @@ still does not prove that a Medusa order exists.
 3. Check the Medusa payment session status and whether an `order_cart` link
    exists. Do not expose the client secret.
 4. Check the `reconcile-checkout-payments` job result.
-5. If the session is authorized/captured and no link exists, leave the official
-   webhook enabled to process payment events and the reconciliation job enabled
-   to retry Medusa's complete-cart workflow.
-6. Investigate inventory, shipping, tax, and `checkout_payment_*` validation
-   failures.
-7. If Medusa's workflow compensated by refunding/canceling, verify that through
+5. If the session is authorized/captured, no link exists, and no
+   `rr_checkout_reconciliation` marker exists, leave the official webhook and
+   reconciliation job enabled for the first safe completion attempt.
+6. If any `rr_checkout_reconciliation` marker exists, or the job reports
+   `heldForReview > 0`, do not clear the marker or retry blindly. Inspect the
+   Medusa order link, payment, capture, refund, inventory, and Stripe state to
+   resolve the ambiguous attempt before an approved operator action.
+7. Investigate shipping, tax, and `checkout_payment_*` validation failures.
+8. If Medusa's workflow compensated by refunding/canceling, verify that through
    Medusa and Stripe before asking the shopper to try again.
-8. Do not manually create an order or directly capture/refund in Stripe unless
+9. Do not manually create an order or directly capture/refund in Stripe unless
    a separately approved incident procedure establishes the Medusa state.
 
 ## Incident: checkout scheduler delay or missing BullMQ lock
@@ -248,7 +251,9 @@ still does not prove that a Medusa order exists.
    `duration_ms`, `event_loop_delay_max_ms`, `lock_wait_ms`, and
    `lock_released`; do not search only the display message.
 3. Check for a following `.skipped` record or a second aggregate completion.
-   A stalled retry is expected to re-read the cart and order before any action.
+   A stalled retry re-reads the cart and order before any action. A durable
+   `started` or `review_required` marker without an order is held for review and
+   cannot re-enter complete-cart automatically.
 4. Review Redis latency, reconnects, AOF delayed-fsync growth, memory, evictions,
    rejected connections, and BullMQ stalled events for the same window.
 5. Review PostgreSQL query latency and saturation. Do not add an index or raise
@@ -265,7 +270,11 @@ The scheduled-workflow worker lock is five minutes with a 30-second renewal
 setting. The handler separately holds a uniquely owned five-minute lock. The
 job warns at 30 seconds of scheduler delay or handler duration, at one second
 of maximum event-loop delay, on a failed lock release, and on every scan,
-attempt, or 90-second run-time cap. Configuration is bounded by:
+attempt, held-for-review result, or 90-second run-time cap. Immediately before
+complete-cart, the job rechecks the order link and payment session, then writes
+the cart's non-PII `rr_checkout_reconciliation` marker. Failure or ambiguous
+response after that durable write cannot cause a later stalled run to repeat
+the completion call. Configuration is bounded by:
 
 - `CHECKOUT_RECONCILIATION_MAX_SCAN` (default `2000`, range `500–5000`);
 - `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS` (default `50`, range `1–250`); and

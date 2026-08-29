@@ -743,6 +743,13 @@ official signed Stripe webhook keeps Medusa's payment state authoritative:
    when it has exactly one authorized/captured official Stripe session and no
    linked order.
 
+The scheduled path rechecks the order link and payment immediately before it
+writes a durable, non-PII cart attempt marker. Any earlier marker holds the cart
+for review instead of repeating completion after a stalled worker, lost
+response, or process crash. Medusa's pinned workflow retains its per-cart lock,
+order-link and authorization guards, and stable provider idempotency keys for
+capture and compensation refunds.
+
 If a response is lost, a tab closes, a 3DS redirect returns, or the network
 fails after confirmation begins, the UI routes to `/checkout/recover` and
 polls a server-to-server HMAC-protected status endpoint. It explicitly says not
@@ -837,12 +844,15 @@ to Medusa's native, irreversible refund flow. The order's Stripe widget carries
 the same guidance.
 
 Every `payment.refunded` event also creates an idempotent Resend notification
-for the order email. Multiple legitimate partial refunds each get one message;
-replayed event delivery cannot duplicate a message for the same Medusa refund
-ID. Checkout compensation can notify a guest from the cart email even when
-order creation failed. The message states the amount and original-payment
-method behavior but does not promise when the customer's bank will post the
-credit.
+for the order email. The stable Medusa refund key is persisted on the
+notification and forwarded unchanged to Resend; order confirmations use the
+same boundary with the Medusa order ID. Multiple legitimate partial refunds
+each get one message, while replay or a lost provider response cannot duplicate
+the same refund or order email. Checkout compensation can notify a guest from
+the cart email even when order creation failed. The provider call has a bounded
+deadline, treats a resolved Resend error as failure, and logs no recipient or
+provider detail. The message states the amount and original-payment method
+behavior but does not promise when the customer's bank will post the credit.
 
 Immediate event handling and the existing hourly tax-evidence job reconcile
 Medusa, Stripe refund statuses/amounts, and Stripe Tax reversals. TaxRate.io

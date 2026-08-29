@@ -37,6 +37,10 @@ creation and payment authorization.
 - Browser completion and a bounded reconciliation job use Medusa's idempotent
   complete-cart workflow. Medusa's official Stripe webhook processes the
   authoritative payment events that inform those completion paths.
+- The scheduled path writes a durable, non-PII cart attempt marker after its
+  final order/payment recheck and before complete-cart. A prior marker holds the
+  cart for review, so a stalled worker, process crash, or ambiguous response
+  cannot blindly repeat the sole scheduled completion attempt.
 - Stripe receives non-PII Medusa cart/order reference metadata and a readable
   description for payment reconciliation. An idempotent `order.placed`
   subscriber annotates both the PaymentIntent and any existing Charge. It
@@ -58,6 +62,9 @@ creation and payment authorization.
 - Customer confirmation requires a Medusa order linked to the signed cart and
   a short-lived receipt grant. A Stripe redirect or success state alone is not
   confirmation.
+- Order and refund notifications persist a stable Medusa business key and pass
+  it unchanged to Resend idempotency. Provider deadlines and failure
+  propagation make event retry safe after an ambiguous email response.
 - The custom Checkout Session creation route, custom webhook, public session
   lookup, and duplicate confirmation pages are retired. They must not be
   restored as a rollback path.

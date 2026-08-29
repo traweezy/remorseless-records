@@ -355,7 +355,12 @@ official complete-cart workflow only when a fresh read shows:
 - no order is already linked.
 
 It never creates, confirms, captures, cancels, or refunds a Stripe payment
-directly. It is disabled by default:
+directly. Immediately before complete-cart, it rechecks the order link and
+payment session and durably writes a non-PII attempt marker into cart metadata.
+Any prior marker is a fail-closed `heldForReview` result: a stalled or ambiguous
+retry cannot blindly repeat completion, and an operator must reconcile Medusa
+order/payment/refund state with Stripe before an approved recovery action. It
+is disabled by default:
 
 - `CHECKOUT_RECONCILIATION_ENABLED` (default `false`)
 - `CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS` (default `120`, range `60–3600`)
@@ -364,11 +369,12 @@ directly. It is disabled by default:
 - `CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS` (default `90`, range `30–240`)
 
 The job uses a uniquely owned, five-minute application lock in addition to the
-scheduled-workflow worker lock. An aggregate warning is emitted for a failed
-completion, scan/attempt/time cap, lock-release failure, scheduler delay, slow
-run, or large event-loop delay. The structured summary includes deployment,
-schedule, duration, event-loop, lock, and aggregate reconciliation fields but
-excludes cart, payment, order, email, address, provider-error, and stack values.
+scheduled-workflow worker lock. An aggregate warning is emitted for a failed or
+held-for-review completion, scan/attempt/time cap, lock-release failure,
+scheduler delay, slow run, or large event-loop delay. The structured summary
+includes deployment, schedule, duration, event-loop, lock, and aggregate
+reconciliation fields but excludes cart, payment, order, email, address,
+provider-error, and stack values.
 The pinned Medusa Redis workflow patch calculates the scheduled time from
 BullMQ's repeat-job `prevMillis`, with enqueue time plus delay as the fallback;
 `qa:workflow-scheduler-timestamps` prevents the false scheduler-delay

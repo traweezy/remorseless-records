@@ -4,7 +4,10 @@ Medusa loads each default export in this directory and schedules it from the
 file's exported `config`. The Redis workflow job worker uses a five-minute
 BullMQ lock with a 30-second renewal setting. Checkout payment reconciliation
 also acquires a unique-owner, five-minute application lock so a stalled retry
-cannot overlap or release another run's lock.
+cannot overlap or release another run's lock. Before its sole money-moving
+workflow call, it durably writes a non-PII attempt marker to the cart. A cart
+with any existing marker is held for operator review instead of being completed
+again after an ambiguous response or process crash.
 
 Medusa 2.18's Redis scheduler is pinned with a pnpm patch so `scheduledFor`
 uses BullMQ's repeat-job `prevMillis` execution time, with enqueue time plus
@@ -23,9 +26,14 @@ the same pinned patch to its standalone dependency tree.
 
 Every job is bounded, rechecks mutable state, and emits only aggregate results.
 Payment reconciliation has explicit scan, attempt, and run-time caps; warns on
-scheduler, event-loop, lock, or backlog pressure; and never creates or confirms
-a payment. Retention never deletes completed, order-linked, customer-owned,
-recently updated, or unresolved/successful-payment carts.
+scheduler, event-loop, lock, backlog, or `heldForReview` pressure; and never
+creates or confirms a payment. The installed Medusa boundary keeps its per-cart
+lock, order-link recheck, authorization guard, and stable provider idempotency
+keys for capture and refund. Stripe lifecycle and tax reconciliation retrieve
+provider state but cannot create, capture, cancel, or refund a payment.
+Retention never deletes completed, order-linked, customer-owned, recently
+updated, or unresolved/successful-payment carts; it removes only unused
+pending, canceled, or error sessions through Medusa's workflow.
 
 Configuration and incident procedures are documented in
 [`../../../docs/CHECKOUT_OPERATIONS.md`](../../../docs/CHECKOUT_OPERATIONS.md).
