@@ -36,7 +36,7 @@ tracks what is still required before production traffic is approved.
 - Latest application-changing staging SHA accepted:
   `1474dd785aab5a1c0914ad9a067fc277fa9d34cd`.
 - Latest documentation-bearing staging SHA accepted:
-  `1474dd785aab5a1c0914ad9a067fc277fa9d34cd`.
+  `050cf4ea4c88f403b48320e981e1b57a899a37e9`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
   `2217f6e9-c2fb-461e-9ab7-fba90a9ab585` (`SUCCESS`).
@@ -147,6 +147,14 @@ ports, not an undocumented definition of the Railway cause labels. There were
 no failed DNS records, application dependency errors, readiness failures, or
 HTTP failures. No production environment, service, or other Railway project was
 read or changed during acceptance.
+
+Documentation closure SHA
+`050cf4ea4c88f403b48320e981e1b57a899a37e9` passed Storefront CI
+`33258650312`, Root CI `33258650315`, and Backend CI `33258650324`. Its
+docs-only Backend deployment `8ca62388-40d1-4fb4-8800-de7741c71443` and
+Storefront deployment `ed88c38d-4068-4aa6-b896-ff90d6b8a2c4` both correctly
+reported `SKIPPED` with `No changes to watched files`; the already accepted
+application deployments remained active and healthy.
 
 ## Completed slice: catalog Admin authorization manifest
 
@@ -716,11 +724,12 @@ both exact-SHA deployments reached `SUCCESS`. Backend and Storefront `/live`,
 dependency check was `ok`, and neither exact deployment emitted an error-level
 startup log.
 
-## Active slice: correlated API problems and request observability
+## Active slice: complete correlated API and request observability boundary
 
-- [x] Inventory 25 Storefront and 55 Backend custom route handlers, existing
+- [x] Inventory 30 Storefront and 55 Backend custom route files, existing
       envelopes, request-ID handling, trace propagation, logs, contracts, and
-      tests. No OpenAPI document existed and only eight files emitted
+      tests. They export 112 route operations and 110 unique path/method pairs;
+      no OpenAPI document existed and only eight files emitted
       `application/problem+json`.
 - [x] Validate bounded incoming request IDs or generate UUIDs, reject malformed
       W3C trace context, create a new span per hop, and return correlation
@@ -752,23 +761,27 @@ startup log.
 - [x] Add the Backend authentication, authorization, validation, provider, and
       unexpected-error ownership matrix plus installed Medusa-handler
       compatibility tests for native 401, 403, 400, and redacted 500 responses.
-- [ ] Add a supported Storefront request-completion timing hook. The Next proxy
-      can correlate every response but cannot observe final route status and
-      duration.
-- [ ] Add dynamic request correlation at Medusa's early Express loader.
-      Framework-owned Admin static responses and built-in pre-router failures
-      receive the patched static security/cache headers but bypass project API
-      observability middleware.
-- [ ] Complete the timeout, provider, and unexpected-error contract matrix for
-      the remaining Storefront boundary paths and enumerate all remaining
-      custom endpoint responses in generated or contract-first OpenAPI. The two
-      explicit Backend outliers are now the first enumerated paths.
+- [x] Add a supported Storefront request-completion hook through Next's
+      OpenTelemetry root span processor and `onRequestError`, correlated by a
+      bounded five-minute/10,000-entry request registry with no external
+      collector or paid telemetry dependency.
+- [x] Add dynamic request correlation before Medusa's first framework
+      middleware and replace framework path/IP/User-Agent completion output
+      with one redacted final-status event without duplicating project route
+      listeners.
+- [x] Apply bounded Storefront provider deadlines, distinguish typed 502
+      unavailability from 504 timeout and unexpected 500 failures, redact
+      caught provider details, and cap discography pagination at 25 pages.
+- [x] Generate the full custom endpoint OpenAPI inventory with 85 route files,
+      112 source operations, 110 unique operations, path parameters, service
+      ownership, problem-envelope references, and the Storefront provider
+      failure matrix; fail `qa:lint` when it becomes stale.
 - [x] Deploy only through `staging`, and repeat exact-SHA CI, Railway, route,
       log, and browser acceptance before advancing.
 
-Current local evidence: the OpenAPI 3.1 YAML parses and exposes the required
-`ApiProblem` and `NativeMedusaError` schemas plus the two enumerated Backend
-paths; release-policy, private-artifact, framework-header,
+Earlier accepted evidence: the OpenAPI 3.1 YAML parses and exposes the required
+`ApiProblem` and `NativeMedusaError` schemas plus the detailed boundary paths;
+release-policy, private-artifact, framework-header,
 Storefront ESLint, and both strict typecheck gates pass. All 167 Backend suites
 with 892 tests and all 109 Storefront suites with 571 tests pass. Storefront
 coverage is 93.82% statements, 86.15% branches, 94.55% functions, and 93.80%
@@ -780,13 +793,25 @@ repeat, 16 existing call assertions exposed the new correlation argument; the
 tests now prove that each route forwards its exact request context instead of
 loosening the propagation contract.
 
-Review discovery: the earlier Medusa response-boundary work established that
-framework-owned `/app` and built-in pre-router responses mount before project
-API middleware. The static framework patch covers their security and cache
-headers, but the new request-dependent IDs and completion timing cannot be
-supplied by that static map. This slice therefore scopes Backend correlation to
-responses traversing project API middleware and records the earlier dynamic
-framework seam as remaining work rather than overstating coverage.
+Resolved framework discovery: Medusa creates its request scope before loading
+the remaining framework middleware, so the installed 2.18 patch now validates
+or generates correlation at that first dynamic seam. Next exposes final method,
+status, and duration on the `BaseServer.handleRequest` root span, so a local
+span processor can emit correlated completion events without exporting spans
+or recording URLs. Both implementations are bounded and omit paths, queries,
+headers, bodies, client addresses, User-Agent, exception messages, and provider
+payloads.
+
+Current implementation evidence: lifecycle-focused Storefront tests cover
+request-registry TTL/cardinality, final status, privacy, repeated headers,
+trace fallback, and duplicate-listener prevention. The installed Medusa patch
+verifier behaviorally proves early correlation and redacted framework
+completion. Provider-focused tests prove default SDK cancellation, combined
+caller cancellation, safe error classification, Meilisearch signal forwarding,
+request-bound news timeout propagation, and provider-detail redaction. The
+generated OpenAPI check inventories all route sources deterministically and is
+wired into the repository lint gate. Complete release gates and exact-SHA
+staging acceptance remain required before this slice is marked completed.
 
 Cache review discovery: Next includes request headers in server-fetch cache
 identity. The correlated `/api/news` Backend request therefore uses `no-store`

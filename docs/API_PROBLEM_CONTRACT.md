@@ -3,22 +3,27 @@
 ## Scope
 
 Custom Storefront and Backend APIs use the shared contract in
-`docs/openapi/api-problems.yaml`. Native Medusa endpoints retain Medusa's
-versioned error envelope because the Admin SDK and Dashboard consume it. Do not
-replace the native envelope without a Medusa compatibility test and a separate
-reviewed migration.
+`docs/openapi/api-problems.yaml`. The deterministic
+`docs/openapi/custom-endpoints.generated.json` inventory references those
+components for every repository-owned route. Native Medusa endpoints retain
+Medusa's versioned error envelope because the Admin SDK and Dashboard consume
+it. Do not replace the native envelope without a Medusa compatibility test and
+a separate reviewed migration.
 
-The August 26, 2026 inventory found 25 Storefront and 55 Backend custom route
-handlers. The repository had no OpenAPI document and only eight files emitted
-`application/problem+json`. This slice introduces the reusable OpenAPI 3.1
-components and converts the shared Storefront guards, Storefront BFF errors,
-Backend security/rate-limit guards, checkout-status errors, and tax-reporting
-errors. The follow-up inventory found only two direct custom Backend envelopes:
-`GET /key-exchange` and `POST /webhooks/stripe/lifecycle`. Both now use the
-same correlated problem contract, and their success and failure responses are
-the first enumerated paths in the OpenAPI document. The contact/privacy
-hardening slice adds the two Storefront BFF routes and their two internal
-Backend targets, bringing the enumerated total to six custom paths.
+The corrected August 29, 2026 inventory finds 30 Storefront and 55 Backend
+route files. They export 112 operations: 80 Backend and 32 Storefront. The
+generated document contains 110 unique path/method pairs because `/live` and
+`/ready` are deliberately implemented by both services. It records source
+ownership, path parameters, error-envelope ownership, generic success and
+error references, and the bounded Storefront provider matrix. CI reruns the
+source inventory and fails when the checked-in artifact is stale.
+
+The detailed component document retains exact schemas and response sets for
+eight security-sensitive paths: legacy key exchange, Stripe lifecycle, public
+search, the two public form BFFs, their two internal Backend targets, and the
+channel-scoped product-handle feed. The generated document complements those
+detailed paths; it does not invent endpoint-specific payload schemas that the
+source does not declare.
 
 ## Error ownership matrix
 
@@ -55,6 +60,13 @@ independently.
 - Propagate request and trace context from Storefront API routes to Medusa cart,
   checkout, product, bundle, news, contact, privacy, region, receipt, status,
   and tax-link calls.
+- Apply an eight-second default deadline to every Medusa SDK request that does
+  not declare a route-specific deadline. Correlated Medusa requests combine
+  caller cancellation with that deadline. Cart completion and other explicitly
+  longer operations retain their reviewed route-specific deadlines.
+- Apply the same bounded provider signal to Meilisearch, news, shelves, and
+  discography reads. Discography additionally stops after 25 pages instead of
+  trusting an unbounded provider pagination sequence.
 
 Never use a customer email, cart ID, order ID, session ID, credential, request
 body, URL query, or provider payload as a request or trace identifier.
@@ -158,18 +170,15 @@ When investigating an incident, search by `request_id` first, then use
 
 ## Remaining work
 
-- Enumerate custom endpoints and their response references in a complete
-  generated or contract-first OpenAPI document; six custom paths are now
-  covered, including the complete contact/privacy BFF boundary.
 - Verify whether any external consumer still calls the legacy `/key-exchange`
   route, then retire it if the validated Storefront environment key is the sole
   consumer path.
-- Complete timeout, provider, and unexpected-error contract coverage for the
-  remaining Storefront boundary paths.
-- Add a supported Storefront request-completion timing hook; the current proxy
-  can correlate responses but cannot observe the final route status/duration.
-- Add dynamic correlation at Medusa's early Express loader so framework-owned
-  Admin static responses and built-in pre-router failures are covered without
-  weakening the static security-header patch.
 - Export the structured events and W3C spans to the selected production
   telemetry backend after retention, sampling, and cost are approved.
+
+Regenerate and verify the route inventory from the repository root:
+
+```bash
+pnpm run api:contract:generate
+pnpm run qa:api-contract
+```

@@ -1,13 +1,14 @@
 openapi: 3.1.0
 info:
   title: Remorseless Records API problem contract
-  version: 1.3.0
+  version: 1.4.0
   description: >-
     Shared RFC 7807-compatible error and correlation components for custom
     Backend and Storefront APIs. Endpoint enumeration now covers the legacy key
     exchange, Stripe lifecycle webhook, the complete contact/privacy BFF
     boundary, bounded Storefront search, and the channel-scoped product-handle
-    feed; complete custom-endpoint coverage remains in the hardening backlog.
+    feed. The complete generated route inventory and generic response
+    references live in custom-endpoints.generated.json.
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 paths:
   /key-exchange:

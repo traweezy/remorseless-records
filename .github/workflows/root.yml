@@ -59,6 +59,8 @@ jobs:
         run: pnpm run qa:railway-iac
       - name: Verify private artifact boundaries
         run: pnpm run qa:secure-artifacts
+      - name: Verify generated API contract
+        run: pnpm run qa:api-contract
       - name: Verify Medusa global response-header boundary
         run: pnpm run qa:framework-response-headers
       - name: Verify Railway runtime-log acceptance boundary

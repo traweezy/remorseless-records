@@ -1,0 +1,5442 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "description": "Generated inventory of every repository-owned Backend and Storefront route. Detailed schemas for security-sensitive public boundaries remain in api-problems.yaml.",
+    "title": "Remorseless Records custom endpoint inventory",
+    "version": "1.0.0"
+  },
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "paths": {
+    "/admin/catalog/artists/{id}": {
+      "delete": {
+        "operationId": "backend_delete_admin_catalog_artists_by_id",
+        "summary": "DELETE /admin/catalog/artists/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/artists/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_catalog_artists_by_id",
+        "summary": "GET /admin/catalog/artists/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/artists/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_catalog_artists_by_id",
+        "summary": "PUT /admin/catalog/artists/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/artists/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/products/{product_id}/bundle": {
+      "delete": {
+        "operationId": "backend_delete_admin_catalog_products_by_product_id_bundle",
+        "summary": "DELETE /admin/catalog/products/{product_id}/bundle",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/bundle/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_catalog_products_by_product_id_bundle",
+        "summary": "GET /admin/catalog/products/{product_id}/bundle",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/bundle/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_catalog_products_by_product_id_bundle",
+        "summary": "PUT /admin/catalog/products/{product_id}/bundle",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/bundle/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/products/{product_id}/media": {
+      "delete": {
+        "operationId": "backend_delete_admin_catalog_products_by_product_id_media",
+        "summary": "DELETE /admin/catalog/products/{product_id}/media",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/media/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_catalog_products_by_product_id_media",
+        "summary": "GET /admin/catalog/products/{product_id}/media",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/media/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_catalog_products_by_product_id_media",
+        "summary": "PUT /admin/catalog/products/{product_id}/media",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/media/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/products/{product_id}/profile": {
+      "delete": {
+        "operationId": "backend_delete_admin_catalog_products_by_product_id_profile",
+        "summary": "DELETE /admin/catalog/products/{product_id}/profile",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/profile/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_catalog_products_by_product_id_profile",
+        "summary": "GET /admin/catalog/products/{product_id}/profile",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/profile/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_catalog_products_by_product_id_profile",
+        "summary": "PUT /admin/catalog/products/{product_id}/profile",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/profile/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/reference-values/{id}": {
+      "delete": {
+        "operationId": "backend_delete_admin_catalog_reference_values_by_id",
+        "summary": "DELETE /admin/catalog/reference-values/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/reference-values/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_catalog_reference_values_by_id",
+        "summary": "GET /admin/catalog/reference-values/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/reference-values/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_catalog_reference_values_by_id",
+        "summary": "PUT /admin/catalog/reference-values/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/reference-values/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/shelves/{id}": {
+      "delete": {
+        "operationId": "backend_delete_admin_catalog_shelves_by_id",
+        "summary": "DELETE /admin/catalog/shelves/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/shelves/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_catalog_shelves_by_id",
+        "summary": "GET /admin/catalog/shelves/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/shelves/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_catalog_shelves_by_id",
+        "summary": "PUT /admin/catalog/shelves/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/shelves/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/variants/{variant_id}/profile": {
+      "delete": {
+        "operationId": "backend_delete_admin_catalog_variants_by_variant_id_profile",
+        "summary": "DELETE /admin/catalog/variants/{variant_id}/profile",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/variants/[variant_id]/profile/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_catalog_variants_by_variant_id_profile",
+        "summary": "GET /admin/catalog/variants/{variant_id}/profile",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/variants/[variant_id]/profile/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_catalog_variants_by_variant_id_profile",
+        "summary": "PUT /admin/catalog/variants/{variant_id}/profile",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/variants/[variant_id]/profile/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/discography/{id}": {
+      "delete": {
+        "operationId": "backend_delete_admin_discography_by_id",
+        "summary": "DELETE /admin/discography/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/discography/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_discography_by_id",
+        "summary": "GET /admin/discography/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/discography/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_discography_by_id",
+        "summary": "PUT /admin/discography/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/discography/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/news/{id}": {
+      "delete": {
+        "operationId": "backend_delete_admin_news_by_id",
+        "summary": "DELETE /admin/news/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/news/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "get": {
+        "operationId": "backend_get_admin_news_by_id",
+        "summary": "GET /admin/news/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/news/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_news_by_id",
+        "summary": "PUT /admin/news/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/news/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/api/cart": {
+      "delete": {
+        "operationId": "storefront_delete_api_cart",
+        "summary": "DELETE /api/cart",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/cart/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      },
+      "get": {
+        "operationId": "storefront_get_api_cart",
+        "summary": "GET /api/cart",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/cart/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/cart/items/{itemId}": {
+      "delete": {
+        "operationId": "storefront_delete_api_cart_items_by_itemid",
+        "summary": "DELETE /api/cart/items/{itemId}",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/cart/items/[itemId]/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      },
+      "patch": {
+        "operationId": "storefront_patch_api_cart_items_by_itemid",
+        "summary": "PATCH /api/cart/items/{itemId}",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/cart/items/[itemId]/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/admin/catalog/artists": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_artists",
+        "summary": "GET /admin/catalog/artists",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/artists/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "post": {
+        "operationId": "backend_post_admin_catalog_artists",
+        "summary": "POST /admin/catalog/artists",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/artists/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/authoring-audit": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_authoring_audit",
+        "summary": "GET /admin/catalog/authoring-audit",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/authoring-audit/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/bundles": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_bundles",
+        "summary": "GET /admin/catalog/bundles",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/bundles/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "post": {
+        "operationId": "backend_post_admin_catalog_bundles",
+        "summary": "POST /admin/catalog/bundles",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/bundles/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/media/assets/{id}": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_media_assets_by_id",
+        "summary": "GET /admin/catalog/media/assets/{id}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/media/assets/[id]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/media/orphans": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_media_orphans",
+        "summary": "GET /admin/catalog/media/orphans",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/media/orphans/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/products/{product_id}/authoring-view": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_products_by_product_id_authoring_view",
+        "summary": "GET /admin/catalog/products/{product_id}/authoring-view",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/[product_id]/authoring-view/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/products/status/{idempotency_key}": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_products_status_by_idempotency_key",
+        "summary": "GET /admin/catalog/products/status/{idempotency_key}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idempotency_key",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/status/[idempotency_key]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/reference-values": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_reference_values",
+        "summary": "GET /admin/catalog/reference-values",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/reference-values/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "post": {
+        "operationId": "backend_post_admin_catalog_reference_values",
+        "summary": "POST /admin/catalog/reference-values",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/reference-values/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/shelves": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_shelves",
+        "summary": "GET /admin/catalog/shelves",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/shelves/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "post": {
+        "operationId": "backend_post_admin_catalog_shelves",
+        "summary": "POST /admin/catalog/shelves",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/shelves/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/shelves/{id}/products": {
+      "get": {
+        "operationId": "backend_get_admin_catalog_shelves_by_id_products",
+        "summary": "GET /admin/catalog/shelves/{id}/products",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/shelves/[id]/products/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "put": {
+        "operationId": "backend_put_admin_catalog_shelves_by_id_products",
+        "summary": "PUT /admin/catalog/shelves/{id}/products",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/shelves/[id]/products/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/discography": {
+      "get": {
+        "operationId": "backend_get_admin_discography",
+        "summary": "GET /admin/discography",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/discography/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "post": {
+        "operationId": "backend_post_admin_discography",
+        "summary": "POST /admin/discography",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/discography/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/news": {
+      "get": {
+        "operationId": "backend_get_admin_news",
+        "summary": "GET /admin/news",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/news/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      },
+      "post": {
+        "operationId": "backend_post_admin_news",
+        "summary": "POST /admin/news",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/news/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/refund-operations": {
+      "get": {
+        "operationId": "backend_get_admin_refund_operations",
+        "summary": "GET /admin/refund-operations",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/refund-operations/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/tax-control": {
+      "get": {
+        "operationId": "backend_get_admin_tax_control",
+        "summary": "GET /admin/tax-control",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/tax-control/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/tax-records": {
+      "get": {
+        "operationId": "backend_get_admin_tax_records",
+        "summary": "GET /admin/tax-records",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/tax-records/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/tax-records/export": {
+      "get": {
+        "operationId": "backend_get_admin_tax_records_export",
+        "summary": "GET /admin/tax-records/export",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/tax-records/export/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/api/catalog/filters/formats": {
+      "get": {
+        "operationId": "storefront_get_api_catalog_filters_formats",
+        "summary": "GET /api/catalog/filters/formats",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/catalog/filters/formats/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/catalog/filters/genres": {
+      "get": {
+        "operationId": "storefront_get_api_catalog_filters_genres",
+        "summary": "GET /api/catalog/filters/genres",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/catalog/filters/genres/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/catalog/filters/price-range": {
+      "get": {
+        "operationId": "storefront_get_api_catalog_filters_price_range",
+        "summary": "GET /api/catalog/filters/price-range",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/catalog/filters/price-range/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/catalog/filters/product-types": {
+      "get": {
+        "operationId": "storefront_get_api_catalog_filters_product_types",
+        "summary": "GET /api/catalog/filters/product-types",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/catalog/filters/product-types/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/checkout": {
+      "get": {
+        "operationId": "storefront_get_api_checkout",
+        "summary": "GET /api/checkout",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/checkout/confirmation": {
+      "get": {
+        "operationId": "storefront_get_api_checkout_confirmation",
+        "summary": "GET /api/checkout/confirmation",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/confirmation/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/checkout/shipping-options": {
+      "get": {
+        "operationId": "storefront_get_api_checkout_shipping_options",
+        "summary": "GET /api/checkout/shipping-options",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/shipping-options/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/checkout/status": {
+      "get": {
+        "operationId": "storefront_get_api_checkout_status",
+        "summary": "GET /api/checkout/status",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/status/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "backend_get_api_health",
+        "summary": "GET /api/health",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "5XX": {
+            "description": "The service is not ready or healthy."
+          }
+        },
+        "x-error-contract": {
+          "envelope": "health-json",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/api/health/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/api/healthcheck": {
+      "get": {
+        "operationId": "storefront_get_api_healthcheck",
+        "summary": "GET /api/healthcheck",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "5XX": {
+            "description": "The service is not ready or healthy."
+          }
+        },
+        "x-error-contract": {
+          "envelope": "health-json",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/healthcheck/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/news": {
+      "get": {
+        "operationId": "storefront_get_api_news",
+        "summary": "GET /api/news",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/news/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/products": {
+      "get": {
+        "operationId": "storefront_get_api_products",
+        "summary": "GET /api/products",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/products/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/products/{handle}": {
+      "get": {
+        "operationId": "storefront_get_api_products_by_handle",
+        "summary": "GET /api/products/{handle}",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handle",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/products/[handle]/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/products/{handle}/bundle": {
+      "get": {
+        "operationId": "storefront_get_api_products_by_handle_bundle",
+        "summary": "GET /api/products/{handle}/bundle",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handle",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/products/[handle]/bundle/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/checkout/return": {
+      "get": {
+        "operationId": "storefront_get_checkout_return",
+        "summary": "GET /checkout/return",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/checkout/return/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/checkout/success": {
+      "get": {
+        "operationId": "storefront_get_checkout_success",
+        "summary": "GET /checkout/success",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/checkout/success/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/key-exchange": {
+      "get": {
+        "operationId": "backend_get_key_exchange",
+        "summary": "GET /key-exchange",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/key-exchange/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/live": {
+      "get": {
+        "operationId": "backend_storefront_get_live",
+        "summary": "GET /live",
+        "tags": [
+          "backend custom routes",
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "5XX": {
+            "description": "The service is not ready or healthy."
+          }
+        },
+        "x-error-contract": {
+          "envelope": "health-json",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/live/route.ts",
+          "storefront/src/app/live/route.ts"
+        ],
+        "x-services": [
+          "backend",
+          "storefront"
+        ]
+      }
+    },
+    "/order/confirmed": {
+      "get": {
+        "operationId": "storefront_get_order_confirmed",
+        "summary": "GET /order/confirmed",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/order/confirmed/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "backend_storefront_get_ready",
+        "summary": "GET /ready",
+        "tags": [
+          "backend custom routes",
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "5XX": {
+            "description": "The service is not ready or healthy."
+          }
+        },
+        "x-error-contract": {
+          "envelope": "health-json",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/ready/route.ts",
+          "storefront/src/app/ready/route.ts"
+        ],
+        "x-services": [
+          "backend",
+          "storefront"
+        ]
+      }
+    },
+    "/store/catalog/products/{handle}/bundle": {
+      "get": {
+        "operationId": "backend_get_store_catalog_products_by_handle_bundle",
+        "summary": "GET /store/catalog/products/{handle}/bundle",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handle",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/catalog/products/[handle]/bundle/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/catalog/shelves": {
+      "get": {
+        "operationId": "backend_get_store_catalog_shelves",
+        "summary": "GET /store/catalog/shelves",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/catalog/shelves/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/discography": {
+      "get": {
+        "operationId": "backend_get_store_discography",
+        "summary": "GET /store/discography",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/discography/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/news": {
+      "get": {
+        "operationId": "backend_get_store_news",
+        "summary": "GET /store/news",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/news/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/news/{slug}": {
+      "get": {
+        "operationId": "backend_get_store_news_by_slug",
+        "summary": "GET /store/news/{slug}",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/news/[slug]/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/products/{handle}/related": {
+      "get": {
+        "operationId": "backend_get_store_products_by_handle_related",
+        "summary": "GET /store/products/{handle}/related",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "handle",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/products/[handle]/related/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/products/handles": {
+      "get": {
+        "operationId": "backend_get_store_products_handles",
+        "summary": "GET /store/products/handles",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/products/handles/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/media/assets/{id}/quarantine": {
+      "post": {
+        "operationId": "backend_post_admin_catalog_media_assets_by_id_quarantine",
+        "summary": "POST /admin/catalog/media/assets/{id}/quarantine",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/media/assets/[id]/quarantine/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/media/assets/{id}/restore": {
+      "post": {
+        "operationId": "backend_post_admin_catalog_media_assets_by_id_restore",
+        "summary": "POST /admin/catalog/media/assets/{id}/restore",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/media/assets/[id]/restore/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/media/uploads": {
+      "post": {
+        "operationId": "backend_post_admin_catalog_media_uploads",
+        "summary": "POST /admin/catalog/media/uploads",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/media/uploads/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/products": {
+      "post": {
+        "operationId": "backend_post_admin_catalog_products",
+        "summary": "POST /admin/catalog/products",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/products/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/catalog/shelves/{id}/restore": {
+      "post": {
+        "operationId": "backend_post_admin_catalog_shelves_by_id_restore",
+        "summary": "POST /admin/catalog/shelves/{id}/restore",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/catalog/shelves/[id]/restore/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/discography/{id}/archive": {
+      "post": {
+        "operationId": "backend_post_admin_discography_by_id_archive",
+        "summary": "POST /admin/discography/{id}/archive",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/discography/[id]/archive/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/discography/{id}/restore": {
+      "post": {
+        "operationId": "backend_post_admin_discography_by_id_restore",
+        "summary": "POST /admin/discography/{id}/restore",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/discography/[id]/restore/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/managed-uploads": {
+      "post": {
+        "operationId": "backend_post_admin_managed_uploads",
+        "summary": "POST /admin/managed-uploads",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/managed-uploads/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/news/{id}/archive": {
+      "post": {
+        "operationId": "backend_post_admin_news_by_id_archive",
+        "summary": "POST /admin/news/{id}/archive",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/news/[id]/archive/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/news/{id}/restore": {
+      "post": {
+        "operationId": "backend_post_admin_news_by_id_restore",
+        "summary": "POST /admin/news/{id}/restore",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/news/[id]/restore/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/products/imports": {
+      "post": {
+        "operationId": "backend_post_admin_products_imports",
+        "summary": "POST /admin/products/imports",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/products/imports/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/products/imports/{transaction_id}/confirm": {
+      "post": {
+        "operationId": "backend_post_admin_products_imports_by_transaction_id_confirm",
+        "summary": "POST /admin/products/imports/{transaction_id}/confirm",
+        "tags": [
+          "backend custom routes"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/products/imports/[transaction_id]/confirm/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/tax-control/switch": {
+      "post": {
+        "operationId": "backend_post_admin_tax_control_switch",
+        "summary": "POST /admin/tax-control/switch",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/tax-control/switch/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/admin/tax-control/taxrate-io/refresh": {
+      "post": {
+        "operationId": "backend_post_admin_tax_control_taxrate_io_refresh",
+        "summary": "POST /admin/tax-control/taxrate-io/refresh",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/admin/tax-control/taxrate-io/refresh/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/api/cart/items": {
+      "post": {
+        "operationId": "storefront_post_api_cart_items",
+        "summary": "POST /api/cart/items",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/cart/items/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/catalog/hydrate": {
+      "post": {
+        "operationId": "storefront_post_api_catalog_hydrate",
+        "summary": "POST /api/catalog/hydrate",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/catalog/hydrate/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/checkout/complete": {
+      "post": {
+        "operationId": "storefront_post_api_checkout_complete",
+        "summary": "POST /api/checkout/complete",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/complete/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/checkout/payment-session": {
+      "post": {
+        "operationId": "storefront_post_api_checkout_payment_session",
+        "summary": "POST /api/checkout/payment-session",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/payment-session/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/contact": {
+      "post": {
+        "operationId": "storefront_post_api_contact",
+        "summary": "POST /api/contact",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/contact/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/privacy-request": {
+      "post": {
+        "operationId": "storefront_post_api_privacy_request",
+        "summary": "POST /api/privacy-request",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/privacy-request/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/search/products": {
+      "post": {
+        "operationId": "storefront_post_api_search_products",
+        "summary": "POST /api/search/products",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/search/products/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/store/checkout/status": {
+      "post": {
+        "operationId": "backend_post_store_checkout_status",
+        "summary": "POST /store/checkout/status",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/checkout/status/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/checkout/tax-link": {
+      "post": {
+        "operationId": "backend_post_store_checkout_tax_link",
+        "summary": "POST /store/checkout/tax-link",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/checkout/tax-link/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/contact": {
+      "post": {
+        "operationId": "backend_post_store_contact",
+        "summary": "POST /store/contact",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/contact/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/store/privacy-request": {
+      "post": {
+        "operationId": "backend_post_store_privacy_request",
+        "summary": "POST /store/privacy-request",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/store/privacy-request/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/webhooks/stripe/lifecycle": {
+      "post": {
+        "operationId": "backend_post_webhooks_stripe_lifecycle",
+        "summary": "POST /webhooks/stripe/lifecycle",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/webhooks/stripe/lifecycle/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/api/checkout/contact": {
+      "put": {
+        "operationId": "storefront_put_api_checkout_contact",
+        "summary": "PUT /api/checkout/contact",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/contact/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/checkout/delivery-address": {
+      "put": {
+        "operationId": "storefront_put_api_checkout_delivery_address",
+        "summary": "PUT /api/checkout/delivery-address",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/delivery-address/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
+    "/api/checkout/shipping-method": {
+      "put": {
+        "operationId": "storefront_put_api_checkout_shipping_method",
+        "summary": "PUT /api/checkout/shipping-method",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": {
+            "timeoutStatus": 504,
+            "unavailableStatus": 502
+          },
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/checkout/shipping-method/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    }
+  },
+  "x-inventory": {
+    "routeFileCount": 85,
+    "routeFileCounts": {
+      "backend": 55,
+      "storefront": 30
+    },
+    "routeOperationCount": 112,
+    "uniqueOperationCount": 110
+  }
+}
