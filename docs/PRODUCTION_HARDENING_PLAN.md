@@ -34,14 +34,14 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `ab51f7b6a8447fed0d476bde7f3af56c4826cf3d`.
+  `1474dd785aab5a1c0914ad9a067fc277fa9d34cd`.
 - Latest documentation-bearing staging SHA accepted:
-  `4955248abf25b9195be9d7eafe793b280690fd7b`.
+  `1474dd785aab5a1c0914ad9a067fc277fa9d34cd`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `00819624-47ee-4a84-9862-f1559191e695` (`SUCCESS`).
+  `2217f6e9-c2fb-461e-9ab7-fba90a9ab585` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `f6174e16-f972-4f73-a4d2-51a7bd0f23c8`
+  `c558abc0-9b68-4809-9195-297bc01aacfd`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -52,7 +52,7 @@ tracks what is still required before production traffic is approved.
 - The deployed RBAC baseline contains 260 active policies, one wildcard, 259
   concrete Super Admin permissions, and all 27 exact custom definitions.
 
-## Active slice: distributed abuse-control boundary
+## Completed slice: distributed abuse-control boundary
 
 - [x] Inventory all generic Storefront and Backend rate limits, identity
       sources, Redis clients, route semantics, and outage behavior.
@@ -77,10 +77,10 @@ tracks what is still required before production traffic is approved.
       path in both application READMEs and `docs/RELEASE_OPERATIONS.md`.
 - [x] Pass complete lint, strict typecheck, unit/coverage, security, and
       production-build gates.
-- [ ] Commit and push the cohesive slice to `staging`; watch all exact-SHA
+- [x] Commit and push the cohesive slice to `staging`; watch all exact-SHA
       GitHub workflows and both Railway deployments to success before moving
       on.
-- [ ] Verify both live/readiness pairs, representative guarded reads, response
+- [x] Verify both live/readiness pairs, representative guarded reads, response
       headers, Redis health, and exact-deployment build/runtime/network logs.
 
 Discovery: the cart mutation boundary already had an atomic Redis Lua counter
@@ -96,14 +96,57 @@ an infrastructure mutation.
 
 Local gate evidence: repository and Backend lint plus both strict typechecks
 passed; Backend passed 965 tests across 182 suites; Storefront passed 616 tests
-across 116 files with 93.81% statement, 86.65% branch, 94.71% function, and
-93.78% line coverage. Both production builds passed, including the Storefront
+across 116 files with 93.80% statement, 86.64% branch, 94.70% function, and
+93.77% line coverage. Both production builds passed, including the Storefront
 client-bundle secret check over 127 static assets. The production dependency
 audit, React Router security backport check, Trivy high/critical dependency and
 secret scan, and pinned Gitleaks 8.30.1 full-history scan passed. The Storefront
 build used isolated synthetic build-only configuration because the developer
 environment intentionally contains non-production placeholders; its local
 Meilisearch connection refusal followed the existing non-fatal build fallback.
+
+Exact staging acceptance: application SHA
+`1474dd785aab5a1c0914ad9a067fc277fa9d34cd` passed Root CI
+`33257594024`, Storefront CI `33257594121`, and Backend CI `33257594123`.
+Railway then deployed the same SHA through Backend deployment
+`2217f6e9-c2fb-461e-9ab7-fba90a9ab585` and Storefront deployment
+`c558abc0-9b68-4809-9195-297bc01aacfd`, both at `SUCCESS`. Their accepted image
+digests are respectively
+`sha256:7f3fe4da7fa4363c78195cb665a430ed28a325e32254eb1e80c70521df1f6963`
+and
+`sha256:d33cb3770a5ba6961cc20b00ac73d4db47031fbc2fd407c9c52e878bcc075fcf`.
+Backend predeploy found migrations current, connected every Redis provider and
+object storage, indexed and validated all 461 published products in a candidate
+Meilisearch index, reconciled 461 of 461 records, and cut over atomically while
+retaining the prior index for rollback. Both exact runtime instances remained
+`RUNNING` after replacement: Backend
+`3c53b09f-4377-42f1-a38b-91d152727c39` and Storefront
+`651d273d-7cd4-42eb-bdf6-614a4ebc2476`.
+
+Live staging acceptance: both `/live` and dependency-aware `/ready` pairs, the
+Backend `/api/health`, Storefront `/api/healthcheck`, storefront root, genre
+filters, guarded product search, and non-mutating cart route returned 200. The
+Storefront and Backend responses retained their strict transport, CSP, frame,
+content-type, referrer, permissions, and no-store policies. A scoped read-only
+Redis probe returned `PONG`, 6.65 MiB used memory, 13 connected clients, four
+expected blocking workers, zero rejected connections, zero evictions, and zero
+server latency events. It also discovered `maxmemory=0` with `noeviction`; a
+capacity-aware memory ceiling and persistence-compatible eviction decision
+remain backlog rather than an unreviewed staging mutation.
+
+Exact runtime logs contained no `rate_limit.unavailable`, Redis connection
+error, HTTP 429, HTTP 503, or HTTP 5xx record. Railway's
+[CLI log contract](https://docs.railway.com/cli/logs) exposes network-flow logs
+at service scope, so acceptance additionally filtered the returned
+`deploymentId` and `deploymentInstanceId` fields to the exact release and active
+instances. The remaining packet-level drop records were confined to startup or
+post-start indexing: short Postgres/Redis `TCP_CLOSE`, `TCP_OLD_DATA`, and
+`TCP_INVALID_SYN` records plus small internet `NO_SOCKET` tails. Treating these
+as transport cleanup is an evidence-based inference from their timing and peer
+ports, not an undocumented definition of the Railway cause labels. There were
+no failed DNS records, application dependency errors, readiness failures, or
+HTTP failures. No production environment, service, or other Railway project was
+read or changed during acceptance.
 
 ## Completed slice: catalog Admin authorization manifest
 
@@ -1705,9 +1748,9 @@ Railway project was accessed or changed.
       implemented and bounded.
 - [x] Remove persistent bootstrap Admin credentials from normal Backend
       runtime.
-- [ ] Move all generic abuse controls to Redis-backed atomic rate limits.
-- [ ] Trust client IP headers only behind a documented Railway proxy boundary.
-- [ ] Remove User-Agent from the cart rate-limit identity.
+- [x] Move all generic abuse controls to Redis-backed atomic rate limits.
+- [x] Trust client IP headers only behind a documented Railway proxy boundary.
+- [x] Remove User-Agent from the cart rate-limit identity.
 - [x] Protect Backend contact and privacy routes with shared limiting, bounded
       email timeouts, neutral responses, and purpose-bound BFF authentication.
 - [ ] Persist privacy requests in a protected audit store if required by the
@@ -1756,6 +1799,9 @@ Railway project was accessed or changed.
 - [ ] Configure off-site media backup and verify object checksums and restores.
 - [ ] Document Redis recovery semantics and Meilisearch rebuild/snapshot
       recovery.
+- [ ] Set and test a capacity-aware Redis memory ceiling and compatible
+      persistence/eviction policy; staging currently reports `maxmemory=0` and
+      `noeviction` with zero evictions and zero server latency events.
 - [ ] Pin Redis, PostgreSQL, MinIO, and Meilisearch images by tested version and
       immutable digest; remove floating `latest` tags.
 - [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
