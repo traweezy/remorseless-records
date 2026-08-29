@@ -1827,7 +1827,7 @@ Exact-SHA staging acceptance passed on August 29, 2026:
       repeated-partial-refund, and dispute events.
 - [x] Prove in code that an ambiguous response loss after durable cart/order
       completion is re-read and does not make a second completion attempt.
-- [ ] Exercise the same response-loss recovery against a disposable Stripe
+- [x] Exercise the same response-loss recovery against a disposable Stripe
       test-mode checkout in staging and verify one PaymentIntent and one order.
 - [ ] Complete the exact-amount, success, 3DS, decline, browser-close,
       response-loss, duplicate-submit, concurrency, and recovery matrix in
@@ -2012,6 +2012,58 @@ exact source SHAs `6813b79e68e4b3c90555faf5f93e7476d8d24d7e` and
   lifecycle logs contained only internal receipt IDs, evidence presence, and
   terminal status. No production environment, credential, endpoint, object,
   funds, or traffic was accessed or changed.
+
+Staging Stripe checkout response-loss acceptance passed on August 29, 2026
+across exact source SHAs `409e89bfd11f067ade62816f3eaf8f302dc5e232`
+and `0d618af0bce550d148270bb6aa6abb4babddf896`:
+
+- The first disposable-cart attempt exposed two exact integration defects
+  before payment confirmation. Fix `409e89bfd11f067ade62816f3eaf8f302dc5e232`
+  removes transient shipping-method row IDs from the tax quote fingerprint so
+  unchanged shipping selections converge while option and monetary changes
+  still invalidate the quote. Root CI `33279930550`, Backend CI `33279930548`,
+  and Storefront CI `33279930547` passed. Railway Backend deployment
+  `d77235e8-1b73-483a-95be-ca9e82262d15` reached `SUCCESS` with image digest
+  `sha256:0611fe8ddaeb9f47ffda45c1f819f74245daf99282690c14cd42ad58be6dbb7a`.
+- The resumed cart then proved that the secure tax-binding graph requested a
+  decorated cart total without selecting the item, shipping, adjustment, and
+  credit-line monetary inputs required by Medusa's totals decorator. Fix
+  `0d618af0bce550d148270bb6aa6abb4babddf896` loads those bounded fields and
+  covers the projection with a regression test. Root CI `33281103509`, Backend
+  CI `33281103513`, and Storefront CI `33281103455` passed, including security,
+  CodeQL, test, coverage, build, Playwright, accessibility, and Lighthouse
+  gates. Railway Backend deployment
+  `d42bbaff-5a29-461d-9448-1df325bad8fc` reached `SUCCESS` on the exact SHA with
+  image digest
+  `sha256:53fedbae36d04176f04a5c67cea2d7eeab47a8ebb98cee1a0fd7acc4a7ddf0e1`.
+  `/ready` returned HTTP 200 with PostgreSQL, Redis, search, and object storage
+  healthy.
+- The isolated acceptance reused cart `cart_01M17VG4Y63NGSVQ4QJ7SYM810` and
+  its existing payment session; it did not create a replacement cart or
+  PaymentIntent. Tax binding and cart completion returned HTTP 200 on the exact
+  deployment. The fault proxy discarded the first successful 200 completion
+  response after the upstream body was durable, and the Storefront performed
+  one authoritative status read, received HTTP 200, and recovered the
+  confirmed order without a second completion attempt.
+- Stripe test PaymentIntent `pi_3U9vTxIM4tTeFQ3W0LA4YDWp` succeeded for 653
+  USD minor units and has exactly one charge. PostgreSQL links the cart to
+  exactly one order, `order_01M17YCNVVSE5G4BFYYYDCJPFA` / display ID `6`, and
+  contains exactly one payment collection, one payment session, one payment,
+  and one capture. The collection is `completed`; the payment and capture each
+  retain the same 6.5325 USD high-precision Medusa amount, whose currency-minor
+  rounding is 653. The single line retains quantity one and one 8.875% tax
+  line.
+- The ad hoc runner's final strict JavaScript decimal equality assertion
+  rejected the receipt after the order was already durable, so no checkout
+  retry was made. An independently signed receipt-grant read returned HTTP 200
+  and confirmed the expected email, one item, order number `6`, USD currency,
+  and 6.5325 total. Provider and database checks then established the one-
+  PaymentIntent, one-charge, one-order, and one-capture postcondition directly.
+  The three temporary acceptance processes were stopped and their local
+  scripts were moved to the desktop trash after evidence collection.
+- All provider operations used Stripe test mode (`livemode: false`). No
+  production environment, credential, endpoint, object, funds, or traffic was
+  accessed or changed.
 
 ## Tax readiness
 
