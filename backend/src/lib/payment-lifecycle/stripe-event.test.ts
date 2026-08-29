@@ -52,7 +52,7 @@ describe("Stripe lifecycle event projection", () => {
         amount: 4_200,
         charge: { id: "ch_01CHARGE" },
         currency: "usd",
-        id: "dp_01DISPUTE",
+        id: "du_01DISPUTE",
         payment_intent: { id: "pi_01PAYMENT" },
         status: "needs_response",
       }),
@@ -61,7 +61,7 @@ describe("Stripe lifecycle event projection", () => {
     expect(projected).toMatchObject({
       chargeId: "ch_01CHARGE",
       eventType: "charge.dispute.updated",
-      objectId: "dp_01DISPUTE",
+      objectId: "du_01DISPUTE",
       paymentIntentId: "pi_01PAYMENT",
       providerObjectStatus: "needs_response",
     });
@@ -82,6 +82,19 @@ describe("Stripe lifecycle event projection", () => {
           amount: 100,
           currency: "usd",
           id: "not-a-refund",
+        }),
+      ),
+    ).toThrow("identity is invalid");
+  });
+
+  it("rejects a non-Stripe dispute object prefix", () => {
+    expect(() =>
+      projectStripeLifecycleEvent(
+        eventFixture("charge.dispute.created", {
+          amount: 4_200,
+          currency: "usd",
+          id: "dp_01DISPUTE",
+          status: "needs_response",
         }),
       ),
     ).toThrow("identity is invalid");

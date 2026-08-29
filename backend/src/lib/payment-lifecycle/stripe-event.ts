@@ -12,6 +12,8 @@ const supportedTypes = new Set<string>(stripeLifecycleEventTypes);
 const eventIdPattern = /^evt_[A-Za-z0-9]+$/;
 const paymentIntentIdPattern = /^pi_[A-Za-z0-9]+$/;
 const chargeIdPattern = /^ch_[A-Za-z0-9]+$/;
+const refundIdPattern = /^re_[A-Za-z0-9]+$/;
+const disputeIdPattern = /^du_[A-Za-z0-9]+$/;
 
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
@@ -39,8 +41,8 @@ const providerStatus = (value: unknown): string | null =>
     ? value
     : null;
 
-const expectedObjectPrefix = (eventType: StripeLifecycleEventType): string =>
-  eventType.startsWith("refund.") ? "re_" : "dp_";
+const objectIdPattern = (eventType: StripeLifecycleEventType): RegExp =>
+  eventType.startsWith("refund.") ? refundIdPattern : disputeIdPattern;
 
 export const projectStripeLifecycleEvent = (
   event: Stripe.Event,
@@ -56,7 +58,7 @@ export const projectStripeLifecycleEvent = (
       : null;
   const objectId =
     typeof object?.id === "string" &&
-    object.id.startsWith(expectedObjectPrefix(eventType))
+    objectIdPattern(eventType).test(object.id)
       ? object.id
       : null;
   if (
