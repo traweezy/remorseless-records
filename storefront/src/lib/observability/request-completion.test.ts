@@ -89,6 +89,7 @@ describe("Storefront HTTP completion processor", () => {
         "http.request.method": "POST",
         "http.response.status_code": 503,
         "http.target": "/api/contact?email=private@example.com",
+        "next.route": "/api/contact",
         "next.span_type": "BaseServer.handleRequest",
       })
     )
@@ -124,6 +125,7 @@ describe("Storefront HTTP completion processor", () => {
       readableSpan({
         "http.method": "GET",
         "http.status_code": 204,
+        "next.route": "/api/healthcheck",
         "next.span_type": "BaseServer.handleRequest",
       })
     )
@@ -139,6 +141,7 @@ describe("Storefront HTTP completion processor", () => {
         {
           "http.method": "GET",
           "http.status_code": 200,
+          "next.route": "/api/healthcheck",
           "next.span_type": "BaseServer.handleRequest",
         },
         TRACE_TWO
@@ -150,5 +153,42 @@ describe("Storefront HTTP completion processor", () => {
       "info",
       expect.objectContaining({ method: "GET", status: 204 })
     )
+  })
+
+  it("waits for the route-bearing root span before consuming correlation", () => {
+    const registry = new BoundedRequestRegistry()
+    const write = vi.fn()
+    const processor = new StorefrontHttpCompletionProcessor({ registry, write })
+    registry.register(TRACE_ONE, "request_nested_route_01")
+
+    processor.onEnd(
+      readableSpan({
+        "http.method": "GET",
+        "http.status_code": 200,
+        "next.span_type": "BaseServer.handleRequest",
+      })
+    )
+
+    expect(write).not.toHaveBeenCalled()
+    expect(registry.size).toBe(1)
+
+    processor.onEnd(
+      readableSpan({
+        "http.method": "GET",
+        "http.status_code": 400,
+        "next.route": "/api/products",
+        "next.span_type": "BaseServer.handleRequest",
+      })
+    )
+
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith(
+      "info",
+      expect.objectContaining({
+        request_id: "request_nested_route_01",
+        status: 400,
+      })
+    )
+    expect(registry.size).toBe(0)
   })
 })

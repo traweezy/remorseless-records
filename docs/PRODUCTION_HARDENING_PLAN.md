@@ -842,6 +842,17 @@ behavior. Cross-wrapper regression coverage pins the production bundling
 boundary. A corrected exact-SHA staging release and lifecycle-log acceptance
 remain required.
 
+The corrected `4b91dec` deployment emitted redacted Storefront completion
+events, proving that the cross-bundle state fix works, but the invalid-query
+probe uncovered a second nested-span boundary: Next first ends a proxy-owned
+`BaseServer.handleRequest` span without `next.route` and with status `200`,
+then ends the route-bearing application span with the public response status.
+Consuming correlation on the first span therefore misreported a public `400`
+as `200`. The processor now ignores route-less root spans and consumes the
+request only on the route-bearing root. Regression coverage pins both the
+deferred consume and final status. A final exact-SHA staging release must prove
+the `400` completion status before this slice closes.
+
 Cache review discovery: Next includes request headers in server-fetch cache
 identity. The correlated `/api/news` Backend request therefore uses `no-store`
 instead of creating high-cardinality cache entries from request and trace IDs;

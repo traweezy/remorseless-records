@@ -198,6 +198,9 @@ export class StorefrontHttpCompletionProcessor implements SpanProcessor {
     if (span.attributes["next.span_type"] !== NEXT_ROOT_SPAN_TYPE) {
       return
     }
+    if (!stringAttribute(span.attributes["next.route"])) {
+      return
+    }
 
     const spanContext = span.spanContext()
     const requestId = this.#registry.consume(spanContext.traceId)
