@@ -74,10 +74,11 @@ pnpm run railway:apply:staging
   one-shot operator command, then revoke/unset them; the application service
   environment is not a credential vault.
 - Storefront search must use server-only `MEILISEARCH_HOST` plus the existing
-  search-only `MEILISEARCH_API_KEY`. During the expand phase, the new host is a
-  Railway reference to `Backend.MEILISEARCH_HOST`; legacy
-  `NEXT_PUBLIC_MEILI_*` values remain only until the accepted contract commit
-  removes the fallback and variables.
+  search-only `MEILISEARCH_API_KEY`. The host is a Railway reference to
+  `Backend.MEILISEARCH_HOST`; legacy `NEXT_PUBLIC_MEILI_*` runtime variables
+  are outside the desired contract and must remain absent after the guarded
+  contract apply. Storefront CI retains the historical GitHub secret names but
+  maps their values only to server-only environment names.
 - Backend and Storefront watch paths include their own workspace plus the root
   Node/pnpm version, manifest, lockfile, workspace policy, and dependency patch
   inputs consumed by both builds. A root lockfile or toolchain change must

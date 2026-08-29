@@ -121,8 +121,6 @@ export default defineRailway(() => {
       NEXT_PUBLIC_MEDIA_URL: preserve(),
       NEXT_PUBLIC_MEDUSA_BACKEND_URL: preserve(),
       NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: preserve(),
-      NEXT_PUBLIC_MEILI_HOST: preserve(),
-      NEXT_PUBLIC_MEILI_SEARCH_KEY: preserve(),
       NEXT_PUBLIC_MINIO_ENDPOINT: preserve(),
       NEXT_PUBLIC_SEARCH_ENDPOINT: preserve(),
       NEXT_PUBLIC_STRIPE_KEY: preserve(),

@@ -148,6 +148,16 @@ assert.deepEqual(
   { type: "literal", value: STOREFRONT_PRIVATE_MEILISEARCH_HOST },
   "Storefront search must use the Backend's server-only Meilisearch host",
 );
+for (const name of [
+  "NEXT_PUBLIC_MEILI_HOST",
+  "NEXT_PUBLIC_MEILI_SEARCH_KEY",
+]) {
+  assert.equal(
+    Object.hasOwn(storefront.variables, name),
+    false,
+    `Storefront.${name} must not persist after the server-only migration`,
+  );
+}
 for (const name of ["MEDUSA_ADMIN_EMAIL", "MEDUSA_ADMIN_PASSWORD"]) {
   assert.equal(
     Object.hasOwn(backend.variables, name),

@@ -36,12 +36,12 @@ tracks what is still required before production traffic is approved.
 - Latest application-changing staging SHA accepted:
   `4ec7389a74326e6712799ad4102d08e93ae04bc5`.
 - Latest documentation-bearing staging SHA accepted:
-  `4ec7389a74326e6712799ad4102d08e93ae04bc5`.
+  `3e87cff062a5834925e9699ce0fff1ea11fd3a05`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `570acede-db52-42f8-a7c8-ac341e1fb44c` (`SUCCESS`).
+  `e0e3718d-5f3d-4b27-8847-c0794a068e1a` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `085674e4-357f-4d91-b34e-de3961dbe500`
+  `4967d9d6-0d82-4286-ba7f-fa3fb295c4d4`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -1274,7 +1274,7 @@ runtime compute.
       workflows and the Backend source deployment.
 - [x] Land the search expand-order correction; accept its exact-SHA workflows
       and the Storefront source deployment before changing staging variables.
-- [ ] Apply only the reviewed staging variable migration after a guarded
+- [x] Apply only the reviewed staging variable migration after a guarded
       zero-create/zero-service-destroy plan; accept both exact deployments.
 - [ ] Remove the legacy `NEXT_PUBLIC_MEILI_*` fallback and Railway variables,
       then repeat exact-SHA CI, deployment, route, log, and search acceptance.
@@ -1346,14 +1346,58 @@ Storefront `/live`, `/ready`, `/api/healthcheck`, `/`, and `/catalog`, all
 returned HTTP 200. The server-only search POST returned HTTP 200 with one hit
 and total count seven for its bounded acceptance query.
 
-Railway CLI 5.45.0 now requires `--confirm-destructive` for unattended applies
-that contain deletions. The reviewed staging plan contains zero creates, three
-updates, and exactly two deletes: removal of persistent
-`Backend.MEDUSA_ADMIN_EMAIL` and `Backend.MEDUSA_ADMIN_PASSWORD`. The remaining
-updates are the Storefront `MEILISEARCH_HOST` reference and the two known
-restart-policy readback entries. Before applying, the exact-ID wrapper and IaC
-verifier are being hardened to require the explicit destructive confirmation
-without ever requesting or printing variable values.
+Deployment-safety SHA `3e87cff062a5834925e9699ce0fff1ea11fd3a05`
+passed Root CI `33250497334`, Backend CI `33250497329`, and Storefront CI
+`33250497325`, including the complete browser, accessibility, security,
+coverage, build, SBOM, and license gates. Railway correctly created Backend
+record `fa7b7e08-9065-4a7a-a4de-b97b6d01450b` and Storefront record
+`0f4019dd-0a5d-4008-9806-3c5fe28b5ad9` as terminal `SKIPPED` metadata with no
+image digest or application compute because the commit touched only docs and
+deployment tooling.
+
+Expand apply acceptance on August 29, 2026: the exact-ID wrapper supplied both
+`--yes` and `--confirm-destructive` after the reviewed plan again showed zero
+creates, three updates, and exactly two variable deletes. IaC patch
+`d93b7b54ce8ec96b42045a225d3a3909` removed persistent
+`Backend.MEDUSA_ADMIN_EMAIL` and `Backend.MEDUSA_ADMIN_PASSWORD`, added the
+Storefront `MEILISEARCH_HOST` reference, and reasserted the two known
+restart-policy readback entries. Names-and-predicates-only verification proved
+the maintenance credentials absent; all current Backend and Storefront
+application secrets remained present, distinct within each service, and at
+least 32 UTF-8 bytes; both prior-key slots remained intentionally unset; and
+the complete preferred and legacy search pairs remained present for the
+expand window.
+
+Backend deployment `e0e3718d-5f3d-4b27-8847-c0794a068e1a` and Storefront
+deployment `4967d9d6-0d82-4286-ba7f-fa3fb295c4d4` reached `SUCCESS` on that
+exact patch. Both 1,000-record build-log windows had zero warning/error-level
+records and used pnpm; Storefront compiled 53 routes and passed its client-
+asset scan. Backend became ready and rebuilt all 461 published search records;
+its four Railway error-level runtime entries were command banners with no
+failure/exception terms. Storefront's only error-level runtime entry was its
+known `$ next start` banner. The eight established health/route probes plus
+the `/products` redirect returned HTTP 200, and the trusted-origin server-only
+search POST returned HTTP 200 with one hit and total count seven.
+
+Contract candidate local evidence: all five focused search-environment tests
+pass, including rejection of the retired public pair when server-only values
+are absent. The complete repository lint, strict Storefront and Backend
+typechecks, and guarded IaC verifier pass. All 114 Storefront test files and
+600 tests pass at 93.98% statement and 86.42% branch coverage. A production
+build with synthetic server-only values compiled all 53 routes; the deliberately
+unroutable synthetic search host exercised the catalog's Medusa fallback, and
+the post-build scanner proved all 127 client assets contain neither a server-
+only secret value nor either retired public input name. The high-severity audit
+passes with only the three existing policy-ignored moderate findings. The
+reviewed post-contract plan has zero creates, two updates, and exactly the two
+expected legacy-variable deletes.
+
+Remaining in this slice: accept the contract source commit that rejects the
+legacy public search pair, then apply a second reviewed staging plan that
+deletes only `Storefront.NEXT_PUBLIC_MEILI_HOST` and
+`Storefront.NEXT_PUBLIC_MEILI_SEARCH_KEY` in addition to the known restart-
+policy readback entries. Re-run exact deployment, log, route, bundle, and
+search acceptance before closing the slice.
 
 ## Remaining authorization work
 

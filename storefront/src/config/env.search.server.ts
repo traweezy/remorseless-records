@@ -2,30 +2,18 @@ import "server-only"
 
 import { z } from "zod"
 
-const preferredHost = process.env.MEILISEARCH_HOST
-const preferredKey =
+const searchHost = process.env.MEILISEARCH_HOST
+const searchKey =
   process.env.MEILISEARCH_SEARCH_KEY ?? process.env.MEILISEARCH_API_KEY
-const legacyHost = process.env.NEXT_PUBLIC_MEILI_HOST
-const legacyKey = process.env.NEXT_PUBLIC_MEILI_SEARCH_KEY
-const usePreferredConfiguration = Boolean(preferredHost)
 
-const searchServerSchema = z
-  .object({
-    meiliHost: z.string().url(),
-    meiliSearchKey: z.string().min(1),
-  })
-  .transform((value) => ({
-    ...value,
-    usingLegacyPublicVariables: !usePreferredConfiguration,
-  }))
+const searchServerSchema = z.object({
+  meiliHost: z.string().url(),
+  meiliSearchKey: z.string().min(1),
+})
 
 const parsed = searchServerSchema.safeParse({
-  meiliHost: usePreferredConfiguration
-    ? (preferredHost ?? "")
-    : (legacyHost ?? ""),
-  meiliSearchKey: usePreferredConfiguration
-    ? (preferredKey ?? "")
-    : (legacyKey ?? ""),
+  meiliHost: searchHost,
+  meiliSearchKey: searchKey,
 })
 
 if (!parsed.success) {
