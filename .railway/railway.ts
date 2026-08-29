@@ -78,6 +78,7 @@ export default defineRailway(() => {
       RESEND_FROM: preserve(),
       STORE_CORS: preserve(),
       STRIPE_API_KEY: preserve(),
+      STRIPE_LIFECYCLE_WEBHOOK_SECRET: preserve(),
       STRIPE_PAYMENT_METHOD_CONFIGURATION: preserve(),
       STRIPE_TAX_SHIPPING_TAX_CODE: preserve(),
       STRIPE_WEBHOOK_SECRET: preserve(),
