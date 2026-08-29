@@ -1819,7 +1819,7 @@ Exact-SHA staging acceptance passed on August 29, 2026:
       lock-wait/release, scan, and cap fields in staging.
 - [ ] Add external BullMQ/Redis alerts and retain a no-recurrence observation
       window for the hardened scheduler.
-- [ ] Prove every scheduled money-moving job is idempotent and stalled-job
+- [x] Prove every scheduled money-moving job is idempotent and stalled-job
       recovery cannot duplicate a charge, completion, order, refund, or email.
 - [ ] Configure a separate staging Stripe lifecycle webhook secret and the
       `/webhooks/stripe/lifecycle` endpoint.
@@ -1838,6 +1838,48 @@ Exact-SHA staging acceptance passed on August 29, 2026:
       `docs/REFUND_OPERATIONS.md`.
 - [ ] Keep all payment traffic in Stripe test mode until a separate production
       change is approved.
+
+Exact-SHA staging acceptance passed on August 29, 2026 at
+`77fd8f954ceba4cc0755f31447d8e3831bccc445`:
+
+- Root CI `33271841421`, Backend CI `33271841358`, and Storefront CI
+  `33271841347` completed successfully. The Root gate verified the installed
+  Medusa 2.18 cart lock, order-link and authorization guards, capture/refund row
+  locks and provider idempotency keys, notification uniqueness/failure retry,
+  Resend 6.18 request-option forwarding, the durable scheduled-attempt marker,
+  and the absence of Stripe mutations in lifecycle/tax reconciliation.
+- Deterministic Backend coverage proved marker-before-completion ordering,
+  fail-closed response loss during marker persistence, a held stalled attempt,
+  one completion after a lost completion response, stale lifecycle receipt
+  eligibility, terminal receipt replay, and stable Medusa/Resend order/refund
+  email keys. The full local Backend suite passed 1,007 tests; Storefront
+  coverage remained 93.09% statements and 85.77% branches.
+- Railway Backend deployment `3cf7c5b8-1355-44a3-b987-3e622585504a`
+  and Storefront deployment `a9747006-0ec3-4f81-8bbf-c8950967bf93`
+  reached `SUCCESS` on the exact source SHA. Their image digests are
+  `sha256:d810154c7d0dbe940fb288308ff44948916aa9abb41b5c021c34d301ab4d9525`
+  and
+  `sha256:8917823d6365fb2241b27dcc385f189f0a32616d036787aea50968cf26b85d0f`.
+- Backend `/live`, `/ready`, and `/health`; Storefront `/live`, `/ready`,
+  `/api/healthcheck`, `/`, and `/catalog` all returned HTTP 200 from those exact
+  deployment IDs.
+- The exact Backend deployment's `20:06:00Z` reconciliation tick scanned all
+  797 candidates in 87.697 ms with 44 ms scheduler delay and 23.871 ms maximum
+  event-loop delay. Eligible, attempted, completed, protected, failed, and
+  `heldForReview` counts were zero; all caps were false and the owned lock was
+  released. The run therefore exercised the deployed recovery boundary without
+  creating an order, payment, refund, or email.
+- Both 1,000-record build-log scans contained only info records and zero
+  failure terms. Runtime scans found zero warning and zero
+  exception/fatal/unhandled/failed-operation terms. Railway classified four
+  Backend startup command banners and the known Storefront `next start` banner
+  as error-level records; no operational failure or 5xx health response was
+  present.
+
+No disposable payment or provider email was created for this acceptance. Those
+state-changing sandbox exercises remain separately tracked below; this item
+closes the code, retry, installed-runtime, and zero-side-effect scheduled-run
+proof only.
 
 ## Tax readiness
 
