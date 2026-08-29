@@ -1,0 +1,171 @@
+name: Staging Scheduler Monitor
+
+on:
+  schedule:
+    - cron: "3,13,23,33,43,53 * * * *"
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      force_alert:
+        description: Exercise the alert issue path; a healthy run closes it
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: staging-scheduler-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  observe:
+    name: Observe BullMQ and Redis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SCHEDULER_HEALTH_URL: https://remorseless-records-admin-staging.up.railway.app/health/scheduler
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 26
+      - name: Fetch bounded staging health
+        id: fetch
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          monitor_dir="${RUNNER_TEMP}/scheduler-monitor"
+          install -d -m 700 "${monitor_dir}"
+          printf '{}\n' > "${monitor_dir}/health.json"
+
+          set +e
+          http_status="$(curl \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.2 \
+            --connect-timeout 5 \
+            --max-time 10 \
+            --max-filesize 65536 \
+            --output "${monitor_dir}/health.next.json" \
+            --write-out '%{http_code}' \
+            "${SCHEDULER_HEALTH_URL}")"
+          curl_exit=$?
+          set -e
+
+          if (( curl_exit == 0 )); then
+            mv "${monitor_dir}/health.next.json" "${monitor_dir}/health.json"
+          fi
+          if [[ ! "${http_status}" =~ ^[0-9]{3}$ ]]; then
+            http_status=0
+          fi
+          printf 'http_status=%s\n' "${http_status}" >> "${GITHUB_OUTPUT}"
+          exit "${curl_exit}"
+      - name: Evaluate and redact observation
+        id: evaluate
+        continue-on-error: true
+        env:
+          FETCH_OUTCOME: ${{ steps.fetch.outcome }}
+          FORCE_ALERT: ${{ inputs.force_alert }}
+          HTTP_STATUS: ${{ steps.fetch.outputs.http_status }}
+        run: |
+          set -euo pipefail
+          monitor_dir="${RUNNER_TEMP}/scheduler-monitor"
+          artifacts_dir="${RUNNER_TEMP}/scheduler-monitor-artifacts"
+          install -d -m 700 "${artifacts_dir}"
+          now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          args=(
+            --body-file "${monitor_dir}/health.json"
+            --http-status "${HTTP_STATUS:-0}"
+            --now "${now}"
+          )
+          if [[ "${FETCH_OUTCOME}" != "success" ]]; then
+            args+=(--source-error health_endpoint_unreachable)
+          fi
+          if [[ "${FORCE_ALERT:-false}" == "true" ]]; then
+            args+=(--force-alert)
+          fi
+
+          set +e
+          node scripts/observe-scheduler-health.mjs \
+            "${args[@]}" --format json > "${artifacts_dir}/observation.json"
+          json_exit=$?
+          node scripts/observe-scheduler-health.mjs \
+            "${args[@]}" --format markdown > "${artifacts_dir}/observation.md"
+          markdown_exit=$?
+          set -e
+
+          status="$(node -e 'const fs = require("node:fs"); const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(report.status);' "${artifacts_dir}/observation.json")"
+          if [[ ! "${status}" =~ ^(healthy|alert)$ ]]; then
+            status=alert
+          fi
+          printf 'status=%s\n' "${status}" >> "${GITHUB_OUTPUT}"
+          printf 'artifact_path=%s\n' "${artifacts_dir}" >> "${GITHUB_OUTPUT}"
+          printf '\n' >> "${artifacts_dir}/observation.md"
+          printf -- '- Workflow: `%s/actions/runs/%s`\n' \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}" \
+            >> "${artifacts_dir}/observation.md"
+          cat "${artifacts_dir}/observation.md" >> "${GITHUB_STEP_SUMMARY}"
+
+          if (( json_exit != 0 || markdown_exit != 0 )); then
+            exit 1
+          fi
+      - name: Retain daily, manual, and alert evidence
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '17 4 * * *' || steps.evaluate.outputs.status == 'alert') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: staging-scheduler-observation-${{ github.run_id }}
+          path: ${{ steps.evaluate.outputs.artifact_path }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Reconcile external alert issue
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OBSERVATION_STATUS: ${{ steps.evaluate.outputs.status }}
+          OBSERVATION_PATH: ${{ steps.evaluate.outputs.artifact_path }}
+        run: |
+          set -euo pipefail
+          title="Staging scheduler/Redis monitor alert"
+          status="${OBSERVATION_STATUS:-alert}"
+          report="${OBSERVATION_PATH:-${RUNNER_TEMP}/scheduler-monitor-artifacts}/observation.md"
+          if [[ ! -f "${report}" ]]; then
+            install -d -m 700 "$(dirname "${report}")"
+            printf '%s\n' \
+              '# Staging scheduler observation' \
+              '' \
+              '- Status: `alert`' \
+              '- Alert reason: `observation_evaluation_failed`' \
+              > "${report}"
+          fi
+          issue_number="$(gh issue list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --state open \
+            --limit 100 \
+            --json number,title \
+            --jq 'map(select(.title == "Staging scheduler/Redis monitor alert")) | first | .number // empty')"
+
+          if [[ "${status}" == "alert" ]]; then
+            if [[ -n "${issue_number}" ]]; then
+              gh issue comment "${issue_number}" \
+                --repo "${GITHUB_REPOSITORY}" --body-file "${report}"
+            else
+              gh issue create --repo "${GITHUB_REPOSITORY}" \
+                --title "${title}" --body-file "${report}"
+            fi
+            exit 1
+          fi
+
+          if [[ "${status}" == "healthy" && -n "${issue_number}" ]]; then
+            gh issue comment "${issue_number}" \
+              --repo "${GITHUB_REPOSITORY}" --body-file "${report}"
+            gh issue close "${issue_number}" \
+              --repo "${GITHUB_REPOSITORY}" --reason completed
+          fi
