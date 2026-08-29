@@ -147,6 +147,30 @@ describe("POST /store/checkout/tax-link", () => {
       status: 200,
     });
     expect(fixture.locking.execute).toHaveBeenCalledTimes(1);
+    expect(fixture.query.graph).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entity: "cart",
+        fields: expect.arrayContaining([
+          "credit_lines.amount",
+          "credit_lines.raw_amount",
+          "items.quantity",
+          "items.unit_price",
+          "items.raw_unit_price",
+          "items.is_tax_inclusive",
+          "items.adjustments.amount",
+          "items.adjustments.raw_amount",
+          "items.adjustments.is_tax_inclusive",
+          "items.tax_lines.rate",
+          "shipping_methods.amount",
+          "shipping_methods.raw_amount",
+          "shipping_methods.is_tax_inclusive",
+          "shipping_methods.adjustments.amount",
+          "shipping_methods.adjustments.raw_amount",
+          "shipping_methods.tax_lines.rate",
+        ]),
+        filters: { id: cartId },
+      }),
+    );
     expect(bindingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         cart: fixture.cart,
