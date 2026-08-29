@@ -776,8 +776,8 @@ startup log.
       112 source operations, 110 unique operations, path parameters, service
       ownership, problem-envelope references, and the Storefront provider
       failure matrix; fail `qa:lint` when it becomes stale.
-- [x] Deploy only through `staging`, and repeat exact-SHA CI, Railway, route,
-      log, and browser acceptance before advancing.
+- [ ] Push the current candidate only to `staging`; repeat exact-SHA CI,
+      Railway, route, log, and browser acceptance before advancing.
 
 Earlier accepted evidence: the OpenAPI 3.1 YAML parses and exposes the required
 `ApiProblem` and `NativeMedusaError` schemas plus the detailed boundary paths;
@@ -810,8 +810,24 @@ completion. Provider-focused tests prove default SDK cancellation, combined
 caller cancellation, safe error classification, Meilisearch signal forwarding,
 request-bound news timeout propagation, and provider-detail redaction. The
 generated OpenAPI check inventories all route sources deterministically and is
-wired into the repository lint gate. Complete release gates and exact-SHA
-staging acceptance remain required before this slice is marked completed.
+wired into both the repository lint gate and Root CI.
+
+Current local gate evidence: repository lint and policy checks plus both strict
+typechecks pass. Backend passes 964 tests across 182 suites. Storefront passes
+631 tests across 119 files with 93.08% statement, 85.74% branch, 93.77%
+function, and 93.04% line coverage. Both production builds pass, including the
+Storefront client-bundle secret scan over 127 static assets. The Admin main
+bundle is 1,702,695 gzip bytes and 6,708,946 raw bytes; all 336 Admin assets are
+2,297,109 gzip bytes and 8,376,872 raw bytes, within their four release
+budgets. The production dependency audit has no actionable moderate-or-higher
+finding beyond the three documented ignores; Trivy reports zero high/critical
+filesystem vulnerability or secret findings. Checksum-verified Gitleaks 8.30.1
+finds no leak across all 796 commits. The generated CycloneDX inventory
+verifies 2,488 components and 2,489 dependency entries; the production license
+inventory verifies 1,005 packages in 16 groups with only the five documented
+upstream Medusa packages lacking manifest SPDX metadata. Exact-SHA staging CI,
+Railway deployment, live-route, lifecycle-log, and browser acceptance remain
+before this slice can be marked completed.
 
 Cache review discovery: Next includes request headers in server-fetch cache
 identity. The correlated `/api/news` Backend request therefore uses `no-store`
