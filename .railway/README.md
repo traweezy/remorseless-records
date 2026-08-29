@@ -38,7 +38,10 @@ pnpm run railway:apply:staging
 
 - `railway config plan` is safe and does not change Railway.
 - `railway config apply` previews changes and asks before applying unless you pass `--yes`.
-- Destructive changes in non-interactive or agent sessions require `railway config apply --confirm-destructive` after reviewing the plan.
+- Destructive changes in non-interactive or agent sessions require
+  `railway config apply --confirm-destructive` after reviewing the plan. The
+  repository wrapper supplies that flag only after it verifies the exact
+  `store` project and `staging` environment IDs; do not bypass the wrapper.
 - This repository's definition intentionally fails closed except through the
   guarded `staging` wrapper. The wrapper verifies the exact project and linked
   environment IDs before enabling evaluation. Production infrastructure must

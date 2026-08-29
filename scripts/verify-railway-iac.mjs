@@ -32,6 +32,10 @@ const railwayCliPatch = fs.readFileSync(
   "patches/@railway__cli@5.45.0.patch",
   "utf8",
 );
+const railwayConfigWrapper = fs.readFileSync(
+  "scripts/railway-config.mjs",
+  "utf8",
+);
 
 assert.equal(packageJson.packageManager, "pnpm@11.17.0");
 assert.equal(
@@ -56,6 +60,26 @@ assert.match(railwayCliPatch, /createHash\("sha256"\)/u);
 assert.match(railwayCliPatch, /actualDigest !== expectedDigest/u);
 assert.match(railwayCliPatch, /import \{ x as extract \} from "tar"/u);
 assert.doesNotMatch(railwayCliPatch, /^\+import tar from "tar"/mu);
+assert.match(
+  railwayConfigWrapper,
+  /id: "1f39263a-25e4-4d69-abc2-f0287b331d1e"/u,
+  "Railway wrapper must guard the exact project ID",
+);
+assert.match(
+  railwayConfigWrapper,
+  /id: "799a2f98-f819-495d-b8b6-12e71af86568"/u,
+  "Railway wrapper must guard the exact staging environment ID",
+);
+assert.match(
+  railwayConfigWrapper,
+  /configArgs\.push\("--yes", "--confirm-destructive"\)/u,
+  "Non-interactive applies must explicitly confirm reviewed deletions",
+);
+assert.doesNotMatch(
+  railwayConfigWrapper,
+  /--show-values/u,
+  "Railway wrapper must never expose variable values",
+);
 
 for (const digest of [
   "617b9d9db29d55616e4fe59b55e3586e8d8b994e11a665190384c74e235481d6",

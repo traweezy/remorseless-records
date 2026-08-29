@@ -1,6 +1,6 @@
 # Production Hardening Plan
 
-Last verified: August 27, 2026
+Last verified: August 29, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
@@ -34,14 +34,14 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `362dd3bd58942b2a86b4773dd16095c000cab606`.
+  `4ec7389a74326e6712799ad4102d08e93ae04bc5`.
 - Latest documentation-bearing staging SHA accepted:
-  `c138a7e555f9372bbbc11e538730f8b2affcd8b2`.
+  `4ec7389a74326e6712799ad4102d08e93ae04bc5`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `14304b34-8231-4f61-b7ff-932c2dc3b309` (`SUCCESS`).
+  `570acede-db52-42f8-a7c8-ac341e1fb44c` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `bd5c4687-5093-44cc-8e45-f2c07bd3d3dd`
+  `085674e4-357f-4d91-b34e-de3961dbe500`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -1272,7 +1272,7 @@ runtime compute.
       startup-policy failure caught by browser CI before Railway deployment.
 - [x] Land the corrective CI-runtime fixture commit; accept all three exact-SHA
       workflows and the Backend source deployment.
-- [ ] Land the search expand-order correction; accept its exact-SHA workflows
+- [x] Land the search expand-order correction; accept its exact-SHA workflows
       and the Storefront source deployment before changing staging variables.
 - [ ] Apply only the reviewed staging variable migration after a guarded
       zero-create/zero-service-destroy plan; accept both exact deployments.
@@ -1333,6 +1333,27 @@ The correction passed all 5 focused search-environment tests and lint. A local
 build with variables injected read-only from the exact Storefront staging
 service generated all 53 routes and proved all 127 static assets contained no
 server-only secret or legacy public Meilisearch input name.
+
+Search correction acceptance on August 29, 2026: SHA
+`4ec7389a74326e6712799ad4102d08e93ae04bc5` passed Root CI `33070509096`,
+Backend CI `33070509146`, and Storefront CI `33070509077`, including Pa11y,
+Lighthouse, Playwright, strict typecheck, and the client-bundle scan. Railway
+correctly skipped the unchanged Backend source and deployed Storefront record
+`085674e4-357f-4d91-b34e-de3961dbe500` from that exact SHA. The deployment
+generated 53 routes, scanned 127 client assets, and reached `SUCCESS`; its
+runtime became ready in 148 ms. Backend `/live`, `/ready`, and `/health`, plus
+Storefront `/live`, `/ready`, `/api/healthcheck`, `/`, and `/catalog`, all
+returned HTTP 200. The server-only search POST returned HTTP 200 with one hit
+and total count seven for its bounded acceptance query.
+
+Railway CLI 5.45.0 now requires `--confirm-destructive` for unattended applies
+that contain deletions. The reviewed staging plan contains zero creates, three
+updates, and exactly two deletes: removal of persistent
+`Backend.MEDUSA_ADMIN_EMAIL` and `Backend.MEDUSA_ADMIN_PASSWORD`. The remaining
+updates are the Storefront `MEILISEARCH_HOST` reference and the two known
+restart-policy readback entries. Before applying, the exact-ID wrapper and IaC
+verifier are being hardened to require the explicit destructive confirmation
+without ever requesting or printing variable values.
 
 ## Remaining authorization work
 

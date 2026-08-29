@@ -67,7 +67,7 @@ assert.deepEqual(
 const configArgs = ["config", command, "--verbose"];
 
 if (command === "apply") {
-  configArgs.push("--yes");
+  configArgs.push("--yes", "--confirm-destructive");
 }
 
 const result = runRailway(configArgs, {
