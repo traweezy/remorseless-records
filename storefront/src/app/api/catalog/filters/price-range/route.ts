@@ -6,10 +6,11 @@ import {
 } from "@/lib/security/route-guards"
 
 export const GET = async (request: Request) => {
-  const rateLimited = enforceRateLimit(request, {
+  const rateLimited = await enforceRateLimit(request, {
     key: "api:catalog:filters:price-range",
     max: 180,
     windowMs: 60_000,
+    onUnavailable: "local-fallback",
   })
   if (rateLimited) {
     return rateLimited

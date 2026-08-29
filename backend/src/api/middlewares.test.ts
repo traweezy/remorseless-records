@@ -18,6 +18,7 @@ import {
 import middlewares, {
   contentAdminPolicyRoutes,
   applySecurityBoundaryHeaders,
+  createRateLimitMiddleware,
   nativeAdminPolicyOverlayRoutes,
   operationsAdminMiddlewareRoutes,
   operationsAdminPolicyRoutes,
@@ -632,5 +633,99 @@ describe("product import Admin RBAC middleware", () => {
         routeMatches(route, method, path),
       ),
     ).toBe(false);
+  });
+});
+
+describe("distributed rate-limit middleware", () => {
+  const policy = {
+    key: "test:middleware",
+    max: 2,
+    windowMs: 60_000,
+    onUnavailable: "reject" as const,
+  };
+
+  const request = {
+    headers: {},
+    method: "POST",
+    path: "/store/test",
+    socket: { remoteAddress: "192.0.2.80" },
+  } as unknown as MedusaRequest;
+
+  const responseHarness = () => {
+    const json = jest.fn();
+    const status = jest.fn(() => ({ json }));
+    const setHeader = jest.fn();
+    const type = jest.fn();
+    const response = {
+      json,
+      locals: {},
+      setHeader,
+      status,
+      type,
+    } as unknown as MedusaResponse;
+    return { json, response, setHeader, status, type };
+  };
+
+  it("continues only after the distributed decision allows the request", async () => {
+    const consume = jest.fn(() =>
+      Promise.resolve({ status: "allowed" as const }),
+    );
+    const next = jest.fn();
+    const { response, status } = responseHarness();
+
+    await createRateLimitMiddleware(policy, consume)(request, response, next);
+
+    expect(consume).toHaveBeenCalledWith("192.0.2.80", policy);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(status).not.toHaveBeenCalled();
+  });
+
+  it("returns a correlated 429 with Retry-After", async () => {
+    const consume = jest.fn(() =>
+      Promise.resolve({
+        status: "limited" as const,
+        retryAfterSeconds: 17,
+      }),
+    );
+    const next = jest.fn();
+    const { json, response, setHeader, status, type } = responseHarness();
+
+    await createRateLimitMiddleware(policy, consume)(request, response, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(setHeader).toHaveBeenCalledWith("Retry-After", "17");
+    expect(type).toHaveBeenCalledWith("application/problem+json");
+    expect(status).toHaveBeenCalledWith(429);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "rate_limit_exceeded",
+        status: 429,
+      }),
+    );
+  });
+
+  it("fails closed with a correlated 503 when Redis is unavailable", async () => {
+    const errorLog = jest.spyOn(console, "error").mockImplementation();
+    const consume = jest.fn(() =>
+      Promise.resolve({ status: "unavailable" as const }),
+    );
+    const next = jest.fn();
+    const { json, response, status } = responseHarness();
+
+    await createRateLimitMiddleware(policy, consume)(request, response, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(503);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "rate_limit_unavailable",
+        status: 503,
+      }),
+    );
+    expect(JSON.parse(String(errorLog.mock.calls[0]?.[0]))).toMatchObject({
+      event: "rate_limit.unavailable",
+      route_class: policy.key,
+    });
+    errorLog.mockRestore();
   });
 });

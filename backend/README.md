@@ -45,6 +45,22 @@ changes bucket policy, or rebuilds search.
   bounded timeouts. It returns `503` when any configured dependency fails.
 - `GET /api/health` is a temporary liveness alias for older monitors.
 
+All project-owned Store and Admin abuse controls use a shared Redis
+fixed-window counter. One Lua evaluation atomically increments the HMAC-keyed
+client bucket and sets its TTL; raw client IPs never enter Redis or logs.
+Store, public-form, tax-control, and catalog-media mutations fail closed with a
+correlated 503 if Redis cannot make the decision. Catalog, checkout-status,
+tax-record, refund, and catalog-media reads retain a bounded 10,000-bucket
+process-local fallback for availability. Local development without Redis uses
+the same bounded fallback.
+
+The Backend accepts `X-Real-IP` only when Railway provides all of
+`RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`, and `RAILWAY_SERVICE_ID`.
+Outside that boundary it uses the direct socket peer. It never derives rate
+identity from `X-Forwarded-For`, vendor headers, or User-Agent. The exact trust
+and outage procedures are documented in
+[`docs/RELEASE_OPERATIONS.md`](../docs/RELEASE_OPERATIONS.md).
+
 All Backend, Store API, and Admin responses pass through the global security
 header boundary. It removes framework disclosure, applies HSTS outside local
 development, a default-deny CSP for the same-origin Admin, clickjacking and

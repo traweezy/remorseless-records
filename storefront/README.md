@@ -40,6 +40,8 @@ Required values:
 | `NEXT_PUBLIC_STRIPE_PK`              | Browser-safe Stripe publishable key    |
 | `MEILISEARCH_HOST`                   | Server-only Meilisearch host           |
 | `MEILISEARCH_SEARCH_KEY`             | Server-only search key (never admin)   |
+| `REDIS_URL`                          | Private shared Redis connection        |
+| `CART_COOKIE_SECRET`                 | Cart signing and rate-key HMAC secret  |
 
 Optional media origins and Bandcamp configuration are documented in
 `.env.local.template`.
@@ -129,6 +131,23 @@ Project-owned failures use the correlated RFC 7807 contract documented in
 [`docs/API_PROBLEM_CONTRACT.md`](../docs/API_PROBLEM_CONTRACT.md); structured
 problem logs contain correlation and deployment metadata but no paths, bodies,
 PII, credentials, or provider payloads.
+
+Every project-owned API abuse control uses the shared Redis fixed-window
+counter in `src/lib/security/rate-limit.ts`. One Lua evaluation atomically
+increments the HMAC-keyed client bucket and applies its TTL, so replicas share
+the same decision without persisting a raw IP. User-Agent is not part of the
+identity. Availability-sensitive catalog, product, news, bundle, search, and
+hydrate reads use a bounded 10,000-bucket process-local fallback when Redis is
+unavailable. Contact, privacy, and cart mutations reject with a correlated 503
+instead of running without their distributed guard.
+
+Client IP headers are trusted only in a Railway runtime that provides all of
+`RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`, and `RAILWAY_SERVICE_ID`.
+Within that boundary only Railway's documented `X-Real-IP` is accepted and
+validated as an IPv4 or IPv6 address. `X-Forwarded-For`, `CF-Connecting-IP`,
+invalid values, and all forwarding headers outside that boundary are ignored.
+See the operational contract in
+[`docs/RELEASE_OPERATIONS.md`](../docs/RELEASE_OPERATIONS.md).
 
 ## Quality gates
 

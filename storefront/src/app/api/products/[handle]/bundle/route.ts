@@ -18,10 +18,11 @@ export const GET = async (
   request: NextRequest,
   { params }: RouteContext
 ): Promise<Response> => {
-  const rateLimited = enforceRateLimit(request, {
+  const rateLimited = await enforceRateLimit(request, {
     key: "api:product:bundle",
     max: 180,
     windowMs: 60_000,
+    onUnavailable: "local-fallback",
   })
   if (rateLimited) {
     return rateLimited

@@ -1,49 +1,47 @@
-import "server-only"
+import { createClient } from "redis";
 
-import { createClient } from "redis"
-
-export type SharedRedisClient = ReturnType<typeof createClient>
+export type SharedRedisClient = ReturnType<typeof createClient>;
 
 export class RedisUnavailableError extends Error {
   constructor() {
-    super("Shared Redis service unavailable")
-    this.name = "RedisUnavailableError"
+    super("Shared Redis service unavailable");
+    this.name = "RedisUnavailableError";
   }
 }
 
-export const REDIS_COMMAND_TIMEOUT_MS = 2_000
+export const REDIS_COMMAND_TIMEOUT_MS = 2_000;
 
-const READINESS_POLL_INTERVAL_MS = 50
+const READINESS_POLL_INTERVAL_MS = 50;
 
-let redisClient: SharedRedisClient | null = null
-let redisConnection: Promise<SharedRedisClient> | null = null
+let redisClient: SharedRedisClient | null = null;
+let redisConnection: Promise<SharedRedisClient> | null = null;
 
 export const withRedisTimeout = async <T>(operation: Promise<T>): Promise<T> =>
   new Promise<T>((resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new RedisUnavailableError())
-    }, REDIS_COMMAND_TIMEOUT_MS)
+      reject(new RedisUnavailableError());
+    }, REDIS_COMMAND_TIMEOUT_MS);
 
     operation.then(
       (value) => {
-        clearTimeout(timeout)
-        resolve(value)
+        clearTimeout(timeout);
+        resolve(value);
       },
       () => {
-        clearTimeout(timeout)
-        reject(new RedisUnavailableError())
-      }
-    )
-  })
+        clearTimeout(timeout);
+        reject(new RedisUnavailableError());
+      },
+    );
+  });
 
 export const getSharedRedisClient =
   async (): Promise<SharedRedisClient | null> => {
-    const url = process.env.REDIS_URL?.trim()
+    const url = process.env.REDIS_URL?.trim();
     if (!url) {
       if (process.env.NODE_ENV === "production") {
-        throw new RedisUnavailableError()
+        throw new RedisUnavailableError();
       }
-      return null
+      return null;
     }
 
     redisClient ??= createClient({
@@ -54,39 +52,39 @@ export const getSharedRedisClient =
         connectTimeout: REDIS_COMMAND_TIMEOUT_MS,
         keepAlive: true,
       },
-    })
+    });
     if (redisClient.listenerCount("error") === 0) {
       redisClient.on("error", () => {
         console.error(
           JSON.stringify({
             event: "redis.connection.error",
             message: "Shared Redis connection error",
-            service: "storefront",
-          })
-        )
-      })
+            service: "backend",
+          }),
+        );
+      });
     }
 
     if (redisClient.isReady) {
-      return redisClient
+      return redisClient;
     }
     if (!redisClient.isOpen) {
       redisConnection ??= withRedisTimeout(redisClient.connect())
         .then(() => redisClient as SharedRedisClient)
         .finally(() => {
-          redisConnection = null
-        })
-      return redisConnection
+          redisConnection = null;
+        });
+      return redisConnection;
     }
 
-    const startedAt = Date.now()
+    const startedAt = Date.now();
     while (!redisClient.isReady) {
       if (Date.now() - startedAt >= REDIS_COMMAND_TIMEOUT_MS) {
-        throw new RedisUnavailableError()
+        throw new RedisUnavailableError();
       }
       await new Promise<void>((resolve) => {
-        setTimeout(resolve, READINESS_POLL_INTERVAL_MS)
-      })
+        setTimeout(resolve, READINESS_POLL_INTERVAL_MS);
+      });
     }
-    return redisClient
-  }
+    return redisClient;
+  };

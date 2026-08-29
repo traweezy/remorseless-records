@@ -36,7 +36,7 @@ tracks what is still required before production traffic is approved.
 - Latest application-changing staging SHA accepted:
   `ab51f7b6a8447fed0d476bde7f3af56c4826cf3d`.
 - Latest documentation-bearing staging SHA accepted:
-  `ab51f7b6a8447fed0d476bde7f3af56c4826cf3d`.
+  `4955248abf25b9195be9d7eafe793b280690fd7b`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
   `00819624-47ee-4a84-9862-f1559191e695` (`SUCCESS`).
@@ -51,6 +51,59 @@ tracks what is still required before production traffic is approved.
   provisioned.
 - The deployed RBAC baseline contains 260 active policies, one wildcard, 259
   concrete Super Admin permissions, and all 27 exact custom definitions.
+
+## Active slice: distributed abuse-control boundary
+
+- [x] Inventory all generic Storefront and Backend rate limits, identity
+      sources, Redis clients, route semantics, and outage behavior.
+- [x] Replace process-only generic counters with one atomic Redis fixed-window
+      contract while retaining a bounded 10,000-bucket local fallback for
+      explicitly availability-sensitive reads and local development.
+- [x] Fail closed with correlated RFC 7807 HTTP 503 responses for cart,
+      contact, privacy, Store, public-form, tax-control, and media mutations
+      when Redis cannot make the decision.
+- [x] HMAC every persisted client key with an existing validated server secret;
+      keep raw client addresses, User-Agent, credentials, and request content
+      out of Redis keys and logs.
+- [x] Trust only Railway's validated `X-Real-IP` when all three documented
+      Railway project, environment, and service system IDs establish the
+      runtime boundary; ignore `X-Forwarded-For` and vendor forwarding headers.
+- [x] Remove User-Agent from cart rate identity and prove two agents at the same
+      trusted client address consume the same shared bucket.
+- [x] Add Storefront and Backend boundary, invalid/repeated-header, atomic Lua,
+      HMAC privacy, concurrent-decision, outage-policy, Retry-After, and
+      correlated middleware response tests.
+- [x] Document the trust boundary, failure matrix, incident checks, and rollback
+      path in both application READMEs and `docs/RELEASE_OPERATIONS.md`.
+- [x] Pass complete lint, strict typecheck, unit/coverage, security, and
+      production-build gates.
+- [ ] Commit and push the cohesive slice to `staging`; watch all exact-SHA
+      GitHub workflows and both Railway deployments to success before moving
+      on.
+- [ ] Verify both live/readiness pairs, representative guarded reads, response
+      headers, Redis health, and exact-deployment build/runtime/network logs.
+
+Discovery: the cart mutation boundary already had an atomic Redis Lua counter
+with fail-closed write behavior, but its client signal combined the first
+unconditionally trusted forwarding value with User-Agent. Every other generic
+Storefront and Backend limiter was process-local, so replica changes reset and
+split enforcement. Railway's current public-networking contract identifies
+`X-Real-IP`, not the previously preferred `X-Forwarded-For`, as the client
+remote address. The shared implementation therefore preserves the proven cart
+atomic contract, applies it to every generic route class, and narrows identity
+to the documented Railway boundary without requiring a new service variable or
+an infrastructure mutation.
+
+Local gate evidence: repository and Backend lint plus both strict typechecks
+passed; Backend passed 965 tests across 182 suites; Storefront passed 616 tests
+across 116 files with 93.81% statement, 86.65% branch, 94.71% function, and
+93.78% line coverage. Both production builds passed, including the Storefront
+client-bundle secret check over 127 static assets. The production dependency
+audit, React Router security backport check, Trivy high/critical dependency and
+secret scan, and pinned Gitleaks 8.30.1 full-history scan passed. The Storefront
+build used isolated synthetic build-only configuration because the developer
+environment intentionally contains non-production placeholders; its local
+Meilisearch connection refusal followed the existing non-fatal build fallback.
 
 ## Completed slice: catalog Admin authorization manifest
 

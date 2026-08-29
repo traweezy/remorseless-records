@@ -159,10 +159,11 @@ const normalizeRequest = (
 
 export const POST = async (request: Request) => {
   try {
-    const rateLimited = enforceRateLimit(request, {
+    const rateLimited = await enforceRateLimit(request, {
       key: "api:search:products",
       max: 120,
       windowMs: 60_000,
+      onUnavailable: "local-fallback",
     })
     if (rateLimited) {
       return rateLimited

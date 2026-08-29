@@ -22,10 +22,11 @@ const requestSchema = z
 
 export async function POST(request: Request) {
   try {
-    const rateLimited = enforceRateLimit(request, {
+    const rateLimited = await enforceRateLimit(request, {
       key: "api:catalog:hydrate",
       max: 45,
       windowMs: 60_000,
+      onUnavailable: "local-fallback",
     })
     if (rateLimited) {
       return rateLimited

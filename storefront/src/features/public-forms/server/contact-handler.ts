@@ -49,10 +49,11 @@ export const createContactPost =
     secret,
   }: ContactPostDependencies) =>
   async (request: Request): Promise<Response> => {
-    const rateLimited = enforceRateLimit(request, {
+    const rateLimited = await enforceRateLimit(request, {
       key: "api:contact",
       max: 15,
       windowMs: 60_000,
+      onUnavailable: "reject",
     })
     if (rateLimited) {
       return rateLimited

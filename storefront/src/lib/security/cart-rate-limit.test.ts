@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const redisMocks = vi.hoisted(() => ({
   eval: vi.fn(),
@@ -16,13 +16,14 @@ import { enforceCartRateLimit } from "@/lib/security/cart-rate-limit"
 
 const createRequest = (
   method: "GET" | "POST",
-  ip = "192.0.2.50"
+  ip = "192.0.2.50",
+  userAgent = "cart-rate-limit-test"
 ): NextRequest =>
   new NextRequest("https://storefront.test/api/cart/items", {
     method,
     headers: {
-      "user-agent": "cart-rate-limit-test",
-      "x-forwarded-for": ip,
+      "user-agent": userAgent,
+      "x-real-ip": ip,
     },
   })
 
@@ -35,6 +36,9 @@ const policy = {
 describe("distributed cart rate limiting", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv("RAILWAY_PROJECT_ID", "project-test")
+    vi.stubEnv("RAILWAY_ENVIRONMENT_ID", "environment-test")
+    vi.stubEnv("RAILWAY_SERVICE_ID", "service-test")
     redisMocks.getSharedRedisClient.mockResolvedValue({
       eval: redisMocks.eval,
     })
@@ -42,6 +46,10 @@ describe("distributed cart rate limiting", () => {
       (operation: Promise<unknown>) => operation
     )
     redisMocks.eval.mockResolvedValue([1, 60_000])
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it("allows requests below the Redis-backed limit without storing raw IPs", async () => {
@@ -52,8 +60,29 @@ describe("distributed cart rate limiting", () => {
     const evalOptions = redisMocks.eval.mock.calls[0]?.[1] as
       { keys?: string[] } | undefined
     const redisKey = evalOptions?.keys?.[0]
-    expect(redisKey).toMatch(/^rr:cart:rate:v1:api:cart:item:add:[a-f0-9]{64}$/)
+    expect(redisKey).toMatch(
+      /^rr:rate:v1:storefront:api:cart:item:add:[a-f0-9]{64}$/
+    )
     expect(redisKey).not.toContain("192.0.2.50")
+  })
+
+  it("keeps the same identity when User-Agent changes", async () => {
+    await enforceCartRateLimit(
+      createRequest("POST", "192.0.2.50", "first-agent"),
+      policy
+    )
+    await enforceCartRateLimit(
+      createRequest("POST", "192.0.2.50", "second-agent"),
+      policy
+    )
+
+    const firstOptions = redisMocks.eval.mock.calls[0]?.[1] as
+      | { keys?: string[] }
+      | undefined
+    const secondOptions = redisMocks.eval.mock.calls[1]?.[1] as
+      | { keys?: string[] }
+      | undefined
+    expect(secondOptions?.keys?.[0]).toBe(firstOptions?.keys?.[0])
   })
 
   it("returns a retryable problem after the distributed limit", async () => {

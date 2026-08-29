@@ -5,17 +5,10 @@ import {
   applyCorrelationToResponse,
   getRequestCorrelation,
 } from "@/lib/http/correlation"
-
-type RateLimitPolicy = {
-  key: string
-  max: number
-  windowMs: number
-}
-
-type RateLimitBucket = {
-  count: number
-  resetAt: number
-}
+import {
+  consumeRateLimit,
+  type RateLimitPolicy,
+} from "@/lib/security/rate-limit"
 
 type ParseBodyOptions = {
   maxBytes?: number
@@ -44,10 +37,7 @@ type ApiProblem = {
   extensions?: Record<string, unknown>
 }
 
-const rateLimitBuckets = new Map<string, RateLimitBucket>()
-
 const DEFAULT_MAX_BODY_BYTES = 32 * 1024
-const MAX_RATE_LIMIT_BUCKETS = 10_000
 
 const deploymentIdentity = {
   commit_sha:
@@ -63,28 +53,6 @@ const jsonNoStore = <T>(body: T, init?: ResponseInit): Response => {
   const response = NextResponse.json(body, init)
   response.headers.set("Cache-Control", "no-store, max-age=0")
   return response
-}
-
-const extractIp = (request: Request): string => {
-  const forwarded = request.headers.get("x-forwarded-for")
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim()
-    if (first) {
-      return first
-    }
-  }
-
-  const realIp = request.headers.get("x-real-ip")?.trim()
-  if (realIp) {
-    return realIp
-  }
-
-  const cfIp = request.headers.get("cf-connecting-ip")?.trim()
-  if (cfIp) {
-    return cfIp
-  }
-
-  return "unknown"
 }
 
 const hostFromUrl = (value: string | null | undefined): string | null => {
@@ -194,39 +162,20 @@ export const enforceTrustedOrigin = (request: Request): Response | null => {
 export const enforceRateLimit = (
   request: Request,
   policy: RateLimitPolicy
-): Response | null => {
-  const now = Date.now()
-  const ip = extractIp(request)
-  const key = `${policy.key}:${ip}`
-
-  const current = rateLimitBuckets.get(key)
-  if (!current || current.resetAt <= now) {
-    if (rateLimitBuckets.size >= MAX_RATE_LIMIT_BUCKETS) {
-      for (const [bucketKey, bucket] of rateLimitBuckets) {
-        if (bucket.resetAt <= now) {
-          rateLimitBuckets.delete(bucketKey)
-        }
-      }
-      if (rateLimitBuckets.size >= MAX_RATE_LIMIT_BUCKETS) {
-        const oldestKey = rateLimitBuckets.keys().next().value
-        if (typeof oldestKey === "string") {
-          rateLimitBuckets.delete(oldestKey)
-        }
-      }
+): Promise<Response | null> => {
+  return consumeRateLimit(request, policy).then((decision) => {
+    if (decision.status === "allowed") {
+      return null
     }
-    rateLimitBuckets.set(key, {
-      count: 1,
-      resetAt: now + policy.windowMs,
-    })
-    return null
-  }
-
-  if (current.count >= policy.max) {
-    const retryAfterSeconds = Math.max(
-      1,
-      Math.ceil((current.resetAt - now) / 1000)
-    )
-
+    if (decision.status === "unavailable") {
+      return jsonApiProblem({
+        request,
+        status: 503,
+        code: "rate_limit_unavailable",
+        title: "Service temporarily unavailable",
+        detail: "Please wait a moment and try again.",
+      })
+    }
     const response = jsonApiProblem({
       request,
       status: 429,
@@ -234,13 +183,12 @@ export const enforceRateLimit = (
       title: "Too many requests",
       detail: "Too many requests. Please try again shortly.",
     })
-    response.headers.set("Retry-After", String(retryAfterSeconds))
+    response.headers.set(
+      "Retry-After",
+      String(decision.retryAfterSeconds)
+    )
     return response
-  }
-
-  current.count += 1
-  rateLimitBuckets.set(key, current)
-  return null
+  })
 }
 
 export const parseJsonBody = async <T>(

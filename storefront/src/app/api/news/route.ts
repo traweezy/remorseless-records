@@ -13,10 +13,11 @@ const querySchema = z.object({
 })
 
 export const GET = async (request: Request) => {
-  const rateLimited = enforceRateLimit(request, {
+  const rateLimited = await enforceRateLimit(request, {
     key: "api:news",
     max: 180,
     windowMs: 60_000,
+    onUnavailable: "local-fallback",
   })
   if (rateLimited) {
     return rateLimited

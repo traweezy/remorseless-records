@@ -42,10 +42,11 @@ export const GET = async (request: Request) => {
   const url = new URL(request.url)
 
   try {
-    const rateLimited = enforceRateLimit(request, {
+    const rateLimited = await enforceRateLimit(request, {
       key: "api:products",
       max: 180,
       windowMs: 60_000,
+      onUnavailable: "local-fallback",
     })
     if (rateLimited) {
       return rateLimited

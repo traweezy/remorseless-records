@@ -50,10 +50,11 @@ export const createPrivacyRequestPost =
     secret,
   }: PrivacyRequestPostDependencies) =>
   async (request: Request): Promise<Response> => {
-    const rateLimited = enforceRateLimit(request, {
+    const rateLimited = await enforceRateLimit(request, {
       key: "api:privacy-request",
       max: 10,
       windowMs: 60_000,
+      onUnavailable: "reject",
     })
     if (rateLimited) {
       return rateLimited

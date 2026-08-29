@@ -170,11 +170,14 @@ describe("route guards", () => {
   })
 
   it("applies per-ip rate limiting and includes retry-after", async () => {
+    vi.stubEnv("RAILWAY_PROJECT_ID", "project-test")
+    vi.stubEnv("RAILWAY_ENVIRONMENT_ID", "environment-test")
+    vi.stubEnv("RAILWAY_SERVICE_ID", "service-test")
     const { enforceRateLimit } = await import("@/lib/security/route-guards")
     const endpoint = faker.internet.url()
     const request = createRequest(endpoint, {
       headers: {
-        "x-forwarded-for": `${faker.internet.ip()}, ${faker.internet.ip()}`,
+        "x-real-ip": faker.internet.ip(),
       },
     })
     const max = faker.number.int({ min: 2, max: 4 })
@@ -182,54 +185,45 @@ describe("route guards", () => {
       key: faker.string.alphanumeric(12),
       max,
       windowMs: faker.number.int({ min: 15_000, max: 30_000 }),
+      onUnavailable: "local-fallback" as const,
     }
 
     for (let index = 0; index < max; index += 1) {
-      expect(enforceRateLimit(request, policy)).toBeNull()
+      await expect(enforceRateLimit(request, policy)).resolves.toBeNull()
     }
 
-    const blocked = enforceRateLimit(request, policy)
+    const blocked = await enforceRateLimit(request, policy)
 
     expect(blocked?.status).toBe(429)
     expect(blocked?.headers.get("Retry-After")).toBeTruthy()
   })
 
-  it("uses x-real-ip and cf-connecting-ip fallbacks", async () => {
+  it("isolates trusted Railway client IP buckets", async () => {
+    vi.stubEnv("RAILWAY_PROJECT_ID", "project-test")
+    vi.stubEnv("RAILWAY_ENVIRONMENT_ID", "environment-test")
+    vi.stubEnv("RAILWAY_SERVICE_ID", "service-test")
     const { enforceRateLimit } = await import("@/lib/security/route-guards")
     const key = faker.string.alphanumeric(10)
-
-    const realIpRequest = createRequest(faker.internet.url(), {
+    const firstRequest = createRequest(faker.internet.url(), {
       headers: {
         "x-real-ip": faker.internet.ip(),
       },
     })
-    expect(
-      enforceRateLimit(realIpRequest, {
-        key,
-        max: 1,
-        windowMs: faker.number.int({ min: 1000, max: 5000 }),
-      })
-    ).toBeNull()
-    expect(
-      enforceRateLimit(realIpRequest, {
-        key,
-        max: 1,
-        windowMs: faker.number.int({ min: 1000, max: 5000 }),
-      })?.status
-    ).toBe(429)
-
-    const cfIpRequest = createRequest(faker.internet.url(), {
+    const secondRequest = createRequest(faker.internet.url(), {
       headers: {
-        "cf-connecting-ip": faker.internet.ip(),
+        "x-real-ip": faker.internet.ip(),
       },
     })
-    expect(
-      enforceRateLimit(cfIpRequest, {
-        key: `${key}-cf`,
-        max: 1,
-        windowMs: faker.number.int({ min: 1000, max: 5000 }),
-      })
-    ).toBeNull()
+    const policy = {
+      key,
+      max: 1,
+      windowMs: faker.number.int({ min: 1000, max: 5000 }),
+      onUnavailable: "local-fallback" as const,
+    }
+
+    await expect(enforceRateLimit(firstRequest, policy)).resolves.toBeNull()
+    expect((await enforceRateLimit(firstRequest, policy))?.status).toBe(429)
+    await expect(enforceRateLimit(secondRequest, policy)).resolves.toBeNull()
   })
 
   it("resets rate limit counters after the window elapses", async () => {
@@ -239,15 +233,16 @@ describe("route guards", () => {
       key: faker.string.alphanumeric(9),
       max: 1,
       windowMs,
+      onUnavailable: "local-fallback" as const,
     }
     const request = createRequest(faker.internet.url())
 
-    expect(enforceRateLimit(request, policy)).toBeNull()
-    expect(enforceRateLimit(request, policy)?.status).toBe(429)
+    await expect(enforceRateLimit(request, policy)).resolves.toBeNull()
+    expect((await enforceRateLimit(request, policy))?.status).toBe(429)
 
     vi.advanceTimersByTime(windowMs + faker.number.int({ min: 1, max: 100 }))
 
-    expect(enforceRateLimit(request, policy)).toBeNull()
+    await expect(enforceRateLimit(request, policy)).resolves.toBeNull()
   })
 
   it("returns 415 for non-json payloads", async () => {

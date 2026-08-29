@@ -24,10 +24,11 @@ export const GET = async (
   { params }: RouteParams
 ): Promise<Response> => {
   try {
-    const rateLimited = enforceRateLimit(_request, {
+    const rateLimited = await enforceRateLimit(_request, {
       key: "api:product:detail",
       max: 240,
       windowMs: 60_000,
+      onUnavailable: "local-fallback",
     })
     if (rateLimited) {
       return rateLimited

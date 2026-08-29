@@ -39,6 +39,53 @@ It does not authorize a production deployment by itself.
 
 Do not begin another slice while any exact-SHA staging gate is unresolved.
 
+## Abuse-control and trusted-proxy operations
+
+Storefront and Backend generic abuse controls share Redis fixed-window
+counters. Each request performs one atomic Lua evaluation containing `INCR`,
+first-write `PEXPIRE`, and `PTTL`. The key contains the route class and an HMAC
+of the resolved client address; it never contains the raw IP or User-Agent.
+The command and connection deadline is two seconds, the offline queue is
+disabled, and each process permits at most 1,000 queued Redis commands.
+
+Railway is the only trusted forwarding boundary. Railway documents that its
+edge terminates TLS and adds `X-Real-IP` for the client remote address, and that
+`RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`, and `RAILWAY_SERVICE_ID` are
+provided to every deployment. The applications require all three system IDs
+before accepting a validated `X-Real-IP`. Storefront otherwise uses the shared
+`unknown` bucket because the Web Request object has no authenticated socket
+peer; Backend otherwise uses its direct socket peer. Neither application uses
+`X-Forwarded-For`, `CF-Connecting-IP`, or User-Agent for this decision. See
+[Railway public-networking limits](https://docs.railway.com/networking/public-networking/specs-and-limits),
+[edge architecture](https://docs.railway.com/networking/edge-networking), and
+[system variables](https://docs.railway.com/variables/reference).
+
+The Redis outage matrix is explicit:
+
+| Surface | Redis unavailable |
+| --- | --- |
+| Storefront catalog, product, bundle, news, search, and hydrate reads | Use the bounded process-local fallback |
+| Storefront contact, privacy, and cart mutations | Return correlated RFC 7807 HTTP 503 |
+| Backend catalog, checkout-status, tax-record, refund, and media reads | Use the bounded process-local fallback |
+| Backend Store, public-form, tax-control, and media mutations | Return correlated RFC 7807 HTTP 503 |
+
+After a staging deployment that changes these boundaries:
+
+1. Require `/live` and dependency-aware `/ready` to return 200 on both services.
+2. Exercise one successful catalog/search read and one non-mutating cart read;
+   do not deliberately exhaust a shared public bucket.
+3. Confirm ordinary responses do not contain `rate_limit_unavailable` and
+   inspect the exact-deployment logs for `rate_limit.unavailable`, Redis
+   connection errors, or unexpected 429/503 growth.
+4. Confirm Redis readiness, memory, evictions, rejected connections, and
+   command latency remain healthy before accepting the deployment.
+5. Treat mutation 503 responses as a Redis incident. Restore Redis rather than
+   bypassing, raising, or changing the fail-closed policy during the incident.
+
+Rollback is a normal revert on `staging`, followed by the complete exact-SHA
+acceptance loop. Do not reintroduce process-only mutation limiting or trust a
+client-supplied forwarding chain as an emergency workaround.
+
 ## Promotion to master
 
 1. Freeze the accepted `staging` SHA in the release record.
