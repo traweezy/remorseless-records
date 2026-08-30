@@ -846,6 +846,26 @@ deployment had no HTTP response at 400 or above. Its only Railway `error`-level
 record was pnpm's successful `$ next start` command banner written to stderr,
 not an application failure.
 
+Search-read exact staging acceptance: commit
+`48768472c78b2f265600ef043c43a100dc7335fa` passed Root CI `33285623225`,
+Backend CI `33285623212`, and Storefront CI `33285623217`, including unit
+coverage, both production builds, CodeQL, dependency/secret scans, Playwright,
+pa11y, and Lighthouse. Railway held Storefront deployment
+`39ea08cd-2154-477f-bf62-19ea7fbbee85` until those workflows passed, then
+released image digest
+`sha256:eb19d5599956fc4e0fd9e47e4d6419fdc2bb9b91c029365f267750cd43cf9092`
+to `SUCCESS` on that exact SHA. Backend correctly retained deployment
+`4a326c2f-2d09-43b5-8f9f-6599c9dfa4ff` because its watched paths were
+unchanged. Storefront `/live`, `/ready`, `/api/healthcheck`, `/`, `/catalog`,
+`/news`, `/discography`, and `/sitemap.xml` all returned 200; readiness
+reported Backend and Redis healthy. Two trusted-origin search `POST` requests
+returned 200 with the expected bounded envelope, and an empty-query probe
+returned one of 461 indexed products. The exact deployment's only HTTP
+response at 400 or above was the acceptance runner's intentional unsupported
+search `GET`, which returned 405. Its only Railway `error`-level record was
+pnpm's successful `$ next start` command banner written to stderr, not an
+application failure.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
