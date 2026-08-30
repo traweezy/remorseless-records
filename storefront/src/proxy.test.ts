@@ -20,6 +20,15 @@ describe("Storefront security proxy", () => {
     expect(scriptDirective).toContain(`'nonce-${nonce}'`)
     expect(scriptDirective).toContain("'strict-dynamic'")
     expect(scriptDirective).not.toContain("'unsafe-inline'")
+    expect(policy).toContain("upgrade-insecure-requests")
+  })
+
+  it("does not upgrade local HTTP subresources to HTTPS", () => {
+    const response = proxy(new NextRequest("http://127.0.0.1:3000/"))
+
+    expect(response.headers.get("Content-Security-Policy")).not.toContain(
+      "upgrade-insecure-requests"
+    )
   })
 
   it("does not reuse nonces across document requests", () => {

@@ -34,6 +34,7 @@ export const proxy = (request: NextRequest): NextResponse => {
   const nonce = createContentSecurityPolicyNonce()
   const contentSecurityPolicy = buildContentSecurityPolicy({
     isDevelopment: process.env.NODE_ENV === "development",
+    isSecureRequest: request.nextUrl.protocol === "https:",
     nonce,
   })
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy)

@@ -17,6 +17,7 @@ type ContentSecurityPolicyEnvironment = Readonly<
 type ContentSecurityPolicyOptions = {
   environment?: ContentSecurityPolicyEnvironment
   isDevelopment: boolean
+  isSecureRequest: boolean
   nonce: string
 }
 
@@ -67,6 +68,7 @@ export const createContentSecurityPolicyNonce = (): string =>
 export const buildContentSecurityPolicy = ({
   environment = process.env,
   isDevelopment,
+  isSecureRequest,
   nonce,
 }: ContentSecurityPolicyOptions): string => {
   if (!CONTENT_SECURITY_POLICY_NONCE_PATTERN.test(nonce)) {
@@ -127,7 +129,7 @@ export const buildContentSecurityPolicy = ({
     "object-src 'none'",
     "manifest-src 'self'",
     "worker-src 'self' blob:",
-    ...(isDevelopment
+    ...(isDevelopment || !isSecureRequest
       ? []
       : ["upgrade-insecure-requests", "block-all-mixed-content"]),
   ]

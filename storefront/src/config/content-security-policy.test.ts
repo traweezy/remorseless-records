@@ -16,6 +16,7 @@ describe("content security policy", () => {
         NEXT_PUBLIC_MEDIA_URL: "https://media.example.com/bucket/",
       },
       isDevelopment: false,
+      isSecureRequest: true,
       nonce: "0123456789abcdef0123456789abcdef",
     })
     const scriptDirective = policy
@@ -46,6 +47,7 @@ describe("content security policy", () => {
         NEXT_PUBLIC_MEDUSA_URL: "http://localhost:9000/store/products",
       },
       isDevelopment: true,
+      isSecureRequest: false,
       nonce: "0123456789abcdef0123456789abcdef",
     })
     const scriptDirective = policy
@@ -73,9 +75,21 @@ describe("content security policy", () => {
     expect(() =>
       buildContentSecurityPolicy({
         isDevelopment: false,
+        isSecureRequest: true,
         nonce: "invalid; script-src *",
       })
     ).toThrow("Content Security Policy nonce is invalid")
+  })
+
+  it("keeps production HTTP assets on HTTP for local validation", () => {
+    const policy = buildContentSecurityPolicy({
+      isDevelopment: false,
+      isSecureRequest: false,
+      nonce: "0123456789abcdef0123456789abcdef",
+    })
+
+    expect(policy).not.toContain("upgrade-insecure-requests")
+    expect(policy).not.toContain("block-all-mixed-content")
   })
 
   it("normalizes and deduplicates configured HTTP origins", () => {
