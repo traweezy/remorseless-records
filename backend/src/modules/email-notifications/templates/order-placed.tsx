@@ -2,6 +2,7 @@ import { Text, Section, Hr } from './primitives'
 import * as React from 'react'
 import { Base } from './base'
 import { OrderDTO, OrderAddressDTO } from '@medusajs/framework/types'
+import { formatCurrencyAmount } from '../currency'
 
 export const ORDER_PLACED = 'order-placed'
 
@@ -16,13 +17,63 @@ export interface OrderPlacedTemplateProps {
   preview?: string
 }
 
-export const isOrderPlacedTemplateData = (data: any): data is OrderPlacedTemplateProps =>
-  typeof data.order === 'object' && typeof data.shippingAddress === 'object'
+type UnknownRecord = Record<string, unknown>
+
+const asRecord = (value: unknown): UnknownRecord | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as UnknownRecord)
+    : null
+
+export const isOrderPlacedTemplateData = (
+  value: unknown,
+): value is OrderPlacedTemplateProps => {
+  const data = asRecord(value)
+  const order = asRecord(data?.order)
+  const summary = asRecord(order?.summary)
+  const items = order?.items
+
+  return (
+    order !== null &&
+    asRecord(data?.shippingAddress) !== null &&
+    formatCurrencyAmount(
+      summary?.raw_current_order_total,
+      order.currency_code,
+    ) !== null &&
+    (items === undefined ||
+      (Array.isArray(items) &&
+        items.every((item) => {
+          const itemRecord = asRecord(item)
+          return (
+            itemRecord !== null &&
+            formatCurrencyAmount(
+              itemRecord.unit_price,
+              order.currency_code,
+            ) !== null
+          )
+        })))
+  )
+}
 
 export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
   PreviewProps: OrderPlacedPreviewProps
 } = ({ order, shippingAddress, preview = 'Your order has been placed!' }) => {
-  const orderItems = order.items ?? []
+  const formattedTotal = formatCurrencyAmount(
+    order.summary.raw_current_order_total,
+    order.currency_code,
+  )
+  if (!formattedTotal) {
+    throw new Error('Order confirmation contains an invalid total')
+  }
+  const orderItems = (order.items ?? []).map((item) => {
+    const formattedUnitPrice = formatCurrencyAmount(
+      item.unit_price,
+      order.currency_code,
+    )
+    if (!formattedUnitPrice) {
+      throw new Error('Order confirmation contains an invalid item price')
+    }
+    return { formattedUnitPrice, item }
+  })
 
   return (
     <Base preview={preview}>
@@ -49,7 +100,7 @@ export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
           Order Date: {new Date(order.created_at).toLocaleDateString()}
         </Text>
         <Text style={{ margin: '0 0 20px' }}>
-          Total: {order.summary.raw_current_order_total.value} {order.currency_code}
+          Total: {formattedTotal}
         </Text>
 
         <Hr style={{ margin: '20px 0' }} />
@@ -90,7 +141,7 @@ export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
             <Text style={{ fontWeight: 'bold' }}>Quantity</Text>
             <Text style={{ fontWeight: 'bold' }}>Price</Text>
           </div>
-          {orderItems.map((item) => (
+          {orderItems.map(({ formattedUnitPrice, item }) => (
             <div key={item.id} style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -99,7 +150,7 @@ export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
             }}>
               <Text>{item.title} - {item.product_title}</Text>
               <Text>{item.quantity}</Text>
-              <Text>{item.unit_price} {order.currency_code}</Text>
+              <Text>{formattedUnitPrice}</Text>
             </div>
           ))}
         </div>

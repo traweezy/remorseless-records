@@ -1,5 +1,6 @@
 import type { CreateNotificationDTO } from "@medusajs/framework/types";
 
+import { formatCurrencyAmount } from "../../modules/email-notifications/currency";
 import { emailIdempotencyFields } from "../../modules/email-notifications/idempotency";
 
 type RefundNotificationRefund = {
@@ -18,30 +19,6 @@ export type RefundNotificationContext = {
   resourceType: "cart" | "order";
 };
 
-const numericAmount = (value: unknown): number | null => {
-  const record =
-    value !== null && typeof value === "object"
-      ? (value as Record<string, unknown>)
-      : null;
-  const amount = Number(record?.value ?? value);
-  return Number.isFinite(amount) && amount >= 0 ? amount : null;
-};
-
-const formatAmount = (amount: unknown, currencyCode: string): string | null => {
-  const numeric = numericAmount(amount);
-  if (numeric === null || !/^[a-z]{3}$/i.test(currencyCode)) {
-    return null;
-  }
-  try {
-    return new Intl.NumberFormat("en-US", {
-      currency: currencyCode.toUpperCase(),
-      style: "currency",
-    }).format(numeric);
-  } catch {
-    return null;
-  }
-};
-
 export const buildRefundNotificationPayloads = ({
   context,
   template,
@@ -50,7 +27,7 @@ export const buildRefundNotificationPayloads = ({
   template: string;
 }): CreateNotificationDTO[] =>
   context.refunds.flatMap((refund) => {
-    const formattedAmount = formatAmount(
+    const formattedAmount = formatCurrencyAmount(
       refund.amount,
       context.currencyCode,
     );

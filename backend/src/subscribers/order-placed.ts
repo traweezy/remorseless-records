@@ -39,7 +39,6 @@ export default async function orderPlacedHandler({
     channel: "email",
     data: {
       emailOptions: {
-        replyTo: "info@example.com",
         subject: "Your order has been placed",
       },
       order,

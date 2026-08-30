@@ -41,6 +41,12 @@ response as a failed delivery. Errors and logs include no recipient, provider
 message, or response payload. Subscribers must let delivery failure propagate
 so Medusa can retry the same idempotent operation.
 
+Customer-facing money must use the shared `formatCurrencyAmount` helper. Medusa
+retains high-precision major-unit values for accounting and tax calculations;
+never interpolate those raw values into an email. The formatter validates the
+input and applies the currency's display precision at this presentation
+boundary.
+
 ### Trigger an email notification
 
 To send a notification using an email template, specify the template key and required data when calling `createNotifications`:
@@ -52,7 +58,6 @@ await notificationModuleService.createNotifications({
   template: EmailTemplates.INVITE_USER, // Use the enum for the template key
   data: {
     emailOptions: {
-      replyTo: 'info@example.com',
       subject: "You've been invited!",
     },
     inviteLink: `${BACKEND_URL}/app/invite?token=${invite.token}`,
@@ -154,7 +159,6 @@ await notificationModuleService.createNotifications({
   data: {
     emailOptions: {
       subject: 'Action Required',
-      replyTo: 'support@example.com',
     },
     greeting: 'Hello there!',
     actionUrl: `${BACKEND_URL}/take-action?token=${user.token}`,

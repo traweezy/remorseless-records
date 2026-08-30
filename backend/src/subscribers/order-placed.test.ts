@@ -51,6 +51,11 @@ describe("order confirmation subscriber", () => {
 
     expect(input.createNotifications).toHaveBeenCalledWith([
       expect.objectContaining({
+        data: expect.objectContaining({
+          emailOptions: {
+            subject: "Your order has been placed",
+          },
+        }),
         idempotency_key: "order-placed:order_01",
         provider_data: {
           idempotency_key: "order-placed:order_01",
