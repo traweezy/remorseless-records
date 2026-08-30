@@ -810,14 +810,16 @@ completion. Provider-focused tests prove default SDK cancellation, combined
 caller cancellation, safe error classification, read-only retry/backoff under
 one deadline, bounded `Retry-After`, Meilisearch transport/transient-status
 retry without nested catalog attempts, Meilisearch and news request
-cancellation propagation, fixed-field search retry events, and provider-detail
-redaction. The generated OpenAPI check inventories all route sources
-deterministically and is wired into both the repository lint gate and Root CI.
+cancellation propagation, correlated Medusa Store read retry and incoming-
+request cancellation without unsafe methods, fixed-field retry events, and
+provider-detail redaction. The generated OpenAPI check inventories all route
+sources deterministically and is wired into both the repository lint gate and
+Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
 typechecks pass. Backend passes 1,028 tests across 191 suites. Storefront passes
-642 tests across 119 files with 92.90% statement, 85.74% branch, 93.92%
-function, and 92.85% line coverage. Both production builds pass, including the
+647 tests across 119 files with 92.97% statement, 85.95% branch, 93.96%
+function, and 92.93% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
 bundle is 1,702,695 gzip bytes and 6,708,946 raw bytes; all 336 Admin assets are
 2,297,109 gzip bytes and 8,376,872 raw bytes, within their four release
@@ -2213,10 +2215,10 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       provider errors for content, search, email, Stripe, tax, storage,
       contact, and privacy calls. Contact/privacy Backend and Resend deadlines
       are complete. Storefront news, discography, merchandising-shelf,
-      product-handle, and Meilisearch reads now also use shared two-attempt
-      boundaries under one deadline. Search owns retries at its semantic
-      read-operation boundary so catalog loaders cannot multiply attempts; the
-      other provider families remain.
+      product-handle, Meilisearch, and correlated Medusa Store reads now also
+      use shared two-attempt boundaries under one deadline. Search owns retries
+      at its semantic read-operation boundary so catalog loaders cannot
+      multiply attempts; the other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.
