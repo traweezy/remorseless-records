@@ -868,6 +868,28 @@ search `GET`, which returned 405. Its only Railway `error`-level record was
 pnpm's successful `$ next start` command banner written to stderr, not an
 application failure.
 
+Correlated Medusa Store-read exact staging acceptance: commit
+`acd10f4788cc2b8b6531ca89f1c97888c19e6d22` passed Root CI `33286746908`,
+Backend CI `33286746917`, and Storefront CI `33286746894`, including unit
+coverage, both production builds, CodeQL, dependency/secret scans, SBOM and
+license verification, Playwright, pa11y, and Lighthouse. Railway held
+Storefront deployment `d3748c12-8d81-4240-aa94-cf290cbcf7a4` until those
+workflows passed, then released image digest
+`sha256:e63e9f064b56bc50ab909c496dc6dd02a88f1f8daf847574d44ca553daf9f8fc`
+to `SUCCESS` on that exact SHA. Backend correctly retained deployment
+`4a326c2f-2d09-43b5-8f9f-6599c9dfa4ff` because its watched paths were
+unchanged. Storefront `/live`, `/ready`, `/api/healthcheck`, `/`, `/catalog`,
+`/news`, `/discography`, and `/sitemap.xml` all returned 200; readiness
+reported Backend and Redis healthy. The bounded product-list and product-detail
+reads returned 200, and a trusted-origin catalog-hydration read returned one
+hit with HTTP 200. All 11 matching exact-deployment HTTP records were 200,
+with no response at 400 or above. The exact deployment's only Railway
+`error`-level record was pnpm's successful `$ next start` command banner
+written to stderr, not an application failure. Staging did not force a
+provider fault; focused tests prove transient transport/status retry,
+single-deadline cancellation, safe-method enforcement, and redacted terminal
+failures without risking shared staging availability.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
