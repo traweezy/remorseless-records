@@ -10,7 +10,6 @@ const run = async () => {
     limit: 1,
   })
 
-  // eslint-disable-next-line no-console
   console.log(JSON.stringify(result.hits[0], null, 2))
 }
 

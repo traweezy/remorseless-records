@@ -47,7 +47,9 @@ const serviceFixture = ({
 } = {}) =>
   ({
     listTaxQuoteEvidences: jest.fn(async () => (evidence ? [evidence] : [])),
-    updateTaxQuoteEvidenceLifecycle: jest.fn(async (input) => input),
+    updateTaxQuoteEvidenceLifecycle: jest.fn(
+      async (input: unknown): Promise<unknown> => input
+    ),
   }) as unknown as TaxControlModuleService
 
 const stripeFixture = ({

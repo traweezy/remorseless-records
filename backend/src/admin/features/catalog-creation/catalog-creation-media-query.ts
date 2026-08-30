@@ -76,7 +76,9 @@ export const uploadCatalogCreationMedia = async (
     controller.abort()
   }, timeoutMs)
   const formData = new FormData()
-  files.forEach((file) => formData.append("files", file))
+  files.forEach((file) => {
+    formData.append("files", file)
+  })
   formData.append("idempotencyKey", crypto.randomUUID())
 
   try {

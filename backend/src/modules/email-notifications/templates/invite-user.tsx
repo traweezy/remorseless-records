@@ -1,5 +1,3 @@
-import * as React from "react"
-
 import { Button, Link, Section, Text, Img, Hr } from "./primitives"
 import { Base } from "./base"
 
@@ -27,9 +25,18 @@ export interface InviteUserEmailProps {
  * Type guard for checking if the data is of type InviteUserEmailProps
  * @param data - The data to check
  */
-export const isInviteUserData = (data: any): data is InviteUserEmailProps =>
-  typeof data.inviteLink === "string" &&
-  (typeof data.preview === "string" || !data.preview)
+export const isInviteUserData = (
+  data: unknown
+): data is InviteUserEmailProps => {
+  if (!data || typeof data !== "object") {
+    return false
+  }
+  const candidate = data as Record<string, unknown>
+  return (
+    typeof candidate.inviteLink === "string" &&
+    (typeof candidate.preview === "string" || candidate.preview === undefined)
+  )
+}
 
 /**
  * The InviteUserEmail template component built with email-safe React primitives.

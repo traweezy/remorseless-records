@@ -67,7 +67,6 @@ const InstagramGrid = ({ profileUrl }: Props) => {
 
   useEffect(() => {
     // Safe client-only hydration toggle; renders placeholder on the server.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
 
     const shuffled = [...ALL_POSTS].sort(() => Math.random() - 0.5)
@@ -93,7 +92,7 @@ const InstagramGrid = ({ profileUrl }: Props) => {
   }
 
   return (
-    <div className="space-y-3" aria-label="Latest posts from Instagram">
+    <section className="space-y-3" aria-label="Latest posts from Instagram">
       <div className="grid gap-3 sm:grid-cols-2">
         {posts.map((post) => (
           <Card
@@ -124,7 +123,7 @@ const InstagramGrid = ({ profileUrl }: Props) => {
           View on Instagram
         </a>
       </Button>
-    </div>
+    </section>
   )
 }
 

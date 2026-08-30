@@ -67,9 +67,11 @@ describe("fetchMedusaStoreRead", () => {
     await expect(pending).resolves.toBe(response)
     expect(fetchMock).toHaveBeenCalledTimes(2)
     const firstInit = fetchMock.mock.calls[0]?.[1] as
-      { signal?: AbortSignal } | undefined
+      | { signal?: AbortSignal }
+      | undefined
     const secondInit = fetchMock.mock.calls[1]?.[1] as
-      { signal?: AbortSignal } | undefined
+      | { signal?: AbortSignal }
+      | undefined
     expect(firstInit?.signal).toBeInstanceOf(AbortSignal)
     expect(secondInit?.signal).toBe(firstInit?.signal)
     expect(console.info).toHaveBeenCalledWith(

@@ -52,7 +52,6 @@ import {
   newsEditorValidationIssues,
   validatePublicationIntent,
   valuesFromNewsEntry,
-  type NewsEditorValues,
   type NewsPublicationIntent,
 } from "./news-form-state"
 import { uploadNewsCover, validateNewsCover } from "./news-media-query"

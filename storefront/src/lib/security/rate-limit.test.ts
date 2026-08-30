@@ -54,9 +54,11 @@ describe("Storefront distributed rate limiting", () => {
     await consumeRateLimit(createRequest("192.0.2.50", "agent-two"), policy)
 
     const firstOptions = redisMocks.eval.mock.calls[0]?.[1] as
-      { keys?: string[] } | undefined
+      | { keys?: string[] }
+      | undefined
     const secondOptions = redisMocks.eval.mock.calls[1]?.[1] as
-      { keys?: string[] } | undefined
+      | { keys?: string[] }
+      | undefined
     const firstKey = firstOptions?.keys?.[0]
     expect(firstKey).toMatch(
       /^rr:rate:v1:storefront:test:distributed:[a-f0-9]{64}$/

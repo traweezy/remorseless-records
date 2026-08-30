@@ -2,7 +2,11 @@ export const DISCOGRAPHY_REPLACE_CONFIRMATION =
   "replace-discography-from-catalog"
 
 export type DiscographyAvailability =
-  "digital_only" | "in_print" | "out_of_print" | "preorder" | "unknown"
+  | "digital_only"
+  | "in_print"
+  | "out_of_print"
+  | "preorder"
+  | "unknown"
 
 export type DiscographyProjectionVariant = {
   allowBackorder?: boolean | null

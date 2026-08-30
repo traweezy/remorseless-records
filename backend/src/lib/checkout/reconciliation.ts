@@ -147,11 +147,7 @@ const text = (value: unknown): string | null =>
 const cartHasReconciliationAttempt = (cart: UnknownRecord): boolean => {
   const metadata = asRecord(cart.metadata)
   return Boolean(
-    metadata &&
-    Object.prototype.hasOwnProperty.call(
-      metadata,
-      CHECKOUT_RECONCILIATION_METADATA_KEY
-    )
+    metadata && Object.hasOwn(metadata, CHECKOUT_RECONCILIATION_METADATA_KEY)
   )
 }
 

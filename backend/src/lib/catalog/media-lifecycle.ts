@@ -20,7 +20,8 @@ export const catalogMediaLifecycleCommandSchema = z.object({
 })
 
 export type CatalogMediaLifecycleCommand =
-  "catalog.media.quarantine" | "catalog.media.restore"
+  | "catalog.media.quarantine"
+  | "catalog.media.restore"
 
 export type CatalogMediaLifecycleInput = {
   actorId: string
@@ -250,7 +251,8 @@ export const mutateCatalogMediaLifecycle = async (
       sharedContext
     )
     const updatedAsset = firstCatalogResult(updated) as
-      CatalogMediaAssetRecord | undefined
+      | CatalogMediaAssetRecord
+      | undefined
     if (!updatedAsset) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,

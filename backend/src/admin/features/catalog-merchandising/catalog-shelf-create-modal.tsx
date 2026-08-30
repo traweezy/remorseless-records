@@ -29,7 +29,11 @@ type CreateShelfChange = (
 ) => void
 
 type CreateTextField =
-  "handle" | "productLimit" | "ribbonLabel" | "ribbonPriority" | "title"
+  | "handle"
+  | "productLimit"
+  | "ribbonLabel"
+  | "ribbonPriority"
+  | "title"
 
 const readInputValue = (event: ChangeEvent<HTMLInputElement>): string =>
   (event.currentTarget as unknown as { value?: string }).value ?? ""

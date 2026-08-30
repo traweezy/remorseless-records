@@ -74,6 +74,9 @@ type ValidatedLineInput = Stripe.Tax.CalculationCreateParams.LineItem & {
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" ? (value as UnknownRecord) : null
 
+const asUnknownArray = (value: unknown): unknown[] | null =>
+  Array.isArray(value) ? value.map((item: unknown) => item) : null
+
 const fail = (code: StripeTaxClientErrorCode): never => {
   throw new StripeTaxClientError(code)
 }
@@ -310,15 +313,11 @@ const shippingParamsFrom = (
 
 const lineItemsFrom = (value: unknown): unknown[] => {
   const page = asRecord(value)
-  if (
-    !page ||
-    page.object !== "list" ||
-    page.has_more !== false ||
-    !Array.isArray(page.data)
-  ) {
+  const data = asUnknownArray(page?.data)
+  if (!page || page.object !== "list" || page.has_more !== false || !data) {
     return fail("invalid_response")
   }
-  return page.data
+  return data
 }
 
 const readLineItems = async (
@@ -329,12 +328,13 @@ const readLineItems = async (
   onRetry?: (event: StripeTaxRetryEvent) => void
 ): Promise<unknown[]> => {
   const expanded = asRecord(lineItems)
+  const expandedData = asUnknownArray(expanded?.data)
   if (
     expanded?.object === "list" &&
     expanded.has_more === false &&
-    Array.isArray(expanded.data)
+    expandedData
   ) {
-    return expanded.data
+    return expandedData
   }
   if (expanded && expanded.has_more !== true) {
     return fail("invalid_response")

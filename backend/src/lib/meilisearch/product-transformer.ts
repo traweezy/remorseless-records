@@ -1078,8 +1078,14 @@ const safeList = async (
   if (typeof fn !== "function") {
     return []
   }
-  const result = await fn.call(catalogService, filters)
-  return Array.isArray(result) ? result : []
+  const result: unknown = await fn.call(catalogService, filters)
+  if (!Array.isArray(result)) {
+    return []
+  }
+  return result.filter(
+    (value: unknown): value is DynamicRecord =>
+      value !== null && typeof value === "object" && !Array.isArray(value)
+  )
 }
 
 let automaticShelfCache = new WeakMap<

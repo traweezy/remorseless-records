@@ -131,7 +131,8 @@ registryGlobal[REGISTRY_SYMBOL] = sharedRequests
 const requestRegistry = new BoundedRequestRegistry({ requests: sharedRequests })
 
 export const getActiveTraceContext = ():
-  { traceFlags: string; traceId: string } | undefined => {
+  | { traceFlags: string; traceId: string }
+  | undefined => {
   const spanContext = trace.getActiveSpan()?.spanContext()
   if (!spanContext || !isSpanContextValid(spanContext)) {
     return undefined

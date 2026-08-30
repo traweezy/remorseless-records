@@ -1,7 +1,9 @@
 const baseUrl = process.env.QA_BASE_URL ?? "http://127.0.0.1:3000"
 const productPath = process.env.QA_PRODUCT_PATH ?? "/products"
 const configuredPaths = process.env.QA_PATHS
-  ? process.env.QA_PATHS.split(",").map((entry) => entry.trim()).filter(Boolean)
+  ? process.env.QA_PATHS.split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
   : []
 const paths = configuredPaths.length
   ? configuredPaths

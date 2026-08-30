@@ -205,7 +205,10 @@ export const MEILISEARCH_ADMIN_KEY = process.env.MEILISEARCH_ADMIN_KEY
  */
 export const WORKER_MODE =
   (process.env.MEDUSA_WORKER_MODE as
-    "worker" | "server" | "shared" | undefined) ?? "shared"
+    | "worker"
+    | "server"
+    | "shared"
+    | undefined) ?? "shared"
 
 /**
  * Disable Admin (explicitly opt out only).

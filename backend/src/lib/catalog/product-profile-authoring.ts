@@ -69,7 +69,9 @@ const resolveNamedReferenceId = async (
     id?: string | null | undefined
     kind: Extract<CatalogReferenceKind, "label" | "product_type">
     reference?:
-      CatalogProductProfileMutationInput["patch"]["label"] | null | undefined
+      | CatalogProductProfileMutationInput["patch"]["label"]
+      | null
+      | undefined
   },
   createdReferenceValueIds: Set<string>,
   sharedContext: Context<EntityManager>

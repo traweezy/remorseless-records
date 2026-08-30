@@ -15,7 +15,11 @@ type DiscographyReplacementEntry = {
   album: string
   artist: string
   availability:
-    "in_print" | "out_of_print" | "preorder" | "digital_only" | "unknown"
+    | "in_print"
+    | "out_of_print"
+    | "preorder"
+    | "digital_only"
+    | "unknown"
   catalog_number: string | null
   collection_title: string | null
   cover_alt_text: string | null

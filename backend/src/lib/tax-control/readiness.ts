@@ -145,7 +145,7 @@ export const resolveStripeTaxReadiness = async ({
     const configuredAccountMode = accountModeFromApiKey(apiKey)
     const shippingTaxCodeReady = Boolean(
       STRIPE_TAX_SHIPPING_TAX_CODE &&
-      /^txcd_\d{8}$/.test(STRIPE_TAX_SHIPPING_TAX_CODE)
+        /^txcd_\d{8}$/.test(STRIPE_TAX_SHIPPING_TAX_CODE)
     )
     const checks = [
       check(

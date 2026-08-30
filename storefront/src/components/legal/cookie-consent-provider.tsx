@@ -138,6 +138,7 @@ export const CookieConsentProvider = ({
     }
 
     const secure = window.location.protocol === "https:"
+    // biome-ignore lint/suspicious/noDocumentCookie: This first-party consent cookie is bounded, SameSite=Lax, and intentionally mirrored to local storage.
     document.cookie = buildCookiePreferencesHeader(next, { secure })
     window.localStorage.setItem(
       COOKIE_PREFERENCES_STORAGE_KEY,

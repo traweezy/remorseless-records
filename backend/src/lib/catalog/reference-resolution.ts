@@ -158,7 +158,8 @@ export const resolveOrCreateCatalogReferenceValue = async (
     created: true,
     record:
       (firstCatalogResult(created) as
-        CatalogReferenceValueRecord | undefined) ?? null,
+        | CatalogReferenceValueRecord
+        | undefined) ?? null,
   }
 }
 

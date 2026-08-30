@@ -66,7 +66,8 @@ describe("Resend notification provider", () => {
       })
     )
     const requestOptions = input.send.mock.calls[0]?.[1] as
-      { signal?: AbortSignal } | undefined
+      | { signal?: AbortSignal }
+      | undefined
     const signal = requestOptions?.signal
     expect(signal).toBeInstanceOf(AbortSignal)
     if (!signal) {

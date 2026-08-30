@@ -135,9 +135,9 @@ export const upsertAllProductDocuments = async ({
 const isIndexNotFound = (error: unknown): boolean => {
   return Boolean(
     error &&
-    typeof error === "object" &&
-    "code" in error &&
-    error.code === "index_not_found"
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "index_not_found"
   )
 }
 

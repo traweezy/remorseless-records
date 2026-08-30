@@ -53,7 +53,7 @@ const toTimestamp = (value: unknown): number => {
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
 
-const toString = (value: unknown): string | null =>
+const textValue = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 
 const callCatalogService = async <T>(
@@ -143,12 +143,12 @@ export const GET = async (
     : []
   const visibleProductIds = new Set(
     visibleProducts
-      .map((product) => toString(product.id))
+      .map((product) => textValue(product.id))
       .filter((id): id is string => Boolean(id))
   )
   const productCreatedAt = new Map(
     visibleProducts.flatMap((product) => {
-      const id = toString(product.id)
+      const id = textValue(product.id)
       return id ? [[id, product.created_at] as const] : []
     })
   )

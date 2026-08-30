@@ -1,5 +1,6 @@
 import type { CatalogVariantProfileMutationResult } from "./variant-profile-contract"
 import type { CatalogService } from "./reference-resolution"
+import { compensateCatalogVariantProfileMutation } from "./variant-profile-authoring"
 import { catalogProductCreateSchema } from "./product-create-contract"
 import {
   beginCatalogProductCreation,
@@ -414,10 +415,12 @@ describe("catalog product variant profile batch", () => {
       compensate,
       mutate: jest.fn(),
     })
-    expect(compensate.mock.calls.map((call) => call[1].aggregateId)).toEqual([
-      "variant_1",
-      "variant_0",
-    ])
+    const compensationCalls = compensate.mock.calls as Array<
+      Parameters<typeof compensateCatalogVariantProfileMutation>
+    >
+    expect(
+      compensationCalls.map(([, compensation]) => compensation.aggregateId)
+    ).toEqual(["variant_1", "variant_0"])
 
     compensate.mockRejectedValueOnce(new Error("rollback failed"))
     await expect(

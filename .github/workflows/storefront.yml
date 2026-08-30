@@ -150,8 +150,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run ESLint
-        run: pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src
+      - name: Run Biome
+        run: pnpm --filter remorseless-records-storefront run lint
 
   codeql:
     name: CodeQL Analyze (JS/TS, security-extended)

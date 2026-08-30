@@ -6,10 +6,14 @@ const chromeExecutablePath =
 const disableChromeSandbox = process.env.PA11Y_CHROME_NO_SANDBOX === "1"
 const productPath = process.env.QA_PRODUCT_PATH ?? "/products"
 const extraUrls = process.env.QA_EXTRA_URLS
-  ? process.env.QA_EXTRA_URLS.split(",").map((entry) => entry.trim()).filter(Boolean)
+  ? process.env.QA_EXTRA_URLS.split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
   : []
 const configuredPaths = process.env.QA_PATHS
-  ? process.env.QA_PATHS.split(",").map((entry) => entry.trim()).filter(Boolean)
+  ? process.env.QA_PATHS.split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
   : []
 const MAX_FRAMEWORK_ERROR_ATTEMPTS = 2
 
@@ -54,7 +58,10 @@ const auditTarget = async (target) => {
         : {}),
     })
 
-    if (!isFrameworkErrorDocument(results) || attempt === MAX_FRAMEWORK_ERROR_ATTEMPTS) {
+    if (
+      !isFrameworkErrorDocument(results) ||
+      attempt === MAX_FRAMEWORK_ERROR_ATTEMPTS
+    ) {
       return results
     }
 
@@ -77,8 +84,12 @@ const run = async () => {
     console.log(`\n🔍 Checking ${target}`)
     try {
       const results = await auditTarget(target)
-      const confirmedIssues = results.issues.filter((issue) => issue.type === "error")
-      const reviewIssues = results.issues.filter((issue) => issue.type !== "error")
+      const confirmedIssues = results.issues.filter(
+        (issue) => issue.type === "error"
+      )
+      const reviewIssues = results.issues.filter(
+        (issue) => issue.type !== "error"
+      )
 
       if (confirmedIssues.length) {
         hasFailures = true
@@ -98,7 +109,9 @@ const run = async () => {
       if (!results.issues.length) {
         console.log("✅  No accessibility issues detected.")
       } else if (!confirmedIssues.length) {
-        console.log("✅  No confirmed violations; manual-review findings are logged above.")
+        console.log(
+          "✅  No confirmed violations; manual-review findings are logged above."
+        )
       }
     } catch (error) {
       hasFailures = true

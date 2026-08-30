@@ -38,8 +38,8 @@ export const stripeLifecycleEventIsDue = (
     record.status === "processing" &&
     Boolean(
       record.processing_started_at &&
-      record.processing_started_at.getTime() <=
-        now.getTime() - PROCESSING_STALE_MS
+        record.processing_started_at.getTime() <=
+          now.getTime() - PROCESSING_STALE_MS
     )
   )
 }

@@ -58,7 +58,8 @@ describe("distributed cart rate limiting", () => {
     ).resolves.toBeNull()
 
     const evalOptions = redisMocks.eval.mock.calls[0]?.[1] as
-      { keys?: string[] } | undefined
+      | { keys?: string[] }
+      | undefined
     const redisKey = evalOptions?.keys?.[0]
     expect(redisKey).toMatch(
       /^rr:rate:v1:storefront:api:cart:item:add:[a-f0-9]{64}$/
@@ -77,9 +78,11 @@ describe("distributed cart rate limiting", () => {
     )
 
     const firstOptions = redisMocks.eval.mock.calls[0]?.[1] as
-      { keys?: string[] } | undefined
+      | { keys?: string[] }
+      | undefined
     const secondOptions = redisMocks.eval.mock.calls[1]?.[1] as
-      { keys?: string[] } | undefined
+      | { keys?: string[] }
+      | undefined
     expect(secondOptions?.keys?.[0]).toBe(firstOptions?.keys?.[0])
   })
 

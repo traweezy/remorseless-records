@@ -142,7 +142,7 @@ describe("CartDrawer", () => {
     )
     render(<CartDrawer open onOpenChange={vi.fn()} />)
 
-    expect(screen.getByLabelText("Loading cart")).toBeInTheDocument()
+    expect(screen.getByText("Loading cart")).toBeInTheDocument()
     expect(screen.queryByText("Your cart is empty")).not.toBeInTheDocument()
   })
 

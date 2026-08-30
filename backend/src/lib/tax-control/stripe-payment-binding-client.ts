@@ -354,7 +354,7 @@ const calculationFrom = (
       (typeof calculation.expires_at !== "number" ||
         !Number.isSafeInteger(calculation.expires_at)))
   ) {
-    return fail("invalid_response")
+    return void fail("invalid_response")
   }
   if (
     calculation.amount_total !== expected.amountMinor ||
@@ -363,7 +363,7 @@ const calculationFrom = (
     calculation.expires_at === null ||
     calculation.expires_at <= Math.floor(Date.now() / 1_000)
   ) {
-    return fail("calculation_mismatch")
+    return void fail("calculation_mismatch")
   }
 }
 

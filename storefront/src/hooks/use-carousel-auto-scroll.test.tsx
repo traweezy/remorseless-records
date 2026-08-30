@@ -74,7 +74,8 @@ describe("useCarouselAutoScroll", () => {
   it("reacts to reduced-motion preference changes", () => {
     const { unmount } = render(<AutoScrollProbe />)
     const listener = mediaQuery.addEventListener.mock.calls[0]?.[1] as
-      ((event: MediaQueryListEvent) => void) | undefined
+      | ((event: MediaQueryListEvent) => void)
+      | undefined
 
     expect(listener).toBeDefined()
 

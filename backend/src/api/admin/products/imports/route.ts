@@ -336,7 +336,10 @@ const normalizeSemicolonDelimitedCsv = (
   const metadataNamespace = "legacy_import"
 
   const normalizedRows = nonEmptyRecords.slice(1).map((row) => {
-    const normalizedRow = new Array(normalizedHeaders.length).fill("")
+    const normalizedRow = Array.from(
+      { length: normalizedHeaders.length },
+      () => ""
+    )
     const extraMetadata: Record<string, unknown> = {}
 
     instructions.forEach((instruction) => {
@@ -428,7 +431,9 @@ const ensureHeader = (headers: string[], rows: string[][], header: string) => {
   }
 
   headers.push(header)
-  rows.forEach((row) => row.push(""))
+  rows.forEach((row) => {
+    row.push("")
+  })
   return headers.length - 1
 }
 

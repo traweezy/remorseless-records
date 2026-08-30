@@ -33,9 +33,6 @@ type QueryGraph = {
 
 const REFUND_LEDGER_QUERY_LIMIT = 500
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
-
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 

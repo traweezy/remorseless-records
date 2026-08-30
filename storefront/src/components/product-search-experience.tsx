@@ -1154,6 +1154,7 @@ const ProductSearchExperience = ({
     ]
   )
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Stable serialized keys intentionally retrigger URL synchronization for array filters.
   useEffect(() => {
     if (typeof window === "undefined" || !hasHydratedFromParams.current) {
       return
@@ -1383,6 +1384,7 @@ const ProductSearchExperience = ({
 
   const virtualItems = virtualizer.getVirtualItems()
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Layout inputs and the render tick intentionally force virtualizer remeasurement.
   useLayoutEffect(() => {
     virtualizer.measure()
     const frame = requestAnimationFrame(() => {
@@ -1393,6 +1395,7 @@ const ProductSearchExperience = ({
     }
   }, [columns, rowHeight, virtualizer, forceVirtualizerRerender])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: The render tick setter intentionally invalidates measurements after the virtualizer runs.
   const scheduleVirtualizerMeasure = useCallback(() => {
     if (measureScheduledRef.current) {
       return
@@ -1498,6 +1501,7 @@ const ProductSearchExperience = ({
     void refetchSearch()
   }, [refetchSearch])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: criteriaKey intentionally resets pagination when any search criterion changes.
   useEffect(() => {
     lastAutoRequestedResultCountRef.current = null
   }, [criteriaKey])
@@ -1791,7 +1795,10 @@ const ProductSearchExperience = ({
             )}
           </header>
 
-          <section className="space-y-4 px-2 sm:px-4 lg:px-6">
+          <section
+            aria-label="Catalog results"
+            className="space-y-4 px-2 sm:px-4 lg:px-6"
+          >
             {isFetching && !deferredResults.length ? (
               <div
                 className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"

@@ -1,4 +1,3 @@
-import * as React from "react"
 import type { ReactNode } from "react"
 import { MedusaError } from "@medusajs/framework/utils"
 import { InviteUserEmail, INVITE_USER, isInviteUserData } from "./invite-user"

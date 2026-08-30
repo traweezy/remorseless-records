@@ -21,7 +21,11 @@ export type AdminHttpMethod = (typeof adminHttpMethods)[number]
 export type AdminRouteTemplate = `/admin/${string}`
 
 export type AdminAuthorizationArea =
-  "catalog" | "content" | "operations" | "product_import" | "uploads"
+  | "catalog"
+  | "content"
+  | "operations"
+  | "product_import"
+  | "uploads"
 
 export type AdminAuthorizationManifestEntry = Readonly<{
   area: AdminAuthorizationArea

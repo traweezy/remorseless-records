@@ -8,9 +8,10 @@
     "pnpm": ">=11.0.0 <12"
   },
   "scripts": {
-    "format": "prettier --write --ignore-unknown '.github/**/*.{json,yaml,yml}' 'backend/**/*.{cjs,css,js,json,mjs,ts,tsx}' 'scripts/**/*.{cjs,css,js,json,mjs,ts,tsx}' 'storefront/**/*.{cjs,css,js,json,mjs,ts,tsx}' '*.{json,yaml,yml}'",
-    "format:check": "prettier --check --ignore-unknown '.github/**/*.{json,yaml,yml}' 'backend/**/*.{cjs,css,js,json,mjs,ts,tsx}' 'scripts/**/*.{cjs,css,js,json,mjs,ts,tsx}' 'storefront/**/*.{cjs,css,js,json,mjs,ts,tsx}' '*.{json,yaml,yml}'",
-    "qa:lint": "pnpm run format:check && pnpm run qa:release-policy && pnpm run qa:railway-iac && pnpm run qa:database-release-boundary && pnpm run qa:browser-toolchain-security && pnpm run qa:medusa-build-toolchain && pnpm run qa:dashboard-product-import && pnpm run qa:dashboard-product-create && pnpm run qa:dashboard-product-deletion && pnpm run qa:secure-artifacts && pnpm run qa:api-contract && pnpm run qa:framework-response-headers && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:checkout-recovery && pnpm run qa:scheduler-observation && pnpm run qa:operations-observation && pnpm run qa:observability-bootstrap && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint --error-on-warnings .",
+    "qa:lint": "biome check --error-on-warnings . && pnpm run qa:release-policy && pnpm run qa:railway-iac && pnpm run qa:database-release-boundary && pnpm run qa:browser-toolchain-security && pnpm run qa:medusa-build-toolchain && pnpm run qa:dashboard-product-import && pnpm run qa:dashboard-product-create && pnpm run qa:dashboard-product-deletion && pnpm run qa:secure-artifacts && pnpm run qa:api-contract && pnpm run qa:framework-response-headers && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:checkout-recovery && pnpm run qa:scheduler-observation && pnpm run qa:operations-observation && pnpm run qa:observability-bootstrap && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
     "api:contract:generate": "node scripts/generate-api-contract.mjs --write",
     "qa:api-contract": "node --test scripts/generate-api-contract.test.mjs && node scripts/generate-api-contract.mjs --check",
     "qa:release-policy": "node scripts/verify-release-branch-policy.mjs",
@@ -45,13 +46,13 @@
     "prepare": "if [ \"$CI\" = \"true\" ] || [ \"$NODE_ENV\" = \"production\" ]; then exit 0; fi; lefthook install"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.11",
     "@axe-core/puppeteer": "4.12.1",
     "@lhci/cli": "0.15.1",
     "@railway/cli": "5.45.0",
     "esbuild": "^0.28.1",
     "lefthook": "^2.1.10",
     "pa11y": "^9.1.1",
-    "prettier": "3.9.6",
     "proxy-agent": "8.0.2",
     "puppeteer": "25.3.0",
     "railway": "3.11.0"

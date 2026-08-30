@@ -240,8 +240,8 @@ export default async function buildDiscographyFromProducts({
       : null
     return Boolean(
       productType?.is_active !== false &&
-      productType?.kind === "product_type" &&
-      isMusicReleaseReference(productType.value)
+        productType?.kind === "product_type" &&
+        isMusicReleaseReference(productType.value)
     )
   })
   const missingProductIds = musicProfiles

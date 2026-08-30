@@ -93,7 +93,10 @@ export type CatalogProductCreationStatus = z.infer<
 >
 
 export type CatalogProductCreationRetryDecision =
-  "blocked" | "new-key" | "same-key" | "wait"
+  | "blocked"
+  | "new-key"
+  | "same-key"
+  | "wait"
 
 export const decideCatalogProductCreationRetry = (
   state: CatalogProductCreationStatus["state"]

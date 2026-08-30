@@ -82,7 +82,7 @@ export const mutateCatalogMediaLifecycleWorkflow = createWorkflow(
     store: true,
     timeout: 60,
   },
-  function (input: CatalogMediaLifecycleInput) {
+  (input: CatalogMediaLifecycleInput) => {
     const lockKey = transform(
       { assetId: input.assetId },
       ({ assetId }) => `catalog:media-asset:${assetId}`

@@ -97,7 +97,7 @@ export const mutateCatalogProductMediaWorkflow = createWorkflow(
     store: true,
     timeout: 60,
   },
-  function (input: CatalogProductMediaMutationInput) {
+  (input: CatalogProductMediaMutationInput) => {
     const lockKeys = transform({ input }, ({ input: workflowInput }) => [
       `catalog:product-media:${workflowInput.aggregateId}`,
       ...[

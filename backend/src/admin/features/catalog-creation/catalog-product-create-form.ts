@@ -1062,8 +1062,8 @@ export const buildCatalogProductCreateRequest = (
               )
             }
             return {
-              bundleVariantKeys: component.offeringIds.map((offeringId) =>
-                keys.get(offeringId)!
+              bundleVariantKeys: component.offeringIds.map(
+                (offeringId) => keys.get(offeringId)!
               ),
               componentProductId: product.id,
               componentVariantId: variant.id,

@@ -363,8 +363,9 @@ describe("route guards", () => {
   })
 
   it("parses valid json and preserves no-store semantics", async () => {
-    const { jsonApiError, jsonApiResponse, parseJsonBody } =
-      await import("@/lib/security/route-guards")
+    const { jsonApiError, jsonApiResponse, parseJsonBody } = await import(
+      "@/lib/security/route-guards"
+    )
     const schema = z.object({
       at: z.string().datetime(),
       amount: z.number().int().min(1),

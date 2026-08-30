@@ -114,7 +114,8 @@ export class ResendNotificationService extends AbstractNotificationProviderServi
 
     const emailOptions: NotificationEmailOptions =
       (notification.data?.emailOptions as
-        NotificationEmailOptions | undefined) ?? {}
+        | NotificationEmailOptions
+        | undefined) ?? {}
 
     const subject = emailOptions.subject?.trim()
     if (!subject) {

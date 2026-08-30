@@ -1,5 +1,8 @@
 export type OperationsWorkspace =
-  "overview" | "tax-records" | "refunds" | "media-cleanup"
+  | "overview"
+  | "tax-records"
+  | "refunds"
+  | "media-cleanup"
 
 export type OperationsDetailWorkspace = Exclude<OperationsWorkspace, "overview">
 

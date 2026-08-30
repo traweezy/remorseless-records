@@ -193,8 +193,9 @@ describe("news data layer", () => {
         status: 404,
       } as Response)
 
-    const { fetchNewsEntryBySlug, getNewsEntryBySlug } =
-      await import("@/lib/data/news")
+    const { fetchNewsEntryBySlug, getNewsEntryBySlug } = await import(
+      "@/lib/data/news"
+    )
     await expect(fetchNewsEntryBySlug(slug)).resolves.toMatchObject({ slug })
     await expect(getNewsEntryBySlug("missing")).resolves.toBeNull()
     expect(fetchSpy).toHaveBeenCalledTimes(2)

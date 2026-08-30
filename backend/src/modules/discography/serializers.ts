@@ -41,7 +41,11 @@ export type DiscographyEntryRecord = {
 }
 
 export type DiscographyLinkHealth =
-  "healthy" | "missing" | "not_applicable" | "unknown" | "unpublished"
+  | "healthy"
+  | "missing"
+  | "not_applicable"
+  | "unknown"
+  | "unpublished"
 
 export type DiscographyLinkedProduct = {
   handle?: string | null

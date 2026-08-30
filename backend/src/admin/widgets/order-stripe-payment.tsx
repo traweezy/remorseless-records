@@ -26,7 +26,7 @@ const formatAmount = (
 const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
   const references = stripePaymentReferencesFromOrder(data)
   if (!references.length) {
-    return <></>
+    return null
   }
 
   return (

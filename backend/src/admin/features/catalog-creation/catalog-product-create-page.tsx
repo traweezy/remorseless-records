@@ -376,6 +376,7 @@ const CatalogProductCreatePageContent = memo(() => {
     target.scrollIntoView({ behavior: "smooth", block: "center" })
   }, [])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Changing steps intentionally retries focus after the target panel mounts.
   useEffect(() => {
     const targetId = pendingFocusTargetRef.current
     if (!targetId) {
@@ -489,7 +490,8 @@ const CatalogProductCreatePageContent = memo(() => {
   const handleKindSelect = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const kind = dataTarget(event).dataset?.kind as
-        CatalogCreationKind | undefined
+        | CatalogCreationKind
+        | undefined
       if (!kind || kind === values.kind) {
         return
       }
@@ -513,7 +515,8 @@ const CatalogProductCreatePageContent = memo(() => {
       const target = dataTarget(event)
       const offeringId = target.dataset?.offeringId
       const field = target.dataset?.offeringField as
-        keyof CatalogCreationOffering | undefined
+        | keyof CatalogCreationOffering
+        | undefined
       if (!offeringId || !field) {
         return
       }
@@ -615,7 +618,10 @@ const CatalogProductCreatePageContent = memo(() => {
       const target = dataTarget(event)
       const componentId = target.dataset?.componentId
       const field = target.dataset?.componentField as
-        "productId" | "quantity" | "variantId" | undefined
+        | "productId"
+        | "quantity"
+        | "variantId"
+        | undefined
       if (!componentId || !field) {
         return
       }

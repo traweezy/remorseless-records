@@ -149,14 +149,18 @@ export const resolveCollectionRibbonLabel = (
           ? [metadata["collection"]]
           : []),
       ]
-      metadataCandidates.forEach((entry) => addCandidate(candidates, entry))
+      metadataCandidates.forEach((entry) => {
+        addCandidate(candidates, entry)
+      })
     }
 
     const tagCandidates =
       product.tags
         ?.map((tag) => (typeof tag?.value === "string" ? tag.value.trim() : ""))
         .filter((value): value is string => Boolean(value)) ?? []
-    tagCandidates.forEach((entry) => addCandidate(candidates, entry))
+    tagCandidates.forEach((entry) => {
+      addCandidate(candidates, entry)
+    })
   }
 
   addCandidate(candidates, summary.collectionTitle)
@@ -434,15 +438,19 @@ export const ProductCard = ({
     }
 
     if (isStoreProduct(product)) {
-      product.variants?.forEach((variant) => addLabel(variant?.title))
+      product.variants?.forEach((variant) => {
+        addLabel(variant?.title)
+      })
       product.options?.forEach((option) => {
         if (option?.title?.toLowerCase() === "format") {
-          option.values?.forEach((entry) =>
+          option.values?.forEach((entry) => {
             addLabel(typeof entry?.value === "string" ? entry.value : null)
-          )
+          })
         }
       })
-      product.tags?.forEach((tag) => addLabel(tag?.value))
+      product.tags?.forEach((tag) => {
+        addLabel(tag?.value)
+      })
       const metadata = coerceMetadata(product.metadata)
       if (metadata) {
         addLabel(typeof metadata?.format === "string" ? metadata.format : null)
@@ -543,10 +551,8 @@ export const ProductCard = ({
         >
           <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition md:hover:-translate-y-1 md:hover:border-border/60 md:hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
             {badge ? (
-              <div
-                className="product-card__corner"
-                aria-label={`Collection: ${badge}`}
-              >
+              <div className="product-card__corner">
+                <span className="sr-only">Collection: </span>
                 <span>{badge.toUpperCase()}</span>
               </div>
             ) : null}
@@ -570,10 +576,7 @@ export const ProductCard = ({
             ) : null}
             {isBundle && bundleComponentCount && bundleComponentCount > 0 ? (
               <div className="absolute right-4 top-4 z-40">
-                <span
-                  className="inline-flex items-center rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14rem] text-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] sm:tracking-[0.22rem]"
-                  aria-label={`${bundleComponentCount} items in this bundle`}
-                >
+                <span className="inline-flex items-center rounded-full border border-border/70 bg-background/90 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14rem] text-foreground shadow-[0_10px_24px_-18px_rgba(0,0,0,0.8)] sm:tracking-[0.22rem]">
                   {bundleComponentCount} items
                 </span>
               </div>

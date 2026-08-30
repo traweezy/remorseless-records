@@ -159,7 +159,7 @@ export const mutateCatalogBundleWorkflow = createWorkflow(
     retentionTime: 60 * 60 * 24 * 30,
     timeout: 60,
   },
-  function (input: CatalogBundleMutationInput) {
+  (input: CatalogBundleMutationInput) => {
     const lockKey = transform(
       { aggregateId: input.aggregateId },
       ({ aggregateId }) => `catalog:bundle:${aggregateId}`

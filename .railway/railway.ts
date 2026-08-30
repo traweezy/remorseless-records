@@ -1,7 +1,7 @@
-import { defineRailway, github, preserve, project, service } from "railway/iac";
+import { defineRailway, github, preserve, project, service } from "railway/iac"
 
 // Keep this stable: Railway uses the partial name to scope omit-as-delete.
-export const partial = "applications";
+export const partial = "applications"
 
 const SHARED_BUILD_WATCH_PATTERNS = [
   "/.nvmrc",
@@ -9,20 +9,20 @@ const SHARED_BUILD_WATCH_PATTERNS = [
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",
   "/patches/**",
-] as const;
+] as const
 
 export default defineRailway(() => {
   if (process.env.RAILWAY_IAC_TARGET_ENVIRONMENT !== "staging") {
     throw new Error(
-      "Railway IaC is staging-only until production is explicitly approved.",
-    );
+      "Railway IaC is staging-only until production is explicitly approved."
+    )
   }
 
   const remorselessRecords = github("traweezy/remorseless-records", {
     branch: "staging",
     checkSuites: true,
     rootDirectory: "/",
-  });
+  })
 
   const Backend = service("Backend", {
     source: remorselessRecords,
@@ -96,7 +96,7 @@ export default defineRailway(() => {
       TAX_RATE_LOOKUP_PROVIDER: preserve(),
       TEMPLATE_REPORTER_URL: preserve(),
     },
-  });
+  })
   const Storefront = service("Storefront", {
     source: remorselessRecords,
     build: {
@@ -145,8 +145,8 @@ export default defineRailway(() => {
       REDIS_URL:
         "redis://${{Redis.REDISUSER}}:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379",
     },
-  });
+  })
   return project("store", {
     resources: [Backend, Storefront],
-  });
-});
+  })
+})

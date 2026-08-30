@@ -168,9 +168,8 @@ export const mutateCatalogProductVariantProfilesWorkflow = createWorkflow(
     store: true,
     timeout: 60,
   },
-  function (input: VariantBatchWorkflowInput) {
-    return new WorkflowResponse(mutateCatalogProductVariantProfilesStep(input))
-  }
+  (input: VariantBatchWorkflowInput) =>
+    new WorkflowResponse(mutateCatalogProductVariantProfilesStep(input))
 )
 
 const resolveCatalogProductInventoryLevelsStep = createStep(
@@ -243,7 +242,7 @@ export const createCatalogProductWorkflow = createWorkflow(
     store: true,
     timeout: 120,
   },
-  function (input: CatalogProductCreateCommandInput) {
+  (input: CatalogProductCreateCommandInput) => {
     const lockKey = transform(
       { idempotencyKey: input.idempotencyKey },
       ({ idempotencyKey }) => `catalog:product-create:${idempotencyKey}`

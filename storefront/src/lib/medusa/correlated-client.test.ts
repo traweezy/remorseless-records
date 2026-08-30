@@ -80,9 +80,11 @@ describe("correlatedMedusaFetch", () => {
     await expect(pending).resolves.toBe(response)
     expect(fetchMock).toHaveBeenCalledTimes(2)
     const firstInit = fetchMock.mock.calls[0]?.[1] as
-      { signal?: AbortSignal } | undefined
+      | { signal?: AbortSignal }
+      | undefined
     const secondInit = fetchMock.mock.calls[1]?.[1] as
-      { signal?: AbortSignal } | undefined
+      | { signal?: AbortSignal }
+      | undefined
     const firstSignal = firstInit?.signal
     const secondSignal = secondInit?.signal
     expect(firstSignal).toBeInstanceOf(AbortSignal)

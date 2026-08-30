@@ -327,24 +327,6 @@ const emptyProductForm: ProductFormState = {
   description: "",
 }
 
-const emptyProfileForm: ProfileFormState = {
-  releaseTitle: "",
-  labelId: "",
-  labelLabel: "",
-  productTypeId: "",
-  productTypeLabel: "",
-  releaseDate: "",
-  releaseYear: "",
-  descriptionHtml: "",
-  searchKeywords: "",
-  tracklistJson: "[]",
-  creditsJson: "{}",
-  pressingNotesJson: "{}",
-  merchDetailsJson: "{}",
-  artists: [],
-  references: [],
-}
-
 const emptyBundleForm: BundleFormState = {
   enabled: false,
   bundleType: "fixed",
@@ -1467,6 +1449,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
       refreshProducts,
       refreshReferences,
       selectedProduct,
+      setVariantProfiles,
       variantProfiles,
     ])
 

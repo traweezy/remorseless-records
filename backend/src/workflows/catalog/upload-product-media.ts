@@ -90,7 +90,7 @@ export const uploadCatalogProductMediaWorkflow = createWorkflow(
     store: false,
     timeout: 120,
   },
-  function (input: CatalogMediaUploadWorkflowInput) {
+  (input: CatalogMediaUploadWorkflowInput) => {
     const lockKey = transform(
       { idempotencyKey: input.idempotencyKey },
       ({ idempotencyKey }) => `catalog:media-upload:${idempotencyKey}`

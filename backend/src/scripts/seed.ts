@@ -98,7 +98,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
       ],
     },
   })
-  const region = ensure(regionResult[0], "Region creation failed")
+  ensure(regionResult[0], "Region creation failed")
   logger.info("Finished seeding regions.")
 
   logger.info("Seeding tax regions...")

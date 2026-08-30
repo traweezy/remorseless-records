@@ -85,22 +85,28 @@ export const loadCatalogAuthoringAudit = async (
     ])
 
   return buildCatalogAuthoringAudit({
-    bundles: bundleRecords.map((bundle): CatalogAuthoringAuditBundle => ({
-      bundleType: bundle.bundle_type,
-      productId: bundle.product_id,
-    })),
-    products: productRecords.map((product): CatalogAuthoringAuditProduct => ({
-      handle: product.handle?.trim() || null,
-      id: product.id,
-      metadata: product.metadata ?? null,
-      nativeProductType: product.type?.value?.trim() || null,
-      status: product.status?.trim() || null,
-      title: product.title?.trim() || "Untitled product",
-    })),
-    profiles: profileRecords.map((profile): CatalogAuthoringAuditProfile => ({
-      productId: profile.product_id,
-      productTypeId: profile.product_type_id ?? null,
-    })),
+    bundles: bundleRecords.map(
+      (bundle): CatalogAuthoringAuditBundle => ({
+        bundleType: bundle.bundle_type,
+        productId: bundle.product_id,
+      })
+    ),
+    products: productRecords.map(
+      (product): CatalogAuthoringAuditProduct => ({
+        handle: product.handle?.trim() || null,
+        id: product.id,
+        metadata: product.metadata ?? null,
+        nativeProductType: product.type?.value?.trim() || null,
+        status: product.status?.trim() || null,
+        title: product.title?.trim() || "Untitled product",
+      })
+    ),
+    profiles: profileRecords.map(
+      (profile): CatalogAuthoringAuditProfile => ({
+        productId: profile.product_id,
+        productTypeId: profile.product_type_id ?? null,
+      })
+    ),
     references: referenceRecords.map(
       (reference): CatalogAuthoringAuditReference => ({
         id: reference.id,

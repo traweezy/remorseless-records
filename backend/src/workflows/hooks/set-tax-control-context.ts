@@ -43,6 +43,9 @@ const PROCESSABLE_PAYMENT_STATUSES = new Set([
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" ? (value as UnknownRecord) : null
 
+const asUnknownArray = (value: unknown): unknown[] =>
+  Array.isArray(value) ? value.map((item: unknown) => item) : []
+
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 
@@ -379,13 +382,11 @@ const resolveFrozenCartQuote = async (
 const identityFromTaxLines = (
   orderOrCart: UnknownRecord
 ): FrozenTaxQuote | null => {
-  const items = Array.isArray(orderOrCart.items) ? orderOrCart.items : []
-  const shippingMethods = Array.isArray(orderOrCart.shipping_methods)
-    ? orderOrCart.shipping_methods
-    : []
+  const items = asUnknownArray(orderOrCart.items)
+  const shippingMethods = asUnknownArray(orderOrCart.shipping_methods)
   const taxLines = [...items, ...shippingMethods].flatMap((value) => {
     const record = asRecord(value)
-    return Array.isArray(record?.tax_lines) ? record.tax_lines : []
+    return asUnknownArray(record?.tax_lines)
   })
   const identities = taxLines
     .map(asRecord)

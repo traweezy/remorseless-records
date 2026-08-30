@@ -65,7 +65,11 @@ type AssociationErrorReason =
 type DisputeStatus = Stripe.Dispute.Status
 type PaymentIntentStatus = Stripe.PaymentIntent.Status
 type RefundStatus =
-  "canceled" | "failed" | "pending" | "requires_action" | "succeeded"
+  | "canceled"
+  | "failed"
+  | "pending"
+  | "requires_action"
+  | "succeeded"
 type UnknownRecord = Record<string, unknown>
 
 export type StripeEvidenceClient = Pick<

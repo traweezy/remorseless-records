@@ -8,8 +8,9 @@ export const register = async (): Promise<void> => {
   })
 
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { registerStorefrontObservability } =
-      await import("@/lib/observability/register")
+    const { registerStorefrontObservability } = await import(
+      "@/lib/observability/register"
+    )
     registerStorefrontObservability()
   }
 }
@@ -23,8 +24,9 @@ export const onRequestError: Instrumentation.onRequestError = async (
     return
   }
 
-  const { logStorefrontRequestError } =
-    await import("@/lib/observability/request-completion")
+  const { logStorefrontRequestError } = await import(
+    "@/lib/observability/request-completion"
+  )
   const digest =
     typeof error === "object" &&
     error !== null &&

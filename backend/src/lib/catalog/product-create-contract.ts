@@ -119,8 +119,8 @@ const hasNamedReference = (
 ): boolean =>
   Boolean(
     input?.referenceValueId?.trim() ||
-    input?.label?.trim() ||
-    input?.value?.trim()
+      input?.label?.trim() ||
+      input?.value?.trim()
   )
 
 const hasPrimaryArtist = (
@@ -132,8 +132,8 @@ const hasPrimaryArtist = (
         (artist.role ?? "primary") === "primary" &&
         Boolean(
           artist.artistId?.trim() ||
-          artist.displayName?.trim() ||
-          artist.name?.trim()
+            artist.displayName?.trim() ||
+            artist.name?.trim()
         )
     )
   )

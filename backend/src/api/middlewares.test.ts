@@ -59,7 +59,9 @@ type PinnedSortableRoute = {
   matcher: string | RegExp
 }
 
-type PinnedRouteSorter = new (routes: ReadonlyArray<PinnedSortableRoute>) => {
+type PinnedRouteSorter = new (
+  routes: ReadonlyArray<PinnedSortableRoute>
+) => {
   sort: () => PinnedSortableRoute[]
 }
 

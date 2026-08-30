@@ -1,5 +1,3 @@
-import type Stripe from "stripe"
-
 import {
   readStripeTaxReadiness,
   StripeTaxReadinessClientError,

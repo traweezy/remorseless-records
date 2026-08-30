@@ -102,7 +102,7 @@ export const mutateCatalogVariantProfileWorkflow = createWorkflow(
     store: true,
     timeout: 60,
   },
-  function (input: CatalogVariantProfileMutationInput) {
+  (input: CatalogVariantProfileMutationInput) => {
     const lockKey = transform(
       { aggregateId: input.aggregateId },
       ({ aggregateId }) => `catalog:variant-profile:${aggregateId}`

@@ -1,4 +1,3 @@
-import type CatalogModuleService from "../../modules/catalog/service"
 import type { CatalogProductProfileRecord } from "../../modules/catalog/serializers"
 import {
   catalogProductProfileUpsertSchema,

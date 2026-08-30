@@ -130,7 +130,9 @@ export const mapStoreProductToRelatedSummary = (
 
   const formats = new Set<string>()
 
-  variants.forEach((variant) => addCanonicalFormat(formats, variant.title))
+  variants.forEach((variant) => {
+    addCanonicalFormat(formats, variant.title)
+  })
 
   const formatOption = product.options?.find(
     (option) => option.title?.toLowerCase() === "format"
@@ -152,7 +154,9 @@ export const mapStoreProductToRelatedSummary = (
         : []),
     ]
 
-    metaCandidates.forEach((entry) => addCanonicalFormat(formats, entry))
+    metaCandidates.forEach((entry) => {
+      addCanonicalFormat(formats, entry)
+    })
   }
 
   const categoryGroups = extractProductCategoryGroups(product.categories, {
@@ -234,10 +238,16 @@ export const mapStoreProductToSearchHit = (
   const stockStatus = summarizeStockStatus(variants)
 
   const inferredFormats = new Set<string>()
-  summary.formats.forEach((fmt) => addCanonicalFormat(inferredFormats, fmt))
-  categoryTypes.forEach((label) => addCanonicalFormat(inferredFormats, label))
+  summary.formats.forEach((fmt) => {
+    addCanonicalFormat(inferredFormats, fmt)
+  })
+  categoryTypes.forEach((label) => {
+    addCanonicalFormat(inferredFormats, label)
+  })
   addCanonicalFormat(inferredFormats, derivedFormat)
-  variantTitles.forEach((title) => addCanonicalFormat(inferredFormats, title))
+  variantTitles.forEach((title) => {
+    addCanonicalFormat(inferredFormats, title)
+  })
 
   const canonicalFormat = Array.from(inferredFormats)[0] ?? null
 

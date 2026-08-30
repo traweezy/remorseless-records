@@ -78,7 +78,9 @@ const findArtistCategory = (
 
   for (const category of categories) {
     let current = category as
-      { handle?: string | null; parent_category?: unknown } | null | undefined
+      | { handle?: string | null; parent_category?: unknown }
+      | null
+      | undefined
     let hasArtistAncestor = false
     let depth = 0
 

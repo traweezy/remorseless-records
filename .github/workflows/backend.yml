@@ -166,7 +166,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: ESLint (backend)
+      - name: Biome (backend)
         run: pnpm --filter backend run lint
 
   codeql:

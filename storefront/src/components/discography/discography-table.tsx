@@ -235,7 +235,6 @@ export const sortDiscographyEntries = (
         return compareNullableTimestamp(left, right, "desc")
       case "oldest":
         return compareNullableTimestamp(left, right, "asc")
-      case "title-asc":
       default:
         return left.title.localeCompare(right.title)
     }
@@ -318,6 +317,7 @@ const Cover = memo(({ entry }: { entry: DiscographyEntry }) => {
         <div
           className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.08rem] text-muted-foreground"
           aria-label={`${entry.title} has no cover artwork`}
+          role="img"
         >
           No art
         </div>
@@ -515,6 +515,7 @@ const DiscographyTable = memo(
       )
     }, [])
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: The item count intentionally retriggers measurement after filtering.
     useLayoutEffect(() => {
       updateScrollMargin()
       const list = listRef.current

@@ -19,7 +19,10 @@ export type ActiveCheckoutCart = {
 }
 
 export type CheckoutCartProblemCode =
-  "cart_completed" | "cart_empty" | "cart_missing" | "checkout_unavailable"
+  | "cart_completed"
+  | "cart_empty"
+  | "cart_missing"
+  | "checkout_unavailable"
 
 export type ActiveCheckoutCartResult =
   | { ok: true; value: ActiveCheckoutCart }

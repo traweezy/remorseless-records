@@ -22,6 +22,20 @@ type WorkflowNode = {
   noCompensation?: boolean
 }
 
+type WorkflowHandler = {
+  compensate?: WorkflowStepHandler
+  invoke: WorkflowStepHandler
+}
+
+type WorkflowDefinition = {
+  flow_: WorkflowNode
+  handlers_: Map<string, WorkflowHandler>
+}
+
+const workflowRegistry = WorkflowManager as unknown as {
+  getWorkflow: (name: string) => unknown
+}
+
 const expectedBoundaries: WorkflowBoundary[] = [
   { action: "acquire-lock-step", reversible: true },
   { action: "begin-catalog-product-creation", reversible: true },
@@ -64,12 +78,16 @@ const commandFixture = () => ({
   requestSha256: "workflow_contract_hash",
 })
 
-const getWorkflow = () => {
-  const workflow = WorkflowManager.getWorkflow("create-catalog-product")
-  if (!workflow) {
+const getWorkflow = (): WorkflowDefinition => {
+  const workflow = workflowRegistry.getWorkflow("create-catalog-product")
+  if (!workflow || typeof workflow !== "object") {
     throw new Error("The catalog product creation workflow is not registered.")
   }
-  return workflow
+  const definition = workflow as Partial<WorkflowDefinition>
+  if (!definition.flow_ || !(definition.handlers_ instanceof Map)) {
+    throw new Error("The catalog product creation workflow is malformed.")
+  }
+  return definition as WorkflowDefinition
 }
 
 const readBoundaries = (): WorkflowBoundary[] => {
@@ -137,10 +155,7 @@ const errorMessage = (error: unknown) => {
 
 describe("catalog product creation workflow contract", () => {
   const workflow = getWorkflow()
-  let originalHandlers: Map<
-    string,
-    { compensate?: WorkflowStepHandler; invoke: WorkflowStepHandler }
-  >
+  let originalHandlers: Map<string, WorkflowHandler>
 
   beforeEach(() => {
     originalHandlers = new Map(workflow.handlers_)

@@ -56,8 +56,9 @@ describe("structured data helpers", () => {
 
   it("exports top-level organization and website schemas", async () => {
     const { siteUrl, logoUrl, ogImage } = buildMocks()
-    const { organizationJsonLd, webSiteJsonLd } =
-      await import("@/lib/seo/structured-data")
+    const { organizationJsonLd, webSiteJsonLd } = await import(
+      "@/lib/seo/structured-data"
+    )
 
     expect(organizationJsonLd).toMatchObject({
       "@type": "MusicStore",
@@ -73,8 +74,9 @@ describe("structured data helpers", () => {
 
   it("builds breadcrumb and item list json-ld", async () => {
     buildMocks()
-    const { buildBreadcrumbJsonLd, buildItemListJsonLd } =
-      await import("@/lib/seo/structured-data")
+    const { buildBreadcrumbJsonLd, buildItemListJsonLd } = await import(
+      "@/lib/seo/structured-data"
+    )
 
     const items = [
       { name: faker.word.words(1), url: faker.internet.url() },
@@ -159,8 +161,9 @@ describe("structured data helpers", () => {
 
   it("returns null variant when product has no variants", async () => {
     buildMocks()
-    const { selectPrimaryVariantForJsonLd } =
-      await import("@/lib/seo/structured-data")
+    const { selectPrimaryVariantForJsonLd } = await import(
+      "@/lib/seo/structured-data"
+    )
     const product = { variants: [] } as unknown as StoreProduct
     expect(selectPrimaryVariantForJsonLd(product)).toBeNull()
   })
@@ -200,8 +203,9 @@ describe("structured data helpers", () => {
 
   it("derives variant price and currency from calculated fields", async () => {
     buildMocks()
-    const { selectPrimaryVariantForJsonLd } =
-      await import("@/lib/seo/structured-data")
+    const { selectPrimaryVariantForJsonLd } = await import(
+      "@/lib/seo/structured-data"
+    )
 
     const amount = faker.number.int({ min: 10, max: 99 })
     const product = {

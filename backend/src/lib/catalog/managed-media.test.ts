@@ -113,9 +113,11 @@ describe("managed catalog media", () => {
 
   it("shares one in-flight upload for identical checksums", async () => {
     const uploads = new Map<string, Promise<{ id: string }>>()
-    const createUpload = jest.fn(async (): Promise<{ id: string }> => ({
-      id: "file_1",
-    }))
+    const createUpload = jest.fn(
+      async (): Promise<{ id: string }> => ({
+        id: "file_1",
+      })
+    )
 
     await expect(
       Promise.all([

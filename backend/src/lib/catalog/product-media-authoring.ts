@@ -152,7 +152,8 @@ const resolveMediaAsset = async (
       sharedContext
     )
     const asset = firstCatalogResult(updated) as
-      CatalogMediaAssetRecord | undefined
+      | CatalogMediaAssetRecord
+      | undefined
     if (!asset) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
@@ -196,7 +197,8 @@ const resolveMediaAsset = async (
     sharedContext
   )
   const asset = firstCatalogResult(created) as
-    CatalogMediaAssetRecord | undefined
+    | CatalogMediaAssetRecord
+    | undefined
   if (!asset) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,

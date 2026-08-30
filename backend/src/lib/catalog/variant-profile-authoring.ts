@@ -39,7 +39,9 @@ export type {
 } from "./variant-profile-contract"
 
 type NamedReferenceInput =
-  CatalogVariantProfileMutationInput["patch"]["format"] | null | undefined
+  | CatalogVariantProfileMutationInput["patch"]["format"]
+  | null
+  | undefined
 
 const resolveProductProfileId = async (
   catalogService: CatalogService,

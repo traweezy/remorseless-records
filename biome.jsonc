@@ -1,0 +1,178 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!Default",
+      "!**/node_modules",
+      "!backend/.medusa",
+      "!backend/coverage",
+      "!backend/dist",
+      "!backend/medusa-config.js",
+      "!coverage",
+      "!patches",
+      "!storefront/.next",
+      "!storefront/coverage",
+      "!storefront/e2e/playwright-report",
+      "!storefront/next-env.d.ts",
+      "!storefront/public",
+      "!storefront/test-results"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 80
+  },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "always",
+      "jsxQuoteStyle": "double",
+      "quoteStyle": "double",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5"
+    },
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    }
+  },
+  "json": {
+    "formatter": {
+      "expand": "auto"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "assist": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "includes": [
+      "backend/src/**/*.{ts,tsx}",
+      "storefront/src/**/*.{js,jsx,ts,tsx}"
+    ],
+    "rules": {
+      "preset": "recommended",
+      "complexity": {
+        "useLiteralKeys": "off",
+        "useOptionalChain": "off"
+      },
+      "correctness": {
+        "noChildrenProp": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "useImportType": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noControlCharactersInRegex": "off",
+        "noRedeclare": "off"
+      },
+      "a11y": {
+        "useFocusableInteractive": "off",
+        "useSemanticElements": "off"
+      },
+      "performance": {
+        "noImgElement": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["docs/openapi/custom-endpoints.generated.json"],
+      "formatter": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": ["backend/src/**/*.{ts,tsx}"],
+      "linter": {
+        "rules": {
+          "a11y": "off",
+          "correctness": {
+            "noUnusedFunctionParameters": "off"
+          },
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/workflows", "@/workflows/**"],
+                    "message": "Import workflows by a relative path so production builds do not register a second source-tree workflow graph."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["storefront/src/**/*.{js,jsx,ts,tsx}"],
+      "linter": {
+        "domains": {
+          "next": "recommended",
+          "react": "recommended",
+          "test": "recommended",
+          "types": "recommended"
+        },
+        "rules": {
+          "nursery": {
+            "noFloatingPromises": "error"
+          },
+          "style": {
+            "useImportType": "error"
+          },
+          "performance": {
+            "noImgElement": "error"
+          },
+          "suspicious": {
+            "noMisplacedAssertion": "off"
+          }
+        }
+      }
+    },
+    // These three reviewed sinks accept only sanitized or application-owned
+    // constants and are protected by the request CSP nonce where applicable.
+    {
+      "includes": [
+        "storefront/src/app/news/\\[slug\\]/page.tsx",
+        "storefront/src/components/json-ld.tsx",
+        "storefront/src/components/zod-strict-csp-bootstrap.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "security": {
+            "noDangerouslySetInnerHtml": "off"
+          }
+        }
+      }
+    },
+    // Biome currently treats every ARIA separator as an adjustable widget;
+    // this component is the non-interactive separator pattern from WAI-ARIA.
+    {
+      "includes": ["storefront/src/components/ui/separator.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useAriaPropsForRole": "off"
+          }
+        }
+      }
+    }
+  ]
+}

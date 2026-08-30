@@ -46,8 +46,9 @@ describe("products data layer", () => {
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
 
-    const { getHomepageProducts, getProductByHandle } =
-      await import("@/lib/data/products")
+    const { getHomepageProducts, getProductByHandle } = await import(
+      "@/lib/data/products"
+    )
     await expect(getHomepageProducts()).resolves.toEqual([
       expect.objectContaining({ id: firstId, handle: firstHandle }),
     ])
@@ -102,8 +103,9 @@ describe("products data layer", () => {
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
 
-    const { getCollectionProductsByHandle } =
-      await import("@/lib/data/products")
+    const { getCollectionProductsByHandle } = await import(
+      "@/lib/data/products"
+    )
     const products = await getCollectionProductsByHandle(collectionHandle, 2)
     expect(products.map((product) => product.handle)).toEqual([
       validFirst,
@@ -175,8 +177,9 @@ describe("products data layer", () => {
       resolveRegionId: vi.fn().mockResolvedValue(faker.string.uuid()),
     }))
 
-    const { getCollectionProductsByHandle } =
-      await import("@/lib/data/products")
+    const { getCollectionProductsByHandle } = await import(
+      "@/lib/data/products"
+    )
     await expect(
       getCollectionProductsByHandle(collectionHandle)
     ).resolves.toEqual([])

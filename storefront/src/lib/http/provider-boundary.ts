@@ -78,7 +78,8 @@ const safelyRecordProviderMetric = (
 }
 
 export type ProviderRetryDecision =
-  { retry: false } | { response?: Response; retry: true }
+  | { retry: false }
+  | { response?: Response; retry: true }
 
 export type ProviderRetryEvent = {
   attempt: number

@@ -13,7 +13,6 @@ import type {
   CatalogBundleInventoryLinkState,
   CatalogBundleMutationInput,
   CatalogBundleMutationResult,
-  CatalogBundleProfileState,
   CatalogBundleStateSnapshot,
   JsonObject,
 } from "./bundle-authoring"
@@ -143,21 +142,23 @@ class CatalogModuleService extends MedusaService({
         version: profile.version,
         metadata: asJsonObject(profile.metadata),
       },
-      components: components.map((component): CatalogBundleComponentState => ({
-        id: component.id,
-        bundle_profile_id: component.bundle_profile_id,
-        component_product_id: component.component_product_id,
-        component_variant_id: component.component_variant_id ?? null,
-        component_inventory_item_id:
-          component.component_inventory_item_id ?? null,
-        title: component.title ?? null,
-        variant_title: component.variant_title ?? null,
-        sku: component.sku ?? null,
-        quantity: component.quantity,
-        sort_order: component.sort_order,
-        is_required: component.is_required,
-        metadata: asJsonObject(component.metadata),
-      })),
+      components: components.map(
+        (component): CatalogBundleComponentState => ({
+          id: component.id,
+          bundle_profile_id: component.bundle_profile_id,
+          component_product_id: component.component_product_id,
+          component_variant_id: component.component_variant_id ?? null,
+          component_inventory_item_id:
+            component.component_inventory_item_id ?? null,
+          title: component.title ?? null,
+          variant_title: component.variant_title ?? null,
+          sku: component.sku ?? null,
+          quantity: component.quantity,
+          sort_order: component.sort_order,
+          is_required: component.is_required,
+          metadata: asJsonObject(component.metadata),
+        })
+      ),
     }
   }
 

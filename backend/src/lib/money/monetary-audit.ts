@@ -14,7 +14,9 @@ export type MonetaryRecordSource =
   | "transactional_record"
 
 export type MonetaryAuditAction =
-  "convert_legacy_minor_to_major" | "manual_review" | "preserve_major"
+  | "convert_legacy_minor_to_major"
+  | "manual_review"
+  | "preserve_major"
 
 export type MonetaryAuditInput = {
   amount: number

@@ -122,8 +122,9 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
         {isLoading && !cart ? (
           <div
             className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 py-6 sm:px-6"
-            aria-label="Loading cart"
+            aria-live="polite"
           >
+            <span className="sr-only">Loading cart</span>
             {Array.from({ length: 3 }).map((_, index) => (
               <Skeleton
                 key={`cart-drawer-loading-${index}`}

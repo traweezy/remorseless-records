@@ -67,7 +67,8 @@ describe("medusa client initialization", () => {
 
     await storeClient.product.list({ limit: 1 })
     const storeInit = fetch.mock.calls[1]?.[1] as
-      { signal?: unknown } | undefined
+      | { signal?: unknown }
+      | undefined
     expect(storeInit?.signal).toBeInstanceOf(AbortSignal)
   })
 

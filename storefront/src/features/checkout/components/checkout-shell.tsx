@@ -228,12 +228,12 @@ export const CheckoutShell = memo(() => {
   const selectedShippingMethod = checkout?.cart.shippingMethod
   const shippingComplete = Boolean(
     selectedShippingMethod &&
-    !isLoadingShippingOptions &&
-    shippingOptions.some(
-      (option) =>
-        option.id === selectedShippingMethod.optionId &&
-        !option.insufficientInventory
-    )
+      !isLoadingShippingOptions &&
+      shippingOptions.some(
+        (option) =>
+          option.id === selectedShippingMethod.optionId &&
+          !option.insufficientInventory
+      )
   )
   const headerCopy = useMemo(
     () =>

@@ -5,6 +5,7 @@ import { taxQuoteIdentityFromCart } from "./quote"
 import {
   StripePaymentBindingClientError,
   type StripePaymentBindingClient,
+  type StripePaymentBindingResult,
   type StripePaymentBindingRetryEvent,
   verifyAndLinkStripePayment,
 } from "./stripe-payment-binding-client"
@@ -147,7 +148,7 @@ export const bindCheckoutTaxToPayment = async ({
     }
   }
 
-  let binding
+  let binding: StripePaymentBindingResult
   try {
     binding = await verifyAndLinkStripePayment({
       amountMinor,

@@ -9,10 +9,18 @@ const DISCOGRAPHY_REVALIDATE_SECONDS = 60
 const DISCOGRAPHY_MAX_PAGES = 25
 
 export type DiscographyAvailability =
-  "in_print" | "out_of_print" | "preorder" | "digital_only" | "unknown"
+  | "in_print"
+  | "out_of_print"
+  | "preorder"
+  | "digital_only"
+  | "unknown"
 
 export type DiscographyLinkHealth =
-  "healthy" | "missing" | "not_applicable" | "unknown" | "unpublished"
+  | "healthy"
+  | "missing"
+  | "not_applicable"
+  | "unknown"
+  | "unpublished"
 
 export type DiscographySourceMode = "catalog_product" | "manual"
 

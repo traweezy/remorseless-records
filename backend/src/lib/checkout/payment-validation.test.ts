@@ -238,8 +238,8 @@ describe("checkout payment validation", () => {
 
   it("rejects a mismatched tax provider generation at the same total", () => {
     const cart = validCart()
-    cart.payment_collection.payment_sessions[0]!.data.metadata.rr_tax_generation =
-      "2"
+    cart.payment_collection
+      .payment_sessions[0]!.data.metadata.rr_tax_generation = "2"
 
     expectCode(cart, "checkout_tax_quote_invalid")
   })

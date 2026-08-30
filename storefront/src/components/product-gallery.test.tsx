@@ -5,7 +5,7 @@ import ProductGallery from "@/components/product-gallery"
 
 vi.mock("next/image", () => ({
   default: ({ alt, src }: { alt: string; src: string }) => (
-    // eslint-disable-next-line @next/next/no-img-element
+    // biome-ignore lint/performance/noImgElement: This test double intentionally renders the browser element that Next Image wraps.
     <img alt={alt} src={src} />
   ),
 }))

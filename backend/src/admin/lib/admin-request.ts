@@ -6,7 +6,11 @@ import { sdk } from "./sdk"
 const DEFAULT_TIMEOUT_MS = 15_000
 
 export type AdminRequestFailureKind =
-  "cancelled" | "http" | "invalid-response" | "timeout" | "unknown"
+  | "cancelled"
+  | "http"
+  | "invalid-response"
+  | "timeout"
+  | "unknown"
 
 export class AdminRequestError extends Error {
   readonly kind: AdminRequestFailureKind

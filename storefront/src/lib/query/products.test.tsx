@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook } from "@testing-library/react"
-import { type ReactNode } from "react"
+import type { ReactNode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { searchProductsBrowser } from "@/lib/search/browser"

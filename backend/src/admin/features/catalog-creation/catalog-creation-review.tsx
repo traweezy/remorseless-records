@@ -426,7 +426,8 @@ const CatalogDetailPreview = memo<{
           <PreviewSection title="Bundle contents">
             <Text size="small">
               {values.bundleComponents.length} included{" "}
-              {values.bundleComponents.length === 1 ? "product" : "products"};
+              {values.bundleComponents.length === 1 ? "product" : "products"}
+              {"; "}
               content changes with the selected bundle format.
             </Text>
           </PreviewSection>

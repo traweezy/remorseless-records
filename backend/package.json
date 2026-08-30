@@ -44,7 +44,7 @@
     "money:migrate-major": "ts-node --swc ./src/cli/migrate-monetary-units.ts",
     "test": "jest --runInBand --passWithNoTests",
     "test:coverage": "jest --runInBand --passWithNoTests --coverage",
-    "lint": "eslint --ext .ts,.tsx --max-warnings=0 src"
+    "lint": "pnpm --dir .. exec biome check --error-on-warnings backend/src"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1095.0",
@@ -114,7 +114,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
     "@medusajs/test-utils": "^2.18.0",
     "@mikro-orm/cli": "6.6.14",
     "@swc/core": "^1.15.46",
@@ -126,13 +125,9 @@
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@types/sanitize-html": "2.16.1",
-    "@typescript-eslint/eslint-plugin": "^8.65.0",
-    "@typescript-eslint/parser": "^8.65.0",
-    "eslint": "^9.39.5",
     "jest": "^30.4.2",
     "prop-types": "^15.8.1",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.65.0"
+    "typescript": "^5.9.3"
   },
   "packageManager": "pnpm@11.17.0",
   "engines": {

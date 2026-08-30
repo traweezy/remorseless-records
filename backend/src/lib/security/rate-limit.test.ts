@@ -31,7 +31,8 @@ describe("Backend distributed rate limiting", () => {
     await consumeRateLimit("192.0.2.50", policy)
 
     const evalOptions = evalMock.mock.calls[0]?.[1] as
-      { keys?: string[] } | undefined
+      | { keys?: string[] }
+      | undefined
     const redisKey = evalOptions?.keys?.[0]
     expect(redisKey).toMatch(
       /^rr:rate:v1:backend:test:distributed:[a-f0-9]{64}$/

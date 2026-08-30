@@ -241,7 +241,8 @@ export const buildProductSlugParts = (
       : coerceString(
           (
             (source as HttpTypes.StoreProduct).collection as
-              { title?: unknown } | undefined
+              | { title?: unknown }
+              | undefined
           )?.title
         )
 
@@ -331,7 +332,8 @@ export const extractProductArtistNames = (
       : coerceString(
           (
             (source as HttpTypes.StoreProduct).collection as
-              { title?: unknown } | undefined
+              | { title?: unknown }
+              | undefined
           )?.title
         )
   const parsedArtist = parseArtistAlbumFromTitle(title, collectionTitle).artist
