@@ -294,11 +294,12 @@ test("homepage hydrates every curated shelf without client errors", async ({
   await expect(
     page.getByRole("button", { name: /^(Play|Pause) .+ carousel$/ })
   ).toHaveCount(0)
+  const newInStore = page.getByRole("region", { name: "New in Store" })
   await expect(
-    page.locator('[aria-label="Collection: New"]').first()
+    newInStore.getByText("NEW", { exact: true }).first()
   ).toBeVisible()
   await expect(
-    page.locator('[aria-label="Collection: New Release"]')
+    newInStore.getByText("NEW RELEASE", { exact: true })
   ).toHaveCount(0)
 
   await page.waitForTimeout(500)
