@@ -820,7 +820,7 @@ single-attempt. The generated OpenAPI check inventories all route sources
 deterministically and is wired into both the repository lint gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
-typechecks pass. Backend passes 1,081 tests across 193 suites. Storefront passes
+typechecks pass. Backend passes 1,135 tests across 194 suites. Storefront passes
 658 tests across 120 files with 92.99% statement, 86.01% branch, 93.98%
 function, and 92.94% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
@@ -2328,6 +2328,10 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       shared deadline, disable nested SDK retries, validate the complete
       response shape and key/account mode, and redact terminal errors and retry
       telemetry.
+- [x] Bound Stripe payment-intent, calculation, and tax-hook operations under
+      one shared deadline, disable nested SDK retries, preserve one idempotency
+      key across update attempts, validate the complete binding acknowledgement,
+      and redact terminal errors and retry telemetry.
 - [ ] Validate tax cache TTLs at startup and bound or purge in-memory caches.
 - [ ] Configure a reviewed monitoring ZIP before enabling paid quota probes.
 - [ ] Complete the filing-record and tax-control runbooks.
@@ -2390,8 +2394,13 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       deadline, disables nested SDK retries, permits only one bounded transient
       retry per safe GET, rejects rate-limit retries and incomplete pagination,
       strictly validates settings and registrations, and emits only fixed retry
-      metadata. Stripe Tax payment-binding and evidence/lifecycle calls plus
-      the other provider families remain.
+      metadata. Stripe payment binding now retrieves the PaymentIntent and
+      calculation concurrently and performs the tax-hook update under one
+      shared deadline, disables nested SDK retries, preserves one idempotency
+      key across bounded update retries, rejects rate-limit retries, strictly
+      validates identity, amount, currency, mode, metadata, status, calculation,
+      hook, and update acknowledgement, and emits only fixed retry metadata.
+      Stripe evidence/lifecycle calls plus the other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.

@@ -107,6 +107,26 @@ rate must also agree. One Stripe Tax calculation can bind to one PaymentIntent.
 The purpose-bound HMAC proof for `/store/checkout/tax-link` cannot be replayed
 against the checkout status endpoint.
 
+The binding boundary retrieves the PaymentIntent and optional Stripe Tax
+calculation concurrently, then performs any required hook update within one
+shared eight-second deadline. The Stripe SDK's nested retries are disabled;
+each read or update can make one bounded transient retry, while 429 and other
+non-retryable 4xx responses remain single-attempt. Both update attempts carry
+the same fingerprint-derived idempotency key. Before evidence is recorded, the
+boundary validates the response discriminators and IDs, integer amounts,
+currency, test/live mode, status, exact provider metadata, calculation expiry,
+existing hook, and final update acknowledgement. Only
+`requires_payment_method` and `requires_confirmation` can receive a first-time
+hook. An exact existing hook is re-verified as an idempotent replay; a different
+hook, late status, malformed response, or changed mode fails closed.
+
+Retry warnings contain only the operation, reason class, and attempt count.
+Provider messages, request details, customer data, payment metadata, and
+transport payloads are never copied into terminal errors or logs. Do not use a
+shared staging cart or PaymentIntent to smoke-test this mutating route. Use the
+deterministic boundary suite plus read-only exact-deployment health and runtime
+evidence unless a disposable checkout fixture has been explicitly approved.
+
 ## Evidence and scheduled reconciliation
 
 The `tax_quote_evidences` table contains opaque IDs and operational status, not

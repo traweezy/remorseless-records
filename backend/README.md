@@ -451,6 +451,19 @@ registration identifiers. Malformed or paginated responses fail closed. Retry
 logs contain only the operation, reason class, and attempt count; terminal
 readiness output never copies Stripe response text or registration data.
 
+Stripe payment binding retrieves the PaymentIntent and, for Stripe Tax, its
+calculation concurrently, then performs any required hook update inside one
+shared eight-second deadline. The canceling fetch transport is explicit, SDK
+retries are disabled, and each operation can make at most one bounded transient
+retry; the update reuses one fingerprint-derived idempotency key. Rate limits
+and non-retryable 4xx responses remain single-attempt. The boundary validates
+the exact object identities, amount, currency, mode, status, tax metadata,
+calculation expiry, existing hook, and update acknowledgement. It links only a
+pre-confirmation PaymentIntent, treats an exact existing hook as an idempotent
+replay, and fails closed on a changed or malformed provider response. Retry
+logs contain only operation, reason class, and attempt count; terminal errors
+never copy Stripe response text or payment metadata.
+
 An authenticated Medusa Admin can review readiness, quota, exact paginated
 checkout impact, payment evidence, and an immutable provider-switch history at
 **Settings → Tax control**. The current setup is read-only; an explicit provider action
@@ -479,7 +492,9 @@ purpose-bound `CHECKOUT_BFF_SECRET` proof before returning a client secret and
 again before cart completion. The backend verifies the Medusa cart, collection,
 session, Stripe PaymentIntent, tax fingerprint, amount, currency, and—when
 Stripe Tax is active—the unexpired calculation. One calculation can be attached
-to only one PaymentIntent.
+to only one PaymentIntent. Acceptance checks must not call this mutating route
+against a shared cart or PaymentIntent; deterministic boundary tests and
+read-only health/runtime evidence cover ordinary staging deployments.
 
 Non-PII evidence is reconciled on `order.placed`, `payment.captured`, and
 `payment.refunded`, with an hourly bounded safety-net job. It records successful

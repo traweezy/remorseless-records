@@ -176,9 +176,11 @@ describe("bindCheckoutTaxToPayment", () => {
           inputs: { tax: { calculation: "taxcalc_test" } },
         },
       }),
-      {
+      expect.objectContaining({
         idempotencyKey: `rr-tax-link-pi_test-${fingerprint}`,
-      },
+        maxNetworkRetries: 0,
+        timeout: expect.any(Number),
+      }),
     );
     expect(service.recordTaxQuoteEvidence).toHaveBeenCalledWith(
       expect.objectContaining({

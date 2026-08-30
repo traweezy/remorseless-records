@@ -1,16 +1,16 @@
-import type Stripe from "stripe";
 import { MathBN, MedusaError } from "@medusajs/framework/utils";
 
 import { validateCheckoutPayment } from "../checkout/payment-validation";
 import { taxQuoteIdentityFromCart } from "./quote";
+import {
+  StripePaymentBindingClientError,
+  type StripePaymentBindingClient,
+  type StripePaymentBindingRetryEvent,
+  verifyAndLinkStripePayment,
+} from "./stripe-payment-binding-client";
 import type TaxControlModuleService from "../../modules/tax-control/service";
 
 type UnknownRecord = Record<string, unknown>;
-
-const LINKABLE_PAYMENT_STATUSES = new Set([
-  "requires_confirmation",
-  "requires_payment_method",
-]);
 
 const PROCESSABLE_SESSION_STATUSES = new Set([
   "authorized",
@@ -60,33 +60,26 @@ const paymentSessionFrom = (cart: UnknownRecord): UnknownRecord => {
   return sessions[0]!;
 };
 
-const assertIntentMetadata = (
-  intent: Stripe.PaymentIntent,
-  quote: ReturnType<typeof taxQuoteIdentityFromCart>,
-  cartId: string,
-): void => {
-  const generation = Number(intent.metadata.rr_tax_generation);
-  const rate = Number(intent.metadata.rr_tax_rate_percent);
-  if (
-    intent.metadata.medusa_cart_id !== cartId ||
-    intent.metadata.rr_tax_provider !== quote.provider ||
-    !Number.isSafeInteger(generation) ||
-    generation !== quote.generation ||
-    intent.metadata.rr_tax_fingerprint !== quote.fingerprint ||
-    (intent.metadata.rr_tax_calculation_id ?? "") !==
-      (quote.calculationId ?? "") ||
-    (quote.provider === "taxrate_io" &&
-      (!Number.isFinite(rate) || rate < 0 || rate !== quote.taxRatePercent))
-  ) {
-    throw new MedusaError(
-      MedusaError.Types.CONFLICT,
+const paymentBindingError = (error: StripePaymentBindingClientError) => {
+  const details: Partial<
+    Record<StripePaymentBindingClientError["code"], string>
+  > = {
+    calculation_mismatch:
+      "The Stripe Tax calculation does not match the payable Medusa cart.",
+    hook_conflict:
+      "The PaymentIntent is linked to a different Stripe Tax calculation.",
+    not_linkable: "The PaymentIntent can no longer be linked safely.",
+    payment_mismatch:
+      "The Stripe PaymentIntent amount or currency does not match Medusa.",
+    tax_identity_mismatch:
       "Stripe returned a PaymentIntent with a different tax identity.",
-    );
-  }
+  };
+  const detail = details[error.code];
+  return new MedusaError(
+    detail ? MedusaError.Types.CONFLICT : MedusaError.Types.UNEXPECTED_STATE,
+    detail ?? "Stripe payment binding could not be verified. Try again.",
+  );
 };
-
-const existingHookCalculation = (intent: Stripe.PaymentIntent): string | null =>
-  intent.hooks?.inputs?.tax?.calculation ?? null;
 
 export type BindCheckoutTaxResult = {
   generation: number;
@@ -97,11 +90,15 @@ export type BindCheckoutTaxResult = {
 export const bindCheckoutTaxToPayment = async ({
   cart,
   client,
+  onRetry,
   service,
+  timeoutMs = 8_000,
 }: {
   cart: unknown;
-  client: Stripe;
+  client: StripePaymentBindingClient;
+  onRetry?: (event: StripePaymentBindingRetryEvent) => void;
   service: TaxControlModuleService;
+  timeoutMs?: number;
 }): Promise<BindCheckoutTaxResult> => {
   const cartRecord = asRecord(cart);
   const cartId = text(cartRecord?.id);
@@ -149,75 +146,26 @@ export const bindCheckoutTaxToPayment = async ({
     }
   }
 
-  const intent = await client.paymentIntents.retrieve(paymentIntentId);
-  if (
-    intent.amount !== amountMinor ||
-    intent.currency.toLowerCase() !== validation.currencyCode
-  ) {
-    throw new MedusaError(
-      MedusaError.Types.CONFLICT,
-      "The Stripe PaymentIntent amount or currency does not match Medusa.",
-    );
-  }
-  assertIntentMetadata(intent, quote, cartId);
-
-  if (quote.provider === "stripe_tax") {
-    const calculationId = quote.calculationId;
-    if (!calculationId) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "The Stripe Tax calculation identity is unavailable.",
-      );
-    }
-    const calculation = await client.tax.calculations.retrieve(calculationId);
-    if (
-      calculation.amount_total !== amountMinor ||
-      calculation.currency.toLowerCase() !== validation.currencyCode ||
-      calculation.livemode !== intent.livemode ||
-      !calculation.expires_at ||
-      calculation.expires_at <= Math.floor(Date.now() / 1000)
-    ) {
-      throw new MedusaError(
-        MedusaError.Types.CONFLICT,
-        "The Stripe Tax calculation does not match the payable Medusa cart.",
-      );
-    }
-
-    const hookedCalculation = existingHookCalculation(intent);
-    if (hookedCalculation && hookedCalculation !== calculationId) {
-      throw new MedusaError(
-        MedusaError.Types.CONFLICT,
-        "The PaymentIntent is linked to a different Stripe Tax calculation.",
-      );
-    }
-    if (!hookedCalculation && !LINKABLE_PAYMENT_STATUSES.has(intent.status)) {
-      throw new MedusaError(
-        MedusaError.Types.CONFLICT,
-        "The PaymentIntent can no longer be linked safely.",
-      );
-    }
-    if (!hookedCalculation) {
-      await client.paymentIntents.update(
-        paymentIntentId,
-        {
-          hooks: {
-            inputs: {
-              tax: { calculation: calculationId },
-            },
-          },
-          metadata: {
-            medusa_cart_id: cartId,
-            rr_tax_calculation_id: calculationId,
-            rr_tax_fingerprint: quote.fingerprint,
-            rr_tax_generation: String(quote.generation),
-            rr_tax_provider: quote.provider,
-          },
-        },
-        {
-          idempotencyKey: `rr-tax-link-${paymentIntentId}-${quote.fingerprint}`,
-        },
-      );
-    }
+  let binding;
+  try {
+    binding = await verifyAndLinkStripePayment({
+      amountMinor,
+      calculationId: quote.calculationId,
+      cartId,
+      client,
+      currencyCode: validation.currencyCode,
+      fingerprint: quote.fingerprint,
+      generation: quote.generation,
+      ...(onRetry ? { onRetry } : {}),
+      paymentIntentId,
+      provider: quote.provider,
+      taxRatePercent: quote.taxRatePercent,
+      timeoutMs,
+    });
+  } catch (error) {
+    throw error instanceof StripePaymentBindingClientError
+      ? paymentBindingError(error)
+      : error;
   }
 
   const recorded = await service.recordTaxQuoteEvidence({
@@ -229,7 +177,7 @@ export const bindCheckoutTaxToPayment = async ({
     generation: quote.generation,
     paymentIntentId,
     provider: quote.provider,
-    status: intent.status === "succeeded" ? "succeeded" : "prepared",
+    status: binding.status === "succeeded" ? "succeeded" : "prepared",
   });
 
   return {
@@ -238,6 +186,6 @@ export const bindCheckoutTaxToPayment = async ({
     replayed:
       Boolean(existingEvidence) ||
       recorded.replayed ||
-      Boolean(existingHookCalculation(intent)),
+      binding.previouslyLinked,
   };
 };

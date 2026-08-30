@@ -63,6 +63,7 @@ const requestFixture = ({
 } = {}) => {
   const cart = { id: cartId };
   const query = { graph: jest.fn(async () => ({ data: [cart] })) };
+  const logger = { warn: jest.fn() };
   const service = {};
   const locking = {
     execute: jest.fn(async (_key: string, operation: () => Promise<unknown>) =>
@@ -79,11 +80,15 @@ const requestFixture = ({
     if (key === "tax_control") {
       return service;
     }
+    if (key === "logger") {
+      return logger;
+    }
     throw new Error(`Unexpected dependency: ${key}`);
   });
 
   return {
     cart,
+    logger,
     locking,
     query,
     req: {
@@ -175,7 +180,18 @@ describe("POST /store/checkout/tax-link", () => {
       expect.objectContaining({
         cart: fixture.cart,
         service: fixture.service,
+        timeoutMs: 8_000,
       }),
+    );
+    const onRetry = bindingMock.mock.calls[0]?.[0].onRetry;
+    onRetry?.({
+      attempt: 2,
+      operation: "update_intent",
+      reason: "status",
+      totalAttempts: 2,
+    });
+    expect(fixture.logger.warn).toHaveBeenCalledWith(
+      "[tax-control] Stripe payment binding update_intent retry scheduled (status, attempt 2/2).",
     );
   });
 
