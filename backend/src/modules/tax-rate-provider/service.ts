@@ -16,9 +16,8 @@ import {
   buildTaxLineCode,
   parseTaxControlContext,
 } from "../../lib/tax-control/context";
-import {
-  resolveProviderTaxCacheConfig,
-} from "../../lib/tax-control/cache-config";
+import { observeOperation } from "../../lib/observability/operation-telemetry";
+import { resolveProviderTaxCacheConfig } from "../../lib/tax-control/cache-config";
 import { REDIS_URL } from "../../lib/constants";
 import { TAXRATE_IO_QUOTA_REDIS_KEY } from "../tax-control/constants";
 import {
@@ -280,10 +279,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     return TaxRateLookupProviderService.identifier;
   }
 
-  #observeCacheEviction(
-    cache: LocalTaxCache,
-    event: CacheEvictionEvent,
-  ): void {
+  #observeCacheEviction(cache: LocalTaxCache, event: CacheEvictionEvent): void {
     if (event.reason !== "capacity") {
       return;
     }
@@ -305,11 +301,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
   }
 
   #writeCachedRate(cacheKey: string, result: TaxRateIoResult): void {
-    this.#rateCache.set(
-      cacheKey,
-      result,
-      Date.now() + this.#rateCacheTtlMs,
-    );
+    this.#rateCache.set(cacheKey, result, Date.now() + this.#rateCacheTtlMs);
   }
 
   async getTaxLines(
@@ -317,12 +309,17 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     shippingLines: ShippingTaxCalculationLine[],
     context: TaxCalculationContext,
   ): Promise<(ItemTaxLineDTO | ShippingTaxLineDTO)[]> {
-    const control = parseTaxControlContext(context.additional_context);
-    if (control.provider === "stripe_tax") {
-      return this.getStripeTaxLines(itemLines, shippingLines, context);
-    }
+    return observeOperation(
+      { domain: "tax", operation: "calculate" },
+      async () => {
+        const control = parseTaxControlContext(context.additional_context);
+        if (control.provider === "stripe_tax") {
+          return this.getStripeTaxLines(itemLines, shippingLines, context);
+        }
 
-    return this.getTaxRateIoLines(itemLines, shippingLines, context);
+        return this.getTaxRateIoLines(itemLines, shippingLines, context);
+      },
+    );
   }
 
   private taxLineIdentity(
@@ -637,11 +634,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         await client.del(buildRedisStripeQuoteKey(fingerprint));
         return null;
       }
-      this.#stripeQuoteCache.set(
-        fingerprint,
-        parsed.result,
-        parsed.expiresAt,
-      );
+      this.#stripeQuoteCache.set(fingerprint, parsed.result, parsed.expiresAt);
       return parsed.result;
     } catch {
       this.logger_.warn("Stripe Tax cache lookup failed.");
@@ -735,15 +728,19 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       );
     }
 
-    const result = await fetchTaxRateIo({
-      apiKey: this.options_.apiKey,
-      onRetry: ({ attempt, reason, totalAttempts }) =>
-        this.logger_.warn(
-          `Tax rate lookup retry scheduled (${reason}, attempt ${attempt}/${totalAttempts}).`,
-        ),
-      timeoutMs: this.options_.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      zip: postalCode,
-    });
+    const result = await observeOperation(
+      { domain: "tax", operation: "provider_request" },
+      () =>
+        fetchTaxRateIo({
+          apiKey: this.options_.apiKey,
+          onRetry: ({ attempt, reason, totalAttempts }) =>
+            this.logger_.warn(
+              `Tax rate lookup retry scheduled (${reason}, attempt ${attempt}/${totalAttempts}).`,
+            ),
+          timeoutMs: this.options_.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+          zip: postalCode,
+        }),
+    );
 
     this.#writeCachedRate(cacheKey, result);
     if (redisClientInstance) {

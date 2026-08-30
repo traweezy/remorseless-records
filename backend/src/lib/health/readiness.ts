@@ -1,55 +1,80 @@
-import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3"
-import type { Knex } from "@mikro-orm/knex"
-import { createClient } from "redis"
+import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
+import type { Knex } from "@mikro-orm/knex";
+import { createClient } from "redis";
 
-import { resolveObjectStorageConfig } from "../storage/config"
+import { resolveObjectStorageConfig } from "../storage/config";
+import {
+  observeOperation,
+  type ObservedOperation,
+} from "../observability/operation-telemetry";
+import { resolveOperationalCapabilities } from "./capabilities";
 
-const DEPENDENCY_TIMEOUT_MS = 2_000
-const STORAGE_TIMEOUT_MS = 5_000
+const DEPENDENCY_TIMEOUT_MS = 2_000;
+const STORAGE_TIMEOUT_MS = 5_000;
 
 export type ReadinessCheck = {
-  duration_ms: number
-  name: string
-  status: "error" | "ok"
-}
+  duration_ms: number;
+  name: string;
+  status: "error" | "ok";
+};
 
 export type ReadinessProbe = {
-  check: () => Promise<void>
-  name: string
-}
+  check: () => Promise<void>;
+  name: string;
+};
 
-type ReadinessEnvironment = NodeJS.ProcessEnv
+type ReadinessEnvironment = NodeJS.ProcessEnv;
+
+const observationForProbe = (name: string): ObservedOperation | null => {
+  switch (name) {
+    case "database":
+      return { domain: "database", operation: "health_check" };
+    case "redis":
+      return { domain: "redis", operation: "health_check" };
+    case "search":
+      return { domain: "search", operation: "health_check" };
+    case "object_storage":
+      return { domain: "storage", operation: "health_check" };
+    default:
+      return null;
+  }
+};
 
 const runProbe = async (probe: ReadinessProbe): Promise<ReadinessCheck> => {
-  const startedAt = performance.now()
+  const startedAt = performance.now();
   try {
-    await probe.check()
+    const observation = observationForProbe(probe.name);
+    if (observation) {
+      await observeOperation(observation, probe.check);
+    } else {
+      await probe.check();
+    }
     return {
       duration_ms: Math.round(performance.now() - startedAt),
       name: probe.name,
       status: "ok",
-    }
+    };
   } catch {
     return {
       duration_ms: Math.round(performance.now() - startedAt),
       name: probe.name,
       status: "error",
-    }
+    };
   }
-}
+};
 
 export const runReadinessChecks = async (
-  probes: ReadinessProbe[]
-): Promise<ReadinessCheck[]> => Promise.all(probes.map(runProbe))
+  probes: ReadinessProbe[],
+): Promise<ReadinessCheck[]> => Promise.all(probes.map(runProbe));
 
 const databaseProbe = (database: Knex): ReadinessProbe => ({
   name: "database",
   check: async () => {
     await database
       .raw("select 1 as ready")
-      .timeout(DEPENDENCY_TIMEOUT_MS, { cancel: true })
+      .timeout(DEPENDENCY_TIMEOUT_MS, { cancel: true });
   },
-})
+});
 
 const redisProbe = (url: string): ReadinessProbe => ({
   name: "redis",
@@ -61,16 +86,16 @@ const redisProbe = (url: string): ReadinessProbe => ({
         reconnectStrategy: false,
       },
       url,
-    })
-    client.on("error", () => undefined)
+    });
+    client.on("error", () => undefined);
     try {
-      await client.connect()
-      await client.ping()
+      await client.connect();
+      await client.ping();
     } finally {
-      client.destroy()
+      client.destroy();
     }
   },
-})
+});
 
 const meilisearchProbe = (host: string): ReadinessProbe => ({
   name: "search",
@@ -78,15 +103,15 @@ const meilisearchProbe = (host: string): ReadinessProbe => ({
     const response = await fetch(new URL("/health", host), {
       cache: "no-store",
       signal: AbortSignal.timeout(DEPENDENCY_TIMEOUT_MS),
-    })
+    });
     if (!response.ok) {
-      throw new Error("Search service is unavailable.")
+      throw new Error("Search service is unavailable.");
     }
   },
-})
+});
 
 const storageProbe = (
-  config: NonNullable<ReturnType<typeof resolveObjectStorageConfig>>
+  config: NonNullable<ReturnType<typeof resolveObjectStorageConfig>>,
 ): ReadinessProbe => ({
   name: "object_storage",
   check: async () => {
@@ -98,41 +123,56 @@ const storageProbe = (
       endpoint: config.endpoint,
       forcePathStyle: true,
       region: config.region,
-    })
+    });
     try {
       await client.send(new HeadBucketCommand({ Bucket: config.bucket }), {
         abortSignal: AbortSignal.timeout(STORAGE_TIMEOUT_MS),
-      })
+      });
     } finally {
-      client.destroy()
+      client.destroy();
     }
   },
-})
+});
+
+const capabilityProbes = (
+  environment: ReadinessEnvironment,
+): ReadinessProbe[] =>
+  resolveOperationalCapabilities(environment).map((capability) => ({
+    name: `capability_${capability.name}`,
+    check: async () => {
+      if (!capability.ready) {
+        throw new Error("Operational capability is not ready.");
+      }
+    },
+  }));
 
 export const createBackendReadinessProbes = ({
   database,
   environment = process.env,
 }: {
-  database: Knex
-  environment?: ReadinessEnvironment
+  database: Knex;
+  environment?: ReadinessEnvironment;
 }): ReadinessProbe[] => {
-  const probes = [databaseProbe(database)]
-  const redisUrl = environment.REDIS_URL?.trim()
+  const probes = [databaseProbe(database)];
+  const redisUrl = environment.REDIS_URL?.trim();
   if (redisUrl) {
-    probes.push(redisProbe(redisUrl))
+    probes.push(redisProbe(redisUrl));
   }
 
-  const searchHost = environment.MEILISEARCH_HOST?.trim()
+  const searchHost = environment.MEILISEARCH_HOST?.trim();
   if (searchHost) {
-    probes.push(meilisearchProbe(searchHost))
+    probes.push(meilisearchProbe(searchHost));
   }
 
   const storageConfig = resolveObjectStorageConfig({
     environment,
     required: false,
-  })
+  });
   if (storageConfig) {
-    probes.push(storageProbe(storageConfig))
+    probes.push(storageProbe(storageConfig));
   }
-  return probes
-}
+  if (environment.NODE_ENV === "production") {
+    probes.push(...capabilityProbes(environment));
+  }
+  return probes;
+};

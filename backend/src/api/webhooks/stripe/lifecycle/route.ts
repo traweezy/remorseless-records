@@ -1,13 +1,12 @@
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http";
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import type { IEventBusModuleService } from "@medusajs/framework/types";
 import { Modules } from "@medusajs/framework/utils";
 import Stripe from "stripe";
 
 import { STRIPE_LIFECYCLE_WEBHOOK_SECRET } from "../../../../lib/constants";
 import { sendApiProblem } from "../../../../lib/http/correlation";
+import { recordOperationalIncident } from "../../../../lib/health/incidents";
+import { observeOperation } from "../../../../lib/observability/operation-telemetry";
 import { projectStripeLifecycleEvent } from "../../../../lib/payment-lifecycle/stripe-event";
 import {
   PAYMENT_LIFECYCLE_MODULE,
@@ -43,6 +42,9 @@ const respondProblem = (
   res: MedusaResponse,
   input: WebhookProblemInput,
 ): void => {
+  if (input.status === 503) {
+    void recordOperationalIncident("webhook_failure").catch(() => undefined);
+  }
   res.setHeader("Cache-Control", "no-store");
   sendApiProblem(req, res, {
     ...input,
@@ -50,7 +52,8 @@ const respondProblem = (
   });
 };
 
-export const createStripeLifecyclePost = (webhookSecret: string | undefined) =>
+export const createStripeLifecyclePost =
+  (webhookSecret: string | undefined) =>
   async (req: MedusaRequest, res: MedusaResponse): Promise<void> => {
     if (!webhookSecret) {
       respondProblem(req, res, {
@@ -80,11 +83,7 @@ export const createStripeLifecyclePost = (webhookSecret: string | undefined) =>
 
     let event: Stripe.Event;
     try {
-      event = Stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        webhookSecret,
-      );
+      event = Stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch {
       respondProblem(req, res, {
         code: "invalid_webhook",
@@ -113,10 +112,9 @@ export const createStripeLifecyclePost = (webhookSecret: string | undefined) =>
     }
 
     try {
-      const lifecycleService =
-        req.scope.resolve<PaymentLifecycleModuleService>(
-          PAYMENT_LIFECYCLE_MODULE,
-        );
+      const lifecycleService = req.scope.resolve<PaymentLifecycleModuleService>(
+        PAYMENT_LIFECYCLE_MODULE,
+      );
       const recorded =
         await lifecycleService.recordStripeLifecycleEvent(projected);
       const terminalOrRunning = new Set([
@@ -129,10 +127,14 @@ export const createStripeLifecyclePost = (webhookSecret: string | undefined) =>
           const eventBus = req.scope.resolve<IEventBusModuleService>(
             Modules.EVENT_BUS,
           );
-          await eventBus.emit({
-            name: STRIPE_LIFECYCLE_RECEIVED_EVENT,
-            data: { id: recorded.lifecycleEvent.id },
-          });
+          await observeOperation(
+            { domain: "queue", operation: "publish" },
+            () =>
+              eventBus.emit({
+                name: STRIPE_LIFECYCLE_RECEIVED_EVENT,
+                data: { id: recorded.lifecycleEvent.id },
+              }),
+          );
         } catch {
           try {
             await lifecycleService.markStripeLifecycleEventFailed(
@@ -166,6 +168,4 @@ export const createStripeLifecyclePost = (webhookSecret: string | undefined) =>
     }
   };
 
-export const POST = createStripeLifecyclePost(
-  STRIPE_LIFECYCLE_WEBHOOK_SECRET,
-);
+export const POST = createStripeLifecyclePost(STRIPE_LIFECYCLE_WEBHOOK_SECRET);

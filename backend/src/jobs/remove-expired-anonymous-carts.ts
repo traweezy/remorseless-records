@@ -11,21 +11,33 @@ import {
   removeExpiredAnonymousCarts,
   resolveCartRetentionConfig,
 } from "../lib/cart-retention";
-
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
+import { writeRetentionJobEvent } from "../lib/observability/retention-job";
 
 export default async function removeExpiredAnonymousCartsJob(
   container: MedusaContainer,
 ) {
   const logger = container.resolve<Logger>("logger");
+  const runId = randomUUID();
+  const startedAt = new Date();
+  const timingStartedAt = performance.now();
 
   try {
     const retentionConfig = resolveCartRetentionConfig();
     if (!retentionConfig.enabled) {
-      logger.info(
-        "Anonymous cart retention is disabled; no carts were inspected or changed",
-      );
+      await writeRetentionJobEvent({
+        input: {
+          deleted: 0,
+          durationMs: performance.now() - timingStartedAt,
+          job: "anonymous_cart",
+          protectedByEmail: 0,
+          runId,
+          scanned: 0,
+          startedAt,
+          status: "disabled",
+        },
+        level: "info",
+        logger,
+      });
       return;
     }
 
@@ -41,11 +53,34 @@ export default async function removeExpiredAnonymousCartsJob(
         }),
       { timeout: 5 },
     );
-    logger.info(
-      `Anonymous cart retention completed: ${JSON.stringify(result)}`,
-    );
+    await writeRetentionJobEvent({
+      input: {
+        capped: result.capped,
+        cutoff: result.cutoff,
+        deleted: result.deleted,
+        durationMs: performance.now() - timingStartedAt,
+        job: "anonymous_cart",
+        protectedByEmail: result.protectedByEmail,
+        runId,
+        scanned: result.scanned,
+        startedAt,
+        status: "completed",
+      },
+      level: result.capped ? "warn" : "info",
+      logger,
+    });
   } catch (error) {
-    logger.error(`Anonymous cart retention failed: ${errorMessage(error)}`);
+    await writeRetentionJobEvent({
+      input: {
+        durationMs: performance.now() - timingStartedAt,
+        job: "anonymous_cart",
+        runId,
+        startedAt,
+        status: "failed",
+      },
+      level: "error",
+      logger,
+    });
     throw error;
   }
 }
@@ -54,3 +89,5 @@ export const config = {
   name: "remove-expired-anonymous-carts",
   schedule: "17 4 * * *",
 };
+import { randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";

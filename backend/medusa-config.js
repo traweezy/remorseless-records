@@ -35,6 +35,7 @@ import { buildBackendResponseHeaders } from './src/lib/security/security-headers
 import { validateBackendRuntimeSecrets } from './src/lib/security/runtime-secret-policy';
 import { resolveObjectStorageConfig } from './src/lib/storage/config';
 import { WORKFLOW_JOB_WORKER_OPTIONS } from './src/lib/workflow-worker-options';
+import { assertOperationalCapabilities } from './src/lib/health/capabilities';
 import meilisearchSettings from './config/meilisearch-settings.json' assert { type: 'json' };
 import zodStrictCspVitePlugin from './src/admin/lib/zod-strict-csp-vite-plugin.cjs';
 
@@ -43,6 +44,10 @@ loadEnv(process.env.NODE_ENV, process.cwd());
 const isDevelopment = process.env.NODE_ENV === "development";
 const isProduction = process.env.NODE_ENV === "production";
 validateBackendRuntimeSecrets({ isProduction });
+assertOperationalCapabilities({
+  environment: process.env,
+  required: isProduction,
+});
 const objectStorageConfig = resolveObjectStorageConfig({
   required: isProduction,
 });

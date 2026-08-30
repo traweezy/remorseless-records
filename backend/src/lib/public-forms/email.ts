@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 
 import { RESEND_API_KEY } from "../constants";
+import { observeOperation } from "../observability/operation-telemetry";
 
 export const PUBLIC_FORM_EMAIL_TIMEOUT_MS = 5_000;
 
@@ -36,15 +37,19 @@ export const createResendPublicFormEmailSender = (
       idempotencyKey: request.idempotencyKey,
       signal: request.signal,
     };
-    const result = await resend.emails.send(
-      {
-        from: email.from,
-        to: [email.to],
-        replyTo: email.replyTo,
-        subject: email.subject,
-        text: email.text,
-      },
-      requestOptions,
+    const result = await observeOperation(
+      { domain: "email", operation: "send" },
+      () =>
+        resend.emails.send(
+          {
+            from: email.from,
+            to: [email.to],
+            replyTo: email.replyTo,
+            subject: email.subject,
+            text: email.text,
+          },
+          requestOptions,
+        ),
     );
     if (result.error) {
       throw new Error("Public-form email provider rejected the request");

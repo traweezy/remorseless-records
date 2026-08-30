@@ -12,6 +12,7 @@ export const CHECKOUT_SCHEDULER_INCIDENT_KEY =
 export const CHECKOUT_SCHEDULER_HEARTBEAT_TTL_SECONDS = 15 * 60
 export const CHECKOUT_SCHEDULER_INCIDENT_TTL_SECONDS = 24 * 60 * 60
 export const CHECKOUT_SCHEDULER_MAX_HEARTBEAT_AGE_SECONDS = 10 * 60
+export const CHECKOUT_SCHEDULER_MAX_REDIS_LATENCY_MS = 250
 const CHECKOUT_SCHEDULER_MAX_CLOCK_SKEW_SECONDS = 60
 
 const schedulerEventSchema = z.enum([
@@ -82,6 +83,7 @@ export type CheckoutSchedulerHealthPayload = {
   observation_window_seconds: number
   reasons: string[]
   redis: "error" | "ok"
+  redis_latency_ms: number | null
   schema_version: 1
   status: "degraded" | "healthy"
 }
@@ -174,11 +176,13 @@ export const evaluateCheckoutSchedulerHealth = ({
   latestValue,
   now = new Date(),
   redisAvailable,
+  redisLatencyMs = null,
 }: {
   incidentValue: string | null
   latestValue: string | null
   now?: Date
   redisAvailable: boolean
+  redisLatencyMs?: number | null
 }): CheckoutSchedulerHealthPayload => {
   if (!Number.isFinite(now.getTime())) {
     throw new TypeError("Scheduler health evaluation time must be valid")
@@ -187,6 +191,21 @@ export const evaluateCheckoutSchedulerHealth = ({
   const reasons = new Set<string>()
   if (!redisAvailable) {
     reasons.add("redis_unavailable")
+  }
+  const safeRedisLatencyMs =
+    redisLatencyMs !== null &&
+    Number.isFinite(redisLatencyMs) &&
+    redisLatencyMs >= 0
+      ? Number(redisLatencyMs.toFixed(3))
+      : null
+  if (redisAvailable && safeRedisLatencyMs === null) {
+    reasons.add("redis_latency_missing")
+  }
+  if (
+    safeRedisLatencyMs !== null &&
+    safeRedisLatencyMs >= CHECKOUT_SCHEDULER_MAX_REDIS_LATENCY_MS
+  ) {
+    reasons.add("redis_latency_high")
   }
   const latest = parseSnapshot(latestValue)
   const incident = parseSnapshot(incidentValue)
@@ -228,6 +247,7 @@ export const evaluateCheckoutSchedulerHealth = ({
     observation_window_seconds: CHECKOUT_SCHEDULER_INCIDENT_TTL_SECONDS,
     reasons: reasonList,
     redis: redisAvailable ? "ok" : "error",
+    redis_latency_ms: safeRedisLatencyMs,
     schema_version: 1,
     status: reasonList.length === 0 ? "healthy" : "degraded",
   }
@@ -244,6 +264,7 @@ export const readCheckoutSchedulerHealth =
           redisAvailable: false,
         })
       }
+      const redisStartedAt = performance.now()
       const [ping, latestValue, incidentValue] = await withRedisTimeout(
         Promise.all([
           client.ping(),
@@ -255,6 +276,7 @@ export const readCheckoutSchedulerHealth =
         incidentValue,
         latestValue,
         redisAvailable: ping === "PONG",
+        redisLatencyMs: performance.now() - redisStartedAt,
       })
     } catch {
       return evaluateCheckoutSchedulerHealth({

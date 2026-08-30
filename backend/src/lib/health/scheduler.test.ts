@@ -7,6 +7,7 @@ import {
   CHECKOUT_SCHEDULER_HEARTBEAT_TTL_SECONDS,
   CHECKOUT_SCHEDULER_INCIDENT_KEY,
   CHECKOUT_SCHEDULER_INCIDENT_TTL_SECONDS,
+  CHECKOUT_SCHEDULER_MAX_REDIS_LATENCY_MS,
   buildCheckoutSchedulerSnapshot,
   evaluateCheckoutSchedulerHealth,
   recordCheckoutSchedulerHealth,
@@ -54,16 +55,19 @@ const evaluate = ({
   incidentValue = null,
   latestValue = JSON.stringify(snapshot()),
   redisAvailable = true,
+  redisLatencyMs = 12.345,
 }: {
   incidentValue?: string | null
   latestValue?: string | null
   redisAvailable?: boolean
+  redisLatencyMs?: number | null
 } = {}) =>
   evaluateCheckoutSchedulerHealth({
     incidentValue,
     latestValue,
     now,
     redisAvailable,
+    redisLatencyMs,
   })
 
 describe("checkout scheduler health", () => {
@@ -98,6 +102,7 @@ describe("checkout scheduler health", () => {
       observation_window_seconds: CHECKOUT_SCHEDULER_INCIDENT_TTL_SECONDS,
       reasons: [],
       redis: "ok",
+      redis_latency_ms: 12.345,
       status: "healthy",
     })
   })
@@ -168,5 +173,15 @@ describe("checkout scheduler health", () => {
     expect(evaluate({ redisAvailable: false }).reasons).toContain(
       "redis_unavailable"
     )
+  })
+
+  it("fails closed on missing or elevated Redis latency", () => {
+    expect(evaluate({ redisLatencyMs: null }).reasons).toContain(
+      "redis_latency_missing"
+    )
+    expect(
+      evaluate({ redisLatencyMs: CHECKOUT_SCHEDULER_MAX_REDIS_LATENCY_MS })
+        .reasons
+    ).toContain("redis_latency_high")
   })
 })

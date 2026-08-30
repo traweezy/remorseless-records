@@ -7,6 +7,7 @@ import {
   runReadinessChecks,
   type ReadinessCheck,
 } from "../../lib/health/readiness"
+import { resolveBackendCommitSha } from "../../lib/observability/runtime-identity"
 
 type ReadinessPayload = {
   checks: ReadinessCheck[]
@@ -30,8 +31,9 @@ export const GET = async (
     checks,
     status: isReady ? "ok" : "degraded",
   }
-  if (process.env.COMMIT_SHA) {
-    payload.version = process.env.COMMIT_SHA
+  const commitSha = resolveBackendCommitSha()
+  if (commitSha !== "unknown") {
+    payload.version = commitSha
   }
   res.status(isReady ? 200 : 503).json(payload)
 }

@@ -2,11 +2,15 @@ diff --git a/dist/http/express-loader.d.ts b/dist/http/express-loader.d.ts
 index f31efe196cec67342e4f671a2469e825d4433137..5d570ddc9130685c0fca0d5ae655a915f9059ab6 100644
 --- a/dist/http/express-loader.d.ts
 +++ b/dist/http/express-loader.d.ts
-@@ -1,5 +1,21 @@
+@@ -1,5 +1,25 @@
  import { MedusaContainer } from "@medusajs/framework/types";
 -import { Express } from "express";
 +import { Express, Request, Response } from "express";
 +export declare function createSafeHttpCompletion(req: Request & {
++    observabilitySpanContext?: {
++        spanId: string;
++        traceId: string;
++    };
 +    requestId?: string;
 +}, res: Response, durationMs: number): {
 +    problem_code?: string;
@@ -29,7 +33,7 @@ diff --git a/dist/http/express-loader.js b/dist/http/express-loader.js
 index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e169007b7 100644
 --- a/dist/http/express-loader.js
 +++ b/dist/http/express-loader.js
-@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+@@ -3,6 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
      return (mod && mod.__esModule) ? mod : { "default": mod };
  };
  Object.defineProperty(exports, "__esModule", { value: true });
@@ -37,21 +41,49 @@ index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e
  exports.resolveSessionCookieSecurity = resolveSessionCookieSecurity;
  exports.expressLoader = expressLoader;
  const utils_1 = require("@medusajs/framework/utils");
-@@ -19,6 +20,41 @@ const config_1 = require("../config");
++const api_1 = require("@opentelemetry/api");
+@@ -19,6 +21,66 @@ const config_1 = require("../config");
  const http_compression_1 = require("./utils/http-compression");
  const NOISY_ENDPOINTS_CHUNKS = ["@fs", "@id", "@vite", "@react", "node_modules"];
  const isHealthCheck = (req) => req.path === "/health";
++const isOperationalProbe = (req) => req.path === "/live" ||
++    req.path === "/ready" ||
++    req.path === "/health" ||
++    req.path.startsWith("/health/");
 +const TRACEPARENT_PATTERN = /^[0-9a-f]{2}-(?<traceId>[0-9a-f]{32})-(?<spanId>[0-9a-f]{16})-[0-9a-f]{2}$/u;
++const COMMIT_SHA_PATTERN = /^[0-9a-f]{40}$/u;
++const DEPLOYMENT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
++const commitSha = [process.env.COMMIT_SHA, process.env.RAILWAY_GIT_COMMIT_SHA, process.env.GIT_COMMIT_SHA]
++    .map((value) => value?.trim().toLowerCase())
++    .find((value) => value && COMMIT_SHA_PATTERN.test(value)) ?? "unknown";
++const environmentName = process.env.RAILWAY_ENVIRONMENT_NAME ?? process.env.NODE_ENV;
 +const deploymentIdentity = {
-+    commit_sha: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? "unknown",
-+    environment: process.env.RAILWAY_ENVIRONMENT_NAME ?? process.env.NODE_ENV ?? "unknown",
++    commit_sha: commitSha,
++    environment: environmentName && DEPLOYMENT_NAME_PATTERN.test(environmentName) ? environmentName : "unknown",
 +    service: "backend",
 +};
++const httpMeter = api_1.metrics.getMeter("remorseless-records.backend.http");
++const httpTracer = api_1.trace.getTracer("remorseless-records.backend.http");
++const httpRequests = httpMeter.createCounter("rr.http.server.requests", {
++    description: "Completed Backend HTTP server requests",
++    unit: "{request}",
++});
++const httpDuration = httpMeter.createHistogram("rr.http.server.duration", {
++    description: "Backend HTTP server request duration",
++    unit: "ms",
++});
++const safeMethod = (method) => typeof method === "string" && /^[A-Z]{3,10}$/u.test(method)
++    ? method
++    : "UNKNOWN";
++const statusClass = (status) => Number.isSafeInteger(status) && status >= 100 && status <= 599
++    ? `${Math.floor(status / 100)}xx`
++    : "unknown";
 +function createSafeHttpCompletion(req, res, durationMs) {
 +    const traceparent = typeof req.headers.traceparent === "string"
 +        ? req.headers.traceparent.toLowerCase()
 +        : "";
 +    const traceContext = TRACEPARENT_PATTERN.exec(traceparent);
++    const spanContext = req.observabilitySpanContext;
 +    const problemCode = typeof res.locals?.problemCode === "string" &&
 +        /^[a-z0-9][a-z0-9_:-]{0,127}$/u.test(res.locals.problemCode)
 +        ? res.locals.problemCode
@@ -66,20 +98,18 @@ index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e
 +            : 0,
 +        event: "http.request.completed",
 +        message: "Backend request completed",
-+        method: typeof req.method === "string" && /^[A-Z]{3,10}$/u.test(req.method)
-+            ? req.method
-+            : "UNKNOWN",
++        method: safeMethod(req.method),
 +        request_id: typeof req.requestId === "string" ? req.requestId : "unknown",
-+        span_id: traceContext?.groups?.spanId ?? "unknown",
++        span_id: spanContext?.spanId ?? traceContext?.groups?.spanId ?? "unknown",
 +        status,
-+        trace_id: traceContext?.groups?.traceId ?? "unknown",
++        trace_id: spanContext?.traceId ?? traceContext?.groups?.traceId ?? "unknown",
 +        ...(problemCode ? { problem_code: problemCode } : {}),
 +    };
 +}
  /**
   * Resolves the `sameSite` and `secure` flags used for the session cookie.
   *
-@@ -81,6 +117,21 @@ async function expressLoader({ app, container, }) {
+@@ -81,6 +143,57 @@ async function expressLoader({ app, container, }) {
          });
      }
      app.set("trust proxy", 1);
@@ -98,13 +128,50 @@ index 0a46fc5e3428d1a0ef0d6dea24840321a185f4ca..61b01f38fb33ec0a08f6dfda914d5f8e
 +            next();
 +        });
 +    }
++    if (!isTest) {
++        app.use((req, res, next) => {
++            if (isOperationalProbe(req) ||
++                NOISY_ENDPOINTS_CHUNKS.some((chunk) => req.url.includes(chunk))) {
++                next();
++                return;
++            }
++            const extractedContext = api_1.propagation.extract(api_1.context.active(), req.headers);
++            const method = safeMethod(req.method);
++            const span = httpTracer.startSpan("rr.http.request", {
++                attributes: {
++                    "http.request.method": method,
++                    "service.name": "backend",
++                },
++            }, extractedContext);
++            req.observabilitySpanContext = span.spanContext();
++            const startedAt = process.hrtime.bigint();
++            res.once("finish", () => {
++                const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
++                const status = Number.isSafeInteger(res.statusCode) ? res.statusCode : 0;
++                const attributes = {
++                    "http.request.method": method,
++                    "http.response.status_class": statusClass(status),
++                    "service.name": "backend",
++                };
++                httpRequests.add(1, attributes);
++                httpDuration.record(durationMs, attributes);
++                span.setAttribute("http.response.status_code", status);
++                span.setStatus(status >= 500 || status === 0
++                    ? { code: api_1.SpanStatusCode.ERROR, message: "request_failed" }
++                    : { code: api_1.SpanStatusCode.OK });
++                span.end();
++            });
++            api_1.context.with(api_1.trace.setSpan(extractedContext, span), next);
++        });
++    }
      /**
       * Register the HTTP compression middleware when it's enabled through
       * `projectConfig.http.compression`. It has to be registered before the
-@@ -108,41 +159,32 @@ async function expressLoader({ app, container, }) {
+@@ -108,41 +221,32 @@ async function expressLoader({ app, container, }) {
      function shouldSkipHttpLog(req, res) {
          return (isTest ||
-             isHealthCheck(req) ||
+-            isHealthCheck(req) ||
++            isOperationalProbe(req) ||
 -            NOISY_ENDPOINTS_CHUNKS.some((chunk) => req.url.includes(chunk)) ||
 -            !logger.shouldLog("http"));
 +            NOISY_ENDPOINTS_CHUNKS.some((chunk) => req.url.includes(chunk)));

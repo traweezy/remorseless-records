@@ -4,6 +4,7 @@ import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
 import { REDIS_URL } from "../constants";
+import { buildBackendRuntimeEvent } from "../observability/runtime-event";
 import {
   TAXRATE_IO_QUOTA_ID,
   TAXRATE_IO_QUOTA_REDIS_KEY,
@@ -14,8 +15,9 @@ import type { TaxRateIoQuota } from "../../modules/tax-rate-provider/clients/tax
 let quotaRedisClient: RedisClientType | null = null;
 let quotaRedisConnectPromise: Promise<RedisClientType | null> | null = null;
 
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
+const warn = (logger: Logger, event: string, message: string): void => {
+  logger.warn(JSON.stringify(buildBackendRuntimeEvent(event, message)));
+};
 
 const parseQuota = (value: string | null): TaxRateIoQuota | null => {
   if (!value) {
@@ -65,15 +67,23 @@ const redisClient = async (logger: Logger): Promise<RedisClientType | null> => {
         reconnectStrategy: (retries) =>
           retries >= 3 ? false : Math.min(100 * 2 ** retries, 1_000),
       },
-    }).on("error", (error) => {
-      logger.warn(`Tax quota Redis error: ${errorMessage(error)}`);
+    }).on("error", () => {
+      warn(
+        logger,
+        "tax.quota.redis_error",
+        "Tax quota Redis connection error",
+      );
     });
   quotaRedisClient = client;
   quotaRedisConnectPromise = client
     .connect()
     .then(() => client)
-    .catch((error) => {
-      logger.warn(`Tax quota Redis connection failed: ${errorMessage(error)}`);
+    .catch(() => {
+      warn(
+        logger,
+        "tax.quota.redis_connection_failed",
+        "Tax quota Redis connection failed",
+      );
       try {
         client.destroy();
       } catch {
@@ -181,8 +191,12 @@ export const syncTaxRateIoQuota = async ({
           source: "checkout_lookup",
         });
       }
-    } catch (error) {
-      logger.warn(`Tax quota synchronization failed: ${errorMessage(error)}`);
+    } catch {
+      warn(
+        logger,
+        "tax.quota.synchronization_failed",
+        "Tax quota synchronization failed",
+      );
     }
   }
 

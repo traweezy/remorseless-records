@@ -1,5 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 
+import { resolveBackendCommitSha } from "../../lib/observability/runtime-identity"
+
 type LivenessPayload = {
   status: "ok"
   uptime_seconds: number
@@ -15,8 +17,9 @@ export const GET = async (
     status: "ok",
     uptime_seconds: Math.round(process.uptime()),
   }
-  if (process.env.COMMIT_SHA) {
-    payload.version = process.env.COMMIT_SHA
+  const commitSha = resolveBackendCommitSha()
+  if (commitSha !== "unknown") {
+    payload.version = commitSha
   }
   res.status(200).json(payload)
 }

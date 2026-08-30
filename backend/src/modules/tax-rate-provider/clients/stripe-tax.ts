@@ -1,5 +1,7 @@
 import type Stripe from "stripe";
 
+import { observeOperation } from "../../../lib/observability/operation-telemetry";
+
 const MAX_LINE_ITEMS = 100;
 const MAX_ATTEMPTS = 2;
 const MAX_NETWORK_RETRIES = 0;
@@ -219,7 +221,10 @@ const requestWithRetry = async <T>({
 }): Promise<T> => {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await request(requestOptions(deadlineAt, idempotencyKey));
+      return await observeOperation(
+        { domain: "stripe", operation: "provider_request" },
+        () => request(requestOptions(deadlineAt, idempotencyKey)),
+      );
     } catch (error) {
       const reason = retryReasonFrom(error);
       if (attempt === MAX_ATTEMPTS || reason === null) {

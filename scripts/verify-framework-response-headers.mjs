@@ -140,6 +140,8 @@ assert.deepEqual(
     trace_id: traceId,
   },
 );
+assert.match(completion.commit_sha, /^(?:[0-9a-f]{40}|unknown)$/u);
+assert.match(completion.environment, /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u);
 for (const forbiddenField of [
   "client_ip",
   "headers",
