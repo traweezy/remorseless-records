@@ -441,6 +441,16 @@ amounts, duplicate or unexpected references, inconsistent tax totals, and
 malformed calculation metadata. Terminal errors contain only a stable code,
 never Stripe response text, address data, API keys, or transport details.
 
+Stripe Tax readiness reads settings and active registrations concurrently
+under one shared eight-second deadline. Each safe GET has at most two attempts,
+SDK retries are disabled, and rate limits plus other non-retryable 4xx
+responses remain single-attempt. Readiness accepts at most one complete
+100-registration page and strictly validates settings, mode, provider, tax
+behavior, tax codes, missing-field names, registration status, and unique
+registration identifiers. Malformed or paginated responses fail closed. Retry
+logs contain only the operation, reason class, and attempt count; terminal
+readiness output never copies Stripe response text or registration data.
+
 An authenticated Medusa Admin can review readiness, quota, exact paginated
 checkout impact, payment evidence, and an immutable provider-switch history at
 **Settings → Tax control**. The current setup is read-only; an explicit provider action

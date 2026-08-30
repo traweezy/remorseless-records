@@ -156,6 +156,9 @@ describe("POST /admin/tax-control/switch", () => {
     await POST(fixture.req, res);
 
     expect(fixture.locking.execute).toHaveBeenCalledTimes(1);
+    expect(stripeReadinessMock).toHaveBeenCalledWith({
+      logger: fixture.logger,
+    });
     expect(fixture.service.switchProvider).toHaveBeenCalledWith({
       actorId: "user_admin",
       ...validBody,

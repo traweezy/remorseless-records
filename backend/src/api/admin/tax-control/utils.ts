@@ -231,15 +231,13 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
   const [control, quota, stripe, audits, impact, evidence] = await Promise.all([
     service.ensureTaxProviderControl(),
     syncTaxRateIoQuota({ logger, service }),
-    resolveStripeTaxReadiness(),
+    resolveStripeTaxReadiness({ logger }),
     service.listTaxProviderAudits(
       {},
       { order: { created_at: "DESC" }, take: 25 },
     ),
     loadTaxControlImpact(
-      container.resolve<TaxControlImpactQuery>(
-        ContainerRegistrationKeys.QUERY,
-      ),
+      container.resolve<TaxControlImpactQuery>(ContainerRegistrationKeys.QUERY),
     ),
     evidenceSnapshot({ container, logger, service }),
   ]);

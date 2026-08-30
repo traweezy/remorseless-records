@@ -66,6 +66,17 @@ metadata fail closed with a coded error that does not copy Stripe or customer
 details. These retry and validation rules apply to quote calculation; the
 payment-binding invariant below still decides whether a quote may be attached.
 
+The Admin readiness snapshot and provider-switch check retrieve Stripe Tax
+settings and active registrations concurrently under one shared eight-second
+deadline. Nested SDK retries are disabled; each safe GET can make one bounded
+transient retry, while rate limits and other non-retryable 4xx responses stay
+single-attempt. The response boundary accepts at most one complete
+100-registration page and validates the settings discriminator, key/account
+mode, provider, status, tax behavior, tax code, bounded missing-field names,
+and active unique registrations. Any malformed or additional page fails
+closed. Retry warnings contain only operation, reason class, and attempt count;
+provider text and registration details are never logged or returned.
+
 Stripe Tax is ready only when all checks pass:
 
 - a configured Stripe secret key;

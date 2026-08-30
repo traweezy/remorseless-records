@@ -1,3 +1,4 @@
+import type { Logger } from "@medusajs/framework/types";
 import Stripe from "stripe";
 
 import {
@@ -5,6 +6,11 @@ import {
   STRIPE_TAX_SHIPPING_TAX_CODE,
   TAX_RATE_LOOKUP_API_KEY,
 } from "../constants";
+import {
+  readStripeTaxReadiness,
+  type StripeTaxReadinessClient,
+  type StripeTaxReadinessRetryEvent,
+} from "./stripe-readiness-client";
 
 export type ReadinessCheck = {
   detail: string;
@@ -25,6 +31,15 @@ export type StripeTaxReadiness = ProviderReadiness & {
   activeRegistrationCount: number;
   missingFields: string[];
 };
+
+export type ResolveStripeTaxReadinessOptions = {
+  apiKey?: string;
+  client?: StripeTaxReadinessClient;
+  logger?: Pick<Logger, "warn">;
+  timeoutMs?: number;
+};
+
+const STRIPE_TAX_READINESS_TIMEOUT_MS = 8_000;
 
 const check = (
   id: string,
@@ -69,144 +84,164 @@ export const resolveTaxRateIoReadiness = (
   };
 };
 
-export const resolveStripeTaxReadiness =
-  async (): Promise<StripeTaxReadiness> => {
-    const apiKey = STRIPE_API_KEY?.trim();
-    if (!apiKey) {
-      const checks = [
-        check(
-          "api_key",
-          "Stripe key",
-          false,
-          "Set STRIPE_API_KEY for this environment.",
-        ),
-      ];
-      return {
-        accountMode: "unknown",
-        activeRegistrationCount: 0,
-        checks,
-        configured: false,
-        message: "Stripe is not configured.",
-        missingFields: [],
-        ready: false,
-      };
-    }
+const retryMessage = (event: StripeTaxReadinessRetryEvent): string =>
+  `[tax-control] Stripe Tax ${event.operation} readiness retry scheduled (${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`;
 
-    try {
-      const stripe = new Stripe(apiKey, { timeout: 8_000 });
-      const [settings, registrations] = await Promise.all([
-        stripe.tax.settings.retrieve(),
-        stripe.tax.registrations.list({ limit: 100, status: "active" }),
-      ]);
-      const activeRegistrations = registrations.data.filter(
-        (registration) =>
-          registration.status === "active" &&
-          registration.livemode === settings.livemode,
-      );
-      const missingFields =
-        settings.status_details.pending?.missing_fields ?? [];
-      const accountMode = settings.livemode ? "live" : "sandbox";
-      const shippingTaxCodeReady = Boolean(
-        STRIPE_TAX_SHIPPING_TAX_CODE &&
-        /^txcd_\d{8}$/.test(STRIPE_TAX_SHIPPING_TAX_CODE),
-      );
-      const checks = [
-        check(
-          "api_key",
-          "Stripe key",
-          true,
-          `Connected to the ${accountMode} account.`,
-        ),
-        check(
-          "settings",
-          "Tax settings",
-          settings.status === "active",
-          settings.status === "active"
-            ? "Stripe Tax settings are active."
-            : `Stripe still needs: ${missingFields.join(", ") || "Tax settings setup"}.`,
-        ),
-        check(
-          "head_office",
-          "Head office",
-          Boolean(settings.head_office),
-          settings.head_office
-            ? "A tax head-office address is set."
-            : "Set the legal head-office address in Stripe Tax settings.",
-        ),
-        check(
-          "provider",
-          "Calculation provider",
-          settings.defaults.provider === "stripe",
-          settings.defaults.provider === "stripe"
-            ? "Stripe is the configured calculation provider."
-            : `Stripe reports ${settings.defaults.provider} as the calculation provider.`,
-        ),
-        check(
-          "tax_behavior",
-          "Price tax behavior",
-          settings.defaults.tax_behavior === "exclusive",
-          settings.defaults.tax_behavior === "exclusive"
-            ? "Prices are tax-exclusive, matching Medusa."
-            : "Set Stripe's default tax behavior to exclusive.",
-        ),
-        check(
-          "product_tax_code",
-          "Default product tax code",
-          Boolean(settings.defaults.tax_code),
-          settings.defaults.tax_code
-            ? `Stripe default: ${settings.defaults.tax_code}. Product metadata can override it.`
-            : "Set a reviewed default product tax code in Stripe.",
-        ),
-        check(
-          "shipping_tax_code",
-          "Shipping tax code",
-          shippingTaxCodeReady,
-          shippingTaxCodeReady
-            ? `Configured as ${STRIPE_TAX_SHIPPING_TAX_CODE}.`
-            : "Set STRIPE_TAX_SHIPPING_TAX_CODE after reviewing the shipping classification.",
-        ),
-        check(
-          "registration",
-          "Active registration",
-          activeRegistrations.length > 0,
-          activeRegistrations.length
-            ? `${activeRegistrations.length} active registration${activeRegistrations.length === 1 ? "" : "s"} found.`
-            : `Add at least one active ${accountMode} registration.`,
-        ),
-      ];
+const accountModeFromApiKey = (
+  apiKey: string,
+): StripeTaxReadiness["accountMode"] =>
+  /^(?:rk|sk)_live_/.test(apiKey)
+    ? "live"
+    : /^(?:rk|sk)_test_/.test(apiKey)
+      ? "sandbox"
+      : "unknown";
 
-      return {
-        accountMode,
-        activeRegistrationCount: activeRegistrations.length,
-        checks,
-        configured: true,
-        message: checks.every((item) => item.ready)
-          ? `Stripe Tax is ready in ${accountMode}.`
-          : `Stripe Tax ${accountMode} setup is incomplete.`,
-        missingFields,
-        ready: checks.every((item) => item.ready),
-      };
-    } catch {
-      const checks = [
-        check(
-          "api_connection",
-          "Stripe connection",
-          false,
-          "Stripe Tax settings could not be read. Verify the key and try again.",
-        ),
-      ];
-      return {
-        accountMode: apiKey.startsWith("sk_live_")
-          ? "live"
-          : apiKey.startsWith("sk_test_")
-            ? "sandbox"
-            : "unknown",
-        activeRegistrationCount: 0,
-        checks,
-        configured: true,
-        message: "Stripe Tax readiness could not be verified.",
-        missingFields: [],
-        ready: false,
-      };
-    }
-  };
+export const resolveStripeTaxReadiness = async ({
+  apiKey: configuredApiKey = STRIPE_API_KEY,
+  client,
+  logger,
+  timeoutMs = STRIPE_TAX_READINESS_TIMEOUT_MS,
+}: ResolveStripeTaxReadinessOptions = {}): Promise<StripeTaxReadiness> => {
+  const apiKey = configuredApiKey?.trim();
+  if (!apiKey) {
+    const checks = [
+      check(
+        "api_key",
+        "Stripe key",
+        false,
+        "Set STRIPE_API_KEY for this environment.",
+      ),
+    ];
+    return {
+      accountMode: "unknown",
+      activeRegistrationCount: 0,
+      checks,
+      configured: false,
+      message: "Stripe is not configured.",
+      missingFields: [],
+      ready: false,
+    };
+  }
+
+  try {
+    const stripe =
+      client ??
+      new Stripe(apiKey, {
+        httpClient: Stripe.createFetchHttpClient(),
+        maxNetworkRetries: 0,
+      });
+    const snapshot = await readStripeTaxReadiness({
+      client: stripe,
+      ...(logger
+        ? {
+            onRetry: (event: StripeTaxReadinessRetryEvent) => {
+              logger.warn(retryMessage(event));
+            },
+          }
+        : {}),
+      timeoutMs,
+    });
+    const accountMode = snapshot.livemode ? "live" : "sandbox";
+    const configuredAccountMode = accountModeFromApiKey(apiKey);
+    const shippingTaxCodeReady = Boolean(
+      STRIPE_TAX_SHIPPING_TAX_CODE &&
+      /^txcd_\d{8}$/.test(STRIPE_TAX_SHIPPING_TAX_CODE),
+    );
+    const checks = [
+      check(
+        "api_key",
+        "Stripe key and mode",
+        configuredAccountMode === accountMode,
+        configuredAccountMode === accountMode
+          ? `Connected to the ${accountMode} account.`
+          : "The configured Stripe key prefix does not match the account mode.",
+      ),
+      check(
+        "settings",
+        "Tax settings",
+        snapshot.status === "active",
+        snapshot.status === "active"
+          ? "Stripe Tax settings are active."
+          : `Stripe still needs: ${snapshot.missingFields.join(", ") || "Tax settings setup"}.`,
+      ),
+      check(
+        "head_office",
+        "Head office",
+        snapshot.hasHeadOffice,
+        snapshot.hasHeadOffice
+          ? "A tax head-office address is set."
+          : "Set the legal head-office address in Stripe Tax settings.",
+      ),
+      check(
+        "provider",
+        "Calculation provider",
+        snapshot.provider === "stripe",
+        snapshot.provider === "stripe"
+          ? "Stripe is the configured calculation provider."
+          : `Stripe reports ${snapshot.provider} as the calculation provider.`,
+      ),
+      check(
+        "tax_behavior",
+        "Price tax behavior",
+        snapshot.taxBehavior === "exclusive",
+        snapshot.taxBehavior === "exclusive"
+          ? "Prices are tax-exclusive, matching Medusa."
+          : "Set Stripe's default tax behavior to exclusive.",
+      ),
+      check(
+        "product_tax_code",
+        "Default product tax code",
+        Boolean(snapshot.taxCode),
+        snapshot.taxCode
+          ? `Stripe default: ${snapshot.taxCode}. Product metadata can override it.`
+          : "Set a reviewed default product tax code in Stripe.",
+      ),
+      check(
+        "shipping_tax_code",
+        "Shipping tax code",
+        shippingTaxCodeReady,
+        shippingTaxCodeReady
+          ? `Configured as ${STRIPE_TAX_SHIPPING_TAX_CODE}.`
+          : "Set STRIPE_TAX_SHIPPING_TAX_CODE after reviewing the shipping classification.",
+      ),
+      check(
+        "registration",
+        "Active registration",
+        snapshot.activeRegistrationCount > 0,
+        snapshot.activeRegistrationCount
+          ? `${snapshot.activeRegistrationCount} active registration${snapshot.activeRegistrationCount === 1 ? "" : "s"} found.`
+          : `Add at least one active ${accountMode} registration.`,
+      ),
+    ];
+
+    return {
+      accountMode,
+      activeRegistrationCount: snapshot.activeRegistrationCount,
+      checks,
+      configured: true,
+      message: checks.every((item) => item.ready)
+        ? `Stripe Tax is ready in ${accountMode}.`
+        : `Stripe Tax ${accountMode} setup is incomplete.`,
+      missingFields: snapshot.missingFields,
+      ready: checks.every((item) => item.ready),
+    };
+  } catch {
+    const checks = [
+      check(
+        "api_connection",
+        "Stripe connection",
+        false,
+        "Stripe Tax settings could not be read. Verify the key and try again.",
+      ),
+    ];
+    return {
+      accountMode: accountModeFromApiKey(apiKey),
+      activeRegistrationCount: 0,
+      checks,
+      configured: true,
+      message: "Stripe Tax readiness could not be verified.",
+      missingFields: [],
+      ready: false,
+    };
+  }
+};

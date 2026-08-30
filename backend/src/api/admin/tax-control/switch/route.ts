@@ -59,7 +59,7 @@ export const POST = async (
       const remaining = quota ? Number(quota.remaining) : null;
       const readiness =
         parsed.data.targetProvider === "stripe_tax"
-          ? await resolveStripeTaxReadiness()
+          ? await resolveStripeTaxReadiness({ logger })
           : resolveTaxRateIoReadiness(remaining);
       if (!readiness.ready) {
         throw new MedusaError(

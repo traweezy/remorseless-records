@@ -1,6 +1,6 @@
 # Production Hardening Plan
 
-Last verified: August 29, 2026
+Last verified: August 30, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
@@ -820,7 +820,7 @@ single-attempt. The generated OpenAPI check inventories all route sources
 deterministically and is wired into both the repository lint gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
-typechecks pass. Backend passes 1,055 tests across 191 suites. Storefront passes
+typechecks pass. Backend passes 1,081 tests across 193 suites. Storefront passes
 658 tests across 120 files with 92.99% statement, 86.01% branch, 93.98%
 function, and 92.94% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
@@ -2291,6 +2291,10 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
 - [x] Add reviewed TaxRate.io response bounds: total percentages must be finite
       and within 0%–100%; malformed, negative, and larger totals fail closed,
       while invalid optional jurisdiction components are discarded.
+- [x] Bound Stripe Tax readiness settings and registration safe reads under one
+      shared deadline, disable nested SDK retries, validate the complete
+      response shape and key/account mode, and redact terminal errors and retry
+      telemetry.
 - [ ] Validate tax cache TTLs at startup and bound or purge in-memory caches.
 - [ ] Configure a reviewed monitoring ZIP before enabling paid quota probes.
 - [ ] Complete the filing-record and tax-control runbooks.
@@ -2348,9 +2352,13 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       creation/retrieval now shares one deadline, uses the SDK's canceling fetch
       transport, disables nested SDK retries, allows one transient retry,
       validates the calculation and at most 100 line items, and emits only
-      coded terminal errors and retry telemetry. Stripe Tax
-      readiness, payment-binding, evidence/lifecycle calls, and the other
-      provider families remain.
+      coded terminal errors and retry telemetry. Stripe Tax readiness now reads
+      settings and active registrations concurrently under one shared
+      deadline, disables nested SDK retries, permits only one bounded transient
+      retry per safe GET, rejects rate-limit retries and incomplete pagination,
+      strictly validates settings and registrations, and emits only fixed retry
+      metadata. Stripe Tax payment-binding and evidence/lifecycle calls plus
+      the other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.
