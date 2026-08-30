@@ -256,6 +256,15 @@ telemetry contains only the operation, reason class, and attempt count;
 provider messages and payloads are never logged. This boundary issues no Stripe
 mutation.
 
+The lifecycle receipt is itself a validated evidence boundary. Signed events
+must have exact Stripe object/reference prefixes, a boolean test/live mode, a
+safe USD minor-unit amount, and a valid timestamp. Persisted receipt rows and
+all processing, terminal, and retry write acknowledgements are revalidated
+before reconciliation continues. Only fixed tax-evidence metadata keys are
+accepted. Conflicting replays or terminal outcomes fail closed; malformed
+scheduled rows are omitted from provider reads and increment the aggregate
+`invalid` attention count.
+
 Refund reconciliation is per refund, not merely per PaymentIntent. It verifies
 that every successful Stripe refund has its own committed Stripe Tax reversal,
 surfaces failed/canceled refunds, and fails closed when Stripe reports more

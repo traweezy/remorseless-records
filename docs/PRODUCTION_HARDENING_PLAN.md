@@ -2829,6 +2829,31 @@ total JavaScript is 2,388,605 gzip bytes. The production audit retains only
 three documented ignored moderate findings; Trivy reports zero high/critical
 dependency, misconfiguration, or secret findings.
 
+The sixth post-migration boundary tranche closes the signed Stripe
+refund/dispute lifecycle and persisted-state family. Supported events now
+require exact Stripe identities, a boolean mode, a safe USD minor-unit amount,
+a valid timestamp, and bounded provider status; malformed present references
+cannot collapse to absence. Receipt creation, processing claims, terminal
+completion, and retry scheduling independently validate full stored rows and
+their exact database acknowledgements. Immutable replays must match, terminal
+replays must agree with the prior order/result, retry counters and delays are
+bounded, and terminal metadata is limited to fixed tax-evidence fields. The
+five-minute recovery job validates every candidate, excludes corrupt rows from
+provider reads, and emits an aggregate `invalid` attention count. Jest's
+existing SWC transform now supports Medusa legacy decorators, allowing the
+transactional service contract to run directly under an isolated manager.
+
+Sixty-three focused projection, persistence, processor, webhook, and scheduled
+recovery tests pass with strict TypeScript and Biome. Complete Backend
+acceptance passes 229 suites and 1,507 tests at 91.01% statements, 84.21%
+branches, 95.18% functions, and 91.07% lines. The broader dated debt item
+remains open for unrelated provider and service families. The 1,171-file
+repository QA gate, production Backend/Admin build, frozen packaged install,
+and Admin bundle budget also pass. The Admin main bundle is 1,807,696 gzip
+bytes and total JavaScript is 2,388,013 gzip bytes. The production audit
+retains only the three documented ignored moderate findings; Trivy reports
+zero high/critical dependency, misconfiguration, or secret findings.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

@@ -26,7 +26,14 @@ module.exports = {
       "@swc/jest",
       {
         jsc: {
+          parser: {
+            decorators: true,
+            syntax: "typescript",
+            tsx: true,
+          },
           transform: {
+            decoratorMetadata: true,
+            legacyDecorator: true,
             react: {
               runtime: "automatic",
             },

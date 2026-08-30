@@ -16,12 +16,21 @@ const lifecycleEvent = {
   attempt_count: 1,
   charge_id: "ch_01CHARGE",
   currency_code: "usd",
+  event_created_at: new Date("2026-08-30T12:00:00.000Z"),
   event_type: "refund.created",
   id: "stripelinevt_01",
+  last_error_code: null,
   livemode: false,
   metadata: {},
+  next_retry_at: null,
   object_id: "re_01REFUND",
+  order_id: null,
   payment_intent_id: "pi_01PAYMENT",
+  processed_at: null,
+  processing_started_at: new Date("2026-08-30T12:01:00.000Z"),
+  provider_event_id: "evt_01LIFECYCLE",
+  provider_object_status: "succeeded",
+  received_at: new Date("2026-08-30T12:00:01.000Z"),
   status: "processing",
 }
 
@@ -243,6 +252,30 @@ describe("Stripe lifecycle event processing", () => {
       "stripe_object_integrity_mismatch"
     )
     expect(input.client.disputes.retrieve).toHaveBeenCalled()
+    expect(reconcileMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["coercive attempt count", { attempt_count: "1" }],
+    ["array metadata", { metadata: [] }],
+    ["unknown status", { status: "future" }],
+    ["malformed identity", { object_id: "bad" }],
+    ["ambiguous date", { received_at: "2026-08-30" }],
+  ])("fails closed on a persisted %s", async (_label, override) => {
+    const input = fixture({ record: { ...lifecycleEvent, ...override } })
+
+    await expect(
+      processStripeLifecycleEvent({
+        client: input.client,
+        eventId: "stripelinevt_01",
+        lifecycleService: input.lifecycleService,
+        taxControlService: input.taxControlService,
+      })
+    ).rejects.toThrow("lifecycle_processing_error")
+    expect(
+      input.lifecycleServiceMocks.markStripeLifecycleEventFailed
+    ).toHaveBeenCalledWith("stripelinevt_01", "lifecycle_processing_error")
+    expect(input.client.refunds.retrieve).not.toHaveBeenCalled()
     expect(reconcileMock).not.toHaveBeenCalled()
   })
 })

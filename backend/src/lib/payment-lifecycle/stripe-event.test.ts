@@ -99,4 +99,57 @@ describe("Stripe lifecycle event projection", () => {
       )
     ).toThrow("identity is invalid")
   })
+
+  it.each([
+    ["missing amount", { currency: "usd", id: "re_01REFUND" }],
+    [
+      "numeric-string amount",
+      { amount: "2500", currency: "usd", id: "re_01REFUND" },
+    ],
+    ["non-USD currency", { amount: 2_500, currency: "eur", id: "re_01REFUND" }],
+    [
+      "malformed PaymentIntent",
+      {
+        amount: 2_500,
+        currency: "usd",
+        id: "re_01REFUND",
+        payment_intent: "not-an-intent",
+      },
+    ],
+    [
+      "malformed status",
+      {
+        amount: 2_500,
+        currency: "usd",
+        id: "re_01REFUND",
+        status: { value: "succeeded" },
+      },
+    ],
+  ])("rejects %s instead of weakening immutable evidence", (_label, object) => {
+    expect(() =>
+      projectStripeLifecycleEvent(eventFixture("refund.updated", object))
+    ).toThrow()
+  })
+
+  it("rejects a coercive event mode and an invalid provider timestamp", () => {
+    const coerciveMode = eventFixture("refund.created", {
+      amount: 2_500,
+      currency: "usd",
+      id: "re_01REFUND",
+    }) as unknown as Record<string, unknown>
+    coerciveMode.livemode = "false"
+    expect(() =>
+      projectStripeLifecycleEvent(coerciveMode as unknown as Stripe.Event)
+    ).toThrow("Stripe lifecycle data is malformed")
+
+    const invalidTimestamp = eventFixture("refund.created", {
+      amount: 2_500,
+      currency: "usd",
+      id: "re_01REFUND",
+    }) as unknown as Record<string, unknown>
+    invalidTimestamp.created = Number.MAX_SAFE_INTEGER
+    expect(() =>
+      projectStripeLifecycleEvent(invalidTimestamp as unknown as Stripe.Event)
+    ).toThrow("Stripe lifecycle data is malformed")
+  })
 })

@@ -895,6 +895,15 @@ Medusa's evidence. A five-minute bounded job recovers queue outages, stale
 workers, duplicate delivery, and out-of-order events. The endpoint remains
 dormant until `STRIPE_LIFECYCLE_WEBHOOK_SECRET` is configured.
 
+The receipt boundary rejects non-USD, coercive, oversized, malformed, or
+identity-inconsistent signed event data before persistence. Existing lifecycle
+rows, retry counters, terminal metadata, and every create/update
+acknowledgement are independently validated before use. A duplicate event is
+accepted only when its immutable receipt is exact; a different terminal result
+or order is a conflict. The recovery job excludes malformed rows from
+processing and reports an `invalid` count instead of silently treating them as
+not due.
+
 ### Checkout staging verification
 
 The rebuilt checkout was verified in Stripe test mode on July 25, 2026 at

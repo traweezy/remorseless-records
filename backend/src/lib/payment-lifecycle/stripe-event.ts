@@ -4,7 +4,10 @@ import {
   stripeLifecycleEventTypes,
   type StripeLifecycleEventType,
 } from "../../modules/payment-lifecycle/constants"
-import type { RecordStripeLifecycleEventInput } from "../../modules/payment-lifecycle/service"
+import {
+  recordStripeLifecycleEventInputFrom,
+  type RecordStripeLifecycleEventInput,
+} from "./contracts"
 
 type UnknownRecord = Record<string, unknown>
 
@@ -21,22 +24,29 @@ const asRecord = (value: unknown): UnknownRecord | null =>
     : null
 
 const expandableId = (value: unknown, pattern: RegExp): string | null => {
+  if (value === null || value === undefined) {
+    return null
+  }
   const candidate = typeof value === "string" ? value : asRecord(value)?.id
-  return typeof candidate === "string" && pattern.test(candidate)
-    ? candidate
-    : null
+  if (typeof candidate !== "string" || !pattern.test(candidate)) {
+    throw new Error("Stripe lifecycle event reference is invalid.")
+  }
+  return candidate
 }
 
-const nonnegativeInteger = (value: unknown): number | null =>
-  Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : null
-
-const currencyCode = (value: unknown): string | null =>
+const currencyCode = (value: unknown): unknown =>
   typeof value === "string" && /^[a-zA-Z]{3}$/.test(value.trim())
     ? value.trim().toLowerCase()
-    : null
+    : value
 
 const providerStatus = (value: unknown): string | null =>
-  typeof value === "string" && /^[a-z_]{2,64}$/.test(value) ? value : null
+  value === null || value === undefined
+    ? null
+    : typeof value === "string" && /^[a-z_]{2,64}$/.test(value)
+      ? value
+      : (() => {
+          throw new Error("Stripe lifecycle event status is invalid.")
+        })()
 
 const objectIdPattern = (eventType: StripeLifecycleEventType): RegExp =>
   eventType.startsWith("refund.") ? refundIdPattern : disputeIdPattern
@@ -67,13 +77,13 @@ export const projectStripeLifecycleEvent = (
     throw new Error("Stripe lifecycle event identity is invalid.")
   }
 
-  return {
-    amountMinor: nonnegativeInteger(object.amount),
+  return recordStripeLifecycleEventInputFrom({
+    amountMinor: object.amount,
     chargeId: expandableId(object.charge, chargeIdPattern),
     currencyCode: currencyCode(object.currency),
     eventCreatedAt: new Date(event.created * 1_000),
     eventType,
-    livemode: event.livemode === true,
+    livemode: event.livemode,
     objectId,
     paymentIntentId: expandableId(
       object.payment_intent,
@@ -81,5 +91,5 @@ export const projectStripeLifecycleEvent = (
     ),
     providerEventId,
     providerObjectStatus: providerStatus(object.status),
-  }
+  })
 }

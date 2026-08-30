@@ -9,6 +9,7 @@ import {
 } from "../tax-control/stripe-evidence-client"
 import type PaymentLifecycleModuleService from "../../modules/payment-lifecycle/service"
 import type TaxControlModuleService from "../../modules/tax-control/service"
+import { stripeLifecycleRecordFrom } from "./contracts"
 
 type UnknownRecord = Record<string, unknown>
 
@@ -93,15 +94,15 @@ export const processStripeLifecycleEvent = async ({
   timeoutMs?: number
 }): Promise<ProcessStripeLifecycleResult> => {
   try {
-    const lifecycleEvent =
+    const lifecycleEvent = stripeLifecycleRecordFrom(
       await lifecycleService.markStripeLifecycleEventProcessing(eventId)
+    )
     if (
       lifecycleEvent.status === "processed" ||
       lifecycleEvent.status === "ignored"
     ) {
       return {
-        evidenceFound:
-          asRecord(lifecycleEvent.metadata)?.tax_evidence_found === true,
+        evidenceFound: lifecycleEvent.metadata.tax_evidence_found === true,
         status: lifecycleEvent.status,
       }
     }

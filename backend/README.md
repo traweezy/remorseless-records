@@ -340,6 +340,16 @@ data. It retrieves current Stripe objects before reconciliation because webhook
 delivery can be duplicated or out of order. This endpoint does not issue,
 retry, capture, cancel, or synthesize a Medusa refund.
 
+Signed lifecycle receipts must contain exact Stripe identities, a safe
+non-negative USD minor-unit amount, a boolean mode, a bounded provider status,
+and a valid event timestamp. The service validates persisted rows and the exact
+database acknowledgement for receipt creation, processing claims, completion,
+and bounded retry scheduling. Replays must match every immutable receipt field;
+terminal results are idempotent only when status, order, provider status, and
+allowlisted metadata agree. The five-minute recovery job validates each row,
+does not process malformed state, and includes an `invalid` count in its
+attention summary.
+
 Use `sk_test_...` and a test-mode `pmc_...` outside production. Never log
 values. The webhook endpoint must subscribe to:
 

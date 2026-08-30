@@ -358,6 +358,37 @@ An order may be complete even if this annotation call is temporarily delayed;
 Medusa order/payment state is authoritative. Conversely, Stripe success alone
 still does not prove that a Medusa order exists.
 
+## Incident: refund/dispute lifecycle state is invalid
+
+The separate lifecycle webhook and five-minute recovery job are read-only with
+respect to money movement. They validate signed Stripe event projections,
+persisted receipt rows, bounded retry counters, allowlisted terminal metadata,
+and exact database write acknowledgements. A duplicate provider event must
+match its immutable receipt; an existing terminal outcome must match the same
+status, order, provider status, and submitted metadata.
+
+If reconciliation reports `invalid > 0`, or a request fails with a lifecycle
+state error:
+
+1. Keep the official Medusa Stripe webhook and checkout recovery enabled; do
+   not replay a refund, create a dispute, or move money as a repair.
+2. Identify the opaque lifecycle receipt and compare its event type, Stripe
+   object/reference prefixes, USD minor-unit amount, mode, timestamps, status,
+   attempt count, and fixed metadata keys with independently verified Stripe
+   test-mode evidence.
+3. Check whether the database acknowledgement changed the requested status,
+   counter, timestamp, error code, order, provider status, or metadata. Treat a
+   mismatch as stored-state corruption, not a retryable provider response.
+4. For a duplicate provider event, verify every immutable receipt field. For a
+   terminal receipt, verify the exact prior result before allowing an
+   idempotent replay.
+5. Preserve the malformed row and scheduler attention record for audit. Repair
+   or quarantine it only through an approved, reversible data procedure with a
+   before/after record; never delete it to clear the counter.
+6. Resume ordinary reconciliation only after a valid row passes the same
+   boundary. The job will retry a failed non-terminal row on its bounded
+   schedule and will not process malformed rows.
+
 ## Incident: payment succeeded but no order appears
 
 1. Tell the shopper not to submit payment again.
