@@ -95,9 +95,8 @@ stability and continuous loading, discography layout, and checkout. Chromium-
 based Pixel 7 and iPhone 15 Pro emulation remain the device and touch gate in the
 primary CI configuration because the unsupported Linux fallback builds for
 Firefox and WebKit do not faithfully expose mobile touch points. The cross-
-browser runner targets the current HTTPS Railway deployment by default because
-WebKit correctly upgrades insecure subresources under the production CSP.
-Override the target with an HTTPS `PLAYWRIGHT_BASE_URL` when validating another
+browser runner targets the current HTTPS Railway deployment by default.
+Override the target with `PLAYWRIGHT_BASE_URL` when validating another
 deployment:
 
 ```sh
@@ -105,8 +104,24 @@ pnpm run test:e2e:cross-browser
 PLAYWRIGHT_BASE_URL=https://example.test pnpm run test:e2e:cross-browser
 ```
 
+Before pushing a Storefront hardening slice, run the bounded three-engine
+matrix against the local production build:
+
+```sh
+pnpm run test:e2e:critical
+```
+
+This command runs seven current guest-commerce journeys per engine and retains
+screenshots/traces on failure. Production-mode HTTP validation is supported:
+the CSP emits insecure-request upgrading only when the document request is
+already HTTPS, so WebKit does not rewrite local CSS/JavaScript requests to a
+nonexistent TLS listener. Deployed HTTPS documents retain the strict upgrade
+and mixed-content directives.
+
 Only run the database-reset suite after configuring the dedicated test database
-described above:
+described above. That inherited account/authentication suite is not an active
+Remorseless Records Storefront surface and is not part of the non-destructive
+critical gate:
 
 ```sh
 pnpm run test:e2e

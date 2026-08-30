@@ -1488,7 +1488,7 @@ We run three pipelines for `staging` and `master` pushes/pull requests (plus a
 weekly schedule):
 
 - **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build, and an enforced Admin JavaScript bundle budget.
-- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, and a production build. Pushes and `master` release pull requests also require non-destructive Pixel/iPhone Playwright smoke tests, pa11y, and Lighthouse; ordinary `staging` pull requests can opt into those browser gates with repository variables.
+- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, baseline plus transactional coverage, and a production build. Pushes and `master` release pull requests also require non-destructive Pixel/iPhone Playwright smoke tests, the critical Chromium/Firefox/WebKit guest-commerce matrix, pa11y, and Lighthouse; ordinary `staging` pull requests can opt into those browser gates with repository variables.
 - **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, and a retained CycloneDX SBOM plus production-license inventory.
 
 Actions are hardened with `step-security/harden-runner` and pinned to immutable
@@ -1521,6 +1521,7 @@ Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK
 
 - `pnpm exec eslint --ext .ts,.tsx src` and `pnpm run typecheck` (storefront) / `pnpm --filter backend exec tsc --noEmit` before commits.
 - Monorepo check shortcut: `pnpm run qa:lint` (lint + typecheck for storefront and backend).
+- Critical desktop browser matrix: `pnpm --filter remorseless-records-storefront run test:e2e:critical` after the Storefront production build.
 - Reindex search after catalog bulk changes: `pnpm --filter backend run search:sync` (use `pnpm --filter backend run search:check` to compare Medusa vs. Meilisearch counts).
 - Keyboard and screen-reader sweeps on header, Quick Shop, PDP, cart, checkout,
   recovery, and confirmation. Document in the runbook checklist.

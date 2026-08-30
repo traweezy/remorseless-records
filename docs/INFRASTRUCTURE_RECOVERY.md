@@ -272,6 +272,36 @@ to `products`, and retains the prior index for rollback. Acceptance requires
 published Product count/ID parity, stock invariants, representative query,
 facet, and sort checks. Snapshot restore without those checks is incomplete.
 
+## Current staging acceptance evidence
+
+The recovery-tooling release at exact source SHA
+`f0e512fc372c18a221785a0db16415c8d08b8e21` completed its 2026-08-30
+staging acceptance without querying or changing production:
+
+- Root CI run `33331236327`, Backend CI run `33331236333`, and Storefront CI
+  run `33331236393` all completed successfully on the exact SHA.
+- Railway Backend deployment `d6e5b281-e3dd-4c74-bcd8-64e5502ce53c` and
+  Storefront deployment `320bc6e0-ad1f-4a12-b6c2-6224e03f8f0f` both reached
+  `SUCCESS` on that SHA.
+- Backend release logs recorded completed database migrations, database-link
+  synchronization, object-storage readiness, and search preparation in that
+  order. No preparation step was skipped or left incomplete.
+- Backend `/live`, `/ready`, and `/api/health` returned HTTP 200 with the exact
+  SHA. Readiness reported PostgreSQL, Redis, search, object storage, payment,
+  tax, notification, payment lifecycle, search, storage, and Admin RBAC
+  capabilities healthy.
+- Storefront `/live`, `/ready`, `/api/healthcheck`, `/`, and `/catalog` returned
+  HTTP 200 with the exact SHA on health responses. Storefront readiness
+  reported Backend and Redis healthy.
+- Railway's exact-deployment HTTP records independently captured Backend
+  `/ready` at 96 ms and Storefront `/ready` at 255 ms with HTTP 200 and no
+  upstream error.
+
+This proves the portable tooling and authority-boundary release is deployable;
+it does not close the still-controlled role cutover, backup scheduling, off-site
+media destination, timed restore drills, support-service image pinning, or
+production approval items below.
+
 ## Required evidence before launch
 
 - approved production topology/domains/cost ceiling;

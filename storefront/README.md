@@ -65,7 +65,7 @@ pnpm --filter remorseless-records-storefront run lint
 pnpm --filter remorseless-records-storefront run typecheck
 pnpm --filter remorseless-records-storefront run test:coverage
 pnpm --filter remorseless-records-storefront run build
-pnpm --filter remorseless-records-storefront run test:e2e
+pnpm --filter remorseless-records-storefront run test:e2e:critical
 ```
 
 The local application listens on `http://localhost:3000`.
@@ -200,7 +200,22 @@ Before committing storefront changes, run:
 pnpm run qa:lint
 pnpm run qa:storefront:coverage
 pnpm --filter remorseless-records-storefront run build
+pnpm --filter remorseless-records-storefront run test:e2e:critical
 ```
+
+`test:coverage` keeps the high-coverage application baseline and then runs a
+separate transactional scope for cart, checkout, same-origin BFF routes,
+server guards, Redis, and critical checkout components. Both scopes enforce
+their own non-regressing thresholds and CI retains the complete coverage
+output for 14 days.
+
+`test:e2e:critical` starts the local production server from the current build
+and runs the guest-commerce acceptance matrix in Chromium, Firefox, and
+WebKit. It covers home hydration, cart and empty state, quick shop, a real
+catalog Product, filter refresh stability, checkout, and receipt confirmation.
+The Storefront does not expose a customer account/authentication surface; do
+not count the database-reset starter-template account suite as application
+coverage.
 
 Responsive changes must also be verified with the Playwright device projects
 and a real browser screenshot as described in `tmp/STARTUP.md`.

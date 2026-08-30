@@ -122,6 +122,28 @@ pnpm --filter backend exec tsc --noEmit
 pnpm run qa:browser-toolchain-security
 ```
 
+### 1.5 Critical browser matrix
+
+Build the Storefront with production-like local environment values, then run:
+
+```bash
+pnpm --filter remorseless-records-storefront run test:e2e:critical
+```
+
+The gate runs seven non-destructive journeys in Chromium, Firefox, and WebKit:
+home hydration, cart/empty state, quick-shop add, Product detail, desktop
+filter refresh, checkout, and receipt confirmation. It fails on page/console
+errors, overflow, invalid targets, broken focus/pointer affordances, unstable
+scroll position, or missing commerce state. CI retains screenshots and traces
+for 14 days when it fails.
+
+This Storefront is guest-only and exposes no customer account or login route.
+Do not run or credit the inherited database-reset account suite as current
+application auth coverage. That suite is destructive and requires a dedicated
+test database. Inspect at least one real rendered screenshot from each changed
+critical surface before sign-off; automated assertions do not replace visual
+review.
+
 ---
 
 ## 2. Stripe Payment Element Matrix

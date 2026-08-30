@@ -2679,17 +2679,18 @@ floating support images, and the exact production cost/domain approval packet.
       without losing accessibility or performance coverage.
 - [x] Run Storefront build, Playwright, accessibility, and Lighthouse jobs on
       every `master` release pull request and every long-lived branch push.
-- [ ] Run Chromium, Firefox, and WebKit for critical home, catalog, product,
-      cart, checkout, auth, and receipt paths; upload failure artifacts.
-- [ ] Expand Storefront coverage to cart, checkout, BFF routes, components, and
+- [x] Run Chromium, Firefox, and WebKit for critical home, catalog, product,
+      cart, checkout, and receipt paths; upload failure artifacts. Customer
+      authentication is intentionally absent from this guest-only Storefront.
+- [x] Expand Storefront coverage to cart, checkout, BFF routes, components, and
       critical user flows instead of measuring only the current narrow include
       set.
-- [ ] Raise Redis client branch/function coverage from the current low level.
-- [ ] Add Backend coverage enforcement of at least 80% for core and critical
+- [x] Raise Redis client branch/function coverage from the current low level.
+- [x] Add Backend coverage enforcement of at least 80% for core and critical
       paths.
 - [ ] Add disposable PostgreSQL/Redis integration, migration, API-contract,
       payment failure/retry, and queue recovery tests.
-- [ ] Add Prettier as the repository formatter and enforce a formatting check in
+- [x] Add Prettier as the repository formatter and enforce a formatting check in
       hooks and CI.
 - [ ] Tighten Backend ESLint unsafe-TypeScript rules incrementally without
       hiding existing debt.
@@ -2715,6 +2716,37 @@ floating support images, and the exact production cost/domain approval packet.
       all three otherwise-successful workflows.
 - [ ] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
       Stripe, AWS SDK, and other outdated dependency families.
+
+Quality-depth closure on 2026-08-30 preserves the original Storefront coverage
+baseline while adding a separate transactional suite for cart, checkout, BFF
+routes, server boundaries, and critical components. The baseline reports
+94.16% statements, 86.69% branches, 95.94% functions, and 94.15% lines; the
+transactional scope reports 81.86%, 72.16%, 84.39%, and 82.02%, respectively,
+across 34 files and 230 tests. Redis now reports 98.21% statements/lines, 100%
+branches, and 94.11% functions. Backend's explicit checkout, database,
+payment-lifecycle, refund, security, tax, reporting, and upload scope enforces
+an 80% global floor and passed 219 suites / 1,297 tests at 90.99% statements,
+82.89% branches, 95.13% functions, and 91.12% lines.
+
+The local production artifact passed 21 non-destructive critical journeys in
+Chromium, Firefox, and WebKit. They cover home hydration, a contained cart and
+empty state, quick-shop mutation, a real catalog Product detail, stable desktop
+filter refresh, checkout, and receipt confirmation. The Storefront has no
+customer account/auth route; checkout explicitly remains guest-only, and the
+database-reset starter-template authentication suite is not an application
+acceptance surface. Failure screenshots and traces are retained for 14 days in
+CI. Real WebKit screenshots of the cart, quick shop, checkout, and receipt were
+inspected. That run exposed and fixed a genuine CSP bug: production-mode local
+HTTP documents no longer upgrade their own subresources to HTTPS, while secure
+deployed requests retain `upgrade-insecure-requests` and
+`block-all-mixed-content`.
+
+One root Prettier 3.9.6 configuration now owns repository formatting. The
+checked `format:check` gate covers source, workflow, script, and manifest files
+while retaining two documented parser/generated-file exclusions. Complete
+repository QA, both strict typechecks and linters, both production builds, the
+Storefront client-secret scan, the production dependency audit, and the React
+Router security-backport verifier passed after these changes.
 
 Resolved discovery: GitHub Dependabot alerts `27` and `28` classified the same
 `GHSA-jmr9-qjv8-65gv` / `CVE-2026-56876` high-severity development-only
