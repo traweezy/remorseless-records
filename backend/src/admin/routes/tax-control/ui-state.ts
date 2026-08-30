@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { TAX_DISABLED_ACKNOWLEDGEMENT } from "../../../modules/tax-control/constants";
+import type { AdminFormIssue } from "../../components/admin-form-contract";
 
 export const providerNames = ["taxrate_io", "stripe_tax"] as const;
 
@@ -39,6 +40,31 @@ export const taxControlTransitionFormSchema = (
         });
       }
     });
+
+export const taxControlTransitionIssues = (
+  targetCollectionMode: CollectionMode,
+  values: { acknowledgement: string; reason: string },
+): AdminFormIssue[] => {
+  const result = taxControlTransitionFormSchema(targetCollectionMode).safeParse(
+    values,
+  );
+  if (result.success) {
+    return [];
+  }
+  return result.error.issues.map((issue) => {
+    const field = String(issue.path[0] ?? "");
+    return {
+      key: `${issue.path.join(".")}:${issue.message}`,
+      message: issue.message,
+      targetId:
+        field === "acknowledgement"
+          ? "tax-disabled-acknowledgement"
+          : field === "reason"
+            ? "tax-transition-reason"
+            : null,
+    };
+  });
+};
 
 export const taxControlTransitionWasApplied = ({
   activeProvider,

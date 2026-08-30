@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -32,6 +33,7 @@ import {
 import { operationsAdminActions } from "../../../lib/admin-permissions"
 import { AdminEmptyState } from "../../components/admin-empty-state"
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
+import { ConfirmAction } from "../../components/confirm-action"
 import {
   AdminPageHeader,
   AdminSingleColumnLayout,
@@ -139,6 +141,7 @@ const MediaActionButton = memo<MediaActionProps>(
         isLoading={busy}
         onClick={handleAction}
         size="small"
+        type="button"
         variant={quarantined ? "primary" : "secondary"}
       >
         {quarantined ? "Restore" : "Quarantine"}
@@ -450,6 +453,8 @@ MediaEmptyState.displayName = "MediaEmptyState"
 export const MediaCleanupPageContent = memo(() => {
   const [view, setView] = useState<MediaLifecycleStatus>("active")
   const [pageIndex, setPageIndex] = useState(0)
+  const [pendingAsset, setPendingAsset] = useState<MediaAsset | null>(null)
+  const lifecycleIdempotencyKeyRef = useRef<string | null>(null)
   const queryClient = useQueryClient()
   const permissions = useAdminPermissions()
   const canUpdate = permissions.hasPermission(
@@ -474,22 +479,21 @@ export const MediaCleanupPageContent = memo(() => {
   )
 
   const lifecycleMutation = useMutation({
-    mutationFn: (asset: MediaAsset) =>
-      updateMediaLifecycle({ asset, idempotencyKey: crypto.randomUUID() }),
-    onError: (mutationError) => {
-      toast.error(
-        getAdminRequestErrorMessage(
-          mutationError,
-          "Unable to update the media lifecycle.",
-        ),
-      )
-    },
+    mutationFn: ({
+      asset,
+      idempotencyKey,
+    }: {
+      asset: MediaAsset
+      idempotencyKey: string
+    }) => updateMediaLifecycle({ asset, idempotencyKey }),
     onSettled: async () => {
       await queryClient.invalidateQueries({
         queryKey: MEDIA_CLEANUP_QUERY_KEY,
       })
     },
     onSuccess: (action) => {
+      lifecycleIdempotencyKeyRef.current = null
+      setPendingAsset(null)
       toast.success(
         action === "restore"
           ? "Media restored"
@@ -501,7 +505,13 @@ export const MediaCleanupPageContent = memo(() => {
     },
   })
   const busyAssetId = lifecycleMutation.isPending
-    ? (lifecycleMutation.variables?.id ?? null)
+    ? (lifecycleMutation.variables?.asset.id ?? null)
+    : null
+  const lifecycleError = lifecycleMutation.error
+    ? getAdminRequestErrorMessage(
+        lifecycleMutation.error,
+        "Unable to update the media lifecycle.",
+      )
     : null
 
   const handleViewChange = useCallback((value: string) => {
@@ -521,10 +531,29 @@ export const MediaCleanupPageContent = memo(() => {
       if (!canUpdate || lifecycleMutation.isPending) {
         return
       }
-      lifecycleMutation.mutate(asset)
+      lifecycleMutation.reset()
+      lifecycleIdempotencyKeyRef.current = crypto.randomUUID()
+      setPendingAsset(asset)
     },
     [canUpdate, lifecycleMutation],
   )
+  const handleLifecycleCancel = useCallback(() => {
+    if (!lifecycleMutation.isPending) {
+      lifecycleIdempotencyKeyRef.current = null
+      setPendingAsset(null)
+      lifecycleMutation.reset()
+    }
+  }, [lifecycleMutation])
+  const handleLifecycleConfirm = useCallback(() => {
+    const idempotencyKey = lifecycleIdempotencyKeyRef.current
+    if (!pendingAsset || !idempotencyKey || lifecycleMutation.isPending) {
+      return
+    }
+    lifecycleMutation.mutate({
+      asset: pendingAsset,
+      idempotencyKey,
+    })
+  }, [lifecycleMutation, pendingAsset])
   const columns = useMediaColumns({
     busyAssetId,
     canManage: canUpdate,
@@ -618,6 +647,45 @@ export const MediaCleanupPageContent = memo(() => {
           className="mt-5"
         />
 
+        <section
+          aria-label="Media cleanup workflow"
+          className="mt-5 grid gap-3 md:grid-cols-3"
+        >
+          <div className="rounded-lg border border-ui-border-base p-4">
+            <Text className="text-ui-fg-subtle" size="xsmall" weight="plus">
+              1 · Review
+            </Text>
+            <Text className="mt-1" size="small" weight="plus">
+              Confirm the asset is unlinked
+            </Text>
+            <Text className="mt-1 text-ui-fg-subtle" size="xsmall">
+              Check the filename, preview, storage source, and created date.
+            </Text>
+          </div>
+          <div className="rounded-lg border border-ui-border-base p-4">
+            <Text className="text-ui-fg-subtle" size="xsmall" weight="plus">
+              2 · Quarantine
+            </Text>
+            <Text className="mt-1" size="small" weight="plus">
+              Remove it from active reuse
+            </Text>
+            <Text className="mt-1 text-ui-fg-subtle" size="xsmall">
+              The asset remains stored and recoverable after confirmation.
+            </Text>
+          </div>
+          <div className="rounded-lg border border-ui-border-base p-4">
+            <Text className="text-ui-fg-subtle" size="xsmall" weight="plus">
+              3 · Restore when needed
+            </Text>
+            <Text className="mt-1" size="small" weight="plus">
+              Return it to the media library
+            </Text>
+            <Text className="mt-1 text-ui-fg-subtle" size="xsmall">
+              Restoring does not attach the asset to a product automatically.
+            </Text>
+          </div>
+        </section>
+
         <Alert className="mt-5" variant="warning">
           <Text weight="plus">Physical deletion is disabled</Text>
           <Text size="small">
@@ -664,6 +732,44 @@ export const MediaCleanupPageContent = memo(() => {
           />
         </Container>
       )}
+
+      <ConfirmAction
+        confirmLabel={
+          pendingAsset?.lifecycleStatus === "quarantined"
+            ? "Restore asset"
+            : "Quarantine asset"
+        }
+        description={
+          pendingAsset?.lifecycleStatus === "quarantined"
+            ? "Return this asset to the active media library. It will remain unlinked until it is attached to a product."
+            : "Move this unlinked asset out of the active media library. The file remains recoverable and is not physically deleted."
+        }
+        onCancel={handleLifecycleCancel}
+        onConfirm={handleLifecycleConfirm}
+        open={pendingAsset !== null}
+        pending={lifecycleMutation.isPending}
+        pendingLabel={
+          pendingAsset?.lifecycleStatus === "quarantined"
+            ? "Restoring…"
+            : "Quarantining…"
+        }
+        title={
+          pendingAsset
+            ? `${pendingAsset.lifecycleStatus === "quarantined" ? "Restore" : "Quarantine"} ${pendingAsset.originalFilename ?? pendingAsset.id}?`
+            : "Update media lifecycle"
+        }
+        variant={
+          pendingAsset?.lifecycleStatus === "quarantined"
+            ? "confirmation"
+            : "danger"
+        }
+      >
+        {lifecycleError ? (
+          <Alert role="alert" variant="error">
+            <Text size="small">{lifecycleError}</Text>
+          </Alert>
+        ) : null}
+      </ConfirmAction>
     </AdminSingleColumnLayout>
   )
 })

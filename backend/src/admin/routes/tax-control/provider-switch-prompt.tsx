@@ -6,6 +6,13 @@ import { Alert, Input, Text, Textarea } from "@medusajs/ui";
 
 import { TAX_DISABLED_ACKNOWLEDGEMENT } from "../../../modules/tax-control/constants";
 import {
+  AdminFormErrorSummary,
+  AdminFormSaveState,
+  focusFirstAdminFormIssue,
+  visibleAdminFormFieldError,
+  type AdminSaveState,
+} from "../../components/admin-form-contract";
+import {
   AdminFormField,
   type AdminFormControlProps,
 } from "../../components/admin-form-field";
@@ -13,6 +20,7 @@ import { ConfirmAction } from "../../components/confirm-action";
 import {
   collectionChoiceLabel,
   taxControlTransitionFormSchema,
+  taxControlTransitionIssues,
   type CollectionMode,
   type ProviderName,
 } from "./ui-state";
@@ -37,23 +45,13 @@ type TaxControlTransitionPromptProps = {
   targetProvider: ProviderName;
 };
 
-const firstFieldError = (field: AnyFieldApi): string | undefined => {
-  const first = field.state.meta.errors[0] as unknown;
-  if (typeof first === "string") {
-    return first;
-  }
-  if (first && typeof first === "object" && "message" in first) {
-    const message = (first as { message?: unknown }).message;
-    return typeof message === "string" ? message : undefined;
-  }
-  return undefined;
-};
-
 const fieldError = (field: AnyFieldApi): string | undefined =>
-  !field.state.meta.isValid &&
-  (field.state.meta.isTouched || field.form.state.submissionAttempts > 0)
-    ? firstFieldError(field)
-    : undefined;
+  visibleAdminFormFieldError({
+    errors: field.state.meta.errors,
+    isTouched: field.state.meta.isTouched,
+    isValid: field.state.meta.isValid,
+    submissionAttempts: field.form.state.submissionAttempts,
+  });
 
 type SwitchReasonFieldProps = {
   autoFocus: boolean;
@@ -208,6 +206,7 @@ export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
       isPristine: state.isPristine,
       isSubmitting: state.isSubmitting,
       submissionAttempts: state.submissionAttempts,
+      values: state.values,
     }));
     const busy = pending || formState.isSubmitting;
     const currentChoice = collectionChoiceLabel(
@@ -231,22 +230,32 @@ export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
     const handleConfirm = useCallback(async () => {
       await form.handleSubmit();
       if (!form.state.canSubmit) {
-        const browser = globalThis as unknown as {
-          document: {
-            getElementById: (id: string) => { focus: () => void } | null;
-          };
-          requestAnimationFrame: (callback: () => void) => number;
-        };
-        browser.requestAnimationFrame(() => {
-          const fieldId =
-            targetCollectionMode === "disabled" &&
-            form.state.values.acknowledgement !== TAX_DISABLED_ACKNOWLEDGEMENT
-              ? "tax-disabled-acknowledgement"
-              : "tax-transition-reason";
-          browser.document.getElementById(fieldId)?.focus();
-        });
+        focusFirstAdminFormIssue(
+          taxControlTransitionIssues(targetCollectionMode, form.state.values),
+        );
       }
     }, [form, targetCollectionMode]);
+    const formIssues = useMemo(
+      () =>
+        formState.submissionAttempts > 0
+          ? taxControlTransitionIssues(
+              targetCollectionMode,
+              formState.values,
+            )
+          : [],
+      [
+        formState.submissionAttempts,
+        formState.values,
+        targetCollectionMode,
+      ],
+    );
+    const saveState: AdminSaveState = busy
+      ? "saving"
+      : formState.submissionAttempts > 0 && !formState.canSubmit
+        ? "error"
+        : formState.isPristine
+          ? "idle"
+          : "dirty";
 
     return (
       <ConfirmAction
@@ -275,6 +284,9 @@ export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
           targetCollectionMode === "disabled" ? "danger" : "confirmation"
         }
       >
+        <div className="flex justify-end">
+          <AdminFormSaveState state={saveState} />
+        </div>
         {targetCollectionMode === "disabled" ? (
           <Alert variant="warning">
             New eligible checkouts will receive a $0.00 tax decision. This does
@@ -318,13 +330,10 @@ export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
 
         <form.Field children={renderReasonField} name="reason" />
 
-        {formState.submissionAttempts > 0 && !formState.canSubmit ? (
-          <Alert role="alert" variant="error">
-            Review the highlighted field
-            {targetCollectionMode === "disabled" ? "s" : ""} before saving this
-            decision.
-          </Alert>
-        ) : null}
+        <AdminFormErrorSummary
+          issues={formIssues}
+          title="Review this tax decision"
+        />
       </ConfirmAction>
     );
   },

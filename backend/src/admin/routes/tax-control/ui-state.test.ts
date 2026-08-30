@@ -1,6 +1,7 @@
 import {
   collectionChoiceLabel,
   providerLabel,
+  taxControlTransitionIssues,
   taxControlTransitionFormSchema,
   taxControlTransitionWasApplied,
 } from "./ui-state";
@@ -48,6 +49,19 @@ describe("tax control UI state", () => {
         acknowledgement: "",
       }).success,
     ).toBe(true);
+    expect(
+      taxControlTransitionIssues("disabled", {
+        acknowledgement: "",
+        reason: "short",
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          targetId: "tax-disabled-acknowledgement",
+        }),
+        expect.objectContaining({ targetId: "tax-transition-reason" }),
+      ]),
+    );
   });
 
   it("uses plain-language labels for all three choices", () => {
