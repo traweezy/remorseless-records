@@ -654,12 +654,13 @@ test("adding from quick shop confirms in place without opening the cart", async 
   })
   await search.fill("Pathologist")
   await expect(page.getByText("Showing 1 of 1")).toBeVisible()
-  await page
+  const quickShopButton = page
     .getByRole("region", { name: "Catalog results" })
     .getByRole("button", {
       name: "Quick shop Pathological Decomposition",
     })
-    .click()
+  await expect(quickShopButton).toHaveCount(1)
+  await quickShopButton.click()
   const quickShop = page.getByRole("dialog", { name: "Quick shop" })
   await expect(quickShop).toBeVisible()
   await quickShop.getByRole("button", { name: "Add to cart" }).click()
