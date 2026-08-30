@@ -2402,7 +2402,9 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       under one shared deadline, cache the expanded PaymentIntent per lifecycle
       run, disable nested SDK retries, validate complete provider response
       shapes before persistence, and redact terminal errors and retry telemetry.
-- [ ] Validate tax cache TTLs at startup and bound or purge in-memory caches.
+- [x] Validate tax cache TTLs and entry ceilings at startup; purge expired
+      entries on writes, apply deterministic least-recently-used eviction, and
+      rate-limit key-free capacity telemetry.
 - [ ] Configure a reviewed monitoring ZIP before enabling paid quota probes.
 - [ ] Complete the filing-record and tax-control runbooks.
 - [ ] Request separate approval before live registrations or a production tax

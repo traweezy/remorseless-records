@@ -90,6 +90,26 @@ Sandbox readiness does not authorize a production registration or live
 provider switch. Production tax registrations and classifications require the
 store owner's explicit approval and, when needed, professional tax advice.
 
+## Cache boundaries
+
+Medusa validates every tax-cache duration and capacity while loading its
+runtime configuration. `TAX_RATE_LOOKUP_CACHE_TTL_MS` accepts integer values
+from 1 second through 1 hour and defaults to 5 minutes;
+`STRIPE_TAX_QUOTE_TTL_MS` accepts 1 second through 30 minutes and defaults to
+30 minutes. The per-process entry ceilings default to 2,048 TaxRate.io rates
+and 256 Stripe Tax quotes, with hard configuration maxima of 10,000 and 1,000
+respectively. Empty, fractional, unsafe, or out-of-range settings stop startup
+before the provider serves a request.
+
+Both local caches purge all expired entries before a write and evict the
+least-recently-used entry when capacity is reached. Redis remains the shared
+cross-process cache and applies the matching TTL. A process emits the resolved
+safe numeric configuration at startup and rate-limits capacity warnings to one
+per cache per minute. Those records never contain postal codes, fingerprints,
+cache keys, provider messages, or payloads. A capacity warning means the cache
+is still bounded and serving, but repeated warnings should trigger a review of
+traffic cardinality and the configured ceiling before any increase.
+
 ## Payment binding invariant
 
 Before the browser receives a Stripe client secret, and again immediately

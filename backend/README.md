@@ -530,9 +530,22 @@ Configuration:
 - `TAX_RATE_LOOKUP_API_KEY`
 - `TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE` — optional reviewed ZIP for a deliberate
   admin quota refresh; each refresh consumes one real TaxRate.io lookup.
-- `TAX_RATE_LOOKUP_CACHE_TTL_MS` — default `300000`.
+- `TAX_RATE_LOOKUP_CACHE_TTL_MS` — local/Redis rate TTL, default `300000`;
+  startup accepts only integer values from `1000` through `3600000`.
+- `TAX_RATE_LOOKUP_CACHE_MAX_ENTRIES` — per-process rate-cache ceiling,
+  default `2048`, maximum `10000`.
 - `STRIPE_TAX_SHIPPING_TAX_CODE` — required for Stripe Tax readiness.
-- `STRIPE_TAX_QUOTE_TTL_MS` — local/Redis quote ceiling, default `1800000`.
+- `STRIPE_TAX_QUOTE_TTL_MS` — local/Redis quote ceiling, default and maximum
+  `1800000`, minimum `1000`.
+- `STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES` — per-process Stripe quote-cache
+  ceiling, default `256`, maximum `1000`.
+
+Tax cache configuration is validated when Medusa loads its runtime config; an
+empty, fractional, unsafe, or out-of-range value stops startup. Both local
+caches purge expired entries on writes and use least-recently-used eviction at
+their configured ceiling. Capacity warnings are rate-limited and never include
+cache keys, destinations, fingerprints, or provider payloads. Redis entries
+retain explicit expiry and remain the shared cache across processes.
 
 Tax and payment-association failures remain checkout failures. The application
 does not silently replace a failed final lookup with zero tax. Operational
