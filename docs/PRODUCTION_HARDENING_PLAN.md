@@ -1055,6 +1055,41 @@ single-attempt rate-limit handling, strict identity/calculation/hook/update
 validation, late-link rejection, and redacted terminal errors and retry
 telemetry.
 
+Stripe evidence-boundary exact staging acceptance: source head
+`5d8b4c4278b43d6a44b5a883be495ee2e3987cbe` passed Root CI `33297307727`,
+Backend CI `33297307752`, and Storefront CI `33297307728`, including 1,166
+Backend tests, 658 Storefront tests with coverage, both production builds,
+CodeQL, dependency and secret scans, SBOM and license verification,
+Playwright, pa11y, and Lighthouse. Railway held Backend deployment
+`76cbf3c3-a2bc-4604-bc53-7eeee5dd5fd5` until all three workflows passed,
+then released image digest
+`sha256:7ee6bce0a3eea9a1da7a060b66b5d06c052d2e25a8d9219f83074fc5c9c05587`
+to `SUCCESS` on that exact source. Storefront deployment
+`0db9fa40-03a4-4d78-887f-986ea13b35df` was correctly skipped because its
+watched paths were unchanged. Backend `/live`, `/ready`, and `/api/health`
+all returned 200; both readiness responses reported all four database, Redis,
+search, and object-storage checks healthy. The exact `06:51:44Z`-through-
+`06:51:45Z` acceptance window contained precisely five matching
+exact-deployment HTTP records: two `GET /live`, two `GET /ready`, and one
+`GET /api/health`, all 200, with no unexpected method, path, or response at
+400 or above. The exact deployment recorded 307 info events and four known
+successful command-echo banners that Railway classified as errors, with zero
+warning, non-command error, exception/fatal/failed-operation, Stripe-evidence,
+provider-unavailable, or retry records. Its 201 build-log records were all
+info level with zero failure term. All 342 exact-deployment DNS records from
+`06:50:13Z` through `06:51:45Z` succeeded with zero Stripe lookup; the probe
+window's 14 DNS records were also all successful and contained zero Stripe
+lookup. The health payload still omitted its optional version because Railway
+does not currently inject `COMMIT_SHA`; exact deployment metadata and the
+immutable digest therefore anchor this acceptance. Acceptance issued no Stripe
+evidence reconciliation, lifecycle webhook, tax-link, readiness,
+provider-switch, calculation, PaymentIntent, refund, dispute, association,
+cart, paid, or mutating call in shared staging. The focused 53-test evidence,
+lifecycle, and scheduled-job suite proves one cumulative deadline, bounded
+safe-GET retry, single-attempt rate-limit and mutation behavior, expanded
+PaymentIntent reuse, fail-closed pagination and shape validation, and redacted
+terminal errors and retry telemetry.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
