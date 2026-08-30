@@ -1,3 +1,5 @@
+import { resolveDatabaseConnection } from "./connection-policy"
+
 const CONNECTION_TIMEOUT_MS = 10_000
 const QUERY_TIMEOUT_MS = 30_000
 
@@ -35,20 +37,10 @@ const resolveConnectionString = (): string => {
     throw new Error("[database-cli] DATABASE_URL is required.")
   }
 
-  const url = new URL(raw)
-  if (!["postgres:", "postgresql:"].includes(url.protocol)) {
-    throw new Error("[database-cli] DATABASE_URL must use PostgreSQL.")
-  }
-
-  if (
-    url.hostname.endsWith(".proxy.rlwy.net") &&
-    !url.searchParams.has("sslmode")
-  ) {
-    url.searchParams.set("uselibpqcompat", "true")
-    url.searchParams.set("sslmode", "require")
-  }
-
-  return url.toString()
+  return resolveDatabaseConnection({
+    connectionString: raw,
+    environment: process.env.NODE_ENV,
+  }).connectionString
 }
 
 const loadPostgreSqlClient = async (): Promise<PostgreSqlClientConstructor> => {

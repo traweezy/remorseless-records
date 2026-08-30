@@ -26,7 +26,7 @@
     "search:prepare": "pnpm run search:rebuild",
     "storage:check": "node ./scripts/run-medusa.js ./src/scripts/check-object-storage.ts",
     "storage:verify-write": "node ./scripts/run-medusa.js ./src/scripts/verify-object-storage-provider.ts",
-    "release:prepare": "medusa db:migrate && medusa db:sync-links && pnpm run storage:check && pnpm run search:prepare",
+    "release:prepare": "node ./scripts/release-prepare.mjs",
     "discography:build": "node ./scripts/run-medusa.js ./src/scripts/build-discography-from-products.ts",
     "discography:normalize-formats": "node ./scripts/run-medusa.js ./src/scripts/normalize-discography-formats.ts",
     "media:big-cartel:migrate": "node ./scripts/run-medusa.js ./src/scripts/migrate-big-cartel-media.ts",
@@ -40,6 +40,7 @@
     "shipping:update": "node ./scripts/run-medusa.js ./src/scripts/update-shipping-options.ts",
     "region:us-only": "node ./scripts/run-medusa.js ./src/scripts/enforce-us-region.ts",
     "money:audit": "ts-node --swc ./src/cli/audit-monetary-units.ts",
+    "database:role:audit": "ts-node --swc ./src/cli/audit-database-role.ts",
     "money:migrate-major": "ts-node --swc ./src/cli/migrate-monetary-units.ts",
     "test": "jest --runInBand --passWithNoTests",
     "lint": "eslint --ext .ts,.tsx --max-warnings=0 src"

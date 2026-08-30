@@ -57,6 +57,8 @@ export default defineRailway(() => {
       CHECKOUT_RECONCILIATION_MAX_ATTEMPTS: preserve(),
       CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS: preserve(),
       COOKIE_SECRET: preserve(),
+      DATABASE_MIGRATION_URL: preserve(),
+      DATABASE_ROLE_SPLIT_REQUIRED: preserve(),
       DATABASE_URL: preserve(),
       JWT_SECRET: preserve(),
       MEDUSA_FF_RBAC: preserve(),

@@ -1,6 +1,7 @@
 import { loadEnv } from "@medusajs/framework/utils"
 
 import { assertValue } from "../utils/assert-value"
+import { resolveDatabaseConnection } from "./database/connection-policy"
 import { resolveTaxCacheConfig } from "./tax-control/cache-config"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
@@ -71,10 +72,13 @@ export const BACKEND_URL =
 /**
  * Database URL for Postgres instance used by the backend
  */
-export const DATABASE_URL = assertValue(
-  process.env.DATABASE_URL,
-  "Environment variable for DATABASE_URL is not set"
-)
+export const DATABASE_URL = resolveDatabaseConnection({
+  connectionString: assertValue(
+    process.env.DATABASE_URL,
+    "Environment variable for DATABASE_URL is not set",
+  ),
+  environment: process.env.NODE_ENV,
+}).connectionString
 
 /**
  * (optional) Redis URL for Redis instance used by the backend
