@@ -991,6 +991,39 @@ service suite proves shared-deadline cancellation, bounded idempotent retry,
 single-attempt rate-limit handling, strict request/response validation, and
 redacted terminal errors and retry telemetry.
 
+Stripe Tax readiness-boundary exact staging acceptance: commit
+`45d437602d6753c246a45971fa8d096fbee42780` passed Root CI `33294007325`,
+Backend CI `33294007268`, and Storefront CI `33294007293`, including 1,081
+Backend tests, 658 Storefront tests with coverage, both production builds,
+CodeQL, dependency/secret scans, SBOM and license verification, Playwright,
+pa11y, and Lighthouse. Railway held Backend deployment
+`ec02b5bf-769f-4269-a979-65f7902f8b6a` until those workflows passed, then
+released image digest
+`sha256:03cea48eee7caa44e73e8b7327c428ec8889f952e50d67b289e2f48d51508ab0`
+to `SUCCESS` on that exact SHA. Storefront deployment
+`6d27469c-679d-4277-8764-d3ea02aa1899` was correctly skipped because its
+watched paths were unchanged. Backend `/live`, `/ready`, and `/api/health` all
+returned 200; readiness reported database, Redis, search, and object storage
+healthy. All five matching exact-deployment HTTP records were 200: two
+`GET /live`, two `GET /ready`, and one `GET /api/health`, with no response at
+400 or above. The exact deployment recorded 309 info events and four known
+successful command-echo banners that Railway classified as errors, with zero
+warning, non-command error, exception/fatal/failed-operation, Stripe Tax retry,
+or other retry records. Two successful `api.stripe.com` DNS resolutions at
+05:23:00Z occurred during deployment overlap and coincided exactly with the
+hourly tax-evidence schedule; this timing makes scheduled reconciliation the
+likely source, but does not prove which overlapping instance issued the read.
+The acceptance-probe window beginning at 05:24:36Z contained 18 successful DNS
+records, zero DNS failure, and zero Stripe lookup. The health payload still
+omitted its optional version because Railway does not currently inject
+`COMMIT_SHA`; exact deployment metadata and the immutable digest therefore
+anchor this acceptance. Acceptance issued no Stripe readiness, provider-switch,
+calculation, PaymentIntent, cart, paid, or mutating call in shared staging. The
+focused 31-test client, readiness, and Admin-switch suite proves shared-deadline
+cancellation, per-operation bounded retry, single-attempt rate-limit handling,
+strict settings/registration and account-mode validation, fail-closed
+pagination, and redacted terminal errors and retry telemetry.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
