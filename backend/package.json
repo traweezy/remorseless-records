@@ -43,6 +43,7 @@
     "database:role:audit": "ts-node --swc ./src/cli/audit-database-role.ts",
     "money:migrate-major": "ts-node --swc ./src/cli/migrate-monetary-units.ts",
     "test": "jest --runInBand --passWithNoTests",
+    "test:coverage": "jest --runInBand --passWithNoTests --coverage",
     "lint": "eslint --ext .ts,.tsx --max-warnings=0 src"
   },
   "dependencies": {
