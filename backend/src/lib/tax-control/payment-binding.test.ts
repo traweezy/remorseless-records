@@ -290,6 +290,52 @@ describe("bindCheckoutTaxToPayment", () => {
     expect(client.paymentIntents.retrieve).not.toHaveBeenCalled()
   })
 
+  it("rejects malformed payment-session rows before provider access", async () => {
+    const cart = cartFixture()
+    cart.payment_collection.payment_sessions.push(false as never)
+    const client = stripeFixture()
+
+    await expect(
+      bindCheckoutTaxToPayment({
+        cart,
+        client,
+        service: serviceFixture(),
+      })
+    ).rejects.toThrow("payment-session snapshot is malformed")
+    expect(client.paymentIntents.retrieve).not.toHaveBeenCalled()
+  })
+
+  it("rejects an ambiguous evidence query before provider access", async () => {
+    const client = stripeFixture()
+    const service = serviceFixture({
+      evidence: [
+        { payment_intent_id: "pi_test" },
+        { payment_intent_id: "pi_test" },
+      ],
+    })
+
+    await expect(
+      bindCheckoutTaxToPayment({ cart: cartFixture(), client, service })
+    ).rejects.toThrow("Tax evidence returned an ambiguous result")
+    expect(client.paymentIntents.retrieve).not.toHaveBeenCalled()
+  })
+
+  it("rejects an invalid evidence persistence result", async () => {
+    const service = serviceFixture()
+    ;(service.recordTaxQuoteEvidence as jest.Mock).mockResolvedValueOnce({
+      evidence: false,
+      replayed: "false",
+    })
+
+    await expect(
+      bindCheckoutTaxToPayment({
+        cart: cartFixture(),
+        client: stripeFixture(),
+        service,
+      })
+    ).rejects.toThrow("persistence returned an invalid result")
+  })
+
   it("records TaxRate.io evidence without attaching Stripe Tax", async () => {
     const cart = cartFixture({ provider: "taxrate_io" })
     const intent = intentFixture({

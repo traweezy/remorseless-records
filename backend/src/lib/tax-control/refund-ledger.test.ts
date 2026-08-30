@@ -101,7 +101,7 @@ describe("Stripe and Medusa refund ledger comparison", () => {
     ).toEqual([])
   })
 
-  it("ignores untrusted providers, malformed amounts, and unrelated intents", () => {
+  it("ignores untrusted providers and unrelated valid intents", () => {
     expect(
       buildRefundLedgerMismatches({
         evidence: [evidence(500)],
@@ -116,14 +116,9 @@ describe("Stripe and Medusa refund ledger comparison", () => {
                     refunds: [{ amount: 5 }],
                   },
                   {
-                    data: { id: "not-an-intent" },
+                    data: { id: "pi_other" },
                     provider_id: "pp_stripe_stripe",
                     refunds: [{ amount: 5 }],
-                  },
-                  {
-                    data: { id: "pi_test" },
-                    provider_id: "pp_stripe_stripe",
-                    refunds: [{ amount: "invalid" }],
                   },
                 ],
               },
@@ -139,5 +134,52 @@ describe("Stripe and Medusa refund ledger comparison", () => {
         stripeRefundAmountMinor: 500,
       },
     ])
+  })
+
+  it.each([
+    [
+      "primitive payment row",
+      [{ payment_collections: [{ payments: [false] }] }],
+    ],
+    [
+      "invalid Stripe intent",
+      [
+        {
+          payment_collections: [
+            {
+              payments: [
+                {
+                  data: { id: "not-an-intent" },
+                  provider_id: "pp_stripe_stripe",
+                  refunds: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    ],
+    ["malformed refund amount", [order(["invalid"])]],
+  ])("fails closed on a %s", (_label, paymentRecords) => {
+    expect(() =>
+      buildRefundLedgerMismatches({
+        evidence: [evidence(500)],
+        paymentRecords,
+      })
+    ).toThrow()
+  })
+
+  it("rejects coercive Stripe evidence amounts", () => {
+    expect(() =>
+      buildRefundLedgerMismatches({
+        evidence: [
+          {
+            ...evidence(0),
+            metadata: { refund_amount_minor: true },
+          },
+        ],
+        paymentRecords: [order([])],
+      })
+    ).toThrow("Refund evidence amount is malformed")
   })
 })

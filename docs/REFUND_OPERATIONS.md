@@ -49,6 +49,14 @@ ambiguous coercions are rejected. Timestamps must be Date values or complete
 offset-aware ISO timestamps. These failures expose only fixed operational
 messages and never echo provider payloads.
 
+The tax-control summary uses the same rule for its independent Medusa/Stripe
+ledger check. Every Stripe payment row, refund amount, PaymentIntent identity,
+and stored evidence amount must validate, and one PaymentIntent may appear only
+once in the compared payment projection. Malformed or duplicate data marks the
+ledger comparison unavailable; it is never converted to a zero balance or a
+clean result. Valid payments for another provider or another PaymentIntent are
+intentionally outside that comparison.
+
 ## Choose the business workflow before the payment action
 
 ### 1. Unfulfilled goods

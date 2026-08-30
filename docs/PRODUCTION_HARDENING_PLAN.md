@@ -2761,6 +2761,23 @@ complete Backend gate passes 223 suites / 1,352 tests, and the repository gate
 checks 1,160 files with Biome before both strict TypeScript builds and the
 policy verifiers.
 
+The third post-migration boundary tranche hardens the tax invariant and
+operator-projection layer. Subject fingerprints reject malformed or duplicate
+relationships and normalize only explicit finite numeric values; controlled
+quote extraction validates complete subjects, generations, and 0%–100% rates.
+Payment binding validates the pending session, one-row evidence queries, and
+persistence acknowledgement before success. Refund-ledger comparison rejects
+primitive rows, duplicate or invalid PaymentIntent identities, invalid amounts,
+and malformed stored evidence rather than converting them to zero. Impact
+pagination validates graph envelopes, metadata, unique carts, complete pages,
+and consistent prepared-session tax identities. A prepared checkout validates
+the hardened subject before matching its exact prior fingerprint projection,
+preserving frozen carts without creating new legacy hashes. Fifty-three focused
+fingerprint, quote, payment-binding, refund-ledger, and impact tests pass with
+strict TypeScript and Biome. The complete Backend gate passes 223 suites / 1,376
+tests, while the repository gate remains clean across 1,160 Biome-managed
+files, both strict TypeScript builds, and every policy verifier.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

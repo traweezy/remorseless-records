@@ -1,4 +1,7 @@
-import { createTaxSubjectFingerprint } from "./subject-fingerprint"
+import {
+  createTaxSubjectFingerprint,
+  taxSubjectFingerprintMatches,
+} from "./subject-fingerprint"
 
 const taxSubject = ({
   shippingAmount = 5,
@@ -91,5 +94,93 @@ describe("tax subject fingerprint", () => {
     })
 
     expect(disabled).not.toBe(collected)
+  })
+
+  it("normalizes explicit numeric wrappers without changing the subject", () => {
+    const original = createTaxSubjectFingerprint({
+      collectionMode: "collect",
+      generation: 1,
+      orderOrCart: taxSubject(),
+      provider: "taxrate_io",
+    })
+    const wrapped = taxSubject()
+    const [item] = wrapped.items
+    const [shippingMethod] = wrapped.shipping_methods
+    const normalized = createTaxSubjectFingerprint({
+      collectionMode: "collect",
+      generation: 1,
+      orderOrCart: {
+        ...wrapped,
+        items: [{ ...item, quantity: "1", unit_price: { value: "10" } }],
+        shipping_methods: [{ ...shippingMethod, amount: { value: "5" } }],
+      },
+      provider: "taxrate_io",
+    })
+
+    expect(normalized).toBe(original)
+  })
+
+  it("accepts a validated legacy wrapper hash only for frozen compatibility", () => {
+    const wrapped = taxSubject()
+    expect(
+      taxSubjectFingerprintMatches({
+        collectionMode: "collect",
+        fingerprint: "kc3EtdkStbOYJffulgzpYB686qGizO4Tl6iVz51amls",
+        generation: 1,
+        orderOrCart: {
+          ...wrapped,
+          items: [
+            {
+              ...wrapped.items[0],
+              unit_price: { value: "10" },
+            },
+          ],
+          shipping_methods: [
+            {
+              ...wrapped.shipping_methods[0],
+              amount: { value: "5" },
+            },
+          ],
+        },
+        provider: "taxrate_io",
+      })
+    ).toBe(true)
+  })
+
+  it.each([
+    ["primitive item", { ...taxSubject(), items: [false] }],
+    [
+      "coercive quantity",
+      {
+        ...taxSubject(),
+        items: [{ ...taxSubject().items[0], quantity: true }],
+      },
+    ],
+    [
+      "duplicate item",
+      {
+        ...taxSubject(),
+        items: [taxSubject().items[0], taxSubject().items[0]],
+      },
+    ],
+    [
+      "coercive shipping amount",
+      {
+        ...taxSubject(),
+        shipping_methods: [
+          { ...taxSubject().shipping_methods[0], amount: false },
+        ],
+      },
+    ],
+    ["invalid currency", { ...taxSubject(), currency_code: true }],
+  ])("rejects a malformed %s boundary", (_label, orderOrCart) => {
+    expect(() =>
+      createTaxSubjectFingerprint({
+        collectionMode: "collect",
+        generation: 1,
+        orderOrCart,
+        provider: "taxrate_io",
+      })
+    ).toThrow("Tax subject fingerprint data is invalid")
   })
 })

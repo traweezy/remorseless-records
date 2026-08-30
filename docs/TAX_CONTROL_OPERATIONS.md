@@ -206,6 +206,18 @@ existing hook, and final update acknowledgement. Only
 hook. An exact existing hook is re-verified as an idempotent replay; a different
 hook, late status, malformed response, or changed mode fails closed.
 
+Cart fingerprints validate every item, shipping method, adjustment, quantity,
+and monetary value before hashing; malformed rows cannot disappear into the
+same fingerprint as an absent row. Quote extraction likewise accepts only
+complete record arrays, explicit finite rates from 0% through 100%, and one
+consistent provider generation. Payment binding requires one complete pending
+Stripe session, at most one result from each one-row evidence query, and a
+validated evidence-persistence acknowledgement before returning success.
+For an already-prepared checkout only, the backend validates the complete
+current subject first and then accepts either its hardened fingerprint or the
+exact prior projection. This compatibility path cannot create a new legacy
+fingerprint and prevents a safe rollout from repricing a frozen checkout.
+
 Retry warnings contain only the operation, reason class, and attempt count.
 Provider messages, request details, customer data, payment metadata, and
 transport payloads are never copied into terminal errors or logs. Do not use a
@@ -251,6 +263,14 @@ than the 100-refund audit window. Admin also compares the sum of Medusa refund
 records with Stripe's observed refunded amount. A direct Stripe Dashboard/API
 refund therefore remains visible as a ledger mismatch even though Stripe's
 simplified Tax integration creates its reversal automatically.
+
+The Admin ledger comparison validates every Medusa payment, collection, refund,
+PaymentIntent identity, and Stripe evidence amount before summing. Unrelated
+valid providers and PaymentIntents remain outside the comparison. A primitive
+row, duplicate PaymentIntent, invalid monetary value, malformed evidence
+amount, or a short impact page makes the comparison unavailable instead of
+reporting a falsely clean ledger. The operator sees a fixed availability state;
+the bounded warning never includes provider or customer payloads.
 
 Service objectives:
 

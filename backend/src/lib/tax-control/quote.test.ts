@@ -14,7 +14,7 @@ const taxLine = ({
   fingerprintValue?: string
   generation?: number
   provider?: "stripe_tax" | "taxrate_io"
-  rate?: number
+  rate?: unknown
   collectionMode?: "collect" | "disabled"
 } = {}) => ({
   code:
@@ -174,6 +174,30 @@ describe("taxQuoteIdentityFromCart", () => {
       },
     },
   ])("rejects $name", ({ cart }) => {
+    expect(() => taxQuoteIdentityFromCart(cart)).toThrow(TaxQuoteIdentityError)
+  })
+
+  it.each([
+    ["primitive subject", { items: [false] }],
+    ["primitive tax line", { items: [{ tax_lines: [false] }] }],
+    [
+      "coercive generation",
+      {
+        items: [
+          {
+            tax_lines: [
+              {
+                ...taxLine(),
+                data: { ...taxLine().data, generation: true },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    ["coercive rate", { items: [{ tax_lines: [taxLine({ rate: true })] }] }],
+    ["out-of-range rate", { items: [{ tax_lines: [taxLine({ rate: 101 })] }] }],
+  ])("rejects a malformed %s boundary", (_label, cart) => {
     expect(() => taxQuoteIdentityFromCart(cart)).toThrow(TaxQuoteIdentityError)
   })
 })

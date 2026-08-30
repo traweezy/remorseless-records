@@ -1,6 +1,12 @@
 import { MathBN, MedusaError } from "@medusajs/framework/utils"
 
 import { validateCheckoutPayment } from "../checkout/payment-validation"
+import {
+  asUnknownRecord as asRecord,
+  readRecordArray,
+  readRequiredRecord,
+  type UnknownRecord,
+} from "../provider-boundary/records"
 import { taxQuoteIdentityFromCart } from "./quote"
 import {
   StripePaymentBindingClientError,
@@ -11,8 +17,6 @@ import {
 } from "./stripe-payment-binding-client"
 import type TaxControlModuleService from "../../modules/tax-control/service"
 
-type UnknownRecord = Record<string, unknown>
-
 const PROCESSABLE_SESSION_STATUSES = new Set([
   "authorized",
   "captured",
@@ -21,11 +25,30 @@ const PROCESSABLE_SESSION_STATUSES = new Set([
   "requires_more",
 ])
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
-
 const text = (value: unknown): string =>
   typeof value === "string" ? value.trim() : ""
+
+const taxEvidenceFrom = (
+  value: unknown,
+  context: string
+): UnknownRecord | null => {
+  let records: UnknownRecord[]
+  try {
+    records = readRecordArray(value, { context })
+  } catch {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "Tax evidence could not be verified. Try again."
+    )
+  }
+  if (records.length > 1) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "Tax evidence returned an ambiguous result."
+    )
+  }
+  return records[0] ?? null
+}
 
 const minorUnits = (value: string): number => {
   const amount = Math.round(MathBN.mult(value, 100).toNumber())
@@ -40,25 +63,31 @@ const minorUnits = (value: string): number => {
 
 const paymentSessionFrom = (cart: UnknownRecord): UnknownRecord => {
   const collection = asRecord(cart.payment_collection)
-  const sessions = (
-    Array.isArray(collection?.payment_sessions)
-      ? collection.payment_sessions
-      : []
-  )
-    .map(asRecord)
-    .filter(
-      (session): session is UnknownRecord =>
-        session !== null &&
-        text(session.provider_id) === "pp_stripe_stripe" &&
-        PROCESSABLE_SESSION_STATUSES.has(text(session.status))
+  let allSessions: UnknownRecord[]
+  try {
+    allSessions = readRecordArray(collection?.payment_sessions, {
+      context: "Tax binding payment-session query",
+      optional: true,
+    })
+  } catch {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "The Stripe payment-session snapshot is malformed."
     )
-  if (sessions.length !== 1) {
+  }
+  const sessions = allSessions.filter(
+    (session) =>
+      text(session.provider_id) === "pp_stripe_stripe" &&
+      PROCESSABLE_SESSION_STATUSES.has(text(session.status))
+  )
+  const [session] = sessions
+  if (sessions.length !== 1 || !session) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
       "Exactly one pending Stripe payment session is required."
     )
   }
-  return sessions[0]!
+  return session
 }
 
 const paymentBindingError = (error: StripePaymentBindingClientError) => {
@@ -124,19 +153,24 @@ export const bindCheckoutTaxToPayment = async ({
     )
   }
 
-  const existingEvidence = (
-    await service.listTaxQuoteEvidences(
-      { payment_intent_id: paymentIntentId },
-      { take: 1 }
-    )
-  )[0]
+  const existingEvidenceResult: unknown = await service.listTaxQuoteEvidences(
+    { payment_intent_id: paymentIntentId },
+    { take: 1 }
+  )
+  const existingEvidence = taxEvidenceFrom(
+    existingEvidenceResult,
+    "PaymentIntent tax evidence query"
+  )
   if (quote.calculationId) {
-    const calculationEvidence = (
+    const calculationEvidenceResult: unknown =
       await service.listTaxQuoteEvidences(
         { calculation_id: quote.calculationId },
         { take: 1 }
       )
-    )[0]
+    const calculationEvidence = taxEvidenceFrom(
+      calculationEvidenceResult,
+      "Calculation tax evidence query"
+    )
     if (
       calculationEvidence &&
       calculationEvidence.payment_intent_id !== paymentIntentId
@@ -171,7 +205,7 @@ export const bindCheckoutTaxToPayment = async ({
       : error
   }
 
-  const recorded = await service.recordTaxQuoteEvidence({
+  const recordedResult: unknown = await service.recordTaxQuoteEvidence({
     amountMinor,
     calculationId: quote.calculationId,
     cartId,
@@ -183,6 +217,27 @@ export const bindCheckoutTaxToPayment = async ({
     provider: quote.provider,
     status: binding.status === "succeeded" ? "succeeded" : "prepared",
   })
+  let recorded: UnknownRecord
+  try {
+    recorded = readRequiredRecord(
+      recordedResult,
+      "Recorded tax evidence result"
+    )
+  } catch {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "Tax evidence persistence returned an invalid result."
+    )
+  }
+  if (
+    typeof recorded.replayed !== "boolean" ||
+    !text(asRecord(recorded.evidence)?.id)
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "Tax evidence persistence returned an invalid result."
+    )
+  }
 
   return {
     collectionMode: quote.collectionMode,

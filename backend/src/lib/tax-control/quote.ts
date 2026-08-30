@@ -1,8 +1,15 @@
 import { parseTaxLineCode, type TaxLineIdentity } from "./context"
 import type { TaxProviderName } from "../../modules/tax-control/constants"
 import type { TaxCollectionMode } from "../../modules/tax-control/constants"
-
-type UnknownRecord = Record<string, unknown>
+import {
+  readFiniteNumber,
+  readNonNegativeSafeInteger,
+} from "../provider-boundary/primitives"
+import {
+  asUnknownRecord as asRecord,
+  readRecordArray,
+  type UnknownRecord,
+} from "../provider-boundary/records"
 
 export type TaxQuoteIdentity = {
   calculationId: string | null
@@ -20,26 +27,46 @@ export class TaxQuoteIdentityError extends Error {
   }
 }
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
-
 const text = (value: unknown): string =>
   typeof value === "string" ? value.trim() : ""
 
-const taxLinesFrom = (subject: unknown): UnknownRecord[] => {
-  const record = asRecord(subject)
-  return (Array.isArray(record?.tax_lines) ? record.tax_lines : [])
-    .map(asRecord)
-    .filter((line): line is UnknownRecord => line !== null)
+const quoteRecords = (
+  value: unknown,
+  detail: string,
+  optional = false
+): UnknownRecord[] => {
+  try {
+    return readRecordArray(value, {
+      context: "Cart tax quote",
+      optional,
+    })
+  } catch {
+    throw new TaxQuoteIdentityError(detail)
+  }
 }
 
-const taxSubjectsFrom = (cart: UnknownRecord): UnknownRecord[] =>
-  [
-    ...(Array.isArray(cart.items) ? cart.items : []),
-    ...(Array.isArray(cart.shipping_methods) ? cart.shipping_methods : []),
-  ]
-    .map(asRecord)
-    .filter((subject): subject is UnknownRecord => subject !== null)
+const taxLinesFrom = (subject: unknown): UnknownRecord[] => {
+  const record = asRecord(subject)
+  if (!record) {
+    throw new TaxQuoteIdentityError(
+      "A cart tax subject contains malformed quote data."
+    )
+  }
+  return quoteRecords(
+    record.tax_lines,
+    "A cart tax line contains malformed quote data.",
+    true
+  )
+}
+
+const taxSubjectsFrom = (cart: UnknownRecord): UnknownRecord[] => [
+  ...quoteRecords(cart.items, "The cart item tax snapshot is malformed.", true),
+  ...quoteRecords(
+    cart.shipping_methods,
+    "The cart shipping tax snapshot is malformed.",
+    true
+  ),
+]
 
 const assertLineData = (
   line: UnknownRecord,
@@ -49,22 +76,23 @@ const assertLineData = (
   const provider = text(data?.provider)
   const collectionModeValue = text(data?.collection_mode)
   const collectionMode = collectionModeValue || "collect"
-  const generation = Number(data?.generation)
+  const generation = readNonNegativeSafeInteger(data?.generation)
   const fingerprint = text(data?.fingerprint)
   const calculationId = text(data?.calculation_id) || null
-  const rate = Number(line.rate)
+  const rate = readFiniteNumber(line.rate)
 
   if (
     collectionMode !== codeIdentity.collectionMode ||
     (codeIdentity.collectionMode === "collect" &&
       provider !== codeIdentity.provider) ||
     (codeIdentity.collectionMode === "disabled" && provider !== "") ||
-    !Number.isSafeInteger(generation) ||
+    generation === null ||
     generation !== codeIdentity.generation ||
     !/^[A-Za-z0-9_-]{32,128}$/.test(fingerprint) ||
     calculationId !== codeIdentity.calculationId ||
-    !Number.isFinite(rate) ||
+    rate === null ||
     rate < 0 ||
+    rate > 100 ||
     (codeIdentity.collectionMode === "disabled" && rate !== 0)
   ) {
     throw new TaxQuoteIdentityError(

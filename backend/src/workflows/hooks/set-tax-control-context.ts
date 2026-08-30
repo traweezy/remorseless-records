@@ -24,7 +24,10 @@ import {
   type FrozenTaxQuote,
 } from "../../lib/tax-control/context"
 import { requirePreservedStripeOrderRates } from "../../lib/tax-control/order-rate-preservation"
-import { createTaxSubjectFingerprint } from "../../lib/tax-control/subject-fingerprint"
+import {
+  createTaxSubjectFingerprint,
+  taxSubjectFingerprintMatches,
+} from "../../lib/tax-control/subject-fingerprint"
 import type CatalogModuleService from "../../modules/catalog/service"
 import type {
   TaxCollectionMode,
@@ -324,14 +327,18 @@ const frozenQuoteFromMetadata = (
     return null
   }
 
-  const currentFingerprint = createTaxSubjectFingerprint({
-    collectionMode,
-    generation,
-    orderOrCart,
-    provider:
-      provider === "taxrate_io" || provider === "stripe_tax" ? provider : null,
-  })
-  if (currentFingerprint !== fingerprint) {
+  if (
+    !taxSubjectFingerprintMatches({
+      collectionMode,
+      fingerprint,
+      generation,
+      orderOrCart,
+      provider:
+        provider === "taxrate_io" || provider === "stripe_tax"
+          ? provider
+          : null,
+    })
+  ) {
     return null
   }
 
