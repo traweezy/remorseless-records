@@ -1024,6 +1024,37 @@ cancellation, per-operation bounded retry, single-attempt rate-limit handling,
 strict settings/registration and account-mode validation, fail-closed
 pagination, and redacted terminal errors and retry telemetry.
 
+Stripe payment-binding exact staging acceptance: commit
+`d14a7f1aa35b641a27e9b367dcd068e53af7ef6f` passed Root CI `33295426131`,
+Backend CI `33295426147`, and Storefront CI `33295426119`, including 1,135
+Backend tests, 658 Storefront tests with coverage, both production builds,
+CodeQL, dependency and secret scans, SBOM and license verification, Playwright,
+pa11y, and Lighthouse. Railway held Backend deployment
+`f66aa3a3-ef12-4300-bfef-d02c7a7f6b71` until all three workflows passed, then
+released image digest
+`sha256:50352773f54b5b89d47e617ee5cd7bff6515919d94c484b48cf0a1205336e6dd`
+to `SUCCESS` on that exact SHA. Storefront deployment
+`0bb955d6-ffce-4254-aa42-1cf66124511a` was correctly skipped because its
+watched paths were unchanged. Backend `/live`, `/ready`, and `/api/health` all
+returned 200; both readiness responses reported all four database, Redis,
+search, and object-storage checks healthy. All five matching exact-deployment
+HTTP records were 200: two `GET /live`, two `GET /ready`, and one
+`GET /api/health`, with no response at 400 or above. The exact deployment
+recorded 309 info events and four known successful command-echo banners that
+Railway classified as errors, with zero warning, non-command error,
+exception/fatal/failed-operation, Stripe payment-binding retry, or other retry
+records. Its 384 DNS records from `05:59:56Z` through `06:02:05Z` all succeeded,
+with zero Stripe lookup. The health payload still omitted its optional version
+because Railway does not currently inject `COMMIT_SHA`; exact deployment
+metadata and the immutable digest therefore anchor this acceptance. Acceptance
+issued no Stripe tax-link, readiness, provider-switch, calculation,
+PaymentIntent, cart, paid, or mutating call in shared staging. The focused
+62-test payment-binding client, service, and route suite proves shared-deadline
+settlement, bounded per-operation retry, stable update idempotency,
+single-attempt rate-limit handling, strict identity/calculation/hook/update
+validation, late-link rejection, and redacted terminal errors and retry
+telemetry.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
