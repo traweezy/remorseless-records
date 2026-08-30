@@ -2597,7 +2597,7 @@ Both commands explicitly reported that no files or database records changed.
       domains, services, capacity, and cost before provisioning it.
 - [ ] Replace the Backend PostgreSQL superuser connection with a least-privilege
       runtime role and a separate migration/DDL role.
-- [ ] Require TLS for every non-private database connection.
+- [x] Require TLS for every non-private database connection.
 - [x] Move Storefront Redis to the Railway private service reference and prove
       exact-deployment port-6379 service flows complete without drops.
 - [ ] Remove public Redis and PostgreSQL TCP proxies unless a reviewed,
@@ -2605,7 +2605,7 @@ Both commands explicitly reported that no files or database records changed.
 - [ ] Put MinIO Console behind private access/SSO or remove its public domain.
 - [ ] Configure PostgreSQL backups/PITR and perform a timed restore drill.
 - [ ] Configure off-site media backup and verify object checksums and restores.
-- [ ] Document Redis recovery semantics and Meilisearch rebuild/snapshot
+- [x] Document Redis recovery semantics and Meilisearch rebuild/snapshot
       recovery.
 - [ ] Set and test a capacity-aware Redis memory ceiling and compatible
       persistence/eviction policy; staging currently reports `maxmemory=0` and
@@ -2614,7 +2614,7 @@ Both commands explicitly reported that no files or database records changed.
       immutable digest; remove floating `latest` tags.
 - [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
       database/volume metrics with an overhead budget.
-- [ ] Define availability, latency, recovery-time, and recovery-point goals
+- [x] Define availability, latency, recovery-time, and recovery-point goals
       before adding replicas, PgBouncer, overlap/draining, or paid monitoring.
 - [x] Gate Backend Railway releases on `/ready` rather than the less-complete
       `/api/health` alias after migration and dependency startup budgets are
@@ -2629,6 +2629,36 @@ Both commands explicitly reported that no files or database records changed.
 - [x] Apply and accept service-specific Railway watch paths.
 - [x] Prove a documentation-only staging push triggers no application
       rebuild.
+
+The local infrastructure/recovery control plane is now documented in
+`docs/INFRASTRUCTURE_RECOVERY.md`. Application startup and standalone database
+tools share one fail-closed URL policy: Railway private networking or local
+loopback is accepted, while every other host must require TLS. The read-only
+role auditor rejects the default `postgres` identity, superuser, database/role
+creation, replication, RLS bypass, and read/write-all membership outside the
+reviewed backup profile; it also verifies actual TLS negotiation for public
+transport.
+
+Release preparation now isolates `db:migrate` and `db:sync-links` behind the
+optional `DATABASE_MIGRATION_URL` before returning to `DATABASE_URL` for
+runtime storage and search readiness. `DATABASE_ROLE_SPLIT_REQUIRED=true`
+fails closed unless the two URLs are distinct. Enforcement remains off until
+staging roles and grants are created and accepted; the superuser-removal item
+therefore remains open.
+
+Portable PostgreSQL protection now has credential-safe, no-shell tooling. The
+backup command emits a custom-format `0600` archive plus SHA-256 manifest after
+`pg_restore --list` verification. Restore defaults to dry-run, rejects
+non-canonical/symlink inputs, checksum drift, the source service, and non-empty
+targets, and requires the dry-run target fingerprint before applying to a
+disposable database. Railway volume schedules/PITR and an off-site media target
+still require controlled environment changes and timed drills, so those items
+remain open rather than being closed on documentation alone.
+
+The same runbook defines launch objectives, a 70% Redis memory ceiling with
+`noeviction` plus AOF-every-second durability, authoritative-source recovery,
+Meilisearch snapshot/dump/rebuild semantics, current staging public exposure,
+floating support images, and the exact production cost/domain approval packet.
 
 ## GitHub, CI, supply chain, and test depth
 

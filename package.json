@@ -8,11 +8,12 @@
     "pnpm": ">=11.0.0 <12"
   },
   "scripts": {
-    "qa:lint": "pnpm run qa:release-policy && pnpm run qa:railway-iac && pnpm run qa:browser-toolchain-security && pnpm run qa:medusa-build-toolchain && pnpm run qa:dashboard-product-import && pnpm run qa:dashboard-product-create && pnpm run qa:dashboard-product-deletion && pnpm run qa:secure-artifacts && pnpm run qa:api-contract && pnpm run qa:framework-response-headers && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:checkout-recovery && pnpm run qa:scheduler-observation && pnpm run qa:operations-observation && pnpm run qa:observability-bootstrap && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
+    "qa:lint": "pnpm run qa:release-policy && pnpm run qa:railway-iac && pnpm run qa:database-release-boundary && pnpm run qa:browser-toolchain-security && pnpm run qa:medusa-build-toolchain && pnpm run qa:dashboard-product-import && pnpm run qa:dashboard-product-create && pnpm run qa:dashboard-product-deletion && pnpm run qa:secure-artifacts && pnpm run qa:api-contract && pnpm run qa:framework-response-headers && pnpm run qa:workflow-scheduler-timestamps && pnpm run qa:checkout-recovery && pnpm run qa:scheduler-observation && pnpm run qa:operations-observation && pnpm run qa:observability-bootstrap && pnpm run qa:railway-runtime-logs && pnpm --filter remorseless-records-storefront exec eslint --max-warnings=0 src && pnpm --filter remorseless-records-storefront run typecheck && pnpm --filter backend exec tsc --noEmit",
     "api:contract:generate": "node scripts/generate-api-contract.mjs --write",
     "qa:api-contract": "node --test scripts/generate-api-contract.test.mjs && node scripts/generate-api-contract.mjs --check",
     "qa:release-policy": "node scripts/verify-release-branch-policy.mjs",
     "qa:railway-iac": "node --no-warnings scripts/verify-railway-iac.mjs",
+    "qa:database-release-boundary": "node --test scripts/release-prepare.test.mjs scripts/postgres-logical-backup.test.mjs scripts/media-backup.test.mjs",
     "qa:secure-artifacts": "node --test scripts/export-category-map.test.mjs",
     "qa:browser-toolchain-security": "node scripts/verify-browser-toolchain-security.mjs",
     "qa:medusa-build-toolchain": "node scripts/verify-medusa-build-toolchain.mjs",
@@ -32,6 +33,9 @@
     "qa:storefront:coverage": "pnpm --filter remorseless-records-storefront run test:coverage",
     "data:build-import": "go run ./scripts/generate_remorseless_import.go",
     "data:apply-import": "go run ./scripts/apply_remorseless_import.go",
+    "data:postgres:backup": "node scripts/postgres-logical-backup.mjs",
+    "data:postgres:restore-drill": "node scripts/postgres-restore-drill.mjs",
+    "data:media:backup": "node scripts/media-backup.mjs",
     "qa:a11y": "node qa/run-pa11y.cjs",
     "qa:mobile": "node qa/run-mobile-audit.mjs",
     "qa:lighthouse": "lhci autorun --config=./lighthouse/lhci.config.js",

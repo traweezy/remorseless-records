@@ -114,6 +114,9 @@ remain disabled until all of these controls exist and have staging evidence:
 
 Until those prerequisites are complete, operators may quarantine, restore, or
 expand storage but must not manually delete File Module objects.
+The off-site checksum, version-history, restore-sampling, and full-drill
+contract is defined in
+[`INFRASTRUCTURE_RECOVERY.md`](INFRASTRUCTURE_RECOVERY.md#media-backup-and-restore).
 
 ## Verification
 
@@ -130,6 +133,31 @@ For every release that changes this boundary:
    confirm WebP, one frame, bounded dimensions, and no EXIF/ICC/IPTC/XMP.
 5. In staging, review exact-deployment logs for low-cardinality normalization
    events and run the ADR 0005 inventory/probe without apply flags.
+
+### Staging acceptance (2026-08-30)
+
+Commit `299107f7dde879e1386511f86cf380a52970eae0` passed GitHub Root CI run
+`33330002489`, Backend CI run `33330002511`, and Storefront CI run
+`33330002505`. Railway accepted these exact artifacts:
+
+- Backend deployment `909b9ff5-d86d-4f8d-a99c-24dec7d9037c`, image digest
+  `sha256:47295cb9409b537ae32342ac2988b4542b6305fc7765e9bfc3bd3d5fcd4ac113`;
+- Storefront deployment `1840fd58-ad54-456b-8147-3a557c33d0e2`, image digest
+  `sha256:314394c935bc993b0a039e7c91b8ccd34ac6ebac114ef48ba980577ec605f307`.
+
+Backend `/ready` returned `status=ok`, the exact commit version, and healthy
+database, Redis, search, object-storage, payment, tax, notification,
+payment-lifecycle, search, object-storage, and Admin-RBAC checks. Storefront
+`/live` and `/ready` returned the same exact version with healthy Backend and
+Redis dependencies. Predeploy logs completed migrations, storage readiness,
+and a validated 461-document zero-downtime search rebuild before the server
+became ready.
+
+An in-memory SSH smoke test used the deployed Node 26.5.0 runtime, deployed
+`image-sandbox-worker.js`, and `/usr/bin/prlimit`. It decoded a 20-by-40 PNG
+through `normalizeManagedImageUpload` and returned a 74-byte, one-frame
+20-by-40 WebP named `staging-smoke.webp`. It made no object-storage or database
+write.
 
 ## Research basis
 

@@ -1508,7 +1508,10 @@ reviewed pull request from an accepted `staging` commit. Production deployment
 is always a separate manual action from an approved exact `master` SHA; merging
 does not deploy production. See
 [`docs/RELEASE_OPERATIONS.md`](docs/RELEASE_OPERATIONS.md) for the complete
-promotion, acceptance, and rollback contract.
+promotion, acceptance, and rollback contract. The production approval packet,
+database authority split, portable backup/restore drill, media protection, and
+Redis/Meilisearch recovery objectives live in
+[`docs/INFRASTRUCTURE_RECOVERY.md`](docs/INFRASTRUCTURE_RECOVERY.md).
 
 ---
 

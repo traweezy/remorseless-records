@@ -112,13 +112,20 @@ and unit/coverage tests.
 Railway currently has no production environment. Creating it, adding domains
 or credentials, changing traffic, or incurring production cost requires a
 separate explicit approval and the remaining launch gates in
-`PRODUCTION_HARDENING_PLAN.md`.
+`PRODUCTION_HARDENING_PLAN.md`. The required topology, cost, database-role,
+backup, restore, Redis, search, and media evidence is defined in
+[`INFRASTRUCTURE_RECOVERY.md`](INFRASTRUCTURE_RECOVERY.md).
 
 When production exists, keep Backend and Storefront GitHub autodeploy disabled.
 An operator must select the approved exact `master` SHA, verify environment and
 test/live credential boundaries, deploy manually, observe health and migrations,
 run the production smoke matrix, and record immutable deployment identifiers.
 Never use a moving branch head as the release evidence.
+
+Database release preparation supports separate runtime and migration URLs.
+Keep `DATABASE_ROLE_SPLIT_REQUIRED=false` only during the documented staged
+role rollout. Once the distinct roles pass their audits, set it to `true` so a
+missing or reused migration URL stops the release before migration.
 
 ## Rollback
 
