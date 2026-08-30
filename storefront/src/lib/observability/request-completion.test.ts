@@ -80,8 +80,13 @@ describe("Storefront request completion registry", () => {
 describe("Storefront HTTP completion processor", () => {
   it("writes a redacted final response event from the Next root span", () => {
     const registry = new BoundedRequestRegistry()
+    const recordMetric = vi.fn()
     const write = vi.fn()
-    const processor = new StorefrontHttpCompletionProcessor({ registry, write })
+    const processor = new StorefrontHttpCompletionProcessor({
+      recordMetric,
+      registry,
+      write,
+    })
     registry.register(TRACE_ONE, "request_01")
 
     processor.onEnd(
@@ -95,6 +100,11 @@ describe("Storefront HTTP completion processor", () => {
     )
 
     expect(write).toHaveBeenCalledTimes(1)
+    expect(recordMetric).toHaveBeenCalledWith({
+      durationMs: 125.5,
+      method: "POST",
+      status: 503,
+    })
     expect(write).toHaveBeenCalledWith(
       "error",
       expect.objectContaining({

@@ -7,7 +7,7 @@ import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
 import NewsCarouselCard from "@/components/news/news-carousel-card"
 import { SectionHeading } from "@/components/ui/section-heading"
 import { useCarouselAutoScroll } from "@/hooks/use-carousel-auto-scroll"
-import type { NewsEntry } from "@/lib/data/news"
+import type { NewsEntry } from "@/lib/news/contract"
 
 import "@splidejs/react-splide/css"
 

@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache"
 import { z } from "zod"
 
 import { runtimeEnv } from "@/config/env"
-import { fetchProviderRead } from "@/lib/http/provider-boundary"
+import { fetchObservedProviderRead } from "@/lib/http/provider-read.server"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
 import { resolveRegionId } from "@/lib/regions"
 
@@ -339,7 +339,7 @@ export const getAllProductHandles = unstable_cache(
         if (cursor) {
           url.searchParams.set("cursor", cursor)
         }
-        const response = await fetchProviderRead(url.toString(), {
+        const response = await fetchObservedProviderRead(url.toString(), {
           headers: {
             "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
           },

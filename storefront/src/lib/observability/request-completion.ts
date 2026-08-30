@@ -13,6 +13,9 @@ import type {
 
 import type { RequestCorrelation } from "@/lib/http/correlation"
 
+import { getStorefrontRuntimeIdentity } from "./runtime-identity"
+import { recordStorefrontHttpMetric } from "./metrics"
+
 type RegisteredRequest = {
   expiresAt: number
   requestId: string
@@ -150,15 +153,7 @@ export const registerRequestCompletion = (
   requestRegistry.register(correlation.traceId, correlation.requestId)
 }
 
-const deploymentIdentity = {
-  commit_sha:
-    process.env.RAILWAY_GIT_COMMIT_SHA ??
-    process.env.GIT_COMMIT_SHA ??
-    "unknown",
-  environment:
-    process.env.RAILWAY_ENVIRONMENT_NAME ?? process.env.NODE_ENV ?? "unknown",
-  service: "storefront",
-} as const
+const deploymentIdentity = getStorefrontRuntimeIdentity()
 
 const defaultWrite: CompletionLogWriter = (level, event) => {
   const line = JSON.stringify(event)
@@ -179,16 +174,19 @@ const durationMilliseconds = (span: ReadableSpan): number =>
   Number((span.duration[0] * 1_000 + span.duration[1] / 1_000_000).toFixed(3))
 
 type ProcessorOptions = {
+  recordMetric?: typeof recordStorefrontHttpMetric
   registry?: BoundedRequestRegistry
   write?: CompletionLogWriter
 }
 
 export class StorefrontHttpCompletionProcessor implements SpanProcessor {
   readonly #registry: BoundedRequestRegistry
+  readonly #recordMetric: typeof recordStorefrontHttpMetric
   readonly #write: CompletionLogWriter
 
   constructor(options: ProcessorOptions = {}) {
     this.#registry = options.registry ?? requestRegistry
+    this.#recordMetric = options.recordMetric ?? recordStorefrontHttpMetric
     this.#write = options.write ?? defaultWrite
   }
 
@@ -217,9 +215,11 @@ export class StorefrontHttpCompletionProcessor implements SpanProcessor {
       stringAttribute(span.attributes["http.method"]) ??
       "UNKNOWN"
 
+    const durationMs = durationMilliseconds(span)
+    this.#recordMetric({ durationMs, method, status })
     this.#write(status >= 500 || status === 0 ? "error" : "info", {
       ...deploymentIdentity,
-      duration_ms: durationMilliseconds(span),
+      duration_ms: durationMs,
       event: "http.request.completed",
       message: "Storefront request completed",
       method,

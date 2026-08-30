@@ -5,6 +5,7 @@ import {
   fetchProviderRead,
   ProviderRequestError,
   providerProblem,
+  type ProviderReadMetric,
   toProviderRequestError,
 } from "@/lib/http/provider-boundary"
 
@@ -107,6 +108,26 @@ describe("provider boundary", () => {
       fetchProviderRead("https://provider.test/unavailable")
     ).resolves.toBe(unavailable)
     expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it("records a bounded outcome without allowing telemetry to fail the read", async () => {
+    const success = new Response("{}", { status: 200 })
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(success)
+    const recordMetric = vi.fn((_metric: ProviderReadMetric): void => {
+      throw new Error("telemetry unavailable")
+    })
+
+    await expect(
+      fetchProviderRead(
+        "https://provider.test/content",
+        {},
+        { recordMetric }
+      )
+    ).resolves.toBe(success)
+    expect(recordMetric).toHaveBeenCalledOnce()
+    const recordedMetric = recordMetric.mock.calls[0]?.[0]
+    expect(recordedMetric?.result).toBe("ok")
+    expect(recordedMetric?.durationMs).toBeGreaterThanOrEqual(0)
   })
 
   it("stops retry backoff when the caller cancels", async () => {

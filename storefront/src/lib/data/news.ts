@@ -3,32 +3,24 @@ import { unstable_cache } from "next/cache"
 import { runtimeEnv } from "@/config/env"
 import { createUpstreamHeaders } from "@/lib/http/correlation"
 import {
-  fetchProviderRead,
   ProviderRequestError,
   toProviderRequestError,
 } from "@/lib/http/provider-boundary"
+import { fetchObservedProviderRead } from "@/lib/http/provider-read.server"
+import {
+  NEWS_PAGE_SIZE,
+  type NewsEntry,
+  type NewsListResponse,
+  type NewsStatus,
+} from "@/lib/news/contract"
 
-export const NEWS_PAGE_SIZE = 6
-
-export type NewsStatus = "published"
-
-export type NewsEntry = {
-  id: string
-  title: string
-  slug: string
-  excerpt: string | null
-  content: string
-  author: string | null
-  status: NewsStatus
-  publishedAt: string | null
-  tags: string[]
-  coverUrl: string | null
-  coverAltText: string | null
-  seoTitle: string | null
-  seoDescription: string | null
-  createdAt: string | null
-  updatedAt: string | null
-}
+export {
+  NEWS_PAGE_SIZE,
+  type NewsEntry,
+  type NewsEntryResponse,
+  type NewsListResponse,
+  type NewsStatus,
+} from "@/lib/news/contract"
 
 type NewsApiEntry = {
   id: string
@@ -46,17 +38,6 @@ type NewsApiEntry = {
   seoDescription: string | null
   createdAt?: string | null
   updatedAt?: string | null
-}
-
-export type NewsListResponse = {
-  entries: NewsEntry[]
-  count: number
-  offset: number
-  limit: number
-}
-
-export type NewsEntryResponse = {
-  entry: NewsEntry | null
 }
 
 const normalizeText = (value: string | null | undefined): string | null => {
@@ -104,7 +85,7 @@ export const fetchNewsEntries = async ({
     url.searchParams.set("limit", String(limit))
     url.searchParams.set("offset", String(offset))
 
-    const response = await fetchProviderRead(url.toString(), {
+    const response = await fetchObservedProviderRead(url.toString(), {
       headers: request
         ? createUpstreamHeaders(request, {
             "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
@@ -170,7 +151,7 @@ export const fetchNewsEntryBySlug = async (
       runtimeEnv.medusaBackendUrl
     )
 
-    const response = await fetchProviderRead(url.toString(), {
+    const response = await fetchObservedProviderRead(url.toString(), {
       headers: {
         "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
       },

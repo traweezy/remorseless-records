@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from "react"
 
 import { Button } from "@/components/ui/button"
+import { sendClientErrorTelemetry } from "@/lib/observability/browser-telemetry"
 
 type ErrorRecoveryScope = "application" | "route"
 
@@ -49,8 +50,9 @@ const ErrorRecoveryComponent = ({
 
   useEffect(() => {
     headingRef.current?.focus()
-    console.error("Storefront recovery boundary rendered", {
+    sendClientErrorTelemetry({
       digest: safeDigest,
+      kind: "client_error",
       scope,
     })
   }, [safeDigest, scope])

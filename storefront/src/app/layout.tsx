@@ -14,6 +14,7 @@ import JsonLd from "@/components/json-ld"
 import ZodStrictCspBootstrap from "@/components/zod-strict-csp-bootstrap"
 import CookieConsentBanner from "@/components/legal/cookie-consent-banner"
 import { CookieConsentProvider } from "@/components/legal/cookie-consent-provider"
+import WebVitalsReporter from "@/components/web-vitals-reporter"
 import { siteMetadata } from "@/config/site"
 import { organizationJsonLd, webSiteJsonLd } from "@/lib/seo/structured-data"
 
@@ -140,6 +141,7 @@ const RootLayout = async ({ children }: RootLayoutProps) => {
           "min-h-screen bg-background text-foreground antialiased overflow-x-hidden",
         ].join(" ")}
       >
+        <WebVitalsReporter />
         <QueryProvider>
           <CartProvider>
             <CookieConsentProvider>

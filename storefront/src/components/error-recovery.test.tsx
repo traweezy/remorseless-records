@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import ErrorRecovery, {
   normalizeErrorDigest,
 } from "@/components/error-recovery"
+import { sendClientErrorTelemetry } from "@/lib/observability/browser-telemetry"
+
+vi.mock("@/lib/observability/browser-telemetry", () => ({
+  sendClientErrorTelemetry: vi.fn(),
+}))
 
 describe("ErrorRecovery", () => {
   afterEach(() => {
@@ -12,7 +17,6 @@ describe("ErrorRecovery", () => {
 
   it("focuses safe recovery copy and retries without exposing an error", () => {
     const onRetry = vi.fn()
-    const log = vi.spyOn(console, "error").mockImplementation(() => undefined)
 
     render(
       <ErrorRecovery digest="safe_digest-123" onRetry={onRetry} scope="route" />
@@ -26,8 +30,9 @@ describe("ErrorRecovery", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
 
     expect(onRetry).toHaveBeenCalledOnce()
-    expect(log).toHaveBeenCalledWith("Storefront recovery boundary rendered", {
+    expect(sendClientErrorTelemetry).toHaveBeenCalledWith({
       digest: "safe_digest-123",
+      kind: "client_error",
       scope: "route",
     })
   })

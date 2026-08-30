@@ -1,5 +1,7 @@
 import { connection, NextResponse } from "next/server"
 
+import { resolveStorefrontCommitSha } from "@/lib/observability/runtime-identity"
+
 export const GET = async (): Promise<NextResponse> => {
   await connection()
   const payload: {
@@ -10,8 +12,9 @@ export const GET = async (): Promise<NextResponse> => {
     status: "ok",
     uptime_seconds: Math.round(process.uptime()),
   }
-  if (process.env.COMMIT_SHA) {
-    payload.version = process.env.COMMIT_SHA
+  const commitSha = resolveStorefrontCommitSha()
+  if (commitSha !== "unknown") {
+    payload.version = commitSha
   }
   return NextResponse.json(payload, {
     headers: { "Cache-Control": "no-store" },

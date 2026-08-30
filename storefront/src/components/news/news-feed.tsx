@@ -7,7 +7,7 @@ import { NewsCardSkeleton } from "@/components/news/news-card-skeleton"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription } from "@/components/ui/empty"
-import { NEWS_PAGE_SIZE, type NewsEntry } from "@/lib/data/news"
+import { NEWS_PAGE_SIZE, type NewsEntry } from "@/lib/news/contract"
 
 type NewsFeedProps = {
   initialEntries: NewsEntry[]

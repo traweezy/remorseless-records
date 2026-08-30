@@ -3,7 +3,7 @@ import type { HttpTypes } from "@medusajs/types"
 import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { NewsEntry } from "@/lib/data/news"
+import type { NewsEntry } from "@/lib/news/contract"
 
 const carouselCapture = vi.hoisted(() => ({
   options: [] as Array<Record<string, unknown>>,

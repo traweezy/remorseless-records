@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import SmartLink from "@/components/ui/smart-link"
-import type { NewsEntry } from "@/lib/data/news"
+import type { NewsEntry } from "@/lib/news/contract"
 
 type NewsCarouselCardProps = {
   entry: NewsEntry

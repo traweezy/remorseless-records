@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import { MediaPlaceholder } from "@/components/ui/media-placeholder"
 import SmartLink from "@/components/ui/smart-link"
 import { cn } from "@/lib/ui/cn"
-import type { NewsEntry } from "@/lib/data/news"
+import type { NewsEntry } from "@/lib/news/contract"
 
 type NewsCardProps = {
   entry: NewsEntry

@@ -2,9 +2,9 @@ import { unstable_cache } from "next/cache"
 
 import { runtimeEnv } from "@/config/env"
 import {
-  fetchProviderRead,
   toProviderRequestError,
 } from "@/lib/http/provider-boundary"
+import { fetchObservedProviderRead } from "@/lib/http/provider-read.server"
 import { buildPublicProductPath } from "@/lib/products/routes"
 
 const DISCOGRAPHY_REVALIDATE_SECONDS = 60
@@ -238,7 +238,7 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
       url.searchParams.set("limit", String(limit))
       url.searchParams.set("offset", String(offset))
 
-      const response = await fetchProviderRead(url.toString(), {
+      const response = await fetchObservedProviderRead(url.toString(), {
         headers: {
           "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
         },

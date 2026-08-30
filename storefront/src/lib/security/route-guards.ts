@@ -9,6 +9,7 @@ import {
   consumeRateLimit,
   type RateLimitPolicy,
 } from "@/lib/security/rate-limit"
+import { getStorefrontRuntimeIdentity } from "@/lib/observability/runtime-identity"
 
 type ParseBodyOptions = {
   maxBytes?: number
@@ -39,15 +40,7 @@ type ApiProblem = {
 
 const DEFAULT_MAX_BODY_BYTES = 32 * 1024
 
-const deploymentIdentity = {
-  commit_sha:
-    process.env.RAILWAY_GIT_COMMIT_SHA ??
-    process.env.GIT_COMMIT_SHA ??
-    "unknown",
-  environment:
-    process.env.RAILWAY_ENVIRONMENT_NAME ?? process.env.NODE_ENV ?? "unknown",
-  service: "storefront",
-} as const
+const deploymentIdentity = getStorefrontRuntimeIdentity()
 
 const jsonNoStore = <T>(body: T, init?: ResponseInit): Response => {
   const response = NextResponse.json(body, init)

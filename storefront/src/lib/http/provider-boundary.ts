@@ -56,8 +56,27 @@ export const createProviderSignal = (
 
 export type ProviderReadOptions = {
   maxAttempts?: number
+  recordMetric?: ProviderMetricRecorder
   retryBaseDelayMs?: number
   timeoutMs?: number
+}
+
+export type ProviderReadMetric = {
+  durationMs: number
+  result: "error" | "ok"
+}
+
+export type ProviderMetricRecorder = (metric: ProviderReadMetric) => void
+
+const safelyRecordProviderMetric = (
+  recorder: ProviderMetricRecorder | undefined,
+  metric: ProviderReadMetric
+): void => {
+  try {
+    recorder?.(metric)
+  } catch {
+    // Telemetry must never change the provider request outcome.
+  }
 }
 
 export type ProviderRetryDecision =
@@ -225,10 +244,12 @@ export const fetchProviderRead = async (
   init: RequestInit = {},
   {
     maxAttempts = DEFAULT_PROVIDER_READ_ATTEMPTS,
+    recordMetric,
     retryBaseDelayMs = DEFAULT_PROVIDER_RETRY_BASE_DELAY_MS,
     timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS,
   }: ProviderReadOptions = {}
 ): Promise<Response> => {
+  const startedAt = performance.now()
   const inputMethod = input instanceof Request ? input.method : "GET"
   const method = (init.method ?? inputMethod).toUpperCase()
   if (method !== "GET" && method !== "HEAD") {
@@ -244,6 +265,10 @@ export const fetchProviderRead = async (
   const signal = createProviderSignal(init.signal, timeoutMs)
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (signal.aborted) {
+      safelyRecordProviderMetric(recordMetric, {
+        durationMs: performance.now() - startedAt,
+        result: "error",
+      })
       throw new ProviderRequestError("timeout")
     }
 
@@ -253,6 +278,10 @@ export const fetchProviderRead = async (
     } catch (error) {
       const providerError = toProviderRequestError(error)
       if (providerError.kind === "timeout" || attempt + 1 >= maxAttempts) {
+        safelyRecordProviderMetric(recordMetric, {
+          durationMs: performance.now() - startedAt,
+          result: "error",
+        })
         throw providerError
       }
       const delayMs = retryDelayMs(null, attempt, retryBaseDelayMs)
@@ -264,17 +293,29 @@ export const fetchProviderRead = async (
       !isRetryableProviderReadStatus(response.status) ||
       attempt + 1 >= maxAttempts
     ) {
+      safelyRecordProviderMetric(recordMetric, {
+        durationMs: performance.now() - startedAt,
+        result: response.ok ? "ok" : "error",
+      })
       return response
     }
 
     const delayMs = retryDelayMs(response, attempt, retryBaseDelayMs)
     if (delayMs === null) {
+      safelyRecordProviderMetric(recordMetric, {
+        durationMs: performance.now() - startedAt,
+        result: response.ok ? "ok" : "error",
+      })
       return response
     }
     await cancelResponseBody(response)
     await waitForRetry(delayMs, signal)
   }
 
+  safelyRecordProviderMetric(recordMetric, {
+    durationMs: performance.now() - startedAt,
+    result: "error",
+  })
   throw new ProviderRequestError("unavailable")
 }
 
