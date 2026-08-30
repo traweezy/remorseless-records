@@ -17,7 +17,7 @@ import {
 
 const updateLineItemSchema = z
   .object({
-    quantity: z.coerce.number().int().min(0).max(100),
+    quantity: z.number().int().min(0).max(100),
   })
   .strict()
 const itemIdSchema = z

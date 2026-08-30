@@ -44,6 +44,8 @@ const cartFixture = {
   id: "cart_01ABC",
   currency_code: "usd",
   items: [],
+  subtotal: 0,
+  total: 0,
 } as unknown as HttpTypes.StoreCart
 
 describe("cart Medusa boundary", () => {
@@ -95,6 +97,20 @@ describe("cart Medusa boundary", () => {
     )
     expect(medusaMocks.read).not.toHaveBeenCalled()
     expect(medusaMocks.fetch).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["missing envelope", {}],
+    ["array cart", { cart: [] }],
+    ["non-USD cart", { cart: { ...cartFixture, currency_code: "eur" } }],
+    ["primitive line item", { cart: { ...cartFixture, items: [false] } }],
+    ["coercive total", { cart: { ...cartFixture, total: false } }],
+  ])("rejects a %s from Medusa", async (_label, response) => {
+    medusaMocks.read.mockResolvedValue(response)
+
+    await expect(getCart(cartFixture.id)).rejects.toThrow(
+      /cart response|cart item|cart subtotal|cart total/i
+    )
   })
 
   it("uses the documented line-item methods and returns the parent on delete", async () => {
@@ -207,6 +223,87 @@ describe("cart Medusa boundary", () => {
     expect(medusaMocks.read).toHaveBeenCalledWith("/store/shipping-options", {
       method: "GET",
       query: { cart_id: cartFixture.id },
+    })
+    expect(warn).toHaveBeenCalledWith(
+      "Shipping price calculation failed for 1 option(s)."
+    )
+    warn.mockRestore()
+  })
+
+  it.each([
+    ["missing collection", {}],
+    [
+      "primitive option",
+      { shipping_options: [false], count: 1, limit: 20, offset: 0 },
+    ],
+    [
+      "duplicate option",
+      {
+        shipping_options: [
+          {
+            id: "so_01ABC",
+            name: "Standard",
+            price_type: "flat_rate",
+            amount: 5,
+          },
+          {
+            id: "so_01ABC",
+            name: "Duplicate",
+            price_type: "flat_rate",
+            amount: 5,
+          },
+        ],
+        count: 2,
+        limit: 20,
+        offset: 0,
+      },
+    ],
+    [
+      "coercive flat amount",
+      {
+        shipping_options: [
+          {
+            id: "so_01ABC",
+            name: "Standard",
+            price_type: "flat_rate",
+            amount: false,
+          },
+        ],
+        count: 1,
+        limit: 20,
+        offset: 0,
+      },
+    ],
+  ])("rejects a %s shipping response", async (_label, response) => {
+    medusaMocks.read.mockResolvedValue(response)
+
+    await expect(listShippingOptions(cartFixture.id)).rejects.toThrow(
+      /shipping/i
+    )
+    expect(medusaMocks.fetch).not.toHaveBeenCalled()
+  })
+
+  it("omits a calculated option when Medusa returns another identity", async () => {
+    medusaMocks.read.mockResolvedValue({
+      shipping_options: [
+        {
+          id: "so_expected",
+          name: "Calculated",
+          price_type: "calculated",
+          amount: null,
+        },
+      ],
+      count: 1,
+      limit: 20,
+      offset: 0,
+    })
+    medusaMocks.fetch.mockResolvedValue({
+      shipping_option: { id: "so_other", amount: 5 },
+    })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+
+    await expect(listShippingOptions(cartFixture.id)).resolves.toMatchObject({
+      shipping_options: [],
     })
     expect(warn).toHaveBeenCalledWith(
       "Shipping price calculation failed for 1 option(s)."

@@ -20,6 +20,8 @@ const cart = {
   id: "cart_01K123ABC",
   currency_code: "usd",
   items: [],
+  subtotal: 0,
+  total: 0,
 } as unknown as HttpTypes.StoreCart
 
 describe("cart client", () => {
@@ -90,6 +92,46 @@ describe("cart client", () => {
       message: "Only one copy remains.",
       status: 422,
       code: "inventory_unavailable",
+    } satisfies Partial<CartClientError>)
+  })
+
+  it.each([
+    ["missing cart envelope", {}],
+    ["array cart", { cart: [] }],
+    [
+      "boolean item quantity",
+      {
+        cart: {
+          ...cart,
+          items: [{ id: "cali_01ABC", quantity: false }],
+        },
+      },
+    ],
+    ["boolean cart total", { cart: { ...cart, total: false } }],
+  ])("rejects a %s", async (_label, payload) => {
+    fetchMock.mockResolvedValue(jsonResponse(payload))
+
+    await expect(getCart()).rejects.toMatchObject({
+      name: "CartClientError",
+      status: 502,
+      code: "cart_response_invalid",
+    } satisfies Partial<CartClientError>)
+  })
+
+  it("does not copy malformed provider errors into customer messages", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          detail: { secret: "provider payload" },
+          code: "INVALID PROVIDER CODE",
+        },
+        { status: 502 }
+      )
+    )
+
+    await expect(getCart()).rejects.toMatchObject({
+      message: "Request failed (502)",
+      code: null,
     } satisfies Partial<CartClientError>)
   })
 })

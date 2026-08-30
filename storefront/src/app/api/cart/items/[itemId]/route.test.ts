@@ -97,6 +97,20 @@ describe("/api/cart/items/[itemId]", () => {
     )
   })
 
+  it.each(["3", true, null, -1, 101])(
+    "rejects invalid or coercive update quantity %p",
+    async (quantity) => {
+      const response = await PATCH(
+        createRequest("PATCH", { quantity }),
+        context("cali_01ABC")
+      )
+
+      expect(response.status).toBe(400)
+      expect(cartApiMocks.removeLineItem).not.toHaveBeenCalled()
+      expect(cartApiMocks.updateLineItem).not.toHaveBeenCalled()
+    }
+  )
+
   it("rejects malformed line-item identifiers", async () => {
     const response = await DELETE(
       createRequest("DELETE"),

@@ -1,15 +1,10 @@
 import type { HttpTypes } from "@medusajs/types"
 
+import { asUnknownRecord, readBoundedText } from "@/lib/provider-boundary"
+
+import { cartEnvelopeFrom, CartSnapshotError } from "./snapshot"
+
 type StoreCart = HttpTypes.StoreCart
-
-type CartResponse = { cart: StoreCart | null }
-
-type ErrorResponse = {
-  error?: string
-  detail?: string
-  title?: string
-  code?: string
-}
 
 const CART_REQUEST_TIMEOUT_MS = 10_000
 const CART_REQUEST_MAX_ATTEMPTS = 2
@@ -42,10 +37,30 @@ const createRequestSignal = (signal?: AbortSignal | null): AbortSignal => {
   return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
 }
 
-const requestJson = async <T>(
+const retryAfterSecondsFrom = (value: string | null): number | null => {
+  if (!value || !/^[1-9]\d*$/.test(value.trim())) {
+    return null
+  }
+  const seconds = Number(value.trim())
+  return Number.isSafeInteger(seconds) ? seconds : null
+}
+
+const errorResponseFrom = (
+  value: unknown
+): { code: string | null; message: string | null } => {
+  const payload = asUnknownRecord(value)
+  const code = readBoundedText(payload?.code, 64)
+  const safeCode = code && /^[a-z0-9_]{3,64}$/.test(code) ? code : null
+  const message = [payload?.detail, payload?.error, payload?.title]
+    .map((candidate) => readBoundedText(candidate, 512))
+    .find((candidate): candidate is string => candidate !== null)
+  return { code: safeCode, message: message ?? null }
+}
+
+const requestJson = async (
   input: RequestInfo,
   init?: RequestInit
-): Promise<T> => {
+): Promise<unknown> => {
   const method = init?.method?.toUpperCase() ?? "GET"
   const headers = new Headers(init?.headers)
   if (!headers.has("Content-Type")) {
@@ -84,10 +99,12 @@ const requestJson = async <T>(
       break
     }
 
-    const retryAfter = Number(response.headers.get("Retry-After"))
+    const retryAfter = retryAfterSecondsFrom(
+      response.headers.get("Retry-After")
+    )
     const shouldRetry =
       RETRYABLE_STATUSES.has(response.status) ||
-      (response.status === 409 && Number.isFinite(retryAfter) && retryAfter > 0)
+      (response.status === 409 && retryAfter !== null)
     if (
       shouldRetry &&
       attempt + 1 < CART_REQUEST_MAX_ATTEMPTS &&
@@ -97,7 +114,7 @@ const requestJson = async <T>(
       await new Promise<void>((resolve) => {
         setTimeout(
           resolve,
-          Number.isFinite(retryAfter) && retryAfter > 0
+          retryAfter !== null
             ? Math.min(retryAfter * 1_000, CART_REQUEST_TIMEOUT_MS)
             : CART_RETRY_DELAY_MS
         )
@@ -124,80 +141,95 @@ const requestJson = async <T>(
   }
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as ErrorResponse
-    const retryAfter = Number(response.headers.get("Retry-After"))
+    const payload = errorResponseFrom(
+      await response.json().catch(() => undefined)
+    )
+    const retryAfter = retryAfterSecondsFrom(
+      response.headers.get("Retry-After")
+    )
     throw new CartClientError(
-      payload.detail ??
-        payload.error ??
-        payload.title ??
-        `Request failed (${response.status})`,
+      payload.message ?? `Request failed (${response.status})`,
       {
         status: response.status,
         code: payload.code ?? null,
-        retryAfterSeconds:
-          Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null,
+        retryAfterSeconds: retryAfter,
       }
     )
   }
 
-  return response.json() as Promise<T>
+  return response.json() as Promise<unknown>
+}
+
+const requestCart = async (
+  input: RequestInfo,
+  init?: RequestInit
+): Promise<StoreCart | null> => {
+  try {
+    return cartEnvelopeFrom(await requestJson(input, init)).cart
+  } catch (error: unknown) {
+    if (error instanceof CartClientError) {
+      throw error
+    }
+    throw new CartClientError(
+      error instanceof CartSnapshotError
+        ? "The cart service returned an invalid response."
+        : "Unable to read the cart response.",
+      { status: 502, code: "cart_response_invalid" }
+    )
+  }
 }
 
 export const getCart = async (): Promise<StoreCart | null> =>
-  (await requestJson<CartResponse>("/api/cart")).cart
+  requestCart("/api/cart")
 
 export const addLineItem = async (
   variantId: string,
   quantity: number
 ): Promise<StoreCart> => {
-  const payload = await requestJson<CartResponse>("/api/cart/items", {
+  const cart = await requestCart("/api/cart/items", {
     method: "POST",
     body: JSON.stringify({ variant_id: variantId, quantity }),
   })
 
-  if (!payload.cart) {
+  if (!cart) {
     throw new CartClientError("Cart response missing after adding item.", {
       status: 502,
       code: "cart_response_missing",
     })
   }
-  return payload.cart
+  return cart
 }
 
 export const updateLineItem = async (
   lineItemId: string,
   quantity: number
 ): Promise<StoreCart> => {
-  const payload = await requestJson<CartResponse>(
-    `/api/cart/items/${lineItemId}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify({ quantity }),
-    }
-  )
+  const cart = await requestCart(`/api/cart/items/${lineItemId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity }),
+  })
 
-  if (!payload.cart) {
+  if (!cart) {
     throw new CartClientError("Cart response missing after updating item.", {
       status: 502,
       code: "cart_response_missing",
     })
   }
-  return payload.cart
+  return cart
 }
 
 export const removeLineItem = async (
   lineItemId: string
 ): Promise<StoreCart> => {
-  const payload = await requestJson<CartResponse>(
-    `/api/cart/items/${lineItemId}`,
-    { method: "DELETE" }
-  )
+  const cart = await requestCart(`/api/cart/items/${lineItemId}`, {
+    method: "DELETE",
+  })
 
-  if (!payload.cart) {
+  if (!cart) {
     throw new CartClientError("Cart response missing after removing item.", {
       status: 502,
       code: "cart_response_missing",
     })
   }
-  return payload.cart
+  return cart
 }

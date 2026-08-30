@@ -10,7 +10,19 @@ import type {
   Logger,
   ValidateFulfillmentDataContext,
 } from "@medusajs/framework/types"
-import { AbstractFulfillmentProviderService } from "@medusajs/framework/utils"
+import {
+  AbstractFulfillmentProviderService,
+  MedusaError,
+} from "@medusajs/framework/utils"
+
+import {
+  readFiniteNumber,
+  readNonNegativeSafeInteger,
+} from "../../lib/provider-boundary/primitives"
+import {
+  asUnknownRecord,
+  readRecordArray,
+} from "../../lib/provider-boundary/records"
 
 type InjectedDependencies = {
   logger: Logger
@@ -22,41 +34,25 @@ type PerItemFulfillmentOptions = {
   currencyCode?: string
 }
 
-type ShippingOptionData = {
-  base_amount?: number
-  additional_amount?: number
-  currency_code?: string
-}
-
 const DEFAULT_BASE_AMOUNT = 5
 const DEFAULT_ADDITIONAL_AMOUNT = 0.5
-
-const toNumber = (value: unknown): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === "string" && value.trim().length) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  return null
-}
+const MAX_CART_ITEMS = 100
+const MAX_ITEM_QUANTITY = 100
+const MAX_SHIPPING_AMOUNT = 999_999.99
 
 const roundToCurrencyPrecision = (value: number): number =>
-  Math.round(value * 100) / 100
+  Math.round((value + Number.EPSILON * Math.max(1, value)) * 100) / 100
 
 export const resolveShippingAmount = (
   value: unknown,
   fallback: number
-): number => {
-  const parsed = toNumber(value)
-  if (parsed === null) {
-    return fallback
-  }
-
-  return Math.max(0, roundToCurrencyPrecision(parsed))
+): number | null => {
+  const parsed = readFiniteNumber(
+    value === null || value === undefined ? fallback : value
+  )
+  return parsed !== null && parsed >= 0 && parsed <= MAX_SHIPPING_AMOUNT
+    ? roundToCurrencyPrecision(parsed)
+    : null
 }
 
 export const calculatePerItemShippingAmount = ({
@@ -68,14 +64,36 @@ export const calculatePerItemShippingAmount = ({
   baseAmount: number
   itemCount: number
 }): number => {
-  const totalQuantity = Math.max(0, Math.trunc(itemCount))
+  const totalQuantity = readNonNegativeSafeInteger(itemCount)
+  if (
+    totalQuantity === null ||
+    totalQuantity > MAX_CART_ITEMS * MAX_ITEM_QUANTITY ||
+    !Number.isFinite(baseAmount) ||
+    !Number.isFinite(additionalAmount) ||
+    baseAmount < 0 ||
+    additionalAmount < 0 ||
+    baseAmount > MAX_SHIPPING_AMOUNT ||
+    additionalAmount > MAX_SHIPPING_AMOUNT
+  ) {
+    throw new RangeError("Per-item shipping inputs are outside safe limits.")
+  }
   if (totalQuantity === 0) {
     return 0
   }
-  return roundToCurrencyPrecision(
+  const amount = roundToCurrencyPrecision(
     baseAmount + Math.max(0, totalQuantity - 1) * additionalAmount
   )
+  if (!Number.isFinite(amount) || amount > MAX_SHIPPING_AMOUNT) {
+    throw new RangeError("Per-item shipping total is outside safe limits.")
+  }
+  return amount
 }
+
+const invalidFulfillmentData = (): MedusaError =>
+  new MedusaError(
+    MedusaError.Types.INVALID_DATA,
+    "The per-item shipping calculation data is invalid."
+  )
 
 export default class PerItemFulfillmentService extends AbstractFulfillmentProviderService {
   static override identifier = "per_item"
@@ -116,16 +134,24 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
   override async validateOption(
     data: Record<string, unknown>
   ): Promise<boolean> {
-    const base = resolveShippingAmount(
-      (data as ShippingOptionData).base_amount,
-      DEFAULT_BASE_AMOUNT
-    )
+    const option = asUnknownRecord(data)
+    if (!option) {
+      return false
+    }
+    const base = resolveShippingAmount(option.base_amount, DEFAULT_BASE_AMOUNT)
     const additional = resolveShippingAmount(
-      (data as ShippingOptionData).additional_amount,
+      option.additional_amount,
       DEFAULT_ADDITIONAL_AMOUNT
     )
-
-    return Number.isFinite(base) && Number.isFinite(additional)
+    const currencyCode = option.currency_code
+    return (
+      base !== null &&
+      additional !== null &&
+      (currencyCode === null ||
+        currencyCode === undefined ||
+        (typeof currencyCode === "string" &&
+          currencyCode.toLowerCase() === "usd"))
+    )
   }
 
   override async canCalculate(
@@ -139,21 +165,50 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
     _data: CalculateShippingOptionPriceDTO["data"],
     context: CalculateShippingOptionPriceDTO["context"]
   ): Promise<CalculatedShippingOptionPrice> {
+    const option = asUnknownRecord(optionData)
+    if (!option) {
+      throw invalidFulfillmentData()
+    }
     const baseAmount = resolveShippingAmount(
-      (optionData as ShippingOptionData).base_amount,
+      option.base_amount,
       this.options_.baseAmount ?? DEFAULT_BASE_AMOUNT
     )
     const additionalAmount = resolveShippingAmount(
-      (optionData as ShippingOptionData).additional_amount,
+      option.additional_amount,
       this.options_.additionalAmount ?? DEFAULT_ADDITIONAL_AMOUNT
     )
+    if (baseAmount === null || additionalAmount === null) {
+      throw invalidFulfillmentData()
+    }
 
-    const itemCount = Array.isArray(context.items)
-      ? context.items.reduce(
-          (total, item) => total + Number(item?.quantity ?? 0),
-          0
-        )
-      : 0
+    let items: Record<string, unknown>[]
+    try {
+      items = readRecordArray(context.items, {
+        context: "Per-item fulfillment cart items",
+        optional: true,
+      })
+    } catch {
+      throw invalidFulfillmentData()
+    }
+    if (items.length > MAX_CART_ITEMS) {
+      throw invalidFulfillmentData()
+    }
+    let itemCount = 0
+    for (const item of items) {
+      const quantity = readNonNegativeSafeInteger(item.quantity)
+      if (
+        typeof item.id !== "string" ||
+        !item.id.trim() ||
+        item.id.trim().length > 255 ||
+        quantity === null ||
+        quantity < 1 ||
+        quantity > MAX_ITEM_QUANTITY ||
+        !Number.isSafeInteger(itemCount + quantity)
+      ) {
+        throw invalidFulfillmentData()
+      }
+      itemCount += quantity
+    }
 
     const calculated = calculatePerItemShippingAmount({
       additionalAmount,
@@ -162,14 +217,15 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
     })
 
     const currencyCode =
-      typeof context.currency_code === "string" ? context.currency_code : null
-    if (currencyCode && this.options_.currencyCode) {
-      const normalized = currencyCode.toLowerCase()
-      if (normalized !== this.options_.currencyCode.toLowerCase()) {
-        this.logger_.warn(
-          `Per-item shipping configured for ${this.options_.currencyCode}, received ${context.currency_code}.`
-        )
-      }
+      typeof context.currency_code === "string"
+        ? context.currency_code.trim().toLowerCase()
+        : ""
+    const configuredCurrency =
+      typeof this.options_.currencyCode === "string"
+        ? this.options_.currencyCode.trim().toLowerCase()
+        : "usd"
+    if (currencyCode !== "usd" || configuredCurrency !== "usd") {
+      throw invalidFulfillmentData()
     }
 
     return {

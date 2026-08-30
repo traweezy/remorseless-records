@@ -17,7 +17,9 @@ import CartBundleDetails from "@/components/cart/cart-bundle-details"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import SmartLink from "@/components/ui/smart-link"
+import { cartAmount, cartQuantity } from "@/lib/cart/snapshot"
 import { formatAmount } from "@/lib/money"
+import { readNonNegativeSafeInteger } from "@/lib/provider-boundary"
 import {
   buildPublicProductPath,
   resolvePublicProductRouteType,
@@ -52,10 +54,7 @@ const availableQuantity = (item: CartLineItem): number | null => {
     return null
   }
 
-  const quantity = item.variant?.inventory_quantity
-  return typeof quantity === "number" && Number.isFinite(quantity)
-    ? Math.max(0, Math.trunc(quantity))
-    : null
+  return readNonNegativeSafeInteger(item.variant?.inventory_quantity)
 }
 
 const productClass = (item: CartLineItem): string | null => {
@@ -82,7 +81,10 @@ export const CartItem = memo<CartItemProps>(
     const [isRemovePending, startRemoveTransition] = useTransition()
     const [isQuantityUpdating, setIsQuantityUpdating] = useState(false)
 
-    const quantity = useMemo(() => Number(item.quantity ?? 1), [item.quantity])
+    const quantity = useMemo(
+      () => cartQuantity(item.quantity) ?? 1,
+      [item.quantity]
+    )
     const [displayQuantity, setDisplayQuantity] = useState(quantity)
     const authoritativeQuantityRef = useRef(quantity)
     const desiredQuantityRef = useRef(quantity)
@@ -111,10 +113,12 @@ export const CartItem = memo<CartItemProps>(
     const productHref = item.product_handle
       ? buildPublicProductPath({ handle: item.product_handle })
       : null
+    const subtotal = cartAmount(item.subtotal)
+    const unitPrice = cartAmount(item.unit_price) ?? 0
     const totalAmount =
-      !isQuantityUpdating && typeof item.subtotal === "number"
-        ? item.subtotal
-        : Number(item.unit_price ?? 0) * displayQuantity
+      !isQuantityUpdating && subtotal !== null
+        ? subtotal
+        : unitPrice * displayQuantity
     const maximumAllowedQuantity =
       typeof maxQuantity === "number"
         ? Math.min(maxQuantity, MAX_CART_QUANTITY)

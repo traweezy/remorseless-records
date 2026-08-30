@@ -19,6 +19,8 @@ import {
   removeLineItem,
   updateLineItem,
 } from "@/lib/cart/client"
+import { cartAmount, cartQuantity } from "@/lib/cart/snapshot"
+import { readNonNegativeSafeInteger } from "@/lib/provider-boundary"
 
 export type StoreCart = HttpTypes.StoreCart | null
 
@@ -65,9 +67,17 @@ const CART_STALE_TIME_MS = 30_000
 
 const CartContext = createContext<CartContextValue | null>(null)
 
-const deriveItemCount = (cart: StoreCart): number =>
-  cart?.items?.reduce((total, item) => total + Number(item.quantity ?? 0), 0) ??
-  0
+const deriveItemCount = (cart: StoreCart): number => {
+  let total = 0
+  for (const item of cart?.items ?? []) {
+    const quantity = cartQuantity(item.quantity)
+    if (quantity === null || !Number.isSafeInteger(total + quantity)) {
+      return 0
+    }
+    total += quantity
+  }
+  return total
+}
 
 const applyOptimisticAdd = (
   cart: StoreCart,
@@ -81,11 +91,18 @@ const applyOptimisticAdd = (
   const items = cart.items ?? []
   const existing = items.find((item) => item.variant_id === variantId)
   if (existing) {
+    const existingQuantity = cartQuantity(existing.quantity)
+    if (
+      existingQuantity === null ||
+      cartQuantity(existingQuantity + quantity) === null
+    ) {
+      return cart
+    }
     return {
       ...cart,
       items: items.map((item) =>
         item.id === existing.id
-          ? { ...item, quantity: Number(item.quantity ?? 0) + quantity }
+          ? { ...item, quantity: existingQuantity + quantity }
           : item
       ),
     }
@@ -252,6 +269,9 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addItem = useCallback(
     async (variantId: string, quantity = 1) => {
+      if (cartQuantity(quantity) === null) {
+        throw new Error("Cart quantity must be an integer from 1 to 100.")
+      }
       await cartMutation.mutateAsync({
         kind: "add",
         variantId,
@@ -267,10 +287,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       if (!cart?.id) {
         throw new Error("No active cart")
       }
+      const normalizedQuantity = readNonNegativeSafeInteger(quantity)
+      if (normalizedQuantity === null || normalizedQuantity > 100) {
+        throw new Error("Cart quantity must be an integer from 0 to 100.")
+      }
       return cartMutation.mutateAsync({
         kind: "update",
         lineItemId,
-        quantity: Math.max(0, quantity),
+        quantity: normalizedQuantity,
         showErrorToast: true,
       })
     },
@@ -294,12 +318,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const totals = useMemo(
     () => ({
       itemCount: deriveItemCount(cart),
-      subtotal: cart?.subtotal ?? null,
-      taxTotal: cart?.tax_total ?? null,
-      shippingTotal: cart?.shipping_total ?? null,
-      shippingSubtotal: cart?.shipping_subtotal ?? null,
-      discountTotal: cart?.discount_total ?? null,
-      total: cart?.total ?? null,
+      subtotal: cartAmount(cart?.subtotal),
+      taxTotal: cartAmount(cart?.tax_total),
+      shippingTotal: cartAmount(cart?.shipping_total),
+      shippingSubtotal: cartAmount(cart?.shipping_subtotal),
+      discountTotal: cartAmount(cart?.discount_total),
+      total: cartAmount(cart?.total),
     }),
     [cart]
   )

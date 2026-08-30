@@ -166,12 +166,15 @@ describe("POST /api/cart/items", () => {
     expect(cartApiMocks.addLineItem).not.toHaveBeenCalled()
   })
 
-  it("rejects invalid quantities before changing the cart", async () => {
-    const response = await POST(
-      createRequest({ variant_id: "variant_01ABC", quantity: 101 })
-    )
+  it.each([101, "2", true, null])(
+    "rejects invalid or coercive quantity %p before changing the cart",
+    async (quantity) => {
+      const response = await POST(
+        createRequest({ variant_id: "variant_01ABC", quantity })
+      )
 
-    expect(response.status).toBe(400)
-    expect(cartApiMocks.addLineItem).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(400)
+      expect(cartApiMocks.addLineItem).not.toHaveBeenCalled()
+    }
+  )
 })

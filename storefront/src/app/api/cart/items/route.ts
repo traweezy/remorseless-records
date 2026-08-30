@@ -23,7 +23,7 @@ const addLineItemSchema = z
       .trim()
       .regex(/^variant_[A-Za-z0-9]+$/)
       .max(100),
-    quantity: z.coerce.number().int().min(1).max(100).optional(),
+    quantity: z.number().int().min(1).max(100).optional(),
   })
   .strict()
 

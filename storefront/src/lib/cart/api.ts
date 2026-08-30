@@ -4,11 +4,22 @@ import type { FetchArgs } from "@medusajs/js-sdk"
 import type { HttpTypes } from "@medusajs/types"
 
 import { stripePaymentSessionData } from "@/lib/cart/stripe-payment-data"
+import {
+  cartAmount,
+  cartEnvelopeFrom,
+  cartSnapshotFrom,
+} from "@/lib/cart/snapshot"
 import type { StoreCartAddressInput } from "@/lib/cart/types"
 import { createUpstreamHeaders } from "@/lib/http/correlation"
 import { medusa } from "@/lib/medusa/client"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
+import {
+  asUnknownRecord,
+  readBoundedText,
+  readNonNegativeSafeInteger,
+  readRecordArray,
+} from "@/lib/provider-boundary"
 import { resolveRegionId } from "@/lib/regions"
 
 const CART_FIELDS = [
@@ -59,6 +70,82 @@ type CartReadInit = Omit<FetchArgs, "body" | "method" | "signal">
 type CartMutationInit = Omit<FetchArgs, "method" | "signal"> & {
   method: "DELETE" | "PATCH" | "POST" | "PUT"
 }
+type StoreShippingOption =
+  HttpTypes.StoreShippingOptionListResponse["shipping_options"][number]
+
+const requiredCartFromEnvelope = (value: unknown): HttpTypes.StoreCart => {
+  const { cart } = cartEnvelopeFrom(value)
+  if (!cart) {
+    throw new Error("The Medusa cart response is missing.")
+  }
+  return cart
+}
+
+const shippingOptionListFrom = (
+  value: unknown
+): HttpTypes.StoreShippingOptionListResponse => {
+  const response = asUnknownRecord(value)
+  const options = readRecordArray(response?.shipping_options)
+  const count = readNonNegativeSafeInteger(response?.count)
+  const limit = readNonNegativeSafeInteger(response?.limit)
+  const offset = readNonNegativeSafeInteger(response?.offset)
+  if (
+    !response ||
+    !options ||
+    options.length > 50 ||
+    count === null ||
+    count < options.length ||
+    limit === null ||
+    limit < options.length ||
+    limit > 50 ||
+    offset === null
+  ) {
+    throw new Error("The Medusa shipping-option response is malformed.")
+  }
+  const optionIds = new Set<string>()
+  const shippingOptions = options.map((option) => {
+    const id = readBoundedText(option.id)
+    const name = readBoundedText(option.name, 255)
+    const priceType = readBoundedText(option.price_type, 32)
+    const amount = cartAmount(option.amount)
+    const insufficientInventory = option.insufficient_inventory
+    if (
+      !id ||
+      !/^so_[A-Za-z0-9]+$/.test(id) ||
+      !name ||
+      optionIds.has(id) ||
+      (priceType !== "calculated" && priceType !== "flat_rate") ||
+      (priceType === "flat_rate" && amount === null) ||
+      (insufficientInventory !== null &&
+        insufficientInventory !== undefined &&
+        typeof insufficientInventory !== "boolean")
+    ) {
+      throw new Error("A Medusa shipping option is malformed.")
+    }
+    optionIds.add(id)
+    return {
+      ...option,
+      ...(priceType === "flat_rate" ? { amount } : {}),
+    } as unknown as StoreShippingOption
+  })
+  return {
+    ...(response as unknown as HttpTypes.StoreShippingOptionListResponse),
+    shipping_options: shippingOptions,
+  }
+}
+
+const calculatedShippingAmountFrom = (
+  value: unknown,
+  expectedOptionId: string
+): number => {
+  const response = asUnknownRecord(value)
+  const option = asUnknownRecord(response?.shipping_option)
+  const amount = cartAmount(option?.amount)
+  if (readBoundedText(option?.id) !== expectedOptionId || amount === null) {
+    throw new Error("The calculated Medusa shipping price is malformed.")
+  }
+  return amount
+}
 
 const cartReadRequest = <T>(
   path: string,
@@ -94,7 +181,7 @@ export const createCart = async (
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
   const resolvedRegionId = regionId ?? (await resolveRegionId(request))
-  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
+  const response = await cartMutationRequest<unknown>(
     "/store/carts",
     {
       method: "POST",
@@ -104,19 +191,19 @@ export const createCart = async (
     CART_UPSTREAM_TIMEOUT_MS,
     request
   )
-  return cart
+  return requiredCartFromEnvelope(response)
 }
 
 export const getCart = async (
   cartId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartReadRequest<HttpTypes.StoreCartResponse>(
+  const response = await cartReadRequest<unknown>(
     `/store/carts/${cartId}`,
     { query: { fields: CART_FIELDS } },
     request
   )
-  return cart
+  return requiredCartFromEnvelope(response)
 }
 
 export const addLineItem = async (
@@ -125,7 +212,7 @@ export const addLineItem = async (
   quantity: number,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
+  const response = await cartMutationRequest<unknown>(
     `/store/carts/${cartId}/line-items`,
     {
       method: "POST",
@@ -136,7 +223,7 @@ export const addLineItem = async (
     request
   )
 
-  return cart
+  return requiredCartFromEnvelope(response)
 }
 
 export const updateLineItem = async (
@@ -145,7 +232,7 @@ export const updateLineItem = async (
   quantity: number,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
+  const response = await cartMutationRequest<unknown>(
     `/store/carts/${cartId}/line-items/${lineItemId}`,
     {
       method: "POST",
@@ -156,7 +243,7 @@ export const updateLineItem = async (
     request
   )
 
-  return cart
+  return requiredCartFromEnvelope(response)
 }
 
 export const removeLineItem = async (
@@ -164,23 +251,17 @@ export const removeLineItem = async (
   lineItemId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const response =
-    await cartMutationRequest<HttpTypes.StoreLineItemDeleteResponse>(
-      `/store/carts/${cartId}/line-items/${lineItemId}`,
-      {
-        method: "DELETE",
-        query: { fields: CART_FIELDS },
-      },
-      CART_UPSTREAM_TIMEOUT_MS,
-      request
-    )
-
-  const parent = response.parent
-  if (!parent) {
-    throw new Error("Cart response missing after removing line item")
-  }
-
-  return parent
+  const response = await cartMutationRequest<unknown>(
+    `/store/carts/${cartId}/line-items/${lineItemId}`,
+    {
+      method: "DELETE",
+      query: { fields: CART_FIELDS },
+    },
+    CART_UPSTREAM_TIMEOUT_MS,
+    request
+  )
+  const parent = asUnknownRecord(response)?.parent
+  return cartSnapshotFrom(parent)
 }
 
 export const setCartEmail = async (
@@ -188,7 +269,7 @@ export const setCartEmail = async (
   email: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
+  const response = await cartMutationRequest<unknown>(
     `/store/carts/${cartId}`,
     {
       method: "POST",
@@ -199,7 +280,7 @@ export const setCartEmail = async (
     request
   )
 
-  return cart
+  return requiredCartFromEnvelope(response)
 }
 
 export const setCartAddresses = async (
@@ -219,7 +300,7 @@ export const setCartAddresses = async (
     payload.billing_address = addresses.billing_address
   }
 
-  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
+  const response = await cartMutationRequest<unknown>(
     `/store/carts/${cartId}`,
     {
       method: "POST",
@@ -230,21 +311,20 @@ export const setCartAddresses = async (
     request
   )
 
-  return cart
+  return requiredCartFromEnvelope(response)
 }
 
 export const listShippingOptions = async (
   cartId: string,
   request?: Request
 ): Promise<HttpTypes.StoreShippingOptionListResponse> => {
-  const response =
-    await cartReadRequest<HttpTypes.StoreShippingOptionListResponse>(
+  const response = shippingOptionListFrom(
+    await cartReadRequest<unknown>(
       "/store/shipping-options",
-      {
-        query: { cart_id: cartId },
-      },
+      { query: { cart_id: cartId } },
       request
     )
+  )
 
   const resolved = await Promise.allSettled(
     (response.shipping_options ?? []).map(async (option) => {
@@ -252,8 +332,8 @@ export const listShippingOptions = async (
         return option
       }
 
-      const calculated =
-        await cartMutationRequest<HttpTypes.StoreShippingOptionResponse>(
+      const amount = calculatedShippingAmountFrom(
+        await cartMutationRequest<unknown>(
           `/store/shipping-options/${option.id}/calculate`,
           {
             method: "POST",
@@ -261,11 +341,13 @@ export const listShippingOptions = async (
           },
           CART_UPSTREAM_TIMEOUT_MS,
           request
-        )
+        ),
+        option.id
+      )
 
       return {
         ...option,
-        amount: calculated.shipping_option.amount,
+        amount,
       }
     })
   )
@@ -282,11 +364,7 @@ export const listShippingOptions = async (
       if (result.status !== "fulfilled") {
         return []
       }
-      return typeof result.value.amount === "number" &&
-        Number.isFinite(result.value.amount) &&
-        result.value.amount >= 0
-        ? [result.value]
-        : []
+      return [result.value]
     }),
   }
 }
@@ -296,7 +374,7 @@ export const addShippingMethod = async (
   optionId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
+  const response = await cartMutationRequest<unknown>(
     `/store/carts/${cartId}/shipping-methods`,
     {
       method: "POST",
@@ -307,14 +385,14 @@ export const addShippingMethod = async (
     request
   )
 
-  return cart
+  return requiredCartFromEnvelope(response)
 }
 
 export const calculateTaxes = async (
   cartId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const response = await cartMutationRequest<{ cart: HttpTypes.StoreCart }>(
+  const response = await cartMutationRequest<unknown>(
     `/store/carts/${cartId}/taxes`,
     {
       method: "POST",
@@ -324,7 +402,7 @@ export const calculateTaxes = async (
     request
   )
 
-  return response.cart
+  return requiredCartFromEnvelope(response)
 }
 
 const extractClientSecret = (

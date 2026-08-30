@@ -88,6 +88,41 @@ use the reconciliation and exact-amount procedures below. Logs and tickets must
 not include the cart object, PaymentIntent metadata, client secret, customer
 email, or delivery address.
 
+## Cart and fulfillment amount boundary
+
+The Storefront validates every Medusa cart envelope before it reaches the
+browser cache or a cart mutation response. A usable cart is a bounded USD
+snapshot with unique structured line items, canonical quantities from 1 to
+100, complete product/variant identities, explicit non-negative amounts, and
+valid inventory policy. The shipping-option boundary likewise requires a
+bounded, internally consistent list with unique option IDs, safe names,
+recognized price types, and exact calculated-response identity. An invalid
+calculated option is omitted; a malformed list invalidates the complete
+delivery-method response.
+
+Cart mutation JSON accepts numbers only. Numeric strings, booleans, nulls,
+fractions, negative values, and quantities over 100 return the normal bounded
+problem response without calling Medusa. The browser client independently
+revalidates the response and reports `cart_response_invalid` without copying an
+upstream payload into customer-visible text.
+
+Backend per-item fulfillment uses the same fail-closed contract. It accepts at
+most 100 structured cart rows, quantities from 1 to 100, non-negative shipping
+configuration below the checkout maximum, and USD on both the cart and
+provider configuration. It rejects primitive rows, missing identities,
+coercive amounts or quantities, excessive aggregate work, currency mismatch,
+and a calculated total outside the supported range. It never falls back from a
+present malformed option value to a default price. An omitted provider
+currency uses the documented USD default; an explicit non-USD value fails
+closed.
+
+Treat repeated `cart_response_invalid`, `shipping_unavailable`, or per-item
+shipping validation failures as a provider/stored-data incident. Do not edit a
+browser response, inject a fallback delivery price, or bypass the calculation.
+Retrieve one authoritative cart and shipping-option response in the protected
+environment, compare only allowlisted identities/counts/amounts, and keep
+payment preparation blocked until the source record is corrected.
+
 Checkout reconciliation records contain the fixed safe `message`, exact
 deployment identity, `run_id`, `scheduled_for`, `started_at`,
 `schedule_delay_ms`, `duration_ms`, `event_loop_delay_max_ms`, `lock_wait_ms`,

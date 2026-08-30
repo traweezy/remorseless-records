@@ -2803,6 +2803,32 @@ bytes. The production audit retains only three documented ignored moderate
 findings; Trivy reports zero high/critical dependency, misconfiguration, or
 secret findings.
 
+The fifth post-migration boundary tranche closes the cart-to-fulfillment data
+path. Storefront Medusa cart envelopes now validate bounded USD totals, unique
+structured line items, product/variant identity, quantities, inventory policy,
+and amounts both at the server adapter and again before entering the browser
+cache. Cart mutation schemas no longer coerce numeric strings, booleans, or
+nulls. Shipping-option lists validate pagination, unique identities, names,
+price types, inventory flags, and normalized amounts; calculated responses
+must return the requested option identity. Customer UI derivation uses the same
+strict amount and quantity readers, so malformed values cannot become `NaN`, a
+phantom item count, or a fallback subtotal. Backend per-item fulfillment now
+rejects primitive rows, missing item identities, coercive or excessive
+quantities, malformed option values, non-USD contexts, and unsafe totals rather
+than applying defaults to present invalid data. Eighty-one Storefront and
+twenty-four Backend focused tests pass with Biome and both strict TypeScript
+compilers. The broader dated debt item remains open for unrelated provider and
+service families. Complete local acceptance passes the 1,166-file repository
+QA gate, all 225 Backend suites and 1,458 tests, all 130 Storefront baseline
+files and 787 tests, all 35 transactional files and 313 tests, both production
+builds, the frozen packaged Backend install, and the Admin bundle budget.
+Backend coverage remains 90.79/83.64/95/90.86; Storefront baseline coverage
+remains 94.22/86.73/96/94.22 and transactional coverage is
+83.28/76.09/85.76/83.37. The Admin main bundle is 1,807,810 gzip bytes and
+total JavaScript is 2,388,605 gzip bytes. The production audit retains only
+three documented ignored moderate findings; Trivy reports zero high/critical
+dependency, misconfiguration, or secret findings.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

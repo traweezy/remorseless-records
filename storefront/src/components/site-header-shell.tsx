@@ -9,6 +9,7 @@ import CartDrawer from "@/components/cart-drawer"
 import { Button } from "@/components/ui/button"
 import Drawer, { DrawerCloseButton } from "@/components/ui/drawer"
 import SmartLink from "@/components/ui/smart-link"
+import { cartAmount } from "@/lib/cart/snapshot"
 import { formatAmount } from "@/lib/money"
 import { useUIStore } from "@/lib/store/ui"
 import { cn } from "@/lib/ui/cn"
@@ -70,14 +71,12 @@ const SiteHeaderShell = () => {
   const cartSubtotal = cart?.subtotal
   const cartTotal = cart?.total
   const subtotalDisplay = useMemo(() => {
-    if (!cartSubtotal && !cartTotal) {
+    const amount = cartAmount(cartSubtotal) ?? cartAmount(cartTotal)
+    if (amount === null) {
       return null
     }
 
-    return formatAmount(
-      cartCurrencyCode,
-      Number(cartSubtotal ?? cartTotal ?? 0)
-    )
+    return formatAmount(cartCurrencyCode, amount)
   }, [cartCurrencyCode, cartSubtotal, cartTotal])
 
   const hasItems = itemCount > 0
