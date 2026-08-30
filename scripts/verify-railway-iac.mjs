@@ -7,8 +7,7 @@ import { createRailwayContext } from "railway/iac";
 const legacyConfigPaths = ["backend/railway.json", "storefront/railway.json"];
 const STOREFRONT_PRIVATE_REDIS_URL =
   "redis://${{Redis.REDISUSER}}:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379";
-const STOREFRONT_PRIVATE_MEILISEARCH_HOST =
-  "${{Backend.MEILISEARCH_HOST}}";
+const STOREFRONT_PRIVATE_MEILISEARCH_HOST = "${{Backend.MEILISEARCH_HOST}}";
 const SHARED_BUILD_WATCH_PATTERNS = [
   "/.nvmrc",
   "/package.json",
@@ -148,10 +147,7 @@ assert.deepEqual(
   { type: "literal", value: STOREFRONT_PRIVATE_MEILISEARCH_HOST },
   "Storefront search must use the Backend's server-only Meilisearch host",
 );
-for (const name of [
-  "NEXT_PUBLIC_MEILI_HOST",
-  "NEXT_PUBLIC_MEILI_SEARCH_KEY",
-]) {
+for (const name of ["NEXT_PUBLIC_MEILI_HOST", "NEXT_PUBLIC_MEILI_SEARCH_KEY"]) {
   assert.equal(
     Object.hasOwn(storefront.variables, name),
     false,
@@ -217,7 +213,7 @@ assert.deepEqual(
   },
   {
     startCommand: "pnpm --filter backend --silent run start",
-    preDeployCommand: ["pnpm --filter backend run release:prepare"],
+    preDeployCommand: ["pnpm --filter backend --silent run release:prepare"],
     healthcheckPath: "/ready",
     healthcheckTimeout: 300,
     restartPolicyType: "ON_FAILURE",
@@ -250,7 +246,8 @@ assert.deepEqual(
     restartPolicyMaxRetries: storefront.deploy.restartPolicyMaxRetries,
   },
   {
-    startCommand: "pnpm --filter remorseless-records-storefront run start",
+    startCommand:
+      "pnpm --filter remorseless-records-storefront --silent run start",
     preDeployCommand: [],
     healthcheckPath: "/ready",
     healthcheckTimeout: 180,

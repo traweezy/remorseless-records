@@ -3507,6 +3507,94 @@
         ]
       }
     },
+    "/health/operations": {
+      "get": {
+        "operationId": "backend_get_health_operations",
+        "summary": "GET /health/operations",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/health/operations/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
+    "/health/retention": {
+      "get": {
+        "operationId": "backend_get_health_retention",
+        "summary": "GET /health/retention",
+        "tags": [
+          "backend custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/NativeMedusaErrorResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "native-medusa-error",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "backend/src/api/health/retention/route.ts"
+        ],
+        "x-services": [
+          "backend"
+        ]
+      }
+    },
     "/health/scheduler": {
       "get": {
         "operationId": "backend_get_health_scheduler",
@@ -5109,6 +5197,50 @@
         ]
       }
     },
+    "/api/telemetry/browser": {
+      "post": {
+        "operationId": "storefront_post_api_telemetry_browser",
+        "summary": "POST /api/telemetry/browser",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/telemetry/browser/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
     "/store/checkout/status": {
       "post": {
         "operationId": "backend_post_store_checkout_status",
@@ -5472,12 +5604,12 @@
     }
   },
   "x-inventory": {
-    "routeFileCount": 86,
+    "routeFileCount": 89,
     "routeFileCounts": {
-      "backend": 56,
-      "storefront": 30
+      "backend": 58,
+      "storefront": 31
     },
-    "routeOperationCount": 113,
-    "uniqueOperationCount": 111
+    "routeOperationCount": 116,
+    "uniqueOperationCount": 114
   }
 }

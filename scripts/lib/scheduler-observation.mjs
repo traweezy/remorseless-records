@@ -1,5 +1,7 @@
 const HEALTH_REASONS = new Set([
   "redis_unavailable",
+  "redis_latency_high",
+  "redis_latency_missing",
   "scheduler_heartbeat_from_future",
   "scheduler_heartbeat_missing",
   "scheduler_heartbeat_stale",
@@ -24,6 +26,7 @@ const MAX_CLOCK_SKEW_SECONDS = 60;
 const MAX_HEALTH_RESPONSE_AGE_SECONDS = 2 * 60;
 const MAX_HEARTBEAT_AGE_SECONDS = 10 * 60;
 const MAX_REPORTED_AGE_DRIFT_SECONDS = 5;
+const MAX_REDIS_LATENCY_MS = 250;
 
 const isRecord = (value) =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -66,6 +69,10 @@ const parsePayload = (body) => {
     value.schema_version !== 1 ||
     (value.status !== "healthy" && value.status !== "degraded") ||
     (value.redis !== "ok" && value.redis !== "error") ||
+    (value.redis_latency_ms !== null &&
+      (typeof value.redis_latency_ms !== "number" ||
+        !Number.isFinite(value.redis_latency_ms) ||
+        value.redis_latency_ms < 0)) ||
     !validTimestamp(value.checked_at) ||
     typeof value.observation_window_seconds !== "number" ||
     !Number.isInteger(value.observation_window_seconds) ||
@@ -101,6 +108,7 @@ const parsePayload = (body) => {
     observationWindowSeconds: value.observation_window_seconds,
     reasons: value.reasons,
     redis: value.redis,
+    redisLatencyMs: value.redis_latency_ms,
     status: value.status,
   };
 };
@@ -169,6 +177,15 @@ export const evaluateSchedulerHealthResponse = ({
         reasons.add("scheduler_heartbeat_age_mismatch");
       }
     }
+    if (payload.redis === "ok" && payload.redisLatencyMs === null) {
+      reasons.add("redis_latency_missing");
+    }
+    if (
+      payload.redisLatencyMs !== null &&
+      payload.redisLatencyMs >= MAX_REDIS_LATENCY_MS
+    ) {
+      reasons.add("redis_latency_high");
+    }
     if (
       httpStatus !== 200 ||
       payload.status !== "healthy" ||
@@ -200,6 +217,7 @@ export const evaluateSchedulerHealthResponse = ({
           incident: payload.incident,
           observationWindowSeconds: payload.observationWindowSeconds,
           redis: payload.redis,
+          redisLatencyMs: payload.redisLatencyMs,
           status: payload.status,
         }
       : null,
@@ -220,6 +238,7 @@ export const renderSchedulerObservationMarkdown = (report) => {
     `- HTTP status: \`${report.httpStatus}\``,
     `- Endpoint status: \`${report.endpoint?.status ?? "invalid"}\``,
     `- Redis: \`${report.endpoint?.redis ?? "unknown"}\``,
+    `- Redis latency ms: \`${report.endpoint?.redisLatencyMs ?? "n/a"}\``,
     `- Heartbeat age seconds: \`${report.endpoint?.heartbeatAgeSeconds ?? "n/a"}\``,
     `- Heartbeat event: \`${report.endpoint?.heartbeat?.event ?? "n/a"}\``,
     `- Heartbeat commit: \`${report.endpoint?.heartbeat?.commitSha ?? "n/a"}\``,

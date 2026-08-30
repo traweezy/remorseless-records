@@ -24,6 +24,7 @@ const payload = (overrides = {}) => ({
   observation_window_seconds: 86_400,
   reasons: [],
   redis: "ok",
+  redis_latency_ms: 12.345,
   ...overrides,
 });
 const evaluate = (overrides = {}) =>
@@ -40,6 +41,7 @@ describe("external scheduler observation", () => {
 
     assert.equal(report.status, "healthy");
     assert.equal(report.endpoint?.heartbeatAgeSeconds, 60);
+    assert.equal(report.endpoint?.redisLatencyMs, 12.345);
     assert.deepEqual(report.reasons, []);
   });
 
@@ -109,6 +111,18 @@ describe("external scheduler observation", () => {
     assert.ok(
       inconsistent.reasons.includes("scheduler_heartbeat_age_mismatch"),
     );
+  });
+
+  it("independently alerts on elevated or missing Redis latency", () => {
+    const elevated = evaluate({
+      body: JSON.stringify(payload({ redis_latency_ms: 250 })),
+    });
+    const missing = evaluate({
+      body: JSON.stringify(payload({ redis_latency_ms: null })),
+    });
+
+    assert.ok(elevated.reasons.includes("redis_latency_high"));
+    assert.ok(missing.reasons.includes("redis_latency_missing"));
   });
 
   it("exercises a forced alert using the same sanitized report", () => {
