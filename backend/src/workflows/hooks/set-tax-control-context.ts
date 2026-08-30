@@ -8,6 +8,17 @@ import { ContainerRegistrationKeys, MathBN } from "@medusajs/framework/utils"
 import { StepResponse } from "@medusajs/framework/workflows-sdk"
 
 import {
+  readFiniteNumber,
+  readNonNegativeSafeInteger,
+} from "../../lib/provider-boundary/primitives"
+import {
+  asUnknownRecord as asRecord,
+  readProviderDataRecords,
+  readRecordArray,
+  readRequiredRecord,
+  type UnknownRecord,
+} from "../../lib/provider-boundary/records"
+import {
   parseTaxLineCode,
   TAX_CONTEXT_KEY,
   type FrozenTaxQuote,
@@ -21,15 +32,25 @@ import type {
 } from "../../modules/tax-control/constants"
 import type TaxControlModuleService from "../../modules/tax-control/service"
 
-type UnknownRecord = Record<string, unknown>
-
 type QueryGraph = {
   graph: (input: {
     entity: string
     fields: string[]
     filters: Record<string, unknown>
     pagination?: { take?: number }
-  }) => Promise<{ data: UnknownRecord[] }>
+  }) => Promise<unknown>
+}
+
+const readSingleProviderDataRecord = (
+  value: unknown,
+  context: string
+): UnknownRecord => {
+  const records = readProviderDataRecords(value, context)
+  const [record] = records
+  if (records.length !== 1 || !record) {
+    throw new Error(`${context} returned an unexpected record count.`)
+  }
+  return record
 }
 
 const PROCESSABLE_PAYMENT_STATUSES = new Set([
@@ -40,40 +61,40 @@ const PROCESSABLE_PAYMENT_STATUSES = new Set([
   "requires_more",
 ])
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
-
-const asUnknownArray = (value: unknown): unknown[] =>
-  Array.isArray(value) ? value.map((item: unknown) => item) : []
-
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 
 const positiveInteger = (value: unknown): number | null => {
-  const parsed = Number(value)
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
+  const parsed = readNonNegativeSafeInteger(value)
+  return parsed !== null && parsed > 0 ? parsed : null
 }
 
 const finiteNonNegative = (value: unknown): number | null => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  const parsed = readFiniteNumber(value)
+  return parsed !== null && parsed >= 0 ? parsed : null
 }
 
 const adjustmentsFrom = (value: unknown) =>
-  (Array.isArray(value) ? value : [])
-    .map(asRecord)
-    .filter((adjustment): adjustment is UnknownRecord => adjustment !== null)
+  readRecordArray(value, {
+    context: "Tax calculation adjustment query",
+    optional: true,
+  })
 
-const taxRateDecimalFrom = (value: unknown) =>
-  MathBN.div(
-    MathBN.sum(
-      ...(Array.isArray(value) ? value : [])
-        .map(asRecord)
-        .filter((line): line is UnknownRecord => line !== null)
-        .map((line) => Number(line.rate ?? 0))
-    ),
+const taxRateDecimalFrom = (value: unknown) => {
+  const lines = readRecordArray(value, {
+    context: "Tax calculation line query",
+    optional: true,
+  })
+  const rates = lines.map((line) => finiteNonNegative(line.rate))
+  const validRates = rates.filter((rate): rate is number => rate !== null)
+  if (validRates.length !== rates.length) {
+    throw new Error("Tax calculation received an invalid tax rate.")
+  }
+  return MathBN.div(
+    validRates.length ? MathBN.sum(...validRates) : MathBN.convert(0),
     100
   )
+}
 
 const adjustedAmountMinor = ({
   amount,
@@ -86,19 +107,19 @@ const adjustedAmountMinor = ({
   quantity?: unknown
   taxLines: unknown
 }): number => {
-  const parsedQuantity = Number(quantity)
-  const parsedAmount = Number(amount)
-  if (!Number.isSafeInteger(parsedQuantity) || parsedQuantity <= 0) {
+  const parsedQuantity = readNonNegativeSafeInteger(quantity)
+  const parsedAmount = readFiniteNumber(amount)
+  if (parsedQuantity === null || parsedQuantity <= 0) {
     throw new Error("Tax calculation received an invalid quantity.")
   }
-  if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+  if (parsedAmount === null || parsedAmount < 0) {
     throw new Error("Tax calculation received an invalid amount.")
   }
   const gross = MathBN.mult(parsedAmount, parsedQuantity)
   const normalizedAdjustments = adjustmentsFrom(adjustments).map(
     (adjustment) => {
-      const adjustmentAmount = Number(adjustment.amount)
-      if (!Number.isFinite(adjustmentAmount) || adjustmentAmount < 0) {
+      const adjustmentAmount = readFiniteNumber(adjustment.amount)
+      if (adjustmentAmount === null || adjustmentAmount < 0) {
         throw new Error("Tax calculation received an invalid adjustment.")
       }
       return {
@@ -135,7 +156,7 @@ const enrichCartForTax = async (
   }
 
   const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
-  const { data } = await query.graph({
+  const result = await query.graph({
     entity: "cart",
     fields: [
       "id",
@@ -164,50 +185,57 @@ const enrichCartForTax = async (
     filters: { id: cartId },
     pagination: { take: 1 },
   })
-  return data[0] ?? cart
+  return readSingleProviderDataRecord(result, "Tax cart enrichment query")
 }
 
 const taxableAmountsFrom = (cart: UnknownRecord) => {
-  const items = Array.isArray(cart.items)
-    ? cart.items
-        .map(asRecord)
-        .filter((item): item is UnknownRecord => item !== null)
-    : []
-  const shippingMethods = Array.isArray(cart.shipping_methods)
-    ? cart.shipping_methods
-        .map(asRecord)
-        .filter((method): method is UnknownRecord => method !== null)
-    : []
+  const items = readRecordArray(cart.items, {
+    context: "Tax calculation item query",
+    optional: true,
+  })
+  const shippingMethods = readRecordArray(cart.shipping_methods, {
+    context: "Tax calculation shipping query",
+    optional: true,
+  })
+  const itemIds = new Set<string>()
+  const itemAmountsMinor: Record<string, number> = {}
+  for (const item of items) {
+    const id = text(item.id)
+    if (!id || itemIds.has(id)) {
+      throw new Error("Tax calculation received an invalid item identity.")
+    }
+    itemIds.add(id)
+    itemAmountsMinor[id] = adjustedAmountMinor({
+      adjustments: item.adjustments,
+      amount: item.unit_price,
+      quantity: item.quantity,
+      taxLines: item.tax_lines,
+    })
+  }
+
+  const shippingIds = new Set<string>()
+  let shippingAmountMinor = 0
+  for (const method of shippingMethods) {
+    const id = text(method.id)
+    if (!id || shippingIds.has(id)) {
+      throw new Error("Tax calculation received an invalid shipping identity.")
+    }
+    shippingIds.add(id)
+    const amount = adjustedAmountMinor({
+      adjustments: method.adjustments,
+      amount: method.amount,
+      taxLines: method.tax_lines,
+    })
+    const nextAmount = shippingAmountMinor + amount
+    if (!Number.isSafeInteger(nextAmount)) {
+      throw new Error("Tax calculation received an invalid shipping total.")
+    }
+    shippingAmountMinor = nextAmount
+  }
 
   return {
-    itemAmountsMinor: Object.fromEntries(
-      items.flatMap((item) => {
-        const id = text(item.id)
-        return id
-          ? [
-              [
-                id,
-                adjustedAmountMinor({
-                  adjustments: item.adjustments,
-                  amount: item.unit_price,
-                  quantity: item.quantity,
-                  taxLines: item.tax_lines,
-                }),
-              ],
-            ]
-          : []
-      })
-    ),
-    shippingAmountMinor: shippingMethods.reduce(
-      (total, method) =>
-        total +
-        adjustedAmountMinor({
-          adjustments: method.adjustments,
-          amount: method.amount,
-          taxLines: method.tax_lines,
-        }),
-      0
-    ),
+    itemAmountsMinor,
+    shippingAmountMinor,
   }
 }
 
@@ -215,11 +243,10 @@ const resolveItemTaxCodes = async (
   container: MedusaContainer,
   orderOrCart: UnknownRecord
 ): Promise<Record<string, string>> => {
-  const items = Array.isArray(orderOrCart.items)
-    ? orderOrCart.items
-        .map(asRecord)
-        .filter((item): item is UnknownRecord => item !== null)
-    : []
+  const items = readRecordArray(orderOrCart.items, {
+    context: "Tax code item query",
+    optional: true,
+  })
   const productIds = Array.from(
     new Set(
       items
@@ -232,16 +259,27 @@ const resolveItemTaxCodes = async (
   }
 
   const catalog = container.resolve<CatalogModuleService>("catalog")
-  const profiles = await catalog.listCatalogProductProfiles(
+  const profileResult: unknown = await catalog.listCatalogProductProfiles(
     { product_id: productIds },
     { select: ["product_id", "metadata"], take: productIds.length }
   )
+  const profiles = readRecordArray(profileResult, {
+    context: "Tax code profile query",
+  })
   const codeByProductId = new Map<string, string>()
   for (const profile of profiles) {
+    const productId = text(profile.product_id)
+    if (
+      !productId ||
+      !productIds.includes(productId) ||
+      codeByProductId.has(productId)
+    ) {
+      throw new Error("Tax code profile query returned an invalid product ID.")
+    }
     const metadata = asRecord(profile.metadata)
     const taxCode = text(metadata?.stripe_tax_code)
     if (taxCode && /^txcd_\d{8}$/.test(taxCode)) {
-      codeByProductId.set(profile.product_id, taxCode)
+      codeByProductId.set(productId, taxCode)
     }
   }
 
@@ -340,7 +378,7 @@ const resolveFrozenCartQuote = async (
   }
 
   const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
-  const { data } = await query.graph({
+  const result = await query.graph({
     entity: "cart",
     fields: [
       "payment_collection.payment_sessions.data",
@@ -350,14 +388,17 @@ const resolveFrozenCartQuote = async (
     filters: { id: cartId },
     pagination: { take: 1 },
   })
-  const resolvedCart = data[0]
+  const resolvedCart = readSingleProviderDataRecord(
+    result,
+    "Frozen tax quote query"
+  )
   const collection = asRecord(resolvedCart?.payment_collection)
-  const sessions = Array.isArray(collection?.payment_sessions)
-    ? collection.payment_sessions
-    : []
+  const sessions = readRecordArray(collection?.payment_sessions, {
+    context: "Frozen tax quote payment-session query",
+    optional: true,
+  })
 
-  for (const value of sessions) {
-    const session = asRecord(value)
+  for (const session of sessions) {
     if (
       text(session?.provider_id) !== "pp_stripe_stripe" ||
       !PROCESSABLE_PAYMENT_STATUSES.has(text(session?.status) ?? "")
@@ -382,19 +423,27 @@ const resolveFrozenCartQuote = async (
 const identityFromTaxLines = (
   orderOrCart: UnknownRecord
 ): FrozenTaxQuote | null => {
-  const items = asUnknownArray(orderOrCart.items)
-  const shippingMethods = asUnknownArray(orderOrCart.shipping_methods)
-  const taxLines = [...items, ...shippingMethods].flatMap((value) => {
-    const record = asRecord(value)
-    return asUnknownArray(record?.tax_lines)
+  const items = readRecordArray(orderOrCart.items, {
+    context: "Historical tax identity item query",
+    optional: true,
   })
+  const shippingMethods = readRecordArray(orderOrCart.shipping_methods, {
+    context: "Historical tax identity shipping query",
+    optional: true,
+  })
+  const taxLines = [...items, ...shippingMethods].flatMap((record) =>
+    readRecordArray(record.tax_lines, {
+      context: "Historical tax identity line query",
+      optional: true,
+    })
+  )
   const identities = taxLines
-    .map(asRecord)
-    .map((line) => parseTaxLineCode(line?.code))
+    .map((line) => parseTaxLineCode(line.code))
     .filter((value): value is NonNullable<typeof value> => value !== null)
   const first = identities[0]
   if (
     !first ||
+    identities.length !== taxLines.length ||
     identities.some(
       (identity) =>
         identity.provider !== first.provider ||
@@ -407,9 +456,11 @@ const identityFromTaxLines = (
   }
 
   const rates = taxLines
-    .map(asRecord)
-    .map((line) => finiteNonNegative(line?.rate))
+    .map((line) => finiteNonNegative(line.rate))
     .filter((rate): rate is number => rate !== null)
+  if (rates.length !== taxLines.length) {
+    return null
+  }
   const firstRate = rates[0]
 
   return {
@@ -558,12 +609,22 @@ const contextForOrder = async (
 
 updateTaxLinesWorkflow.hooks.setTaxLineContext(
   async ({ cart }, { container }) =>
-    new StepResponse(await contextForCart(container, cart as UnknownRecord))
+    new StepResponse(
+      await contextForCart(
+        container,
+        readRequiredRecord(cart, "Tax line workflow cart")
+      )
+    )
 )
 
 upsertTaxLinesWorkflow.hooks.setTaxLineContext(
   async ({ cart }, { container }) =>
-    new StepResponse(await contextForCart(container, cart as UnknownRecord))
+    new StepResponse(
+      await contextForCart(
+        container,
+        readRequiredRecord(cart, "Tax line upsert workflow cart")
+      )
+    )
 )
 
 updateOrderTaxLinesWorkflow.hooks.setTaxLineContext(
@@ -571,7 +632,7 @@ updateOrderTaxLinesWorkflow.hooks.setTaxLineContext(
     new StepResponse(
       await contextForOrder(
         container,
-        order as UnknownRecord,
+        readRequiredRecord(order, "Order tax-line workflow order"),
         items,
         shipping_methods
       )

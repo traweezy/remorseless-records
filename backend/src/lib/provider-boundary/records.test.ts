@@ -3,6 +3,7 @@ import {
   readCountedRecordPage,
   readProviderDataRecords,
   readRecordArray,
+  readRequiredRecord,
   readWorkflowResultRecords,
 } from "./records"
 
@@ -23,6 +24,15 @@ describe("provider structured-data boundaries", () => {
     expect(() =>
       readRecordArray([{ id: "record_01" }, null], { context: "Provider" })
     ).toThrow("Provider returned malformed structured data.")
+  })
+
+  it("requires a structured record at singular boundaries", () => {
+    expect(readRequiredRecord({ id: "record_01" }, "Provider record")).toEqual({
+      id: "record_01",
+    })
+    expect(() => readRequiredRecord(false, "Provider record")).toThrow(
+      "Provider record returned malformed structured data."
+    )
   })
 
   it("validates graph data envelopes without trusting their declared type", () => {

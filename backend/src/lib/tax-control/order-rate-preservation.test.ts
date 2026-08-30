@@ -12,7 +12,7 @@ const identity: FrozenTaxQuote = {
   stripeCalculationId: "taxcalc_original",
 }
 
-const taxLine = (rate: number, calculationId = "taxcalc_original") => ({
+const taxLine = (rate: unknown, calculationId = "taxcalc_original") => ({
   code: `rr_tax:stripe_tax:g3:${calculationId}`,
   rate,
 })
@@ -45,10 +45,54 @@ describe("Stripe Tax order rate preservation", () => {
       { id: "orli_01", tax_lines: [taxLine(8.75, "taxcalc_other")] },
     ],
     ["an invalid rate", { id: "orli_01", tax_lines: [taxLine(-1)] }],
+    ["a coercive rate", { id: "orli_01", tax_lines: [taxLine(true)] }],
   ])("rejects an incomplete target with %s", (_label, item) => {
     expect(
       preservedRatesFromTaxLines(
         { items: [item], shipping_methods: [] },
+        identity
+      )
+    ).toBeNull()
+  })
+
+  it("fails closed on malformed relationship rows", () => {
+    expect(() =>
+      preservedRatesFromTaxLines(
+        { items: [false], shipping_methods: [] },
+        identity
+      )
+    ).toThrow(
+      "Preserved tax-rate entity query returned malformed structured data"
+    )
+  })
+
+  it("rejects duplicate taxable and new-shipping identities", () => {
+    expect(
+      preservedRatesFromTaxLines(
+        {
+          items: [
+            { id: "orli_duplicate", tax_lines: [taxLine(8.75)] },
+            { id: "orli_duplicate", tax_lines: [taxLine(8.75)] },
+          ],
+          shipping_methods: [],
+        },
+        identity
+      )
+    ).toBeNull()
+    expect(
+      preservedRateForNewShipping(
+        {
+          shipping_methods: [
+            { id: "ordsm_original", tax_lines: [taxLine(8.75)] },
+          ],
+        },
+        {
+          items: [],
+          shipping_methods: [
+            { id: "ordsm_duplicate" },
+            { id: "ordsm_duplicate" },
+          ],
+        },
         identity
       )
     ).toBeNull()

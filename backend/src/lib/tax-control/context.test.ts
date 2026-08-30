@@ -5,33 +5,27 @@ import {
   parseTaxLineCode,
 } from "./context"
 
+const validContext = (
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> => ({
+  collectionMode: "collect",
+  fingerprint: createTaxContextFingerprint({ cart: "cart_1" }),
+  generation: 3,
+  itemAmountsMinor: { item_1: 1_999 },
+  itemTaxCodes: { item_1: "txcd_30011000" },
+  preservedItemRates: { item_1: 8.75 },
+  preservedShippingRates: { shipping_1: "8.75" },
+  provider: "stripe_tax",
+  shippingAmountMinor: 500,
+  subjectId: "cart_1",
+  ...overrides,
+})
+
 describe("tax control context", () => {
-  it("parses a validated provider snapshot and ignores invalid tax codes", () => {
+  it("parses a fully validated provider snapshot", () => {
     expect(
       parseTaxControlContext({
-        remorseless_tax: {
-          collectionMode: "collect",
-          fingerprint: createTaxContextFingerprint({ cart: "cart_1" }),
-          generation: 3,
-          itemAmountsMinor: {
-            item_1: 1_999,
-            item_invalid: -1,
-          },
-          itemTaxCodes: {
-            item_1: "txcd_30011000",
-            item_2: "not-a-tax-code",
-          },
-          preservedItemRates: {
-            item_1: 8.75,
-            item_invalid: -1,
-          },
-          preservedShippingRates: {
-            shipping_1: "8.75",
-          },
-          provider: "stripe_tax",
-          shippingAmountMinor: 500,
-          subjectId: "cart_1",
-        },
+        remorseless_tax: validContext(),
       })
     ).toMatchObject({
       collectionMode: "collect",
@@ -44,6 +38,30 @@ describe("tax control context", () => {
       shippingAmountMinor: 500,
       subjectId: "cart_1",
     })
+  })
+
+  it.each([
+    ["item amount", { itemAmountsMinor: { item_1: true } }],
+    ["tax code", { itemTaxCodes: { item_1: "not-a-tax-code" } }],
+    ["preserved rate", { preservedItemRates: { item_1: false } }],
+    ["shipping amount", { shippingAmountMinor: "" }],
+    [
+      "frozen quote",
+      {
+        frozenQuote: {
+          collectionMode: "collect",
+          generation: 3,
+          provider: "stripe_tax",
+          stripeCalculationId: true,
+        },
+      },
+    ],
+  ])("rejects a coercive or malformed %s", (_label, override) => {
+    expect(() =>
+      parseTaxControlContext({
+        remorseless_tax: validContext(override),
+      })
+    ).toThrow("Tax provider control context is invalid.")
   })
 
   it("round trips a Stripe calculation identity", () => {

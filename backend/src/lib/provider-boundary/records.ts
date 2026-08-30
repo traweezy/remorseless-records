@@ -13,6 +13,17 @@ export const asUnknownRecord = (value: unknown): UnknownRecord | null =>
     ? (value as UnknownRecord)
     : null
 
+export const readRequiredRecord = (
+  value: unknown,
+  context: string
+): UnknownRecord => {
+  const record = asUnknownRecord(value)
+  if (!record) {
+    throw malformedDataError(context)
+  }
+  return record
+}
+
 export const readRecordArray = (
   value: unknown,
   { context, optional = false }: RecordArrayOptions

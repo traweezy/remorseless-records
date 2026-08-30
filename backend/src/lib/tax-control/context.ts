@@ -6,6 +6,11 @@ import {
   type TaxCollectionMode,
   type TaxProviderName,
 } from "../../modules/tax-control/constants"
+import {
+  readFiniteNumber,
+  readNonNegativeSafeInteger,
+} from "../provider-boundary/primitives"
+import { asUnknownRecord as asRecord } from "../provider-boundary/records"
 
 export const TAX_CONTEXT_KEY = "remorseless_tax"
 export const TAX_LINE_CODE_PREFIX = "rr_tax"
@@ -32,73 +37,87 @@ export type TaxControlContext = {
   subjectId: string
 }
 
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === "object"
-    ? (value as Record<string, unknown>)
-    : null
-
 const positiveInteger = (value: unknown): number | null => {
-  const parsed = Number(value)
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
+  const parsed = readNonNegativeSafeInteger(value)
+  return parsed !== null && parsed > 0 ? parsed : null
 }
 
-const optionalFiniteNumber = (value: unknown): number | undefined => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
-}
-
-const taxCodesFrom = (value: unknown): Record<string, string> => {
-  const record = asRecord(value)
-  if (!record) {
-    return {}
-  }
-
-  return Object.fromEntries(
-    Object.entries(record).filter(
-      (entry): entry is [string, string] =>
-        /^.+$/.test(entry[0]) &&
-        typeof entry[1] === "string" &&
-        /^txcd_\d{8}$/.test(entry[1])
-    )
-  )
-}
-
-const minorUnitAmountsFrom = (value: unknown): Record<string, number> => {
-  const record = asRecord(value)
-  if (!record) {
-    return {}
-  }
-
-  return Object.fromEntries(
-    Object.entries(record)
-      .map(([key, amount]) => [key, Number(amount)] as const)
-      .filter(
-        (entry): entry is readonly [string, number] =>
-          Boolean(entry[0]) && Number.isSafeInteger(entry[1]) && entry[1] >= 0
-      )
-  )
-}
-
-const finiteNumbersFrom = (value: unknown): Record<string, number> => {
-  const record = asRecord(value)
-  if (!record) {
-    return {}
-  }
-
-  return Object.fromEntries(
-    Object.entries(record)
-      .map(([key, number]) => [key, Number(number)] as const)
-      .filter(
-        (entry): entry is readonly [string, number] =>
-          Boolean(entry[0]) && Number.isFinite(entry[1]) && entry[1] >= 0
-      )
-  )
-}
-
-const frozenQuoteFrom = (value: unknown): FrozenTaxQuote | undefined => {
-  const record = asRecord(value)
-  if (!record) {
+const optionalFiniteNumber = (value: unknown): number | null | undefined => {
+  if (value === null || value === undefined) {
     return undefined
+  }
+  const parsed = readFiniteNumber(value)
+  return parsed !== null && parsed >= 0 ? parsed : null
+}
+
+const taxCodesFrom = (value: unknown): Record<string, string> | null => {
+  if (value === null || value === undefined) {
+    return {}
+  }
+  const record = asRecord(value)
+  if (!record) {
+    return null
+  }
+
+  const entries: Array<[string, string]> = []
+  for (const [key, code] of Object.entries(record)) {
+    if (!key || typeof code !== "string" || !/^txcd_\d{8}$/.test(code)) {
+      return null
+    }
+    entries.push([key, code])
+  }
+  return Object.fromEntries(entries)
+}
+
+const minorUnitAmountsFrom = (
+  value: unknown
+): Record<string, number> | null => {
+  if (value === null || value === undefined) {
+    return {}
+  }
+  const record = asRecord(value)
+  if (!record) {
+    return null
+  }
+
+  const entries: Array<[string, number]> = []
+  for (const [key, amount] of Object.entries(record)) {
+    const parsed = readNonNegativeSafeInteger(amount)
+    if (!key || parsed === null) {
+      return null
+    }
+    entries.push([key, parsed])
+  }
+  return Object.fromEntries(entries)
+}
+
+const finiteNumbersFrom = (value: unknown): Record<string, number> | null => {
+  if (value === null || value === undefined) {
+    return {}
+  }
+  const record = asRecord(value)
+  if (!record) {
+    return null
+  }
+
+  const entries: Array<[string, number]> = []
+  for (const [key, number] of Object.entries(record)) {
+    const parsed = readFiniteNumber(number)
+    if (!key || parsed === null || parsed < 0) {
+      return null
+    }
+    entries.push([key, parsed])
+  }
+  return Object.fromEntries(entries)
+}
+
+const frozenQuoteFrom = (value: unknown): FrozenTaxQuote | null | undefined => {
+  if (value === null || value === undefined) {
+    return undefined
+  }
+  const record = asRecord(value)
+  if (!record) {
+    return null
   }
 
   const collectionMode = isTaxCollectionMode(record.collectionMode)
@@ -114,15 +133,24 @@ const frozenQuoteFrom = (value: unknown): FrozenTaxQuote | undefined => {
     (collectionMode === "collect" && !provider) ||
     (collectionMode === "disabled" && provider !== null)
   ) {
-    return undefined
+    return null
   }
 
+  const stripeCalculationIdValue = record.stripeCalculationId
   const stripeCalculationId =
     typeof record.stripeCalculationId === "string" &&
     /^taxcalc_[A-Za-z0-9]+$/.test(record.stripeCalculationId)
       ? record.stripeCalculationId
       : undefined
   const taxRatePercent = optionalFiniteNumber(record.taxRatePercent)
+  if (
+    (stripeCalculationIdValue !== null &&
+      stripeCalculationIdValue !== undefined &&
+      !stripeCalculationId) ||
+    taxRatePercent === null
+  ) {
+    return null
+  }
 
   return {
     collectionMode,
@@ -158,7 +186,15 @@ export const parseTaxControlContext = (
     /^[A-Za-z0-9_-]{32,128}$/.test(record.fingerprint)
       ? record.fingerprint
       : null
-  const shippingAmountMinor = Number(record.shippingAmountMinor ?? 0)
+  const shippingAmountMinor = readNonNegativeSafeInteger(
+    record.shippingAmountMinor ?? 0
+  )
+  const itemAmountsMinor = minorUnitAmountsFrom(record.itemAmountsMinor)
+  const itemTaxCodes = taxCodesFrom(record.itemTaxCodes)
+  const preservedItemRates = finiteNumbersFrom(record.preservedItemRates)
+  const preservedShippingRates = finiteNumbersFrom(
+    record.preservedShippingRates
+  )
   if (
     !collectionMode ||
     !generation ||
@@ -166,13 +202,19 @@ export const parseTaxControlContext = (
     !fingerprint ||
     (collectionMode === "collect" && !provider) ||
     (collectionMode === "disabled" && provider !== null) ||
-    !Number.isSafeInteger(shippingAmountMinor) ||
-    shippingAmountMinor < 0
+    shippingAmountMinor === null ||
+    itemAmountsMinor === null ||
+    itemTaxCodes === null ||
+    preservedItemRates === null ||
+    preservedShippingRates === null
   ) {
     throw new Error("Tax provider control context is invalid.")
   }
 
   const frozenQuote = frozenQuoteFrom(record.frozenQuote)
+  if (frozenQuote === null) {
+    throw new Error("Tax provider control context is invalid.")
+  }
   if (
     frozenQuote &&
     (frozenQuote.collectionMode !== collectionMode ||
@@ -186,10 +228,10 @@ export const parseTaxControlContext = (
     fingerprint,
     collectionMode,
     generation,
-    itemAmountsMinor: minorUnitAmountsFrom(record.itemAmountsMinor),
-    itemTaxCodes: taxCodesFrom(record.itemTaxCodes),
-    preservedItemRates: finiteNumbersFrom(record.preservedItemRates),
-    preservedShippingRates: finiteNumbersFrom(record.preservedShippingRates),
+    itemAmountsMinor,
+    itemTaxCodes,
+    preservedItemRates,
+    preservedShippingRates,
     provider,
     shippingAmountMinor,
     subjectId,

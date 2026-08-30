@@ -1,43 +1,44 @@
 import { parseTaxLineCode, type FrozenTaxQuote } from "./context"
 
-type UnknownRecord = Record<string, unknown>
+import { readFiniteNumber } from "../provider-boundary/primitives"
+import {
+  readRecordArray,
+  type UnknownRecord,
+} from "../provider-boundary/records"
 
 export type PreservedOrderRates = {
   itemRates: Record<string, number>
   shippingRates: Record<string, number>
 }
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
-
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 
 const finiteNonNegative = (value: unknown): number | null => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  const parsed = readFiniteNumber(value)
+  return parsed !== null && parsed >= 0 ? parsed : null
 }
 
 const ratesFor = (
   value: unknown,
   identity: FrozenTaxQuote
 ): Array<[string, number]> | null => {
-  const entities = Array.isArray(value)
-    ? value
-        .map(asRecord)
-        .filter((entity): entity is UnknownRecord => entity !== null)
-    : []
+  const entities = readRecordArray(value, {
+    context: "Preserved tax-rate entity query",
+    optional: true,
+  })
   const entries: Array<[string, number]> = []
+  const entityIds = new Set<string>()
   for (const entity of entities) {
     const id = text(entity.id)
-    const lines = Array.isArray(entity.tax_lines)
-      ? entity.tax_lines
-          .map(asRecord)
-          .filter((line): line is UnknownRecord => line !== null)
-      : []
-    if (!id || !lines.length) {
+    const lines = readRecordArray(entity.tax_lines, {
+      context: "Preserved tax-rate line query",
+      optional: true,
+    })
+    if (!id || entityIds.has(id) || !lines.length) {
       return null
     }
+    entityIds.add(id)
     const rates = lines.map((line) => {
       const parsed = parseTaxLineCode(line.code)
       const rate = finiteNonNegative(line.rate)
@@ -82,12 +83,14 @@ export const preservedRateForNewShipping = (
   target: UnknownRecord,
   identity: FrozenTaxQuote
 ): Record<string, number> | null => {
-  const targetItems = Array.isArray(target.items) ? target.items : []
-  const targetShipping = Array.isArray(target.shipping_methods)
-    ? target.shipping_methods
-        .map(asRecord)
-        .filter((method): method is UnknownRecord => method !== null)
-    : []
+  const targetItems = readRecordArray(target.items, {
+    context: "Preserved tax-rate target item query",
+    optional: true,
+  })
+  const targetShipping = readRecordArray(target.shipping_methods, {
+    context: "Preserved tax-rate target shipping query",
+    optional: true,
+  })
   if (targetItems.length || !targetShipping.length) {
     return null
   }
@@ -96,6 +99,7 @@ export const preservedRateForNewShipping = (
     .filter((id): id is string => id !== null)
   if (
     targetIds.length !== targetShipping.length ||
+    new Set(targetIds).size !== targetIds.length ||
     targetShipping.some(
       (method) => Array.isArray(method.tax_lines) && method.tax_lines.length > 0
     )
@@ -103,16 +107,12 @@ export const preservedRateForNewShipping = (
     return null
   }
 
-  const existingShipping = Array.isArray(order.shipping_methods)
-    ? order.shipping_methods
-        .map(asRecord)
-        .filter(
-          (method): method is UnknownRecord =>
-            method !== null &&
-            Array.isArray(method.tax_lines) &&
-            method.tax_lines.length > 0
-        )
-    : []
+  const existingShipping = readRecordArray(order.shipping_methods, {
+    context: "Preserved tax-rate source shipping query",
+    optional: true,
+  }).filter(
+    (method) => Array.isArray(method.tax_lines) && method.tax_lines.length > 0
+  )
   const existing = preservedRatesFromTaxLines(
     { items: [], shipping_methods: existingShipping },
     identity

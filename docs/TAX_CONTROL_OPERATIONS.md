@@ -62,6 +62,19 @@ provider, generation, fingerprint, and tax decision. They must finish or be
 safely replaced through the normal Medusa payment-session workflow. Completed
 orders are never repriced.
 
+Every tax-control workflow boundary validates the complete Medusa graph row
+before deriving a calculation subject. Item and shipping amounts must be
+finite numeric values, quantities and counts must be non-negative safe
+integers, tax codes must be non-empty strings, and relationship arrays must
+contain only records. Per-item amounts, tax-code maps, preserved rates, and a
+frozen provider quote are accepted as one coherent context or rejected as a
+whole; invalid entries are never silently removed. Queries for one cart reject
+missing or additional rows. Missing or duplicate taxable and shipping entity
+IDs also fail closed so totals cannot overwrite or double-count a relationship
+and an order edit cannot inherit an ambiguous historical rate. A boundary
+failure stops tax calculation and payment preparation without logging
+provider, customer, or address payloads.
+
 ## Turn collection off
 
 1. Confirm the decision with the store owner and tax professional. The Admin
@@ -342,6 +355,8 @@ and owner approval.
 - A failed refund and a truncated refund audit remain operator incidents.
 - Existing-line returns preserve historical rates, and new taxable items on a
   Stripe-taxed order fail closed.
+- Malformed graph rows, numeric coercions, partial context maps, duplicate
+  taxable entities, and malformed frozen quotes fail before provider access.
 - Tax control is checked with keyboard, focus, narrow viewport, and reduced
   motion.
 - A separate owner approval exists for live registrations, classifications,

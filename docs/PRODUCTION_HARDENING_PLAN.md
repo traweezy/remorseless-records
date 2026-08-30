@@ -2746,6 +2746,21 @@ coercion. Eighty-seven focused provider, tax-reporting, and refund-operation
 tests pass with strict TypeScript and Biome. The broader dated debt item remains
 open for the other service, workflow, and import boundaries.
 
+The second post-migration boundary tranche applies the same shared readers to
+tax-control workflow hooks, stored calculation context, and historical
+order-rate preservation. Complete graph and relationship arrays now validate
+before subject derivation; booleans and other JavaScript numeric coercions,
+malformed partial maps or frozen quotes, duplicate taxable entities, and
+ambiguous historical shipping rates fail closed instead of being filtered or
+partly applied. Direct workflow-hook registration and execution tests cover all
+three Medusa hooks and prove both malformed-row rejection and valid amount
+normalization. Thirty-five focused boundary, context, hook, and
+rate-preservation tests pass with strict TypeScript and Biome, including
+missing or ambiguous graph rows and missing or duplicate relationship IDs. The
+complete Backend gate passes 223 suites / 1,352 tests, and the repository gate
+checks 1,160 files with Biome before both strict TypeScript builds and the
+policy verifiers.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace
