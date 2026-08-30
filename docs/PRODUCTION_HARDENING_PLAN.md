@@ -963,6 +963,34 @@ TaxRate.io lookup or quota refresh was invoked in shared staging. The focused
 single-attempt metered 4xx handling, strict rate/quota parsing, and redacted
 errors and retry telemetry.
 
+Stripe Tax calculation-boundary exact staging acceptance: commit
+`fbdd86cc7ff70c2d19623d17ac7ac3ff6a252901` passed Root CI `33292644499`,
+Backend CI `33292644500`, and Storefront CI `33292644548`, including 1,055
+Backend tests, 658 Storefront tests with coverage, both production builds,
+CodeQL, dependency/secret scans, SBOM and license verification, Playwright,
+pa11y, and Lighthouse. Railway held Backend deployment
+`65bef967-3f01-4795-98a5-50a5f10fdd46` until those workflows passed, then
+released image digest
+`sha256:e2ea8e34b138617ee539cd565f59b30d9bb37026b38d53b817e4ea9f97278f9f`
+to `SUCCESS` on that exact SHA. Storefront deployment
+`670268cd-4251-4192-b74f-10157e38540b` was correctly skipped because its
+watched paths were unchanged. Backend `/live`, `/ready`, and `/api/health` all
+returned 200; readiness reported database, Redis, search, and object storage
+healthy. All five matching exact-deployment HTTP records were 200: two
+`GET /live`, two `GET /ready`, and one `GET /api/health`, with no response at
+400 or above. The exact deployment recorded 309 info events and four known
+successful command-echo banners that Railway classified as errors, with zero
+warning, non-command error, exception/fatal/failed-operation, Stripe Tax retry,
+or other retry records. The Backend DNS log contained no Stripe lookup in the
+15-minute acceptance window. The health payload still omitted its optional
+version because Railway does not currently inject `COMMIT_SHA`; exact
+deployment metadata and the immutable digest therefore anchor this acceptance.
+No Stripe calculation, PaymentIntent, cart, or other paid or mutating provider
+call was issued in shared staging. The focused 22-test Stripe Tax client and
+service suite proves shared-deadline cancellation, bounded idempotent retry,
+single-attempt rate-limit handling, strict request/response validation, and
+redacted terminal errors and retry telemetry.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
