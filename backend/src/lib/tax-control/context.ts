@@ -282,6 +282,9 @@ export const parseTaxLineCode = (value: unknown): TaxLineIdentity | null => {
     rest.length ||
     prefix !== TAX_LINE_CODE_PREFIX ||
     (collectionMode === "collect" && !provider) ||
+    (provider === "taxrate_io" && calculationId !== "quote") ||
+    (provider === "stripe_tax" &&
+      !/^taxcalc_[A-Za-z0-9]+$/.test(calculationId ?? "")) ||
     (collectionMode === "disabled" && calculationId !== "decision") ||
     !generationValue?.startsWith("g")
   ) {
@@ -295,11 +298,7 @@ export const parseTaxLineCode = (value: unknown): TaxLineIdentity | null => {
 
   return {
     calculationId:
-      collectionMode === "collect" &&
-      calculationId &&
-      /^taxcalc_[A-Za-z0-9]+$/.test(calculationId)
-        ? calculationId
-        : null,
+      provider === "stripe_tax" && calculationId ? calculationId : null,
     collectionMode,
     generation,
     provider,

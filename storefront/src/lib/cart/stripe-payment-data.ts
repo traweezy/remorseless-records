@@ -1,4 +1,9 @@
 import { taxQuoteIdentityFromCart } from "./tax-quote"
+import {
+  readBoundedText,
+  readPositiveSafeInteger,
+  readRecordArray,
+} from "../provider-boundary"
 
 type StripePaymentCart = {
   id: string
@@ -14,6 +19,19 @@ const STRIPE_PAYMENT_DESCRIPTION = "Remorseless Records order"
 export const stripePaymentSessionData = (
   cart: StripePaymentCart
 ): Record<string, unknown> => {
+  const cartId = readBoundedText(cart.id)
+  const items = readRecordArray(cart.items, { optional: true })
+  if (!cartId || !/^cart_[A-Za-z0-9]+$/.test(cartId) || !items) {
+    throw new Error("Stripe payment metadata received a malformed cart.")
+  }
+  let itemCount = 0
+  for (const item of items) {
+    const quantity = readPositiveSafeInteger(item.quantity)
+    if (quantity === null || !Number.isSafeInteger(itemCount + quantity)) {
+      throw new Error("Stripe payment metadata received an invalid item count.")
+    }
+    itemCount += quantity
+  }
   const taxQuote = taxQuoteIdentityFromCart(cart)
   return {
     payment_description: STRIPE_PAYMENT_DESCRIPTION,
@@ -29,13 +47,8 @@ export const stripePaymentSessionData = (
         ? { rr_tax_rate_percent: String(taxQuote.taxRatePercent) }
         : {}),
       commerce_platform: "medusa",
-      item_count: String(
-        (cart.items ?? []).reduce(
-          (total, item) => total + Number(item.quantity ?? 0),
-          0
-        )
-      ),
-      medusa_cart_id: cart.id,
+      item_count: String(itemCount),
+      medusa_cart_id: cartId,
       storefront: "remorseless-records",
     },
   }

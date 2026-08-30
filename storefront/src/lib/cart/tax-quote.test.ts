@@ -107,4 +107,62 @@ describe("taxQuoteIdentityFromCart", () => {
       })
     ).toThrow(TaxQuoteIdentityError)
   })
+
+  it("rejects noncanonical provider code suffixes", () => {
+    const taxRateLine = line({
+      calculationId: null,
+      provider: "taxrate_io",
+    })
+    const stripeLine = line()
+
+    expect(() =>
+      taxQuoteIdentityFromCart({
+        items: [
+          {
+            tax_lines: [
+              { ...taxRateLine, code: "rr_tax:taxrate_io:g2:arbitrary" },
+            ],
+          },
+        ],
+      })
+    ).toThrow(TaxQuoteIdentityError)
+    expect(() =>
+      taxQuoteIdentityFromCart({
+        items: [
+          {
+            tax_lines: [{ ...stripeLine, code: "rr_tax:stripe_tax:g2:quote" }],
+          },
+        ],
+      })
+    ).toThrow(TaxQuoteIdentityError)
+  })
+
+  it("rejects mixed primitive and structured tax lines", () => {
+    expect(() =>
+      taxQuoteIdentityFromCart({
+        items: [{ tax_lines: [line(), false] }],
+      })
+    ).toThrow(TaxQuoteIdentityError)
+  })
+
+  it.each([
+    ["generation", "generation", true],
+    ["rate", "rate", false],
+    ["rate above 100%", "rate", 101],
+    ["metadata", "data", []],
+  ])("rejects coercive %s data", (_label, field, value) => {
+    const taxLine = line() as unknown as Record<string, unknown>
+    if (field === "generation") {
+      taxLine.data = {
+        ...(taxLine.data as Record<string, unknown>),
+        generation: value,
+      }
+    } else {
+      taxLine[field] = value
+    }
+
+    expect(() =>
+      taxQuoteIdentityFromCart({ items: [{ tax_lines: [taxLine] }] })
+    ).toThrow(TaxQuoteIdentityError)
+  })
 })

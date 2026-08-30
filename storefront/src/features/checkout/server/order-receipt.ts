@@ -6,6 +6,14 @@ import type { CheckoutReceipt } from "@/features/checkout/types/checkout"
 import { taxQuoteIdentityFromCart } from "@/lib/cart/tax-quote"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
+import {
+  asUnknownRecord,
+  readBoundedText,
+  readFiniteNumber,
+  readIsoTimestamp,
+  readPositiveSafeInteger,
+  readRecordArray,
+} from "@/lib/provider-boundary"
 
 const ORDER_RECEIPT_FIELDS = [
   "id",
@@ -25,47 +33,62 @@ const ORDER_RECEIPT_FIELDS = [
   "*shipping_methods.tax_lines",
 ].join(",")
 
-const finiteAmount = (value: number): number => {
-  if (!Number.isFinite(value) || value < 0) {
+const finiteAmount = (value: unknown): number => {
+  const parsed = readFiniteNumber(value)
+  if (parsed === null || parsed < 0) {
     throw new Error("Order receipt contains an invalid amount")
   }
-  return value
+  return parsed
 }
 
-const positiveInteger = (value: number): number => {
-  if (!Number.isSafeInteger(value) || value <= 0) {
+const positiveInteger = (value: unknown): number => {
+  const parsed = readPositiveSafeInteger(value)
+  if (parsed === null) {
     throw new Error("Order receipt contains an invalid quantity")
   }
-  return value
+  return parsed
 }
 
-const requiredText = (
-  value: string | null | undefined,
-  field: string
-): string => {
-  const normalized = value?.trim()
+const requiredText = (value: unknown, field: string): string => {
+  const normalized = readBoundedText(value, 1_024)
   if (!normalized) {
     throw new Error(`Order receipt is missing ${field}`)
   }
   return normalized
 }
 
-const optionalText = (value: string | null | undefined): string | null => {
-  const normalized = value?.trim()
-  if (!normalized) {
+const optionalText = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
     return null
   }
-  return normalized
+  if (typeof value !== "string") {
+    throw new Error("Order receipt contains malformed optional text")
+  }
+  const normalized = value.trim()
+  if (normalized.length > 1_024) {
+    throw new Error("Order receipt contains malformed optional text")
+  }
+  return normalized || null
 }
 
-const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
-  const orderRecord = order as unknown as Record<string, unknown>
-  const placedAt = new Date(order.created_at)
-  if (Number.isNaN(placedAt.valueOf())) {
+const receiptFromOrder = (value: unknown): CheckoutReceipt => {
+  const order = asUnknownRecord(value)
+  if (!order) {
+    throw new Error("Order receipt projection is malformed")
+  }
+  const placedAt = readIsoTimestamp(order.created_at)
+  if (!placedAt) {
     throw new Error("Order receipt contains an invalid timestamp")
   }
 
-  const shippingAddress = order.shipping_address
+  const shippingAddress = asUnknownRecord(order.shipping_address)
+  if (
+    order.shipping_address !== null &&
+    order.shipping_address !== undefined &&
+    !shippingAddress
+  ) {
+    throw new Error("Order receipt delivery address is malformed")
+  }
   const currencyCode = requiredText(
     order.currency_code,
     "currency"
@@ -73,10 +96,16 @@ const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
   if (currencyCode !== "usd") {
     throw new Error("Order receipt has an unsupported currency")
   }
-  const deliveryMethodNames =
-    order.shipping_methods
-      ?.map((method) => optionalText(method.name))
-      .filter((name): name is string => name !== null) ?? []
+  const shippingMethods = readRecordArray(order.shipping_methods, {
+    optional: true,
+  })
+  const items = readRecordArray(order.items)
+  if (!shippingMethods || !items || !items.length) {
+    throw new Error("Order receipt relationship projection is malformed")
+  }
+  const deliveryMethodNames = shippingMethods
+    .map((method) => optionalText(method.name))
+    .filter((name): name is string => name !== null)
   const deliveryAddress = shippingAddress
     ? {
         firstName: requiredText(shippingAddress.first_name, "first name"),
@@ -102,10 +131,12 @@ const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
 
   return {
     orderNumber:
-      order.display_id === undefined ? null : String(order.display_id),
-    placedAt: placedAt.toISOString(),
+      order.display_id === null || order.display_id === undefined
+        ? null
+        : String(positiveInteger(order.display_id)),
+    placedAt,
     email: requiredText(order.email, "email"),
-    items: (order.items ?? []).map((item) => ({
+    items: items.map((item) => ({
       id: requiredText(item.id, "line item ID"),
       title: requiredText(item.title, "line item title"),
       variantTitle: optionalText(item.variant_title),
@@ -120,7 +151,7 @@ const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
       taxCollectionMode,
       currencyCode,
       subtotal: finiteAmount(order.item_subtotal),
-      discountTotal: finiteAmount(Number(orderRecord.discount_subtotal)),
+      discountTotal: finiteAmount(order.discount_subtotal),
       shippingTotal: finiteAmount(order.shipping_subtotal),
       taxTotal: finiteAmount(order.tax_total),
       total: finiteAmount(order.total),
@@ -137,12 +168,16 @@ export const getOrderReceipt = async (
     method: "GET" as const,
     query: { fields: ORDER_RECEIPT_FIELDS },
   }
-  const { order } = request
+  const response: unknown = request
     ? await correlatedMedusaFetch<HttpTypes.StoreOrderResponse>(
         request,
         path,
         init
       )
     : await fetchMedusaStoreRead<HttpTypes.StoreOrderResponse>(path, init)
-  return receiptFromOrder(order)
+  const envelope = asUnknownRecord(response)
+  if (!envelope) {
+    throw new Error("Order receipt response is malformed")
+  }
+  return receiptFromOrder(envelope.order)
 }

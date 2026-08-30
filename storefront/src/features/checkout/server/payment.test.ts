@@ -91,6 +91,85 @@ describe("checkout payment preparation", () => {
     expect(reusablePreparedPayment(cart)).toBeNull()
   })
 
+  it("reuses and completes an explicit disabled-tax payment", () => {
+    const cart = cartFixture()
+    const disabledLine = {
+      code: "rr_tax:disabled:g4:decision",
+      data: {
+        collection_mode: "disabled",
+        fingerprint: taxFingerprint,
+        generation: 4,
+      },
+      rate: 0,
+    }
+    ;(cart.items![0] as unknown as Record<string, unknown>).tax_lines = [
+      disabledLine,
+    ]
+    cart.payment_collection!.payment_sessions![0]!.data.metadata = {
+      rr_tax_collection_mode: "disabled",
+      rr_tax_fingerprint: taxFingerprint,
+      rr_tax_generation: "4",
+    }
+
+    expect(reusablePreparedPayment(cart)).toEqual({
+      clientSecret: "pi_test_secret_test",
+      status: "pending",
+    })
+    expect(assertCompletablePayment(cart)).toEqual({ status: "pending" })
+  })
+
+  it.each([
+    ["missing mode", undefined],
+    ["collect mode", "collect"],
+    ["boolean mode", false],
+  ])("rejects disabled-tax payment metadata with %s", (_label, mode) => {
+    const cart = cartFixture()
+    ;(cart.items![0] as unknown as Record<string, unknown>).tax_lines = [
+      {
+        code: "rr_tax:disabled:g4:decision",
+        data: {
+          collection_mode: "disabled",
+          fingerprint: taxFingerprint,
+          generation: 4,
+        },
+        rate: 0,
+      },
+    ]
+    cart.payment_collection!.payment_sessions![0]!.data.metadata = {
+      ...(mode === undefined ? {} : { rr_tax_collection_mode: mode }),
+      rr_tax_fingerprint: taxFingerprint,
+      rr_tax_generation: "4",
+    }
+
+    expect(reusablePreparedPayment(cart)).toBeNull()
+    expectCode(() => assertCompletablePayment(cart), "payment_session_stale")
+  })
+
+  it("rejects provider and rate metadata on a disabled-tax payment", () => {
+    const cart = cartFixture()
+    ;(cart.items![0] as unknown as Record<string, unknown>).tax_lines = [
+      {
+        code: "rr_tax:disabled:g4:decision",
+        data: {
+          collection_mode: "disabled",
+          fingerprint: taxFingerprint,
+          generation: 4,
+        },
+        rate: 0,
+      },
+    ]
+    cart.payment_collection!.payment_sessions![0]!.data.metadata = {
+      rr_tax_collection_mode: "disabled",
+      rr_tax_fingerprint: taxFingerprint,
+      rr_tax_generation: "4",
+      rr_tax_provider: "taxrate_io",
+      rr_tax_rate_percent: "0",
+    }
+
+    expect(reusablePreparedPayment(cart)).toBeNull()
+    expectCode(() => assertCompletablePayment(cart), "payment_session_stale")
+  })
+
   it("uses the official provider's cent rounding for taxable totals", () => {
     const cart = cartFixture({ total: 23.8975 })
     cart.payment_collection!.amount = 23.8975
@@ -251,6 +330,60 @@ describe("checkout payment preparation", () => {
       rr_tax_provider: "taxrate_io",
       rr_tax_rate_percent: "8",
     }
+
+    expectCode(() => assertCompletablePayment(cart), "payment_session_stale")
+  })
+
+  it.each([
+    [
+      "boolean cart total",
+      (cart: HttpTypes.StoreCart) => {
+        ;(cart as unknown as Record<string, unknown>).total = true
+      },
+    ],
+    [
+      "primitive payment-session row",
+      (cart: HttpTypes.StoreCart) => {
+        ;(
+          cart.payment_collection as unknown as Record<string, unknown>
+        ).payment_sessions = [
+          cart.payment_collection!.payment_sessions![0],
+          false,
+        ]
+      },
+    ],
+    [
+      "boolean PaymentIntent amount",
+      (cart: HttpTypes.StoreCart) => {
+        ;(
+          cart.payment_collection!.payment_sessions![0]!.data as Record<
+            string,
+            unknown
+          >
+        ).amount = true
+      },
+    ],
+    [
+      "boolean tax generation",
+      (cart: HttpTypes.StoreCart) => {
+        ;(
+          cart.payment_collection!.payment_sessions![0]!.data
+            .metadata as Record<string, unknown>
+        ).rr_tax_generation = true
+      },
+    ],
+    [
+      "boolean tax rate",
+      (cart: HttpTypes.StoreCart) => {
+        ;(
+          cart.payment_collection!.payment_sessions![0]!.data
+            .metadata as Record<string, unknown>
+        ).rr_tax_rate_percent = false
+      },
+    ],
+  ] as const)("rejects a %s", (_label, mutate) => {
+    const cart = cartFixture()
+    mutate(cart)
 
     expectCode(() => assertCompletablePayment(cart), "payment_session_stale")
   })

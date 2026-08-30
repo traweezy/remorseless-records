@@ -5,6 +5,15 @@ import {
   TaxQuoteIdentityError,
   taxQuoteIdentityFromCart,
 } from "../tax-control/quote"
+import {
+  readFiniteNumber,
+  readNonNegativeSafeInteger,
+} from "../provider-boundary/primitives"
+import {
+  asUnknownRecord,
+  readRecordArray,
+  type UnknownRecord,
+} from "../provider-boundary/records"
 
 const CHECKOUT_CURRENCY = "usd"
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe"
@@ -52,33 +61,51 @@ type CheckoutPaymentValidationResult = {
   total: string
 }
 
-type UnknownRecord = Record<string, unknown>
-
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
-
-const asRecordArray = (value: unknown): UnknownRecord[] =>
-  Array.isArray(value)
-    ? value
-        .map(asRecord)
-        .filter((record): record is UnknownRecord => record !== null)
-    : []
-
 const normalizedString = (value: unknown): string =>
-  typeof value === "string" ? value.trim().toLowerCase() : ""
+  typeof value === "string" && value.trim().length <= 1_024
+    ? value.trim().toLowerCase()
+    : ""
 
 const exactString = (value: unknown): string =>
-  typeof value === "string" ? value.trim() : ""
+  typeof value === "string" && value.trim().length <= 1_024 ? value.trim() : ""
 
 const requiredString = (value: unknown): boolean =>
-  typeof value === "string" && value.trim().length > 0
+  typeof value === "string" &&
+  value.trim().length > 0 &&
+  value.trim().length <= 1_024
+
+const recordsFrom = (
+  value: unknown,
+  code: CheckoutPaymentValidationCode,
+  detail: string,
+  optional = false
+): UnknownRecord[] => {
+  try {
+    return readRecordArray(value, {
+      context: "Checkout payment validation",
+      optional,
+    })
+  } catch {
+    throw new CheckoutPaymentValidationError(code, detail)
+  }
+}
 
 const moneyValue = (
   value: unknown,
   name: string
 ): ReturnType<typeof MathBN.convert> => {
+  const wrapper = asUnknownRecord(value)
+  const candidate =
+    wrapper && Object.hasOwn(wrapper, "value") ? wrapper.value : value
+  const parsed = readFiniteNumber(value)
+  if (parsed === null || parsed < 0) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_money_invalid",
+      `${name} must be a finite, non-negative USD amount.`
+    )
+  }
   try {
-    const amount = MathBN.convert(value as BigNumberInput)
+    const amount = MathBN.convert(candidate as BigNumberInput)
     if (!amount.isFinite() || amount.isNegative()) {
       throw new Error("invalid")
     }
@@ -116,13 +143,14 @@ const amountFrom = (record: UnknownRecord, name: string) =>
   moneyValue(record.raw_amount ?? record.amount, name)
 
 const assertAddress = (value: unknown): void => {
-  const address = asRecord(value)
+  const address = asUnknownRecord(value)
   if (
     !address ||
     !requiredString(address.first_name) ||
     !requiredString(address.last_name) ||
     !requiredString(address.address_1) ||
     !requiredString(address.city) ||
+    !requiredString(address.province) ||
     !requiredString(address.postal_code) ||
     normalizedString(address.country_code) !== "us"
   ) {
@@ -133,10 +161,7 @@ const assertAddress = (value: unknown): void => {
   }
 }
 
-const assertTaxQuote = (
-  cart: UnknownRecord,
-  paymentIntent: UnknownRecord | null
-): void => {
+const taxQuoteFrom = (cart: UnknownRecord) => {
   let quote: ReturnType<typeof taxQuoteIdentityFromCart>
   try {
     quote = taxQuoteIdentityFromCart(cart)
@@ -148,9 +173,23 @@ const assertTaxQuote = (
         : "The cart tax quote is invalid."
     )
   }
+  return quote
+}
 
-  const metadata = asRecord(paymentIntent?.metadata)
-  const generation = Number(metadata?.rr_tax_generation)
+const assertTaxQuote = (
+  cart: UnknownRecord,
+  paymentIntent: UnknownRecord | null
+): void => {
+  const quote = taxQuoteFrom(cart)
+
+  const metadata = asUnknownRecord(paymentIntent?.metadata)
+  if (!metadata) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_tax_quote_invalid",
+      "The Stripe PaymentIntent tax identity is unavailable."
+    )
+  }
+  const generation = readNonNegativeSafeInteger(metadata.rr_tax_generation)
   const calculationId = exactString(metadata?.rr_tax_calculation_id)
   const collectionMode =
     metadata?.rr_tax_collection_mode === undefined
@@ -162,7 +201,7 @@ const assertTaxQuote = (
     (quote.provider === null
       ? metadataProvider !== ""
       : metadataProvider !== quote.provider) ||
-    !Number.isSafeInteger(generation) ||
+    generation === null ||
     generation !== quote.generation ||
     metadata?.rr_tax_fingerprint !== quote.fingerprint ||
     calculationId !== (quote.calculationId ?? "")
@@ -181,8 +220,8 @@ const assertTaxQuote = (
       )
     }
   } else if (quote.provider === "taxrate_io") {
-    const rate = Number(metadata?.rr_tax_rate_percent)
-    if (!Number.isFinite(rate) || rate < 0 || rate !== quote.taxRatePercent) {
+    const rate = readFiniteNumber(metadata.rr_tax_rate_percent)
+    if (rate === null || rate < 0 || rate !== quote.taxRatePercent) {
       throw new CheckoutPaymentValidationError(
         "checkout_tax_quote_invalid",
         "The Stripe PaymentIntent tax rate does not match the cart."
@@ -194,7 +233,7 @@ const assertTaxQuote = (
 export const validateCheckoutPayment = (
   value: unknown
 ): CheckoutPaymentValidationResult => {
-  const cart = asRecord(value)
+  const cart = asUnknownRecord(value)
   if (!cart) {
     throw new CheckoutPaymentValidationError(
       "checkout_money_invalid",
@@ -202,10 +241,29 @@ export const validateCheckoutPayment = (
     )
   }
 
-  if (!asRecordArray(cart.items).length) {
+  const items = recordsFrom(
+    cart.items,
+    "checkout_money_invalid",
+    "The checkout cart item snapshot is malformed.",
+    true
+  )
+  if (!items.length) {
     throw new CheckoutPaymentValidationError(
       "checkout_cart_empty",
       "The checkout cart must contain at least one item."
+    )
+  }
+  if (
+    items.some((item) => {
+      const itemQuantity = readNonNegativeSafeInteger(item.quantity)
+      return (
+        !requiredString(item.id) || itemQuantity === null || itemQuantity < 1
+      )
+    })
+  ) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_money_invalid",
+      "The checkout cart item identity or quantity is malformed."
     )
   }
   if (!requiredString(cart.email)) {
@@ -215,10 +273,27 @@ export const validateCheckoutPayment = (
     )
   }
   assertAddress(cart.shipping_address)
-  if (!asRecordArray(cart.shipping_methods).length) {
+  const shippingMethods = recordsFrom(
+    cart.shipping_methods,
+    "checkout_money_invalid",
+    "The checkout delivery-method snapshot is malformed.",
+    true
+  )
+  if (!shippingMethods.length) {
     throw new CheckoutPaymentValidationError(
       "checkout_shipping_missing",
       "A delivery method is required."
+    )
+  }
+  if (
+    shippingMethods.some(
+      (method) =>
+        !requiredString(method.id) || !requiredString(method.shipping_option_id)
+    )
+  ) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_money_invalid",
+      "The checkout delivery-method identity is malformed."
     )
   }
 
@@ -232,6 +307,7 @@ export const validateCheckoutPayment = (
 
   const total = moneyValue(cart.raw_total ?? cart.total, "Cart total")
   if (total.isZero()) {
+    taxQuoteFrom(cart)
     return {
       currencyCode,
       paymentSessionStatus: null,
@@ -239,7 +315,7 @@ export const validateCheckoutPayment = (
     }
   }
 
-  const paymentCollection = asRecord(cart.payment_collection)
+  const paymentCollection = asUnknownRecord(cart.payment_collection)
   if (!paymentCollection) {
     throw new CheckoutPaymentValidationError(
       "checkout_payment_collection_missing",
@@ -266,9 +342,25 @@ export const validateCheckoutPayment = (
     )
   }
 
-  const processableSessions = asRecordArray(
-    paymentCollection.payment_sessions
-  ).filter((session) =>
+  const paymentSessions = recordsFrom(
+    paymentCollection.payment_sessions,
+    "checkout_payment_session_invalid",
+    "The Stripe payment-session snapshot is malformed.",
+    true
+  )
+  for (const session of paymentSessions) {
+    if (
+      !/^payses_[A-Za-z0-9_]+$/.test(exactString(session.id)) ||
+      !requiredString(session.provider_id) ||
+      !requiredString(session.status)
+    ) {
+      throw new CheckoutPaymentValidationError(
+        "checkout_payment_session_invalid",
+        "The payment session identity or status is invalid."
+      )
+    }
+  }
+  const processableSessions = paymentSessions.filter((session) =>
     PROCESSABLE_PAYMENT_STATUSES.has(normalizedString(session.status))
   )
   if (!processableSessions.length) {
@@ -314,10 +406,16 @@ export const validateCheckoutPayment = (
     )
   }
 
-  const paymentIntent = asRecord(paymentSession.data)
-  const intentAmount = Number(paymentIntent?.amount)
+  const paymentIntent = asUnknownRecord(paymentSession.data)
+  if (!paymentIntent) {
+    throw new CheckoutPaymentValidationError(
+      "checkout_payment_session_invalid",
+      "The Stripe PaymentIntent snapshot is malformed."
+    )
+  }
+  const intentAmount = readNonNegativeSafeInteger(paymentIntent.amount)
   if (
-    !Number.isSafeInteger(intentAmount) ||
+    intentAmount === null ||
     intentAmount !== payableUsdMinorUnits(total, "Cart total")
   ) {
     throw new CheckoutPaymentValidationError(

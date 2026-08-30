@@ -1,4 +1,11 @@
-type UnknownRecord = Record<string, unknown>
+import {
+  asUnknownRecord,
+  readBoundedText,
+  readFiniteNumber,
+  readPositiveSafeInteger,
+  readRecordArray,
+  type UnknownRecord,
+} from "../provider-boundary"
 
 export type TaxProviderName = "stripe_tax" | "taxrate_io"
 export type TaxCollectionMode = "collect" | "disabled"
@@ -19,14 +26,19 @@ export class TaxQuoteIdentityError extends Error {
   }
 }
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
+const text = (value: unknown): string => readBoundedText(value, 255) ?? ""
 
-const text = (value: unknown): string =>
-  typeof value === "string" ? value.trim() : ""
-
-const valuesFrom = (value: unknown): unknown[] =>
-  Array.isArray(value) ? (value as unknown[]) : []
+const recordsFrom = (
+  value: unknown,
+  context: string,
+  optional = false
+): UnknownRecord[] => {
+  const records = readRecordArray(value, { optional })
+  if (!records) {
+    throw new TaxQuoteIdentityError(`${context} is malformed.`)
+  }
+  return records
+}
 
 const parseCode = (
   value: unknown
@@ -37,7 +49,7 @@ const parseCode = (
 
   const [prefix, identity, generationValue, calculationValue, ...rest] =
     value.split(":")
-  const generation = Number(generationValue?.slice(1))
+  const generation = readPositiveSafeInteger(generationValue?.slice(1))
   const collectionMode: TaxCollectionMode =
     identity === "disabled" ? "disabled" : "collect"
   const provider: TaxProviderName | null =
@@ -46,31 +58,33 @@ const parseCode = (
     rest.length ||
     prefix !== "rr_tax" ||
     (collectionMode === "collect" && provider === null) ||
+    (provider === "taxrate_io" && calculationValue !== "quote") ||
+    (provider === "stripe_tax" &&
+      !/^taxcalc_[A-Za-z0-9]+$/.test(calculationValue ?? "")) ||
     (collectionMode === "disabled" && calculationValue !== "decision") ||
     !generationValue?.startsWith("g") ||
-    !Number.isSafeInteger(generation) ||
-    generation <= 0
+    generation === null
   ) {
     return null
   }
 
   const calculationId =
-    collectionMode === "collect" &&
-    calculationValue &&
-    /^taxcalc_[A-Za-z0-9]+$/.test(calculationValue)
-      ? calculationValue
-      : null
+    provider === "stripe_tax" && calculationValue ? calculationValue : null
 
   return { calculationId, collectionMode, generation, provider }
 }
 
-const taxSubjectsFrom = (cart: UnknownRecord): UnknownRecord[] =>
-  [...valuesFrom(cart.items), ...valuesFrom(cart.shipping_methods)]
-    .map(asRecord)
-    .filter((subject): subject is UnknownRecord => subject !== null)
+const taxSubjectsFrom = (cart: UnknownRecord): UnknownRecord[] => [
+  ...recordsFrom(cart.items, "The cart item tax projection", true),
+  ...recordsFrom(
+    cart.shipping_methods,
+    "The cart shipping tax projection",
+    true
+  ),
+]
 
 export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
-  const cart = asRecord(value)
+  const cart = asUnknownRecord(value)
   if (!cart) {
     throw new TaxQuoteIdentityError("The cart tax snapshot is unavailable.")
   }
@@ -81,9 +95,10 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
   }
 
   const lines = subjects.flatMap((subject) => {
-    const taxLines = (Array.isArray(subject.tax_lines) ? subject.tax_lines : [])
-      .map(asRecord)
-      .filter((line): line is UnknownRecord => line !== null)
+    const taxLines = recordsFrom(
+      subject.tax_lines,
+      "A cart subject tax-line projection"
+    )
     if (!taxLines.length) {
       throw new TaxQuoteIdentityError(
         "Every cart item and shipping method must have a tax quote."
@@ -94,24 +109,25 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
 
   const identities = lines.map((line) => {
     const code = parseCode(line.code)
-    const data = asRecord(line.data)
+    const data = asUnknownRecord(line.data)
     const collectionMode = text(data?.collection_mode) || "collect"
     const fingerprint = text(data?.fingerprint)
-    const generation = Number(data?.generation)
+    const generation = readPositiveSafeInteger(data?.generation)
     const provider = text(data?.provider)
     const calculationId = text(data?.calculation_id) || null
-    const rate = Number(line.rate)
+    const rate = readFiniteNumber(line.rate)
     if (
       !code ||
       collectionMode !== code.collectionMode ||
       (code.collectionMode === "collect" && provider !== code.provider) ||
       (code.collectionMode === "disabled" && provider !== "") ||
-      !Number.isSafeInteger(generation) ||
+      generation === null ||
       generation !== code.generation ||
       !/^[A-Za-z0-9_-]{32,128}$/.test(fingerprint) ||
       calculationId !== code.calculationId ||
-      !Number.isFinite(rate) ||
+      rate === null ||
       rate < 0 ||
+      rate > 100 ||
       (code.collectionMode === "disabled" && rate !== 0)
     ) {
       throw new TaxQuoteIdentityError(

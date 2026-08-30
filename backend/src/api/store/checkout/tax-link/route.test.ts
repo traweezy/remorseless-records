@@ -167,6 +167,8 @@ describe("POST /store/checkout/tax-link", () => {
           "items.adjustments.raw_amount",
           "items.adjustments.is_tax_inclusive",
           "items.tax_lines.rate",
+          "shipping_address.province",
+          "shipping_methods.shipping_option_id",
           "shipping_methods.amount",
           "shipping_methods.raw_amount",
           "shipping_methods.is_tax_inclusive",

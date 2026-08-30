@@ -25,6 +25,13 @@ describe("provider primitive boundaries", () => {
     expect(readNonNegativeSafeInteger(Number.MAX_SAFE_INTEGER + 1)).toBeNull()
   })
 
+  it.each(["42.0", "01", "1e2", false, [], { value: true }])(
+    "rejects coercive integer input %p",
+    (value) => {
+      expect(readNonNegativeSafeInteger(value)).toBeNull()
+    }
+  )
+
   it("normalizes Date and offset-aware ISO timestamps", () => {
     expect(readIsoTimestamp(new Date("2026-08-30T12:00:00.000Z"))).toBe(
       "2026-08-30T12:00:00.000Z"

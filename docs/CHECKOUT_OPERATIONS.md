@@ -62,6 +62,32 @@ If checkout says **Tax not collected**, verify the exact disabled tax-line code
 and mode metadata before treating the presentation as authoritative. Never
 infer disabled mode from a provider returning a legitimate zero rate.
 
+## Fail-closed checkout data boundary
+
+Storefront payment preparation, checkout projection/revision, tax identity,
+Stripe-session metadata, and order-receipt rendering share explicit provider
+data readers. Backend cart completion applies the same rules before Medusa may
+complete a payable cart. Arrays are never accepted as object records, primitive
+members are never filtered out of relationship arrays, and JavaScript boolean
+or object coercion is never accepted as money, quantity, generation, rate, or
+Stripe minor-unit data.
+
+Monetary fields accept only an explicit finite numeric literal, canonical
+decimal string, or Medusa `{ value }` wrapper. Integer identities accept only a
+safe integer or canonical integer string. The boundary also validates complete
+item, shipping, tax-line, adjustment, payment-session, PaymentIntent, inventory,
+client-secret, and receipt shapes before deriving a checkout state, revision,
+payment reuse decision, completion decision, or customer receipt. A malformed
+optional row invalidates the complete snapshot; it is not treated as absent.
+
+If this boundary fails, retrieve the authoritative cart once and inspect the
+aggregate coded error. Do not cast, stringify, filter, or replace the malformed
+provider value to make checkout continue. A repeat failure is a provider or
+stored-data incident: keep the cart uncompleted, retain Stripe test mode, and
+use the reconciliation and exact-amount procedures below. Logs and tickets must
+not include the cart object, PaymentIntent metadata, client secret, customer
+email, or delivery address.
+
 Checkout reconciliation records contain the fixed safe `message`, exact
 deployment identity, `run_id`, `scheduled_for`, `started_at`,
 `schedule_delay_ms`, `duration_ms`, `event_loop_delay_max_ms`, `lock_wait_ms`,

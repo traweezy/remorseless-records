@@ -6,6 +6,14 @@ import {
   TaxQuoteIdentityError,
   taxQuoteIdentityFromCart,
 } from "@/lib/cart/tax-quote"
+import {
+  asUnknownRecord,
+  readBoundedText,
+  readFiniteNumber,
+  readNonNegativeSafeInteger,
+  readPositiveSafeInteger,
+  readRecordArray,
+} from "@/lib/provider-boundary"
 
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe"
 const STRIPE_MIN_USD_AMOUNT = 50
@@ -43,11 +51,11 @@ export class CheckoutPaymentError extends Error {
 }
 
 const normalizedCurrency = (value: unknown): string =>
-  typeof value === "string" ? value.trim().toLowerCase() : ""
+  readBoundedText(value, 64)?.toLowerCase() ?? ""
 
 const usdAmount = (value: unknown, name: string): number => {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed) || parsed < 0) {
+  const parsed = readFiniteNumber(value)
+  if (parsed === null || parsed < 0) {
     throw new CheckoutPaymentError(
       "payment_session_stale",
       `${name} is not a valid USD amount.`
@@ -72,21 +80,16 @@ const payableUsdMinorUnits = (value: number, name: string): number => {
   return minorUnits
 }
 
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === "object"
-    ? (value as Record<string, unknown>)
-    : null
-
 const assertStripeIntentAmount = (
   session: HttpTypes.StorePaymentSession,
   total: number
 ): void => {
-  const data = asRecord(session.data)
-  const intentAmount = Number(data?.amount)
+  const data = asUnknownRecord(session.data)
+  const intentAmount = readNonNegativeSafeInteger(data?.amount)
   const intentCurrency =
     typeof data?.currency === "string" ? data.currency.trim().toLowerCase() : ""
   if (
-    !Number.isSafeInteger(intentAmount) ||
+    intentAmount === null ||
     intentAmount !== payableUsdMinorUnits(total, "Cart total")
   ) {
     throw new CheckoutPaymentError(
@@ -116,16 +119,26 @@ const assertTaxQuoteIdentity = (
     throw error
   }
 
-  const data = asRecord(session.data)
-  const metadata = asRecord(data?.metadata)
-  const generation = Number(metadata?.rr_tax_generation)
+  const data = asUnknownRecord(session.data)
+  const metadata = asUnknownRecord(data?.metadata)
+  const generation = readPositiveSafeInteger(metadata?.rr_tax_generation)
+  const collectionMode =
+    metadata?.rr_tax_collection_mode === undefined
+      ? "collect"
+      : (readBoundedText(metadata.rr_tax_collection_mode, 32)?.toLowerCase() ??
+        "")
+  const metadataProvider =
+    readBoundedText(metadata?.rr_tax_provider, 64)?.toLowerCase() ?? ""
   const calculationId =
     typeof metadata?.rr_tax_calculation_id === "string"
       ? metadata.rr_tax_calculation_id.trim()
       : ""
   if (
-    metadata?.rr_tax_provider !== quote.provider ||
-    !Number.isSafeInteger(generation) ||
+    collectionMode !== quote.collectionMode ||
+    (quote.provider === null
+      ? metadataProvider !== ""
+      : metadataProvider !== quote.provider) ||
+    generation === null ||
     generation !== quote.generation ||
     metadata?.rr_tax_fingerprint !== quote.fingerprint ||
     (quote.calculationId ?? "") !== calculationId
@@ -136,9 +149,16 @@ const assertTaxQuoteIdentity = (
     )
   }
 
-  if (quote.provider === "taxrate_io") {
-    const rate = Number(metadata?.rr_tax_rate_percent)
-    if (!Number.isFinite(rate) || rate < 0 || rate !== quote.taxRatePercent) {
+  if (quote.collectionMode === "disabled") {
+    if (metadata?.rr_tax_rate_percent !== undefined) {
+      throw new CheckoutPaymentError(
+        "payment_session_stale",
+        "The payment session disabled-tax identity changed."
+      )
+    }
+  } else if (quote.provider === "taxrate_io") {
+    const rate = readFiniteNumber(metadata?.rr_tax_rate_percent)
+    if (rate === null || rate < 0 || rate !== quote.taxRatePercent) {
       throw new CheckoutPaymentError(
         "payment_session_stale",
         "The payment session tax rate changed."
@@ -150,19 +170,48 @@ const assertTaxQuoteIdentity = (
 const clientSecretFrom = (
   session: HttpTypes.StorePaymentSession
 ): string | null => {
-  if (!session.data || typeof session.data !== "object") {
+  const data = asUnknownRecord(session.data)
+  if (!data) {
     return null
   }
-  const value = session.data.client_secret
-  return typeof value === "string" && value.trim() ? value : null
+  const value = readBoundedText(data.client_secret, 512)
+  return value && /^pi_[A-Za-z0-9]+_secret_[A-Za-z0-9]+$/.test(value)
+    ? value
+    : null
 }
 
 const stripeSessions = (
   cart: HttpTypes.StoreCart
-): HttpTypes.StorePaymentSession[] =>
-  (cart.payment_collection?.payment_sessions ?? []).filter(
-    (session) => session.provider_id === STRIPE_PROVIDER_ID
-  )
+): HttpTypes.StorePaymentSession[] => {
+  const cartRecord = asUnknownRecord(cart)
+  const collectionValue = cartRecord?.payment_collection
+  if (collectionValue === null || collectionValue === undefined) {
+    return []
+  }
+  const collection = asUnknownRecord(collectionValue)
+  const sessions = readRecordArray(collection?.payment_sessions, {
+    optional: true,
+  })
+  if (!collection || !sessions) {
+    throw new CheckoutPaymentError(
+      "payment_session_stale",
+      "The payment session projection is malformed."
+    )
+  }
+  return sessions.flatMap((session) => {
+    const providerId = readBoundedText(session.provider_id)
+    const status = readBoundedText(session.status, 64)
+    if (!providerId || !status) {
+      throw new CheckoutPaymentError(
+        "payment_session_stale",
+        "The payment session projection is malformed."
+      )
+    }
+    return providerId === STRIPE_PROVIDER_ID
+      ? [session as unknown as HttpTypes.StorePaymentSession]
+      : []
+  })
+}
 
 export const paymentNeedsFinalization = (cart: HttpTypes.StoreCart): boolean =>
   stripeSessions(cart).some((session) =>

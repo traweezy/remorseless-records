@@ -80,6 +80,24 @@ describe("tax control context", () => {
     })
   })
 
+  it("accepts only the canonical TaxRate.io quote sentinel", () => {
+    const code = buildTaxLineCode({
+      collectionMode: "collect",
+      generation: 4,
+      provider: "taxrate_io",
+    })
+
+    expect(code).toBe("rr_tax:taxrate_io:g4:quote")
+    expect(parseTaxLineCode(code)).toEqual({
+      calculationId: null,
+      collectionMode: "collect",
+      generation: 4,
+      provider: "taxrate_io",
+    })
+    expect(parseTaxLineCode("rr_tax:taxrate_io:g4:arbitrary")).toBeNull()
+    expect(parseTaxLineCode("rr_tax:stripe_tax:g4:quote")).toBeNull()
+  })
+
   it("round trips an explicit disabled decision without a provider", () => {
     const code = buildTaxLineCode({
       collectionMode: "disabled",

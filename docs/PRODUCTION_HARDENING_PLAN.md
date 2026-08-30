@@ -2778,6 +2778,31 @@ strict TypeScript and Biome. The complete Backend gate passes 223 suites / 1,376
 tests, while the repository gate remains clean across 1,160 Biome-managed
 files, both strict TypeScript builds, and every policy verifier.
 
+The fourth post-migration boundary tranche makes the complete checkout data
+path fail closed on malformed Medusa or Stripe projections. Storefront payment
+reuse, checkout projection and revision, tax identity, payment-session
+metadata, and order receipts now share strict record, array, numeric, integer,
+bounded-text, and timestamp readers. Primitive relationship rows, array-shaped
+records, boolean money or inventory, ambiguous quantities and generations,
+invalid client secrets, incomplete receipt envelopes, and malformed optional
+identities cannot silently become a payable checkout or customer receipt.
+Backend completion applies the same record and canonical-integer contract to
+cart items, shipping methods, payment collections, sessions, PaymentIntent
+minor units, and frozen tax metadata before `completeCartWorkflow` can proceed.
+One hundred ten Storefront and ninety-three Backend focused tests pass
+alongside both strict TypeScript compilers and Biome. The broader dated debt
+item remains open for provider families outside checkout. Complete local
+acceptance passes the 1,164-file repository QA gate, all 225 Backend suites and
+1,437 tests, all 129 Storefront files and 740 tests, both production builds,
+the frozen packaged Backend install, and the Admin bundle budget. Backend
+coverage is 90.79% statements, 83.64% branches, 95% functions, and 90.86%
+lines. Storefront baseline coverage is 94.22/86.73/96/94.22 and transactional
+coverage across 34 files and 266 tests is 82.25/73.77/84.17/82.38. The Admin
+main bundle is 1,808,086 gzip bytes and total JavaScript is 2,388,388 gzip
+bytes. The production audit retains only three documented ignored moderate
+findings; Trivy reports zero high/critical dependency, misconfiguration, or
+secret findings.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

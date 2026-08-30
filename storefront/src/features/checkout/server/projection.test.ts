@@ -358,4 +358,106 @@ describe("checkout projection", () => {
       )
     }
   )
+
+  it.each([
+    [
+      "boolean total",
+      (cart: HttpTypes.StoreCart) => {
+        ;(cart as unknown as Record<string, unknown>).total = false
+      },
+    ],
+    [
+      "primitive item row",
+      (cart: HttpTypes.StoreCart) => {
+        ;(cart as unknown as Record<string, unknown>).items = [
+          cart.items![0],
+          false,
+        ]
+      },
+    ],
+    [
+      "primitive tax-line row",
+      (cart: HttpTypes.StoreCart) => {
+        ;(cart.items![0] as unknown as Record<string, unknown>).tax_lines = [
+          cart.items![0]!.tax_lines![0],
+          false,
+        ]
+      },
+    ],
+    [
+      "managed inventory boolean",
+      (cart: HttpTypes.StoreCart) => {
+        ;(cart.items![0] as unknown as Record<string, unknown>).variant = {
+          allow_backorder: false,
+          inventory_quantity: true,
+          manage_inventory: true,
+        }
+      },
+    ],
+    [
+      "array product projection",
+      (cart: HttpTypes.StoreCart) => {
+        ;(cart.items![0] as unknown as Record<string, unknown>).product = []
+      },
+    ],
+    [
+      "array variant projection",
+      (cart: HttpTypes.StoreCart) => {
+        ;(cart.items![0] as unknown as Record<string, unknown>).variant = []
+      },
+    ],
+    [
+      "object variant identity",
+      (cart: HttpTypes.StoreCart) => {
+        ;(cart.items![0] as unknown as Record<string, unknown>).variant_id = {
+          id: "variant_b",
+        }
+      },
+    ],
+    [
+      "object shipping-option identity",
+      (cart: HttpTypes.StoreCart) => {
+        ;(
+          cart.shipping_methods![0] as unknown as Record<string, unknown>
+        ).shipping_option_id = { id: "so_standard" }
+      },
+    ],
+    [
+      "primitive payment-session row",
+      (cart: HttpTypes.StoreCart) => {
+        ;(
+          cart.payment_collection as unknown as Record<string, unknown>
+        ).payment_sessions = [
+          cart.payment_collection!.payment_sessions![0],
+          false,
+        ]
+      },
+    ],
+    [
+      "array payment-session data",
+      (cart: HttpTypes.StoreCart) => {
+        ;(
+          cart.payment_collection!.payment_sessions![0] as unknown as Record<
+            string,
+            unknown
+          >
+        ).data = []
+      },
+    ],
+    [
+      "array tax metadata",
+      (cart: HttpTypes.StoreCart) => {
+        ;(
+          cart.items![0]!.tax_lines![0] as unknown as Record<string, unknown>
+        ).data = []
+      },
+    ],
+  ] as const)("fails closed for a %s", (_label, mutate) => {
+    const cart = cartFixture()
+    mutate(cart)
+
+    expect(() => createCheckoutProjection(cart)).toThrow(
+      CheckoutProjectionError
+    )
+  })
 })

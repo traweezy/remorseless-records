@@ -59,12 +59,14 @@ const cartFixture = ({
       last_name: "Buyer",
       address_1: "1 Test Street",
       city: "Buffalo",
+      province: "NY",
       postal_code: "14201",
       country_code: "us",
     },
     shipping_methods: [
       {
         id: "casm_test",
+        shipping_option_id: "so_test",
         tax_lines: [
           { code, data: taxData, rate: collectionMode === "disabled" ? 0 : 8 },
         ],

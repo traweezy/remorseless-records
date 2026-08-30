@@ -33,12 +33,14 @@ const validCart = () => ({
     last_name: "Buyer",
     address_1: "354 Oyster Point Boulevard",
     city: "South San Francisco",
+    province: "CA",
     postal_code: "94080",
     country_code: "us",
   },
   shipping_methods: [
     {
       id: "casm_test",
+      shipping_option_id: "so_test",
       tax_lines: [
         {
           code: "rr_tax:taxrate_io:g1:quote",
@@ -160,6 +162,16 @@ describe("checkout payment validation", () => {
     })
   })
 
+  it("rejects malformed controlled tax data on a zero-total cart", () => {
+    const cart = validCart()
+    cart.total = 0
+    cart.raw_total = { value: "0", precision: 20 }
+    cart.payment_collection.payment_sessions = []
+    cart.items[0]!.tax_lines[0]!.data.generation = false as never
+
+    expectCode(cart, "checkout_tax_quote_invalid")
+  })
+
   it("accepts raw tax precision when Stripe matches the rounded cents", () => {
     const cart = validCart()
     cart.total = 23.8975
@@ -229,6 +241,16 @@ describe("checkout payment validation", () => {
     expectCode(cart, "checkout_payment_amount_mismatch")
   })
 
+  it.each([false, [], { value: true }, "2499.0", "2.499e3"])(
+    "rejects a coercive Stripe PaymentIntent amount %p",
+    (amount) => {
+      const cart = validCart()
+      cart.payment_collection.payment_sessions[0]!.data.amount = amount as never
+
+      expectCode(cart, "checkout_payment_amount_mismatch")
+    }
+  )
+
   it("rejects a mismatched Stripe PaymentIntent currency", () => {
     const cart = validCart()
     cart.payment_collection.payment_sessions[0]!.data.currency = "eur"
@@ -243,6 +265,29 @@ describe("checkout payment validation", () => {
 
     expectCode(cart, "checkout_tax_quote_invalid")
   })
+
+  it.each([false, [], "1.0", "1e0"])(
+    "rejects a coercive tax generation %p",
+    (generation) => {
+      const cart = validCart()
+      cart.payment_collection
+        .payment_sessions[0]!.data.metadata.rr_tax_generation =
+        generation as never
+
+      expectCode(cart, "checkout_tax_quote_invalid")
+    }
+  )
+
+  it.each([false, [], { value: true }])(
+    "rejects a coercive tax rate %p",
+    (rate) => {
+      const cart = validCart()
+      cart.payment_collection
+        .payment_sessions[0]!.data.metadata.rr_tax_rate_percent = rate as never
+
+      expectCode(cart, "checkout_tax_quote_invalid")
+    }
+  )
 
   it("rejects the system provider for a positive checkout", () => {
     const cart = validCart()
@@ -274,6 +319,76 @@ describe("checkout payment validation", () => {
 
   it.each([
     [
+      "primitive cart item",
+      "checkout_money_invalid",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.items.push(false as never)
+      },
+    ],
+    [
+      "boolean cart-item quantity",
+      "checkout_money_invalid",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.items[0]!.quantity = false as never
+      },
+    ],
+    [
+      "primitive shipping method",
+      "checkout_money_invalid",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.shipping_methods.push(false as never)
+      },
+    ],
+    [
+      "object shipping-option identity",
+      "checkout_money_invalid",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.shipping_methods[0]!.shipping_option_id = {
+          id: "so_test",
+        } as never
+      },
+    ],
+    [
+      "primitive payment session",
+      "checkout_payment_session_invalid",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.payment_collection.payment_sessions.push(false as never)
+      },
+    ],
+    [
+      "non-string failed-session status",
+      "checkout_payment_session_invalid",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.payment_collection.payment_sessions.push({
+          ...cart.payment_collection.payment_sessions[0]!,
+          id: "payses_malformed",
+          status: false as never,
+        })
+      },
+    ],
+    [
+      "array PaymentIntent snapshot",
+      "checkout_payment_session_invalid",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.payment_collection.payment_sessions[0]!.data = [] as never
+      },
+    ],
+    [
+      "array PaymentIntent metadata",
+      "checkout_tax_quote_invalid",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.payment_collection.payment_sessions[0]!.data.metadata = [] as never
+      },
+    ],
+  ] as const)("rejects a %s", (_label, code, mutate) => {
+    const cart = validCart()
+    mutate(cart)
+
+    expectCode(cart, code)
+  })
+
+  it.each([
+    [
       "missing contact",
       (cart: ReturnType<typeof validCart>) => {
         cart.email = ""
@@ -284,6 +399,13 @@ describe("checkout payment validation", () => {
       "missing address",
       (cart: ReturnType<typeof validCart>) => {
         cart.shipping_address.postal_code = ""
+      },
+      "checkout_address_missing",
+    ],
+    [
+      "missing province",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.shipping_address.province = ""
       },
       "checkout_address_missing",
     ],
@@ -301,15 +423,20 @@ describe("checkout payment validation", () => {
     expectCode(cart, code)
   })
 
-  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, "not-money"])(
-    "rejects invalid money value %p",
-    (amount) => {
-      const cart = validCart()
-      cart.raw_total = amount as never
+  it.each([
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    -1,
+    "not-money",
+    false,
+    [],
+    { value: true },
+  ])("rejects invalid money value %p", (amount) => {
+    const cart = validCart()
+    cart.raw_total = amount as never
 
-      expectCode(cart, "checkout_money_invalid")
-    }
-  )
+    expectCode(cart, "checkout_money_invalid")
+  })
 
   it.each(["0.001", "0.49", "1000000"])(
     "rejects a positive total outside Stripe's USD range: %s",

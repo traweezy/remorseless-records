@@ -165,4 +165,30 @@ describe("order receipt projection", () => {
       "invalid quantity"
     )
   })
+
+  it.each([
+    ["coercive order number", { ...order, display_id: false }],
+    ["coercive discount", { ...order, discount_subtotal: false }],
+    ["incomplete timestamp", { ...order, created_at: "2026-07-25" }],
+    ["primitive item row", { ...order, items: [order.items?.[0], false] }],
+    [
+      "coercive optional text",
+      {
+        ...order,
+        items: [{ ...order.items?.[0], variant_title: false }],
+      },
+    ],
+  ])("rejects a %s", async (_label, malformedOrder) => {
+    medusaMocks.read.mockResolvedValue({ order: malformedOrder })
+
+    await expect(getOrderReceipt("order_01K123ABC")).rejects.toThrow()
+  })
+
+  it("rejects a malformed response envelope", async () => {
+    medusaMocks.read.mockResolvedValue(false)
+
+    await expect(getOrderReceipt("order_01K123ABC")).rejects.toThrow(
+      "response is malformed"
+    )
+  })
 })

@@ -119,4 +119,12 @@ describe("stripePaymentSessionData", () => {
       },
     })
   })
+
+  it.each([
+    ["unsafe cart identity", { id: "unsafe/cart", items: [] }],
+    ["coercive item quantity", { id: "cart_04", items: [{ quantity: false }] }],
+    ["primitive item row", { id: "cart_04", items: [false] }],
+  ])("rejects an %s", (_label, cart) => {
+    expect(() => stripePaymentSessionData(cart as never)).toThrow()
+  })
 })
