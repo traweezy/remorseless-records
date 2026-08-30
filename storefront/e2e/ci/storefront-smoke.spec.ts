@@ -312,12 +312,19 @@ test("homepage hydrates every curated shelf without client errors", async ({
       document.querySelectorAll<HTMLElement>(
         ".product-carousel__splide .splide__slide.is-active"
       )
-    ).map((slide) => {
-      const content = slide.querySelector<HTMLElement>(
-        ".product-carousel__card > *"
+    )
+      .map((slide) =>
+        slide
+          .querySelector<HTMLElement>(".product-carousel__card > *")
+          ?.getBoundingClientRect()
       )
-      return content?.getBoundingClientRect().left ?? Number.NEGATIVE_INFINITY
-    }),
+      .filter(
+        (bounds): bounds is DOMRect =>
+          bounds !== undefined &&
+          bounds.right > 0 &&
+          bounds.left < window.innerWidth
+      )
+      .map((bounds) => bounds.left),
     carouselListGaps: Array.from(
       document.querySelectorAll<HTMLElement>(
         ".product-carousel__splide .splide__list"
@@ -680,6 +687,39 @@ test("adding from quick shop confirms in place without opening the cart", async 
   })
 })
 
+test("music release detail exposes a purchasable catalog record", async ({
+  page,
+}) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" })
+  await rejectNonEssentialCookies(page)
+  const quickShop = page
+    .getByRole("button", { name: /^Quick shop / })
+    .filter({ visible: true })
+    .first()
+  const accessibleName = await quickShop.getAttribute("aria-label")
+  const productName = accessibleName?.replace(/^Quick shop /, "")
+  const productPath = await quickShop
+    .locator("xpath=ancestor::a[1]")
+    .getAttribute("href")
+  expect(productName).toBeTruthy()
+  expect(productPath).toMatch(/^\/(?:bundle|merch|music-release)\//)
+
+  const response = await page.goto(productPath!, {
+    waitUntil: "domcontentloaded",
+  })
+  expect(response?.status()).toBeLessThan(400)
+
+  await expect(
+    page.getByRole("heading", {
+      name: productName!,
+      exact: true,
+    })
+  ).toBeVisible()
+  await expect(page.getByRole("button", { name: "Add to cart" })).toBeVisible()
+  await expectVisibleInteractivePointers(page)
+  await expectVisibleInteractiveTargets(page)
+})
+
 test("catalog filters stay stable and combine predictably", async ({
   page,
 }) => {
@@ -899,6 +939,7 @@ test("desktop filters preserve position while results refresh", async ({
       return {
         documentHeight: document.documentElement.scrollHeight,
         sidebarTop: filters?.getBoundingClientRect().top ?? null,
+        viewportHeight: window.innerHeight,
         windowScrollY: window.scrollY,
       }
     })
@@ -915,13 +956,16 @@ test("desktop filters preserve position while results refresh", async ({
   expect(during.windowScrollY).toBe(before.windowScrollY)
   expect(during.sidebarTop).toBe(before.sidebarTop)
   expect(during.documentHeight).toBeGreaterThanOrEqual(
-    before.documentHeight * 0.95
+    during.windowScrollY + during.viewportHeight
   )
 
   await expect(page.getByText("Refreshing…", { exact: true })).toBeHidden()
   const after = await readLayout()
   expect(after.windowScrollY).toBe(before.windowScrollY)
   expect(after.sidebarTop).toBe(before.sidebarTop)
+  expect(after.documentHeight).toBeGreaterThanOrEqual(
+    after.windowScrollY + after.viewportHeight
+  )
 })
 
 test("catalog loads the next result window before the end is reached", async ({

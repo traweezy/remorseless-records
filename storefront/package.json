@@ -16,8 +16,11 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "pnpm run test:coverage:baseline && pnpm run test:coverage:transactional",
+    "test:coverage:baseline": "vitest run --coverage",
+    "test:coverage:transactional": "vitest run --coverage --config=vitest.transactional.config.ts",
     "test:e2e": "playwright test",
+    "test:e2e:critical": "playwright test --config=playwright.critical.config.ts",
     "test:e2e:cross-browser": "playwright test --config=playwright.cross-browser.config.ts",
     "test:e2e:headed": "playwright test --headed",
     "analyze": "ANALYZE=true next build"

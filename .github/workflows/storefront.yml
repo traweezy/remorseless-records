@@ -256,12 +256,14 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: coverage-storefront
-          path: storefront/coverage/unit
+          path: storefront/coverage
+          if-no-files-found: error
+          retention-days: 14
 
   e2e:
     name: Browser Smoke (storefront, Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || vars.ENABLE_STOREFRONT_E2E == 'true' }}
     needs: [build]
     env:
@@ -289,22 +291,23 @@ jobs:
       - name: Build storefront
         run: pnpm --filter remorseless-records-storefront run build
 
-      - name: Resolve Chrome for Playwright
-        run: |
-          chrome_path="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
-          test -n "$chrome_path"
-          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$chrome_path" >> "$GITHUB_ENV"
+      - name: Install pinned Playwright browsers
+        run: pnpm --filter remorseless-records-storefront exec playwright install --with-deps chromium firefox webkit
 
-      - name: Run non-destructive Playwright smoke tests
+      - name: Run responsive Chromium smoke tests
         run: pnpm --filter remorseless-records-storefront run test:e2e --config=playwright.ci.config.ts
 
-      # Optional: store Playwright artifacts (screenshots/videos) when failures happen.
-      # - name: Upload Playwright artifacts
-      #   if: failure()
-      #   uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-      #   with:
-      #     name: playwright-artifacts
-      #     path: path/to/playwright-artifacts
+      - name: Run critical flows in Chromium, Firefox, and WebKit
+        run: pnpm --filter remorseless-records-storefront run test:e2e:critical
+
+      - name: Upload Playwright failure artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: playwright-failure-artifacts
+          path: storefront/test-results
+          if-no-files-found: warn
+          retention-days: 14
 
   accessibility:
     name: Accessibility (pa11y)
