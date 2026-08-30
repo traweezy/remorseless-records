@@ -40,6 +40,14 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 - **Storefront**: Next 16 App Router with React Compiler enabled, semantic same-origin cart/checkout APIs, Stripe Payment Element, Meilisearch-powered search, variant selectors, and optimistic cart updates.
 - **Package management**: `pnpm` 11.17.0. Node 26.5.0 is enforced through `.nvmrc`.
 
+Operational health, privacy-bounded telemetry, SLOs, alert ownership, and safe
+first response are defined in
+[`docs/OBSERVABILITY_OPERATIONS.md`](docs/OBSERVABILITY_OPERATIONS.md).
+Backend telemetry is initialized before Medusa and both applications support
+server-only OTLP export. The default Backend configuration makes no collector
+connection unless an endpoint or exporter is explicitly configured; browser
+events are same-origin, credential-free, and contain no URL or customer data.
+
 ## News Publishing: Plain-English Guide
 
 News is label-owned editorial content, not a product or commerce record. The
@@ -50,12 +58,12 @@ public view but cannot publish a draft by itself.
 
 ### The four states
 
-| State | What the administrator sees | What a visitor sees |
-| --- | --- | --- |
-| **Draft** | A private work in progress that can be edited, scheduled, or published. | Nothing. Drafts are excluded by the Store API. |
-| **Scheduled** | A post with a chosen future date and time. The original scheduled state remains visible for auditing. | Nothing before that instant; the post appears automatically when the date arrives. |
-| **Published** | A post intentionally made public now. | The post appears in the News feed, homepage carousel, metadata, and its stable detail URL. |
-| **Archived** | A recoverable post hidden from normal editing until it is restored. | Nothing. The old public URL stops resolving through the Store API. |
+| State         | What the administrator sees                                                                           | What a visitor sees                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Draft**     | A private work in progress that can be edited, scheduled, or published.                               | Nothing. Drafts are excluded by the Store API.                                             |
+| **Scheduled** | A post with a chosen future date and time. The original scheduled state remains visible for auditing. | Nothing before that instant; the post appears automatically when the date arrives.         |
+| **Published** | A post intentionally made public now.                                                                 | The post appears in the News feed, homepage carousel, metadata, and its stable detail URL. |
+| **Archived**  | A recoverable post hidden from normal editing until it is restored.                                   | Nothing. The old public URL stops resolving through the Store API.                         |
 
 ```mermaid
 stateDiagram-v2
@@ -1027,42 +1035,42 @@ cp .env.template .env
 
 Key variables (non-empty values required for full functionality):
 
-| Variable                                     | Notes                                                                        |
-| -------------------------------------------- | ---------------------------------------------------------------------------- |
-| `DATABASE_URL`                               | PostgreSQL connection string                                                 |
-| `REDIS_URL`                                  | Required when deployed; powers distributed events, workflows, and cart locks |
-| `STRIPE_API_KEY`                             | Stripe secret key (_sk\_..._)                                                |
-| `STRIPE_WEBHOOK_SECRET`                      | Endpoint secret for Medusa's official `/hooks/payment/stripe_stripe` webhook |
-| `STRIPE_LIFECYCLE_WEBHOOK_SECRET`            | Separate secret for the refund/dispute lifecycle endpoint                    |
-| `STRIPE_PAYMENT_METHOD_CONFIGURATION`        | Active Stripe `pmc_...` limited to card, Link, Apple Pay, and Google Pay     |
-| `CHECKOUT_BFF_SECRET`                        | Shared 32+ character HMAC key; identical on backend and storefront           |
-| `CHECKOUT_BFF_SECRET_PREVIOUS`               | Optional former BFF key accepted only during a coordinated rotation           |
-| `PUBLIC_FORM_BFF_SECRET`                     | Different shared 32+ byte HMAC key for contact/privacy BFF proofs             |
-| `PUBLIC_FORM_BFF_SECRET_PREVIOUS`            | Optional former public-form key accepted during a coordinated rotation        |
-| `CHECKOUT_RECONCILIATION_ENABLED`            | Enables the bounded missed-completion safety net (default `false`)           |
-| `CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS`    | Minimum finalized-payment age before retry; default `120`, minimum `60`      |
-| `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS`       | Per-run completion-attempt cap; default `50`, maximum `250`                  |
-| `CHECKOUT_RECONCILIATION_MAX_SCAN`           | Per-run old-cart scan cap; default `2000`, range `500–5000`                  |
-| `CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS`    | Stops starting attempts after this budget; default `90`, range `30–240`      |
-| `TAX_RATE_LOOKUP_API_KEY`                    | TaxRate.io key; its returned quota is recorded, never estimated              |
-| `TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE`        | Reviewed ZIP for deliberate one-call Admin quota refresh                     |
-| `TAX_RATE_LOOKUP_CACHE_TTL_MS`               | TaxRate.io percentage cache TTL; default `300000`                            |
-| `STRIPE_TAX_SHIPPING_TAX_CODE`               | Reviewed Stripe shipping tax code; required for Stripe Tax readiness         |
-| `STRIPE_TAX_QUOTE_TTL_MS`                    | Stripe calculation cache ceiling; default `1800000`                          |
-| `BACKEND_PUBLIC_URL`                         | External URL used in webhooks (e.g., `http://localhost:9000`)                |
-| `RESEND_API_KEY`                             | Optional; required for transactional mail                                    |
-| `MEILISEARCH_HOST`                           | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                |
-| `MEILISEARCH_ADMIN_KEY`                      | Corresponding admin/master key                                               |
-| `JWT_SECRET`, `COOKIE_SECRET`                | Medusa auth secrets (high entropy)                                           |
-| `MEDUSA_FF_RBAC`                             | Must parse as true in production (case-insensitive, no surrounding whitespace) |
-| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Required together when deployed; official S3-compatible media provider |
-| `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_FILE_URL` | Optional storage overrides; bucket defaults to `medusa-media`            |
-| `ANONYMOUS_CART_RETENTION_ENABLED`           | Enables daily anonymous-cart soft deletion (default `false`)                 |
-| `ANONYMOUS_CART_RETENTION_DAYS`              | Inactivity retention; minimum/default `37` days                              |
-| `ANONYMOUS_CART_RETENTION_MAX_DELETIONS`     | Per-run safety cap; default `1000`                                           |
-| `ABANDONED_CHECKOUT_RETENTION_ENABLED`       | Enables guest-checkout PII cleanup (default `false`)                         |
-| `ABANDONED_CHECKOUT_RETENTION_DAYS`          | Inactivity retention; minimum/default `37` days                              |
-| `ABANDONED_CHECKOUT_RETENTION_MAX_DELETIONS` | Per-run safety cap; default `250`, maximum `2500`                            |
+| Variable                                                 | Notes                                                                          |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `DATABASE_URL`                                           | PostgreSQL connection string                                                   |
+| `REDIS_URL`                                              | Required when deployed; powers distributed events, workflows, and cart locks   |
+| `STRIPE_API_KEY`                                         | Stripe secret key (_sk\_..._)                                                  |
+| `STRIPE_WEBHOOK_SECRET`                                  | Endpoint secret for Medusa's official `/hooks/payment/stripe_stripe` webhook   |
+| `STRIPE_LIFECYCLE_WEBHOOK_SECRET`                        | Separate secret for the refund/dispute lifecycle endpoint                      |
+| `STRIPE_PAYMENT_METHOD_CONFIGURATION`                    | Active Stripe `pmc_...` limited to card, Link, Apple Pay, and Google Pay       |
+| `CHECKOUT_BFF_SECRET`                                    | Shared 32+ character HMAC key; identical on backend and storefront             |
+| `CHECKOUT_BFF_SECRET_PREVIOUS`                           | Optional former BFF key accepted only during a coordinated rotation            |
+| `PUBLIC_FORM_BFF_SECRET`                                 | Different shared 32+ byte HMAC key for contact/privacy BFF proofs              |
+| `PUBLIC_FORM_BFF_SECRET_PREVIOUS`                        | Optional former public-form key accepted during a coordinated rotation         |
+| `CHECKOUT_RECONCILIATION_ENABLED`                        | Enables the bounded missed-completion safety net (default `false`)             |
+| `CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS`                | Minimum finalized-payment age before retry; default `120`, minimum `60`        |
+| `CHECKOUT_RECONCILIATION_MAX_ATTEMPTS`                   | Per-run completion-attempt cap; default `50`, maximum `250`                    |
+| `CHECKOUT_RECONCILIATION_MAX_SCAN`                       | Per-run old-cart scan cap; default `2000`, range `500–5000`                    |
+| `CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS`                | Stops starting attempts after this budget; default `90`, range `30–240`        |
+| `TAX_RATE_LOOKUP_API_KEY`                                | TaxRate.io key; its returned quota is recorded, never estimated                |
+| `TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE`                    | Reviewed ZIP for deliberate one-call Admin quota refresh                       |
+| `TAX_RATE_LOOKUP_CACHE_TTL_MS`                           | TaxRate.io percentage cache TTL; default `300000`                              |
+| `STRIPE_TAX_SHIPPING_TAX_CODE`                           | Reviewed Stripe shipping tax code; required for Stripe Tax readiness           |
+| `STRIPE_TAX_QUOTE_TTL_MS`                                | Stripe calculation cache ceiling; default `1800000`                            |
+| `BACKEND_PUBLIC_URL`                                     | External URL used in webhooks (e.g., `http://localhost:9000`)                  |
+| `RESEND_API_KEY`                                         | Optional; required for transactional mail                                      |
+| `MEILISEARCH_HOST`                                       | e.g., `https://xxx.meilisearch.io` or `http://localhost:7700`                  |
+| `MEILISEARCH_ADMIN_KEY`                                  | Corresponding admin/master key                                                 |
+| `JWT_SECRET`, `COOKIE_SECRET`                            | Medusa auth secrets (high entropy)                                             |
+| `MEDUSA_FF_RBAC`                                         | Must parse as true in production (case-insensitive, no surrounding whitespace) |
+| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Required together when deployed; official S3-compatible media provider         |
+| `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_FILE_URL`         | Optional storage overrides; bucket defaults to `medusa-media`                  |
+| `ANONYMOUS_CART_RETENTION_ENABLED`                       | Enables daily anonymous-cart soft deletion (default `false`)                   |
+| `ANONYMOUS_CART_RETENTION_DAYS`                          | Inactivity retention; minimum/default `37` days                                |
+| `ANONYMOUS_CART_RETENTION_MAX_DELETIONS`                 | Per-run safety cap; default `1000`                                             |
+| `ABANDONED_CHECKOUT_RETENTION_ENABLED`                   | Enables guest-checkout PII cleanup (default `false`)                           |
+| `ABANDONED_CHECKOUT_RETENTION_DAYS`                      | Inactivity retention; minimum/default `37` days                                |
+| `ABANDONED_CHECKOUT_RETENTION_MAX_DELETIONS`             | Per-run safety cap; default `250`, maximum `2500`                              |
 
 ### Storefront (`storefront/.env.local`)
 

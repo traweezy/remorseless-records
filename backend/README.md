@@ -42,8 +42,26 @@ changes bucket policy, or rebuilds search.
 
 - `GET /live` checks only that the process can answer HTTP.
 - `GET /ready` checks PostgreSQL, Redis, Meilisearch, and object storage with
-  bounded timeouts. It returns `503` when any configured dependency fails.
+  bounded timeouts. Production also checks payment, tax, notification,
+  lifecycle, search, storage, and RBAC configuration. It returns `503` when a
+  required dependency or capability fails.
+- `GET /health/scheduler` exposes a redacted reconciliation heartbeat and Redis
+  latency; `GET /health/retention` exposes only scheduled-job status and
+  aggregate counts; `GET /health/operations` aggregates those signals with
+  readiness and bounded incident latches.
 - `GET /api/health` is a temporary liveness alias for older monitors.
+
+Alert objectives, ownership, escalation, and first-response procedures live in
+[`../docs/OBSERVABILITY_OPERATIONS.md`](../docs/OBSERVABILITY_OPERATIONS.md).
+
+The production start command preloads the OpenTelemetry Node SDK before Medusa.
+Automatic instrumentation is limited to PostgreSQL/Knex, Redis/ioredis, and
+runtime signals; project boundaries add URL-free HTTP and fixed-name provider,
+tax, email, queue, and job spans/RED metrics. Configure an OTLP collector with
+`OTEL_EXPORTER_OTLP_ENDPOINT` and secret `OTEL_EXPORTER_OTLP_HEADERS`. Without
+an endpoint or explicit exporter, the Backend selects `none` and makes no
+implicit collector connection. Set `OTEL_SDK_DISABLED=true` only for an
+intentional documented diagnostics exception.
 
 All project-owned Store and Admin abuse controls use a shared Redis
 fixed-window counter. One Lua evaluation atomically increments the HMAC-keyed

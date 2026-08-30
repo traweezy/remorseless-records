@@ -4,6 +4,11 @@ The Medusa Admin includes project-specific workspaces for catalog authoring,
 merchandising, discography, news, tax-provider control, tax records, and refund
 operations.
 
+The full client-operator form and task-flow rework is specified in
+`../../../docs/ADMIN_EXPERIENCE_REWORK.md`. New Admin work must follow that
+shared contract and reduce the current large route/widget concentrations rather
+than adding more state, validation, and mutation handling to those monoliths.
+
 ## Shared interaction components
 
 Custom Admin forms build on Medusa UI rather than recreating labels, errors, or

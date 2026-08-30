@@ -5,6 +5,14 @@ refund. TaxRate.io and Stripe Tax are alternative calculation engines behind
 that one authority. Never enable a second independent Stripe calculation or
 manually edit an order total in Stripe.
 
+The client-requested tax-disabled mode is designed in
+`docs/adr/0007-audited-tax-collection-mode.md` but is not implemented yet. Until
+that acceptance matrix passes, do not simulate disabled collection by deleting
+tax regions, entering a zero rate, selecting an unready provider, removing
+registrations, clearing credentials, or changing Stripe settings. Those actions
+can produce ambiguous carts or incomplete evidence rather than an auditable
+store decision.
+
 ## Admin workflow
 
 Open **Settings → Tax control** in Medusa Admin. The page shows:

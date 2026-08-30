@@ -46,6 +46,12 @@ Required values:
 Optional media origins and Bandcamp configuration are documented in
 `.env.local.template`.
 
+Server traces use `@vercel/otel`; optional OTLP export uses
+`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, and
+`OTEL_EXPORTER_OTLP_PROTOCOL`. These are server-only values. Browser telemetry
+contains only bounded Web Vital values or normalized framework error digests
+and never sends cookies, URLs, customer fields, or raw exception text.
+
 Do not place a Medusa Admin token or a Meilisearch admin key in the storefront
 environment.
 
@@ -151,8 +157,11 @@ browser continues to request only same-origin optimized images. Production
 rejects HTTP image origins; local development may still use them.
 
 Route and root error boundaries expose neutral recovery copy, focus the error
-heading, log only a validated framework digest, and support retry or a plain
-home navigation even when the router itself failed. Cookie-consent parsing
+heading, report only a validated framework digest through the credentialless
+same-origin telemetry boundary, and support retry or a plain home navigation
+even when the router itself failed. Web Vitals report only the fixed metric
+name, rating, and rounded value; routes, users, sessions, and browser identity
+are excluded. Cookie-consent parsing
 contains malformed percent encoding and rejects oversized values.
 
 The proxy also validates or creates `X-Request-Id` and W3C `traceparent`
@@ -180,6 +189,8 @@ validated as an IPv4 or IPv6 address. `X-Forwarded-For`, `CF-Connecting-IP`,
 invalid values, and all forwarding headers outside that boundary are ignored.
 See the operational contract in
 [`docs/RELEASE_OPERATIONS.md`](../docs/RELEASE_OPERATIONS.md).
+The alert/SLO contract is documented in
+[`docs/OBSERVABILITY_OPERATIONS.md`](../docs/OBSERVABILITY_OPERATIONS.md).
 
 ## Quality gates
 

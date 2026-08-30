@@ -23,9 +23,13 @@ tracks what is still required before production traffic is approved.
   slices when the bundled controls share one security or release boundary.
 - Before each push, pass the focused tests plus repository lint, strict
   typecheck, relevant coverage, security checks, and production builds.
-- After each push, watch all GitHub Actions jobs and the affected Railway
-  staging deployments to `SUCCESS`, then run health, route, API, log, and
-  browser validation before beginning another slice.
+- Work one named backlog section at a time. Complete every locally executable
+  objective in that section, update its documentation, and run focused local
+  checks after each objective plus the full local section gates before pushing.
+- Push the completed local section as cohesive atomic commits, then watch all
+  GitHub Actions jobs and affected Railway staging deployments to `SUCCESS`
+  and run the section's health, route, API, log, and browser acceptance before
+  starting another section.
 - Do not change production traffic, paid services, credentials, domains,
   replicas, data, or destructive migrations without explicit approval.
 
@@ -2418,9 +2422,35 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
 
 ## Tax readiness
 
+- [ ] Add a durable `collect` / `disabled` tax collection mode separate from
+      the selected provider, using an expand-only migration and preserving the
+      current provider for later re-enablement.
+- [ ] Serialize and audit mode/provider transitions with expected generation,
+      idempotency, actor, reason, prior/next state, and an explicit versioned
+      acknowledgement for disabling collection.
+- [ ] Emit one controlled zero-rate line per item and shipping subject in
+      disabled mode, freeze the decision by generation and fingerprint, and
+      prove the path makes zero TaxRate.io, Stripe Tax, or quota calls.
+- [ ] Extend Storefront quote parsing, Stripe PaymentIntent metadata, payment
+      validation/binding, evidence, lifecycle reconciliation, tax reporting,
+      CSV exports, refunds, and disputes to distinguish explicit disabled mode
+      from a provider-calculated zero or missing legacy evidence.
+- [ ] Preserve every prepared checkout and completed order across disable,
+      re-enable, and provider changes; require selected-provider readiness
+      before collection can be re-enabled.
+- [ ] Rework Tax Control around the plain-language collection decision, with
+      permission checks, readiness, impact preview, typed acknowledgement,
+      reason, error focus, response-loss reconciliation, and immutable history.
+- [ ] Show `Tax not collected` for an explicit disabled quote in checkout and
+      customer records without describing the order as legally exempt.
+- [ ] Complete the disabled-mode unit, integration, concurrency, payment,
+      refund, reporting, no-provider-call, browser, accessibility, and real
+      desktop screenshot matrix defined by ADR 0007.
+- [ ] Update tax-control, filing, checkout, refund, support, incident, rollback,
+      and client procedures for disabled and re-enabled collection.
 - [ ] Obtain business approval and qualified tax advice for provider choice,
       registrations, product tax codes, shipping treatment, filing ownership,
-      and Stripe Tax pricing.
+      disabled-mode use, and Stripe Tax pricing.
 - [ ] Run the sandbox golden matrix across taxable, non-taxable, mixed,
       shipping-taxed, discounted, refunded, and partially refunded orders.
 - [ ] Prove the Medusa/Stripe/provider three-way amount invariant and tax
@@ -2651,27 +2681,90 @@ maintenance rather than suppressing the platform warning.
 
 ## Observability and operations
 
-- [ ] Remove or classify Railpack npm wrapper warnings and successful pnpm
+- [x] Remove or classify Railpack npm wrapper warnings and successful pnpm
       command banners currently recorded at error severity so deployment-log
       alerts remain actionable.
 - [x] Correct the misleading blank Storefront `api.problem` display record and
       add a tested exact-request-ID Railway verifier that fails when correlated
       events disappear or their deployment/correlation fields mismatch.
-- [ ] Add structured JSON logging with redaction, request ID, trace ID, span ID,
+- [x] Add structured JSON logging with redaction, request ID, trace ID, span ID,
       service, environment, and commit SHA; inject Railway `COMMIT_SHA` so
       health responses expose the accepted artifact version.
-- [ ] Add OpenTelemetry traces and RED metrics for HTTP, database, Redis,
+- [x] Add OpenTelemetry traces and RED metrics for HTTP, database, Redis,
       search, storage, Stripe, tax, email, queues, and scheduled jobs.
-- [ ] Add privacy-conscious Web Vitals and frontend error reporting.
-- [ ] Alert on Redis reconnects/latency, BullMQ stalls, payment/tax mismatches,
+- [x] Add privacy-conscious Web Vitals and frontend error reporting.
+- [x] Alert on Redis reconnects/latency, BullMQ stalls, payment/tax mismatches,
       reconciliation backlog, webhook failures, readiness failures, database
       saturation, storage errors, and elevated error/latency rates.
-- [ ] Define an SLO, severity, owner, escalation path, and runbook for every
+- [x] Define an SLO, severity, owner, escalation path, and runbook for every
       alert.
-- [ ] Add payment, tax, notification, lifecycle, search, storage, and RBAC
+- [x] Add payment, tax, notification, lifecycle, search, storage, and RBAC
       capability checks to startup/readiness without exposing secrets.
-- [ ] Verify anonymous-cart and abandoned-checkout retention jobs execute and
+- [x] Verify anonymous-cart and abandoned-checkout retention jobs execute and
       report auditable counts.
+
+Local implementation closure installs the Backend OpenTelemetry SDK before the
+Medusa CLI import, restricts automatic instrumentation to PostgreSQL/Knex,
+Redis/ioredis, and Node runtime signals, and emits project-owned privacy-bounded
+HTTP and commerce operation spans/RED metrics. Redis statements retain only a
+validated command name; automatic HTTP, Undici, and AWS instrumentation remain
+disabled so URLs, query strings, postal codes, object keys, and provider
+payloads cannot become span attributes. Search, storage, Stripe, tax, email,
+queue, and scheduled-job operations use fixed compile-time names and only
+`ok`/`error` result classes. Railway preserves optional OTLP configuration and
+the Backend performs no exporter network connection when neither an endpoint
+nor an explicit exporter is configured.
+
+Backend and Storefront startup plus Backend pre-deploy now use pnpm's silent
+wrapper mode, removing lifecycle success banners from runtime logs while
+retaining application output and failures. Runtime identities accept Railway's
+immutable `RAILWAY_GIT_COMMIT_SHA` directly, so a duplicate manually managed
+`COMMIT_SHA` is optional rather than required. `/health/operations`, the
+alternate ten-minute staging monitor, the post-retention daily observation,
+24-hour incident latches, capability probes, Redis latency, and retained
+aggregate retention snapshots complete the alert evidence boundary. The full
+SLO, alert, escalation, privacy, OTLP, and first-response contract lives in
+`docs/OBSERVABILITY_OPERATIONS.md`.
+
+## Client Admin experience
+
+- [x] Research Medusa 2.18 extension/form constraints, Medusa UI conventions,
+      WCAG 2.2 form requirements, and inventory every project-owned Admin input
+      surface in `docs/ADMIN_EXPERIENCE_REWORK.md`.
+- [ ] Establish the task-oriented Catalog, Content, and Operations information
+      architecture with needs-attention, common-action, recent-change, and
+      recovery/help priorities.
+- [ ] Build shared schema, field, hint/error, validation-summary, error-focus,
+      pending/save, unsaved-change, draft, success, and response-loss form
+      primitives with accessible tests.
+- [ ] Rework composite catalog creation around safe defaults, progressive
+      disclosure, searchable choices, plain-language units, customer-visible
+      availability, resumable drafts, and final review.
+- [ ] Split and rework existing Product authoring into task-sized product,
+      variant, price, inventory, media, bundle, publication, and diagnostic
+      sections without creating a second write authority.
+- [ ] Split the Product/Variant profile widget monolith into independently
+      tested query, schema, presentation, and short edit-Drawer modules.
+- [ ] Rework merchandising shelf creation/settings/product selection with
+      persistent selection context, preview, ordering, and recovery.
+- [ ] Rework news creation/editing with one publishing model, content/media
+      preview, schedule clarity, archive/restore, and accessible error recovery.
+- [ ] Rework discography creation/editing with consistent release metadata,
+      controlled choices, cover preview/alternative text, availability, and
+      archive/restore behavior.
+- [ ] Integrate the audited tax collection-mode workflow and plain-language
+      compliance/impact copy from ADR 0007.
+- [ ] Standardize permission-denied, empty, loading, failed, stale-version,
+      pending, success, and incident states across all custom Admin routes.
+- [ ] Keep technical IDs and diagnostics behind disclosures while preserving
+      exact audit/recovery data for authorized support operators.
+- [ ] Add focused component/interaction coverage for each objective and pass
+      the complete Backend lint, strict typecheck, tests, coverage, API/RBAC,
+      and production Admin build gates before the section push.
+- [ ] Complete keyboard-only, screen-reader, 200% zoom, focus, contrast,
+      target-size, reduced-motion, mobile, laptop, and wide-screen validation.
+- [ ] Capture and inspect real desktop screenshots of all critical Admin form
+      states, then update the client and support guides with task walkthroughs.
 
 ## Legal, accessibility, and launch acceptance
 
