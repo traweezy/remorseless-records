@@ -414,6 +414,7 @@ const VariantCatalogProfileWidgetContent = memo<
   const [open, setOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [issues, setIssues] = useState<AdminFormIssue[]>([]);
+  const defaultValues = useMemo(emptyValues, []);
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -457,7 +458,7 @@ const VariantCatalogProfileWidgetContent = memo<
   });
 
   const form = useForm({
-    defaultValues: emptyValues(),
+    defaultValues,
     onSubmit: async ({ value }) => {
       const parsed = variantCatalogProfileFormSchema.parse(value);
       try {
@@ -469,7 +470,9 @@ const VariantCatalogProfileWidgetContent = memo<
           variantCatalogProfileQueryKey(variantId, productId),
           result.nextData,
         );
-        form.reset(variantCatalogProfileValues(result.nextData.profile));
+        form.reset(variantCatalogProfileValues(result.nextData.profile), {
+          keepDefaultValues: true,
+        });
         setIssues([]);
         setOpen(false);
         toast.success(
@@ -495,7 +498,9 @@ const VariantCatalogProfileWidgetContent = memo<
 
   useEffect(() => {
     if (query.data && !open) {
-      form.reset(variantCatalogProfileValues(query.data.profile));
+      form.reset(variantCatalogProfileValues(query.data.profile), {
+        keepDefaultValues: true,
+      });
     }
   }, [form, open, query.data]);
 
@@ -524,14 +529,18 @@ const VariantCatalogProfileWidgetContent = memo<
     mutation.reset();
     setIssues([]);
     if (query.data) {
-      form.reset(variantCatalogProfileValues(query.data.profile));
+      form.reset(variantCatalogProfileValues(query.data.profile), {
+        keepDefaultValues: true,
+      });
     }
     setOpen(true);
   }, [form, mutation, query.data]);
   const handleDiscardCancel = useCallback(() => setDiscardOpen(false), []);
   const handleDiscardConfirm = useCallback(() => {
     if (query.data) {
-      form.reset(variantCatalogProfileValues(query.data.profile));
+      form.reset(variantCatalogProfileValues(query.data.profile), {
+        keepDefaultValues: true,
+      });
     }
     mutation.reset();
     setIssues([]);

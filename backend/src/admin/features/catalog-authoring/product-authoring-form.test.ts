@@ -1,8 +1,10 @@
 import {
+  createEmptyProductAuthoringDraft,
   productAuthoringFingerprint,
   productAuthoringValidationIssues,
   type ProductAuthoringDraft,
 } from "./product-authoring-form";
+import { FormApi } from "@tanstack/react-form";
 
 const draft = (): ProductAuthoringDraft => ({
   bundle: {
@@ -57,6 +59,49 @@ const draft = (): ProductAuthoringDraft => ({
 });
 
 describe("Product authoring form", () => {
+  it("creates isolated empty defaults for each form instance", () => {
+    const first = createEmptyProductAuthoringDraft();
+    const second = createEmptyProductAuthoringDraft();
+    first.profile.artists.push({
+      artistId: "artist_1",
+      displayName: "Test Artist",
+      key: "artist_line_1",
+      name: "Test Artist",
+      role: "primary",
+    });
+    first.bundle.components.push({
+      componentProductId: "product_1",
+      componentVariantId: "",
+      key: "component_1",
+      quantity: "1",
+      sku: "",
+      title: "Test Product",
+      variantTitle: "",
+    });
+
+    expect(second.profile.artists).toEqual([]);
+    expect(second.bundle.components).toEqual([]);
+  });
+
+  it("retains a hydrated snapshot when form options update", () => {
+    jest.useFakeTimers();
+    const defaultValues = createEmptyProductAuthoringDraft();
+    const form = new FormApi({ defaultValues });
+    const unmount = form.mount();
+    const hydrated = draft();
+
+    try {
+      form.reset(hydrated, { keepDefaultValues: true });
+      form.update({ defaultValues });
+
+      expect(form.state.values).toEqual(hydrated);
+    } finally {
+      unmount();
+      jest.advanceTimersByTime(6_000);
+      jest.useRealTimers();
+    }
+  });
+
   it("accepts an ordinary release draft", () => {
     expect(productAuthoringValidationIssues(draft())).toEqual([]);
   });

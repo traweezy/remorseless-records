@@ -58,7 +58,7 @@ import {
   type ShelfResponse,
 } from "../../features/catalog-merchandising/catalog-merchandising-types"
 
-const emptyShelfForm: ShelfFormState = {
+const createEmptyShelfForm = (): ShelfFormState => ({
   version: 0,
   title: "",
   handle: "",
@@ -73,9 +73,9 @@ const emptyShelfForm: ShelfFormState = {
   endsAt: "",
   isActive: true,
   products: [],
-}
+})
 
-const emptyCreateShelfForm: CreateShelfState = {
+const createEmptyCreateShelfForm = (): CreateShelfState => ({
   title: "",
   handle: "",
   mode: "manual",
@@ -84,7 +84,7 @@ const emptyCreateShelfForm: CreateShelfState = {
   ribbonLabel: "",
   ribbonPriority: "100",
   productLimit: "",
-}
+})
 
 const merchandisingTasks = [
   { href: "#shelf-settings", label: "Storefront settings" },
@@ -171,7 +171,7 @@ const fetchJson = async <T,>(
 
 const toShelfForm = (response: ShelfResponse | null): ShelfFormState => {
   if (!response) {
-    return emptyShelfForm
+    return createEmptyShelfForm()
   }
 
   return {
@@ -238,9 +238,11 @@ const CatalogMerchandisingPageContent = memo(() => {
   const createRequest = useRef<PendingRequest | null>(null)
   const archiveRequest = useRef<PendingRequest | null>(null)
   const restoreRequest = useRef<PendingRequest | null>(null)
+  const shelfDefaultValues = useMemo(createEmptyShelfForm, [])
+  const createShelfDefaultValues = useMemo(createEmptyCreateShelfForm, [])
 
   const shelfForm = useForm({
-    defaultValues: emptyShelfForm,
+    defaultValues: shelfDefaultValues,
     validators: { onChange: catalogShelfFormSchema },
   })
   const shelfFormState = useStore(shelfForm.store, (state) => ({
@@ -249,7 +251,7 @@ const CatalogMerchandisingPageContent = memo(() => {
   }))
   const formState = shelfFormState.values
   const createShelfForm = useForm({
-    defaultValues: emptyCreateShelfForm,
+    defaultValues: createShelfDefaultValues,
     validators: { onChange: catalogShelfCreateSchema },
   })
   const createFormState = useStore(createShelfForm.store, (state) => ({
@@ -305,7 +307,7 @@ const CatalogMerchandisingPageContent = memo(() => {
 
   const loadShelf = useCallback(async (shelfId: string) => {
     if (!shelfId) {
-      shelfForm.reset(emptyShelfForm)
+      shelfForm.reset(createEmptyShelfForm(), { keepDefaultValues: true })
       setFormIssues([])
       return
     }
@@ -316,7 +318,7 @@ const CatalogMerchandisingPageContent = memo(() => {
         `/admin/catalog/shelves/${shelfId}`
       )
       setPickedProducts(new Map())
-      shelfForm.reset(toShelfForm(response))
+      shelfForm.reset(toShelfForm(response), { keepDefaultValues: true })
       setFormIssues([])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load shelf")
@@ -513,7 +515,7 @@ const CatalogMerchandisingPageContent = memo(() => {
 
       saveRequest.current = null
       await refreshShelves()
-      shelfForm.reset(toShelfForm(response))
+      shelfForm.reset(toShelfForm(response), { keepDefaultValues: true })
       setNotice("Saved merchandising shelf.")
     } catch (err) {
       const failureMessage = err instanceof Error ? err.message : "Unable to save shelf"
@@ -525,7 +527,7 @@ const CatalogMerchandisingPageContent = memo(() => {
         const snapshotForm = toShelfForm(snapshot)
         if (catalogShelfFingerprint(snapshotForm) === desiredFingerprint) {
           saveRequest.current = null
-          shelfForm.reset(snapshotForm)
+          shelfForm.reset(snapshotForm, { keepDefaultValues: true })
           await refreshShelves()
           setNotice(
             "Saved merchandising shelf; confirmed after checking the server.",
@@ -584,7 +586,9 @@ const CatalogMerchandisingPageContent = memo(() => {
       createRequest.current = null
       await refreshShelves()
       setSelectedShelfId(response.shelf.id)
-      createShelfForm.reset(emptyCreateShelfForm)
+      createShelfForm.reset(createEmptyCreateShelfForm(), {
+        keepDefaultValues: true,
+      })
       setCreateOpen(false)
       setNotice("Created merchandising shelf.")
     } catch (err) {
@@ -670,7 +674,9 @@ const CatalogMerchandisingPageContent = memo(() => {
   }, [refreshAll])
 
   const handleCreateOpen = useCallback(() => {
-    createShelfForm.reset(emptyCreateShelfForm)
+    createShelfForm.reset(createEmptyCreateShelfForm(), {
+      keepDefaultValues: true,
+    })
     setCreateIssues([])
     setCreateOpen(true)
   }, [createShelfForm])
@@ -691,7 +697,9 @@ const CatalogMerchandisingPageContent = memo(() => {
   }, [])
 
   const confirmCreateDiscard = useCallback(() => {
-    createShelfForm.reset(emptyCreateShelfForm)
+    createShelfForm.reset(createEmptyCreateShelfForm(), {
+      keepDefaultValues: true,
+    })
     setCreateIssues([])
     setCreateDiscardOpen(false)
     setCreateOpen(false)
@@ -704,7 +712,7 @@ const CatalogMerchandisingPageContent = memo(() => {
 
   const confirmShelfSwitch = useCallback(() => {
     if (pendingShelfId) {
-      shelfForm.reset(formState)
+      shelfForm.reset(formState, { keepDefaultValues: true })
       setSelectedShelfId(pendingShelfId)
     }
     setPendingShelfId(null)

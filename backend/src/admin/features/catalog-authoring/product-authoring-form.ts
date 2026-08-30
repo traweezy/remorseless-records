@@ -218,6 +218,43 @@ export const productAuthoringDraftSchema = z
 
 export type ProductAuthoringDraft = z.input<typeof productAuthoringDraftSchema>;
 
+export const createEmptyProductAuthoringDraft = (): ProductAuthoringDraft => ({
+  bundle: {
+    bundleType: "fixed",
+    components: [],
+    descriptionHtml: "",
+    displayTitle: "",
+    enabled: false,
+    fulfillmentMode: "ship_components",
+    inventoryMode: "component_derived",
+    isActive: true,
+  },
+  product: {
+    description: "",
+    handle: "",
+    status: "draft",
+    title: "",
+  },
+  profile: {
+    artists: [],
+    creditsJson: "{}",
+    descriptionHtml: "",
+    labelId: "",
+    labelLabel: "",
+    merchDetailsJson: "{}",
+    pressingNotesJson: "{}",
+    productTypeId: "",
+    productTypeLabel: "",
+    references: [],
+    releaseDate: "",
+    releaseTitle: "",
+    releaseYear: "",
+    searchKeywords: "",
+    tracklistJson: "[]",
+  },
+  variants: [],
+});
+
 const sectionTargets = {
   bundle: "product-authoring-bundle",
   product: "product-authoring-commerce",

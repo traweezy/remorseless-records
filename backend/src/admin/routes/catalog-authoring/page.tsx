@@ -30,6 +30,7 @@ import { AdminRetryState } from "../../components/admin-retry-state"
 import RichTextEditor from "../../components/rich-text-editor"
 import { catalogProductEditActions } from "../../features/catalog-permissions"
 import {
+  createEmptyProductAuthoringDraft,
   productAuthoringFingerprint,
   productAuthoringDraftSchema,
   productAuthoringValidationIssues,
@@ -746,13 +747,11 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
     null
   )
 
+  const authoringDefaultValues = useMemo(createEmptyProductAuthoringDraft, [])
   const authoringForm = useForm({
-    defaultValues: productAuthoringDraft({
-      bundle: emptyBundleForm,
-      product: emptyProductForm,
-      profile: emptyProfileForm,
-      variants: [],
-    }),
+    // Keep the option identity stable so FormApi.update cannot replace a
+    // freshly hydrated, untouched server snapshot with empty defaults.
+    defaultValues: authoringDefaultValues,
     validators: { onChange: productAuthoringDraftSchema },
   })
   const currentDraft = useStore(authoringForm.store, (state) => state.values)
@@ -925,14 +924,9 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
       referenceValues: CatalogReferenceValue[] = references
     ) => {
       if (!product) {
-        authoringForm.reset(
-          productAuthoringDraft({
-            bundle: emptyBundleForm,
-            product: emptyProductForm,
-            profile: emptyProfileForm,
-            variants: [],
-          }),
-        )
+        authoringForm.reset(createEmptyProductAuthoringDraft(), {
+          keepDefaultValues: true,
+        })
         setProfileVersion(0)
         setBundleVersion(0)
         setFormIssues([])
@@ -947,7 +941,9 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
           product,
           references: referenceValues,
         })
-        authoringForm.reset(productAuthoringDraft(forms))
+        authoringForm.reset(productAuthoringDraft(forms), {
+          keepDefaultValues: true,
+        })
         setProfileVersion(forms.profileVersion)
         setBundleVersion(forms.bundleVersion)
         setFormIssues([])
@@ -1391,7 +1387,9 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         )
         setSavedFingerprint(snapshotFingerprint)
         if (snapshotFingerprint === desiredFingerprint) {
-          authoringForm.reset(productAuthoringDraft(snapshot))
+          authoringForm.reset(productAuthoringDraft(snapshot), {
+            keepDefaultValues: true,
+          })
           setFormIssues([])
           setError(null)
           setNotice(

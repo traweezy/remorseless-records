@@ -180,8 +180,8 @@ refunds, reporting, and audit history retain the historical collection mode and
 say **Tax not collected** without implying exemption. Exact-SHA GitHub and
 Railway acceptance completed for commit `c8decf0a5b6b5b6739de76a89865be231902b044`.
 
-The complete Admin rework is implemented locally across the inventoried input
-surfaces:
+The complete Admin rework was delivered across the inventoried input surfaces
+in commit `b79d4d4c1b512086775aeab85db8b2e436faaeb2`:
 
 - shared error-summary, task-navigation, save-state, unsaved-change,
   response-reconciliation, and validated browser-draft primitives;
@@ -197,12 +197,23 @@ surfaces:
 - a confirmation-first Media Cleanup workflow that makes reversible quarantine
   distinct from physical deletion.
 
-Every local objective has passed its focused tests, lint, and strict Backend
-typecheck. The complete Backend suite passed with 212 suites and 1,259 tests,
-the production Backend and Admin builds completed, and the repository QA and
-security-policy gates passed. Documentation review is complete. The compiled
-server could not finish bootstrapping its remote dependencies on the local
-workstation, so rendered acceptance is intentionally deferred to the deployed
-artifact instead of being inferred from component output. Release acceptance
-after the single push is real rendered Admin browser inspection at desktop and
-narrow widths plus exact-SHA GitHub/Railway observation.
+Post-deployment rendered acceptance found a shared TanStack Form lifecycle
+regression: an untouched server snapshot could be replaced by the empty
+initial options on a later React render. Product authoring and Merchandising
+therefore showed the selected resource but blank editable values. The
+corrective follow-up now keeps each form's initial option identity stable and
+preserves loaded Product, shelf, and Variant snapshots across form option
+updates. A direct FormApi regression test covers that transition. The same
+acceptance pass found and corrected a Media Cleanup tab whose ARIA control
+target was missing.
+
+The corrective follow-up passes Backend lint, strict project typecheck, the
+repository QA and security-policy gates, all 212 Backend suites and 1,261
+tests, and the production Backend/Admin build. Rendered acceptance uses the
+exact compiled Admin bundle in Helium with GET-only authenticated fixtures, so
+no staging records are created or changed and live authentication is not
+bypassed. Product authoring, Merchandising, Tax Control, Media Cleanup, News,
+and Discography were inspected at 1,600×1,000 and 760×900. Every project-owned
+surface has zero scoped axe violations, no console or failed-response errors,
+and no horizontal document overflow. Product authoring was additionally run
+in a headed graphical browser and inspected from a real desktop screenshot.
