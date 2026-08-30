@@ -1,4 +1,6 @@
 import {
+  formatTaxCacheConfigLog,
+  resolveProviderTaxCacheConfig,
   resolveTaxCacheConfig,
   TAX_CACHE_CONFIG_DEFAULTS,
   validateTaxCacheConfig,
@@ -60,5 +62,30 @@ describe("tax cache configuration", () => {
         stripeQuoteMaxEntries: Number.POSITIVE_INFINITY,
       }),
     ).toThrow("STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES");
+  });
+
+  it("maps provider options through the same bounded validation", () => {
+    expect(
+      resolveProviderTaxCacheConfig({
+        rateCacheMaxEntries: 512,
+        rateCacheTtlMs: 60_000,
+        stripeQuoteCacheMaxEntries: 128,
+        stripeQuoteTtlMs: 120_000,
+      }),
+    ).toEqual({
+      rateLookupMaxEntries: 512,
+      rateLookupTtlMs: 60_000,
+      stripeQuoteMaxEntries: 128,
+      stripeQuoteTtlMs: 120_000,
+    });
+    expect(() =>
+      resolveProviderTaxCacheConfig({ rateCacheMaxEntries: "512" }),
+    ).toThrow("TAX_RATE_LOOKUP_CACHE_MAX_ENTRIES");
+  });
+
+  it("formats a key-free startup summary", () => {
+    expect(formatTaxCacheConfigLog(TAX_CACHE_CONFIG_DEFAULTS)).toBe(
+      "Tax local caches configured (rate_ttl_ms=300000, rate_max_entries=2048, stripe_quote_ttl_ms=1800000, stripe_quote_max_entries=256).",
+    );
   });
 });

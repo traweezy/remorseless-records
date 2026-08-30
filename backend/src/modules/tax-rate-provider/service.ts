@@ -17,8 +17,7 @@ import {
   parseTaxControlContext,
 } from "../../lib/tax-control/context";
 import {
-  TAX_CACHE_CONFIG_DEFAULTS,
-  validateTaxCacheConfig,
+  resolveProviderTaxCacheConfig,
 } from "../../lib/tax-control/cache-config";
 import { REDIS_URL } from "../../lib/constants";
 import { TAXRATE_IO_QUOTA_REDIS_KEY } from "../tax-control/constants";
@@ -257,18 +256,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
   ) {
     this.logger_ = logger;
     this.options_ = options;
-    const cacheConfig = validateTaxCacheConfig({
-      rateLookupMaxEntries:
-        options.rateCacheMaxEntries ??
-        TAX_CACHE_CONFIG_DEFAULTS.rateLookupMaxEntries,
-      rateLookupTtlMs:
-        options.rateCacheTtlMs ?? TAX_CACHE_CONFIG_DEFAULTS.rateLookupTtlMs,
-      stripeQuoteMaxEntries:
-        options.stripeQuoteCacheMaxEntries ??
-        TAX_CACHE_CONFIG_DEFAULTS.stripeQuoteMaxEntries,
-      stripeQuoteTtlMs:
-        options.stripeQuoteTtlMs ?? TAX_CACHE_CONFIG_DEFAULTS.stripeQuoteTtlMs,
-    });
+    const cacheConfig = resolveProviderTaxCacheConfig(options);
     this.#rateCacheTtlMs = cacheConfig.rateLookupTtlMs;
     this.#stripeQuoteTtlMs = cacheConfig.stripeQuoteTtlMs;
     this.#rateCache = new BoundedExpiringCache({
@@ -286,9 +274,6 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
           timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
         })
       : null;
-    this.logger_.info(
-      `Tax local caches configured (rate_ttl_ms=${cacheConfig.rateLookupTtlMs}, rate_max_entries=${cacheConfig.rateLookupMaxEntries}, stripe_quote_ttl_ms=${cacheConfig.stripeQuoteTtlMs}, stripe_quote_max_entries=${cacheConfig.stripeQuoteMaxEntries}).`,
-    );
   }
 
   getIdentifier(): string {

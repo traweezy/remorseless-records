@@ -5,6 +5,13 @@ export type TaxCacheConfig = {
   stripeQuoteTtlMs: number;
 };
 
+export type TaxCacheProviderOptions = {
+  rateCacheMaxEntries?: unknown;
+  rateCacheTtlMs?: unknown;
+  stripeQuoteCacheMaxEntries?: unknown;
+  stripeQuoteTtlMs?: unknown;
+};
+
 type TaxCacheConfigKey = keyof TaxCacheConfig;
 
 type TaxCacheSetting = {
@@ -50,10 +57,11 @@ const TAX_CACHE_SETTINGS: Readonly<Record<TaxCacheConfigKey, TaxCacheSetting>> =
   };
 
 const assertBoundedInteger = (
-  value: number,
+  value: unknown,
   setting: TaxCacheSetting,
 ): number => {
   if (
+    typeof value !== "number" ||
     !Number.isSafeInteger(value) ||
     value < setting.minimum ||
     value > setting.maximum
@@ -82,7 +90,7 @@ const parseEnvironmentSetting = (
 };
 
 export const validateTaxCacheConfig = (
-  config: TaxCacheConfig,
+  config: Record<TaxCacheConfigKey, unknown>,
 ): TaxCacheConfig => ({
   rateLookupMaxEntries: assertBoundedInteger(
     config.rateLookupMaxEntries,
@@ -101,6 +109,25 @@ export const validateTaxCacheConfig = (
     TAX_CACHE_SETTINGS.stripeQuoteTtlMs,
   ),
 });
+
+export const resolveProviderTaxCacheConfig = (
+  options: TaxCacheProviderOptions = {},
+): TaxCacheConfig =>
+  validateTaxCacheConfig({
+    rateLookupMaxEntries:
+      options.rateCacheMaxEntries ??
+      TAX_CACHE_CONFIG_DEFAULTS.rateLookupMaxEntries,
+    rateLookupTtlMs:
+      options.rateCacheTtlMs ?? TAX_CACHE_CONFIG_DEFAULTS.rateLookupTtlMs,
+    stripeQuoteMaxEntries:
+      options.stripeQuoteCacheMaxEntries ??
+      TAX_CACHE_CONFIG_DEFAULTS.stripeQuoteMaxEntries,
+    stripeQuoteTtlMs:
+      options.stripeQuoteTtlMs ?? TAX_CACHE_CONFIG_DEFAULTS.stripeQuoteTtlMs,
+  });
+
+export const formatTaxCacheConfigLog = (config: TaxCacheConfig): string =>
+  `Tax local caches configured (rate_ttl_ms=${config.rateLookupTtlMs}, rate_max_entries=${config.rateLookupMaxEntries}, stripe_quote_ttl_ms=${config.stripeQuoteTtlMs}, stripe_quote_max_entries=${config.stripeQuoteMaxEntries}).`;
 
 export const resolveTaxCacheConfig = (
   environment: NodeJS.ProcessEnv = process.env,
