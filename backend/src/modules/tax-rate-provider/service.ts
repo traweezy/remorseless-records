@@ -272,6 +272,8 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     this.options_ = options;
     this.stripe_ = options.stripeApiKey
       ? new Stripe(options.stripeApiKey, {
+          httpClient: Stripe.createFetchHttpClient(),
+          maxNetworkRetries: 1,
           timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
         })
       : null;
@@ -430,6 +432,12 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         control.itemAmountsMinor[line.line_item.id],
       );
       const tax = quote.itemTaxByReference[line.line_item.id] ?? 0;
+      if (
+        amount > 0 &&
+        !Object.hasOwn(quote.itemTaxByReference, line.line_item.id)
+      ) {
+        throw new Error("Stripe Tax response omitted an item tax result.");
+      }
       return {
         ...identity,
         line_item_id: line.line_item.id,
@@ -476,6 +484,21 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       const retrieved = await retrieveStripeTaxCalculation({
         calculationId: frozenCalculationId,
         client: this.stripe_,
+        expectedReferences: itemLines
+          .filter(
+            (line) =>
+              minorUnits(
+                line.line_item.unit_price,
+                line.line_item.quantity,
+                control.itemAmountsMinor[line.line_item.id],
+              ) > 0,
+          )
+          .map((line) => line.line_item.id),
+        onRetry: ({ attempt, operation, reason, totalAttempts }) =>
+          this.logger_.warn(
+            `Stripe Tax ${operation} retry scheduled (${reason}, attempt ${attempt}/${totalAttempts}).`,
+          ),
+        timeoutMs: this.options_.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       });
       await this.writeStripeQuote(control.fingerprint, retrieved);
       return retrieved;
@@ -542,6 +565,10 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       currency: "usd",
       idempotencyKey: `rr-tax-${control.fingerprint}`,
       itemLines: stripeItems,
+      onRetry: ({ attempt, operation, reason, totalAttempts }) =>
+        this.logger_.warn(
+          `Stripe Tax ${operation} retry scheduled (${reason}, attempt ${attempt}/${totalAttempts}).`,
+        ),
       ...(shippingAmount > 0
         ? {
             shipping: {
@@ -552,6 +579,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
             },
           }
         : {}),
+      timeoutMs: this.options_.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     });
     await this.writeStripeQuote(control.fingerprint, created);
     return created;

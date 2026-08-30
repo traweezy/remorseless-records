@@ -54,6 +54,18 @@ The safe GET boundary can make one additional attempt after a transport, 408,
 425, or 5xx failure, so a transient failure can consume two metered lookups.
 Quota rejection and other 4xx responses are never retried.
 
+Stripe Tax quote creation and retrieval use one shared eight-second deadline
+across the calculation and any required line-item read. Nested SDK retries are
+disabled; the client schedules at most one transient retry and reuses the cart
+fingerprint idempotency key for a calculation POST. Rate limits and other
+non-retryable 4xx responses remain single-attempt. Requests and provider
+responses are capped at 100 unique positive lines. More pagination, missing or
+duplicate references, unsafe
+numeric fields, inconsistent exclusive-tax totals, and malformed calculation
+metadata fail closed with a coded error that does not copy Stripe or customer
+details. These retry and validation rules apply to quote calculation; the
+payment-binding invariant below still decides whether a quote may be attached.
+
 Stripe Tax is ready only when all checks pass:
 
 - a configured Stripe secret key;

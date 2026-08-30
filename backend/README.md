@@ -429,6 +429,18 @@ retry logs. Returned total rates must be finite and between 0% and 100%;
 malformed, negative, or larger totals fail closed, while invalid optional
 breakdown components are discarded.
 
+Stripe Tax calculation creation and retrieval share the provider's eight-second
+deadline with a possible line-item read. The Stripe fetch transport cancels a
+request at its deadline. Nested SDK retries are disabled; the client schedules
+at most one transient retry under the shared deadline, and calculation creation
+always carries the same cart-fingerprint idempotency key. Rate limits and other
+non-retryable 4xx responses remain single-attempt. The
+client accepts at most 100 unique positive line items, follows at most one
+bounded 100-item response page, and rejects additional pagination, unsafe
+amounts, duplicate or unexpected references, inconsistent tax totals, and
+malformed calculation metadata. Terminal errors contain only a stable code,
+never Stripe response text, address data, API keys, or transport details.
+
 An authenticated Medusa Admin can review readiness, quota, exact paginated
 checkout impact, payment evidence, and an immutable provider-switch history at
 **Settings → Tax control**. The current setup is read-only; an explicit provider action

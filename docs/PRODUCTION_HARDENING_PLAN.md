@@ -820,7 +820,7 @@ single-attempt. The generated OpenAPI check inventories all route sources
 deterministically and is wired into both the repository lint gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
-typechecks pass. Backend passes 1,037 tests across 191 suites. Storefront passes
+typechecks pass. Backend passes 1,055 tests across 191 suites. Storefront passes
 658 tests across 120 files with 92.99% statement, 86.01% branch, 93.98%
 function, and 92.94% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
@@ -2316,8 +2316,13 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       owns retries at its semantic read-operation boundary so catalog loaders
       cannot multiply attempts. TaxRate.io safe GETs now use two attempts under
       one deadline with coded errors and retry telemetry; 429 and other 4xx
-      responses do not retry because lookups are metered. Stripe Tax and the
-      other provider families remain.
+      responses do not retry because lookups are metered. Stripe Tax quote
+      creation/retrieval now shares one deadline, uses the SDK's canceling fetch
+      transport, disables nested SDK retries, allows one transient retry,
+      validates the calculation and at most 100 line items, and emits only
+      coded terminal errors and retry telemetry. Stripe Tax
+      readiness, payment-binding, evidence/lifecycle calls, and the other
+      provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.
