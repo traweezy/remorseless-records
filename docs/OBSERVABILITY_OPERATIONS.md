@@ -261,9 +261,13 @@ include a request URL, customer or order data, or raw provider error.
    aggregate counts.
 2. Confirm the environment's explicit enablement decision and job worker state.
 3. Run a read-only candidate count before enabling or manually invoking a job.
-4. Do not lower the 37-day minimum, bypass payment/order protections, or delete
+4. If heartbeat persistence was deployed after the current day's scheduled
+   run, verify the prior aggregate completion log and keep the incident open
+   until the next normal schedule writes a real heartbeat. Never synthesize or
+   backdate retention evidence.
+5. Do not lower the 37-day minimum, bypass payment/order protections, or delete
    carts directly.
-5. Resolve after a successful scheduled run reports within the 36-hour window.
+6. Resolve after a successful scheduled run reports within the 36-hour window.
 
 ### Web Vitals regression
 

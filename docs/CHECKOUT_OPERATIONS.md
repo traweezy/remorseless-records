@@ -29,8 +29,9 @@ Useful aggregate log events:
 - `job.checkout_reconciliation.attention`
 - `job.checkout_reconciliation.skipped`
 - `job.checkout_reconciliation.failed`
-- `Anonymous cart retention completed`
-- `Abandoned checkout retention completed`
+- `job.retention.anonymous_cart.completed`
+- `job.retention.abandoned_checkout.completed`
+- `job.retention.<job>.disabled` or `job.retention.<job>.failed`
 - `checkout_payment_*` validation errors from the complete-cart hook
 - `[stripe-order-sync] synchronized <count> payment reference(s)`
 

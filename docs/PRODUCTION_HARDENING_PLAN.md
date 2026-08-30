@@ -2958,6 +2958,26 @@ aggregate retention snapshots complete the alert evidence boundary. The full
 SLO, alert, escalation, privacy, OTLP, and first-response contract lives in
 `docs/OBSERVABILITY_OPERATIONS.md`.
 
+The August 30 staging monitor correctly surfaced missing retention heartbeats
+after snapshot persistence was deployed later than that day's two daily job
+runs. Exact Railway deployment logs prove the pre-instrumentation jobs executed
+under their reviewed 37-day policies: anonymous-cart retention scanned and
+deleted 444 eligible carts at `04:17` UTC, while abandoned-checkout retention
+scanned zero and deleted zero at `04:37` UTC. The instrumented anonymous-cart
+wrapper's explicit Node imports were valid but misplaced after the exported job
+configuration; they now follow the normal top-of-module convention. Neither
+instrumented wrapper had direct execution tests. New job tests cover the fixed
+schedules, disabled heartbeats, distributed-lock execution, payment-session
+cancellation, aggregate success events, and failure events for both jobs.
+Twenty-eight
+focused retention tests, all 227 Backend suites and 1,466 tests, strict
+TypeScript, Biome, the production Backend/Admin build, frozen packaged install,
+and the Admin bundle budget pass locally. Coverage remains
+90.79/83.64/95/90.86. The main Admin bundle is 1,808,078 gzip bytes and total
+JavaScript is 2,388,689 gzip bytes. The external incident intentionally remains
+open until the next ordinary `04:17` and `04:37` UTC schedules write real
+heartbeats; no synthetic evidence or manual destructive cleanup is permitted.
+
 ## Client Admin experience
 
 - [x] Research Medusa 2.18 extension/form constraints, Medusa UI conventions,

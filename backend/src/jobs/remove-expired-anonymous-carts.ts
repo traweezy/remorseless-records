@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+import { performance } from "node:perf_hooks"
 import type {
   ICartModuleService,
   ILockingModule,
@@ -89,5 +91,3 @@ export const config = {
   name: "remove-expired-anonymous-carts",
   schedule: "17 4 * * *",
 }
-import { randomUUID } from "node:crypto"
-import { performance } from "node:perf_hooks"
