@@ -16,8 +16,16 @@ import {
   buildTaxLineCode,
   parseTaxControlContext,
 } from "../../lib/tax-control/context";
+import {
+  TAX_CACHE_CONFIG_DEFAULTS,
+  validateTaxCacheConfig,
+} from "../../lib/tax-control/cache-config";
 import { REDIS_URL } from "../../lib/constants";
 import { TAXRATE_IO_QUOTA_REDIS_KEY } from "../tax-control/constants";
+import {
+  BoundedExpiringCache,
+  type CacheEvictionEvent,
+} from "./bounded-expiring-cache";
 import {
   createStripeTaxCalculation,
   retrieveStripeTaxCalculation,
@@ -34,7 +42,10 @@ type TaxRateLookupProviderOptions = {
   apiKey: string;
   mode?: "zip" | "address";
   provider: "taxrate_io";
+  rateCacheMaxEntries?: number;
+  rateCacheTtlMs?: number;
   stripeApiKey?: string;
+  stripeQuoteCacheMaxEntries?: number;
   stripeQuoteTtlMs?: number;
   stripeShippingTaxCode?: string;
   timeoutMs?: number;
@@ -44,29 +55,18 @@ type InjectedDependencies = {
   logger: Logger;
 };
 
-type CachedRate = {
-  expiresAt: number;
-  result: TaxRateIoResult;
-};
-
 type CachedStripeQuote = {
   expiresAt: number;
   result: StripeTaxCalculationResult;
 };
 
-const CACHE_TTL_MS = Number(
-  process.env.TAX_RATE_LOOKUP_CACHE_TTL_MS ?? 5 * 60 * 1000,
-);
-const DEFAULT_STRIPE_QUOTE_TTL_MS = 30 * 60 * 1000;
+type LocalTaxCache = "rate" | "stripe_quote";
+
 const DEFAULT_TIMEOUT_MS = 8_000;
-const rateCache = new Map<string, CachedRate>();
-const stripeQuoteCache = new Map<string, CachedStripeQuote>();
+const CACHE_CAPACITY_LOG_INTERVAL_MS = 60_000;
 const redisUrl = REDIS_URL?.trim();
 let redisClient: RedisClientType | null = null;
 let redisConnectPromise: Promise<RedisClientType | null> | null = null;
-
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 const redisReconnectStrategy = (retries: number): false | number =>
   retries >= 3 ? false : Math.min(100 * 2 ** retries, 1_000);
@@ -83,27 +83,6 @@ const buildRateCacheKey = (
 
   const provinceCode = address.province_code?.toLowerCase() ?? "";
   return `${countryCode}:${provinceCode}:${postalCode}`;
-};
-
-const readCachedRate = (cacheKey: string): TaxRateIoResult | null => {
-  const cached = rateCache.get(cacheKey);
-  if (!cached) {
-    return null;
-  }
-
-  if (cached.expiresAt <= Date.now()) {
-    rateCache.delete(cacheKey);
-    return null;
-  }
-
-  return cached.result;
-};
-
-const writeCachedRate = (cacheKey: string, result: TaxRateIoResult): void => {
-  rateCache.set(cacheKey, {
-    expiresAt: Date.now() + CACHE_TTL_MS,
-    result,
-  });
 };
 
 const parseCachedTaxRateIoResult = (value: string): TaxRateIoResult | null => {
@@ -158,16 +137,16 @@ const getRedisClient = async (
         connectTimeout: 2_000,
         reconnectStrategy: redisReconnectStrategy,
       },
-    }).on("error", (error) => {
-      logger.warn(`Tax cache Redis client error: ${errorMessage(error)}`);
+    }).on("error", () => {
+      logger.warn("Tax cache Redis client reported an error.");
     });
   redisClient = client;
 
   redisConnectPromise = client
     .connect()
     .then(() => client)
-    .catch((error) => {
-      logger.warn(`Tax cache Redis connection failed: ${errorMessage(error)}`);
+    .catch(() => {
+      logger.warn("Tax cache Redis connection failed.");
       try {
         client.destroy();
       } catch {
@@ -263,6 +242,14 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
   protected logger_: Logger;
   protected options_: TaxRateLookupProviderOptions;
   protected stripe_: Stripe | null;
+  readonly #capacityLogAt = new Map<LocalTaxCache, number>();
+  readonly #rateCache: BoundedExpiringCache<string, TaxRateIoResult>;
+  readonly #rateCacheTtlMs: number;
+  readonly #stripeQuoteCache: BoundedExpiringCache<
+    string,
+    StripeTaxCalculationResult
+  >;
+  readonly #stripeQuoteTtlMs: number;
 
   constructor(
     { logger }: InjectedDependencies,
@@ -270,6 +257,28 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
   ) {
     this.logger_ = logger;
     this.options_ = options;
+    const cacheConfig = validateTaxCacheConfig({
+      rateLookupMaxEntries:
+        options.rateCacheMaxEntries ??
+        TAX_CACHE_CONFIG_DEFAULTS.rateLookupMaxEntries,
+      rateLookupTtlMs:
+        options.rateCacheTtlMs ?? TAX_CACHE_CONFIG_DEFAULTS.rateLookupTtlMs,
+      stripeQuoteMaxEntries:
+        options.stripeQuoteCacheMaxEntries ??
+        TAX_CACHE_CONFIG_DEFAULTS.stripeQuoteMaxEntries,
+      stripeQuoteTtlMs:
+        options.stripeQuoteTtlMs ?? TAX_CACHE_CONFIG_DEFAULTS.stripeQuoteTtlMs,
+    });
+    this.#rateCacheTtlMs = cacheConfig.rateLookupTtlMs;
+    this.#stripeQuoteTtlMs = cacheConfig.stripeQuoteTtlMs;
+    this.#rateCache = new BoundedExpiringCache({
+      maxEntries: cacheConfig.rateLookupMaxEntries,
+      onEviction: (event) => this.#observeCacheEviction("rate", event),
+    });
+    this.#stripeQuoteCache = new BoundedExpiringCache({
+      maxEntries: cacheConfig.stripeQuoteMaxEntries,
+      onEviction: (event) => this.#observeCacheEviction("stripe_quote", event),
+    });
     this.stripe_ = options.stripeApiKey
       ? new Stripe(options.stripeApiKey, {
           httpClient: Stripe.createFetchHttpClient(),
@@ -277,10 +286,45 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
           timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
         })
       : null;
+    this.logger_.info(
+      `Tax local caches configured (rate_ttl_ms=${cacheConfig.rateLookupTtlMs}, rate_max_entries=${cacheConfig.rateLookupMaxEntries}, stripe_quote_ttl_ms=${cacheConfig.stripeQuoteTtlMs}, stripe_quote_max_entries=${cacheConfig.stripeQuoteMaxEntries}).`,
+    );
   }
 
   getIdentifier(): string {
     return TaxRateLookupProviderService.identifier;
+  }
+
+  #observeCacheEviction(
+    cache: LocalTaxCache,
+    event: CacheEvictionEvent,
+  ): void {
+    if (event.reason !== "capacity") {
+      return;
+    }
+    const now = Date.now();
+    const lastLoggedAt = this.#capacityLogAt.get(cache) ?? 0;
+    if (now - lastLoggedAt < CACHE_CAPACITY_LOG_INTERVAL_MS) {
+      return;
+    }
+    this.#capacityLogAt.set(cache, now);
+    this.logger_.warn(
+      cache === "rate"
+        ? "Tax rate local cache reached capacity; least-recently-used entries were evicted."
+        : "Stripe Tax quote local cache reached capacity; least-recently-used entries were evicted.",
+    );
+  }
+
+  #readCachedRate(cacheKey: string): TaxRateIoResult | null {
+    return this.#rateCache.get(cacheKey) ?? null;
+  }
+
+  #writeCachedRate(cacheKey: string, result: TaxRateIoResult): void {
+    this.#rateCache.set(
+      cacheKey,
+      result,
+      Date.now() + this.#rateCacheTtlMs,
+    );
   }
 
   async getTaxLines(
@@ -588,12 +632,9 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
   private async readStripeQuote(
     fingerprint: string,
   ): Promise<StripeTaxCalculationResult | null> {
-    const local = stripeQuoteCache.get(fingerprint);
-    if (local && local.expiresAt > Date.now()) {
-      return local.result;
-    }
+    const local = this.#stripeQuoteCache.get(fingerprint);
     if (local) {
-      stripeQuoteCache.delete(fingerprint);
+      return local;
     }
 
     const client = await getRedisClient(this.logger_);
@@ -611,12 +652,14 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         await client.del(buildRedisStripeQuoteKey(fingerprint));
         return null;
       }
-      stripeQuoteCache.set(fingerprint, parsed);
-      return parsed.result;
-    } catch (error) {
-      this.logger_.warn(
-        `Stripe Tax cache lookup failed: ${errorMessage(error)}`,
+      this.#stripeQuoteCache.set(
+        fingerprint,
+        parsed.result,
+        parsed.expiresAt,
       );
+      return parsed.result;
+    } catch {
+      this.logger_.warn("Stripe Tax cache lookup failed.");
       return null;
     }
   }
@@ -625,17 +668,17 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     fingerprint: string,
     result: StripeTaxCalculationResult,
   ): Promise<void> {
-    const configuredTtl =
-      this.options_.stripeQuoteTtlMs ?? DEFAULT_STRIPE_QUOTE_TTL_MS;
+    const configuredTtl = this.#stripeQuoteTtlMs;
+    const now = Date.now();
     const upstreamTtl = result.expiresAt
-      ? result.expiresAt * 1000 - Date.now()
+      ? result.expiresAt * 1000 - now
       : configuredTtl;
     const ttlMs = Math.max(1_000, Math.min(configuredTtl, upstreamTtl));
     const cached: CachedStripeQuote = {
-      expiresAt: Date.now() + ttlMs,
+      expiresAt: now + ttlMs,
       result,
     };
-    stripeQuoteCache.set(fingerprint, cached);
+    this.#stripeQuoteCache.set(fingerprint, result, cached.expiresAt);
 
     const client = await getRedisClient(this.logger_);
     if (!client) {
@@ -647,10 +690,8 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         JSON.stringify(cached),
         { EX: Math.max(1, Math.ceil(ttlMs / 1000)) },
       );
-    } catch (error) {
-      this.logger_.warn(
-        `Stripe Tax cache write failed: ${errorMessage(error)}`,
-      );
+    } catch {
+      this.logger_.warn("Stripe Tax cache write failed.");
     }
   }
 
@@ -662,7 +703,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       return { jurisdiction: null, quota: null, ratePercent: 0 };
     }
 
-    const cached = readCachedRate(cacheKey);
+    const cached = this.#readCachedRate(cacheKey);
     if (cached !== null) {
       return cached;
     }
@@ -676,14 +717,12 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         if (redisValue !== null) {
           const parsed = parseCachedTaxRateIoResult(redisValue);
           if (parsed) {
-            writeCachedRate(cacheKey, parsed);
+            this.#writeCachedRate(cacheKey, parsed);
             return parsed;
           }
         }
-      } catch (error) {
-        this.logger_.warn(
-          `Tax cache Redis lookup failed: ${errorMessage(error)}`,
-        );
+      } catch {
+        this.logger_.warn("Tax cache Redis lookup failed.");
       }
     }
 
@@ -721,7 +760,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       zip: postalCode,
     });
 
-    writeCachedRate(cacheKey, result);
+    this.#writeCachedRate(cacheKey, result);
     if (redisClientInstance) {
       try {
         await redisClientInstance.set(
@@ -730,15 +769,13 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
             jurisdiction: result.jurisdiction,
             ratePercent: result.ratePercent,
           }),
-          { EX: Math.max(1, Math.ceil(CACHE_TTL_MS / 1000)) },
+          { EX: Math.max(1, Math.ceil(this.#rateCacheTtlMs / 1000)) },
         );
         if (result.quota) {
           await this.writeTaxRateIoQuota(redisClientInstance, result.quota);
         }
-      } catch (error) {
-        this.logger_.warn(
-          `Tax cache Redis write failed: ${errorMessage(error)}`,
-        );
+      } catch {
+        this.logger_.warn("Tax cache Redis write failed.");
       }
     }
     return result;

@@ -1,6 +1,7 @@
 import { loadEnv } from "@medusajs/framework/utils"
 
 import { assertValue } from "../utils/assert-value"
+import { resolveTaxCacheConfig } from "./tax-control/cache-config"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
@@ -179,9 +180,13 @@ export const TAX_RATE_LOOKUP_API_KEY = process.env.TAX_RATE_LOOKUP_API_KEY ?? ""
 export const TAX_RATE_LOOKUP_MODE = process.env.TAX_RATE_LOOKUP_MODE ?? "zip"
 export const TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE =
   process.env.TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE
-export const STRIPE_TAX_QUOTE_TTL_MS = Number(
-  process.env.STRIPE_TAX_QUOTE_TTL_MS ?? 30 * 60 * 1000
-)
+const taxCacheConfig = resolveTaxCacheConfig()
+export const TAX_RATE_LOOKUP_CACHE_TTL_MS = taxCacheConfig.rateLookupTtlMs
+export const TAX_RATE_LOOKUP_CACHE_MAX_ENTRIES =
+  taxCacheConfig.rateLookupMaxEntries
+export const STRIPE_TAX_QUOTE_TTL_MS = taxCacheConfig.stripeQuoteTtlMs
+export const STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES =
+  taxCacheConfig.stripeQuoteMaxEntries
 export const STRIPE_TAX_SHIPPING_TAX_CODE =
   process.env.STRIPE_TAX_SHIPPING_TAX_CODE
 

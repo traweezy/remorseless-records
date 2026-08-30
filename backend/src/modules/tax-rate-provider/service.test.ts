@@ -8,14 +8,21 @@ import type {
 jest.mock("../../lib/constants", () => ({
   REDIS_URL: "",
 }));
+jest.mock("./clients/taxrate-io", () => ({
+  fetchTaxRateIo: jest.fn(),
+}));
 
 import { createTaxContextFingerprint } from "../../lib/tax-control/context";
+import { fetchTaxRateIo } from "./clients/taxrate-io";
 import TaxRateLookupProviderService from "./service";
+
+const mockFetchTaxRateIo = jest.mocked(fetchTaxRateIo);
 
 const service = () =>
   new TaxRateLookupProviderService(
     {
       logger: {
+        info: jest.fn(),
         warn: jest.fn(),
       } as unknown as Logger,
     },
@@ -72,6 +79,27 @@ const context = (
     },
   }) as unknown as TaxCalculationContext;
 
+const lookupContext = (postalCode: string): TaxCalculationContext =>
+  ({
+    additional_context: {
+      remorseless_tax: {
+        fingerprint: createTaxContextFingerprint({ postalCode }),
+        generation: 1,
+        itemAmountsMinor: {},
+        itemTaxCodes: {},
+        preservedItemRates: {},
+        preservedShippingRates: {},
+        provider: "taxrate_io",
+        shippingAmountMinor: 0,
+        subjectId: `cart-${postalCode}`,
+      },
+    },
+    address: {
+      country_code: "us",
+      postal_code: postalCode,
+    },
+  }) as unknown as TaxCalculationContext;
+
 describe("controlled tax provider order rate preservation", () => {
   it("reuses reviewed order rates without requiring another Stripe lookup", async () => {
     await expect(
@@ -102,5 +130,64 @@ describe("controlled tax provider order rate preservation", () => {
         context({ orli_01: 8.75 }, {}),
       ),
     ).rejects.toThrow("preserved order rates are incomplete");
+  });
+});
+
+describe("controlled tax provider local cache", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFetchTaxRateIo.mockResolvedValue({
+      jurisdiction: null,
+      quota: null,
+      ratePercent: 8.75,
+    });
+  });
+
+  it("bounds lookup entries and rate-limits key-free capacity warnings", async () => {
+    const logger = {
+      info: jest.fn(),
+      warn: jest.fn(),
+    } as unknown as Logger;
+    const provider = new TaxRateLookupProviderService(
+      { logger },
+      {
+        apiKey: "configured",
+        provider: "taxrate_io",
+        rateCacheMaxEntries: 1,
+        rateCacheTtlMs: 1_000,
+      },
+    );
+
+    await provider.getTaxLines([item("item-1")], [], lookupContext("10001"));
+    await provider.getTaxLines([item("item-2")], [], lookupContext("10002"));
+    await provider.getTaxLines([item("item-3")], [], lookupContext("10001"));
+
+    expect(mockFetchTaxRateIo).toHaveBeenCalledTimes(3);
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Tax rate local cache reached capacity; least-recently-used entries were evicted.",
+    );
+    expect(JSON.stringify(jest.mocked(logger.warn).mock.calls)).not.toContain(
+      "1000",
+    );
+  });
+
+  it("rejects invalid programmatic cache settings during construction", () => {
+    expect(
+      () =>
+        new TaxRateLookupProviderService(
+          {
+            logger: {
+              info: jest.fn(),
+              warn: jest.fn(),
+            } as unknown as Logger,
+          },
+          {
+            apiKey: "configured",
+            provider: "taxrate_io",
+            stripeQuoteCacheMaxEntries: 1_001,
+          },
+        ),
+    ).toThrow("STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES");
   });
 });
