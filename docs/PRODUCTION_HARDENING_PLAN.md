@@ -1090,6 +1090,46 @@ safe-GET retry, single-attempt rate-limit and mutation behavior, expanded
 PaymentIntent reuse, fail-closed pagination and shape validation, and redacted
 terminal errors and retry telemetry.
 
+Tax-cache boundary rollout discovery: implementation head
+`598a90c180307d7e6ceda3bc282184b71a714934` passed its exact CI and health
+checks, but was not accepted because provider construction is lazy and its
+configuration event did not appear during process startup. The corrective
+provider loader on exact head
+`881a4d687a790eec7175c3b42613bdebc92c2724` validates and reports the same
+bounded settings during Medusa startup while the lazy service reuses that
+shared option mapping. Root CI `33309449059`, Backend CI `33309449057`, and
+Storefront CI `33309449058` all completed successfully on that exact head,
+including 1,191 Backend tests, 658 Storefront tests with coverage, both
+production builds, CodeQL, dependency and secret scans, SBOM and license
+verification, Playwright, pa11y, and Lighthouse. Railway held Backend
+deployment `d6f30ea6-b8a3-4544-9694-5c1cae1e8ee7` until those workflows
+passed, then released image digest
+`sha256:0035b9d95abeeadc05c20d6b9d2af256908fb7a5af91d468eb2a6b694613bc4a`
+to `SUCCESS` on the exact source. Storefront deployment
+`14b394ff-12b8-49e4-b4e3-cf84c3f04940` was correctly skipped because its
+watched paths were unchanged.
+
+Backend `/live`, `/ready`, and `/api/health` all returned 200; both readiness
+responses reported all four database, Redis, search, and object-storage checks
+healthy. The exact `11:54:39Z`-through-`11:54:40Z` acceptance window contained
+precisely five matching exact-deployment HTTP records: two `GET /live`, two
+`GET /ready`, and one `GET /api/health`, all 200, with no unexpected method,
+path, upstream error, or response at 400 or above. The exact deployment
+recorded 311 info events and four known successful command-echo banners that
+Railway classified as errors. Seven safe configuration events across the
+release/start command lifecycle reported the reviewed `300000`/`2048`
+TaxRate.io and `1800000`/`256` Stripe-quote TTL/capacity settings, with zero
+warning, non-command error, capacity warning, cache failure,
+exception/fatal/failed-operation, retry, or tax-provider operation record. Its
+205 build-log records were all info level with zero failure term. All 386
+exact-deployment DNS records from `11:52:54Z` through `11:55:04Z` succeeded
+with zero Stripe lookup; the probe window's 14 DNS records were also all
+successful with zero Stripe lookup. Acceptance invoked no quota refresh,
+TaxRate.io lookup, Stripe calculation, PaymentIntent, cart, paid, or mutating
+operation in shared staging. The focused 22-test cache configuration, loader
+registration, and provider suite proves startup rejection, key-free numeric
+telemetry, shared validation, expiry purge, and deterministic LRU ceilings.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
