@@ -246,11 +246,13 @@ describe("catalog creation step components", () => {
         onCancel={jest.fn()}
         onNext={jest.fn()}
         onSave={jest.fn()}
+        saveState="saved"
       />,
     )
     expect(actions).toContain("Cancel")
     expect(actions).toContain("Back")
     expect(actions).toContain("Create draft")
+    expect(actions).toContain("Draft saved in this browser")
     expect(actions).not.toContain("Continue")
   })
 })

@@ -19,6 +19,10 @@ import {
 } from "react-router-dom"
 
 import { AdminPageHeader } from "../../components/admin-page"
+import {
+  useAdminUnsavedChanges,
+  type AdminSaveState,
+} from "../../components/admin-form-contract"
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { ConfirmAction } from "../../components/confirm-action"
@@ -125,12 +129,10 @@ const dataTarget = (event: { currentTarget: EventTarget }): DataTarget =>
   event.currentTarget as unknown as DataTarget
 
 type BrowserEnvironment = {
-  addEventListener?: (name: string, listener: (event: Event) => void) => void
   cancelAnimationFrame?: (frame: number) => void
   document?: {
     getElementById: (id: string) => FocusTarget | null
   }
-  removeEventListener?: (name: string, listener: (event: Event) => void) => void
   requestAnimationFrame?: (callback: () => void) => number
 }
 
@@ -185,6 +187,9 @@ const CatalogProductCreatePageContent = memo(() => {
   const [allowNavigation, setAllowNavigation] = useState(false)
   const [draftPersistenceEnabled, setDraftPersistenceEnabled] = useState(
     Boolean(initialDraft),
+  )
+  const [draftSaveState, setDraftSaveState] = useState<AdminSaveState>(
+    initialDraft ? "saved" : "idle",
   )
   const [resumed, setResumed] = useState(Boolean(initialDraft))
   const [submitted, setSubmitted] = useState(false)
@@ -305,8 +310,10 @@ const CatalogProductCreatePageContent = memo(() => {
 
   useEffect(() => {
     if (!submitted && (draftPersistenceEnabled || formState.isDirty)) {
+      setDraftSaveState("dirty")
       const timeout = setTimeout(() => {
         writeDraft(values, step)
+        setDraftSaveState("saved")
         if (!draftPersistenceEnabled) {
           setDraftPersistenceEnabled(true)
         }
@@ -315,6 +322,16 @@ const CatalogProductCreatePageContent = memo(() => {
     }
     return undefined
   }, [draftPersistenceEnabled, formState.isDirty, step, submitted, values])
+
+  const persistBeforeUnload = useCallback(() => {
+    writeDraft(values, step)
+  }, [step, values])
+
+  useAdminUnsavedChanges(
+    formState.isDirty && !allowNavigation,
+    "Your catalog draft has unsaved changes.",
+    persistBeforeUnload,
+  )
 
   useEffect(() => {
     const submittedValues = lastSubmittedValuesRef.current
@@ -338,19 +355,6 @@ const CatalogProductCreatePageContent = memo(() => {
       setLeaveOpen(true)
     }
   }, [blocker.state])
-
-  useEffect(() => {
-    const handleBeforeUnload = (event: Event) => {
-      if (formState.isDirty && !allowNavigation) {
-        writeDraft(values, step)
-        event.preventDefault()
-        ;(event as unknown as { returnValue: string }).returnValue = ""
-      }
-    }
-    const browser = globalThis as BrowserEnvironment
-    browser.addEventListener?.("beforeunload", handleBeforeUnload)
-    return () => browser.removeEventListener?.("beforeunload", handleBeforeUnload)
-  }, [allowNavigation, formState.isDirty, step, values])
 
   useEffect(() => {
     if (
@@ -838,6 +842,7 @@ const CatalogProductCreatePageContent = memo(() => {
     resetRetryStatusMutation()
     setClearOpen(false)
     setDraftPersistenceEnabled(false)
+    setDraftSaveState("idle")
     setResumed(false)
     setStep(0)
     setStepErrors([])
@@ -856,6 +861,13 @@ const CatalogProductCreatePageContent = memo(() => {
     formState.isSubmitting ||
     mediaUploading ||
     retryStatusIsPending
+  const activeSaveState: AdminSaveState = retryStatusIsPending
+    ? "reconciling"
+    : creationMutation.isPending || formState.isSubmitting
+      ? "saving"
+      : creationMutation.isError
+        ? "error"
+        : draftSaveState
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4" ref={pageStartRef}>
       <AdminPageHeader
@@ -962,6 +974,7 @@ const CatalogProductCreatePageContent = memo(() => {
         onCancel={handleCancel}
         onNext={handleNext}
         onSave={handleSave}
+        saveState={activeSaveState}
       />
 
       <ConfirmAction

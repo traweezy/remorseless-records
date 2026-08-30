@@ -3,6 +3,11 @@
 import { memo } from "react"
 import { Button, Text } from "@medusajs/ui"
 
+import {
+  AdminFormSaveState,
+  type AdminSaveState,
+} from "../../components/admin-form-contract"
+
 export const catalogCreationSteps = [
   "Kind",
   "Basics",
@@ -47,13 +52,14 @@ type CatalogCreationActionsProps = {
   onCancel: () => void
   onNext: () => void
   onSave: () => void
+  saveState: AdminSaveState
 }
 
 const primaryActionClassName =
   "hover:!bg-ui-button-inverted active:!bg-ui-button-inverted"
 
 export const CatalogCreationActions = memo<CatalogCreationActionsProps>(
-  ({ busy, currentStep, onBack, onCancel, onNext, onSave }) => (
+  ({ busy, currentStep, onBack, onCancel, onNext, onSave, saveState }) => (
     <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-ui-border-base bg-ui-bg-base px-1 py-4">
       <Button
         disabled={busy}
@@ -63,6 +69,11 @@ export const CatalogCreationActions = memo<CatalogCreationActionsProps>(
       >
         Cancel
       </Button>
+      <AdminFormSaveState
+        className="min-w-36 flex-1 text-center"
+        savedLabel="Draft saved in this browser"
+        state={saveState}
+      />
       <div className="flex flex-wrap gap-2">
         {currentStep > 0 ? (
           <Button
@@ -94,9 +105,6 @@ export const CatalogCreationActions = memo<CatalogCreationActionsProps>(
             Create draft
           </Button>
         )}
-      </div>
-      <div aria-live="polite" className="sr-only">
-        {busy ? "Creating draft product" : ""}
       </div>
     </div>
   ),

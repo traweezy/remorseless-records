@@ -13,10 +13,28 @@ import {
   Textarea,
 } from "@medusajs/ui"
 import { Link } from "react-router-dom"
+import { useForm, useStore } from "@tanstack/react-form"
 
+import {
+  AdminFormErrorSummary,
+  AdminFormSaveState,
+  AdminTaskNavigation,
+  focusFirstAdminFormIssue,
+  useAdminUnsavedChanges,
+  type AdminFormIssue,
+  type AdminSaveState,
+  type AdminTaskNavigationItem,
+} from "../../components/admin-form-contract"
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
+import { AdminRetryState } from "../../components/admin-retry-state"
 import RichTextEditor from "../../components/rich-text-editor"
 import { catalogProductEditActions } from "../../features/catalog-permissions"
+import {
+  productAuthoringFingerprint,
+  productAuthoringDraftSchema,
+  productAuthoringValidationIssues,
+  type ProductAuthoringDraft,
+} from "../../features/catalog-authoring/product-authoring-form"
 import {
   getCatalogProductOptionPath,
   getPrimaryProductLoadPath,
@@ -52,6 +70,16 @@ const availabilityStatuses = [
 const bundleTypes = ["fixed", "mystery", "deal", "selectable"] as const
 const bundleInventoryModes = ["component_derived", "manual"] as const
 const bundleFulfillmentModes = ["ship_components", "manual"] as const
+
+const productAuthoringTasks = [
+  { href: "#product-authoring-commerce", label: "Product" },
+  { href: "#product-authoring-profile", label: "Release details" },
+  { href: "#product-authoring-artists", label: "Artists" },
+  { href: "#product-authoring-classification", label: "Genres and tags" },
+  { href: "#product-authoring-structured", label: "Structured content" },
+  { href: "#product-authoring-variants", label: "Variants" },
+  { href: "#product-authoring-bundle", label: "Bundle" },
+] as const satisfies readonly AdminTaskNavigationItem[]
 
 type ProductStatus = (typeof productStatuses)[number]
 type ReferenceKind = (typeof referenceKinds)[number]
@@ -609,9 +637,89 @@ const toBundleForm = (response: BundleResponse | null): BundleFormState => {
   }
 }
 
+type ProductAuthoringForms = {
+  bundle: BundleFormState
+  bundleVersion: number
+  product: ProductFormState
+  profile: ProfileFormState
+  profileVersion: number
+  variants: VariantProfileFormLine[]
+}
+
+const productAuthoringDraft = ({
+  bundle,
+  product,
+  profile,
+  variants,
+}: Pick<
+  ProductAuthoringForms,
+  "bundle" | "product" | "profile" | "variants"
+>): ProductAuthoringDraft => ({
+  bundle,
+  product,
+  profile,
+  variants,
+})
+
+const fetchProductAuthoringForms = async ({
+  product,
+  references,
+}: {
+  product: AdminProduct
+  references: CatalogReferenceValue[]
+}): Promise<ProductAuthoringForms> => {
+  const [profileResponse, bundleResponse] = await Promise.all([
+    fetchJson<ProductProfileResponse>(
+      `/admin/catalog/products/${product.id}/profile`
+    ),
+    fetchJson<BundleResponse>(`/admin/catalog/products/${product.id}/bundle`),
+  ])
+  const variantResponses = await Promise.all(
+    (product.variants ?? []).map(async (variant) => ({
+      variantId: variant.id,
+      response: await fetchJson<VariantProfileResponse>(
+        `/admin/catalog/variants/${variant.id}/profile`
+      ),
+    }))
+  )
+  return {
+    bundle: toBundleForm(bundleResponse),
+    bundleVersion: bundleResponse.bundle?.version ?? 0,
+    product: toProductForm(product),
+    profile: toProfileForm(profileResponse, references),
+    profileVersion: profileResponse.profile?.version ?? 0,
+    variants: variantResponses.map(({ variantId, response }) =>
+      toVariantProfileLine(variantId, response.profile, references)
+    ),
+  }
+}
+
+const requestProductAuthoringIssueFocus = (
+  issues: readonly AdminFormIssue[]
+): void => {
+  const browser = globalThis as unknown as {
+    requestAnimationFrame?: (callback: () => void) => number
+  }
+  if (browser.requestAnimationFrame) {
+    browser.requestAnimationFrame(() => focusFirstAdminFormIssue(issues))
+    return
+  }
+  focusFirstAdminFormIssue(issues)
+}
+
 type ProductAuthoringWorkspaceProps = {
   productId?: string
 }
+
+type FormStateUpdater<T> = T | ((previous: T) => T)
+
+const resolveFormStateUpdate = <T,>(
+  previous: T,
+  update: FormStateUpdater<T>,
+): T =>
+  typeof update === "function"
+    ? (update as (previous: T) => T)(previous)
+    : update
 
 const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
   productId,
@@ -622,16 +730,15 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     productId ?? null
   )
-  const [productForm, setProductForm] = useState<ProductFormState>(emptyProductForm)
-  const [profileForm, setProfileForm] = useState<ProfileFormState>(emptyProfileForm)
   const [profileVersion, setProfileVersion] = useState(0)
-  const [variantProfiles, setVariantProfiles] = useState<VariantProfileFormLine[]>([])
-  const [bundleForm, setBundleForm] = useState<BundleFormState>(emptyBundleForm)
   const [bundleVersion, setBundleVersion] = useState(0)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [reconciling, setReconciling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [formIssues, setFormIssues] = useState<AdminFormIssue[]>([])
+  const [savedFingerprint, setSavedFingerprint] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [productOptionStatus, setProductOptionStatus] =
     useState<ProductOptionStatus>(productId ? "idle" : "loading")
@@ -639,10 +746,70 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
     null
   )
 
+  const authoringForm = useForm({
+    defaultValues: productAuthoringDraft({
+      bundle: emptyBundleForm,
+      product: emptyProductForm,
+      profile: emptyProfileForm,
+      variants: [],
+    }),
+    validators: { onChange: productAuthoringDraftSchema },
+  })
+  const currentDraft = useStore(authoringForm.store, (state) => state.values)
+  const productForm = currentDraft.product
+  const profileForm = currentDraft.profile
+  const variantProfiles = currentDraft.variants
+  const bundleForm = currentDraft.bundle
+  const setProductForm = useCallback(
+    (update: FormStateUpdater<ProductFormState>) => {
+      authoringForm.setFieldValue("product", (previous) =>
+        resolveFormStateUpdate(previous, update),
+      )
+      setFormIssues([])
+    },
+    [authoringForm],
+  )
+  const setProfileForm = useCallback(
+    (update: FormStateUpdater<ProfileFormState>) => {
+      authoringForm.setFieldValue("profile", (previous) =>
+        resolveFormStateUpdate(previous, update),
+      )
+      setFormIssues([])
+    },
+    [authoringForm],
+  )
+  const setVariantProfiles = useCallback(
+    (update: FormStateUpdater<VariantProfileFormLine[]>) => {
+      authoringForm.setFieldValue("variants", (previous) =>
+        resolveFormStateUpdate(previous, update),
+      )
+      setFormIssues([])
+    },
+    [authoringForm],
+  )
+  const setBundleForm = useCallback(
+    (update: FormStateUpdater<BundleFormState>) => {
+      authoringForm.setFieldValue("bundle", (previous) =>
+        resolveFormStateUpdate(previous, update),
+      )
+      setFormIssues([])
+    },
+    [authoringForm],
+  )
+
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
     [products, selectedProductId]
   )
+
+  const currentFingerprint = useMemo(
+    () => productAuthoringFingerprint(currentDraft),
+    [currentDraft]
+  )
+  const dirty =
+    savedFingerprint !== null && currentFingerprint !== savedFingerprint
+
+  useAdminUnsavedChanges(dirty && !saving && !reconciling)
 
   const activeReferences = useMemo(
     () => references.filter((reference) => reference.isActive),
@@ -735,56 +902,57 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
     }
   }, [productId])
 
-  const refreshReferences = useCallback(async () => {
+  const refreshReferences = useCallback(async (): Promise<{
+    artists: CatalogArtist[]
+    references: CatalogReferenceValue[]
+  }> => {
     const [artistResponse, referenceResponse] = await Promise.all([
       fetchJson<{ artists: CatalogArtist[] }>("/admin/catalog/artists?limit=500"),
       fetchJson<{ values: CatalogReferenceValue[] }>(
         "/admin/catalog/reference-values?limit=500&active=true"
       ),
     ])
-    setArtists(artistResponse.artists ?? [])
-    setReferences(referenceResponse.values ?? [])
+    const nextArtists = artistResponse.artists ?? []
+    const nextReferences = referenceResponse.values ?? []
+    setArtists(nextArtists)
+    setReferences(nextReferences)
+    return { artists: nextArtists, references: nextReferences }
   }, [])
 
   const loadProductAuthoring = useCallback(
-    async (product: AdminProduct | null) => {
+    async (
+      product: AdminProduct | null,
+      referenceValues: CatalogReferenceValue[] = references
+    ) => {
       if (!product) {
-        setProductForm(emptyProductForm)
-        setProfileForm(emptyProfileForm)
+        authoringForm.reset(
+          productAuthoringDraft({
+            bundle: emptyBundleForm,
+            product: emptyProductForm,
+            profile: emptyProfileForm,
+            variants: [],
+          }),
+        )
         setProfileVersion(0)
-        setVariantProfiles([])
-        setBundleForm(emptyBundleForm)
         setBundleVersion(0)
+        setFormIssues([])
+        setSavedFingerprint(null)
         return
       }
 
       setLoading(true)
       setError(null)
       try {
-        const [profileResponse, bundleResponse] = await Promise.all([
-          fetchJson<ProductProfileResponse>(
-            `/admin/catalog/products/${product.id}/profile`
-          ),
-          fetchJson<BundleResponse>(`/admin/catalog/products/${product.id}/bundle`),
-        ])
-        const variantResponses = await Promise.all(
-          (product.variants ?? []).map(async (variant) => ({
-            variantId: variant.id,
-            response: await fetchJson<VariantProfileResponse>(
-              `/admin/catalog/variants/${variant.id}/profile`
-            ),
-          }))
-        )
-
-        setProductForm(toProductForm(product))
-        setProfileForm(toProfileForm(profileResponse, references))
-        setProfileVersion(profileResponse.profile?.version ?? 0)
-        setBundleForm(toBundleForm(bundleResponse))
-        setBundleVersion(bundleResponse.bundle?.version ?? 0)
-        setVariantProfiles(
-          variantResponses.map(({ variantId, response }) =>
-            toVariantProfileLine(variantId, response.profile, references)
-          )
+        const forms = await fetchProductAuthoringForms({
+          product,
+          references: referenceValues,
+        })
+        authoringForm.reset(productAuthoringDraft(forms))
+        setProfileVersion(forms.profileVersion)
+        setBundleVersion(forms.bundleVersion)
+        setFormIssues([])
+        setSavedFingerprint(
+          productAuthoringFingerprint(productAuthoringDraft(forms))
         )
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to load product")
@@ -792,7 +960,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         setLoading(false)
       }
     },
-    [references]
+    [authoringForm, references]
   )
 
   const refreshAll = useCallback(async () => {
@@ -866,7 +1034,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
     (field: keyof ProductFormState) => (value: string) => {
       setProductForm((prev) => ({ ...prev, [field]: value }))
     },
-    []
+    [setProductForm]
   )
 
   const updateProfileField = useCallback(
@@ -874,7 +1042,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
       (value: string) => {
         setProfileForm((prev) => ({ ...prev, [field]: value }))
       },
-    []
+    [setProfileForm]
   )
 
   const addArtistLine = useCallback(() => {
@@ -891,7 +1059,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         },
       ],
     }))
-  }, [])
+  }, [setProfileForm])
 
   const updateArtistLine = useCallback(
     (key: string, patch: Partial<ArtistFormLine>) => {
@@ -902,7 +1070,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         ),
       }))
     },
-    []
+    [setProfileForm]
   )
 
   const removeArtistLine = useCallback((key: string) => {
@@ -910,7 +1078,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
       ...prev,
       artists: prev.artists.filter((line) => line.key !== key),
     }))
-  }, [])
+  }, [setProfileForm])
 
   const addReferenceLine = useCallback((kind: ReferenceKind = "genre") => {
     setProfileForm((prev) => ({
@@ -925,7 +1093,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         },
       ],
     }))
-  }, [])
+  }, [setProfileForm])
 
   const updateReferenceLine = useCallback(
     (key: string, patch: Partial<ReferenceFormLine>) => {
@@ -936,7 +1104,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         ),
       }))
     },
-    []
+    [setProfileForm]
   )
 
   const removeReferenceLine = useCallback((key: string) => {
@@ -944,7 +1112,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
       ...prev,
       references: prev.references.filter((line) => line.key !== key),
     }))
-  }, [])
+  }, [setProfileForm])
 
   const updateVariantLine = useCallback(
     (variantId: string, patch: Partial<VariantProfileFormLine>) => {
@@ -954,14 +1122,14 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         )
       )
     },
-    []
+    [setVariantProfiles]
   )
 
   const updateBundleField = useCallback(
     (field: keyof Omit<BundleFormState, "components">, value: string | boolean) => {
       setBundleForm((prev) => ({ ...prev, [field]: value }))
     },
-    []
+    [setBundleForm]
   )
 
   const addBundleComponent = useCallback(() => {
@@ -980,7 +1148,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         },
       ],
     }))
-  }, [])
+  }, [setBundleForm])
 
   const updateBundleComponent = useCallback(
     (key: string, patch: Partial<BundleComponentFormLine>) => {
@@ -991,7 +1159,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         ),
       }))
     },
-    []
+    [setBundleForm]
   )
 
   const removeBundleComponent = useCallback((key: string) => {
@@ -999,7 +1167,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
       ...prev,
       components: prev.components.filter((line) => line.key !== key),
     }))
-  }, [])
+  }, [setBundleForm])
 
   const selectComponentProduct = useCallback(
     (key: string, productId: string) => {
@@ -1020,6 +1188,13 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
     if (!selectedProduct) {
       return
     }
+    const nextIssues = productAuthoringValidationIssues(currentDraft)
+    setFormIssues(nextIssues)
+    if (nextIssues.length > 0) {
+      requestProductAuthoringIssueFocus(nextIssues)
+      return
+    }
+    const desiredFingerprint = productAuthoringFingerprint(currentDraft)
     setSaving(true)
     setError(null)
     setNotice(null)
@@ -1173,21 +1348,73 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
         })
       }
 
-      const refreshedProducts = await refreshProducts()
-      await refreshReferences()
+      const [refreshedProducts, refreshedCatalog] = await Promise.all([
+        refreshProducts(),
+        refreshReferences(),
+      ])
       await loadProductAuthoring(
         refreshedProducts.find((product) => product.id === selectedProduct.id) ??
-          selectedProduct
+          selectedProduct,
+        refreshedCatalog.references
       )
       setNotice("Saved catalog authoring changes.")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to save product")
+      const failureMessage =
+        err instanceof Error ? err.message : "Unable to save product"
+      setReconciling(true)
+      try {
+        const [refreshedProducts, refreshedCatalog] = await Promise.all([
+          refreshProducts(),
+          refreshReferences(),
+        ])
+        const refreshedProduct =
+          refreshedProducts.find(
+            (product) => product.id === selectedProduct.id
+          ) ?? selectedProduct
+        const snapshot = await fetchProductAuthoringForms({
+          product: refreshedProduct,
+          references: refreshedCatalog.references,
+        })
+        const snapshotFingerprint = productAuthoringFingerprint(
+          productAuthoringDraft(snapshot)
+        )
+        setProfileVersion(snapshot.profileVersion)
+        setBundleVersion(snapshot.bundleVersion)
+        setVariantProfiles((current) =>
+          current.map((variant) => ({
+            ...variant,
+            version:
+              snapshot.variants.find(
+                (candidate) => candidate.variantId === variant.variantId
+              )?.version ?? variant.version,
+          }))
+        )
+        setSavedFingerprint(snapshotFingerprint)
+        if (snapshotFingerprint === desiredFingerprint) {
+          authoringForm.reset(productAuthoringDraft(snapshot))
+          setFormIssues([])
+          setError(null)
+          setNotice(
+            "Saved catalog authoring changes; confirmed after checking the server."
+          )
+        } else {
+          setError(
+            `${failureMessage} Some sections may already be saved. Server versions were refreshed; review the remaining unsaved changes before retrying.`
+          )
+        }
+      } catch {
+        setError(failureMessage)
+      } finally {
+        setReconciling(false)
+      }
     } finally {
       setSaving(false)
     }
   }, [
     bundleForm,
     bundleVersion,
+    authoringForm,
+    currentDraft,
     loadProductAuthoring,
     productForm,
     profileForm,
@@ -1201,6 +1428,21 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
   const defaultEditorHref = selectedProduct
     ? `/products/${selectedProduct.id}`
     : "/products"
+  const busy = loading || saving || reconciling
+  const saveState: AdminSaveState = reconciling
+    ? "reconciling"
+    : saving
+      ? "saving"
+      : error
+        ? "error"
+        : dirty
+          ? "dirty"
+          : savedFingerprint
+            ? "saved"
+            : "idle"
+  const handleRefreshWorkspace = useCallback(() => {
+    void refreshWorkspace()
+  }, [refreshWorkspace])
 
   return (
     <div className="flex min-w-0 flex-col gap-y-6">
@@ -1218,9 +1460,10 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
+              disabled={busy}
               type="button"
               variant="secondary"
-              onClick={() => void refreshWorkspace()}
+              onClick={handleRefreshWorkspace}
             >
               Refresh
             </Button>
@@ -1232,14 +1475,19 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
           </div>
         </div>
         {error ? (
-          <div className="rounded-md border border-ui-border-error bg-ui-bg-error px-3 py-2">
-            <Text size="small" className="text-ui-fg-error">
-              {error}
-            </Text>
-          </div>
+          <AdminRetryState
+            message={error}
+            onRetry={handleRefreshWorkspace}
+            retrying={busy}
+            title="Catalog changes need attention"
+          />
         ) : null}
         {notice ? (
-          <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-3 py-2">
+          <div
+            aria-live="polite"
+            className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-3 py-2"
+            role="status"
+          >
             <Text size="small" className="text-ui-fg-base">
               {notice}
             </Text>
@@ -1323,14 +1571,35 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                   >
                     Default Medusa editor
                   </Link>
-                  <Button type="button" disabled={saving || loading} onClick={saveProduct}>
-                    {saving ? "Saving..." : "Save authoring"}
+                  <Button
+                    disabled={busy || !dirty}
+                    isLoading={saving || reconciling}
+                    onClick={saveProduct}
+                    type="button"
+                  >
+                    Save changes
                   </Button>
                 </div>
               </div>
 
+              <div className="space-y-4 border-b border-ui-border-base p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Text className="text-ui-fg-subtle" size="small">
+                    Work through one customer-facing task at a time. Native
+                    price, inventory, and fulfillment remain in Medusa.
+                  </Text>
+                  <AdminFormSaveState state={saveState} />
+                </div>
+                <AdminTaskNavigation items={productAuthoringTasks} />
+                <AdminFormErrorSummary issues={formIssues} />
+              </div>
+
               <div className="min-w-0 space-y-8 p-5">
-                <section className="space-y-4">
+                <section
+                  className="scroll-mt-24 space-y-4 outline-none"
+                  id="product-authoring-commerce"
+                  tabIndex={-1}
+                >
                   <div className="flex items-center gap-2">
                     <PencilSquare className="h-4 w-4 text-ui-fg-subtle" />
                     <Heading level="h3">Medusa product</Heading>
@@ -1340,6 +1609,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                       <Label>Title</Label>
                       <Input
                         aria-label="Title"
+                        id="product-authoring-title"
                         value={productForm.title}
                         onChange={(event) => updateProductField("title")(readValue(event))}
                       />
@@ -1348,6 +1618,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                       <Label>Handle</Label>
                       <Input
                         aria-label="Handle"
+                        id="product-authoring-handle"
                         value={productForm.handle}
                         onChange={(event) => updateProductField("handle")(readValue(event))}
                       />
@@ -1383,7 +1654,11 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                   </div>
                 </section>
 
-                <section className="space-y-4">
+                <section
+                  className="scroll-mt-24 space-y-4 outline-none"
+                  id="product-authoring-profile"
+                  tabIndex={-1}
+                >
                   <Heading level="h3">Catalog profile</Heading>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
@@ -1400,6 +1675,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                       <Label>Label/source</Label>
                       <select
                         aria-label="Label or source"
+                        id="product-authoring-label"
                         value={profileForm.labelId}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
@@ -1434,6 +1710,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                       <Label>Product type</Label>
                       <select
                         aria-label="Product type"
+                        id="product-authoring-product-type"
                         value={profileForm.productTypeId}
                         onChange={(event) =>
                           setProfileForm((prev) => ({
@@ -1480,6 +1757,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                         <Label>Release year</Label>
                         <Input
                           aria-label="Release year"
+                          id="product-authoring-release-year"
                           value={profileForm.releaseYear}
                           onChange={(event) =>
                             updateProfileField("releaseYear")(readValue(event))
@@ -1508,7 +1786,11 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                   </div>
                 </section>
 
-                <section className="space-y-4">
+                <section
+                  className="scroll-mt-24 space-y-4 outline-none"
+                  id="product-authoring-artists"
+                  tabIndex={-1}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <Heading level="h3">Artists</Heading>
                     <Button type="button" size="small" variant="secondary" onClick={addArtistLine}>
@@ -1586,7 +1868,11 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                   </div>
                 </section>
 
-                <section className="space-y-4">
+                <section
+                  className="scroll-mt-24 space-y-4 outline-none"
+                  id="product-authoring-classification"
+                  tabIndex={-1}
+                >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <Heading level="h3">Genres, tags, and controlled values</Heading>
                     <div className="flex flex-wrap gap-2">
@@ -1684,13 +1970,18 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                   </div>
                 </section>
 
-                <section className="space-y-4">
+                <section
+                  className="scroll-mt-24 space-y-4 outline-none"
+                  id="product-authoring-structured"
+                  tabIndex={-1}
+                >
                   <Heading level="h3">Structured release fields</Heading>
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Tracklist JSON</Label>
                       <Textarea
                         aria-label="Tracklist JSON"
+                        id="product-authoring-tracklist"
                         rows={8}
                         value={profileForm.tracklistJson}
                         onChange={(event) =>
@@ -1702,6 +1993,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                       <Label>Credits JSON</Label>
                       <Textarea
                         aria-label="Credits JSON"
+                        id="product-authoring-credits"
                         rows={8}
                         value={profileForm.creditsJson}
                         onChange={(event) =>
@@ -1713,6 +2005,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                       <Label>Pressing notes JSON</Label>
                       <Textarea
                         aria-label="Pressing notes JSON"
+                        id="product-authoring-pressing-notes"
                         rows={8}
                         value={profileForm.pressingNotesJson}
                         onChange={(event) =>
@@ -1724,6 +2017,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                       <Label>Merch details JSON</Label>
                       <Textarea
                         aria-label="Merch details JSON"
+                        id="product-authoring-merch-details"
                         rows={8}
                         value={profileForm.merchDetailsJson}
                         onChange={(event) =>
@@ -1734,7 +2028,11 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                   </div>
                 </section>
 
-                <section className="min-w-0 space-y-4">
+                <section
+                  className="min-w-0 scroll-mt-24 space-y-4 outline-none"
+                  id="product-authoring-variants"
+                  tabIndex={-1}
+                >
                   <Heading level="h3">Variants</Heading>
                   <div className="min-w-0 space-y-4">
                     {(selectedProduct.variants ?? []).map((variant) => {
@@ -1940,7 +2238,11 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                   </div>
                 </section>
 
-                <section className="space-y-4">
+                <section
+                  className="scroll-mt-24 space-y-4 outline-none"
+                  id="product-authoring-bundle"
+                  tabIndex={-1}
+                >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <Heading level="h3">Bundle</Heading>
                     <label className="flex items-center gap-2 text-sm text-ui-fg-base">
@@ -2210,6 +2512,29 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
                     </div>
                   ) : null}
                 </section>
+
+                <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-md border border-ui-border-base bg-ui-bg-base/95 p-4 shadow-elevation-flyout backdrop-blur sm:flex-row sm:items-center sm:justify-between motion-reduce:backdrop-blur-none">
+                  <div>
+                    <Text className="font-medium" size="small">
+                      Product authoring
+                    </Text>
+                    <AdminFormSaveState state={saveState} />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="small" variant="secondary">
+                      <Link to={defaultEditorHref}>Default Medusa editor</Link>
+                    </Button>
+                    <Button
+                      disabled={busy || !dirty}
+                      isLoading={saving || reconciling}
+                      onClick={saveProduct}
+                      size="small"
+                      type="button"
+                    >
+                      Save changes
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
