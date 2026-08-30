@@ -3,8 +3,8 @@ import "server-only"
 import type { HttpTypes } from "@medusajs/types"
 
 import type { CheckoutReceipt } from "@/features/checkout/types/checkout"
-import { createUpstreamHeaders } from "@/lib/http/correlation"
-import { medusa } from "@/lib/medusa/client"
+import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
 
 const ORDER_RECEIPT_FIELDS = [
   "id",
@@ -21,8 +21,6 @@ const ORDER_RECEIPT_FIELDS = [
   "*shipping_address",
   "*shipping_methods",
 ].join(",")
-
-const ORDER_RECEIPT_TIMEOUT_MS = 8_000
 
 const finiteAmount = (value: number): number => {
   if (!Number.isFinite(value) || value < 0) {
@@ -123,20 +121,17 @@ export const getOrderReceipt = async (
   orderId: string,
   request?: Request
 ): Promise<CheckoutReceipt> => {
-  const { order } = await medusa.client.fetch<HttpTypes.StoreOrderResponse>(
-    `/store/orders/${encodeURIComponent(orderId)}`,
-    {
-      method: "GET",
-      query: { fields: ORDER_RECEIPT_FIELDS },
-      ...(request
-        ? {
-            headers: Object.fromEntries(
-              createUpstreamHeaders(request).entries()
-            ),
-          }
-        : {}),
-      signal: AbortSignal.timeout(ORDER_RECEIPT_TIMEOUT_MS),
-    }
-  )
+  const path = `/store/orders/${encodeURIComponent(orderId)}`
+  const init = {
+    method: "GET" as const,
+    query: { fields: ORDER_RECEIPT_FIELDS },
+  }
+  const { order } = request
+    ? await correlatedMedusaFetch<HttpTypes.StoreOrderResponse>(
+        request,
+        path,
+        init
+      )
+    : await fetchMedusaStoreRead<HttpTypes.StoreOrderResponse>(path, init)
   return receiptFromOrder(order)
 }

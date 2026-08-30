@@ -2,11 +2,15 @@ import type { HttpTypes } from "@medusajs/types"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const medusaMocks = vi.hoisted(() => ({
-  fetch: vi.fn(),
+  correlatedRead: vi.fn(),
+  read: vi.fn(),
 }))
 
-vi.mock("@/lib/medusa/client", () => ({
-  medusa: { client: { fetch: medusaMocks.fetch } },
+vi.mock("@/lib/medusa/correlated-client", () => ({
+  correlatedMedusaFetch: medusaMocks.correlatedRead,
+}))
+vi.mock("@/lib/medusa/read-client", () => ({
+  fetchMedusaStoreRead: medusaMocks.read,
 }))
 
 import { getOrderReceipt } from "@/features/checkout/server/order-receipt"
@@ -51,18 +55,17 @@ const order = {
 describe("order receipt projection", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    medusaMocks.fetch.mockResolvedValue({ order })
+    medusaMocks.read.mockResolvedValue({ order })
   })
 
   it("projects only customer-facing receipt fields", async () => {
     const receipt = await getOrderReceipt("order_01K123ABC")
 
-    const [path, options] = medusaMocks.fetch.mock.calls[0] as unknown as [
+    const [path, options] = medusaMocks.read.mock.calls[0] as unknown as [
       string,
       {
         method: string
         query: { fields: string }
-        signal: AbortSignal
       },
     ]
     expect(path).toBe("/store/orders/order_01K123ABC")
@@ -71,7 +74,6 @@ describe("order receipt projection", () => {
     expect(options.query.fields).toContain("item_subtotal")
     expect(options.query.fields).toContain("discount_subtotal")
     expect(options.query.fields).toContain("shipping_subtotal")
-    expect(options.signal).toBeInstanceOf(AbortSignal)
     expect(receipt).toMatchObject({
       orderNumber: "1042",
       email: "buyer@example.test",
@@ -87,8 +89,24 @@ describe("order receipt projection", () => {
     expect(JSON.stringify(receipt)).not.toContain("order_01K123ABC")
   })
 
+  it("uses the incoming request cancellation and correlation boundary", async () => {
+    const request = new Request("https://store.test/api/checkout/confirmation")
+    medusaMocks.correlatedRead.mockResolvedValue({ order })
+
+    await expect(
+      getOrderReceipt("order_01K123ABC", request)
+    ).resolves.toMatchObject({ orderNumber: "1042" })
+
+    expect(medusaMocks.correlatedRead).toHaveBeenCalledWith(
+      request,
+      "/store/orders/order_01K123ABC",
+      expect.objectContaining({ method: "GET" })
+    )
+    expect(medusaMocks.read).not.toHaveBeenCalled()
+  })
+
   it("rejects unsupported currency rather than misformatting money", async () => {
-    medusaMocks.fetch.mockResolvedValue({
+    medusaMocks.read.mockResolvedValue({
       order: { ...order, currency_code: "eur" },
     })
 
@@ -98,7 +116,7 @@ describe("order receipt projection", () => {
   })
 
   it("rejects invalid line-item quantities", async () => {
-    medusaMocks.fetch.mockResolvedValue({
+    medusaMocks.read.mockResolvedValue({
       order: {
         ...order,
         items: [{ ...order.items?.[0], quantity: 0 }],

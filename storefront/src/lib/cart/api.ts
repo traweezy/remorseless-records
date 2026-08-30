@@ -7,6 +7,8 @@ import { stripePaymentSessionData } from "@/lib/cart/stripe-payment-data"
 import type { StoreCartAddressInput } from "@/lib/cart/types"
 import { createUpstreamHeaders } from "@/lib/http/correlation"
 import { medusa } from "@/lib/medusa/client"
+import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
 import { resolveRegionId } from "@/lib/regions"
 
 const CART_FIELDS = [
@@ -53,17 +55,33 @@ const CART_UPSTREAM_TIMEOUT_MS = 8_000
 const CART_COMPLETION_TIMEOUT_MS = 20_000
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe"
 
-const cartRequest = <T>(
+type CartReadInit = Omit<FetchArgs, "body" | "method" | "signal">
+type CartMutationInit = Omit<FetchArgs, "method" | "signal"> & {
+  method: "DELETE" | "PATCH" | "POST" | "PUT"
+}
+
+const cartReadRequest = <T>(
   path: string,
-  init?: Omit<FetchArgs, "signal">,
+  init: CartReadInit,
+  request?: Request
+): Promise<T> => {
+  const readInit = { ...init, method: "GET" as const }
+  return request
+    ? correlatedMedusaFetch<T>(request, path, readInit)
+    : fetchMedusaStoreRead<T>(path, readInit)
+}
+
+const cartMutationRequest = <T>(
+  path: string,
+  init: CartMutationInit,
   timeoutMs = CART_UPSTREAM_TIMEOUT_MS,
   request?: Request
 ): Promise<T> => {
   const headers = request
     ? Object.fromEntries(
-        createUpstreamHeaders(request, init?.headers as HeadersInit).entries()
+        createUpstreamHeaders(request, init.headers as HeadersInit).entries()
       )
-    : init?.headers
+    : init.headers
   return medusa.client.fetch<T>(path, {
     ...init,
     ...(headers ? { headers } : {}),
@@ -76,7 +94,7 @@ export const createCart = async (
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
   const resolvedRegionId = regionId ?? (await resolveRegionId(request))
-  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
     "/store/carts",
     {
       method: "POST",
@@ -93,10 +111,9 @@ export const getCart = async (
   cartId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+  const { cart } = await cartReadRequest<HttpTypes.StoreCartResponse>(
     `/store/carts/${cartId}`,
     { query: { fields: CART_FIELDS } },
-    CART_UPSTREAM_TIMEOUT_MS,
     request
   )
   return cart
@@ -108,7 +125,7 @@ export const addLineItem = async (
   quantity: number,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
     `/store/carts/${cartId}/line-items`,
     {
       method: "POST",
@@ -128,7 +145,7 @@ export const updateLineItem = async (
   quantity: number,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
     `/store/carts/${cartId}/line-items/${lineItemId}`,
     {
       method: "POST",
@@ -147,15 +164,16 @@ export const removeLineItem = async (
   lineItemId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const response = await cartRequest<HttpTypes.StoreLineItemDeleteResponse>(
-    `/store/carts/${cartId}/line-items/${lineItemId}`,
-    {
-      method: "DELETE",
-      query: { fields: CART_FIELDS },
-    },
-    CART_UPSTREAM_TIMEOUT_MS,
-    request
-  )
+  const response =
+    await cartMutationRequest<HttpTypes.StoreLineItemDeleteResponse>(
+      `/store/carts/${cartId}/line-items/${lineItemId}`,
+      {
+        method: "DELETE",
+        query: { fields: CART_FIELDS },
+      },
+      CART_UPSTREAM_TIMEOUT_MS,
+      request
+    )
 
   const parent = response.parent
   if (!parent) {
@@ -170,7 +188,7 @@ export const setCartEmail = async (
   email: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
     `/store/carts/${cartId}`,
     {
       method: "POST",
@@ -201,7 +219,7 @@ export const setCartAddresses = async (
     payload.billing_address = addresses.billing_address
   }
 
-  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
     `/store/carts/${cartId}`,
     {
       method: "POST",
@@ -219,14 +237,14 @@ export const listShippingOptions = async (
   cartId: string,
   request?: Request
 ): Promise<HttpTypes.StoreShippingOptionListResponse> => {
-  const response = await cartRequest<HttpTypes.StoreShippingOptionListResponse>(
-    "/store/shipping-options",
-    {
-      query: { cart_id: cartId },
-    },
-    CART_UPSTREAM_TIMEOUT_MS,
-    request
-  )
+  const response =
+    await cartReadRequest<HttpTypes.StoreShippingOptionListResponse>(
+      "/store/shipping-options",
+      {
+        query: { cart_id: cartId },
+      },
+      request
+    )
 
   const resolved = await Promise.allSettled(
     (response.shipping_options ?? []).map(async (option) => {
@@ -235,7 +253,7 @@ export const listShippingOptions = async (
       }
 
       const calculated =
-        await cartRequest<HttpTypes.StoreShippingOptionResponse>(
+        await cartMutationRequest<HttpTypes.StoreShippingOptionResponse>(
           `/store/shipping-options/${option.id}/calculate`,
           {
             method: "POST",
@@ -278,7 +296,7 @@ export const addShippingMethod = async (
   optionId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const { cart } = await cartRequest<HttpTypes.StoreCartResponse>(
+  const { cart } = await cartMutationRequest<HttpTypes.StoreCartResponse>(
     `/store/carts/${cartId}/shipping-methods`,
     {
       method: "POST",
@@ -296,7 +314,7 @@ export const calculateTaxes = async (
   cartId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCart> => {
-  const response = await cartRequest<{ cart: HttpTypes.StoreCart }>(
+  const response = await cartMutationRequest<{ cart: HttpTypes.StoreCart }>(
     `/store/carts/${cartId}/taxes`,
     {
       method: "POST",
@@ -340,12 +358,11 @@ export const initiatePaymentSession = async (
   }
 
   const { payment_providers } =
-    await cartRequest<HttpTypes.StorePaymentProviderListResponse>(
+    await cartReadRequest<HttpTypes.StorePaymentProviderListResponse>(
       "/store/payment-providers",
       {
         query: { region_id: regionId },
       },
-      CART_UPSTREAM_TIMEOUT_MS,
       request
     )
 
@@ -361,7 +378,7 @@ export const initiatePaymentSession = async (
   let paymentCollectionId = cart.payment_collection?.id
   if (!paymentCollectionId) {
     const { payment_collection } =
-      await cartRequest<HttpTypes.StorePaymentCollectionResponse>(
+      await cartMutationRequest<HttpTypes.StorePaymentCollectionResponse>(
         "/store/payment-collections",
         {
           method: "POST",
@@ -374,7 +391,7 @@ export const initiatePaymentSession = async (
   }
 
   const { payment_collection } =
-    await cartRequest<HttpTypes.StorePaymentCollectionResponse>(
+    await cartMutationRequest<HttpTypes.StorePaymentCollectionResponse>(
       `/store/payment-collections/${paymentCollectionId}/payment-sessions`,
       {
         method: "POST",
@@ -409,7 +426,7 @@ export const completeCart = async (
   cartId: string,
   request?: Request
 ): Promise<HttpTypes.StoreCompleteCartResponse> =>
-  cartRequest<HttpTypes.StoreCompleteCartResponse>(
+  cartMutationRequest<HttpTypes.StoreCompleteCartResponse>(
     `/store/carts/${cartId}/complete`,
     { method: "POST" },
     CART_COMPLETION_TIMEOUT_MS,

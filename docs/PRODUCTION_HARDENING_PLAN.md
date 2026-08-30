@@ -813,14 +813,15 @@ retry without nested catalog attempts, Meilisearch and news request
 cancellation propagation, correlated Medusa Store read retry and incoming-
 request cancellation without unsafe methods, cached Medusa product,
 collection, category, region, and bundle reads through the same boundary,
-fixed-field retry events, and provider-detail redaction. Cart, checkout, and
-other mutations remain single-attempt. The generated OpenAPI check inventories
-all route sources deterministically and is wired into both the repository lint
-gate and Root CI.
+cart retrieval, shipping and payment-provider discovery, and order-receipt
+retrieval through the same boundary, fixed-field retry events, and
+provider-detail redaction. Cart, checkout, and other mutations remain
+single-attempt. The generated OpenAPI check inventories all route sources
+deterministically and is wired into both the repository lint gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
 typechecks pass. Backend passes 1,028 tests across 191 suites. Storefront passes
-654 tests across 120 files with 92.99% statement, 86.01% branch, 93.98%
+658 tests across 120 files with 92.99% statement, 86.01% branch, 93.98%
 function, and 92.94% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
 bundle is 1,702,695 gzip bytes and 6,708,946 raw bytes; all 336 Admin assets are
