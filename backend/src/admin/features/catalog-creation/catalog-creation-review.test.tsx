@@ -33,6 +33,7 @@ const completeMusicDraft = (): CatalogCreationFormValues => {
   values.offerings[0] = {
     ...values.offerings[0]!,
     priceUsd: "20.00",
+    sku: "RECORD-RED-LP",
     stockQuantity: "4",
     title: "Red LP",
   }
@@ -110,6 +111,11 @@ describe("catalog creation review", () => {
     const values = createCatalogCreationDefaults()
     values.title = "Draft release"
     values.artistName = "The Artist"
+    values.offerings[0] = {
+      ...values.offerings[0]!,
+      priceUsd: "20.00",
+      sku: "DRAFT-RELEASE-CD",
+    }
 
     expect(resolveCatalogCreationReadiness(values)).toMatchObject({
       draftReady: true,

@@ -1,11 +1,10 @@
 "use client"
 
-import { Navigate } from "react-router-dom"
-
 import {
   adminPermissionKey,
   catalogAdminActions,
 } from "../../../../lib/admin-permissions"
+import { CatalogProductCreatePage } from "../../../features/catalog-creation/catalog-product-create-page"
 
 export const handle = {
   breadcrumb: () => "Create catalog product",
@@ -13,8 +12,4 @@ export const handle = {
   seo: () => ({ title: "Create catalog product" }),
 }
 
-const LegacyCatalogProductCreateRedirect = () => (
-  <Navigate replace to="/products/create" />
-)
-
-export default LegacyCatalogProductCreateRedirect
+export default CatalogProductCreatePage

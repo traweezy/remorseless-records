@@ -41,7 +41,7 @@ export const catalogProductCreateOptionSchema = z.object({
 })
 
 export const catalogProductCreatePriceSchema = z.object({
-  amount: z.number().finite().min(0).max(10_000_000),
+  amount: z.number().finite().positive().max(10_000_000),
   currencyCode: currencyCodeSchema,
 })
 
@@ -53,7 +53,7 @@ export const catalogProductCreateVariantSchema = z.object({
     .max(100)
     .regex(/^[a-zA-Z0-9_-]+$/),
   title: z.string().trim().min(1).max(500),
-  sku: nullableTextSchema,
+  sku: z.string().trim().min(1).max(500),
   options: z.record(optionTitleSchema, optionValueSchema),
   prices: z.array(catalogProductCreatePriceSchema).min(1).max(20),
   stockQuantity: z.number().int().min(0).max(10_000_000).optional(),

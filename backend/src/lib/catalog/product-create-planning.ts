@@ -256,7 +256,7 @@ export const buildCatalogNativeProduct = (
       amount: price.amount,
       currency_code: price.currencyCode,
     })),
-    ...(variant.sku ? { sku: variant.sku } : {}),
+    sku: variant.sku,
     title: variant.title,
   })),
 })
@@ -315,10 +315,13 @@ const defaultProductTypeLabel = (
   kind: CatalogProductCreateCommandInput["kind"],
 ): string | null => {
   if (kind === "music_release") {
-    return "Music Release"
+    return "Music release"
   }
-  if (kind === "fixed_bundle" || kind === "mystery_bundle") {
-    return "Bundle"
+  if (kind === "fixed_bundle") {
+    return "Fixed bundle"
+  }
+  if (kind === "mystery_bundle") {
+    return "Mystery bundle"
   }
   return null
 }

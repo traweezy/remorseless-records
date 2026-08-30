@@ -19,13 +19,16 @@ import {
   CatalogCreationAvailability,
   type CatalogCreationAvailabilityPreview,
 } from "./catalog-creation-availability"
+import type { CatalogControlledOption } from "./catalog-controlled-input"
 import { CatalogMerchandiseTemplates } from "./catalog-merchandise-templates"
+import { CatalogMusicReleaseTemplates } from "./catalog-music-release-templates"
 import {
   catalogCreationAvailabilityPolicies,
   type CatalogCreationBundleComponent,
   type CatalogCreationFormValues,
   type CatalogCreationKind,
   type CatalogCreationMerchandiseTemplateId,
+  type CatalogCreationMusicReleaseTemplateId,
 } from "./catalog-product-create-form"
 import type { CatalogCreationProductChoiceWithStock } from "./catalog-product-create-query"
 
@@ -90,12 +93,18 @@ type CatalogCreationOfferingsStepProps = {
   choicesFetching: boolean
   choicesIsError: boolean
   choicesPending: boolean
+  formatDetailOptions: CatalogControlledOption[]
+  formatOptions: CatalogControlledOption[]
   onAddBundleComponent: () => void
   onAddOffering: () => void
+  onApplyMusicReleaseTemplate: (
+    templateId: CatalogCreationMusicReleaseTemplateId,
+  ) => void
   onApplyMerchandiseTemplate: (
     templateId: CatalogCreationMerchandiseTemplateId,
   ) => void
   onChoicesRetry: () => void
+  onFillMissingSkus: () => void
   onRemoveBundleComponent: (event: MouseEvent<HTMLButtonElement>) => void
   onRemoveOffering: (event: MouseEvent<HTMLButtonElement>) => void
   onUpdateBundleComponent: (
@@ -119,10 +128,14 @@ export const CatalogCreationOfferingsStep =
       choicesFetching,
       choicesIsError,
       choicesPending,
+      formatDetailOptions,
+      formatOptions,
       onAddBundleComponent,
       onAddOffering,
+      onApplyMusicReleaseTemplate,
       onApplyMerchandiseTemplate,
       onChoicesRetry,
+      onFillMissingSkus,
       onRemoveBundleComponent,
       onRemoveOffering,
       onUpdateBundleComponent,
@@ -134,19 +147,37 @@ export const CatalogCreationOfferingsStep =
         <Container className="p-6">
           <AdminSectionHeader
             actions={
-              <Button
-                id="catalog-create-add-offering"
-                onClick={onAddOffering}
-                size="small"
-                type="button"
-                variant="secondary"
-              >
-                Add offering
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={onFillMissingSkus}
+                  size="small"
+                  type="button"
+                  variant="secondary"
+                >
+                  Fill missing SKUs
+                </Button>
+                <Button
+                  id="catalog-create-add-offering"
+                  onClick={onAddOffering}
+                  size="small"
+                  type="button"
+                  variant="secondary"
+                >
+                  Add offering
+                </Button>
+              </div>
             }
-            description="Each row becomes a native Medusa variant with its own price and exact inventory."
+            description="Each row becomes a native Medusa variant. Customer labels, SKUs, and prices must be unique and intentional; new stock starts safely at zero."
             title="Offerings"
           />
+          {values.kind === "music_release" ? (
+            <div className="mt-5">
+              <CatalogMusicReleaseTemplates
+                currentCount={values.offerings.length}
+                onApply={onApplyMusicReleaseTemplate}
+              />
+            </div>
+          ) : null}
           {values.kind === "merch" ? (
             <div className="mt-5">
               <CatalogMerchandiseTemplates
@@ -223,6 +254,7 @@ export const CatalogCreationOfferingsStep =
                     ) : (
                       <>
                         <AdminFormField
+                          hint="Choose an existing base format so Storefront filtering stays consistent."
                           id={`offering-${offering.id}-format`}
                           label="Format"
                         >
@@ -231,12 +263,14 @@ export const CatalogCreationOfferingsStep =
                               {...control}
                               data-offering-field="format"
                               data-offering-id={offering.id}
+                              list="catalog-create-format-choices"
                               onChange={onUpdateOffering}
                               value={offering.format}
                             />
                           )}
                         </AdminFormField>
                         <AdminFormField
+                          hint={'Use a controlled detail when available, such as Black Shell, 2CD, or 12" Black.'}
                           id={`offering-${offering.id}-detail`}
                           label="Format detail"
                           optional
@@ -246,6 +280,7 @@ export const CatalogCreationOfferingsStep =
                               {...control}
                               data-offering-field="formatDetail"
                               data-offering-id={offering.id}
+                              list="catalog-create-format-detail-choices"
                               onChange={onUpdateOffering}
                               value={offering.formatDetail}
                             />
@@ -254,6 +289,7 @@ export const CatalogCreationOfferingsStep =
                       </>
                     )}
                     <AdminFormField
+                      hint="This exact label appears in the Storefront format selector. Include color or packaging when formats would otherwise look identical."
                       id={`offering-${offering.id}-title`}
                       label="Customer label"
                     >
@@ -268,9 +304,9 @@ export const CatalogCreationOfferingsStep =
                       )}
                     </AdminFormField>
                     <AdminFormField
+                      hint="Required for inventory, orders, picking, and support. Fill missing SKUs generates an editable draft from the product and offering names."
                       id={`offering-${offering.id}-sku`}
                       label="SKU"
-                      optional
                     >
                       {(control) => (
                         <Input
@@ -283,6 +319,7 @@ export const CatalogCreationOfferingsStep =
                       )}
                     </AdminFormField>
                     <AdminFormField
+                      hint="Enter the customer price in US dollars. Zero-dollar products are blocked to prevent accidental free listings."
                       id={`offering-${offering.id}-price`}
                       label="USD price"
                     >
@@ -374,6 +411,16 @@ export const CatalogCreationOfferingsStep =
               )
             })}
           </div>
+          <datalist id="catalog-create-format-choices">
+            {formatOptions.map((option) => (
+              <option key={option.id} value={option.label} />
+            ))}
+          </datalist>
+          <datalist id="catalog-create-format-detail-choices">
+            {formatDetailOptions.map((option) => (
+              <option key={option.id} value={option.label} />
+            ))}
+          </datalist>
         </Container>
 
         {values.kind === "fixed_bundle" ? (

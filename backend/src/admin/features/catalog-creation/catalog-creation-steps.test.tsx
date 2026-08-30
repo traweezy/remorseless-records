@@ -43,6 +43,8 @@ const renderBasics = (kind: CatalogCreationKind): string =>
       onTextChange={handlers.onTextChange}
       onVocabularyRetry={handlers.onVocabularyRetry}
       referenceOptions={{
+        format: [],
+        formatDetail: [],
         genre: [],
         label: [],
         merchType: [],
@@ -86,7 +88,9 @@ const offeringsHandlers = {
   onAddBundleComponent: jest.fn(),
   onAddOffering: jest.fn(),
   onApplyMerchandiseTemplate: jest.fn(),
+  onApplyMusicReleaseTemplate: jest.fn(),
   onChoicesRetry: jest.fn(),
+  onFillMissingSkus: jest.fn(),
   onRemoveBundleComponent: jest.fn(),
   onRemoveOffering: jest.fn(),
   onUpdateBundleComponent: jest.fn(),
@@ -165,6 +169,8 @@ describe("catalog creation step components", () => {
         choicesFetching={false}
         choicesIsError={false}
         choicesPending={false}
+        formatDetailOptions={[]}
+        formatOptions={[]}
         values={merchandise}
       />,
     )
@@ -206,6 +212,8 @@ describe("catalog creation step components", () => {
         choicesFetching={false}
         choicesIsError={false}
         choicesPending={false}
+        formatDetailOptions={[]}
+        formatOptions={[]}
         values={bundle}
       />,
     )
@@ -214,6 +222,33 @@ describe("catalog creation step components", () => {
     expect(bundleMarkup).toContain("Existing release")
     expect(bundleMarkup).toContain("CD · CD-1")
     expect(bundleMarkup).toContain("Used by bundle formats")
+  })
+
+  it("renders catalog-derived release accelerators and controlled choices", () => {
+    const release = createCatalogCreationDefaults("music_release")
+    const markup = renderToStaticMarkup(
+      <CatalogCreationOfferingsStep
+        {...offeringsHandlers}
+        availabilityByOfferingId={availabilityMap(release)}
+        choicesData={undefined}
+        choicesError={null}
+        choicesFetching={false}
+        choicesIsError={false}
+        choicesPending={false}
+        formatDetailOptions={[{ id: "detail_black", label: "Black Shell" }]}
+        formatOptions={[{ id: "format_cd", label: "CD" }]}
+        values={release}
+      />,
+    )
+
+    expect(markup).toContain("Start from a catalog format set")
+    expect(markup).toContain("Cassette + CD + Vinyl")
+    expect(markup).toContain("Fill missing SKUs")
+    expect(markup).toContain('value="CD"')
+    expect(markup).toContain('value="Black Shell"')
+    expect(markup).toContain("Zero-dollar products are blocked")
+    expect(markup).toContain('role="group"')
+    expect(markup).toContain("Customer availability after publish")
   })
 
   it("keeps review navigation, progress, and final actions explicit", () => {

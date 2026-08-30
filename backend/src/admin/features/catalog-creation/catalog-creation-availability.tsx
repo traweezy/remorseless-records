@@ -194,6 +194,7 @@ export const CatalogCreationAvailability = memo<{
   <div
     aria-label={`Customer availability after publish: ${availability.label}`}
     className="rounded-md border border-ui-border-base bg-ui-bg-subtle p-3"
+    role="group"
   >
     <div className="flex flex-wrap items-center justify-between gap-2">
       <Text size="xsmall" weight="plus">

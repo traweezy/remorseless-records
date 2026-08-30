@@ -1467,7 +1467,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(({
             </Button>
             {!productId ? (
               <Button asChild>
-                <Link to="/catalog/new">Create draft</Link>
+                <Link to="/products/create">Create draft</Link>
               </Button>
             ) : null}
           </div>

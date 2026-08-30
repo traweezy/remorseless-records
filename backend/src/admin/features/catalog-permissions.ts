@@ -14,6 +14,11 @@ export const catalogProductSummaryReadActions = [
   nativeAdminActions.inventoryLevel.read,
 ] as const satisfies readonly AdminPolicyAction[]
 
+export const catalogProductListGuideActions = [
+  catalogAdminActions.authoring.read,
+  nativeAdminActions.product.read,
+] as const satisfies readonly AdminPolicyAction[]
+
 export const catalogVariantProfileActions = [
   catalogAdminActions.authoring.read,
   catalogAdminActions.authoring.update,

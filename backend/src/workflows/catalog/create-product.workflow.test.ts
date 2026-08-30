@@ -54,6 +54,7 @@ const commandFixture = () => ({
         options: { Format: "LP" },
         prices: [{ amount: 20, currencyCode: "usd" }],
         profile: { format: { label: "LP" } },
+        sku: "WORKFLOW-LP",
         stockQuantity: 5,
         title: "LP",
       },

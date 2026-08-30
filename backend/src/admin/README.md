@@ -189,6 +189,36 @@ needs review, or has conflicting authorities. Informational migration work,
 such as adding native Product Types after a catalog classification is already
 unambiguous, remains visible without creating a false blocker.
 
+The native Product list shows the same whole-catalog result in a compact
+**Catalog workspace** widget. It exposes classification health, the common
+create action, and catalog review without loading Product-by-Product authoring
+queries. The widget is hidden unless the administrator has both catalog and
+native Product read access. The pinned Dashboard compatibility patch preserves
+the `.before`/`.after` injection-zone intent, so this workspace appears before
+the native Product table by default while a saved operator layout can still
+override its order.
+
+`/app/products/create` is owned by the composite catalog-creation route. The
+pinned Dashboard patch deliberately removes only Medusa 2.18's generic native
+create child route; both standard and configurable Product-list actions retain
+their upstream relative `create` link and therefore land on the guided route.
+`/app/catalog/new` remains a replace-only bookmark redirect. The repository
+`qa:dashboard-product-create` verifier fails when source or a production
+Dashboard bundle restores the competing native route.
+The same verifier also requires deterministic Dashboard widget placement in
+source, CommonJS, and ESM production bundles.
+
+The guided route is a resumable five-step workflow for music releases,
+merchandise, fixed bundles, and mystery bundles. Current-catalog release
+templates cover CD, cassette, vinyl, and the combinations used most often;
+merchandise retains size templates. Templates never infer money or inventory.
+Every native Variant requires a unique fulfillment SKU and a positive price at
+both the Admin form and API contract boundaries, while stock starts at zero.
+Controlled Product Type, Format, and Format Detail values are selected by
+label, with exact IDs reused when present. Successful creation opens the scoped
+Catalog details route instead of dropping the operator into a second generic
+form.
+
 `GET /admin/catalog/products/:product_id/authoring-view` is the consolidated,
 read-only editor contract. One request returns the native Product and Variant
 facts, all prices, controlled catalog assignments, bundle composition, managed

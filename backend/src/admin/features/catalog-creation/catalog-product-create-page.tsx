@@ -61,12 +61,15 @@ import {
   catalogCreationReleaseDatePrecisions,
   createCatalogCreationDefaults,
   createCatalogCreationMerchandiseOfferings,
+  createCatalogCreationMusicReleaseOfferings,
+  fillCatalogCreationMissingSkus,
   parseCatalogCreationDraft,
   serializeCatalogCreationDraft,
   type CatalogCreationFormValues,
   type CatalogCreationKind,
   type CatalogCreationMerchandiseTemplateId,
   type CatalogCreationMedia,
+  type CatalogCreationMusicReleaseTemplateId,
   type CatalogCreationOffering,
   type CatalogCreationReferenceChoice,
   type CatalogCreationReleaseDatePrecision,
@@ -244,7 +247,7 @@ const CatalogProductCreatePageContent = memo(() => {
       removeDraft()
       setSubmitted(true)
       setAllowNavigation(true)
-      navigate(`/products/${encodeURIComponent(result.productId)}`)
+      navigate(`/catalog/products/${encodeURIComponent(result.productId)}`)
     },
     validators: { onChange: catalogCreationFormSchema },
   })
@@ -284,6 +287,8 @@ const CatalogProductCreatePageContent = memo(() => {
           label: reference.label,
         }))
     return {
+      format: byKind("format"),
+      formatDetail: byKind("format_detail"),
       genre: byKind("genre"),
       label: byKind("label"),
       merchType: byKind("merch_type"),
@@ -572,6 +577,22 @@ const CatalogProductCreatePageContent = memo(() => {
     },
     [form, values.offerings],
   )
+
+  const applyMusicReleaseTemplate = useCallback(
+    (templateId: CatalogCreationMusicReleaseTemplateId) => {
+      form.setFieldValue(
+        "offerings",
+        createCatalogCreationMusicReleaseOfferings(templateId),
+      )
+      setStepErrors([])
+    },
+    [form],
+  )
+
+  const fillMissingSkus = useCallback(() => {
+    form.setFieldValue("offerings", fillCatalogCreationMissingSkus(values))
+    setStepErrors([])
+  }, [form, values])
 
   const removeOffering = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -937,10 +958,14 @@ const CatalogProductCreatePageContent = memo(() => {
           choicesFetching={choicesQuery.isFetching}
           choicesIsError={choicesQuery.isError}
           choicesPending={choicesQuery.isPending}
+          formatDetailOptions={referenceOptions.formatDetail}
+          formatOptions={referenceOptions.format}
           onAddBundleComponent={addBundleComponent}
           onAddOffering={addOffering}
           onApplyMerchandiseTemplate={applyMerchandiseTemplate}
+          onApplyMusicReleaseTemplate={applyMusicReleaseTemplate}
           onChoicesRetry={handleChoicesRetry}
+          onFillMissingSkus={fillMissingSkus}
           onRemoveBundleComponent={removeBundleComponent}
           onRemoveOffering={removeOffering}
           onUpdateBundleComponent={updateBundleComponent}

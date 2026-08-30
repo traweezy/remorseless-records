@@ -5,6 +5,8 @@ import {
   catalogCreationFormSchema,
   createCatalogCreationDefaults,
   createCatalogCreationMerchandiseOfferings,
+  createCatalogCreationMusicReleaseOfferings,
+  fillCatalogCreationMissingSkus,
   parseCatalogCreationDraft,
   resolveCatalogCreationHandle,
   serializeCatalogCreationDraft,
@@ -79,12 +81,25 @@ describe("catalog product creation form", () => {
 
     const merch = applyCatalogCreationKind(music, "merch")
 
-    expect(merch.productType).toBe("Merchandise")
+    expect(merch.productType).toBe("Merch")
     expect(merch.bundleComponents).toEqual([])
     expect(merch.offerings).toHaveLength(1)
     expect(merch.offerings[0]).toMatchObject({ size: "One size" })
     expect(validateCatalogCreationStep(merch, 1)).toContain(
       "Choose or enter a merchandise type.",
+    )
+  })
+
+  it("uses the exact controlled product type for every catalog kind", () => {
+    expect(createCatalogCreationDefaults("music_release").productType).toBe(
+      "Music release",
+    )
+    expect(createCatalogCreationDefaults("merch").productType).toBe("Merch")
+    expect(createCatalogCreationDefaults("fixed_bundle").productType).toBe(
+      "Fixed bundle",
+    )
+    expect(createCatalogCreationDefaults("mystery_bundle").productType).toBe(
+      "Mystery bundle",
     )
   })
 
@@ -98,7 +113,12 @@ describe("catalog product creation form", () => {
         "Choose or enter the primary artist.",
       ]),
     )
-    expect(validateCatalogCreationStep(values, 2)).toEqual([])
+    expect(validateCatalogCreationStep(values, 2)).toEqual(
+      expect.arrayContaining([
+        "Enter a price greater than $0.00 with no more than two decimals.",
+        "Enter the unique inventory SKU used for fulfillment.",
+      ]),
+    )
   })
 
   it("builds music variants, catalog fields, and exact zero stock", () => {
@@ -146,6 +166,8 @@ describe("catalog product creation form", () => {
     const values = createCatalogCreationDefaults()
     values.title = "A New Record"
     values.artistName = "The Artist"
+    values.offerings[0]!.priceUsd = "12"
+    values.offerings[0]!.sku = "RR-MEDIA-CD"
     values.media = [
       {
         altText: "Red album cover with the band logo",
@@ -207,6 +229,8 @@ describe("catalog product creation form", () => {
     values.offerings[0] = {
       ...values.offerings[0]!,
       availabilityPolicy: "preorder",
+      priceUsd: "12",
+      sku: "RR-FUTURE-LP",
       stockQuantity: "0",
     }
 
@@ -233,6 +257,8 @@ describe("catalog product creation form", () => {
     values.genre = "Death metal"
     values.releaseDate = "2026-08"
     values.releaseDatePrecision = "month"
+    values.offerings[0]!.priceUsd = "12"
+    values.offerings[0]!.sku = "RR-NEW-RECORD-LP"
 
     const request = buildCatalogProductCreateRequest(
       values,
@@ -279,6 +305,7 @@ describe("catalog product creation form", () => {
           color: "Black",
           priceUsd: "20",
           size: "S",
+          sku: "LOGO-SHIRT-S",
           title: "Small / Black",
         },
         {
@@ -287,6 +314,7 @@ describe("catalog product creation form", () => {
           id: crypto.randomUUID(),
           priceUsd: "20",
           size: "M",
+          sku: "LOGO-SHIRT-M",
           title: "Medium / Black",
         },
       ],
@@ -356,6 +384,90 @@ describe("catalog product creation form", () => {
     )
   })
 
+  it("applies the catalog's common release format sets without copied commerce state", () => {
+    let nextId = 0
+    const offerings = createCatalogCreationMusicReleaseOfferings(
+      "cassette_cd_vinyl",
+      () => `release_offering_${++nextId}`,
+    )
+
+    expect(
+      offerings.map(({ format, id, priceUsd, sku, stockQuantity, title }) => ({
+        format,
+        id,
+        priceUsd,
+        sku,
+        stockQuantity,
+        title,
+      })),
+    ).toEqual([
+      {
+        format: "Cassette",
+        id: "release_offering_1",
+        priceUsd: "",
+        sku: "",
+        stockQuantity: "0",
+        title: "Cassette",
+      },
+      {
+        format: "CD",
+        id: "release_offering_2",
+        priceUsd: "",
+        sku: "",
+        stockQuantity: "0",
+        title: "CD",
+      },
+      {
+        format: "Vinyl",
+        id: "release_offering_3",
+        priceUsd: "",
+        sku: "",
+        stockQuantity: "0",
+        title: "Vinyl",
+      },
+    ])
+  })
+
+  it("fills only missing SKUs from catalog identity fields", () => {
+    const values = createCatalogCreationDefaults("music_release")
+    values.artistName = "Vömito Mortuório"
+    values.title = "Dentro del Sarcófago"
+    values.offerings = createCatalogCreationMusicReleaseOfferings(
+      "cassette_cd",
+      () => crypto.randomUUID(),
+    )
+    values.offerings[0]!.sku = "KEEP-MANUAL-SKU"
+
+    expect(
+      fillCatalogCreationMissingSkus(values).map((offering) => offering.sku),
+    ).toEqual([
+      "KEEP-MANUAL-SKU",
+      "MUSIC_RELEASE_VOMITO_MORTUORIO_DENTRO_DEL_SARCOFAGO_CD_2",
+    ])
+  })
+
+  it("blocks zero prices and duplicate customer labels or SKUs", () => {
+    const values = createCatalogCreationDefaults("music_release")
+    values.artistName = "Artist"
+    values.title = "Record"
+    values.offerings[0]!.priceUsd = "0"
+    values.offerings[0]!.sku = "DUPLICATE"
+    values.offerings.push({
+      ...values.offerings[0]!,
+      formatDetail: "Black",
+      id: crypto.randomUUID(),
+    })
+
+    const messages = validateCatalogCreationStep(values, 2)
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        "Enter a price greater than $0.00 with no more than two decimals.",
+        "Each customer label must be unique within this product.",
+        "Each SKU must be unique within this product.",
+      ]),
+    )
+  })
+
   it("maps every fixed-bundle component to stable offering keys", () => {
     let values = applyCatalogCreationKind(
       createCatalogCreationDefaults(),
@@ -371,7 +483,10 @@ describe("catalog product creation form", () => {
     values = {
       ...values,
       title: "Format bundle",
-      offerings: [{ ...first, title: "CD bundle" }, second],
+      offerings: [
+        { ...first, priceUsd: "25", sku: "BUNDLE-CD", title: "CD bundle" },
+        { ...second, priceUsd: "35", sku: "BUNDLE-LP" },
+      ],
       bundleComponents: [
         {
           id: crypto.randomUUID(),
@@ -417,6 +532,8 @@ describe("catalog product creation form", () => {
       "Add at least one included product.",
     )
     fixed.title = "Bundle"
+    fixed.offerings[0]!.priceUsd = "20"
+    fixed.offerings[0]!.sku = "STALE-BUNDLE"
     fixed.bundleComponents = [
       {
         id: crypto.randomUUID(),

@@ -38,12 +38,12 @@ tracks what is still required before production traffic is approved.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `64a2253842acf054e3e643c9ad12468def5c18b4`.
+  `4b8908e2f5942b64c4c6a91cf1401be6162042c7`.
 - Latest documentation-bearing staging SHA accepted:
-  `64a2253842acf054e3e643c9ad12468def5c18b4`.
+  `4b8908e2f5942b64c4c6a91cf1401be6162042c7`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `2e7a3db4-f7fc-4e5a-b1a8-c46c44ac4dfa` (`SUCCESS`).
+  `1fc9e657-9f9c-42db-bb1d-4fd29ee417f2` (`SUCCESS`).
 - Application acceptance Storefront deployment:
   `e089254d-b479-4588-8b46-f13fedaf0529`
   (`SUCCESS`).
@@ -2731,40 +2731,59 @@ SLO, alert, escalation, privacy, OTLP, and first-response contract lives in
 - [x] Research Medusa 2.18 extension/form constraints, Medusa UI conventions,
       WCAG 2.2 form requirements, and inventory every project-owned Admin input
       surface in `docs/ADMIN_EXPERIENCE_REWORK.md`.
-- [ ] Establish the task-oriented Catalog, Content, and Operations information
+- [x] Establish the task-oriented Catalog, Content, and Operations information
       architecture with needs-attention, common-action, recent-change, and
       recovery/help priorities.
-- [ ] Build shared schema, field, hint/error, validation-summary, error-focus,
+- [x] Build shared schema, field, hint/error, validation-summary, error-focus,
       pending/save, unsaved-change, draft, success, and response-loss form
       primitives with accessible tests.
-- [ ] Rework composite catalog creation around safe defaults, progressive
+- [x] Rework composite catalog creation around safe defaults, progressive
       disclosure, searchable choices, plain-language units, customer-visible
       availability, resumable drafts, and final review.
-- [ ] Split and rework existing Product authoring into task-sized product,
+- [x] Split and rework existing Product authoring into task-sized product,
       variant, price, inventory, media, bundle, publication, and diagnostic
       sections without creating a second write authority.
-- [ ] Split the Product/Variant profile widget monolith into independently
+- [x] Split the Product/Variant profile widget monolith into independently
       tested query, schema, presentation, and short edit-Drawer modules.
-- [ ] Rework merchandising shelf creation/settings/product selection with
+- [x] Rework merchandising shelf creation/settings/product selection with
       persistent selection context, preview, ordering, and recovery.
-- [ ] Rework news creation/editing with one publishing model, content/media
+- [x] Rework news creation/editing with one publishing model, content/media
       preview, schedule clarity, archive/restore, and accessible error recovery.
-- [ ] Rework discography creation/editing with consistent release metadata,
+- [x] Rework discography creation/editing with consistent release metadata,
       controlled choices, cover preview/alternative text, availability, and
       archive/restore behavior.
 - [x] Integrate the audited tax collection-mode workflow and plain-language
       compliance/impact copy from ADR 0007.
-- [ ] Standardize permission-denied, empty, loading, failed, stale-version,
+- [x] Standardize permission-denied, empty, loading, failed, stale-version,
       pending, success, and incident states across all custom Admin routes.
-- [ ] Keep technical IDs and diagnostics behind disclosures while preserving
+- [x] Keep technical IDs and diagnostics behind disclosures while preserving
       exact audit/recovery data for authorized support operators.
-- [ ] Add focused component/interaction coverage for each objective and pass
+- [x] Add focused component/interaction coverage for each objective and pass
       the complete Backend lint, strict typecheck, tests, coverage, API/RBAC,
       and production Admin build gates before the section push.
 - [ ] Complete keyboard-only, screen-reader, 200% zoom, focus, contrast,
       target-size, reduced-motion, mobile, laptop, and wide-screen validation.
 - [ ] Capture and inspect real desktop screenshots of all critical Admin form
       states, then update the client and support guides with task walkthroughs.
+
+The August 30 second-pass audit makes the guided Catalog creation workflow the
+canonical native Product-list create destination and adds current-catalog
+release presets, SKU assistance, controlled Format choices, catalog-health
+guidance, and UI/API enforcement against missing SKUs or zero-dollar drafts.
+Local acceptance passes repository QA, Backend ESLint and strict typecheck, all
+214 Backend suites and 1,271 tests, the product-create vendor-boundary
+verifier, production Backend/Admin build, and the Admin bundle budget. The
+production dependency audit retains only three documented ignored moderate
+findings; Trivy reports zero high/critical dependency, misconfiguration, or
+secret findings. Exact production-bundle screenshots at 1,600×1,000 and
+760×900 show no horizontal overflow, console error, or failed response. The
+complete create surface and scoped Product-list Catalog workspace both report
+zero axe violations and zero incomplete checks after correcting the
+availability preview's group semantics. The second-pass layout audit also
+found Medusa 2.18 discarding `.before`/`.after` widget placement. The pinned
+compatibility patch and repository verifier now preserve that intent across
+source, CommonJS, and ESM bundles so catalog health precedes the Product table
+by default while saved operator layouts remain authoritative.
 
 ## Legal, accessibility, and launch acceptance
 

@@ -16,7 +16,7 @@ import CatalogMerchandisingPage, {
 } from "./catalog-merchandising/page"
 import CatalogProductCreatePage, {
   handle as createHandle,
-} from "./catalog/new/page"
+} from "./products/create/page"
 import CatalogProductEditorPage, {
   handle as editorHandle,
 } from "./catalog/products/[product_id]/page"
@@ -37,9 +37,9 @@ const protectedCatalogRoutes: readonly ProtectedCatalogRoute[] = [
     handle: createHandle,
     marker: "Build a draft through one validated workflow",
     name: "Catalog product creation",
-    path: "/catalog/new",
+    path: "/products/create",
     primaryPermission: adminPermissionKey(catalogAdminActions.authoring.create),
-    routePattern: "/catalog/new",
+    routePattern: "/products/create",
   },
   {
     Component: CatalogProductEditorPage,

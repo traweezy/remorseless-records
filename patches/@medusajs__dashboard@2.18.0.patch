@@ -1,8 +1,37 @@
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a08164058d 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d4c8ad2e9 100644
 --- a/dist/app.js
 +++ b/dist/app.js
-@@ -116865,36 +116865,7 @@ var init_product_list_table_actions = __esm({
+@@ -111811,17 +111811,25 @@ var init_layout_composer = __esm({
+           widgetsZonePrefix,
+           layout?.sections?.map((s) => s.id) ?? []
+         );
+-        const rawEntries = buildCoreEntries(coreElementsBySection);
++        const beforeWidgets = [];
++        const afterWidgets = [];
+         for (const [naturalSection, widgets] of Object.entries(naturalWidgets)) {
+           for (const w of widgets) {
+             const WidgetComponent = w.Component;
+-            rawEntries.push({
++            const entry = {
+               widgetId: w.widgetId,
+               render: (data2) => /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(WidgetComponent, { data: data2 }),
+               naturalSection
+-            });
++            };
++            const target = w.placement === "before" ? beforeWidgets : afterWidgets;
++            target.push(entry);
+           }
+         }
++        const rawEntries = [
++          ...beforeWidgets,
++          ...buildCoreEntries(coreElementsBySection),
++          ...afterWidgets
++        ];
+         const validSectionIds2 = new Set(layout?.sections.map((s) => s.id) ?? []);
+         const entriesBySection2 = buildDisplayEntries(
+           rawEntries,
+@@ -116865,36 +116873,7 @@ var init_product_list_table_actions = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next32.useTranslation)();
@@ -39,7 +68,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
        return /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(
          ActionMenu,
          {
-@@ -116918,16 +116889,7 @@ var init_product_list_table_actions = __esm({
+@@ -116918,16 +116897,7 @@ var init_product_list_table_actions = __esm({
                    }
                  ]
                }
@@ -57,7 +86,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
            ]
          }
        );
-@@ -117626,7 +117588,6 @@ var init_product_list_table = __esm({
+@@ -117626,7 +117596,6 @@ var init_product_list_table = __esm({
            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Heading, { level: "h1", children: t5("products.domain") }),
            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "flex items-center justify-center gap-x-2", children: [
              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: `export${location.search}`, children: t5("actions.export") }) }),
@@ -65,7 +94,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: "create", children: t5("actions.create") }) })
            ] })
          ] }),
-@@ -123459,7 +123420,6 @@ var init_configurable_product_list_table = __esm({
+@@ -123459,7 +123428,6 @@ var init_configurable_product_list_table = __esm({
              heading: t5("products.domain"),
              actions: [
                { label: t5("actions.export"), to: `export${location.search}` },
@@ -73,7 +102,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
                { label: t5("actions.create"), to: "create" }
              ]
            }
-@@ -134419,35 +134379,9 @@ var init_product_general_section = __esm({
+@@ -134419,35 +134387,9 @@ var init_product_general_section = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next88.useTranslation)();
@@ -109,7 +138,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
        return /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)(import_ui99.Container, { className: "divide-y p-0", children: [
          /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
            /* @__PURE__ */ (0, import_jsx_runtime136.jsx)(import_ui99.Heading, { children: product.title }),
-@@ -134476,16 +134410,7 @@ var init_product_general_section = __esm({
+@@ -134476,16 +134418,7 @@ var init_product_general_section = __esm({
                          }
                        ]
                      }
@@ -127,7 +156,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
                  ]
                }
              )
-@@ -135147,8 +135072,6 @@ var init_product_variant_section = __esm({
+@@ -135147,8 +135080,6 @@ var init_product_variant_section = __esm({
      useColumns4 = (product) => {
        const { t: t5 } = (0, import_react_i18next93.useTranslation)();
        const navigate = (0, import_react_router_dom38.useNavigate)();
@@ -136,7 +165,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
        const [searchParams] = (0, import_react_router_dom38.useSearchParams)();
        const tableSearchParams = (0, import_react140.useMemo)(() => {
          const filtered = new URLSearchParams();
-@@ -135159,23 +135082,6 @@ var init_product_variant_section = __esm({
+@@ -135159,23 +135090,6 @@ var init_product_variant_section = __esm({
          }
          return filtered;
        }, [searchParams]);
@@ -160,7 +189,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
        const optionColumns = (0, import_react140.useMemo)(() => {
          if (!product?.options) {
            return [];
-@@ -135232,13 +135138,6 @@ var init_product_variant_section = __esm({
+@@ -135232,13 +135146,6 @@ var init_product_variant_section = __esm({
                }
              }
            ];
@@ -174,7 +203,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
            const inventoryItemsCount = variant.inventory_items?.length || 0;
            switch (inventoryItemsCount) {
              case 0:
-@@ -135271,9 +135170,9 @@ var init_product_variant_section = __esm({
+@@ -135271,9 +135178,9 @@ var init_product_variant_section = __esm({
                });
              }
            }
@@ -186,7 +215,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
        );
        const getInventory = (0, import_react140.useCallback)(
          (variant) => {
-@@ -141169,29 +141068,8 @@ var init_loader5 = __esm({
+@@ -141169,29 +141076,8 @@ var init_loader5 = __esm({
  // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
  function VariantGeneralSection({ variant }) {
    const { t: t5 } = (0, import_react_i18next124.useTranslation)();
@@ -216,7 +245,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
    return /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)(import_ui133.Container, { className: "divide-y p-0", children: [
      /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
        /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { children: [
-@@ -141224,16 +141102,7 @@ function VariantGeneralSection({ variant }) {
+@@ -141224,16 +141110,7 @@ function VariantGeneralSection({ variant }) {
                    }
                  ]
                }
@@ -234,10 +263,14 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
            ]
          }
        ) })
-@@ -218601,10 +218470,6 @@ function getRouteMap({
-                       path: "create",
-                       lazy: () => Promise.resolve().then(() => (init_product_create2(), product_create_exports))
-                     },
+@@ -218597,14 +218474,6 @@ function getRouteMap({
+                   path: "",
+                   lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
+                   children: [
+-                    {
+-                      path: "create",
+-                      lazy: () => Promise.resolve().then(() => (init_product_create2(), product_create_exports))
+-                    },
 -                    {
 -                      path: "import",
 -                      lazy: () => Promise.resolve().then(() => (init_product_import2(), product_import_exports))
@@ -245,14 +278,51 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..6df5da736ba35d7f405c6dedf07b50a0
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
+@@ -221160,9 +221029,10 @@ var init_dashboard_app = __esm({
+       }
+       /**
+        * Returns widgets for a given base zone grouped by layout section.
+-       * The legacy `.before`/`.after` ordering suffixes are stripped and
+-       * ignored. Widgets are returned inregistration order and will be
+-       * assigned a default order of 0 in the LayoutComposer.
++       * The legacy `.before`/`.after` ordering suffixes define the widget's
++       * natural placement around core entries. Widgets are returned in
++       * registration order and will be assigned a default order of 0 in the
++       * LayoutComposer.
+        */
+       getWidgetsForSections(route, sections) {
+         const result = {};
+@@ -221170,7 +221040,9 @@ var init_dashboard_app = __esm({
+           if (!zone.startsWith(route)) {
+             continue;
+           }
+-          const suffix = zone.slice(route.length + 1).replace(/\.?(before|after)$/, "");
++          const zoneSuffix = zone.slice(route.length + 1);
++          const placement = zoneSuffix.endsWith("before") ? "before" : "after";
++          const suffix = zoneSuffix.replace(/\.?(before|after)$/, "");
+           const mainSection = sections.includes("main") ? "main" : sections[0];
+           const section = suffix || mainSection;
+           if (!result[section]) {
+@@ -221180,6 +221052,7 @@ var init_dashboard_app = __esm({
+             const sourceId = ext.widgetId ?? `${zone}:${i}`;
+             result[section].push({
+               Component: ext.Component,
++              placement,
+               // The id intentionally omits the section so a widget keeps its
+               // identity (and saved preference) when its zone moves to a different
+               // section of the same route.
 diff --git a/dist/chunk-QIJSUXW3.mjs b/dist/chunk-QIJSUXW3.mjs
-index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..19f9fb35a3e1afc8dec066b1e2e6d197a83e84f4 100644
+index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..b4ad11f79eddb01888148f6c3453c2fa72de7c06 100644
 --- a/dist/chunk-QIJSUXW3.mjs
 +++ b/dist/chunk-QIJSUXW3.mjs
-@@ -107506,10 +107506,6 @@ function getRouteMap({
-                       path: "create",
-                       lazy: () => import("./product-create-USIRFWXQ.mjs")
-                     },
+@@ -107502,14 +107502,6 @@ function getRouteMap({
+                   path: "",
+                   lazy: () => import("./product-list-KFP2GKHN.mjs"),
+                   children: [
+-                    {
+-                      path: "create",
+-                      lazy: () => import("./product-create-USIRFWXQ.mjs")
+-                    },
 -                    {
 -                      path: "import",
 -                      lazy: () => import("./product-import-ZIP6MEEQ.mjs")
@@ -260,6 +330,105 @@ index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..19f9fb35a3e1afc8dec066b1e2e6d197
                      {
                        path: "export",
                        lazy: () => import("./product-export-GZQF56AL.mjs")
+@@ -109943,9 +109935,10 @@ var DashboardApp = class {
+   }
+   /**
+    * Returns widgets for a given base zone grouped by layout section.
+-   * The legacy `.before`/`.after` ordering suffixes are stripped and
+-   * ignored. Widgets are returned inregistration order and will be
+-   * assigned a default order of 0 in the LayoutComposer.
++   * The legacy `.before`/`.after` ordering suffixes define the widget's
++   * natural placement around core entries. Widgets are returned in
++   * registration order and will be assigned a default order of 0 in the
++   * LayoutComposer.
+    */
+   getWidgetsForSections(route, sections) {
+     const result = {};
+@@ -109953,7 +109946,9 @@ var DashboardApp = class {
+       if (!zone.startsWith(route)) {
+         continue;
+       }
+-      const suffix = zone.slice(route.length + 1).replace(/\.?(before|after)$/, "");
++      const zoneSuffix = zone.slice(route.length + 1);
++      const placement = zoneSuffix.endsWith("before") ? "before" : "after";
++      const suffix = zoneSuffix.replace(/\.?(before|after)$/, "");
+       const mainSection = sections.includes("main") ? "main" : sections[0];
+       const section = suffix || mainSection;
+       if (!result[section]) {
+@@ -109963,6 +109958,7 @@ var DashboardApp = class {
+         const sourceId = ext.widgetId ?? `${zone}:${i}`;
+         result[section].push({
+           Component: ext.Component,
++          placement,
+           // The id intentionally omits the section so a widget keeps its
+           // identity (and saved preference) when its zone moves to a different
+           // section of the same route.
+diff --git a/dist/chunk-Z3OGJXAM.mjs b/dist/chunk-Z3OGJXAM.mjs
+index 3e5230d1d9e765aad336a7ada8ee7de59bfcc5d1..ac9ffd7ecc1f133c63a087d32adab614eac7cfe3 100644
+--- a/dist/chunk-Z3OGJXAM.mjs
++++ b/dist/chunk-Z3OGJXAM.mjs
+@@ -739,17 +739,25 @@ var LayoutComposerRoot = ({
+       widgetsZonePrefix,
+       layout?.sections?.map((s) => s.id) ?? []
+     );
+-    const rawEntries = buildCoreEntries(coreElementsBySection);
++    const beforeWidgets = [];
++    const afterWidgets = [];
+     for (const [naturalSection, widgets] of Object.entries(naturalWidgets)) {
+       for (const w of widgets) {
+         const WidgetComponent = w.Component;
+-        rawEntries.push({
++        const entry = {
+           widgetId: w.widgetId,
+           render: (data2) => /* @__PURE__ */ jsx4(WidgetComponent, { data: data2 }),
+           naturalSection
+-        });
++        };
++        const target = w.placement === "before" ? beforeWidgets : afterWidgets;
++        target.push(entry);
+       }
+     }
++    const rawEntries = [
++      ...beforeWidgets,
++      ...buildCoreEntries(coreElementsBySection),
++      ...afterWidgets
++    ];
+     const validSectionIds2 = new Set(layout?.sections.map((s) => s.id) ?? []);
+     const entriesBySection2 = buildDisplayEntries(
+       rawEntries,
+diff --git a/dist/components.js b/dist/components.js
+index c5e00d8ee8258b0a64c95975948c21402ec98ce5..0cca0c2a3fb2a179fdda9b216a090b02e04e8256 100644
+--- a/dist/components.js
++++ b/dist/components.js
+@@ -784,17 +784,25 @@ var LayoutComposerRoot = ({
+       widgetsZonePrefix,
+       layout?.sections?.map((s) => s.id) ?? []
+     );
+-    const rawEntries = buildCoreEntries(coreElementsBySection);
++    const beforeWidgets = [];
++    const afterWidgets = [];
+     for (const [naturalSection, widgets] of Object.entries(naturalWidgets)) {
+       for (const w of widgets) {
+         const WidgetComponent = w.Component;
+-        rawEntries.push({
++        const entry = {
+           widgetId: w.widgetId,
+           render: (data2) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(WidgetComponent, { data: data2 }),
+           naturalSection
+-        });
++        };
++        const target = w.placement === "before" ? beforeWidgets : afterWidgets;
++        target.push(entry);
+       }
+     }
++    const rawEntries = [
++      ...beforeWidgets,
++      ...buildCoreEntries(coreElementsBySection),
++      ...afterWidgets
++    ];
+     const validSectionIds2 = new Set(layout?.sections.map((s) => s.id) ?? []);
+     const entriesBySection2 = buildDisplayEntries(
+       rawEntries,
 diff --git a/dist/product-detail-7UDXNUGN.mjs b/dist/product-detail-7UDXNUGN.mjs
 index a22703f8d12bb735ac61a3d63cf54bd3dc2eaa7a..5c90bfd6682ba45d93d4e11168c68e41bbb7fbe5 100644
 --- a/dist/product-detail-7UDXNUGN.mjs
@@ -580,14 +749,116 @@ index 736e26e394ddf9ae9c9e04637cba9f12bde0a01d..e8c799ff5cd5c25a2feabceff2c2c4ea
            ]
          }
        ) })
+diff --git a/src/components/layout-composer/layout-composer.tsx b/src/components/layout-composer/layout-composer.tsx
+index 875804e3e17da3e2e8fe9c3ef4934a58e3c34840..7e551fcee196a05b2c6ef964039c154571f817e2 100644
+--- a/src/components/layout-composer/layout-composer.tsx
++++ b/src/components/layout-composer/layout-composer.tsx
+@@ -219,26 +219,34 @@ const LayoutComposerRoot = <TLayoutId extends Layouts, TData>({
+             layout?.sections?.map((s) => s.id) ?? []
+           )
+ 
+-      // Build raw entries (core + widgets) at their natural sections. Relative
+-      // placement before any user preference comes purely from the order they
+-      // are pushed here, preserved by the stable sort in `buildDisplayEntries`.
+-      // Widgets are pushed after core entries so they render after by default —
++      // Build raw entries (before widgets + core + after widgets) at their
++      // natural sections. Relative placement before any user preference comes
++      // from the order they are pushed here, preserved by the stable sort in
++      // `buildDisplayEntries`.
+       // If a configuration has been saved, newly added widget or core entry
+       // (which has no saved order) surfaces at the top, otherwise it will be
+       // placed at the bottom of the section.
+-      const rawEntries: RawEntry[] = buildCoreEntries(coreElementsBySection)
++      const beforeWidgets: RawEntry[] = []
++      const afterWidgets: RawEntry[] = []
+       for (const [naturalSection, widgets] of Object.entries(naturalWidgets)) {
+         for (const w of widgets) {
+           const WidgetComponent = w.Component as ComponentType<{
+             data?: unknown
+           }>
+-          rawEntries.push({
++          const entry: RawEntry = {
+             widgetId: w.widgetId,
+             render: (data) => <WidgetComponent data={data} />,
+             naturalSection,
+-          })
++          }
++          const target = w.placement === "before" ? beforeWidgets : afterWidgets
++          target.push(entry)
+         }
+       }
++      const rawEntries: RawEntry[] = [
++        ...beforeWidgets,
++        ...buildCoreEntries(coreElementsBySection),
++        ...afterWidgets,
++      ]
+ 
+       // Apply the active preference (draft when editing, persisted otherwise),
+       // keeping hidden entries with `hidden: true` so we can ghost them in edit
+diff --git a/src/components/layout-composer/types.ts b/src/components/layout-composer/types.ts
+index 46df4afa1bfdfd04a282cf54b40d401aa271365e..4cdbc3376933f41d35e0d21b6b924aff1f20a53c 100644
+--- a/src/components/layout-composer/types.ts
++++ b/src/components/layout-composer/types.ts
+@@ -36,6 +36,7 @@ export type LayoutPreference = {
+ 
+ export type WidgetRenderEntry = {
+   Component: ComponentType
++  placement: "before" | "after"
+   widgetId: string
+ }
+ export type SectionWidgetMap = Record<string, WidgetRenderEntry[]>
+diff --git a/src/dashboard-app/dashboard-app.tsx b/src/dashboard-app/dashboard-app.tsx
+index 5f57c65d6cbc055d0fffec8ab3d289c279a14900..c2b622d9d9ec03eeee9f2b592087dba70f9b16ee 100644
+--- a/src/dashboard-app/dashboard-app.tsx
++++ b/src/dashboard-app/dashboard-app.tsx
+@@ -467,9 +467,10 @@ export class DashboardApp {
+ 
+   /**
+    * Returns widgets for a given base zone grouped by layout section.
+-   * The legacy `.before`/`.after` ordering suffixes are stripped and
+-   * ignored. Widgets are returned inregistration order and will be
+-   * assigned a default order of 0 in the LayoutComposer.
++   * The legacy `.before`/`.after` ordering suffixes define the widget's
++   * natural placement around core entries. Widgets are returned in
++   * registration order and will be assigned a default order of 0 in the
++   * LayoutComposer.
+    */
+   private getWidgetsForSections(
+     route: string,
+@@ -482,9 +483,9 @@ export class DashboardApp {
+         continue
+       }
+ 
+-      const suffix = zone
+-        .slice(route.length + 1)
+-        .replace(/\.?(before|after)$/, "")
++      const zoneSuffix = zone.slice(route.length + 1)
++      const placement = zoneSuffix.endsWith("before") ? "before" : "after"
++      const suffix = zoneSuffix.replace(/\.?(before|after)$/, "")
+ 
+       const mainSection = sections.includes("main") ? "main" : sections[0]
+       const section = suffix || mainSection
+@@ -500,6 +501,7 @@ export class DashboardApp {
+         const sourceId = ext.widgetId ?? `${zone}:${i}`
+         result[section].push({
+           Component: ext.Component,
++          placement,
+           // The id intentionally omits the section so a widget keeps its
+           // identity (and saved preference) when its zone moves to a different
+           // section of the same route.
 diff --git a/src/dashboard-app/routes/get-route.map.tsx b/src/dashboard-app/routes/get-route.map.tsx
-index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..1a1a87dc382445ce8d6fa6e99dec33a5b55ccfae 100644
+index a2b3dc5ddea120bab6c99eb40b3d0c3c068285de..8284a7ad41530ba115e8b5b6cbf4a79522fef5f8 100644
 --- a/src/dashboard-app/routes/get-route.map.tsx
 +++ b/src/dashboard-app/routes/get-route.map.tsx
-@@ -44,11 +44,6 @@ export function getRouteMap({
-                       lazy: () =>
-                         import("../../routes/products/product-create"),
-                     },
+@@ -39,16 +39,6 @@ export function getRouteMap({
+                   path: "",
+                   lazy: () => import("../../routes/products/product-list"),
+                   children: [
+-                    {
+-                      path: "create",
+-                      lazy: () =>
+-                        import("../../routes/products/product-create"),
+-                    },
 -                    {
 -                      path: "import",
 -                      lazy: () =>

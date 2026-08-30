@@ -44,6 +44,7 @@ const requestBody = {
       title: "CD",
       options: { Format: "CD" },
       prices: [{ amount: 12, currencyCode: "usd" }],
+      sku: "RECORD-CD",
       stockQuantity: 4,
       profile: { format: { label: "CD" } },
     },

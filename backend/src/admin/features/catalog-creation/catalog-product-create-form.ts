@@ -170,7 +170,7 @@ export type CatalogProductCreateRequest = {
     options: Record<string, string>
     prices: Array<{ amount: number; currencyCode: "usd" }>
     profile: Record<string, unknown>
-    sku?: string
+    sku: string
     stockQuantity?: number
     title: string
   }>
@@ -187,11 +187,74 @@ export const catalogCreationKindDescriptions: Record<
   CatalogCreationKind,
   string
 > = {
-  music_release: "CD, vinyl, cassette, or digital formats from an artist.",
+  music_release:
+    "CD, cassette, vinyl, or another physical format from an artist.",
   merch: "Clothing and other physical merchandise with size or color options.",
   fixed_bundle: "A known set of products whose stock comes from its contents.",
   mystery_bundle: "A surprise assortment with its own manually counted stock.",
 }
+
+export type CatalogCreationMusicReleaseTemplate = {
+  description: string
+  formats: readonly string[]
+  id:
+    | "cd"
+    | "cassette"
+    | "vinyl"
+    | "cassette_cd"
+    | "cd_vinyl"
+    | "cassette_vinyl"
+    | "cassette_cd_vinyl"
+  label: string
+}
+
+export const catalogCreationMusicReleaseTemplates = [
+  {
+    description: "One CD offering, the most common catalog pattern.",
+    formats: ["CD"],
+    id: "cd",
+    label: "CD",
+  },
+  {
+    description: "One cassette offering.",
+    formats: ["Cassette"],
+    id: "cassette",
+    label: "Cassette",
+  },
+  {
+    description: "One vinyl offering.",
+    formats: ["Vinyl"],
+    id: "vinyl",
+    label: "Vinyl",
+  },
+  {
+    description: "Separate cassette and CD offerings.",
+    formats: ["Cassette", "CD"],
+    id: "cassette_cd",
+    label: "Cassette + CD",
+  },
+  {
+    description: "Separate CD and vinyl offerings.",
+    formats: ["CD", "Vinyl"],
+    id: "cd_vinyl",
+    label: "CD + Vinyl",
+  },
+  {
+    description: "Separate cassette and vinyl offerings.",
+    formats: ["Cassette", "Vinyl"],
+    id: "cassette_vinyl",
+    label: "Cassette + Vinyl",
+  },
+  {
+    description: "Separate cassette, CD, and vinyl offerings.",
+    formats: ["Cassette", "CD", "Vinyl"],
+    id: "cassette_cd_vinyl",
+    label: "Cassette + CD + Vinyl",
+  },
+] as const satisfies readonly CatalogCreationMusicReleaseTemplate[]
+
+export type CatalogCreationMusicReleaseTemplateId =
+  (typeof catalogCreationMusicReleaseTemplates)[number]["id"]
 
 export type CatalogCreationMerchandiseTemplate = {
   description: string
@@ -234,7 +297,7 @@ const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => 
       format: "Merch",
       formatDetail: "",
       id: key(),
-      priceUsd: "0.00",
+      priceUsd: "",
       size: "One size",
       sku: "",
       stockQuantity: "0",
@@ -248,12 +311,36 @@ const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => 
     format: title,
     formatDetail: "",
     id: key(),
-    priceUsd: "0.00",
+    priceUsd: "",
     size: "",
     sku: "",
     stockQuantity: "0",
     title,
   }
+}
+
+export const createCatalogCreationMusicReleaseOfferings = (
+  templateId: CatalogCreationMusicReleaseTemplateId,
+  createId: () => string = key,
+): CatalogCreationOffering[] => {
+  const template = catalogCreationMusicReleaseTemplates.find(
+    (candidate) => candidate.id === templateId,
+  )
+  if (!template) {
+    throw new Error(`Unknown music release offering template: ${templateId}`)
+  }
+  return template.formats.map((format) => ({
+    availabilityPolicy: "inventory_only",
+    color: "",
+    format,
+    formatDetail: "",
+    id: createId(),
+    priceUsd: "",
+    size: "",
+    sku: "",
+    stockQuantity: "0",
+    title: format,
+  }))
 }
 
 export const createCatalogCreationMerchandiseOfferings = (
@@ -284,12 +371,15 @@ export const createCatalogCreationMerchandiseOfferings = (
 
 const productTypeForKind = (kind: CatalogCreationKind): string => {
   if (kind === "merch") {
-    return "Merchandise"
+    return "Merch"
   }
-  if (kind === "fixed_bundle" || kind === "mystery_bundle") {
-    return "Bundle"
+  if (kind === "fixed_bundle") {
+    return "Fixed bundle"
   }
-  return "Music Release"
+  if (kind === "mystery_bundle") {
+    return "Mystery bundle"
+  }
+  return "Music release"
 }
 
 export const createCatalogCreationDefaults = (
@@ -337,6 +427,44 @@ export const applyCatalogCreationKind = (
   productType: productTypeForKind(kind),
 })
 
+const skuSegment = (value: string): string =>
+  value
+    .trim()
+    .toUpperCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+export const fillCatalogCreationMissingSkus = (
+  values: CatalogCreationFormValues,
+): CatalogCreationOffering[] =>
+  values.offerings.map((offering, index) => {
+    if (offering.sku.trim()) {
+      return offering
+    }
+    const identity =
+      values.kind === "music_release"
+        ? [values.artistName, values.title]
+        : [values.title]
+    const offeringIdentity =
+      values.kind === "merch"
+        ? [offering.size, offering.color]
+        : [offering.format || offering.title, offering.formatDetail]
+    const generated = [values.kind, ...identity, ...offeringIdentity]
+      .map(skuSegment)
+      .filter(Boolean)
+      .join("_")
+    const suffix = `_${index + 1}`
+    return {
+      ...offering,
+      sku: `${(generated || "CATALOG_PRODUCT").slice(
+        0,
+        500 - suffix.length,
+      )}${suffix}`,
+    }
+  })
+
 const nonnegativeIntegerString = z
   .string()
   .trim()
@@ -345,8 +473,8 @@ const moneyString = z
   .string()
   .trim()
   .refine(
-    (value) => /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) >= 0,
-    "Enter a valid non-negative amount with no more than two decimals.",
+    (value) => /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) > 0,
+    "Enter a price greater than $0.00 with no more than two decimals.",
   )
 
 const releaseDatePatterns: Record<
@@ -406,7 +534,11 @@ const offeringSchema = z.object({
   id: z.string().min(1),
   priceUsd: moneyString,
   size: z.string().trim().max(100),
-  sku: z.string().trim().max(500),
+  sku: z
+    .string()
+    .trim()
+    .min(1, "Enter the unique inventory SKU used for fulfillment.")
+    .max(500),
   stockQuantity: nonnegativeIntegerString,
   title: z.string().trim().min(1, "Give this offering a customer-facing name.").max(500),
 })
@@ -502,6 +634,8 @@ export const catalogCreationFormSchema = z
       })
     }
     const combinations = new Set<string>()
+    const customerLabels = new Set<string>()
+    const skus = new Set<string>()
     values.offerings.forEach((offering, index) => {
       if (
         offering.availabilityPolicy === "preorder" &&
@@ -552,6 +686,28 @@ export const catalogCreationFormSchema = z
         })
       }
       combinations.add(combination)
+      const customerLabel = offering.title.trim().toLowerCase()
+      if (customerLabel && customerLabels.has(customerLabel)) {
+        context.addIssue({
+          code: "custom",
+          message: "Each customer label must be unique within this product.",
+          path: ["offerings", index, "title"],
+        })
+      }
+      if (customerLabel) {
+        customerLabels.add(customerLabel)
+      }
+      const sku = offering.sku.trim().toLowerCase()
+      if (sku && skus.has(sku)) {
+        context.addIssue({
+          code: "custom",
+          message: "Each SKU must be unique within this product.",
+          path: ["offerings", index, "sku"],
+        })
+      }
+      if (sku) {
+        skus.add(sku)
+      }
     })
     if (values.kind === "merch") {
       const usesColor = values.offerings.some((offering) => offering.color)
@@ -759,7 +915,7 @@ export const buildCatalogProductCreateRequest = (
       preorderReleaseDate:
         offering.availabilityPolicy === "preorder" ? releaseDate : null,
     },
-    ...(offering.sku ? { sku: offering.sku } : {}),
+    sku: offering.sku,
     ...(values.kind === "fixed_bundle"
       ? {}
       : { stockQuantity: Number(offering.stockQuantity) }),

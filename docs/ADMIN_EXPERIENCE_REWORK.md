@@ -31,10 +31,15 @@ errors for long and multi-step forms.
 Primary references:
 
 - [Medusa Admin development and customization limits](https://docs.medusajs.com/learn/fundamentals/admin)
+- [Medusa Admin custom UI routes](https://docs.medusajs.com/learn/fundamentals/admin/ui-routes)
+- [Medusa Product creation](https://docs.medusajs.com/user-guide/products/create)
+- [Medusa Product variants](https://docs.medusajs.com/user-guide/products/variants)
 - [Medusa Admin form conventions](https://docs.medusajs.com/resources/admin-components/components/forms)
 - [Medusa UI components](https://docs.medusajs.com/ui)
+- [W3C multi-page forms](https://www.w3.org/WAI/tutorials/forms/multi-page/)
 - [WCAG 2.2 labels and instructions](https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html)
 - [WCAG 2.2 error identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification.html)
+- [WCAG 2.2 error suggestion](https://www.w3.org/WAI/WCAG22/Understanding/error-suggestion.html)
 - [WCAG 2.2 focus appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html)
 
 ## Baseline surface inventory
@@ -196,6 +201,66 @@ in commit `b79d4d4c1b512086775aeab85db8b2e436faaeb2`:
   reconciliation; and
 - a confirmation-first Media Cleanup workflow that makes reversible quarantine
   distinct from physical deletion.
+
+### Catalog-creation second-pass audit — August 30, 2026
+
+The follow-up audit compared the actual 462-Product staging catalog, the
+Storefront product and filter contracts, the native Medusa create experience,
+and every custom Admin route. The catalog contains 442 music releases and 585
+Variants; all Product options are **Format**, all 585 Variants have SKUs, and
+none of the 584 priced Variants is free. CD, cassette, vinyl, and their common
+two- and three-format combinations dominate the sellable release shapes. Those
+facts make an open-ended native Product form, optional SKU, and a `$0.00`
+default unsafe for this client.
+
+Medusa's stock creation route is intentionally generic. Its Product-list
+action still links to the stable `/products/create` path, but the pinned
+Dashboard route map no longer registers the competing generic child. The
+project-owned five-step workflow now owns that canonical path; the former
+`/catalog/new` bookmark redirects without adding history. This stays inside
+Medusa's supported custom-route model while a source-and-production-bundle
+verifier detects vendor drift.
+
+The guided workflow now adds confirmation-first CD, cassette, vinyl, and
+combined release templates; controlled Format and Format Detail suggestions;
+exact controlled Product Type defaults for all four kinds; generated but
+editable missing SKUs; positive-price and unique customer-label/SKU gates; and
+direct navigation into scoped Catalog details after draft creation. The API
+contract independently requires the same SKU and positive-price invariants, so
+UI bypasses cannot create an accidental free or unfulfillable Product.
+
+The native Product list also receives a permission-aware **Catalog workspace**
+summary. It makes whole-catalog health, creation, and review visible at the
+operator's normal starting point instead of hiding the audit in a script or
+support-only route. A pinned Dashboard compatibility correction preserves the
+documented `.before`/`.after` widget intent, placing this workspace ahead of
+the Product table by default without overriding a saved operator layout.
+Informational native Product Type migration remains
+non-blocking: controlled catalog Product Type is the current authoring
+authority, and the audit does not create a second editable taxonomy merely to
+silence historical cutover notes.
+
+Research for this pass also uses Medusa's current custom-route and Product
+creation documentation plus W3C multi-page-form, labels/instructions, error
+identification, and error-suggestion guidance. The chosen pattern preserves a
+clear step count, safe back navigation and browser recovery, field-local
+instructions, linked error summaries, and a final review instead of placing a
+catalog-sized task in a modal.
+
+Rendered acceptance used the exact production Admin bundle with read-only
+authenticated fixtures. The canonical offerings step was inspected at
+1,600×1,000 and 760×900; the native Product list and Catalog workspace were
+inspected at 1,600×1,000. The final surfaces have no horizontal document
+overflow, console errors, failed responses, axe violations, or incomplete axe
+checks. The first pass exposed a prohibited accessible name on the generic
+availability-preview container; assigning its intended group semantics closed
+the finding before acceptance. Reviewed screenshots are
+`/tmp/admin-catalog-create-offerings-final.png`,
+`/tmp/admin-catalog-create-offerings-narrow.png`, and
+`/tmp/admin-product-list-catalog-workspace-final.png`. The corrected Product
+list placement was also inspected at 760×900 in
+`/tmp/admin-product-list-catalog-workspace-narrow.png`; temporary acceptance
+images are not repository artifacts.
 
 Post-deployment rendered acceptance found a shared TanStack Form lifecycle
 regression: an untouched server snapshot could be replaced by the empty

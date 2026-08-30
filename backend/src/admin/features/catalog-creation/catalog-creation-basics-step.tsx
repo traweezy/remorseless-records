@@ -39,6 +39,8 @@ const releaseDateInputType = (
 }
 
 export type CatalogCreationReferenceOptions = {
+  format: CatalogControlledOption[]
+  formatDetail: CatalogControlledOption[]
   genre: CatalogControlledOption[]
   label: CatalogControlledOption[]
   merchType: CatalogControlledOption[]

@@ -82,6 +82,7 @@ describe("catalog product creation query", () => {
           options: { Format: "CD" },
           prices: [{ amount: 10, currencyCode: "usd" }],
           profile: {},
+          sku: "RECORD-CD",
           stockQuantity: 1,
           title: "CD",
         },

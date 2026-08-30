@@ -25,13 +25,32 @@ fulfillment screens remain the source of truth for their native data.
 ### Add a product
 
 Open **Products → Add product**. Choose the product kind first; later steps
-show only relevant fields. Work through Basics, Details, Offerings, Media, and
-Review. The review screen links every problem back to its field. A saved
-browser draft can be resumed after a reload.
+show only relevant fields. Work through Kind, Basics, Offerings, Details, and
+Review. For music releases, choose a common CD, cassette, vinyl, or combined
+format set before entering each format's customer label, SKU, price, and stock.
+For merchandise, use the one-size or apparel-size templates. A template never
+copies price or inventory: new rows start with blank prices and SKUs and zero
+stock so they must be reviewed deliberately.
 
-Price, inventory, shipping, and fulfillment remain Medusa-native. The custom
-flow creates the Product and its catalog presentation together so the client
-does not have to copy internal IDs between screens.
+Every offering needs a unique customer label, a unique fulfillment SKU, and a
+price above `$0.00`. **Fill missing SKUs** creates editable draft SKUs from the
+product and offering names. Choose existing controlled format and format-detail
+values when possible so Storefront filters remain consistent. The review screen
+links every problem back to its field, and a saved browser draft can be resumed
+after a reload.
+
+The guided flow creates native prices, inventory records, default shipping and
+sales-channel assignments, and the customer-facing catalog presentation in one
+compensated draft workflow. Later price and inventory changes remain
+Medusa-native. The Product opens in Catalog details after creation, with the
+native Medusa editor available for those commerce changes.
+
+The Product-list **Catalog workspace** card shows whole-catalog classification
+health and direct links to create or review Products. A green **Catalog
+consistent** status means no Product is unclassified, conflicting, or waiting
+for catalog review; informational migration notes do not create a false
+blocker. It appears before the Product table by default so the health result
+and guided create action are visible before scrolling through the catalog.
 
 ### Edit a product
 

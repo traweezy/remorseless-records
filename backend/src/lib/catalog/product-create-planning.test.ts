@@ -340,7 +340,7 @@ describe("catalog product creation planning", () => {
 
     expect(profile.patch).toMatchObject({
       descriptionHtml: "Description",
-      productType: { label: "Music Release" },
+      productType: { label: "Music release" },
       releaseTitle: "A New Product",
     })
     expect(fixed).toMatchObject({

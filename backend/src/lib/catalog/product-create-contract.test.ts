@@ -12,7 +12,7 @@ const musicRelease = () => ({
     {
       key: "cd",
       title: "CD",
-      sku: "",
+      sku: "RECORD-CD",
       options: { Format: "CD" },
       prices: [{ amount: 12, currencyCode: "USD" }],
       stockQuantity: 8,
@@ -21,7 +21,7 @@ const musicRelease = () => ({
     {
       key: "lp",
       title: "LP",
-      sku: "",
+      sku: "RECORD-LP",
       options: { Format: "LP" },
       prices: [{ amount: 24, currencyCode: "usd" }],
       stockQuantity: 0,
@@ -178,6 +178,7 @@ describe("catalogProductCreateSchema", () => {
         {
           key: "bundle",
           title: "Bundle",
+          sku: "BUNDLE-DEFAULT",
           options: { Format: "Bundle" },
           prices: [{ amount: 30, currencyCode: "usd" }],
           profile: { displayLabel: "Bundle" },
@@ -285,6 +286,13 @@ describe("catalogProductCreateSchema", () => {
       false,
     )
 
+    const unsafeCommerce = musicRelease()
+    unsafeCommerce.variants[0]!.sku = ""
+    unsafeCommerce.variants[0]!.prices[0]!.amount = 0
+    expect(catalogProductCreateSchema.safeParse(unsafeCommerce).success).toBe(
+      false,
+    )
+
     const duplicateComponent = {
       ...musicRelease(),
       kind: "fixed_bundle",
@@ -293,6 +301,7 @@ describe("catalogProductCreateSchema", () => {
         {
           key: "bundle",
           title: "Bundle",
+          sku: "BUNDLE-DEFAULT",
           options: { Format: "CD" },
           prices: [{ amount: 30, currencyCode: "usd" }],
         },
