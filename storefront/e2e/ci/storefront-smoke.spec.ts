@@ -654,6 +654,7 @@ test("adding from quick shop confirms in place without opening the cart", async 
   await search.fill("Pathologist")
   await expect(page.getByText("Showing 1 of 1")).toBeVisible()
   await page
+    .getByRole("region", { name: "Catalog results" })
     .getByRole("button", {
       name: "Quick shop Pathological Decomposition",
     })
