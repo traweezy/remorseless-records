@@ -3,8 +3,10 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
+  useState,
   type ChangeEvent,
   type RefObject,
 } from "react"
@@ -24,9 +26,26 @@ import { z } from "zod"
 
 import { AdminFocusModalHeader } from "../../components/admin-focus-modal-header"
 import {
+  AdminFormErrorSummary,
+  AdminFormSaveState,
+  AdminTaskNavigation,
+  focusFirstAdminFormIssue,
+  visibleAdminFormFieldError,
+  useAdminUnsavedChanges,
+  type AdminFormIssue,
+  type AdminSaveState,
+  type AdminTaskNavigationItem,
+} from "../../components/admin-form-contract"
+import {
   AdminFormField,
   type AdminFormControlProps,
 } from "../../components/admin-form-field"
+import { ConfirmAction } from "../../components/confirm-action"
+import {
+  clearAdminFormDraft,
+  readAdminFormDraft,
+  writeAdminFormDraft,
+} from "../../lib/admin-form-draft"
 import {
   discographyAvailabilityValues,
   type DiscographyEntry,
@@ -44,20 +63,29 @@ const optionalUrlSchema = z
     "Enter a valid http or https URL."
   )
 
-export const discographyManualFormSchema = z
-  .object({
-    artist: z.string().trim().min(1, "Enter an artist.").max(500),
+export const discographyManualDraftSchema = z.object({
+    artist: z.string().trim().max(500),
     availability: z.enum(discographyAvailabilityValues),
     catalogNumber: z.string().trim().max(200),
     collectionTitle: z.string().trim().max(500),
     coverAltText: z.string().trim().max(500),
-    coverUrl: optionalUrlSchema,
+    coverUrl: z.string().trim().max(2_000),
     datePrecision: z.enum(datePrecisionValues),
     dateValue: z.string().trim().max(10),
     formatsText: z.string().max(5_000),
     genresText: z.string().max(5_000),
-    releaseTitle: z.string().trim().min(1, "Enter a release title.").max(500),
+    releaseTitle: z.string().trim().max(500),
     tagsText: z.string().max(5_000),
+  })
+
+export const discographyManualFormSchema = discographyManualDraftSchema
+  .extend({
+    artist: discographyManualDraftSchema.shape.artist.min(1, "Enter an artist."),
+    coverUrl: optionalUrlSchema,
+    releaseTitle: discographyManualDraftSchema.shape.releaseTitle.min(
+      1,
+      "Enter a release title.",
+    ),
   })
   .superRefine((value, context) => {
     if (value.datePrecision === "day") {
@@ -86,7 +114,47 @@ export const discographyManualFormSchema = z
     }
   })
 
-type DiscographyManualFormValues = z.infer<typeof discographyManualFormSchema>
+export type DiscographyManualFormValues = z.infer<
+  typeof discographyManualFormSchema
+>
+
+const discographyFieldTargets: Record<string, string> = {
+  artist: "discography-artist",
+  availability: "discography-availability-field",
+  catalogNumber: "discography-catalog-number",
+  collectionTitle: "discography-collection",
+  coverAltText: "discography-cover-alt",
+  coverUrl: "discography-cover-url",
+  datePrecision: "discography-date-precision",
+  dateValue: "discography-date-value",
+  formatsText: "discography-formats",
+  genresText: "discography-genres",
+  releaseTitle: "discography-release-title",
+  tagsText: "discography-tags",
+}
+
+export const discographyManualValidationIssues = (
+  values: DiscographyManualFormValues,
+): AdminFormIssue[] => {
+  const result = discographyManualFormSchema.safeParse(values)
+  if (result.success) {
+    return []
+  }
+  return result.error.issues.map((issue) => {
+    const field = String(issue.path[0] ?? "")
+    return {
+      key: `${issue.path.join(".")}:${issue.message}`,
+      message: issue.message,
+      targetId: discographyFieldTargets[field] ?? null,
+    }
+  })
+}
+
+const discographyTasks = [
+  { href: "#discography-identity", label: "Release identity" },
+  { href: "#discography-details", label: "Release details" },
+  { href: "#discography-artwork", label: "Artwork" },
+] as const satisfies readonly AdminTaskNavigationItem[]
 
 const emptyValues: DiscographyManualFormValues = {
   artist: "",
@@ -174,27 +242,43 @@ export const buildManualDiscographyInput = (
   }
 }
 
-const firstFieldError = (field: AnyFieldApi): string | undefined => {
-  const first = field.state.meta.errors[0] as unknown
-  if (typeof first === "string") {
-    return first
+export const discographyEntryMatchesManualInput = (
+  entry: DiscographyEntry,
+  input: ManualDiscographyInput,
+): boolean =>
+  entry.artist === input.artist &&
+  entry.availability === input.availability &&
+  entry.catalogNumber === input.catalogNumber &&
+  entry.collectionTitle === input.collectionTitle &&
+  entry.coverAltText === input.coverAltText &&
+  entry.coverUrl === input.coverUrl &&
+  JSON.stringify(entry.formats) === JSON.stringify(input.formats) &&
+  JSON.stringify(entry.genres) === JSON.stringify(input.genres) &&
+  entry.releaseDate === input.releaseDate &&
+  entry.releaseYear === input.releaseYear &&
+  JSON.stringify(entry.tags) === JSON.stringify(input.tags) &&
+  entry.title === input.releaseTitle
+
+const discographyDraftStorage = (): Storage | null => {
+  try {
+    return (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null
+  } catch {
+    return null
   }
-  if (first && typeof first === "object" && "message" in first) {
-    const message = (first as { message?: unknown }).message
-    return typeof message === "string" ? message : undefined
-  }
-  return undefined
 }
 
 const showFieldError = (field: AnyFieldApi): string | undefined =>
-  !field.state.meta.isValid &&
-  (field.state.meta.isTouched || field.form.state.submissionAttempts > 0)
-    ? firstFieldError(field)
-    : undefined
+  visibleAdminFormFieldError({
+    errors: field.state.meta.errors,
+    isTouched: field.state.meta.isTouched,
+    isValid: field.state.meta.isValid,
+    submissionAttempts: field.form.state.submissionAttempts,
+  })
 
 type TextFieldProps = {
   field: AnyFieldApi
   hint?: string
+  id?: string
   label: string
   maxLength: number
   optional?: boolean
@@ -203,7 +287,7 @@ type TextFieldProps = {
 }
 
 const DiscographyTextField = memo<TextFieldProps>(
-  ({ field, hint, label, maxLength, optional, placeholder, type = "text" }) => {
+  ({ field, hint, id, label, maxLength, optional, placeholder, type = "text" }) => {
     const value = typeof field.state.value === "string" ? field.state.value : ""
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
@@ -243,6 +327,7 @@ const DiscographyTextField = memo<TextFieldProps>(
       <AdminFormField
         {...(showFieldError(field) ? { error: showFieldError(field) } : {})}
         {...(hint ? { hint } : {})}
+        {...(id ? { id } : {})}
         label={label}
         {...(optional === undefined ? {} : { optional })}
       >
@@ -256,12 +341,13 @@ DiscographyTextField.displayName = "DiscographyTextField"
 
 type ListFieldProps = {
   field: AnyFieldApi
+  id: string
   label: string
   placeholder: string
 }
 
 const DiscographyListField = memo<ListFieldProps>(
-  ({ field, label, placeholder }) => {
+  ({ field, id, label, placeholder }) => {
     const value = typeof field.state.value === "string" ? field.state.value : ""
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
@@ -293,6 +379,7 @@ const DiscographyListField = memo<ListFieldProps>(
       <AdminFormField
         error={showFieldError(field)}
         hint="Separate values with commas or new lines. Duplicates are removed."
+        id={id}
         label={label}
         optional
       >
@@ -307,6 +394,7 @@ DiscographyListField.displayName = "DiscographyListField"
 const ReleaseTitleField = (field: AnyFieldApi) => (
   <DiscographyTextField
     field={field}
+    id="discography-release-title"
     label="Release title"
     maxLength={500}
     placeholder="Title only — keep the artist in its own field"
@@ -316,6 +404,7 @@ const ReleaseTitleField = (field: AnyFieldApi) => (
 const ArtistField = (field: AnyFieldApi) => (
   <DiscographyTextField
     field={field}
+    id="discography-artist"
     label="Artist"
     maxLength={500}
     placeholder="Primary credited artist"
@@ -325,6 +414,7 @@ const ArtistField = (field: AnyFieldApi) => (
 const CollectionField = (field: AnyFieldApi) => (
   <DiscographyTextField
     field={field}
+    id="discography-collection"
     label="Label or collection"
     maxLength={500}
     optional
@@ -334,6 +424,7 @@ const CollectionField = (field: AnyFieldApi) => (
 const CatalogNumberField = (field: AnyFieldApi) => (
   <DiscographyTextField
     field={field}
+    id="discography-catalog-number"
     label="Catalog number"
     maxLength={200}
     optional
@@ -345,6 +436,7 @@ const CoverUrlField = (field: AnyFieldApi) => (
   <DiscographyTextField
     field={field}
     hint="Use a durable managed-media URL when artwork is available."
+    id="discography-cover-url"
     label="Cover URL"
     maxLength={2_000}
     optional
@@ -356,6 +448,7 @@ const CoverAltTextField = (field: AnyFieldApi) => (
   <DiscographyTextField
     field={field}
     hint="Describe meaningful artwork; leave empty when the cover is purely decorative."
+    id="discography-cover-alt"
     label="Cover description"
     maxLength={500}
     optional
@@ -365,6 +458,7 @@ const CoverAltTextField = (field: AnyFieldApi) => (
 const FormatsField = (field: AnyFieldApi) => (
   <DiscographyListField
     field={field}
+    id="discography-formats"
     label="Formats"
     placeholder="Vinyl, CD, Cassette"
   />
@@ -373,6 +467,7 @@ const FormatsField = (field: AnyFieldApi) => (
 const GenresField = (field: AnyFieldApi) => (
   <DiscographyListField
     field={field}
+    id="discography-genres"
     label="Genres"
     placeholder="Death metal, Doom"
   />
@@ -381,6 +476,7 @@ const GenresField = (field: AnyFieldApi) => (
 const TagsField = (field: AnyFieldApi) => (
   <DiscographyListField
     field={field}
+    id="discography-tags"
     label="Tags"
     placeholder="Demo, Compilation, Limited"
   />
@@ -390,7 +486,7 @@ const DatePrecisionField = (field: AnyFieldApi) => {
   const value =
     typeof field.state.value === "string" ? field.state.value : "unknown"
   return (
-    <AdminFormField label="Date detail">
+    <AdminFormField id="discography-date-precision" label="Date detail">
       {(control) => (
         <Select onValueChange={field.handleChange} value={value}>
           <Select.Trigger {...control} className="mt-2">
@@ -419,7 +515,7 @@ const AvailabilityField = (field: AnyFieldApi) => {
       unknown: "Unknown",
     }
   return (
-    <AdminFormField label="Availability">
+    <AdminFormField id="discography-availability-field" label="Availability">
       {(control) => (
         <Select onValueChange={field.handleChange} value={value}>
           <Select.Trigger {...control} className="mt-2">
@@ -443,6 +539,7 @@ const DateValueField = (field: AnyFieldApi) => {
   return (
     <DiscographyTextField
       field={field}
+      id="discography-date-value"
       label={values.datePrecision === "day" ? "Release date" : "Release year"}
       maxLength={10}
       {...(values.datePrecision === "year" ? { placeholder: "1999" } : {})}
@@ -465,8 +562,12 @@ export type DiscographyManualFormProps = {
 
 export const DiscographyManualForm = memo<DiscographyManualFormProps>(
   ({ entry, error, mode, onClose, onSubmit, restoreFocusRef }) => {
+    const draftKey = `admin:discography:${entry?.id ?? "new"}`
     const idempotencyKeyRef = useRef(crypto.randomUUID())
     const lastSubmittedRef = useRef<string | null>(null)
+    const draftLoadedRef = useRef(false)
+    const [discardOpen, setDiscardOpen] = useState(false)
+    const [draftNotice, setDraftNotice] = useState<string | null>(null)
     const form = useForm({
       defaultValues: entry ? valuesFromDiscographyEntry(entry) : emptyValues,
       onSubmit: async ({ value }) => {
@@ -483,6 +584,10 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
             buildManualDiscographyInput(value),
             idempotencyKeyRef.current
           )
+          const storage = discographyDraftStorage()
+          if (storage) {
+            clearAdminFormDraft({ key: draftKey, storage })
+          }
         } catch {
           // The parent mutation renders the actionable request error in place.
         }
@@ -493,22 +598,93 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
       datePrecision: formState.values.datePrecision,
       isPristine: formState.isPristine,
       isSubmitting: formState.isSubmitting,
+      submissionAttempts: formState.submissionAttempts,
       values: formState.values,
     }))
-    const formValid = useMemo(
-      () => discographyManualFormSchema.safeParse(state.values).success,
-      [state.values]
-    )
     const busy = state.isSubmitting
-    const handleSubmit = useCallback(() => form.handleSubmit(), [form])
+
+    useEffect(() => {
+      const storage = discographyDraftStorage()
+      if (!storage) {
+        draftLoadedRef.current = true
+        return
+      }
+      const draft = readAdminFormDraft({
+        key: draftKey,
+        schema: discographyManualDraftSchema,
+        storage,
+      })
+      if (draft) {
+        form.reset(draft.values, { keepDefaultValues: true })
+        setDraftNotice(
+          `Recovered browser draft saved ${new Date(draft.savedAt).toLocaleString()}.`,
+        )
+      }
+      draftLoadedRef.current = true
+    }, [draftKey, form])
+
+    useEffect(() => {
+      if (!draftLoadedRef.current || state.isPristine) {
+        return undefined
+      }
+      const storage = discographyDraftStorage()
+      if (!storage) {
+        return undefined
+      }
+      const timer = setTimeout(() => {
+        try {
+          writeAdminFormDraft({
+            key: draftKey,
+            schema: discographyManualDraftSchema,
+            storage,
+            values: state.values,
+          })
+        } catch {
+          setDraftNotice(
+            "This browser could not save a recovery draft. Keep the editor open until the release is saved.",
+          )
+        }
+      }, 500)
+      return () => clearTimeout(timer)
+    }, [draftKey, state.isPristine, state.values])
+
+    useAdminUnsavedChanges(!state.isPristine && !busy)
+
+    const handleSubmit = useCallback(() => {
+      void form.handleSubmit().finally(() => {
+        const issues = discographyManualValidationIssues(form.state.values)
+        if (issues.length > 0) {
+          focusFirstAdminFormIssue(issues)
+        }
+      })
+    }, [form])
+    const requestClose = useCallback(() => {
+      if (busy) {
+        return
+      }
+      if (state.isPristine) {
+        onClose()
+        return
+      }
+      setDiscardOpen(true)
+    }, [busy, onClose, state.isPristine])
     const handleOpenChange = useCallback(
       (open: boolean) => {
-        if (!open && !busy) {
-          onClose()
+        if (!open) {
+          requestClose()
         }
       },
-      [busy, onClose]
+      [requestClose]
     )
+    const cancelDiscard = useCallback(() => setDiscardOpen(false), [])
+    const confirmDiscard = useCallback(() => {
+      const storage = discographyDraftStorage()
+      if (storage) {
+        clearAdminFormDraft({ key: draftKey, storage })
+      }
+      setDiscardOpen(false)
+      onClose()
+    }, [draftKey, onClose])
     const handleCloseAutoFocus = useCallback(
       (event: Event) => {
         event.preventDefault()
@@ -520,15 +696,55 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
       [restoreFocusRef]
     )
 
+    const formIssues = useMemo<AdminFormIssue[]>(
+      () => [
+        ...(state.submissionAttempts > 0
+          ? discographyManualValidationIssues(state.values)
+          : []),
+        ...(error
+          ? [
+              {
+                key: `server:${error}`,
+                message: error,
+                targetId: null,
+              },
+            ]
+          : []),
+      ],
+      [error, state.submissionAttempts, state.values],
+    )
+    const saveState: AdminSaveState = state.isSubmitting
+      ? "saving"
+      : error
+        ? "error"
+        : state.isPristine
+          ? "idle"
+          : "dirty"
+
     const fields = (
       <div className="flex flex-col gap-y-6">
-        {error ? (
-          <Alert role="alert" variant="error">
-            <Text size="small">{error}</Text>
-          </Alert>
-        ) : null}
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Text className="text-ui-fg-subtle" size="small">
+              Add the identity first, then release details and artwork.
+            </Text>
+            <AdminFormSaveState state={saveState} />
+          </div>
+          <AdminTaskNavigation items={discographyTasks} />
+          <AdminFormErrorSummary issues={formIssues} />
+          {draftNotice ? (
+            <Alert role="status" variant="info">
+              <Text size="small">{draftNotice}</Text>
+            </Alert>
+          ) : null}
+        </div>
 
-        <section aria-labelledby="discography-form-identity">
+        <section
+          aria-labelledby="discography-form-identity"
+          className="scroll-mt-24 outline-none"
+          id="discography-identity"
+          tabIndex={-1}
+        >
           <Heading id="discography-form-identity" level="h2">
             Release identity
           </Heading>
@@ -544,7 +760,12 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
           </div>
         </section>
 
-        <section aria-labelledby="discography-form-release">
+        <section
+          aria-labelledby="discography-form-release"
+          className="scroll-mt-24 outline-none"
+          id="discography-details"
+          tabIndex={-1}
+        >
           <Heading id="discography-form-release" level="h2">
             Release details
           </Heading>
@@ -560,7 +781,12 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
           </div>
         </section>
 
-        <section aria-labelledby="discography-form-artwork">
+        <section
+          aria-labelledby="discography-form-artwork"
+          className="scroll-mt-24 outline-none"
+          id="discography-artwork"
+          tabIndex={-1}
+        >
           <Heading id="discography-form-artwork" level="h2">
             Artwork
           </Heading>
@@ -571,13 +797,12 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
         </section>
       </div>
     )
-    const saveDisabled =
-      busy || !formValid || (mode === "edit" && state.isPristine)
+    const saveDisabled = busy || (mode === "edit" && state.isPristine)
     const footer = (
       <>
         <Button
           disabled={busy}
-          onClick={onClose}
+          onClick={requestClose}
           type="button"
           variant="secondary"
         >
@@ -591,11 +816,11 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
         >
           {mode === "create" ? "Add historical release" : "Save changes"}
         </Button>
+        <AdminFormSaveState className="order-first mr-auto" state={saveState} />
       </>
     )
 
-    if (mode === "edit") {
-      return (
+    const editor = mode === "edit" ? (
         <Drawer onOpenChange={handleOpenChange} open>
           <Drawer.Content onCloseAutoFocus={handleCloseAutoFocus}>
             <Drawer.Header>
@@ -609,10 +834,7 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
             <Drawer.Footer>{footer}</Drawer.Footer>
           </Drawer.Content>
         </Drawer>
-      )
-    }
-
-    return (
+      ) : (
       <FocusModal onOpenChange={handleOpenChange} open>
         <FocusModal.Content
           className="sm:inset-x-1/2 sm:inset-y-8 sm:w-full sm:max-w-4xl sm:-translate-x-1/2"
@@ -628,6 +850,21 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
           <FocusModal.Footer>{footer}</FocusModal.Footer>
         </FocusModal.Content>
       </FocusModal>
+    )
+
+    return (
+      <>
+        {editor}
+        <ConfirmAction
+          confirmLabel="Discard changes"
+          description="Your unsaved release identity, details, and artwork changes will be lost."
+          onCancel={cancelDiscard}
+          onConfirm={confirmDiscard}
+          open={discardOpen}
+          title="Discard this historical release draft?"
+          variant="danger"
+        />
+      </>
     )
   }
 )

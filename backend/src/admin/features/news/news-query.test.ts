@@ -1,6 +1,7 @@
 import { requestAdminJson } from "../../lib/admin-request"
 import {
   createNewsEntry,
+  getNewsEntry,
   listNewsEntries,
   updateNewsEntry,
   updateNewsLifecycle,
@@ -104,6 +105,15 @@ describe("news Admin query boundary", () => {
           order: "title",
         },
       }),
+    )
+  })
+
+  it("loads one post through the validated detail boundary", async () => {
+    requestMock.mockResolvedValueOnce({ entry: entry() } as never)
+
+    await expect(getNewsEntry("news/one")).resolves.toEqual(entry())
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "/admin/news/news%2Fone" }),
     )
   })
 

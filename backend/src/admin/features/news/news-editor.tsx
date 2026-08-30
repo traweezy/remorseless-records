@@ -4,6 +4,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -23,15 +24,32 @@ import {
 
 import { AdminFocusModalHeader } from "../../components/admin-focus-modal-header"
 import {
+  AdminFormErrorSummary,
+  AdminFormSaveState,
+  AdminTaskNavigation,
+  visibleAdminFormFieldError,
+  useAdminUnsavedChanges,
+  type AdminFormIssue,
+  type AdminSaveState,
+  type AdminTaskNavigationItem,
+} from "../../components/admin-form-contract"
+import {
   AdminFormField,
   type AdminFormControlProps,
 } from "../../components/admin-form-field"
 import { ConfirmAction } from "../../components/confirm-action"
+import {
+  clearAdminFormDraft,
+  readAdminFormDraft,
+  writeAdminFormDraft,
+} from "../../lib/admin-form-draft"
 import RichTextEditor from "../../components/rich-text-editor"
 import {
   buildNewsWriteInput,
   emptyNewsEditorValues,
+  newsEditorDraftSchema,
   newsEditorSchema,
+  newsEditorValidationIssues,
   validatePublicationIntent,
   valuesFromNewsEntry,
   type NewsEditorValues,
@@ -40,23 +58,21 @@ import {
 import { uploadNewsCover, validateNewsCover } from "./news-media-query"
 import type { NewsEntry, NewsWriteInput } from "./news-query"
 
-const firstFieldError = (field: AnyFieldApi): string | undefined => {
-  const first = field.state.meta.errors[0] as unknown
-  if (typeof first === "string") {
-    return first
-  }
-  if (first && typeof first === "object" && "message" in first) {
-    const message = (first as { message?: unknown }).message
-    return typeof message === "string" ? message : undefined
-  }
-  return undefined
-}
-
 const showFieldError = (field: AnyFieldApi): string | undefined =>
-  !field.state.meta.isValid &&
-  (field.state.meta.isTouched || field.form.state.submissionAttempts > 0)
-    ? firstFieldError(field)
-    : undefined
+  visibleAdminFormFieldError({
+    errors: field.state.meta.errors,
+    isTouched: field.state.meta.isTouched,
+    isValid: field.state.meta.isValid,
+    submissionAttempts: field.form.state.submissionAttempts,
+  })
+
+const newsEditorTasks = [
+  { href: "#news-story", label: "Story" },
+  { href: "#news-cover", label: "Cover" },
+  { href: "#news-organization", label: "Tags" },
+  { href: "#news-publishing", label: "Publishing" },
+  { href: "#news-preview", label: "Preview" },
+] as const satisfies readonly AdminTaskNavigationItem[]
 
 type TextFieldProps = {
   field: AnyFieldApi
@@ -116,6 +132,7 @@ NewsTextField.displayName = "NewsTextField"
 type TextareaFieldProps = {
   field: AnyFieldApi
   hint?: string
+  id?: string
   label: string
   maxLength: number
   optional?: boolean
@@ -124,7 +141,7 @@ type TextareaFieldProps = {
 }
 
 const NewsTextareaField = memo<TextareaFieldProps>(
-  ({ field, hint, label, maxLength, optional, placeholder, rows }) => {
+  ({ field, hint, id, label, maxLength, optional, placeholder, rows }) => {
     const value = typeof field.state.value === "string" ? field.state.value : ""
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
@@ -154,6 +171,7 @@ const NewsTextareaField = memo<TextareaFieldProps>(
       <AdminFormField
         error={showFieldError(field)}
         {...(hint ? { hint } : {})}
+        {...(id ? { id } : {})}
         label={label}
         {...(optional === undefined ? {} : { optional })}
       >
@@ -168,6 +186,7 @@ NewsTextareaField.displayName = "NewsTextareaField"
 const TitleField = (field: AnyFieldApi) => (
   <NewsTextField
     field={field}
+    id="news-title"
     label="Headline"
     maxLength={300}
     placeholder="A clear, specific update"
@@ -178,6 +197,7 @@ const ExcerptField = (field: AnyFieldApi) => (
   <NewsTextareaField
     field={field}
     hint="Used on News cards and as the default search description."
+    id="news-excerpt"
     label="Summary"
     maxLength={1_000}
     optional
@@ -190,6 +210,7 @@ const TagsField = (field: AnyFieldApi) => (
   <NewsTextareaField
     field={field}
     hint="Separate tags with commas or new lines. Duplicates are removed."
+    id="news-tags"
     label="Tags"
     maxLength={5_000}
     optional
@@ -242,7 +263,7 @@ const NewsContentField = memo<ContentFieldProps>(({ field }) => {
     [error, handleBlur, handleChange, value],
   )
   return (
-    <AdminFormField error={error} label="Post body">
+    <AdminFormField error={error} id="news-content" label="Post body">
       {renderControl}
     </AdminFormField>
   )
@@ -378,6 +399,7 @@ const CoverFields = memo<CoverFieldsProps>(
             <AdminFormField
               error={altError}
               hint="Describe the meaningful subject or artwork without starting with “image of.”"
+              id="news-cover-alt"
               label="Cover description"
             >
               {(control) => (
@@ -505,6 +527,14 @@ const focusSchedule = (): void => {
   })
 }
 
+const newsDraftStorage = (): Storage | null => {
+  try {
+    return (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
 export const NewsEditor = memo<NewsEditorProps>(
   ({
     canUploadCover,
@@ -515,10 +545,13 @@ export const NewsEditor = memo<NewsEditorProps>(
     onSubmit,
     restoreFocusRef,
   }) => {
+    const draftKey = `admin:news:${entry?.id ?? "new"}`
     const idempotencyKeyRef = useRef(crypto.randomUUID())
     const lastSubmittedRef = useRef<string | null>(null)
     const intentRef = useRef<NewsPublicationIntent>("draft")
+    const draftLoadedRef = useRef(false)
     const [actionError, setActionError] = useState<string | null>(null)
+    const [draftNotice, setDraftNotice] = useState<string | null>(null)
     const [discardOpen, setDiscardOpen] = useState(false)
     const [uploadingCover, setUploadingCover] = useState(false)
     const form = useForm({
@@ -543,6 +576,10 @@ export const NewsEditor = memo<NewsEditorProps>(
             idempotencyKeyRef.current,
             intent,
           )
+          const storage = newsDraftStorage()
+          if (storage) {
+            clearAdminFormDraft({ key: draftKey, storage })
+          }
         } catch {
           // The parent mutation keeps the actionable error visible in this editor.
         }
@@ -552,9 +589,57 @@ export const NewsEditor = memo<NewsEditorProps>(
     const state = useStore(form.store, (formState) => ({
       isPristine: formState.isPristine,
       isSubmitting: formState.isSubmitting,
+      submissionAttempts: formState.submissionAttempts,
       values: formState.values,
     }))
     const busy = state.isSubmitting || uploadingCover
+
+    useEffect(() => {
+      const storage = newsDraftStorage()
+      if (!storage) {
+        draftLoadedRef.current = true
+        return
+      }
+      const draft = readAdminFormDraft({
+        key: draftKey,
+        schema: newsEditorDraftSchema,
+        storage,
+      })
+      if (draft) {
+        form.reset(draft.values, { keepDefaultValues: true })
+        setDraftNotice(
+          `Recovered browser draft saved ${new Date(draft.savedAt).toLocaleString()}.`,
+        )
+      }
+      draftLoadedRef.current = true
+    }, [draftKey, form])
+
+    useEffect(() => {
+      if (!draftLoadedRef.current || state.isPristine) {
+        return undefined
+      }
+      const storage = newsDraftStorage()
+      if (!storage) {
+        return undefined
+      }
+      const timer = setTimeout(() => {
+        try {
+          writeAdminFormDraft({
+            key: draftKey,
+            schema: newsEditorDraftSchema,
+            storage,
+            values: state.values,
+          })
+        } catch {
+          setDraftNotice(
+            "This browser could not save a recovery draft. Keep the editor open until the post is saved.",
+          )
+        }
+      }, 500)
+      return () => clearTimeout(timer)
+    }, [draftKey, state.isPristine, state.values])
+
+    useAdminUnsavedChanges(!state.isPristine && !busy)
     const requestClose = useCallback(() => {
       if (busy) {
         return
@@ -575,9 +660,13 @@ export const NewsEditor = memo<NewsEditorProps>(
     )
     const cancelDiscard = useCallback(() => setDiscardOpen(false), [])
     const confirmDiscard = useCallback(() => {
+      const storage = newsDraftStorage()
+      if (storage) {
+        clearAdminFormDraft({ key: draftKey, storage })
+      }
       setDiscardOpen(false)
       onClose()
-    }, [onClose])
+    }, [draftKey, onClose])
     const handleCloseAutoFocus = useCallback(
       (event: Event) => {
         event.preventDefault()
@@ -639,6 +728,44 @@ export const NewsEditor = memo<NewsEditorProps>(
       mode === "edit" && currentStatus === "scheduled" && state.isPristine
     const publishUnchanged =
       mode === "edit" && currentStatus === "published" && state.isPristine
+    const validationIssues = useMemo(
+      () =>
+        state.submissionAttempts > 0
+          ? newsEditorValidationIssues(state.values)
+          : [],
+      [state.submissionAttempts, state.values],
+    )
+    const formIssues = useMemo<AdminFormIssue[]>(
+      () => [
+        ...validationIssues,
+        ...(actionError
+          ? [
+              {
+                key: `publication:${actionError}`,
+                message: actionError,
+                targetId: "news-schedule-at",
+              },
+            ]
+          : []),
+        ...(error
+          ? [
+              {
+                key: `server:${error}`,
+                message: error,
+                targetId: null,
+              },
+            ]
+          : []),
+      ],
+      [actionError, error, validationIssues],
+    )
+    const saveState: AdminSaveState = state.isSubmitting
+      ? "saving"
+      : error || actionError
+        ? "error"
+        : state.isPristine
+          ? "idle"
+          : "dirty"
 
     return (
       <>
@@ -651,16 +778,33 @@ export const NewsEditor = memo<NewsEditorProps>(
               description="Write once, then save privately, schedule for later, or publish now."
               title={mode === "create" ? "Create news post" : `Edit ${entry?.title ?? "post"}`}
             />
-            <FocusModal.Body className="overflow-y-auto px-4 py-5 sm:px-6">
+            <FocusModal.Body
+              aria-busy={busy}
+              className="overflow-y-auto px-4 py-5 sm:px-6"
+            >
+              <div className="mb-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Text className="text-ui-fg-subtle" size="small">
+                    Move through the story, media, organization, and publishing tasks.
+                  </Text>
+                  <AdminFormSaveState state={saveState} />
+                </div>
+                <AdminTaskNavigation items={newsEditorTasks} />
+                <AdminFormErrorSummary issues={formIssues} />
+                {draftNotice ? (
+                  <Alert role="status" variant="info">
+                    <Text size="small">{draftNotice}</Text>
+                  </Alert>
+                ) : null}
+              </div>
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
                 <div className="min-w-0 space-y-8">
-                  {error || actionError ? (
-                    <Alert role="alert" variant="error">
-                      <Text size="small">{actionError ?? error}</Text>
-                    </Alert>
-                  ) : null}
-
-                  <section aria-labelledby="news-story-heading">
+                  <section
+                    aria-labelledby="news-story-heading"
+                    className="scroll-mt-24 outline-none"
+                    id="news-story"
+                    tabIndex={-1}
+                  >
                     <Heading id="news-story-heading" level="h2">
                       Story
                     </Heading>
@@ -674,7 +818,12 @@ export const NewsEditor = memo<NewsEditorProps>(
                     </div>
                   </section>
 
-                  <section aria-labelledby="news-cover-heading">
+                  <section
+                    aria-labelledby="news-cover-heading"
+                    className="scroll-mt-24 outline-none"
+                    id="news-cover"
+                    tabIndex={-1}
+                  >
                     <Heading id="news-cover-heading" level="h2">
                       Cover
                     </Heading>
@@ -686,7 +835,12 @@ export const NewsEditor = memo<NewsEditorProps>(
                     </div>
                   </section>
 
-                  <section aria-labelledby="news-tags-heading">
+                  <section
+                    aria-labelledby="news-tags-heading"
+                    className="scroll-mt-24 outline-none"
+                    id="news-organization"
+                    tabIndex={-1}
+                  >
                     <Heading id="news-tags-heading" level="h2">
                       Organization
                     </Heading>
@@ -697,7 +851,12 @@ export const NewsEditor = memo<NewsEditorProps>(
                 </div>
 
                 <aside className="space-y-6 lg:sticky lg:top-0 lg:self-start">
-                  <section className="rounded-lg border border-ui-border-base p-4" aria-labelledby="news-publish-heading">
+                  <section
+                    aria-labelledby="news-publish-heading"
+                    className="scroll-mt-24 rounded-lg border border-ui-border-base p-4 outline-none"
+                    id="news-publishing"
+                    tabIndex={-1}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Heading id="news-publish-heading" level="h2">
                         Publishing
@@ -723,7 +882,12 @@ export const NewsEditor = memo<NewsEditorProps>(
                     </Text>
                   </section>
 
-                  <section className="rounded-lg border border-ui-border-base p-4" aria-labelledby="news-preview-heading">
+                  <section
+                    aria-labelledby="news-preview-heading"
+                    className="scroll-mt-24 rounded-lg border border-ui-border-base p-4 outline-none"
+                    id="news-preview"
+                    tabIndex={-1}
+                  >
                     <Heading id="news-preview-heading" level="h2">
                       Search preview
                     </Heading>
@@ -744,6 +908,7 @@ export const NewsEditor = memo<NewsEditorProps>(
               </div>
             </FocusModal.Body>
             <FocusModal.Footer className="flex-wrap gap-2">
+              <AdminFormSaveState className="mr-auto" state={saveState} />
               <Button
                 disabled={busy}
                 onClick={requestClose}

@@ -43,9 +43,13 @@ import {
   type ReplaceContentLocation,
 } from "../../features/content/content-routes"
 import { NewsEditor } from "../../features/news/news-editor"
-import type { NewsPublicationIntent } from "../../features/news/news-form-state"
+import {
+  newsEntryMatchesWriteInput,
+  type NewsPublicationIntent,
+} from "../../features/news/news-form-state"
 import {
   createNewsEntry,
+  getNewsEntry,
   listNewsEntries,
   updateNewsEntry,
   updateNewsLifecycle,
@@ -58,6 +62,7 @@ import {
   useNewsColumns,
 } from "../../features/news/news-table"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import { runRecoverableAdminMutation } from "../../components/admin-form-contract"
 import { useAdminPermissions } from "../../lib/admin-permissions"
 
 const PAGE_SIZE = 25
@@ -242,7 +247,12 @@ const NewsAdminPageContent = memo(() => {
       entry: NewsEntry
       idempotencyKey: string
       values: NewsWriteInput
-    }) => updateNewsEntry(entry, values, idempotencyKey),
+    }) =>
+      runRecoverableAdminMutation({
+        mutate: () => updateNewsEntry(entry, values, idempotencyKey),
+        readAfterFailure: () => getNewsEntry(entry.id),
+        wasApplied: (snapshot) => newsEntryMatchesWriteInput(snapshot, values),
+      }),
     onSuccess: async () => {
       setEditingEntry(null)
       await invalidateNews()

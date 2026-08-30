@@ -1,6 +1,9 @@
 import {
   buildManualDiscographyInput,
+  discographyEntryMatchesManualInput,
+  discographyManualDraftSchema,
   discographyManualFormSchema,
+  discographyManualValidationIssues,
   valuesFromDiscographyEntry,
 } from "./discography-manual-form"
 import type { DiscographyEntry } from "./discography-query"
@@ -33,13 +36,19 @@ const entry: DiscographyEntry = {
 
 describe("discography historical form", () => {
   it("keeps a new untouched form invalid until required fields are present", () => {
-    expect(
-      discographyManualFormSchema.safeParse({
+    const incomplete = {
         ...valuesFromDiscographyEntry(entry),
         artist: "",
         releaseTitle: "",
-      }).success
-    ).toBe(false)
+      }
+    expect(discographyManualDraftSchema.safeParse(incomplete).success).toBe(true)
+    expect(discographyManualFormSchema.safeParse(incomplete).success).toBe(false)
+    expect(discographyManualValidationIssues(incomplete)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ targetId: "discography-artist" }),
+        expect.objectContaining({ targetId: "discography-release-title" }),
+      ]),
+    )
   })
 
   it("uses a single date-detail control and normalizes list input", () => {
@@ -60,6 +69,16 @@ describe("discography historical form", () => {
       releaseYear: 1999,
       tags: ["Demo", "Archive"],
     })
+    expect(
+      discographyEntryMatchesManualInput(
+        {
+          ...entry,
+          formats: input.formats,
+          tags: input.tags,
+        },
+        input,
+      ),
+    ).toBe(true)
   })
 
   it("rejects impossible dates and malformed artwork URLs", () => {

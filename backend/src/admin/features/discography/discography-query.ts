@@ -59,6 +59,10 @@ const discographyMutationSchema = z.object({
   replayed: z.boolean(),
 })
 
+const discographyEntryResponseSchema = z.object({
+  entry: discographyEntrySchema,
+})
+
 export type DiscographyAvailability =
   (typeof discographyAvailabilityValues)[number]
 export type DiscographySourceMode = (typeof discographySourceModeValues)[number]
@@ -118,6 +122,16 @@ export const listDiscographyEntries = (
     schema: discographyPageSchema,
     ...(signal ? { signal } : {}),
   })
+
+export const getDiscographyEntry = (
+  id: string,
+  signal?: AbortSignal,
+): Promise<DiscographyEntry> =>
+  requestAdminJson({
+    path: `/admin/discography/${encodeURIComponent(id)}`,
+    schema: discographyEntryResponseSchema,
+    ...(signal ? { signal } : {}),
+  }).then(({ entry }) => entry)
 
 export const createManualDiscographyEntry = (
   input: ManualDiscographyInput,

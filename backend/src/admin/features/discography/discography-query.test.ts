@@ -1,6 +1,7 @@
 import { requestAdminJson } from "../../lib/admin-request"
 import {
   createManualDiscographyEntry,
+  getDiscographyEntry,
   listDiscographyEntries,
   updateDiscographyLifecycle,
   updateManualDiscographyEntry,
@@ -122,6 +123,15 @@ describe("discography admin requests", () => {
         method: "POST",
         path: "/admin/discography/disc_1/archive",
       })
+    )
+  })
+
+  it("loads one release through the validated detail boundary", async () => {
+    jest.mocked(requestAdminJson).mockResolvedValueOnce({ entry })
+
+    await expect(getDiscographyEntry("disc/one")).resolves.toEqual(entry)
+    expect(requestAdminJson).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "/admin/discography/disc%2Fone" }),
     )
   })
 })

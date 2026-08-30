@@ -46,6 +46,8 @@ const newsMutationSchema = z.object({
   replayed: z.boolean(),
 })
 
+const newsEntryResponseSchema = z.object({ entry: newsEntrySchema })
+
 export type NewsStatus = (typeof newsStatusValues)[number]
 export type NewsWriteStatus = (typeof newsWriteStatusValues)[number]
 export type NewsEntry = z.infer<typeof newsEntrySchema>
@@ -90,6 +92,16 @@ export const listNewsEntries = (
     schema: newsPageSchema,
     ...(signal ? { signal } : {}),
   })
+
+export const getNewsEntry = (
+  id: string,
+  signal?: AbortSignal,
+): Promise<NewsEntry> =>
+  requestAdminJson({
+    path: `/admin/news/${encodeURIComponent(id)}`,
+    schema: newsEntryResponseSchema,
+    ...(signal ? { signal } : {}),
+  }).then(({ entry }) => entry)
 
 export const createNewsEntry = (
   input: NewsWriteInput,

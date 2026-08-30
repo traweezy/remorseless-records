@@ -30,6 +30,7 @@ import {
   nativeAdminActions,
 } from "../../../lib/admin-permissions"
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
+import { runRecoverableAdminMutation } from "../../components/admin-form-contract"
 import { ConfirmAction } from "../../components/confirm-action"
 import {
   AdminPageHeader,
@@ -43,10 +44,14 @@ import {
   type ReplaceContentLocation,
 } from "../../features/content/content-routes"
 import { DiscographyCollection } from "../../features/discography/discography-table"
-import { DiscographyManualForm } from "../../features/discography/discography-manual-form"
+import {
+  DiscographyManualForm,
+  discographyEntryMatchesManualInput,
+} from "../../features/discography/discography-manual-form"
 import {
   createManualDiscographyEntry,
   discographyAvailabilityValues,
+  getDiscographyEntry,
   listDiscographyEntries,
   updateDiscographyLifecycle,
   updateManualDiscographyEntry,
@@ -242,7 +247,14 @@ const DiscographyAdminPageContent = memo(() => {
       entry: DiscographyEntry
       idempotencyKey: string
       values: ManualDiscographyInput
-    }) => updateManualDiscographyEntry(entry, values, idempotencyKey),
+    }) =>
+      runRecoverableAdminMutation({
+        mutate: () =>
+          updateManualDiscographyEntry(entry, values, idempotencyKey),
+        readAfterFailure: () => getDiscographyEntry(entry.id),
+        wasApplied: (snapshot) =>
+          discographyEntryMatchesManualInput(snapshot, values),
+      }),
     onSuccess: async () => {
       setEditingEntry(null)
       toast.success("Historical release updated")

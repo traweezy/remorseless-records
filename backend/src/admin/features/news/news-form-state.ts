@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import type { AdminFormIssue } from "../../components/admin-form-contract"
 import type { NewsEntry, NewsWriteInput } from "./news-query"
 
 export type NewsPublicationIntent = "draft" | "schedule" | "publish"
@@ -28,18 +29,25 @@ const visibleRichText = (value: string): boolean =>
     .replace(/\s/gu, "")
     .length > 0
 
-export const newsEditorSchema = z
-  .object({
+export const newsEditorDraftSchema = z.object({
     content: z
       .string()
-      .max(200_000)
-      .refine(visibleRichText, "Write some visible post content."),
+      .max(200_000),
     coverAltText: z.string().trim().max(500),
     coverUrl: optionalUrlSchema,
     excerpt: z.string().trim().max(1_000),
     scheduleAt: z.string().trim().max(100),
     tagsText: z.string().max(5_000),
-    title: z.string().trim().min(1, "Enter a post title.").max(300),
+    title: z.string().trim().max(300),
+  })
+
+export const newsEditorSchema = newsEditorDraftSchema
+  .extend({
+    content: newsEditorDraftSchema.shape.content.refine(
+      visibleRichText,
+      "Write some visible post content.",
+    ),
+    title: newsEditorDraftSchema.shape.title.min(1, "Enter a post title."),
   })
   .superRefine((value, context) => {
     if (value.coverUrl && !value.coverAltText) {
@@ -67,6 +75,33 @@ export const newsEditorSchema = z
   })
 
 export type NewsEditorValues = z.infer<typeof newsEditorSchema>
+
+const newsFieldTargets: Record<string, string> = {
+  content: "news-content",
+  coverAltText: "news-cover-alt",
+  coverUrl: "news-cover",
+  excerpt: "news-excerpt",
+  scheduleAt: "news-schedule-at",
+  tagsText: "news-tags",
+  title: "news-title",
+}
+
+export const newsEditorValidationIssues = (
+  values: NewsEditorValues,
+): AdminFormIssue[] => {
+  const result = newsEditorSchema.safeParse(values)
+  if (result.success) {
+    return []
+  }
+  return result.error.issues.map((issue) => {
+    const field = String(issue.path[0] ?? "")
+    return {
+      key: `${issue.path.join(".")}:${issue.message}`,
+      message: issue.message,
+      targetId: newsFieldTargets[field] ?? null,
+    }
+  })
+}
 
 export const emptyNewsEditorValues: NewsEditorValues = {
   content: "",
@@ -155,3 +190,16 @@ export const buildNewsWriteInput = (
   tags: splitNewsTags(values.tagsText),
   title: values.title.trim(),
 })
+
+export const newsEntryMatchesWriteInput = (
+  entry: NewsEntry,
+  input: NewsWriteInput,
+): boolean =>
+  entry.content === input.content &&
+  entry.coverAltText === input.coverAltText &&
+  entry.coverUrl === input.coverUrl &&
+  entry.excerpt === input.excerpt &&
+  entry.publishedAt === input.publishedAt &&
+  entry.status === input.status &&
+  JSON.stringify(entry.tags) === JSON.stringify(input.tags) &&
+  entry.title === input.title

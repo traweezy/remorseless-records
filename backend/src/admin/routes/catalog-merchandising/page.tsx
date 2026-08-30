@@ -9,6 +9,7 @@ import {
   Heading,
   Text,
 } from "@medusajs/ui"
+import { useForm, useStore } from "@tanstack/react-form"
 import { useQuery } from "@tanstack/react-query"
 
 import {
@@ -16,6 +17,16 @@ import {
   catalogAdminActions,
 } from "../../../lib/admin-permissions"
 import { AdminEmptyState } from "../../components/admin-empty-state"
+import {
+  AdminFormErrorSummary,
+  AdminFormSaveState,
+  AdminTaskNavigation,
+  focusFirstAdminFormIssue,
+  useAdminUnsavedChanges,
+  type AdminFormIssue,
+  type AdminSaveState,
+  type AdminTaskNavigationItem,
+} from "../../components/admin-form-contract"
 import { AdminPageHeader } from "../../components/admin-page"
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import { ConfirmAction } from "../../components/confirm-action"
@@ -32,6 +43,13 @@ import {
   type ShelfSettingsField,
 } from "../../features/catalog-merchandising/catalog-shelf-settings"
 import { catalogSelectedProductsQueryOptions } from "../../features/catalog-merchandising/catalog-merchandising-query"
+import {
+  catalogShelfCreateSchema,
+  catalogShelfCreateValidationIssues,
+  catalogShelfFingerprint,
+  catalogShelfFormSchema,
+  catalogShelfValidationIssues,
+} from "../../features/catalog-merchandising/catalog-merchandising-form"
 import {
   type AdminProduct,
   type CreateShelfState,
@@ -67,6 +85,11 @@ const emptyCreateShelfForm: CreateShelfState = {
   ribbonPriority: "100",
   productLimit: "",
 }
+
+const merchandisingTasks = [
+  { href: "#shelf-settings", label: "Storefront settings" },
+  { href: "#shelf-products", label: "Products and schedule" },
+] as const satisfies readonly AdminTaskNavigationItem[]
 
 const buildKey = (prefix: string): string =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -198,20 +221,42 @@ const CatalogMerchandisingPageContent = memo(() => {
     () => new Map(),
   )
   const [selectedShelfId, setSelectedShelfId] = useState<string>("")
-  const [formState, setFormState] = useState<ShelfFormState>(emptyShelfForm)
-  const [createForm, setCreateForm] =
-    useState<CreateShelfState>(emptyCreateShelfForm)
   const [createOpen, setCreateOpen] = useState(false)
+  const [createDiscardOpen, setCreateDiscardOpen] = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [switchOpen, setSwitchOpen] = useState(false)
+  const [pendingShelfId, setPendingShelfId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [reconciling, setReconciling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [formIssues, setFormIssues] = useState<AdminFormIssue[]>([])
+  const [createIssues, setCreateIssues] = useState<AdminFormIssue[]>([])
   const createTriggerRef = useRef<HTMLButtonElement>(null)
   const saveRequest = useRef<PendingRequest | null>(null)
   const createRequest = useRef<PendingRequest | null>(null)
   const archiveRequest = useRef<PendingRequest | null>(null)
   const restoreRequest = useRef<PendingRequest | null>(null)
+
+  const shelfForm = useForm({
+    defaultValues: emptyShelfForm,
+    validators: { onChange: catalogShelfFormSchema },
+  })
+  const shelfFormState = useStore(shelfForm.store, (state) => ({
+    isDirty: state.isDirty,
+    values: state.values,
+  }))
+  const formState = shelfFormState.values
+  const createShelfForm = useForm({
+    defaultValues: emptyCreateShelfForm,
+    validators: { onChange: catalogShelfCreateSchema },
+  })
+  const createFormState = useStore(createShelfForm.store, (state) => ({
+    isDirty: state.isDirty,
+    values: state.values,
+  }))
+  const createForm = createFormState.values
 
   const selectedProductIds = useMemo(
     () =>
@@ -260,7 +305,8 @@ const CatalogMerchandisingPageContent = memo(() => {
 
   const loadShelf = useCallback(async (shelfId: string) => {
     if (!shelfId) {
-      setFormState(emptyShelfForm)
+      shelfForm.reset(emptyShelfForm)
+      setFormIssues([])
       return
     }
     setLoading(true)
@@ -270,13 +316,14 @@ const CatalogMerchandisingPageContent = memo(() => {
         `/admin/catalog/shelves/${shelfId}`
       )
       setPickedProducts(new Map())
-      setFormState(toShelfForm(response))
+      shelfForm.reset(toShelfForm(response))
+      setFormIssues([])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load shelf")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [shelfForm])
 
   useEffect(() => {
     void refreshAll()
@@ -295,47 +342,59 @@ const CatalogMerchandisingPageContent = memo(() => {
 
   const updateField = useCallback(
     (field: ShelfSettingsField, value: string | boolean) => {
-      setFormState((prev) => {
-        const next = { ...prev, [field]: value } as ShelfFormState
-        if (field === "mode" && value === "automatic") {
-          next.automationType = "new_release"
-        }
-        return next
-      })
+      shelfForm.setFieldValue(field as never, value as never)
+      if (field === "mode" && value === "automatic") {
+        shelfForm.setFieldValue("automationType", "new_release")
+      }
+      setFormIssues([])
     },
-    [],
+    [shelfForm],
   )
 
   const updateCreateField = useCallback(
     (field: CreateShelfField, value: string | boolean) => {
-      setCreateForm((prev) => {
-        const next = { ...prev, [field]: value } as CreateShelfState
-        if (field === "title" && !prev.handle.trim() && typeof value === "string") {
-          next.handle = defaultHandle(value)
-        }
-        if (field === "mode" && value === "automatic") {
-          next.automationType = "new_release"
-        }
-        return next
-      })
+      const current = createShelfForm.state.values
+      createShelfForm.setFieldValue(field as never, value as never)
+      if (
+        field === "title" &&
+        (!current.handle.trim() || current.handle === defaultHandle(current.title)) &&
+        typeof value === "string"
+      ) {
+        createShelfForm.setFieldValue("handle", defaultHandle(value))
+      }
+      if (field === "mode" && value === "automatic") {
+        createShelfForm.setFieldValue("automationType", "new_release")
+      }
+      setCreateIssues([])
     },
-    [],
+    [createShelfForm],
   )
 
-  const handleShelfSelect = useCallback((shelfId: string) => {
-    setSelectedShelfId(shelfId)
-  }, [])
+  const handleShelfSelect = useCallback(
+    (shelfId: string) => {
+      if (shelfId === selectedShelfId) {
+        return
+      }
+      if (shelfFormState.isDirty) {
+        setPendingShelfId(shelfId)
+        setSwitchOpen(true)
+        return
+      }
+      setSelectedShelfId(shelfId)
+    },
+    [selectedShelfId, shelfFormState.isDirty],
+  )
 
   const updateProductLine = useCallback(
     (key: string, patch: Partial<ShelfProductLine>) => {
-      setFormState((prev) => ({
-        ...prev,
-        products: prev.products.map((line) =>
+      shelfForm.setFieldValue("products", (products) =>
+        products.map((line) =>
           line.key === key ? { ...line, ...patch } : line
         ),
-      }))
+      )
+      setFormIssues([])
     },
-    []
+    [shelfForm]
   )
 
   const selectProduct = useCallback(
@@ -355,61 +414,68 @@ const CatalogMerchandisingPageContent = memo(() => {
   }, [selectedProductsQuery])
 
   const addProductLine = useCallback(() => {
-    setFormState((prev) => ({
-      ...prev,
-      products: [
-        ...prev.products,
+    shelfForm.setFieldValue("products", (products) => [
+        ...products,
         {
           key: buildKey("shelf-product"),
           productId: "",
-          sortOrder: String(prev.products.length),
+          sortOrder: String(products.length),
           isPinned: false,
           startsAt: "",
           endsAt: "",
         },
-      ],
-    }))
-  }, [])
+      ])
+    setFormIssues([])
+  }, [shelfForm])
 
   const removeProductLine = useCallback((key: string) => {
-    setFormState((prev) => ({
-      ...prev,
-      products: sortShelfLines(prev.products.filter((line) => line.key !== key)),
-    }))
-  }, [])
+    shelfForm.setFieldValue("products", (products) =>
+      sortShelfLines(products.filter((line) => line.key !== key)),
+    )
+    setFormIssues([])
+  }, [shelfForm])
 
   const moveProductLine = useCallback((key: string, direction: -1 | 1) => {
-    setFormState((prev) => {
-      const index = prev.products.findIndex((line) => line.key === key)
+    shelfForm.setFieldValue("products", (products) => {
+      const index = products.findIndex((line) => line.key === key)
       const target = index + direction
-      if (index < 0 || target < 0 || target >= prev.products.length) {
-        return prev
+      if (index < 0 || target < 0 || target >= products.length) {
+        return products
       }
-      const next = [...prev.products]
+      const next = [...products]
       const line = next[index]
       if (!line) {
-        return prev
+        return products
       }
       next.splice(index, 1)
       next.splice(target, 0, line)
-      return { ...prev, products: sortShelfLines(next) }
+      return sortShelfLines(next)
     })
-  }, [])
+    setFormIssues([])
+  }, [shelfForm])
 
   const saveShelf = useCallback(async () => {
     if (!selectedShelfId) {
       return
     }
 
+    const issues = catalogShelfValidationIssues(formState)
+    if (issues.length > 0) {
+      setFormIssues(issues)
+      focusFirstAdminFormIssue(issues)
+      setError(null)
+      setNotice(null)
+      return
+    }
+
     setSaving(true)
     setError(null)
     setNotice(null)
+    setFormIssues([])
+    const desiredFingerprint = catalogShelfFingerprint(formState)
     try {
       const ribbonPriority = toIntegerOrNull(formState.ribbonPriority) ?? 100
       const productLimit = toIntegerOrNull(formState.productLimit)
-      if (formState.mode === "automatic" && formState.automationType === "none") {
-        throw new Error("Automatic shelves need an automation type.")
-      }
 
       const productLines = formState.products.filter((line) => line.productId)
       const payload = {
@@ -434,34 +500,64 @@ const CatalogMerchandisingPageContent = memo(() => {
           endsAt: toNullable(line.endsAt),
         })),
       }
-      await fetchJson<ShelfResponse>(`/admin/catalog/shelves/${selectedShelfId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          ...payload,
-          idempotencyKey: idempotencyKeyFor(saveRequest, payload),
-        }),
-      })
+      const response = await fetchJson<ShelfResponse>(
+        `/admin/catalog/shelves/${selectedShelfId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            ...payload,
+            idempotencyKey: idempotencyKeyFor(saveRequest, payload),
+          }),
+        },
+      )
 
       saveRequest.current = null
       await refreshShelves()
-      await loadShelf(selectedShelfId)
+      shelfForm.reset(toShelfForm(response))
       setNotice("Saved merchandising shelf.")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to save shelf")
+      const failureMessage = err instanceof Error ? err.message : "Unable to save shelf"
+      setReconciling(true)
+      try {
+        const snapshot = await fetchJson<ShelfResponse>(
+          `/admin/catalog/shelves/${selectedShelfId}`,
+        )
+        const snapshotForm = toShelfForm(snapshot)
+        if (catalogShelfFingerprint(snapshotForm) === desiredFingerprint) {
+          saveRequest.current = null
+          shelfForm.reset(snapshotForm)
+          await refreshShelves()
+          setNotice(
+            "Saved merchandising shelf; confirmed after checking the server.",
+          )
+        } else {
+          setError(
+            `${failureMessage} The server did not confirm the complete change; your local edits are still available.`,
+          )
+        }
+      } catch {
+        setError(failureMessage)
+      } finally {
+        setReconciling(false)
+      }
     } finally {
       setSaving(false)
     }
-  }, [formState, loadShelf, refreshShelves, selectedShelfId])
+  }, [formState, refreshShelves, selectedShelfId, shelfForm])
 
   const createShelf = useCallback(async () => {
+    const issues = catalogShelfCreateValidationIssues(createForm)
+    if (issues.length > 0) {
+      setCreateIssues(issues)
+      focusFirstAdminFormIssue(issues)
+      return
+    }
     setSaving(true)
     setError(null)
     setNotice(null)
+    setCreateIssues([])
     try {
       const title = createForm.title.trim()
-      if (!title) {
-        throw new Error("Shelf title is required.")
-      }
       const ribbonPriority = toIntegerOrNull(createForm.ribbonPriority) ?? 100
       const productLimit = toIntegerOrNull(createForm.productLimit)
       const payload = {
@@ -488,7 +584,7 @@ const CatalogMerchandisingPageContent = memo(() => {
       createRequest.current = null
       await refreshShelves()
       setSelectedShelfId(response.shelf.id)
-      setCreateForm(emptyCreateShelfForm)
+      createShelfForm.reset(emptyCreateShelfForm)
       setCreateOpen(false)
       setNotice("Created merchandising shelf.")
     } catch (err) {
@@ -496,7 +592,7 @@ const CatalogMerchandisingPageContent = memo(() => {
     } finally {
       setSaving(false)
     }
-  }, [createForm, refreshShelves])
+  }, [createForm, createShelfForm, refreshShelves])
 
   const deleteSelectedShelf = useCallback(async () => {
     if (!selectedShelfId) {
@@ -574,10 +670,73 @@ const CatalogMerchandisingPageContent = memo(() => {
   }, [refreshAll])
 
   const handleCreateOpen = useCallback(() => {
+    createShelfForm.reset(emptyCreateShelfForm)
+    setCreateIssues([])
     setCreateOpen(true)
+  }, [createShelfForm])
+
+  const handleCreateOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && createFormState.isDirty && !saving) {
+        setCreateDiscardOpen(true)
+        return
+      }
+      setCreateOpen(open)
+    },
+    [createFormState.isDirty, saving],
+  )
+
+  const cancelCreateDiscard = useCallback(() => {
+    setCreateDiscardOpen(false)
   }, [])
 
+  const confirmCreateDiscard = useCallback(() => {
+    createShelfForm.reset(emptyCreateShelfForm)
+    setCreateIssues([])
+    setCreateDiscardOpen(false)
+    setCreateOpen(false)
+  }, [createShelfForm])
+
+  const cancelShelfSwitch = useCallback(() => {
+    setPendingShelfId(null)
+    setSwitchOpen(false)
+  }, [])
+
+  const confirmShelfSwitch = useCallback(() => {
+    if (pendingShelfId) {
+      shelfForm.reset(formState)
+      setSelectedShelfId(pendingShelfId)
+    }
+    setPendingShelfId(null)
+    setSwitchOpen(false)
+  }, [formState, pendingShelfId, shelfForm])
+
   const selectedShelfArchived = Boolean(selectedShelf?.shelf.archivedAt)
+  const busy = loading || saving || reconciling
+  const saveState: AdminSaveState = reconciling
+    ? "reconciling"
+    : saving
+      ? "saving"
+      : error
+        ? "error"
+        : shelfFormState.isDirty
+          ? "dirty"
+          : selectedShelf
+            ? "saved"
+            : "idle"
+  const createSaveState: AdminSaveState = saving
+    ? "saving"
+    : createIssues.length > 0
+      ? "error"
+      : createFormState.isDirty
+        ? "dirty"
+        : "idle"
+
+  useAdminUnsavedChanges(
+    (shelfFormState.isDirty || (createOpen && createFormState.isDirty)) &&
+      !saving &&
+      !reconciling,
+  )
 
   return (
     <Container className="flex flex-col gap-y-6 p-0">
@@ -586,7 +745,7 @@ const CatalogMerchandisingPageContent = memo(() => {
           actions={
             <>
               <Button
-                disabled={loading}
+                disabled={busy || shelfFormState.isDirty}
                 onClick={handleRefresh}
                 type="button"
                 variant="secondary"
@@ -604,14 +763,21 @@ const CatalogMerchandisingPageContent = memo(() => {
       </div>
 
       {error ? (
-        <div className="mx-6 rounded-md border border-ui-border-error bg-ui-bg-error px-4 py-3">
+        <div
+          className="mx-6 rounded-md border border-ui-border-error bg-ui-bg-error px-4 py-3"
+          role="alert"
+        >
           <Text size="small" className="text-ui-fg-error">
             {error}
           </Text>
         </div>
       ) : null}
       {notice ? (
-        <div className="mx-6 rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+        <div
+          aria-live="polite"
+          className="mx-6 rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3"
+          role="status"
+        >
           <Text size="small" className="text-ui-fg-subtle">
             {notice}
           </Text>
@@ -659,7 +825,7 @@ const CatalogMerchandisingPageContent = memo(() => {
                       type="button"
                       variant="secondary"
                       onClick={restoreSelectedShelf}
-                      disabled={saving}
+                      disabled={busy || shelfFormState.isDirty}
                     >
                       Restore
                     </Button>
@@ -668,7 +834,7 @@ const CatalogMerchandisingPageContent = memo(() => {
                       type="button"
                       variant="secondary"
                       onClick={openArchive}
-                      disabled={saving}
+                      disabled={busy || shelfFormState.isDirty}
                     >
                       <ArchiveBox />
                       Archive
@@ -677,11 +843,27 @@ const CatalogMerchandisingPageContent = memo(() => {
                   <Button
                     type="button"
                     onClick={saveShelf}
-                    disabled={saving || Boolean(selectedShelf.shelf.archivedAt)}
+                    disabled={
+                      busy ||
+                      !shelfFormState.isDirty ||
+                      Boolean(selectedShelf.shelf.archivedAt)
+                    }
+                    isLoading={saving || reconciling}
                   >
-                    {saving ? "Saving..." : "Save shelf"}
+                    Save shelf
                   </Button>
                 </div>
+              </div>
+
+              <div className="space-y-4 border-b border-ui-border-base px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Text className="text-ui-fg-subtle" size="small">
+                    Configure what customers see, then add or schedule products.
+                  </Text>
+                  <AdminFormSaveState state={saveState} />
+                </div>
+                <AdminTaskNavigation items={merchandisingTasks} />
+                <AdminFormErrorSummary issues={formIssues} />
               </div>
 
               {selectedShelf.shelf.archivedAt ? (
@@ -694,17 +876,25 @@ const CatalogMerchandisingPageContent = memo(() => {
                 </div>
               ) : null}
 
-              <CatalogShelfSettings
-                disabled={selectedShelfArchived}
-                form={formState}
-                onChange={updateField}
-              />
+              <div
+                className="scroll-mt-24 outline-none"
+                id="shelf-settings"
+                tabIndex={-1}
+              >
+                <CatalogShelfSettings
+                  disabled={selectedShelfArchived}
+                  form={formState}
+                  onChange={updateField}
+                />
+              </div>
             </div>
 
             <fieldset
               aria-label="Shelf products"
-              className="min-w-0 rounded-lg border border-ui-border-base"
+              className="min-w-0 scroll-mt-24 rounded-lg border border-ui-border-base outline-none"
               disabled={selectedShelfArchived}
+              id="shelf-products"
+              tabIndex={-1}
             >
               <CatalogShelfProductsEditor
                 disabled={selectedShelfArchived}
@@ -727,6 +917,27 @@ const CatalogMerchandisingPageContent = memo(() => {
                 productById={productById}
               />
             </fieldset>
+
+            <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-md border border-ui-border-base bg-ui-bg-base/95 p-4 shadow-elevation-flyout backdrop-blur sm:flex-row sm:items-center sm:justify-between motion-reduce:backdrop-blur-none">
+              <div>
+                <Text className="font-medium" size="small">
+                  {selectedShelf.shelf.title}
+                </Text>
+                <AdminFormSaveState state={saveState} />
+              </div>
+              <Button
+                disabled={
+                  busy ||
+                  !shelfFormState.isDirty ||
+                  Boolean(selectedShelf.shelf.archivedAt)
+                }
+                isLoading={saving || reconciling}
+                onClick={saveShelf}
+                type="button"
+              >
+                Save shelf
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="rounded-lg border border-ui-border-base">
@@ -740,12 +951,30 @@ const CatalogMerchandisingPageContent = memo(() => {
 
       <CatalogShelfCreateModal
         form={createForm}
+        issues={createIssues}
         onChange={updateCreateField}
         onCreate={createShelf}
-        onOpenChange={setCreateOpen}
+        onOpenChange={handleCreateOpenChange}
         open={createOpen}
         restoreFocusRef={createTriggerRef}
+        saveState={createSaveState}
         saving={saving}
+      />
+      <ConfirmAction
+        confirmLabel="Discard draft"
+        description="Discard this new shelf draft and close the editor?"
+        onCancel={cancelCreateDiscard}
+        onConfirm={confirmCreateDiscard}
+        open={createDiscardOpen}
+        title="Discard new shelf draft"
+      />
+      <ConfirmAction
+        confirmLabel="Discard and switch"
+        description="Discard the unsaved changes to this shelf and open the selected shelf?"
+        onCancel={cancelShelfSwitch}
+        onConfirm={confirmShelfSwitch}
+        open={switchOpen}
+        title="Switch shelves"
       />
       <ConfirmAction
         confirmLabel="Archive shelf"

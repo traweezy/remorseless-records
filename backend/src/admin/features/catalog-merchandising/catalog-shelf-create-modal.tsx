@@ -10,6 +10,12 @@ import { Button, FocusModal, Input, Label } from "@medusajs/ui"
 
 import { AdminFocusModalHeader } from "../../components/admin-focus-modal-header"
 import {
+  AdminFormErrorSummary,
+  AdminFormSaveState,
+  type AdminFormIssue,
+  type AdminSaveState,
+} from "../../components/admin-form-contract"
+import {
   CatalogAutomationField,
   CatalogCheckboxField,
   CatalogShelfModeField,
@@ -75,16 +81,28 @@ CreateInputField.displayName = "CreateInputField"
 
 type CatalogShelfCreateModalProps = {
   form: CreateShelfState
+  issues: readonly AdminFormIssue[]
   onChange: CreateShelfChange
   onCreate: () => void
   onOpenChange: (open: boolean) => void
   open: boolean
   restoreFocusRef: RefObject<HTMLButtonElement>
+  saveState: AdminSaveState
   saving: boolean
 }
 
 export const CatalogShelfCreateModal = memo<CatalogShelfCreateModalProps>(
-  ({ form, onChange, onCreate, onOpenChange, open, restoreFocusRef, saving }) => {
+  ({
+    form,
+    issues,
+    onChange,
+    onCreate,
+    onOpenChange,
+    open,
+    restoreFocusRef,
+    saveState,
+    saving,
+  }) => {
     const handleModeChange = useCallback(
       (value: ShelfMode) => {
         onChange("mode", value)
@@ -128,6 +146,10 @@ export const CatalogShelfCreateModal = memo<CatalogShelfCreateModalProps>(
             title="Create merchandising shelf"
           />
           <FocusModal.Body className="overflow-y-auto px-6 py-5">
+            <div className="mb-5 flex justify-end">
+              <AdminFormSaveState state={saveState} />
+            </div>
+            <AdminFormErrorSummary className="mb-5" issues={issues} />
             <div className="grid gap-4 md:grid-cols-2">
               <CreateInputField
                 field="title"
