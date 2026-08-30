@@ -892,6 +892,29 @@ provider fault; focused tests prove transient transport/status retry,
 single-deadline cancellation, safe-method enforcement, and redacted terminal
 failures without risking shared staging availability.
 
+Cached Medusa Store-read exact staging acceptance: commit
+`a8d4526200a5cc0f3fd17a5703468c51d4edf2f7` passed Root CI `33288230471`,
+Backend CI `33288230489`, and Storefront CI `33288230513`, including unit
+coverage, both production builds, CodeQL, dependency/secret scans, SBOM and
+license verification, Playwright, pa11y, and Lighthouse. Railway held
+Storefront deployment `d1e16883-23f3-44d5-92d0-6cddde18ab9a` until those
+workflows passed, then released image digest
+`sha256:881229559ea1082dc2290a57d3ee25a25ba2c274a744f80f4f98c9e415a851af`
+to `SUCCESS` on that exact SHA. Backend correctly retained deployment
+`4a326c2f-2d09-43b5-8f9f-6599c9dfa4ff` because its watched paths were
+unchanged. Storefront `/live`, `/ready`, `/api/healthcheck`, `/`, `/catalog`,
+`/news`, `/discography`, and `/sitemap.xml` all returned 200; readiness
+reported Backend and Redis healthy. The bounded product-list and product-detail
+reads returned 200, a trusted-origin catalog-hydration read returned one hit,
+and both API correlation headers were present. All 13 exact-deployment HTTP
+records were 200, with no response at 400 or above. The exact deployment had no
+warning or unexpected error; its only Railway `error`-level record was pnpm's
+successful `$ next start` command banner written to stderr. No healthy probe
+needed a provider retry. Staging did not force a provider fault; focused tests
+prove transient transport/status retry, shared-deadline cancellation,
+safe-method enforcement, non-transient and parser failure handling, and
+redacted telemetry without risking shared staging availability.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
