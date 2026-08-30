@@ -762,6 +762,24 @@ flowchart LR
   Store --> Detail[Stable detail URL]
 ```
 
+## Admin form experience
+
+Project-owned Admin write surfaces use TanStack Form and Zod with one shared
+interaction contract. Long editors expose task anchors, an error summary that
+focuses the exact invalid control, explicit dirty/saving/reconciliation states,
+and unload protection. Product creation, News, and historical Discography use
+validated, size-bounded seven-day browser drafts; successful saves and
+confirmed discards clear only their namespaced draft.
+
+Catalog shelf, Product/Variant profile, News, and Discography updates preserve
+idempotency keys for exact retries and read the authoritative record after an
+ambiguous failure before reporting that a save was lost. Stale versions remain
+conflicts and are never overwritten. Media quarantine/restore uses a
+confirmation-first workflow with a stable retry key. The operator-facing task
+guide is [`../docs/ADMIN_CLIENT_GUIDE.md`](../docs/ADMIN_CLIENT_GUIDE.md); the
+design and acceptance contract is
+[`../docs/ADMIN_EXPERIENCE_REWORK.md`](../docs/ADMIN_EXPERIENCE_REWORK.md).
+
 ## Quality commands
 
 ```bash

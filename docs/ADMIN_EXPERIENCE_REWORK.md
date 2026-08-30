@@ -37,7 +37,7 @@ Primary references:
 - [WCAG 2.2 error identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification.html)
 - [WCAG 2.2 focus appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html)
 
-## Current surface inventory
+## Baseline surface inventory
 
 The audit covers every project-owned Admin input surface, not only files with a
 literal HTML `form` element.
@@ -171,36 +171,38 @@ first; GitHub and Railway validation follows that single section push.
 
 ## Delivery status
 
-The Tax Control objective is implemented locally. The route now presents the
-collection decision first, offers the three plain-language choices, separates
-provider readiness from the current mode, previews frozen decisions, requires
-the exact disabled acknowledgement and an audit reason, focuses invalid input,
-locks pending submission, and reconciles mode/provider/generation after an
-ambiguous response. Its history shows mode and provider changes with generation
-and acknowledgement version.
+Tax Control and the customer-facing tax-off path are complete. The route
+presents the collection decision before provider detail, offers three
+plain-language choices, previews frozen decisions, requires the exact disabled
+acknowledgement and an audit reason, and reconciles mode/provider/generation
+after an ambiguous response. Tax Records, checkout, receipts, payment evidence,
+refunds, reporting, and audit history retain the historical collection mode and
+say **Tax not collected** without implying exemption. Exact-SHA GitHub and
+Railway acceptance completed for commit `c8decf0a5b6b5b6739de76a89865be231902b044`.
 
-Tax Records now gives disabled sales a separate pending-review amount and
-collection-decision filter. Checkout and receipts retain the historical mode
-and say **Tax not collected** without implying exemption. Focused component
-state, API boundary, payment/evidence, reporting, and Storefront tests pass.
-The complete Backend and Storefront suites, lint, strict typecheck, production
-builds, repository QA, dependency policy, peer checks, and diff checks also
-pass locally.
+The complete Admin rework is implemented locally across the inventoried input
+surfaces:
 
-Real graphical Chromium acceptance on August 30, 2026 exercised the collecting
-screen, the completed typed-acknowledgement disable prompt, and the resulting
-**Tax not collected** state. The 3,200 x 1,280 rendered workspace had no
-horizontal overflow. Scoped axe analysis of the project-owned Tax Control
-content reported 24 passed rules, zero violations, and zero incomplete checks;
-the enclosing vendor Admin shell retains separate upstream navigation findings.
-The inspected desktop captures are
-`/tmp/tax-control-disabled-prompt-monitor_1.png` and
-`/tmp/tax-control-disabled-monitor.png`. The staging-configured Storefront
-production build and its complete local Playwright matrix also pass with 53
-tests passed, two intentionally skipped, and zero failures across desktop
-checkout, Pixel 7, and iPhone 15 Pro. Browser navigation now waits for the
-rendered contract after `domcontentloaded`; it does not wait for global network
-silence while intentional background activity continues. Re-enable browser
-coverage, the database migration rehearsal, the no-provider-call staging trace,
-exact-SHA CI, and Railway acceptance remain release evidence for this
-objective.
+- shared error-summary, task-navigation, save-state, unsaved-change,
+  response-reconciliation, and validated browser-draft primitives;
+- resumable composite Product creation with linked validation focus;
+- TanStack Form and aggregate Zod state for existing Product authoring;
+- a split, independently tested Variant profile drawer replacing the former
+  2,941-line catalog widget;
+- TanStack Form shelf editing and creation with duplicate-product, scheduling,
+  discard, archive, and response-loss safeguards;
+- News and historical Discography editors with task navigation, browser draft
+  recovery, exact field focus, stable retry identity, and update
+  reconciliation; and
+- a confirmation-first Media Cleanup workflow that makes reversible quarantine
+  distinct from physical deletion.
+
+Every local objective has passed its focused tests, lint, and strict Backend
+typecheck. The complete Backend suite passed with 212 suites and 1,259 tests,
+the production Backend and Admin builds completed, and the repository QA and
+security-policy gates passed. Documentation review is complete. The compiled
+server could not finish bootstrapping its remote dependencies on the local
+workstation, so rendered acceptance is intentionally deferred to the deployed
+artifact instead of being inferred from component output. Release acceptance
+after the single push is real rendered Admin browser inspection at desktop and
+narrow widths plus exact-SHA GitHub/Railway observation.
