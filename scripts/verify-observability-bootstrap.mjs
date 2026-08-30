@@ -51,7 +51,14 @@ assert.equal(
   backendPackage.scripts.start,
   "cd .medusa/server && node --require ./observability-register.cjs ./node_modules/@medusajs/cli/cli.js start --verbose"
 )
-assert.match(postBuild, /fs\.copyFileSync\(OBSERVABILITY_BOOTSTRAP_SOURCE/u)
+assert.match(
+  postBuild,
+  /copyNewRegularFile\(\s*OBSERVABILITY_BOOTSTRAP_SOURCE,\s*OBSERVABILITY_BOOTSTRAP_TARGET,\s*0o644\s*\)/u
+)
+assert.doesNotMatch(
+  postBuild,
+  /fs\.copyFileSync\(OBSERVABILITY_BOOTSTRAP_SOURCE/u
+)
 
 console.log(
   "Backend observability bootstrap verified: preloaded before Medusa with bounded DB, Redis, and runtime instrumentation."

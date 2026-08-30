@@ -2,6 +2,85 @@ const fs = require("fs")
 
 const NO_FOLLOW = fs.constants.O_NOFOLLOW ?? 0
 
+const writeAll = (descriptor, contents, filePath) => {
+  const buffer = Buffer.isBuffer(contents)
+    ? contents
+    : Buffer.from(contents, "utf-8")
+  let offset = 0
+  while (offset < buffer.length) {
+    const written = fs.writeSync(
+      descriptor,
+      buffer,
+      offset,
+      buffer.length - offset,
+      offset
+    )
+    if (written === 0) {
+      throw new Error(`Unable to make progress while writing: ${filePath}`)
+    }
+    offset += written
+  }
+}
+
+const createNewRegularFile = (filePath, contents, mode = 0o600) => {
+  const descriptor = fs.openSync(
+    filePath,
+    fs.constants.O_WRONLY |
+      fs.constants.O_CREAT |
+      fs.constants.O_EXCL |
+      NO_FOLLOW,
+    mode
+  )
+
+  try {
+    const fileStatus = fs.fstatSync(descriptor)
+    if (!fileStatus.isFile()) {
+      throw new Error(`Refusing to create non-regular file: ${filePath}`)
+    }
+    writeAll(descriptor, contents, filePath)
+    fs.fsyncSync(descriptor)
+  } finally {
+    fs.closeSync(descriptor)
+  }
+}
+
+const copyNewRegularFile = (sourcePath, targetPath, mode = 0o600) => {
+  const sourceDescriptor = fs.openSync(
+    sourcePath,
+    fs.constants.O_RDONLY | NO_FOLLOW
+  )
+  try {
+    const sourceStatus = fs.fstatSync(sourceDescriptor)
+    if (!sourceStatus.isFile()) {
+      throw new Error(`Refusing to copy non-regular file: ${sourcePath}`)
+    }
+    const contents = fs.readFileSync(sourceDescriptor)
+    createNewRegularFile(targetPath, contents, mode)
+  } finally {
+    fs.closeSync(sourceDescriptor)
+  }
+}
+
+/**
+ * @param {string} filePath
+ * @param {BufferEncoding | null} [encoding]
+ * @returns {Buffer | string}
+ */
+const readExistingRegularFile = (filePath, encoding = null) => {
+  const descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | NO_FOLLOW)
+  try {
+    const fileStatus = fs.fstatSync(descriptor)
+    if (!fileStatus.isFile()) {
+      throw new Error(`Refusing to read non-regular file: ${filePath}`)
+    }
+    return encoding
+      ? fs.readFileSync(descriptor, { encoding })
+      : fs.readFileSync(descriptor)
+  } finally {
+    fs.closeSync(descriptor)
+  }
+}
+
 const updateExistingRegularFile = (
   filePath,
   transform,
@@ -33,20 +112,7 @@ const updateExistingRegularFile = (
     }
 
     const contents = Buffer.from(updated, "utf-8")
-    let offset = 0
-    while (offset < contents.length) {
-      const written = fs.writeSync(
-        descriptor,
-        contents,
-        offset,
-        contents.length - offset,
-        offset
-      )
-      if (written === 0) {
-        throw new Error(`Unable to make progress while updating: ${filePath}`)
-      }
-      offset += written
-    }
+    writeAll(descriptor, contents, filePath)
     fs.ftruncateSync(descriptor, contents.length)
     fs.fsyncSync(descriptor)
     return true
@@ -55,4 +121,9 @@ const updateExistingRegularFile = (
   }
 }
 
-module.exports = { updateExistingRegularFile }
+module.exports = {
+  copyNewRegularFile,
+  createNewRegularFile,
+  readExistingRegularFile,
+  updateExistingRegularFile,
+}
