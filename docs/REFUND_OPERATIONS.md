@@ -222,7 +222,13 @@ checkout workflow compensated the customer.
 The existing `payment.refunded` tax-evidence subscriber performs immediate
 reconciliation. The `reconcile-tax-evidence` job runs hourly at minute 23,
 oldest eligible evidence first, with a 100-record per-run cap, bounded Stripe
-timeouts/retries, and a per-PaymentIntent distributed lock.
+timeouts/retries, and a per-PaymentIntent distributed lock. Current refund,
+dispute, PaymentIntent, Tax association, and refund-list GETs share one
+eight-second lifecycle/reconciliation deadline. Nested SDK retries are off;
+each safe GET can retry once only for an eligible transient failure, and rate
+limits stay single-attempt. Strict response validation runs before persistence,
+and logs contain fixed operation/reason/attempt metadata rather than Stripe
+messages or payloads.
 
 Stripe's separate lifecycle endpoint listens only for `refund.created`,
 `refund.updated`, `refund.failed`, and the created/updated/closed/funds

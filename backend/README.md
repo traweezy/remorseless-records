@@ -464,6 +464,22 @@ replay, and fails closed on a changed or malformed provider response. Retry
 logs contain only operation, reason class, and attempt count; terminal errors
 never copy Stripe response text or payment metadata.
 
+Stripe payment-evidence and refund/dispute lifecycle reads use one shared
+eight-second deadline per reconciliation. A lifecycle processor first retrieves
+the current refund or dispute, then reuses one cached, expanded PaymentIntent
+while reading the bounded refund page and optional Tax association; the tracked
+path does not retrieve the PaymentIntent twice. SDK retries are disabled, each
+safe GET can make only one eligible transient retry, and rate limits plus other
+non-retryable 4xx responses remain single-attempt. The boundary validates
+object discriminators and identities, integer amounts, currency, mode where the
+provider exposes it, PaymentIntent and refund/dispute statuses, order metadata,
+expanded charge state, unique refunds, and every committed or errored Tax
+association attempt. At most 100 refunds are accepted; additional pagination
+is persisted as an incomplete-audit failure. Retry logs contain only fixed
+operation, reason, and attempt fields, and terminal errors never copy provider
+messages or response payloads. These reconciliation paths are read-only and do
+not create refunds, disputes, payments, or Tax transactions.
+
 An authenticated Medusa Admin can review readiness, quota, exact paginated
 checkout impact, payment evidence, and an immutable provider-switch history at
 **Settings → Tax control**. The current setup is read-only; an explicit provider action

@@ -2363,6 +2363,10 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       one shared deadline, disable nested SDK retries, preserve one idempotency
       key across update attempts, validate the complete binding acknowledgement,
       and redact terminal errors and retry telemetry.
+- [x] Bound Stripe payment-evidence and refund/dispute lifecycle safe reads
+      under one shared deadline, cache the expanded PaymentIntent per lifecycle
+      run, disable nested SDK retries, validate complete provider response
+      shapes before persistence, and redact terminal errors and retry telemetry.
 - [ ] Validate tax cache TTLs at startup and bound or purge in-memory caches.
 - [ ] Configure a reviewed monitoring ZIP before enabling paid quota probes.
 - [ ] Complete the filing-record and tax-control runbooks.
@@ -2431,7 +2435,13 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       key across bounded update retries, rejects rate-limit retries, strictly
       validates identity, amount, currency, mode, metadata, status, calculation,
       hook, and update acknowledgement, and emits only fixed retry metadata.
-      Stripe evidence/lifecycle calls plus the other provider families remain.
+      Stripe evidence and lifecycle processing now shares one eight-second
+      deadline across the current refund/dispute, cached expanded PaymentIntent,
+      optional Tax association, and bounded refund-page safe reads. Nested SDK
+      retries are disabled, each eligible transient GET can retry once, rate
+      limits remain single-attempt, response shapes are validated before
+      persistence, and retry/error telemetry cannot copy provider payloads. The
+      other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.

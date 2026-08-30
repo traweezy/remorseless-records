@@ -143,6 +143,21 @@ rechecks prepared/successful/refunded/disputed records so delayed refund
 reversals and missed dispute signals remain visible. Aggregate warnings report
 failures, incidents, or a reached cap.
 
+All Stripe evidence GETs run through one validated safe-read boundary with a
+shared eight-second deadline. Standalone reconciliation reads the expanded
+PaymentIntent, the optional Tax association, and one 100-refund page
+concurrently. Refund/dispute lifecycle processing retrieves the current
+provider object first and caches the expanded PaymentIntent for the subsequent
+reconciliation, preventing a duplicate read on tracked evidence. SDK retries
+are disabled; transport failures and HTTP 408, 409, 425, or 5xx responses can
+receive one bounded retry, while 429 and other non-retryable 4xx responses stay
+single-attempt. The reader rejects malformed identities, discriminators,
+amounts, currencies, modes, statuses, metadata, expanded charge state, refund
+records, and association attempts before durable evidence is updated. Retry
+telemetry contains only the operation, reason class, and attempt count;
+provider messages and payloads are never logged. This boundary issues no Stripe
+mutation.
+
 Refund reconciliation is per refund, not merely per PaymentIntent. It verifies
 that every successful Stripe refund has its own committed Stripe Tax reversal,
 surfaces failed/canceled refunds, and fails closed when Stripe reports more
