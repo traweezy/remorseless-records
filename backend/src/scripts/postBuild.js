@@ -87,7 +87,9 @@ if (adminDocumentFound) {
 // Copy pnpm-lock.yaml (scoped to the backend importer for frozen installs)
 const localLockPath = path.join(process.cwd(), "pnpm-lock.yaml");
 const rootLockPath = path.join(process.cwd(), "..", "pnpm-lock.yaml");
-const lockSource = fs.existsSync(localLockPath) ? localLockPath : rootLockPath;
+const lockSource = fs.existsSync(ROOT_WORKSPACE_YAML)
+  ? rootLockPath
+  : localLockPath;
 
 if (!fs.existsSync(lockSource)) {
   throw new Error("pnpm-lock.yaml not found in backend or repository root.");

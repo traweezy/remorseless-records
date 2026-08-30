@@ -227,6 +227,13 @@ const adminCatalogMediaMutationRateLimit = createRateLimitMiddleware({
   onUnavailable: "reject",
 });
 
+const adminManagedUploadRateLimit = createRateLimitMiddleware({
+  key: "admin:managed-upload",
+  max: 60,
+  windowMs: 60_000,
+  onUnavailable: "reject",
+});
+
 const adminCatalogMediaReadRateLimit = createRateLimitMiddleware({
   key: "admin:catalog-media-read",
   max: 120,
@@ -499,7 +506,10 @@ export default defineMiddlewares({
     {
       matcher: "/admin/managed-uploads",
       methods: ["POST"],
-      middlewares: [managedUpload.array("files")],
+      middlewares: [
+        adminManagedUploadRateLimit,
+        managedUpload.array("files"),
+      ],
     },
     ...adminAuthorizationPolicyRoutes,
     ...nativeAdminPolicyOverlayRoutes,

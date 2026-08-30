@@ -122,11 +122,14 @@ toolbar above the editable document on desktop and mobile.
 
 ### Covers and accessible descriptions
 
-A cover is optional. The browser accepts JPEG, PNG, WebP, or GIF input up to
-12 MiB and sends it to the authenticated managed-upload route. The Backend
-performs the authoritative filename, media type, size, and signature checks
-before the File Module stores anything. Only `http` or `https` cover URLs can
-pass either the Admin response validator or the Backend News contract.
+A cover is optional. The browser accepts JPEG, PNG, WebP, or non-animated GIF
+input up to 12 MiB and sends it to the authenticated managed-upload route. The
+Backend applies the authoritative request limits and then fully decodes and
+re-encodes the image in a resource-limited process. It publishes only a
+metadata-free, re-verified WebP with an opaque storage name. See
+[`docs/MEDIA_SECURITY.md`](docs/MEDIA_SECURITY.md) for the exact limits,
+failure boundary, telemetry, and retention policy. Only `http` or `https` cover
+URLs can pass either the Admin response validator or the Backend News contract.
 
 When a cover exists, its description is required. The same description is
 used on News cards, the homepage carousel, the detail page, and social/Open
@@ -1411,9 +1414,11 @@ hosts are not allowlisted. Local development may still use HTTP services.
 Catalog product images upload through
 `POST /admin/catalog/media/uploads`. This authenticated route requires a UUID
 idempotency key, limits request count and size, accepts only JPEG, PNG, WebP,
-and GIF, and verifies filename/extension coherence plus file signatures before
-delegating persistence to Medusa's File Module. Every stored file immediately
-gets a catalog media asset row containing its digest and upload ownership. An
+and non-animated GIF, then fully decodes, bounds, auto-orients, strips metadata,
+re-encodes, and independently verifies a WebP in a resource-limited worker
+before delegating persistence to Medusa's File Module. Every stored file
+immediately gets a catalog media asset row containing normalized and source
+digests, dimensions, safety-pipeline evidence, and upload ownership. An
 exact successful retry reuses the recorded result. Partial and downstream
 failures attempt both database and remote cleanup; incomplete cleanup is
 recorded as failed with the owned identifiers retained for reconciliation. An
@@ -1421,8 +1426,10 @@ editor abandoned after upload therefore leaves an auditable unlinked asset for
 the orphan workflow instead of an invisible object-storage leak.
 
 News images retain the generic `POST /admin/managed-uploads` route, which also
-accepts validated UTF-8 CSV for existing import tooling. The unused
-presigned-upload route remains disabled.
+accepts validated UTF-8 CSV for existing import tooling. Image and CSV batches
+must be separate. Image bytes use the same sandbox and WebP-only publication
+boundary as Catalog media; CSV files retain bounded UTF-8 validation. Both use
+opaque storage names. The unused presigned-upload route remains disabled.
 
 The Medusa Admin **Operations → Media cleanup** workspace lists the exact
 paginated set of
@@ -1434,7 +1441,10 @@ restorable.
 
 Physical media deletion is deliberately unavailable. The displayed 30-day
 date is only the earliest future review point; no job or route automatically
-deletes the catalog row or File Module object.
+deletes the catalog row or File Module object. A future audited purge also
+requires a checksum-verified off-site restore drill, exact dry-run manifest,
+independent review, version/linkage recheck, explicit apply confirmation, and a
+durable tombstone as defined in [`docs/MEDIA_SECURITY.md`](docs/MEDIA_SECURITY.md).
 
 The screen shows whether storage is managed by the application, when and by
 whom an asset was quarantined, and the earliest review date. External orphan

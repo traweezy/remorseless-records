@@ -38,11 +38,24 @@ const commandFixture = (): CatalogMediaUploadInput => ({
     {
       content: "base64-content",
       filename: "The Album Cover.JPG",
-      mimeType: "image/jpeg",
+      height: 1_200,
+      mimeType: "image/webp",
       remoteFilename:
-        "00000000-0000-4000-8000-000000000001-00-The-Album-Cover.jpg",
+        "00000000-0000-4000-8000-000000000001-00-The-Album-Cover.webp",
       sha256: "a".repeat(64),
       size: 1_024,
+      source: {
+        channels: 3,
+        filename: "The Album Cover.JPG",
+        format: "jpeg",
+        frames: 1,
+        height: 2_400,
+        mimeType: "image/jpeg",
+        sha256: "c".repeat(64),
+        size: 4_096,
+        width: 2_400,
+      },
+      width: 1_200,
     },
   ],
   idempotencyKey: "00000000-0000-4000-8000-000000000001",
@@ -50,16 +63,13 @@ const commandFixture = (): CatalogMediaUploadInput => ({
 })
 
 describe("catalog product media upload", () => {
-  it("builds a bounded, path-safe remote filename with the batch prefix", () => {
+  it("builds an opaque WebP filename from the batch prefix and index", () => {
     expect(
       buildCatalogMediaRemoteFilename(
         commandFixture().idempotencyKey,
         3,
-        String.raw`folder\The Album Cover.JPG`,
       ),
-    ).toBe(
-      "00000000-0000-4000-8000-000000000001-03-The-Album-Cover.jpg",
-    )
+    ).toBe("00000000-0000-4000-8000-000000000001-03.webp")
   })
 
   it("records each remote upload as a catalog asset immediately", async () => {
@@ -81,7 +91,7 @@ describe("catalog product media upload", () => {
             filename: "The Album Cover.JPG",
             id: "file_upload_1",
             mediaAssetId: "cmedia_upload_1",
-            mimeType: "image/jpeg",
+            mimeType: "image/webp",
             size: 1_024,
             url: "https://media.example/catalog/cover.jpg",
           },
@@ -97,6 +107,7 @@ describe("catalog product media upload", () => {
         metadata: {
           file_sha256s: ["a".repeat(64)],
           remote_prefix: input.idempotencyKey,
+          source_file_sha256s: ["c".repeat(64)],
         },
         status: "pending",
       }),
@@ -105,12 +116,29 @@ describe("catalog product media upload", () => {
       access: "public",
       content: "base64-content",
       filename: input.files[0]?.remoteFilename,
-      mimeType: "image/jpeg",
+      mimeType: "image/webp",
     })
     expect(service.createCatalogMediaAssets).toHaveBeenCalledWith([
       expect.objectContaining({
         content_sha256: "a".repeat(64),
         metadata: {
+          safety_pipeline: {
+            normalized_format: "webp",
+            normalized_sha256: "a".repeat(64),
+            status: "passed",
+            validation: "strict-decode-reencode",
+            version: "sharp-webp-v1",
+          },
+          source: {
+            channels: 3,
+            format: "jpeg",
+            frames: 1,
+            height: 2_400,
+            mime_type: "image/jpeg",
+            sha256: "c".repeat(64),
+            size: 4_096,
+            width: 2_400,
+          },
           upload_idempotency_key: input.idempotencyKey,
         },
         source_file_key: "file_upload_1",

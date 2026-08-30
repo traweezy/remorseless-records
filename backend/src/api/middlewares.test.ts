@@ -430,11 +430,11 @@ describe("Admin middleware composition", () => {
     );
 
     expect(managedUploadRoute?.policies).toBeUndefined();
-    expect(managedUploadRoute?.middlewares).toHaveLength(1);
+    expect(managedUploadRoute?.middlewares).toHaveLength(2);
     expect(catalogUploadRoute?.policies).toBeUndefined();
     expect(catalogUploadRoute?.middlewares).toHaveLength(2);
     expect(catalogUploadRoute?.middlewares?.[1]?.name).toBe(
-      managedUploadRoute?.middlewares?.[0]?.name,
+      managedUploadRoute?.middlewares?.[1]?.name,
     );
   });
 

@@ -1,17 +1,16 @@
 import { z } from "zod"
 
 import {
-  MANAGED_IMAGE_MIME_TYPES,
-  MAX_UPLOAD_BYTES,
   MAX_UPLOAD_FILES,
+  MAX_NORMALIZED_IMAGE_BYTES,
 } from "../../../lib/uploads/constraints"
 
 const uploadFileSchema = z.object({
   filename: z.string().trim().min(1).max(255),
   id: z.string().trim().min(1).max(1_024),
   mediaAssetId: z.string().trim().min(1).max(255),
-  mimeType: z.enum(MANAGED_IMAGE_MIME_TYPES),
-  size: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+  mimeType: z.literal("image/webp"),
+  size: z.number().int().positive().max(MAX_NORMALIZED_IMAGE_BYTES),
   url: z.string().trim().url().max(2_048),
 })
 

@@ -382,9 +382,10 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
           </div>
         </div>
         <Text className="mt-3 text-ui-fg-subtle" size="xsmall">
-          JPEG, PNG, WebP, or GIF · up to 10 at once · 12 MiB each · 20 MiB
-          combined. Uploads are stored immediately; abandoned images stay in
-          Media Cleanup for safe review.
+          JPEG, PNG, WebP, or non-animated GIF · up to 10 at once · 12 MiB
+          each · 20 MiB combined. Images are decoded, stripped of metadata, and
+          saved as WebP before publication. Abandoned images stay in Media
+          Cleanup for safe review.
         </Text>
         {error ? (
           <Text

@@ -25,6 +25,11 @@ import {
   type ManagedMediaCommandOptions,
   type SupportedManagedImage,
 } from "@/lib/catalog/managed-media"
+import {
+  MANAGED_IMAGE_NORMALIZER_VERSION,
+  normalizeManagedImageUpload,
+} from "@/lib/uploads/image-normalization"
+import { MAX_UPLOAD_BYTES } from "@/lib/uploads/constraints"
 import type CatalogModuleService from "@/modules/catalog/service"
 import type NewsModuleService from "@/modules/news/service"
 
@@ -104,9 +109,13 @@ type ManagedMediaStateEntry = {
   fileKey: string
   height: number
   managedUrl: string
-  mimeType: SupportedManagedImage["mimeType"]
+  mimeType: "image/webp"
+  normalizerVersion: typeof MANAGED_IMAGE_NORMALIZER_VERSION
   originalUrls: string[]
   sha256: string
+  sourceByteSize: number
+  sourceMimeType: SupportedManagedImage["mimeType"]
+  sourceSha256: string
   sourceUrl: string
   width: number
 }
@@ -115,7 +124,7 @@ type ManagedMediaState = {
   createdAt: string
   entries: Record<string, ManagedMediaStateEntry>
   masterWidth: number
-  schemaVersion: 1
+  schemaVersion: 2
   updatedAt: string
 }
 
@@ -141,6 +150,11 @@ type DownloadedMedia = {
   buffer: Buffer
   image: SupportedManagedImage
   sha256: string
+  source: {
+    byteSize: number
+    image: SupportedManagedImage
+    sha256: string
+  }
 }
 
 const STATE_FILENAME = "big-cartel-managed-media.json"
@@ -372,12 +386,41 @@ const downloadMedia = async (
         throw new Error(`Big Cartel returned status ${response.status}.`)
       }
 
-      const buffer = await readResponseWithLimit(response, options.maxBytes)
+      const buffer = await readResponseWithLimit(
+        response,
+        Math.min(options.maxBytes, MAX_UPLOAD_BYTES),
+      )
       const image = inspectManagedImage(
         buffer,
         response.headers.get("content-type")
       )
-      return { buffer, image, sha256: hashManagedMedia(buffer) }
+      const normalized = await normalizeManagedImageUpload({
+        buffer,
+        destination: "",
+        encoding: "7bit",
+        fieldname: "files",
+        filename: "",
+        mimetype: image.mimeType,
+        originalname: path.basename(new URL(sourceUrl).pathname) || "image",
+        path: "",
+        size: buffer.length,
+        stream: null as never,
+      })
+      return {
+        buffer: normalized.buffer,
+        image: {
+          extension: ".webp",
+          height: normalized.height,
+          mimeType: normalized.mimeType,
+          width: normalized.width,
+        },
+        sha256: normalized.sha256,
+        source: {
+          byteSize: buffer.length,
+          image,
+          sha256: hashManagedMedia(buffer),
+        },
+      }
     } catch (error: unknown) {
       const isLastAttempt = attempt === DOWNLOAD_ATTEMPTS - 1
       const retryable =
@@ -410,7 +453,7 @@ const loadState = async (statePath: string): Promise<ManagedMediaState> => {
     const raw = await fs.readFile(statePath, "utf8")
     const parsed = JSON.parse(raw) as Partial<ManagedMediaState>
     if (
-      parsed.schemaVersion !== 1 ||
+      parsed.schemaVersion !== 2 ||
       parsed.masterWidth !== managedMediaUsagePlan.masterWidth ||
       !parsed.entries ||
       typeof parsed.entries !== "object"
@@ -431,7 +474,7 @@ const loadState = async (statePath: string): Promise<ManagedMediaState> => {
       createdAt: now,
       entries: {},
       masterWidth: managedMediaUsagePlan.masterWidth,
-      schemaVersion: 1,
+      schemaVersion: 2,
       updatedAt: now,
     }
   }
@@ -464,7 +507,11 @@ const validateStateEntry = (entry: ManagedMediaStateEntry): void => {
     !entry.fileKey ||
     !managedUrlIsAllowed ||
     !/^[0-9a-f]{64}$/.test(entry.sha256) ||
+    !/^[0-9a-f]{64}$/.test(entry.sourceSha256) ||
+    entry.mimeType !== "image/webp" ||
+    entry.normalizerVersion !== MANAGED_IMAGE_NORMALIZER_VERSION ||
     entry.byteSize < 1 ||
+    entry.sourceByteSize < 1 ||
     entry.width < 1 ||
     entry.height < 1
   ) {
@@ -536,7 +583,7 @@ const stageManagedMedia = async (
                   content: downloaded.buffer,
                   filename: buildManagedMediaFilename(
                     sourceUrl,
-                    downloaded.image.extension
+                    ".webp",
                   ),
                   mimeType: downloaded.image.mimeType,
                 })
@@ -547,9 +594,13 @@ const stageManagedMedia = async (
           fileKey: uploaded.id,
           height: downloaded.image.height,
           managedUrl: uploaded.url,
-          mimeType: downloaded.image.mimeType,
+          mimeType: "image/webp",
+          normalizerVersion: MANAGED_IMAGE_NORMALIZER_VERSION,
           originalUrls: Array.from(usage.originalUrls).sort(),
           sha256: downloaded.sha256,
+          sourceByteSize: downloaded.source.byteSize,
+          sourceMimeType: downloaded.source.image.mimeType,
+          sourceSha256: downloaded.source.sha256,
           sourceUrl,
           width: downloaded.image.width,
         }
@@ -613,6 +664,7 @@ const updateNativeProducts = async (
                   managed_media: {
                     original_url: image.url,
                     sha256: managed.sha256,
+                    source_sha256: managed.sourceSha256,
                   },
                 }
               : {}),
@@ -662,15 +714,23 @@ const updateCatalogMedia = async (
             original_url: asset.source_url,
             source: "big_cartel",
           },
+          safety_pipeline: {
+            normalized_format: "webp",
+            normalized_sha256: managed.sha256,
+            status: "passed",
+            validation: "strict-decode-reencode",
+            version: managed.normalizerVersion,
+          },
+          source: {
+            mime_type: managed.sourceMimeType,
+            sha256: managed.sourceSha256,
+            size: managed.sourceByteSize,
+          },
         },
         mime_type: managed.mimeType,
         original_filename: buildManagedMediaFilename(
           managed.sourceUrl,
-          managed.mimeType === "image/png"
-            ? ".png"
-            : managed.mimeType === "image/webp"
-              ? ".webp"
-              : ".jpg"
+          ".webp",
         ),
         source_file_key: managed.fileKey,
         source_url: managed.managedUrl,
@@ -822,7 +882,7 @@ export default async function migrateBigCartelMedia({
       for (const [index, sourceUrl] of probeSources.entries()) {
         const downloaded = await downloadMedia(sourceUrl, scheduler, options)
         logger.info(
-          `[managed-media] probe ${index + 1}/${probeSources.length} ${downloaded.image.width}x${downloaded.image.height} ${downloaded.buffer.length}B ${downloaded.image.mimeType}`
+          `[managed-media] probe ${index + 1}/${probeSources.length} source=${downloaded.source.image.width}x${downloaded.source.image.height}/${downloaded.source.byteSize}B/${downloaded.source.image.mimeType} normalized=${downloaded.image.width}x${downloaded.image.height}/${downloaded.buffer.length}B/${downloaded.image.mimeType}`
         )
       }
     }

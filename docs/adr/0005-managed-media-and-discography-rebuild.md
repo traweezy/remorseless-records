@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-26
-- Amended: 2026-08-02
+- Amended: 2026-08-30
 - Scope: Big Cartel product images and storefront discography
 
 ## Context
@@ -29,8 +29,10 @@ not useful historical records.
   timeouts, `Retry-After`, and exponential backoff. The migration is resumable
   and idempotent.
 - Validate HTTP status, declared content type, file signature, byte limit,
-  dimensions, and SHA-256 before upload.
-- Deduplicate identical bytes by checksum.
+  dimensions, and SHA-256, then pass the source through the same bounded Sharp
+  worker as Admin images. Publish only a re-verified, metadata-free WebP.
+- Deduplicate normalized bytes by checksum. State schema version 2 records both
+  source and normalized evidence and rejects pre-hardening staged state.
 - Store managed bytes through Medusa's file provider and retain an old URL to
   managed asset manifest for rollback.
 - Cut product images and thumbnails over only after every required association
@@ -74,6 +76,10 @@ control.
    pnpm --filter backend media:big-cartel:migrate -- --probe=2
    ```
 
+   A probe downloads, deeply decodes, normalizes, and verifies the sample but
+   does not store a file or change a database record. Source responses are
+   capped at the smaller of `--max-bytes` and the 12 MiB managed-upload limit.
+
 2. Stage the complete, throttled, resumable set through Medusa's File Module:
 
    ```bash
@@ -105,6 +111,25 @@ control.
 5. Require zero unresolved Big Cartel references and 1:1 discography Product ID
    parity before removing Big Cartel from the Storefront image/CSP allow-lists.
 
+## Staging acceptance evidence
+
+The read-only acceptance run on 2026-08-30 used the current staging database
+and the hardened local scripts with public Railway endpoints supplied only in
+process memory:
+
+- managed-media inventory found zero Big Cartel sources across native Product
+  thumbnails/images, Catalog assets, Variant profiles, artists, and News. The
+  empty-source inventory fingerprint is `e3b0c44298fc`;
+- discography planning found 442 current active entries and 442 projected
+  music-release profiles, zero unpublished music profiles, zero creates,
+  updates, or archives, and 20 intentionally excluded non-music profiles; and
+- both scripts completed in dry-run mode and explicitly reported no file or
+  database-record changes.
+
+This satisfies the zero-runtime-reference and 1:1 Product-ID parity gates. A
+future Catalog change can reopen either gate, so both planners remain required
+before removing or changing media/search allowlists.
+
 ## Consequences
 
 The storefront no longer depends on Big Cartel at runtime, image choices are
@@ -121,5 +146,8 @@ outside version control through the rollback window.
 
 - [Medusa File Module](https://docs.medusajs.com/resources/architectural-modules/file)
 - [Medusa S3 file provider](https://docs.medusajs.com/resources/infrastructure-modules/file/s3)
+- [OWASP File Upload Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html)
+- [Sharp input safety controls](https://sharp.pixelplumbing.com/api-constructor/)
+- [Node.js permission model](https://nodejs.org/api/permissions.html)
 - [Big Cartel API image sizing and rate guidance](https://developers.bigcartel.com/api/v1)
 - [Big Cartel Theme API image constraints](https://developers.bigcartel.com/api/themes)

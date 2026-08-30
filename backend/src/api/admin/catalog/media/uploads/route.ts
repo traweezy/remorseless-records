@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto"
-
 import type {
   AuthenticatedMedusaRequest,
   MedusaResponse,
@@ -8,6 +6,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
 import { buildCatalogMediaRemoteFilename } from "@/lib/catalog/product-media-upload"
+import { normalizeManagedImageUploads } from "@/lib/uploads/image-normalization"
 import { validateManagedImageUploads } from "@/lib/uploads/validation"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import { uploadCatalogProductMediaWorkflow } from "../../../../../workflows/catalog/upload-product-media"
@@ -20,6 +19,16 @@ export const POST = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse,
 ): Promise<void> => {
+  const logger = (() => {
+    try {
+      return req.scope.resolve("logger") as {
+        info?: (message: string) => void
+        warn?: (message: string) => void
+      }
+    } catch {
+      return null
+    }
+  })()
   const parsed = uploadCommandSchema.safeParse(req.body ?? {})
   if (!parsed.success) {
     throw new MedusaError(
@@ -27,20 +36,49 @@ export const POST = async (
       "A valid catalog upload idempotency key is required.",
     )
   }
-  const files = validateManagedImageUploads(
+  const validatedFiles = validateManagedImageUploads(
     (req.files as Express.Multer.File[] | undefined) ?? [],
+  )
+  const startedAt = Date.now()
+  let files: Awaited<ReturnType<typeof normalizeManagedImageUploads>>
+  try {
+    files = await normalizeManagedImageUploads(validatedFiles)
+  } catch (error) {
+    logger?.warn?.(
+      JSON.stringify({
+        duration_ms: Date.now() - startedAt,
+        event: "managed_image.normalization",
+        file_count: validatedFiles.length,
+        result: "rejected",
+        route_class: "admin:catalog-media-upload",
+      }),
+    )
+    throw error
+  }
+  logger?.info?.(
+    JSON.stringify({
+      duration_ms: Date.now() - startedAt,
+      event: "managed_image.normalization",
+      file_count: files.length,
+      input_bytes: validatedFiles.reduce((total, file) => total + file.size, 0),
+      output_bytes: files.reduce((total, file) => total + file.size, 0),
+      result: "accepted",
+      route_class: "admin:catalog-media-upload",
+    }),
   )
   const workflowFiles = files.map((file, index) => ({
     content: file.buffer.toString("base64"),
-    filename: file.originalname,
-    mimeType: file.mimetype,
+    filename: file.source.filename,
+    height: file.height,
+    mimeType: file.mimeType,
     remoteFilename: buildCatalogMediaRemoteFilename(
       parsed.data.idempotencyKey,
       index,
-      file.originalname,
     ),
-    sha256: createHash("sha256").update(file.buffer).digest("hex"),
+    sha256: file.sha256,
     size: file.size,
+    source: file.source,
+    width: file.width,
   }))
   const requestSha256 = hashCatalogCommand({
     command: "catalog.product-media.upload",

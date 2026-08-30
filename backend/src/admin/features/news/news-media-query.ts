@@ -25,7 +25,7 @@ const imageTypes = new Set<string>(MANAGED_IMAGE_MIME_TYPES)
 
 export const validateNewsCover = (file: File): string | null => {
   if (!imageTypes.has(file.type)) {
-    return "Choose a JPEG, PNG, WebP, or GIF image."
+    return "Choose a JPEG, PNG, WebP, or non-animated GIF image."
   }
   if (file.size <= 0) {
     return "The selected image is empty."

@@ -213,6 +213,18 @@ two- and three-format combinations dominate the sellable release shapes. Those
 facts make an open-ended native Product form, optional SKU, and a `$0.00`
 default unsafe for this client.
 
+The completed release is commit
+`3f6e9726b18204c96c377e9d289adf5b9966d884`. Root, Backend, Storefront, and
+staging-scheduler GitHub workflows passed, and Railway deployment
+`fa0c97cc-7c7e-466c-82b7-dfad484bb116` reported the same SHA healthy and ready.
+Database, Redis, search, and object-storage dependency checks passed, as did
+payment, tax, notification, payment-lifecycle, search, object-storage, and
+Admin-RBAC capability checks.
+Real deployed-browser acceptance at 1600×1000 covered `/app/products/create`
+and `/app/products`: neither page overflowed, no fixture request failed, and
+both axe runs returned zero violations and zero incomplete checks. The Catalog
+workspace rendered above the native Products table as intended.
+
 Medusa's stock creation route is intentionally generic. Its Product-list
 action still links to the stable `/products/create` path, but the pinned
 Dashboard route map no longer registers the competing generic child. The

@@ -3,9 +3,13 @@ import type {
   MedusaResponse,
 } from "@medusajs/framework/http"
 
+import { normalizeManagedImageUploads } from "../../../../../lib/uploads/image-normalization"
 import { uploadCatalogProductMediaWorkflow } from "../../../../../workflows/catalog/upload-product-media"
 import { POST } from "./route"
 
+jest.mock("../../../../../lib/uploads/image-normalization", () => ({
+  normalizeManagedImageUploads: jest.fn(),
+}))
 jest.mock("../../../../../workflows/catalog/upload-product-media", () => ({
   uploadCatalogProductMediaWorkflow: jest.fn(),
 }))
@@ -14,6 +18,9 @@ const workflowMock =
   uploadCatalogProductMediaWorkflow as jest.MockedFunction<
     typeof uploadCatalogProductMediaWorkflow
   >
+const normalizeMock = normalizeManagedImageUploads as jest.MockedFunction<
+  typeof normalizeManagedImageUploads
+>
 
 type ResponseState = {
   body: unknown
@@ -74,6 +81,28 @@ const requestFixture = (
 
 beforeEach(() => {
   jest.clearAllMocks()
+  normalizeMock.mockResolvedValue([
+    {
+      buffer: Buffer.from("normalized-webp"),
+      filename: "The-Album-Cover.webp",
+      height: 1_200,
+      mimeType: "image/webp",
+      sha256: "a".repeat(64),
+      size: 15,
+      source: {
+        channels: 3,
+        filename: "The Album Cover.JPG",
+        format: "jpeg",
+        frames: 1,
+        height: 2_400,
+        mimeType: "image/jpeg",
+        sha256: "b".repeat(64),
+        size: 4,
+        width: 2_400,
+      },
+      width: 1_200,
+    },
+  ])
 })
 
 describe("POST /admin/catalog/media/uploads", () => {
@@ -114,12 +143,25 @@ describe("POST /admin/catalog/media/uploads", () => {
         actorId: "user_1",
         files: [
           {
-            content: "/9j/AA==",
+            content: "bm9ybWFsaXplZC13ZWJw",
             filename: "The Album Cover.JPG",
-            mimeType: "image/jpeg",
-            remoteFilename: `${idempotencyKey}-00-The-Album-Cover.jpg`,
-            sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-            size: 4,
+            height: 1_200,
+            mimeType: "image/webp",
+            remoteFilename: `${idempotencyKey}-00.webp`,
+            sha256: "a".repeat(64),
+            size: 15,
+            source: {
+              channels: 3,
+              filename: "The Album Cover.JPG",
+              format: "jpeg",
+              frames: 1,
+              height: 2_400,
+              mimeType: "image/jpeg",
+              sha256: "b".repeat(64),
+              size: 4,
+              width: 2_400,
+            },
+            width: 1_200,
           },
         ],
         idempotencyKey,

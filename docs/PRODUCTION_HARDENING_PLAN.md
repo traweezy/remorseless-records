@@ -2555,14 +2555,41 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
 
 ## Upload and media hardening
 
-- [ ] Decode and re-encode uploaded images in a sandboxed pipeline.
-- [ ] Cap dimensions, total pixels, frame count, decompressed size, input size,
+- [x] Decode and re-encode uploaded images in a sandboxed pipeline.
+- [x] Cap dimensions, total pixels, frame count, decompressed size, input size,
       and processing time.
-- [ ] Strip metadata and quarantine/scan files before immutable public storage.
-- [ ] Define managed-media quarantine retention and an audited purge policy.
-- [ ] Verify migrated media no longer depends on Big Cartel URLs.
-- [ ] Complete the managed-media and discography cutover evidence required by
+- [x] Strip metadata and quarantine/scan files before immutable public storage.
+- [x] Define managed-media quarantine retention and an audited purge policy.
+- [x] Verify migrated media no longer depends on Big Cartel URLs.
+- [x] Complete the managed-media and discography cutover evidence required by
       `docs/adr/0005-managed-media-and-discography-rebuild.md`.
+
+The 2026-08-30 media boundary is documented in
+`docs/MEDIA_SECURITY.md`. Catalog and News images now pass fast signature
+validation and then a separate Linux `prlimit`/Node-permission/Sharp process.
+The worker deeply decodes a single bounded frame, rejects warnings and MIME
+mismatches, auto-orients, emits metadata-free WebP, and independently reopens
+the result before any File Module write. Per-image input, dimensions, pixels,
+channels, estimated decoded bytes, output bytes, CPU, wall time, descriptors,
+and worker output are bounded; failure is closed. Catalog assets retain source
+and normalized checksums plus pipeline evidence, while logs contain only route
+class, result, timing, counts, and byte totals. The Big Cartel probe/stager uses
+the same pipeline and rejects version-1 state.
+
+Quarantine remains actor-audited, version checked, unlinked-only, reversible,
+and retained for at least 30 days. Physical purge remains deliberately
+unavailable: eligibility is only a review date. The documented future purge
+gate requires an off-site checksum/restore drill, exact dry-run manifest,
+independent review, explicit apply confirmation, linkage/version recheck,
+durable operation audit/tombstone, holds, and idempotent provider
+reconciliation. The Big Cartel zero-reference and discography cutover evidence
+were accepted read-only against staging on 2026-08-30. The hardened
+managed-media inventory found zero Big Cartel sources across native Products,
+Catalog assets, artists, Variant profiles, and News. Its empty-source
+fingerprint was `e3b0c44298fc`. The discography planner reported 442 current
+active entries, 442 projected music releases, zero unpublished profiles, zero
+creates, updates, or archives, and 20 correctly excluded non-music profiles.
+Both commands explicitly reported that no files or database records changed.
 
 ## Infrastructure, data protection, and recovery
 

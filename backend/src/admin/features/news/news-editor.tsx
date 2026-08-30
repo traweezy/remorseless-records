@@ -445,7 +445,7 @@ const CoverFields = memo<CoverFieldsProps>(
           </Text>
           <Text className="mt-1 text-ui-fg-subtle" size="small">
             {canUploadCover
-              ? "JPEG, PNG, WebP, or GIF · 12 MiB maximum"
+              ? "JPEG, PNG, WebP, or non-animated GIF · 12 MiB maximum · metadata removed and saved as WebP"
               : "Your role can save this post but cannot upload files. Ask a super administrator for file creation access."}
           </Text>
           {canUploadCover ? (

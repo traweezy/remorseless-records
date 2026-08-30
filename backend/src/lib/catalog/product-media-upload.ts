@@ -1,9 +1,8 @@
-import path from "node:path"
-
 import type { FileTypes } from "@medusajs/framework/types"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import type CatalogModuleService from "../../modules/catalog/service"
+import { MANAGED_IMAGE_NORMALIZER_VERSION } from "../uploads/image-normalization"
 import { coerceCatalogJsonRecord } from "./normalization"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
@@ -11,10 +10,23 @@ type CatalogService = InstanceType<typeof CatalogModuleService>
 export type CatalogMediaUploadFileInput = {
   content: string
   filename: string
+  height: number
   mimeType: string
   remoteFilename: string
   sha256: string
   size: number
+  source: {
+    channels: number
+    filename: string
+    format: "gif" | "jpeg" | "png" | "webp"
+    frames: number
+    height: number
+    mimeType: string
+    sha256: string
+    size: number
+    width: number
+  }
+  width: number
 }
 
 export type CatalogMediaUploadResultFile = {
@@ -61,16 +73,8 @@ export class CatalogMediaUploadPartialFailure extends Error {
 export const buildCatalogMediaRemoteFilename = (
   idempotencyKey: string,
   index: number,
-  filename: string,
-): string => {
-  const safeFilename = path.basename(filename.replaceAll("\\", "/"))
-  const extension = path.extname(safeFilename).slice(0, 10)
-  const basename = path
-    .basename(safeFilename, extension)
-    .replaceAll(/[^a-zA-Z0-9._-]/gu, "-")
-    .slice(0, 120)
-  return `${idempotencyKey}-${String(index).padStart(2, "0")}-${basename || "image"}${extension.toLowerCase()}`
-}
+): string =>
+  `${idempotencyKey}-${String(index).padStart(2, "0")}.webp`
 
 export const performCatalogMediaUpload = async (
   catalogService: CatalogService,
@@ -123,6 +127,7 @@ export const performCatalogMediaUpload = async (
       metadata: {
         file_sha256s: input.files.map(({ sha256 }) => sha256),
         remote_prefix: input.idempotencyKey,
+        source_file_sha256s: input.files.map(({ source }) => source.sha256),
       },
       request_sha256: input.requestSha256,
       result: {},
@@ -156,13 +161,32 @@ export const performCatalogMediaUpload = async (
           byte_size: file.size,
           content_sha256: file.sha256,
           derivative_status: "source_only",
+          height: file.height,
           metadata: {
+            safety_pipeline: {
+              normalized_format: "webp",
+              normalized_sha256: file.sha256,
+              status: "passed",
+              validation: "strict-decode-reencode",
+              version: MANAGED_IMAGE_NORMALIZER_VERSION,
+            },
+            source: {
+              channels: file.source.channels,
+              format: file.source.format,
+              frames: file.source.frames,
+              height: file.source.height,
+              mime_type: file.source.mimeType,
+              sha256: file.source.sha256,
+              size: file.source.size,
+              width: file.source.width,
+            },
             upload_idempotency_key: input.idempotencyKey,
           },
           mime_type: file.mimeType,
           original_filename: file.filename,
           source_file_key: uploaded.id,
           source_url: uploaded.url,
+          width: file.width,
         },
       ])
       if (!asset) {

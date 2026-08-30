@@ -156,6 +156,12 @@ presigned-upload endpoint. Approved tooling uploads validated UTF-8 CSV through
 `POST /admin/products/imports/:transaction_id/confirm`. A later custom import UI
 must gate its query and controls on the same exact capabilities.
 
+The managed-upload route accepts image-only or CSV-only batches, never a mixed
+batch. Images are decoded and re-encoded by the resource-limited managed-media
+pipeline and only a metadata-free WebP is published. CSV import bytes retain
+the bounded UTF-8 contract. Both receive opaque File Module names so client
+filenames are not exposed in public object keys.
+
 ## Catalog deletion boundary
 
 The pinned Dashboard 2.18 patch also removes Product and Variant destructive
