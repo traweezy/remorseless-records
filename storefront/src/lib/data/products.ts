@@ -4,7 +4,7 @@ import { z } from "zod"
 
 import { runtimeEnv } from "@/config/env"
 import { fetchProviderRead } from "@/lib/http/provider-boundary"
-import { storeClient } from "@/lib/medusa"
+import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
 import { resolveRegionId } from "@/lib/regions"
 
 type StoreProduct = HttpTypes.StoreProduct
@@ -31,9 +31,18 @@ const extractProductsFromResponse = (response: unknown): StoreProduct[] => {
   return products.filter(isStoreProduct)
 }
 
-const listProducts = async (query: HttpTypes.StoreProductListParams): Promise<StoreProduct[]> => {
+const listProducts = async (
+  query: HttpTypes.StoreProductListParams
+): Promise<StoreProduct[]> => {
   const regionId = query.region_id ?? (await resolveRegionId())
-  const response = await storeClient.product.list({ ...query, region_id: regionId })
+  const response =
+    await fetchMedusaStoreRead<HttpTypes.StoreProductListResponse>(
+      "/store/products",
+      {
+        method: "GET",
+        query: { ...query, region_id: regionId },
+      }
+    )
   return extractProductsFromResponse(response)
 }
 
@@ -80,10 +89,14 @@ export const PRODUCT_DETAIL_FIELDS = [
 const getCollectionByHandle = unstable_cache(
   async (handle: string): Promise<HttpTypes.StoreCollection | null> => {
     try {
-      const { collections } = await storeClient.collection.list({
-        handle,
-        limit: 1,
-      })
+      const { collections } =
+        await fetchMedusaStoreRead<HttpTypes.StoreCollectionListResponse>(
+          "/store/collections",
+          {
+            method: "GET",
+            query: { handle, limit: 1 },
+          }
+        )
 
       return collections[0] ?? null
     } catch {
@@ -104,13 +117,18 @@ export const getCollectionProductsByHandle = unstable_cache(
       }
 
       const collected: StoreProduct[] = []
-      const target = typeof limit === "number" && limit > 0 ? limit : Number.POSITIVE_INFINITY
+      const target =
+        typeof limit === "number" && limit > 0
+          ? limit
+          : Number.POSITIVE_INFINITY
       const pageSize = Number.isFinite(target) ? Math.min(target, 50) : 50
       let offset = 0
 
       // Medusa paginates collections; iterate until we load every product (or reach the caller-imposed ceiling).
       for (;;) {
-        const pageLimit = Number.isFinite(target) ? Math.min(pageSize, target - collected.length) : pageSize
+        const pageLimit = Number.isFinite(target)
+          ? Math.min(pageSize, target - collected.length)
+          : pageSize
         if (pageLimit <= 0) {
           break
         }
@@ -127,7 +145,8 @@ export const getCollectionProductsByHandle = unstable_cache(
 
         const validProducts = products.filter(
           (product): product is StoreProduct =>
-            typeof product.handle === "string" && product.handle.trim().length > 0
+            typeof product.handle === "string" &&
+            product.handle.trim().length > 0
         )
         collected.push(...validProducts)
 
@@ -301,9 +320,7 @@ export const getAllProductHandles = unstable_cache(
         Math.max(Math.trunc(maxEntries), 1),
         PRODUCT_HANDLE_MAX_ENTRIES
       )
-      const maxPages = Math.ceil(
-        boundedMaxEntries / PRODUCT_HANDLE_PAGE_SIZE
-      )
+      const maxPages = Math.ceil(boundedMaxEntries / PRODUCT_HANDLE_PAGE_SIZE)
 
       for (let page = 0; page < maxPages; page += 1) {
         const url = new URL(

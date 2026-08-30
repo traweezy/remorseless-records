@@ -1,9 +1,9 @@
 import { unstable_cache } from "next/cache"
 
-import { medusa } from "@/lib/medusa"
-import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
-import type { BundleComposition } from "@/types/bundle"
 import { toProviderRequestError } from "@/lib/http/provider-boundary"
+import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
+import type { BundleComposition } from "@/types/bundle"
 
 type BundleCompositionResponse = {
   bundle: BundleComposition
@@ -19,7 +19,7 @@ const fetchBundleComposition = async (
       ? await correlatedMedusaFetch<BundleCompositionResponse>(request, path, {
           method: "GET",
         })
-      : await medusa.client.fetch<BundleCompositionResponse>(path, {
+      : await fetchMedusaStoreRead<BundleCompositionResponse>(path, {
           method: "GET",
         })
     return response.bundle.componentCount > 0 ? response.bundle : null

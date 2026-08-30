@@ -811,15 +811,17 @@ caller cancellation, safe error classification, read-only retry/backoff under
 one deadline, bounded `Retry-After`, Meilisearch transport/transient-status
 retry without nested catalog attempts, Meilisearch and news request
 cancellation propagation, correlated Medusa Store read retry and incoming-
-request cancellation without unsafe methods, fixed-field retry events, and
-provider-detail redaction. The generated OpenAPI check inventories all route
-sources deterministically and is wired into both the repository lint gate and
-Root CI.
+request cancellation without unsafe methods, cached Medusa product,
+collection, category, region, and bundle reads through the same boundary,
+fixed-field retry events, and provider-detail redaction. Cart, checkout, and
+other mutations remain single-attempt. The generated OpenAPI check inventories
+all route sources deterministically and is wired into both the repository lint
+gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
 typechecks pass. Backend passes 1,028 tests across 191 suites. Storefront passes
-647 tests across 119 files with 92.97% statement, 85.95% branch, 93.96%
-function, and 92.93% line coverage. Both production builds pass, including the
+654 tests across 120 files with 92.99% statement, 86.01% branch, 93.98%
+function, and 92.94% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
 bundle is 1,702,695 gzip bytes and 6,708,946 raw bytes; all 336 Admin assets are
 2,297,109 gzip bytes and 8,376,872 raw bytes, within their four release
@@ -1988,7 +1990,7 @@ at exact source SHA `bbb1b53922ef8552fdefd6ad7e815959488bda83`:
   `33275559492` completed successfully, including security scans, CodeQL,
   tests, coverage, production builds, Playwright, accessibility, and
   Lighthouse. The guarded Railway plan remained `0 add / 2 known phantom
-  updates / 0 destroy`.
+updates / 0 destroy`.
 - The `.railway/**` source change correctly produced skipped Backend deployment
   `ff98811e-5d18-4320-969d-34b63988ff4c` and skipped Storefront deployment
   `08d57abe-2450-4b1a-84a1-cb7c99b5b035`, with no image build. The subsequent
@@ -2237,10 +2239,10 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       provider errors for content, search, email, Stripe, tax, storage,
       contact, and privacy calls. Contact/privacy Backend and Resend deadlines
       are complete. Storefront news, discography, merchandising-shelf,
-      product-handle, Meilisearch, and correlated Medusa Store reads now also
-      use shared two-attempt boundaries under one deadline. Search owns retries
-      at its semantic read-operation boundary so catalog loaders cannot
-      multiply attempts; the other provider families remain.
+      product-handle, Meilisearch, and correlated or cached Medusa Store reads
+      now also use shared two-attempt boundaries under one deadline. Search
+      owns retries at its semantic read-operation boundary so catalog loaders
+      cannot multiply attempts; the other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.

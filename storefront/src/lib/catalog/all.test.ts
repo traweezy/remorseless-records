@@ -12,7 +12,9 @@ describe("getFullCatalogHits", () => {
   })
 
   it("maps catalog products into search hits across pages", async () => {
-    const validHandle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
+    const validHandle = faker.helpers
+      .slugify(faker.music.songName())
+      .toLowerCase()
     const regionId = faker.string.uuid()
     const mappedHit = {
       id: faker.string.uuid(),
@@ -32,10 +34,8 @@ describe("getFullCatalogHits", () => {
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
@@ -60,14 +60,14 @@ describe("getFullCatalogHits", () => {
   })
 
   it("returns empty hits when loading catalog fails", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list: vi.fn().mockRejectedValue(new Error("boom")) },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn().mockRejectedValue(new Error("boom")),
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue("region_us"),
@@ -99,7 +99,9 @@ describe("getFullCatalogHits", () => {
       updatedAt: null,
     }))
     const secondProductId = faker.string.uuid()
-    const secondHandle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
+    const secondHandle = faker.helpers
+      .slugify(faker.music.songName())
+      .toLowerCase()
 
     const list = vi
       .fn()
@@ -119,19 +121,19 @@ describe("getFullCatalogHits", () => {
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
     vi.doMock("@/lib/data/products", () => ({
-      getAllProductHandles: vi.fn().mockResolvedValue([
-        ...firstHandleRecords,
-        { handle: secondHandle, id: secondProductId, updatedAt: null },
-      ]),
+      getAllProductHandles: vi
+        .fn()
+        .mockResolvedValue([
+          ...firstHandleRecords,
+          { handle: secondHandle, id: secondProductId, updatedAt: null },
+        ]),
       PRODUCT_LIST_FIELDS: "id,handle",
     }))
     vi.doMock("@/lib/products/transformers", () => ({
@@ -142,19 +144,23 @@ describe("getFullCatalogHits", () => {
     const hits = await getFullCatalogHits()
 
     expect(hits).toHaveLength(101)
-    expect(list).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        id: firstBatch.map((product) => product.id),
-        region_id: regionId,
-      })
-    )
-    expect(list).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        id: [secondProductId],
-        region_id: regionId,
-      })
-    )
+    const [firstPath, firstInit] = list.mock.calls[0] as [
+      string,
+      { query?: Record<string, unknown> },
+    ]
+    const [secondPath, secondInit] = list.mock.calls[1] as [
+      string,
+      { query?: Record<string, unknown> },
+    ]
+    expect(firstPath).toBe("/store/products")
+    expect(firstInit.query).toMatchObject({
+      id: firstBatch.map((product) => product.id),
+      region_id: regionId,
+    })
+    expect(secondPath).toBe("/store/products")
+    expect(secondInit.query).toMatchObject({
+      id: [secondProductId],
+      region_id: regionId,
+    })
   })
 })

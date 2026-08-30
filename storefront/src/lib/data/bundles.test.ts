@@ -4,10 +4,8 @@ const loadBundleModule = async (fetch: ReturnType<typeof vi.fn>) => {
   vi.doMock("next/cache", () => ({
     unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
   }))
-  vi.doMock("@/lib/medusa", () => ({
-    medusa: {
-      client: { fetch },
-    },
+  vi.doMock("@/lib/medusa/read-client", () => ({
+    fetchMedusaStoreRead: fetch,
   }))
 
   return import("@/lib/data/bundles")
@@ -28,9 +26,7 @@ describe("getBundleComposition", () => {
     const fetch = vi.fn().mockResolvedValue({ bundle })
     const { getBundleComposition } = await loadBundleModule(fetch)
 
-    await expect(
-      getBundleComposition("album & shirt")
-    ).resolves.toEqual(bundle)
+    await expect(getBundleComposition("album & shirt")).resolves.toEqual(bundle)
     expect(fetch).toHaveBeenCalledWith(
       "/store/catalog/products/album%20%26%20shirt/bundle",
       { method: "GET" }
@@ -52,7 +48,9 @@ describe("getBundleComposition", () => {
 
   it("fails closed and reports only a safe failure class", async () => {
     const fetch = vi.fn().mockRejectedValue(new Error("service unavailable"))
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     const { getBundleComposition } = await loadBundleModule(fetch)
 
     await expect(getBundleComposition("broken")).resolves.toBeNull()
@@ -67,7 +65,9 @@ describe("getBundleComposition", () => {
 
   it("handles non-Error rejections without throwing", async () => {
     const fetch = vi.fn().mockRejectedValue("offline")
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     const { getBundleComposition } = await loadBundleModule(fetch)
 
     await expect(getBundleComposition("offline")).resolves.toBeNull()

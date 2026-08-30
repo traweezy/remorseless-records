@@ -114,14 +114,17 @@ retry loop, preventing multiplicative attempts. Terminal errors use the same
 redacted `timeout` or `unavailable` contract. Every retry emits one info-level
 event containing only the next attempt, maximum attempts, and delay.
 
-Correlated Storefront BFF reads to the Medusa Store API also use the shared
-semantic read-operation boundary. The helper rejects methods other than `GET`
-or `HEAD`, retries only SDK transport failures and transient HTTP statuses, and
-makes at most two attempts under one eight-second deadline. The incoming
-request and any explicit caller signal both cancel the same operation. Terminal
-errors retain only `timeout` or `unavailable`; retry events contain only the
-next attempt, maximum attempts, and delay, never a route, query, provider
-payload, credential, or customer value.
+Server-side reads to the Medusa Store API also use one shared semantic
+read-operation boundary. This includes correlated Storefront BFF reads and
+cached Server Component reads for products, collections, categories, regions,
+and bundle composition. The helper rejects methods other than `GET` or `HEAD`,
+retries only SDK transport failures and transient HTTP statuses, and makes at
+most two attempts under one eight-second deadline. Correlated calls merge the
+incoming request signal with any explicit caller signal. Terminal errors
+retain only `timeout` or `unavailable`; retry events contain only the next
+attempt, maximum attempts, and delay, never a route, query, provider payload,
+credential, or customer value. Cart, checkout, and other mutations never use
+this retry boundary.
 
 The storefront uses a version-controlled subset of the backend's filterable
 index contract instead of reading index settings on every request. The backend

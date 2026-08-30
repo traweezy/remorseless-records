@@ -21,34 +21,30 @@ describe("getMetalGenreCategories", () => {
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        category: {
-          list: vi.fn().mockResolvedValue({
-            product_categories: [
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn().mockResolvedValue({
+        product_categories: [
+          {
+            handle: "genres",
+            category_children: [
               {
-                handle: "genres",
+                id: faker.string.uuid(),
+                handle: "metal",
+                name: metalLabel,
                 category_children: [
                   {
                     id: faker.string.uuid(),
-                    handle: "metal",
-                    name: metalLabel,
-                    category_children: [
-                      {
-                        id: faker.string.uuid(),
-                        handle: childHandle,
-                        name: childLabel,
-                        rank,
-                        category_children: [],
-                      },
-                    ],
+                    handle: childHandle,
+                    name: childLabel,
+                    rank,
+                    category_children: [],
                   },
                 ],
               },
             ],
-          }),
-        },
-      },
+          },
+        ],
+      }),
     }))
 
     const { getMetalGenreCategories } = await import("@/lib/data/categories")
@@ -68,14 +64,12 @@ describe("getMetalGenreCategories", () => {
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        category: {
-          list: vi.fn().mockRejectedValue(new Error("boom")),
-        },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn().mockRejectedValue(new Error("boom")),
     }))
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
 
     const { getMetalGenreCategories } = await import("@/lib/data/categories")
     await expect(getMetalGenreCategories()).resolves.toEqual([])
@@ -86,20 +80,16 @@ describe("getMetalGenreCategories", () => {
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        category: {
-          list: vi.fn().mockResolvedValue({
-            product_categories: [
-              {
-                id: faker.string.uuid(),
-                handle: faker.helpers.slugify(faker.music.genre()).toLowerCase(),
-                category_children: [],
-              },
-            ],
-          }),
-        },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn().mockResolvedValue({
+        product_categories: [
+          {
+            id: faker.string.uuid(),
+            handle: faker.helpers.slugify(faker.music.genre()).toLowerCase(),
+            category_children: [],
+          },
+        ],
+      }),
     }))
 
     const { getMetalGenreCategories } = await import("@/lib/data/categories")
@@ -113,33 +103,29 @@ describe("getMetalGenreCategories", () => {
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        category: {
-          list: vi.fn().mockResolvedValue({
-            product_categories: [
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn().mockResolvedValue({
+        product_categories: [
+          {
+            handle: "genres",
+            category_children: [
               {
-                handle: "genres",
+                id: faker.string.uuid(),
+                handle: "metal",
+                name: "",
                 category_children: [
                   {
                     id: faker.string.uuid(),
-                    handle: "metal",
+                    handle: childHandle,
                     name: "",
-                    category_children: [
-                      {
-                        id: faker.string.uuid(),
-                        handle: childHandle,
-                        name: "",
-                        category_children: [],
-                      },
-                    ],
+                    category_children: [],
                   },
                 ],
               },
             ],
-          }),
-        },
-      },
+          },
+        ],
+      }),
     }))
 
     const { getMetalGenreCategories } = await import("@/lib/data/categories")

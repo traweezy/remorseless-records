@@ -1,7 +1,7 @@
 import type { HttpTypes } from "@medusajs/types"
 import { unstable_cache } from "next/cache"
 
-import { storeClient } from "@/lib/medusa"
+import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 
 type StoreProductCategory = HttpTypes.StoreProductCategory
@@ -50,7 +50,9 @@ const flattenCategoryTree = (
 
     const label = coerceLabel(category, handle)
     const rank =
-      typeof category?.rank === "number" ? category.rank : Number.MAX_SAFE_INTEGER
+      typeof category?.rank === "number"
+        ? category.rank
+        : Number.MAX_SAFE_INTEGER
     const currentPath = [...ancestry, label]
 
     entries.push({
@@ -75,10 +77,14 @@ const METAL_HANDLE = "metal"
 export const getMetalGenreCategories = unstable_cache(
   async (): Promise<GenreCategory[]> => {
     try {
-      const { product_categories } = await storeClient.category.list({
-        include_descendants_tree: true,
-        limit: 200,
-      })
+      const { product_categories } =
+        await fetchMedusaStoreRead<HttpTypes.StoreProductCategoryListResponse>(
+          "/store/product-categories",
+          {
+            method: "GET",
+            query: { include_descendants_tree: true, limit: 200 },
+          }
+        )
 
       if (!product_categories?.length) {
         return []
@@ -100,10 +106,9 @@ export const getMetalGenreCategories = unstable_cache(
         return []
       }
 
-      return flattenCategoryTree(
-        metalRoot.category_children,
-        [coerceLabel(metalRoot, METAL_HANDLE)]
-      )
+      return flattenCategoryTree(metalRoot.category_children, [
+        coerceLabel(metalRoot, METAL_HANDLE),
+      ])
     } catch {
       console.error("[getMetalGenreCategories] Failed to load categories")
       return []

@@ -14,34 +14,40 @@ describe("products data layer", () => {
 
   it("loads homepage products and product by handle", async () => {
     const firstId = faker.string.uuid()
-    const firstHandle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
+    const firstHandle = faker.helpers
+      .slugify(faker.music.songName())
+      .toLowerCase()
     const secondId = faker.string.uuid()
-    const secondHandle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
+    const secondHandle = faker.helpers
+      .slugify(faker.music.songName())
+      .toLowerCase()
     const regionId = faker.string.uuid()
 
     const list = vi
       .fn()
       .mockResolvedValueOnce({
-        products: [{ id: firstId, handle: firstHandle, title: faker.music.songName() }],
+        products: [
+          { id: firstId, handle: firstHandle, title: faker.music.songName() },
+        ],
       })
       .mockResolvedValueOnce({
-        products: [{ id: secondId, handle: secondHandle, title: faker.music.songName() }],
+        products: [
+          { id: secondId, handle: secondHandle, title: faker.music.songName() },
+        ],
       })
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list },
-        collection: { list: vi.fn() },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
 
-    const { getHomepageProducts, getProductByHandle } = await import("@/lib/data/products")
+    const { getHomepageProducts, getProductByHandle } =
+      await import("@/lib/data/products")
     await expect(getHomepageProducts()).resolves.toEqual([
       expect.objectContaining({ id: firstId, handle: firstHandle }),
     ])
@@ -54,14 +60,20 @@ describe("products data layer", () => {
   })
 
   it("loads collection products across pages and filters empty handles", async () => {
-    const validFirst = faker.helpers.slugify(faker.music.songName()).toLowerCase()
-    const validSecond = faker.helpers.slugify(faker.music.songName()).toLowerCase()
+    const validFirst = faker.helpers
+      .slugify(faker.music.songName())
+      .toLowerCase()
+    const validSecond = faker.helpers
+      .slugify(faker.music.songName())
+      .toLowerCase()
     const regionId = faker.string.uuid()
     const collectionId = faker.string.uuid()
-    const collectionHandle = faker.helpers.slugify(faker.word.words(2)).toLowerCase()
+    const collectionHandle = faker.helpers
+      .slugify(faker.word.words(2))
+      .toLowerCase()
 
     const productList = vi
-      .fn()
+      .fn<() => Promise<unknown>>()
       .mockResolvedValueOnce({
         products: [
           { id: faker.string.uuid(), handle: validFirst },
@@ -74,26 +86,29 @@ describe("products data layer", () => {
       .mockResolvedValueOnce({
         products: [],
       })
-    const collectionList = vi.fn().mockResolvedValue({
+    const collectionList = vi.fn<() => Promise<unknown>>().mockResolvedValue({
       collections: [{ id: collectionId, handle: collectionHandle }],
     })
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list: productList },
-        collection: { list: collectionList },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn((path: string) =>
+        path === "/store/collections" ? collectionList() : productList()
+      ),
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
 
-    const { getCollectionProductsByHandle } = await import("@/lib/data/products")
+    const { getCollectionProductsByHandle } =
+      await import("@/lib/data/products")
     const products = await getCollectionProductsByHandle(collectionHandle, 2)
-    expect(products.map((product) => product.handle)).toEqual([validFirst, validSecond])
+    expect(products.map((product) => product.handle)).toEqual([
+      validFirst,
+      validSecond,
+    ])
   })
 
   it("collects all product handles with updatedAt metadata", async () => {
@@ -125,11 +140,8 @@ describe("products data layer", () => {
         medusaPublishableKey: "pk_test",
       },
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list: vi.fn() },
-        collection: { list: vi.fn() },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn(),
     }))
 
     const { getAllProductHandles } = await import("@/lib/data/products")
@@ -149,23 +161,25 @@ describe("products data layer", () => {
   })
 
   it("returns empty collection products when collection handle is unknown", async () => {
-    const collectionHandle = faker.helpers.slugify(faker.word.words(2)).toLowerCase()
+    const collectionHandle = faker.helpers
+      .slugify(faker.word.words(2))
+      .toLowerCase()
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list: vi.fn() },
-        collection: { list: vi.fn().mockResolvedValue({ collections: [] }) },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn().mockResolvedValue({ collections: [] }),
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(faker.string.uuid()),
     }))
 
-    const { getCollectionProductsByHandle } = await import("@/lib/data/products")
-    await expect(getCollectionProductsByHandle(collectionHandle)).resolves.toEqual([])
+    const { getCollectionProductsByHandle } =
+      await import("@/lib/data/products")
+    await expect(
+      getCollectionProductsByHandle(collectionHandle)
+    ).resolves.toEqual([])
   })
 
   it("falls back safely when list payload is malformed", async () => {
@@ -175,44 +189,42 @@ describe("products data layer", () => {
     const list = vi
       .fn()
       .mockResolvedValueOnce({ products: null })
-      .mockResolvedValueOnce({ products: [{ id: faker.string.uuid(), handle }] })
+      .mockResolvedValueOnce({
+        products: [{ id: faker.string.uuid(), handle }],
+      })
       .mockResolvedValueOnce({ products: "not-an-array" })
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list },
-        collection: { list: vi.fn() },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
 
-    const { getHomepageProducts, getProductByHandle, getProductsByCollection } = await import(
-      "@/lib/data/products"
-    )
+    const { getHomepageProducts, getProductByHandle, getProductsByCollection } =
+      await import("@/lib/data/products")
     await expect(getHomepageProducts()).resolves.toEqual([])
     await expect(getProductByHandle(handle)).resolves.toMatchObject({ handle })
-    await expect(getProductsByCollection(faker.string.uuid())).resolves.toEqual([])
+    await expect(getProductsByCollection(faker.string.uuid())).resolves.toEqual(
+      []
+    )
   })
 
   it("returns null/empty values when product loaders throw", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     const list = vi.fn().mockRejectedValue(new Error("boom"))
-    const collectionList = vi.fn().mockRejectedValue(new Error("boom"))
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("boom")))
 
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list },
-        collection: { list: collectionList },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(faker.string.uuid()),
@@ -226,9 +238,18 @@ describe("products data layer", () => {
       getAllProductHandles,
     } = await import("@/lib/data/products")
 
-    await expect(getProductByHandle(faker.helpers.slugify(faker.music.songName()))).resolves.toBeNull()
-    await expect(getProductsByCollection(faker.string.uuid(), faker.number.int({ min: 1, max: 12 }))).resolves.toEqual([])
-    await expect(getRecentProducts(faker.number.int({ min: 1, max: 12 }))).resolves.toEqual([])
+    await expect(
+      getProductByHandle(faker.helpers.slugify(faker.music.songName()))
+    ).resolves.toBeNull()
+    await expect(
+      getProductsByCollection(
+        faker.string.uuid(),
+        faker.number.int({ min: 1, max: 12 })
+      )
+    ).resolves.toEqual([])
+    await expect(
+      getRecentProducts(faker.number.int({ min: 1, max: 12 }))
+    ).resolves.toEqual([])
     await expect(
       getCollectionProductsByHandle(faker.helpers.slugify(faker.word.words(2)))
     ).resolves.toEqual([])
@@ -238,7 +259,9 @@ describe("products data layer", () => {
 
   it("uses createdAt fallback and follows the bounded keyset cursor", async () => {
     const pageSize = 100
-    const firstHandle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
+    const firstHandle = faker.helpers
+      .slugify(faker.music.songName())
+      .toLowerCase()
     const createdAt = faker.date.past().toISOString()
     const firstPage = Array.from({ length: pageSize }, (_, index) => ({
       created_at: createdAt,
@@ -278,11 +301,8 @@ describe("products data layer", () => {
         medusaPublishableKey: "pk_test",
       },
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list: vi.fn() },
-        collection: { list: vi.fn() },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn(),
     }))
 
     const { getAllProductHandles } = await import("@/lib/data/products")
@@ -300,7 +320,9 @@ describe("products data layer", () => {
   })
 
   it("rejects a non-base64url cursor from the handle feed", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     const fetchMock = vi.fn().mockResolvedValue({
       json: vi.fn().mockResolvedValue({
         handles: [],
@@ -320,11 +342,8 @@ describe("products data layer", () => {
         medusaPublishableKey: "pk_test",
       },
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list: vi.fn() },
-        collection: { list: vi.fn() },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn(),
     }))
 
     const { getAllProductHandles } = await import("@/lib/data/products")
@@ -348,11 +367,8 @@ describe("products data layer", () => {
     vi.doMock("next/cache", () => ({
       unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
     }))
-    vi.doMock("@/lib/medusa", () => ({
-      storeClient: {
-        product: { list },
-        collection: { list: vi.fn() },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
     }))
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
@@ -362,8 +378,14 @@ describe("products data layer", () => {
     const products = await getProductsByIds([secondId, firstId, secondId])
 
     expect(products.map((product) => product.id)).toEqual([secondId, firstId])
-    expect(list).toHaveBeenCalledWith(
-      expect.objectContaining({ id: [secondId, firstId], limit: 2 })
-    )
+    const [path, init] = list.mock.calls[0] as [
+      string,
+      { query?: Record<string, unknown> },
+    ]
+    expect(path).toBe("/store/products")
+    expect(init.query).toMatchObject({
+      id: [secondId, firstId],
+      limit: 2,
+    })
   })
 })

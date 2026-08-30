@@ -4,7 +4,7 @@ import type { HttpTypes } from "@medusajs/types"
 
 import { siteMetadata } from "@/config/site"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
-import { storeClient } from "@/lib/medusa/client"
+import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
 
 let cachedRegionId: string | null = null
 
@@ -43,7 +43,10 @@ export const resolveRegionId = async (request?: Request): Promise<string> => {
         "/store/regions",
         { query: { limit: 100 } }
       )
-    : await storeClient.region.list({ limit: 100 })
+    : await fetchMedusaStoreRead<HttpTypes.StoreRegionListResponse>(
+        "/store/regions",
+        { method: "GET", query: { limit: 100 } }
+      )
   const preferredCountry = siteMetadata.contact.address.country ?? null
   const region = resolvePreferredRegion(regions ?? [], preferredCountry)
 

@@ -18,7 +18,10 @@ describe("resolveRegionId", () => {
     const list = vi.fn().mockResolvedValue({
       regions: [
         { id: faker.string.uuid(), countries: [{ iso_2: otherCountry }] },
-        { id: "region_match", countries: [{ iso_2: preferredCountry.toLowerCase() }] },
+        {
+          id: "region_match",
+          countries: [{ iso_2: preferredCountry.toLowerCase() }],
+        },
       ],
     })
 
@@ -27,8 +30,8 @@ describe("resolveRegionId", () => {
         contact: { address: { country: preferredCountry } },
       },
     }))
-    vi.doMock("@/lib/medusa/client", () => ({
-      storeClient: { region: { list } },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
     }))
 
     const { resolveRegionId } = await import("@/lib/regions")
@@ -42,17 +45,15 @@ describe("resolveRegionId", () => {
 
     vi.doMock("@/config/site", () => ({
       siteMetadata: {
-        contact: { address: { country: faker.location.countryCode("alpha-2") } },
-      },
-    }))
-    vi.doMock("@/lib/medusa/client", () => ({
-      storeClient: {
-        region: {
-          list: vi.fn().mockResolvedValue({
-            regions: [{ id: firstRegionId, countries: [{ iso_2: "us" }] }],
-          }),
+        contact: {
+          address: { country: faker.location.countryCode("alpha-2") },
         },
       },
+    }))
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn().mockResolvedValue({
+        regions: [{ id: firstRegionId, countries: [{ iso_2: "us" }] }],
+      }),
     }))
 
     const { resolveRegionId } = await import("@/lib/regions")
@@ -65,17 +66,15 @@ describe("resolveRegionId", () => {
         contact: { address: { country: "US" } },
       },
     }))
-    vi.doMock("@/lib/medusa/client", () => ({
-      storeClient: {
-        region: {
-          list: vi.fn().mockResolvedValue({
-            regions: [],
-          }),
-        },
-      },
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: vi.fn().mockResolvedValue({
+        regions: [],
+      }),
     }))
 
     const { resolveRegionId } = await import("@/lib/regions")
-    await expect(resolveRegionId()).rejects.toThrow("No regions configured in Medusa")
+    await expect(resolveRegionId()).rejects.toThrow(
+      "No regions configured in Medusa"
+    )
   })
 })
