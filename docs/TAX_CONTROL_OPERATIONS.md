@@ -50,6 +50,9 @@ TaxRate.io is ready only with a configured API key and remaining provider
 quota. The displayed numbers come from TaxRate.io; the application does not
 invent a monthly reset or estimate remaining calls. **Use 1 lookup to refresh**
 is enabled only with a reviewed monitoring ZIP and consumes one real lookup.
+The safe GET boundary can make one additional attempt after a transport, 408,
+425, or 5xx failure, so a transient failure can consume two metered lookups.
+Quota rejection and other 4xx responses are never retried.
 
 Stripe Tax is ready only when all checks pass:
 

@@ -685,6 +685,10 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
 
     const result = await fetchTaxRateIo({
       apiKey: this.options_.apiKey,
+      onRetry: ({ attempt, reason, totalAttempts }) =>
+        this.logger_.warn(
+          `Tax rate lookup retry scheduled (${reason}, attempt ${attempt}/${totalAttempts}).`,
+        ),
       timeoutMs: this.options_.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       zip: postalCode,
     });

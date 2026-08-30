@@ -2235,8 +2235,9 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       transaction/reversal evidence.
 - [ ] Compare representative Stripe Tax results with TaxRate.io without
       charging customers.
-- [ ] Add reviewed TaxRate.io response bounds and reject malformed, negative,
-      or implausible rates.
+- [x] Add reviewed TaxRate.io response bounds: total percentages must be finite
+      and within 0%–100%; malformed, negative, and larger totals fail closed,
+      while invalid optional jurisdiction components are discarded.
 - [ ] Validate tax cache TTLs at startup and bound or purge in-memory caches.
 - [ ] Configure a reviewed monitoring ZIP before enabling paid quota probes.
 - [ ] Complete the filing-record and tax-control runbooks.
@@ -2288,7 +2289,10 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       product-handle, Meilisearch, and correlated or cached Medusa Store reads
       now also use shared two-attempt boundaries under one deadline. Search
       owns retries at its semantic read-operation boundary so catalog loaders
-      cannot multiply attempts; the other provider families remain.
+      cannot multiply attempts. TaxRate.io safe GETs now use two attempts under
+      one deadline with coded errors and retry telemetry; 429 and other 4xx
+      responses do not retry because lookups are metered. Stripe Tax and the
+      other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.

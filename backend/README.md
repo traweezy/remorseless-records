@@ -419,6 +419,16 @@ for a new quote:
 - Stripe Tax supplies address-aware, per-line calculations and a calculation
   ID that is bound to the exact Medusa-created PaymentIntent.
 
+Each TaxRate.io lookup is one safe GET operation with at most two attempts
+inside the configured deadline. Only transport failures and HTTP 408, 425, or
+5xx responses schedule the second attempt; quota rejection and other 4xx
+responses never retry. A retry can consume a second metered lookup, so warning
+telemetry records only the reason class and attempt count. Provider messages,
+statuses, API keys, and postal codes are never copied into terminal errors or
+retry logs. Returned total rates must be finite and between 0% and 100%;
+malformed, negative, or larger totals fail closed, while invalid optional
+breakdown components are discarded.
+
 An authenticated Medusa Admin can review readiness, quota, exact paginated
 checkout impact, payment evidence, and an immutable provider-switch history at
 **Settings → Tax control**. The current setup is read-only; an explicit provider action

@@ -1,4 +1,7 @@
-import { fetchTaxRateIo } from "./taxrate-io"
+import {
+  fetchTaxRateIo,
+  TaxRateIoClientError,
+} from "./taxrate-io"
 
 const originalFetch = global.fetch
 
@@ -6,6 +9,21 @@ afterEach(() => {
   global.fetch = originalFetch
   jest.restoreAllMocks()
 })
+
+const rejectedClientError = async (
+  operation: Promise<unknown>
+): Promise<TaxRateIoClientError> => {
+  try {
+    await operation
+  } catch (error: unknown) {
+    if (error instanceof TaxRateIoClientError) {
+      return error
+    }
+    throw error
+  }
+
+  throw new Error("Expected TaxRate.io client operation to fail")
+}
 
 describe("fetchTaxRateIo", () => {
   it("normalizes a decimal rate and exposes the authoritative quota snapshot", async () => {
@@ -81,17 +99,171 @@ describe("fetchTaxRateIo", () => {
     })
   })
 
-  it("does not expose API keys in upstream errors", async () => {
+  it("retries one transient status under the same request boundary", async () => {
+    const onRetry = jest.fn()
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(new Response("unavailable", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ rate_pct: 0.0635 }), { status: 200 })
+      )
+
+    await expect(
+      fetchTaxRateIo({
+        apiKey: "secret",
+        onRetry,
+        timeoutMs: 500,
+        zip: "06902",
+      })
+    ).resolves.toMatchObject({ ratePercent: 6.35 })
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+    expect(onRetry).toHaveBeenCalledWith({
+      attempt: 2,
+      reason: "status",
+      totalAttempts: 2,
+    })
+  })
+
+  it("retries one transient transport failure", async () => {
+    const onRetry = jest.fn()
+    global.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(new TypeError("socket failed with do-not-log"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ rate_pct: 0.0635 }), { status: 200 })
+      )
+
+    await expect(
+      fetchTaxRateIo({
+        apiKey: "do-not-log",
+        onRetry,
+        timeoutMs: 500,
+        zip: "06902",
+      })
+    ).resolves.toMatchObject({ ratePercent: 6.35 })
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+    expect(onRetry).toHaveBeenCalledWith({
+      attempt: 2,
+      reason: "transport",
+      totalAttempts: 2,
+    })
+  })
+
+  it("bounds transient provider failures to two attempts", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(new Response("unavailable", { status: 503 }))
+
+    const error = await rejectedClientError(
+      fetchTaxRateIo({
+        apiKey: "secret",
+        timeoutMs: 500,
+        zip: "06902",
+      })
+    )
+
+    expect(error).toMatchObject({
+      code: "provider_unavailable",
+      message: "Tax rate lookup failed (provider_unavailable)",
+    })
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not retry or expose details from a rejected request", async () => {
     global.fetch = jest.fn().mockResolvedValue(
       new Response("quota exhausted", { status: 429 })
     )
 
-    await expect(
+    const error = await rejectedClientError(
       fetchTaxRateIo({
         apiKey: "do-not-log",
         timeoutMs: 500,
         zip: "06902",
       })
-    ).rejects.toThrow("Taxrate.io request failed (429)")
+    )
+
+    expect(error).toMatchObject({
+      code: "provider_rejected",
+      message: "Tax rate lookup failed (provider_rejected)",
+    })
+    expect(error.message).not.toContain("do-not-log")
+    expect(error.message).not.toContain("quota exhausted")
+    expect(error.message).not.toContain("429")
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("enforces one deadline across the complete retry boundary", async () => {
+    global.fetch = jest.fn(
+      async (
+        _input: string | URL | Request,
+        init?: RequestInit
+      ): Promise<Response> =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal
+          if (!signal) {
+            reject(new Error("Expected a deadline signal"))
+            return
+          }
+          const rejectForAbort = (): void => reject(signal.reason)
+          if (signal.aborted) {
+            rejectForAbort()
+            return
+          }
+          signal.addEventListener("abort", rejectForAbort, { once: true })
+        })
+    )
+
+    const error = await rejectedClientError(
+      fetchTaxRateIo({
+        apiKey: "secret",
+        timeoutMs: 20,
+        zip: "06902",
+      })
+    )
+
+    expect(error).toMatchObject({ code: "deadline_exceeded" })
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["not-a-rate", "6.35 trailing-data", -0.01, 101])(
+    "rejects invalid rate %p without retrying",
+    async (rate) => {
+      global.fetch = jest.fn().mockResolvedValue(
+        new Response(JSON.stringify({ rate }), { status: 200 })
+      )
+
+      const error = await rejectedClientError(
+        fetchTaxRateIo({
+          apiKey: "secret",
+          timeoutMs: 500,
+          zip: "06902",
+        })
+      )
+
+      expect(error).toMatchObject({ code: "invalid_response" })
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it("discards an invalid optional breakdown component", async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ rate_pct: 0.0635, rate_state: 101, state: "NY" }),
+        { status: 200 }
+      )
+    )
+
+    await expect(
+      fetchTaxRateIo({
+        apiKey: "secret",
+        timeoutMs: 500,
+        zip: "06902",
+      })
+    ).resolves.toMatchObject({
+      jurisdiction: {
+        rate_components: { state: null },
+      },
+      ratePercent: 6.35,
+    })
   })
 })

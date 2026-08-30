@@ -51,6 +51,10 @@ export const POST = async (
     async () => {
       const result = await fetchTaxRateIo({
         apiKey: TAX_RATE_LOOKUP_API_KEY,
+        onRetry: ({ attempt, reason, totalAttempts }) =>
+          logger.warn(
+            `Tax rate quota refresh retry scheduled (${reason}, attempt ${attempt}/${totalAttempts}).`,
+          ),
         timeoutMs: 8_000,
         zip: postalCode,
       });
