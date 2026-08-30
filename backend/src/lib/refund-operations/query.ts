@@ -5,10 +5,16 @@ import type {
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 import type TaxControlModuleService from "../../modules/tax-control/service"
+import { readNonNegativeSafeInteger } from "../provider-boundary/primitives"
+import {
+  asUnknownRecord,
+  readCountedRecordPage,
+  readProviderDataRecords,
+  readRecordArray,
+  type UnknownRecord,
+} from "../provider-boundary/records"
 import { projectRefundCases, summarizeRefundCases } from "./projection"
 import type { RefundOperationsSnapshot } from "./types"
-
-type UnknownRecord = Record<string, unknown>
 
 type QueryGraph = {
   graph: (input: {
@@ -20,7 +26,7 @@ type QueryGraph = {
       skip?: number
       take?: number
     }
-  }) => Promise<{ data: UnknownRecord[] }>
+  }) => Promise<unknown>
 }
 
 const PAGE_SIZE = 250
@@ -52,25 +58,14 @@ const ORDER_FIELDS = [
   "payment_collections.payments.refunds.refund_reason.code",
 ] as const
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as UnknownRecord)
-    : null
-
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 
-const integer = (value: unknown): number | null => {
-  const parsed = Number(value)
-  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null
-}
-
 const records = (value: unknown): UnknownRecord[] =>
-  Array.isArray(value)
-    ? value
-        .map(asRecord)
-        .filter((record): record is UnknownRecord => record !== null)
-    : []
+  readRecordArray(value, {
+    context: "Refund operations relationship query",
+    optional: true,
+  })
 
 const hasMedusaRefund = (order: UnknownRecord): boolean =>
   records(order.payment_collections).some((collection) =>
@@ -80,13 +75,13 @@ const hasMedusaRefund = (order: UnknownRecord): boolean =>
   )
 
 const hasRefundSignal = (value: unknown): boolean => {
-  const evidence = asRecord(value)
-  const metadata = asRecord(evidence?.metadata)
+  const evidence = asUnknownRecord(value)
+  const metadata = asUnknownRecord(evidence?.metadata)
   const association = text(evidence?.association_status)?.toLowerCase() ?? ""
   const status = text(evidence?.status)
   return (
-    (integer(metadata?.refund_amount_minor) ?? 0) > 0 ||
-    (integer(metadata?.stripe_refund_count) ?? 0) > 0 ||
+    (readNonNegativeSafeInteger(metadata?.refund_amount_minor) ?? 0) > 0 ||
+    (readNonNegativeSafeInteger(metadata?.stripe_refund_count) ?? 0) > 0 ||
     association.includes("refund_") ||
     status === "partially_refunded" ||
     status === "refunded" ||
@@ -99,16 +94,28 @@ const loadEvidence = async (
 ): Promise<{ evidence: unknown[]; truncated: boolean }> => {
   const evidence: unknown[] = []
   while (evidence.length < MAX_EVIDENCE) {
-    const [page, count] = await service.listAndCountTaxQuoteEvidences(
+    const skip = evidence.length
+    const take = Math.min(PAGE_SIZE, MAX_EVIDENCE - skip)
+    const pageResult: unknown = await service.listAndCountTaxQuoteEvidences(
       { status: [...REFUND_EVIDENCE_STATUSES] },
       {
         order: { last_verified_at: "DESC" },
-        skip: evidence.length,
-        take: Math.min(PAGE_SIZE, MAX_EVIDENCE - evidence.length),
+        skip,
+        take,
       }
     )
+    const { count, records: page } = readCountedRecordPage(
+      pageResult,
+      "Refund evidence query"
+    )
     evidence.push(...page)
-    if (evidence.length >= count || page.length < PAGE_SIZE) {
+    if (
+      count < evidence.length ||
+      (evidence.length < count && page.length < take)
+    ) {
+      throw new Error("Refund evidence query returned inconsistent pagination.")
+    }
+    if (evidence.length >= count) {
       return { evidence, truncated: false }
     }
   }
@@ -130,7 +137,7 @@ const loadRecentOrders = async ({
   const orders: UnknownRecord[] = []
   let scanned = 0
   while (scanned < MAX_RECENT_ORDERS) {
-    const { data } = await query.graph({
+    const result = await query.graph({
       entity: "order",
       fields: [...ORDER_FIELDS],
       filters: {
@@ -142,6 +149,7 @@ const loadRecentOrders = async ({
         take: Math.min(PAGE_SIZE, MAX_RECENT_ORDERS - scanned),
       },
     })
+    const data = readProviderDataRecords(result, "Recent refund order query")
     scanned += data.length
     orders.push(...data.filter(hasMedusaRefund))
     if (data.length < PAGE_SIZE) {
@@ -169,18 +177,19 @@ const loadEvidenceOrders = async ({
     ...new Set(
       evidence
         .filter(hasRefundSignal)
-        .map((value) => text(asRecord(value)?.order_id))
+        .map((value) => text(asUnknownRecord(value)?.order_id))
         .filter((id): id is string => id !== null && !loadedOrderIds.has(id))
     ),
   ]
   const loaded: UnknownRecord[] = []
   for (const batch of chunks(orderIds, ID_BATCH_SIZE)) {
-    const { data } = await query.graph({
+    const result = await query.graph({
       entity: "order",
       fields: [...ORDER_FIELDS],
       filters: { id: batch },
       pagination: { take: batch.length },
     })
+    const data = readProviderDataRecords(result, "Refund evidence order query")
     loaded.push(...data)
   }
   return loaded
@@ -197,11 +206,14 @@ export const buildRefundOperationsSnapshot = async ({
   const taxControl = container.resolve<TaxControlModuleService>("tax_control")
   const payment = container.resolve<IPaymentModuleService>(Modules.PAYMENT)
 
-  const [loadedEvidence, recentOrders, refundReasons] = await Promise.all([
+  const [loadedEvidence, recentOrders, refundReasonResult] = await Promise.all([
     loadEvidence(taxControl),
     loadRecentOrders({ now, query }),
     payment.listRefundReasons({}),
   ])
+  const refundReasons = readRecordArray(refundReasonResult, {
+    context: "Refund reason query",
+  })
   const recentOrderIds = new Set(
     recentOrders.orders
       .map((order) => text(order.id))

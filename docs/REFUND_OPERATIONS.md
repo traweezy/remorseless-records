@@ -40,6 +40,15 @@ treated as proof that retrying a refund is safe. Customer names, email
 addresses, phone numbers, street addresses, card data, and PaymentIntent client
 secrets are not returned to this Admin endpoint.
 
+Provider and persistence results are runtime-validated before reconciliation.
+Malformed Query Graph envelopes, non-record order/evidence/reason rows, and an
+evidence page that stops before its declared total fail the request rather than
+silently shrinking the exception queue. Refund amounts accept only explicit
+finite numeric values or Medusa value wrappers; booleans, blank strings, and
+ambiguous coercions are rejected. Timestamps must be Date values or complete
+offset-aware ISO timestamps. These failures expose only fixed operational
+messages and never echo provider payloads.
+
 ## Choose the business workflow before the payment action
 
 ### 1. Unfulfilled goods

@@ -2736,6 +2736,16 @@ and reconciliation boundaries. Those source-level boundary improvements
 remain, while the remaining unsafe assignment/member/argument counts above are
 preserved as a dated debt baseline rather than misrepresented as Biome rules.
 
+The first post-migration boundary tranche now centralizes fail-closed record,
+graph-envelope, workflow-row, and counted-page readers for the tax-reporting
+and refund-operations paths. Neither path silently filters primitive provider
+rows or trusts declared Medusa return types. Refund evidence pagination rejects
+a short page before its declared total, tax payment hydration validates every
+graph response, and financial primitives reject JavaScript boolean/blank/date
+coercion. Eighty-seven focused provider, tax-reporting, and refund-operation
+tests pass with strict TypeScript and Biome. The broader dated debt item remains
+open for the other service, workflow, and import boundaries.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace
@@ -2771,10 +2781,10 @@ Biome does not parse YAML or provide compiler-equivalent semantic TypeScript
 checking, so workflow YAML remains covered by repository policy verifiers and
 GitHub while both strict `tsc --noEmit` gates remain mandatory. ESLint,
 typescript-eslint, JSX-a11y ESLint, and Prettier dependencies/configurations are
-removed; `biome check --error-on-warnings .` processes 1,155 files cleanly.
+removed; `biome check --error-on-warnings .` processes 1,159 files cleanly.
 
 Current local acceptance passes the complete repository QA policy, both strict
-compiler checks, all 220 Backend suites and 1,303 tests, the 128-file/693-test
+compiler checks, all 222 Backend suites and 1,334 tests, the 128-file/693-test
 Storefront baseline suite, and the 34-file/230-test transactional Storefront
 suite. Both production builds and the Storefront client-secret scan pass. The
 production audit retains only the three documented ignored moderate findings

@@ -3,6 +3,13 @@ import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { z } from "zod"
 
+import {
+  asUnknownRecord,
+  readProviderDataRecords,
+  readRecordArray,
+  readWorkflowResultRecords,
+  type UnknownRecord,
+} from "../provider-boundary/records"
 import { TAX_FILING_STATES, type TaxFilingScope } from "./filing-states"
 import type { TaxReportPeriod } from "./periods"
 import {
@@ -18,8 +25,6 @@ import type {
   TaxRecordType,
 } from "./types"
 
-type UnknownRecord = Record<string, unknown>
-
 type QueryGraph = {
   graph: (input: {
     entity: string
@@ -30,7 +35,7 @@ type QueryGraph = {
       skip: number
       take: number
     }
-  }) => Promise<{ data: UnknownRecord[] }>
+  }) => Promise<unknown>
 }
 
 const PAGE_SIZE = 250
@@ -141,29 +146,14 @@ const ORDER_FIELDS = [
   "payment_collections.raw_captured_amount",
 ] as const
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as UnknownRecord)
-    : null
-
 const records = (value: unknown): UnknownRecord[] =>
-  Array.isArray(value)
-    ? value
-        .map(asRecord)
-        .filter((record): record is UnknownRecord => record !== null)
-    : []
+  readRecordArray(value, {
+    context: "Tax report relationship query",
+    optional: true,
+  })
 
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
-
-const workflowRows = (
-  result:
-    | {
-        rows: unknown[]
-      }
-    | unknown[]
-): UnknownRecord[] =>
-  (Array.isArray(result) ? result : result.rows) as UnknownRecord[]
 
 const mergeAuthoritativeTotals = ({
   orders,
@@ -243,7 +233,8 @@ const loadPayments = async ({
           })
         )
     )
-    for (const { data } of results) {
+    for (const result of results) {
+      const data = readProviderDataRecords(result, "Tax report payment query")
       for (const payment of data) {
         const id = text(payment.id)
         if (id) {
@@ -314,10 +305,10 @@ const relationshipDiagnostics = (
       )
     ).length,
     ordersWithShippingAddress: orders.filter(
-      (order) => asRecord(order.shipping_address) !== null
+      (order) => asUnknownRecord(order.shipping_address) !== null
     ).length,
     ordersWithSummary: orders.filter(
-      (order) => asRecord(order.summary) !== null
+      (order) => asUnknownRecord(order.summary) !== null
     ).length,
     paymentCollections: collections.length,
     payments: linkedPayments.length,
@@ -394,7 +385,7 @@ export const loadTaxReportOrders = async ({
       skip: orders.length,
       take: PAGE_SIZE,
     }
-    const [{ result }, { result: totalsResult }] = await Promise.all([
+    const [orderResult, totalsResult] = await Promise.all([
       orderListWorkflow.run({
         input: {
           fields: [...ORDER_FIELDS],
@@ -409,8 +400,14 @@ export const loadTaxReportOrders = async ({
       }),
     ])
     const data = mergeAuthoritativeTotals({
-      orders: workflowRows(result as { rows: unknown[] } | unknown[]),
-      totals: workflowRows(totalsResult as { rows: unknown[] } | unknown[]),
+      orders: readWorkflowResultRecords(
+        orderResult,
+        "Tax report order workflow"
+      ),
+      totals: readWorkflowResultRecords(
+        totalsResult,
+        "Tax report totals workflow"
+      ),
     })
     orders.push(...data)
     if (data.length < PAGE_SIZE) {

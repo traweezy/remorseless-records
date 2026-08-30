@@ -45,10 +45,12 @@ const orderFixture = () => ({
 
 const containerFixture = ({
   evidence = [evidenceFixture()],
+  evidenceCount = evidence.length,
   graph,
   reasons = [{ id: "refreason_01" }],
 }: {
   evidence?: unknown[]
+  evidenceCount?: number
   graph: jest.Mock
   reasons?: unknown[]
 }): MedusaContainer => {
@@ -57,7 +59,7 @@ const containerFixture = ({
       async (_filters: unknown, config: { skip?: number; take?: number }) => {
         const skip = config.skip ?? 0
         const take = config.take ?? evidence.length
-        return [evidence.slice(skip, skip + take), evidence.length]
+        return [evidence.slice(skip, skip + take), evidenceCount]
       }
     ),
   }
@@ -158,6 +160,18 @@ describe("refund operations snapshot query", () => {
     expect(snapshot.source.ordersScanned).toBe(0)
   })
 
+  it("fails closed when the order graph returns a non-record row", async () => {
+    const graph = jest.fn(async () => ({ data: [false] }))
+
+    await expect(
+      buildRefundOperationsSnapshot({
+        container: containerFixture({ evidence: [], graph }),
+      })
+    ).rejects.toThrow(
+      "Recent refund order query returned malformed structured data."
+    )
+  })
+
   it("loads an older order when tracked evidence has a refund signal", async () => {
     const graph = jest.fn(async (input: { filters?: { id?: string[] } }) => ({
       data: input.filters?.id ? [orderFixture()] : [],
@@ -201,5 +215,40 @@ describe("refund operations snapshot query", () => {
       configured: false,
       count: 0,
     })
+  })
+
+  it("fails closed when evidence or refund reasons are malformed", async () => {
+    await expect(
+      buildRefundOperationsSnapshot({
+        container: containerFixture({
+          evidence: [null],
+          graph: jest.fn(async () => ({ data: [] })),
+        }),
+      })
+    ).rejects.toThrow(
+      "Refund evidence query returned malformed structured data."
+    )
+
+    await expect(
+      buildRefundOperationsSnapshot({
+        container: containerFixture({
+          evidence: [],
+          graph: jest.fn(async () => ({ data: [] })),
+          reasons: [null],
+        }),
+      })
+    ).rejects.toThrow("Refund reason query returned malformed structured data.")
+  })
+
+  it("fails closed when evidence pagination stops before its declared total", async () => {
+    await expect(
+      buildRefundOperationsSnapshot({
+        container: containerFixture({
+          evidence: [evidenceFixture()],
+          evidenceCount: 2,
+          graph: jest.fn(async () => ({ data: [] })),
+        }),
+      })
+    ).rejects.toThrow("Refund evidence query returned inconsistent pagination.")
   })
 })

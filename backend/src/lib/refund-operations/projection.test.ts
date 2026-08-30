@@ -237,6 +237,29 @@ describe("refund operations projection", () => {
     })
   })
 
+  it("fails closed on malformed evidence and relationship records", () => {
+    expect(() => projectRefundCases({ evidence: [false], orders: [] })).toThrow(
+      "Refund operations evidence query returned malformed structured data."
+    )
+    expect(() =>
+      projectRefundCases({
+        evidence: [],
+        orders: [orderFixture({ refunds: [false] })],
+      })
+    ).toThrow(
+      "Refund operations projection relationship returned malformed structured data."
+    )
+  })
+
+  it("fails closed instead of coercing an invalid refund amount", () => {
+    expect(() =>
+      projectRefundCases({
+        evidence: [],
+        orders: [orderFixture({ refunds: [{ amount: true }] })],
+      })
+    ).toThrow("Refund operations projection encountered invalid monetary data.")
+  })
+
   it("does not call a legacy refund verified without individual statuses", () => {
     const refundCase = projectRefundCases({
       evidence: [

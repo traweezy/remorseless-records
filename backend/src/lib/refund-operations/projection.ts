@@ -7,41 +7,43 @@ import type {
   StripeRefundStatus,
 } from "./types"
 
-type UnknownRecord = Record<string, unknown>
-
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as UnknownRecord)
-    : null
+import {
+  asUnknownRecord as asRecord,
+  readRecordArray,
+  type UnknownRecord,
+} from "../provider-boundary/records"
+import {
+  readFiniteNumber,
+  readIsoTimestamp,
+  readNonNegativeSafeInteger,
+} from "../provider-boundary/primitives"
 
 const records = (value: unknown): UnknownRecord[] =>
-  Array.isArray(value)
-    ? value
-        .map(asRecord)
-        .filter((record): record is UnknownRecord => record !== null)
-    : []
+  readRecordArray(value, {
+    context: "Refund operations projection relationship",
+    optional: true,
+  })
 
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
 
-const integer = (value: unknown): number | null => {
-  const parsed = Number(value)
-  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null
-}
-
 const majorToMinor = (value: unknown): number | null => {
-  const raw = asRecord(value)
-  const amount = Number(raw?.value ?? value)
-  if (!Number.isFinite(amount) || amount < 0) {
+  const amount = readFiniteNumber(value)
+  if (amount === null || amount < 0) {
     return null
   }
   const minor = Math.round(amount * 100)
   return Number.isSafeInteger(minor) ? minor : null
 }
 
-const timestamp = (value: unknown): string | null => {
-  const parsed = value instanceof Date ? value : new Date(String(value ?? ""))
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+const refundAmountMinor = (refund: UnknownRecord): number => {
+  const amount = majorToMinor(refund.raw_amount ?? refund.amount)
+  if (amount === null) {
+    throw new Error(
+      "Refund operations projection encountered invalid monetary data."
+    )
+  }
+  return amount
 }
 
 const latestTimestamp = (values: Array<string | null>): string | null =>
@@ -232,10 +234,11 @@ const nextActionFrom = ({
 
 const evidenceByIntent = (evidence: unknown[]): Map<string, UnknownRecord> =>
   new Map(
-    evidence.flatMap((value) => {
-      const record = asRecord(value)
+    readRecordArray(evidence, {
+      context: "Refund operations evidence query",
+    }).flatMap((record) => {
       const intentId = text(record?.payment_intent_id)
-      return record && intentId ? [[intentId, record] as const] : []
+      return intentId ? [[intentId, record] as const] : []
     })
   )
 
@@ -243,8 +246,8 @@ const evidenceHasRefundSignal = (evidence: UnknownRecord): boolean => {
   const metadata = asRecord(evidence.metadata)
   const associationStatus = associationStatusFrom(evidence)
   return (
-    (integer(metadata?.refund_amount_minor) ?? 0) > 0 ||
-    (integer(metadata?.stripe_refund_count) ?? 0) > 0 ||
+    (readNonNegativeSafeInteger(metadata?.refund_amount_minor) ?? 0) > 0 ||
+    (readNonNegativeSafeInteger(metadata?.stripe_refund_count) ?? 0) > 0 ||
     associationStatus.includes("refund_") ||
     text(evidence.status) === "partially_refunded" ||
     text(evidence.status) === "refunded" ||
@@ -267,13 +270,11 @@ export const projectRefundCases = ({
   const matchedPaymentIntents = new Set<string>()
   const cases: RefundCase[] = []
 
-  for (const orderValue of orders) {
-    const order = asRecord(orderValue)
-    if (!order) {
-      continue
-    }
+  for (const order of readRecordArray(orders, {
+    context: "Refund operations order query",
+  })) {
     const orderId = text(order.id)
-    const displayId = integer(order.display_id)
+    const displayId = readNonNegativeSafeInteger(order.display_id)
     for (const collection of records(order.payment_collections)) {
       for (const payment of records(collection.payments)) {
         const paymentIntentId = paymentIntentIdFrom(payment)
@@ -286,13 +287,14 @@ export const projectRefundCases = ({
         const metadata = asRecord(evidenceRecord?.metadata)
         const refunds = records(payment.refunds)
         const medusaRefundAmountMinor = refunds.reduce(
-          (total, refund) =>
-            total + (majorToMinor(refund.raw_amount ?? refund.amount) ?? 0),
+          (total, refund) => total + refundAmountMinor(refund),
           0
         )
-        const stripeRefundAmountMinor = integer(metadata?.refund_amount_minor)
+        const stripeRefundAmountMinor = readNonNegativeSafeInteger(
+          metadata?.refund_amount_minor
+        )
         const stripeRefundCount =
-          integer(metadata?.stripe_refund_count) ??
+          readNonNegativeSafeInteger(metadata?.stripe_refund_count) ??
           (Array.isArray(metadata?.stripe_refund_statuses)
             ? metadata.stripe_refund_statuses.length
             : null)
@@ -339,12 +341,12 @@ export const projectRefundCases = ({
           currencyCode,
           displayId,
           latestRefundAt: latestTimestamp([
-            ...refunds.map((refund) => timestamp(refund.created_at)),
+            ...refunds.map((refund) => readIsoTimestamp(refund.created_at)),
             (stripeRefundCount ?? 0) > 0
-              ? timestamp(evidenceRecord?.last_verified_at)
+              ? readIsoTimestamp(evidenceRecord?.last_verified_at)
               : null,
           ]),
-          lastVerifiedAt: timestamp(evidenceRecord?.last_verified_at),
+          lastVerifiedAt: readIsoTimestamp(evidenceRecord?.last_verified_at),
           medusaRefundAmountMinor,
           medusaRefundCount: refunds.length,
           nextAction: nextActionFrom({
@@ -383,9 +385,10 @@ export const projectRefundCases = ({
       continue
     }
     const metadata = asRecord(evidenceRecord.metadata)
-    const stripeRefundAmountMinor = integer(metadata?.refund_amount_minor) ?? 0
+    const stripeRefundAmountMinor =
+      readNonNegativeSafeInteger(metadata?.refund_amount_minor) ?? 0
     const stripeRefundCount =
-      integer(metadata?.stripe_refund_count) ??
+      readNonNegativeSafeInteger(metadata?.stripe_refund_count) ??
       (Array.isArray(metadata?.stripe_refund_statuses)
         ? metadata.stripe_refund_statuses.length
         : 0)
@@ -415,9 +418,9 @@ export const projectRefundCases = ({
       displayId: null,
       latestRefundAt:
         stripeRefundCount > 0
-          ? timestamp(evidenceRecord.last_verified_at)
+          ? readIsoTimestamp(evidenceRecord.last_verified_at)
           : null,
-      lastVerifiedAt: timestamp(evidenceRecord.last_verified_at),
+      lastVerifiedAt: readIsoTimestamp(evidenceRecord.last_verified_at),
       medusaRefundAmountMinor: 0,
       medusaRefundCount: 0,
       nextAction: nextActionFrom({

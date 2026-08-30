@@ -495,7 +495,7 @@ describe("tax record projection", () => {
       })),
       raw_original_subtotal: wrapped("10"),
       raw_original_tax_total: wrapped("0.8"),
-      raw_original_total: wrapped("10.8"),
+      raw_original_total: { precision: 20, value: "10.8" },
       summary: {
         raw_paid_total: wrapped("10.8"),
       },
@@ -508,16 +508,31 @@ describe("tax record projection", () => {
     })
   })
 
-  it("fails closed instead of silently zeroing an invalid monetary value", () => {
-    const base = orderFixture()
-    const order = {
-      ...base,
-      raw_original_total: { value: "not-money" },
-    }
+  it.each([{ value: "not-money" }, true])(
+    "fails closed instead of coercing invalid monetary value %p",
+    (rawOriginalTotal) => {
+      const base = orderFixture()
+      const order = {
+        ...base,
+        raw_original_total: rawOriginalTotal,
+      }
 
-    expect(() => projectTaxRecords({ orders: [order], period })).toThrow(
-      "Tax projection encountered an invalid monetary value."
+      expect(() => projectTaxRecords({ orders: [order], period })).toThrow(
+        "Tax projection encountered an invalid monetary value."
+      )
+    }
+  )
+
+  it("fails closed on malformed order and relationship records", () => {
+    expect(() => projectTaxRecords({ orders: [null], period })).toThrow(
+      "Tax projection order query returned malformed structured data."
     )
+    expect(() =>
+      projectTaxRecords({
+        orders: [{ ...orderFixture(), items: [false] }],
+        period,
+      })
+    ).toThrow("Tax projection relationship returned malformed structured data.")
   })
 
   it("does not report unpaid positive-total orders as sales", () => {

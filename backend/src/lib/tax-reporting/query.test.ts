@@ -62,7 +62,7 @@ const order = {
 
 const containerWith = (
   graph: (input: Record<string, unknown>) => Promise<{
-    data: Record<string, unknown>[]
+    data: unknown[]
   }>
 ): MedusaContainer => {
   mockGetOrdersListRun.mockImplementation(
@@ -251,6 +251,17 @@ describe("tax report query", () => {
     )
   })
 
+  it("fails closed when an order workflow returns a non-record row", async () => {
+    await expect(
+      loadTaxReportOrders({
+        container: containerWith(async () => ({ data: [null] })),
+        period,
+      })
+    ).rejects.toThrow(
+      "Tax report order workflow returned malformed structured data."
+    )
+  })
+
   it("hydrates authoritative capture data from the Payment Module", async () => {
     let paymentQuery: Record<string, unknown> | null = null
     const sparseOrder = {
@@ -346,6 +357,28 @@ describe("tax report query", () => {
         period,
       })
     ).rejects.toThrow("Tax report could not load every linked payment record.")
+  })
+
+  it("fails closed when the payment graph returns a non-record row", async () => {
+    const sparseOrder = {
+      ...order,
+      payment_collections: [
+        {
+          payments: [{ id: "pay_invalid" }],
+        },
+      ],
+    }
+
+    await expect(
+      buildFullTaxReport({
+        container: containerWith(async (input) => ({
+          data: input.entity === "payment" ? [false] : [sparseOrder],
+        })),
+        period,
+      })
+    ).rejects.toThrow(
+      "Tax report payment query returned malformed structured data."
+    )
   })
 
   it("keeps period summaries complete when table filters match no rows", async () => {

@@ -1,5 +1,11 @@
-import { MathBN } from "@medusajs/framework/utils"
+import { BigNumber, MathBN } from "@medusajs/framework/utils"
 
+import {
+  asUnknownRecord as asRecord,
+  readRecordArray,
+  type UnknownRecord,
+} from "../provider-boundary/records"
+import { readIsoTimestamp } from "../provider-boundary/primitives"
 import { parseTaxLineCode } from "../tax-control/context"
 import { filingBucketFor } from "./filing-states"
 import type { TaxReportPeriod } from "./periods"
@@ -14,22 +20,15 @@ import type {
   TaxReportSummary,
 } from "./types"
 
-type UnknownRecord = Record<string, unknown>
 type Decimal = ReturnType<typeof MathBN.convert>
 
 const ZERO = MathBN.convert(0)
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as UnknownRecord)
-    : null
-
 const records = (value: unknown): UnknownRecord[] =>
-  Array.isArray(value)
-    ? value
-        .map(asRecord)
-        .filter((record): record is UnknownRecord => record !== null)
-    : []
+  readRecordArray(value, {
+    context: "Tax projection relationship",
+    optional: true,
+  })
 
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
@@ -50,9 +49,17 @@ const decimal = (value: unknown): Decimal => {
     return MathBN.convert(0)
   }
   try {
-    const converted = MathBN.convert(
-      value as Parameters<typeof MathBN.convert>[0]
-    )
+    const wrapper = asRecord(value)
+    const candidate =
+      wrapper && Object.hasOwn(wrapper, "value") ? wrapper.value : value
+    if (
+      typeof candidate !== "number" &&
+      typeof candidate !== "string" &&
+      !(candidate instanceof BigNumber)
+    ) {
+      throw new Error("Unsupported monetary value.")
+    }
+    const converted = MathBN.convert(candidate)
     if (!converted.isFinite()) {
       throw new Error("Non-finite monetary value.")
     }
@@ -69,11 +76,6 @@ const decimalField = (
   rawField: string,
   field: string
 ): Decimal => decimal(record[rawField] ?? record[field])
-
-const timestamp = (value: unknown): string | null => {
-  const parsed = value instanceof Date ? value : new Date(String(value ?? ""))
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
-}
 
 const inPeriod = (value: string, period: TaxReportPeriod): boolean =>
   value >= period.startInclusive && value < period.endExclusive
@@ -476,9 +478,9 @@ const paymentCaptureTimestamp = (order: UnknownRecord): string | null => {
   const captureTimestamps = orderPayments
     .flatMap(captures)
     .filter((capture) => decimalField(capture, "raw_amount", "amount").gt(0))
-    .map((capture) => timestamp(capture.created_at))
+    .map((capture) => readIsoTimestamp(capture.created_at))
   const paymentTimestamps = orderPayments.map((payment) =>
-    timestamp(payment.captured_at)
+    readIsoTimestamp(payment.captured_at)
   )
   const timestamps = [...captureTimestamps, ...paymentTimestamps]
     .filter((value): value is string => value !== null)
@@ -519,7 +521,7 @@ const saleRecord = (
 ): TaxRecord | null => {
   const base = baseRecord(order)
   const capturedAt = paymentCaptureTimestamp(order)
-  const occurredAt = capturedAt ?? timestamp(order.created_at)
+  const occurredAt = capturedAt ?? readIsoTimestamp(order.created_at)
   if (!base || !occurredAt || !inPeriod(occurredAt, period)) {
     return null
   }
@@ -611,7 +613,7 @@ const refundRecords = (
   const candidates = payments(order).flatMap((payment) =>
     records(payment.refunds).flatMap((refund) => {
       const refundId = text(refund.id)
-      const occurredAt = timestamp(refund.created_at)
+      const occurredAt = readIsoTimestamp(refund.created_at)
       const refundTotal = decimalField(refund, "raw_amount", "amount")
       if (!refundId || !occurredAt || !refundTotal.gt(0)) {
         return []
@@ -624,7 +626,7 @@ const refundRecords = (
     ZERO
   )
   const cumulativeRefundExceedsOrder = cumulativeRefundTotal.gt(amounts.total)
-  const orderOccurredAt = timestamp(order.created_at)
+  const orderOccurredAt = readIsoTimestamp(order.created_at)
 
   return candidates.flatMap(({ occurredAt, refundId, refundTotal }) => {
     if (!inPeriod(occurredAt, period)) {
@@ -885,12 +887,8 @@ export const projectTaxRecords = ({
   orders: unknown[]
   period: TaxReportPeriod
 }): TaxRecord[] =>
-  orders
-    .flatMap((value) => {
-      const order = asRecord(value)
-      if (!order) {
-        return []
-      }
+  readRecordArray(orders, { context: "Tax projection order query" })
+    .flatMap((order) => {
       const sale = saleRecord(order, period)
       return [...(sale ? [sale] : []), ...refundRecords(order, period)]
     })
@@ -917,13 +915,13 @@ export const diagnoseTaxProjection = ({
   projectedSales: number
   structuredOrders: number
 } => {
-  const structuredOrders = orders
-    .map(asRecord)
-    .filter((order): order is UnknownRecord => order !== null)
+  const structuredOrders = readRecordArray(orders, {
+    context: "Tax projection diagnostics query",
+  })
   const count = (predicate: (order: UnknownRecord) => boolean): number =>
     structuredOrders.filter(predicate).length
   const occurredAt = (order: UnknownRecord): string | null =>
-    paymentCaptureTimestamp(order) ?? timestamp(order.created_at)
+    paymentCaptureTimestamp(order) ?? readIsoTimestamp(order.created_at)
 
   return {
     ordersInPeriod: count((order) => {

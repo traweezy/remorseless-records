@@ -129,6 +129,15 @@ review. A captured amount that differs from the original order total is marked
 incomplete instead of silently reporting a full sale. Zero-value orders are
 omitted because they do not create a sales-tax amount.
 
+Workflow, Query Graph, and nested relationship data is runtime-validated before
+projection. A missing envelope, primitive row, malformed relationship member,
+or coercive monetary value fails the report with a fixed message instead of
+dropping a record or converting it to zero. Monetary inputs accept Medusa
+BigNumber values, explicit finite number/string values, and validated value
+wrappers. Capture, order, and refund timestamps must be Date values or complete
+offset-aware ISO timestamps; ambiguous date coercion is not used in a filing
+period.
+
 Refunds are credits in the period in which the refund occurred. Each refund is
 classified as:
 
