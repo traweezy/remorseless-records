@@ -118,28 +118,18 @@ describe("catalog filter server loaders", () => {
     })
   })
 
-  it("retries transient search failures with backoff", async () => {
-    vi.useFakeTimers()
-    const searchProductsServer = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("temporary one"))
-      .mockRejectedValueOnce(new Error("temporary two"))
-      .mockResolvedValue(makeSearchResponse())
+  it("does not multiply attempts outside the search provider boundary", async () => {
+    const searchProductsServer = vi.fn().mockRejectedValue(new Error("offline"))
     mockDependencies({ searchProductsServer })
     const { getCatalogGenreOptions } = await import(
       "@/lib/catalog/filters.server"
     )
 
-    const pending = getCatalogGenreOptions()
-    await vi.runAllTimersAsync()
-    await expect(pending).resolves.toEqual([
-      { value: "death-metal", label: "Death Metal", count: 12 },
-    ])
-    expect(searchProductsServer).toHaveBeenCalledTimes(3)
+    await expect(getCatalogGenreOptions()).rejects.toThrow("offline")
+    expect(searchProductsServer).toHaveBeenCalledTimes(1)
   })
 
   it("returns partial definitions when independent sources fail", async () => {
-    vi.useFakeTimers()
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
     const searchProductsServer = vi.fn().mockRejectedValue("offline")
     mockDependencies({ hits: [], searchProductsServer })
@@ -149,9 +139,7 @@ describe("catalog filter server loaders", () => {
     await expect(getCatalogFormatOptions()).rejects.toThrow(
       "returned no products"
     )
-    const pending = getCatalogFilterDefinitions()
-    await vi.runAllTimersAsync()
-    await expect(pending).resolves.toEqual({
+    await expect(getCatalogFilterDefinitions()).resolves.toEqual({
       formats: [],
       genres: [],
       productTypes: [],

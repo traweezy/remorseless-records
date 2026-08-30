@@ -39,6 +39,19 @@ describe("search provider error contract", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
   })
 
+  it("forwards caller cancellation to the search provider boundary", async () => {
+    const request = makeRequest()
+    mocks.searchProductsServer.mockResolvedValue({ hits: [] })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(200)
+    expect(mocks.searchProductsServer).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "doom" }),
+      request.signal
+    )
+  })
+
   it.each([
     ["timeout", 504, "search_timeout"],
     ["unavailable", 502, "search_unavailable"],

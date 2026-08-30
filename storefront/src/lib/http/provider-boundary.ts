@@ -5,6 +5,9 @@ export const MAX_PROVIDER_RETRY_DELAY_MS = 1_000
 
 const retryableReadStatuses = new Set([408, 425, 429, 500, 502, 503, 504])
 
+export const isRetryableProviderReadStatus = (status: number): boolean =>
+  retryableReadStatuses.has(status)
+
 export type ProviderFailureKind = "timeout" | "unavailable"
 
 export class ProviderRequestError extends Error {
@@ -55,6 +58,22 @@ export type ProviderReadOptions = {
   maxAttempts?: number
   retryBaseDelayMs?: number
   timeoutMs?: number
+}
+
+export type ProviderRetryDecision =
+  | { retry: false }
+  | { response?: Response; retry: true }
+
+export type ProviderRetryEvent = {
+  attempt: number
+  delayMs: number
+  maxAttempts: number
+}
+
+export type ProviderReadOperationOptions = ProviderReadOptions & {
+  classifyRetry: (error: unknown) => ProviderRetryDecision
+  onRetry?: (event: ProviderRetryEvent) => void
+  signal?: AbortSignal | null
 }
 
 const assertBoundedInteger = (
@@ -139,6 +158,68 @@ const cancelResponseBody = async (response: Response): Promise<void> => {
   }
 }
 
+export const runProviderReadOperation = async <T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  {
+    classifyRetry,
+    maxAttempts = DEFAULT_PROVIDER_READ_ATTEMPTS,
+    onRetry,
+    retryBaseDelayMs = DEFAULT_PROVIDER_RETRY_BASE_DELAY_MS,
+    signal: callerSignal,
+    timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS,
+  }: ProviderReadOperationOptions
+): Promise<T> => {
+  assertBoundedInteger(maxAttempts, "Provider read attempts", 3)
+  assertBoundedInteger(
+    retryBaseDelayMs,
+    "Provider retry base delay",
+    MAX_PROVIDER_RETRY_DELAY_MS
+  )
+
+  const signal = createProviderSignal(callerSignal, timeoutMs)
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (signal.aborted) {
+      throw new ProviderRequestError("timeout")
+    }
+
+    try {
+      return await operation(signal)
+    } catch (error) {
+      const providerError = toProviderRequestError(error)
+      if (
+        signal.aborted ||
+        providerError.kind === "timeout" ||
+        attempt + 1 >= maxAttempts
+      ) {
+        throw signal.aborted
+          ? new ProviderRequestError("timeout")
+          : providerError
+      }
+
+      const decision = classifyRetry(error)
+      if (!decision.retry) {
+        throw providerError
+      }
+      const delayMs = retryDelayMs(
+        decision.response ?? null,
+        attempt,
+        retryBaseDelayMs
+      )
+      if (delayMs === null) {
+        throw providerError
+      }
+      onRetry?.({
+        attempt: attempt + 2,
+        delayMs,
+        maxAttempts,
+      })
+      await waitForRetry(delayMs, signal)
+    }
+  }
+
+  throw new ProviderRequestError("unavailable")
+}
+
 export const fetchProviderRead = async (
   input: RequestInfo | URL,
   init: RequestInit = {},
@@ -180,7 +261,7 @@ export const fetchProviderRead = async (
     }
 
     if (
-      !retryableReadStatuses.has(response.status) ||
+      !isRetryableProviderReadStatus(response.status) ||
       attempt + 1 >= maxAttempts
     ) {
       return response

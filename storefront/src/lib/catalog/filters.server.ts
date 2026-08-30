@@ -13,11 +13,6 @@ import {
 import { getMetalGenreCategories } from "@/lib/data/categories"
 import { searchProductsServer } from "@/lib/search/server"
 
-const delay = async (milliseconds: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, milliseconds)
-  })
-
 const describeError = (error: unknown): unknown =>
   error instanceof Error ? error.message : error
 
@@ -25,34 +20,20 @@ const loadGlobalSearchDefinitions = async (): Promise<{
   genres: CatalogFilterOption[]
   productTypes: CatalogFilterOption[]
 }> => {
-  let lastError: unknown
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const [genreSeeds, searchResponse] = await Promise.all([
-        getMetalGenreCategories(),
-        searchProductsServer({ query: "", limit: 1, offset: 0 }),
-      ])
-      const definitions = buildCatalogFilterDefinitions([], genreSeeds, {
-        genres: Object.keys(searchResponse.facets.metalGenres).length
-          ? searchResponse.facets.metalGenres
-          : searchResponse.facets.genres,
-        productTypes: searchResponse.facets.productTypes,
-      })
-      return {
-        genres: definitions.genres,
-        productTypes: definitions.productTypes,
-      }
-    } catch (error: unknown) {
-      lastError = error
-      if (attempt < 2) {
-        await delay(100 * 2 ** attempt)
-      }
-    }
+  const [genreSeeds, searchResponse] = await Promise.all([
+    getMetalGenreCategories(),
+    searchProductsServer({ query: "", limit: 1, offset: 0 }),
+  ])
+  const definitions = buildCatalogFilterDefinitions([], genreSeeds, {
+    genres: Object.keys(searchResponse.facets.metalGenres).length
+      ? searchResponse.facets.metalGenres
+      : searchResponse.facets.genres,
+    productTypes: searchResponse.facets.productTypes,
+  })
+  return {
+    genres: definitions.genres,
+    productTypes: definitions.productTypes,
   }
-
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("Unable to load global catalog facets")
 }
 
 export const getCatalogFormatOptions = unstable_cache(

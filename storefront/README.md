@@ -104,6 +104,16 @@ an eager retry. Discarded response bodies are canceled, and terminal transport
 errors retain only `timeout` or `unavailable`, never an upstream URL, payload,
 credential, or customer value.
 
+Server-side Meilisearch queries use the same bounded retry primitives at the
+semantic read-operation boundary. Although the SDK transports search queries
+with `POST`, the operation is read-only and only SDK transport failures or
+transient HTTP statuses are retried. Search makes at most two attempts under
+one eight-second deadline, honors bounded `Retry-After`, and propagates the
+incoming API request's cancellation signal. Catalog loaders do not add another
+retry loop, preventing multiplicative attempts. Terminal errors use the same
+redacted `timeout` or `unavailable` contract. Every retry emits one info-level
+event containing only the next attempt, maximum attempts, and delay.
+
 The storefront uses a version-controlled subset of the backend's filterable
 index contract instead of reading index settings on every request. The backend
 release rebuild validates that contract before its atomic index swap. Initial

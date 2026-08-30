@@ -4,8 +4,10 @@ import { Meilisearch } from "meilisearch"
 
 import { searchServerEnv } from "@/config/env.search.server"
 import {
-  createProviderSignal,
-  toProviderRequestError,
+  isRetryableProviderReadStatus,
+  type ProviderRetryDecision,
+  type ProviderRetryEvent,
+  runProviderReadOperation,
 } from "@/lib/http/provider-boundary"
 import { enrichSearchResponse } from "@/lib/search/enrich"
 import {
@@ -15,6 +17,36 @@ import {
 } from "@/lib/search/search"
 
 let serverClient: Meilisearch | null = null
+
+const classifySearchRetry = (error: unknown): ProviderRetryDecision => {
+  if (!error || typeof error !== "object") {
+    return { retry: false }
+  }
+
+  const name = (error as { name?: unknown }).name
+  if (name === "MeiliSearchRequestError") {
+    return { retry: true }
+  }
+
+  const response = (error as { response?: unknown }).response
+  return name === "MeiliSearchApiError" &&
+    response instanceof Response &&
+    isRetryableProviderReadStatus(response.status)
+    ? { response, retry: true }
+    : { retry: false }
+}
+
+const observeSearchRetry = ({
+  attempt,
+  delayMs,
+  maxAttempts,
+}: ProviderRetryEvent): void => {
+  console.info("[search] Retrying transient provider read", {
+    attempt,
+    delay_ms: delayMs,
+    max_attempts: maxAttempts,
+  })
+}
 
 const getServerClient = (): Meilisearch => {
   if (serverClient) {
@@ -30,19 +62,17 @@ const getServerClient = (): Meilisearch => {
 }
 
 export const searchProductsServer = async (
-  request: ProductSearchRequest
+  request: ProductSearchRequest,
+  signal?: AbortSignal | null
 ): Promise<ProductSearchResponse> => {
   const client = getServerClient()
-  let response: ProductSearchResponse
-  try {
-    response = await searchProductsWithClient(
-      client,
-      request,
-      undefined,
-      createProviderSignal()
-    )
-  } catch (error) {
-    throw toProviderRequestError(error)
-  }
+  const response = await runProviderReadOperation<ProductSearchResponse>(
+    (signal) => searchProductsWithClient(client, request, undefined, signal),
+    {
+      classifyRetry: classifySearchRetry,
+      onRetry: observeSearchRetry,
+      ...(signal !== undefined ? { signal } : {}),
+    }
+  )
   return enrichSearchResponse(response)
 }

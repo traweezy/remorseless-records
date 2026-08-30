@@ -183,7 +183,7 @@ export const POST = async (request: Request) => {
     }
 
     const normalized = normalizeRequest(parsed.data)
-    const response = await searchProductsServer(normalized)
+    const response = await searchProductsServer(normalized, request.signal)
     return jsonApiResponse(response)
   } catch (error) {
     console.error("/api/search/products failed")

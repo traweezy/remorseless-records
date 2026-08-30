@@ -808,15 +808,16 @@ trace fallback, and duplicate-listener prevention. The installed Medusa patch
 verifier behaviorally proves early correlation and redacted framework
 completion. Provider-focused tests prove default SDK cancellation, combined
 caller cancellation, safe error classification, read-only retry/backoff under
-one deadline, bounded `Retry-After`, Meilisearch signal forwarding,
-request-bound news timeout propagation, and provider-detail redaction. The
-generated OpenAPI check inventories all route sources deterministically and is
-wired into both the repository lint gate and Root CI.
+one deadline, bounded `Retry-After`, Meilisearch transport/transient-status
+retry without nested catalog attempts, Meilisearch and news request
+cancellation propagation, fixed-field search retry events, and provider-detail
+redaction. The generated OpenAPI check inventories all route sources
+deterministically and is wired into both the repository lint gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
-typechecks pass. Backend passes 964 tests across 182 suites. Storefront passes
-637 tests across 119 files with 92.99% statement, 85.74% branch, 93.88%
-function, and 92.95% line coverage. Both production builds pass, including the
+typechecks pass. Backend passes 1,028 tests across 191 suites. Storefront passes
+642 tests across 119 files with 92.90% statement, 85.74% branch, 93.92%
+function, and 92.85% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
 bundle is 1,702,695 gzip bytes and 6,708,946 raw bytes; all 336 Admin assets are
 2,297,109 gzip bytes and 8,376,872 raw bytes, within their four release
@@ -829,6 +830,21 @@ inventory verifies 1,005 packages in 16 groups with only the five documented
 upstream Medusa packages lacking manifest SPDX metadata. Exact-SHA staging CI,
 Railway deployment, live-route, lifecycle-log, and browser acceptance all
 passed on the final application commit recorded below.
+
+Provider-read exact staging acceptance: commit
+`c55933a9dfd9179c979461c50a9d6f4d3d5ea38d` passed Root CI `33284460763`,
+Backend CI `33284460755`, and Storefront CI `33284460758`, including unit
+coverage, both production builds, CodeQL, dependency/secret scans, Playwright,
+pa11y, and Lighthouse. Railway held Storefront deployment
+`46647945-3dce-4420-a2b5-5443f46a60c5` until those workflows passed, then
+released image digest
+`sha256:47797bb52413db5f3239fc78f4e2d363d8231fe05662b700762495c5fe802abd`
+to `SUCCESS` on that exact SHA. Storefront `/live`, `/ready`,
+`/api/healthcheck`, `/`, `/news`, `/discography`, and `/sitemap.xml` all
+returned 200; readiness reported Backend and Redis healthy. The exact
+deployment had no HTTP response at 400 or above. Its only Railway `error`-level
+record was pnpm's successful `$ next start` command banner written to stderr,
+not an application failure.
 
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
@@ -2176,9 +2192,11 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
 - [ ] Add outbound deadlines, cancellation, bounded retries, and redacted
       provider errors for content, search, email, Stripe, tax, storage,
       contact, and privacy calls. Contact/privacy Backend and Resend deadlines
-      are complete. Storefront news, discography, merchandising-shelf, and
-      product-handle reads now also have a shared safe-method-only two-attempt
-      boundary under one deadline; the other provider families remain.
+      are complete. Storefront news, discography, merchandising-shelf,
+      product-handle, and Meilisearch reads now also use shared two-attempt
+      boundaries under one deadline. Search owns retries at its semantic
+      read-operation boundary so catalog loaders cannot multiply attempts; the
+      other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.
