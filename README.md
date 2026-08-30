@@ -1190,8 +1190,8 @@ PUBLIC_FORM_BFF_SECRET=replace-with-the-same-distinct-backend-form-secret
    pnpm dev                # http://localhost:3000
    ```
 3. **Useful scripts**
-   - `pnpm lint` – ESLint (flat config, React Compiler-aware)
-   - `pnpm typecheck` – TypeScript project references
+   - `pnpm lint` – Biome lint and formatting checks from the root policy
+   - `pnpm typecheck` – strict semantic TypeScript checking with `tsc`
    - `pnpm test:e2e` – Playwright smoke tests (requires `pnpm exec playwright install`)
    - `pnpm build && pnpm start` – production build preview (`next start`)
 
@@ -1519,8 +1519,8 @@ Redis/Meilisearch recovery objectives live in
 
 Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK.md). Quick reminders:
 
-- `pnpm exec eslint --ext .ts,.tsx src` and `pnpm run typecheck` (storefront) / `pnpm --filter backend exec tsc --noEmit` before commits.
-- Monorepo check shortcut: `pnpm run qa:lint` (lint + typecheck for storefront and backend).
+- `pnpm exec biome check --error-on-warnings .` plus `pnpm --filter remorseless-records-storefront run typecheck` and `pnpm --filter backend exec tsc --noEmit` before commits.
+- Monorepo check shortcut: `pnpm run qa:lint` (Biome, repository policy verifiers, and both strict compiler checks).
 - Critical desktop browser matrix: `pnpm --filter remorseless-records-storefront run test:e2e:critical` after the Storefront production build.
 - Reindex search after catalog bulk changes: `pnpm --filter backend run search:sync` (use `pnpm --filter backend run search:check` to compare Medusa vs. Meilisearch counts).
 - Keyboard and screen-reader sweeps on header, Quick Shop, PDP, cart, checkout,

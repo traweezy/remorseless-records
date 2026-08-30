@@ -2690,14 +2690,16 @@ floating support images, and the exact production cost/domain approval packet.
       paths.
 - [ ] Add disposable PostgreSQL/Redis integration, migration, API-contract,
       payment failure/retry, and queue recovery tests.
-- [x] Add Prettier as the repository formatter and enforce a formatting check in
-      hooks and CI.
-- [ ] Tighten Backend ESLint unsafe-TypeScript rules incrementally without
-      hiding existing debt.
+- [x] Replace ESLint and Prettier with one pinned root Biome policy for linting
+      and formatting in local hooks, package scripts, and CI.
+- [x] Keep both strict `tsc --noEmit` gates alongside Biome because semantic
+      TypeScript checking remains a separate compiler responsibility.
+- [ ] Continue boundary hardening from the pre-migration debt baseline of 97
+      unsafe assignments, 34 member accesses, and 15 unsafe arguments.
 - [x] Remove the two CodeQL-reported post-build file rewrite races with
       same-descriptor, no-follow regular-file updates and symlink regression
       coverage.
-- [ ] Complete the broader custom Backend post-build dependency install/patch
+- [x] Complete the broader custom Backend post-build dependency install/patch
       reproducibility review beyond the two remediated file rewrite races.
 - [x] Remove the Storefront Railway `npm i -g pnpm` pre-deploy bootstrap and
       use the repository-pinned pnpm/Corepack toolchain without an unpinned
@@ -2728,6 +2730,25 @@ payment-lifecycle, refund, security, tax, reporting, and upload scope enforces
 an 80% global floor and passed 219 suites / 1,297 tests at 90.99% statements,
 82.89% branches, 95.13% functions, and 91.12% lines.
 
+Before the Biome migration, the final Backend ESLint increment narrowed
+thirteen unsafe call/return findings at import, workflow, search, Stripe Tax,
+and reconciliation boundaries. Those source-level boundary improvements
+remain, while the remaining unsafe assignment/member/argument counts above are
+preserved as a dated debt baseline rather than misrepresented as Biome rules.
+
+The custom Medusa packager now selects the exact Backend lockfile importer and
+fails if it cannot do so, executes pnpm without a shell, rejects malformed
+pnpm policy rather than falling back, and renders stable sorted workspace
+policy. Explicit build-script denials override defaults, closing a discovered
+gap that had re-enabled Puppeteer's install script inside `.medusa/server`.
+Bootstrap, lock, workspace, and patch files use no-follow regular-file reads
+and exclusive creates; patches must stay canonically inside the reviewed
+workspace and cannot use symlink sources or colliding filenames. Ten focused
+regression tests and a fresh frozen production build pass; the generated
+runtime retains
+`puppeteer: false`, contains only the normalized Backend importer, installs 65
+top-level production dependencies, and contains no Puppeteer package.
+
 The local production artifact passed 21 non-destructive critical journeys in
 Chromium, Firefox, and WebKit. They cover home hydration, a contained cart and
 empty state, quick-shop mutation, a real catalog Product detail, stable desktop
@@ -2741,12 +2762,26 @@ HTTP documents no longer upgrade their own subresources to HTTPS, while secure
 deployed requests retain `upgrade-insecure-requests` and
 `block-all-mixed-content`.
 
-One root Prettier 3.9.6 configuration now owns repository formatting. The
-checked `format:check` gate covers source, workflow, script, and manifest files
-while retaining two documented parser/generated-file exclusions. Complete
-repository QA, both strict typechecks and linters, both production builds, the
-Storefront client-secret scan, the production dependency audit, and the React
-Router security-backport verifier passed after these changes.
+One root Biome 2.5.11 configuration now owns supported JavaScript, TypeScript,
+JSX, TSX, JSON/JSONC, and CSS formatting plus static analysis. It parses the
+Backend's parameter decorators and Storefront Tailwind v4 directives, enables
+Storefront Next/React/test/type domains, preserves the packaged-workflow import
+boundary, and limits reviewed HTML-sink exceptions to three exact files.
+Biome does not parse YAML or provide compiler-equivalent semantic TypeScript
+checking, so workflow YAML remains covered by repository policy verifiers and
+GitHub while both strict `tsc --noEmit` gates remain mandatory. ESLint,
+typescript-eslint, JSX-a11y ESLint, and Prettier dependencies/configurations are
+removed; `biome check --error-on-warnings .` processes 1,155 files cleanly.
+
+Current local acceptance passes the complete repository QA policy, both strict
+compiler checks, all 220 Backend suites and 1,303 tests, the 128-file/693-test
+Storefront baseline suite, and the 34-file/230-test transactional Storefront
+suite. Both production builds and the Storefront client-secret scan pass. The
+production audit retains only the three documented ignored moderate findings
+and reports no high or critical finding. The CI quick-shop regression now
+scopes its action to the labelled Catalog results region so the same Product in
+another valid section cannot make the locator ambiguous; Chromium, Firefox,
+and WebKit all pass that focused production-artifact journey.
 
 Resolved discovery: GitHub Dependabot alerts `27` and `28` classified the same
 `GHSA-jmr9-qjv8-65gv` / `CVE-2026-56876` high-severity development-only
@@ -2859,7 +2894,7 @@ The August 30 second-pass audit makes the guided Catalog creation workflow the
 canonical native Product-list create destination and adds current-catalog
 release presets, SKU assistance, controlled Format choices, catalog-health
 guidance, and UI/API enforcement against missing SKUs or zero-dollar drafts.
-Local acceptance passes repository QA, Backend ESLint and strict typecheck, all
+Local acceptance passes repository QA, Backend Biome and strict typecheck, all
 214 Backend suites and 1,271 tests, the product-create vendor-boundary
 verifier, production Backend/Admin build, and the Admin bundle budget. The
 production dependency audit retains only three documented ignored moderate

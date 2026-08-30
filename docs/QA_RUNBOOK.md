@@ -111,11 +111,11 @@ Capture JSON reports and stash in CI artifacts (or note scores in PR description
 ### 1.4 Automated Checks
 
 ```bash
-# Static analysis and type safety
-pnpm exec eslint --ext .ts,.tsx src
-pnpm run typecheck
+# Formatting, static analysis, and repository policies
+pnpm run qa:lint
 
-# Backend type safety (ensures transformers stay in sync)
+# Explicit semantic type safety (Biome does not replace the TypeScript compiler)
+pnpm --filter remorseless-records-storefront run typecheck
 pnpm --filter backend exec tsc --noEmit
 
 # Browser QA dependency resolution and blocked browser-download install scripts
@@ -348,7 +348,7 @@ Fill in observed counts in the release checklist.
 
 ## 4. Sign-off Checklist
 
-- [ ] ESLint + TypeScript checks (storefront + backend) pass.
+- [ ] Biome + strict TypeScript checks (storefront + backend) pass.
 - [ ] Lighthouse thresholds met on target routes.
 - [ ] Keyboard and screen-reader smoke tests completed.
 - [ ] Stripe payment matrix executed, webhook confirmed.

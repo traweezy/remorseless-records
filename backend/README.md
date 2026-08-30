@@ -219,9 +219,18 @@ stateDiagram-v2
 ```
 
 Workflow callers under `src/api` use relative imports so production code
-resolves the workflow already loaded from `.medusa/server`. ESLint rejects
+resolves the workflow already loaded from `.medusa/server`. Biome rejects
 `@/workflows/**` imports, which would otherwise allow a second source-tree Core
 Flows graph to register during packaged startup.
+
+`pnpm --filter backend run build` recreates `.medusa/server` and then performs
+one frozen production-only pnpm install. The packager requires the exact
+Backend lockfile importer, preserves explicit build-script denials such as
+`puppeteer: false`, invokes pnpm without a shell, and fails on malformed policy.
+Generated bootstrap, lock, workspace, and patch files are regular non-symlink
+files created without replacing an existing path. Patch sources must remain
+inside the reviewed workspace and may not collide by filename. Do not bypass
+these checks or manually install dependencies inside the generated server.
 
 ## Admin authorization manifest
 
@@ -783,7 +792,7 @@ design and acceptance contract is
 ## Quality commands
 
 ```bash
-pnpm --filter backend exec eslint --max-warnings=0 .
+pnpm --filter backend run lint
 pnpm --filter backend exec tsc --noEmit
 pnpm --filter backend test
 pnpm --filter backend build
