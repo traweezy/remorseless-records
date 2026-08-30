@@ -19,7 +19,11 @@ import {
 import { observeOperation } from "../../lib/observability/operation-telemetry";
 import { resolveProviderTaxCacheConfig } from "../../lib/tax-control/cache-config";
 import { REDIS_URL } from "../../lib/constants";
-import { TAXRATE_IO_QUOTA_REDIS_KEY } from "../tax-control/constants";
+import {
+  TAXRATE_IO_QUOTA_REDIS_KEY,
+  type TaxCollectionMode,
+  type TaxProviderName,
+} from "../tax-control/constants";
 import {
   BoundedExpiringCache,
   type CacheEvictionEvent,
@@ -313,6 +317,9 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
       { domain: "tax", operation: "calculate" },
       async () => {
         const control = parseTaxControlContext(context.additional_context);
+        if (control.collectionMode === "disabled") {
+          return this.getDisabledTaxLines(itemLines, shippingLines, control);
+        }
         if (control.provider === "stripe_tax") {
           return this.getStripeTaxLines(itemLines, shippingLines, context);
         }
@@ -323,7 +330,8 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
   }
 
   private taxLineIdentity(
-    provider: "stripe_tax" | "taxrate_io",
+    collectionMode: TaxCollectionMode,
+    provider: TaxProviderName | null,
     generation: number,
     fingerprint: string,
     calculationId?: string,
@@ -332,19 +340,51 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
     return {
       code: buildTaxLineCode({
         ...(calculationId ? { calculationId } : {}),
+        collectionMode,
         generation,
         provider,
       }),
       data: {
         ...(calculationId ? { calculation_id: calculationId } : {}),
+        collection_mode: collectionMode,
         fingerprint,
         generation,
         ...(jurisdiction ? { jurisdiction } : {}),
-        provider,
+        ...(provider ? { provider } : {}),
       },
-      name: provider === "stripe_tax" ? "Stripe Tax" : "Sales tax",
+      name:
+        collectionMode === "disabled"
+          ? "Tax not collected"
+          : provider === "stripe_tax"
+            ? "Stripe Tax"
+            : "Sales tax",
       provider_id: this.getIdentifier(),
     };
+  }
+
+  private getDisabledTaxLines(
+    itemLines: ItemTaxCalculationLine[],
+    shippingLines: ShippingTaxCalculationLine[],
+    control: ReturnType<typeof parseTaxControlContext>,
+  ): (ItemTaxLineDTO | ShippingTaxLineDTO)[] {
+    const identity = this.taxLineIdentity(
+      "disabled",
+      null,
+      control.generation,
+      control.fingerprint,
+    );
+    return [
+      ...itemLines.map<ItemTaxLineDTO>((line) => ({
+        ...identity,
+        line_item_id: line.line_item.id,
+        rate: 0,
+      })),
+      ...shippingLines.map<ShippingTaxLineDTO>((line) => ({
+        ...identity,
+        rate: 0,
+        shipping_line_id: line.shipping_line.id,
+      })),
+    ];
   }
 
   private async getTaxRateIoLines(
@@ -363,6 +403,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
           }
         : await this.resolveTaxRateIo(context);
     const identity = this.taxLineIdentity(
+      "collect",
       "taxrate_io",
       control.generation,
       control.fingerprint,
@@ -409,6 +450,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
         throw new Error("Stripe Tax preserved order rates are incomplete.");
       }
       const identity = this.taxLineIdentity(
+        "collect",
         "stripe_tax",
         control.generation,
         control.fingerprint,
@@ -430,6 +472,7 @@ export default class TaxRateLookupProviderService implements ITaxProvider {
 
     const quote = await this.resolveStripeQuote(itemLines, context);
     const identity = this.taxLineIdentity(
+      "collect",
       "stripe_tax",
       control.generation,
       control.fingerprint,

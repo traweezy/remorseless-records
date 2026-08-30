@@ -6,6 +6,7 @@ import {
 } from "./order-rate-preservation";
 
 const identity: FrozenTaxQuote = {
+  collectionMode: "collect",
   generation: 3,
   provider: "stripe_tax",
   stripeCalculationId: "taxcalc_original",

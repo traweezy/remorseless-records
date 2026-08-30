@@ -51,6 +51,7 @@ export type CheckoutShippingOption = {
 }
 
 export type CheckoutTotals = {
+  taxCollectionMode: "collect" | "disabled" | "unknown"
   currencyCode: "usd"
   subtotal: number
   discountTotal: number

@@ -1,6 +1,10 @@
 import { model } from "@medusajs/framework/utils";
 
-import { taxProviderNames, taxQuoteEvidenceStatuses } from "../constants";
+import {
+  taxCollectionModes,
+  taxProviderNames,
+  taxQuoteEvidenceStatuses,
+} from "../constants";
 
 const TaxQuoteEvidence = model.define(
   {
@@ -11,7 +15,8 @@ const TaxQuoteEvidence = model.define(
     id: model.id({ prefix: "taxevidence" }).primaryKey(),
     cart_id: model.text().index(),
     order_id: model.text().index().nullable(),
-    provider: model.enum([...taxProviderNames]),
+    collection_mode: model.enum([...taxCollectionModes]).default("collect"),
+    provider: model.enum([...taxProviderNames]).nullable(),
     generation: model.number(),
     fingerprint: model.text().index(),
     calculation_id: model.text().nullable(),

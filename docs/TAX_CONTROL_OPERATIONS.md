@@ -5,52 +5,97 @@ refund. TaxRate.io and Stripe Tax are alternative calculation engines behind
 that one authority. Never enable a second independent Stripe calculation or
 manually edit an order total in Stripe.
 
-The client-requested tax-disabled mode is designed in
-`docs/adr/0007-audited-tax-collection-mode.md` but is not implemented yet. Until
-that acceptance matrix passes, do not simulate disabled collection by deleting
-tax regions, entering a zero rate, selecting an unready provider, removing
-registrations, clearing credentials, or changing Stripe settings. Those actions
-can produce ambiguous carts or incomplete evidence rather than an auditable
-store decision.
+Tax collection is a durable operating decision separate from the selected
+provider. Never simulate disabled collection by deleting tax regions, entering
+a zero rate, selecting an unready provider, removing registrations, clearing
+credentials, or changing Stripe settings. Use the audited **Do not collect
+tax** choice so every new quote, payment, order, refund, and workpaper retains
+one coherent decision.
 
 ## Admin workflow
 
 Open **Settings → Tax control** in Medusa Admin. The page shows:
 
-- a neutral current-setup summary with its calculation method, connection,
-  last change, and reason;
+- the current collection decision before provider details, including last
+  change and reason;
+- three plain choices: **Do not collect tax**, **Collect using TaxRate.io**,
+  and **Collect using Stripe Tax**;
 - readiness rows for both providers, using plain **Ready** or **Missing**
   labels;
 - TaxRate.io's most recently returned usage/quota inside its provider card;
-- provider-locked checkouts and payments completing, with the exact definition
-  shown beside each number;
+- decision-locked checkouts split between collecting and not collecting, plus
+  payments completing, with the exact definition beside each number;
 - tracked tax-bound payments and refund counts;
 - pending refund reversals, Medusa/Stripe refund-ledger mismatches, disputes,
   or failed Stripe Tax associations; and
-- the immutable provider-switch history.
+- the immutable mode/provider transition history and acknowledgement version.
 
 The role needs `tax_control:read` to open this workspace. Provider switching
 and the deliberate metered quota refresh additionally require
 `tax_control:update`; a read-only operator sees status and evidence without
 those controls. Direct API requests are checked by the same backend policies.
 
-The current provider has a neutral **Current** label. Each inactive provider has
-an explicit switch button, which stays disabled until its setup is ready. The
-button opens one confirmation dialog containing the impact summary and audit
-reason; no backend state changes before confirmation. A switch requires a
-reason of at least ten characters, the current internal configuration version,
-and an authenticated Admin. The backend serializes the switch and uses an
-idempotency key.
+The current collection choice has a neutral **Current** label. Provider choices
+stay disabled until their setup is ready. Every change opens one confirmation
+dialog containing the frozen-decision impact and an audit reason; no backend
+state changes before confirmation. A change requires a reason of at least ten
+characters, the current generation, a UUID idempotency key, and an
+authenticated Admin. Turning collection off additionally requires this exact
+typed acknowledgement:
+
+```text
+I understand tax will be $0.00 on new eligible checkouts.
+```
+
+The acknowledgement version, not customer or provider data, is retained with
+the audit. The backend serializes all mode/provider transitions under the same
+distributed lock.
 
 Provider-locked checkout and payment-completion counts are calculated across
 every unfinished cart updated in the last 30 days. The query paginates the
 entire matching set; it is not a 500-row sample. Abandoned browsing carts that
 never reached a processable Stripe payment session are not included.
 
-Open carts without a prepared payment adopt the new provider on their next tax
-refresh. Prepared payments retain their original provider/generation/quote.
-They must finish or be safely replaced through the normal Medusa payment-session
-workflow. Completed orders are never repriced.
+Open carts without a prepared payment adopt the new mode/provider generation on
+their next tax refresh. Prepared payments retain their original mode,
+provider, generation, fingerprint, and tax decision. They must finish or be
+safely replaced through the normal Medusa payment-session workflow. Completed
+orders are never repriced.
+
+## Turn collection off
+
+1. Confirm the decision with the store owner and tax professional. The Admin
+   control does not determine registration, nexus, or filing obligations.
+2. Review the decision-locked and payment-completing counts. Do not expect
+   those checkouts to be repriced.
+3. Choose **Review turning off tax collection**.
+4. Enter a concrete reason, type the acknowledgement exactly, and confirm.
+5. Refresh the page and verify **Tax not collected** is current, the generation
+   advanced once, and one audit row records the transition.
+6. In a new, unprepared test cart, verify every item and shipping subject has
+   an `rr_tax:disabled:g<generation>:decision` zero line, checkout says **Tax
+   not collected**, and the PaymentIntent has no Stripe Tax hook.
+7. Verify Tax Records places the sale under **Sales pending tax review** and
+   does not classify it as exempt or nontaxable.
+
+The disabled checkout calculator makes no TaxRate.io, Stripe Tax, quota, Redis
+tax-cache, Tax Calculation, or Tax Transaction request. Admin readiness views
+may still inspect configured providers; that is operational status and is not a
+customer tax calculation.
+
+## Re-enable collection
+
+1. Confirm which provider should collect tax and complete every readiness row.
+2. Review frozen checkout impact and current payment incidents.
+3. Choose **Collect using TaxRate.io** or **Collect using Stripe Tax**, enter the
+   reason, and confirm.
+4. Verify **Collect tax** is current, the generation advanced once, and the
+   audit shows both the prior and next mode/provider.
+5. Create a new, unprepared test cart and prove the selected provider identity,
+   tax amount, PaymentIntent metadata, and—when Stripe Tax is selected—the
+   calculation hook and committed transaction.
+6. Confirm a prepared disabled checkout still completes with its historical
+   $0.00 decision instead of being repriced.
 
 ## Provider readiness
 
@@ -268,6 +313,20 @@ Do not infer a tax decision from the card dispute outcome.
 
 Switching back changes only the generation used for new/unprepared quotes. It
 does not undo tax transactions, refunds, or provider history.
+
+## Safe collection-mode rollback
+
+If disabled mode itself is unsafe, stop new checkout traffic through the normal
+release/incident control and deploy the last accepted application artifact.
+Do not reverse `Migration20260830150000`, delete audit rows, set every row back
+to `collect`, or rewrite tax/payment metadata. The expand-only schema and
+historical disabled evidence must remain readable.
+
+If the currently deployed runtime cannot honor the persisted mode, readiness
+must fail rather than silently collecting. Restore a compatible artifact,
+review all checkouts created during the incident window, and re-enable
+collection only through the audited Admin transition after provider readiness
+and owner approval.
 
 ## Required validation before production
 

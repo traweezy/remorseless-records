@@ -9,18 +9,26 @@ const line = ({
   generation = 2,
   provider = "stripe_tax",
   rate = 8.25,
+  collectionMode = "collect",
 }: {
   calculationId?: string | null
   generation?: number
   provider?: "stripe_tax" | "taxrate_io"
   rate?: number
+  collectionMode?: "collect" | "disabled"
 } = {}) => ({
-  code: `rr_tax:${provider}:g${generation}:${calculationId ?? "quote"}`,
+  code:
+    collectionMode === "disabled"
+      ? `rr_tax:disabled:g${generation}:decision`
+      : `rr_tax:${provider}:g${generation}:${calculationId ?? "quote"}`,
   data: {
-    ...(calculationId ? { calculation_id: calculationId } : {}),
+    ...(collectionMode === "collect" && calculationId
+      ? { calculation_id: calculationId }
+      : {}),
+    collection_mode: collectionMode,
     fingerprint,
     generation,
-    provider,
+    ...(collectionMode === "collect" ? { provider } : {}),
   },
   rate,
 })
@@ -33,6 +41,7 @@ describe("taxQuoteIdentityFromCart", () => {
       })
     ).toMatchObject({
       calculationId: "taxcalc_test",
+      collectionMode: "collect",
       fingerprint,
       generation: 2,
       provider: "stripe_tax",
@@ -54,8 +63,35 @@ describe("taxQuoteIdentityFromCart", () => {
       })
     ).toMatchObject({
       calculationId: null,
+      collectionMode: "collect",
       provider: "taxrate_io",
       taxRatePercent: 7.5,
+    })
+  })
+
+  it("extracts an explicit disabled collection decision", () => {
+    expect(
+      taxQuoteIdentityFromCart({
+        items: [
+          {
+            tax_lines: [
+              line({
+                calculationId: null,
+                collectionMode: "disabled",
+                generation: 5,
+                rate: 0,
+              }),
+            ],
+          },
+        ],
+      })
+    ).toEqual({
+      calculationId: null,
+      collectionMode: "disabled",
+      fingerprint,
+      generation: 5,
+      provider: null,
+      taxRatePercent: null,
     })
   })
 

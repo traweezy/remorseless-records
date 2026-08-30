@@ -79,6 +79,7 @@ const verify = (
     calculationId: "taxcalc_test",
     cartId: "cart_01TEST",
     client,
+    collectionMode: "collect",
     currencyCode: "usd",
     fingerprint,
     generation: 2,
@@ -489,6 +490,32 @@ describe("Stripe payment binding client", () => {
         calculationId: null,
         provider: "taxrate_io",
         taxRatePercent: 8,
+      }),
+    ).resolves.toMatchObject({ linkedNow: false, previouslyLinked: false });
+    expect(fixture.retrieveCalculation).not.toHaveBeenCalled();
+    expect(fixture.updateIntent).not.toHaveBeenCalled();
+  });
+
+  it("verifies disabled collection without retrieving or attaching Stripe Tax", async () => {
+    const fixture = clientWith({
+      retrieveIntent: jest.fn().mockResolvedValue(
+        intentFixture({
+          metadata: {
+            medusa_cart_id: "cart_01TEST",
+            rr_tax_collection_mode: "disabled",
+            rr_tax_fingerprint: fingerprint,
+            rr_tax_generation: "2",
+          },
+        }),
+      ),
+    });
+
+    await expect(
+      verify(fixture.client, {
+        calculationId: null,
+        collectionMode: "disabled",
+        provider: null,
+        taxRatePercent: null,
       }),
     ).resolves.toMatchObject({ linkedNow: false, previouslyLinked: false });
     expect(fixture.retrieveCalculation).not.toHaveBeenCalled();

@@ -24,6 +24,7 @@ export type TaxControlImpactQuery = {
 
 export type TaxControlImpact = {
   activityWindowDays: number;
+  frozenByCollectionMode: Record<"collect" | "disabled", number>;
   frozenByProvider: Record<TaxProviderName, number>;
   paymentsFinalizing: number;
   preparedCheckouts: number;
@@ -62,6 +63,7 @@ export const summarizeTaxControlImpact = (
     stripe_tax: 0,
     taxrate_io: 0,
   };
+  const frozenByCollectionMode = { collect: 0, disabled: 0 };
 
   for (const cart of carts) {
     const collection = asRecord(cart.payment_collection);
@@ -71,6 +73,7 @@ export const summarizeTaxControlImpact = (
     let prepared = false;
     let finalizing = false;
     let frozenProvider: TaxProviderName | null = null;
+    let frozenCollectionMode: "collect" | "disabled" | null = null;
 
     for (const value of sessions) {
       const session = asRecord(value);
@@ -87,6 +90,16 @@ export const summarizeTaxControlImpact = (
       const sessionData = asRecord(session?.data);
       const metadata = asRecord(sessionData?.metadata);
       const provider = text(metadata?.rr_tax_provider);
+      const collectionMode = text(metadata?.rr_tax_collection_mode);
+      if (collectionMode === "disabled") {
+        frozenCollectionMode = "disabled";
+      } else if (
+        collectionMode === "collect" ||
+        provider === "stripe_tax" ||
+        provider === "taxrate_io"
+      ) {
+        frozenCollectionMode = "collect";
+      }
       if (provider === "stripe_tax" || provider === "taxrate_io") {
         frozenProvider = provider;
       }
@@ -101,10 +114,14 @@ export const summarizeTaxControlImpact = (
     if (prepared && frozenProvider) {
       frozenByProvider[frozenProvider] += 1;
     }
+    if (prepared && frozenCollectionMode) {
+      frozenByCollectionMode[frozenCollectionMode] += 1;
+    }
   }
 
   return {
     activityWindowDays: ACTIVITY_WINDOW_DAYS,
+    frozenByCollectionMode,
     frozenByProvider,
     paymentsFinalizing,
     preparedCheckouts,

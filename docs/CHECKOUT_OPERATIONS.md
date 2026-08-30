@@ -34,6 +34,34 @@ Useful aggregate log events:
 - `checkout_payment_*` validation errors from the complete-cart hook
 - `[stripe-order-sync] synchronized <count> payment reference(s)`
 
+## Tax collection decisions at checkout
+
+Every prepared checkout has one explicit tax collection mode:
+
+- `collect` uses the selected TaxRate.io or Stripe Tax provider and fails
+  closed if an exact coherent quote cannot be produced;
+- `disabled` creates a controlled $0.00 line for every item and shipping
+  subject, calls no tax provider or quota path, and displays **Tax not
+  collected**; and
+- legacy or incomplete lines are `unknown` and must never be presented as a
+  deliberate disabled decision.
+
+The mode, generation, fingerprint, provider when applicable, and Stripe Tax
+calculation when applicable are frozen into the prepared payment. A later
+Admin disable, re-enable, or provider change applies only to new/unprepared
+quotes. Do not rewrite a prepared PaymentIntent or tax line to make it match the
+new setting.
+
+For disabled mode, Stripe still processes the customer payment. The binding
+path verifies amount, currency, cart, generation, fingerprint, and metadata but
+requires no Tax calculation and rejects any attached Tax hook. The resulting
+payment evidence has null provider/calculation/transaction identities and is
+not missing evidence.
+
+If checkout says **Tax not collected**, verify the exact disabled tax-line code
+and mode metadata before treating the presentation as authoritative. Never
+infer disabled mode from a provider returning a legitimate zero rate.
+
 Checkout reconciliation records contain the fixed safe `message`, exact
 deployment identity, `run_id`, `scheduled_for`, `started_at`,
 `schedule_delay_ms`, `duration_ms`, `event_loop_delay_max_ms`, `lock_wait_ms`,

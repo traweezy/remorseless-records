@@ -246,16 +246,20 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
   return {
     audits: audits.map((audit) => ({
       actorId: audit.actor_id,
+      acknowledgementVersion: audit.acknowledgement_version,
       createdAt: dateString(audit.created_at),
+      fromCollectionMode: audit.from_collection_mode,
       fromGeneration: audit.from_generation,
       fromProvider: audit.from_provider,
       id: audit.id,
       reason: audit.reason,
+      toCollectionMode: audit.to_collection_mode,
       toGeneration: audit.to_generation,
       toProvider: audit.to_provider,
     })),
     control: {
       activeProvider: control.active_provider,
+      collectionMode: control.collection_mode,
       generation: control.generation,
       lastSwitchReason: control.last_switch_reason,
       lastSwitchedAt: dateString(control.updated_at),

@@ -3,6 +3,7 @@ import "server-only"
 import type { HttpTypes } from "@medusajs/types"
 
 import type { CheckoutReceipt } from "@/features/checkout/types/checkout"
+import { taxQuoteIdentityFromCart } from "@/lib/cart/tax-quote"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
 
@@ -18,8 +19,10 @@ const ORDER_RECEIPT_FIELDS = [
   "tax_total",
   "total",
   "*items",
+  "*items.tax_lines",
   "*shipping_address",
   "*shipping_methods",
+  "*shipping_methods.tax_lines",
 ].join(",")
 
 const finiteAmount = (value: number): number => {
@@ -89,6 +92,13 @@ const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
         ).toUpperCase(),
       }
     : null
+  let taxCollectionMode: CheckoutReceipt["totals"]["taxCollectionMode"] =
+    "unknown"
+  try {
+    taxCollectionMode = taxQuoteIdentityFromCart(order).collectionMode
+  } catch {
+    // Legacy orders remain readable without inventing a historical decision.
+  }
 
   return {
     orderNumber:
@@ -107,6 +117,7 @@ const receiptFromOrder = (order: HttpTypes.StoreOrder): CheckoutReceipt => {
     deliveryMethod:
       deliveryMethodNames.length > 0 ? deliveryMethodNames.join(", ") : null,
     totals: {
+      taxCollectionMode,
       currencyCode,
       subtotal: finiteAmount(order.item_subtotal),
       discountTotal: finiteAmount(Number(orderRecord.discount_subtotal)),

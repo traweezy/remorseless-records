@@ -71,6 +71,7 @@ describe("order receipt projection", () => {
     expect(path).toBe("/store/orders/order_01K123ABC")
     expect(options.method).toBe("GET")
     expect(options.query.fields).toContain("*items")
+    expect(options.query.fields).toContain("*items.tax_lines")
     expect(options.query.fields).toContain("item_subtotal")
     expect(options.query.fields).toContain("discount_subtotal")
     expect(options.query.fields).toContain("shipping_subtotal")
@@ -87,6 +88,43 @@ describe("order receipt projection", () => {
     })
     expect(receipt).not.toHaveProperty("id")
     expect(JSON.stringify(receipt)).not.toContain("order_01K123ABC")
+  })
+
+  it("preserves the historical disabled decision on the receipt", async () => {
+    const disabledTaxLine = {
+      code: "rr_tax:disabled:g3:decision",
+      data: {
+        collection_mode: "disabled",
+        fingerprint:
+          "disabledTaxFingerprint_abcdefghijklmnopqrstuvwxyz012345678",
+        generation: 3,
+      },
+      rate: 0,
+      total: 0,
+    }
+    medusaMocks.read.mockResolvedValue({
+      order: {
+        ...order,
+        tax_total: 0,
+        total: 24.99,
+        items: order.items?.map((item) => ({
+          ...item,
+          tax_lines: [{ id: "ordlitax_disabled", ...disabledTaxLine }],
+        })),
+        shipping_methods: order.shipping_methods?.map((method) => ({
+          ...method,
+          tax_lines: [{ id: "ordshiptax_disabled", ...disabledTaxLine }],
+        })),
+      },
+    })
+
+    await expect(getOrderReceipt("order_01K123ABC")).resolves.toMatchObject({
+      totals: {
+        taxCollectionMode: "disabled",
+        taxTotal: 0,
+        total: 24.99,
+      },
+    })
   })
 
   it("uses the incoming request cancellation and correlation boundary", async () => {

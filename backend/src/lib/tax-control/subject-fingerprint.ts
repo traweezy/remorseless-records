@@ -1,4 +1,7 @@
-import type { TaxProviderName } from "../../modules/tax-control/constants";
+import type {
+  TaxCollectionMode,
+  TaxProviderName,
+} from "../../modules/tax-control/constants";
 import { createTaxContextFingerprint } from "./context";
 
 type UnknownRecord = Record<string, unknown>;
@@ -20,13 +23,15 @@ const adjustmentsFrom = (value: unknown): UnknownRecord[] =>
     .filter((adjustment): adjustment is UnknownRecord => adjustment !== null);
 
 export const createTaxSubjectFingerprint = ({
+  collectionMode,
   generation,
   orderOrCart,
   provider,
 }: {
+  collectionMode: TaxCollectionMode;
   generation: number;
   orderOrCart: UnknownRecord;
-  provider: TaxProviderName;
+  provider: TaxProviderName | null;
 }): string => {
   const address = asRecord(orderOrCart.shipping_address);
   const items = Array.isArray(orderOrCart.items)
@@ -73,6 +78,7 @@ export const createTaxSubjectFingerprint = ({
       province: text(address?.province)?.toLowerCase(),
     },
     currencyCode: text(orderOrCart.currency_code)?.toLowerCase(),
+    collectionMode,
     generation,
     items: sorted(items),
     provider,

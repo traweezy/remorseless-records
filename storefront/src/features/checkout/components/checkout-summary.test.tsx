@@ -28,6 +28,7 @@ const checkoutFixture = (): CheckoutProjection => ({
       },
     ],
     totals: {
+      taxCollectionMode: "collect",
       currencyCode: "usd",
       subtotal: 19.99,
       discountTotal: 0,
@@ -100,5 +101,16 @@ describe("CheckoutSummary", () => {
     await waitFor(() => {
       expect(onRemoveItem).toHaveBeenCalledWith("cali_test")
     })
+  })
+
+  it("labels an explicit disabled decision without calling it an exemption", () => {
+    const checkout = checkoutFixture()
+    checkout.cart.totals.taxCollectionMode = "disabled"
+
+    render(<CheckoutSummary checkout={checkout} />)
+
+    expect(screen.getByText("Tax not collected")).toBeInTheDocument()
+    expect(screen.getByText("$0.00")).toBeInTheDocument()
+    expect(screen.queryByText(/exempt/i)).not.toBeInTheDocument()
   })
 })

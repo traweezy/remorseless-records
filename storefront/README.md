@@ -204,3 +204,17 @@ pnpm --filter remorseless-records-storefront run build
 
 Responsive changes must also be verified with the Playwright device projects
 and a real browser screenshot as described in `tmp/STARTUP.md`.
+
+## Tax decision presentation
+
+The Storefront treats tax collection mode as server-owned checkout evidence,
+not a label inferred from the amount. Controlled `collect` lines preserve the
+selected provider identity. Controlled `disabled` lines carry no provider and
+render **Tax not collected** with `$0.00`; they are never described as exempt,
+nontaxable, or provider-calculated zero.
+
+Checkout projections, PaymentIntent metadata, and order receipts retain the
+mode, generation, and fingerprint needed to distinguish those cases. Prepared
+payments and completed receipts keep their historical decision after an Admin
+disable, re-enable, or provider change. A malformed, mixed, or legacy line set
+remains `unknown` rather than being promoted to disabled mode.

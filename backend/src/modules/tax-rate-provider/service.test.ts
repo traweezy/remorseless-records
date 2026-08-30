@@ -57,8 +57,10 @@ const context = (
   ({
     additional_context: {
       remorseless_tax: {
+        collectionMode: "collect",
         fingerprint: createTaxContextFingerprint({ order: "order_01" }),
         frozenQuote: {
+          collectionMode: "collect",
           generation: 2,
           provider: "stripe_tax",
           stripeCalculationId: "taxcalc_original",
@@ -83,6 +85,7 @@ const lookupContext = (postalCode: string): TaxCalculationContext =>
   ({
     additional_context: {
       remorseless_tax: {
+        collectionMode: "collect",
         fingerprint: createTaxContextFingerprint({ postalCode }),
         generation: 1,
         itemAmountsMinor: {},
@@ -130,6 +133,53 @@ describe("controlled tax provider order rate preservation", () => {
         context({ orli_01: 8.75 }, {}),
       ),
     ).rejects.toThrow("preserved order rates are incomplete");
+  });
+});
+
+describe("controlled tax provider disabled collection", () => {
+  it("emits one explicit zero line per subject without a provider call", async () => {
+    const disabledContext = {
+      ...lookupContext("10001"),
+      additional_context: {
+        remorseless_tax: {
+          collectionMode: "disabled",
+          fingerprint: createTaxContextFingerprint({ cart: "cart-disabled" }),
+          generation: 4,
+          itemAmountsMinor: {},
+          itemTaxCodes: {},
+          preservedItemRates: {},
+          preservedShippingRates: {},
+          shippingAmountMinor: 500,
+          subjectId: "cart-disabled",
+        },
+      },
+    } as unknown as TaxCalculationContext;
+
+    await expect(
+      service().getTaxLines(
+        [item("item-disabled")],
+        [shipping("shipping-disabled")],
+        disabledContext,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        code: "rr_tax:disabled:g4:decision",
+        data: {
+          collection_mode: "disabled",
+          fingerprint: expect.any(String),
+          generation: 4,
+        },
+        line_item_id: "item-disabled",
+        name: "Tax not collected",
+        rate: 0,
+      }),
+      expect.objectContaining({
+        code: "rr_tax:disabled:g4:decision",
+        rate: 0,
+        shipping_line_id: "shipping-disabled",
+      }),
+    ]);
+    expect(mockFetchTaxRateIo).not.toHaveBeenCalled();
   });
 });
 

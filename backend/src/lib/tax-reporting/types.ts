@@ -1,16 +1,15 @@
 export type TaxRecordProvider =
   | "legacy"
   | "mixed"
+  | "not_applicable"
   | "stripe_tax"
   | "taxrate_io"
   | "unknown";
 
 export type TaxRecordQuality = "complete" | "incomplete" | "review";
+export type TaxRecordCollectionMode = "collect" | "disabled" | "unknown";
 export type TaxRecordType = "refund" | "sale";
-export type TaxRefundCreditTiming =
-  | "prior_period"
-  | "same_period"
-  | "unknown";
+export type TaxRefundCreditTiming = "prior_period" | "same_period" | "unknown";
 
 export type TaxRecordDestination = {
   city: string | null;
@@ -23,6 +22,7 @@ export type TaxRecordDestination = {
 };
 
 export type TaxRecord = {
+  collectionMode: TaxRecordCollectionMode;
   currencyCode: string;
   destination: TaxRecordDestination;
   displayId: number;
@@ -44,6 +44,7 @@ export type TaxRecord = {
   taxRatePercent: string | null;
   total: string;
   type: TaxRecordType;
+  unclassifiedSales: string;
 };
 
 export type TaxDestinationSummary = {
@@ -64,11 +65,13 @@ export type TaxDestinationSummary = {
   taxCollected: string;
   taxRatePercent: string | null;
   taxableSales: string;
+  unclassifiedSales: string;
 };
 
 export type TaxReportSummary = {
   completeRecords: number;
   currencyCode: string;
+  disabledRecordCount: number;
   grossSales: string;
   incompleteRecords: number;
   netSales: string;
@@ -83,4 +86,5 @@ export type TaxReportSummary = {
   samePeriodRefundCount: number;
   taxCollected: string;
   taxableSales: string;
+  unclassifiedSales: string;
 };

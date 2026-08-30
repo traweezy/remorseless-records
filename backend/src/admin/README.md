@@ -36,7 +36,10 @@ dialogs route by route:
   table instance across both surfaces. Routes still own validated server
   queries, columns, mobile content, empty-state copy, and mutation safeguards.
 
-Tax Control is the first form/confirmation consumer. Tax Control and Tax
+Tax Control is the first form/confirmation consumer. Its task-first flow puts
+the collect/disabled decision before provider diagnostics, validates the exact
+disabled acknowledgement and audit reason, previews frozen checkouts, and
+reconciles mode/provider/generation after response loss. Tax Control and Tax
 Records share the page, layout, and retry-state components. Media Cleanup and
 Refund Operations also use the shared page and retry hierarchy; their
 collection-specific empty states use the shared empty-state component. Domain
@@ -44,6 +47,19 @@ queries still own skeletons shaped like their final content and the conditions
 that distinguish an initial load from a recoverable failure. New custom forms
 and routes should extend these components instead of copying their
 accessibility wiring.
+
+The Tax Control collecting, disable-confirmation, and disabled states were
+validated in the real built Admin through graphical Chromium at 3,200 x 1,280.
+The project-owned workspace had no horizontal overflow, and its scoped axe run
+reported 24 passed rules with zero violations or incomplete checks. The vendor
+Admin shell remains outside that scoped result and keeps its own upstream
+navigation accessibility backlog.
+
+The staging-configured Storefront production build and complete local
+Playwright matrix pass with 53 tests passed, two intentionally skipped, and
+zero failures across desktop checkout, Pixel 7, and iPhone 15 Pro. The browser
+gate waits for explicit rendered contracts after `domcontentloaded`, not global
+network silence that background cache and telemetry work can prevent.
 
 Media Cleanup is the first responsive data-table consumer. Its page index and
 page size remain controlled inputs to the server query, while the response

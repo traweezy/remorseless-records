@@ -100,6 +100,7 @@ const checkoutFixture = ({
       },
     ],
     totals: {
+      taxCollectionMode: "collect",
       currencyCode: "usd",
       subtotal: 19.99,
       discountTotal: 0,

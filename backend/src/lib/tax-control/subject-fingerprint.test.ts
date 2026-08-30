@@ -41,11 +41,13 @@ const taxSubject = ({
 describe("tax subject fingerprint", () => {
   it("survives replacement of the selected shipping-method row", () => {
     const original = createTaxSubjectFingerprint({
+      collectionMode: "collect",
       generation: 1,
       orderOrCart: taxSubject(),
       provider: "taxrate_io",
     });
     const replaced = createTaxSubjectFingerprint({
+      collectionMode: "collect",
       generation: 1,
       orderOrCart: taxSubject({ shippingMethodId: "casm_replacement" }),
       provider: "taxrate_io",
@@ -59,16 +61,35 @@ describe("tax subject fingerprint", () => {
     ["shipping amount", { shippingAmount: 8 }],
   ])("changes when the %s changes", (_name, change) => {
     const original = createTaxSubjectFingerprint({
+      collectionMode: "collect",
       generation: 1,
       orderOrCart: taxSubject(),
       provider: "taxrate_io",
     });
     const changed = createTaxSubjectFingerprint({
+      collectionMode: "collect",
       generation: 1,
       orderOrCart: taxSubject(change),
       provider: "taxrate_io",
     });
 
     expect(changed).not.toBe(original);
+  });
+
+  it("separates an explicit disabled decision from provider collection", () => {
+    const collected = createTaxSubjectFingerprint({
+      collectionMode: "collect",
+      generation: 2,
+      orderOrCart: taxSubject(),
+      provider: "taxrate_io",
+    });
+    const disabled = createTaxSubjectFingerprint({
+      collectionMode: "disabled",
+      generation: 2,
+      orderOrCart: taxSubject(),
+      provider: null,
+    });
+
+    expect(disabled).not.toBe(collected);
   });
 });

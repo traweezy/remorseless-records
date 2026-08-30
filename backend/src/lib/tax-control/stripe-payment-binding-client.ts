@@ -66,11 +66,12 @@ type ExpectedBinding = {
   amountMinor: number;
   calculationId: string | null;
   cartId: string;
+  collectionMode: "collect" | "disabled";
   currencyCode: string;
   fingerprint: string;
   generation: number;
   paymentIntentId: string;
-  provider: "stripe_tax" | "taxrate_io";
+  provider: "stripe_tax" | "taxrate_io" | null;
   taxRatePercent: number | null;
 };
 
@@ -214,15 +215,20 @@ const expectedBindingFrom = (
 ): ExpectedBinding & { idempotencyKey: string } => {
   const idempotencyKey = `rr-tax-link-${value.paymentIntentId}-${value.fingerprint}`;
   const rateValid =
-    value.provider === "taxrate_io"
-      ? value.calculationId === null &&
-        value.taxRatePercent !== null &&
-        Number.isFinite(value.taxRatePercent) &&
-        value.taxRatePercent >= 0 &&
-        value.taxRatePercent <= 100
-      : value.taxRatePercent === null &&
-        value.calculationId !== null &&
-        boundedId(value.calculationId, /^taxcalc_[A-Za-z0-9]+$/);
+    value.collectionMode === "disabled"
+      ? value.provider === null &&
+        value.calculationId === null &&
+        value.taxRatePercent === null
+      : value.provider === "taxrate_io"
+        ? value.calculationId === null &&
+          value.taxRatePercent !== null &&
+          Number.isFinite(value.taxRatePercent) &&
+          value.taxRatePercent >= 0 &&
+          value.taxRatePercent <= 100
+        : value.provider === "stripe_tax" &&
+          value.taxRatePercent === null &&
+          value.calculationId !== null &&
+          boundedId(value.calculationId, /^taxcalc_[A-Za-z0-9]+$/);
   if (
     !Number.isSafeInteger(value.amountMinor) ||
     value.amountMinor <= 0 ||
@@ -295,6 +301,7 @@ const paymentIntentFrom = (
   }
 
   const generation = metadata.rr_tax_generation;
+  const collectionMode = metadata.rr_tax_collection_mode ?? "collect";
   const calculation = metadata.rr_tax_calculation_id;
   const rate = metadata.rr_tax_rate_percent;
   const calculationMatches =
@@ -302,7 +309,7 @@ const paymentIntentFrom = (
       ? calculation === undefined || calculation === ""
       : calculation === expected.calculationId;
   const rateMatches =
-    expected.provider === "taxrate_io"
+    expected.collectionMode === "collect" && expected.provider === "taxrate_io"
       ? typeof rate === "string" &&
         /^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(rate) &&
         Number.isFinite(Number(rate)) &&
@@ -312,7 +319,11 @@ const paymentIntentFrom = (
       : rate === undefined || rate === "";
   if (
     metadata.medusa_cart_id !== expected.cartId ||
-    metadata.rr_tax_provider !== expected.provider ||
+    collectionMode !== expected.collectionMode ||
+    (expected.provider === null
+      ? metadata.rr_tax_provider !== undefined &&
+        metadata.rr_tax_provider !== ""
+      : metadata.rr_tax_provider !== expected.provider) ||
     generation !== String(expected.generation) ||
     metadata.rr_tax_fingerprint !== expected.fingerprint ||
     !calculationMatches ||
@@ -445,6 +456,7 @@ export const verifyAndLinkStripePayment = async ({
             metadata: {
               medusa_cart_id: expected.cartId,
               rr_tax_calculation_id: calculationId,
+              rr_tax_collection_mode: expected.collectionMode,
               rr_tax_fingerprint: expected.fingerprint,
               rr_tax_generation: String(expected.generation),
               rr_tax_provider: expected.provider,

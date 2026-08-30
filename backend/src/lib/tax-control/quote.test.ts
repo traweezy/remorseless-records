@@ -8,19 +8,27 @@ const taxLine = ({
   generation = 2,
   provider = "stripe_tax",
   rate = 8.25,
+  collectionMode = "collect",
 }: {
   calculationId?: string | null;
   fingerprintValue?: string;
   generation?: number;
   provider?: "stripe_tax" | "taxrate_io";
   rate?: number;
+  collectionMode?: "collect" | "disabled";
 } = {}) => ({
-  code: `rr_tax:${provider}:g${generation}:${calculationId ?? "quote"}`,
+  code:
+    collectionMode === "disabled"
+      ? `rr_tax:disabled:g${generation}:decision`
+      : `rr_tax:${provider}:g${generation}:${calculationId ?? "quote"}`,
   data: {
-    ...(calculationId ? { calculation_id: calculationId } : {}),
+    ...(collectionMode === "collect" && calculationId
+      ? { calculation_id: calculationId }
+      : {}),
+    collection_mode: collectionMode,
     fingerprint: fingerprintValue,
     generation,
-    provider,
+    ...(collectionMode === "collect" ? { provider } : {}),
   },
   rate,
 });
@@ -34,6 +42,7 @@ describe("taxQuoteIdentityFromCart", () => {
       }),
     ).toEqual({
       calculationId: "taxcalc_test",
+      collectionMode: "collect",
       fingerprint,
       generation: 2,
       provider: "stripe_tax",
@@ -44,6 +53,7 @@ describe("taxQuoteIdentityFromCart", () => {
   it("extracts the uniform TaxRate.io percentage", () => {
     const line = taxLine({
       calculationId: null,
+      collectionMode: "collect",
       generation: 4,
       provider: "taxrate_io",
       rate: 7.125,
@@ -56,6 +66,7 @@ describe("taxQuoteIdentityFromCart", () => {
       }),
     ).toEqual({
       calculationId: null,
+      collectionMode: "collect",
       fingerprint,
       generation: 4,
       provider: "taxrate_io",
@@ -63,7 +74,46 @@ describe("taxQuoteIdentityFromCart", () => {
     });
   });
 
+  it("extracts an explicit disabled collection decision", () => {
+    const line = taxLine({
+      calculationId: null,
+      collectionMode: "disabled",
+      generation: 5,
+      rate: 0,
+    });
+
+    expect(
+      taxQuoteIdentityFromCart({
+        items: [{ tax_lines: [line] }],
+        shipping_methods: [{ tax_lines: [line] }],
+      }),
+    ).toEqual({
+      calculationId: null,
+      collectionMode: "disabled",
+      fingerprint,
+      generation: 5,
+      provider: null,
+      taxRatePercent: null,
+    });
+  });
+
   it.each([
+    {
+      name: "disabled decision with a nonzero rate",
+      cart: {
+        items: [
+          {
+            tax_lines: [
+              taxLine({
+                calculationId: null,
+                collectionMode: "disabled",
+                rate: 1,
+              }),
+            ],
+          },
+        ],
+      },
+    },
     {
       name: "missing subject tax lines",
       cart: { items: [{ tax_lines: [] }] },

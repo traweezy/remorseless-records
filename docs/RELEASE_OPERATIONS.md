@@ -37,6 +37,11 @@ It does not authorize a production deployment by itself.
 7. Wait for both Railway staging services to deploy that exact SHA, then run
    health, readiness, route/API, log, and applicable browser acceptance.
 
+Browser navigation gates must wait for an explicit rendered contract after
+`domcontentloaded`. Do not use page-wide `networkidle` as a readiness signal:
+the Storefront deliberately maintains background cache, telemetry, and
+reconnection activity that can keep the network active after the page is ready.
+
 Do not begin another slice while any exact-SHA staging gate is unresolved.
 
 ## Abuse-control and trusted-proxy operations
@@ -62,12 +67,12 @@ peer; Backend otherwise uses its direct socket peer. Neither application uses
 
 The Redis outage matrix is explicit:
 
-| Surface | Redis unavailable |
-| --- | --- |
-| Storefront catalog, product, bundle, news, search, and hydrate reads | Use the bounded process-local fallback |
-| Storefront contact, privacy, and cart mutations | Return correlated RFC 7807 HTTP 503 |
+| Surface                                                               | Redis unavailable                      |
+| --------------------------------------------------------------------- | -------------------------------------- |
+| Storefront catalog, product, bundle, news, search, and hydrate reads  | Use the bounded process-local fallback |
+| Storefront contact, privacy, and cart mutations                       | Return correlated RFC 7807 HTTP 503    |
 | Backend catalog, checkout-status, tax-record, refund, and media reads | Use the bounded process-local fallback |
-| Backend Store, public-form, tax-control, and media mutations | Return correlated RFC 7807 HTTP 503 |
+| Backend Store, public-form, tax-control, and media mutations          | Return correlated RFC 7807 HTTP 503    |
 
 After a staging deployment that changes these boundaries:
 
@@ -124,3 +129,9 @@ Never use a moving branch head as the release evidence.
 - Production: restore the last accepted immutable artifact and follow the data
   rollback/runbook appropriate to the change. Never disable security controls
   or reverse a destructive migration ad hoc.
+
+Tax collection-mode rollback is expand-only. Never remove
+`Migration20260830150000`, rewrite disabled evidence as provider evidence, or
+bulk-reset the durable mode. Follow
+[`TAX_CONTROL_OPERATIONS.md`](TAX_CONTROL_OPERATIONS.md) and restore a runtime
+that can read every historical mode before changing traffic.

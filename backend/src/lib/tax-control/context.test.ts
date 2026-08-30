@@ -10,6 +10,7 @@ describe("tax control context", () => {
     expect(
       parseTaxControlContext({
         remorseless_tax: {
+          collectionMode: "collect",
           fingerprint: createTaxContextFingerprint({ cart: "cart_1" }),
           generation: 3,
           itemAmountsMinor: {
@@ -33,6 +34,7 @@ describe("tax control context", () => {
         },
       }),
     ).toMatchObject({
+      collectionMode: "collect",
       generation: 3,
       itemAmountsMinor: { item_1: 1_999 },
       itemTaxCodes: { item_1: "txcd_30011000" },
@@ -47,14 +49,49 @@ describe("tax control context", () => {
   it("round trips a Stripe calculation identity", () => {
     const code = buildTaxLineCode({
       calculationId: "taxcalc_123",
+      collectionMode: "collect",
       generation: 4,
       provider: "stripe_tax",
     });
 
     expect(parseTaxLineCode(code)).toEqual({
       calculationId: "taxcalc_123",
+      collectionMode: "collect",
       generation: 4,
       provider: "stripe_tax",
+    });
+  });
+
+  it("round trips an explicit disabled decision without a provider", () => {
+    const code = buildTaxLineCode({
+      collectionMode: "disabled",
+      generation: 5,
+      provider: null,
+    });
+
+    expect(code).toBe("rr_tax:disabled:g5:decision");
+    expect(parseTaxLineCode(code)).toEqual({
+      calculationId: null,
+      collectionMode: "disabled",
+      generation: 5,
+      provider: null,
+    });
+    expect(
+      parseTaxControlContext({
+        remorseless_tax: {
+          collectionMode: "disabled",
+          fingerprint: createTaxContextFingerprint({ cart: "cart_1" }),
+          generation: 5,
+          itemAmountsMinor: {},
+          itemTaxCodes: {},
+          shippingAmountMinor: 0,
+          subjectId: "cart_1",
+        },
+      }),
+    ).toMatchObject({
+      collectionMode: "disabled",
+      generation: 5,
+      provider: null,
     });
   });
 
@@ -62,8 +99,10 @@ describe("tax control context", () => {
     expect(() =>
       parseTaxControlContext({
         remorseless_tax: {
+          collectionMode: "collect",
           fingerprint: createTaxContextFingerprint({ cart: "cart_1" }),
           frozenQuote: {
+            collectionMode: "collect",
             generation: 1,
             provider: "taxrate_io",
           },

@@ -1,9 +1,9 @@
 import { requestAdminJson } from "../../lib/admin-request";
 import {
   refreshTaxRateIoQuota,
-  switchTaxProvider,
   taxControlQueryOptions,
   taxControlSnapshotSchema,
+  transitionTaxControl,
 } from "./query";
 
 jest.mock("../../lib/admin-request", () => ({
@@ -13,18 +13,22 @@ jest.mock("../../lib/admin-request", () => ({
 const validSnapshot = {
   audits: [
     {
+      acknowledgementVersion: "tax-collection-control-2026-08-30",
       actorId: "user_admin",
       createdAt: "2026-07-27T01:00:00.000Z",
+      fromCollectionMode: "collect",
       fromGeneration: 1,
       fromProvider: "taxrate_io",
       id: "txpa_01",
       reason: "Stripe sandbox validation completed.",
+      toCollectionMode: "collect",
       toGeneration: 2,
       toProvider: "stripe_tax",
     },
   ],
   control: {
     activeProvider: "stripe_tax",
+    collectionMode: "collect",
     generation: 2,
     lastSwitchReason: "Stripe sandbox validation completed.",
     lastSwitchedAt: "2026-07-27T01:00:00.000Z",
@@ -61,6 +65,10 @@ const validSnapshot = {
   },
   impact: {
     activityWindowDays: 30,
+    frozenByCollectionMode: {
+      collect: 3,
+      disabled: 0,
+    },
     frozenByProvider: {
       stripe_tax: 1,
       taxrate_io: 2,
@@ -116,7 +124,9 @@ describe("tax control query boundary", () => {
   });
 
   it("accepts the complete control, provider, impact, and evidence snapshot", () => {
-    expect(taxControlSnapshotSchema.parse(validSnapshot)).toEqual(validSnapshot);
+    expect(taxControlSnapshotSchema.parse(validSnapshot)).toEqual(
+      validSnapshot,
+    );
   });
 
   it("rejects malformed providers, money, and bounded counts", () => {
@@ -171,10 +181,13 @@ describe("tax control query boundary", () => {
       expectedGeneration: 1,
       idempotencyKey: "00000000-0000-4000-8000-000000000001",
       reason: "Stripe sandbox validation completed.",
+      targetCollectionMode: "collect",
       targetProvider: "stripe_tax",
     } as const;
 
-    await expect(switchTaxProvider(switchInput)).resolves.toEqual(validSnapshot);
+    await expect(transitionTaxControl(switchInput)).resolves.toEqual(
+      validSnapshot,
+    );
     await expect(refreshTaxRateIoQuota()).resolves.toEqual(validSnapshot);
 
     expect(requestAdminJson).toHaveBeenNthCalledWith(1, {

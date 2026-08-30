@@ -326,7 +326,11 @@ export const CheckoutSummary = memo<CheckoutSummaryProps>(
               }
             />
             <SummaryRow
-              label="Tax"
+              label={
+                totals.taxCollectionMode === "disabled"
+                  ? "Tax not collected"
+                  : "Tax"
+              }
               value={
                 checkout.cart.shippingMethod
                   ? format(totals.taxTotal)

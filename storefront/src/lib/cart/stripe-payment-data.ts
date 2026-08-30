@@ -2,12 +2,10 @@ import { taxQuoteIdentityFromCart } from "./tax-quote"
 
 type StripePaymentCart = {
   id: string
-  items?:
-    | ReadonlyArray<{
-        quantity?: number | null
-        tax_lines?: ReadonlyArray<unknown> | null
-      }>
-    | null
+  items?: ReadonlyArray<{
+    quantity?: number | null
+    tax_lines?: ReadonlyArray<unknown> | null
+  }> | null
   shipping_methods?: ReadonlyArray<unknown> | null
 }
 
@@ -25,7 +23,8 @@ export const stripePaymentSessionData = (
         : {}),
       rr_tax_fingerprint: taxQuote.fingerprint,
       rr_tax_generation: String(taxQuote.generation),
-      rr_tax_provider: taxQuote.provider,
+      rr_tax_collection_mode: taxQuote.collectionMode,
+      ...(taxQuote.provider ? { rr_tax_provider: taxQuote.provider } : {}),
       ...(taxQuote.taxRatePercent !== null
         ? { rr_tax_rate_percent: String(taxQuote.taxRatePercent) }
         : {}),

@@ -6,25 +6,37 @@ import { bindCheckoutTaxToPayment } from "./payment-binding";
 const fingerprint = "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789";
 
 const cartFixture = ({
+  collectionMode = "collect",
   provider = "stripe_tax",
 }: {
+  collectionMode?: "collect" | "disabled";
   provider?: "stripe_tax" | "taxrate_io";
 } = {}) => {
-  const calculationId = provider === "stripe_tax" ? "taxcalc_test" : null;
-  const code = `rr_tax:${provider}:g2:${calculationId ?? "quote"}`;
+  const calculationId =
+    collectionMode === "collect" && provider === "stripe_tax"
+      ? "taxcalc_test"
+      : null;
+  const code =
+    collectionMode === "disabled"
+      ? "rr_tax:disabled:g2:decision"
+      : `rr_tax:${provider}:g2:${calculationId ?? "quote"}`;
   const taxData = {
     ...(calculationId ? { calculation_id: calculationId } : {}),
+    collection_mode: collectionMode,
     fingerprint,
     generation: 2,
-    provider,
+    ...(collectionMode === "collect" ? { provider } : {}),
   };
   const metadata = {
     medusa_cart_id: "cart_01TEST",
     ...(calculationId ? { rr_tax_calculation_id: calculationId } : {}),
+    rr_tax_collection_mode: collectionMode,
     rr_tax_fingerprint: fingerprint,
     rr_tax_generation: "2",
-    rr_tax_provider: provider,
-    ...(provider === "taxrate_io" ? { rr_tax_rate_percent: "8" } : {}),
+    ...(collectionMode === "collect" ? { rr_tax_provider: provider } : {}),
+    ...(collectionMode === "collect" && provider === "taxrate_io"
+      ? { rr_tax_rate_percent: "8" }
+      : {}),
   };
 
   return {
@@ -37,7 +49,9 @@ const cartFixture = ({
       {
         id: "cali_test",
         quantity: 1,
-        tax_lines: [{ code, data: taxData, rate: 8 }],
+        tax_lines: [
+          { code, data: taxData, rate: collectionMode === "disabled" ? 0 : 8 },
+        ],
       },
     ],
     shipping_address: {
@@ -51,7 +65,9 @@ const cartFixture = ({
     shipping_methods: [
       {
         id: "casm_test",
-        tax_lines: [{ code, data: taxData, rate: 8 }],
+        tax_lines: [
+          { code, data: taxData, rate: collectionMode === "disabled" ? 0 : 8 },
+        ],
       },
     ],
     payment_collection: {
@@ -164,6 +180,7 @@ describe("bindCheckoutTaxToPayment", () => {
         service,
       }),
     ).resolves.toEqual({
+      collectionMode: "collect",
       generation: 2,
       provider: "stripe_tax",
       replayed: false,
@@ -186,6 +203,7 @@ describe("bindCheckoutTaxToPayment", () => {
       expect.objectContaining({
         amountMinor: 1080,
         calculationId: "taxcalc_test",
+        collectionMode: "collect",
         paymentIntentId: "pi_test",
         provider: "stripe_tax",
       }),
@@ -287,6 +305,31 @@ describe("bindCheckoutTaxToPayment", () => {
     expect(client.paymentIntents.update).not.toHaveBeenCalled();
     expect(service.recordTaxQuoteEvidence).toHaveBeenCalledWith(
       expect.objectContaining({ calculationId: null }),
+    );
+  });
+
+  it("records explicit disabled evidence without a provider or tax hook", async () => {
+    const cart = cartFixture({ collectionMode: "disabled" });
+    const intent = intentFixture({
+      metadata: cart.payment_collection.payment_sessions[0]!.data.metadata,
+    });
+    const client = stripeFixture({ intent });
+    const service = serviceFixture();
+
+    await expect(
+      bindCheckoutTaxToPayment({ cart, client, service }),
+    ).resolves.toMatchObject({
+      collectionMode: "disabled",
+      provider: null,
+    });
+    expect(client.tax.calculations.retrieve).not.toHaveBeenCalled();
+    expect(client.paymentIntents.update).not.toHaveBeenCalled();
+    expect(service.recordTaxQuoteEvidence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        calculationId: null,
+        collectionMode: "disabled",
+        provider: null,
+      }),
     );
   });
 });

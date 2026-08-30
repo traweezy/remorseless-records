@@ -1,80 +1,148 @@
 "use client";
 
-import {
-  memo,
-  useCallback,
-  type ChangeEvent,
-} from "react";
-import {
-  useForm,
-  useStore,
-  type AnyFieldApi,
-} from "@tanstack/react-form";
-import {
-  Text,
-  Textarea,
-} from "@medusajs/ui";
+import { memo, useCallback, useMemo, type ChangeEvent } from "react";
+import { useForm, useStore, type AnyFieldApi } from "@tanstack/react-form";
+import { Alert, Input, Text, Textarea } from "@medusajs/ui";
 
+import { TAX_DISABLED_ACKNOWLEDGEMENT } from "../../../modules/tax-control/constants";
 import {
   AdminFormField,
   type AdminFormControlProps,
 } from "../../components/admin-form-field";
 import { ConfirmAction } from "../../components/confirm-action";
 import {
-  providerLabel,
-  taxProviderSwitchFormSchema,
+  collectionChoiceLabel,
+  taxControlTransitionFormSchema,
+  type CollectionMode,
   type ProviderName,
 } from "./ui-state";
 
-type ProviderSwitchPromptProps = {
+export type TaxControlTransitionConfirmation = {
+  acknowledgement?: string;
+  reason: string;
+};
+
+type TaxControlTransitionPromptProps = {
+  activeCollectionMode: CollectionMode;
   activeProvider: ProviderName;
   impact: {
+    frozenByCollectionMode: Record<CollectionMode, number>;
     paymentsFinalizing: number;
     preparedCheckouts: number;
   };
   onCancel: () => void;
-  onConfirm: (reason: string) => Promise<void>;
+  onConfirm: (input: TaxControlTransitionConfirmation) => Promise<void>;
   pending: boolean;
+  targetCollectionMode: CollectionMode;
   targetProvider: ProviderName;
 };
 
+const firstFieldError = (field: AnyFieldApi): string | undefined => {
+  const first = field.state.meta.errors[0] as unknown;
+  if (typeof first === "string") {
+    return first;
+  }
+  if (first && typeof first === "object" && "message" in first) {
+    const message = (first as { message?: unknown }).message;
+    return typeof message === "string" ? message : undefined;
+  }
+  return undefined;
+};
+
+const fieldError = (field: AnyFieldApi): string | undefined =>
+  !field.state.meta.isValid &&
+  (field.state.meta.isTouched || field.form.state.submissionAttempts > 0)
+    ? firstFieldError(field)
+    : undefined;
+
 type SwitchReasonFieldProps = {
+  autoFocus: boolean;
   field: AnyFieldApi;
 };
 
-const SwitchReasonField = memo<SwitchReasonFieldProps>(({ field }) => {
+const SwitchReasonField = memo<SwitchReasonFieldProps>(
+  ({ autoFocus, field }) => {
+    const value =
+      typeof field.state.value === "string" ? field.state.value : "";
+    const handleBlur = useCallback(() => field.handleBlur(), [field]);
+    const handleChange = useCallback(
+      (event: ChangeEvent<HTMLTextAreaElement>) => {
+        const nextValue = (
+          event.currentTarget as unknown as {
+            value?: unknown;
+          }
+        ).value;
+        field.handleChange(typeof nextValue === "string" ? nextValue : "");
+      },
+      [field],
+    );
+    const renderControl = useCallback(
+      (controlProps: AdminFormControlProps) => (
+        <Textarea
+          {...controlProps}
+          autoFocus={autoFocus}
+          className="mt-2"
+          maxLength={500}
+          name={field.name}
+          onBlur={handleBlur}
+          onChange={handleChange}
+          placeholder="Example: Approved after reviewing current obligations and open checkouts."
+          rows={3}
+          value={value}
+        />
+      ),
+      [autoFocus, field.name, handleBlur, handleChange, value],
+    );
+
+    return (
+      <AdminFormField
+        error={fieldError(field)}
+        hint={
+          <>
+            Saved in the audit history · minimum 10 characters ·{" "}
+            <span aria-live="polite">{value.length}/500</span>
+          </>
+        }
+        id="tax-transition-reason"
+        label="Reason for this change"
+      >
+        {renderControl}
+      </AdminFormField>
+    );
+  },
+);
+
+SwitchReasonField.displayName = "SwitchReasonField";
+
+type AcknowledgementFieldProps = {
+  field: AnyFieldApi;
+};
+
+const AcknowledgementField = memo<AcknowledgementFieldProps>(({ field }) => {
   const value = typeof field.state.value === "string" ? field.state.value : "";
-  const showError =
-    !field.state.meta.isValid &&
-    (field.state.meta.isTouched || field.form.state.submissionAttempts > 0);
-
-  const handleBlur = useCallback(() => {
-    field.handleBlur();
-  }, [field]);
-
+  const handleBlur = useCallback(() => field.handleBlur(), [field]);
   const handleChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
-      const value = (
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const nextValue = (
         event.currentTarget as unknown as {
           value?: unknown;
         }
       ).value;
-      field.handleChange(typeof value === "string" ? value : "");
+      field.handleChange(typeof nextValue === "string" ? nextValue : "");
     },
     [field],
   );
   const renderControl = useCallback(
     (controlProps: AdminFormControlProps) => (
-      <Textarea
+      <Input
         {...controlProps}
+        autoComplete="off"
         autoFocus
         className="mt-2"
-        maxLength={500}
         name={field.name}
         onBlur={handleBlur}
         onChange={handleChange}
-        placeholder="Example: Stripe sandbox validation completed and approved."
-        rows={3}
+        spellCheck={false}
         value={value}
       />
     ),
@@ -83,101 +151,183 @@ const SwitchReasonField = memo<SwitchReasonFieldProps>(({ field }) => {
 
   return (
     <AdminFormField
-      error={
-        showError
-          ? "Enter a reason between 10 and 500 characters."
-          : undefined
-      }
-      hint={
-        <>
-          Required for the audit history · minimum 10 characters ·{" "}
-          <span aria-live="polite">{value.length}/500</span>
-        </>
-      }
-      id="tax-switch-reason"
-      label="Reason for this change"
+      error={fieldError(field)}
+      hint="Copy the sentence exactly, including punctuation."
+      id="tax-disabled-acknowledgement"
+      label="Type the acknowledgement"
     >
       {renderControl}
     </AdminFormField>
   );
 });
 
-SwitchReasonField.displayName = "SwitchReasonField";
+AcknowledgementField.displayName = "AcknowledgementField";
 
-const renderSwitchReasonField = (field: AnyFieldApi) => (
-  <SwitchReasonField field={field} />
+const renderAcknowledgementField = (field: AnyFieldApi) => (
+  <AcknowledgementField field={field} />
 );
 
-export const ProviderSwitchPrompt = memo<ProviderSwitchPromptProps>(
+export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
   ({
+    activeCollectionMode,
     activeProvider,
     impact,
     onCancel,
     onConfirm,
     pending,
+    targetCollectionMode,
     targetProvider,
   }) => {
+    const schema = useMemo(
+      () => taxControlTransitionFormSchema(targetCollectionMode),
+      [targetCollectionMode],
+    );
     const form = useForm({
       defaultValues: {
+        acknowledgement: "",
         reason: "",
       },
       onSubmit: async ({ value }) => {
-        const parsed = taxProviderSwitchFormSchema.parse(value);
-        await onConfirm(parsed.reason);
+        const parsed = schema.parse(value);
+        await onConfirm(
+          targetCollectionMode === "disabled"
+            ? {
+                acknowledgement: parsed.acknowledgement,
+                reason: parsed.reason,
+              }
+            : { reason: parsed.reason },
+        );
       },
       validators: {
-        onChange: taxProviderSwitchFormSchema,
+        onBlur: schema,
+        onChange: schema,
       },
     });
     const formState = useStore(form.store, (state) => ({
       canSubmit: state.canSubmit,
       isPristine: state.isPristine,
       isSubmitting: state.isSubmitting,
+      submissionAttempts: state.submissionAttempts,
     }));
     const busy = pending || formState.isSubmitting;
+    const currentChoice = collectionChoiceLabel(
+      activeCollectionMode,
+      activeProvider,
+    );
+    const targetChoice = collectionChoiceLabel(
+      targetCollectionMode,
+      targetProvider,
+    );
 
-    const handleConfirm = useCallback(() => form.handleSubmit(), [form]);
+    const renderReasonField = useCallback(
+      (field: AnyFieldApi) => (
+        <SwitchReasonField
+          autoFocus={targetCollectionMode !== "disabled"}
+          field={field}
+        />
+      ),
+      [targetCollectionMode],
+    );
+    const handleConfirm = useCallback(async () => {
+      await form.handleSubmit();
+      if (!form.state.canSubmit) {
+        const browser = globalThis as unknown as {
+          document: {
+            getElementById: (id: string) => { focus: () => void } | null;
+          };
+          requestAnimationFrame: (callback: () => void) => number;
+        };
+        browser.requestAnimationFrame(() => {
+          const fieldId =
+            targetCollectionMode === "disabled" &&
+            form.state.values.acknowledgement !== TAX_DISABLED_ACKNOWLEDGEMENT
+              ? "tax-disabled-acknowledgement"
+              : "tax-transition-reason";
+          browser.document.getElementById(fieldId)?.focus();
+        });
+      }
+    }, [form, targetCollectionMode]);
 
     return (
       <ConfirmAction
         confirmDisabled={!formState.canSubmit || formState.isPristine}
-        confirmLabel={`Switch to ${providerLabel(targetProvider)}`}
+        confirmLabel={
+          targetCollectionMode === "disabled"
+            ? "Turn off tax collection"
+            : `Collect using ${
+                targetProvider === "stripe_tax" ? "Stripe Tax" : "TaxRate.io"
+              }`
+        }
         description={
           <>
-            {providerLabel(activeProvider)} remains active until you confirm.
-            New or refreshed quotes will then use{" "}
-            {providerLabel(targetProvider)}.
+            {currentChoice} remains active until you confirm. New or refreshed
+            quotes will then use {targetChoice.toLocaleLowerCase("en-US")}.
           </>
         }
         onCancel={onCancel}
         onConfirm={handleConfirm}
         open
         pending={busy}
-        pendingAnnouncement="Switching tax provider"
-        pendingLabel="Switching…"
-        title={`Switch to ${providerLabel(targetProvider)}?`}
+        pendingAnnouncement="Saving the tax collection decision"
+        pendingLabel="Saving…"
+        title={`${targetChoice}?`}
+        variant={
+          targetCollectionMode === "disabled" ? "danger" : "confirmation"
+        }
       >
+        {targetCollectionMode === "disabled" ? (
+          <Alert variant="warning">
+            New eligible checkouts will receive a $0.00 tax decision. This does
+            not establish that the sales are exempt or outside a tax obligation.
+          </Alert>
+        ) : null}
+
         <div className="rounded-md bg-ui-bg-subtle p-3">
           <Text size="small" weight="plus">
-            What stays unchanged
+            Existing decisions stay frozen
           </Text>
           <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
-            {impact.preparedCheckouts} provider-locked checkout
-            {impact.preparedCheckouts === 1 ? "" : "s"} and all completed orders
-            keep their reviewed tax quote. {impact.paymentsFinalizing} payment
-            {impact.paymentsFinalizing === 1 ? "" : "s"}{" "}
-            {impact.paymentsFinalizing === 1 ? "is" : "are"} currently
+            {impact.preparedCheckouts} prepared checkout
+            {impact.preparedCheckouts === 1 ? "" : "s"} keep the decision
+            already reviewed: {impact.frozenByCollectionMode.collect} collecting
+            and {impact.frozenByCollectionMode.disabled} not collecting. All
+            completed orders keep their historical decision.{" "}
+            {impact.paymentsFinalizing} payment
+            {impact.paymentsFinalizing === 1 ? " is" : "s are"} currently
             completing.
           </Text>
         </div>
 
-        <form.Field
-          children={renderSwitchReasonField}
-          name="reason"
-        />
+        {targetCollectionMode === "disabled" ? (
+          <div>
+            <Text size="small" weight="plus">
+              Required acknowledgement
+            </Text>
+            <Text
+              className="mt-2 select-all rounded-md border border-ui-border-base bg-ui-bg-subtle p-3 font-mono"
+              size="small"
+            >
+              {TAX_DISABLED_ACKNOWLEDGEMENT}
+            </Text>
+            <form.Field
+              children={renderAcknowledgementField}
+              name="acknowledgement"
+            />
+          </div>
+        ) : null}
+
+        <form.Field children={renderReasonField} name="reason" />
+
+        {formState.submissionAttempts > 0 && !formState.canSubmit ? (
+          <Alert role="alert" variant="error">
+            Review the highlighted field
+            {targetCollectionMode === "disabled" ? "s" : ""} before saving this
+            decision.
+          </Alert>
+        ) : null}
       </ConfirmAction>
     );
   },
 );
 
-ProviderSwitchPrompt.displayName = "ProviderSwitchPrompt";
+TaxControlTransitionPrompt.displayName = "TaxControlTransitionPrompt";

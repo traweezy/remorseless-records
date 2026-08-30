@@ -65,11 +65,7 @@ type AssociationErrorReason =
 type DisputeStatus = Stripe.Dispute.Status;
 type PaymentIntentStatus = Stripe.PaymentIntent.Status;
 type RefundStatus =
-  | "canceled"
-  | "failed"
-  | "pending"
-  | "requires_action"
-  | "succeeded";
+  "canceled" | "failed" | "pending" | "requires_action" | "succeeded";
 type UnknownRecord = Record<string, unknown>;
 
 export type StripeEvidenceClient = Pick<
@@ -157,7 +153,7 @@ export type StripeLifecycleObjectSnapshot = {
 export type StripeEvidenceReader = {
   readEvidence: (input: {
     paymentIntentId: string;
-    provider: "stripe_tax" | "taxrate_io";
+    provider: "stripe_tax" | "taxrate_io" | null;
   }) => Promise<StripeEvidenceSnapshot>;
   readLifecycleObject: (input: {
     eventType: string;
@@ -516,9 +512,7 @@ const refundFrom = (
     return fail("invalid_response");
   }
   const status =
-    refund.status === null
-      ? null
-      : boundedEnum(refund.status, refundStatuses);
+    refund.status === null ? null : boundedEnum(refund.status, refundStatuses);
   const failureReason =
     refund.failure_reason === null || refund.failure_reason === undefined
       ? null
@@ -547,9 +541,7 @@ const refundsFrom = (
   ) {
     return fail("invalid_response");
   }
-  const refunds = list.data.map((entry) =>
-    refundFrom(entry, paymentIntentId),
-  );
+  const refunds = list.data.map((entry) => refundFrom(entry, paymentIntentId));
   const ids = refunds.map((refund) => refund.id);
   if (new Set(ids).size !== ids.length) {
     return fail("invalid_response");
@@ -582,10 +574,7 @@ const disputeFrom = (
     currencyCode: currencyFrom(dispute.currency),
     id: expectedId,
     livemode: dispute.livemode,
-    paymentIntentId: expandableId(
-      dispute.payment_intent,
-      /^pi_[A-Za-z0-9]+$/,
-    ),
+    paymentIntentId: expandableId(dispute.payment_intent, /^pi_[A-Za-z0-9]+$/),
     status: boundedEnum<DisputeStatus>(dispute.status, disputeStatuses),
   };
 };
@@ -656,7 +645,9 @@ export const createStripeEvidenceReader = ({
     readEvidence: async ({ paymentIntentId, provider }) => {
       if (
         !boundedId(paymentIntentId, /^pi_[A-Za-z0-9]+$/) ||
-        (provider !== "stripe_tax" && provider !== "taxrate_io")
+        (provider !== null &&
+          provider !== "stripe_tax" &&
+          provider !== "taxrate_io")
       ) {
         return fail("invalid_request");
       }
@@ -688,10 +679,7 @@ export const createStripeEvidenceReader = ({
         ]);
       const intent = settledValue(intentResult);
       const associationValue = settledValue(associationResult);
-      const refunds = refundsFrom(
-        settledValue(refundsResult),
-        paymentIntentId,
-      );
+      const refunds = refundsFrom(settledValue(refundsResult), paymentIntentId);
       return {
         association:
           associationValue === null
@@ -715,8 +703,7 @@ export const createStripeEvidenceReader = ({
           deadlineAt,
           ...retryInput,
           operation: "retrieve_refund",
-          request: (options) =>
-            client.refunds.retrieve(objectId, {}, options),
+          request: (options) => client.refunds.retrieve(objectId, {}, options),
         });
         return lifecycleRefundFrom(value, objectId);
       }
@@ -727,8 +714,7 @@ export const createStripeEvidenceReader = ({
         deadlineAt,
         ...retryInput,
         operation: "retrieve_dispute",
-        request: (options) =>
-          client.disputes.retrieve(objectId, {}, options),
+        request: (options) => client.disputes.retrieve(objectId, {}, options),
       });
       return disputeFrom(value, objectId);
     },

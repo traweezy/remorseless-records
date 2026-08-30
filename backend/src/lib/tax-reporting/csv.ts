@@ -1,7 +1,4 @@
-import {
-  filingBucketFor,
-  type TaxFilingScope,
-} from "./filing-states";
+import { filingBucketFor, type TaxFilingScope } from "./filing-states";
 import type { TaxReportPeriod } from "./periods";
 import type {
   TaxDestinationSummary,
@@ -49,6 +46,7 @@ export const taxTransactionsCsv = ({
   return rowsToCsv([
     [
       "record_type",
+      "collection_mode",
       "filing_state",
       "filing_bucket",
       "transaction_date_utc",
@@ -71,6 +69,7 @@ export const taxTransactionsCsv = ({
       "gross_sales_excluding_tax",
       "taxable_sales",
       "nontaxable_sales",
+      "unclassified_sales_pending_review",
       "tax_amount",
       "total_including_tax",
       "record_quality",
@@ -87,6 +86,7 @@ export const taxTransactionsCsv = ({
       const summary = summaryByCurrency.get(record.currencyCode);
       return [
         record.type,
+        record.collectionMode,
         filingState,
         filingBucketFor({
           destination: record.destination,
@@ -112,6 +112,7 @@ export const taxTransactionsCsv = ({
         signed(record.grossSales, record.type),
         signed(record.taxableSales, record.type),
         signed(record.nontaxableSales, record.type),
+        signed(record.unclassifiedSales, record.type),
         signed(record.taxAmount, record.type),
         signed(record.total, record.type),
         record.quality,
@@ -159,6 +160,7 @@ export const taxDestinationsCsv = ({
       "net_sales",
       "net_taxable_sales",
       "net_nontaxable_sales",
+      "net_unclassified_sales_pending_review",
       "tax_collected",
       "tax_refunded",
       "net_tax",
@@ -184,6 +186,7 @@ export const taxDestinationsCsv = ({
       destination.netSales,
       destination.taxableSales,
       destination.nontaxableSales,
+      destination.unclassifiedSales,
       destination.taxCollected,
       destination.refundedTax,
       destination.netTax,
@@ -202,6 +205,7 @@ export const taxDestinationsCsv = ({
       "net_sales",
       "net_taxable_sales",
       "net_nontaxable_sales",
+      "net_unclassified_sales_pending_review",
       "tax_collected",
       "tax_refunded",
       "net_tax",
@@ -215,6 +219,7 @@ export const taxDestinationsCsv = ({
       summary.netSales,
       summary.taxableSales,
       summary.nontaxableSales,
+      summary.unclassifiedSales,
       summary.taxCollected,
       summary.refundedTax,
       summary.netTax,

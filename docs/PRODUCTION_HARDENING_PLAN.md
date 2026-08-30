@@ -2422,31 +2422,31 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
 
 ## Tax readiness
 
-- [ ] Add a durable `collect` / `disabled` tax collection mode separate from
+- [x] Add a durable `collect` / `disabled` tax collection mode separate from
       the selected provider, using an expand-only migration and preserving the
       current provider for later re-enablement.
-- [ ] Serialize and audit mode/provider transitions with expected generation,
+- [x] Serialize and audit mode/provider transitions with expected generation,
       idempotency, actor, reason, prior/next state, and an explicit versioned
       acknowledgement for disabling collection.
-- [ ] Emit one controlled zero-rate line per item and shipping subject in
+- [x] Emit one controlled zero-rate line per item and shipping subject in
       disabled mode, freeze the decision by generation and fingerprint, and
       prove the path makes zero TaxRate.io, Stripe Tax, or quota calls.
-- [ ] Extend Storefront quote parsing, Stripe PaymentIntent metadata, payment
+- [x] Extend Storefront quote parsing, Stripe PaymentIntent metadata, payment
       validation/binding, evidence, lifecycle reconciliation, tax reporting,
       CSV exports, refunds, and disputes to distinguish explicit disabled mode
       from a provider-calculated zero or missing legacy evidence.
-- [ ] Preserve every prepared checkout and completed order across disable,
+- [x] Preserve every prepared checkout and completed order across disable,
       re-enable, and provider changes; require selected-provider readiness
       before collection can be re-enabled.
-- [ ] Rework Tax Control around the plain-language collection decision, with
+- [x] Rework Tax Control around the plain-language collection decision, with
       permission checks, readiness, impact preview, typed acknowledgement,
       reason, error focus, response-loss reconciliation, and immutable history.
-- [ ] Show `Tax not collected` for an explicit disabled quote in checkout and
+- [x] Show `Tax not collected` for an explicit disabled quote in checkout and
       customer records without describing the order as legally exempt.
-- [ ] Complete the disabled-mode unit, integration, concurrency, payment,
+- [x] Complete the disabled-mode unit, integration, concurrency, payment,
       refund, reporting, no-provider-call, browser, accessibility, and real
       desktop screenshot matrix defined by ADR 0007.
-- [ ] Update tax-control, filing, checkout, refund, support, incident, rollback,
+- [x] Update tax-control, filing, checkout, refund, support, incident, rollback,
       and client procedures for disabled and re-enabled collection.
 - [ ] Obtain business approval and qualified tax advice for provider choice,
       registrations, product tax codes, shipping treatment, filing ownership,
@@ -2752,7 +2752,7 @@ SLO, alert, escalation, privacy, OTLP, and first-response contract lives in
 - [ ] Rework discography creation/editing with consistent release metadata,
       controlled choices, cover preview/alternative text, availability, and
       archive/restore behavior.
-- [ ] Integrate the audited tax collection-mode workflow and plain-language
+- [x] Integrate the audited tax collection-mode workflow and plain-language
       compliance/impact copy from ADR 0007.
 - [ ] Standardize permission-denied, empty, loading, failed, stale-version,
       pending, success, and incident states across all custom Admin routes.

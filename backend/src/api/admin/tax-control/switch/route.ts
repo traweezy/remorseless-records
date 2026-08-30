@@ -12,20 +12,37 @@ import {
 } from "../../../../lib/tax-control/readiness";
 import { syncTaxRateIoQuota } from "../../../../lib/tax-control/quota";
 import {
+  TAX_CONTROL_ACKNOWLEDGEMENT_VERSION,
   TAX_CONTROL_LOCK_KEY,
+  TAX_DISABLED_ACKNOWLEDGEMENT,
+  taxCollectionModes,
   taxProviderNames,
 } from "../../../../modules/tax-control/constants";
 import type TaxControlModuleService from "../../../../modules/tax-control/service";
 import { taxControlSnapshot } from "../utils";
 
-const switchSchema = z
-  .object({
-    expectedGeneration: z.number().int().positive(),
-    idempotencyKey: z.string().uuid(),
-    reason: z.string().trim().min(10).max(500),
-    targetProvider: z.enum(taxProviderNames),
-  })
-  .strict();
+const transitionFields = {
+  expectedGeneration: z.number().int().positive(),
+  idempotencyKey: z.string().uuid(),
+  reason: z.string().trim().min(10).max(500),
+  targetProvider: z.enum(taxProviderNames),
+} as const;
+
+const switchSchema = z.discriminatedUnion("targetCollectionMode", [
+  z
+    .object({
+      ...transitionFields,
+      acknowledgement: z.literal(TAX_DISABLED_ACKNOWLEDGEMENT),
+      targetCollectionMode: z.literal(taxCollectionModes[1]),
+    })
+    .strict(),
+  z
+    .object({
+      ...transitionFields,
+      targetCollectionMode: z.literal(taxCollectionModes[0]),
+    })
+    .strict(),
+]);
 
 export const POST = async (
   req: AuthenticatedMedusaRequest,
@@ -35,7 +52,7 @@ export const POST = async (
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Provide a target provider, current generation, reason, and idempotency key.",
+      "Provide a collection choice, target provider, current generation, reason, idempotency key, and the exact acknowledgement when disabling tax.",
     );
   }
   const actorId = req.auth_context?.actor_id;
@@ -52,27 +69,31 @@ export const POST = async (
   await locking.execute(
     TAX_CONTROL_LOCK_KEY,
     async () => {
-      const quota =
-        parsed.data.targetProvider === "taxrate_io"
-          ? await syncTaxRateIoQuota({ logger, service })
-          : null;
-      const remaining = quota ? Number(quota.remaining) : null;
-      const readiness =
-        parsed.data.targetProvider === "stripe_tax"
-          ? await resolveStripeTaxReadiness({ logger })
-          : resolveTaxRateIoReadiness(remaining);
-      if (!readiness.ready) {
-        throw new MedusaError(
-          MedusaError.Types.INVALID_DATA,
-          `${parsed.data.targetProvider} is not ready: ${readiness.message}`,
-        );
+      if (parsed.data.targetCollectionMode === "collect") {
+        const quota =
+          parsed.data.targetProvider === "taxrate_io"
+            ? await syncTaxRateIoQuota({ logger, service })
+            : null;
+        const remaining = quota ? Number(quota.remaining) : null;
+        const readiness =
+          parsed.data.targetProvider === "stripe_tax"
+            ? await resolveStripeTaxReadiness({ logger })
+            : resolveTaxRateIoReadiness(remaining);
+        if (!readiness.ready) {
+          throw new MedusaError(
+            MedusaError.Types.INVALID_DATA,
+            `${parsed.data.targetProvider} is not ready: ${readiness.message}`,
+          );
+        }
       }
 
-      await service.switchProvider({
+      await service.transitionTaxControl({
+        acknowledgementVersion: TAX_CONTROL_ACKNOWLEDGEMENT_VERSION,
         actorId,
         expectedGeneration: parsed.data.expectedGeneration,
         idempotencyKey: parsed.data.idempotencyKey,
         reason: parsed.data.reason,
+        targetCollectionMode: parsed.data.targetCollectionMode,
         targetProvider: parsed.data.targetProvider,
       });
     },

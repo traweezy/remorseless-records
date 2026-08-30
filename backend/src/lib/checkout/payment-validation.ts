@@ -55,9 +55,7 @@ type CheckoutPaymentValidationResult = {
 type UnknownRecord = Record<string, unknown>;
 
 const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object"
-    ? (value as UnknownRecord)
-    : null;
+  value !== null && typeof value === "object" ? (value as UnknownRecord) : null;
 
 const asRecordArray = (value: unknown): UnknownRecord[] =>
   Array.isArray(value)
@@ -154,8 +152,16 @@ const assertTaxQuote = (
   const metadata = asRecord(paymentIntent?.metadata);
   const generation = Number(metadata?.rr_tax_generation);
   const calculationId = exactString(metadata?.rr_tax_calculation_id);
+  const collectionMode =
+    metadata?.rr_tax_collection_mode === undefined
+      ? "collect"
+      : normalizedString(metadata.rr_tax_collection_mode);
+  const metadataProvider = normalizedString(metadata?.rr_tax_provider);
   if (
-    normalizedString(metadata?.rr_tax_provider) !== quote.provider ||
+    collectionMode !== quote.collectionMode ||
+    (quote.provider === null
+      ? metadataProvider !== ""
+      : metadataProvider !== quote.provider) ||
     !Number.isSafeInteger(generation) ||
     generation !== quote.generation ||
     metadata?.rr_tax_fingerprint !== quote.fingerprint ||
@@ -167,13 +173,16 @@ const assertTaxQuote = (
     );
   }
 
-  if (quote.provider === "taxrate_io") {
+  if (quote.collectionMode === "disabled") {
+    if (calculationId !== "" || metadata?.rr_tax_rate_percent !== undefined) {
+      throw new CheckoutPaymentValidationError(
+        "checkout_tax_quote_invalid",
+        "The Stripe PaymentIntent disabled-tax identity is invalid.",
+      );
+    }
+  } else if (quote.provider === "taxrate_io") {
     const rate = Number(metadata?.rr_tax_rate_percent);
-    if (
-      !Number.isFinite(rate) ||
-      rate < 0 ||
-      rate !== quote.taxRatePercent
-    ) {
+    if (!Number.isFinite(rate) || rate < 0 || rate !== quote.taxRatePercent) {
       throw new CheckoutPaymentValidationError(
         "checkout_tax_quote_invalid",
         "The Stripe PaymentIntent tax rate does not match the cart.",
@@ -238,9 +247,7 @@ export const validateCheckoutPayment = (
     );
   }
 
-  const collectionCurrency = normalizedString(
-    paymentCollection.currency_code,
-  );
+  const collectionCurrency = normalizedString(paymentCollection.currency_code);
   if (collectionCurrency !== currencyCode) {
     throw new CheckoutPaymentValidationError(
       "checkout_payment_currency_mismatch",

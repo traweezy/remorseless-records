@@ -153,6 +153,64 @@ describe("tax record projection", () => {
     });
   });
 
+  it("classifies disabled collection separately from exempt or nontaxable sales", () => {
+    const base = orderFixture();
+    const disabledLine = {
+      code: "rr_tax:disabled:g4:decision",
+      data: {
+        collection_mode: "disabled",
+        fingerprint,
+        generation: 4,
+      },
+      provider_id: "rate_lookup",
+      rate: "0",
+    };
+    const order = {
+      ...base,
+      items: base.items.map((item) => ({
+        ...item,
+        original_tax_total: "0",
+        tax_lines: [disabledLine],
+      })),
+      original_tax_total: "0",
+      original_total: "10",
+      payment_collections: [
+        {
+          payments: [
+            {
+              captured_amount: "10",
+              captured_at: base.created_at,
+              refunds: [],
+            },
+          ],
+        },
+      ],
+      summary: { paid_total: "10" },
+    };
+
+    const [record] = projectTaxRecords({ orders: [order], period });
+
+    expect(record).toMatchObject({
+      collectionMode: "disabled",
+      generation: 4,
+      nontaxableSales: "0.0000",
+      provider: "not_applicable",
+      quality: "review",
+      taxAmount: "0.0000",
+      taxableSales: "0.0000",
+      unclassifiedSales: "10.0000",
+    });
+    expect(record?.issues).toContain(
+      "Tax was not collected for this order; confirm the operating decision and filing treatment.",
+    );
+    expect(summarizeTaxRecords(record ? [record] : [])[0]).toMatchObject({
+      disabledRecordCount: 1,
+      nontaxableSales: "0.0000",
+      taxableSales: "0.0000",
+      unclassifiedSales: "10.0000",
+    });
+  });
+
   it("reconciles shipping omitted from list-level order totals", () => {
     const base = orderFixture();
     const order = {
@@ -179,9 +237,7 @@ describe("tax record projection", () => {
       },
     };
 
-    expect(
-      projectTaxRecords({ orders: [order], period })[0],
-    ).toMatchObject({
+    expect(projectTaxRecords({ orders: [order], period })[0]).toMatchObject({
       grossSales: "15.0000",
       issues: [],
       taxAmount: "1.2000",
@@ -445,9 +501,7 @@ describe("tax record projection", () => {
       },
     };
 
-    expect(
-      projectTaxRecords({ orders: [order], period })[0],
-    ).toMatchObject({
+    expect(projectTaxRecords({ orders: [order], period })[0]).toMatchObject({
       grossSales: "10.0000",
       taxAmount: "0.8000",
       total: "10.8000",
@@ -493,9 +547,7 @@ describe("tax record projection", () => {
       summary: undefined,
     };
 
-    expect(
-      projectTaxRecords({ orders: [order], period })[0],
-    ).toMatchObject({
+    expect(projectTaxRecords({ orders: [order], period })[0]).toMatchObject({
       occurredAt: "2026-07-20T16:01:00.000Z",
       total: "10.8000",
       type: "sale",
@@ -528,9 +580,7 @@ describe("tax record projection", () => {
       summary: undefined,
     };
 
-    expect(
-      projectTaxRecords({ orders: [order], period })[0],
-    ).toMatchObject({
+    expect(projectTaxRecords({ orders: [order], period })[0]).toMatchObject({
       occurredAt: "2026-07-20T16:02:00.000Z",
       total: "10.8000",
       type: "sale",

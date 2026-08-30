@@ -186,8 +186,10 @@ The permission model is deliberately small:
 - Catalog merchandising has read, create, and update capabilities for shelves.
   Shelf archive is an update because it is recoverable; no merchandising
   hard-delete capability exists.
-- Tax control separates read access from provider switching and metered quota
-  refreshes. Both writes require `tax_control:update`.
+- Tax control separates read access from the audited collect/disabled decision,
+  provider transitions, and metered quota refreshes. Every write requires
+  `tax_control:update`; disabling additionally requires a reason and exact
+  typed acknowledgement.
 - Tax records and Refund operations are deliberately read-only custom
   workspaces. Tax CSV export is part of `tax_records:read`.
 - Refund operations links to native Orders and Refund reasons only when the
@@ -812,11 +814,15 @@ Implementation decisions are recorded in
 The dual-provider tax control, Stripe Tax payment binding, and exact-total
 rollout gates are recorded in
 [`docs/adr/0002-stripe-tax-medusa-authority.md`](docs/adr/0002-stripe-tax-medusa-authority.md).
+The audited collect/disabled operating mode and frozen-decision model are in
+[`docs/adr/0007-audited-tax-collection-mode.md`](docs/adr/0007-audited-tax-collection-mode.md).
 The full test and incident procedures are in
 [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK.md) and
 [`docs/CHECKOUT_OPERATIONS.md`](docs/CHECKOUT_OPERATIONS.md). Tax-provider
 switching and reconciliation operations are in
-[`docs/TAX_CONTROL_OPERATIONS.md`](docs/TAX_CONTROL_OPERATIONS.md).
+[`docs/TAX_CONTROL_OPERATIONS.md`](docs/TAX_CONTROL_OPERATIONS.md). The
+plain-language owner workflow is in
+[`docs/TAX_COLLECTION_CLIENT_GUIDE.md`](docs/TAX_COLLECTION_CLIENT_GUIDE.md).
 
 The Medusa Admin **Operations → Tax records** workspace builds
 separate Connecticut, New York, and Pennsylvania filing workpapers from Medusa

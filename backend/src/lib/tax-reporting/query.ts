@@ -3,10 +3,7 @@ import type { MedusaContainer } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { z } from "zod";
 
-import {
-  TAX_FILING_STATES,
-  type TaxFilingScope,
-} from "./filing-states";
+import { TAX_FILING_STATES, type TaxFilingScope } from "./filing-states";
 import type { TaxReportPeriod } from "./periods";
 import {
   diagnoseTaxProjection,
@@ -159,9 +156,13 @@ const records = (value: unknown): UnknownRecord[] =>
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null;
 
-const workflowRows = (result: {
-  rows: unknown[];
-} | unknown[]): UnknownRecord[] =>
+const workflowRows = (
+  result:
+    | {
+        rows: unknown[];
+      }
+    | unknown[],
+): UnknownRecord[] =>
   (Array.isArray(result) ? result : result.rows) as UnknownRecord[];
 
 const mergeAuthoritativeTotals = ({
@@ -219,8 +220,7 @@ const loadPayments = async ({
   const paymentsById = new Map<string, UnknownRecord>();
   const batches = Array.from(
     { length: Math.ceil(paymentIds.length / PAGE_SIZE) },
-    (_, index) =>
-      paymentIds.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE),
+    (_, index) => paymentIds.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE),
   );
   for (
     let offset = 0;
@@ -253,9 +253,7 @@ const loadPayments = async ({
     }
   }
   if (paymentIds.some((id) => !paymentsById.has(id))) {
-    throw new Error(
-      "Tax report could not load every linked payment record.",
-    );
+    throw new Error("Tax report could not load every linked payment record.");
   }
   return paymentsById;
 };
@@ -327,16 +325,25 @@ const relationshipDiagnostics = (
 };
 
 const filtersSchema = z.object({
+  collectionMode: z
+    .enum(["all", "collect", "disabled", "unknown"])
+    .default("all"),
   filingState: z.enum(["ALL", ...TAX_FILING_STATES]).default("ALL"),
   limit: z.coerce.number().int().min(10).max(100).default(50),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   provider: z
-    .enum(["all", "legacy", "mixed", "stripe_tax", "taxrate_io", "unknown"])
+    .enum([
+      "all",
+      "legacy",
+      "mixed",
+      "not_applicable",
+      "stripe_tax",
+      "taxrate_io",
+      "unknown",
+    ])
     .default("all"),
   q: z.string().trim().max(100).default(""),
-  quality: z
-    .enum(["all", "complete", "incomplete", "review"])
-    .default("all"),
+  quality: z.enum(["all", "complete", "incomplete", "review"]).default("all"),
   state: z
     .string()
     .trim()
@@ -349,12 +356,16 @@ const filtersSchema = z.object({
 export type TaxReportFilters = z.infer<typeof filtersSchema>;
 
 export const parseTaxFilingState = (value: unknown): TaxFilingScope =>
-  z.enum(["ALL", ...TAX_FILING_STATES]).default("ALL").parse(value);
+  z
+    .enum(["ALL", ...TAX_FILING_STATES])
+    .default("ALL")
+    .parse(value);
 
 export const parseTaxReportFilters = (
   searchParams: URLSearchParams,
 ): TaxReportFilters =>
   filtersSchema.parse({
+    collectionMode: searchParams.get("collection_mode") ?? undefined,
     filingState: searchParams.get("filing_state") ?? undefined,
     limit: searchParams.get("limit") ?? undefined,
     page: searchParams.get("page") ?? undefined,
@@ -399,9 +410,7 @@ export const loadTaxReportOrders = async ({
     ]);
     const data = mergeAuthoritativeTotals({
       orders: workflowRows(result as { rows: unknown[] } | unknown[]),
-      totals: workflowRows(
-        totalsResult as { rows: unknown[] } | unknown[],
-      ),
+      totals: workflowRows(totalsResult as { rows: unknown[] } | unknown[]),
     });
     orders.push(...data);
     if (data.length < PAGE_SIZE) {
@@ -422,6 +431,12 @@ const matchesFilters = (
   record: TaxRecord,
   filters: TaxReportFilters,
 ): boolean => {
+  if (
+    filters.collectionMode !== "all" &&
+    record.collectionMode !== filters.collectionMode
+  ) {
+    return false;
+  }
   if (
     filters.provider !== "all" &&
     record.provider !== (filters.provider as TaxRecordProvider)
@@ -459,7 +474,11 @@ const matchesFilters = (
     record.destination.county,
     record.destination.jurisdictionName,
     record.destination.postalCode,
-  ].some((value) => String(value ?? "").toLowerCase().includes(query));
+  ].some((value) =>
+    String(value ?? "")
+      .toLowerCase()
+      .includes(query),
+  );
 };
 
 const recordsForFilingState = (
@@ -494,10 +513,7 @@ export const buildTaxReport = async ({
 }) => {
   const loaded = await loadTaxReportOrders({ container, period });
   const allRecords = projectTaxRecords({ orders: loaded.orders, period });
-  const scopedRecords = recordsForFilingState(
-    allRecords,
-    filters.filingState,
-  );
+  const scopedRecords = recordsForFilingState(allRecords, filters.filingState);
   const unassignedRecords = unassignedFilingRecords(allRecords);
   const filteredRecords = scopedRecords.filter((record) =>
     matchesFilters(record, filters),
@@ -508,6 +524,9 @@ export const buildTaxReport = async ({
     destinations: summarizeDestinations(scopedRecords),
     filingState: filters.filingState,
     filters: {
+      collectionModes: [
+        ...new Set(scopedRecords.map((record) => record.collectionMode)),
+      ].sort(),
       currencies: [
         ...new Set(scopedRecords.map((record) => record.currencyCode)),
       ].sort(),

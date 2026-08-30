@@ -3,6 +3,7 @@ import { buildRefundLedgerMismatches } from "./refund-ledger";
 const evidence = (refundAmountMinor: number) => ({
   association_status: "committed",
   cart_id: "cart_01",
+  collection_mode: "collect" as const,
   currency_code: "usd",
   id: "taxevidence_01",
   last_verified_at: "2026-07-26T00:00:00.000Z",

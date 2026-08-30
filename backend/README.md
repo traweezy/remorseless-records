@@ -429,13 +429,23 @@ either job is enabled in a new environment.
 
 ## Tax control and payment evidence
 
-The Tax Module has two installed calculation engines, but exactly one is active
-for a new quote:
+The Tax Module has two installed calculation engines and one durable operating
+mode. A new, unfrozen quote either collects through the selected provider or
+uses the explicit audited `disabled` mode:
 
 - TaxRate.io supplies a ZIP-based percentage and its returned monthly
   quota/usage.
 - Stripe Tax supplies address-aware, per-line calculations and a calculation
   ID that is bound to the exact Medusa-created PaymentIntent.
+- Disabled mode emits an internal zero line for every item and shipping
+  subject without entering either provider, quota, or tax-cache path.
+
+`collection_mode` is separate from `active_provider`, so provider
+configuration remains intact while collection is off. Every mode/provider
+transition increments one generation and records actor, reason, idempotency
+key, prior/next state, and acknowledgement version. Prepared payments keep
+their frozen mode/provider/generation/fingerprint; completed orders are never
+repriced.
 
 Each TaxRate.io lookup is one safe GET operation with at most two attempts
 inside the configured deadline. Only transport failures and HTTP 408, 425, or
@@ -499,27 +509,28 @@ messages or response payloads. These reconciliation paths are read-only and do
 not create refunds, disputes, payments, or Tax transactions.
 
 An authenticated Medusa Admin can review readiness, quota, exact paginated
-checkout impact, payment evidence, and an immutable provider-switch history at
-**Settings → Tax control**. The current setup is read-only; an explicit provider action
-opens the confirmation and audit-reason dialog. Switches increment an internal
-generation. Open carts without a prepared payment use the new generation on
-their next tax refresh; prepared payments keep their original provider,
-generation, fingerprint, and calculation/rate. No cart can combine two
-providers.
+checkout impact, payment evidence, and immutable tax-decision history at
+**Settings → Tax control**. It presents **Do not collect tax**, **Collect using
+TaxRate.io**, and **Collect using Stripe Tax** before technical provider
+details. Turning collection off requires the exact typed acknowledgement and
+an audit reason; re-enabling requires selected-provider readiness. Open carts
+without a prepared payment use the new generation on their next tax refresh;
+prepared payments keep their original decision and completed orders remain
+historical.
 
 Native Admin RBAC separates `tax_control:read` from `tax_control:update`.
 Read-only operators can inspect readiness and evidence but cannot see or invoke
-provider switching or the metered TaxRate.io quota refresh. The backend
+collection changes, provider changes, or the metered TaxRate.io quota refresh. The backend
 enforces the same split before either write handler.
 
 The Admin reads this workspace through the session-authenticated Medusa SDK and
 TanStack Query. A complete Zod response contract rejects malformed readiness,
-quota, impact, evidence, or history data before it can render. Provider changes
-use a Zod-backed TanStack Form inside the confirmation dialog, reuse one
-idempotency key for ambiguous retries, and reconcile the returned generation
-before reporting an uncertain response as a failure. Client mutations never
-retry automatically; the server still rechecks readiness under its distributed
-provider lock.
+quota, impact, evidence, or history data before it can render. Tax-control
+changes use a Zod-backed TanStack Form inside the confirmation dialog, reuse
+one idempotency key for ambiguous retries, and reconcile mode, provider, and
+generation before reporting an uncertain response as a failure. Client
+mutations never retry automatically; the server rechecks provider readiness
+for collection transitions under its distributed lock.
 
 The storefront BFF calls `POST /store/checkout/tax-link` with a short-lived,
 purpose-bound `CHECKOUT_BFF_SECRET` proof before returning a client secret and

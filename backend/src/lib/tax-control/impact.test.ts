@@ -5,10 +5,12 @@ import {
 } from "./impact";
 
 const cart = ({
+  collectionMode = "collect",
   provider = "taxrate_io",
   sessionProvider = "pp_stripe_stripe",
   status = "pending",
 }: {
+  collectionMode?: "collect" | "disabled";
   provider?: string;
   sessionProvider?: string;
   status?: string;
@@ -19,7 +21,10 @@ const cart = ({
       {
         data: {
           metadata: {
-            rr_tax_provider: provider,
+            rr_tax_collection_mode: collectionMode,
+            ...(collectionMode === "collect"
+              ? { rr_tax_provider: provider }
+              : {}),
           },
         },
         provider_id: sessionProvider,
@@ -36,24 +41,34 @@ describe("tax-control checkout impact", () => {
         cart(),
         cart({ provider: "stripe_tax", status: "requires_more" }),
         cart({ provider: "stripe_tax", status: "authorized" }),
+        cart({ collectionMode: "disabled" }),
         cart({ status: "error" }),
         cart({ sessionProvider: "pp_system" }),
       ]),
     ).toEqual({
       activityWindowDays: 30,
+      frozenByCollectionMode: {
+        collect: 3,
+        disabled: 1,
+      },
       frozenByProvider: {
         stripe_tax: 2,
         taxrate_io: 1,
       },
       paymentsFinalizing: 1,
-      preparedCheckouts: 3,
+      preparedCheckouts: 4,
     });
   });
 
   it("counts a cart once when it has multiple processable sessions", () => {
     const duplicateSessionCart = cart();
     duplicateSessionCart.payment_collection.payment_sessions.push({
-      data: { metadata: { rr_tax_provider: "taxrate_io" } },
+      data: {
+        metadata: {
+          rr_tax_collection_mode: "collect",
+          rr_tax_provider: "taxrate_io",
+        },
+      },
       provider_id: "pp_stripe_stripe",
       status: "pending_authorization",
     });

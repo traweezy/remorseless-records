@@ -38,6 +38,7 @@ const association = (
 
 const serviceFixture = ({
   evidence = {
+    collection_mode: "collect",
     payment_intent_id: "pi_test",
     provider: "stripe_tax",
   },
@@ -400,6 +401,7 @@ describe("reconcileTaxQuoteEvidence", () => {
   it("does not query Stripe Tax for TaxRate.io evidence", async () => {
     const service = serviceFixture({
       evidence: {
+        collection_mode: "collect",
         payment_intent_id: "pi_test",
         provider: "taxrate_io",
       },
@@ -426,5 +428,40 @@ describe("reconcileTaxQuoteEvidence", () => {
       status: "refunded",
     });
     expect(client.tax.associations.find).not.toHaveBeenCalled();
+  });
+
+  it("tracks disabled refunds and disputes without expecting a tax association", async () => {
+    const service = serviceFixture({
+      evidence: {
+        collection_mode: "disabled",
+        payment_intent_id: "pi_test",
+        provider: null,
+      },
+    });
+    const client = stripeFixture({
+      intent: paymentIntent({
+        latest_charge: {
+          amount_refunded: 400,
+          disputed: false,
+          id: "ch_test",
+          object: "charge",
+        } as Stripe.Charge,
+      }),
+    });
+
+    await expect(
+      reconcileTaxQuoteEvidence({
+        client,
+        paymentIntentId: "pi_test",
+        service,
+      }),
+    ).resolves.toMatchObject({
+      associationStatus: "not_applicable",
+      status: "partially_refunded",
+    });
+    expect(client.tax.associations.find).not.toHaveBeenCalled();
+    expect(service.updateTaxQuoteEvidenceLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({ taxTransactionId: null }),
+    );
   });
 });

@@ -109,6 +109,7 @@ beforeEach(() => {
   process.env.STRIPE_API_KEY = "synthetic-stripe-unit-test-key";
   bindingMock.mockReset();
   bindingMock.mockResolvedValue({
+    collectionMode: "collect",
     generation: 3,
     provider: "stripe_tax",
     replayed: false,

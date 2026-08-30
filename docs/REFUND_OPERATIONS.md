@@ -115,8 +115,8 @@ settlement. Provider and tax verification remain separate.
 
 | Status              | Meaning                                                                 | Operator behavior                                                                    |
 | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| **Needs attention** | A failure, dispute, ledger mismatch, tax error, or incomplete audit.     | Stop before another refund; follow the row's next action and reconcile exact totals. |
-| **Processing**      | Medusa recorded the refund but Stripe or tax evidence is not yet final. | Do not retry. Allow the next automatic check unless the provider has timed out.       |
+| **Needs attention** | A failure, dispute, ledger mismatch, tax error, or incomplete audit.    | Stop before another refund; follow the row's next action and reconcile exact totals. |
+| **Processing**      | Medusa recorded the refund but Stripe or tax evidence is not yet final. | Do not retry. Allow the next automatic check unless the provider has timed out.      |
 | **Verified**        | Medusa, Stripe, and applicable tax evidence agree.                      | No system action. Finish customer communication and policy records.                  |
 
 The tax sub-status is intentionally separate:
@@ -126,6 +126,9 @@ The tax sub-status is intentionally separate:
 - **Reversal pending**: Stripe Tax has not yet exposed every expected reversal;
 - **No provider reversal**: TaxRate.io calculated the original rate, while
   Medusa owns the refund/tax filing ledger;
+- **Tax not collected**: the original order has explicit disabled-mode
+  evidence, so no provider tax transaction or reversal should exist; the
+  refund still reduces **Sales pending tax review** in the filing workpaper;
 - **Not linked yet**: the Medusa refund exists before payment evidence has been
   observed; and
 - **Needs review**: the reversal audit failed, was truncated, or returned an
@@ -202,20 +205,20 @@ checkout workflow compensated the customer.
 
 ## Edge-case policy matrix
 
-| Scenario                              | Correct handling                                                                                            |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Full refund                           | Review captured and already-refunded totals, then refund the remaining exact amount in Medusa.             |
-| Multiple partial refunds              | Each has its own Medusa record, Stripe status, tax reversal where applicable, and email idempotency key.    |
-| Shipping-only refund                  | Payment-only correction; no inventory mutation.                                                            |
-| Bundle or mystery product             | Payment semantics are unchanged; return/claim the actual physical units and record their condition.        |
-| Merchandise size/format               | Use the purchased variant; never substitute a catalog label for the order line.                            |
-| Anonymous checkout                    | Refund the Medusa order normally; notification uses the order email without requiring an account.          |
-| Compensated checkout without an order | Monitor as **Checkout recovery** and use the cart email if available.                                      |
-| Multiple payments on one order        | Reconcile each payment separately; do not assume one refund applies across providers.                      |
-| Tax provider switched after purchase  | Historical evidence stays with the payment's provider/generation; do not recalculate the old order.         |
-| Damaged return                        | Record damaged quantity so it is not added back to saleable inventory.                                     |
-| Refund reason missing                 | Configure reasons before routine operations; do not replace structured reasons with inconsistent notes.    |
-| Customer asks where the credit is     | Confirm provider success, then explain that their bank controls final statement posting.                   |
+| Scenario                              | Correct handling                                                                                         |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Full refund                           | Review captured and already-refunded totals, then refund the remaining exact amount in Medusa.           |
+| Multiple partial refunds              | Each has its own Medusa record, Stripe status, tax reversal where applicable, and email idempotency key. |
+| Shipping-only refund                  | Payment-only correction; no inventory mutation.                                                          |
+| Bundle or mystery product             | Payment semantics are unchanged; return/claim the actual physical units and record their condition.      |
+| Merchandise size/format               | Use the purchased variant; never substitute a catalog label for the order line.                          |
+| Anonymous checkout                    | Refund the Medusa order normally; notification uses the order email without requiring an account.        |
+| Compensated checkout without an order | Monitor as **Checkout recovery** and use the cart email if available.                                    |
+| Multiple payments on one order        | Reconcile each payment separately; do not assume one refund applies across providers.                    |
+| Tax provider switched after purchase  | Historical evidence stays with the payment's provider/generation; do not recalculate the old order.      |
+| Damaged return                        | Record damaged quantity so it is not added back to saleable inventory.                                   |
+| Refund reason missing                 | Configure reasons before routine operations; do not replace structured reasons with inconsistent notes.  |
+| Customer asks where the credit is     | Confirm provider success, then explain that their bank controls final statement posting.                 |
 
 ## Observability and service objectives
 

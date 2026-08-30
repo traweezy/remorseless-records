@@ -63,6 +63,7 @@ const checkoutShippingMethodSchema = z
 
 const checkoutTotalsSchema = z
   .object({
+    taxCollectionMode: z.enum(["collect", "disabled", "unknown"]),
     currencyCode: z.literal("usd"),
     subtotal: z.number().finite().nonnegative(),
     discountTotal: z.number().finite().nonnegative(),

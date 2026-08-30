@@ -13,6 +13,7 @@ import type {
   CheckoutState,
   CheckoutTotals,
 } from "@/features/checkout/types/checkout"
+import { taxQuoteIdentityFromCart } from "@/lib/cart/tax-quote"
 
 const STRIPE_PROVIDER_ID = "pp_stripe_stripe"
 const PROCESSABLE_STATUSES = new Set([
@@ -157,6 +158,24 @@ const shippingMethodFrom = (
   }
 }
 
+const taxCollectionModeFrom = (
+  cart: HttpTypes.StoreCart
+): CheckoutTotals["taxCollectionMode"] => {
+  const subjects = [...(cart.items ?? []), ...(cart.shipping_methods ?? [])]
+  const hasTaxLines = subjects.some(
+    (subject) =>
+      Array.isArray(subject.tax_lines) && subject.tax_lines.length > 0
+  )
+  if (!hasTaxLines) {
+    return "unknown"
+  }
+  try {
+    return taxQuoteIdentityFromCart(cart).collectionMode
+  } catch {
+    return "unknown"
+  }
+}
+
 const totalsFrom = (cart: HttpTypes.StoreCart): CheckoutTotals => {
   const currencyCode = text(cart.currency_code).toLowerCase()
   const cartRecord = asRecord(cart)
@@ -165,6 +184,7 @@ const totalsFrom = (cart: HttpTypes.StoreCart): CheckoutTotals => {
   }
 
   return {
+    taxCollectionMode: taxCollectionModeFrom(cart),
     currencyCode,
     subtotal: amount(cart.item_subtotal, "Cart item subtotal"),
     discountTotal: amount(

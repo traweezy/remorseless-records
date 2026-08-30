@@ -125,6 +125,41 @@ describe("checkout projection", () => {
     })
   })
 
+  it("projects an explicit disabled tax decision separately from a zero rate", () => {
+    const cart = cartFixture({ tax_total: 0, total: 24.99 })
+    const disabledTaxLine = {
+      code: "rr_tax:disabled:g3:decision",
+      data: {
+        collection_mode: "disabled",
+        fingerprint:
+          "disabledTaxFingerprint_abcdefghijklmnopqrstuvwxyz012345678",
+        generation: 3,
+      },
+      rate: 0,
+      total: 0,
+    }
+    ;(
+      cart.items![0]! as unknown as {
+        tax_lines: unknown[]
+      }
+    ).tax_lines = [{ id: "calitax_disabled", ...disabledTaxLine }]
+    cart.items![0]!.tax_total = 0
+    cart.items![0]!.total = 19.99
+    ;(
+      cart.shipping_methods![0]! as unknown as {
+        tax_lines: unknown[]
+      }
+    ).tax_lines = [{ id: "casmtax_disabled", ...disabledTaxLine }]
+    cart.shipping_methods![0]!.tax_total = 0
+    cart.shipping_methods![0]!.total = 5
+
+    expect(createCheckoutProjection(cart).cart.totals).toMatchObject({
+      taxCollectionMode: "disabled",
+      taxTotal: 0,
+      total: 24.99,
+    })
+  })
+
   it("shows the merchandise subtotal separately from shipping", () => {
     expect(createCheckoutProjection(cartFixture()).cart.totals).toMatchObject({
       subtotal: 19.99,

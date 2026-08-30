@@ -82,8 +82,9 @@ const paymentBindingError = (error: StripePaymentBindingClientError) => {
 };
 
 export type BindCheckoutTaxResult = {
+  collectionMode: "collect" | "disabled";
   generation: number;
-  provider: "stripe_tax" | "taxrate_io";
+  provider: "stripe_tax" | "taxrate_io" | null;
   replayed: boolean;
 };
 
@@ -153,6 +154,7 @@ export const bindCheckoutTaxToPayment = async ({
       calculationId: quote.calculationId,
       cartId,
       client,
+      collectionMode: quote.collectionMode,
       currencyCode: validation.currencyCode,
       fingerprint: quote.fingerprint,
       generation: quote.generation,
@@ -172,6 +174,7 @@ export const bindCheckoutTaxToPayment = async ({
     amountMinor,
     calculationId: quote.calculationId,
     cartId,
+    collectionMode: quote.collectionMode,
     currencyCode: validation.currencyCode,
     fingerprint: quote.fingerprint,
     generation: quote.generation,
@@ -181,6 +184,7 @@ export const bindCheckoutTaxToPayment = async ({
   });
 
   return {
+    collectionMode: quote.collectionMode,
     generation: quote.generation,
     provider: quote.provider,
     replayed:

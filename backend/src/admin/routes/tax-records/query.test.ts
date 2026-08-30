@@ -1,8 +1,5 @@
 import { requestAdminJson } from "../../lib/admin-request";
-import {
-  taxRecordsQueryOptions,
-  taxRecordsReportSchema,
-} from "./query";
+import { taxRecordsQueryOptions, taxRecordsReportSchema } from "./query";
 
 jest.mock("../../lib/admin-request", () => ({
   requestAdminJson: jest.fn(),
@@ -28,10 +25,12 @@ const validReport = {
       taxCollected: "6.35",
       taxRatePercent: "6.350",
       taxableSales: "100.00",
+      unclassifiedSales: "0.00",
     },
   ],
   filingState: "CT",
   filters: {
+    collectionModes: ["collect"],
     currencies: ["usd"],
     providers: ["stripe_tax"],
     states: ["CT"],
@@ -47,6 +46,7 @@ const validReport = {
   },
   records: [
     {
+      collectionMode: "collect",
       currencyCode: "usd",
       destination: {
         city: "Hartford",
@@ -76,6 +76,7 @@ const validReport = {
       taxRatePercent: "6.350",
       total: "106.35",
       type: "sale",
+      unclassifiedSales: "0.00",
     },
   ],
   resultCount: 1,
@@ -89,6 +90,7 @@ const validReport = {
     {
       completeRecords: 1,
       currencyCode: "usd",
+      disabledRecordCount: 0,
       grossSales: "106.35",
       incompleteRecords: 0,
       netSales: "106.35",
@@ -103,6 +105,7 @@ const validReport = {
       samePeriodRefundCount: 0,
       taxCollected: "6.35",
       taxableSales: "100.00",
+      unclassifiedSales: "0.00",
     },
   ],
   unassignedRecordExamples: [],
@@ -111,6 +114,7 @@ const validReport = {
 const input = {
   filingState: "CT",
   filters: {
+    collectionMode: "collect",
     limit: 50,
     page: 2,
     provider: "stripe_tax",
@@ -168,6 +172,7 @@ describe("tax records query", () => {
     expect(requestAdminJson).toHaveBeenCalledWith({
       path: "/admin/tax-records",
       query: {
+        collection_mode: "collect",
         end: "2026-07-01",
         filing_state: "CT",
         limit: 50,

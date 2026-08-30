@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 
 import {
+  isTaxCollectionMode,
   isTaxProviderName,
+  type TaxCollectionMode,
   type TaxProviderName,
 } from "../../modules/tax-control/constants";
 
@@ -9,13 +11,15 @@ export const TAX_CONTEXT_KEY = "remorseless_tax";
 export const TAX_LINE_CODE_PREFIX = "rr_tax";
 
 export type FrozenTaxQuote = {
-  provider: TaxProviderName;
+  collectionMode: TaxCollectionMode;
   generation: number;
+  provider: TaxProviderName | null;
   stripeCalculationId?: string;
   taxRatePercent?: number;
 };
 
 export type TaxControlContext = {
+  collectionMode: TaxCollectionMode;
   fingerprint: string;
   frozenQuote?: FrozenTaxQuote;
   generation: number;
@@ -23,7 +27,7 @@ export type TaxControlContext = {
   itemTaxCodes: Record<string, string>;
   preservedItemRates: Record<string, number>;
   preservedShippingRates: Record<string, number>;
-  provider: TaxProviderName;
+  provider: TaxProviderName | null;
   shippingAmountMinor: number;
   subjectId: string;
 };
@@ -93,12 +97,23 @@ const finiteNumbersFrom = (value: unknown): Record<string, number> => {
 
 const frozenQuoteFrom = (value: unknown): FrozenTaxQuote | undefined => {
   const record = asRecord(value);
-  if (!record || !isTaxProviderName(record.provider)) {
+  if (!record) {
     return undefined;
   }
 
+  const collectionMode = isTaxCollectionMode(record.collectionMode)
+    ? record.collectionMode
+    : isTaxProviderName(record.provider)
+      ? "collect"
+      : null;
+  const provider = isTaxProviderName(record.provider) ? record.provider : null;
   const generation = positiveInteger(record.generation);
-  if (!generation) {
+  if (
+    !collectionMode ||
+    !generation ||
+    (collectionMode === "collect" && !provider) ||
+    (collectionMode === "disabled" && provider !== null)
+  ) {
     return undefined;
   }
 
@@ -110,8 +125,9 @@ const frozenQuoteFrom = (value: unknown): FrozenTaxQuote | undefined => {
   const taxRatePercent = optionalFiniteNumber(record.taxRatePercent);
 
   return {
-    provider: record.provider,
+    collectionMode,
     generation,
+    provider,
     ...(stripeCalculationId ? { stripeCalculationId } : {}),
     ...(taxRatePercent !== undefined ? { taxRatePercent } : {}),
   };
@@ -121,9 +137,16 @@ export const parseTaxControlContext = (
   additionalContext: Record<string, unknown> | undefined,
 ): TaxControlContext => {
   const record = asRecord(additionalContext?.[TAX_CONTEXT_KEY]);
-  if (!record || !isTaxProviderName(record.provider)) {
+  if (!record) {
     throw new Error("Tax provider control context is missing.");
   }
+
+  const collectionMode = isTaxCollectionMode(record.collectionMode)
+    ? record.collectionMode
+    : isTaxProviderName(record.provider)
+      ? "collect"
+      : null;
+  const provider = isTaxProviderName(record.provider) ? record.provider : null;
 
   const generation = positiveInteger(record.generation);
   const subjectId =
@@ -137,9 +160,12 @@ export const parseTaxControlContext = (
       : null;
   const shippingAmountMinor = Number(record.shippingAmountMinor ?? 0);
   if (
+    !collectionMode ||
     !generation ||
     !subjectId ||
     !fingerprint ||
+    (collectionMode === "collect" && !provider) ||
+    (collectionMode === "disabled" && provider !== null) ||
     !Number.isSafeInteger(shippingAmountMinor) ||
     shippingAmountMinor < 0
   ) {
@@ -149,7 +175,8 @@ export const parseTaxControlContext = (
   const frozenQuote = frozenQuoteFrom(record.frozenQuote);
   if (
     frozenQuote &&
-    (frozenQuote.provider !== record.provider ||
+    (frozenQuote.collectionMode !== collectionMode ||
+      frozenQuote.provider !== provider ||
       frozenQuote.generation !== generation)
   ) {
     throw new Error("Frozen tax quote does not match its provider generation.");
@@ -157,12 +184,13 @@ export const parseTaxControlContext = (
 
   return {
     fingerprint,
+    collectionMode,
     generation,
     itemAmountsMinor: minorUnitAmountsFrom(record.itemAmountsMinor),
     itemTaxCodes: taxCodesFrom(record.itemTaxCodes),
     preservedItemRates: finiteNumbersFrom(record.preservedItemRates),
     preservedShippingRates: finiteNumbersFrom(record.preservedShippingRates),
-    provider: record.provider,
+    provider,
     shippingAmountMinor,
     subjectId,
     ...(frozenQuote ? { frozenQuote } : {}),
@@ -176,24 +204,27 @@ export const createTaxContextFingerprint = (
 
 export const buildTaxLineCode = ({
   calculationId,
+  collectionMode,
   generation,
   provider,
 }: {
   calculationId?: string;
+  collectionMode: TaxCollectionMode;
   generation: number;
-  provider: TaxProviderName;
+  provider: TaxProviderName | null;
 }): string =>
   [
     TAX_LINE_CODE_PREFIX,
-    provider,
+    collectionMode === "disabled" ? "disabled" : provider,
     `g${generation}`,
-    calculationId ?? "quote",
+    collectionMode === "disabled" ? "decision" : (calculationId ?? "quote"),
   ].join(":");
 
 export type TaxLineIdentity = {
   calculationId: string | null;
+  collectionMode: TaxCollectionMode;
   generation: number;
-  provider: TaxProviderName;
+  provider: TaxProviderName | null;
 };
 
 export const parseTaxLineCode = (value: unknown): TaxLineIdentity | null => {
@@ -201,12 +232,15 @@ export const parseTaxLineCode = (value: unknown): TaxLineIdentity | null => {
     return null;
   }
 
-  const [prefix, provider, generationValue, calculationId, ...rest] =
+  const [prefix, identity, generationValue, calculationId, ...rest] =
     value.split(":");
+  const collectionMode = identity === "disabled" ? "disabled" : "collect";
+  const provider = isTaxProviderName(identity) ? identity : null;
   if (
     rest.length ||
     prefix !== TAX_LINE_CODE_PREFIX ||
-    !isTaxProviderName(provider) ||
+    (collectionMode === "collect" && !provider) ||
+    (collectionMode === "disabled" && calculationId !== "decision") ||
     !generationValue?.startsWith("g")
   ) {
     return null;
@@ -219,9 +253,12 @@ export const parseTaxLineCode = (value: unknown): TaxLineIdentity | null => {
 
   return {
     calculationId:
-      calculationId && /^taxcalc_[A-Za-z0-9]+$/.test(calculationId)
+      collectionMode === "collect" &&
+      calculationId &&
+      /^taxcalc_[A-Za-z0-9]+$/.test(calculationId)
         ? calculationId
         : null,
+    collectionMode,
     generation,
     provider,
   };

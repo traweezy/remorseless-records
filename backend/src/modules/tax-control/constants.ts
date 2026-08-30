@@ -2,6 +2,15 @@ export const taxProviderNames = ["taxrate_io", "stripe_tax"] as const;
 
 export type TaxProviderName = (typeof taxProviderNames)[number];
 
+export const taxCollectionModes = ["collect", "disabled"] as const;
+
+export type TaxCollectionMode = (typeof taxCollectionModes)[number];
+
+export const TAX_CONTROL_ACKNOWLEDGEMENT_VERSION =
+  "tax-collection-control-2026-08-30";
+export const TAX_DISABLED_ACKNOWLEDGEMENT =
+  "I understand tax will be $0.00 on new eligible checkouts.";
+
 export const taxQuoteEvidenceStatuses = [
   "prepared",
   "succeeded",
@@ -27,3 +36,9 @@ export const taxEvidenceLockKey = (paymentIntentId: string): string =>
 export const isTaxProviderName = (value: unknown): value is TaxProviderName =>
   typeof value === "string" &&
   taxProviderNames.includes(value as TaxProviderName);
+
+export const isTaxCollectionMode = (
+  value: unknown,
+): value is TaxCollectionMode =>
+  typeof value === "string" &&
+  taxCollectionModes.includes(value as TaxCollectionMode);

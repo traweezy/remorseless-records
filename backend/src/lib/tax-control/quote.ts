@@ -1,13 +1,15 @@
 import { parseTaxLineCode, type TaxLineIdentity } from "./context";
 import type { TaxProviderName } from "../../modules/tax-control/constants";
+import type { TaxCollectionMode } from "../../modules/tax-control/constants";
 
 type UnknownRecord = Record<string, unknown>;
 
 export type TaxQuoteIdentity = {
   calculationId: string | null;
+  collectionMode: TaxCollectionMode;
   fingerprint: string;
   generation: number;
-  provider: TaxProviderName;
+  provider: TaxProviderName | null;
   taxRatePercent: number | null;
 };
 
@@ -45,19 +47,25 @@ const assertLineData = (
 ): { fingerprint: string; rate: number } => {
   const data = asRecord(line.data);
   const provider = text(data?.provider);
+  const collectionModeValue = text(data?.collection_mode);
+  const collectionMode = collectionModeValue || "collect";
   const generation = Number(data?.generation);
   const fingerprint = text(data?.fingerprint);
   const calculationId = text(data?.calculation_id) || null;
   const rate = Number(line.rate);
 
   if (
-    provider !== codeIdentity.provider ||
+    collectionMode !== codeIdentity.collectionMode ||
+    (codeIdentity.collectionMode === "collect" &&
+      provider !== codeIdentity.provider) ||
+    (codeIdentity.collectionMode === "disabled" && provider !== "") ||
     !Number.isSafeInteger(generation) ||
     generation !== codeIdentity.generation ||
     !/^[A-Za-z0-9_-]{32,128}$/.test(fingerprint) ||
     calculationId !== codeIdentity.calculationId ||
     !Number.isFinite(rate) ||
-    rate < 0
+    rate < 0 ||
+    (codeIdentity.collectionMode === "disabled" && rate !== 0)
   ) {
     throw new TaxQuoteIdentityError(
       "A cart tax line has incomplete or inconsistent quote data.",
@@ -105,6 +113,7 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
   if (
     identities.some(
       (entry) =>
+        entry.identity.collectionMode !== first.identity.collectionMode ||
         entry.identity.provider !== first.identity.provider ||
         entry.identity.generation !== first.identity.generation ||
         entry.identity.calculationId !== first.identity.calculationId ||
@@ -117,6 +126,7 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
   }
 
   if (
+    first.identity.collectionMode === "collect" &&
     first.identity.provider === "stripe_tax" &&
     !first.identity.calculationId
   ) {
@@ -126,7 +136,11 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
   }
 
   const rates = new Set(identities.map((entry) => entry.rate));
-  if (first.identity.provider === "taxrate_io" && rates.size !== 1) {
+  if (
+    first.identity.collectionMode === "collect" &&
+    first.identity.provider === "taxrate_io" &&
+    rates.size !== 1
+  ) {
     throw new TaxQuoteIdentityError(
       "The TaxRate.io quote contains inconsistent rates.",
     );
@@ -134,10 +148,14 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
 
   return {
     calculationId: first.identity.calculationId,
+    collectionMode: first.identity.collectionMode,
     fingerprint: first.fingerprint,
     generation: first.identity.generation,
     provider: first.identity.provider,
     taxRatePercent:
-      first.identity.provider === "taxrate_io" ? first.rate : null,
+      first.identity.collectionMode === "collect" &&
+      first.identity.provider === "taxrate_io"
+        ? first.rate
+        : null,
   };
 };

@@ -10,6 +10,10 @@ import {
 } from "../../../../lib/tax-control/readiness";
 import { syncTaxRateIoQuota } from "../../../../lib/tax-control/quota";
 import { taxControlSnapshot } from "../utils";
+import {
+  TAX_CONTROL_ACKNOWLEDGEMENT_VERSION,
+  TAX_DISABLED_ACKNOWLEDGEMENT,
+} from "../../../../modules/tax-control/constants";
 
 import { POST } from "./route";
 
@@ -41,6 +45,7 @@ const validBody = {
   expectedGeneration: 3,
   idempotencyKey: "00000000-0000-4000-8000-000000000001",
   reason: "Sandbox Stripe Tax checks passed.",
+  targetCollectionMode: "collect",
   targetProvider: "stripe_tax",
 } as const;
 
@@ -78,7 +83,7 @@ const requestFixture = ({
   actorId?: string | null;
   body?: unknown;
 } = {}) => {
-  const service = { switchProvider: jest.fn(async () => undefined) };
+  const service = { transitionTaxControl: jest.fn(async () => undefined) };
   const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
   const locking = {
     execute: jest.fn(async (_key: string, operation: () => Promise<unknown>) =>
@@ -134,7 +139,7 @@ describe("POST /admin/tax-control/switch", () => {
     const { res } = responseFixture();
 
     await expect(POST(fixture.req, res)).rejects.toThrow(
-      "Provide a target provider",
+      "Provide a collection choice",
     );
     expect(fixture.resolve).not.toHaveBeenCalled();
   });
@@ -149,7 +154,7 @@ describe("POST /admin/tax-control/switch", () => {
     expect(fixture.resolve).not.toHaveBeenCalled();
   });
 
-  it("checks readiness and switches under the distributed lock", async () => {
+  it("checks readiness and transitions under the distributed lock", async () => {
     const fixture = requestFixture();
     const { res, state } = responseFixture();
 
@@ -159,7 +164,8 @@ describe("POST /admin/tax-control/switch", () => {
     expect(stripeReadinessMock).toHaveBeenCalledWith({
       logger: fixture.logger,
     });
-    expect(fixture.service.switchProvider).toHaveBeenCalledWith({
+    expect(fixture.service.transitionTaxControl).toHaveBeenCalledWith({
+      acknowledgementVersion: TAX_CONTROL_ACKNOWLEDGEMENT_VERSION,
       actorId: "user_admin",
       ...validBody,
     });
@@ -185,7 +191,7 @@ describe("POST /admin/tax-control/switch", () => {
     await expect(POST(fixture.req, res)).rejects.toThrow(
       "stripe_tax is not ready",
     );
-    expect(fixture.service.switchProvider).not.toHaveBeenCalled();
+    expect(fixture.service.transitionTaxControl).not.toHaveBeenCalled();
     expect(snapshotMock).not.toHaveBeenCalled();
   });
 
@@ -203,5 +209,53 @@ describe("POST /admin/tax-control/switch", () => {
       service: fixture.service,
     });
     expect(taxRateReadinessMock).toHaveBeenCalledWith(18);
+  });
+
+  it("disables collection without probing either external tax provider", async () => {
+    const fixture = requestFixture({
+      body: {
+        acknowledgement: TAX_DISABLED_ACKNOWLEDGEMENT,
+        expectedGeneration: 3,
+        idempotencyKey: "00000000-0000-4000-8000-000000000002",
+        reason: "The owner approved a temporary collection pause.",
+        targetCollectionMode: "disabled",
+        targetProvider: "stripe_tax",
+      },
+    });
+    const { res } = responseFixture();
+
+    await POST(fixture.req, res);
+
+    expect(syncQuotaMock).not.toHaveBeenCalled();
+    expect(taxRateReadinessMock).not.toHaveBeenCalled();
+    expect(stripeReadinessMock).not.toHaveBeenCalled();
+    expect(fixture.service.transitionTaxControl).toHaveBeenCalledWith({
+      acknowledgementVersion: TAX_CONTROL_ACKNOWLEDGEMENT_VERSION,
+      actorId: "user_admin",
+      expectedGeneration: 3,
+      idempotencyKey: "00000000-0000-4000-8000-000000000002",
+      reason: "The owner approved a temporary collection pause.",
+      targetCollectionMode: "disabled",
+      targetProvider: "stripe_tax",
+    });
+  });
+
+  it("requires the exact versioned acknowledgement before disabling tax", async () => {
+    const fixture = requestFixture({
+      body: {
+        acknowledgement: "I understand.",
+        expectedGeneration: 3,
+        idempotencyKey: "00000000-0000-4000-8000-000000000003",
+        reason: "The owner approved a temporary collection pause.",
+        targetCollectionMode: "disabled",
+        targetProvider: "stripe_tax",
+      },
+    });
+    const { res } = responseFixture();
+
+    await expect(POST(fixture.req, res)).rejects.toThrow(
+      "exact acknowledgement",
+    );
+    expect(fixture.resolve).not.toHaveBeenCalled();
   });
 });

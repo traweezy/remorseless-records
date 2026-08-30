@@ -13,6 +13,7 @@ import type { TaxReportPeriod } from "../../../lib/tax-reporting/periods";
 import type {
   TaxDestinationSummary,
   TaxRecord,
+  TaxRecordCollectionMode,
   TaxRecordProvider,
   TaxRecordQuality,
   TaxRecordType,
@@ -21,6 +22,7 @@ import type {
 import { requestAdminJson } from "../../lib/admin-request";
 
 export type TaxRecordFilters = {
+  collectionMode: "all" | TaxRecordCollectionMode;
   limit: number;
   page: number;
   provider: "all" | TaxRecordProvider;
@@ -33,6 +35,7 @@ export type TaxRecordsReport = {
   destinations: TaxDestinationSummary[];
   filingState: TaxFilingState;
   filters: {
+    collectionModes: TaxRecordCollectionMode[];
     currencies: string[];
     providers: TaxRecordProvider[];
     states: string[];
@@ -70,15 +73,17 @@ const nullableTextSchema = z.string().min(1).nullable();
 const taxRecordProviderSchema = z.enum([
   "legacy",
   "mixed",
+  "not_applicable",
   "stripe_tax",
   "taxrate_io",
   "unknown",
 ]);
-const taxRecordQualitySchema = z.enum([
-  "complete",
-  "incomplete",
-  "review",
+const taxRecordCollectionModeSchema = z.enum([
+  "collect",
+  "disabled",
+  "unknown",
 ]);
+const taxRecordQualitySchema = z.enum(["complete", "incomplete", "review"]);
 const taxRecordTypeSchema = z.enum(["refund", "sale"]);
 
 const destinationSchema = z.object({
@@ -92,6 +97,7 @@ const destinationSchema = z.object({
 });
 
 const taxRecordSchema: z.ZodType<TaxRecord> = z.object({
+  collectionMode: taxRecordCollectionModeSchema,
   currencyCode: currencyCodeSchema,
   destination: destinationSchema,
   displayId: z.number().int().nonnegative(),
@@ -115,6 +121,7 @@ const taxRecordSchema: z.ZodType<TaxRecord> = z.object({
   taxRatePercent: decimalSchema.nullable(),
   total: decimalSchema,
   type: taxRecordTypeSchema,
+  unclassifiedSales: decimalSchema,
 });
 
 const taxDestinationSummarySchema: z.ZodType<TaxDestinationSummary> = z.object({
@@ -129,11 +136,13 @@ const taxDestinationSummarySchema: z.ZodType<TaxDestinationSummary> = z.object({
   taxCollected: decimalSchema,
   taxRatePercent: decimalSchema.nullable(),
   taxableSales: decimalSchema,
+  unclassifiedSales: decimalSchema,
 });
 
 const taxReportSummarySchema: z.ZodType<TaxReportSummary> = z.object({
   completeRecords: z.number().int().nonnegative(),
   currencyCode: currencyCodeSchema,
+  disabledRecordCount: z.number().int().nonnegative(),
   grossSales: decimalSchema,
   incompleteRecords: z.number().int().nonnegative(),
   netSales: decimalSchema,
@@ -148,12 +157,14 @@ const taxReportSummarySchema: z.ZodType<TaxReportSummary> = z.object({
   samePeriodRefundCount: z.number().int().nonnegative(),
   taxCollected: decimalSchema,
   taxableSales: decimalSchema,
+  unclassifiedSales: decimalSchema,
 });
 
 export const taxRecordsReportSchema: z.ZodType<TaxRecordsReport> = z.object({
   destinations: z.array(taxDestinationSummarySchema),
   filingState: z.enum(TAX_FILING_STATES),
   filters: z.object({
+    collectionModes: z.array(taxRecordCollectionModeSchema),
     currencies: z.array(currencyCodeSchema),
     providers: z.array(taxRecordProviderSchema),
     states: z.array(z.string().min(1)),
@@ -192,6 +203,7 @@ const queryParameters = ({
   filters,
   period,
 }: TaxRecordsQueryInput) => ({
+  collection_mode: filters.collectionMode,
   end: period.end,
   filing_state: filingState,
   limit: filters.limit,

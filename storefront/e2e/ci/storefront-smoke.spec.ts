@@ -251,6 +251,23 @@ const expectVisibleInteractiveTargets = async (page: Page): Promise<void> => {
   expect(offenders).toEqual([])
 }
 
+const rejectNonEssentialCookies = async (page: Page): Promise<void> => {
+  const reject = page.getByRole("button", { name: "Reject non-essential" })
+  const appeared = await reject
+    .waitFor({ state: "visible", timeout: 3_000 })
+    .then(
+      () => true,
+      () => false
+    )
+
+  if (!appeared) {
+    return
+  }
+
+  await reject.click()
+  await expect(reject).toBeHidden()
+}
+
 test("homepage hydrates every curated shelf without client errors", async ({
   page,
 }) => {
@@ -332,15 +349,10 @@ test("homepage hydrates every curated shelf without client errors", async ({
 test("visible interactive controls consistently use pointer cursors", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "networkidle" })
+  await page.goto("/", { waitUntil: "domcontentloaded" })
   await expectVisibleInteractivePointers(page)
 
-  const rejectCookies = page.getByRole("button", {
-    name: "Reject non-essential",
-  })
-  if (await rejectCookies.isVisible()) {
-    await rejectCookies.click()
-  }
+  await rejectNonEssentialCookies(page)
 
   const openNavigation = page.getByRole("button", {
     name: "Open navigation",
@@ -351,13 +363,13 @@ test("visible interactive controls consistently use pointer cursors", async ({
     await page.getByRole("button", { name: "Close navigation" }).click()
   }
 
-  await page.goto("/catalog", { waitUntil: "networkidle" })
+  await page.goto("/catalog", { waitUntil: "domcontentloaded" })
   await expectVisibleInteractivePointers(page)
   await page.getByRole("combobox", { name: "Sort products" }).click()
   await expectVisibleInteractivePointers(page)
   await page.keyboard.press("Escape")
 
-  await page.goto("/discography", { waitUntil: "networkidle" })
+  await page.goto("/discography", { waitUntil: "domcontentloaded" })
   await expectVisibleInteractivePointers(page)
   const mobileDiscographyFilters = page.getByRole("button", {
     name: /^Show filters/,
@@ -378,10 +390,10 @@ test("visible interactive controls consistently use pointer cursors", async ({
     page.getByRole("combobox", { name: "Sort discography" })
   ).toContainText("Catalog # high–low")
 
-  await page.goto("/contact", { waitUntil: "networkidle" })
+  await page.goto("/contact", { waitUntil: "domcontentloaded" })
   await expectVisibleInteractivePointers(page)
 
-  await page.goto("/cookies", { waitUntil: "networkidle" })
+  await page.goto("/cookies", { waitUntil: "domcontentloaded" })
   await expectVisibleInteractivePointers(page)
 })
 
@@ -467,13 +479,8 @@ test("cart drawer stays usable and contained on mobile devices", async ({
     })
   })
 
-  await page.goto("/", { waitUntil: "networkidle" })
-  const rejectCookies = page.getByRole("button", {
-    name: "Reject non-essential",
-  })
-  if (await rejectCookies.isVisible()) {
-    await rejectCookies.click()
-  }
+  await page.goto("/", { waitUntil: "domcontentloaded" })
+  await rejectNonEssentialCookies(page)
 
   await page.getByRole("button", { name: "Open cart" }).click()
   const drawer = page.getByRole("dialog", { name: "Shopping cart" })
@@ -631,13 +638,8 @@ test("adding from quick shop confirms in place without opening the cart", async 
     })
   })
 
-  await page.goto("/catalog", { waitUntil: "networkidle" })
-  const rejectCookies = page.getByRole("button", {
-    name: "Reject non-essential",
-  })
-  if (await rejectCookies.isVisible()) {
-    await rejectCookies.click()
-  }
+  await page.goto("/catalog", { waitUntil: "domcontentloaded" })
+  await rejectNonEssentialCookies(page)
 
   const search = page.getByRole("searchbox", {
     name: "Search catalog by product or artist name",
@@ -704,15 +706,12 @@ test("catalog filters stay stable and combine predictably", async ({
     })
   })
 
-  const response = await page.goto("/catalog", { waitUntil: "networkidle" })
+  const response = await page.goto("/catalog", {
+    waitUntil: "domcontentloaded",
+  })
   expect(response?.status()).toBeLessThan(400)
 
-  const rejectCookies = page.getByRole("button", {
-    name: "Reject non-essential",
-  })
-  if (await rejectCookies.isVisible()) {
-    await rejectCookies.click()
-  }
+  await rejectNonEssentialCookies(page)
 
   const filterTrigger = page.getByRole("button", { name: /^Show filters/ })
   const filterTriggerBounds = await filterTrigger.boundingBox()
@@ -880,13 +879,8 @@ test("desktop filters preserve position while results refresh", async ({
     })
   })
 
-  await page.goto("/catalog", { waitUntil: "networkidle" })
-  const rejectCookies = page.getByRole("button", {
-    name: "Reject non-essential",
-  })
-  if (await rejectCookies.isVisible()) {
-    await rejectCookies.click()
-  }
+  await page.goto("/catalog", { waitUntil: "domcontentloaded" })
+  await rejectNonEssentialCookies(page)
 
   const sidebar = page.getByTestId("catalog-desktop-filters")
   await expect(sidebar).toBeVisible()
@@ -948,15 +942,12 @@ test("catalog loads the next result window before the end is reached", async ({
     })
   })
 
-  const response = await page.goto("/catalog", { waitUntil: "networkidle" })
+  const response = await page.goto("/catalog", {
+    waitUntil: "domcontentloaded",
+  })
   expect(response?.status()).toBeLessThan(400)
 
-  const rejectCookies = page.getByRole("button", {
-    name: "Reject non-essential",
-  })
-  if (await rejectCookies.isVisible()) {
-    await rejectCookies.click()
-  }
+  await rejectNonEssentialCookies(page)
 
   await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0)
 
@@ -992,7 +983,7 @@ for (const path of routes) {
   test(`${path} stays within the emulated mobile viewport`, async ({
     page,
   }) => {
-    const response = await page.goto(path, { waitUntil: "networkidle" })
+    const response = await page.goto(path, { waitUntil: "domcontentloaded" })
     expect(response?.status()).toBeLessThan(400)
 
     await expect(page.getByRole("banner")).toBeVisible()
@@ -1028,7 +1019,7 @@ test("discography header precedes every desktop row", async ({
   test.skip(!testInfo.project.name.startsWith("Desktop"))
 
   const response = await page.goto("/discography", {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
   })
   expect(response?.status()).toBeLessThan(400)
 
@@ -1100,6 +1091,7 @@ test("checkout remains accessible and contained with device emulation", async ({
           },
         ],
         totals: {
+          taxCollectionMode: "collect",
           currencyCode: "usd",
           subtotal: 20 * checkoutQuantity,
           discountTotal: 0,
@@ -1261,16 +1253,11 @@ test("checkout remains accessible and contained with device emulation", async ({
   })
 
   const response = await page.goto("/checkout", {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
   })
   expect(response?.status()).toBeLessThan(400)
 
-  const rejectCookies = page.getByRole("button", {
-    name: "Reject non-essential",
-  })
-  if (await rejectCookies.isVisible()) {
-    await rejectCookies.click()
-  }
+  await rejectNonEssentialCookies(page)
 
   await expect(
     page.getByRole("heading", { name: "Finish your order" })
@@ -1399,6 +1386,7 @@ test("checkout remains accessible after confirmation", async ({
           },
           deliveryMethod: "Standard",
           totals: {
+            taxCollectionMode: "collect",
             currencyCode: "usd",
             subtotal: 20,
             discountTotal: 0,
@@ -1412,16 +1400,11 @@ test("checkout remains accessible after confirmation", async ({
   })
 
   const response = await page.goto("/checkout/confirmation", {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
   })
   expect(response?.status()).toBeLessThan(400)
 
-  const rejectCookies = page.getByRole("button", {
-    name: "Reject non-essential",
-  })
-  if (await rejectCookies.isVisible()) {
-    await rejectCookies.click()
-  }
+  await rejectNonEssentialCookies(page)
 
   await expect(page.getByRole("heading", { name: "Thank you" })).toBeVisible()
   await expect(page.getByText("Order #1042", { exact: false })).toBeVisible()

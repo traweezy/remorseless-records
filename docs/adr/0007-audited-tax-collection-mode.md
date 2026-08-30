@@ -1,6 +1,6 @@
 # ADR 0007: Model tax collection as an audited operating mode
 
-- Status: accepted; implementation pending
+- Status: accepted; implemented locally, staging acceptance pending
 - Date: 2026-08-30
 - Scope: tax calculation, checkout, payment binding, evidence, reporting, and
   merchant controls
@@ -161,6 +161,45 @@ The separate mode preserves provider configuration, prevents ambiguous
 historical evidence, and makes external-call and reporting behavior testable.
 It also preserves the rule that provider failure can never silently become zero
 tax.
+
+## Implementation record
+
+The accepted design is implemented through expand-only migration
+`Migration20260830150000` and the existing Tax Control singleton. The durable
+control, immutable transition audit, quote evidence, cart context, tax-line
+identity, Stripe PaymentIntent metadata, and filing projection now all carry
+the collection mode explicitly.
+
+The disabled calculator emits a zero line for every item and shipping subject
+before any TaxRate.io, Stripe Tax, Redis quota, or tax-cache path can run.
+Payment binding still validates the Medusa and Stripe payment amount, currency,
+cart identity, fingerprint, generation, and mode, but rejects any attached
+Stripe Tax hook for a disabled decision. Lifecycle reconciliation records
+payment/refund/dispute state without requesting a tax transaction or reversal.
+
+Admin exposes the three accepted choices with a reason, exact typed
+acknowledgement for disabling, frozen-checkout impact, provider readiness for
+re-enablement, response-loss reconciliation, and mode-aware immutable history.
+Checkout and receipts say **Tax not collected**. Tax Records assigns the gross
+amount to **Sales pending tax review**, exposes a collection-decision filter,
+and exports `collection_mode` plus
+`unclassified_sales_pending_review`; it never promotes disabled sales to
+exempt or nontaxable.
+
+Local unit, integration, concurrency, payment, refund, reporting,
+no-provider-call, strict type, lint, Storefront projection/receipt, production
+build, repository QA, dependency-policy, and peer checks cover the implemented
+paths. A real graphical Chromium pass exercised the collecting state, completed
+disable prompt, and resulting disabled state at 3,200 x 1,280 without horizontal
+overflow. Scoped axe analysis of the project-owned workspace reported zero
+violations or incomplete checks. The staging-configured Storefront production
+build and full local Playwright matrix passed 53 tests with two intentional
+skips and zero failures across desktop checkout, Pixel 7, and iPhone 15 Pro.
+Those tests use explicit rendered-state assertions after `domcontentloaded` so
+background cache and telemetry activity cannot deadlock the release gate.
+Database migration rehearsal, re-enable browser coverage, the no-provider-call
+staging trace, exact-SHA CI, and Railway acceptance remain release evidence
+rather than assumptions in this ADR.
 
 ## References
 

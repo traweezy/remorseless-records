@@ -6,6 +6,7 @@ import type { TaxReportPeriod } from "./periods";
 import type {
   TaxDestinationSummary,
   TaxRecord,
+  TaxRecordCollectionMode,
   TaxRecordDestination,
   TaxRecordProvider,
   TaxRecordQuality,
@@ -41,7 +42,9 @@ const TRACKED_STATE_NAMES = new Map([
 
 const stateCode = (value: unknown): string | null => {
   const normalized = text(value)?.toUpperCase();
-  return normalized ? (TRACKED_STATE_NAMES.get(normalized) ?? normalized) : null;
+  return normalized
+    ? (TRACKED_STATE_NAMES.get(normalized) ?? normalized)
+    : null;
 };
 
 const decimal = (value: unknown): Decimal => {
@@ -57,9 +60,7 @@ const decimal = (value: unknown): Decimal => {
     }
     return converted;
   } catch {
-    throw new Error(
-      "Tax projection encountered an invalid monetary value.",
-    );
+    throw new Error("Tax projection encountered an invalid monetary value.");
   }
 };
 
@@ -79,7 +80,7 @@ const timestamp = (value: unknown): string | null => {
 const inPeriod = (value: string, period: TaxReportPeriod): boolean =>
   value >= period.startInclusive && value < period.endExclusive;
 
-const unique = <T,>(values: T[]): T[] => [...new Set(values)];
+const unique = <T>(values: T[]): T[] => [...new Set(values)];
 
 const taxLines = (subject: UnknownRecord): UnknownRecord[] =>
   records(subject.tax_lines);
@@ -93,6 +94,7 @@ const providerIdentity = (
   order: UnknownRecord,
 ): {
   calculationId: string | null;
+  collectionMode: TaxRecordCollectionMode;
   generation: number | null;
   provider: TaxRecordProvider;
 } => {
@@ -100,6 +102,7 @@ const providerIdentity = (
   if (!lines.length) {
     return {
       calculationId: null,
+      collectionMode: "unknown",
       generation: null,
       provider: "unknown",
     };
@@ -118,6 +121,7 @@ const providerIdentity = (
     );
     return {
       calculationId: null,
+      collectionMode: isLegacy ? "collect" : "unknown",
       generation: null,
       provider: isLegacy ? "legacy" : "unknown",
     };
@@ -125,25 +129,48 @@ const providerIdentity = (
   if (controlled.length !== lines.length) {
     return {
       calculationId: null,
+      collectionMode: "unknown",
       generation: null,
       provider: "mixed",
     };
   }
 
-  const providers = unique(controlled.map((identity) => identity.provider));
-  const generations = unique(
-    controlled.map((identity) => identity.generation),
+  const collectionModes = unique(
+    controlled.map((identity) => identity.collectionMode),
   );
+  const providers = unique(controlled.map((identity) => identity.provider));
+  const generations = unique(controlled.map((identity) => identity.generation));
   const calculationIds = unique(
     controlled.map((identity) => identity.calculationId),
   );
   if (
+    collectionModes.length !== 1 ||
     providers.length !== 1 ||
     generations.length !== 1 ||
     calculationIds.length !== 1
   ) {
     return {
       calculationId: null,
+      collectionMode: "unknown",
+      generation: null,
+      provider: "mixed",
+    };
+  }
+
+  const collectionMode = collectionModes[0]!;
+  if (collectionMode === "disabled") {
+    return {
+      calculationId: null,
+      collectionMode,
+      generation: generations[0] ?? null,
+      provider: "not_applicable",
+    };
+  }
+  const provider = providers[0];
+  if (provider !== "stripe_tax" && provider !== "taxrate_io") {
+    return {
+      calculationId: null,
+      collectionMode: "unknown",
       generation: null,
       provider: "mixed",
     };
@@ -151,8 +178,9 @@ const providerIdentity = (
 
   return {
     calculationId: calculationIds[0] ?? null,
+    collectionMode,
     generation: generations[0] ?? null,
-    provider: providers[0]!,
+    provider,
   };
 };
 
@@ -222,11 +250,7 @@ const originalAmounts = (
     "original_order_total",
   );
   const explicitGross = MathBN.add(
-    decimalField(
-      order,
-      "raw_original_item_subtotal",
-      "original_item_subtotal",
-    ),
+    decimalField(order, "raw_original_item_subtotal", "original_item_subtotal"),
     decimalField(
       order,
       "raw_original_shipping_subtotal",
@@ -271,10 +295,7 @@ const originalAmounts = (
 
   const greater = (left: Decimal, right: Decimal): Decimal =>
     right.gt(left) ? right : left;
-  const gross = [orderGross, explicitGross, subjectGross].reduce(
-    greater,
-    ZERO,
-  );
+  const gross = [orderGross, explicitGross, subjectGross].reduce(greater, ZERO);
   const tax = [orderTax, explicitTax, subjectTax].reduce(greater, ZERO);
   const total = [orderTotal, summaryTotal, MathBN.add(gross, tax)].reduce(
     greater,
@@ -295,11 +316,13 @@ const effectiveRate = (tax: Decimal, taxable: Decimal): string | null =>
     : null;
 
 const qualityFor = ({
+  collectionMode,
   destination,
   isEstimatedRefund,
   provider,
   tax,
 }: {
+  collectionMode: TaxRecordCollectionMode;
   destination: TaxRecordDestination;
   isEstimatedRefund: boolean;
   provider: TaxRecordProvider;
@@ -325,7 +348,20 @@ const qualityFor = ({
     incomplete = true;
   }
   if (provider === "legacy") {
-    issues.push("Legacy tax lines do not include provider-generation evidence.");
+    issues.push(
+      "Legacy tax lines do not include provider-generation evidence.",
+    );
+  }
+  if (collectionMode === "disabled") {
+    issues.push(
+      "Tax was not collected for this order; confirm the operating decision and filing treatment.",
+    );
+    if (tax.gt(0)) {
+      issues.push(
+        "Disabled collection evidence contains a nonzero tax amount.",
+      );
+      incomplete = true;
+    }
   }
   if (provider === "stripe_tax" && !destination.jurisdictionLevel) {
     issues.push(
@@ -403,11 +439,7 @@ const collectionCapturedTotal = (order: UnknownRecord): Decimal =>
     (total, collection) =>
       MathBN.add(
         total,
-        decimalField(
-          collection,
-          "raw_captured_amount",
-          "captured_amount",
-        ),
+        decimalField(collection, "raw_captured_amount", "captured_amount"),
       ),
     ZERO,
   );
@@ -453,9 +485,7 @@ const paymentCaptureTimestamp = (order: UnknownRecord): string | null => {
   const orderPayments = payments(order);
   const captureTimestamps = orderPayments
     .flatMap(captures)
-    .filter((capture) =>
-      decimalField(capture, "raw_amount", "amount").gt(0),
-    )
+    .filter((capture) => decimalField(capture, "raw_amount", "amount").gt(0))
     .map((capture) => timestamp(capture.created_at));
   const paymentTimestamps = orderPayments.map((payment) =>
     timestamp(payment.captured_at),
@@ -512,6 +542,7 @@ const saleRecord = (
     return null;
   }
   const quality = qualityFor({
+    collectionMode: base.identity.collectionMode,
     destination: base.destination,
     isEstimatedRefund: false,
     provider: base.identity.provider,
@@ -539,6 +570,7 @@ const saleRecord = (
   }
 
   return {
+    collectionMode: base.identity.collectionMode,
     currencyCode: base.currencyCode,
     destination: base.destination,
     displayId: base.displayId,
@@ -546,7 +578,10 @@ const saleRecord = (
     grossSales: money(amounts.gross),
     id: `sale:${base.orderId}`,
     issues: quality.issues,
-    nontaxableSales: money(MathBN.sub(amounts.gross, amounts.taxable)),
+    nontaxableSales:
+      base.identity.collectionMode === "disabled"
+        ? money(ZERO)
+        : money(MathBN.sub(amounts.gross, amounts.taxable)),
     occurredAt,
     orderId: base.orderId,
     provider: base.identity.provider,
@@ -555,11 +590,18 @@ const saleRecord = (
     refundId: null,
     refundTaxMethod: null,
     taxAmount: money(amounts.tax),
-    taxableSales: money(amounts.taxable),
+    taxableSales:
+      base.identity.collectionMode === "disabled"
+        ? money(ZERO)
+        : money(amounts.taxable),
     taxCalculationId: base.identity.calculationId,
     taxRatePercent: effectiveRate(amounts.tax, amounts.taxable),
     total: money(amounts.total),
     type: "sale",
+    unclassifiedSales:
+      base.identity.collectionMode === "disabled"
+        ? money(amounts.gross)
+        : money(ZERO),
   };
 };
 
@@ -604,6 +646,7 @@ const refundRecords = (
     const taxable = MathBN.mult(amounts.taxable, ratio);
     const isEstimated = !refundTotal.eq(amounts.total);
     const quality = qualityFor({
+      collectionMode: base.identity.collectionMode,
       destination: base.destination,
       isEstimatedRefund: isEstimated,
       provider: base.identity.provider,
@@ -628,7 +671,9 @@ const refundRecords = (
       refundCreditTiming = "same_period";
     }
     if (cumulativeRefundExceedsOrder) {
-      quality.issues.push("Cumulative refunds exceed the original order total.");
+      quality.issues.push(
+        "Cumulative refunds exceed the original order total.",
+      );
       quality.quality = "incomplete";
     }
     if (base.currencyCode !== "usd") {
@@ -640,6 +685,7 @@ const refundRecords = (
 
     return [
       {
+        collectionMode: base.identity.collectionMode,
         currencyCode: base.currencyCode,
         destination: base.destination,
         displayId: base.displayId,
@@ -647,7 +693,10 @@ const refundRecords = (
         grossSales: money(gross),
         id: `refund:${refundId}`,
         issues: quality.issues,
-        nontaxableSales: money(MathBN.sub(gross, taxable)),
+        nontaxableSales:
+          base.identity.collectionMode === "disabled"
+            ? money(ZERO)
+            : money(MathBN.sub(gross, taxable)),
         occurredAt,
         orderId: base.orderId,
         provider: base.identity.provider,
@@ -656,11 +705,18 @@ const refundRecords = (
         refundId,
         refundTaxMethod: isEstimated ? "estimated" : "exact",
         taxAmount: money(tax),
-        taxableSales: money(taxable),
+        taxableSales:
+          base.identity.collectionMode === "disabled"
+            ? money(ZERO)
+            : money(taxable),
         taxCalculationId: base.identity.calculationId,
         taxRatePercent: effectiveRate(tax, taxable),
         total: money(refundTotal),
         type: "refund" as const,
+        unclassifiedSales:
+          base.identity.collectionMode === "disabled"
+            ? money(gross)
+            : money(ZERO),
       },
     ];
   });
@@ -700,6 +756,9 @@ export const summarizeTaxRecords = (
         (record) => record.quality === "complete",
       ).length,
       currencyCode,
+      disabledRecordCount: currencyRecords.filter(
+        (record) => record.collectionMode === "disabled",
+      ).length,
       grossSales,
       incompleteRecords: currencyRecords.filter(
         (record) => record.quality === "incomplete",
@@ -728,6 +787,10 @@ export const summarizeTaxRecords = (
         sum(sales.map((record) => record.taxableSales)),
         sum(refunds.map((record) => record.taxableSales)),
       ),
+      unclassifiedSales: subtractMoney(
+        sum(sales.map((record) => record.unclassifiedSales)),
+        sum(refunds.map((record) => record.unclassifiedSales)),
+      ),
     };
   });
 };
@@ -735,6 +798,7 @@ export const summarizeTaxRecords = (
 const destinationKey = (record: TaxRecord): string =>
   JSON.stringify([
     record.currencyCode,
+    record.collectionMode,
     record.destination.countryCode,
     record.destination.stateCode,
     record.destination.county,
@@ -762,8 +826,7 @@ export const summarizeDestinations = (
       const sum = (field: keyof TaxRecord, values: TaxRecord[]): string =>
         money(
           values.reduce(
-            (total, record) =>
-              MathBN.add(total, String(record[field] ?? "0")),
+            (total, record) => MathBN.add(total, String(record[field] ?? "0")),
             ZERO,
           ),
         );
@@ -797,6 +860,10 @@ export const summarizeDestinations = (
           sum("taxableSales", refunds),
         ),
         taxRatePercent: first.taxRatePercent,
+        unclassifiedSales: subtractMoney(
+          sum("unclassifiedSales", sales),
+          sum("unclassifiedSales", refunds),
+        ),
       };
     })
     .sort((left, right) =>
@@ -886,9 +953,7 @@ export const diagnoseTaxProjection = ({
     }),
     ordersWithOccurredAt: count((order) => occurredAt(order) !== null),
     ordersWithOrderId: count((order) => text(order.id) !== null),
-    ordersWithPositiveCaptureTotal: count((order) =>
-      captureTotal(order).gt(0),
-    ),
+    ordersWithPositiveCaptureTotal: count((order) => captureTotal(order).gt(0)),
     ordersWithPositiveCapturedPaymentTotal: count((order) =>
       capturedPaymentTotal(order).gt(0),
     ),

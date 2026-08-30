@@ -90,9 +90,7 @@ const clientWith = ({
 
 const readerWith = (
   client: StripeEvidenceClient,
-  overrides: Partial<
-    Parameters<typeof createStripeEvidenceReader>[0]
-  > = {},
+  overrides: Partial<Parameters<typeof createStripeEvidenceReader>[0]> = {},
 ) =>
   createStripeEvidenceReader({
     client,
@@ -222,6 +220,18 @@ describe("Stripe evidence safe-read client", () => {
     expect(client.tax.associations.find).not.toHaveBeenCalled();
   });
 
+  it("skips the association read when tax collection was disabled", async () => {
+    const client = clientWith();
+
+    await expect(
+      readerWith(client).readEvidence({
+        paymentIntentId: "pi_test",
+        provider: null,
+      }),
+    ).resolves.toMatchObject({ association: null });
+    expect(client.tax.associations.find).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["retrieve_intent", "transport", { type: "StripeConnectionError" }],
     ["find_association", "status", { statusCode: 503 }],
@@ -302,9 +312,7 @@ describe("Stripe evidence safe-read client", () => {
       readerWith(clientWith({ intentRetrieve }), { onRetry }).readIntent(
         "pi_test",
       ),
-    ).rejects.toEqual(
-      new StripeEvidenceClientError("provider_unavailable"),
-    );
+    ).rejects.toEqual(new StripeEvidenceClientError("provider_unavailable"));
     expect(intentRetrieve).toHaveBeenCalledTimes(1);
     expect(onRetry).not.toHaveBeenCalled();
   });
@@ -348,9 +356,7 @@ describe("Stripe evidence safe-read client", () => {
     { ...taxAssociation, payment_intent: "pi_other" },
     {
       ...taxAssociation,
-      tax_transaction_attempts: [
-        { source: "pi_test", status: "committed" },
-      ],
+      tax_transaction_attempts: [{ source: "pi_test", status: "committed" }],
     },
     {
       ...taxAssociation,

@@ -10,6 +10,7 @@ const period = parseTaxReportPeriod({
 describe("tax reporting CSV", () => {
   it("uses signed refund rows and neutralizes spreadsheet formulas", () => {
     const record: TaxRecord = {
+      collectionMode: "collect",
       currencyCode: "usd",
       destination: {
         city: "=cmd()",
@@ -39,34 +40,40 @@ describe("tax reporting CSV", () => {
       taxRatePercent: "8.000000",
       total: "5.4000",
       type: "refund",
+      unclassifiedSales: "0.0000",
     };
     const csv = taxTransactionsCsv({
       filingState: "NY",
       generatedAt: "2026-07-21T12:00:00.000Z",
       period,
       records: [record],
-      summaries: [{
-        completeRecords: 0,
-        currencyCode: "usd",
-        grossSales: "0.0000",
-        incompleteRecords: 0,
-        netSales: "-5.0000",
-        netTax: "-0.4000",
-        nontaxableSales: "0.0000",
-        orderCount: 0,
-        priorPeriodRefundCount: 1,
-        refundCount: 1,
-        refundedSales: "5.0000",
-        refundedTax: "0.4000",
-        reviewRecords: 1,
-        samePeriodRefundCount: 0,
-        taxCollected: "0.0000",
-        taxableSales: "-5.0000",
-      }],
+      summaries: [
+        {
+          completeRecords: 0,
+          currencyCode: "usd",
+          disabledRecordCount: 0,
+          grossSales: "0.0000",
+          incompleteRecords: 0,
+          netSales: "-5.0000",
+          netTax: "-0.4000",
+          nontaxableSales: "0.0000",
+          orderCount: 0,
+          priorPeriodRefundCount: 1,
+          refundCount: 1,
+          refundedSales: "5.0000",
+          refundedTax: "0.4000",
+          reviewRecords: 1,
+          samePeriodRefundCount: 0,
+          taxCollected: "0.0000",
+          taxableSales: "-5.0000",
+          unclassifiedSales: "0.0000",
+        },
+      ],
     });
 
     expect(csv.startsWith("\uFEFFrecord_type")).toBe(true);
-    expect(csv).toContain("refund,NY,'=cmd() 14201 — verify locality");
+    expect(csv).toContain("refund,collect,NY,'=cmd() 14201 — verify locality");
+    expect(csv).toContain("unclassified_sales_pending_review");
     expect(csv).toContain(",-5.0000,");
     expect(csv).toContain("'=cmd()");
     expect(csv).toContain("'+review");
@@ -78,6 +85,7 @@ describe("tax reporting CSV", () => {
       {
         completeRecords: 1,
         currencyCode: "eur",
+        disabledRecordCount: 0,
         grossSales: "10.0000",
         incompleteRecords: 0,
         netSales: "10.0000",
@@ -92,6 +100,7 @@ describe("tax reporting CSV", () => {
         samePeriodRefundCount: 0,
         taxCollected: "0.8000",
         taxableSales: "10.0000",
+        unclassifiedSales: "0.0000",
       },
     ];
     const csv = taxDestinationsCsv({
@@ -114,6 +123,7 @@ describe("tax reporting CSV", () => {
           taxCollected: "0.8000",
           taxableSales: "10.0000",
           taxRatePercent: "8.000000",
+          unclassifiedSales: "0.0000",
         },
       ],
       filingState: "ALL",
@@ -148,6 +158,7 @@ describe("tax reporting CSV", () => {
           taxCollected: "0.8000",
           taxableSales: "10.0000",
           taxRatePercent: "8.000000",
+          unclassifiedSales: "0.0000",
         },
       ],
       filingState: "PA",
@@ -156,9 +167,7 @@ describe("tax reporting CSV", () => {
       summaries: [],
     });
 
-    expect(csv).toContain(
-      "filing_state,filing_bucket,country_code,state_code",
-    );
+    expect(csv).toContain("filing_state,filing_bucket,country_code,state_code");
     expect(csv).toContain("PA,Philadelphia local,US,PA");
     expect(csv).toContain("filing_state,PA");
   });

@@ -239,7 +239,11 @@ export const CheckoutConfirmation = memo(() => {
                   <dd>{format(receipt.totals.shippingTotal)}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Tax</dt>
+                  <dt className="text-muted-foreground">
+                    {receipt.totals.taxCollectionMode === "disabled"
+                      ? "Tax not collected"
+                      : "Tax"}
+                  </dt>
                   <dd>{format(receipt.totals.taxTotal)}</dd>
                 </div>
                 <div className="flex justify-between gap-4 border-t border-border/60 pt-3 text-base font-semibold text-foreground">

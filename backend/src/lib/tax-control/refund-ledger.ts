@@ -5,13 +5,14 @@ type UnknownRecord = Record<string, unknown>;
 export type RefundEvidenceRecord = {
   association_status: string | null;
   cart_id: string;
+  collection_mode: "collect" | "disabled";
   currency_code: string;
   id: string;
   last_verified_at: Date | string | null;
   metadata: unknown;
   order_id: string | null;
   payment_intent_id: string;
-  provider: "stripe_tax" | "taxrate_io";
+  provider: "stripe_tax" | "taxrate_io" | null;
   status: TaxQuoteEvidenceStatus;
 };
 

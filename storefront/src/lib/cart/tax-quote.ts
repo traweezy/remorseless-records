@@ -1,12 +1,14 @@
 type UnknownRecord = Record<string, unknown>
 
 export type TaxProviderName = "stripe_tax" | "taxrate_io"
+export type TaxCollectionMode = "collect" | "disabled"
 
 export type TaxQuoteIdentity = {
   calculationId: string | null
+  collectionMode: TaxCollectionMode
   fingerprint: string
   generation: number
-  provider: TaxProviderName
+  provider: TaxProviderName | null
   taxRatePercent: number | null
 }
 
@@ -33,13 +35,18 @@ const parseCode = (
     return null
   }
 
-  const [prefix, provider, generationValue, calculationValue, ...rest] =
+  const [prefix, identity, generationValue, calculationValue, ...rest] =
     value.split(":")
   const generation = Number(generationValue?.slice(1))
+  const collectionMode: TaxCollectionMode =
+    identity === "disabled" ? "disabled" : "collect"
+  const provider: TaxProviderName | null =
+    identity === "stripe_tax" || identity === "taxrate_io" ? identity : null
   if (
     rest.length ||
     prefix !== "rr_tax" ||
-    (provider !== "stripe_tax" && provider !== "taxrate_io") ||
+    (collectionMode === "collect" && provider === null) ||
+    (collectionMode === "disabled" && calculationValue !== "decision") ||
     !generationValue?.startsWith("g") ||
     !Number.isSafeInteger(generation) ||
     generation <= 0
@@ -48,11 +55,13 @@ const parseCode = (
   }
 
   const calculationId =
-    calculationValue && /^taxcalc_[A-Za-z0-9]+$/.test(calculationValue)
+    collectionMode === "collect" &&
+    calculationValue &&
+    /^taxcalc_[A-Za-z0-9]+$/.test(calculationValue)
       ? calculationValue
       : null
 
-  return { calculationId, generation, provider }
+  return { calculationId, collectionMode, generation, provider }
 }
 
 const taxSubjectsFrom = (cart: UnknownRecord): UnknownRecord[] =>
@@ -86,6 +95,7 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
   const identities = lines.map((line) => {
     const code = parseCode(line.code)
     const data = asRecord(line.data)
+    const collectionMode = text(data?.collection_mode) || "collect"
     const fingerprint = text(data?.fingerprint)
     const generation = Number(data?.generation)
     const provider = text(data?.provider)
@@ -93,13 +103,16 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
     const rate = Number(line.rate)
     if (
       !code ||
-      provider !== code.provider ||
+      collectionMode !== code.collectionMode ||
+      (code.collectionMode === "collect" && provider !== code.provider) ||
+      (code.collectionMode === "disabled" && provider !== "") ||
       !Number.isSafeInteger(generation) ||
       generation !== code.generation ||
       !/^[A-Za-z0-9_-]{32,128}$/.test(fingerprint) ||
       calculationId !== code.calculationId ||
       !Number.isFinite(rate) ||
-      rate < 0
+      rate < 0 ||
+      (code.collectionMode === "disabled" && rate !== 0)
     ) {
       throw new TaxQuoteIdentityError(
         "A cart tax line has incomplete or inconsistent quote data."
@@ -114,6 +127,7 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
   if (
     identities.some(
       (entry) =>
+        entry.collectionMode !== first.collectionMode ||
         entry.provider !== first.provider ||
         entry.generation !== first.generation ||
         entry.calculationId !== first.calculationId ||
@@ -124,14 +138,22 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
       "The cart contains tax lines from different quote generations."
     )
   }
-  if (first.provider === "stripe_tax" && !first.calculationId) {
+  if (
+    first.collectionMode === "collect" &&
+    first.provider === "stripe_tax" &&
+    !first.calculationId
+  ) {
     throw new TaxQuoteIdentityError(
       "The Stripe Tax calculation identity is unavailable."
     )
   }
 
   const rates = new Set(identities.map((entry) => entry.rate))
-  if (first.provider === "taxrate_io" && rates.size !== 1) {
+  if (
+    first.collectionMode === "collect" &&
+    first.provider === "taxrate_io" &&
+    rates.size !== 1
+  ) {
     throw new TaxQuoteIdentityError(
       "The TaxRate.io quote contains inconsistent rates."
     )
@@ -139,9 +161,13 @@ export const taxQuoteIdentityFromCart = (value: unknown): TaxQuoteIdentity => {
 
   return {
     calculationId: first.calculationId,
+    collectionMode: first.collectionMode,
     fingerprint: first.fingerprint,
     generation: first.generation,
     provider: first.provider,
-    taxRatePercent: first.provider === "taxrate_io" ? first.rate : null,
+    taxRatePercent:
+      first.collectionMode === "collect" && first.provider === "taxrate_io"
+        ? first.rate
+        : null,
   }
 }

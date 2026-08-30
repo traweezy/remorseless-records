@@ -49,6 +49,7 @@ describe("stripePaymentSessionData", () => {
         item_count: "5",
         medusa_cart_id: "cart_01",
         rr_tax_calculation_id: "taxcalc_01",
+        rr_tax_collection_mode: "collect",
         rr_tax_fingerprint: fingerprint,
         rr_tax_generation: "3",
         rr_tax_provider: "stripe_tax",
@@ -80,10 +81,41 @@ describe("stripePaymentSessionData", () => {
       })
     ).toMatchObject({
       metadata: {
+        rr_tax_collection_mode: "collect",
         rr_tax_fingerprint: fingerprint,
         rr_tax_generation: "4",
         rr_tax_provider: "taxrate_io",
         rr_tax_rate_percent: "7.125",
+      },
+    })
+  })
+
+  it("records disabled collection without provider or rate metadata", () => {
+    expect(
+      stripePaymentSessionData({
+        id: "cart_03",
+        items: [
+          {
+            quantity: 1,
+            tax_lines: [
+              {
+                code: "rr_tax:disabled:g5:decision",
+                data: {
+                  collection_mode: "disabled",
+                  fingerprint,
+                  generation: 5,
+                },
+                rate: 0,
+              },
+            ],
+          },
+        ],
+      })
+    ).toMatchObject({
+      metadata: {
+        rr_tax_collection_mode: "disabled",
+        rr_tax_fingerprint: fingerprint,
+        rr_tax_generation: "5",
       },
     })
   })

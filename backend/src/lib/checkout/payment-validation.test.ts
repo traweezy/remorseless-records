@@ -101,6 +101,52 @@ describe("checkout payment validation", () => {
     });
   });
 
+  it("accepts an explicit disabled-tax quote with bounded payment metadata", () => {
+    const base = validCart();
+    const disabledLine = {
+      code: "rr_tax:disabled:g4:decision",
+      data: {
+        collection_mode: "disabled",
+        fingerprint: taxFingerprint,
+        generation: 4,
+      },
+      rate: 0,
+    };
+    const cart = {
+      ...base,
+      items: base.items.map((item) => ({
+        ...item,
+        tax_lines: [disabledLine],
+      })),
+      payment_collection: {
+        ...base.payment_collection,
+        payment_sessions: base.payment_collection.payment_sessions.map(
+          (session) => ({
+            ...session,
+            data: {
+              ...session.data,
+              metadata: {
+                rr_tax_collection_mode: "disabled",
+                rr_tax_fingerprint: taxFingerprint,
+                rr_tax_generation: "4",
+              },
+            },
+          }),
+        ),
+      },
+      shipping_methods: base.shipping_methods.map((method) => ({
+        ...method,
+        tax_lines: [disabledLine],
+      })),
+    };
+
+    expect(validateCheckoutPayment(cart)).toEqual({
+      currencyCode: "usd",
+      paymentSessionStatus: "pending",
+      total: "24.99",
+    });
+  });
+
   it("accepts a zero-total cart without creating a Stripe session", () => {
     const cart = validCart();
     cart.total = 0;
@@ -138,21 +184,30 @@ describe("checkout payment validation", () => {
   });
 
   it.each([
-    ["cart amount", (cart: ReturnType<typeof validCart>) => {
-      cart.raw_total = { value: "25", precision: 20 };
-    }],
-    ["collection amount", (cart: ReturnType<typeof validCart>) => {
-      cart.payment_collection.raw_amount = {
-        value: "25",
-        precision: 20,
-      };
-    }],
-    ["session amount", (cart: ReturnType<typeof validCart>) => {
-      cart.payment_collection.payment_sessions[0]!.raw_amount = {
-        value: "25",
-        precision: 20,
-      };
-    }],
+    [
+      "cart amount",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.raw_total = { value: "25", precision: 20 };
+      },
+    ],
+    [
+      "collection amount",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.payment_collection.raw_amount = {
+          value: "25",
+          precision: 20,
+        };
+      },
+    ],
+    [
+      "session amount",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.payment_collection.payment_sessions[0]!.raw_amount = {
+          value: "25",
+          precision: 20,
+        };
+      },
+    ],
   ])("rejects a mismatched %s", (_label, mutate) => {
     const cart = validCart();
     mutate(cart);
@@ -218,15 +273,27 @@ describe("checkout payment validation", () => {
   });
 
   it.each([
-    ["missing contact", (cart: ReturnType<typeof validCart>) => {
-      cart.email = "";
-    }, "checkout_contact_missing"],
-    ["missing address", (cart: ReturnType<typeof validCart>) => {
-      cart.shipping_address.postal_code = "";
-    }, "checkout_address_missing"],
-    ["missing shipping", (cart: ReturnType<typeof validCart>) => {
-      cart.shipping_methods = [];
-    }, "checkout_shipping_missing"],
+    [
+      "missing contact",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.email = "";
+      },
+      "checkout_contact_missing",
+    ],
+    [
+      "missing address",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.shipping_address.postal_code = "";
+      },
+      "checkout_address_missing",
+    ],
+    [
+      "missing shipping",
+      (cart: ReturnType<typeof validCart>) => {
+        cart.shipping_methods = [];
+      },
+      "checkout_shipping_missing",
+    ],
   ] as const)("rejects %s", (_label, mutate, code) => {
     const cart = validCart();
     mutate(cart);
@@ -234,17 +301,15 @@ describe("checkout payment validation", () => {
     expectCode(cart, code);
   });
 
-  it.each([
-    Number.NaN,
-    Number.POSITIVE_INFINITY,
-    -1,
-    "not-money",
-  ])("rejects invalid money value %p", (amount) => {
-    const cart = validCart();
-    cart.raw_total = amount as never;
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, "not-money"])(
+    "rejects invalid money value %p",
+    (amount) => {
+      const cart = validCart();
+      cart.raw_total = amount as never;
 
-    expectCode(cart, "checkout_money_invalid");
-  });
+      expectCode(cart, "checkout_money_invalid");
+    },
+  );
 
   it.each(["0.001", "0.49", "1000000"])(
     "rejects a positive total outside Stripe's USD range: %s",

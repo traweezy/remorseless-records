@@ -1,11 +1,13 @@
-import {
-  queryOptions,
-  type QueryFunctionContext,
-} from "@tanstack/react-query";
+import { queryOptions, type QueryFunctionContext } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { requestAdminJson } from "../../lib/admin-request";
-import { providerNames, type ProviderName } from "./ui-state";
+import {
+  collectionModes,
+  providerNames,
+  type CollectionMode,
+  type ProviderName,
+} from "./ui-state";
 
 export type ReadinessCheck = {
   detail: string;
@@ -23,17 +25,21 @@ export type ProviderReadiness = {
 
 export type TaxControlSnapshot = {
   audits: Array<{
+    acknowledgementVersion: string;
     actorId: string;
     createdAt: string | null;
+    fromCollectionMode: CollectionMode;
     fromGeneration: number;
     fromProvider: ProviderName;
     id: string;
     reason: string;
+    toCollectionMode: CollectionMode;
     toGeneration: number;
     toProvider: ProviderName;
   }>;
   control: {
     activeProvider: ProviderName;
+    collectionMode: CollectionMode;
     generation: number;
     lastSwitchReason: string | null;
     lastSwitchedAt: string | null;
@@ -48,7 +54,7 @@ export type TaxControlSnapshot = {
       medusaRefundAmountMinor: number | null;
       orderId: string | null;
       paymentIntentId: string;
-      provider: ProviderName;
+      provider: ProviderName | null;
       status:
         | "association_failed"
         | "disputed"
@@ -72,6 +78,7 @@ export type TaxControlSnapshot = {
   };
   impact: {
     activityWindowDays: number;
+    frozenByCollectionMode: Record<CollectionMode, number>;
     frozenByProvider: Record<ProviderName, number>;
     paymentsFinalizing: number;
     preparedCheckouts: number;
@@ -96,18 +103,31 @@ export type TaxControlSnapshot = {
   };
 };
 
-export type SwitchTaxProviderInput = {
+type TaxControlTransitionBase = {
   expectedGeneration: number;
   idempotencyKey: string;
   reason: string;
   targetProvider: ProviderName;
 };
 
+export type TaxControlTransitionInput = TaxControlTransitionBase &
+  (
+    | {
+        acknowledgement: string;
+        targetCollectionMode: "disabled";
+      }
+    | {
+        acknowledgement?: never;
+        targetCollectionMode: "collect";
+      }
+  );
+
 const nonEmptyTextSchema = z.string().min(1);
 const nullableTextSchema = nonEmptyTextSchema.nullable();
 const nonnegativeIntegerSchema = z.number().int().nonnegative();
 const positiveIntegerSchema = z.number().int().positive();
 const providerNameSchema = z.enum(providerNames);
+const collectionModeSchema = z.enum(collectionModes);
 
 const readinessCheckSchema: z.ZodType<ReadinessCheck> = z.object({
   detail: nonEmptyTextSchema,
@@ -123,90 +143,100 @@ const providerReadinessSchema = z.object({
   ready: z.boolean(),
 });
 
-export const taxControlSnapshotSchema: z.ZodType<TaxControlSnapshot> = z.object({
-  audits: z.array(
-    z.object({
-      actorId: nonEmptyTextSchema,
-      createdAt: nullableTextSchema,
-      fromGeneration: positiveIntegerSchema,
-      fromProvider: providerNameSchema,
-      id: nonEmptyTextSchema,
-      reason: nonEmptyTextSchema,
-      toGeneration: positiveIntegerSchema,
-      toProvider: providerNameSchema,
-    }),
-  ),
-  control: z.object({
-    activeProvider: providerNameSchema,
-    generation: positiveIntegerSchema,
-    lastSwitchReason: nullableTextSchema,
-    lastSwitchedAt: nullableTextSchema,
-    lastSwitchedBy: nullableTextSchema,
-  }),
-  evidence: z.object({
-    incidents: z.array(
+export const taxControlSnapshotSchema: z.ZodType<TaxControlSnapshot> = z.object(
+  {
+    audits: z.array(
       z.object({
-        associationStatus: z.string().nullable(),
-        currencyCode: z.string().regex(/^[a-z]{3}$/),
+        acknowledgementVersion: nonEmptyTextSchema,
+        actorId: nonEmptyTextSchema,
+        createdAt: nullableTextSchema,
+        fromCollectionMode: collectionModeSchema,
+        fromGeneration: positiveIntegerSchema,
+        fromProvider: providerNameSchema,
         id: nonEmptyTextSchema,
-        lastVerifiedAt: nullableTextSchema,
-        medusaRefundAmountMinor: nonnegativeIntegerSchema.nullable(),
-        orderId: nullableTextSchema,
-        paymentIntentId: nonEmptyTextSchema,
-        provider: providerNameSchema,
-        status: z.enum([
-          "association_failed",
-          "disputed",
-          "refund_ledger_mismatch",
-          "refund_pending",
-        ]),
-        stripeEvidenceAvailable: z.boolean(),
-        stripeRefundAmountMinor: nonnegativeIntegerSchema.nullable(),
+        reason: nonEmptyTextSchema,
+        toCollectionMode: collectionModeSchema,
+        toGeneration: positiveIntegerSchema,
+        toProvider: providerNameSchema,
       }),
     ),
-    needsAttention: nonnegativeIntegerSchema,
-    pendingRefundReversals: nonnegativeIntegerSchema,
-    prepared: nonnegativeIntegerSchema,
-    refundLedger: z.object({
-      available: z.boolean(),
-      checked: nonnegativeIntegerSchema,
-      mismatches: nonnegativeIntegerSchema,
-      truncated: z.boolean(),
+    control: z.object({
+      activeProvider: providerNameSchema,
+      collectionMode: collectionModeSchema,
+      generation: positiveIntegerSchema,
+      lastSwitchReason: nullableTextSchema,
+      lastSwitchedAt: nullableTextSchema,
+      lastSwitchedBy: nullableTextSchema,
     }),
-    refunds: nonnegativeIntegerSchema,
-    succeeded: nonnegativeIntegerSchema,
-    tracked: nonnegativeIntegerSchema,
-  }),
-  impact: z.object({
-    activityWindowDays: positiveIntegerSchema,
-    frozenByProvider: z.object({
-      stripe_tax: nonnegativeIntegerSchema,
-      taxrate_io: nonnegativeIntegerSchema,
+    evidence: z.object({
+      incidents: z.array(
+        z.object({
+          associationStatus: z.string().nullable(),
+          currencyCode: z.string().regex(/^[a-z]{3}$/),
+          id: nonEmptyTextSchema,
+          lastVerifiedAt: nullableTextSchema,
+          medusaRefundAmountMinor: nonnegativeIntegerSchema.nullable(),
+          orderId: nullableTextSchema,
+          paymentIntentId: nonEmptyTextSchema,
+          provider: providerNameSchema.nullable(),
+          status: z.enum([
+            "association_failed",
+            "disputed",
+            "refund_ledger_mismatch",
+            "refund_pending",
+          ]),
+          stripeEvidenceAvailable: z.boolean(),
+          stripeRefundAmountMinor: nonnegativeIntegerSchema.nullable(),
+        }),
+      ),
+      needsAttention: nonnegativeIntegerSchema,
+      pendingRefundReversals: nonnegativeIntegerSchema,
+      prepared: nonnegativeIntegerSchema,
+      refundLedger: z.object({
+        available: z.boolean(),
+        checked: nonnegativeIntegerSchema,
+        mismatches: nonnegativeIntegerSchema,
+        truncated: z.boolean(),
+      }),
+      refunds: nonnegativeIntegerSchema,
+      succeeded: nonnegativeIntegerSchema,
+      tracked: nonnegativeIntegerSchema,
     }),
-    paymentsFinalizing: nonnegativeIntegerSchema,
-    preparedCheckouts: nonnegativeIntegerSchema,
-  }),
-  providers: z.object({
-    stripeTax: providerReadinessSchema.extend({
-      accountMode: z.enum(["live", "sandbox", "unknown"]),
-      activeRegistrationCount: nonnegativeIntegerSchema,
-      missingFields: z.array(nonEmptyTextSchema),
+    impact: z.object({
+      activityWindowDays: positiveIntegerSchema,
+      frozenByCollectionMode: z.object({
+        collect: nonnegativeIntegerSchema,
+        disabled: nonnegativeIntegerSchema,
+      }),
+      frozenByProvider: z.object({
+        stripe_tax: nonnegativeIntegerSchema,
+        taxrate_io: nonnegativeIntegerSchema,
+      }),
+      paymentsFinalizing: nonnegativeIntegerSchema,
+      preparedCheckouts: nonnegativeIntegerSchema,
     }),
-    taxRateIo: providerReadinessSchema.extend({
-      manualRefreshConfigured: z.boolean(),
-      quota: z
-        .object({
-          observedAt: nullableTextSchema,
-          quota: nonnegativeIntegerSchema,
-          remaining: nonnegativeIntegerSchema,
-          source: nonEmptyTextSchema,
-          usage: nonnegativeIntegerSchema,
-          usagePercent: z.number().nonnegative(),
-        })
-        .nullable(),
+    providers: z.object({
+      stripeTax: providerReadinessSchema.extend({
+        accountMode: z.enum(["live", "sandbox", "unknown"]),
+        activeRegistrationCount: nonnegativeIntegerSchema,
+        missingFields: z.array(nonEmptyTextSchema),
+      }),
+      taxRateIo: providerReadinessSchema.extend({
+        manualRefreshConfigured: z.boolean(),
+        quota: z
+          .object({
+            observedAt: nullableTextSchema,
+            quota: nonnegativeIntegerSchema,
+            remaining: nonnegativeIntegerSchema,
+            source: nonEmptyTextSchema,
+            usage: nonnegativeIntegerSchema,
+            usagePercent: z.number().nonnegative(),
+          })
+          .nullable(),
+      }),
     }),
-  }),
-});
+  },
+);
 
 export const TAX_CONTROL_QUERY_KEY = ["tax-control"] as const;
 
@@ -231,8 +261,8 @@ export const taxControlQueryOptions = () =>
     staleTime: 30_000,
   });
 
-export const switchTaxProvider = (
-  input: SwitchTaxProviderInput,
+export const transitionTaxControl = (
+  input: TaxControlTransitionInput,
 ): Promise<TaxControlSnapshot> =>
   requestAdminJson({
     body: input,
@@ -242,11 +272,10 @@ export const switchTaxProvider = (
     timeoutMs: 20_000,
   });
 
-export const refreshTaxRateIoQuota =
-  (): Promise<TaxControlSnapshot> =>
-    requestAdminJson({
-      method: "POST",
-      path: "/admin/tax-control/taxrate-io/refresh",
-      schema: taxControlSnapshotSchema,
-      timeoutMs: 20_000,
-    });
+export const refreshTaxRateIoQuota = (): Promise<TaxControlSnapshot> =>
+  requestAdminJson({
+    method: "POST",
+    path: "/admin/tax-control/taxrate-io/refresh",
+    schema: taxControlSnapshotSchema,
+    timeoutMs: 20_000,
+  });

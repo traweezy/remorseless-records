@@ -9,12 +9,9 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import {
+  Alert,
   Button,
   Container,
   Heading,
@@ -37,18 +34,23 @@ import {
 } from "../../features/operations/operations-routes";
 import { useAdminPermissions } from "../../lib/admin-permissions";
 import { getAdminRequestErrorMessage } from "../../lib/admin-request";
-import { ProviderSwitchPrompt } from "./provider-switch-prompt";
+import {
+  TaxControlTransitionPrompt,
+  type TaxControlTransitionConfirmation,
+} from "./provider-switch-prompt";
 import {
   refreshTaxRateIoQuota,
-  switchTaxProvider,
   TAX_CONTROL_QUERY_KEY,
   taxControlQueryOptions,
+  transitionTaxControl,
   type ProviderReadiness,
   type TaxControlSnapshot,
 } from "./query";
 import {
+  collectionChoiceLabel,
   providerLabel,
-  providerSwitchWasApplied,
+  taxControlTransitionWasApplied,
+  type CollectionMode,
   type ProviderName,
 } from "./ui-state";
 
@@ -58,17 +60,16 @@ type ProviderCardProps = {
   children?: ReactNode;
   description: string;
   name: string;
-  onSwitch: (
-    provider: ProviderName,
-    trigger: HTMLButtonElement,
-  ) => void;
+  onSwitch: (provider: ProviderName, trigger: HTMLButtonElement) => void;
   provider: ProviderName;
   readiness: ProviderReadiness;
   saving: boolean;
+  selectedForReenable: boolean;
 };
 
-type ProviderSwitchDraft = {
+type TaxControlTransitionDraft = {
   idempotencyKey: string;
+  targetCollectionMode: CollectionMode;
   targetProvider: ProviderName;
 };
 
@@ -130,6 +131,7 @@ const ProviderCard = memo<ProviderCardProps>(
     provider,
     readiness,
     saving,
+    selectedForReenable,
   }) => {
     const handleSwitch = useCallback(
       (event: MouseEvent<HTMLButtonElement>) => {
@@ -157,6 +159,9 @@ const ProviderCard = memo<ProviderCardProps>(
           </div>
           <div className="flex flex-wrap gap-2">
             {active ? <StatusBadge color="grey">Current</StatusBadge> : null}
+            {selectedForReenable ? (
+              <StatusBadge color="blue">Selected for re-enable</StatusBadge>
+            ) : null}
             <StatusBadge color={readiness.ready ? "green" : "orange"}>
               {readiness.ready ? "Ready" : "Needs setup"}
             </StatusBadge>
@@ -204,7 +209,7 @@ const ProviderCard = memo<ProviderCardProps>(
         <div className="mt-5 border-t border-ui-border-base pt-4">
           {active ? (
             <Text size="small" className="text-ui-fg-subtle">
-              Used for new tax calculations.
+              Used to collect tax on new or refreshed checkouts.
             </Text>
           ) : canUpdate ? (
             <>
@@ -215,7 +220,7 @@ const ProviderCard = memo<ProviderCardProps>(
                 type="button"
                 variant="secondary"
               >
-                Switch to {name}
+                Collect using {name}
               </Button>
               {!readiness.ready ? (
                 <Text size="xsmall" className="mt-2 text-ui-fg-subtle">
@@ -226,7 +231,7 @@ const ProviderCard = memo<ProviderCardProps>(
           ) : (
             <Text size="small" className="text-ui-fg-subtle">
               View-only access. A role with Tax control update permission is
-              required to switch providers.
+              required to change tax collection.
             </Text>
           )}
         </div>
@@ -250,9 +255,9 @@ const LoadingState = memo(() => (
 ));
 
 export const TaxControlPageContent = memo(() => {
-  const [switchDraft, setSwitchDraft] =
-    useState<ProviderSwitchDraft | null>(null);
-  const switchTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [transitionDraft, setTransitionDraft] =
+    useState<TaxControlTransitionDraft | null>(null);
+  const transitionTriggerRef = useRef<HTMLButtonElement | null>(null);
   const quotaRefreshLockRef = useRef(false);
   const queryClient = useQueryClient();
   const permissions = useAdminPermissions();
@@ -262,24 +267,22 @@ export const TaxControlPageContent = memo(() => {
   const taxControlQuery = useQuery(taxControlQueryOptions());
   const {
     isPending: saving,
-    mutateAsync: mutateProviderSwitch,
-    reset: resetProviderSwitch,
+    mutateAsync: mutateTaxControlTransition,
+    reset: resetTaxControlTransition,
   } = useMutation({
-    mutationFn: switchTaxProvider,
+    mutationFn: transitionTaxControl,
     retry: false,
   });
-  const {
-    isPending: refreshingQuota,
-    mutateAsync: mutateQuotaRefresh,
-  } = useMutation({
-    mutationFn: refreshTaxRateIoQuota,
-    retry: false,
-  });
+  const { isPending: refreshingQuota, mutateAsync: mutateQuotaRefresh } =
+    useMutation({
+      mutationFn: refreshTaxRateIoQuota,
+      retry: false,
+    });
   const snapshot = taxControlQuery.data;
 
-  const dismissProviderSwitch = useCallback(() => {
-    const trigger = switchTriggerRef.current;
-    setSwitchDraft(null);
+  const dismissTaxControlTransition = useCallback(() => {
+    const trigger = transitionTriggerRef.current;
+    setTransitionDraft(null);
     globalThis.setTimeout(() => {
       (
         trigger as unknown as {
@@ -289,95 +292,136 @@ export const TaxControlPageContent = memo(() => {
     }, 0);
   }, []);
 
-  const beginProviderSwitch = useCallback(
-    (provider: ProviderName, trigger: HTMLButtonElement) => {
+  const beginTaxControlTransition = useCallback(
+    (
+      targetCollectionMode: CollectionMode,
+      provider: ProviderName,
+      trigger: HTMLButtonElement,
+    ) => {
       if (
         !canUpdate ||
         !snapshot ||
-        provider === snapshot.control.activeProvider
+        (targetCollectionMode === snapshot.control.collectionMode &&
+          provider === snapshot.control.activeProvider)
       ) {
         return;
       }
-      const readiness =
-        provider === "stripe_tax"
-          ? snapshot.providers.stripeTax
-          : snapshot.providers.taxRateIo;
-      if (!readiness.ready) {
-        return;
+      if (targetCollectionMode === "collect") {
+        const readiness =
+          provider === "stripe_tax"
+            ? snapshot.providers.stripeTax
+            : snapshot.providers.taxRateIo;
+        if (!readiness.ready) {
+          return;
+        }
       }
 
-      switchTriggerRef.current = trigger;
-      resetProviderSwitch();
-      setSwitchDraft({
+      transitionTriggerRef.current = trigger;
+      resetTaxControlTransition();
+      setTransitionDraft({
         idempotencyKey: crypto.randomUUID(),
+        targetCollectionMode,
         targetProvider: provider,
       });
     },
-    [canUpdate, resetProviderSwitch, snapshot],
+    [canUpdate, resetTaxControlTransition, snapshot],
   );
 
-  const cancelProviderSwitch = useCallback(() => {
-    if (!saving) {
-      dismissProviderSwitch();
-    }
-  }, [dismissProviderSwitch, saving]);
+  const beginProviderCollection = useCallback(
+    (provider: ProviderName, trigger: HTMLButtonElement) => {
+      beginTaxControlTransition("collect", provider, trigger);
+    },
+    [beginTaxControlTransition],
+  );
 
-  const confirmProviderSwitch = useCallback(
-    async (reason: string) => {
-      if (!canUpdate || !snapshot || !switchDraft || saving) {
+  const beginDisableCollection = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      if (snapshot) {
+        beginTaxControlTransition(
+          "disabled",
+          snapshot.control.activeProvider,
+          event.currentTarget,
+        );
+      }
+    },
+    [beginTaxControlTransition, snapshot],
+  );
+
+  const cancelTaxControlTransition = useCallback(() => {
+    if (!saving) {
+      dismissTaxControlTransition();
+    }
+  }, [dismissTaxControlTransition, saving]);
+
+  const confirmTaxControlTransition = useCallback(
+    async ({ acknowledgement, reason }: TaxControlTransitionConfirmation) => {
+      if (!canUpdate || !snapshot || !transitionDraft || saving) {
         return;
       }
-      const input = {
+      const transitionBase = {
         expectedGeneration: snapshot.control.generation,
-        idempotencyKey: switchDraft.idempotencyKey,
+        idempotencyKey: transitionDraft.idempotencyKey,
         reason,
-        targetProvider: switchDraft.targetProvider,
+        targetProvider: transitionDraft.targetProvider,
       };
+      const input =
+        transitionDraft.targetCollectionMode === "disabled"
+          ? {
+              ...transitionBase,
+              acknowledgement: acknowledgement ?? "",
+              targetCollectionMode: "disabled" as const,
+            }
+          : {
+              ...transitionBase,
+              targetCollectionMode: "collect" as const,
+            };
+      const targetLabel = collectionChoiceLabel(
+        transitionDraft.targetCollectionMode,
+        transitionDraft.targetProvider,
+      );
 
       try {
-        const next = await mutateProviderSwitch(input);
+        const next = await mutateTaxControlTransition(input);
         queryClient.setQueryData(TAX_CONTROL_QUERY_KEY, next);
-        dismissProviderSwitch();
-        toast.success(
-          `${providerLabel(switchDraft.targetProvider)} is now active`,
-        );
+        dismissTaxControlTransition();
+        toast.success(`${targetLabel} is now active`);
         await queryClient.invalidateQueries({
           queryKey: TAX_CONTROL_QUERY_KEY,
         });
       } catch (caught) {
         const reconciled = await taxControlQuery.refetch();
         if (
-          providerSwitchWasApplied({
+          taxControlTransitionWasApplied({
             activeProvider: reconciled.data?.control.activeProvider,
+            collectionMode: reconciled.data?.control.collectionMode,
             currentGeneration: reconciled.data?.control.generation,
             expectedGeneration: input.expectedGeneration,
-            targetProvider: switchDraft.targetProvider,
+            targetCollectionMode: transitionDraft.targetCollectionMode,
+            targetProvider: transitionDraft.targetProvider,
           })
         ) {
-          resetProviderSwitch();
-          dismissProviderSwitch();
-          toast.success(
-            `${providerLabel(switchDraft.targetProvider)} switch confirmed after refresh`,
-          );
+          resetTaxControlTransition();
+          dismissTaxControlTransition();
+          toast.success(`${targetLabel} was confirmed after refresh`);
           return;
         }
         toast.error(
           getAdminRequestErrorMessage(
             caught,
-            "The provider could not be switched.",
+            "The tax collection decision could not be changed.",
           ),
         );
       }
     },
     [
-      dismissProviderSwitch,
       canUpdate,
-      mutateProviderSwitch,
+      dismissTaxControlTransition,
+      mutateTaxControlTransition,
       queryClient,
-      resetProviderSwitch,
+      resetTaxControlTransition,
       saving,
       snapshot,
-      switchDraft,
+      transitionDraft,
       taxControlQuery,
     ],
   );
@@ -434,12 +478,15 @@ export const TaxControlPageContent = memo(() => {
     ? Math.max(0, Math.min(100, quota.usagePercent))
     : 0;
   const activeProvider = snapshot.control.activeProvider;
-  const activeReadiness =
+  const collectionMode = snapshot.control.collectionMode;
+  const collectingTax = collectionMode === "collect";
+  const selectedProviderReadiness =
     activeProvider === "stripe_tax"
       ? snapshot.providers.stripeTax
       : snapshot.providers.taxRateIo;
-  const activeCalculationBasis =
-    activeProvider === "stripe_tax"
+  const activeCalculationBasis = !collectingTax
+    ? "$0.00 decision without a provider lookup"
+    : activeProvider === "stripe_tax"
       ? "Shipping address and line tax codes"
       : "US shipping ZIP code";
   const activeProviderDetail =
@@ -455,17 +502,32 @@ export const TaxControlPageContent = memo(() => {
     <AdminSingleColumnLayout>
       <Container>
         <AdminPageHeader
-          description="See the current setup, compare providers, and make a deliberate change when needed."
+          description="Choose whether new checkouts collect tax, review provider readiness, and keep every change auditable."
           status={
-            <StatusBadge color={activeReadiness.ready ? "green" : "orange"}>
-              {activeReadiness.ready ? "Operational" : "Needs attention"}
+            <StatusBadge
+              color={
+                !collectingTax
+                  ? "orange"
+                  : selectedProviderReadiness.ready
+                    ? "green"
+                    : "orange"
+              }
+            >
+              {!collectingTax
+                ? "Tax not collected"
+                : selectedProviderReadiness.ready
+                  ? "Collecting tax"
+                  : "Needs attention"}
             </StatusBadge>
           }
           title="Tax control"
         />
 
         <section
-          aria-label={`Current provider: ${providerLabel(activeProvider)}`}
+          aria-label={`Current tax collection decision: ${collectionChoiceLabel(
+            collectionMode,
+            activeProvider,
+          )}`}
           className="mt-6 border-t border-ui-border-base pt-5"
           data-testid="active-provider-overview"
         >
@@ -473,30 +535,35 @@ export const TaxControlPageContent = memo(() => {
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <Text size="xsmall" className="text-ui-fg-subtle">
-                Provider
+                Collection decision
               </Text>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <Text size="small" weight="plus">
-                  {providerLabel(activeProvider)}
+                  {collectingTax ? "Collect tax" : "Do not collect tax"}
                 </Text>
                 <StatusBadge color="grey">Current</StatusBadge>
               </div>
             </div>
             <div>
               <Text size="xsmall" className="text-ui-fg-subtle">
-                Calculation method
+                {collectingTax ? "Provider" : "Provider when re-enabled"}
               </Text>
               <Text size="small" weight="plus" className="mt-1">
-                {activeCalculationBasis}
+                {providerLabel(activeProvider)}
               </Text>
             </div>
             <div>
               <Text size="xsmall" className="text-ui-fg-subtle">
-                Connection
+                Checkout behavior
               </Text>
               <Text size="small" weight="plus" className="mt-1">
-                {activeProviderDetail}
+                {activeCalculationBasis}
               </Text>
+              {collectingTax ? (
+                <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                  {activeProviderDetail}
+                </Text>
+              ) : null}
             </div>
             <div>
               <Text size="xsmall" className="text-ui-fg-subtle">
@@ -513,13 +580,21 @@ export const TaxControlPageContent = memo(() => {
             </div>
           </div>
 
+          {!collectingTax ? (
+            <Alert className="mt-5" variant="warning">
+              New eligible checkouts receive an explicit $0.00 tax decision.
+              Sales remain visible as pending tax review; this setting does not
+              classify them as exempt or nontaxable.
+            </Alert>
+          ) : null}
+
           <div className="mt-5 rounded-md bg-ui-bg-subtle p-3">
             <Text size="xsmall" className="text-ui-fg-subtle">
               Last change reason
             </Text>
             <Text size="small" className="mt-1">
               {snapshot.control.lastSwitchReason ??
-                "Initial provider configuration; no switch has been recorded."}
+                "Initial tax control configuration; no change has been recorded."}
             </Text>
           </div>
         </section>
@@ -529,24 +604,46 @@ export const TaxControlPageContent = memo(() => {
           className="mt-5 rounded-lg border border-ui-border-base p-4"
         >
           <Heading id="switch-impact-title" level="h3">
-            If the provider changes
+            When the collection decision changes
           </Heading>
           <Text size="small" className="mt-1 text-ui-fg-subtle">
-            New or refreshed quotes use the new provider. Existing reviewed
-            quotes and completed orders are not repriced.
+            New or refreshed quotes use the new decision. Existing reviewed
+            quotes and completed orders keep their historical tax decision.
           </Text>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <Text size="large" weight="plus">
                 {snapshot.impact.preparedCheckouts}
               </Text>
               <Text size="small" weight="plus" className="mt-1">
-                Provider-locked checkouts
+                Decision-locked checkouts
               </Text>
               <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
                 Open carts updated within the last{" "}
                 {snapshot.impact.activityWindowDays} days that already have a
                 processable Stripe payment session.
+              </Text>
+            </div>
+            <div>
+              <Text size="large" weight="plus">
+                {snapshot.impact.frozenByCollectionMode.collect}
+              </Text>
+              <Text size="small" weight="plus" className="mt-1">
+                Frozen collecting
+              </Text>
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                Prepared checkouts that keep their provider-backed tax quote.
+              </Text>
+            </div>
+            <div>
+              <Text size="large" weight="plus">
+                {snapshot.impact.frozenByCollectionMode.disabled}
+              </Text>
+              <Text size="small" weight="plus" className="mt-1">
+                Frozen not collecting
+              </Text>
+              <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                Prepared checkouts that keep their reviewed $0.00 tax decision.
               </Text>
             </div>
             <div>
@@ -566,26 +663,87 @@ export const TaxControlPageContent = memo(() => {
       </Container>
 
       <Container>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <Heading level="h2">Providers</Heading>
-            <Text size="small" className="mt-1 text-ui-fg-subtle">
-              Compare each provider&apos;s readiness and use its switch button
-              to review a change.
+        <div>
+          <Heading level="h2">Choose tax collection</Heading>
+          <Text size="small" className="mt-1 text-ui-fg-subtle">
+            Start with the operating decision. Provider setup remains available
+            below and is only used while tax collection is on.
+          </Text>
+        </div>
+
+        <section
+          aria-label={`Do not collect tax${!collectingTax ? ", current decision" : ""}`}
+          className="mt-5 rounded-lg border border-ui-border-base p-4"
+          data-active={!collectingTax ? "true" : "false"}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <Heading level="h3">Do not collect tax</Heading>
+              <Text
+                id="tax-collection-disabled-description"
+                size="small"
+                className="mt-1 text-ui-fg-subtle"
+              >
+                Record an explicit $0.00 decision for new eligible checkouts
+                without calling a tax provider.
+              </Text>
+            </div>
+            {!collectingTax ? (
+              <StatusBadge color="grey">Current</StatusBadge>
+            ) : null}
+          </div>
+          <div className="mt-4 rounded-md bg-ui-bg-subtle p-3">
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              Existing prepared checkouts and completed orders keep their frozen
+              decision. New disabled sales are reported separately as pending
+              tax review, never as automatically exempt or nontaxable.
             </Text>
           </div>
+          <div className="mt-4 border-t border-ui-border-base pt-4">
+            {!collectingTax ? (
+              <Text size="small" className="text-ui-fg-subtle">
+                Used for new or refreshed checkout tax decisions.
+              </Text>
+            ) : canUpdate ? (
+              <Button
+                aria-describedby="tax-collection-disabled-description"
+                disabled={saving}
+                onClick={beginDisableCollection}
+                type="button"
+                variant="danger"
+              >
+                Review turning off tax collection
+              </Button>
+            ) : (
+              <Text size="small" className="text-ui-fg-subtle">
+                View-only access. A role with Tax control update permission is
+                required to change tax collection.
+              </Text>
+            )}
+          </div>
+        </section>
+
+        <div className="mt-8">
+          <Heading level="h2">Collect tax with a provider</Heading>
+          <Text size="small" className="mt-1 text-ui-fg-subtle">
+            Compare readiness, then choose the provider that should calculate
+            tax for new or refreshed checkouts.
+          </Text>
         </div>
 
         <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
           <ProviderCard
-            active={activeProvider === "taxrate_io"}
+            active={collectingTax && activeProvider === "taxrate_io"}
             canUpdate={canUpdate}
             description="ZIP-code sales-tax rates with a monthly lookup quota."
             name="TaxRate.io"
-            onSwitch={beginProviderSwitch}
+            onSwitch={beginProviderCollection}
             provider="taxrate_io"
             readiness={snapshot.providers.taxRateIo}
             saving={saving}
+            selectedForReenable={
+              !collectingTax && activeProvider === "taxrate_io"
+            }
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -665,14 +823,17 @@ export const TaxControlPageContent = memo(() => {
           </ProviderCard>
 
           <ProviderCard
-            active={activeProvider === "stripe_tax"}
+            active={collectingTax && activeProvider === "stripe_tax"}
             canUpdate={canUpdate}
             description="Address-aware calculations linked to Stripe payments, reporting, and refund reversals."
             name="Stripe Tax"
-            onSwitch={beginProviderSwitch}
+            onSwitch={beginProviderCollection}
             provider="stripe_tax"
             readiness={snapshot.providers.stripeTax}
             saving={saving}
+            selectedForReenable={
+              !collectingTax && activeProvider === "stripe_tax"
+            }
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-md bg-ui-bg-subtle p-3">
@@ -695,14 +856,16 @@ export const TaxControlPageContent = memo(() => {
           </ProviderCard>
         </div>
 
-        {canUpdate && switchDraft ? (
-          <ProviderSwitchPrompt
+        {canUpdate && transitionDraft ? (
+          <TaxControlTransitionPrompt
+            activeCollectionMode={collectionMode}
             activeProvider={activeProvider}
             impact={snapshot.impact}
-            onCancel={cancelProviderSwitch}
-            onConfirm={confirmProviderSwitch}
+            onCancel={cancelTaxControlTransition}
+            onConfirm={confirmTaxControlTransition}
             pending={saving}
-            targetProvider={switchDraft.targetProvider}
+            targetCollectionMode={transitionDraft.targetCollectionMode}
+            targetProvider={transitionDraft.targetProvider}
           />
         ) : null}
       </Container>
@@ -712,8 +875,8 @@ export const TaxControlPageContent = memo(() => {
           <div>
             <Heading level="h2">Payment tax evidence</Heading>
             <Text size="small" className="mt-1 text-ui-fg-subtle">
-              Stripe payments are linked to the exact tax quote used at checkout
-              and rechecked after captures and refunds.
+              Stripe payments are linked to the exact collection decision used
+              at checkout and rechecked after captures and refunds.
             </Text>
           </div>
           <StatusBadge
@@ -878,7 +1041,11 @@ export const TaxControlPageContent = memo(() => {
       </Container>
 
       <Container>
-        <Heading level="h2">Provider history</Heading>
+        <Heading level="h2">Tax decision history</Heading>
+        <Text size="small" className="mt-1 text-ui-fg-subtle">
+          Every provider or collection-mode change records the administrator,
+          reason, generation, and control acknowledgement version.
+        </Text>
         {snapshot.audits.length ? (
           <div className="mt-4 overflow-x-auto">
             <Table>
@@ -895,10 +1062,27 @@ export const TaxControlPageContent = memo(() => {
                   <Table.Row key={audit.id}>
                     <Table.Cell>{formatDate(audit.createdAt)}</Table.Cell>
                     <Table.Cell>
-                      {providerLabel(audit.fromProvider)} →{" "}
-                      {providerLabel(audit.toProvider)}
+                      <Text size="small" weight="plus">
+                        {collectionChoiceLabel(
+                          audit.fromCollectionMode,
+                          audit.fromProvider,
+                        )}{" "}
+                        →{" "}
+                        {collectionChoiceLabel(
+                          audit.toCollectionMode,
+                          audit.toProvider,
+                        )}
+                      </Text>
+                      <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                        Generation {audit.fromGeneration} → {audit.toGeneration}
+                      </Text>
                     </Table.Cell>
-                    <Table.Cell className="min-w-64">{audit.reason}</Table.Cell>
+                    <Table.Cell className="min-w-64">
+                      {audit.reason}
+                      <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
+                        Control {audit.acknowledgementVersion}
+                      </Text>
+                    </Table.Cell>
                     <Table.Cell>{audit.actorId}</Table.Cell>
                   </Table.Row>
                 ))}
@@ -907,7 +1091,7 @@ export const TaxControlPageContent = memo(() => {
           </div>
         ) : (
           <Text size="small" className="mt-4 text-ui-fg-subtle">
-            No provider switches have been recorded.
+            No tax collection changes have been recorded.
           </Text>
         )}
       </Container>

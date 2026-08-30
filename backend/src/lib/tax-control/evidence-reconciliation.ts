@@ -1,4 +1,5 @@
 import type {
+  TaxCollectionMode,
   TaxProviderName,
   TaxQuoteEvidenceStatus,
 } from "../../modules/tax-control/constants";
@@ -15,8 +16,9 @@ import {
 } from "./stripe-evidence-client";
 
 type EvidenceRecord = {
+  collection_mode: TaxCollectionMode;
   payment_intent_id: string;
-  provider: TaxProviderName;
+  provider: TaxProviderName | null;
 };
 
 type ReconcileTaxEvidenceResult = {
@@ -50,8 +52,7 @@ const associationSummary = (
     > => attempt.status === "committed",
   );
   const originalAttempt = committedAttempts.find(
-    (attempt) =>
-      attempt.source === association.paymentIntentId,
+    (attempt) => attempt.source === association.paymentIntentId,
   );
   const taxTransactionId =
     originalAttempt?.transactionId ??
@@ -212,6 +213,7 @@ export const reconcileTaxQuoteEvidence = async ({
   await service.updateTaxQuoteEvidenceLifecycle({
     associationStatus,
     metadata: {
+      collection_mode: evidence.collection_mode,
       association_error_reasons: summary.errorReasons,
       disputed: charge?.disputed ?? false,
       refund_amount_minor: refundAmountMinor,

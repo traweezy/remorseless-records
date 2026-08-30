@@ -28,11 +28,11 @@ cosmetic table filter.
 The selector also supplies state-appropriate period presets and filing
 guidance:
 
-| State | Return and portal | Presets | General due-date pattern |
-| --- | --- | --- | --- |
-| Connecticut | Form OS-114 in myconneCT | calendar month, quarter, year, or custom | last day of the month after the assigned period |
-| New York | ST-809, ST-100, or ST-101 in Online Services | calendar month, New York sales-tax quarter, March–February sales-tax year, or custom | generally within 20 days after the period |
-| Pennsylvania | PA-3 in myPATH | calendar month, quarter, half-year, or custom | current REV-819 calendar; generally the 20th, with semiannual dates shown by the state |
+| State        | Return and portal                            | Presets                                                                              | General due-date pattern                                                               |
+| ------------ | -------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Connecticut  | Form OS-114 in myconneCT                     | calendar month, quarter, year, or custom                                             | last day of the month after the assigned period                                        |
+| New York     | ST-809, ST-100, or ST-101 in Online Services | calendar month, New York sales-tax quarter, March–February sales-tax year, or custom | generally within 20 days after the period                                              |
+| Pennsylvania | PA-3 in myPATH                               | calendar month, quarter, half-year, or custom                                        | current REV-819 calendar; generally the 20th, with semiannual dates shown by the state |
 
 These are workpaper presets, not a filing-frequency decision. The operator
 must use the frequency and exact obligation assigned in the official state
@@ -165,6 +165,24 @@ do not preserve provider-generation evidence. Stripe Tax periods still require
 reconciliation to Stripe's finalized itemized tax report when sub-state rows
 are not preserved on the Medusa tax line.
 
+### Explicit disabled collection
+
+An order with the audited `disabled` collection mode is not a provider zero,
+exemption, nontaxable sale, or missing legacy row. The report preserves its
+mode/generation identity, uses provider **Not applicable**, requires a zero tax
+amount, and marks the row **Review** with an explicit instruction to confirm
+the operating decision and filing treatment.
+
+Its gross amount is assigned to **Sales pending tax review**. Both taxable and
+nontaxable amounts remain zero until the store owner's tax professional decides
+the appropriate filing classification outside the application. A disabled row
+with nonzero tax is **Incomplete** because its evidence contradicts its amount.
+
+Refunds retain the original collection mode. A refund against a disabled sale
+reduces **Sales pending tax review** proportionally and never invents a provider
+tax reversal. Use the **Collection decision** filter to isolate collecting,
+not-collecting, or unknown evidence before reconciliation.
+
 A United States or country-unknown record with no destination state cannot be
 safely assigned to Connecticut, New York, or Pennsylvania. The UI surfaces the
 affected orders, and the state-specific export endpoint returns a conflict
@@ -179,8 +197,9 @@ workpaper being viewed. It does not convert currencies.
 Two UTF-8 CSV exports cover the full selected filing state and period:
 
 1. **Transaction detail** contains one signed row per sale or refund with
-   Medusa IDs, filing state and bucket, provider evidence, destination,
-   taxable and nontaxable amounts, tax, refund timing, quality, and notes.
+   Medusa IDs, filing state and bucket, collection decision, provider evidence,
+   destination, taxable, nontaxable, and pending-review sales, tax, refund
+   timing, quality, and notes.
 2. **Destination summary** groups sales, refunds, and tax by filing bucket,
    destination, rate, and currency, followed by period totals.
 
@@ -188,6 +207,11 @@ Search, provider, quality, record-type, pagination, and the on-screen currency
 selector do not change exports. Every filename includes the filing-state code.
 Exports neutralize spreadsheet formulas, exclude names, emails, phone numbers,
 and street addresses, and are private non-cacheable attachments.
+
+Transaction, destination, and period-summary workpapers include
+`collection_mode` or `unclassified_sales_pending_review` as appropriate. Do not
+copy the pending-review value into an exempt/nontaxable return line without the
+external filing decision and supporting workpaper.
 
 The bounded source scan reads orders created before the selected end so a
 current-period refund for an older sale is not missed. If the scan reaches
@@ -217,11 +241,11 @@ Repeat this workflow separately for each active state:
 
 The state minimums are not identical:
 
-| State | Official baseline |
-| --- | --- |
-| Connecticut | generally at least three years; Connecticut DRS materials recommend six years for some exemption and supporting records |
-| New York | at least three years from the return due date or filing date, whichever is later; longer for an audit or proceeding |
-| Pennsylvania | at least three years from the end of the calendar year to which the records relate |
+| State        | Official baseline                                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Connecticut  | generally at least three years; Connecticut DRS materials recommend six years for some exemption and supporting records |
+| New York     | at least three years from the return due date or filing date, whichever is later; longer for an audit or proceeding     |
+| Pennsylvania | at least three years from the end of the calendar year to which the records relate                                      |
 
 The operational policy for this project is to retain the complete electronic
 filing package for **at least six years**, and longer when an audit, appeal,

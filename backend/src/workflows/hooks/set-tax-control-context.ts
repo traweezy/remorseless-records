@@ -12,12 +12,13 @@ import {
   TAX_CONTEXT_KEY,
   type FrozenTaxQuote,
 } from "../../lib/tax-control/context";
-import {
-  requirePreservedStripeOrderRates,
-} from "../../lib/tax-control/order-rate-preservation";
+import { requirePreservedStripeOrderRates } from "../../lib/tax-control/order-rate-preservation";
 import { createTaxSubjectFingerprint } from "../../lib/tax-control/subject-fingerprint";
 import type CatalogModuleService from "../../modules/catalog/service";
-import type { TaxProviderName } from "../../modules/tax-control/constants";
+import type {
+  TaxCollectionMode,
+  TaxProviderName,
+} from "../../modules/tax-control/constants";
 import type TaxControlModuleService from "../../modules/tax-control/service";
 
 type UnknownRecord = Record<string, unknown>;
@@ -259,10 +260,23 @@ const frozenQuoteFromMetadata = (
   quote: FrozenTaxQuote;
 } | null => {
   const provider = text(metadata.rr_tax_provider);
+  const collectionModeValue = text(metadata.rr_tax_collection_mode);
+  const collectionMode: TaxCollectionMode | null =
+    collectionModeValue === "disabled"
+      ? "disabled"
+      : collectionModeValue === "collect" ||
+          provider === "taxrate_io" ||
+          provider === "stripe_tax"
+        ? "collect"
+        : null;
   const generation = positiveInteger(metadata.rr_tax_generation);
   const fingerprint = text(metadata.rr_tax_fingerprint);
   if (
-    (provider !== "taxrate_io" && provider !== "stripe_tax") ||
+    !collectionMode ||
+    (collectionMode === "collect" &&
+      provider !== "taxrate_io" &&
+      provider !== "stripe_tax") ||
+    (collectionMode === "disabled" && provider !== null) ||
     !generation ||
     !fingerprint
   ) {
@@ -270,9 +284,11 @@ const frozenQuoteFromMetadata = (
   }
 
   const currentFingerprint = createTaxSubjectFingerprint({
+    collectionMode,
     generation,
     orderOrCart,
-    provider,
+    provider:
+      provider === "taxrate_io" || provider === "stripe_tax" ? provider : null,
   });
   if (currentFingerprint !== fingerprint) {
     return null;
@@ -281,20 +297,30 @@ const frozenQuoteFromMetadata = (
   const calculationId = text(metadata.rr_tax_calculation_id);
   const rate = finiteNonNegative(metadata.rr_tax_rate_percent);
   if (
+    collectionMode === "collect" &&
     provider === "stripe_tax" &&
     (!calculationId || !/^taxcalc_[A-Za-z0-9]+$/.test(calculationId))
   ) {
     return null;
   }
-  if (provider === "taxrate_io" && rate === null) {
+  if (
+    (collectionMode === "collect" &&
+      provider === "taxrate_io" &&
+      rate === null) ||
+    (collectionMode === "disabled" && (calculationId !== null || rate !== null))
+  ) {
     return null;
   }
 
   return {
     fingerprint,
     quote: {
+      collectionMode,
       generation,
-      provider,
+      provider:
+        provider === "taxrate_io" || provider === "stripe_tax"
+          ? provider
+          : null,
       ...(calculationId ? { stripeCalculationId: calculationId } : {}),
       ...(rate !== null ? { taxRatePercent: rate } : {}),
     },
@@ -371,6 +397,7 @@ const identityFromTaxLines = (
     identities.some(
       (identity) =>
         identity.provider !== first.provider ||
+        identity.collectionMode !== first.collectionMode ||
         identity.generation !== first.generation ||
         identity.calculationId !== first.calculationId,
     )
@@ -385,12 +412,15 @@ const identityFromTaxLines = (
   const firstRate = rates[0];
 
   return {
+    collectionMode: first.collectionMode,
     generation: first.generation,
     provider: first.provider,
     ...(first.calculationId
       ? { stripeCalculationId: first.calculationId }
       : {}),
-    ...(first.provider === "taxrate_io" && firstRate !== undefined
+    ...(first.collectionMode === "collect" &&
+    first.provider === "taxrate_io" &&
+    firstRate !== undefined
       ? { taxRatePercent: firstRate }
       : {}),
   };
@@ -398,7 +428,11 @@ const identityFromTaxLines = (
 
 const ensureControl = async (
   container: MedusaContainer,
-): Promise<{ active_provider: TaxProviderName; generation: number }> => {
+): Promise<{
+  active_provider: TaxProviderName;
+  collection_mode: TaxCollectionMode;
+  generation: number;
+}> => {
   const service = container.resolve<TaxControlModuleService>("tax_control");
   return service.ensureTaxProviderControl();
 };
@@ -418,15 +452,26 @@ const contextForCart = async (
     resolveItemTaxCodes(container, taxCart),
   ]);
   const taxableAmounts = taxableAmountsFrom(taxCart);
-  const provider = frozen?.quote.provider ?? control.active_provider;
+  const collectionMode =
+    frozen?.quote.collectionMode ?? control.collection_mode;
+  const provider =
+    collectionMode === "collect"
+      ? (frozen?.quote.provider ?? control.active_provider)
+      : null;
   const generation = frozen?.quote.generation ?? control.generation;
   const fingerprint =
     frozen?.fingerprint ??
-    createTaxSubjectFingerprint({ generation, orderOrCart: taxCart, provider });
+    createTaxSubjectFingerprint({
+      collectionMode,
+      generation,
+      orderOrCart: taxCart,
+      provider,
+    });
 
   return {
     [TAX_CONTEXT_KEY]: {
       fingerprint,
+      collectionMode,
       ...(frozen ? { frozenQuote: frozen.quote } : {}),
       generation,
       ...taxableAmounts,
@@ -466,15 +511,26 @@ const contextForOrder = async (
   ]);
   const historical =
     identityFromTaxLines(taxSubject) ?? identityFromTaxLines(order);
-  const provider = historical?.provider ?? control.active_provider;
+  const collectionMode = historical?.collectionMode ?? control.collection_mode;
+  const provider =
+    collectionMode === "collect"
+      ? (historical?.provider ?? control.active_provider)
+      : null;
   const generation = historical?.generation ?? control.generation;
   const preservedRates =
-    historical?.provider === "stripe_tax"
+    historical?.collectionMode === "collect" &&
+    historical.provider === "stripe_tax"
       ? requirePreservedStripeOrderRates(order, taxSubject, historical)
       : null;
   const frozenQuote =
-    historical?.provider === "taxrate_io" || preservedRates ? historical : null;
+    historical?.collectionMode === "disabled" ||
+    (historical?.collectionMode === "collect" &&
+      historical.provider === "taxrate_io") ||
+    preservedRates
+      ? historical
+      : null;
   const fingerprint = createTaxSubjectFingerprint({
+    collectionMode,
     generation,
     orderOrCart: taxSubject,
     provider,
@@ -484,6 +540,7 @@ const contextForOrder = async (
   return {
     [TAX_CONTEXT_KEY]: {
       fingerprint,
+      collectionMode,
       ...(frozenQuote ? { frozenQuote } : {}),
       generation,
       ...taxableAmounts,

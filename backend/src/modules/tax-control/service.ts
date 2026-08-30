@@ -10,6 +10,7 @@ import {
 
 import {
   TAX_CONTROL_ID,
+  type TaxCollectionMode,
   type TaxProviderName,
   type TaxQuoteEvidenceStatus,
 } from "./constants";
@@ -18,13 +19,15 @@ import TaxProviderAudit from "./models/tax-provider-audit";
 import TaxProviderControl from "./models/tax-provider-control";
 import TaxProviderQuota from "./models/tax-provider-quota";
 import TaxQuoteEvidence from "./models/tax-quote-evidence";
-import { matchesProviderSwitchReplay } from "./switch-idempotency";
+import { matchesTaxControlTransitionReplay } from "./switch-idempotency";
 
-type SwitchProviderInput = {
+type TransitionTaxControlInput = {
+  acknowledgementVersion: string;
   actorId: string;
   expectedGeneration: number;
   idempotencyKey: string;
   reason: string;
+  targetCollectionMode: TaxCollectionMode;
   targetProvider: TaxProviderName;
 };
 
@@ -32,11 +35,12 @@ type RecordTaxQuoteEvidenceInput = {
   amountMinor: number;
   calculationId: string | null;
   cartId: string;
+  collectionMode: TaxCollectionMode;
   currencyCode: string;
   fingerprint: string;
   generation: number;
   paymentIntentId: string;
-  provider: TaxProviderName;
+  provider: TaxProviderName | null;
   status?: TaxQuoteEvidenceStatus;
 };
 
@@ -67,6 +71,7 @@ class TaxControlModuleService extends MedusaService({
               {
                 id: TAX_CONTROL_ID,
                 active_provider: "taxrate_io",
+                collection_mode: "collect",
                 generation: 1,
                 metadata: {},
               },
@@ -96,6 +101,7 @@ class TaxControlModuleService extends MedusaService({
       existing.amount_minor === input.amountMinor &&
       existing.calculation_id === input.calculationId &&
       existing.cart_id === input.cartId &&
+      existing.collection_mode === input.collectionMode &&
       existing.currency_code === input.currencyCode &&
       existing.fingerprint === input.fingerprint &&
       existing.generation === input.generation &&
@@ -153,6 +159,7 @@ class TaxControlModuleService extends MedusaService({
           amount_minor: input.amountMinor,
           calculation_id: input.calculationId,
           cart_id: input.cartId,
+          collection_mode: input.collectionMode,
           currency_code: input.currencyCode,
           fingerprint: input.fingerprint,
           generation: input.generation,
@@ -245,8 +252,8 @@ class TaxControlModuleService extends MedusaService({
   }
 
   @InjectTransactionManager()
-  protected async switchProvider_(
-    input: SwitchProviderInput,
+  protected async transitionTaxControl_(
+    input: TransitionTaxControlInput,
     @MedusaContext() sharedContext: Context<EntityManager> = {},
   ) {
     const existingAudits = await this.listTaxProviderAudits(
@@ -256,10 +263,10 @@ class TaxControlModuleService extends MedusaService({
     );
     const existingAudit = existingAudits[0];
     if (existingAudit) {
-      if (!matchesProviderSwitchReplay(existingAudit, input)) {
+      if (!matchesTaxControlTransitionReplay(existingAudit, input)) {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The tax provider idempotency key was already used for a different switch request.",
+          "The tax control idempotency key was already used for a different transition request.",
         );
       }
       const control = await this.retrieveTaxProviderControl(
@@ -282,10 +289,13 @@ class TaxControlModuleService extends MedusaService({
       );
     }
 
-    if (control.active_provider === input.targetProvider) {
+    if (
+      control.active_provider === input.targetProvider &&
+      control.collection_mode === input.targetCollectionMode
+    ) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        `${input.targetProvider} is already active.`,
+        "The requested tax collection state is already active.",
       );
     }
 
@@ -293,12 +303,15 @@ class TaxControlModuleService extends MedusaService({
     const [audit] = await this.createTaxProviderAudits(
       [
         {
+          acknowledgement_version: input.acknowledgementVersion,
           actor_id: input.actorId,
+          from_collection_mode: control.collection_mode,
           from_generation: control.generation,
           from_provider: control.active_provider,
           idempotency_key: input.idempotencyKey,
           metadata: {},
           reason: input.reason,
+          to_collection_mode: input.targetCollectionMode,
           to_generation: nextGeneration,
           to_provider: input.targetProvider,
         },
@@ -310,6 +323,7 @@ class TaxControlModuleService extends MedusaService({
         {
           id: TAX_CONTROL_ID,
           active_provider: input.targetProvider,
+          collection_mode: input.targetCollectionMode,
           generation: nextGeneration,
           last_switch_reason: input.reason,
           last_switched_by: input.actorId,
@@ -321,7 +335,7 @@ class TaxControlModuleService extends MedusaService({
     if (!audit || !updated) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "Tax provider switch did not return its persisted state.",
+        "Tax control transition did not return its persisted state.",
       );
     }
 
@@ -329,11 +343,11 @@ class TaxControlModuleService extends MedusaService({
   }
 
   @InjectManager()
-  async switchProvider(
-    input: SwitchProviderInput,
+  async transitionTaxControl(
+    input: TransitionTaxControlInput,
     @MedusaContext() sharedContext: Context<EntityManager> = {},
   ) {
-    return this.switchProvider_(input, sharedContext);
+    return this.transitionTaxControl_(input, sharedContext);
   }
 }
 
