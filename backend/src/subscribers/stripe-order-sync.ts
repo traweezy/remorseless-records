@@ -29,6 +29,7 @@ type QueryGraph = {
 
 type Logger = {
   info: (message: string) => void;
+  warn: (message: string) => void;
 };
 
 export default async function stripeOrderSyncHandler({
@@ -88,7 +89,8 @@ export default async function stripeOrderSyncHandler({
       name: "remorseless-records-medusa",
       version: "1.0.0",
     },
-    maxNetworkRetries: 2,
+    httpClient: Stripe.createFetchHttpClient(),
+    maxNetworkRetries: 0,
     timeout: 10_000,
   });
   const synchronizedCount = await syncStripeOrderReferences({
@@ -106,6 +108,11 @@ export default async function stripeOrderSyncHandler({
       () =>
         reconcileTaxQuoteEvidence({
           client: stripe,
+          onRetry: (event) => {
+            logger.warn(
+              `[tax-evidence] Stripe safe-read retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`,
+            );
+          },
           orderId: data.id,
           paymentIntentId: reference.paymentIntentId,
           service,

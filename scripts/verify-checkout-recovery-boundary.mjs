@@ -37,6 +37,7 @@ const [
   lifecycleProcessorSource,
   taxEvidenceJobSource,
   taxEvidenceReconciliationSource,
+  stripeEvidenceClientSource,
   resendSource,
   orderNotificationSource,
   refundNotificationSource,
@@ -67,6 +68,9 @@ const [
   readRepositoryFile("backend/src/jobs/reconcile-tax-evidence.ts"),
   readRepositoryFile(
     "backend/src/lib/tax-control/evidence-reconciliation.ts",
+  ),
+  readRepositoryFile(
+    "backend/src/lib/tax-control/stripe-evidence-client.ts",
   ),
   readRepositoryFile(
     "backend/src/modules/email-notifications/services/resend.ts",
@@ -169,6 +173,7 @@ for (const source of [
   lifecycleProcessorSource,
   taxEvidenceJobSource,
   taxEvidenceReconciliationSource,
+  stripeEvidenceClientSource,
 ]) {
   assert.doesNotMatch(source, forbiddenScheduledProviderMutation);
 }
@@ -177,8 +182,14 @@ const lifecycleProcessorBody = lifecycleProcessorSource.slice(
 );
 assertOrdered(lifecycleProcessorBody, [
   'lifecycleEvent.status === "processed"',
-  "const current = await currentProviderObject",
+  "const reader = createStripeEvidenceReader",
+  "const current = await reader.readLifecycleObject",
+  "assertCurrentObjectMatches",
+  "await reader.readIntent",
+  "reconcileTaxQuoteEvidence",
 ]);
+assert.match(stripeEvidenceClientSource, /const MAX_NETWORK_RETRIES = 0;/u);
+assert.match(stripeEvidenceClientSource, /maxNetworkRetries: MAX_NETWORK_RETRIES/u);
 assert.match(lifecycleJobSource, /stripeLifecycleEventIsDue/u);
 assert.match(lifecycleJobSource, /PROCESSING_STALE_MS/u);
 

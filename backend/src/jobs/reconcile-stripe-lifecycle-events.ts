@@ -76,7 +76,8 @@ export default async function reconcileStripeLifecycleEventsJob(
       name: "remorseless-records-medusa",
       version: "1.0.0",
     },
-    maxNetworkRetries: 2,
+    httpClient: Stripe.createFetchHttpClient(),
+    maxNetworkRetries: 0,
     timeout: 10_000,
   });
 
@@ -91,6 +92,11 @@ export default async function reconcileStripeLifecycleEventsJob(
             client,
             eventId: record.id,
             lifecycleService,
+            onRetry: (event) => {
+              logger.warn(
+                `Stripe lifecycle safe-read retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`,
+              );
+            },
             taxControlService,
           }),
         { timeout: 10 },

@@ -46,7 +46,8 @@ export default async function stripeLifecycleEventHandler({
       name: "remorseless-records-medusa",
       version: "1.0.0",
     },
-    maxNetworkRetries: 2,
+    httpClient: Stripe.createFetchHttpClient(),
+    maxNetworkRetries: 0,
     timeout: 10_000,
   });
   const result = await locking.execute(
@@ -56,6 +57,11 @@ export default async function stripeLifecycleEventHandler({
         client,
         eventId: data.id,
         lifecycleService,
+        onRetry: (event) => {
+          logger.warn(
+            `Stripe lifecycle safe-read retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`,
+          );
+        },
         taxControlService,
       }),
     { timeout: 10 },

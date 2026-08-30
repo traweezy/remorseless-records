@@ -53,7 +53,8 @@ export default async function paymentTaxEvidenceHandler({
       name: "remorseless-records-medusa",
       version: "1.0.0",
     },
-    maxNetworkRetries: 2,
+    httpClient: Stripe.createFetchHttpClient(),
+    maxNetworkRetries: 0,
     timeout: 10_000,
   });
   const result = await locking.execute(
@@ -61,6 +62,11 @@ export default async function paymentTaxEvidenceHandler({
     () =>
       reconcileTaxQuoteEvidence({
         client,
+        onRetry: (event) => {
+          logger.warn(
+            `[tax-evidence] Stripe safe-read retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`,
+          );
+        },
         paymentIntentId,
         service,
       }),
@@ -69,7 +75,7 @@ export default async function paymentTaxEvidenceHandler({
 
   if (result.evidenceFound) {
     logger.info(
-      `[tax-evidence] reconciled ${paymentIntentId}: ${result.status}`,
+      `[tax-evidence] reconciliation completed (${result.status}).`,
     );
   }
 }

@@ -32,6 +32,7 @@ const fixture = ({
     charge: "ch_01CHARGE",
     currency: "usd",
     id: "re_01REFUND",
+    object: "refund",
     payment_intent: "pi_01PAYMENT",
     status: "succeeded",
   },
@@ -49,7 +50,14 @@ const fixture = ({
     disputes: { retrieve: jest.fn() },
     paymentIntents: {
       retrieve: jest.fn(async () => ({
+        amount_received: 2_500,
+        id: "pi_01PAYMENT",
+        last_payment_error: null,
+        latest_charge: null,
+        livemode: false,
         metadata: { medusa_order_id: "order_01ORDER" },
+        object: "payment_intent",
+        status: "succeeded",
       })),
     },
     refunds: {
@@ -144,7 +152,7 @@ describe("Stripe lifecycle event processing", () => {
         amount: 2_500,
         currency: "usd",
         id: "re_01REFUND",
-        livemode: false,
+        object: "refund",
         payment_intent: null,
         status: "succeeded",
       },
@@ -179,7 +187,7 @@ describe("Stripe lifecycle event processing", () => {
         amount: 9_999,
         currency: "usd",
         id: "re_01REFUND",
-        livemode: false,
+        object: "refund",
         payment_intent: "pi_01PAYMENT",
         status: "succeeded",
       },
@@ -206,11 +214,18 @@ describe("Stripe lifecycle event processing", () => {
     const input = fixture({
       currentObject: {
         amount: 2_500,
+        charge: "ch_01CHARGE",
         currency: "usd",
-        id: "re_01REFUND",
+        id: "du_01DISPUTE",
         livemode: true,
+        object: "dispute",
         payment_intent: "pi_01PAYMENT",
-        status: "succeeded",
+        status: "needs_response",
+      },
+      record: {
+        ...lifecycleEvent,
+        event_type: "charge.dispute.created",
+        object_id: "du_01DISPUTE",
       },
     });
 
@@ -228,6 +243,7 @@ describe("Stripe lifecycle event processing", () => {
       "stripelinevt_01",
       "stripe_object_integrity_mismatch",
     );
+    expect(input.client.disputes.retrieve).toHaveBeenCalled();
     expect(reconcileMock).not.toHaveBeenCalled();
   });
 });

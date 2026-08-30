@@ -11,6 +11,7 @@ const paymentIntent = (
     amount_received: 1_080,
     currency: "usd",
     id: "pi_test",
+    last_payment_error: null,
     latest_charge: {
       amount_refunded: 0,
       disputed: false,
@@ -29,7 +30,7 @@ const association = (
 ): Stripe.Tax.Association =>
   ({
     calculation: "taxcalc_test",
-    id: "taxassoc_test",
+    id: "taxa_test",
     object: "tax.association",
     payment_intent: "pi_test",
     tax_transaction_attempts: attempts,
@@ -54,7 +55,7 @@ const stripeFixture = ({
   refundsHasMore = false,
   taxAssociation = association([
     {
-      committed: { transaction: "tax_txn_sale" },
+      committed: { transaction: "tax_sale" },
       source: "pi_test",
       status: "committed",
     },
@@ -74,6 +75,7 @@ const stripeFixture = ({
       ? [
           {
             amount: charge.amount_refunded,
+            currency: "usd",
             failure_reason: null,
             id: "re_test",
             object: "refund",
@@ -140,7 +142,7 @@ describe("reconcileTaxQuoteEvidence", () => {
       expect.objectContaining({
         orderId: "order_01",
         status: "succeeded",
-        taxTransactionId: "tax_txn_sale",
+        taxTransactionId: "tax_sale",
       }),
     );
   });
@@ -158,12 +160,12 @@ describe("reconcileTaxQuoteEvidence", () => {
       }),
       taxAssociation: association([
         {
-          committed: { transaction: "tax_txn_sale" },
+          committed: { transaction: "tax_sale" },
           source: "pi_test",
           status: "committed",
         },
         {
-          committed: { transaction: "tax_txn_refund" },
+          committed: { transaction: "tax_refund" },
           source: "re_test",
           status: "committed",
         },
@@ -184,7 +186,7 @@ describe("reconcileTaxQuoteEvidence", () => {
       expect.objectContaining({
         metadata: expect.objectContaining({
           refund_amount_minor: 400,
-          refund_tax_transaction_ids: ["tax_txn_refund"],
+          refund_tax_transaction_ids: ["tax_refund"],
         }),
       }),
     );
@@ -227,6 +229,7 @@ describe("reconcileTaxQuoteEvidence", () => {
       refunds: [
         {
           amount: 300,
+          currency: "usd",
           failure_reason: null,
           id: "re_first",
           object: "refund",
@@ -235,6 +238,7 @@ describe("reconcileTaxQuoteEvidence", () => {
         } as unknown as Stripe.Refund,
         {
           amount: 400,
+          currency: "usd",
           failure_reason: null,
           id: "re_second",
           object: "refund",
@@ -244,12 +248,12 @@ describe("reconcileTaxQuoteEvidence", () => {
       ],
       taxAssociation: association([
         {
-          committed: { transaction: "tax_txn_sale" },
+          committed: { transaction: "tax_sale" },
           source: "pi_test",
           status: "committed",
         },
         {
-          committed: { transaction: "tax_txn_refund_first" },
+          committed: { transaction: "tax_refundfirst" },
           source: "re_first",
           status: "committed",
         },
@@ -274,6 +278,7 @@ describe("reconcileTaxQuoteEvidence", () => {
       refunds: [
         {
           amount: 400,
+          currency: "usd",
           failure_reason: "expired_or_canceled_card",
           id: "re_failed",
           object: "refund",

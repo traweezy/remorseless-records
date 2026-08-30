@@ -1,10 +1,18 @@
-import type Stripe from "stripe";
-
 import type {
   TaxProviderName,
   TaxQuoteEvidenceStatus,
 } from "../../modules/tax-control/constants";
 import type TaxControlModuleService from "../../modules/tax-control/service";
+import {
+  createStripeEvidenceReader,
+  type StripeEvidenceAssociation,
+  type StripeEvidenceAssociationAttempt,
+  type StripeEvidenceCharge,
+  type StripeEvidenceClient,
+  type StripeEvidenceIntent,
+  type StripeEvidenceReader,
+  type StripeEvidenceRetryEvent,
+} from "./stripe-evidence-client";
 
 type EvidenceRecord = {
   payment_intent_id: string;
@@ -20,12 +28,8 @@ type ReconcileTaxEvidenceResult = {
 
 const paymentIntentIdPattern = /^pi_[A-Za-z0-9]+$/;
 
-const chargeFrom = (
-  value: string | Stripe.Charge | null,
-): Stripe.Charge | null => (value && typeof value === "object" ? value : null);
-
 const associationSummary = (
-  association: Stripe.Tax.Association,
+  association: StripeEvidenceAssociation,
 ): {
   associationStatus: string;
   committedSources: string[];
@@ -33,30 +37,30 @@ const associationSummary = (
   refundTransactionIds: string[];
   taxTransactionId: string | null;
 } => {
-  const attempts = association.tax_transaction_attempts ?? [];
+  const attempts = association.attempts;
   const errors = attempts
-    .map((attempt) => attempt.errored?.reason)
-    .filter((reason): reason is NonNullable<typeof reason> => Boolean(reason));
-  const originalAttempt = attempts.find(
+    .filter((attempt) => attempt.status === "errored")
+    .map((attempt) => attempt.reason);
+  const committedAttempts = attempts.filter(
+    (
+      attempt,
+    ): attempt is Extract<
+      StripeEvidenceAssociationAttempt,
+      { status: "committed" }
+    > => attempt.status === "committed",
+  );
+  const originalAttempt = committedAttempts.find(
     (attempt) =>
-      attempt.source === association.payment_intent &&
-      attempt.status === "committed",
+      attempt.source === association.paymentIntentId,
   );
   const taxTransactionId =
-    originalAttempt?.committed?.transaction ??
-    attempts.find((attempt) => attempt.status === "committed")?.committed
-      ?.transaction ??
+    originalAttempt?.transactionId ??
+    committedAttempts[0]?.transactionId ??
     null;
-  const refundTransactionIds = attempts
-    .filter(
-      (attempt) =>
-        attempt.source !== association.payment_intent &&
-        attempt.status === "committed",
-    )
-    .map((attempt) => attempt.committed?.transaction)
-    .filter((id): id is string => Boolean(id));
-  const committedSources = attempts
-    .filter((attempt) => attempt.status === "committed")
+  const refundTransactionIds = committedAttempts
+    .filter((attempt) => attempt.source !== association.paymentIntentId)
+    .map((attempt) => attempt.transactionId);
+  const committedSources = committedAttempts
     .map((attempt) => attempt.source)
     .filter((source): source is string => Boolean(source));
 
@@ -79,8 +83,8 @@ const evidenceStatus = ({
   intent,
 }: {
   associationFailed: boolean;
-  charge: Stripe.Charge | null;
-  intent: Stripe.PaymentIntent;
+  charge: StripeEvidenceCharge | null;
+  intent: StripeEvidenceIntent;
 }): TaxQuoteEvidenceStatus => {
   if (charge?.disputed) {
     return "disputed";
@@ -92,8 +96,8 @@ const evidenceStatus = ({
     return "canceled";
   }
 
-  const amountRefunded = Math.max(0, charge?.amount_refunded ?? 0);
-  const capturedAmount = Math.max(0, intent.amount_received);
+  const amountRefunded = charge?.amountRefunded ?? 0;
+  const capturedAmount = intent.amountReceived;
   if (capturedAmount > 0 && amountRefunded >= capturedAmount) {
     return "refunded";
   }
@@ -105,7 +109,7 @@ const evidenceStatus = ({
   }
   if (
     intent.status === "requires_payment_method" &&
-    intent.last_payment_error
+    intent.lastPaymentErrorCode
   ) {
     return "failed";
   }
@@ -114,14 +118,20 @@ const evidenceStatus = ({
 
 export const reconcileTaxQuoteEvidence = async ({
   client,
+  onRetry,
   orderId,
   paymentIntentId,
+  reader,
   service,
+  timeoutMs = 8_000,
 }: {
-  client: Stripe;
+  client: StripeEvidenceClient;
+  onRetry?: (event: StripeEvidenceRetryEvent) => void;
   orderId?: string;
   paymentIntentId: string;
+  reader?: StripeEvidenceReader;
   service: TaxControlModuleService;
+  timeoutMs?: number;
 }): Promise<ReconcileTaxEvidenceResult> => {
   if (!paymentIntentIdPattern.test(paymentIntentId)) {
     throw new Error("A valid Stripe PaymentIntent ID is required.");
@@ -142,18 +152,19 @@ export const reconcileTaxQuoteEvidence = async ({
     };
   }
 
-  const intent = await client.paymentIntents.retrieve(paymentIntentId, {
-    expand: ["latest_charge"],
+  const evidenceReader =
+    reader ??
+    createStripeEvidenceReader({
+      client,
+      ...(onRetry ? { onRetry } : {}),
+      timeoutMs,
+    });
+  const snapshot = await evidenceReader.readEvidence({
+    paymentIntentId,
+    provider: evidence.provider,
   });
-  const charge = chargeFrom(intent.latest_charge);
-  const [association, refunds] = await Promise.all([
-    evidence.provider === "stripe_tax"
-      ? client.tax.associations.find({
-          payment_intent: paymentIntentId,
-        })
-      : Promise.resolve(null),
-    client.refunds.list({ limit: 100, payment_intent: paymentIntentId }),
-  ]);
+  const { association, intent, refunds } = snapshot;
+  const { charge } = intent;
   const summary = association
     ? associationSummary(association)
     : {
@@ -163,13 +174,13 @@ export const reconcileTaxQuoteEvidence = async ({
         refundTransactionIds: [] as string[],
         taxTransactionId: null,
       };
-  const refundAmountMinor = Math.max(0, charge?.amount_refunded ?? 0);
-  const failedRefunds = refunds.data.filter(
+  const refundAmountMinor = charge?.amountRefunded ?? 0;
+  const failedRefunds = refunds.filter(
     (refund) => refund.status === "failed" || refund.status === "canceled",
   );
   const refundsAwaitingTaxReversal =
     evidence.provider === "stripe_tax"
-      ? refunds.data.filter(
+      ? refunds.filter(
           (refund) =>
             refund.status !== "failed" &&
             refund.status !== "canceled" &&
@@ -177,10 +188,10 @@ export const reconcileTaxQuoteEvidence = async ({
         )
       : [];
   const refundAuditFailures = [
-    ...(refunds.has_more ? ["refund_list_truncated"] : []),
+    ...(snapshot.refundsTruncated ? ["refund_list_truncated"] : []),
     ...failedRefunds.map(
       (refund) =>
-        `refund_failed:${refund.failure_reason ?? refund.status ?? "unknown"}`,
+        `refund_failed:${refund.failureReason ?? refund.status ?? "unknown"}`,
     ),
   ];
   const associationStatus =
@@ -208,14 +219,14 @@ export const reconcileTaxQuoteEvidence = async ({
         (refund) => refund.id,
       ),
       refund_tax_transaction_ids: summary.refundTransactionIds,
-      stripe_refund_count: refunds.data.length,
+      stripe_refund_count: refunds.length,
       stripe_refund_failed_count: failedRefunds.length,
-      stripe_refund_statuses: refunds.data.map((refund) => ({
-        failure_reason: refund.failure_reason,
+      stripe_refund_statuses: refunds.map((refund) => ({
+        failure_reason: refund.failureReason,
         id: refund.id,
         status: refund.status,
       })),
-      stripe_payment_error_code: intent.last_payment_error?.code ?? null,
+      stripe_payment_error_code: intent.lastPaymentErrorCode,
       stripe_payment_status: intent.status,
     },
     ...(orderId ? { orderId } : {}),

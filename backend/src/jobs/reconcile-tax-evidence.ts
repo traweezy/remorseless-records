@@ -25,9 +25,6 @@ const RECONCILABLE_STATUSES: TaxQuoteEvidenceStatus[] = [
   "succeeded",
 ];
 
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
 export default async function reconcileTaxEvidenceJob(
   container: MedusaContainer,
 ): Promise<void> {
@@ -50,7 +47,8 @@ export default async function reconcileTaxEvidenceJob(
       name: "remorseless-records-medusa",
       version: "1.0.0",
     },
-    maxNetworkRetries: 2,
+    httpClient: Stripe.createFetchHttpClient(),
+    maxNetworkRetries: 0,
     timeout: 10_000,
   });
 
@@ -64,6 +62,11 @@ export default async function reconcileTaxEvidenceJob(
           reconcileTaxQuoteEvidence({
             client,
             ...(record.order_id ? { orderId: record.order_id } : {}),
+            onRetry: (event) => {
+              logger.warn(
+                `[tax-evidence] Stripe safe-read retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`,
+              );
+            },
             paymentIntentId: record.payment_intent_id,
             service,
           }),
@@ -75,10 +78,10 @@ export default async function reconcileTaxEvidenceJob(
       ) {
         needsAttention += 1;
       }
-    } catch (error) {
+    } catch {
       failed += 1;
       logger.error(
-        `[tax-evidence] ${record.payment_intent_id} failed: ${errorMessage(error)}`,
+        "[tax-evidence] reconciliation failed (provider boundary or persistence error).",
       );
     }
   }
