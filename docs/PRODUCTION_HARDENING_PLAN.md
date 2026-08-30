@@ -1832,7 +1832,7 @@ Exact-SHA staging acceptance passed on August 29, 2026:
 - [ ] Complete the exact-amount, success, 3DS, decline, browser-close,
       response-loss, duplicate-submit, concurrency, and recovery matrix in
       `docs/CHECKOUT_OPERATIONS.md`.
-- [ ] Verify confirmation email, receipt, Medusa order, Stripe PaymentIntent,
+- [x] Verify confirmation email, receipt, Medusa order, Stripe PaymentIntent,
       and tax evidence agree.
 - [ ] Complete the refund and dispute reconciliation matrix in
       `docs/REFUND_OPERATIONS.md`.
@@ -2064,6 +2064,56 @@ and `0d618af0bce550d148270bb6aa6abb4babddf896`:
 - All provider operations used Stripe test mode (`livemode: false`). No
   production environment, credential, endpoint, object, funds, or traffic was
   accessed or changed.
+
+Staging confirmation-message reconciliation passed on August 30, 2026 at
+exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
+
+- The response-loss order's notification failed at the provider boundary
+  because its diagnostic recipient used the reserved `example.com` domain.
+  The replacement acceptance used Resend's documented delivered test fixture,
+  with a tagged local part, so it exercised provider delivery without sending
+  customer mail.
+- The audit also found that the order template rendered Medusa's raw 6.5325
+  USD amount and supplied a placeholder reply-to. The exact-SHA fix routes
+  order and refund amounts through one validated `Intl.NumberFormat` boundary,
+  rejects malformed monetary template data, and removes the placeholder
+  reply-to. Focused tests cover the high-precision total, item price, invalid
+  values, and rendered order message.
+- Local Backend lint, strict typecheck, 191-suite / 1,028-test run, production
+  Medusa/Admin build, repository QA, and Storefront 119-file / 633-test
+  pre-push suite passed. Root CI `33282614902`, Backend CI `33282614910`, and
+  Storefront CI `33282614879` completed successfully, including security,
+  CodeQL, coverage, production build, Playwright, accessibility, and
+  Lighthouse gates.
+- Railway Backend deployment `4a326c2f-2d09-43b5-8f9f-6599c9dfa4ff`
+  reached `SUCCESS` on the exact SHA with image digest
+  `sha256:5f61681f3f241f201113c2bd578499c6e2fd5b060e9f5b843576c897d4859321`.
+  `/ready` returned HTTP 200 with PostgreSQL, Redis, search, and object storage
+  healthy. The unchanged Storefront deployment
+  `c38fffbf-6399-4e15-85d4-220bbefcfbc1` was correctly skipped by its watch
+  paths.
+- The one-shot acceptance created cart
+  `cart_01M180TWFHX4JZHNR9GQ5RBS8P`, test PaymentIntent
+  `pi_3U9wXnIM4tTeFQ3W1kprrCFD`, and order
+  `order_01M180V5BWYSRCFYMP672Y98F2` / display ID `7`. Stripe reported
+  `livemode: false`, 653 USD minor units, exactly one PaymentIntent, and
+  exactly one charge. The signed receipt returned the same order number,
+  currency, cent-rounded total, and one item.
+- PostgreSQL contains exactly one order-cart link, payment collection, payment
+  session, payment, capture, and successful idempotent order notification. The
+  order and notification payload retain the authoritative 6.5325 USD raw
+  total. The single 8.875% tax line and one generation-one `taxrate_io`
+  evidence row retain 653 minor units, `succeeded` status, matching cart,
+  order, and PaymentIntent references, and linked/verified timestamps.
+- Resend retained one message with a provider external ID and terminal
+  `delivered` state. Normalized rendered content contained `Total: $6.53` and
+  the `$1.00` item price, omitted `6.5325 usd`, and had no reply-to. The exact
+  Backend deployment returned HTTP 200 for both observed tax-link requests and
+  the single cart-completion request, then logged one successful
+  `order-placed` send to one recipient.
+- The temporary one-shot harness was moved to the desktop trash after evidence
+  collection. No production commerce environment, Stripe object, funds,
+  customer recipient, or traffic was accessed or changed.
 
 ## Tax readiness
 

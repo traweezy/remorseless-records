@@ -569,6 +569,66 @@ Rollback must never restore two payment authorities.
 6. Reconcile all authorized/captured states and verify aggregate zero before
    disabling the safety net.
 
+## August 30, 2026 confirmation-message evidence
+
+Scope: Railway `staging` only at exact source SHA
+`68a0b40639219898f6c6f8588a1f61fe9f736984`. Production was not queried,
+changed, deployed, emailed, or charged.
+
+The earlier response-loss checkout used a diagnostic `example.com` recipient,
+which Resend correctly rejected. This acceptance instead used Resend's
+[documented delivered test address](https://resend.com/docs/dashboard/emails/send-test-emails)
+with a tagged local part. It therefore exercised the provider's delivered path
+without sending customer mail.
+
+The template audit fixed two release-blocking presentation issues before the
+acceptance: raw 6.5325 USD order totals now pass through the shared validated
+currency formatter and render as `$6.53`, and the order subscriber no longer
+sends a placeholder reply-to. Invalid totals or item prices fail closed before
+provider submission. Focused rendering and formatting tests cover the exact
+high-precision amount, the `$1.00` item price, and malformed values.
+
+Release and deployment evidence:
+
+- local Backend lint, strict typecheck, 191 suites / 1,028 tests, production
+  Medusa/Admin build, repository QA, and the Storefront 119-file / 633-test
+  pre-push suite passed;
+- Root CI `33282614902`, Backend CI `33282614910`, and Storefront CI
+  `33282614879` passed, including security, CodeQL, coverage, build,
+  Playwright, accessibility, and Lighthouse gates;
+- Railway Backend deployment `4a326c2f-2d09-43b5-8f9f-6599c9dfa4ff`
+  reached `SUCCESS` with image digest
+  `sha256:5f61681f3f241f201113c2bd578499c6e2fd5b060e9f5b843576c897d4859321`;
+- Backend `/ready` returned HTTP 200 with PostgreSQL, Redis, search, and object
+  storage healthy; and
+- the unchanged Storefront deployment
+  `c38fffbf-6399-4e15-85d4-220bbefcfbc1` was correctly skipped by watch paths.
+
+Checkout and reconciliation evidence:
+
+- cart `cart_01M180TWFHX4JZHNR9GQ5RBS8P`, test PaymentIntent
+  `pi_3U9wXnIM4tTeFQ3W1kprrCFD`, and order
+  `order_01M180V5BWYSRCFYMP672Y98F2` / display ID `7` were created once;
+- Stripe reported `livemode: false`, 653 USD minor units, one PaymentIntent,
+  and one charge, while the signed receipt matched the same order number,
+  currency, cent-rounded total, and one item;
+- PostgreSQL retained one order-cart link, payment collection, payment session,
+  payment, capture, and successful idempotent `order-placed` notification;
+- the order and notification payload retained the authoritative 6.5325 USD raw
+  amount, while Resend's normalized rendered message contained
+  `Total: $6.53` and `$1.00`, omitted `6.5325 usd`, and had no reply-to;
+- Resend retained the provider external ID and reported terminal `delivered`;
+- one 8.875% line and one generation-one `taxrate_io` evidence row matched 653
+  minor units, USD, the cart, order, and PaymentIntent, with `succeeded`,
+  linked, and verified state; and
+- exact deployment logs showed HTTP 200 for both observed tax-link calls and
+  the single cart-completion call, followed by one successful one-recipient
+  Resend send.
+
+The untracked one-shot harness was moved to the desktop trash after the checks.
+Acceptance output exposed only opaque IDs, counts, status, currency, and amount
+evidence; temporary input data and the harness were not retained locally.
+
 ## July 25, 2026 staging evidence
 
 Scope: Railway `staging` only at checkout implementation commit `d71d87f`.
@@ -649,6 +709,6 @@ prices in staging.
       inspected with no horizontal overflow.
 - [ ] Keyboard, focus/error summary, screen-reader status, reduced motion, and
       200% zoom/reflow pass.
-- [ ] Confirmation email and receipt match the Medusa order.
+- [x] Confirmation email and receipt match the Medusa order.
 - [ ] GitHub CI and both Railway staging deployments report success.
 - [ ] No production configuration or traffic changed.
