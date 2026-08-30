@@ -820,7 +820,7 @@ single-attempt. The generated OpenAPI check inventories all route sources
 deterministically and is wired into both the repository lint gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
-typechecks pass. Backend passes 1,028 tests across 191 suites. Storefront passes
+typechecks pass. Backend passes 1,037 tests across 191 suites. Storefront passes
 658 tests across 120 files with 92.99% statement, 86.01% branch, 93.98%
 function, and 92.94% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
@@ -937,6 +937,31 @@ or error for the exact deployment acceptance window. No cart, checkout,
 payment, order, or receipt state was created or inspected in shared staging;
 focused tests prove cart, shipping-option, payment-provider, and receipt reads
 use the shared safe-read boundary while every mutation remains single-attempt.
+
+TaxRate.io exact staging acceptance: commit
+`85b8f4b6981ddcd7d7b4bc404ae96f2522afa264` passed Root CI `33291052970`,
+Backend CI `33291052972`, and Storefront CI `33291052965`, including unit
+coverage, both production builds, CodeQL, dependency/secret scans, Playwright,
+pa11y, and Lighthouse. Railway held Backend deployment
+`fa0169e2-80c9-4231-97ae-b44d15b9c25b` until those workflows passed, then
+released image digest
+`sha256:c34ac82c27c74aee77c8344b3a5dd6ace360a7fe34d218d8b904be1ae5fe82cc`
+to `SUCCESS` on that exact SHA. Storefront deployment
+`ce036094-9c69-4e5e-acb4-151196411156` was correctly skipped because its
+watched paths were unchanged. Backend `/live`, `/ready`, and `/api/health` all
+returned 200; readiness reported database, Redis, search, and object storage
+healthy. All four matching exact-deployment HTTP records were 200: two
+`GET /live`, one `GET /ready`, and one `GET /api/health`. The exact deployment
+recorded 308 info events and four known successful command-echo banners that
+Railway classified as errors, with zero warning, exception/fatal/failed-
+operation, tax-retry, or quota-retry records. The health payload omitted its
+optional version because Railway does not currently inject `COMMIT_SHA`; exact
+deployment metadata and the immutable digest therefore anchor this acceptance,
+and environment version injection remains an observability follow-up. No paid
+TaxRate.io lookup or quota refresh was invoked in shared staging. The focused
+12-test client suite proves bounded transient retries under one deadline,
+single-attempt metered 4xx handling, strict rate/quota parsing, and redacted
+errors and retry telemetry.
 
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
@@ -2432,7 +2457,8 @@ maintenance rather than suppressing the platform warning.
       add a tested exact-request-ID Railway verifier that fails when correlated
       events disappear or their deployment/correlation fields mismatch.
 - [ ] Add structured JSON logging with redaction, request ID, trace ID, span ID,
-      service, environment, and commit SHA.
+      service, environment, and commit SHA; inject Railway `COMMIT_SHA` so
+      health responses expose the accepted artifact version.
 - [ ] Add OpenTelemetry traces and RED metrics for HTTP, database, Redis,
       search, storage, Stripe, tax, email, queues, and scheduled jobs.
 - [ ] Add privacy-conscious Web Vitals and frontend error reporting.
