@@ -807,15 +807,16 @@ request-registry TTL/cardinality, final status, privacy, repeated headers,
 trace fallback, and duplicate-listener prevention. The installed Medusa patch
 verifier behaviorally proves early correlation and redacted framework
 completion. Provider-focused tests prove default SDK cancellation, combined
-caller cancellation, safe error classification, Meilisearch signal forwarding,
+caller cancellation, safe error classification, read-only retry/backoff under
+one deadline, bounded `Retry-After`, Meilisearch signal forwarding,
 request-bound news timeout propagation, and provider-detail redaction. The
 generated OpenAPI check inventories all route sources deterministically and is
 wired into both the repository lint gate and Root CI.
 
 Current local gate evidence: repository lint and policy checks plus both strict
 typechecks pass. Backend passes 964 tests across 182 suites. Storefront passes
-633 tests across 119 files with 93.09% statement, 85.77% branch, 93.77%
-function, and 93.04% line coverage. Both production builds pass, including the
+637 tests across 119 files with 92.99% statement, 85.74% branch, 93.88%
+function, and 92.95% line coverage. Both production builds pass, including the
 Storefront client-bundle secret scan over 127 static assets. The Admin main
 bundle is 1,702,695 gzip bytes and 6,708,946 raw bytes; all 336 Admin assets are
 2,297,109 gzip bytes and 8,376,872 raw bytes, within their four release
@@ -2175,7 +2176,9 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
 - [ ] Add outbound deadlines, cancellation, bounded retries, and redacted
       provider errors for content, search, email, Stripe, tax, storage,
       contact, and privacy calls. Contact/privacy Backend and Resend deadlines
-      are complete; the other provider families remain.
+      are complete. Storefront news, discography, merchandising-shelf, and
+      product-handle reads now also have a shared safe-method-only two-attempt
+      boundary under one deadline; the other provider families remain.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
 - [ ] Make browser query persistence opt-in for any PII-bearing data.

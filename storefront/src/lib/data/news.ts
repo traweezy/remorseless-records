@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache"
 import { runtimeEnv } from "@/config/env"
 import { createUpstreamHeaders } from "@/lib/http/correlation"
 import {
-  createProviderSignal,
+  fetchProviderRead,
   ProviderRequestError,
   toProviderRequestError,
 } from "@/lib/http/provider-boundary"
@@ -104,7 +104,7 @@ export const fetchNewsEntries = async ({
     url.searchParams.set("limit", String(limit))
     url.searchParams.set("offset", String(offset))
 
-    const response = await fetch(url.toString(), {
+    const response = await fetchProviderRead(url.toString(), {
       headers: request
         ? createUpstreamHeaders(request, {
             "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
@@ -113,7 +113,7 @@ export const fetchNewsEntries = async ({
       ...(request
         ? { cache: "no-store" as const }
         : { next: { revalidate: 300, tags: ["news"] } }),
-      signal: createProviderSignal(request?.signal),
+      ...(request ? { signal: request.signal } : {}),
     })
 
     if (!response.ok) {
@@ -170,12 +170,11 @@ export const fetchNewsEntryBySlug = async (
       runtimeEnv.medusaBackendUrl
     )
 
-    const response = await fetch(url.toString(), {
+    const response = await fetchProviderRead(url.toString(), {
       headers: {
         "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
       },
       next: { revalidate: 300, tags: ["news"] },
-      signal: createProviderSignal(),
     })
 
     if (!response.ok) {

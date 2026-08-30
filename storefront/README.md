@@ -95,6 +95,15 @@ contains only published Products in the Storefront sales channel. Every page
 has an eight-second deadline. Sitemap generation stops after 5,000 Products;
 the in-process fallback hydrates at most 1,000 through native Store API batches.
 
+Server-side news, discography, merchandising-shelf, and product-handle feeds
+share one provider-read boundary. It permits only `GET` and `HEAD`, makes at
+most two attempts under one eight-second deadline, preserves caller
+cancellation, and applies 100 ms exponential backoff capped at one second.
+Short `Retry-After` values are honored; longer provider windows return without
+an eager retry. Discarded response bodies are canceled, and terminal transport
+errors retain only `timeout` or `unavailable`, never an upstream URL, payload,
+credential, or customer value.
+
 The storefront uses a version-controlled subset of the backend's filterable
 index contract instead of reading index settings on every request. The backend
 release rebuild validates that contract before its atomic index swap. Initial

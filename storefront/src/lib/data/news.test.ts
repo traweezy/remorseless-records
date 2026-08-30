@@ -247,10 +247,9 @@ describe("news data layer", () => {
     }))
 
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: false,
-      status: faker.number.int({ min: 500, max: 599 }),
-    } as Response)
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 503 }))
 
     const { fetchNewsEntryBySlug, getNewsEntryBySlug, fetchNewsEntries } = await import(
       "@/lib/data/news"
@@ -263,7 +262,7 @@ describe("news data layer", () => {
       offset: 0,
       limit: 5,
     })
-    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
     expect(errorSpy).toHaveBeenCalled()
   })
 })

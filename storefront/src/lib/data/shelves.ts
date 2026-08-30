@@ -10,7 +10,7 @@ import {
 } from "@/lib/data/products"
 import { normalizeRibbonLabel } from "@/lib/products/ribbons"
 import {
-  createProviderSignal,
+  fetchProviderRead,
   toProviderRequestError,
 } from "@/lib/http/provider-boundary"
 
@@ -75,12 +75,11 @@ const fetchCatalogShelves = async (): Promise<
   try {
     const url = new URL("/store/catalog/shelves", runtimeEnv.medusaBackendUrl)
     url.searchParams.set("handles", shelfHandles.join(","))
-    const response = await fetch(url.toString(), {
+    const response = await fetchProviderRead(url.toString(), {
       headers: {
         "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
       },
       next: { revalidate: 60, tags: ["catalog-shelves"] },
-      signal: createProviderSignal(),
     })
     if (!response.ok) {
       console.error(

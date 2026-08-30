@@ -1,4 +1,9 @@
 export const DEFAULT_PROVIDER_TIMEOUT_MS = 8_000
+export const DEFAULT_PROVIDER_READ_ATTEMPTS = 2
+export const DEFAULT_PROVIDER_RETRY_BASE_DELAY_MS = 100
+export const MAX_PROVIDER_RETRY_DELAY_MS = 1_000
+
+const retryableReadStatuses = new Set([408, 425, 429, 500, 502, 503, 504])
 
 export type ProviderFailureKind = "timeout" | "unavailable"
 
@@ -44,6 +49,152 @@ export const createProviderSignal = (
 
   const deadline = AbortSignal.timeout(timeoutMs)
   return signal ? AbortSignal.any([signal, deadline]) : deadline
+}
+
+export type ProviderReadOptions = {
+  maxAttempts?: number
+  retryBaseDelayMs?: number
+  timeoutMs?: number
+}
+
+const assertBoundedInteger = (
+  value: number,
+  name: string,
+  maximum: number
+): void => {
+  if (!Number.isSafeInteger(value) || value <= 0 || value > maximum) {
+    throw new RangeError(`${name} must be an integer between 1 and ${maximum}`)
+  }
+}
+
+const parseRetryAfterMs = (
+  value: string | null,
+  nowMs: number
+): number | undefined => {
+  if (value === null) {
+    return undefined
+  }
+
+  const normalized = value.trim()
+  if (/^\d+$/.test(normalized)) {
+    const seconds = Number(normalized)
+    const milliseconds = seconds * 1_000
+    return Number.isSafeInteger(milliseconds)
+      ? milliseconds
+      : MAX_PROVIDER_RETRY_DELAY_MS + 1
+  }
+
+  const dateMs = Date.parse(normalized)
+  return Number.isFinite(dateMs) ? Math.max(0, dateMs - nowMs) : undefined
+}
+
+const retryDelayMs = (
+  response: Response | null,
+  attempt: number,
+  baseDelayMs: number
+): number | null => {
+  const backoffMs = Math.min(
+    baseDelayMs * 2 ** attempt,
+    MAX_PROVIDER_RETRY_DELAY_MS
+  )
+  const retryAfterMs = response
+    ? parseRetryAfterMs(response.headers.get("retry-after"), Date.now())
+    : undefined
+
+  if (
+    retryAfterMs !== undefined &&
+    retryAfterMs > MAX_PROVIDER_RETRY_DELAY_MS
+  ) {
+    return null
+  }
+  return Math.max(backoffMs, retryAfterMs ?? 0)
+}
+
+const waitForRetry = (
+  delayMs: number,
+  signal: AbortSignal
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new ProviderRequestError("timeout"))
+      return
+    }
+
+    const onAbort = (): void => {
+      clearTimeout(timeout)
+      reject(new ProviderRequestError("timeout"))
+    }
+    const timeout = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort)
+      resolve()
+    }, delayMs)
+    signal.addEventListener("abort", onAbort, { once: true })
+  })
+
+const cancelResponseBody = async (response: Response): Promise<void> => {
+  try {
+    await response.body?.cancel()
+  } catch {
+    // The retry remains safe when an already-closed response cannot be canceled.
+  }
+}
+
+export const fetchProviderRead = async (
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  {
+    maxAttempts = DEFAULT_PROVIDER_READ_ATTEMPTS,
+    retryBaseDelayMs = DEFAULT_PROVIDER_RETRY_BASE_DELAY_MS,
+    timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS,
+  }: ProviderReadOptions = {}
+): Promise<Response> => {
+  const inputMethod = input instanceof Request ? input.method : "GET"
+  const method = (init.method ?? inputMethod).toUpperCase()
+  if (method !== "GET" && method !== "HEAD") {
+    throw new RangeError("Provider retries require a safe read method")
+  }
+  assertBoundedInteger(maxAttempts, "Provider read attempts", 3)
+  assertBoundedInteger(
+    retryBaseDelayMs,
+    "Provider retry base delay",
+    MAX_PROVIDER_RETRY_DELAY_MS
+  )
+
+  const signal = createProviderSignal(init.signal, timeoutMs)
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (signal.aborted) {
+      throw new ProviderRequestError("timeout")
+    }
+
+    let response: Response
+    try {
+      response = await fetch(input, { ...init, signal })
+    } catch (error) {
+      const providerError = toProviderRequestError(error)
+      if (providerError.kind === "timeout" || attempt + 1 >= maxAttempts) {
+        throw providerError
+      }
+      const delayMs = retryDelayMs(null, attempt, retryBaseDelayMs)
+      await waitForRetry(delayMs ?? retryBaseDelayMs, signal)
+      continue
+    }
+
+    if (
+      !retryableReadStatuses.has(response.status) ||
+      attempt + 1 >= maxAttempts
+    ) {
+      return response
+    }
+
+    const delayMs = retryDelayMs(response, attempt, retryBaseDelayMs)
+    if (delayMs === null) {
+      return response
+    }
+    await cancelResponseBody(response)
+    await waitForRetry(delayMs, signal)
+  }
+
+  throw new ProviderRequestError("unavailable")
 }
 
 export const providerProblem = (

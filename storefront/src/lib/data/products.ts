@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache"
 import { z } from "zod"
 
 import { runtimeEnv } from "@/config/env"
+import { fetchProviderRead } from "@/lib/http/provider-boundary"
 import { storeClient } from "@/lib/medusa"
 import { resolveRegionId } from "@/lib/regions"
 
@@ -321,12 +322,11 @@ export const getAllProductHandles = unstable_cache(
         if (cursor) {
           url.searchParams.set("cursor", cursor)
         }
-        const response = await fetch(url.toString(), {
+        const response = await fetchProviderRead(url.toString(), {
           headers: {
             "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
           },
           next: { revalidate: 1800, tags: ["products"] },
-          signal: AbortSignal.timeout(8_000),
         })
         if (!response.ok) {
           throw new Error(`Product handle feed failed with ${response.status}`)

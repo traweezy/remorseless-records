@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache"
 
 import { runtimeEnv } from "@/config/env"
 import {
-  createProviderSignal,
+  fetchProviderRead,
   toProviderRequestError,
 } from "@/lib/http/provider-boundary"
 import { buildPublicProductPath } from "@/lib/products/routes"
@@ -238,7 +238,7 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
       url.searchParams.set("limit", String(limit))
       url.searchParams.set("offset", String(offset))
 
-      const response = await fetch(url.toString(), {
+      const response = await fetchProviderRead(url.toString(), {
         headers: {
           "x-publishable-api-key": runtimeEnv.medusaPublishableKey,
         },
@@ -246,7 +246,6 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
           revalidate: DISCOGRAPHY_REVALIDATE_SECONDS,
           tags: ["discography"],
         },
-        signal: createProviderSignal(),
       })
 
       if (!response.ok) {
