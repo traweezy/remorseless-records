@@ -5,8 +5,8 @@ import type { AdminOrder, DetailWidgetProps } from "@medusajs/framework/types"
 import { Badge, Button, Container, Heading, Text } from "@medusajs/ui"
 
 import {
+  inspectStripePaymentReferencesFromOrder,
   stripeDashboardPaymentUrl,
-  stripePaymentReferencesFromOrder,
 } from "../../lib/stripe/order-sync"
 import { operationsAppRoutePaths } from "../features/operations/operations-routes"
 
@@ -23,8 +23,30 @@ const formatAmount = (
   }).format(amount)
 }
 
-const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
-  const references = stripePaymentReferencesFromOrder(data)
+export const StripeOrderPaymentWidget = ({
+  data,
+}: DetailWidgetProps<AdminOrder>) => {
+  const projection = inspectStripePaymentReferencesFromOrder(data)
+  if (!projection.available) {
+    return (
+      <Container className="p-0">
+        <div className="px-6 py-4" role="status" aria-live="polite">
+          <Heading level="h2">Stripe payment data unavailable</Heading>
+          <Text size="small" className="mt-1 text-ui-fg-subtle">
+            This order&apos;s payment snapshot is incomplete or inconsistent.
+            Use the refund audit before taking payment action, then ask support
+            to reconcile the order.
+          </Text>
+          <Button asChild size="small" variant="secondary" className="mt-3">
+            <a href={operationsAppRoutePaths.refunds}>
+              Open refund guide and audit
+            </a>
+          </Button>
+        </div>
+      </Container>
+    )
+  }
+  const { references } = projection
   if (!references.length) {
     return null
   }
@@ -44,31 +66,40 @@ const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
         </Badge>
       </div>
       <div className="grid gap-3 px-6 py-4">
-        {references.map((reference) => (
-          <div
-            key={reference.paymentIntentId}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ui-border-base p-3"
-          >
-            <div>
-              <Text size="small" weight="plus">
-                {formatAmount(reference.amount, reference.currencyCode)}
-              </Text>
-              <Text size="xsmall" className="text-ui-fg-subtle">
-                {reference.status ?? "Status pending"}
-                {reference.livemode ? " · Live mode" : " · Test mode"}
-              </Text>
+        {references.map((reference) => {
+          const dashboardUrl = stripeDashboardPaymentUrl(reference)
+          return (
+            <div
+              key={reference.paymentIntentId}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ui-border-base p-3"
+            >
+              <div>
+                <Text size="small" weight="plus">
+                  {formatAmount(reference.amount, reference.currencyCode)}
+                </Text>
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  {reference.status ?? "Status pending"}
+                  {reference.livemode === null
+                    ? " · Mode unavailable"
+                    : reference.livemode
+                      ? " · Live mode"
+                      : " · Test mode"}
+                </Text>
+              </div>
+              {dashboardUrl ? (
+                <Button asChild size="small" variant="secondary">
+                  <a href={dashboardUrl} target="_blank" rel="noreferrer">
+                    Open in Stripe
+                  </a>
+                </Button>
+              ) : (
+                <Button size="small" variant="secondary" disabled>
+                  Mode unavailable
+                </Button>
+              )}
             </div>
-            <Button asChild size="small" variant="secondary">
-              <a
-                href={stripeDashboardPaymentUrl(reference)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open in Stripe
-              </a>
-            </Button>
-          </div>
-        ))}
+          )
+        })}
         <div className="rounded-lg border border-ui-border-base bg-ui-bg-subtle p-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="max-w-2xl">

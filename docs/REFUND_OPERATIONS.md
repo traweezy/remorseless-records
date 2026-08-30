@@ -119,6 +119,13 @@ Medusa's refund ID is the customer-email idempotency key. Replayed or duplicate
 event delivery therefore does not send a second message for the same refund.
 Multiple legitimate partial refunds each receive their own message.
 
+Before creating any customer notification, the refund subscriber validates the
+payment service result, every refund row, the exact order graph identity, the
+order/cart/customer identifiers, amount, currency, and optional note. A batch
+is all-or-none: one malformed refund causes the event to retry without sending
+any notices from that batch. This prevents a partial email success from hiding
+an incomplete payment/refund projection.
+
 The email states the amount, order number when one exists, the operator's note,
 and that the credit returns to the original payment method. It does not promise
 a fixed arrival date because the customer's bank controls statement posting.

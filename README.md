@@ -724,13 +724,20 @@ only searchable, non-PII metadata (`medusa_cart_id`, item count, platform, and
 storefront) plus a recognizable description. After `order.placed`, a retryable
 Medusa subscriber adds the Medusa order ID/number and final description to the
 PaymentIntent and its existing Charge with idempotent Stripe updates.
+The subscriber rejects ambiguous order projections, malformed Stripe payment
+rows, conflicting duplicate PaymentIntent references, overlong idempotency
+keys, and mismatched Stripe write acknowledgements. It retries instead of
+reporting a partial annotation as successful.
 
 The Medusa order detail screen includes a **Stripe payments** widget showing
 amount, status, test/live mode, and a mode-correct Dashboard deep link. This
 keeps ordinary order work—capture/refund state, fulfillment, returns, and
 customer communication—in Medusa while making payment investigation one click
-away. Stripe metadata deliberately excludes email, address, phone, product
-titles, and card data.
+away. An incomplete or inconsistent payment projection shows **Stripe payment
+data unavailable** and links to the refund audit instead of hiding the widget.
+An unknown test/live mode disables the Dashboard link so an operator is never
+sent to a guessed environment. Stripe metadata deliberately excludes email,
+address, phone, product titles, and card data.
 
 Checkout is guest-first and does not require an account. The storefront creates
 the cart without a `customer_id`, resolves it through a signed HttpOnly cookie,

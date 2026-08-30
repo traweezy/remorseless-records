@@ -120,6 +120,19 @@ completed orders keep their historical decision. See
 [Tax Collection Client Guide](TAX_COLLECTION_CLIENT_GUIDE.md) for the complete
 operating and reporting contract.
 
+### Order payment investigation
+
+Open the order and find **Stripe payments**. A normal row shows the amount,
+status, test/live mode, and a mode-correct **Open in Stripe** link. Keep capture,
+refund, return, fulfillment, and customer actions in Medusa; use Stripe only to
+inspect the processor evidence.
+
+If the row says **Mode unavailable**, the Dashboard link stays disabled. Do not
+guess whether the payment is test or live. If the widget says **Stripe payment
+data unavailable**, use **Open refund guide and audit** and reconcile the order,
+payment, and provider evidence before taking any payment action. Do not issue a
+second payment or refund to make the screens agree.
+
 ### Media cleanup
 
 Open **Operations → Media cleanup**. Review the filename, preview, storage

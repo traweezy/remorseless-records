@@ -1,4 +1,5 @@
 import {
+  inspectStripePaymentReferencesFromOrder,
   orderUsesStripe,
   stripeDashboardPaymentUrl,
   stripeOrderDescription,
@@ -72,10 +73,19 @@ describe("Stripe order sync", () => {
         status: "succeeded",
       })
     ).toBe("https://dashboard.stripe.com/test/payments/pi_valid123")
+    expect(
+      stripeDashboardPaymentUrl({
+        amount: null,
+        currencyCode: null,
+        livemode: null,
+        paymentIntentId: "pi_valid123",
+        status: null,
+      })
+    ).toBeNull()
   })
 
-  it("rejects malformed and untrusted payment references", () => {
-    expect(
+  it("rejects malformed Stripe payment references", () => {
+    expect(() =>
       stripePaymentReferencesFromOrder({
         payment_collections: [
           {
@@ -88,7 +98,7 @@ describe("Stripe order sync", () => {
           },
         ],
       })
-    ).toEqual([])
+    ).toThrow("Stripe order payment projection is malformed")
   })
 
   it("distinguishes non-Stripe orders from malformed Stripe sessions", () => {
@@ -113,14 +123,108 @@ describe("Stripe order sync", () => {
 
     expect(orderUsesStripe(nonStripeOrder)).toBe(false)
     expect(orderUsesStripe(malformedStripeOrder)).toBe(true)
-    expect(stripePaymentReferencesFromOrder(malformedStripeOrder)).toEqual([])
+    expect(() =>
+      stripePaymentReferencesFromOrder(malformedStripeOrder)
+    ).toThrow("Stripe order payment projection is malformed")
+    expect(
+      inspectStripePaymentReferencesFromOrder(malformedStripeOrder)
+    ).toEqual({ available: false, references: [] })
+  })
+
+  it.each([
+    ["primitive payment collection", { payment_collections: [false] }],
+    ["primitive payment row", { payment_collections: [{ payments: [false] }] }],
+    [
+      "coercive payment amount",
+      {
+        payment_collections: [
+          {
+            payments: [
+              {
+                amount: true,
+                data: { id: "pi_valid123", livemode: false },
+                provider_id: "pp_stripe_stripe",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    [
+      "coercive livemode",
+      {
+        payment_collections: [
+          {
+            payments: [
+              {
+                data: { id: "pi_valid123", livemode: "false" },
+                provider_id: "pp_stripe_stripe",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    [
+      "overlong payment status",
+      {
+        payment_collections: [
+          {
+            payments: [
+              {
+                data: {
+                  id: "pi_valid123",
+                  livemode: false,
+                  status: "s".repeat(65),
+                },
+                provider_id: "pp_stripe_stripe",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  ])("rejects a %s", (_label, order) => {
+    expect(() => stripePaymentReferencesFromOrder(order)).toThrow(
+      "Stripe order payment projection is malformed"
+    )
+  })
+
+  it("rejects conflicting duplicate PaymentIntent projections", () => {
+    expect(() =>
+      stripePaymentReferencesFromOrder({
+        payment_collections: [
+          {
+            payments: [
+              {
+                amount: 25,
+                data: { id: "pi_valid123", livemode: false },
+                provider_id: "pp_stripe_stripe",
+              },
+            ],
+            payment_sessions: [
+              {
+                amount: 26,
+                data: { id: "pi_valid123", livemode: false },
+                provider_id: "pp_stripe_stripe",
+              },
+            ],
+          },
+        ],
+      })
+    ).toThrow("Stripe order payment projection is malformed")
   })
 
   it("annotates both the PaymentIntent and an existing Charge", async () => {
     const updatePaymentIntent = jest.fn().mockResolvedValue({
+      id: "pi_valid123",
       latest_charge: "ch_valid123",
+      object: "payment_intent",
     })
-    const updateCharge = jest.fn().mockResolvedValue({})
+    const updateCharge = jest.fn().mockResolvedValue({
+      id: "ch_valid123",
+      object: "charge",
+    })
 
     await expect(
       syncStripeOrderReferences({
@@ -161,5 +265,95 @@ describe("Stripe order sync", () => {
     expect(updateCharge).toHaveBeenCalledWith("ch_valid123", annotation, {
       idempotencyKey: "rr-order-sync:order_01:pi_valid123:charge:v1",
     })
+  })
+
+  it.each([
+    [
+      "PaymentIntent",
+      {
+        charges: { update: jest.fn() },
+        paymentIntents: { update: jest.fn().mockResolvedValue(false) },
+      },
+    ],
+    [
+      "PaymentIntent charge projection",
+      {
+        charges: { update: jest.fn() },
+        paymentIntents: {
+          update: jest.fn().mockResolvedValue({
+            id: "pi_valid123",
+            object: "payment_intent",
+          }),
+        },
+      },
+    ],
+    [
+      "Charge",
+      {
+        charges: { update: jest.fn().mockResolvedValue(false) },
+        paymentIntents: {
+          update: jest.fn().mockResolvedValue({
+            id: "pi_valid123",
+            latest_charge: "ch_valid123",
+            object: "payment_intent",
+          }),
+        },
+      },
+    ],
+  ])(
+    "rejects a malformed %s update acknowledgement",
+    async (_label, client) => {
+      await expect(
+        syncStripeOrderReferences({
+          client,
+          orderId: "order_01",
+          orderNumber: "1042",
+          references: [
+            {
+              amount: 24.99,
+              currencyCode: "usd",
+              livemode: false,
+              paymentIntentId: "pi_valid123",
+              status: "succeeded",
+            },
+          ],
+        })
+      ).rejects.toThrow("Stripe order sync acknowledgement is invalid")
+    }
+  )
+
+  it("rejects invalid sync input before contacting Stripe", async () => {
+    const update = jest.fn()
+    await expect(
+      syncStripeOrderReferences({
+        client: {
+          charges: { update },
+          paymentIntents: { update },
+        },
+        orderId: "unsafe/order",
+        orderNumber: "0",
+        references: [],
+      })
+    ).rejects.toThrow("Stripe order sync input is invalid")
+    await expect(
+      syncStripeOrderReferences({
+        client: {
+          charges: { update },
+          paymentIntents: { update },
+        },
+        orderId: `order_${"a".repeat(120)}`,
+        orderNumber: "1",
+        references: [
+          {
+            amount: null,
+            currencyCode: null,
+            livemode: null,
+            paymentIntentId: `pi_${"b".repeat(120)}`,
+            status: null,
+          },
+        ],
+      })
+    ).rejects.toThrow("Stripe order sync input is invalid")
+    expect(update).not.toHaveBeenCalled()
   })
 })

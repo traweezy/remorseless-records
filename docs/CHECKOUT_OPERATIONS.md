@@ -267,7 +267,12 @@ The `order.placed` subscriber copies only operational references:
 - a readable order description on the PaymentIntent and existing Charge.
 
 It uses idempotency keys scoped to the Medusa order and PaymentIntent. It does
-not copy customer email, addresses, phone, product titles, or card data.
+not copy customer email, addresses, phone, product titles, or card data. The
+subscriber validates the exact order graph row, Stripe payment projection,
+PaymentIntent identity, idempotency-key length, and both Stripe update
+acknowledgements before it reports success. A malformed or ambiguous boundary
+fails closed so Medusa can retry the event; it is never treated as a completed
+annotation.
 
 To investigate:
 
@@ -277,7 +282,13 @@ To investigate:
    staging.
 4. Search Stripe metadata by `medusa_order_id`,
    `medusa_order_number`, or `medusa_cart_id`.
-5. If final order metadata is absent, inspect subscriber/event-bus retries and
+5. If the widget says **Mode unavailable**, do not construct or guess a test
+   or live Dashboard URL. Open the PaymentIntent from independently verified
+   event evidence after its mode is reconciled.
+6. If the widget says **Stripe payment data unavailable**, open the linked
+   refund audit and compare the order, payment, lifecycle, and provider
+   evidence before any payment action.
+7. If final order metadata is absent, inspect subscriber/event-bus retries and
    backend availability. Do not create a second PaymentIntent or manually
    rewrite commerce state in Stripe.
 

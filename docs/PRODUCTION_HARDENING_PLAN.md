@@ -2813,17 +2813,32 @@ Biome does not parse YAML or provide compiler-equivalent semantic TypeScript
 checking, so workflow YAML remains covered by repository policy verifiers and
 GitHub while both strict `tsc --noEmit` gates remain mandatory. ESLint,
 typescript-eslint, JSX-a11y ESLint, and Prettier dependencies/configurations are
-removed; `biome check --error-on-warnings .` processes 1,159 files cleanly.
+removed; `biome check --error-on-warnings .` processes 1,162 files cleanly.
 
 Current local acceptance passes the complete repository QA policy, both strict
-compiler checks, all 222 Backend suites and 1,334 tests, the 128-file/693-test
+compiler checks, all 225 Backend suites and 1,405 tests, the 128-file/693-test
 Storefront baseline suite, and the 34-file/230-test transactional Storefront
 suite. Both production builds and the Storefront client-secret scan pass. The
 production audit retains only the three documented ignored moderate findings
-and reports no high or critical finding. The CI quick-shop regression now
-scopes its action to the labelled Catalog results region so the same Product in
-another valid section cannot make the locator ambiguous; Chromium, Firefox,
-and WebKit all pass that focused production-artifact journey.
+and reports no high or critical finding. Backend coverage is 90.74% statements,
+83.43% branches, 95% functions, and 90.81% lines. The CI quick-shop regression
+now scopes its action to the labelled Catalog results region so the same
+Product in another valid section cannot make the locator ambiguous; Chromium,
+Firefox, and WebKit all pass that focused production-artifact journey.
+
+Exact staging acceptance for the Storefront transition correction: source head
+`6b929965e3b269c4c2a154bdcbcaa0c91a1b7ca6` passed Root CI `33338604763`,
+Backend CI `33338604765`, and Storefront CI `33338604764`. Railway released
+Backend deployment `8a777529-5e5a-43ac-9d58-ff881aa21ec6` with image digest
+`sha256:33717d30b0ee2b4f59a6e775875a8a59afefbde9942be098afc7625e4a37ad29`
+and Storefront deployment `9bc15486-ec59-432e-be3d-9ac76158bfe3` with image
+digest
+`sha256:a8266010284455586aa4ade95fb7e3f03146e9c1cfc4f27de0e97f15c5f03746`;
+both reached `SUCCESS` on that exact SHA. Backend `/live`, `/ready`, and
+`/api/health`; Storefront `/live`, `/ready`, `/api/healthcheck`, `/`, and
+`/catalog` all returned HTTP 200. Every health payload reported the exact SHA,
+and Backend readiness reported database, Redis, search, object storage, and all
+seven capability checks healthy.
 
 Resolved discovery: GitHub Dependabot alerts `27` and `28` classified the same
 `GHSA-jmr9-qjv8-65gv` / `CVE-2026-56876` high-severity development-only
@@ -2950,6 +2965,30 @@ found Medusa 2.18 discarding `.before`/`.after` widget placement. The pinned
 compatibility patch and repository verifier now preserve that intent across
 source, CommonJS, and ESM bundles so catalog health precedes the Product table
 by default while saved operator layouts remain authoritative.
+
+The August 30 payment-lifecycle tranche validates the exact `order.placed`
+graph row, Stripe provider projection, PaymentIntent/Charge write
+acknowledgements, and bounded idempotency keys before reporting annotation
+success. It rejects conflicting duplicate PaymentIntent relationships and
+malformed event envelopes instead of silently dropping them. Refund
+notifications now validate the payment service result, exact collection/order
+graph, every relationship identifier, and every refund before sending the
+whole event batch or none. The order widget renders an explicit unavailable
+state for malformed projections and disables a Dashboard link when test/live
+mode is unknown, directing operators to the read-only refund audit instead of
+guessing or hiding the incident.
+
+Local acceptance passes 38 focused payment/refund/Admin tests, all 225 Backend
+suites and 1,405 tests, the complete 1,162-file repository QA gate, both strict
+compiler checks, 90.74/83.43/95/90.81 Backend coverage, the production
+Backend/Admin build and frozen packaged install, and the Admin bundle budget.
+The Admin main bundle is 1,808,138 gzip bytes and total JavaScript is 2,388,642
+gzip bytes. The production audit retains only the three documented ignored
+moderate findings; Trivy reports zero high/critical dependency,
+misconfiguration, or secret finding. The exact unavailable-state markup was
+rendered in headed Chromium against production Admin CSS and inspected at
+1,600×1,000 and 760×900 with clear hierarchy, contained wrapping, and no
+horizontal overflow.
 
 ## Legal, accessibility, and launch acceptance
 

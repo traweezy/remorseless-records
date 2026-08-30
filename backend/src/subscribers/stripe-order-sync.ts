@@ -4,11 +4,16 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import Stripe from "stripe"
 
 import { STRIPE_API_KEY } from "@/lib/constants"
+import { readNonNegativeSafeInteger } from "@/lib/provider-boundary/primitives"
+import {
+  asUnknownRecord,
+  readProviderDataRecords,
+  type UnknownRecord,
+} from "@/lib/provider-boundary/records"
 import { reconcileTaxQuoteEvidence } from "@/lib/tax-control/evidence-reconciliation"
 import { taxEvidenceLockKey } from "@/modules/tax-control/constants"
 import type TaxControlModuleService from "@/modules/tax-control/service"
 import {
-  orderUsesStripe,
   stripePaymentReferencesFromOrder,
   syncStripeOrderReferences,
   type StripeOrderSyncClient,
@@ -24,12 +29,36 @@ type QueryGraph = {
     fields: string[]
     filters: Record<string, unknown>
     pagination: { take: number }
-  }) => Promise<{ data: unknown[] }>
+  }) => Promise<unknown>
 }
 
 type Logger = {
   info: (message: string) => void
   warn: (message: string) => void
+}
+
+const orderIdFrom = (value: unknown): string | null =>
+  typeof value === "string" &&
+  value.length <= 255 &&
+  /^order_[A-Za-z0-9]+$/.test(value)
+    ? value
+    : null
+
+const orderFrom = (value: unknown, expectedId: string): UnknownRecord => {
+  try {
+    const records = readProviderDataRecords(value, "Stripe order sync query")
+    const [order] = records
+    if (
+      records.length !== 1 ||
+      !order ||
+      orderIdFrom(order.id) !== expectedId
+    ) {
+      throw new Error()
+    }
+    return order
+  } catch {
+    throw new Error("Stripe order sync returned an invalid order projection")
+  }
 }
 
 export default async function stripeOrderSyncHandler({
@@ -40,6 +69,11 @@ export default async function stripeOrderSyncHandler({
     return
   }
 
+  const orderId = orderIdFrom(asUnknownRecord(data)?.id)
+  if (!orderId) {
+    throw new Error("Stripe order sync received an invalid order identity")
+  }
+
   const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER) as Logger
   const result = await query.graph({
@@ -47,38 +81,32 @@ export default async function stripeOrderSyncHandler({
     fields: [
       "id",
       "display_id",
-      "total",
       "payment_collections.payments.provider_id",
       "payment_collections.payments.amount",
       "payment_collections.payments.currency_code",
       "payment_collections.payments.data",
+      "payment_collections.payments.status",
       "payment_collections.payments.captured_at",
+      "payment_collections.payments.authorized_at",
       "payment_collections.payment_sessions.provider_id",
       "payment_collections.payment_sessions.amount",
       "payment_collections.payment_sessions.currency_code",
       "payment_collections.payment_sessions.data",
       "payment_collections.payment_sessions.status",
     ],
-    filters: { id: data.id },
+    filters: { id: orderId },
     pagination: { take: 1 },
   })
-  const order = result.data[0] as Record<string, unknown> | undefined
-  if (!order) {
-    throw new Error("Stripe order sync could not retrieve the Medusa order")
-  }
+  const order = orderFrom(result, orderId)
 
-  const orderNumber = String(order.display_id ?? "").trim()
-  if (!orderNumber) {
+  const displayId = readNonNegativeSafeInteger(order.display_id)
+  if (displayId === null || displayId <= 0) {
     throw new Error("Stripe order sync requires an order number")
   }
+  const orderNumber = String(displayId)
 
   const references = stripePaymentReferencesFromOrder(order)
   if (!references.length) {
-    if (orderUsesStripe(order) && Number(order.total) > 0) {
-      throw new Error(
-        "Stripe order sync could not find the order PaymentIntent"
-      )
-    }
     return
   }
 
@@ -93,7 +121,7 @@ export default async function stripeOrderSyncHandler({
   })
   const synchronizedCount = await syncStripeOrderReferences({
     client: stripe as StripeOrderSyncClient,
-    orderId: data.id,
+    orderId,
     orderNumber,
     references,
   })
@@ -111,7 +139,7 @@ export default async function stripeOrderSyncHandler({
               `[tax-evidence] Stripe safe-read retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`
             )
           },
-          orderId: data.id,
+          orderId,
           paymentIntentId: reference.paymentIntentId,
           service,
         }),
