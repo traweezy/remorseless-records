@@ -916,6 +916,28 @@ prove transient transport/status retry, shared-deadline cancellation,
 safe-method enforcement, non-transient and parser failure handling, and
 redacted telemetry without risking shared staging availability.
 
+Checkout Medusa Store-read exact staging acceptance: commit
+`e7ec4454922315f2644bc5c99f37c9701a66c652` passed Root CI `33289523038`,
+Backend CI `33289523039`, and Storefront CI `33289523047`, including unit
+coverage, both production builds, CodeQL, dependency/secret scans, SBOM and
+license verification, Playwright, pa11y, and Lighthouse. Railway held
+Storefront deployment `976ec437-893c-4fe8-bc2b-661694813728` until those
+workflows passed, then released image digest
+`sha256:33d5fac79dce28e2e9768fc2926b68a805ed38d039e4ba1336011c6761f87233`
+to `SUCCESS` on that exact SHA. Backend deployment
+`cf4b28cd-3dd4-429d-812a-8ef00fccd6b5` was correctly skipped because its
+watched paths were unchanged, retaining healthy baseline deployment
+`4a326c2f-2d09-43b5-8f9f-6599c9dfa4ff`. Storefront `/live`, `/ready`,
+`/api/healthcheck`, `/`, `/catalog`, `/news`, `/discography`, and
+`/sitemap.xml` all returned 200; readiness reported Backend and Redis healthy.
+Anonymous `GET /api/cart` returned 200 with a null cart and both correlation
+headers present. All 11 matching exact-deployment HTTP records were 200, with
+no response at 400 or above. Railway returned no runtime record and no warning
+or error for the exact deployment acceptance window. No cart, checkout,
+payment, order, or receipt state was created or inspected in shared staging;
+focused tests prove cart, shipping-option, payment-provider, and receipt reads
+use the shared safe-read boundary while every mutation remains single-attempt.
+
 Staging lifecycle discovery: the first `843c954` deployment proved Backend
 completion logging and all live provider routes, but emitted no Storefront
 completion event. Next compiles instrumentation and proxy code into separate
