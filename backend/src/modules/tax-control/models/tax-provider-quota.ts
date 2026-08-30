@@ -1,4 +1,4 @@
-import { model } from "@medusajs/framework/utils";
+import { model } from "@medusajs/framework/utils"
 
 const TaxProviderQuota = model.define(
   {
@@ -15,7 +15,7 @@ const TaxProviderQuota = model.define(
     observed_at: model.dateTime(),
     source: model.text(),
     metadata: model.json().default({}),
-  },
-);
+  }
+)
 
-export default TaxProviderQuota;
+export default TaxProviderQuota

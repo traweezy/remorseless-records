@@ -1,7 +1,7 @@
 import {
   emailIdempotencyFields,
   emailProviderIdempotencyKey,
-} from "./idempotency";
+} from "./idempotency"
 
 describe("email idempotency contract", () => {
   it("uses the same stable key for Medusa and the provider", () => {
@@ -10,22 +10,22 @@ describe("email idempotency contract", () => {
       provider_data: {
         idempotency_key: "order-placed:order_01",
       },
-    });
-  });
+    })
+  })
 
   it.each(["", "contains spaces", "x".repeat(257)])(
     "rejects invalid key %p",
     (value) => {
       expect(() => emailIdempotencyFields(value)).toThrow(
-        "email idempotency key is invalid",
-      );
-    },
-  );
+        "email idempotency key is invalid"
+      )
+    }
+  )
 
   it("does not accept malformed persisted provider data", () => {
     expect(
-      emailProviderIdempotencyKey({ idempotency_key: "invalid value" }),
-    ).toBeNull();
-    expect(emailProviderIdempotencyKey(null)).toBeNull();
-  });
-});
+      emailProviderIdempotencyKey({ idempotency_key: "invalid value" })
+    ).toBeNull()
+    expect(emailProviderIdempotencyKey(null)).toBeNull()
+  })
+})

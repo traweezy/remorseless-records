@@ -79,7 +79,7 @@ const beginCatalogProductCreationStep = createStep(
   "begin-catalog-product-creation",
   async (
     input: CatalogProductCreateCommandInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<
       CatalogProductCreateOperation,
@@ -90,7 +90,7 @@ const beginCatalogProductCreationStep = createStep(
     const operation = await beginCatalogProductCreation(catalogService, input)
     return new StepResponse(
       operation,
-      operation.replayed ? null : { operationId: operation.operationId },
+      operation.replayed ? null : { operationId: operation.operationId }
     )
   },
   async (compensation, { container }) => {
@@ -100,20 +100,18 @@ const beginCatalogProductCreationStep = createStep(
     const catalogService = container.resolve("catalog") as CatalogService
     await compensateCatalogProductCreation(
       catalogService,
-      compensation.operationId,
+      compensation.operationId
     )
-  },
+  }
 )
 
 const resolveCatalogProductCreateContextStep = createStep(
   "resolve-catalog-product-create-context",
   async (
     input: CatalogProductCreateCommandInput,
-    { container },
+    { container }
   ): Promise<StepResponse<CatalogProductCreateContext>> =>
-    new StepResponse(
-      await resolveCatalogProductCreateContext(container, input),
-    ),
+    new StepResponse(await resolveCatalogProductCreateContext(container, input))
 )
 
 const resolveCatalogCreatedProductStep = createStep(
@@ -126,18 +124,18 @@ const resolveCatalogCreatedProductStep = createStep(
       command: CatalogProductCreateCommandInput
       products: Parameters<typeof resolveCatalogCreatedProduct>[2]
     },
-    { container },
+    { container }
   ): Promise<StepResponse<CatalogCreatedProduct>> =>
     new StepResponse(
-      await resolveCatalogCreatedProduct(container, command, products),
-    ),
+      await resolveCatalogCreatedProduct(container, command, products)
+    )
 )
 
 const mutateCatalogProductVariantProfilesStep = createStep(
   "mutate-catalog-product-variant-profiles-batch",
   async (
     input: VariantBatchWorkflowInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<
       CatalogProductVariantBatchResult,
@@ -150,7 +148,7 @@ const mutateCatalogProductVariantProfilesStep = createStep(
       input.command,
       input.created.productId,
       input.productProfileId,
-      input.created.targets,
+      input.created.targets
     )
     return new StepResponse(result, result)
   },
@@ -160,7 +158,7 @@ const mutateCatalogProductVariantProfilesStep = createStep(
     }
     const catalogService = container.resolve("catalog") as CatalogService
     await compensateCatalogProductVariantProfiles(catalogService, result)
-  },
+  }
 )
 
 export const mutateCatalogProductVariantProfilesWorkflow = createWorkflow(
@@ -171,17 +169,15 @@ export const mutateCatalogProductVariantProfilesWorkflow = createWorkflow(
     timeout: 60,
   },
   function (input: VariantBatchWorkflowInput) {
-    return new WorkflowResponse(
-      mutateCatalogProductVariantProfilesStep(input),
-    )
-  },
+    return new WorkflowResponse(mutateCatalogProductVariantProfilesStep(input))
+  }
 )
 
 const resolveCatalogProductInventoryLevelsStep = createStep(
   "resolve-catalog-product-inventory-levels",
   async (
     input: InventoryResolutionInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<
       Awaited<ReturnType<typeof resolveCatalogProductInventoryLevels>>
@@ -192,22 +188,22 @@ const resolveCatalogProductInventoryLevelsStep = createStep(
         container,
         input.command,
         input.context,
-        input.created,
-      ),
-    ),
+        input.created
+      )
+    )
 )
 
 const completeCatalogProductCreationStep = createStep(
   "complete-catalog-product-creation",
   async (
     input: CompletionInput,
-    { container },
+    { container }
   ): Promise<StepResponse<CatalogProductCreateWorkflowResult>> => {
     if (input.operation.replayed) {
       if (!input.operation.result) {
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          "The replayed catalog creation command has no result.",
+          "The replayed catalog creation command has no result."
         )
       }
       return new StepResponse({ ...input.operation.result, replayed: true })
@@ -215,13 +211,13 @@ const completeCatalogProductCreationStep = createStep(
     if (!input.created || !input.profile || !input.variants) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog creation workflow did not complete every required authoring step.",
+        "The catalog creation workflow did not complete every required authoring step."
       )
     }
     if (input.command.media.length && !input.media) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog creation workflow did not link its managed media.",
+        "The catalog creation workflow did not link its managed media."
       )
     }
     const result: CatalogProductCreateResult = {
@@ -234,10 +230,10 @@ const completeCatalogProductCreationStep = createStep(
     await completeCatalogProductCreation(
       catalogService,
       input.operation.operationId,
-      result,
+      result
     )
     return new StepResponse({ ...result, replayed: false })
-  },
+  }
 )
 
 export const createCatalogProductWorkflow = createWorkflow(
@@ -250,7 +246,7 @@ export const createCatalogProductWorkflow = createWorkflow(
   function (input: CatalogProductCreateCommandInput) {
     const lockKey = transform(
       { idempotencyKey: input.idempotencyKey },
-      ({ idempotencyKey }) => `catalog:product-create:${idempotencyKey}`,
+      ({ idempotencyKey }) => `catalog:product-create:${idempotencyKey}`
     )
     acquireLockStep({ key: lockKey, timeout: 10, ttl: 180 })
     const operation = beginCatalogProductCreationStep(input)
@@ -258,19 +254,19 @@ export const createCatalogProductWorkflow = createWorkflow(
     const context = when(
       "resolve-new-catalog-product-context",
       { operation },
-      ({ operation }) => !operation.replayed,
+      ({ operation }) => !operation.replayed
     ).then(() => resolveCatalogProductCreateContextStep(input))
 
     const products = when(
       "create-native-catalog-product",
       { operation },
-      ({ operation }) => !operation.replayed,
+      ({ operation }) => !operation.replayed
     ).then(() => {
       const nativeInput = transform(
         { command: input, context },
         ({ command, context }) => ({
           products: [buildCatalogNativeProduct(command, context!)],
-        }),
+        })
       )
       return createProductsWorkflow.runAsStep({ input: nativeInput })
     })
@@ -278,20 +274,20 @@ export const createCatalogProductWorkflow = createWorkflow(
     const created = when(
       "resolve-new-catalog-product",
       { operation },
-      ({ operation }) => !operation.replayed,
+      ({ operation }) => !operation.replayed
     ).then(() =>
-      resolveCatalogCreatedProductStep({ command: input, products: products! }),
+      resolveCatalogCreatedProductStep({ command: input, products: products! })
     )
 
     const profile = when(
       "create-new-catalog-product-profile",
       { operation },
-      ({ operation }) => !operation.replayed,
+      ({ operation }) => !operation.replayed
     ).then(() => {
       const profileInput = transform(
         { command: input, created },
         ({ command, created }) =>
-          buildCatalogProductProfileMutation(command, created!.productId),
+          buildCatalogProductProfileMutation(command, created!.productId)
       )
       return mutateCatalogProductProfileWorkflow.runAsStep({
         input: profileInput,
@@ -301,7 +297,7 @@ export const createCatalogProductWorkflow = createWorkflow(
     const variants = when(
       "create-new-catalog-variant-profiles",
       { operation },
-      ({ operation }) => !operation.replayed,
+      ({ operation }) => !operation.replayed
     ).then(() => {
       const variantInput = transform(
         { command: input, created, profile },
@@ -309,7 +305,7 @@ export const createCatalogProductWorkflow = createWorkflow(
           command,
           created: created!,
           productProfileId: profile!.profileId,
-        }),
+        })
       )
       return mutateCatalogProductVariantProfilesWorkflow.runAsStep({
         input: variantInput,
@@ -320,7 +316,7 @@ export const createCatalogProductWorkflow = createWorkflow(
       "create-new-catalog-product-media",
       { command: input, operation },
       ({ command, operation }) =>
-        !operation.replayed && command.media.length > 0,
+        !operation.replayed && command.media.length > 0
     ).then(() => {
       const mediaInput = transform(
         { command: input, created, profile },
@@ -328,8 +324,8 @@ export const createCatalogProductWorkflow = createWorkflow(
           buildCatalogProductMediaMutation(
             command,
             created!.productId,
-            profile!.profileId,
-          ),
+            profile!.profileId
+          )
       )
       return mutateCatalogProductMediaWorkflow.runAsStep({ input: mediaInput })
     })
@@ -339,8 +335,7 @@ export const createCatalogProductWorkflow = createWorkflow(
       { command: input, operation },
       ({ command, operation }) =>
         !operation.replayed &&
-        (command.kind === "fixed_bundle" ||
-          command.kind === "mystery_bundle"),
+        (command.kind === "fixed_bundle" || command.kind === "mystery_bundle")
     ).then(() => {
       const bundleInput = transform(
         { command: input, context, created, profile },
@@ -355,8 +350,8 @@ export const createCatalogProductWorkflow = createWorkflow(
             context!,
             created!,
             created!.productId,
-            profile!.profileId,
-          ),
+            profile!.profileId
+          )
       )
       return mutateCatalogBundleWorkflow.runAsStep({ input: bundleInput })
     })
@@ -365,7 +360,7 @@ export const createCatalogProductWorkflow = createWorkflow(
       "create-new-catalog-product-inventory",
       { command: input, operation },
       ({ command, operation }) =>
-        !operation.replayed && command.kind !== "fixed_bundle",
+        !operation.replayed && command.kind !== "fixed_bundle"
     ).then(() => {
       const inventoryLevels = resolveCatalogProductInventoryLevelsStep({
         command: input,
@@ -374,7 +369,7 @@ export const createCatalogProductWorkflow = createWorkflow(
       })
       const inventoryInput = transform(
         { inventoryLevels },
-        ({ inventoryLevels }) => ({ inventory_levels: inventoryLevels }),
+        ({ inventoryLevels }) => ({ inventory_levels: inventoryLevels })
       )
       return createInventoryLevelsWorkflow.runAsStep({ input: inventoryInput })
     })
@@ -391,5 +386,5 @@ export const createCatalogProductWorkflow = createWorkflow(
     })
     releaseLockStep({ key: lockKey })
     return new WorkflowResponse(completed)
-  },
+  }
 )

@@ -1,4 +1,4 @@
-import { Migration } from "@medusajs/framework/mikro-orm/migrations";
+import { Migration } from "@medusajs/framework/mikro-orm/migrations"
 
 export class Migration20260726223000 extends Migration {
   override async up(): Promise<void> {
@@ -28,35 +28,35 @@ export class Migration20260726223000 extends Migration {
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
         'constraint "stripe_lifecycle_events_pkey" primary key ("id")' +
-        ");",
-    );
+        ");"
+    )
     this.addSql(
-      'create unique index if not exists "stripe_lifecycle_events_provider_event_id_key" on "stripe_lifecycle_events" ("provider_event_id") where deleted_at is null;',
-    );
+      'create unique index if not exists "stripe_lifecycle_events_provider_event_id_key" on "stripe_lifecycle_events" ("provider_event_id") where deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_stripe_lifecycle_events_event_type" on "stripe_lifecycle_events" ("event_type") where deleted_at is null;',
-    );
+      'create index if not exists "idx_stripe_lifecycle_events_event_type" on "stripe_lifecycle_events" ("event_type") where deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_stripe_lifecycle_events_object_id" on "stripe_lifecycle_events" ("object_id") where deleted_at is null;',
-    );
+      'create index if not exists "idx_stripe_lifecycle_events_object_id" on "stripe_lifecycle_events" ("object_id") where deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_stripe_lifecycle_events_payment_intent_id" on "stripe_lifecycle_events" ("payment_intent_id") where payment_intent_id is not null and deleted_at is null;',
-    );
+      'create index if not exists "idx_stripe_lifecycle_events_payment_intent_id" on "stripe_lifecycle_events" ("payment_intent_id") where payment_intent_id is not null and deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_stripe_lifecycle_events_charge_id" on "stripe_lifecycle_events" ("charge_id") where charge_id is not null and deleted_at is null;',
-    );
+      'create index if not exists "idx_stripe_lifecycle_events_charge_id" on "stripe_lifecycle_events" ("charge_id") where charge_id is not null and deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_stripe_lifecycle_events_order_id" on "stripe_lifecycle_events" ("order_id") where order_id is not null and deleted_at is null;',
-    );
+      'create index if not exists "idx_stripe_lifecycle_events_order_id" on "stripe_lifecycle_events" ("order_id") where order_id is not null and deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_stripe_lifecycle_events_retry" on "stripe_lifecycle_events" ("status", "next_retry_at", "received_at") where status in (\'received\', \'processing\', \'failed\') and deleted_at is null;',
-    );
+      'create index if not exists "idx_stripe_lifecycle_events_retry" on "stripe_lifecycle_events" ("status", "next_retry_at", "received_at") where status in (\'received\', \'processing\', \'failed\') and deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_stripe_lifecycle_events_deleted_at" on "stripe_lifecycle_events" ("deleted_at");',
-    );
+      'create index if not exists "idx_stripe_lifecycle_events_deleted_at" on "stripe_lifecycle_events" ("deleted_at");'
+    )
   }
 
   override async down(): Promise<void> {
-    this.addSql('drop table if exists "stripe_lifecycle_events";');
+    this.addSql('drop table if exists "stripe_lifecycle_events";')
   }
 }

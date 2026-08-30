@@ -17,7 +17,7 @@ jest.mock("../../modules/catalog/serializers", () => ({
   serializeCatalogMediaAsset: (asset: CatalogMediaAssetRecord) => asset,
   serializeCatalogProductMediaItem: (
     item: CatalogProductMediaItemRecord,
-    asset: CatalogMediaAssetRecord | null,
+    asset: CatalogMediaAssetRecord | null
   ) => ({
     asset,
     id: item.id,
@@ -29,7 +29,7 @@ type CatalogService = InstanceType<typeof CatalogModuleService>
 const mediaItem = (
   id: string,
   mediaAssetId: string,
-  sortOrder: number,
+  sortOrder: number
 ): CatalogProductMediaItemRecord => ({
   created_at: null,
   id,
@@ -44,7 +44,10 @@ const mediaItem = (
   variant_id: null,
 })
 
-const mediaAsset = (id: string, sourceUrl: string): CatalogMediaAssetRecord => ({
+const mediaAsset = (
+  id: string,
+  sourceUrl: string
+): CatalogMediaAssetRecord => ({
   alt_text: null,
   byte_size: null,
   caption: null,
@@ -87,7 +90,7 @@ describe("loadProductMediaResponse", () => {
     expect(service.listCatalogMediaAssets).toHaveBeenCalledWith(
       { id: ["asset_1", "asset_2", "asset_missing"] },
       {},
-      undefined,
+      undefined
     )
     expect(response.media.map(({ id }) => id)).toEqual([
       "media_1",
@@ -108,7 +111,7 @@ describe("loadProductMediaResponse", () => {
     } as unknown as CatalogService
 
     await expect(
-      loadProductMediaResponse(service, "prod_empty"),
+      loadProductMediaResponse(service, "prod_empty")
     ).resolves.toEqual({
       media: [],
       productId: "prod_empty",

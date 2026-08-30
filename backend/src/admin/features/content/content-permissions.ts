@@ -10,5 +10,5 @@ export const discographyReadActions = [
 ] as const satisfies readonly AdminPolicyAction[]
 
 export const hasDiscographyReadAccess = (
-  hasPermission: (action: AdminPolicyAction) => boolean,
+  hasPermission: (action: AdminPolicyAction) => boolean
 ): boolean => discographyReadActions.every(hasPermission)

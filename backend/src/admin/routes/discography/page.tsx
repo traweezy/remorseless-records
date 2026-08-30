@@ -150,14 +150,14 @@ const restoreFocus = (target: HTMLButtonElement | null): void => {
 const DiscographyAdminPageContent = memo(() => {
   const permissions = useAdminPermissions()
   const canCreate = permissions.hasPermission(
-    contentAdminActions.discography.create,
+    contentAdminActions.discography.create
   )
   const canUpdate = permissions.hasPermission(
-    contentAdminActions.discography.update,
+    contentAdminActions.discography.update
   )
   const canReadNews = permissions.hasPermission(contentAdminActions.news.read)
   const canReadProducts = permissions.hasPermission(
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   )
   const [view, setView] = useState<ArchiveView>("active")
   const [pageIndex, setPageIndex] = useState(0)

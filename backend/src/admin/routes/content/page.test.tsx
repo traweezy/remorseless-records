@@ -30,7 +30,7 @@ const renderContentPage = ({
       <QueryClientProvider client={queryClient}>
         <ContentPage />
       </QueryClientProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
   queryClient.clear()
   return markup
@@ -62,9 +62,7 @@ describe("Content Admin route", () => {
 
   it("does not advertise Discography without the complete read capability", () => {
     const markup = renderContentPage({
-      permissions: [
-        adminPermissionKey(contentAdminActions.discography.read),
-      ],
+      permissions: [adminPermissionKey(contentAdminActions.discography.read)],
       rbac: true,
     })
 

@@ -17,13 +17,11 @@ describe("validateBackendRuntimeSecrets", () => {
         environment: {
           ...productionEnvironment(),
           CHECKOUT_BFF_SECRET_PREVIOUS: strongSecret("checkout-previous"),
-          PUBLIC_FORM_BFF_SECRET_PREVIOUS: strongSecret(
-            "public-form-previous",
-          ),
+          PUBLIC_FORM_BFF_SECRET_PREVIOUS: strongSecret("public-form-previous"),
           STRIPE_LIFECYCLE_WEBHOOK_SECRET: strongSecret("stripe-lifecycle"),
         },
         isProduction: true,
-      }),
+      })
     ).not.toThrow()
   })
 
@@ -37,7 +35,7 @@ describe("validateBackendRuntimeSecrets", () => {
       validateBackendRuntimeSecrets({
         environment: { ...productionEnvironment(), [name]: "too-short" },
         isProduction: true,
-      }),
+      })
     ).toThrow(`${name} must contain at least 32 UTF-8 bytes`)
   })
 
@@ -49,19 +47,19 @@ describe("validateBackendRuntimeSecrets", () => {
           JWT_SECRET: "replace-this-placeholder-secret-value-now",
         },
         isProduction: true,
-      }),
+      })
     ).toThrow("JWT_SECRET must not contain a placeholder value")
 
     const environment = productionEnvironment()
     environment.COOKIE_SECRET = environment.JWT_SECRET
     expect(() =>
-      validateBackendRuntimeSecrets({ environment, isProduction: true }),
+      validateBackendRuntimeSecrets({ environment, isProduction: true })
     ).toThrow("JWT_SECRET and COOKIE_SECRET must use distinct values")
   })
 
   it("does not impose production requirements on build and test commands", () => {
     expect(() =>
-      validateBackendRuntimeSecrets({ environment: {}, isProduction: false }),
+      validateBackendRuntimeSecrets({ environment: {}, isProduction: false })
     ).not.toThrow()
   })
 })

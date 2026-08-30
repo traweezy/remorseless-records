@@ -22,5 +22,4 @@ export const MANAGED_IMAGE_MIME_TYPES = [
   "image/webp",
 ] as const
 
-export type ManagedImageMimeType =
-  (typeof MANAGED_IMAGE_MIME_TYPES)[number]
+export type ManagedImageMimeType = (typeof MANAGED_IMAGE_MIME_TYPES)[number]

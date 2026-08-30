@@ -32,7 +32,9 @@ describe("shouldBlockPrefetch", () => {
   })
 
   it("allows prefetch for faster connections", () => {
-    vi.stubGlobal("navigator", { connection: { effectiveType: faker.helpers.arrayElement(["3g", "4g"]) } })
+    vi.stubGlobal("navigator", {
+      connection: { effectiveType: faker.helpers.arrayElement(["3g", "4g"]) },
+    })
     expect(shouldBlockPrefetch()).toBe(false)
   })
 

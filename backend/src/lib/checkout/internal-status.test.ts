@@ -27,17 +27,14 @@ describe("internal checkout status", () => {
     await expect(
       resolveInternalCheckoutStatus(
         queryFor({ orderId: "order_01K123ABC" }),
-        "cart_01K123ABC",
-      ),
+        "cart_01K123ABC"
+      )
     ).resolves.toEqual({ state: "finalizing_order" })
   })
 
   it("reports a missing cart without exposing its identifier", async () => {
     await expect(
-      resolveInternalCheckoutStatus(
-        queryFor({ cart: null }),
-        "cart_01K123ABC",
-      ),
+      resolveInternalCheckoutStatus(queryFor({ cart: null }), "cart_01K123ABC")
     ).resolves.toEqual({ state: "cart_missing" })
   })
 
@@ -65,7 +62,7 @@ describe("internal checkout status", () => {
     })
 
     await expect(
-      resolveInternalCheckoutStatus(query, "cart_01K123ABC"),
+      resolveInternalCheckoutStatus(query, "cart_01K123ABC")
     ).resolves.toEqual({ state })
   })
 
@@ -79,7 +76,7 @@ describe("internal checkout status", () => {
     })
 
     await expect(
-      resolveInternalCheckoutStatus(query, "cart_01K123ABC"),
+      resolveInternalCheckoutStatus(query, "cart_01K123ABC")
     ).resolves.toEqual({
       state: "order_confirmed",
       orderId: "order_01K123ABC",
@@ -91,15 +88,13 @@ describe("internal checkout status", () => {
       cart: {
         id: "cart_test",
         payment_collection: {
-          payment_sessions: [
-            { provider_id: "pp_other", status: "captured" },
-          ],
+          payment_sessions: [{ provider_id: "pp_other", status: "captured" }],
         },
       },
     })
 
     await expect(
-      resolveInternalCheckoutStatus(query, "cart_01K123ABC"),
+      resolveInternalCheckoutStatus(query, "cart_01K123ABC")
     ).resolves.toEqual({ state: "cart_active" })
   })
 
@@ -112,8 +107,8 @@ describe("internal checkout status", () => {
             completed_at: "2026-07-25T12:00:00.000Z",
           },
         }),
-        "cart_01K123ABC",
-      ),
+        "cart_01K123ABC"
+      )
     ).resolves.toEqual({ state: "finalizing_order" })
   })
 })

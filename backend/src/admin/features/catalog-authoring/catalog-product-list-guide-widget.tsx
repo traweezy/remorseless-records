@@ -36,8 +36,7 @@ const CatalogProductListGuideSkeleton = memo(() => (
   </Container>
 ))
 
-CatalogProductListGuideSkeleton.displayName =
-  "CatalogProductListGuideSkeleton"
+CatalogProductListGuideSkeleton.displayName = "CatalogProductListGuideSkeleton"
 
 const CatalogProductListGuideWidgetContent = memo(() => {
   const query = useQuery(catalogAuthoringAuditQueryOptions())
@@ -60,7 +59,7 @@ const CatalogProductListGuideWidgetContent = memo(() => {
       <AdminRetryState
         message={getAdminRequestErrorMessage(
           query.error,
-          "Catalog readiness could not be loaded.",
+          "Catalog readiness could not be loaded."
         )}
         onRetry={handleRetry}
         retrying={query.isFetching}

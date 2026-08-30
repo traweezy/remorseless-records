@@ -43,12 +43,7 @@ export const GET = async (request: Request) => {
     console.error("[api/news] Failed to load entries")
     const problem = providerProblem(error, "news")
     if (problem) {
-      return jsonApiError(
-        request,
-        problem.detail,
-        problem.status,
-        problem.code
-      )
+      return jsonApiError(request, problem.detail, problem.status, problem.code)
     }
     return jsonApiError(
       request,

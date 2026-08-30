@@ -30,7 +30,7 @@ const normalizeSecret = (value: string | undefined): string =>
 const assertStrongSecret = (name: SecretName, value: string): void => {
   if (Buffer.byteLength(value, "utf8") < MINIMUM_SECRET_BYTES) {
     throw new Error(
-      `${name} must contain at least ${MINIMUM_SECRET_BYTES} UTF-8 bytes`,
+      `${name} must contain at least ${MINIMUM_SECRET_BYTES} UTF-8 bytes`
     )
   }
   if (PLACEHOLDER_PATTERN.test(value)) {

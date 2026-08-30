@@ -1,18 +1,15 @@
-import type { ExecArgs } from '@medusajs/framework/types'
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from '@medusajs/framework/utils'
-import { updateProductsWorkflow } from '@medusajs/medusa/core-flows'
+import type { ExecArgs } from "@medusajs/framework/types"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { updateProductsWorkflow } from "@medusajs/medusa/core-flows"
 
-const STANDARD_NAME = 'Standard Shipping'
-const EXPRESS_NAME = 'Express Shipping'
-const PROVIDER_ID = 'per_item_standard'
-const DEFAULT_STOCK_LOCATION_NAME = 'HQ'
+const STANDARD_NAME = "Standard Shipping"
+const EXPRESS_NAME = "Express Shipping"
+const PROVIDER_ID = "per_item_standard"
+const DEFAULT_STOCK_LOCATION_NAME = "HQ"
 
 const BASE_AMOUNT = 5
 const ADDITIONAL_AMOUNT = 0.5
-const CURRENCY_CODE = 'usd'
+const CURRENCY_CODE = "usd"
 
 type ShippingOption = {
   id: string
@@ -55,9 +52,7 @@ export default async function updateShippingOptions({
   const link = container.resolve(ContainerRegistrationKeys.LINK) as {
     create: (data: Record<string, unknown>) => Promise<unknown>
   }
-  const query = container.resolve(
-    ContainerRegistrationKeys.QUERY
-  ) as QueryGraph
+  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
   const fulfillmentModuleService = container.resolve(Modules.FULFILLMENT) as {
     listShippingProfiles: (
       filters?: Record<string, unknown>
@@ -81,13 +76,13 @@ export default async function updateShippingOptions({
     process.env.SHIPPING_STOCK_LOCATION_NAME?.trim() ||
     DEFAULT_STOCK_LOCATION_NAME
   const { data: stockLocations } = await query.graph<StockLocation>({
-    entity: 'stock_location',
+    entity: "stock_location",
     fields: [
-      'id',
-      'name',
-      'fulfillment_providers.id',
-      'fulfillment_sets.id',
-      'fulfillment_sets.service_zones.id',
+      "id",
+      "name",
+      "fulfillment_providers.id",
+      "fulfillment_sets.id",
+      "fulfillment_sets.service_zones.id",
     ],
     filters: { name: stockLocationName },
   })
@@ -107,7 +102,9 @@ export default async function updateShippingOptions({
   const serviceZoneIds = Array.from(
     new Set(
       (stockLocation.fulfillment_sets ?? []).flatMap((fulfillmentSet) =>
-        (fulfillmentSet.service_zones ?? []).map((serviceZone) => serviceZone.id)
+        (fulfillmentSet.service_zones ?? []).map(
+          (serviceZone) => serviceZone.id
+        )
       )
     )
   )
@@ -130,26 +127,23 @@ export default async function updateShippingOptions({
         fulfillment_provider_id: PROVIDER_ID,
       },
     })
-    logger.info(
-      `[shipping] Enabled ${PROVIDER_ID} for "${stockLocationName}".`
-    )
+    logger.info(`[shipping] Enabled ${PROVIDER_ID} for "${stockLocationName}".`)
   }
 
   for (const serviceZoneId of serviceZoneIds) {
     await fulfillmentModuleService.updateServiceZones(serviceZoneId, {
       geo_zones: [
         {
-          type: 'country',
-          country_code: 'us',
+          type: "country",
+          country_code: "us",
         },
       ],
     })
   }
 
-  const shippingProfiles =
-    await fulfillmentModuleService.listShippingProfiles({
-      type: 'default',
-    })
+  const shippingProfiles = await fulfillmentModuleService.listShippingProfiles({
+    type: "default",
+  })
   if (shippingProfiles.length !== 1 || !shippingProfiles[0]) {
     throw new Error(
       `[shipping] Expected one default shipping profile, found ${shippingProfiles.length}.`
@@ -162,9 +156,9 @@ export default async function updateShippingOptions({
   let repairedProductCount = 0
   while (true) {
     const { data: products } = await query.graph<Product>({
-      entity: 'product',
-      fields: ['id', 'is_giftcard', 'shipping_profile.id'],
-      filters: { status: 'published' },
+      entity: "product",
+      fields: ["id", "is_giftcard", "shipping_profile.id"],
+      filters: { status: "published" },
       pagination: { skip, take: pageSize },
     })
     const missingProfile = products.filter(
@@ -190,14 +184,16 @@ export default async function updateShippingOptions({
     `[shipping] Linked ${repairedProductCount} published physical product(s) to the default shipping profile.`
   )
 
-  const options = await fulfillmentModuleService.listShippingOptions({}, {
-    relations: ['type'],
-  })
+  const options = await fulfillmentModuleService.listShippingOptions(
+    {},
+    {
+      relations: ["type"],
+    }
+  )
 
   const targetOptions = options.filter(
     (option) =>
-      option.service_zone_id &&
-      serviceZoneIds.includes(option.service_zone_id)
+      option.service_zone_id && serviceZoneIds.includes(option.service_zone_id)
   )
   const targetOption =
     targetOptions.find((option) => option.name === STANDARD_NAME) ??
@@ -206,7 +202,7 @@ export default async function updateShippingOptions({
     if (option.name === EXPRESS_NAME) {
       return true
     }
-    return option.type?.code === 'express'
+    return option.type?.code === "express"
   })
 
   if (!targetOption) {
@@ -218,7 +214,7 @@ export default async function updateShippingOptions({
   await fulfillmentModuleService.updateShippingOptions(targetOption.id, {
     name: STANDARD_NAME,
     provider_id: PROVIDER_ID,
-    price_type: 'calculated',
+    price_type: "calculated",
     data: {
       base_amount: BASE_AMOUNT,
       additional_amount: ADDITIONAL_AMOUNT,
@@ -230,7 +226,7 @@ export default async function updateShippingOptions({
   )
 
   if (!expressOptions.length) {
-    logger.info('[shipping] No Express shipping options found to delete.')
+    logger.info("[shipping] No Express shipping options found to delete.")
   } else {
     const expressIds = expressOptions.map((option) => option.id)
     await fulfillmentModuleService.deleteShippingOptions(expressIds)

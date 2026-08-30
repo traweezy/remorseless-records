@@ -1,8 +1,8 @@
-import type { ProductAuthoringView } from "./product-authoring-query";
-import { buildProductCatalogSummary } from "./product-summary-state";
+import type { ProductAuthoringView } from "./product-authoring-query"
+import { buildProductCatalogSummary } from "./product-summary-state"
 
 const buildView = (
-  overrides: Partial<ProductAuthoringView> = {},
+  overrides: Partial<ProductAuthoringView> = {}
 ): ProductAuthoringView => ({
   catalog: {
     artists: [
@@ -79,28 +79,28 @@ const buildView = (
     orphanVariantProfileIds: [],
   },
   ...overrides,
-});
+})
 
 describe("product catalog summary", () => {
   it("summarizes mixed offering stock without hiding sold-out formats", () => {
-    const summary = buildProductCatalogSummary(buildView());
+    const summary = buildProductCatalogSummary(buildView())
 
-    expect(summary.kindLabel).toBe("Music release");
-    expect(summary.artistLabel).toBe("Test Artist");
+    expect(summary.kindLabel).toBe("Music release")
+    expect(summary.artistLabel).toBe("Test Artist")
     expect(summary.availability).toEqual({
       color: "orange",
       description: "1 low stock offering · 1 sold out offering",
       label: "Low stock",
-    });
+    })
     expect(summary.media).toEqual({
       description: "1 image missing alternative text",
       missingAltText: 1,
       total: 1,
-    });
-  });
+    })
+  })
 
   it("marks conflicting catalog records as blocked", () => {
-    const base = buildView();
+    const base = buildView()
     const summary = buildProductCatalogSummary(
       buildView({
         classification: {
@@ -118,16 +118,16 @@ describe("product catalog summary", () => {
           ...base.diagnostics,
           duplicateProductProfileIds: ["cprod_duplicate"],
         },
-      }),
-    );
+      })
+    )
 
-    expect(summary.completion.label).toBe("Blocked");
-    expect(summary.completion.color).toBe("red");
-    expect(summary.kindLabel).toBe("Unclassified");
-  });
+    expect(summary.completion.label).toBe("Blocked")
+    expect(summary.completion.color).toBe("red")
+    expect(summary.kindLabel).toBe("Unclassified")
+  })
 
   it("explains mystery-box inventory without requiring component mappings", () => {
-    const base = buildView();
+    const base = buildView()
     const summary = buildProductCatalogSummary(
       buildView({
         catalog: {
@@ -146,14 +146,14 @@ describe("product catalog summary", () => {
           kind: "mystery_bundle",
           status: "classified",
         },
-      }),
-    );
+      })
+    )
 
     expect(summary.bundleHealth).toEqual({
       color: "blue",
       description:
         "Mystery boxes use native manual inventory and do not require component mappings.",
       label: "Manual inventory",
-    });
-  });
-});
+    })
+  })
+})

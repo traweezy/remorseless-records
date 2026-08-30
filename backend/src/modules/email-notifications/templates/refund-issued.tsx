@@ -1,31 +1,31 @@
-import * as React from "react";
+import * as React from "react"
 
-import { Base } from "./base";
-import { Hr, Section, Text } from "./primitives";
+import { Base } from "./base"
+import { Hr, Section, Text } from "./primitives"
 
-export const REFUND_ISSUED = "refund-issued";
+export const REFUND_ISSUED = "refund-issued"
 
 export type RefundIssuedTemplateProps = {
-  formattedAmount: string;
-  note?: string | null;
-  preview?: string;
-  referenceLabel: string;
-};
+  formattedAmount: string
+  note?: string | null
+  preview?: string
+  referenceLabel: string
+}
 
-type UnknownRecord = Record<string, unknown>;
+type UnknownRecord = Record<string, unknown>
 
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as UnknownRecord)
-    : null;
+    : null
 
 const nonEmptyText = (value: unknown): value is string =>
-  typeof value === "string" && value.trim().length > 0;
+  typeof value === "string" && value.trim().length > 0
 
 export const isRefundIssuedTemplateData = (
-  value: unknown,
+  value: unknown
 ): value is RefundIssuedTemplateProps => {
-  const record = asRecord(value);
+  const record = asRecord(value)
   return (
     nonEmptyText(record?.formattedAmount) &&
     nonEmptyText(record?.referenceLabel) &&
@@ -33,8 +33,8 @@ export const isRefundIssuedTemplateData = (
     (record.note === undefined ||
       record.note === null ||
       nonEmptyText(record.note))
-  );
-};
+  )
+}
 
 export const RefundIssuedTemplate = ({
   formattedAmount,
@@ -79,12 +79,12 @@ export const RefundIssuedTemplate = ({
       </Text>
     </Section>
   </Base>
-);
+)
 
 RefundIssuedTemplate.PreviewProps = {
   formattedAmount: "$12.50",
   note: "We refunded the unavailable item.",
   referenceLabel: "order #42",
-} satisfies RefundIssuedTemplateProps;
+} satisfies RefundIssuedTemplateProps
 
-export default RefundIssuedTemplate;
+export default RefundIssuedTemplate

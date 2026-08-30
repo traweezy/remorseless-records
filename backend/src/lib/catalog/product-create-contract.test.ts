@@ -98,7 +98,7 @@ describe("catalogProductCreateSchema", () => {
       catalogProductCreateSchema.safeParse({
         ...musicRelease(),
         media: invalidMedia,
-      }).success,
+      }).success
     ).toBe(false)
   })
 
@@ -118,7 +118,7 @@ describe("catalogProductCreateSchema", () => {
                 preorderReleaseDate: "2099-08-01",
               },
             }
-          : variant,
+          : variant
       ),
     }
     expect(catalogProductCreateSchema.safeParse(preorder).success).toBe(true)
@@ -127,9 +127,9 @@ describe("catalogProductCreateSchema", () => {
       catalogProductCreateSchema.safeParse({
         ...preorder,
         variants: preorder.variants.map((variant, index) =>
-          index === 0 ? { ...variant, allowBackorder: false } : variant,
+          index === 0 ? { ...variant, allowBackorder: false } : variant
         ),
-      }).success,
+      }).success
     ).toBe(false)
 
     expect(
@@ -137,7 +137,7 @@ describe("catalogProductCreateSchema", () => {
         ...preorder,
         kind: "merch",
         profile: { productType: { label: "T-shirt" } },
-      }).success,
+      }).success
     ).toBe(false)
 
     expect(
@@ -153,9 +153,9 @@ describe("catalogProductCreateSchema", () => {
                   preorderReleaseDate: null,
                 },
               }
-            : variant,
+            : variant
         ),
-      }).success,
+      }).success
     ).toBe(false)
   })
 
@@ -165,7 +165,7 @@ describe("catalogProductCreateSchema", () => {
         ...musicRelease(),
         kind: "merch",
         profile: { productType: { label: "T-shirt" } },
-      }).success,
+      }).success
     ).toBe(true)
   })
 
@@ -199,7 +199,7 @@ describe("catalogProductCreateSchema", () => {
             },
           ],
         },
-      }).success,
+      }).success
     ).toBe(true)
 
     expect(
@@ -213,7 +213,7 @@ describe("catalogProductCreateSchema", () => {
           },
         ],
         bundle: { components: [] },
-      }).success,
+      }).success
     ).toBe(true)
   })
 
@@ -221,7 +221,7 @@ describe("catalogProductCreateSchema", () => {
     const withoutArtist = musicRelease()
     withoutArtist.profile.artists = []
     expect(catalogProductCreateSchema.safeParse(withoutArtist).success).toBe(
-      false,
+      false
     )
 
     expect(
@@ -229,7 +229,7 @@ describe("catalogProductCreateSchema", () => {
         ...musicRelease(),
         kind: "fixed_bundle",
         bundle: { components: [] },
-      }).success,
+      }).success
     ).toBe(false)
 
     expect(
@@ -244,7 +244,7 @@ describe("catalogProductCreateSchema", () => {
             },
           ],
         },
-      }).success,
+      }).success
     ).toBe(false)
 
     const fixedWithOwnedStock = {
@@ -261,7 +261,7 @@ describe("catalogProductCreateSchema", () => {
       },
     }
     expect(
-      catalogProductCreateSchema.safeParse(fixedWithOwnedStock).success,
+      catalogProductCreateSchema.safeParse(fixedWithOwnedStock).success
     ).toBe(false)
   })
 
@@ -275,7 +275,7 @@ describe("catalogProductCreateSchema", () => {
       currencyCode: "USD",
     })
     expect(
-      catalogProductCreateSchema.safeParse(duplicateCombination).success,
+      catalogProductCreateSchema.safeParse(duplicateCombination).success
     ).toBe(false)
 
     const unknownOption = musicRelease()
@@ -283,14 +283,14 @@ describe("catalogProductCreateSchema", () => {
       Format: string
     }
     expect(catalogProductCreateSchema.safeParse(unknownOption).success).toBe(
-      false,
+      false
     )
 
     const unsafeCommerce = musicRelease()
     unsafeCommerce.variants[0]!.sku = ""
     unsafeCommerce.variants[0]!.prices[0]!.amount = 0
     expect(catalogProductCreateSchema.safeParse(unsafeCommerce).success).toBe(
-      false,
+      false
     )
 
     const duplicateComponent = {
@@ -319,9 +319,9 @@ describe("catalogProductCreateSchema", () => {
         ],
       },
     }
-    expect(catalogProductCreateSchema.safeParse(duplicateComponent).success).toBe(
-      false,
-    )
+    expect(
+      catalogProductCreateSchema.safeParse(duplicateComponent).success
+    ).toBe(false)
   })
 
   it("requires every fixed-bundle offering to have a valid component mapping", () => {
@@ -330,8 +330,8 @@ describe("catalogProductCreateSchema", () => {
       ...base,
       kind: "fixed_bundle",
       profile: { productType: { label: "Bundle" } },
-      variants: base.variants.map(({ stockQuantity: _stock, ...variant }) =>
-        variant,
+      variants: base.variants.map(
+        ({ stockQuantity: _stock, ...variant }) => variant
       ),
       bundle: {
         components: [
@@ -356,7 +356,7 @@ describe("catalogProductCreateSchema", () => {
             },
           ],
         },
-      }).success,
+      }).success
     ).toBe(false)
     expect(
       catalogProductCreateSchema.safeParse({
@@ -369,7 +369,7 @@ describe("catalogProductCreateSchema", () => {
             },
           ],
         },
-      }).success,
+      }).success
     ).toBe(true)
   })
 })

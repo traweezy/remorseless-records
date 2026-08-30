@@ -3,12 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ArchiveBox } from "@medusajs/icons"
-import {
-  Button,
-  Container,
-  Heading,
-  Text,
-} from "@medusajs/ui"
+import { Button, Container, Heading, Text } from "@medusajs/ui"
 import { useForm, useStore } from "@tanstack/react-form"
 import { useQuery } from "@tanstack/react-query"
 
@@ -113,7 +108,7 @@ type PendingRequest = {
 
 const idempotencyKeyFor = (
   pending: { current: PendingRequest | null },
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ): string => {
   const fingerprint = JSON.stringify(payload)
   if (pending.current?.fingerprint === fingerprint) {
@@ -145,10 +140,7 @@ const extractErrorMessage = async (response: Response): Promise<string> => {
   }
 }
 
-const fetchJson = async <T,>(
-  url: string,
-  init?: RequestInit
-): Promise<T> => {
+const fetchJson = async <T,>(url: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(url, {
     credentials: "include",
     ...init,
@@ -184,7 +176,9 @@ const toShelfForm = (response: ShelfResponse | null): ShelfFormState => {
     showRibbon: response.shelf.showRibbon ?? false,
     ribbonLabel: response.shelf.ribbonLabel ?? "",
     ribbonPriority: String(response.shelf.ribbonPriority ?? 100),
-    productLimit: response.shelf.productLimit ? String(response.shelf.productLimit) : "",
+    productLimit: response.shelf.productLimit
+      ? String(response.shelf.productLimit)
+      : "",
     startsAt: toDateTimeInput(response.shelf.startsAt),
     endsAt: toDateTimeInput(response.shelf.endsAt),
     isActive: response.shelf.isActive ?? true,
@@ -217,9 +211,9 @@ const sortShelfLines = (lines: ShelfProductLine[]): ShelfProductLine[] =>
 
 const CatalogMerchandisingPageContent = memo(() => {
   const [shelves, setShelves] = useState<ShelfResponse[]>([])
-  const [pickedProducts, setPickedProducts] = useState<Map<string, AdminProduct>>(
-    () => new Map(),
-  )
+  const [pickedProducts, setPickedProducts] = useState<
+    Map<string, AdminProduct>
+  >(() => new Map())
   const [selectedShelfId, setSelectedShelfId] = useState<string>("")
   const [createOpen, setCreateOpen] = useState(false)
   const [createDiscardOpen, setCreateDiscardOpen] = useState(false)
@@ -265,10 +259,10 @@ const CatalogMerchandisingPageContent = memo(() => {
       formState.products
         .map((line) => line.productId)
         .filter((productId) => productId.length > 0),
-    [formState.products],
+    [formState.products]
   )
   const selectedProductsQuery = useQuery(
-    catalogSelectedProductsQueryOptions(selectedProductIds),
+    catalogSelectedProductsQueryOptions(selectedProductIds)
   )
   const productById = useMemo(() => {
     const map = new Map<string, AdminProduct>()
@@ -305,27 +299,30 @@ const CatalogMerchandisingPageContent = memo(() => {
     }
   }, [refreshShelves])
 
-  const loadShelf = useCallback(async (shelfId: string) => {
-    if (!shelfId) {
-      shelfForm.reset(createEmptyShelfForm(), { keepDefaultValues: true })
-      setFormIssues([])
-      return
-    }
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetchJson<ShelfResponse>(
-        `/admin/catalog/shelves/${shelfId}`
-      )
-      setPickedProducts(new Map())
-      shelfForm.reset(toShelfForm(response), { keepDefaultValues: true })
-      setFormIssues([])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load shelf")
-    } finally {
-      setLoading(false)
-    }
-  }, [shelfForm])
+  const loadShelf = useCallback(
+    async (shelfId: string) => {
+      if (!shelfId) {
+        shelfForm.reset(createEmptyShelfForm(), { keepDefaultValues: true })
+        setFormIssues([])
+        return
+      }
+      setLoading(true)
+      setError(null)
+      try {
+        const response = await fetchJson<ShelfResponse>(
+          `/admin/catalog/shelves/${shelfId}`
+        )
+        setPickedProducts(new Map())
+        shelfForm.reset(toShelfForm(response), { keepDefaultValues: true })
+        setFormIssues([])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to load shelf")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [shelfForm]
+  )
 
   useEffect(() => {
     void refreshAll()
@@ -350,7 +347,7 @@ const CatalogMerchandisingPageContent = memo(() => {
       }
       setFormIssues([])
     },
-    [shelfForm],
+    [shelfForm]
   )
 
   const updateCreateField = useCallback(
@@ -359,7 +356,8 @@ const CatalogMerchandisingPageContent = memo(() => {
       createShelfForm.setFieldValue(field as never, value as never)
       if (
         field === "title" &&
-        (!current.handle.trim() || current.handle === defaultHandle(current.title)) &&
+        (!current.handle.trim() ||
+          current.handle === defaultHandle(current.title)) &&
         typeof value === "string"
       ) {
         createShelfForm.setFieldValue("handle", defaultHandle(value))
@@ -369,7 +367,7 @@ const CatalogMerchandisingPageContent = memo(() => {
       }
       setCreateIssues([])
     },
-    [createShelfForm],
+    [createShelfForm]
   )
 
   const handleShelfSelect = useCallback(
@@ -384,7 +382,7 @@ const CatalogMerchandisingPageContent = memo(() => {
       }
       setSelectedShelfId(shelfId)
     },
-    [selectedShelfId, shelfFormState.isDirty],
+    [selectedShelfId, shelfFormState.isDirty]
   )
 
   const updateProductLine = useCallback(
@@ -392,7 +390,7 @@ const CatalogMerchandisingPageContent = memo(() => {
       shelfForm.setFieldValue("products", (products) =>
         products.map((line) =>
           line.key === key ? { ...line, ...patch } : line
-        ),
+        )
       )
       setFormIssues([])
     },
@@ -408,7 +406,7 @@ const CatalogMerchandisingPageContent = memo(() => {
         return next
       })
     },
-    [updateProductLine],
+    [updateProductLine]
   )
 
   const retrySelectedProducts = useCallback(() => {
@@ -417,44 +415,50 @@ const CatalogMerchandisingPageContent = memo(() => {
 
   const addProductLine = useCallback(() => {
     shelfForm.setFieldValue("products", (products) => [
-        ...products,
-        {
-          key: buildKey("shelf-product"),
-          productId: "",
-          sortOrder: String(products.length),
-          isPinned: false,
-          startsAt: "",
-          endsAt: "",
-        },
-      ])
+      ...products,
+      {
+        key: buildKey("shelf-product"),
+        productId: "",
+        sortOrder: String(products.length),
+        isPinned: false,
+        startsAt: "",
+        endsAt: "",
+      },
+    ])
     setFormIssues([])
   }, [shelfForm])
 
-  const removeProductLine = useCallback((key: string) => {
-    shelfForm.setFieldValue("products", (products) =>
-      sortShelfLines(products.filter((line) => line.key !== key)),
-    )
-    setFormIssues([])
-  }, [shelfForm])
+  const removeProductLine = useCallback(
+    (key: string) => {
+      shelfForm.setFieldValue("products", (products) =>
+        sortShelfLines(products.filter((line) => line.key !== key))
+      )
+      setFormIssues([])
+    },
+    [shelfForm]
+  )
 
-  const moveProductLine = useCallback((key: string, direction: -1 | 1) => {
-    shelfForm.setFieldValue("products", (products) => {
-      const index = products.findIndex((line) => line.key === key)
-      const target = index + direction
-      if (index < 0 || target < 0 || target >= products.length) {
-        return products
-      }
-      const next = [...products]
-      const line = next[index]
-      if (!line) {
-        return products
-      }
-      next.splice(index, 1)
-      next.splice(target, 0, line)
-      return sortShelfLines(next)
-    })
-    setFormIssues([])
-  }, [shelfForm])
+  const moveProductLine = useCallback(
+    (key: string, direction: -1 | 1) => {
+      shelfForm.setFieldValue("products", (products) => {
+        const index = products.findIndex((line) => line.key === key)
+        const target = index + direction
+        if (index < 0 || target < 0 || target >= products.length) {
+          return products
+        }
+        const next = [...products]
+        const line = next[index]
+        if (!line) {
+          return products
+        }
+        next.splice(index, 1)
+        next.splice(target, 0, line)
+        return sortShelfLines(next)
+      })
+      setFormIssues([])
+    },
+    [shelfForm]
+  )
 
   const saveShelf = useCallback(async () => {
     if (!selectedShelfId) {
@@ -510,7 +514,7 @@ const CatalogMerchandisingPageContent = memo(() => {
             ...payload,
             idempotencyKey: idempotencyKeyFor(saveRequest, payload),
           }),
-        },
+        }
       )
 
       saveRequest.current = null
@@ -518,11 +522,12 @@ const CatalogMerchandisingPageContent = memo(() => {
       shelfForm.reset(toShelfForm(response), { keepDefaultValues: true })
       setNotice("Saved merchandising shelf.")
     } catch (err) {
-      const failureMessage = err instanceof Error ? err.message : "Unable to save shelf"
+      const failureMessage =
+        err instanceof Error ? err.message : "Unable to save shelf"
       setReconciling(true)
       try {
         const snapshot = await fetchJson<ShelfResponse>(
-          `/admin/catalog/shelves/${selectedShelfId}`,
+          `/admin/catalog/shelves/${selectedShelfId}`
         )
         const snapshotForm = toShelfForm(snapshot)
         if (catalogShelfFingerprint(snapshotForm) === desiredFingerprint) {
@@ -530,11 +535,11 @@ const CatalogMerchandisingPageContent = memo(() => {
           shelfForm.reset(snapshotForm, { keepDefaultValues: true })
           await refreshShelves()
           setNotice(
-            "Saved merchandising shelf; confirmed after checking the server.",
+            "Saved merchandising shelf; confirmed after checking the server."
           )
         } else {
           setError(
-            `${failureMessage} The server did not confirm the complete change; your local edits are still available.`,
+            `${failureMessage} The server did not confirm the complete change; your local edits are still available.`
           )
         }
       } catch {
@@ -575,13 +580,16 @@ const CatalogMerchandisingPageContent = memo(() => {
         isActive: true,
         products: [],
       }
-      const response = await fetchJson<ShelfResponse>("/admin/catalog/shelves", {
-        method: "POST",
-        body: JSON.stringify({
-          ...payload,
-          idempotencyKey: idempotencyKeyFor(createRequest, payload),
-        }),
-      })
+      const response = await fetchJson<ShelfResponse>(
+        "/admin/catalog/shelves",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            ...payload,
+            idempotencyKey: idempotencyKeyFor(createRequest, payload),
+          }),
+        }
+      )
 
       createRequest.current = null
       await refreshShelves()
@@ -689,7 +697,7 @@ const CatalogMerchandisingPageContent = memo(() => {
       }
       setCreateOpen(open)
     },
-    [createFormState.isDirty, saving],
+    [createFormState.isDirty, saving]
   )
 
   const cancelCreateDiscard = useCallback(() => {
@@ -743,7 +751,7 @@ const CatalogMerchandisingPageContent = memo(() => {
   useAdminUnsavedChanges(
     (shelfFormState.isDirty || (createOpen && createFormState.isDirty)) &&
       !saving &&
-      !reconciling,
+      !reconciling
   )
 
   return (
@@ -760,7 +768,11 @@ const CatalogMerchandisingPageContent = memo(() => {
               >
                 Refresh
               </Button>
-              <Button ref={createTriggerRef} onClick={handleCreateOpen} type="button">
+              <Button
+                ref={createTriggerRef}
+                onClick={handleCreateOpen}
+                type="button"
+              >
                 New shelf
               </Button>
             </>
@@ -911,7 +923,7 @@ const CatalogMerchandisingPageContent = memo(() => {
                   selectedProductsQuery.error
                     ? getAdminRequestErrorMessage(
                         selectedProductsQuery.error,
-                        "Unable to load selected product details.",
+                        "Unable to load selected product details."
                       )
                     : null
                 }
@@ -988,8 +1000,9 @@ const CatalogMerchandisingPageContent = memo(() => {
         confirmLabel="Archive shelf"
         description={
           <>
-            Archive <strong>{selectedShelf?.shelf.title ?? "this shelf"}</strong>?
-            It will be hidden from customers and retained for restoration.
+            Archive{" "}
+            <strong>{selectedShelf?.shelf.title ?? "this shelf"}</strong>? It
+            will be hidden from customers and retained for restoration.
           </>
         }
         onCancel={closeArchive}

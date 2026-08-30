@@ -1,7 +1,7 @@
-export const PAYMENT_LIFECYCLE_MODULE = "payment_lifecycle";
+export const PAYMENT_LIFECYCLE_MODULE = "payment_lifecycle"
 
 export const STRIPE_LIFECYCLE_RECEIVED_EVENT =
-  "payment-lifecycle.stripe-event-received";
+  "payment-lifecycle.stripe-event-received"
 
 export const stripeLifecycleEventStatuses = [
   "received",
@@ -9,10 +9,10 @@ export const stripeLifecycleEventStatuses = [
   "processed",
   "ignored",
   "failed",
-] as const;
+] as const
 
 export type StripeLifecycleEventStatus =
-  (typeof stripeLifecycleEventStatuses)[number];
+  (typeof stripeLifecycleEventStatuses)[number]
 
 export const stripeLifecycleEventTypes = [
   "refund.created",
@@ -23,10 +23,10 @@ export const stripeLifecycleEventTypes = [
   "charge.dispute.closed",
   "charge.dispute.funds_withdrawn",
   "charge.dispute.funds_reinstated",
-] as const;
+] as const
 
 export type StripeLifecycleEventType =
-  (typeof stripeLifecycleEventTypes)[number];
+  (typeof stripeLifecycleEventTypes)[number]
 
 export const stripeLifecycleLockKey = (eventId: string): string =>
-  `payment-lifecycle:${eventId}`;
+  `payment-lifecycle:${eventId}`

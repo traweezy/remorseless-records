@@ -8,31 +8,31 @@ const HEALTH_REASONS = new Set([
   "scheduler_incident_latched",
   "scheduler_latest_unhealthy",
   "scheduler_state_invalid",
-]);
+])
 const SCHEDULER_EVENTS = new Set([
   "job.checkout_reconciliation.attention",
   "job.checkout_reconciliation.completed",
   "job.checkout_reconciliation.failed",
   "job.checkout_reconciliation.skipped",
-]);
+])
 const SCHEDULER_STATUSES = new Set([
   "attention",
   "completed",
   "failed",
   "skipped",
-]);
-const SHA_PATTERN = /^(?:[0-9a-f]{40}|unknown)$/u;
-const MAX_CLOCK_SKEW_SECONDS = 60;
-const MAX_HEALTH_RESPONSE_AGE_SECONDS = 2 * 60;
-const MAX_HEARTBEAT_AGE_SECONDS = 10 * 60;
-const MAX_REPORTED_AGE_DRIFT_SECONDS = 5;
-const MAX_REDIS_LATENCY_MS = 250;
+])
+const SHA_PATTERN = /^(?:[0-9a-f]{40}|unknown)$/u
+const MAX_CLOCK_SKEW_SECONDS = 60
+const MAX_HEALTH_RESPONSE_AGE_SECONDS = 2 * 60
+const MAX_HEARTBEAT_AGE_SECONDS = 10 * 60
+const MAX_REPORTED_AGE_DRIFT_SECONDS = 5
+const MAX_REDIS_LATENCY_MS = 250
 
 const isRecord = (value) =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+  typeof value === "object" && value !== null && !Array.isArray(value)
 
 const validTimestamp = (value) =>
-  typeof value === "string" && Number.isFinite(Date.parse(value));
+  typeof value === "string" && Number.isFinite(Date.parse(value))
 
 const sanitizeSnapshot = (value) => {
   if (
@@ -46,7 +46,7 @@ const sanitizeSnapshot = (value) => {
     typeof value.commit_sha !== "string" ||
     !SHA_PATTERN.test(value.commit_sha)
   ) {
-    return null;
+    return null
   }
 
   return {
@@ -54,15 +54,15 @@ const sanitizeSnapshot = (value) => {
     event: value.event,
     recordedAt: value.recorded_at,
     status: value.status,
-  };
-};
+  }
+}
 
 const parsePayload = (body) => {
-  let value;
+  let value
   try {
-    value = JSON.parse(body);
+    value = JSON.parse(body)
   } catch {
-    return null;
+    return null
   }
   if (
     !isRecord(value) ||
@@ -79,25 +79,25 @@ const parsePayload = (body) => {
     value.observation_window_seconds <= 0 ||
     !Array.isArray(value.reasons) ||
     value.reasons.some(
-      (reason) => typeof reason !== "string" || !HEALTH_REASONS.has(reason),
+      (reason) => typeof reason !== "string" || !HEALTH_REASONS.has(reason)
     ) ||
     (value.heartbeat_age_seconds !== null &&
       (typeof value.heartbeat_age_seconds !== "number" ||
         !Number.isFinite(value.heartbeat_age_seconds) ||
         value.heartbeat_age_seconds < 0))
   ) {
-    return null;
+    return null
   }
 
   const heartbeat =
-    value.heartbeat === null ? null : sanitizeSnapshot(value.heartbeat);
+    value.heartbeat === null ? null : sanitizeSnapshot(value.heartbeat)
   const incident =
-    value.incident === null ? null : sanitizeSnapshot(value.incident);
+    value.incident === null ? null : sanitizeSnapshot(value.incident)
   if (
     (value.heartbeat !== null && heartbeat === null) ||
     (value.incident !== null && incident === null)
   ) {
-    return null;
+    return null
   }
 
   return {
@@ -110,8 +110,8 @@ const parsePayload = (body) => {
     redis: value.redis,
     redisLatencyMs: value.redis_latency_ms,
     status: value.status,
-  };
-};
+  }
+}
 
 export const evaluateSchedulerHealthResponse = ({
   body,
@@ -121,70 +121,69 @@ export const evaluateSchedulerHealthResponse = ({
   sourceErrors = [],
 }) => {
   if (typeof body !== "string") {
-    throw new TypeError("Scheduler health body must be a string");
+    throw new TypeError("Scheduler health body must be a string")
   }
   if (!Number.isInteger(httpStatus) || httpStatus < 0 || httpStatus > 599) {
-    throw new TypeError("Scheduler health HTTP status must be bounded");
+    throw new TypeError("Scheduler health HTTP status must be bounded")
   }
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
-    throw new TypeError("Scheduler observation time must be valid");
+    throw new TypeError("Scheduler observation time must be valid")
   }
   if (!Array.isArray(sourceErrors)) {
-    throw new TypeError("Scheduler source errors must be an array");
+    throw new TypeError("Scheduler source errors must be an array")
   }
   for (const error of sourceErrors) {
     if (typeof error !== "string" || !/^[a-z0-9_:-]{1,64}$/u.test(error)) {
-      throw new TypeError("Scheduler source errors must be machine codes");
+      throw new TypeError("Scheduler source errors must be machine codes")
     }
   }
 
-  const reasons = new Set(sourceErrors.map((error) => `source_error:${error}`));
-  const payload = parsePayload(body);
+  const reasons = new Set(sourceErrors.map((error) => `source_error:${error}`))
+  const payload = parsePayload(body)
   if (!payload) {
-    reasons.add("health_payload_invalid");
+    reasons.add("health_payload_invalid")
   } else {
     for (const reason of payload.reasons) {
-      reasons.add(reason);
+      reasons.add(reason)
     }
-    const checkedAtMilliseconds = Date.parse(payload.checkedAt);
-    const responseAgeSeconds =
-      (now.getTime() - checkedAtMilliseconds) / 1_000;
+    const checkedAtMilliseconds = Date.parse(payload.checkedAt)
+    const responseAgeSeconds = (now.getTime() - checkedAtMilliseconds) / 1_000
     if (responseAgeSeconds > MAX_HEALTH_RESPONSE_AGE_SECONDS) {
-      reasons.add("health_response_stale");
+      reasons.add("health_response_stale")
     }
     if (responseAgeSeconds < -MAX_CLOCK_SKEW_SECONDS) {
-      reasons.add("health_response_from_future");
+      reasons.add("health_response_from_future")
     }
     if (payload.heartbeat) {
       const heartbeatRecordedAtMilliseconds = Date.parse(
-        payload.heartbeat.recordedAt,
-      );
+        payload.heartbeat.recordedAt
+      )
       const observedHeartbeatAgeSeconds =
-        (now.getTime() - heartbeatRecordedAtMilliseconds) / 1_000;
+        (now.getTime() - heartbeatRecordedAtMilliseconds) / 1_000
       const reportedAtCheckSeconds =
-        (checkedAtMilliseconds - heartbeatRecordedAtMilliseconds) / 1_000;
+        (checkedAtMilliseconds - heartbeatRecordedAtMilliseconds) / 1_000
       if (observedHeartbeatAgeSeconds > MAX_HEARTBEAT_AGE_SECONDS) {
-        reasons.add("scheduler_heartbeat_stale");
+        reasons.add("scheduler_heartbeat_stale")
       }
       if (observedHeartbeatAgeSeconds < -MAX_CLOCK_SKEW_SECONDS) {
-        reasons.add("scheduler_heartbeat_from_future");
+        reasons.add("scheduler_heartbeat_from_future")
       }
       if (
         payload.heartbeatAgeSeconds === null ||
         Math.abs(payload.heartbeatAgeSeconds - reportedAtCheckSeconds) >
           MAX_REPORTED_AGE_DRIFT_SECONDS
       ) {
-        reasons.add("scheduler_heartbeat_age_mismatch");
+        reasons.add("scheduler_heartbeat_age_mismatch")
       }
     }
     if (payload.redis === "ok" && payload.redisLatencyMs === null) {
-      reasons.add("redis_latency_missing");
+      reasons.add("redis_latency_missing")
     }
     if (
       payload.redisLatencyMs !== null &&
       payload.redisLatencyMs >= MAX_REDIS_LATENCY_MS
     ) {
-      reasons.add("redis_latency_high");
+      reasons.add("redis_latency_high")
     }
     if (
       httpStatus !== 200 ||
@@ -195,14 +194,14 @@ export const evaluateSchedulerHealthResponse = ({
       payload.incident !== null ||
       payload.reasons.length > 0
     ) {
-      reasons.add("health_endpoint_unhealthy");
+      reasons.add("health_endpoint_unhealthy")
     }
   }
   if (forceAlert) {
-    reasons.add("forced_acceptance_alert");
+    reasons.add("forced_acceptance_alert")
   }
 
-  const reasonList = [...reasons].toSorted();
+  const reasonList = [...reasons].toSorted()
   return {
     schemaVersion: 1,
     status: reasonList.length === 0 ? "healthy" : "alert",
@@ -222,12 +221,12 @@ export const evaluateSchedulerHealthResponse = ({
         }
       : null,
     reasons: reasonList,
-  };
-};
+  }
+}
 
 export const renderSchedulerObservationMarkdown = (report) => {
   if (!isRecord(report) || typeof report.status !== "string") {
-    throw new TypeError("Scheduler observation report is required");
+    throw new TypeError("Scheduler observation report is required")
   }
 
   const lines = [
@@ -247,12 +246,12 @@ export const renderSchedulerObservationMarkdown = (report) => {
     "",
     "## Alert reasons",
     "",
-  ];
+  ]
   lines.push(
     ...(report.reasons.length === 0
       ? ["- None"]
-      : report.reasons.map((reason) => `- \`${reason}\``)),
-  );
-  lines.push("");
-  return lines.join("\n");
-};
+      : report.reasons.map((reason) => `- \`${reason}\``))
+  )
+  lines.push("")
+  return lines.join("\n")
+}

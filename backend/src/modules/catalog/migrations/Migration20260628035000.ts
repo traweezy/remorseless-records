@@ -6,7 +6,7 @@ export class Migration20260628035000 extends Migration {
       'alter table "catalog_variant_profiles" drop constraint if exists "catalog_variant_profiles_availability_status_check";'
     )
     this.addSql(
-      'alter table "catalog_variant_profiles" add constraint "catalog_variant_profiles_availability_status_check" check ("availability_status" in (\'available\', \'in_stock\', \'low_stock\', \'preorder\', \'backorder\', \'coming_soon\', \'sold_out\', \'unknown\'));'
+      "alter table \"catalog_variant_profiles\" add constraint \"catalog_variant_profiles_availability_status_check\" check (\"availability_status\" in ('available', 'in_stock', 'low_stock', 'preorder', 'backorder', 'coming_soon', 'sold_out', 'unknown'));"
     )
 
     this.addSql(
@@ -14,13 +14,13 @@ export class Migration20260628035000 extends Migration {
         '"id" text not null,' +
         '"product_id" text not null,' +
         '"product_profile_id" text null,' +
-        '"bundle_type" text not null default \'fixed\' check ("bundle_type" in (\'fixed\', \'mystery\', \'deal\', \'selectable\')),' +
-        '"inventory_mode" text not null default \'component_derived\' check ("inventory_mode" in (\'component_derived\', \'manual\')),' +
-        '"fulfillment_mode" text not null default \'ship_components\' check ("fulfillment_mode" in (\'ship_components\', \'manual\')),' +
+        "\"bundle_type\" text not null default 'fixed' check (\"bundle_type\" in ('fixed', 'mystery', 'deal', 'selectable'))," +
+        "\"inventory_mode\" text not null default 'component_derived' check (\"inventory_mode\" in ('component_derived', 'manual'))," +
+        "\"fulfillment_mode\" text not null default 'ship_components' check (\"fulfillment_mode\" in ('ship_components', 'manual'))," +
         '"display_title" text null,' +
         '"description_html" text null,' +
         '"is_active" boolean not null default true,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -54,7 +54,7 @@ export class Migration20260628035000 extends Migration {
         '"quantity" integer not null default 1 check ("quantity" > 0),' +
         '"sort_order" integer not null default 0,' +
         '"is_required" boolean not null default true,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -86,7 +86,7 @@ export class Migration20260628035000 extends Migration {
       'alter table "catalog_variant_profiles" drop constraint if exists "catalog_variant_profiles_availability_status_check";'
     )
     this.addSql(
-      'alter table "catalog_variant_profiles" add constraint "catalog_variant_profiles_availability_status_check" check ("availability_status" in (\'available\', \'preorder\', \'backorder\', \'coming_soon\', \'sold_out\'));'
+      "alter table \"catalog_variant_profiles\" add constraint \"catalog_variant_profiles_availability_status_check\" check (\"availability_status\" in ('available', 'preorder', 'backorder', 'coming_soon', 'sold_out'));"
     )
   }
 }

@@ -1,14 +1,7 @@
 "use client"
 
 import { memo, type ChangeEvent, type MouseEvent } from "react"
-import {
-  Button,
-  Container,
-  Heading,
-  Input,
-  Skeleton,
-  Text,
-} from "@medusajs/ui"
+import { Button, Container, Heading, Input, Skeleton, Text } from "@medusajs/ui"
 import { Trash } from "@medusajs/icons"
 
 import { AdminFormField } from "../../components/admin-form-field"
@@ -71,16 +64,16 @@ const stockLabel = (quantity: number | null, managed: boolean): string => {
 
 const selectedProduct = (
   choices: CatalogCreationProductChoiceWithStock[],
-  productId: string,
+  productId: string
 ): CatalogCreationProductChoiceWithStock | undefined =>
   choices.find((choice) => choice.id === productId)
 
 const selectedVariant = (
   choices: CatalogCreationProductChoiceWithStock[],
-  component: CatalogCreationBundleComponent,
+  component: CatalogCreationBundleComponent
 ) =>
   selectedProduct(choices, component.productId)?.variants.find(
-    (variant) => variant.id === component.variantId,
+    (variant) => variant.id === component.variantId
   )
 
 type CatalogCreationOfferingsStepProps = {
@@ -98,23 +91,23 @@ type CatalogCreationOfferingsStepProps = {
   onAddBundleComponent: () => void
   onAddOffering: () => void
   onApplyMusicReleaseTemplate: (
-    templateId: CatalogCreationMusicReleaseTemplateId,
+    templateId: CatalogCreationMusicReleaseTemplateId
   ) => void
   onApplyMerchandiseTemplate: (
-    templateId: CatalogCreationMerchandiseTemplateId,
+    templateId: CatalogCreationMerchandiseTemplateId
   ) => void
   onChoicesRetry: () => void
   onFillMissingSkus: () => void
   onRemoveBundleComponent: (event: MouseEvent<HTMLButtonElement>) => void
   onRemoveOffering: (event: MouseEvent<HTMLButtonElement>) => void
   onUpdateBundleComponent: (
-    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => void
   onUpdateBundleMapping: (event: ChangeEvent<HTMLInputElement>) => void
   onUpdateOffering: (
     event: ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
+    >
   ) => void
   values: CatalogCreationFormValues
 }
@@ -199,10 +192,7 @@ export const CatalogCreationOfferingsStep =
                       <Heading level="h3">
                         {offeringLabel(values.kind)} {index + 1}
                       </Heading>
-                      <Text
-                        className="mt-1 text-ui-fg-subtle"
-                        size="xsmall"
-                      >
+                      <Text className="mt-1 text-ui-fg-subtle" size="xsmall">
                         Shown to customers as {offering.title || "Untitled"}.
                       </Text>
                     </div>
@@ -270,7 +260,9 @@ export const CatalogCreationOfferingsStep =
                           )}
                         </AdminFormField>
                         <AdminFormField
-                          hint={'Use a controlled detail when available, such as Black Shell, 2CD, or 12" Black.'}
+                          hint={
+                            'Use a controlled detail when available, such as Black Shell, 2CD, or 12" Black.'
+                          }
                           id={`offering-${offering.id}-detail`}
                           label="Format detail"
                           optional
@@ -342,10 +334,7 @@ export const CatalogCreationOfferingsStep =
                         <Text size="small" weight="plus">
                           Component-derived stock
                         </Text>
-                        <Text
-                          className="mt-1 text-ui-fg-subtle"
-                          size="xsmall"
-                        >
+                        <Text className="mt-1 text-ui-fg-subtle" size="xsmall">
                           Availability follows the products mapped below.
                         </Text>
                       </div>
@@ -372,9 +361,7 @@ export const CatalogCreationOfferingsStep =
                     {values.kind !== "fixed_bundle" ? (
                       <AdminFormField
                         hint={
-                          availabilityPolicyHints[
-                            offering.availabilityPolicy
-                          ]
+                          availabilityPolicyHints[offering.availabilityPolicy]
                         }
                         id={`offering-${offering.id}-availability-policy`}
                         label="Selling policy"
@@ -392,7 +379,7 @@ export const CatalogCreationOfferingsStep =
                               .filter(
                                 (policy) =>
                                   policy !== "preorder" ||
-                                  values.kind === "music_release",
+                                  values.kind === "music_release"
                               )
                               .map((policy) => (
                                 <option key={policy} value={policy}>
@@ -455,7 +442,7 @@ export const CatalogCreationOfferingsStep =
                 <AdminRetryState
                   message={getAdminRequestErrorMessage(
                     choicesError,
-                    "Product choices could not be loaded.",
+                    "Product choices could not be loaded."
                   )}
                   onRetry={onChoicesRetry}
                   retrying={choicesFetching}
@@ -468,11 +455,11 @@ export const CatalogCreationOfferingsStep =
                   values.bundleComponents.map((component, index) => {
                     const product = selectedProduct(
                       choicesData ?? [],
-                      component.productId,
+                      component.productId
                     )
                     const variant = selectedVariant(
                       choicesData ?? [],
-                      component,
+                      component
                     )
                     return (
                       <section
@@ -521,7 +508,7 @@ export const CatalogCreationOfferingsStep =
                               variant
                                 ? stockLabel(
                                     variant.inventoryQuantity,
-                                    variant.managesInventory,
+                                    variant.managesInventory
                                   )
                                 : undefined
                             }
@@ -580,7 +567,7 @@ export const CatalogCreationOfferingsStep =
                                 >
                                   <input
                                     checked={component.offeringIds.includes(
-                                      offering.id,
+                                      offering.id
                                     )}
                                     className="h-4 w-4"
                                     data-component-id={component.id}
@@ -613,7 +600,7 @@ export const CatalogCreationOfferingsStep =
           </Container>
         ) : null}
       </div>
-    ),
+    )
   )
 
 CatalogCreationOfferingsStep.displayName = "CatalogCreationOfferingsStep"

@@ -1,7 +1,4 @@
-import {
-  queryOptions,
-  type QueryFunctionContext,
-} from "@tanstack/react-query"
+import { queryOptions, type QueryFunctionContext } from "@tanstack/react-query"
 import { z } from "zod"
 
 import { requestAdminJson } from "../../lib/admin-request"
@@ -30,7 +27,7 @@ const productListSchema = z.object({
       id: z.string().min(1),
       title: z.string().nullable().optional(),
       variants: z.array(productVariantSchema).nullable().optional(),
-    }),
+    })
   ),
 })
 
@@ -69,12 +66,7 @@ const catalogReferenceListSchema = z.object({
 })
 
 export const catalogProductCreateResponseSchema = z.object({
-  kind: z.enum([
-    "music_release",
-    "merch",
-    "fixed_bundle",
-    "mystery_bundle",
-  ]),
+  kind: z.enum(["music_release", "merch", "fixed_bundle", "mystery_bundle"]),
   productId: z.string().min(1),
   profileId: z.string().min(1),
   replayed: z.boolean(),
@@ -101,13 +93,10 @@ export type CatalogProductCreationStatus = z.infer<
 >
 
 export type CatalogProductCreationRetryDecision =
-  | "blocked"
-  | "new-key"
-  | "same-key"
-  | "wait"
+  "blocked" | "new-key" | "same-key" | "wait"
 
 export const decideCatalogProductCreationRetry = (
-  state: CatalogProductCreationStatus["state"],
+  state: CatalogProductCreationStatus["state"]
 ): CatalogProductCreationRetryDecision => {
   if (state === "compensated") {
     return "new-key"
@@ -121,15 +110,17 @@ export const decideCatalogProductCreationRetry = (
   return "blocked"
 }
 
-export type CatalogCreationProductChoiceWithStock =
-  Omit<CatalogCreationProductChoice, "variants"> & {
-    variants: Array<
-      CatalogCreationProductChoice["variants"][number] & {
-        inventoryQuantity: number | null
-        managesInventory: boolean
-      }
-    >
-  }
+export type CatalogCreationProductChoiceWithStock = Omit<
+  CatalogCreationProductChoice,
+  "variants"
+> & {
+  variants: Array<
+    CatalogCreationProductChoice["variants"][number] & {
+      inventoryQuantity: number | null
+      managesInventory: boolean
+    }
+  >
+}
 
 export const catalogProductChoicesQueryKey = [
   "catalog",
@@ -144,13 +135,10 @@ export const catalogCreationVocabularyQueryKey = [
 const vocabularyPageOffsets = (count: number): number[] =>
   Array.from(
     { length: Math.max(0, Math.ceil(count / 500) - 1) },
-    (_, index) => (index + 1) * 500,
+    (_, index) => (index + 1) * 500
   )
 
-const loadCatalogArtistPage = async (
-  offset: number,
-  signal: AbortSignal,
-) =>
+const loadCatalogArtistPage = async (offset: number, signal: AbortSignal) =>
   requestAdminJson({
     path: "/admin/catalog/artists",
     query: {
@@ -163,10 +151,7 @@ const loadCatalogArtistPage = async (
     signal,
   })
 
-const loadCatalogReferencePage = async (
-  offset: number,
-  signal: AbortSignal,
-) =>
+const loadCatalogReferencePage = async (offset: number, signal: AbortSignal) =>
   requestAdminJson({
     path: "/admin/catalog/reference-values",
     query: {
@@ -181,7 +166,7 @@ const loadCatalogReferencePage = async (
   })
 
 export const loadCatalogCreationVocabulary = async (
-  signal: AbortSignal,
+  signal: AbortSignal
 ): Promise<CatalogCreationVocabulary> => {
   const [firstArtists, firstReferences] = await Promise.all([
     loadCatalogArtistPage(0, signal),
@@ -190,21 +175,21 @@ export const loadCatalogCreationVocabulary = async (
   const [remainingArtists, remainingReferences] = await Promise.all([
     Promise.all(
       vocabularyPageOffsets(firstArtists.count).map((offset) =>
-        loadCatalogArtistPage(offset, signal),
-      ),
+        loadCatalogArtistPage(offset, signal)
+      )
     ),
     Promise.all(
       vocabularyPageOffsets(firstReferences.count).map((offset) =>
-        loadCatalogReferencePage(offset, signal),
-      ),
+        loadCatalogReferencePage(offset, signal)
+      )
     ),
   ])
   return {
     artists: [firstArtists, ...remainingArtists].flatMap(
-      (page): CatalogCreationArtistChoice[] => page.artists,
+      (page): CatalogCreationArtistChoice[] => page.artists
     ),
     references: [firstReferences, ...remainingReferences].flatMap(
-      (page): CatalogCreationReferenceChoice[] => page.values,
+      (page): CatalogCreationReferenceChoice[] => page.values
     ),
   }
 }
@@ -218,10 +203,7 @@ export const catalogCreationVocabularyQueryOptions = () =>
     staleTime: 5 * 60_000,
   })
 
-const loadProductChoicePage = async (
-  offset: number,
-  signal: AbortSignal,
-) =>
+const loadProductChoicePage = async (offset: number, signal: AbortSignal) =>
   requestAdminJson({
     path: "/admin/products",
     query: {
@@ -235,16 +217,16 @@ const loadProductChoicePage = async (
 
 const loadCatalogProductChoices = async ({
   signal,
-}: QueryFunctionContext<
-  typeof catalogProductChoicesQueryKey
->): Promise<CatalogCreationProductChoiceWithStock[]> => {
+}: QueryFunctionContext<typeof catalogProductChoicesQueryKey>): Promise<
+  CatalogCreationProductChoiceWithStock[]
+> => {
   const first = await loadProductChoicePage(0, signal)
   const remainingOffsets = Array.from(
     { length: Math.max(0, Math.ceil(first.count / PAGE_SIZE) - 1) },
-    (_, index) => (index + 1) * PAGE_SIZE,
+    (_, index) => (index + 1) * PAGE_SIZE
   )
   const remaining = await Promise.all(
-    remainingOffsets.map((offset) => loadProductChoicePage(offset, signal)),
+    remainingOffsets.map((offset) => loadProductChoicePage(offset, signal))
   )
   return [first, ...remaining]
     .flatMap((page) => page.products)
@@ -272,7 +254,7 @@ export const catalogProductChoicesQueryOptions = () =>
   })
 
 export const createCatalogProduct = async (
-  request: CatalogProductCreateRequest,
+  request: CatalogProductCreateRequest
 ): Promise<CatalogProductCreateResponse> =>
   requestAdminJson({
     body: request,
@@ -283,7 +265,7 @@ export const createCatalogProduct = async (
   })
 
 export const getCatalogProductCreationStatus = async (
-  idempotencyKey: string,
+  idempotencyKey: string
 ): Promise<CatalogProductCreationStatus> =>
   requestAdminJson({
     path: `/admin/catalog/products/status/${encodeURIComponent(idempotencyKey)}`,

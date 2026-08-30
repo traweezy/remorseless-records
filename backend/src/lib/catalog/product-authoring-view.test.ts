@@ -58,7 +58,7 @@ const reference = (
   id: string,
   kind: string,
   label: string,
-  value: string,
+  value: string
 ): CatalogReferenceValueRecord => ({
   created_at: null,
   description: null,
@@ -156,7 +156,7 @@ describe("buildProductAuthoringView", () => {
           "ref_music",
           "product_type",
           "Music release",
-          "music-release",
+          "music-release"
         ),
         reference("ref_cd", "format", "CD", "cd"),
       ],
@@ -215,9 +215,7 @@ describe("buildProductAuthoringView", () => {
 
   it("surfaces missing relations and orphan variant profiles without throwing", () => {
     const view = buildProductAuthoringView({
-      artistAssignments: [
-        { ...artistAssignment, artist_id: "artist_missing" },
-      ],
+      artistAssignments: [{ ...artistAssignment, artist_id: "artist_missing" }],
       artists: [],
       availabilityByVariantId: {},
       availabilityLoaded: false,
@@ -232,11 +230,15 @@ describe("buildProductAuthoringView", () => {
           "ref_music",
           "product_type",
           "Music release",
-          "music-release",
+          "music-release"
         ),
       ],
       variantProfiles: [
-        { ...variantProfile, id: "cvprof_orphan", variant_id: "variant_missing" },
+        {
+          ...variantProfile,
+          id: "cvprof_orphan",
+          variant_id: "variant_missing",
+        },
       ],
     })
 

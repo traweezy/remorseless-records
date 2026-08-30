@@ -2,9 +2,7 @@ import "server-only"
 
 import { isIP } from "node:net"
 
-type RuntimeEnvironment = Readonly<
-  Record<string, string | undefined>
->
+type RuntimeEnvironment = Readonly<Record<string, string | undefined>>
 
 const normalizeIp = (value: string | null | undefined): string | null => {
   const candidate = value?.trim()

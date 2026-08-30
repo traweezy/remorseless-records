@@ -29,7 +29,7 @@ const renderOperationsPage = ({
       <QueryClientProvider client={queryClient}>
         <OperationsPage />
       </QueryClientProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
   queryClient.clear()
   return markup

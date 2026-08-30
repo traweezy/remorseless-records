@@ -23,19 +23,21 @@ const values = (): NewsEditorValues => ({
 
 describe("News editor state", () => {
   it("requires visible content and accessible cover copy", () => {
-    expect(newsEditorSchema.safeParse({ ...values(), content: "<p> </p>" }).success).toBe(false)
+    expect(
+      newsEditorSchema.safeParse({ ...values(), content: "<p> </p>" }).success
+    ).toBe(false)
     expect(
       newsEditorSchema.safeParse({
         ...values(),
         coverUrl: "https://cdn.example.com/cover.jpg",
-      }).success,
+      }).success
     ).toBe(false)
     expect(
       newsEditorSchema.safeParse({
         ...values(),
         coverAltText: "A studio mixing desk",
         coverUrl: "ftp://cdn.example.com/cover.jpg",
-      }).success,
+      }).success
     ).toBe(false)
   })
 
@@ -46,7 +48,7 @@ describe("News editor state", () => {
       expect.arrayContaining([
         expect.objectContaining({ targetId: "news-content" }),
         expect.objectContaining({ targetId: "news-title" }),
-      ]),
+      ])
     )
   })
 
@@ -103,20 +105,22 @@ describe("News editor state", () => {
     expect(
       newsEntryMatchesWriteInput(
         { ...persisted, title: "Different title" },
-        input,
-      ),
+        input
+      )
     ).toBe(false)
   })
 
   it("rejects missing and past schedule times", () => {
     const now = new Date("2030-01-02T12:00:00.000Z")
-    expect(validatePublicationIntent(values(), "schedule", now)).toMatch("Choose")
+    expect(validatePublicationIntent(values(), "schedule", now)).toMatch(
+      "Choose"
+    )
     expect(
       validatePublicationIntent(
         { ...values(), scheduleAt: "2030-01-01T12:00" },
         "schedule",
-        now,
-      ),
+        now
+      )
     ).toMatch("future")
   })
 

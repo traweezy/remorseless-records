@@ -12,7 +12,7 @@ export class Migration20260726183000 extends Migration {
       'alter table "catalog_product_profiles" add column "version" integer not null default 1;'
     )
     this.addSql(
-      'alter table "catalog_product_profiles" add constraint "catalog_product_profiles_release_date_precision_check" check ("release_date_precision" in (\'unknown\', \'year\', \'month\', \'day\'));'
+      "alter table \"catalog_product_profiles\" add constraint \"catalog_product_profiles_release_date_precision_check\" check (\"release_date_precision\" in ('unknown', 'year', 'month', 'day'));"
     )
     this.addSql(
       'alter table "catalog_product_profiles" add constraint "catalog_product_profiles_content_schema_version_check" check ("content_schema_version" >= 1);'
@@ -60,7 +60,9 @@ export class Migration20260726183000 extends Migration {
   }
 
   override async down(): Promise<void> {
-    this.addSql('drop index if exists "idx_catalog_media_assets_content_sha256";')
+    this.addSql(
+      'drop index if exists "idx_catalog_media_assets_content_sha256";'
+    )
     this.addSql(
       'alter table "catalog_media_assets" drop constraint if exists "catalog_media_assets_version_check";'
     )

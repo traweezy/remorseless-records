@@ -13,7 +13,7 @@ import {
 
 const assetFixture = (
   id = "cmedia_1",
-  sourceUrl = "https://media.example/cover.jpg",
+  sourceUrl = "https://media.example/cover.jpg"
 ): CatalogMediaAssetRecord => ({
   alt_text: "Cover",
   byte_size: 1_024,
@@ -39,7 +39,7 @@ const assetFixture = (
 
 const itemFixture = (
   id = "cpmedia_1",
-  mediaAssetId = "cmedia_1",
+  mediaAssetId = "cmedia_1"
 ): CatalogProductMediaItemRecord => ({
   created_at: null,
   id,
@@ -73,7 +73,7 @@ const serviceFixture = () => {
   }
   service.runCatalogTransaction.mockImplementation(
     async (callback: (context: Record<string, unknown>) => unknown) =>
-      callback({ transactionManager: {} }),
+      callback({ transactionManager: {} })
   )
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   service.listCatalogMediaAssets.mockResolvedValue([])
@@ -83,7 +83,7 @@ const serviceFixture = () => {
 }
 
 const commandFixture = (
-  media: CatalogProductMediaMutationInput["media"] = [],
+  media: CatalogProductMediaMutationInput["media"] = []
 ): CatalogProductMediaMutationInput => ({
   actorId: "user_1",
   aggregateId: "prod_1",
@@ -97,14 +97,14 @@ const commandFixture = (
 describe("catalog product media authoring", () => {
   it("requires command metadata and rejects unsafe or oversized fields", () => {
     expect(
-      catalogProductMediaReplaceSchema.safeParse({ media: [] }).success,
+      catalogProductMediaReplaceSchema.safeParse({ media: [] }).success
     ).toBe(false)
     expect(
       catalogProductMediaReplaceSchema.safeParse({
         expectedVersion: 0,
         idempotencyKey: commandFixture().idempotencyKey,
         media: [{ sourceUrl: "javascript:alert(1)" }],
-      }).success,
+      }).success
     ).toBe(false)
     expect(
       catalogProductMediaReplaceSchema.safeParse({
@@ -116,7 +116,7 @@ describe("catalog product media authoring", () => {
             altText: "x".repeat(2_001),
           },
         ],
-      }).success,
+      }).success
     ).toBe(false)
   })
 
@@ -125,7 +125,7 @@ describe("catalog product media authoring", () => {
       assertCatalogProductMediaPrimaryShape([
         { isPrimary: true, sourceUrl: "https://media.example/one.jpg" },
         { role: "primary", sourceUrl: "https://media.example/two.jpg" },
-      ]),
+      ])
     ).toThrow("Only one primary")
   })
 
@@ -144,7 +144,7 @@ describe("catalog product media authoring", () => {
           altText: "Cover",
           sourceUrl: createdAsset.source_url,
         },
-      ]),
+      ])
     )
 
     expect(result).toEqual(
@@ -154,7 +154,7 @@ describe("catalog product media authoring", () => {
         productId: "prod_1",
         replayed: false,
         version: 1,
-      }),
+      })
     )
     expect(service.createCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
@@ -165,7 +165,7 @@ describe("catalog product media authoring", () => {
           status: "pending",
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.createCatalogProductMediaItems).toHaveBeenCalledWith(
       [
@@ -177,7 +177,7 @@ describe("catalog product media authoring", () => {
           role: "primary",
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
@@ -200,7 +200,7 @@ describe("catalog product media authoring", () => {
           sourceFileKey: reusable.source_file_key,
           sourceUrl: reusable.source_url,
         },
-      ]),
+      ])
     )
 
     expect(service.updateCatalogMediaAssets).not.toHaveBeenCalled()
@@ -213,7 +213,7 @@ describe("catalog product media authoring", () => {
           version: 1,
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(result.createdAssetIds).toEqual(["cmedia_clone"])
   })
@@ -235,8 +235,8 @@ describe("catalog product media authoring", () => {
           {
             mediaAssetId: "cmedia_quarantined",
           },
-        ]),
-      ),
+        ])
+      )
     ).rejects.toThrow("Quarantined catalog media")
     expect(service.createCatalogProductMediaItems).not.toHaveBeenCalled()
 
@@ -252,7 +252,7 @@ describe("catalog product media authoring", () => {
           sourceFileKey: "file_quarantined",
           sourceUrl: "https://media.example/quarantined.jpg",
         },
-      ]),
+      ])
     )
     expect(service.listCatalogMediaAssets).toHaveBeenCalledWith(
       {
@@ -260,7 +260,7 @@ describe("catalog product media authoring", () => {
         source_file_key: "file_quarantined",
       },
       { take: 1 },
-      expect.any(Object),
+      expect.any(Object)
     )
   })
 
@@ -270,11 +270,11 @@ describe("catalog product media authoring", () => {
       async (filters: Record<string, unknown>) =>
         filters.idempotency_key
           ? []
-          : [{ expected_version: 1, result: { version: 2 } }],
+          : [{ expected_version: 1, result: { version: 2 } }]
     )
 
     await expect(
-      mutateCatalogProductMedia(service as never, commandFixture()),
+      mutateCatalogProductMedia(service as never, commandFixture())
     ).rejects.toThrow("changed after it was loaded")
     expect(service.createCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
@@ -296,19 +296,19 @@ describe("catalog product media authoring", () => {
     ])
 
     await expect(
-      mutateCatalogProductMedia(service as never, command),
+      mutateCatalogProductMedia(service as never, command)
     ).resolves.toEqual(
       expect.objectContaining({
         operationId: "caop_1",
         replayed: true,
         version: 1,
-      }),
+      })
     )
     await expect(
       mutateCatalogProductMedia(service as never, {
         ...command,
         requestSha256: "b".repeat(64),
-      }),
+      })
     ).rejects.toThrow("cannot be replayed")
   })
 
@@ -355,7 +355,7 @@ describe("catalog product media authoring", () => {
     }
     service.listCatalogProductMediaItems.mockImplementation(
       async (filters: Record<string, unknown>) =>
-        filters.media_asset_id ? [] : [itemFixture("cpmedia_new", "cmedia_new")],
+        filters.media_asset_id ? [] : [itemFixture("cpmedia_new", "cmedia_new")]
     )
     service.listCatalogMediaAssets.mockResolvedValue([
       { ...previousAsset, alt_text: "Changed", version: 2 },
@@ -370,19 +370,19 @@ describe("catalog product media authoring", () => {
 
     expect(service.deleteCatalogProductMediaItems).toHaveBeenCalledWith(
       ["cpmedia_new"],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.updateCatalogMediaAssets).toHaveBeenCalledWith(
       previous.assets,
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.createCatalogProductMediaItems).toHaveBeenCalledWith(
       previous.items,
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.deleteCatalogMediaAssets).toHaveBeenCalledWith(
       "cmedia_new",
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.updateCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
@@ -392,7 +392,7 @@ describe("catalog product media authoring", () => {
           status: "compensated",
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
   })
 })

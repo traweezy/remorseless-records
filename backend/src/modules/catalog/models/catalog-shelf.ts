@@ -13,7 +13,9 @@ const CatalogShelf = model.define(
     title: model.text().searchable(),
     description: model.text().nullable(),
     mode: model.enum([...catalogShelfModes]).default("manual"),
-    automation_type: model.enum([...catalogShelfAutomationTypes]).default("none"),
+    automation_type: model
+      .enum([...catalogShelfAutomationTypes])
+      .default("none"),
     show_ribbon: model.boolean().default(false),
     ribbon_label: model.text().nullable(),
     ribbon_priority: model.number().default(100),

@@ -1,20 +1,20 @@
-import type { TaxRecordDestination } from "./types";
+import type { TaxRecordDestination } from "./types"
 
-export const TAX_FILING_STATES = ["CT", "NY", "PA"] as const;
+export const TAX_FILING_STATES = ["CT", "NY", "PA"] as const
 
-export type TaxFilingState = (typeof TAX_FILING_STATES)[number];
-export type TaxFilingScope = "ALL" | TaxFilingState;
+export type TaxFilingState = (typeof TAX_FILING_STATES)[number]
+export type TaxFilingScope = "ALL" | TaxFilingState
 
 export type TaxFilingProfile = {
-  destinationGuidance: string;
-  dueDateGuidance: string;
-  filingFrequencyGuidance: string;
-  name: string;
-  portalName: string;
-  portalUrl: string;
-  returnName: string;
-  separateReconciliation: string;
-};
+  destinationGuidance: string
+  dueDateGuidance: string
+  filingFrequencyGuidance: string
+  name: string
+  portalName: string
+  portalUrl: string
+  returnName: string
+  separateReconciliation: string
+}
 
 export const TAX_FILING_PROFILES = {
   CT: {
@@ -59,7 +59,7 @@ export const TAX_FILING_PROFILES = {
     separateReconciliation:
       "Add business-use tax, credits, E-911 or other special fees, marketplace statements, and adjustments that are not represented by storefront orders.",
   },
-} as const satisfies Record<TaxFilingState, TaxFilingProfile>;
+} as const satisfies Record<TaxFilingState, TaxFilingProfile>
 
 const normalizedEvidence = (destination: TaxRecordDestination): string =>
   [
@@ -70,17 +70,17 @@ const normalizedEvidence = (destination: TaxRecordDestination): string =>
   ]
     .filter((value): value is string => Boolean(value))
     .join(" ")
-    .toLowerCase();
+    .toLowerCase()
 
 export const filingBucketFor = ({
   destination,
   filingState,
 }: {
-  destination: TaxRecordDestination;
-  filingState: TaxFilingScope;
+  destination: TaxRecordDestination
+  filingState: TaxFilingScope
 }): string => {
   if (filingState === "CT") {
-    return "Connecticut statewide";
+    return "Connecticut statewide"
   }
   if (filingState === "NY") {
     return (
@@ -89,28 +89,28 @@ export const filingBucketFor = ({
       (destination.city && destination.postalCode
         ? `${destination.city} ${destination.postalCode} — verify locality`
         : "New York locality — verify")
-    );
+    )
   }
   if (filingState === "PA") {
-    const evidence = normalizedEvidence(destination);
+    const evidence = normalizedEvidence(destination)
     if (evidence.includes("philadelphia")) {
-      return "Philadelphia local";
+      return "Philadelphia local"
     }
     if (evidence.includes("allegheny")) {
-      return "Allegheny local";
+      return "Allegheny local"
     }
     if (
       destination.county ||
       destination.jurisdictionName?.toLowerCase().includes("county")
     ) {
-      return "Pennsylvania state only";
+      return "Pennsylvania state only"
     }
-    return "Pennsylvania locality — verify";
+    return "Pennsylvania locality — verify"
   }
   return destination.stateCode
     ? `${destination.stateCode} destination`
-    : "Destination state — verify";
-};
+    : "Destination state — verify"
+}
 
 export const filingStateName = (scope: TaxFilingScope): string =>
-  scope === "ALL" ? "All destinations" : TAX_FILING_PROFILES[scope].name;
+  scope === "ALL" ? "All destinations" : TAX_FILING_PROFILES[scope].name

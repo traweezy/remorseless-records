@@ -1,4 +1,4 @@
-import type { MiddlewareRoute } from "@medusajs/framework/http";
+import type { MiddlewareRoute } from "@medusajs/framework/http"
 
 import {
   type AdminPolicyAction,
@@ -7,7 +7,7 @@ import {
   nativeAdminActions,
   operationsAdminActions,
   productImportAdminActions,
-} from "./admin-permissions";
+} from "./admin-permissions"
 
 export const adminHttpMethods = [
   "DELETE",
@@ -15,24 +15,20 @@ export const adminHttpMethods = [
   "PATCH",
   "POST",
   "PUT",
-] as const;
+] as const
 
-export type AdminHttpMethod = (typeof adminHttpMethods)[number];
-export type AdminRouteTemplate = `/admin/${string}`;
+export type AdminHttpMethod = (typeof adminHttpMethods)[number]
+export type AdminRouteTemplate = `/admin/${string}`
 
 export type AdminAuthorizationArea =
-  | "catalog"
-  | "content"
-  | "operations"
-  | "product_import"
-  | "uploads";
+  "catalog" | "content" | "operations" | "product_import" | "uploads"
 
 export type AdminAuthorizationManifestEntry = Readonly<{
-  area: AdminAuthorizationArea;
-  method: AdminHttpMethod;
-  policies: readonly [AdminPolicyAction, ...AdminPolicyAction[]];
-  template: AdminRouteTemplate;
-}>;
+  area: AdminAuthorizationArea
+  method: AdminHttpMethod
+  policies: readonly [AdminPolicyAction, ...AdminPolicyAction[]]
+  template: AdminRouteTemplate
+}>
 
 const authorize = (
   area: AdminAuthorizationArea,
@@ -44,32 +40,17 @@ const authorize = (
   method,
   policies,
   template,
-});
+})
 
-const { authoring, merchandising, taxonomy } = catalogAdminActions;
+const { authoring, merchandising, taxonomy } = catalogAdminActions
 const { mediaCleanup, refundOperations, taxControl, taxRecords } =
-  operationsAdminActions;
-const { productImport } = productImportAdminActions;
+  operationsAdminActions
+const { productImport } = productImportAdminActions
 
 export const adminAuthorizationManifest = [
-  authorize(
-    "catalog",
-    "GET",
-    "/admin/catalog/artists/:id",
-    taxonomy.read,
-  ),
-  authorize(
-    "catalog",
-    "PUT",
-    "/admin/catalog/artists/:id",
-    taxonomy.update,
-  ),
-  authorize(
-    "catalog",
-    "DELETE",
-    "/admin/catalog/artists/:id",
-    taxonomy.delete,
-  ),
+  authorize("catalog", "GET", "/admin/catalog/artists/:id", taxonomy.read),
+  authorize("catalog", "PUT", "/admin/catalog/artists/:id", taxonomy.update),
+  authorize("catalog", "DELETE", "/admin/catalog/artists/:id", taxonomy.delete),
   authorize("catalog", "GET", "/admin/catalog/artists", taxonomy.read),
   authorize("catalog", "POST", "/admin/catalog/artists", taxonomy.create),
   authorize(
@@ -78,7 +59,7 @@ export const adminAuthorizationManifest = [
     "/admin/catalog/authoring-audit",
     authoring.read,
     taxonomy.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize("catalog", "GET", "/admin/catalog/bundles", authoring.read),
   authorize(
@@ -92,38 +73,38 @@ export const adminAuthorizationManifest = [
     nativeAdminActions.inventoryItem.read,
     nativeAdminActions.inventoryItem.create,
     nativeAdminActions.inventoryItem.update,
-    nativeAdminActions.inventoryItem.delete,
+    nativeAdminActions.inventoryItem.delete
   ),
   authorize(
     "operations",
     "GET",
     "/admin/catalog/media/assets/:id",
-    mediaCleanup.read,
+    mediaCleanup.read
   ),
   authorize(
     "operations",
     "POST",
     "/admin/catalog/media/assets/:id/quarantine",
-    mediaCleanup.update,
+    mediaCleanup.update
   ),
   authorize(
     "operations",
     "POST",
     "/admin/catalog/media/assets/:id/restore",
-    mediaCleanup.update,
+    mediaCleanup.update
   ),
   authorize(
     "operations",
     "GET",
     "/admin/catalog/media/orphans",
-    mediaCleanup.read,
+    mediaCleanup.read
   ),
   authorize(
     "catalog",
     "POST",
     "/admin/catalog/media/uploads",
     authoring.create,
-    nativeAdminActions.file.create,
+    nativeAdminActions.file.create
   ),
   authorize(
     "catalog",
@@ -135,14 +116,14 @@ export const adminAuthorizationManifest = [
     nativeAdminActions.productVariant.read,
     nativeAdminActions.price.read,
     nativeAdminActions.inventoryItem.read,
-    nativeAdminActions.inventoryLevel.read,
+    nativeAdminActions.inventoryLevel.read
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/products/:product_id/bundle",
     authoring.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
@@ -154,7 +135,7 @@ export const adminAuthorizationManifest = [
     nativeAdminActions.inventoryItem.read,
     nativeAdminActions.inventoryItem.create,
     nativeAdminActions.inventoryItem.update,
-    nativeAdminActions.inventoryItem.delete,
+    nativeAdminActions.inventoryItem.delete
   ),
   authorize(
     "catalog",
@@ -164,14 +145,14 @@ export const adminAuthorizationManifest = [
     nativeAdminActions.product.read,
     nativeAdminActions.productVariant.read,
     nativeAdminActions.inventoryItem.read,
-    nativeAdminActions.inventoryItem.delete,
+    nativeAdminActions.inventoryItem.delete
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/products/:product_id/media",
     authoring.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
@@ -179,20 +160,20 @@ export const adminAuthorizationManifest = [
     "/admin/catalog/products/:product_id/media",
     authoring.update,
     nativeAdminActions.product.read,
-    nativeAdminActions.productVariant.read,
+    nativeAdminActions.productVariant.read
   ),
   authorize(
     "catalog",
     "DELETE",
     "/admin/catalog/products/:product_id/media",
-    authoring.delete,
+    authoring.delete
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/products/:product_id/profile",
     authoring.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
@@ -200,14 +181,14 @@ export const adminAuthorizationManifest = [
     "/admin/catalog/products/:product_id/profile",
     authoring.update,
     taxonomy.create,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
     "DELETE",
     "/admin/catalog/products/:product_id/profile",
     authoring.delete,
-    merchandising.update,
+    merchandising.update
   ),
   authorize(
     "catalog",
@@ -221,105 +202,100 @@ export const adminAuthorizationManifest = [
     nativeAdminActions.inventoryItem.read,
     nativeAdminActions.inventoryItem.create,
     nativeAdminActions.inventoryLevel.create,
-    nativeAdminActions.price.create,
+    nativeAdminActions.price.create
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/products/status/:idempotency_key",
-    authoring.read,
+    authoring.read
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/reference-values/:id",
-    taxonomy.read,
+    taxonomy.read
   ),
   authorize(
     "catalog",
     "PUT",
     "/admin/catalog/reference-values/:id",
-    taxonomy.update,
+    taxonomy.update
   ),
   authorize(
     "catalog",
     "DELETE",
     "/admin/catalog/reference-values/:id",
-    taxonomy.delete,
+    taxonomy.delete
   ),
-  authorize(
-    "catalog",
-    "GET",
-    "/admin/catalog/reference-values",
-    taxonomy.read,
-  ),
+  authorize("catalog", "GET", "/admin/catalog/reference-values", taxonomy.read),
   authorize(
     "catalog",
     "POST",
     "/admin/catalog/reference-values",
-    taxonomy.create,
+    taxonomy.create
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/shelves/:id/products",
     merchandising.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
     "PUT",
     "/admin/catalog/shelves/:id/products",
     merchandising.update,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
     "POST",
     "/admin/catalog/shelves/:id/restore",
     merchandising.update,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/shelves/:id",
     merchandising.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
     "PUT",
     "/admin/catalog/shelves/:id",
     merchandising.update,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
     "DELETE",
     "/admin/catalog/shelves/:id",
-    merchandising.update,
+    merchandising.update
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/shelves",
     merchandising.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
     "POST",
     "/admin/catalog/shelves",
     merchandising.create,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "catalog",
     "GET",
     "/admin/catalog/variants/:variant_id/profile",
     authoring.read,
-    nativeAdminActions.productVariant.read,
+    nativeAdminActions.productVariant.read
   ),
   authorize(
     "catalog",
@@ -327,100 +303,90 @@ export const adminAuthorizationManifest = [
     "/admin/catalog/variants/:variant_id/profile",
     authoring.update,
     taxonomy.create,
-    nativeAdminActions.productVariant.read,
+    nativeAdminActions.productVariant.read
   ),
   authorize(
     "catalog",
     "DELETE",
     "/admin/catalog/variants/:variant_id/profile",
-    authoring.delete,
+    authoring.delete
   ),
   authorize(
     "content",
     "GET",
     "/admin/discography",
     contentAdminActions.discography.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "content",
     "POST",
     "/admin/discography",
-    contentAdminActions.discography.create,
+    contentAdminActions.discography.create
   ),
   authorize(
     "content",
     "GET",
     "/admin/discography/:id",
     contentAdminActions.discography.read,
-    nativeAdminActions.product.read,
+    nativeAdminActions.product.read
   ),
   authorize(
     "content",
     "PUT",
     "/admin/discography/:id",
-    contentAdminActions.discography.update,
+    contentAdminActions.discography.update
   ),
   authorize(
     "content",
     "DELETE",
     "/admin/discography/:id",
-    contentAdminActions.discography.delete,
+    contentAdminActions.discography.delete
   ),
   authorize(
     "content",
     "POST",
     "/admin/discography/:id/archive",
-    contentAdminActions.discography.update,
+    contentAdminActions.discography.update
   ),
   authorize(
     "content",
     "POST",
     "/admin/discography/:id/restore",
-    contentAdminActions.discography.update,
+    contentAdminActions.discography.update
   ),
   authorize(
     "uploads",
     "POST",
     "/admin/managed-uploads",
-    nativeAdminActions.file.create,
+    nativeAdminActions.file.create
   ),
   authorize("content", "GET", "/admin/news", contentAdminActions.news.read),
-  authorize(
-    "content",
-    "POST",
-    "/admin/news",
-    contentAdminActions.news.create,
-  ),
-  authorize(
-    "content",
-    "GET",
-    "/admin/news/:id",
-    contentAdminActions.news.read,
-  ),
+  authorize("content", "POST", "/admin/news", contentAdminActions.news.create),
+  authorize("content", "GET", "/admin/news/:id", contentAdminActions.news.read),
   authorize(
     "content",
     "PUT",
     "/admin/news/:id",
-    contentAdminActions.news.update,
+    contentAdminActions.news.update
   ),
   authorize(
     "content",
     "DELETE",
     "/admin/news/:id",
-    contentAdminActions.news.delete,
+    contentAdminActions.news.delete
   ),
   authorize(
     "content",
     "POST",
     "/admin/news/:id/archive",
-    contentAdminActions.news.update,
+    contentAdminActions.news.update
   ),
   authorize(
     "content",
     "POST",
     "/admin/news/:id/restore",
-    contentAdminActions.news.update,
+    contentAdminActions.news.update
   ),
   authorize(
     "product_import",
@@ -428,84 +394,79 @@ export const adminAuthorizationManifest = [
     "/admin/products/imports",
     nativeAdminActions.product.read,
     nativeAdminActions.file.create,
-    productImport.create,
+    productImport.create
   ),
   authorize(
     "product_import",
     "POST",
     "/admin/products/imports/:transaction_id/confirm",
     nativeAdminActions.product.read,
-    productImport.update,
+    productImport.update
   ),
   authorize(
     "operations",
     "GET",
     "/admin/refund-operations",
-    refundOperations.read,
+    refundOperations.read
   ),
   authorize("operations", "GET", "/admin/tax-control", taxControl.read),
   authorize(
     "operations",
     "POST",
     "/admin/tax-control/switch",
-    taxControl.update,
+    taxControl.update
   ),
   authorize(
     "operations",
     "POST",
     "/admin/tax-control/taxrate-io/refresh",
-    taxControl.update,
+    taxControl.update
   ),
   authorize("operations", "GET", "/admin/tax-records", taxRecords.read),
-  authorize(
-    "operations",
-    "GET",
-    "/admin/tax-records/export",
-    taxRecords.read,
-  ),
-] as const satisfies readonly AdminAuthorizationManifestEntry[];
+  authorize("operations", "GET", "/admin/tax-records/export", taxRecords.read),
+] as const satisfies readonly AdminAuthorizationManifestEntry[]
 
 const escapeRegExp = (value: string): string =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 export const compileAdminRouteTemplate = (
-  template: AdminRouteTemplate,
+  template: AdminRouteTemplate
 ): RegExp => {
-  const segments = template.split("/");
+  const segments = template.split("/")
   const pattern = segments
     .map((segment, index) => {
       if (index === 0) {
-        return "";
+        return ""
       }
       if (/^:[a-z][a-z0-9_]*$/i.test(segment)) {
-        return "[^/]+";
+        return "[^/]+"
       }
       if (segment.includes(":")) {
-        throw new Error(`Invalid Admin route template segment: ${segment}`);
+        throw new Error(`Invalid Admin route template segment: ${segment}`)
       }
-      return escapeRegExp(segment);
+      return escapeRegExp(segment)
     })
-    .join("\\/");
+    .join("\\/")
 
-  return new RegExp(`^${pattern}\\/?$`, "i");
-};
+  return new RegExp(`^${pattern}\\/?$`, "i")
+}
 
 export const adminAuthorizationPolicyRoutes: MiddlewareRoute[] =
   adminAuthorizationManifest.map(({ method, policies, template }) => ({
     matcher: compileAdminRouteTemplate(template),
     methods: [method],
     policies: [...policies],
-  }));
+  }))
 
 export const adminAuthorizationPolicyRoutesForArea = (
-  area: AdminAuthorizationArea,
+  area: AdminAuthorizationArea
 ): MiddlewareRoute[] =>
   adminAuthorizationPolicyRoutes.filter(
-    (_route, index) => adminAuthorizationManifest[index]?.area === area,
-  );
+    (_route, index) => adminAuthorizationManifest[index]?.area === area
+  )
 
 export const adminAuthorizationKey = ({
   method,
   template,
 }: Pick<AdminAuthorizationManifestEntry, "method" | "template">): string =>
-  `${method} ${template}`;
+  `${method} ${template}`

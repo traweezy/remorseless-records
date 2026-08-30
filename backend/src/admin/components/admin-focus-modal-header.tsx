@@ -15,7 +15,7 @@ export const AdminFocusModalHeader = memo<AdminFocusModalHeaderProps>(
     <div
       className={clx(
         "flex items-start gap-3 border-b border-ui-border-base px-4 py-3",
-        className,
+        className
       )}
     >
       <div className="flex shrink-0 items-center gap-2">
@@ -32,9 +32,7 @@ export const AdminFocusModalHeader = memo<AdminFocusModalHeaderProps>(
         <Kbd>esc</Kbd>
       </div>
       <div className="min-w-0 flex-1">
-        <FocusModal.Title className="font-medium">
-          {title}
-        </FocusModal.Title>
+        <FocusModal.Title className="font-medium">{title}</FocusModal.Title>
         {description ? (
           <FocusModal.Description asChild>
             <Text className="mt-1 min-w-0 text-ui-fg-subtle" size="small">
@@ -44,7 +42,7 @@ export const AdminFocusModalHeader = memo<AdminFocusModalHeaderProps>(
         ) : null}
       </div>
     </div>
-  ),
+  )
 )
 
 AdminFocusModalHeader.displayName = "AdminFocusModalHeader"

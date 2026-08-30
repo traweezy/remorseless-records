@@ -12,9 +12,7 @@ import { ProductAuthoringWorkspace } from "../../../catalog-authoring/page"
 const CatalogProductEditorPage = memo(() => {
   const { product_id: productId } = useParams<{ product_id: string }>()
 
-  return productId ? (
-    <ProductAuthoringWorkspace productId={productId} />
-  ) : null
+  return productId ? <ProductAuthoringWorkspace productId={productId} /> : null
 })
 
 CatalogProductEditorPage.displayName = "CatalogProductEditorPage"

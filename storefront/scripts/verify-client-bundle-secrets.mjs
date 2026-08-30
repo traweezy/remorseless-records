@@ -53,7 +53,11 @@ for (const file of files) {
   }
   for (const name of SERVER_ONLY_NAMES) {
     const value = environment[name]?.trim()
-    if (value && Buffer.byteLength(value, "utf8") >= 8 && content.includes(value)) {
+    if (
+      value &&
+      Buffer.byteLength(value, "utf8") >= 8 &&
+      content.includes(value)
+    ) {
       findings.push({ file: path.relative(STATIC_DIRECTORY, file), name })
     }
   }
@@ -63,9 +67,11 @@ if (findings.length) {
   const summary = findings
     .map(({ file, name }) => `${name} in ${file}`)
     .join(", ")
-  throw new Error(`Server-only configuration leaked into client assets: ${summary}`)
+  throw new Error(
+    `Server-only configuration leaked into client assets: ${summary}`
+  )
 }
 
 console.log(
-  `Client bundle verified: ${files.length} static assets contain no server-only secret or public Meilisearch input.`,
+  `Client bundle verified: ${files.length} static assets contain no server-only secret or public Meilisearch input.`
 )

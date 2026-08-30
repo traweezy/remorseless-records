@@ -30,7 +30,7 @@ const optionalDateSchema = z
   .max(100)
   .refine(
     (value) => value.length === 0 || Number.isFinite(Date.parse(value)),
-    "Invalid date.",
+    "Invalid date."
   )
   .optional()
   .nullable()
@@ -107,7 +107,7 @@ export const listCatalogShelves = async (
   catalogService: CatalogService,
   filters: Record<string, unknown>,
   config?: ServiceQueryConfig,
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ): Promise<CatalogShelfRecord[]> =>
   callCatalogService<CatalogShelfRecord[]>(
     catalogService,
@@ -133,7 +133,7 @@ export const listAndCountCatalogShelves = async (
 const createCatalogShelves = async (
   catalogService: CatalogService,
   payloads: Record<string, unknown>[],
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ): Promise<CatalogShelfRecord | CatalogShelfRecord[]> =>
   callCatalogService<CatalogShelfRecord | CatalogShelfRecord[]>(
     catalogService,
@@ -144,7 +144,7 @@ const createCatalogShelves = async (
 const updateCatalogShelves = async (
   catalogService: CatalogService,
   payloads: Record<string, unknown>[],
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ): Promise<CatalogShelfRecord | CatalogShelfRecord[]> =>
   callCatalogService<CatalogShelfRecord | CatalogShelfRecord[]>(
     catalogService,
@@ -156,7 +156,7 @@ const listCatalogShelfProducts = async (
   catalogService: CatalogService,
   filters: Record<string, unknown>,
   config?: ServiceQueryConfig,
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ): Promise<CatalogShelfProductRecord[]> =>
   callCatalogService<CatalogShelfProductRecord[]>(
     catalogService,
@@ -171,7 +171,7 @@ const listCatalogShelfProducts = async (
 const createCatalogShelfProducts = async (
   catalogService: CatalogService,
   payloads: Record<string, unknown>[],
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ): Promise<CatalogShelfProductRecord | CatalogShelfProductRecord[]> =>
   callCatalogService<CatalogShelfProductRecord | CatalogShelfProductRecord[]>(
     catalogService,
@@ -182,7 +182,7 @@ const createCatalogShelfProducts = async (
 const deleteCatalogShelfProducts = async (
   catalogService: CatalogService,
   ids: string[],
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ): Promise<void> =>
   callCatalogService<void>(
     catalogService,
@@ -193,15 +193,14 @@ const deleteCatalogShelfProducts = async (
 export const resolveShelf = async (
   catalogService: CatalogService,
   id: string,
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ) => {
-  const shelf = await catalogService.retrieveCatalogShelf(
-    id,
-    {},
-    sharedContext,
-  )
+  const shelf = await catalogService.retrieveCatalogShelf(id, {}, sharedContext)
   if (!shelf) {
-    throw new MedusaError(MedusaError.Types.NOT_FOUND, "Catalog shelf not found")
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "Catalog shelf not found"
+    )
   }
 
   return shelf
@@ -211,16 +210,21 @@ export const resolveUniqueShelfHandle = async (
   catalogService: CatalogService,
   baseHandle: string,
   excludeId?: string,
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ): Promise<string> => {
   const normalizedBase = baseHandle.trim() || "shelf"
   let candidate = normalizedBase
   let suffix = 1
 
   while (suffix < 50) {
-    const existing = await listCatalogShelves(catalogService, {
-      handle: candidate,
-    }, undefined, sharedContext)
+    const existing = await listCatalogShelves(
+      catalogService,
+      {
+        handle: candidate,
+      },
+      undefined,
+      sharedContext
+    )
     const collision = existing.find((shelf) => shelf.id !== excludeId)
     if (!collision) {
       return candidate
@@ -235,13 +239,13 @@ export const resolveUniqueShelfHandle = async (
 export const loadShelfProducts = async (
   catalogService: CatalogService,
   shelfId: string,
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ) => {
   const products = await listCatalogShelfProducts(
     catalogService,
     { shelf_id: shelfId },
     { order: { sort_order: "ASC" } },
-    sharedContext,
+    sharedContext
   )
 
   return products.map(serializeCatalogShelfProduct)
@@ -249,7 +253,7 @@ export const loadShelfProducts = async (
 
 export const loadShelfProductsByShelfId = async (
   catalogService: CatalogService,
-  shelfIds: readonly string[],
+  shelfIds: readonly string[]
 ): Promise<Map<string, ReturnType<typeof serializeCatalogShelfProduct>[]>> => {
   const uniqueShelfIds = [...new Set(shelfIds)]
   const grouped = new Map<
@@ -266,7 +270,7 @@ export const loadShelfProductsByShelfId = async (
     {
       order: { sort_order: "ASC" },
       take: uniqueShelfIds.length * 200,
-    },
+    }
   )
   for (const product of products) {
     const serialized = serializeCatalogShelfProduct(product)
@@ -278,13 +282,16 @@ export const loadShelfProductsByShelfId = async (
 export const serializeShelfResponse = async (
   catalogService: CatalogService,
   shelf: Awaited<ReturnType<typeof resolveShelf>>,
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ) => ({
   shelf: serializeCatalogShelf(shelf),
   products: await loadShelfProducts(catalogService, shelf.id, sharedContext),
 })
 
-const assertValidDateRange = (startsAt: Date | null, endsAt: Date | null): void => {
+const assertValidDateRange = (
+  startsAt: Date | null,
+  endsAt: Date | null
+): void => {
   if (startsAt && endsAt && endsAt <= startsAt) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
@@ -344,7 +351,7 @@ const hasTransactionConflict = (error: unknown): boolean => {
 
 const runShelfTransaction = async <T>(
   catalogService: CatalogService,
-  task: (sharedContext: CatalogTransactionContext) => Promise<T>,
+  task: (sharedContext: CatalogTransactionContext) => Promise<T>
 ): Promise<T> => {
   try {
     return await catalogService.runCatalogTransaction(task)
@@ -352,7 +359,7 @@ const runShelfTransaction = async <T>(
     if (hasTransactionConflict(error)) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The shelf changed while it was being saved. Refresh and retry.",
+        "The shelf changed while it was being saved. Refresh and retry."
       )
     }
     throw error
@@ -372,7 +379,7 @@ type PreparedShelfProduct = {
 export const prepareShelfProducts = async (
   req: MedusaRequest,
   catalogService: CatalogService,
-  products: ShelfProductInput[],
+  products: ShelfProductInput[]
 ): Promise<PreparedShelfProduct[]> => {
   const seen = new Set<string>()
   const payloads: PreparedShelfProduct[] = []
@@ -402,22 +409,22 @@ export const prepareShelfProducts = async (
 
   await assertProductsExist(
     req,
-    payloads.map((product) => product.product_id),
+    payloads.map((product) => product.product_id)
   )
   const profileIds = [
     ...new Set(
       payloads.flatMap((product) =>
-        product.product_profile_id ? [product.product_profile_id] : [],
-      ),
+        product.product_profile_id ? [product.product_profile_id] : []
+      )
     ),
   ]
   if (profileIds.length) {
     const profiles = await catalogService.listCatalogProductProfiles(
       { id: profileIds },
-      { take: profileIds.length },
+      { take: profileIds.length }
     )
     const profilesById = new Map(
-      profiles.map((profile) => [profile.id, profile.product_id]),
+      profiles.map((profile) => [profile.id, profile.product_id])
     )
     for (const product of payloads) {
       if (
@@ -426,7 +433,7 @@ export const prepareShelfProducts = async (
       ) {
         throw new MedusaError(
           MedusaError.Types.INVALID_DATA,
-          "A shelf product profile must belong to its selected product.",
+          "A shelf product profile must belong to its selected product."
         )
       }
     }
@@ -438,14 +445,14 @@ export const replaceShelfProducts = async (
   catalogService: CatalogService,
   shelfId: string,
   products: PreparedShelfProduct[],
-  sharedContext?: CatalogTransactionContext,
+  sharedContext?: CatalogTransactionContext
 ): Promise<void> => {
   await resolveShelf(catalogService, shelfId, sharedContext)
   const existing = await listCatalogShelfProducts(
     catalogService,
     { shelf_id: shelfId },
     undefined,
-    sharedContext,
+    sharedContext
   )
   const ids = existing.map((product) => product.id)
   if (ids.length) {
@@ -456,7 +463,7 @@ export const replaceShelfProducts = async (
     await createCatalogShelfProducts(
       catalogService,
       products.map((product) => ({ ...product, shelf_id: shelfId })),
-      sharedContext,
+      sharedContext
     )
   }
 }
@@ -465,19 +472,24 @@ export const upsertShelf = async (
   req: MedusaRequest,
   catalogService: CatalogService,
   input: ShelfUpsertInput,
-  id?: string,
+  id?: string
 ) => {
   const preparedProducts =
     input.products === undefined
       ? undefined
       : await prepareShelfProducts(req, catalogService, input.products)
-  const actorId = (
-    req as MedusaRequest & {
-      auth_context?: { actor_id?: string | null }
-    }
-  ).auth_context?.actor_id ?? null
-  const { expectedVersion, idempotencyKey, products: _products, ...patch } =
-    input
+  const actorId =
+    (
+      req as MedusaRequest & {
+        auth_context?: { actor_id?: string | null }
+      }
+    ).auth_context?.actor_id ?? null
+  const {
+    expectedVersion,
+    idempotencyKey,
+    products: _products,
+    ...patch
+  } = input
   const command = id ? "catalog.shelf.upsert" : "catalog.shelf.create"
   const aggregateId = id ?? `new:${idempotencyKey}`
   const requestSha256 = hashCatalogCommand({
@@ -492,7 +504,7 @@ export const upsertShelf = async (
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: idempotencyKey },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
     )[0]
     if (existingOperation) {
@@ -505,7 +517,7 @@ export const upsertShelf = async (
       if (!sameCommand || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The catalog idempotency key cannot be replayed for this shelf command.",
+          "The catalog idempotency key cannot be replayed for this shelf command."
         )
       }
       const result = coerceJsonRecord(existingOperation.result)
@@ -513,20 +525,20 @@ export const upsertShelf = async (
       if (!shelfId) {
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          "The completed shelf command has no shelf result.",
+          "The completed shelf command has no shelf result."
         )
       }
       const replayedShelf = await resolveShelf(
         catalogService,
         shelfId,
-        sharedContext,
+        sharedContext
       )
       return {
         status: result.created === true ? 201 : 200,
         body: await serializeShelfResponse(
           catalogService,
           replayedShelf,
-          sharedContext,
+          sharedContext
         ),
       }
     }
@@ -537,20 +549,20 @@ export const upsertShelf = async (
     if (!existing && !input.title) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "Shelf title is required",
+        "Shelf title is required"
       )
     }
     if (existing?.archived_at) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "Restore the shelf before editing it.",
+        "Restore the shelf before editing it."
       )
     }
     const currentVersion = existing?.version ?? 0
     if (currentVersion !== expectedVersion) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The shelf changed after it was loaded. Refresh before saving.",
+        "The shelf changed after it was loaded. Refresh before saving."
       )
     }
 
@@ -559,7 +571,7 @@ export const upsertShelf = async (
       input.automationType ?? existing?.automation_type ?? "none"
     assertValidShelfMode(
       mode as string,
-      automationType as CatalogShelfAutomationType,
+      automationType as CatalogShelfAutomationType
     )
     const startsAt =
       input.startsAt === undefined ? undefined : toOptionalDate(input.startsAt)
@@ -569,7 +581,7 @@ export const upsertShelf = async (
       startsAt === undefined
         ? coerceDateForRange(existing?.starts_at)
         : startsAt,
-      endsAt === undefined ? coerceDateForRange(existing?.ends_at) : endsAt,
+      endsAt === undefined ? coerceDateForRange(existing?.ends_at) : endsAt
     )
 
     const [operation] = await catalogService.createCatalogAuthoringOperations(
@@ -586,19 +598,19 @@ export const upsertShelf = async (
           status: "pending",
         },
       ],
-      sharedContext,
+      sharedContext
     )
     if (!operation) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The shelf command audit record was not created.",
+        "The shelf command audit record was not created."
       )
     }
 
     const title = input.title?.trim() ?? existing?.title
     const baseHandle = slugify(
       input.handle ?? title ?? existing?.handle ?? "shelf",
-      "shelf",
+      "shelf"
     )
     const handle =
       input.handle !== undefined || !existing
@@ -606,13 +618,13 @@ export const upsertShelf = async (
             catalogService,
             baseHandle,
             id,
-            sharedContext,
+            sharedContext
           )
         : existing.handle
     const ribbonLabel =
       input.ribbonLabel !== undefined
         ? toNullableString(input.ribbonLabel)
-        : existing?.ribbon_label ?? null
+        : (existing?.ribbon_label ?? null)
     const showRibbon = input.showRibbon ?? existing?.show_ribbon ?? false
     const version = currentVersion + 1
     const payload: Record<string, unknown> = { handle, version }
@@ -636,7 +648,7 @@ export const upsertShelf = async (
     }
     if (input.ribbonLabel !== undefined || !existing) {
       payload.ribbon_label = showRibbon
-        ? ribbonLabel ?? title ?? null
+        ? (ribbonLabel ?? title ?? null)
         : ribbonLabel
     }
     if (input.ribbonPriority !== undefined || !existing) {
@@ -662,18 +674,14 @@ export const upsertShelf = async (
       ? await updateCatalogShelves(
           catalogService,
           [{ id: existing.id, ...payload }],
-          sharedContext,
+          sharedContext
         )
-      : await createCatalogShelves(
-          catalogService,
-          [payload],
-          sharedContext,
-        )
+      : await createCatalogShelves(catalogService, [payload], sharedContext)
     const saved = firstResult(savedResult)
     if (!saved) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to save catalog shelf",
+        "Unable to save catalog shelf"
       )
     }
     if (preparedProducts !== undefined) {
@@ -681,7 +689,7 @@ export const upsertShelf = async (
         catalogService,
         saved.id,
         preparedProducts,
-        sharedContext,
+        sharedContext
       )
     }
 
@@ -701,19 +709,19 @@ export const upsertShelf = async (
           status: "succeeded",
         },
       ],
-      sharedContext,
+      sharedContext
     )
     const refreshed = await resolveShelf(
       catalogService,
       saved.id,
-      sharedContext,
+      sharedContext
     )
     return {
       status: existing ? 200 : 201,
       body: await serializeShelfResponse(
         catalogService,
         refreshed,
-        sharedContext,
+        sharedContext
       ),
     }
   })
@@ -724,13 +732,14 @@ export const setShelfArchived = async (
   catalogService: CatalogService,
   id: string,
   input: ShelfLifecycleInput,
-  archived: boolean,
+  archived: boolean
 ) => {
-  const actorId = (
-    req as MedusaRequest & {
-      auth_context?: { actor_id?: string | null }
-    }
-  ).auth_context?.actor_id ?? null
+  const actorId =
+    (
+      req as MedusaRequest & {
+        auth_context?: { actor_id?: string | null }
+      }
+    ).auth_context?.actor_id ?? null
   const command = archived ? "catalog.shelf.archive" : "catalog.shelf.restore"
   const requestSha256 = hashCatalogCommand({
     aggregateId: id,
@@ -743,7 +752,7 @@ export const setShelfArchived = async (
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
     )[0]
     if (existingOperation) {
@@ -756,18 +765,18 @@ export const setShelfArchived = async (
       if (!sameCommand || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The catalog idempotency key cannot be replayed for this shelf command.",
+          "The catalog idempotency key cannot be replayed for this shelf command."
         )
       }
       const replayedShelf = await resolveShelf(
         catalogService,
         id,
-        sharedContext,
+        sharedContext
       )
       return serializeShelfResponse(
         catalogService,
         replayedShelf,
-        sharedContext,
+        sharedContext
       )
     }
 
@@ -775,13 +784,15 @@ export const setShelfArchived = async (
     if (shelf.version !== input.expectedVersion) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The shelf changed after it was loaded. Refresh before continuing.",
+        "The shelf changed after it was loaded. Refresh before continuing."
       )
     }
     if (Boolean(shelf.archived_at) === archived) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        archived ? "The shelf is already archived." : "The shelf is not archived.",
+        archived
+          ? "The shelf is already archived."
+          : "The shelf is not archived."
       )
     }
     const [operation] = await catalogService.createCatalogAuthoringOperations(
@@ -798,12 +809,12 @@ export const setShelfArchived = async (
           status: "pending",
         },
       ],
-      sharedContext,
+      sharedContext
     )
     if (!operation) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The shelf command audit record was not created.",
+        "The shelf command audit record was not created."
       )
     }
 
@@ -818,7 +829,7 @@ export const setShelfArchived = async (
           version,
         },
       ],
-      sharedContext,
+      sharedContext
     )
     const result = { archived, shelfId: id, version }
     await catalogService.updateCatalogAuthoringOperations(
@@ -832,7 +843,7 @@ export const setShelfArchived = async (
           status: "succeeded",
         },
       ],
-      sharedContext,
+      sharedContext
     )
     const refreshed = await resolveShelf(catalogService, id, sharedContext)
     return serializeShelfResponse(catalogService, refreshed, sharedContext)

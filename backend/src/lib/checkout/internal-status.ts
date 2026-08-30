@@ -25,9 +25,7 @@ export type CheckoutStatusQueryGraph = {
 type UnknownRecord = Record<string, unknown>
 
 const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object"
-    ? (value as UnknownRecord)
-    : null
+  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
 
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
@@ -43,13 +41,13 @@ const paymentStatusesFrom = (cart: UnknownRecord): Set<string> => {
       const providerId = text(session?.provider_id)
       const status = text(session?.status)
       return providerId === "pp_stripe_stripe" && status ? [status] : []
-    }),
+    })
   )
 }
 
 export const resolveInternalCheckoutStatus = async (
   query: CheckoutStatusQueryGraph,
-  cartId: string,
+  cartId: string
 ): Promise<InternalCheckoutStatus> => {
   const [orderLinkResult, cartResult] = await Promise.all([
     query.graph({

@@ -145,11 +145,7 @@ const loadAllDocuments = async (
 
   while (true) {
     const page = await index.getDocuments({
-      fields: [
-        ...REQUIRED_DOCUMENT_FIELDS,
-        "availability_states",
-        "price_min",
-      ],
+      fields: [...REQUIRED_DOCUMENT_FIELDS, "availability_states", "price_min"],
       limit: DOCUMENT_PAGE_SIZE,
       offset: documents.length,
     })
@@ -165,14 +161,12 @@ const loadAllDocuments = async (
   return documents
 }
 
-const loadPublishedProductIds = async (
-  productModuleService: {
-    listAndCountProducts: (
-      filters?: Record<string, unknown>,
-      config?: Record<string, unknown>
-    ) => Promise<[Array<{ id: string }>, number]>
-  }
-): Promise<{ ids: string[]; total: number }> => {
+const loadPublishedProductIds = async (productModuleService: {
+  listAndCountProducts: (
+    filters?: Record<string, unknown>,
+    config?: Record<string, unknown>
+  ) => Promise<[Array<{ id: string }>, number]>
+}): Promise<{ ids: string[]; total: number }> => {
   const ids: string[] = []
   let total = 0
 

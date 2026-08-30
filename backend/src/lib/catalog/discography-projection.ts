@@ -2,11 +2,7 @@ export const DISCOGRAPHY_REPLACE_CONFIRMATION =
   "replace-discography-from-catalog"
 
 export type DiscographyAvailability =
-  | "digital_only"
-  | "in_print"
-  | "out_of_print"
-  | "preorder"
-  | "unknown"
+  "digital_only" | "in_print" | "out_of_print" | "preorder" | "unknown"
 
 export type DiscographyProjectionVariant = {
   allowBackorder?: boolean | null
@@ -144,7 +140,8 @@ const parseDate = (value: Date | string | null | undefined): Date | null => {
   if (!value) {
     return null
   }
-  const date = value instanceof Date ? new Date(value.getTime()) : new Date(value)
+  const date =
+    value instanceof Date ? new Date(value.getTime()) : new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
 }
 

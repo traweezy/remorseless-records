@@ -22,8 +22,7 @@ export const authoringCustomerStatuses = [
   "unknown",
 ] as const
 
-export type AuthoringCustomerStatus =
-  (typeof authoringCustomerStatuses)[number]
+export type AuthoringCustomerStatus = (typeof authoringCustomerStatuses)[number]
 
 export type AuthoringVariantStatus = {
   customerStatus: AuthoringCustomerStatus
@@ -42,10 +41,7 @@ const inventoryStatus = ({
   if (!manageInventory) {
     return "not_managed"
   }
-  if (
-    inventoryQuantity === null ||
-    !Number.isFinite(inventoryQuantity)
-  ) {
+  if (inventoryQuantity === null || !Number.isFinite(inventoryQuantity)) {
     return "unknown"
   }
   if (inventoryQuantity <= 0) {
@@ -59,7 +55,7 @@ const inventoryStatus = ({
 
 const futureTimestamp = (
   value: Date | string | null | undefined,
-  now: number,
+  now: number
 ): boolean => {
   if (!value) {
     return false
@@ -105,13 +101,15 @@ export const resolveAuthoringVariantStatus = ({
           customerStatus: "preorder",
           inventoryQuantity,
           inventoryStatus: stockStatus,
-          reason: "The release date is in the future and preorders are enabled.",
+          reason:
+            "The release date is in the future and preorders are enabled.",
         }
       : {
           customerStatus: "coming_soon",
           inventoryQuantity,
           inventoryStatus: stockStatus,
-          reason: "The release date is in the future and preorders are disabled.",
+          reason:
+            "The release date is in the future and preorders are disabled.",
         }
   }
 

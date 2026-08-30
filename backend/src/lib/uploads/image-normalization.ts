@@ -104,7 +104,7 @@ const invalidImage = (message: string): MedusaError =>
 const unavailableSandbox = (): MedusaError =>
   new MedusaError(
     MedusaError.Types.UNEXPECTED_STATE,
-    "The managed image safety pipeline is unavailable.",
+    "The managed image safety pipeline is unavailable."
   )
 
 const dependencyRoot = (): string => {
@@ -125,7 +125,7 @@ export const buildImageSandboxCommand = (): ImageSandboxCommand => {
   const moduleRoot = dependencyRoot()
   const runtimeModuleRoot = path.resolve(__dirname, "../../..", "node_modules")
   const readableModuleRoots = Array.from(
-    new Set([runtimeModuleRoot, moduleRoot]),
+    new Set([runtimeModuleRoot, moduleRoot])
   )
   return {
     args: [
@@ -169,7 +169,7 @@ const normalizeFilename = (filename: string): string => {
 }
 
 const runImageSandbox = async (
-  file: Express.Multer.File,
+  file: Express.Multer.File
 ): Promise<z.infer<typeof workerResultSchema>> => {
   const sandbox = buildImageSandboxCommand()
   const request = JSON.stringify({
@@ -227,7 +227,7 @@ const runImageSandbox = async (
       }
       if (timedOut) {
         rejectOnce(
-          invalidImage("Image processing exceeded the safe time limit."),
+          invalidImage("Image processing exceeded the safe time limit.")
         )
         return
       }
@@ -256,8 +256,8 @@ const runImageSandbox = async (
           invalidImage(
             response.data.code.includes("limits")
               ? "The image exceeds the safe dimension, pixel, frame, memory, or output limit."
-              : "The image could not be decoded and normalized safely.",
-          ),
+              : "The image could not be decoded and normalized safely."
+          )
         )
         return
       }
@@ -272,7 +272,7 @@ const runImageSandbox = async (
 }
 
 export const normalizeManagedImageUpload = async (
-  file: Express.Multer.File,
+  file: Express.Multer.File
 ): Promise<NormalizedManagedImage> => {
   if (
     file.size !== file.buffer.length ||
@@ -306,7 +306,7 @@ export const normalizeManagedImageUpload = async (
 }
 
 export const normalizeManagedImageUploads = async (
-  files: Express.Multer.File[],
+  files: Express.Multer.File[]
 ): Promise<NormalizedManagedImage[]> => {
   const normalized: NormalizedManagedImage[] = []
   let totalBytes = 0
@@ -315,7 +315,7 @@ export const normalizeManagedImageUploads = async (
     totalBytes += image.size
     if (totalBytes > MAX_UPLOAD_TOTAL_BYTES) {
       throw invalidImage(
-        "The normalized images exceed the combined safe output limit.",
+        "The normalized images exceed the combined safe output limit."
       )
     }
     normalized.push(image)

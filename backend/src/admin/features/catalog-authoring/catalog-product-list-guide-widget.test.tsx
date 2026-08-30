@@ -46,7 +46,7 @@ describe("CatalogProductListGuideWidget", () => {
     })
     queryClient.setQueryData(
       catalogAuthoringAuditQueryKey,
-      catalogAuthoringAuditPayloadFixture,
+      catalogAuthoringAuditPayloadFixture
     )
 
     const markup = renderToStaticMarkup(
@@ -54,7 +54,7 @@ describe("CatalogProductListGuideWidget", () => {
         <QueryClientProvider client={queryClient}>
           <CatalogProductListGuideWidget />
         </QueryClientProvider>
-      </MemoryRouter>,
+      </MemoryRouter>
     )
 
     expect(markup).toContain("Catalog workspace")
@@ -84,12 +84,13 @@ describe("CatalogProductListGuideWidget", () => {
         <QueryClientProvider client={queryClient}>
           <CatalogProductListGuideWidget />
         </QueryClientProvider>
-      </MemoryRouter>,
+      </MemoryRouter>
     )
 
     expect(markup).toBe("")
-    expect(queryClient.getQueryState(catalogAuthoringAuditQueryKey))
-      .toBeUndefined()
+    expect(
+      queryClient.getQueryState(catalogAuthoringAuditQueryKey)
+    ).toBeUndefined()
     queryClient.clear()
   })
 })

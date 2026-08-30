@@ -37,7 +37,7 @@ const shelfProductRecord = (
   id: string,
   productId: string,
   sortOrder: number,
-  shelf = shelfId,
+  shelf = shelfId
 ) => ({
   ends_at: null,
   id,
@@ -75,7 +75,7 @@ const transactionService = (overrides: Record<string, unknown> = {}) => {
     retrieveCatalogShelf: jest.fn(),
     runCatalogTransaction: jest.fn(
       async (task: (context: unknown) => Promise<unknown>) =>
-        task(sharedContext),
+        task(sharedContext)
     ),
     updateCatalogAuthoringOperations: jest.fn().mockResolvedValue([]),
     updateCatalogShelves: jest.fn(),
@@ -111,7 +111,7 @@ describe("catalog shelf authoring", () => {
         entity: "product",
         filters: { id: ["prod_01", "prod_02"] },
         pagination: { take: 2 },
-      }),
+      })
     )
     expect(result).toEqual([
       expect.objectContaining({
@@ -136,7 +136,7 @@ describe("catalog shelf authoring", () => {
       prepareShelfProducts(req, service, [
         { productId: "prod_01" },
         { productId: "prod_01" },
-      ]),
+      ])
     ).rejects.toThrow("same product more than once")
     await expect(
       prepareShelfProducts(req, service, [
@@ -145,7 +145,7 @@ describe("catalog shelf authoring", () => {
           startsAt: "2026-08-03T12:00:00.000Z",
           endsAt: "2026-08-02T12:00:00.000Z",
         },
-      ]),
+      ])
     ).rejects.toThrow("End date must be after start date")
     expect(graph).not.toHaveBeenCalled()
   })
@@ -156,27 +156,29 @@ describe("catalog shelf authoring", () => {
         expectedVersion: 1,
         idempotencyKey,
         startsAt: "not-a-date",
-      }).success,
+      }).success
     ).toBe(false)
 
     const { req } = requestWithProducts(["prod_01"])
     const service = {
-      listCatalogProductProfiles: jest.fn().mockResolvedValue([
-        { id: "cprod_01", product_id: "prod_other" },
-      ]),
+      listCatalogProductProfiles: jest
+        .fn()
+        .mockResolvedValue([{ id: "cprod_01", product_id: "prod_other" }]),
     } as unknown as CatalogService
     await expect(
       prepareShelfProducts(req, service, [
         { productId: "prod_01", productProfileId: "cprod_01" },
-      ]),
+      ])
     ).rejects.toThrow("must belong to its selected product")
   })
 
   it("loads memberships for every listed shelf with one bounded query", async () => {
-    const listCatalogShelfProducts = jest.fn().mockResolvedValue([
-      shelfProductRecord("line_02", "prod_02", 0, "cshelf_02"),
-      shelfProductRecord("line_01", "prod_01", 0),
-    ])
+    const listCatalogShelfProducts = jest
+      .fn()
+      .mockResolvedValue([
+        shelfProductRecord("line_02", "prod_02", 0, "cshelf_02"),
+        shelfProductRecord("line_01", "prod_01", 0),
+      ])
     const service = {
       listCatalogShelfProducts,
     } as unknown as CatalogService
@@ -190,7 +192,7 @@ describe("catalog shelf authoring", () => {
     expect(listCatalogShelfProducts).toHaveBeenCalledTimes(1)
     expect(listCatalogShelfProducts).toHaveBeenCalledWith(
       { shelf_id: [shelfId, "cshelf_02"] },
-      { order: { sort_order: "ASC" }, take: 400 },
+      { order: { sort_order: "ASC" }, take: 400 }
     )
     expect(result.get(shelfId)?.map((line) => line.productId)).toEqual([
       "prod_01",
@@ -228,23 +230,29 @@ describe("catalog shelf authoring", () => {
         products: [{ productId: "prod_01" }],
         title: "New title",
       },
-      shelfId,
+      shelfId
     )
 
     expect(graph.mock.invocationCallOrder[0]).toBeLessThan(
-      spies.deleteCatalogShelfProducts.mock.invocationCallOrder[0] ?? 0,
+      spies.deleteCatalogShelfProducts.mock.invocationCallOrder[0] ?? 0
     )
     expect(spies.updateCatalogShelves).toHaveBeenCalledWith(
-      [expect.objectContaining({ id: shelfId, title: "New title", version: 2 })],
-      sharedContext,
+      [
+        expect.objectContaining({
+          id: shelfId,
+          title: "New title",
+          version: 2,
+        }),
+      ],
+      sharedContext
     )
     expect(spies.deleteCatalogShelfProducts).toHaveBeenCalledWith(
       ["line_old"],
-      sharedContext,
+      sharedContext
     )
     expect(spies.createCatalogShelfProducts).toHaveBeenCalledWith(
       [expect.objectContaining({ product_id: "prod_01", shelf_id: shelfId })],
-      sharedContext,
+      sharedContext
     )
     expect(spies.updateCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
@@ -254,7 +262,7 @@ describe("catalog shelf authoring", () => {
           status: "succeeded",
         }),
       ],
-      sharedContext,
+      sharedContext
     )
     expect(response.body.shelf.version).toBe(2)
   })
@@ -262,7 +270,9 @@ describe("catalog shelf authoring", () => {
   it("rejects a stale version before creating an operation or mutating rows", async () => {
     const { req } = requestWithProducts([])
     const { service, spies } = transactionService({
-      retrieveCatalogShelf: jest.fn().mockResolvedValue(shelfRecord({ version: 2 })),
+      retrieveCatalogShelf: jest
+        .fn()
+        .mockResolvedValue(shelfRecord({ version: 2 })),
     })
 
     await expect(
@@ -270,8 +280,8 @@ describe("catalog shelf authoring", () => {
         req,
         service,
         { expectedVersion: 1, idempotencyKey, title: "Stale" },
-        shelfId,
-      ),
+        shelfId
+      )
     ).rejects.toThrow("changed after it was loaded")
     expect(spies.createCatalogAuthoringOperations).not.toHaveBeenCalled()
     expect(spies.updateCatalogShelves).not.toHaveBeenCalled()
@@ -291,8 +301,8 @@ describe("catalog shelf authoring", () => {
         req,
         service,
         { expectedVersion: 1, idempotencyKey, title: "Concurrent" },
-        shelfId,
-      ),
+        shelfId
+      )
     ).rejects.toThrow("changed while it was being saved")
   })
 
@@ -323,8 +333,8 @@ describe("catalog shelf authoring", () => {
           idempotencyKey,
           products: [{ productId: "prod_01" }],
         },
-        shelfId,
-      ),
+        shelfId
+      )
     ).rejects.toThrow("injected membership failure")
     expect(spies.deleteCatalogShelfProducts).toHaveBeenCalled()
     expect(spies.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
@@ -353,7 +363,7 @@ describe("catalog shelf authoring", () => {
       req,
       first.service,
       { expectedVersion: 1, idempotencyKey, title: "Updated" },
-      shelfId,
+      shelfId
     )
     const requestSha256 = first.spies.createCatalogAuthoringOperations.mock
       .calls[0]?.[0]?.[0]?.request_sha256 as string
@@ -370,7 +380,7 @@ describe("catalog shelf authoring", () => {
       req,
       replay.service,
       { expectedVersion: 1, idempotencyKey, title: "Updated" },
-      shelfId,
+      shelfId
     )
 
     expect(response.body.shelf.version).toBe(2)
@@ -398,7 +408,7 @@ describe("catalog shelf authoring", () => {
       archive.service,
       shelfId,
       { expectedVersion: 1, idempotencyKey },
-      true,
+      true
     )
 
     expect(archive.spies.updateCatalogShelves).toHaveBeenCalledWith(
@@ -410,7 +420,7 @@ describe("catalog shelf authoring", () => {
           version: 2,
         }),
       ],
-      archive.sharedContext,
+      archive.sharedContext
     )
     expect(archive.spies.deleteCatalogShelfProducts).not.toHaveBeenCalled()
     expect(archived.shelf.archivedAt).toBe("2026-08-02T03:30:00.000Z")
@@ -429,7 +439,7 @@ describe("catalog shelf authoring", () => {
       restore.service,
       shelfId,
       { expectedVersion: 2, idempotencyKey: restoreKey },
-      false,
+      false
     )
 
     expect(restore.spies.updateCatalogShelves).toHaveBeenCalledWith(
@@ -441,7 +451,7 @@ describe("catalog shelf authoring", () => {
           version: 3,
         }),
       ],
-      restore.sharedContext,
+      restore.sharedContext
     )
     expect(restored.shelf.archivedAt).toBeNull()
   })

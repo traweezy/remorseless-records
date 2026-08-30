@@ -48,7 +48,9 @@ describe("searchServerEnv", () => {
   })
 
   it("rejects the retired public pair without server-only variables", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     vi.stubEnv("MEILISEARCH_HOST", undefined)
     vi.stubEnv("MEILISEARCH_SEARCH_KEY", undefined)
     vi.stubEnv("MEILISEARCH_API_KEY", undefined)
@@ -62,7 +64,9 @@ describe("searchServerEnv", () => {
   })
 
   it("rejects a host-enabled preferred pair without a key", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     vi.stubEnv("MEILISEARCH_HOST", faker.internet.url())
     vi.stubEnv("MEILISEARCH_SEARCH_KEY", undefined)
     vi.stubEnv("MEILISEARCH_API_KEY", undefined)
@@ -76,7 +80,9 @@ describe("searchServerEnv", () => {
   })
 
   it("rejects an incomplete or invalid search pair", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     vi.stubEnv("MEILISEARCH_HOST", "not-a-url")
     vi.stubEnv("MEILISEARCH_SEARCH_KEY", "")
     vi.stubEnv("MEILISEARCH_API_KEY", undefined)

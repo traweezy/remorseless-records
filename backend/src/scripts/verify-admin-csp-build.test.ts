@@ -1,8 +1,7 @@
-const { countAdminEvalCapabilityProbes } = require(
-  "./verify-admin-csp-build.js"
-) as {
-  countAdminEvalCapabilityProbes: (source: string) => number
-}
+const { countAdminEvalCapabilityProbes } =
+  require("./verify-admin-csp-build.js") as {
+    countAdminEvalCapabilityProbes: (source: string) => number
+  }
 
 describe("Admin CSP build verification", () => {
   it("detects minified and direct empty-Function probes", () => {

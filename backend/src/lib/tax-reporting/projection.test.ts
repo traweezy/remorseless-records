@@ -1,18 +1,18 @@
-import { BigNumber } from "@medusajs/framework/utils";
+import { BigNumber } from "@medusajs/framework/utils"
 
-import { parseTaxReportPeriod } from "./periods";
+import { parseTaxReportPeriod } from "./periods"
 import {
   diagnoseTaxProjection,
   projectTaxRecords,
   summarizeDestinations,
   summarizeTaxRecords,
-} from "./projection";
+} from "./projection"
 
-const fingerprint = "a".repeat(43);
+const fingerprint = "a".repeat(43)
 const period = parseTaxReportPeriod({
   endDate: "2027-03-01",
   startDate: "2026-03-01",
-});
+})
 
 const orderFixture = ({
   controlled = true,
@@ -20,12 +20,12 @@ const orderFixture = ({
   paid = true,
   refund,
 }: {
-  controlled?: boolean;
-  createdAt?: string;
-  paid?: boolean;
+  controlled?: boolean
+  createdAt?: string
+  paid?: boolean
   refund?:
     | { amount: string; createdAt: string }
-    | { amount: string; createdAt: string }[];
+    | { amount: string; createdAt: string }[]
 } = {}) => ({
   created_at: createdAt,
   currency_code: "usd",
@@ -95,11 +95,11 @@ const orderFixture = ({
     province: "NY",
   },
   summary: { paid_total: paid ? "10.8" : "0" },
-});
+})
 
 describe("tax record projection", () => {
   it("reports privacy-safe reasons when an order is not projected", () => {
-    const order = orderFixture();
+    const order = orderFixture()
     const diagnostics = diagnoseTaxProjection({
       orders: [
         {
@@ -110,7 +110,7 @@ describe("tax record projection", () => {
         },
       ],
       period,
-    });
+    })
 
     expect(diagnostics).toMatchObject({
       ordersInPeriod: 1,
@@ -126,16 +126,16 @@ describe("tax record projection", () => {
       ordersWithPositiveSummaryPaidTotal: 0,
       projectedSales: 0,
       structuredOrders: 1,
-    });
-  });
+    })
+  })
 
   it("projects a complete controlled sale", () => {
     const records = projectTaxRecords({
       orders: [orderFixture()],
       period,
-    });
+    })
 
-    expect(records).toHaveLength(1);
+    expect(records).toHaveLength(1)
     expect(records[0]).toMatchObject({
       generation: 2,
       grossSales: "10.0000",
@@ -145,16 +145,16 @@ describe("tax record projection", () => {
       taxableSales: "10.0000",
       total: "10.8000",
       type: "sale",
-    });
+    })
     expect(records[0]?.destination).toMatchObject({
       county: "Erie",
       jurisdictionName: "Erie County",
       stateCode: "NY",
-    });
-  });
+    })
+  })
 
   it("classifies disabled collection separately from exempt or nontaxable sales", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const disabledLine = {
       code: "rr_tax:disabled:g4:decision",
       data: {
@@ -164,7 +164,7 @@ describe("tax record projection", () => {
       },
       provider_id: "rate_lookup",
       rate: "0",
-    };
+    }
     const order = {
       ...base,
       items: base.items.map((item) => ({
@@ -186,9 +186,9 @@ describe("tax record projection", () => {
         },
       ],
       summary: { paid_total: "10" },
-    };
+    }
 
-    const [record] = projectTaxRecords({ orders: [order], period });
+    const [record] = projectTaxRecords({ orders: [order], period })
 
     expect(record).toMatchObject({
       collectionMode: "disabled",
@@ -199,20 +199,20 @@ describe("tax record projection", () => {
       taxAmount: "0.0000",
       taxableSales: "0.0000",
       unclassifiedSales: "10.0000",
-    });
+    })
     expect(record?.issues).toContain(
-      "Tax was not collected for this order; confirm the operating decision and filing treatment.",
-    );
+      "Tax was not collected for this order; confirm the operating decision and filing treatment."
+    )
     expect(summarizeTaxRecords(record ? [record] : [])[0]).toMatchObject({
       disabledRecordCount: 1,
       nontaxableSales: "0.0000",
       taxableSales: "0.0000",
       unclassifiedSales: "10.0000",
-    });
-  });
+    })
+  })
 
   it("reconciles shipping omitted from list-level order totals", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const order = {
       ...base,
       payment_collections: [
@@ -235,33 +235,33 @@ describe("tax record projection", () => {
         original_order_total: "16.2",
         paid_total: "16.2",
       },
-    };
+    }
 
     expect(projectTaxRecords({ orders: [order], period })[0]).toMatchObject({
       grossSales: "15.0000",
       issues: [],
       taxAmount: "1.2000",
       total: "16.2000",
-    });
-  });
+    })
+  })
 
   it("keeps legacy sales visible but marks them for review", () => {
     const [record] = projectTaxRecords({
       orders: [orderFixture({ controlled: false })],
       period,
-    });
+    })
 
     expect(record).toMatchObject({
       provider: "legacy",
       quality: "review",
-    });
+    })
     expect(record?.issues).toContain(
-      "Legacy tax lines do not include provider-generation evidence.",
-    );
-  });
+      "Legacy tax lines do not include provider-generation evidence."
+    )
+  })
 
   it("normalizes tracked state names from legacy shipping addresses", () => {
-    const base = orderFixture({ controlled: false });
+    const base = orderFixture({ controlled: false })
     const [record] = projectTaxRecords({
       orders: [
         {
@@ -275,16 +275,16 @@ describe("tax record projection", () => {
         },
       ],
       period,
-    });
+    })
 
-    expect(record?.destination.stateCode).toBe("CT");
+    expect(record?.destination.stateCode).toBe("CT")
     expect(record?.issues).not.toContain(
-      "New York filing requires confirming the destination locality and return schedule.",
-    );
-  });
+      "New York filing requires confirming the destination locality and return schedule."
+    )
+  })
 
   it("flags Pennsylvania tax rows without local-allocation evidence", () => {
-    const base = orderFixture({ controlled: false });
+    const base = orderFixture({ controlled: false })
     const [record] = projectTaxRecords({
       orders: [
         {
@@ -298,19 +298,19 @@ describe("tax record projection", () => {
         },
       ],
       period,
-    });
+    })
 
     expect(record).toMatchObject({
       destination: { stateCode: "PA" },
       quality: "review",
-    });
+    })
     expect(record?.issues).toContain(
-      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation.",
-    );
-  });
+      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation."
+    )
+  })
 
   it("accepts an explicit Philadelphia destination as local evidence", () => {
-    const base = orderFixture({ controlled: false });
+    const base = orderFixture({ controlled: false })
     const [record] = projectTaxRecords({
       orders: [
         {
@@ -324,15 +324,15 @@ describe("tax record projection", () => {
         },
       ],
       period,
-    });
+    })
 
     expect(record?.issues).not.toContain(
-      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation.",
-    );
-  });
+      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation."
+    )
+  })
 
   it("marks a taxed sale with unknown provider evidence incomplete", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const order = {
       ...base,
       items: base.items.map((item) => ({
@@ -345,30 +345,30 @@ describe("tax record projection", () => {
           },
         ],
       })),
-    };
-    const [record] = projectTaxRecords({ orders: [order], period });
+    }
+    const [record] = projectTaxRecords({ orders: [order], period })
 
     expect(record).toMatchObject({
       provider: "unknown",
       quality: "incomplete",
-    });
-    expect(record?.issues).toContain("Tax line identity is missing.");
-  });
+    })
+    expect(record?.issues).toContain("Tax line identity is missing.")
+  })
 
   it("marks an incomplete delivery destination incomplete", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const order = {
       ...base,
       shipping_address: {
         ...base.shipping_address,
         postal_code: null,
       },
-    };
-    const [record] = projectTaxRecords({ orders: [order], period });
+    }
+    const [record] = projectTaxRecords({ orders: [order], period })
 
-    expect(record).toMatchObject({ quality: "incomplete" });
-    expect(record?.issues).toContain("Delivery destination is incomplete.");
-  });
+    expect(record).toMatchObject({ quality: "incomplete" })
+    expect(record?.issues).toContain("Delivery destination is incomplete.")
+  })
 
   it("records partial refunds in their own period with an explicit estimate", () => {
     const records = projectTaxRecords({
@@ -381,8 +381,8 @@ describe("tax record projection", () => {
         }),
       ],
       period,
-    });
-    const refund = records.find((record) => record.type === "refund");
+    })
+    const refund = records.find((record) => record.type === "refund")
 
     expect(refund).toMatchObject({
       grossSales: "5.0000",
@@ -390,7 +390,7 @@ describe("tax record projection", () => {
       refundTaxMethod: "estimated",
       taxAmount: "0.4000",
       total: "5.4000",
-    });
+    })
     expect(summarizeTaxRecords(records)[0]).toMatchObject({
       currencyCode: "usd",
       grossSales: "10.0000",
@@ -399,8 +399,8 @@ describe("tax record projection", () => {
       refundCount: 1,
       refundedSales: "5.0000",
       refundedTax: "0.4000",
-    });
-  });
+    })
+  })
 
   it("treats a full refund allocation as exact", () => {
     const records = projectTaxRecords({
@@ -413,13 +413,13 @@ describe("tax record projection", () => {
         }),
       ],
       period,
-    });
+    })
     expect(records.find((record) => record.type === "refund")).toMatchObject({
       quality: "complete",
       refundCreditTiming: "same_period",
       refundTaxMethod: "exact",
-    });
-  });
+    })
+  })
 
   it("marks a credit for a sale from an earlier filing period", () => {
     const records = projectTaxRecords({
@@ -436,19 +436,19 @@ describe("tax record projection", () => {
         endDate: "2026-09-01",
         startDate: "2026-06-01",
       }),
-    });
-    const refund = records.find((record) => record.type === "refund");
+    })
+    const refund = records.find((record) => record.type === "refund")
 
     expect(refund).toMatchObject({
       quality: "review",
       refundCreditTiming: "prior_period",
-    });
-    expect(refund?.issues.join(" ")).toContain("earlier filing period");
+    })
+    expect(refund?.issues.join(" ")).toContain("earlier filing period")
     expect(summarizeTaxRecords(records)[0]).toMatchObject({
       priorPeriodRefundCount: 1,
       samePeriodRefundCount: 0,
-    });
-  });
+    })
+  })
 
   it("marks every affected refund when cumulative credits exceed the sale", () => {
     const records = projectTaxRecords({
@@ -467,24 +467,24 @@ describe("tax record projection", () => {
         }),
       ],
       period,
-    });
-    const refunds = records.filter((record) => record.type === "refund");
+    })
+    const refunds = records.filter((record) => record.type === "refund")
 
-    expect(refunds).toHaveLength(2);
+    expect(refunds).toHaveLength(2)
     expect(
       refunds.every(
         (refund) =>
           refund.quality === "incomplete" &&
           refund.issues.includes(
-            "Cumulative refunds exceed the original order total.",
-          ),
-      ),
-    ).toBe(true);
-  });
+            "Cumulative refunds exceed the original order total."
+          )
+      )
+    ).toBe(true)
+  })
 
   it("reads Medusa runtime decimal wrappers without zeroing totals", () => {
-    const wrapped = (value: string) => new BigNumber(value);
-    const base = orderFixture();
+    const wrapped = (value: string) => new BigNumber(value)
+    const base = orderFixture()
     const order = {
       ...base,
       display_id: wrapped("42"),
@@ -499,38 +499,38 @@ describe("tax record projection", () => {
       summary: {
         raw_paid_total: wrapped("10.8"),
       },
-    };
+    }
 
     expect(projectTaxRecords({ orders: [order], period })[0]).toMatchObject({
       grossSales: "10.0000",
       taxAmount: "0.8000",
       total: "10.8000",
-    });
-  });
+    })
+  })
 
   it("fails closed instead of silently zeroing an invalid monetary value", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const order = {
       ...base,
       raw_original_total: { value: "not-money" },
-    };
+    }
 
     expect(() => projectTaxRecords({ orders: [order], period })).toThrow(
-      "Tax projection encountered an invalid monetary value.",
-    );
-  });
+      "Tax projection encountered an invalid monetary value."
+    )
+  })
 
   it("does not report unpaid positive-total orders as sales", () => {
     expect(
       projectTaxRecords({
         orders: [orderFixture({ paid: false })],
         period,
-      }),
-    ).toEqual([]);
-  });
+      })
+    ).toEqual([])
+  })
 
   it("reads captured totals from Medusa payment collections", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const order = {
       ...base,
       payment_collections: [
@@ -545,17 +545,17 @@ describe("tax record projection", () => {
         },
       ],
       summary: undefined,
-    };
+    }
 
     expect(projectTaxRecords({ orders: [order], period })[0]).toMatchObject({
       occurredAt: "2026-07-20T16:01:00.000Z",
       total: "10.8000",
       type: "sale",
-    });
-  });
+    })
+  })
 
   it("sums incremental capture records and uses their latest timestamp", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const order = {
       ...base,
       payment_collections: [
@@ -578,17 +578,17 @@ describe("tax record projection", () => {
         },
       ],
       summary: undefined,
-    };
+    }
 
     expect(projectTaxRecords({ orders: [order], period })[0]).toMatchObject({
       occurredAt: "2026-07-20T16:02:00.000Z",
       total: "10.8000",
       type: "sale",
-    });
-  });
+    })
+  })
 
   it("marks a captured-total mismatch as incomplete", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const order = {
       ...base,
       payment_collections: [
@@ -603,17 +603,17 @@ describe("tax record projection", () => {
         },
       ],
       summary: { paid_total: "5" },
-    };
-    const [record] = projectTaxRecords({ orders: [order], period });
+    }
+    const [record] = projectTaxRecords({ orders: [order], period })
 
-    expect(record).toMatchObject({ quality: "incomplete" });
+    expect(record).toMatchObject({ quality: "incomplete" })
     expect(record?.issues).toContain(
-      "Captured payment does not match the original order total.",
-    );
-  });
+      "Captured payment does not match the original order total."
+    )
+  })
 
   it("does not emit zero-value orders as tax sales", () => {
-    const base = orderFixture();
+    const base = orderFixture()
     const order = {
       ...base,
       items: base.items.map((item) => ({
@@ -624,10 +624,10 @@ describe("tax record projection", () => {
       original_subtotal: "0",
       original_tax_total: "0",
       original_total: "0",
-    };
+    }
 
-    expect(projectTaxRecords({ orders: [order], period })).toEqual([]);
-  });
+    expect(projectTaxRecords({ orders: [order], period })).toEqual([])
+  })
 
   it("groups sales and refunds into destination workpapers", () => {
     const records = projectTaxRecords({
@@ -640,7 +640,7 @@ describe("tax record projection", () => {
         }),
       ],
       period,
-    });
+    })
 
     expect(summarizeDestinations(records)).toEqual([
       expect.objectContaining({
@@ -652,8 +652,8 @@ describe("tax record projection", () => {
         taxCollected: "0.8000",
         taxableSales: "0.0000",
       }),
-    ]);
-  });
+    ])
+  })
 
   it("keeps monetary summaries and destination rows separated by currency", () => {
     const euroOrder = {
@@ -661,11 +661,11 @@ describe("tax record projection", () => {
       currency_code: "eur",
       display_id: 43,
       id: "order_43",
-    };
+    }
     const records = projectTaxRecords({
       orders: [orderFixture(), euroOrder],
       period,
-    });
+    })
 
     expect(summarizeTaxRecords(records)).toEqual([
       expect.objectContaining({
@@ -676,7 +676,7 @@ describe("tax record projection", () => {
         currencyCode: "usd",
         grossSales: "10.0000",
       }),
-    ]);
-    expect(summarizeDestinations(records)).toHaveLength(2);
-  });
-});
+    ])
+    expect(summarizeDestinations(records)).toHaveLength(2)
+  })
+})

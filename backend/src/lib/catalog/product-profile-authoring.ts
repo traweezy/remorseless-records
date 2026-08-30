@@ -69,12 +69,10 @@ const resolveNamedReferenceId = async (
     id?: string | null | undefined
     kind: Extract<CatalogReferenceKind, "label" | "product_type">
     reference?:
-      | CatalogProductProfileMutationInput["patch"]["label"]
-      | null
-      | undefined
+      CatalogProductProfileMutationInput["patch"]["label"] | null | undefined
   },
   createdReferenceValueIds: Set<string>,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<string | null | undefined> => {
   if (input.id === null || input.reference === null) {
     return null
@@ -88,7 +86,7 @@ const resolveNamedReferenceId = async (
         kind: input.kind,
         referenceValueId,
       },
-      sharedContext,
+      sharedContext
     )
     return resolution.record?.id ?? null
   }
@@ -105,7 +103,7 @@ const resolveNamedReferenceId = async (
       value: input.reference.value,
       metadata: coerceCatalogJsonRecord(input.reference.metadata),
     },
-    sharedContext,
+    sharedContext
   )
   if (resolution.created && resolution.record) {
     createdReferenceValueIds.add(resolution.record.id)
@@ -118,17 +116,17 @@ const replaceArtists = async (
   profileId: string,
   artists: ArtistInput[],
   createdArtistIds: Set<string>,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const existing = await catalogService.listCatalogProductArtists(
     { product_profile_id: profileId },
     {},
-    sharedContext,
+    sharedContext
   )
   if (existing.length) {
     await catalogService.deleteCatalogProductArtists(
       existing.map(({ id }) => id),
-      sharedContext,
+      sharedContext
     )
   }
 
@@ -141,7 +139,7 @@ const replaceArtists = async (
         name: input.name ?? input.displayName,
         metadata: coerceCatalogJsonRecord(input.metadata),
       },
-      sharedContext,
+      sharedContext
     )
     if (resolution.created && resolution.record) {
       createdArtistIds.add(resolution.record.id)
@@ -153,7 +151,7 @@ const replaceArtists = async (
     if (!displayName) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "Each product artist requires an artistId, name, or displayName.",
+        "Each product artist requires an artistId, name, or displayName."
       )
     }
     payloads.push({
@@ -175,17 +173,17 @@ const replaceReferences = async (
   profileId: string,
   references: ReferenceInput[],
   createdReferenceValueIds: Set<string>,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const existing = await catalogService.listCatalogProductReferences(
     { product_profile_id: profileId },
     {},
-    sharedContext,
+    sharedContext
   )
   if (existing.length) {
     await catalogService.deleteCatalogProductReferences(
       existing.map(({ id }) => id),
-      sharedContext,
+      sharedContext
     )
   }
 
@@ -200,12 +198,12 @@ const replaceReferences = async (
         value: input.value,
         metadata: coerceCatalogJsonRecord(input.metadata),
       },
-      sharedContext,
+      sharedContext
     )
     if (!resolution.record) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "Each product reference requires a referenceValueId or kind and label.",
+        "Each product reference requires a referenceValueId or kind and label."
       )
     }
     if (resolution.created) {
@@ -220,10 +218,7 @@ const replaceReferences = async (
     })
   }
   if (payloads.length) {
-    await catalogService.createCatalogProductReferences(
-      payloads,
-      sharedContext,
-    )
+    await catalogService.createCatalogProductReferences(payloads, sharedContext)
   }
 }
 
@@ -303,14 +298,14 @@ const buildProfilePatch = ({
 
 export const mutateCatalogProductProfile = async (
   catalogService: CatalogService,
-  input: CatalogProductProfileMutationInput,
+  input: CatalogProductProfileMutationInput
 ): Promise<CatalogProductProfileMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     const existingOperation = (
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
     )[0]
     if (existingOperation) {
@@ -323,7 +318,7 @@ export const mutateCatalogProductProfile = async (
       if (!sameCommand || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The catalog idempotency key cannot be replayed for this product profile command.",
+          "The catalog idempotency key cannot be replayed for this product profile command."
         )
       }
       const result = coerceCatalogJsonRecord(existingOperation.result)
@@ -332,7 +327,7 @@ export const mutateCatalogProductProfile = async (
       if (!profileId) {
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          "The completed product profile command has no profile result.",
+          "The completed product profile command has no profile result."
         )
       }
       return {
@@ -355,13 +350,13 @@ export const mutateCatalogProductProfile = async (
     const previous = await snapshotCatalogProductProfile(
       catalogService,
       input.aggregateId,
-      sharedContext,
+      sharedContext
     )
     const currentVersion = previous.profile?.version ?? 0
     if (currentVersion !== input.expectedVersion) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The product profile changed after it was loaded. Refresh before saving.",
+        "The product profile changed after it was loaded. Refresh before saving."
       )
     }
 
@@ -379,12 +374,12 @@ export const mutateCatalogProductProfile = async (
           status: "pending",
         },
       ],
-      sharedContext,
+      sharedContext
     )
     if (!operation) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The product profile command audit record was not created.",
+        "The product profile command audit record was not created."
       )
     }
 
@@ -398,7 +393,7 @@ export const mutateCatalogProductProfile = async (
         reference: input.patch.label,
       },
       createdReferenceValueIds,
-      sharedContext,
+      sharedContext
     )
     const productTypeId = await resolveNamedReferenceId(
       catalogService,
@@ -408,7 +403,7 @@ export const mutateCatalogProductProfile = async (
         reference: input.patch.productType,
       },
       createdReferenceValueIds,
-      sharedContext,
+      sharedContext
     )
     const payload = buildProfilePatch({
       currentVersion,
@@ -421,17 +416,17 @@ export const mutateCatalogProductProfile = async (
     const savedResult = previous.profile
       ? await catalogService.updateCatalogProductProfiles(
           [{ id: previous.profile.id, ...payload }],
-          sharedContext,
+          sharedContext
         )
       : await catalogService.createCatalogProductProfiles(
           [payload],
-          sharedContext,
+          sharedContext
         )
     const saved = firstCatalogResult(savedResult)
     if (!saved) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to save catalog product profile.",
+        "Unable to save catalog product profile."
       )
     }
     if (input.patch.artists !== undefined) {
@@ -440,7 +435,7 @@ export const mutateCatalogProductProfile = async (
         saved.id,
         input.patch.artists,
         createdArtistIds,
-        sharedContext,
+        sharedContext
       )
     }
     if (input.patch.references !== undefined) {
@@ -449,7 +444,7 @@ export const mutateCatalogProductProfile = async (
         saved.id,
         input.patch.references,
         createdReferenceValueIds,
-        sharedContext,
+        sharedContext
       )
     }
 
@@ -475,27 +470,27 @@ export const compensateCatalogProductProfileMutation = async (
     createdReferenceValueIds: string[]
     operationId: string
     previous: CatalogProductProfileMutationResult["previous"]
-  },
+  }
 ): Promise<void> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     await restoreCatalogProductProfileSnapshot(
       catalogService,
       input.aggregateId,
       input.previous,
-      sharedContext,
+      sharedContext
     )
     for (const artistId of input.createdArtistIds) {
       await deleteCreatedArtistIfOrphaned(
         catalogService,
         artistId,
-        sharedContext,
+        sharedContext
       )
     }
     for (const referenceValueId of input.createdReferenceValueIds) {
       await deleteCreatedReferenceIfOrphaned(
         catalogService,
         referenceValueId,
-        sharedContext,
+        sharedContext
       )
     }
     await catalogService.updateCatalogAuthoringOperations(
@@ -509,6 +504,6 @@ export const compensateCatalogProductProfileMutation = async (
           status: "compensated",
         },
       ],
-      sharedContext,
+      sharedContext
     )
   })

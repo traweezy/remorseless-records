@@ -71,13 +71,13 @@ const EntryActions = memo<EntryActionsProps>(
       (event: React.MouseEvent<HTMLButtonElement>) => {
         onEdit(entry, event.currentTarget)
       },
-      [entry, onEdit],
+      [entry, onEdit]
     )
     const handleLifecycle = useCallback(
       (event: React.MouseEvent<HTMLButtonElement>) => {
         onLifecycle(entry, event.currentTarget)
       },
-      [entry, onLifecycle],
+      [entry, onLifecycle]
     )
     return canUpdate ? (
       <div className="flex flex-wrap justify-end gap-2">
@@ -103,7 +103,7 @@ const EntryActions = memo<EntryActionsProps>(
         </Button>
       </div>
     ) : null
-  },
+  }
 )
 
 EntryActions.displayName = "EntryActions"
@@ -132,7 +132,9 @@ export const useNewsColumns = ({
               {row.original.title}
             </Text>
             <Text className="mt-1 break-words text-ui-fg-subtle" size="xsmall">
-              {row.original.author ? `By ${row.original.author}` : "Author unavailable"}
+              {row.original.author
+                ? `By ${row.original.author}`
+                : "Author unavailable"}
             </Text>
           </div>
         ),
@@ -161,8 +163,13 @@ export const useNewsColumns = ({
       }),
       columnHelper.accessor((entry) => entry.tags, {
         cell: ({ row }) => (
-          <Text className="min-w-40 break-words text-ui-fg-subtle" size="xsmall">
-            {row.original.tags.length ? row.original.tags.join(" · ") : "No tags"}
+          <Text
+            className="min-w-40 break-words text-ui-fg-subtle"
+            size="xsmall"
+          >
+            {row.original.tags.length
+              ? row.original.tags.join(" · ")
+              : "No tags"}
           </Text>
         ),
         header: "Tags",
@@ -202,7 +209,7 @@ export const useNewsColumns = ({
           ]
         : []),
     ],
-    [busyEntryId, canUpdate, onEdit, onLifecycle],
+    [busyEntryId, canUpdate, onEdit, onLifecycle]
   )
 
 const NewsMobileCard = memo<EntryActionsProps>(
@@ -241,7 +248,7 @@ const NewsMobileCard = memo<EntryActionsProps>(
         </div>
       ) : null}
     </li>
-  ),
+  )
 )
 
 NewsMobileCard.displayName = "NewsMobileCard"
@@ -249,7 +256,10 @@ NewsMobileCard.displayName = "NewsMobileCard"
 const MobileLoadingCards = memo(() => (
   <div aria-label="Loading news posts" aria-live="polite">
     {Array.from({ length: 4 }, (_, index) => (
-      <div className="border-t border-ui-border-base px-4 py-5 first:border-t-0" key={index}>
+      <div
+        className="border-t border-ui-border-base px-4 py-5 first:border-t-0"
+        key={index}
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-2/3" />
@@ -312,7 +322,7 @@ export const NewsCollection = memo<NewsCollectionProps>(
           ),
         },
       }),
-      [filtered, view],
+      [filtered, view]
     )
     const mobile = useMemo<ReactNode>(() => {
       if (loading) {
@@ -353,7 +363,7 @@ export const NewsCollection = memo<NewsCollectionProps>(
         showPagination={loading || entries.length > 0}
       />
     )
-  },
+  }
 )
 
 NewsCollection.displayName = "NewsCollection"

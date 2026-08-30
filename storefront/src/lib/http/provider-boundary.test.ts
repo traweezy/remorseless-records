@@ -118,11 +118,7 @@ describe("provider boundary", () => {
     })
 
     await expect(
-      fetchProviderRead(
-        "https://provider.test/content",
-        {},
-        { recordMetric }
-      )
+      fetchProviderRead("https://provider.test/content", {}, { recordMetric })
     ).resolves.toBe(success)
     expect(recordMetric).toHaveBeenCalledOnce()
     const recordedMetric = recordMetric.mock.calls[0]?.[0]

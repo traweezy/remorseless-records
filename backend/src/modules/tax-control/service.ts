@@ -1,57 +1,57 @@
-import type { Context } from "@medusajs/framework/types";
-import { EntityManager } from "@medusajs/framework/mikro-orm/knex";
+import type { Context } from "@medusajs/framework/types"
+import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import {
   InjectManager,
   InjectTransactionManager,
   MedusaContext,
   MedusaError,
   MedusaService,
-} from "@medusajs/framework/utils";
+} from "@medusajs/framework/utils"
 
 import {
   TAX_CONTROL_ID,
   type TaxCollectionMode,
   type TaxProviderName,
   type TaxQuoteEvidenceStatus,
-} from "./constants";
-import { ensureTaxProviderControlSingleton } from "./control-initialization";
-import TaxProviderAudit from "./models/tax-provider-audit";
-import TaxProviderControl from "./models/tax-provider-control";
-import TaxProviderQuota from "./models/tax-provider-quota";
-import TaxQuoteEvidence from "./models/tax-quote-evidence";
-import { matchesTaxControlTransitionReplay } from "./switch-idempotency";
+} from "./constants"
+import { ensureTaxProviderControlSingleton } from "./control-initialization"
+import TaxProviderAudit from "./models/tax-provider-audit"
+import TaxProviderControl from "./models/tax-provider-control"
+import TaxProviderQuota from "./models/tax-provider-quota"
+import TaxQuoteEvidence from "./models/tax-quote-evidence"
+import { matchesTaxControlTransitionReplay } from "./switch-idempotency"
 
 type TransitionTaxControlInput = {
-  acknowledgementVersion: string;
-  actorId: string;
-  expectedGeneration: number;
-  idempotencyKey: string;
-  reason: string;
-  targetCollectionMode: TaxCollectionMode;
-  targetProvider: TaxProviderName;
-};
+  acknowledgementVersion: string
+  actorId: string
+  expectedGeneration: number
+  idempotencyKey: string
+  reason: string
+  targetCollectionMode: TaxCollectionMode
+  targetProvider: TaxProviderName
+}
 
 type RecordTaxQuoteEvidenceInput = {
-  amountMinor: number;
-  calculationId: string | null;
-  cartId: string;
-  collectionMode: TaxCollectionMode;
-  currencyCode: string;
-  fingerprint: string;
-  generation: number;
-  paymentIntentId: string;
-  provider: TaxProviderName | null;
-  status?: TaxQuoteEvidenceStatus;
-};
+  amountMinor: number
+  calculationId: string | null
+  cartId: string
+  collectionMode: TaxCollectionMode
+  currencyCode: string
+  fingerprint: string
+  generation: number
+  paymentIntentId: string
+  provider: TaxProviderName | null
+  status?: TaxQuoteEvidenceStatus
+}
 
 type UpdateTaxQuoteEvidenceLifecycleInput = {
-  associationStatus: string | null;
-  metadata: Record<string, unknown>;
-  orderId?: string;
-  paymentIntentId: string;
-  status: TaxQuoteEvidenceStatus;
-  taxTransactionId: string | null;
-};
+  associationStatus: string | null
+  metadata: Record<string, unknown>
+  orderId?: string
+  paymentIntentId: string
+  status: TaxQuoteEvidenceStatus
+  taxTransactionId: string | null
+}
 
 class TaxControlModuleService extends MedusaService({
   TaxProviderAudit,
@@ -61,7 +61,7 @@ class TaxControlModuleService extends MedusaService({
 }) {
   @InjectManager()
   async ensureTaxProviderControl(
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     return ensureTaxProviderControlSingleton({
       create: async () =>
@@ -76,26 +76,26 @@ class TaxControlModuleService extends MedusaService({
                 metadata: {},
               },
             ],
-            sharedContext,
+            sharedContext
           )
         )[0],
       retrieve: () =>
         this.retrieveTaxProviderControl(TAX_CONTROL_ID, {}, sharedContext),
-    });
+    })
   }
 
   @InjectTransactionManager()
   protected async recordTaxQuoteEvidence_(
     input: RecordTaxQuoteEvidenceInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     const existing = (
       await this.listTaxQuoteEvidences(
         { payment_intent_id: input.paymentIntentId },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
-    )[0];
+    )[0]
     const immutableMatches =
       existing &&
       existing.amount_minor === input.amountMinor &&
@@ -105,12 +105,12 @@ class TaxControlModuleService extends MedusaService({
       existing.currency_code === input.currencyCode &&
       existing.fingerprint === input.fingerprint &&
       existing.generation === input.generation &&
-      existing.provider === input.provider;
+      existing.provider === input.provider
     if (existing && !immutableMatches) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The PaymentIntent is already bound to different tax evidence.",
-      );
+        "The PaymentIntent is already bound to different tax evidence."
+      )
     }
 
     if (input.calculationId) {
@@ -118,21 +118,21 @@ class TaxControlModuleService extends MedusaService({
         await this.listTaxQuoteEvidences(
           { calculation_id: input.calculationId },
           { take: 1 },
-          sharedContext,
+          sharedContext
         )
-      )[0];
+      )[0]
       if (
         calculationEvidence &&
         calculationEvidence.payment_intent_id !== input.paymentIntentId
       ) {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The Stripe Tax calculation is already bound to another PaymentIntent.",
-        );
+          "The Stripe Tax calculation is already bound to another PaymentIntent."
+        )
       }
     }
 
-    const now = new Date();
+    const now = new Date()
     if (existing) {
       const [updated] = await this.updateTaxQuoteEvidences(
         [
@@ -142,15 +142,15 @@ class TaxControlModuleService extends MedusaService({
             status: input.status ?? existing.status,
           },
         ],
-        sharedContext,
-      );
+        sharedContext
+      )
       if (!updated) {
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          "Tax evidence verification was not persisted.",
-        );
+          "Tax evidence verification was not persisted."
+        )
       }
-      return { evidence: updated, replayed: true };
+      return { evidence: updated, replayed: true }
     }
 
     const [created] = await this.createTaxQuoteEvidences(
@@ -171,39 +171,39 @@ class TaxControlModuleService extends MedusaService({
           status: input.status ?? "prepared",
         },
       ],
-      sharedContext,
-    );
+      sharedContext
+    )
     if (!created) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "Tax evidence was not persisted.",
-      );
+        "Tax evidence was not persisted."
+      )
     }
-    return { evidence: created, replayed: false };
+    return { evidence: created, replayed: false }
   }
 
   @InjectManager()
   async recordTaxQuoteEvidence(
     input: RecordTaxQuoteEvidenceInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
-    return this.recordTaxQuoteEvidence_(input, sharedContext);
+    return this.recordTaxQuoteEvidence_(input, sharedContext)
   }
 
   @InjectTransactionManager()
   protected async updateTaxQuoteEvidenceLifecycle_(
     input: UpdateTaxQuoteEvidenceLifecycleInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     const evidence = (
       await this.listTaxQuoteEvidences(
         { payment_intent_id: input.paymentIntentId },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
-    )[0];
+    )[0]
     if (!evidence) {
-      return null;
+      return null
     }
     if (
       input.orderId &&
@@ -212,8 +212,8 @@ class TaxControlModuleService extends MedusaService({
     ) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "Tax evidence is already assigned to a different order.",
-      );
+        "Tax evidence is already assigned to a different order."
+      )
     }
 
     const [updated] = await this.updateTaxQuoteEvidences(
@@ -232,61 +232,61 @@ class TaxControlModuleService extends MedusaService({
             input.taxTransactionId ?? evidence.tax_transaction_id,
         },
       ],
-      sharedContext,
-    );
+      sharedContext
+    )
     if (!updated) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "Tax evidence lifecycle verification was not persisted.",
-      );
+        "Tax evidence lifecycle verification was not persisted."
+      )
     }
-    return updated;
+    return updated
   }
 
   @InjectManager()
   async updateTaxQuoteEvidenceLifecycle(
     input: UpdateTaxQuoteEvidenceLifecycleInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
-    return this.updateTaxQuoteEvidenceLifecycle_(input, sharedContext);
+    return this.updateTaxQuoteEvidenceLifecycle_(input, sharedContext)
   }
 
   @InjectTransactionManager()
   protected async transitionTaxControl_(
     input: TransitionTaxControlInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     const existingAudits = await this.listTaxProviderAudits(
       { idempotency_key: input.idempotencyKey },
       { take: 1 },
-      sharedContext,
-    );
-    const existingAudit = existingAudits[0];
+      sharedContext
+    )
+    const existingAudit = existingAudits[0]
     if (existingAudit) {
       if (!matchesTaxControlTransitionReplay(existingAudit, input)) {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The tax control idempotency key was already used for a different transition request.",
-        );
+          "The tax control idempotency key was already used for a different transition request."
+        )
       }
       const control = await this.retrieveTaxProviderControl(
         TAX_CONTROL_ID,
         {},
-        sharedContext,
-      );
-      return { audit: existingAudit, control, replayed: true };
+        sharedContext
+      )
+      return { audit: existingAudit, control, replayed: true }
     }
 
     const control = await this.retrieveTaxProviderControl(
       TAX_CONTROL_ID,
       {},
-      sharedContext,
-    );
+      sharedContext
+    )
     if (control.generation !== input.expectedGeneration) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "Tax provider state changed. Refresh before switching.",
-      );
+        "Tax provider state changed. Refresh before switching."
+      )
     }
 
     if (
@@ -295,11 +295,11 @@ class TaxControlModuleService extends MedusaService({
     ) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "The requested tax collection state is already active.",
-      );
+        "The requested tax collection state is already active."
+      )
     }
 
-    const nextGeneration = control.generation + 1;
+    const nextGeneration = control.generation + 1
     const [audit] = await this.createTaxProviderAudits(
       [
         {
@@ -316,8 +316,8 @@ class TaxControlModuleService extends MedusaService({
           to_provider: input.targetProvider,
         },
       ],
-      sharedContext,
-    );
+      sharedContext
+    )
     const [updated] = await this.updateTaxProviderControls(
       [
         {
@@ -329,26 +329,26 @@ class TaxControlModuleService extends MedusaService({
           last_switched_by: input.actorId,
         },
       ],
-      sharedContext,
-    );
+      sharedContext
+    )
 
     if (!audit || !updated) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "Tax control transition did not return its persisted state.",
-      );
+        "Tax control transition did not return its persisted state."
+      )
     }
 
-    return { audit, control: updated, replayed: false };
+    return { audit, control: updated, replayed: false }
   }
 
   @InjectManager()
   async transitionTaxControl(
     input: TransitionTaxControlInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
-    return this.transitionTaxControl_(input, sharedContext);
+    return this.transitionTaxControl_(input, sharedContext)
   }
 }
 
-export default TaxControlModuleService;
+export default TaxControlModuleService

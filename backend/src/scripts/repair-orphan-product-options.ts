@@ -59,7 +59,9 @@ const auditQuery = `
   order by product_option.created_at, product_option.id
 `
 
-const loadAuditRows = async (database: Knex): Promise<OrphanProductOptionRow[]> => {
+const loadAuditRows = async (
+  database: Knex
+): Promise<OrphanProductOptionRow[]> => {
   const result = await database.raw<{ rows: AuditRow[] }>(auditQuery, [
     HISTORICAL_CUTOFF,
   ])

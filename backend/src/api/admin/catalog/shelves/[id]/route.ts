@@ -64,7 +64,7 @@ export const DELETE = async (
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid catalog shelf archive payload",
+      "Invalid catalog shelf archive payload"
     )
   }
   const catalogService = req.scope.resolve("catalog") as CatalogService

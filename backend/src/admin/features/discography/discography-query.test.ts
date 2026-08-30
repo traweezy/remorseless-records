@@ -131,7 +131,7 @@ describe("discography admin requests", () => {
 
     await expect(getDiscographyEntry("disc/one")).resolves.toEqual(entry)
     expect(requestAdminJson).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "/admin/discography/disc%2Fone" }),
+      expect.objectContaining({ path: "/admin/discography/disc%2Fone" })
     )
   })
 })

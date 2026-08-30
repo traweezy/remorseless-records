@@ -26,7 +26,7 @@ const serviceFixture = () => {
   }
   service.runCatalogTransaction.mockImplementation(
     async (callback: (context: Record<string, unknown>) => unknown) =>
-      callback({ transactionManager: {} }),
+      callback({ transactionManager: {} })
   )
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   service.listCatalogProductProfiles.mockResolvedValue([])
@@ -37,7 +37,7 @@ const serviceFixture = () => {
 }
 
 const commandFixture = (
-  patch: CatalogVariantProfileMutationInput["patch"] = {},
+  patch: CatalogVariantProfileMutationInput["patch"] = {}
 ): CatalogVariantProfileMutationInput => ({
   actorId: "user_1",
   aggregateId: "variant_1",
@@ -77,19 +77,19 @@ describe("catalog variant profile authoring", () => {
       catalogVariantProfileUpsertSchema.safeParse({
         ...base,
         displayLabel: "x".repeat(501),
-      }).success,
+      }).success
     ).toBe(false)
     expect(
       catalogVariantProfileUpsertSchema.safeParse({
         ...base,
         preorderReleaseDate: "not-a-date",
-      }).success,
+      }).success
     ).toBe(false)
     expect(
       catalogVariantProfileUpsertSchema.safeParse({
         ...base,
         imageUrl: "javascript:alert(1)",
-      }).success,
+      }).success
     ).toBe(false)
   })
 
@@ -107,16 +107,14 @@ describe("catalog variant profile authoring", () => {
         value: "lp",
       },
     ])
-    service.createCatalogVariantProfiles.mockResolvedValue([
-      { id: "cvprof_1" },
-    ])
+    service.createCatalogVariantProfiles.mockResolvedValue([{ id: "cvprof_1" }])
 
     const result = await mutateCatalogVariantProfile(
       service as never,
       commandFixture({
         displayLabel: "LP",
         format: { label: "LP" },
-      }),
+      })
     )
 
     expect(result).toEqual(
@@ -128,7 +126,7 @@ describe("catalog variant profile authoring", () => {
         replayed: false,
         variantId: "variant_1",
         version: 1,
-      }),
+      })
     )
     expect(service.createCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
@@ -140,7 +138,7 @@ describe("catalog variant profile authoring", () => {
           status: "pending",
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.createCatalogVariantProfiles).toHaveBeenCalledWith(
       [
@@ -151,10 +149,10 @@ describe("catalog variant profile authoring", () => {
           version: 1,
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(
-      service.createCatalogVariantProfiles.mock.calls[0]?.[0]?.[0],
+      service.createCatalogVariantProfiles.mock.calls[0]?.[0]?.[0]
     ).not.toHaveProperty("availability_status")
     expect(service.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
@@ -168,8 +166,8 @@ describe("catalog variant profile authoring", () => {
     await expect(
       mutateCatalogVariantProfile(
         service as never,
-        commandFixture({ displayLabel: "CD" }),
-      ),
+        commandFixture({ displayLabel: "CD" })
+      )
     ).rejects.toThrow("changed after it was loaded")
     expect(service.createCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
@@ -195,19 +193,19 @@ describe("catalog variant profile authoring", () => {
     ])
 
     await expect(
-      mutateCatalogVariantProfile(service as never, command),
+      mutateCatalogVariantProfile(service as never, command)
     ).resolves.toEqual(
       expect.objectContaining({
         profileId: "cvprof_1",
         replayed: true,
         version: 1,
-      }),
+      })
     )
     await expect(
       mutateCatalogVariantProfile(service as never, {
         ...command,
         requestSha256: "b".repeat(64),
-      }),
+      })
     ).rejects.toThrow("cannot be replayed")
     expect(service.createCatalogVariantProfiles).not.toHaveBeenCalled()
   })
@@ -236,11 +234,11 @@ describe("catalog variant profile authoring", () => {
 
     expect(service.updateCatalogVariantProfiles).toHaveBeenCalledWith(
       [previous],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.deleteCatalogReferenceValues).toHaveBeenCalledWith(
       "ref_new",
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.updateCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
@@ -250,7 +248,7 @@ describe("catalog variant profile authoring", () => {
           status: "compensated",
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
   })
 })

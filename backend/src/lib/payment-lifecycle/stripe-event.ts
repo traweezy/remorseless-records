@@ -1,66 +1,62 @@
-import type Stripe from "stripe";
+import type Stripe from "stripe"
 
 import {
   stripeLifecycleEventTypes,
   type StripeLifecycleEventType,
-} from "../../modules/payment-lifecycle/constants";
-import type { RecordStripeLifecycleEventInput } from "../../modules/payment-lifecycle/service";
+} from "../../modules/payment-lifecycle/constants"
+import type { RecordStripeLifecycleEventInput } from "../../modules/payment-lifecycle/service"
 
-type UnknownRecord = Record<string, unknown>;
+type UnknownRecord = Record<string, unknown>
 
-const supportedTypes = new Set<string>(stripeLifecycleEventTypes);
-const eventIdPattern = /^evt_[A-Za-z0-9]+$/;
-const paymentIntentIdPattern = /^pi_[A-Za-z0-9]+$/;
-const chargeIdPattern = /^ch_[A-Za-z0-9]+$/;
-const refundIdPattern = /^re_[A-Za-z0-9]+$/;
-const disputeIdPattern = /^du_[A-Za-z0-9]+$/;
+const supportedTypes = new Set<string>(stripeLifecycleEventTypes)
+const eventIdPattern = /^evt_[A-Za-z0-9]+$/
+const paymentIntentIdPattern = /^pi_[A-Za-z0-9]+$/
+const chargeIdPattern = /^ch_[A-Za-z0-9]+$/
+const refundIdPattern = /^re_[A-Za-z0-9]+$/
+const disputeIdPattern = /^du_[A-Za-z0-9]+$/
 
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as UnknownRecord)
-    : null;
+    : null
 
 const expandableId = (value: unknown, pattern: RegExp): string | null => {
-  const candidate =
-    typeof value === "string" ? value : asRecord(value)?.id;
+  const candidate = typeof value === "string" ? value : asRecord(value)?.id
   return typeof candidate === "string" && pattern.test(candidate)
     ? candidate
-    : null;
-};
+    : null
+}
 
 const nonnegativeInteger = (value: unknown): number | null =>
-  Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : null;
+  Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : null
 
 const currencyCode = (value: unknown): string | null =>
   typeof value === "string" && /^[a-zA-Z]{3}$/.test(value.trim())
     ? value.trim().toLowerCase()
-    : null;
+    : null
 
 const providerStatus = (value: unknown): string | null =>
-  typeof value === "string" && /^[a-z_]{2,64}$/.test(value)
-    ? value
-    : null;
+  typeof value === "string" && /^[a-z_]{2,64}$/.test(value) ? value : null
 
 const objectIdPattern = (eventType: StripeLifecycleEventType): RegExp =>
-  eventType.startsWith("refund.") ? refundIdPattern : disputeIdPattern;
+  eventType.startsWith("refund.") ? refundIdPattern : disputeIdPattern
 
 export const projectStripeLifecycleEvent = (
-  event: Stripe.Event,
+  event: Stripe.Event
 ): RecordStripeLifecycleEventInput | null => {
   if (!supportedTypes.has(event.type)) {
-    return null;
+    return null
   }
-  const eventType = event.type as StripeLifecycleEventType;
-  const object = asRecord(event.data.object);
+  const eventType = event.type as StripeLifecycleEventType
+  const object = asRecord(event.data.object)
   const providerEventId =
     typeof event.id === "string" && eventIdPattern.test(event.id)
       ? event.id
-      : null;
+      : null
   const objectId =
-    typeof object?.id === "string" &&
-    objectIdPattern(eventType).test(object.id)
+    typeof object?.id === "string" && objectIdPattern(eventType).test(object.id)
       ? object.id
-      : null;
+      : null
   if (
     !object ||
     !providerEventId ||
@@ -68,7 +64,7 @@ export const projectStripeLifecycleEvent = (
     !Number.isSafeInteger(event.created) ||
     event.created < 0
   ) {
-    throw new Error("Stripe lifecycle event identity is invalid.");
+    throw new Error("Stripe lifecycle event identity is invalid.")
   }
 
   return {
@@ -81,9 +77,9 @@ export const projectStripeLifecycleEvent = (
     objectId,
     paymentIntentId: expandableId(
       object.payment_intent,
-      paymentIntentIdPattern,
+      paymentIntentIdPattern
     ),
     providerEventId,
     providerObjectStatus: providerStatus(object.status),
-  };
-};
+  }
+}

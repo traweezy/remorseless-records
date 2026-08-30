@@ -1,32 +1,34 @@
-import { z } from "zod";
+import { z } from "zod"
 
-import type { AdminFormIssue } from "../../components/admin-form-contract";
+import type { AdminFormIssue } from "../../components/admin-form-contract"
 import {
   automationTypes,
   shelfModes,
   type CreateShelfState,
   type ShelfFormState,
-} from "./catalog-merchandising-types";
+} from "./catalog-merchandising-types"
 
 const optionalWholeNumber = ({
   minimum,
   minimumMessage,
 }: {
-  minimum: number;
-  minimumMessage: string;
+  minimum: number
+  minimumMessage: string
 }) =>
   z
     .string()
     .trim()
     .refine(
       (value) => !value || (/^\d+$/u.test(value) && Number(value) >= minimum),
-      minimumMessage,
-    );
+      minimumMessage
+    )
 
-const dateTimeInput = z.string().refine(
-  (value) => !value || !Number.isNaN(new Date(value).getTime()),
-  "Choose a valid date and time.",
-);
+const dateTimeInput = z
+  .string()
+  .refine(
+    (value) => !value || !Number.isNaN(new Date(value).getTime()),
+    "Choose a valid date and time."
+  )
 
 const shelfBaseSchema = z.object({
   automationType: z.enum(automationTypes),
@@ -37,7 +39,7 @@ const shelfBaseSchema = z.object({
     .max(255)
     .refine(
       (value) => !value || /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value),
-      "Use lowercase letters, numbers, and single hyphens.",
+      "Use lowercase letters, numbers, and single hyphens."
     ),
   mode: z.enum(shelfModes),
   productLimit: optionalWholeNumber({
@@ -51,31 +53,30 @@ const shelfBaseSchema = z.object({
   }),
   showRibbon: z.boolean(),
   title: z.string().trim().min(1, "Enter a shelf title.").max(160),
-});
+})
 
 const validateShelfRules = (
   shelf: z.infer<typeof shelfBaseSchema>,
-  context: z.RefinementCtx,
+  context: z.RefinementCtx
 ): void => {
   if (shelf.mode === "automatic" && shelf.automationType === "none") {
     context.addIssue({
       code: "custom",
       message: "Choose an automation rule for an automatic shelf.",
       path: ["automationType"],
-    });
+    })
   }
   if (shelf.showRibbon && !shelf.ribbonLabel) {
     context.addIssue({
       code: "custom",
       message: "Enter the ribbon text customers will see.",
       path: ["ribbonLabel"],
-    });
+    })
   }
-};
+}
 
-export const catalogShelfCreateSchema = shelfBaseSchema.superRefine(
-  validateShelfRules,
-);
+export const catalogShelfCreateSchema =
+  shelfBaseSchema.superRefine(validateShelfRules)
 
 export const catalogShelfFormSchema = shelfBaseSchema
   .extend({
@@ -93,13 +94,13 @@ export const catalogShelfFormSchema = shelfBaseSchema
           minimumMessage: "Product order must be a whole number of at least 0.",
         }).refine((value) => value.length > 0, "Enter a product order."),
         startsAt: dateTimeInput,
-      }),
+      })
     ),
     startsAt: dateTimeInput,
     version: z.number().int().nonnegative(),
   })
   .superRefine((shelf, context) => {
-    validateShelfRules(shelf, context);
+    validateShelfRules(shelf, context)
     if (
       shelf.startsAt &&
       shelf.endsAt &&
@@ -109,18 +110,18 @@ export const catalogShelfFormSchema = shelfBaseSchema
         code: "custom",
         message: "Shelf end time must be later than its start time.",
         path: ["endsAt"],
-      });
+      })
     }
-    const productIds = new Set<string>();
+    const productIds = new Set<string>()
     shelf.products.forEach((product, index) => {
       if (productIds.has(product.productId)) {
         context.addIssue({
           code: "custom",
           message: "Each product can appear only once on a shelf.",
           path: ["products", index, "productId"],
-        });
+        })
       }
-      productIds.add(product.productId);
+      productIds.add(product.productId)
       if (
         product.startsAt &&
         product.endsAt &&
@@ -131,10 +132,10 @@ export const catalogShelfFormSchema = shelfBaseSchema
           code: "custom",
           message: "Product end time must be later than its start time.",
           path: ["products", index, "endsAt"],
-        });
+        })
       }
-    });
-  });
+    })
+  })
 
 const shelfTargetByField: Record<string, string> = {
   automationType: "shelf-automation",
@@ -145,7 +146,7 @@ const shelfTargetByField: Record<string, string> = {
   ribbonPriority: "shelf-priority",
   startsAt: "shelf-start",
   title: "shelf-title",
-};
+}
 
 const createTargetByField: Record<string, string> = {
   automationType: "new-shelf-automation",
@@ -154,38 +155,39 @@ const createTargetByField: Record<string, string> = {
   ribbonLabel: "new-shelf-ribbon",
   ribbonPriority: "new-shelf-priority",
   title: "new-shelf-title",
-};
+}
 
 const issuesFor = (
   result: z.ZodSafeParseResult<unknown>,
-  targets: Record<string, string>,
+  targets: Record<string, string>
 ): AdminFormIssue[] => {
   if (result.success) {
-    return [];
+    return []
   }
   return result.error.issues.map((issue) => {
-    const root = String(issue.path[0] ?? "");
+    const root = String(issue.path[0] ?? "")
     return {
       key: `${issue.path.join(".")}:${issue.message}`,
       message: issue.message,
-      targetId: root === "products" ? "shelf-products" : (targets[root] ?? null),
-    };
-  });
-};
+      targetId:
+        root === "products" ? "shelf-products" : (targets[root] ?? null),
+    }
+  })
+}
 
 export const catalogShelfValidationIssues = (
-  value: ShelfFormState,
+  value: ShelfFormState
 ): AdminFormIssue[] =>
-  issuesFor(catalogShelfFormSchema.safeParse(value), shelfTargetByField);
+  issuesFor(catalogShelfFormSchema.safeParse(value), shelfTargetByField)
 
 export const catalogShelfCreateValidationIssues = (
-  value: CreateShelfState,
+  value: CreateShelfState
 ): AdminFormIssue[] =>
-  issuesFor(catalogShelfCreateSchema.safeParse(value), createTargetByField);
+  issuesFor(catalogShelfCreateSchema.safeParse(value), createTargetByField)
 
 export const catalogShelfFingerprint = (value: ShelfFormState): string =>
   JSON.stringify({
     ...value,
     products: value.products.map(({ key: _key, ...product }) => product),
     version: undefined,
-  });
+  })

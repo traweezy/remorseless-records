@@ -47,7 +47,9 @@ const isUsRegion = (region: RegionRecord): boolean => {
   )
 }
 
-export default async function enforceUsRegion({ container }: ExecArgs): Promise<void> {
+export default async function enforceUsRegion({
+  container,
+}: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const regionModule = container.resolve(Modules.REGION) as {
     listRegions: (
@@ -72,9 +74,10 @@ export default async function enforceUsRegion({ container }: ExecArgs): Promise<
     listTaxRegions: (
       filters?: Record<string, unknown>
     ) => Promise<TaxRegionRecord[]>
-    createTaxRegions: (
-      data: { country_code: string; provider_id?: string | null }
-    ) => Promise<unknown>
+    createTaxRegions: (data: {
+      country_code: string
+      provider_id?: string | null
+    }) => Promise<unknown>
     updateTaxRegions: (data: {
       id: string
       provider_id?: string | null
@@ -100,7 +103,10 @@ export default async function enforceUsRegion({ container }: ExecArgs): Promise<
     ) => Promise<unknown>
   }
 
-  const regions = await regionModule.listRegions({}, { relations: ["countries"] })
+  const regions = await regionModule.listRegions(
+    {},
+    { relations: ["countries"] }
+  )
   if (!regions.length) {
     logger.warn("[region] No regions found to enforce.")
     return
@@ -165,9 +171,7 @@ export default async function enforceUsRegion({ container }: ExecArgs): Promise<
 
   const taxProviders = await taxModule.listTaxProviders({ is_enabled: true })
   const rateLookupProvider =
-    taxProviders.find((provider) =>
-      provider.id.includes("rate-lookup")
-    ) ??
+    taxProviders.find((provider) => provider.id.includes("rate-lookup")) ??
     taxProviders.find((provider) => provider.id.includes("rate_lookup")) ??
     null
 
@@ -226,9 +230,12 @@ export default async function enforceUsRegion({ container }: ExecArgs): Promise<
     logger.warn("[store] No store found to update currencies.")
   }
 
-  const shippingOptions = await fulfillmentModule.listShippingOptions({}, {
-    relations: ["service_zone", "service_zone.geo_zones"],
-  })
+  const shippingOptions = await fulfillmentModule.listShippingOptions(
+    {},
+    {
+      relations: ["service_zone", "service_zone.geo_zones"],
+    }
+  )
   const serviceZoneIds = Array.from(
     new Set(
       shippingOptions
@@ -239,7 +246,9 @@ export default async function enforceUsRegion({ container }: ExecArgs): Promise<
   )
 
   if (!serviceZoneIds.length) {
-    logger.warn("[shipping] No Standard Shipping service zones found to update.")
+    logger.warn(
+      "[shipping] No Standard Shipping service zones found to update."
+    )
     return
   }
 

@@ -39,9 +39,7 @@ export type {
 } from "./variant-profile-contract"
 
 type NamedReferenceInput =
-  | CatalogVariantProfileMutationInput["patch"]["format"]
-  | null
-  | undefined
+  CatalogVariantProfileMutationInput["patch"]["format"] | null | undefined
 
 const resolveProductProfileId = async (
   catalogService: CatalogService,
@@ -49,7 +47,7 @@ const resolveProductProfileId = async (
     productProfileId?: string | null | undefined
     productId?: string | null | undefined
   },
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<string | null | undefined> => {
   if (input.productProfileId === null || input.productId === null) {
     return null
@@ -60,7 +58,7 @@ const resolveProductProfileId = async (
     await catalogService.retrieveCatalogProductProfile(
       productProfileId,
       {},
-      sharedContext,
+      sharedContext
     )
     return productProfileId
   }
@@ -72,13 +70,13 @@ const resolveProductProfileId = async (
   const profiles = await catalogService.listCatalogProductProfiles(
     { product_id: productId },
     { take: 1 },
-    sharedContext,
+    sharedContext
   )
   const profile = profiles.at(0)
   if (!profile) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
-      "Catalog product profile not found.",
+      "Catalog product profile not found."
     )
   }
   return profile.id
@@ -92,7 +90,7 @@ const resolveFormatReferenceId = async (
     reference?: NamedReferenceInput
   },
   createdReferenceValueIds: Set<string>,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<string | null | undefined> => {
   if (input.id === null || input.reference === null) {
     return null
@@ -115,8 +113,8 @@ const resolveFormatReferenceId = async (
           metadata: coerceCatalogJsonRecord(input.reference?.metadata),
           referenceValueId: input.reference?.referenceValueId,
           value: input.reference?.value,
-    },
-    sharedContext,
+        },
+    sharedContext
   )
   if (resolution.created && resolution.record) {
     createdReferenceValueIds.add(resolution.record.id)
@@ -157,7 +155,7 @@ const buildVariantProfilePatch = ({
   }
   if (patch.formatDetailLabel !== undefined) {
     payload.format_detail_label = toCatalogNullableString(
-      patch.formatDetailLabel,
+      patch.formatDetailLabel
     )
   }
   if (patch.displayLabel !== undefined) {
@@ -168,7 +166,7 @@ const buildVariantProfilePatch = ({
   }
   if (patch.preorderReleaseDate !== undefined) {
     payload.preorder_release_date = toCatalogOptionalDate(
-      patch.preorderReleaseDate,
+      patch.preorderReleaseDate
     )
   }
   if (patch.backorderAllowed !== undefined) {
@@ -188,14 +186,14 @@ const buildVariantProfilePatch = ({
 
 export const mutateCatalogVariantProfile = async (
   catalogService: CatalogService,
-  input: CatalogVariantProfileMutationInput,
+  input: CatalogVariantProfileMutationInput
 ): Promise<CatalogVariantProfileMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     const existingOperation = (
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
     )[0]
     if (existingOperation) {
@@ -208,7 +206,7 @@ export const mutateCatalogVariantProfile = async (
       if (!sameCommand || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The catalog idempotency key cannot be replayed for this variant profile command.",
+          "The catalog idempotency key cannot be replayed for this variant profile command."
         )
       }
       const result = coerceCatalogJsonRecord(existingOperation.result)
@@ -217,7 +215,7 @@ export const mutateCatalogVariantProfile = async (
       if (!profileId) {
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          "The completed variant profile command has no profile result.",
+          "The completed variant profile command has no profile result."
         )
       }
       return {
@@ -239,13 +237,13 @@ export const mutateCatalogVariantProfile = async (
     const previous = await snapshotCatalogVariantProfile(
       catalogService,
       input.aggregateId,
-      sharedContext,
+      sharedContext
     )
     const currentVersion = previous.profile?.version ?? 0
     if (currentVersion !== input.expectedVersion) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The variant profile changed after it was loaded. Refresh before saving.",
+        "The variant profile changed after it was loaded. Refresh before saving."
       )
     }
 
@@ -263,12 +261,12 @@ export const mutateCatalogVariantProfile = async (
           status: "pending",
         },
       ],
-      sharedContext,
+      sharedContext
     )
     if (!operation) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The variant profile command audit record was not created.",
+        "The variant profile command audit record was not created."
       )
     }
 
@@ -279,7 +277,7 @@ export const mutateCatalogVariantProfile = async (
         productId: input.patch.productId,
         productProfileId: input.patch.productProfileId,
       },
-      sharedContext,
+      sharedContext
     )
     const formatId = await resolveFormatReferenceId(
       catalogService,
@@ -289,7 +287,7 @@ export const mutateCatalogVariantProfile = async (
         reference: input.patch.format,
       },
       createdReferenceValueIds,
-      sharedContext,
+      sharedContext
     )
     const formatDetailId = await resolveFormatReferenceId(
       catalogService,
@@ -299,7 +297,7 @@ export const mutateCatalogVariantProfile = async (
         reference: input.patch.formatDetail,
       },
       createdReferenceValueIds,
-      sharedContext,
+      sharedContext
     )
     const payload = buildVariantProfilePatch({
       currentVersion,
@@ -312,17 +310,17 @@ export const mutateCatalogVariantProfile = async (
     const savedResult = previous.profile
       ? await catalogService.updateCatalogVariantProfiles(
           [{ id: previous.profile.id, ...payload }],
-          sharedContext,
+          sharedContext
         )
       : await catalogService.createCatalogVariantProfiles(
           [payload],
-          sharedContext,
+          sharedContext
         )
     const saved = firstCatalogResult(savedResult)
     if (!saved) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to save catalog variant profile.",
+        "Unable to save catalog variant profile."
       )
     }
 
@@ -346,20 +344,20 @@ export const compensateCatalogVariantProfileMutation = async (
     createdReferenceValueIds: string[]
     operationId: string
     previous: CatalogVariantProfileMutationResult["previous"]
-  },
+  }
 ): Promise<void> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     await restoreCatalogVariantProfileSnapshot(
       catalogService,
       input.aggregateId,
       input.previous,
-      sharedContext,
+      sharedContext
     )
     for (const referenceValueId of input.createdReferenceValueIds) {
       await deleteCreatedReferenceIfOrphaned(
         catalogService,
         referenceValueId,
-        sharedContext,
+        sharedContext
       )
     }
     await catalogService.updateCatalogAuthoringOperations(
@@ -373,6 +371,6 @@ export const compensateCatalogVariantProfileMutation = async (
           status: "compensated",
         },
       ],
-      sharedContext,
+      sharedContext
     )
   })

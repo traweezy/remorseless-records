@@ -231,8 +231,7 @@ describe("checkout payment preparation", () => {
 
   it("replaces a session when the provider generation changes at the same total", () => {
     const cart = cartFixture()
-    cart.items![0]!.tax_lines![0]!.code =
-      "rr_tax:taxrate_io:g2:quote"
+    cart.items![0]!.tax_lines![0]!.code = "rr_tax:taxrate_io:g2:quote"
     ;(
       cart.items![0]!.tax_lines![0]! as unknown as Record<string, unknown>
     ).data = {

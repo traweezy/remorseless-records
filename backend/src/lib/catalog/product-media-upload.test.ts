@@ -65,10 +65,7 @@ const commandFixture = (): CatalogMediaUploadInput => ({
 describe("catalog product media upload", () => {
   it("builds an opaque WebP filename from the batch prefix and index", () => {
     expect(
-      buildCatalogMediaRemoteFilename(
-        commandFixture().idempotencyKey,
-        3,
-      ),
+      buildCatalogMediaRemoteFilename(commandFixture().idempotencyKey, 3)
     ).toBe("00000000-0000-4000-8000-000000000001-03.webp")
   })
 
@@ -78,7 +75,7 @@ describe("catalog product media upload", () => {
     const input = commandFixture()
 
     await expect(
-      performCatalogMediaUpload(service as never, fileService as never, input),
+      performCatalogMediaUpload(service as never, fileService as never, input)
     ).resolves.toEqual({
       compensation: {
         assetIds: ["cmedia_upload_1"],
@@ -175,7 +172,7 @@ describe("catalog product media upload", () => {
     ])
 
     await expect(
-      performCatalogMediaUpload(service as never, fileService as never, input),
+      performCatalogMediaUpload(service as never, fileService as never, input)
     ).resolves.toEqual({
       compensation: null,
       mutation: {
@@ -191,7 +188,7 @@ describe("catalog product media upload", () => {
       performCatalogMediaUpload(service as never, fileService as never, {
         ...input,
         requestSha256: "c".repeat(64),
-      }),
+      })
     ).rejects.toThrow("cannot be replayed")
   })
 
@@ -209,8 +206,7 @@ describe("catalog product media upload", () => {
         {
           ...first,
           filename: "Back.jpg",
-          remoteFilename:
-            "00000000-0000-4000-8000-000000000001-01-Back.jpg",
+          remoteFilename: "00000000-0000-4000-8000-000000000001-01-Back.jpg",
           sha256: "c".repeat(64),
         },
       ],
@@ -225,11 +221,11 @@ describe("catalog product media upload", () => {
     const upload = performCatalogMediaUpload(
       service as never,
       fileService as never,
-      input,
+      input
     )
 
     await expect(upload).rejects.toBeInstanceOf(
-      CatalogMediaUploadPartialFailure,
+      CatalogMediaUploadPartialFailure
     )
     await expect(upload).rejects.toMatchObject({
       cause: expect.objectContaining({
@@ -249,7 +245,7 @@ describe("catalog product media upload", () => {
     const firstError = new Error("database unavailable")
     service.deleteCatalogMediaAssets.mockRejectedValue(firstError)
     fileService.deleteFiles.mockRejectedValue(
-      new Error("file provider unavailable"),
+      new Error("file provider unavailable")
     )
 
     await expect(
@@ -257,7 +253,7 @@ describe("catalog product media upload", () => {
         assetIds: ["cmedia_upload_1"],
         fileIds: ["file_upload_1"],
         operationId: "caop_upload_1",
-      }),
+      })
     ).rejects.toBe(firstError)
     expect(service.deleteCatalogMediaAssets).toHaveBeenCalledWith([
       "cmedia_upload_1",
@@ -287,7 +283,7 @@ describe("catalog product media upload", () => {
         assetIds: ["cmedia_upload_1"],
         fileIds: ["file_upload_1"],
         operationId: "caop_upload_1",
-      }),
+      })
     ).resolves.toBeUndefined()
     expect(service.updateCatalogAuthoringOperations).toHaveBeenCalledWith([
       expect.objectContaining({

@@ -1,28 +1,28 @@
 import type {
   MedusaResponse,
   MedusaStoreRequest,
-} from "@medusajs/framework/http";
-import { MedusaError, ProductStatus } from "@medusajs/framework/utils";
+} from "@medusajs/framework/http"
+import { MedusaError, ProductStatus } from "@medusajs/framework/utils"
 
 import {
   listVisibleProductPage,
   listVisibleProductsByIds,
   resolveStoreProductVisibility,
-} from "@/lib/store-product-visibility";
+} from "@/lib/store-product-visibility"
 
 type StoreProduct = Record<string, unknown> & {
   categories?: Array<{
-    handle?: string | null;
-    name?: string | null;
-    parent_category?: unknown;
-  }> | null;
-  collection?: { id?: string | null; title?: string | null } | null;
-  collection_id?: string | null;
-  handle?: string | null;
-  id?: string | null;
-  metadata?: Record<string, unknown> | null;
-  title?: string | null;
-};
+    handle?: string | null
+    name?: string | null
+    parent_category?: unknown
+  }> | null
+  collection?: { id?: string | null; title?: string | null } | null
+  collection_id?: string | null
+  handle?: string | null
+  id?: string | null
+  metadata?: Record<string, unknown> | null
+  title?: string | null
+}
 
 const PRODUCT_SELECT = [
   "id",
@@ -40,79 +40,77 @@ const PRODUCT_SELECT = [
   "categories.parent_category.id",
   "categories.parent_category.handle",
   "categories.parent_category.name",
-] as const;
-const MAX_RELATED_CANDIDATES = 100;
-const MAX_SUGGESTIONS = 12;
+] as const
+const MAX_RELATED_CANDIDATES = 100
+const MAX_SUGGESTIONS = 12
 
 type ProductSlug = {
-  artistSlug: string;
-  albumSlug: string;
-};
+  artistSlug: string
+  albumSlug: string
+}
 
 const slugify = (value: string | null | undefined): string | null => {
   if (!value) {
-    return null;
+    return null
   }
   const normalized = value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return normalized.length ? normalized : null;
-};
+    .replace(/^-+|-+$/g, "")
+  return normalized.length ? normalized : null
+}
 
 const normalizeHandle = (value: string | null | undefined): string | null => {
   if (typeof value !== "string") {
-    return null;
+    return null
   }
-  const trimmed = value.trim().toLowerCase();
-  return trimmed.length ? trimmed : null;
-};
+  const trimmed = value.trim().toLowerCase()
+  return trimmed.length ? trimmed : null
+}
 
 const findArtistCategory = (
-  categories: StoreProduct["categories"],
+  categories: StoreProduct["categories"]
 ): { name: string; handle: string } | null => {
   if (!categories?.length) {
-    return null;
+    return null
   }
 
   for (const category of categories) {
     let current = category as
-      | { handle?: string | null; parent_category?: unknown }
-      | null
-      | undefined;
-    let hasArtistAncestor = false;
-    let depth = 0;
+      { handle?: string | null; parent_category?: unknown } | null | undefined
+    let hasArtistAncestor = false
+    let depth = 0
 
     while (current && depth < 10) {
-      const handle = normalizeHandle(current.handle);
+      const handle = normalizeHandle(current.handle)
       if (handle === "artists") {
-        hasArtistAncestor = true;
-        break;
+        hasArtistAncestor = true
+        break
       }
       current =
         current.parent_category && typeof current.parent_category === "object"
           ? (current.parent_category as typeof current)
-          : null;
-      depth += 1;
+          : null
+      depth += 1
     }
 
-    const handle = normalizeHandle(category.handle);
+    const handle = normalizeHandle(category.handle)
     if (!hasArtistAncestor || !handle) {
-      continue;
+      continue
     }
     const name =
       typeof category.name === "string" && category.name.trim().length
         ? category.name.trim()
-        : handle;
-    return { name, handle };
+        : handle
+    return { name, handle }
   }
 
-  return null;
-};
+  return null
+}
 
 const buildProductSlugParts = (product: StoreProduct): ProductSlug => {
-  const meta = product.metadata ?? undefined;
+  const meta = product.metadata ?? undefined
   const metaArtist =
     typeof meta?.artist === "string"
       ? meta.artist
@@ -120,7 +118,7 @@ const buildProductSlugParts = (product: StoreProduct): ProductSlug => {
         ? meta.Artist
         : typeof meta?.artist_name === "string"
           ? meta.artist_name
-          : null;
+          : null
   const metaAlbum =
     typeof meta?.album === "string"
       ? meta.album
@@ -128,40 +126,40 @@ const buildProductSlugParts = (product: StoreProduct): ProductSlug => {
         ? meta.Album
         : typeof meta?.release === "string"
           ? meta.release
-          : null;
+          : null
   const metaArtistSlug =
     typeof meta?.artist_slug === "string"
       ? meta.artist_slug
       : typeof meta?.artistSlug === "string"
         ? meta.artistSlug
-        : null;
+        : null
   const metaAlbumSlug =
     typeof meta?.album_slug === "string"
       ? meta.album_slug
       : typeof meta?.albumSlug === "string"
         ? meta.albumSlug
-        : null;
-  const title = typeof product.title === "string" ? product.title : "";
+        : null
+  const title = typeof product.title === "string" ? product.title : ""
   const collectionTitle =
     typeof product.collection?.title === "string"
       ? product.collection.title
-      : null;
-  const artistCategory = findArtistCategory(product.categories);
+      : null
+  const artistCategory = findArtistCategory(product.categories)
 
   const parsedTitle = (() => {
     if (title.includes(" - ")) {
-      const [maybeArtistRaw, ...rest] = title.split(" - ");
-      const maybeArtist = maybeArtistRaw?.trim() ?? "";
-      const album = rest.join(" - ").trim();
+      const [maybeArtistRaw, ...rest] = title.split(" - ")
+      const maybeArtist = maybeArtistRaw?.trim() ?? ""
+      const album = rest.join(" - ").trim()
       if (maybeArtist.length && album.length) {
-        return { artist: maybeArtist, album };
+        return { artist: maybeArtist, album }
       }
     }
-    const fallback = collectionTitle ?? "Remorseless Records";
-    return { artist: fallback, album: fallback };
-  })();
-  const artist = metaArtist ?? artistCategory?.name ?? parsedTitle.artist;
-  const album = metaAlbum ?? parsedTitle.album ?? artist;
+    const fallback = collectionTitle ?? "Remorseless Records"
+    return { artist: fallback, album: fallback }
+  })()
+  const artist = metaArtist ?? artistCategory?.name ?? parsedTitle.artist
+  const album = metaAlbum ?? parsedTitle.album ?? artist
 
   return {
     artistSlug:
@@ -169,38 +167,36 @@ const buildProductSlugParts = (product: StoreProduct): ProductSlug => {
       slugify(artistCategory?.handle ?? artist) ??
       "",
     albumSlug: slugify(metaAlbumSlug) ?? slugify(album) ?? "",
-  };
-};
+  }
+}
 
 const productId = (product: StoreProduct): string | null =>
   typeof product.id === "string" && product.id.trim().length
     ? product.id.trim()
-    : null;
+    : null
 
 export const GET = async (
   req: MedusaStoreRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const handle =
-    typeof req.params?.handle === "string" ? req.params.handle.trim() : null;
+    typeof req.params?.handle === "string" ? req.params.handle.trim() : null
   if (!handle || handle.length > 200) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Product handle is required",
-    );
+      "Product handle is required"
+    )
   }
 
-  const { query, salesChannelIds } = resolveStoreProductVisibility(req);
+  const { query, salesChannelIds } = resolveStoreProductVisibility(req)
   const { data: targetCandidates } = await query.graph({
     entity: "product",
     fields: ["id"],
     filters: { handle, status: ProductStatus.PUBLISHED },
     pagination: { take: 1 },
-  });
+  })
   const targetId =
-    typeof targetCandidates[0]?.id === "string"
-      ? targetCandidates[0].id
-      : null;
+    typeof targetCandidates[0]?.id === "string" ? targetCandidates[0].id : null
   const [product] = targetId
     ? await listVisibleProductsByIds<StoreProduct>({
         fields: PRODUCT_SELECT,
@@ -208,89 +204,84 @@ export const GET = async (
         query,
         salesChannelIds,
       })
-    : [];
+    : []
   if (!product) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
-      `Product ${handle} not found`,
-    );
+      `Product ${handle} not found`
+    )
   }
 
-  const { products: candidates } =
-    await listVisibleProductPage<StoreProduct>({
-      direction: "DESC",
-      fields: PRODUCT_SELECT,
-      limit: MAX_RELATED_CANDIDATES,
-      query,
-      salesChannelIds,
-    });
-  const seen = new Set<string>(targetId ? [targetId] : []);
-  const suggestions: StoreProduct[] = [];
-  const targetSlug = buildProductSlugParts(product);
-  const collectionId =
-    product.collection?.id ?? product.collection_id ?? null;
+  const { products: candidates } = await listVisibleProductPage<StoreProduct>({
+    direction: "DESC",
+    fields: PRODUCT_SELECT,
+    limit: MAX_RELATED_CANDIDATES,
+    query,
+    salesChannelIds,
+  })
+  const seen = new Set<string>(targetId ? [targetId] : [])
+  const suggestions: StoreProduct[] = []
+  const targetSlug = buildProductSlugParts(product)
+  const collectionId = product.collection?.id ?? product.collection_id ?? null
   const genreSet = new Set(
     (product.categories ?? [])
       .map((category) => normalizeHandle(category.handle))
-      .filter((value): value is string => Boolean(value)),
-  );
-  const collectionMatches: StoreProduct[] = [];
-  const sameArtist: StoreProduct[] = [];
-  const genreMatches: StoreProduct[] = [];
-  const fallback: StoreProduct[] = [];
+      .filter((value): value is string => Boolean(value))
+  )
+  const collectionMatches: StoreProduct[] = []
+  const sameArtist: StoreProduct[] = []
+  const genreMatches: StoreProduct[] = []
+  const fallback: StoreProduct[] = []
 
   candidates.forEach((candidate) => {
-    const id = productId(candidate);
+    const id = productId(candidate)
     if (!id || seen.has(id) || candidate.handle === product.handle) {
-      return;
+      return
     }
     const candidateCollectionId =
-      candidate.collection?.id ?? candidate.collection_id ?? null;
+      candidate.collection?.id ?? candidate.collection_id ?? null
     if (collectionId && candidateCollectionId === collectionId) {
-      collectionMatches.push(candidate);
-      return;
+      collectionMatches.push(candidate)
+      return
     }
-    const slug = buildProductSlugParts(candidate);
+    const slug = buildProductSlugParts(candidate)
     if (
       targetSlug.artistSlug &&
       slug.artistSlug.toLowerCase() === targetSlug.artistSlug.toLowerCase()
     ) {
-      sameArtist.push(candidate);
-      return;
+      sameArtist.push(candidate)
+      return
     }
     const candidateGenres = (candidate.categories ?? [])
       .map((category) => normalizeHandle(category.handle))
-      .filter((value): value is string => Boolean(value));
-    if (candidateGenres.some((candidateGenre) => genreSet.has(candidateGenre))) {
-      genreMatches.push(candidate);
-      return;
+      .filter((value): value is string => Boolean(value))
+    if (
+      candidateGenres.some((candidateGenre) => genreSet.has(candidateGenre))
+    ) {
+      genreMatches.push(candidate)
+      return
     }
-    fallback.push(candidate);
-  });
+    fallback.push(candidate)
+  })
 
-  for (const pool of [
-    collectionMatches,
-    sameArtist,
-    genreMatches,
-    fallback,
-  ]) {
+  for (const pool of [collectionMatches, sameArtist, genreMatches, fallback]) {
     for (const candidate of pool) {
       if (suggestions.length >= MAX_SUGGESTIONS) {
-        break;
+        break
       }
-      const id = productId(candidate);
+      const id = productId(candidate)
       if (!id || seen.has(id)) {
-        continue;
+        continue
       }
-      seen.add(id);
-      suggestions.push(candidate);
+      seen.add(id)
+      suggestions.push(candidate)
     }
   }
 
   res.setHeader(
     "Cache-Control",
-    "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
-  );
-  res.setHeader("Vary", "x-publishable-api-key");
-  res.status(200).json({ products: suggestions });
-};
+    "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+  )
+  res.setHeader("Vary", "x-publishable-api-key")
+  res.status(200).json({ products: suggestions })
+}

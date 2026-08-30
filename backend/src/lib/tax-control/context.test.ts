@@ -3,7 +3,7 @@ import {
   createTaxContextFingerprint,
   parseTaxControlContext,
   parseTaxLineCode,
-} from "./context";
+} from "./context"
 
 describe("tax control context", () => {
   it("parses a validated provider snapshot and ignores invalid tax codes", () => {
@@ -32,7 +32,7 @@ describe("tax control context", () => {
           shippingAmountMinor: 500,
           subjectId: "cart_1",
         },
-      }),
+      })
     ).toMatchObject({
       collectionMode: "collect",
       generation: 3,
@@ -43,8 +43,8 @@ describe("tax control context", () => {
       provider: "stripe_tax",
       shippingAmountMinor: 500,
       subjectId: "cart_1",
-    });
-  });
+    })
+  })
 
   it("round trips a Stripe calculation identity", () => {
     const code = buildTaxLineCode({
@@ -52,30 +52,30 @@ describe("tax control context", () => {
       collectionMode: "collect",
       generation: 4,
       provider: "stripe_tax",
-    });
+    })
 
     expect(parseTaxLineCode(code)).toEqual({
       calculationId: "taxcalc_123",
       collectionMode: "collect",
       generation: 4,
       provider: "stripe_tax",
-    });
-  });
+    })
+  })
 
   it("round trips an explicit disabled decision without a provider", () => {
     const code = buildTaxLineCode({
       collectionMode: "disabled",
       generation: 5,
       provider: null,
-    });
+    })
 
-    expect(code).toBe("rr_tax:disabled:g5:decision");
+    expect(code).toBe("rr_tax:disabled:g5:decision")
     expect(parseTaxLineCode(code)).toEqual({
       calculationId: null,
       collectionMode: "disabled",
       generation: 5,
       provider: null,
-    });
+    })
     expect(
       parseTaxControlContext({
         remorseless_tax: {
@@ -87,13 +87,13 @@ describe("tax control context", () => {
           shippingAmountMinor: 0,
           subjectId: "cart_1",
         },
-      }),
+      })
     ).toMatchObject({
       collectionMode: "disabled",
       generation: 5,
       provider: null,
-    });
-  });
+    })
+  })
 
   it("rejects a mismatched frozen generation", () => {
     expect(() =>
@@ -113,7 +113,7 @@ describe("tax control context", () => {
           shippingAmountMinor: 0,
           subjectId: "cart_1",
         },
-      }),
-    ).toThrow("Frozen tax quote does not match");
-  });
-});
+      })
+    ).toThrow("Frozen tax quote does not match")
+  })
+})

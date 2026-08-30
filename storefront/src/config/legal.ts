@@ -22,7 +22,8 @@ export const legalConfig = {
     domesticTransitWindow: "3-7 business days",
     internationalTransitWindow: "7-21 business days",
     preorders: "Preorders ship by the date listed on the product page.",
-    backorders: "Backorders ship as inventory becomes available and may ship separately.",
+    backorders:
+      "Backorders ship as inventory becomes available and may ship separately.",
     partialShipments:
       "Orders with mixed availability may ship in multiple packages at no additional shipping charge.",
   },
@@ -58,4 +59,3 @@ export const legalRoutes = {
   cookies: "/cookies",
   contact: "/contact",
 } as const
-

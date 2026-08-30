@@ -35,7 +35,11 @@ const parseArtistAndAlbum = (productName) => {
 
   if (lastSeparator !== -1) {
     const suffix = name.slice(lastSeparator + 3).trim()
-    if (/^(cd|mc|lp|cassette|vinyl|2lp|3lp|7\"|tape|digital|bundle|box)/i.test(suffix)) {
+    if (
+      /^(cd|mc|lp|cassette|vinyl|2lp|3lp|7\"|tape|digital|bundle|box)/i.test(
+        suffix
+      )
+    ) {
       working = name.slice(0, lastSeparator).trim()
     }
   }
@@ -83,9 +87,23 @@ const classifyProductType = (product) => {
   }
 
   const merchCategoryKeywords = ["misc", "merch"]
-  const merchNameKeywords = ["shirt", "hoodie", "button", "pin", "zine", "issue", "sticker", "logo", "patch"]
+  const merchNameKeywords = [
+    "shirt",
+    "hoodie",
+    "button",
+    "pin",
+    "zine",
+    "issue",
+    "sticker",
+    "logo",
+    "patch",
+  ]
 
-  if (categories.some((category) => merchCategoryKeywords.some((keyword) => category.includes(keyword)))) {
+  if (
+    categories.some((category) =>
+      merchCategoryKeywords.some((keyword) => category.includes(keyword))
+    )
+  ) {
     return "merch"
   }
   if (merchNameKeywords.some((keyword) => name.includes(keyword))) {
@@ -99,7 +117,9 @@ const fetchJson = async (url, options = {}) => {
   const response = await fetch(url, options)
   if (!response.ok) {
     const body = await response.text()
-    throw new Error(`Request failed ${response.status} ${response.statusText} -> ${body}`)
+    throw new Error(
+      `Request failed ${response.status} ${response.statusText} -> ${body}`
+    )
   }
   return response.json()
 }
@@ -114,13 +134,17 @@ const login = async (baseUrl, email, password) => {
 
   if (!response.ok) {
     const body = await response.text()
-    throw new Error(`Login failed ${response.status} ${response.statusText} -> ${body}`)
+    throw new Error(
+      `Login failed ${response.status} ${response.statusText} -> ${body}`
+    )
   }
 
   const json = await response.json()
   const token = json?.token || json?.access_token || json?.jwt
   if (!token) {
-    throw new Error(`Login succeeded but no token found in response: ${JSON.stringify(json)}`)
+    throw new Error(
+      `Login succeeded but no token found in response: ${JSON.stringify(json)}`
+    )
   }
   return token
 }
@@ -164,7 +188,7 @@ const createCollection = async (baseUrl, token, payload) => {
   if (!response.ok) {
     const body = await response.text()
     throw new Error(
-      `Failed to create collection ${payload.title} -> ${response.status} ${response.statusText}: ${body}`,
+      `Failed to create collection ${payload.title} -> ${response.status} ${response.statusText}: ${body}`
     )
   }
 }
@@ -182,7 +206,7 @@ const createTag = async (baseUrl, token, value) => {
   if (!response.ok) {
     const body = await response.text()
     throw new Error(
-      `Failed to create tag ${value} -> ${response.status} ${response.statusText}: ${body}`,
+      `Failed to create tag ${value} -> ${response.status} ${response.statusText}: ${body}`
     )
   }
 }
@@ -254,23 +278,30 @@ const main = async () => {
     if (index % 18 === 0) {
       addTag("flag:staff-pick")
       if (!collections.has("staff-picks")) {
-        collections.set("staff-picks", { title: "Staff Picks", handle: "staff-picks" })
+        collections.set("staff-picks", {
+          title: "Staff Picks",
+          handle: "staff-picks",
+        })
       }
     }
 
     if (index % 25 === 0) {
       addTag("flag:featured")
       if (!collections.has("featured-releases")) {
-        collections.set("featured-releases", { title: "Featured Releases", handle: "featured-releases" })
+        collections.set("featured-releases", {
+          title: "Featured Releases",
+          handle: "featured-releases",
+        })
       }
     }
   })
 
   const baseUrl =
-    (process.env.BACKEND_PUBLIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN_VALUE || "").replace(
-      /\/$/,
-      "",
-    ) || "http://localhost:9000"
+    (
+      process.env.BACKEND_PUBLIC_URL ||
+      process.env.RAILWAY_PUBLIC_DOMAIN_VALUE ||
+      ""
+    ).replace(/\/$/, "") || "http://localhost:9000"
   const adminEmail = process.env.MEDUSA_ADMIN_EMAIL
   const adminPassword = process.env.MEDUSA_ADMIN_PASSWORD
 
@@ -286,13 +317,18 @@ const main = async () => {
     baseUrl,
     token,
     "/admin/collections",
-    "collections",
+    "collections"
   )
   const existingCollectionHandles = new Set(
-    existingCollections.map((collection) => collection.handle),
+    existingCollections.map((collection) => collection.handle)
   )
 
-  const existingTags = await fetchAll(baseUrl, token, "/admin/product-tags", "product_tags")
+  const existingTags = await fetchAll(
+    baseUrl,
+    token,
+    "/admin/product-tags",
+    "product_tags"
+  )
   const existingTagValues = new Set(existingTags.map((tag) => tag.value))
 
   let createdCollections = 0
@@ -316,7 +352,7 @@ const main = async () => {
   }
 
   console.log(
-    `[setup] Complete. Collections created: ${createdCollections}. Tags created: ${createdTags}.`,
+    `[setup] Complete. Collections created: ${createdCollections}. Tags created: ${createdTags}.`
   )
 }
 

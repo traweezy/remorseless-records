@@ -67,9 +67,11 @@ describe("POST /admin/managed-uploads", () => {
         width: 1_200,
       },
     ])
-    const createFiles = jest.fn().mockResolvedValue([
-      { id: "file_1", url: "https://cdn.example.com/managed.webp" },
-    ])
+    const createFiles = jest
+      .fn()
+      .mockResolvedValue([
+        { id: "file_1", url: "https://cdn.example.com/managed.webp" },
+      ])
     const req = {
       files: [source],
       scope: { resolve: jest.fn(() => ({ createFiles })) },
@@ -83,19 +85,17 @@ describe("POST /admin/managed-uploads", () => {
         access: "public",
         content: "bm9ybWFsaXplZC13ZWJw",
         filename: expect.stringMatching(
-          /^managed-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-0\.webp$/,
+          /^managed-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-0\.webp$/
         ),
         mimeType: "image/webp",
       },
     ])
     expect(createFiles.mock.calls[0]?.[0]?.[0]?.filename).not.toContain(
-      "private-event-name",
+      "private-event-name"
     )
     expect(status).toHaveBeenCalledWith(200)
     expect(json).toHaveBeenCalledWith({
-      files: [
-        { id: "file_1", url: "https://cdn.example.com/managed.webp" },
-      ],
+      files: [{ id: "file_1", url: "https://cdn.example.com/managed.webp" }],
     })
   })
 
@@ -113,9 +113,11 @@ describe("POST /admin/managed-uploads", () => {
       size: csv.length,
       stream: null as never,
     } satisfies Express.Multer.File
-    const createFiles = jest.fn().mockResolvedValue([
-      { id: "file_csv", url: "https://cdn.example.com/managed.csv" },
-    ])
+    const createFiles = jest
+      .fn()
+      .mockResolvedValue([
+        { id: "file_csv", url: "https://cdn.example.com/managed.csv" },
+      ])
     const req = {
       files: [source],
       scope: { resolve: jest.fn(() => ({ createFiles })) },
@@ -134,14 +136,12 @@ describe("POST /admin/managed-uploads", () => {
       },
     ])
     expect(createFiles.mock.calls[0]?.[0]?.[0]?.filename).not.toContain(
-      "client-catalog",
+      "client-catalog"
     )
   })
 
   it("rejects mixed image and CSV batches before normalization or storage", async () => {
-    const png = Buffer.from([
-      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-    ])
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
     const csv = Buffer.from("Product Handle\nrecord-1\n")
     const createFiles = jest.fn()
     const req = {
@@ -164,7 +164,7 @@ describe("POST /admin/managed-uploads", () => {
     const { res } = responseFixture()
 
     await expect(POST(req, res)).rejects.toThrow(
-      "Image and CSV uploads must use separate requests.",
+      "Image and CSV uploads must use separate requests."
     )
     expect(normalizeMock).not.toHaveBeenCalled()
     expect(createFiles).not.toHaveBeenCalled()

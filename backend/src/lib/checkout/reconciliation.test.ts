@@ -3,9 +3,9 @@ import {
   type CheckoutReconciliationQuery,
   reconcileCheckoutPayments,
   resolveCheckoutReconciliationConfig,
-} from "./reconciliation";
+} from "./reconciliation"
 
-type RecordFixture = Record<string, unknown>;
+type RecordFixture = Record<string, unknown>
 
 const config: CheckoutReconciliationConfig = {
   enabled: true,
@@ -13,7 +13,7 @@ const config: CheckoutReconciliationConfig = {
   maxAttemptsPerRun: 50,
   maxRunSeconds: 90,
   maxScanPerRun: 2_000,
-};
+}
 
 const cart = (overrides: RecordFixture = {}): RecordFixture => ({
   id: "cart_reconcile",
@@ -29,55 +29,55 @@ const cart = (overrides: RecordFixture = {}): RecordFixture => ({
     ],
   },
   ...overrides,
-});
+})
 
 const services = ({
   carts,
   orderCartIds = [],
 }: {
-  carts: RecordFixture[];
-  orderCartIds?: string[];
+  carts: RecordFixture[]
+  orderCartIds?: string[]
 }) => {
   const graph = jest.fn(
     async ({
       entity,
       filters,
     }: {
-      entity: string;
-      filters?: Record<string, unknown>;
+      entity: string
+      filters?: Record<string, unknown>
     }) => {
       if (entity === "order_cart") {
-        const cartId = filters?.cart_id;
+        const cartId = filters?.cart_id
         return {
           data:
             typeof cartId === "string" && orderCartIds.includes(cartId)
               ? [{ order_id: "order_existing" }]
               : [],
-        };
+        }
       }
-      const id = filters?.id;
+      const id = filters?.id
       return {
         data:
           typeof id === "string"
             ? carts.filter((value) => value.id === id)
             : carts,
-      };
-    },
-  );
+      }
+    }
+  )
   const updateCartMetadata = jest.fn(
     async (cartId: string, metadata: Record<string, unknown>) => {
-      const target = carts.find((value) => value.id === cartId);
+      const target = carts.find((value) => value.id === cartId)
       if (target) {
-        target.metadata = metadata;
+        target.metadata = metadata
       }
-    },
-  );
+    }
+  )
   return {
     query: { graph } as CheckoutReconciliationQuery,
     completeCart: jest.fn(async (_cartId: string) => undefined),
     updateCartMetadata,
-  };
-};
+  }
+}
 
 describe("checkout payment reconciliation", () => {
   it("defaults to a disabled and bounded policy", () => {
@@ -87,23 +87,23 @@ describe("checkout payment reconciliation", () => {
       maxAttemptsPerRun: 50,
       maxRunSeconds: 90,
       maxScanPerRun: 2_000,
-    });
+    })
     expect(() =>
       resolveCheckoutReconciliationConfig({
         CHECKOUT_RECONCILIATION_MIN_AGE_SECONDS: "30",
-      }),
-    ).toThrow("between 60 and 3600");
+      })
+    ).toThrow("between 60 and 3600")
     expect(() =>
       resolveCheckoutReconciliationConfig({
         CHECKOUT_RECONCILIATION_MAX_SCAN: "499",
-      }),
-    ).toThrow("between 500 and 5000");
+      })
+    ).toThrow("between 500 and 5000")
     expect(() =>
       resolveCheckoutReconciliationConfig({
         CHECKOUT_RECONCILIATION_MAX_RUN_SECONDS: "241",
-      }),
-    ).toThrow("between 30 and 240");
-  });
+      })
+    ).toThrow("between 30 and 240")
+  })
 
   it.each(["authorized", "captured"])(
     "completes an old cart with one %s Stripe session",
@@ -122,23 +122,23 @@ describe("checkout payment reconciliation", () => {
             },
           }),
         ],
-      });
+      })
 
       const result = await reconcileCheckoutPayments({
         ...fixture,
         config,
         now: new Date("2026-07-25T12:00:00.000Z"),
-      });
+      })
 
-      expect(fixture.completeCart).toHaveBeenCalledWith("cart_reconcile");
+      expect(fixture.completeCart).toHaveBeenCalledWith("cart_reconcile")
       expect(result).toMatchObject({
         eligible: 1,
         attempted: 1,
         completed: 1,
         failed: 0,
-      });
-    },
-  );
+      })
+    }
+  )
 
   it.each([
     [
@@ -176,38 +176,38 @@ describe("checkout payment reconciliation", () => {
     ],
     ["recent checkout", cart({ updated_at: "2026-07-25T11:59:30.000Z" })],
   ])("ignores %s", async (_label, candidate) => {
-    const fixture = services({ carts: [candidate] });
+    const fixture = services({ carts: [candidate] })
 
     const result = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
 
-    expect(fixture.completeCart).not.toHaveBeenCalled();
-    expect(result.attempted).toBe(0);
-  });
+    expect(fixture.completeCart).not.toHaveBeenCalled()
+    expect(result.attempted).toBe(0)
+  })
 
   it("protects a checkout already linked to an order", async () => {
     const fixture = services({
       carts: [cart()],
       orderCartIds: ["cart_reconcile"],
-    });
+    })
 
     const result = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
 
-    expect(fixture.completeCart).not.toHaveBeenCalled();
-    expect(result.protectedByOrder).toBe(1);
-  });
+    expect(fixture.completeCart).not.toHaveBeenCalled()
+    expect(result.protectedByOrder).toBe(1)
+  })
 
   it("persists an attempt marker before invoking cart completion", async () => {
     const fixture = services({
       carts: [cart({ metadata: { existing: "preserved" } })],
-    });
+    })
 
     await reconcileCheckoutPayments({
       ...fixture,
@@ -215,24 +215,21 @@ describe("checkout payment reconciliation", () => {
       createAttemptId: () => "attempt_01",
       currentTime: () => new Date("2026-07-25T12:00:01.000Z"),
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
 
-    expect(fixture.updateCartMetadata).toHaveBeenCalledWith(
-      "cart_reconcile",
-      {
-        existing: "preserved",
-        rr_checkout_reconciliation: {
-          attempt_id: "attempt_01",
-          started_at: "2026-07-25T12:00:01.000Z",
-          state: "started",
-          updated_at: "2026-07-25T12:00:01.000Z",
-        },
+    expect(fixture.updateCartMetadata).toHaveBeenCalledWith("cart_reconcile", {
+      existing: "preserved",
+      rr_checkout_reconciliation: {
+        attempt_id: "attempt_01",
+        started_at: "2026-07-25T12:00:01.000Z",
+        state: "started",
+        updated_at: "2026-07-25T12:00:01.000Z",
       },
-    );
-    expect(
-      fixture.updateCartMetadata.mock.invocationCallOrder[0],
-    ).toBeLessThan(fixture.completeCart.mock.invocationCallOrder[0] ?? 0);
-  });
+    })
+    expect(fixture.updateCartMetadata.mock.invocationCallOrder[0]).toBeLessThan(
+      fixture.completeCart.mock.invocationCallOrder[0] ?? 0
+    )
+  })
 
   it("holds a prior scheduled attempt for review instead of repeating it", async () => {
     const fixture = services({
@@ -248,32 +245,32 @@ describe("checkout payment reconciliation", () => {
           },
         }),
       ],
-    });
+    })
 
     const result = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
 
-    expect(fixture.updateCartMetadata).not.toHaveBeenCalled();
-    expect(fixture.completeCart).not.toHaveBeenCalled();
+    expect(fixture.updateCartMetadata).not.toHaveBeenCalled()
+    expect(fixture.completeCart).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       attempted: 0,
       failed: 0,
       heldForReview: 1,
-    });
-  });
+    })
+  })
 
   it("does not complete after an ambiguous attempt-marker write", async () => {
-    const durableCart = cart();
-    const fixture = services({ carts: [durableCart] });
+    const durableCart = cart()
+    const fixture = services({ carts: [durableCart] })
     fixture.updateCartMetadata.mockImplementationOnce(
       async (_cartId, metadata) => {
-        durableCart.metadata = metadata;
-        throw new Error("response lost after durable marker write");
-      },
-    );
+        durableCart.metadata = metadata
+        throw new Error("response lost after durable marker write")
+      }
+    )
 
     const first = await reconcileCheckoutPayments({
       ...fixture,
@@ -281,20 +278,20 @@ describe("checkout payment reconciliation", () => {
       createAttemptId: () => "attempt_ambiguous",
       currentTime: () => new Date("2026-07-25T12:00:01.000Z"),
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
     const second = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:02:00.000Z"),
-    });
+    })
 
-    expect(first).toMatchObject({ attempted: 0, failed: 1 });
-    expect(second).toMatchObject({ attempted: 0, heldForReview: 1 });
-    expect(fixture.completeCart).not.toHaveBeenCalled();
-  });
+    expect(first).toMatchObject({ attempted: 0, failed: 1 })
+    expect(second).toMatchObject({ attempted: 0, heldForReview: 1 })
+    expect(fixture.completeCart).not.toHaveBeenCalled()
+  })
 
   it("rechecks payment state immediately before completion", async () => {
-    const fixture = services({ carts: [cart()] });
+    const fixture = services({ carts: [cart()] })
     fixture.query.graph = jest
       .fn()
       .mockResolvedValueOnce({ data: [cart()] })
@@ -312,36 +309,36 @@ describe("checkout payment reconciliation", () => {
             },
           }),
         ],
-      });
+      })
 
     const result = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
 
-    expect(fixture.completeCart).not.toHaveBeenCalled();
-    expect(result.attempted).toBe(0);
-  });
+    expect(fixture.completeCart).not.toHaveBeenCalled()
+    expect(result.attempted).toBe(0)
+  })
 
   it("records a completion failure without exposing cart details", async () => {
-    const fixture = services({ carts: [cart()] });
-    fixture.completeCart.mockRejectedValue(new Error("provider detail"));
+    const fixture = services({ carts: [cart()] })
+    fixture.completeCart.mockRejectedValue(new Error("provider detail"))
 
     const result = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
 
     expect(result).toMatchObject({
       attempted: 1,
       completed: 0,
       failed: 1,
-    });
-    expect(JSON.stringify(result)).not.toContain("cart_reconcile");
-    expect(JSON.stringify(result)).not.toContain("provider detail");
-  });
+    })
+    expect(JSON.stringify(result)).not.toContain("cart_reconcile")
+    expect(JSON.stringify(result)).not.toContain("provider detail")
+  })
 
   it("scans the configured window and reports when it is full", async () => {
     const fixture = services({
@@ -357,15 +354,15 @@ describe("checkout payment reconciliation", () => {
               },
             ],
           },
-        }),
+        })
       ),
-    });
+    })
 
     const result = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
 
     expect(fixture.query.graph).toHaveBeenNthCalledWith(
       1,
@@ -374,64 +371,64 @@ describe("checkout payment reconciliation", () => {
           order: { updated_at: "DESC" },
           take: 2_000,
         },
-      }),
-    );
+      })
+    )
     expect(result).toMatchObject({
       capped: false,
       eligible: 0,
       scanWindowFull: true,
       scanned: 2_000,
-    });
-  });
+    })
+  })
 
   it("stops starting attempts when the run-time budget is exhausted", async () => {
     const fixture = services({
       carts: [cart({ id: "cart_first" }), cart({ id: "cart_second" })],
-    });
+    })
     const monotonicNow = jest
       .fn()
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(1)
-      .mockReturnValueOnce(90_000);
+      .mockReturnValueOnce(90_000)
 
     const result = await reconcileCheckoutPayments({
       ...fixture,
       config,
       monotonicNow,
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
 
-    expect(fixture.completeCart).toHaveBeenCalledTimes(1);
+    expect(fixture.completeCart).toHaveBeenCalledTimes(1)
     expect(result).toMatchObject({
       attempted: 1,
       capped: true,
       timeCapped: true,
-    });
-  });
+    })
+  })
 
   it("does not repeat completion after an ambiguous response loss", async () => {
-    const durableCart = cart();
-    const orderCartIds: string[] = [];
-    const fixture = services({ carts: [durableCart], orderCartIds });
+    const durableCart = cart()
+    const orderCartIds: string[] = []
+    const fixture = services({ carts: [durableCart], orderCartIds })
     fixture.completeCart.mockImplementationOnce(async (cartId) => {
-      durableCart.completed_at = "2026-07-25T12:00:01.000Z";
-      orderCartIds.push(cartId);
-      throw new Error("response lost after durable completion");
-    });
+      durableCart.completed_at = "2026-07-25T12:00:01.000Z"
+      orderCartIds.push(cartId)
+      throw new Error("response lost after durable completion")
+    })
 
     const first = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:00:00.000Z"),
-    });
+    })
     const second = await reconcileCheckoutPayments({
       ...fixture,
       config,
       now: new Date("2026-07-25T12:02:00.000Z"),
-    });
+    })
 
-    expect(first).toMatchObject({ attempted: 1, failed: 1 });
-    expect(second).toMatchObject({ attempted: 0, completed: 0, failed: 0 });
-    expect(fixture.completeCart).toHaveBeenCalledTimes(1);
-  });
-});
+    expect(first).toMatchObject({ attempted: 1, failed: 1 })
+    expect(second).toMatchObject({ attempted: 0, completed: 0, failed: 0 })
+    expect(fixture.completeCart).toHaveBeenCalledTimes(1)
+  })
+})

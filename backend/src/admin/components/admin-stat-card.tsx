@@ -15,7 +15,7 @@ export const AdminStatCard = memo<AdminStatCardProps>(
     <div
       className={clx(
         "rounded-lg border border-ui-border-base bg-ui-bg-base p-4",
-        className,
+        className
       )}
     >
       <Text className="text-ui-fg-subtle" size="xsmall">
@@ -28,7 +28,7 @@ export const AdminStatCard = memo<AdminStatCardProps>(
         </Text>
       ) : null}
     </div>
-  ),
+  )
 )
 
 AdminStatCard.displayName = "AdminStatCard"

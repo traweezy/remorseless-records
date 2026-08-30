@@ -1,7 +1,4 @@
-import type {
-  Logger,
-  NotificationTypes,
-} from "@medusajs/framework/types"
+import type { Logger, NotificationTypes } from "@medusajs/framework/types"
 import { AbstractNotificationProviderService } from "@medusajs/framework/utils"
 
 type InjectedDependencies = {

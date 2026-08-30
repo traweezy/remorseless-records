@@ -8,9 +8,10 @@ import { mutateCatalogMediaLifecycleWorkflow } from "../../../../../workflows/ca
 import { runMediaLifecycleRoute } from "./lifecycle-route"
 
 jest.mock("@/modules/catalog/serializers", () => {
-  const actual = jest.requireActual(
-    "@/modules/catalog/serializers",
-  ) as Record<string, unknown>
+  const actual = jest.requireActual("@/modules/catalog/serializers") as Record<
+    string,
+    unknown
+  >
   return {
     ...actual,
     serializeCatalogMediaAsset: jest.fn(),
@@ -23,10 +24,9 @@ jest.mock("../../../../../workflows/catalog/mutate-media-lifecycle", () => ({
 const serializeMock = serializeCatalogMediaAsset as jest.MockedFunction<
   typeof serializeCatalogMediaAsset
 >
-const workflowMock =
-  mutateCatalogMediaLifecycleWorkflow as jest.MockedFunction<
-    typeof mutateCatalogMediaLifecycleWorkflow
-  >
+const workflowMock = mutateCatalogMediaLifecycleWorkflow as jest.MockedFunction<
+  typeof mutateCatalogMediaLifecycleWorkflow
+>
 
 const responseFixture = (): MedusaResponse => {
   const response = {} as MedusaResponse
@@ -38,7 +38,7 @@ const responseFixture = (): MedusaResponse => {
 
 const requestFixture = (
   body: unknown,
-  actorId: string | null = "user_1",
+  actorId: string | null = "user_1"
 ): AuthenticatedMedusaRequest => {
   const catalogService = {
     retrieveCatalogMediaAsset: jest.fn().mockResolvedValue({
@@ -71,11 +71,7 @@ describe("catalog media lifecycle routes", () => {
     })
     const res = responseFixture()
 
-    await runMediaLifecycleRoute(
-      req,
-      res,
-      "catalog.media.quarantine",
-    )
+    await runMediaLifecycleRoute(req, res, "catalog.media.quarantine")
 
     expect(run).toHaveBeenCalledWith({
       context: {
@@ -94,7 +90,7 @@ describe("catalog media lifecycle routes", () => {
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.setHeader).toHaveBeenCalledWith(
       "Cache-Control",
-      "private, no-store",
+      "private, no-store"
     )
     expect(res.json).toHaveBeenCalledWith({
       asset: { id: "cmedia_1" },
@@ -109,8 +105,8 @@ describe("catalog media lifecycle routes", () => {
           idempotencyKey: "invalid",
         }),
         responseFixture(),
-        "catalog.media.quarantine",
-      ),
+        "catalog.media.quarantine"
+      )
     ).rejects.toThrow("valid catalog media lifecycle command")
     expect(workflowMock).not.toHaveBeenCalled()
 
@@ -121,11 +117,11 @@ describe("catalog media lifecycle routes", () => {
             expectedVersion: 1,
             idempotencyKey: "00000000-0000-4000-8000-000000000001",
           },
-          null,
+          null
         ),
         responseFixture(),
-        "catalog.media.restore",
-      ),
+        "catalog.media.restore"
+      )
     ).rejects.toThrow("authenticated Admin actor")
   })
 })

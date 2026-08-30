@@ -1,36 +1,36 @@
-import type { ProductAuthoringView } from "./product-authoring-query";
+import type { ProductAuthoringView } from "./product-authoring-query"
 
 export type ProductCatalogCompletion = {
-  color: "green" | "orange" | "red";
-  description: string;
-  label: "Blocked" | "Needs review" | "Ready";
-};
+  color: "green" | "orange" | "red"
+  description: string
+  label: "Blocked" | "Needs review" | "Ready"
+}
 
 export type ProductCatalogAvailability = {
-  color: "blue" | "green" | "orange" | "red";
-  description: string;
-  label: string;
-};
+  color: "blue" | "green" | "orange" | "red"
+  description: string
+  label: string
+}
 
 export type ProductCatalogBundleHealth = {
-  color: "blue" | "green" | "orange" | "red";
-  description: string;
-  label: string;
-};
+  color: "blue" | "green" | "orange" | "red"
+  description: string
+  label: string
+}
 
 export type ProductCatalogSummary = {
-  artistLabel: string;
-  availability: ProductCatalogAvailability;
-  bundleHealth: ProductCatalogBundleHealth | null;
-  completion: ProductCatalogCompletion;
-  kindLabel: string;
+  artistLabel: string
+  availability: ProductCatalogAvailability
+  bundleHealth: ProductCatalogBundleHealth | null
+  completion: ProductCatalogCompletion
+  kindLabel: string
   media: {
-    description: string;
-    missingAltText: number;
-    total: number;
-  };
-  releaseLabel: string;
-};
+    description: string
+    missingAltText: number
+    total: number
+  }
+  releaseLabel: string
+}
 
 const kindLabels: Record<
   NonNullable<ProductAuthoringView["classification"]["kind"]>,
@@ -40,7 +40,7 @@ const kindLabels: Record<
   merch: "Merchandise",
   music_release: "Music release",
   mystery_bundle: "Mystery box",
-};
+}
 
 const customerStatusLabels: Record<
   ProductAuthoringView["catalog"]["variants"][number]["status"]["customerStatus"],
@@ -54,42 +54,42 @@ const customerStatusLabels: Record<
   preorder: "preorder",
   sold_out: "sold out",
   unknown: "unknown",
-};
+}
 
 const pluralize = (count: number, singular: string, plural = `${singular}s`) =>
-  `${count} ${count === 1 ? singular : plural}`;
+  `${count} ${count === 1 ? singular : plural}`
 
 const formatReleaseDate = (
   value: string | null,
-  releaseYear: number | null,
+  releaseYear: number | null
 ): string => {
   if (value) {
-    const parsed = new Date(value);
+    const parsed = new Date(value)
     if (!Number.isNaN(parsed.getTime())) {
       return new Intl.DateTimeFormat(undefined, {
         dateStyle: "medium",
         timeZone: "UTC",
-      }).format(parsed);
+      }).format(parsed)
     }
   }
-  return releaseYear?.toString() ?? "Release details not set";
-};
+  return releaseYear?.toString() ?? "Release details not set"
+}
 
 const buildCompletion = (
-  view: ProductAuthoringView,
+  view: ProductAuthoringView
 ): ProductCatalogCompletion => {
   const hasBlockingIssue =
     view.classification.status === "conflict" ||
     view.classification.issues.some(({ severity }) => severity === "error") ||
     view.diagnostics.duplicateBundleProfileIds.length > 0 ||
-    view.diagnostics.duplicateProductProfileIds.length > 0;
+    view.diagnostics.duplicateProductProfileIds.length > 0
   if (hasBlockingIssue) {
     return {
       color: "red",
       description:
         "Conflicting or duplicate catalog records must be resolved before publishing changes.",
       label: "Blocked",
-    };
+    }
   }
 
   const diagnosticCount = [
@@ -98,21 +98,18 @@ const buildCompletion = (
     view.diagnostics.missingReferenceValueIds,
     view.diagnostics.missingVariantProfileIds,
     view.diagnostics.orphanVariantProfileIds,
-  ].reduce((count, values) => count + values.length, 0);
+  ].reduce((count, values) => count + values.length, 0)
   const hasReviewIssue =
     view.classification.status === "needs_review" ||
     view.catalog.profile === null ||
-    view.classification.issues.some(
-      ({ severity }) => severity === "warning",
-    ) ||
+    view.classification.issues.some(({ severity }) => severity === "warning") ||
     diagnosticCount > 0 ||
-    view.diagnostics.inventoryAvailability === "unavailable";
+    view.diagnostics.inventoryAvailability === "unavailable"
 
   return hasReviewIssue
     ? {
         color: "orange",
-        description:
-          "Some catalog fields or linked records still need review.",
+        description: "Some catalog fields or linked records still need review.",
         label: "Needs review",
       }
     : {
@@ -120,75 +117,75 @@ const buildCompletion = (
         description:
           "Catalog classification and linked records are internally consistent.",
         label: "Ready",
-      };
-};
+      }
+}
 
 const buildAvailability = (
-  view: ProductAuthoringView,
+  view: ProductAuthoringView
 ): ProductCatalogAvailability => {
   const statuses = view.catalog.variants.map(
-    ({ status }) => status.customerStatus,
-  );
+    ({ status }) => status.customerStatus
+  )
   if (statuses.length === 0) {
     return {
       color: "orange",
       description: "No sellable offerings are linked to this product.",
       label: "No offerings",
-    };
+    }
   }
 
-  const counts = new Map<string, number>();
+  const counts = new Map<string, number>()
   for (const status of statuses) {
-    counts.set(status, (counts.get(status) ?? 0) + 1);
+    counts.set(status, (counts.get(status) ?? 0) + 1)
   }
   const description = [...counts.entries()]
     .map(([status, count]) =>
       pluralize(
         count,
-        `${customerStatusLabels[
-          status as keyof typeof customerStatusLabels
-        ]} offering`,
-      ),
+        `${
+          customerStatusLabels[status as keyof typeof customerStatusLabels]
+        } offering`
+      )
     )
-    .join(" · ");
+    .join(" · ")
 
   if (statuses.every((status) => status === "hidden")) {
-    return { color: "blue", description, label: "Hidden" };
+    return { color: "blue", description, label: "Hidden" }
   }
   if (statuses.some((status) => status === "in_stock")) {
-    return { color: "green", description, label: "Available" };
+    return { color: "green", description, label: "Available" }
   }
   if (statuses.some((status) => status === "low_stock")) {
-    return { color: "orange", description, label: "Low stock" };
+    return { color: "orange", description, label: "Low stock" }
   }
   if (statuses.some((status) => status === "preorder")) {
-    return { color: "blue", description, label: "Preorder" };
+    return { color: "blue", description, label: "Preorder" }
   }
   if (statuses.some((status) => status === "backorder")) {
-    return { color: "orange", description, label: "Backorder" };
+    return { color: "orange", description, label: "Backorder" }
   }
   if (statuses.every((status) => status === "sold_out")) {
-    return { color: "red", description, label: "Sold out" };
+    return { color: "red", description, label: "Sold out" }
   }
   if (statuses.some((status) => status === "coming_soon")) {
-    return { color: "blue", description, label: "Coming soon" };
+    return { color: "blue", description, label: "Coming soon" }
   }
-  return { color: "orange", description, label: "Needs review" };
-};
+  return { color: "orange", description, label: "Needs review" }
+}
 
 const buildBundleHealth = (
-  view: ProductAuthoringView,
+  view: ProductAuthoringView
 ): ProductCatalogBundleHealth | null => {
-  const kind = view.classification.kind;
+  const kind = view.classification.kind
   if (kind !== "fixed_bundle" && kind !== "mystery_bundle") {
-    return null;
+    return null
   }
   if (!view.catalog.bundle) {
     return {
       color: "red",
       description: "The product is classified as a bundle but has no setup.",
       label: "Bundle setup missing",
-    };
+    }
   }
   if (kind === "mystery_bundle") {
     return {
@@ -196,10 +193,10 @@ const buildBundleHealth = (
       description:
         "Mystery boxes use native manual inventory and do not require component mappings.",
       label: "Manual inventory",
-    };
+    }
   }
 
-  const componentCount = view.catalog.bundle.components.length;
+  const componentCount = view.catalog.bundle.components.length
   return componentCount === 0
     ? {
         color: "orange",
@@ -211,25 +208,25 @@ const buildBundleHealth = (
         color: "green",
         description: `${pluralize(componentCount, "included item")} mapped to this bundle.`,
         label: "Mapping present",
-      };
-};
+      }
+}
 
 export const buildProductCatalogSummary = (
-  view: ProductAuthoringView,
+  view: ProductAuthoringView
 ): ProductCatalogSummary => {
   const artistNames = view.catalog.artists
     .map(({ artist, assignment }) => artist?.name ?? assignment.displayName)
     .map((name) => name.trim())
-    .filter(Boolean);
+    .filter(Boolean)
   const missingAltText = view.catalog.media.filter(
-    ({ asset }) => !asset?.altText?.trim(),
-  ).length;
+    ({ asset }) => !asset?.altText?.trim()
+  ).length
   const releaseTitle =
-    view.catalog.profile?.releaseTitle?.trim() || view.commerce.title;
+    view.catalog.profile?.releaseTitle?.trim() || view.commerce.title
   const releaseDate = formatReleaseDate(
     view.catalog.profile?.releaseDate ?? null,
-    view.catalog.profile?.releaseYear ?? null,
-  );
+    view.catalog.profile?.releaseYear ?? null
+  )
 
   return {
     artistLabel: artistNames.join(", ") || "No artist assigned",
@@ -250,5 +247,5 @@ export const buildProductCatalogSummary = (
       total: view.catalog.media.length,
     },
     releaseLabel: `${releaseTitle} · ${releaseDate}`,
-  };
-};
+  }
+}

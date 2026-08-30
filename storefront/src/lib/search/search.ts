@@ -110,8 +110,7 @@ type FilterDescriptor = {
 const normalizeValues = (values: string[] | undefined): string[] =>
   (values ?? []).map((value) => value.trim()).filter(Boolean)
 
-const serializeFilterLiteral = (value: string): string =>
-  JSON.stringify(value)
+const serializeFilterLiteral = (value: string): string => JSON.stringify(value)
 
 const serializeFilterValues = (values: string[]): string =>
   values.map(serializeFilterLiteral).join(", ")
@@ -653,15 +652,17 @@ export const searchProductsWithClient = async (
       break
     }
     const rawBatchSize = Math.min(batchSize, remainingRawWork)
-    const response: SearchResponse<Record<string, unknown>> =
-      await searchIndex(query ?? "", {
+    const response: SearchResponse<Record<string, unknown>> = await searchIndex(
+      query ?? "",
+      {
         limit: rawBatchSize,
         offset: rawOffset,
         attributesToSearchOn: [...CATALOG_SEARCH_ATTRIBUTES],
         facets: facetsToRequest,
         ...(filterExpression ? { filter: filterExpression } : {}),
         ...(sortDirectives ? { sort: sortDirectives } : {}),
-      })
+      }
+    )
 
     if (!response.hits.length) {
       break
@@ -706,8 +707,7 @@ export const searchProductsWithClient = async (
   }
 
   const nextOffset = filteredOffset + collected.length
-  const reachedRawWorkLimit =
-    rawHitsExamined >= SEARCH_MAX_POST_FILTER_HITS
+  const reachedRawWorkLimit = rawHitsExamined >= SEARCH_MAX_POST_FILTER_HITS
   hasMore =
     collected.length > 0 &&
     nextOffset < SEARCH_MAX_RESULT_WINDOW &&

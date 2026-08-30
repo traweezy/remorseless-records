@@ -1,7 +1,7 @@
-import { ModuleProviderExports } from '@medusajs/framework/types'
+import { ModuleProviderExports } from "@medusajs/framework/types"
 
-import configureTaxCaches from './loaders/cache-config'
-import TaxRateLookupProviderService from './service'
+import configureTaxCaches from "./loaders/cache-config"
+import TaxRateLookupProviderService from "./service"
 
 const services = [TaxRateLookupProviderService]
 const loaders = [configureTaxCaches]

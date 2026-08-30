@@ -20,7 +20,9 @@ const CookiesPage = () => (
     effectiveDate={LEGAL_EFFECTIVE_DATE}
     aside={
       <>
-        <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">Need help?</h2>
+        <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+          Need help?
+        </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Questions about cookies or data use can be sent to{" "}
           <a
@@ -33,7 +35,10 @@ const CookiesPage = () => (
         </p>
         <p className="text-sm leading-relaxed text-muted-foreground">
           For full data handling details, review the{" "}
-          <SmartLink href={legalRoutes.privacy} className="text-destructive underline underline-offset-4">
+          <SmartLink
+            href={legalRoutes.privacy}
+            className="text-destructive underline underline-offset-4"
+          >
             Privacy Policy
           </SmartLink>
           .
@@ -43,24 +48,31 @@ const CookiesPage = () => (
   >
     <LegalSection title="How Cookies Are Used">
       <p>
-        We use cookies and similar storage technologies for security, cart persistence, and optional analytics or marketing measurements.
+        We use cookies and similar storage technologies for security, cart
+        persistence, and optional analytics or marketing measurements.
       </p>
       <p>
-        By default, only strictly necessary cookies are enabled. Optional categories are disabled until you grant consent.
+        By default, only strictly necessary cookies are enabled. Optional
+        categories are disabled until you grant consent.
       </p>
     </LegalSection>
 
     <LegalSection title="Cookie Categories">
       <ul className="list-disc space-y-1 pl-5">
-        <li>Strictly necessary: required for secure sessions, cart, and checkout.</li>
+        <li>
+          Strictly necessary: required for secure sessions, cart, and checkout.
+        </li>
         <li>Analytics: used for aggregate performance and usage insights.</li>
-        <li>Marketing: used for campaign attribution and promotional relevance.</li>
+        <li>
+          Marketing: used for campaign attribution and promotional relevance.
+        </li>
       </ul>
     </LegalSection>
 
     <LegalSection title="Manage Your Preferences">
       <p>
-        You can update preferences at any time below. Changes apply to future optional cookie usage and are stored with timestamped consent metadata.
+        You can update preferences at any time below. Changes apply to future
+        optional cookie usage and are stored with timestamped consent metadata.
       </p>
       <CookiePreferencesEditor className="pt-1" />
     </LegalSection>
@@ -68,4 +80,3 @@ const CookiesPage = () => (
 )
 
 export default CookiesPage
-

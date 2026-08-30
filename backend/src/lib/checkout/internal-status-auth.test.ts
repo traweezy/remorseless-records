@@ -7,9 +7,7 @@ import {
 } from "./internal-status-auth"
 
 const secret = ["unit", "test", "checkout", "key"].join("-").repeat(2)
-const alternateSecret = ["alternate", "unit", "test", "key"]
-  .join("-")
-  .repeat(2)
+const alternateSecret = ["alternate", "unit", "test", "key"].join("-").repeat(2)
 const timestamp = 1_800_000_000
 const cartId = "cart_01K123ABC"
 
@@ -17,9 +15,7 @@ describe("internal checkout status proof", () => {
   it("creates and verifies a deterministic proof", () => {
     const proof = createCheckoutStatusProof({ cartId, timestamp, secret })
 
-    expect(proof).toBe(
-      "u0foJnfY32c06wyhJ8UGRbtC9zUP4MMD_F60K5k-WTs",
-    )
+    expect(proof).toBe("u0foJnfY32c06wyhJ8UGRbtC9zUP4MMD_F60K5k-WTs")
     expect(
       verifyCheckoutStatusProof({
         cartId,
@@ -27,7 +23,7 @@ describe("internal checkout status proof", () => {
         secret,
         proof,
         nowSeconds: timestamp,
-      }),
+      })
     ).toBe(true)
   })
 
@@ -45,7 +41,7 @@ describe("internal checkout status proof", () => {
         secret: key,
         proof,
         nowSeconds: timestamp,
-      }),
+      })
     ).toBe(false)
   })
 
@@ -62,7 +58,7 @@ describe("internal checkout status proof", () => {
         secret,
         proof,
         nowSeconds,
-      }),
+      })
     ).toBe(false)
   })
 
@@ -76,7 +72,7 @@ describe("internal checkout status proof", () => {
         cartId: nextCartId,
         timestamp: nextTime,
         secret: key,
-      }),
+      })
     ).toThrow()
   })
 
@@ -99,7 +95,7 @@ describe("internal checkout status proof", () => {
         secret,
         proof: statusProof,
         nowSeconds: timestamp,
-      }),
+      })
     ).toBe(false)
     expect(
       verifyCheckoutStatusProof({
@@ -108,7 +104,7 @@ describe("internal checkout status proof", () => {
         secret,
         proof: taxLinkProof,
         nowSeconds: timestamp,
-      }),
+      })
     ).toBe(false)
   })
 
@@ -127,7 +123,7 @@ describe("internal checkout status proof", () => {
         previousSecret: alternateSecret,
         proof,
         nowSeconds: timestamp,
-      }),
+      })
     ).toBe(true)
     expect(
       verifyCheckoutStatusProof({
@@ -136,9 +132,8 @@ describe("internal checkout status proof", () => {
         secret,
         previousSecret: alternateSecret,
         proof,
-        nowSeconds:
-          timestamp + CHECKOUT_STATUS_PROOF_MAX_SKEW_SECONDS + 1,
-      }),
+        nowSeconds: timestamp + CHECKOUT_STATUS_PROOF_MAX_SKEW_SECONDS + 1,
+      })
     ).toBe(false)
   })
 })

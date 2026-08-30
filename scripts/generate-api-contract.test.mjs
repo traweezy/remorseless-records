@@ -76,5 +76,8 @@ test("inventories every custom route with complete error references", async () =
   }
 
   assert.equal(new Set(operationIds).size, operationIds.length)
-  assert.equal(serializeContract(contract), serializeContract(buildContract(inventory)))
+  assert.equal(
+    serializeContract(contract),
+    serializeContract(buildContract(inventory))
+  )
 })

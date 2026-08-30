@@ -1,6 +1,6 @@
-import { MedusaError } from "@medusajs/framework/utils";
+import { MedusaError } from "@medusajs/framework/utils"
 
-import { reuseResolvedProductOptions } from "./route";
+import { reuseResolvedProductOptions } from "./route"
 
 describe("product import option reuse", () => {
   it("reuses the oldest matching option instead of creating a duplicate", () => {
@@ -8,7 +8,7 @@ describe("product import option reuse", () => {
       id: "prod_1",
       handle: "music-release-artist-album",
       options: [{ title: "Format", values: ["CD", "Vinyl"] }],
-    };
+    }
 
     reuseResolvedProductOptions(product, [
       {
@@ -23,21 +23,21 @@ describe("product import option reuse", () => {
         values: ["Vinyl", "CD"],
         createdAt: "2026-07-19T16:33:00.000Z",
       },
-    ]);
+    ])
 
     expect(product).toEqual({
       id: "prod_1",
       handle: "music-release-artist-album",
       option_ids: ["opt_original"],
-    });
-  });
+    })
+  })
 
   it("rejects new values that are absent from the existing option", () => {
     const product = {
       id: "prod_1",
       handle: "music-release-artist-album",
       options: [{ title: "Format", values: ["Cassette"] }],
-    };
+    }
 
     expect(() =>
       reuseResolvedProductOptions(product, [
@@ -48,7 +48,7 @@ describe("product import option reuse", () => {
           createdAt: "2026-07-19T16:33:00.000Z",
         },
       ])
-    ).toThrow(MedusaError);
-    expect(product.options).toBeDefined();
-  });
-});
+    ).toThrow(MedusaError)
+    expect(product.options).toBeDefined()
+  })
+})

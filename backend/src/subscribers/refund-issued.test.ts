@@ -1,9 +1,6 @@
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
-import refundIssuedHandler from "./refund-issued";
+import refundIssuedHandler from "./refund-issued"
 
 const handlerInput = ({
   collection,
@@ -20,15 +17,15 @@ const handlerInput = ({
     ],
   },
 }: {
-  collection: Record<string, unknown>;
-  payment?: Record<string, unknown>;
+  collection: Record<string, unknown>
+  payment?: Record<string, unknown>
 }) => {
-  const createNotifications = jest.fn(async () => []);
-  const graph = jest.fn(async () => ({ data: [collection] }));
+  const createNotifications = jest.fn(async () => [])
+  const graph = jest.fn(async () => ({ data: [collection] }))
   const logger = {
     info: jest.fn(),
     warn: jest.fn(),
-  };
+  }
   const dependencies = new Map<string, unknown>([
     [
       Modules.PAYMENT,
@@ -39,7 +36,7 @@ const handlerInput = ({
     [ContainerRegistrationKeys.QUERY, { graph }],
     [Modules.NOTIFICATION, { createNotifications }],
     ["logger", logger],
-  ]);
+  ])
   const input = {
     container: {
       resolve: (name: string) => dependencies.get(name),
@@ -48,14 +45,14 @@ const handlerInput = ({
       data: { id: "pay_01" },
       name: "payment.refunded",
     },
-  } as unknown as Parameters<typeof refundIssuedHandler>[0];
+  } as unknown as Parameters<typeof refundIssuedHandler>[0]
   return {
     createNotifications,
     graph,
     input,
     logger,
-  };
-};
+  }
+}
 
 describe("payment refund notification subscriber", () => {
   it("creates an idempotent order notification without logging PII", async () => {
@@ -71,16 +68,16 @@ describe("payment refund notification subscriber", () => {
           id: "order_01",
         },
       },
-    });
+    })
 
-    await expect(refundIssuedHandler(fixture.input)).resolves.toBeUndefined();
+    await expect(refundIssuedHandler(fixture.input)).resolves.toBeUndefined()
 
     expect(fixture.graph).toHaveBeenCalledWith(
       expect.objectContaining({
         entity: "payment_collection",
         filters: { id: "paycol_01" },
-      }),
-    );
+      })
+    )
     expect(fixture.createNotifications).toHaveBeenCalledWith([
       expect.objectContaining({
         idempotency_key: "refund-issued:refund_01",
@@ -91,11 +88,11 @@ describe("payment refund notification subscriber", () => {
         resource_type: "order",
         to: "customer@example.com",
       }),
-    ]);
+    ])
     expect(fixture.logger.info).toHaveBeenCalledWith(
-      expect.not.stringContaining("customer@example.com"),
-    );
-  });
+      expect.not.stringContaining("customer@example.com")
+    )
+  })
 
   it("uses the cart recipient when checkout compensation has no order", async () => {
     const fixture = handlerInput({
@@ -108,9 +105,9 @@ describe("payment refund notification subscriber", () => {
         id: "paycol_01",
         order: null,
       },
-    });
+    })
 
-    await refundIssuedHandler(fixture.input);
+    await refundIssuedHandler(fixture.input)
 
     expect(fixture.createNotifications).toHaveBeenCalledWith([
       expect.objectContaining({
@@ -121,21 +118,21 @@ describe("payment refund notification subscriber", () => {
         resource_type: "cart",
         to: "guest@example.com",
       }),
-    ]);
-  });
+    ])
+  })
 
   it("does not attempt an email when no recipient resource exists", async () => {
     const fixture = handlerInput({
       collection: { id: "paycol_01", order: null },
-    });
+    })
 
-    await refundIssuedHandler(fixture.input);
+    await refundIssuedHandler(fixture.input)
 
-    expect(fixture.createNotifications).not.toHaveBeenCalled();
+    expect(fixture.createNotifications).not.toHaveBeenCalled()
     expect(fixture.logger.warn).toHaveBeenCalledWith(
-      expect.not.stringContaining("@"),
-    );
-  });
+      expect.not.stringContaining("@")
+    )
+  })
 
   it("does no query or notification work when the payment has no refunds", async () => {
     const fixture = handlerInput({
@@ -146,11 +143,11 @@ describe("payment refund notification subscriber", () => {
         payment_collection_id: "paycol_01",
         refunds: [],
       },
-    });
+    })
 
-    await refundIssuedHandler(fixture.input);
+    await refundIssuedHandler(fixture.input)
 
-    expect(fixture.graph).not.toHaveBeenCalled();
-    expect(fixture.createNotifications).not.toHaveBeenCalled();
-  });
-});
+    expect(fixture.graph).not.toHaveBeenCalled()
+    expect(fixture.createNotifications).not.toHaveBeenCalled()
+  })
+})

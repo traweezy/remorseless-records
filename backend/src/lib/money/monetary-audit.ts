@@ -14,9 +14,7 @@ export type MonetaryRecordSource =
   | "transactional_record"
 
 export type MonetaryAuditAction =
-  | "convert_legacy_minor_to_major"
-  | "manual_review"
-  | "preserve_major"
+  "convert_legacy_minor_to_major" | "manual_review" | "preserve_major"
 
 export type MonetaryAuditInput = {
   amount: number
@@ -63,7 +61,9 @@ export const parseDatabaseAmount = (value: unknown): number => {
         : Number.NaN
 
   if (!Number.isFinite(amount) || amount < 0) {
-    throw new Error(`[money-audit] Invalid non-negative amount: ${String(value)}`)
+    throw new Error(
+      `[money-audit] Invalid non-negative amount: ${String(value)}`
+    )
   }
 
   return amount

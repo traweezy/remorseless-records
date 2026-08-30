@@ -19,33 +19,30 @@ const optionalUrlSchema = z
   .max(2_000)
   .refine(
     (value) => value.length === 0 || isHttpUrl(value),
-    "Enter a complete http or https URL.",
+    "Enter a complete http or https URL."
   )
 
 const visibleRichText = (value: string): boolean =>
   value
     .replace(/<[^>]*>/gu, " ")
     .replace(/&(?:nbsp|#160);/giu, " ")
-    .replace(/\s/gu, "")
-    .length > 0
+    .replace(/\s/gu, "").length > 0
 
 export const newsEditorDraftSchema = z.object({
-    content: z
-      .string()
-      .max(200_000),
-    coverAltText: z.string().trim().max(500),
-    coverUrl: optionalUrlSchema,
-    excerpt: z.string().trim().max(1_000),
-    scheduleAt: z.string().trim().max(100),
-    tagsText: z.string().max(5_000),
-    title: z.string().trim().max(300),
-  })
+  content: z.string().max(200_000),
+  coverAltText: z.string().trim().max(500),
+  coverUrl: optionalUrlSchema,
+  excerpt: z.string().trim().max(1_000),
+  scheduleAt: z.string().trim().max(100),
+  tagsText: z.string().max(5_000),
+  title: z.string().trim().max(300),
+})
 
 export const newsEditorSchema = newsEditorDraftSchema
   .extend({
     content: newsEditorDraftSchema.shape.content.refine(
       visibleRichText,
-      "Write some visible post content.",
+      "Write some visible post content."
     ),
     title: newsEditorDraftSchema.shape.title.min(1, "Enter a post title."),
   })
@@ -87,7 +84,7 @@ const newsFieldTargets: Record<string, string> = {
 }
 
 export const newsEditorValidationIssues = (
-  values: NewsEditorValues,
+  values: NewsEditorValues
 ): AdminFormIssue[] => {
   const result = newsEditorSchema.safeParse(values)
   if (result.success) {
@@ -145,7 +142,8 @@ export const valuesFromNewsEntry = (entry: NewsEntry): NewsEditorValues => ({
   coverAltText: entry.coverAltText ?? "",
   coverUrl: entry.coverUrl ?? "",
   excerpt: entry.excerpt ?? "",
-  scheduleAt: entry.status === "scheduled" ? toDateTimeInput(entry.publishedAt) : "",
+  scheduleAt:
+    entry.status === "scheduled" ? toDateTimeInput(entry.publishedAt) : "",
   tagsText: entry.tags.join(", "),
   title: entry.title,
 })
@@ -153,7 +151,7 @@ export const valuesFromNewsEntry = (entry: NewsEntry): NewsEditorValues => ({
 export const validatePublicationIntent = (
   values: NewsEditorValues,
   intent: NewsPublicationIntent,
-  now = new Date(),
+  now = new Date()
 ): string | null => {
   if (intent !== "schedule") {
     return null
@@ -173,7 +171,7 @@ export const validatePublicationIntent = (
 
 export const buildNewsWriteInput = (
   values: NewsEditorValues,
-  intent: NewsPublicationIntent,
+  intent: NewsPublicationIntent
 ): NewsWriteInput => ({
   content: values.content.trim(),
   coverAltText: values.coverUrl.trim() ? nullable(values.coverAltText) : null,
@@ -193,7 +191,7 @@ export const buildNewsWriteInput = (
 
 export const newsEntryMatchesWriteInput = (
   entry: NewsEntry,
-  input: NewsWriteInput,
+  input: NewsWriteInput
 ): boolean =>
   entry.content === input.content &&
   entry.coverAltText === input.coverAltText &&

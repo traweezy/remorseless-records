@@ -53,7 +53,7 @@ const renderBasics = (kind: CatalogCreationKind): string =>
       values={createCatalogCreationDefaults(kind)}
       vocabularyLoading={false}
       vocabularyUnavailable={false}
-    />,
+    />
   )
 
 const renderDetails = (kind: CatalogCreationKind): string =>
@@ -63,12 +63,12 @@ const renderDetails = (kind: CatalogCreationKind): string =>
       onTextChange={handlers.onTextChange}
       onUploadingChange={handlers.onUploadingChange}
       values={createCatalogCreationDefaults(kind)}
-    />,
+    />
   )
 
 const availabilityMap = (
   values: CatalogCreationFormValues,
-  choices: CatalogCreationProductChoiceWithStock[] = [],
+  choices: CatalogCreationProductChoiceWithStock[] = []
 ) =>
   new Map(
     values.offerings.map((offering) => [
@@ -81,7 +81,7 @@ const availabilityMap = (
         releaseDate: values.releaseDate,
         releaseDatePrecision: values.releaseDatePrecision,
       }),
-    ]),
+    ])
   )
 
 const offeringsHandlers = {
@@ -101,10 +101,7 @@ const offeringsHandlers = {
 describe("catalog creation step components", () => {
   it("renders every product kind and marks the selected kind", () => {
     const markup = renderToStaticMarkup(
-      <CatalogCreationKindStep
-        kind="fixed_bundle"
-        onSelect={jest.fn()}
-      />,
+      <CatalogCreationKindStep kind="fixed_bundle" onSelect={jest.fn()} />
     )
 
     expect(markup).toContain("Music release")
@@ -172,7 +169,7 @@ describe("catalog creation step components", () => {
         formatDetailOptions={[]}
         formatOptions={[]}
         values={merchandise}
-      />,
+      />
     )
     expect(merchandiseMarkup).toContain("Start from a merchandise template")
     expect(merchandiseMarkup).toContain("Size or style")
@@ -215,7 +212,7 @@ describe("catalog creation step components", () => {
         formatDetailOptions={[]}
         formatOptions={[]}
         values={bundle}
-      />,
+      />
     )
     expect(bundleMarkup).toContain("Component-derived stock")
     expect(bundleMarkup).toContain("Included product 1")
@@ -238,7 +235,7 @@ describe("catalog creation step components", () => {
         formatDetailOptions={[{ id: "detail_black", label: "Black Shell" }]}
         formatOptions={[{ id: "format_cd", label: "CD" }]}
         values={release}
-      />,
+      />
     )
 
     expect(markup).toContain("Start from a catalog format set")
@@ -260,7 +257,7 @@ describe("catalog creation step components", () => {
         availabilityByOfferingId={availabilityMap(values)}
         onChangeStep={jest.fn()}
         values={values}
-      />,
+      />
     )
     expect(review).toContain("Review draft")
     expect(review).toContain("Change basics")
@@ -268,7 +265,7 @@ describe("catalog creation step components", () => {
     expect(review).toContain("Customer preview")
 
     const progress = renderToStaticMarkup(
-      <CatalogCreationProgress current={4} />,
+      <CatalogCreationProgress current={4} />
     )
     expect(progress).toContain('aria-current="step"')
     expect(progress).toContain("5. Review")
@@ -282,7 +279,7 @@ describe("catalog creation step components", () => {
         onNext={jest.fn()}
         onSave={jest.fn()}
         saveState="saved"
-      />,
+      />
     )
     expect(actions).toContain("Cancel")
     expect(actions).toContain("Back")

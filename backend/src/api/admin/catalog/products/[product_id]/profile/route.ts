@@ -17,7 +17,7 @@ const productIdFromRequest = (req: MedusaRequest): string => {
   if (!productId) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Product id is required.",
+      "Product id is required."
     )
   }
   return productId
@@ -32,41 +32,32 @@ const actorIdFromRequest = (req: MedusaRequest): string | null =>
 
 export const GET = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const productId = productIdFromRequest(req)
   await assertProductExists(req, productId)
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const profile = await resolveCatalogProductProfile(
-    catalogService,
-    productId,
-  )
+  const profile = await resolveCatalogProductProfile(catalogService, productId)
   res
     .status(200)
-    .json(
-      await serializeCatalogProductProfileResponse(catalogService, profile),
-    )
+    .json(await serializeCatalogProductProfileResponse(catalogService, profile))
 }
 
 export const PUT = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const productId = productIdFromRequest(req)
   const parsed = catalogProductProfileUpsertSchema.safeParse(req.body ?? {})
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid catalog product profile payload.",
+      "Invalid catalog product profile payload."
     )
   }
 
   await assertProductExists(req, productId)
-  const {
-    expectedVersion,
-    idempotencyKey,
-    ...patch
-  } = parsed.data
+  const { expectedVersion, idempotencyKey, ...patch } = parsed.data
   const commandPayload = {
     aggregateId: productId,
     command: "catalog.product-profile.upsert" as const,
@@ -89,17 +80,17 @@ export const PUT = async (
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const refreshed = await resolveCatalogProductProfile(
     catalogService,
-    productId,
+    productId
   )
   res
     .status(result.created ? 201 : 200)
     .json(
-      await serializeCatalogProductProfileResponse(catalogService, refreshed),
+      await serializeCatalogProductProfileResponse(catalogService, refreshed)
     )
 }
 
 export const DELETE = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> =>
   rejectCatalogHardDeletion(req, res, "catalog product profiles")

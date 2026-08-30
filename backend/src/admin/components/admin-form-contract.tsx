@@ -1,70 +1,64 @@
-"use client";
+"use client"
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  type ReactNode,
-} from "react";
-import { Alert, Container, Heading, Text, clx } from "@medusajs/ui";
+import { memo, useCallback, useEffect, useMemo, type ReactNode } from "react"
+import { Alert, Container, Heading, Text, clx } from "@medusajs/ui"
 
-import { AdminSectionHeader } from "./admin-page";
+import { AdminSectionHeader } from "./admin-page"
 
 export type AdminFormIssue = {
-  key: string;
-  message: string;
-  targetId: string | null;
-};
+  key: string
+  message: string
+  targetId: string | null
+}
 
 type FocusableTarget = {
-  focus: () => void;
+  focus: () => void
   scrollIntoView?: (options?: {
-    behavior?: "auto" | "smooth";
-    block?: "center" | "end" | "nearest" | "start";
-  }) => void;
-};
+    behavior?: "auto" | "smooth"
+    block?: "center" | "end" | "nearest" | "start"
+  }) => void
+}
 
 type FocusRoot = {
-  getElementById: (id: string) => FocusableTarget | null;
-};
+  getElementById: (id: string) => FocusableTarget | null
+}
 
 type BeforeUnloadEventLike = {
-  preventDefault: () => void;
-  returnValue: string;
-};
+  preventDefault: () => void
+  returnValue: string
+}
 
 type AdminBrowserRuntime = {
   addEventListener?: (
     type: "beforeunload",
-    listener: (event: BeforeUnloadEventLike) => void,
-  ) => void;
-  document?: FocusRoot;
+    listener: (event: BeforeUnloadEventLike) => void
+  ) => void
+  document?: FocusRoot
   removeEventListener?: (
     type: "beforeunload",
-    listener: (event: BeforeUnloadEventLike) => void,
-  ) => void;
-};
+    listener: (event: BeforeUnloadEventLike) => void
+  ) => void
+}
 
 const browserRuntime = (): AdminBrowserRuntime =>
-  globalThis as unknown as AdminBrowserRuntime;
+  globalThis as unknown as AdminBrowserRuntime
 
 export const firstAdminFormError = (
-  errors: readonly unknown[],
+  errors: readonly unknown[]
 ): string | undefined => {
   for (const error of errors) {
     if (typeof error === "string" && error.trim()) {
-      return error.trim();
+      return error.trim()
     }
     if (error && typeof error === "object" && "message" in error) {
-      const message = (error as { message?: unknown }).message;
+      const message = (error as { message?: unknown }).message
       if (typeof message === "string" && message.trim()) {
-        return message.trim();
+        return message.trim()
       }
     }
   }
-  return undefined;
-};
+  return undefined
+}
 
 export const visibleAdminFormFieldError = ({
   errors,
@@ -72,94 +66,96 @@ export const visibleAdminFormFieldError = ({
   isValid,
   submissionAttempts,
 }: {
-  errors: readonly unknown[];
-  isTouched: boolean;
-  isValid: boolean;
-  submissionAttempts: number;
+  errors: readonly unknown[]
+  isTouched: boolean
+  isValid: boolean
+  submissionAttempts: number
 }): string | undefined =>
   !isValid && (isTouched || submissionAttempts > 0)
     ? firstAdminFormError(errors)
-    : undefined;
+    : undefined
 
 export const normalizeAdminFormIssues = (
-  issues: readonly AdminFormIssue[],
+  issues: readonly AdminFormIssue[]
 ): AdminFormIssue[] => {
-  const seen = new Set<string>();
+  const seen = new Set<string>()
   return issues.flatMap((issue) => {
-    const message = issue.message.trim();
-    const identity = `${issue.targetId ?? "summary"}:${message}`;
+    const message = issue.message.trim()
+    const identity = `${issue.targetId ?? "summary"}:${message}`
     if (!message || seen.has(identity)) {
-      return [];
+      return []
     }
-    seen.add(identity);
-    return [{ ...issue, message }];
-  });
-};
+    seen.add(identity)
+    return [{ ...issue, message }]
+  })
+}
 
 export const focusAdminFormTarget = (
   targetId: string | null,
-  root: FocusRoot | undefined = browserRuntime().document,
+  root: FocusRoot | undefined = browserRuntime().document
 ): boolean => {
   if (!targetId || !root) {
-    return false;
+    return false
   }
-  const target = root.getElementById(targetId);
+  const target = root.getElementById(targetId)
   if (!target) {
-    return false;
+    return false
   }
-  target.scrollIntoView?.({ behavior: "smooth", block: "center" });
-  target.focus();
-  return true;
-};
+  target.scrollIntoView?.({ behavior: "smooth", block: "center" })
+  target.focus()
+  return true
+}
 
 export const focusFirstAdminFormIssue = (
   issues: readonly AdminFormIssue[],
-  root: FocusRoot | undefined = browserRuntime().document,
+  root: FocusRoot | undefined = browserRuntime().document
 ): boolean => {
   const firstTarget = normalizeAdminFormIssues(issues).find(
-    (issue) => issue.targetId !== null,
-  );
-  return focusAdminFormTarget(firstTarget?.targetId ?? null, root);
-};
+    (issue) => issue.targetId !== null
+  )
+  return focusAdminFormTarget(firstTarget?.targetId ?? null, root)
+}
 
 type AdminFormIssueLinkProps = {
-  issue: AdminFormIssue;
-  onFocusIssue?: (issue: AdminFormIssue) => void;
-};
+  issue: AdminFormIssue
+  onFocusIssue?: (issue: AdminFormIssue) => void
+}
 
-const AdminFormIssueLink = memo<AdminFormIssueLinkProps>(({ issue, onFocusIssue }) => {
-  const handleClick = useCallback(() => {
-    if (onFocusIssue) {
-      onFocusIssue(issue);
-      return;
-    }
-    focusAdminFormTarget(issue.targetId);
-  }, [issue, onFocusIssue]);
+const AdminFormIssueLink = memo<AdminFormIssueLinkProps>(
+  ({ issue, onFocusIssue }) => {
+    const handleClick = useCallback(() => {
+      if (onFocusIssue) {
+        onFocusIssue(issue)
+        return
+      }
+      focusAdminFormTarget(issue.targetId)
+    }, [issue, onFocusIssue])
 
-  return issue.targetId ? (
-    <button
-      className="min-h-6 text-left text-ui-fg-error underline decoration-ui-fg-error/40 underline-offset-2 outline-none transition-colors hover:decoration-ui-fg-error focus-visible:rounded-sm focus-visible:shadow-borders-focus motion-reduce:transition-none"
-      data-issue-key={issue.key}
-      onClick={handleClick}
-      type="button"
-    >
-      {issue.message}
-    </button>
-  ) : (
-    <Text className="text-ui-fg-error" size="small">
-      {issue.message}
-    </Text>
-  );
-});
+    return issue.targetId ? (
+      <button
+        className="min-h-6 text-left text-ui-fg-error underline decoration-ui-fg-error/40 underline-offset-2 outline-none transition-colors hover:decoration-ui-fg-error focus-visible:rounded-sm focus-visible:shadow-borders-focus motion-reduce:transition-none"
+        data-issue-key={issue.key}
+        onClick={handleClick}
+        type="button"
+      >
+        {issue.message}
+      </button>
+    ) : (
+      <Text className="text-ui-fg-error" size="small">
+        {issue.message}
+      </Text>
+    )
+  }
+)
 
-AdminFormIssueLink.displayName = "AdminFormIssueLink";
+AdminFormIssueLink.displayName = "AdminFormIssueLink"
 
 export type AdminFormErrorSummaryProps = {
-  className?: string;
-  issues: readonly AdminFormIssue[];
-  onFocusIssue?: (issue: AdminFormIssue) => void;
-  title?: string;
-};
+  className?: string
+  issues: readonly AdminFormIssue[]
+  onFocusIssue?: (issue: AdminFormIssue) => void
+  title?: string
+}
 
 export const AdminFormErrorSummary = memo<AdminFormErrorSummaryProps>(
   ({
@@ -170,8 +166,8 @@ export const AdminFormErrorSummary = memo<AdminFormErrorSummaryProps>(
   }) => {
     const normalizedIssues = useMemo(
       () => normalizeAdminFormIssues(issues),
-      [issues],
-    );
+      [issues]
+    )
     const issueItems = useMemo(
       () =>
         normalizedIssues.map((issue) => (
@@ -182,11 +178,11 @@ export const AdminFormErrorSummary = memo<AdminFormErrorSummaryProps>(
             />
           </li>
         )),
-      [normalizedIssues, onFocusIssue],
-    );
+      [normalizedIssues, onFocusIssue]
+    )
 
     if (normalizedIssues.length === 0) {
-      return null;
+      return null
     }
 
     return (
@@ -197,11 +193,11 @@ export const AdminFormErrorSummary = memo<AdminFormErrorSummaryProps>(
         </Text>
         <ul className="mt-2 list-disc space-y-1 pl-5">{issueItems}</ul>
       </Alert>
-    );
-  },
-);
+    )
+  }
+)
 
-AdminFormErrorSummary.displayName = "AdminFormErrorSummary";
+AdminFormErrorSummary.displayName = "AdminFormErrorSummary"
 
 export const adminSaveStates = [
   "idle",
@@ -210,45 +206,45 @@ export const adminSaveStates = [
   "saved",
   "reconciling",
   "error",
-] as const;
+] as const
 
-export type AdminSaveState = (typeof adminSaveStates)[number];
+export type AdminSaveState = (typeof adminSaveStates)[number]
 
 export const adminSaveStateMessage = ({
   savedLabel,
   state,
 }: {
-  savedLabel?: string;
-  state: AdminSaveState;
+  savedLabel?: string
+  state: AdminSaveState
 }): string => {
   switch (state) {
     case "dirty":
-      return "Unsaved changes";
+      return "Unsaved changes"
     case "saving":
-      return "Saving changes…";
+      return "Saving changes…"
     case "saved":
-      return savedLabel?.trim() || "Changes saved";
+      return savedLabel?.trim() || "Changes saved"
     case "reconciling":
-      return "Checking whether the changes were saved…";
+      return "Checking whether the changes were saved…"
     case "error":
-      return "Changes were not saved";
+      return "Changes were not saved"
     case "idle":
-      return "No unsaved changes";
+      return "No unsaved changes"
   }
-};
+}
 
 export type AdminFormSaveStateProps = {
-  className?: string;
-  savedLabel?: string;
-  state: AdminSaveState;
-};
+  className?: string
+  savedLabel?: string
+  state: AdminSaveState
+}
 
 export const AdminFormSaveState = memo<AdminFormSaveStateProps>(
   ({ className, savedLabel, state }) => {
     const message = adminSaveStateMessage({
       state,
       ...(savedLabel === undefined ? {} : { savedLabel }),
-    });
+    })
     return (
       <Text
         aria-atomic="true"
@@ -256,26 +252,26 @@ export const AdminFormSaveState = memo<AdminFormSaveStateProps>(
         className={clx(
           "text-ui-fg-subtle",
           state === "error" && "text-ui-fg-error",
-          className,
+          className
         )}
         role={state === "error" ? "alert" : "status"}
         size="small"
       >
         {message}
       </Text>
-    );
-  },
-);
+    )
+  }
+)
 
-AdminFormSaveState.displayName = "AdminFormSaveState";
+AdminFormSaveState.displayName = "AdminFormSaveState"
 
 export type AdminTaskSectionProps = {
-  actions?: ReactNode;
-  children: ReactNode;
-  className?: string;
-  description?: ReactNode;
-  title: ReactNode;
-};
+  actions?: ReactNode
+  children: ReactNode
+  className?: string
+  description?: ReactNode
+  title: ReactNode
+}
 
 export const AdminTaskSection = memo<AdminTaskSectionProps>(
   ({ actions, children, className, description, title }) => (
@@ -289,20 +285,20 @@ export const AdminTaskSection = memo<AdminTaskSectionProps>(
       </div>
       <div className="px-6 py-5">{children}</div>
     </Container>
-  ),
-);
+  )
+)
 
-AdminTaskSection.displayName = "AdminTaskSection";
+AdminTaskSection.displayName = "AdminTaskSection"
 
 export type AdminTaskNavigationItem = {
-  href: `#${string}`;
-  label: string;
-};
+  href: `#${string}`
+  label: string
+}
 
 export type AdminTaskNavigationProps = {
-  items: readonly AdminTaskNavigationItem[];
-  label?: string;
-};
+  items: readonly AdminTaskNavigationItem[]
+  label?: string
+}
 
 export const AdminTaskNavigation = memo<AdminTaskNavigationProps>(
   ({ items, label = "Jump to an editing task" }) => {
@@ -317,8 +313,8 @@ export const AdminTaskNavigation = memo<AdminTaskNavigationProps>(
             {item.label}
           </a>
         )),
-      [items],
-    );
+      [items]
+    )
     return (
       <nav
         aria-label={label}
@@ -329,56 +325,57 @@ export const AdminTaskNavigation = memo<AdminTaskNavigationProps>(
         </Text>
         <div className="flex flex-wrap gap-2">{links}</div>
       </nav>
-    );
-  },
-);
+    )
+  }
+)
 
-AdminTaskNavigation.displayName = "AdminTaskNavigation";
+AdminTaskNavigation.displayName = "AdminTaskNavigation"
 
 export const useAdminUnsavedChanges = (
   enabled: boolean,
   message = "You have unsaved changes.",
-  onBeforeUnload?: () => void,
+  onBeforeUnload?: () => void
 ): void => {
   useEffect(() => {
-    const browser = browserRuntime();
+    const browser = browserRuntime()
     if (!enabled || typeof browser.addEventListener !== "function") {
-      return undefined;
+      return undefined
     }
     const handleBeforeUnload = (event: BeforeUnloadEventLike) => {
-      onBeforeUnload?.();
-      event.preventDefault();
-      event.returnValue = message;
-    };
-    browser.addEventListener("beforeunload", handleBeforeUnload);
-    return () => browser.removeEventListener?.("beforeunload", handleBeforeUnload);
-  }, [enabled, message, onBeforeUnload]);
-};
+      onBeforeUnload?.()
+      event.preventDefault()
+      event.returnValue = message
+    }
+    browser.addEventListener("beforeunload", handleBeforeUnload)
+    return () =>
+      browser.removeEventListener?.("beforeunload", handleBeforeUnload)
+  }, [enabled, message, onBeforeUnload])
+}
 
 export type RecoverableAdminMutationResult<TMutation, TSnapshot> =
   | { outcome: "confirmed"; value: TMutation }
-  | { outcome: "reconciled"; value: TSnapshot };
+  | { outcome: "reconciled"; value: TSnapshot }
 
 export const runRecoverableAdminMutation = async <TMutation, TSnapshot>({
   mutate,
   readAfterFailure,
   wasApplied,
 }: {
-  mutate: () => Promise<TMutation>;
-  readAfterFailure: () => Promise<TSnapshot>;
-  wasApplied: (snapshot: TSnapshot) => boolean;
+  mutate: () => Promise<TMutation>
+  readAfterFailure: () => Promise<TSnapshot>
+  wasApplied: (snapshot: TSnapshot) => boolean
 }): Promise<RecoverableAdminMutationResult<TMutation, TSnapshot>> => {
   try {
-    return { outcome: "confirmed", value: await mutate() };
+    return { outcome: "confirmed", value: await mutate() }
   } catch (mutationError) {
     try {
-      const snapshot = await readAfterFailure();
+      const snapshot = await readAfterFailure()
       if (wasApplied(snapshot)) {
-        return { outcome: "reconciled", value: snapshot };
+        return { outcome: "reconciled", value: snapshot }
       }
     } catch {
       // Preserve the mutation error because it is the actionable failure.
     }
-    throw mutationError;
+    throw mutationError
   }
-};
+}

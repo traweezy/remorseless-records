@@ -76,7 +76,7 @@ export type NewsWriteInput = {
 
 export const listNewsEntries = (
   input: NewsListInput,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<NewsPage> =>
   requestAdminJson({
     path: "/admin/news",
@@ -95,7 +95,7 @@ export const listNewsEntries = (
 
 export const getNewsEntry = (
   id: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<NewsEntry> =>
   requestAdminJson({
     path: `/admin/news/${encodeURIComponent(id)}`,
@@ -105,7 +105,7 @@ export const getNewsEntry = (
 
 export const createNewsEntry = (
   input: NewsWriteInput,
-  idempotencyKey: string,
+  idempotencyKey: string
 ) =>
   requestAdminJson({
     body: {
@@ -121,7 +121,7 @@ export const createNewsEntry = (
 export const updateNewsEntry = (
   entry: NewsEntry,
   input: NewsWriteInput,
-  idempotencyKey: string,
+  idempotencyKey: string
 ) =>
   requestAdminJson({
     body: {
@@ -137,7 +137,7 @@ export const updateNewsEntry = (
 export const updateNewsLifecycle = (
   entry: NewsEntry,
   action: "archive" | "restore",
-  idempotencyKey: string,
+  idempotencyKey: string
 ) =>
   requestAdminJson({
     body: {

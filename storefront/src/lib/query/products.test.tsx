@@ -30,12 +30,10 @@ describe("product query helpers", () => {
   it("builds product detail query key and options", async () => {
     const handle = faker.helpers.slugify("Hidden History").toLowerCase()
     const product = { id: faker.string.uuid(), handle } as never
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ product }),
-      } as Response)
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ product }),
+    } as Response)
 
     const options = productDetailQueryOptions(handle)
     expect(productDetailQueryKey(handle)).toEqual(["product", handle])
@@ -47,13 +45,11 @@ describe("product query helpers", () => {
 
   it("throws from product detail query when fetch fails", async () => {
     const handle = "not-found"
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue({
-        ok: false,
-        status: 503,
-        json: () => Promise.resolve({}),
-      } as Response)
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: () => Promise.resolve({}),
+    } as Response)
 
     await expect(productDetailQueryOptions(handle).queryFn()).rejects.toThrow(
       "Failed to load product (status 503)"
@@ -176,7 +172,9 @@ describe("useProductDetailPrefetch", () => {
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
 
-    const { result } = renderHook(() => useProductDetailPrefetch(""), { wrapper })
+    const { result } = renderHook(() => useProductDetailPrefetch(""), {
+      wrapper,
+    })
     result.current()
     expect(prefetchSpy).not.toHaveBeenCalled()
   })

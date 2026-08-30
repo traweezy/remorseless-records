@@ -17,9 +17,9 @@ export class Migration20260628210000 extends Migration {
         '"focal_x" numeric null check ("focal_x" is null or ("focal_x" >= 0 and "focal_x" <= 1)),' +
         '"focal_y" numeric null check ("focal_y" is null or ("focal_y" >= 0 and "focal_y" <= 1)),' +
         '"crop_intent" text null,' +
-        '"derivative_status" text not null default \'source_only\' check ("derivative_status" in (\'source_only\', \'pending\', \'processing\', \'ready\', \'failed\')),' +
-        '"derivatives" jsonb not null default \'{}\',' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"derivative_status\" text not null default 'source_only' check (\"derivative_status\" in ('source_only', 'pending', 'processing', 'ready', 'failed'))," +
+        "\"derivatives\" jsonb not null default '{}'," +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -43,10 +43,10 @@ export class Migration20260628210000 extends Migration {
         '"variant_id" text null,' +
         '"product_profile_id" text null,' +
         '"media_asset_id" text not null,' +
-        '"role" text not null default \'gallery\' check ("role" in (\'gallery\', \'primary\', \'variant\', \'artist_photo\', \'news_cover\', \'open_graph\')),' +
+        "\"role\" text not null default 'gallery' check (\"role\" in ('gallery', 'primary', 'variant', 'artist_photo', 'news_cover', 'open_graph'))," +
         '"sort_order" integer not null default 0 check ("sort_order" >= 0),' +
         '"is_primary" boolean not null default false,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +

@@ -14,11 +14,13 @@ const isHttpUrl = (value: string): boolean => {
 }
 
 const managedUploadResponseSchema = z.object({
-  files: z.array(
-    z.object({
-      url: z.string().trim().url().max(2_000).refine(isHttpUrl),
-    }),
-  ).min(1),
+  files: z
+    .array(
+      z.object({
+        url: z.string().trim().url().max(2_000).refine(isHttpUrl),
+      })
+    )
+    .min(1),
 })
 
 const imageTypes = new Set<string>(MANAGED_IMAGE_MIME_TYPES)
@@ -64,7 +66,7 @@ export const uploadNewsCover = async (
     fetcher = globalThis.fetch.bind(globalThis),
     signal: externalSignal,
     timeoutMs = 120_000,
-  }: UploadNewsCoverOptions = {},
+  }: UploadNewsCoverOptions = {}
 ): Promise<string> => {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
     throw new RangeError("Upload timeout must be a positive integer.")

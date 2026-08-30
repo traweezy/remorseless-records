@@ -1,59 +1,58 @@
-import { hasPermission } from "@medusajs/framework";
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from "@medusajs/framework/utils";
+import { hasPermission } from "@medusajs/framework"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 import {
   adminAuthorizationManifest,
   type AdminHttpMethod,
   type AdminRouteTemplate,
-} from "./admin-authorization-manifest";
+} from "./admin-authorization-manifest"
 import {
   type AdminPolicyAction,
   catalogAdminActions,
   nativeAdminActions,
-} from "./admin-permissions";
+} from "./admin-permissions"
 
 const policiesFor = (
   method: AdminHttpMethod,
-  template: AdminRouteTemplate,
+  template: AdminRouteTemplate
 ): AdminPolicyAction[] => {
   const entry = adminAuthorizationManifest.find(
     (candidate) =>
-      candidate.method === method && candidate.template === template,
-  );
+      candidate.method === method && candidate.template === template
+  )
   if (!entry) {
-    throw new Error(`Missing authorization manifest entry: ${method} ${template}`);
+    throw new Error(
+      `Missing authorization manifest entry: ${method} ${template}`
+    )
   }
-  return [...entry.policies];
-};
+  return [...entry.policies]
+}
 
 const routePolicies = {
   authoringView: policiesFor(
     "GET",
-    "/admin/catalog/products/:product_id/authoring-view",
+    "/admin/catalog/products/:product_id/authoring-view"
   ),
   bundleUpdate: policiesFor(
     "PUT",
-    "/admin/catalog/products/:product_id/bundle",
+    "/admin/catalog/products/:product_id/bundle"
   ),
   compositeCreate: policiesFor("POST", "/admin/catalog/products"),
   profileDelete: policiesFor(
     "DELETE",
-    "/admin/catalog/products/:product_id/profile",
+    "/admin/catalog/products/:product_id/profile"
   ),
   shelfRead: policiesFor("GET", "/admin/catalog/shelves"),
-} as const;
+} as const
 
 const createPermissionContainer = (grants: readonly AdminPolicyAction[]) =>
   ({
     resolve: (
       registrationName: string,
-      options?: Readonly<{ allowUnregistered?: boolean }>,
+      options?: Readonly<{ allowUnregistered?: boolean }>
     ) => {
       if (registrationName === ContainerRegistrationKeys.FEATURE_FLAG_ROUTER) {
-        return { isFeatureEnabled: (key: string) => key === "rbac" };
+        return { isFeatureEnabled: (key: string) => key === "rbac" }
       }
       if (registrationName === ContainerRegistrationKeys.QUERY) {
         return {
@@ -68,22 +67,22 @@ const createPermissionContainer = (grants: readonly AdminPolicyAction[]) =>
               },
             ],
           }),
-        };
+        }
       }
       if (registrationName === Modules.CACHING && options?.allowUnregistered) {
-        return undefined;
+        return undefined
       }
-      throw new Error(`Unexpected container registration: ${registrationName}`);
+      throw new Error(`Unexpected container registration: ${registrationName}`)
     },
-  }) as unknown as Parameters<typeof hasPermission>[0]["container"];
+  }) as unknown as Parameters<typeof hasPermission>[0]["container"]
 
-type RoleExpectation = Readonly<Record<keyof typeof routePolicies, boolean>>;
+type RoleExpectation = Readonly<Record<keyof typeof routePolicies, boolean>>
 
 type RoleCase = Readonly<{
-  expected: RoleExpectation;
-  grants: readonly AdminPolicyAction[];
-  name: string;
-}>;
+  expected: RoleExpectation
+  grants: readonly AdminPolicyAction[]
+  name: string
+}>
 
 const deniesAll: RoleExpectation = {
   authoringView: false,
@@ -91,7 +90,7 @@ const deniesAll: RoleExpectation = {
   compositeCreate: false,
   profileDelete: false,
   shelfRead: false,
-};
+}
 
 const nativeReadGrants = [
   nativeAdminActions.product.read,
@@ -99,7 +98,7 @@ const nativeReadGrants = [
   nativeAdminActions.price.read,
   nativeAdminActions.inventoryItem.read,
   nativeAdminActions.inventoryLevel.read,
-] as const;
+] as const
 
 const compositeCreateGrants = [
   catalogAdminActions.authoring.create,
@@ -111,7 +110,7 @@ const compositeCreateGrants = [
   nativeAdminActions.inventoryItem.create,
   nativeAdminActions.inventoryLevel.create,
   nativeAdminActions.price.create,
-] as const;
+] as const
 
 const bundleUpdateGrants = [
   catalogAdminActions.authoring.update,
@@ -121,7 +120,7 @@ const bundleUpdateGrants = [
   nativeAdminActions.inventoryItem.create,
   nativeAdminActions.inventoryItem.update,
   nativeAdminActions.inventoryItem.delete,
-] as const;
+] as const
 
 const roleCases: readonly RoleCase[] = [
   {
@@ -155,7 +154,7 @@ const roleCases: readonly RoleCase[] = [
     expected: deniesAll,
     grants: compositeCreateGrants.filter(
       ({ resource, operation }) =>
-        resource !== "catalog_authoring" || operation !== "update",
+        resource !== "catalog_authoring" || operation !== "update"
     ),
     name: "composite creator without shared-asset update access",
   },
@@ -194,7 +193,7 @@ const roleCases: readonly RoleCase[] = [
     expected: deniesAll,
     grants: bundleUpdateGrants.filter(
       ({ resource, operation }) =>
-        resource !== "inventory_item" || operation !== "delete",
+        resource !== "inventory_item" || operation !== "delete"
     ),
     name: "bundle editor without inventory unlink access",
   },
@@ -214,24 +213,24 @@ const roleCases: readonly RoleCase[] = [
     grants: [{ operation: "*", resource: "*" }],
     name: "wildcard administrator",
   },
-];
+]
 
 describe("catalog Admin role contract", () => {
   it.each(roleCases)(
     "default-denies incomplete capabilities for $name",
     async ({ expected, grants }) => {
-      const container = createPermissionContainer(grants);
+      const container = createPermissionContainer(grants)
       const results = await Promise.all(
         Object.entries(routePolicies).map(async ([route, actions]) => [
           route,
           await hasPermission({ actions, container, roles: "role_test" }),
-        ]),
-      );
+        ])
+      )
 
-      expect(Object.fromEntries(results)).toEqual(expected);
-    },
-  );
-});
+      expect(Object.fromEntries(results)).toEqual(expected)
+    }
+  )
+})
 
 describe("native Product mutation overlay role contract", () => {
   it.each([
@@ -262,7 +261,7 @@ describe("native Product mutation overlay role contract", () => {
   ])(
     "default-denies missing mutation capabilities for $name",
     async ({ expectedProduct, expectedVariant, grants }) => {
-      const container = createPermissionContainer(grants);
+      const container = createPermissionContainer(grants)
       const [productAllowed, variantAllowed] = await Promise.all([
         hasPermission({
           actions: [nativeAdminActions.product.update],
@@ -274,10 +273,10 @@ describe("native Product mutation overlay role contract", () => {
           container,
           roles: "role_test",
         }),
-      ]);
+      ])
 
-      expect(productAllowed).toBe(expectedProduct);
-      expect(variantAllowed).toBe(expectedVariant);
-    },
-  );
-});
+      expect(productAllowed).toBe(expectedProduct)
+      expect(variantAllowed).toBe(expectedVariant)
+    }
+  )
+})

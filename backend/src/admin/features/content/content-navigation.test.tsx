@@ -8,7 +8,7 @@ describe("ContentWorkspaceNavigation", () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter>
         <ContentWorkspaceNavigation active="news" />
-      </MemoryRouter>,
+      </MemoryRouter>
     )
 
     expect(markup).toContain('aria-label="Content workspaces"')
@@ -17,18 +17,15 @@ describe("ContentWorkspaceNavigation", () => {
     expect(markup).toContain('href="/content/discography"')
     expect(markup.match(/aria-current="page"/g)).toHaveLength(1)
     expect(markup).toMatch(
-      /<a[^>]*aria-current="page"[^>]*href="\/content\/news"[^>]*>News<\/a>/,
+      /<a[^>]*aria-current="page"[^>]*href="\/content\/news"[^>]*>News<\/a>/
     )
   })
 
   it("omits workspaces the current role cannot read", () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter>
-        <ContentWorkspaceNavigation
-          active="news"
-          showDiscography={false}
-        />
-      </MemoryRouter>,
+        <ContentWorkspaceNavigation active="news" showDiscography={false} />
+      </MemoryRouter>
     )
 
     expect(markup).toContain('href="/content"')

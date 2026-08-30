@@ -42,7 +42,7 @@ describe("media cleanup query", () => {
         hasMore: false,
         limit: MEDIA_CLEANUP_PAGE_SIZE,
         offset: 0,
-      }),
+      })
     ).toMatchObject({ assets: [asset], count: 1 })
     expect(() => mediaAssetSchema.parse({ ...asset, version: 0 })).toThrow()
     expect(emptyMediaPage(50)).toMatchObject({ assets: [], offset: 50 })
@@ -68,7 +68,7 @@ describe("media cleanup query", () => {
         meta: undefined,
         queryKey: options.queryKey,
         signal: controller.signal,
-      }),
+      })
     ).resolves.toEqual(response)
 
     expect(options.queryKey).toEqual([
@@ -93,7 +93,7 @@ describe("media cleanup query", () => {
     jest.mocked(requestAdminJson).mockResolvedValue({ asset })
 
     await expect(
-      updateMediaLifecycle({ asset, idempotencyKey: "idem-01" }),
+      updateMediaLifecycle({ asset, idempotencyKey: "idem-01" })
     ).resolves.toBe("quarantine")
 
     expect(requestAdminJson).toHaveBeenCalledWith({

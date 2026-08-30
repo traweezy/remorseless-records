@@ -1,7 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
+import { readdirSync, readFileSync } from "node:fs"
+import path from "node:path"
 
-import ts from "typescript";
+import ts from "typescript"
 
 import {
   adminAuthorizationKey,
@@ -10,38 +10,38 @@ import {
   adminHttpMethods,
   type AdminHttpMethod,
   type AdminRouteTemplate,
-} from "./admin-authorization-manifest";
-import { adminPermissionKey } from "./admin-permissions";
+} from "./admin-authorization-manifest"
+import { adminPermissionKey } from "./admin-permissions"
 
-const adminApiRoot = path.join(__dirname, "../api/admin");
-const supportedMethods = new Set<string>(adminHttpMethods);
+const adminApiRoot = path.join(__dirname, "../api/admin")
+const supportedMethods = new Set<string>(adminHttpMethods)
 
 const routeFilesBelow = (directory: string): string[] =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const entryPath = path.join(directory, entry.name);
+    const entryPath = path.join(directory, entry.name)
     if (entry.isDirectory()) {
-      return routeFilesBelow(entryPath);
+      return routeFilesBelow(entryPath)
     }
-    return entry.isFile() && entry.name === "route.ts" ? [entryPath] : [];
-  });
+    return entry.isFile() && entry.name === "route.ts" ? [entryPath] : []
+  })
 
 const isExported = (node: ts.Node): boolean =>
   ts.canHaveModifiers(node) &&
   ts
     .getModifiers(node)
-    ?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword) === true;
+    ?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword) === true
 
 const exportedHttpMethodsFromSource = (
   file: string,
-  sourceText: string,
+  sourceText: string
 ): AdminHttpMethod[] => {
   const source = ts.createSourceFile(
     file,
     sourceText,
     ts.ScriptTarget.ES2022,
     true,
-    ts.ScriptKind.TS,
-  );
+    ts.ScriptKind.TS
+  )
 
   return source.statements.flatMap((statement) => {
     if (
@@ -53,44 +53,44 @@ const exportedHttpMethodsFromSource = (
       return statement.exportClause.elements.flatMap((specifier) =>
         !specifier.isTypeOnly && supportedMethods.has(specifier.name.text)
           ? [specifier.name.text as AdminHttpMethod]
-          : [],
-      );
+          : []
+      )
     }
     if (!isExported(statement)) {
-      return [];
+      return []
     }
     if (ts.isVariableStatement(statement)) {
       return statement.declarationList.declarations.flatMap(({ name }) =>
         ts.isIdentifier(name) && supportedMethods.has(name.text)
           ? [name.text as AdminHttpMethod]
-          : [],
-      );
+          : []
+      )
     }
     if (
       ts.isFunctionDeclaration(statement) &&
       statement.name &&
       supportedMethods.has(statement.name.text)
     ) {
-      return [statement.name.text as AdminHttpMethod];
+      return [statement.name.text as AdminHttpMethod]
     }
-    return [];
-  });
-};
+    return []
+  })
+}
 
 const exportedHttpMethods = (file: string): AdminHttpMethod[] =>
-  exportedHttpMethodsFromSource(file, readFileSync(file, "utf8"));
+  exportedHttpMethodsFromSource(file, readFileSync(file, "utf8"))
 
 const routeTemplateForFile = (file: string): AdminRouteTemplate => {
-  const relativeDirectory = path.relative(adminApiRoot, path.dirname(file));
+  const relativeDirectory = path.relative(adminApiRoot, path.dirname(file))
   const segments = relativeDirectory
     .split(path.sep)
     .filter(Boolean)
     .map((segment) => {
-      const parameter = /^\[([a-z][a-z0-9_]*)\]$/i.exec(segment)?.[1];
-      return parameter ? `:${parameter}` : segment;
-    });
-  return `/admin/${segments.join("/")}` as AdminRouteTemplate;
-};
+      const parameter = /^\[([a-z][a-z0-9_]*)\]$/i.exec(segment)?.[1]
+      return parameter ? `:${parameter}` : segment
+    })
+  return `/admin/${segments.join("/")}` as AdminRouteTemplate
+}
 
 const discoveredAuthorizationKeys = (): string[] =>
   routeFilesBelow(adminApiRoot).flatMap((file) =>
@@ -98,12 +98,12 @@ const discoveredAuthorizationKeys = (): string[] =>
       adminAuthorizationKey({
         method,
         template: routeTemplateForFile(file),
-      }),
-    ),
-  );
+      })
+    )
+  )
 
 const renderTemplate = (template: AdminRouteTemplate): string =>
-  template.replace(/:[a-z][a-z0-9_]*/gi, "mixed_ID-01");
+  template.replace(/:[a-z][a-z0-9_]*/gi, "mixed_ID-01")
 
 const catalogExpectedPolicies: Record<string, string[]> = {
   "DELETE /admin/catalog/artists/:id": ["catalog_taxonomy:delete"],
@@ -162,10 +162,7 @@ const catalogExpectedPolicies: Record<string, string[]> = {
   ],
   "GET /admin/catalog/reference-values": ["catalog_taxonomy:read"],
   "GET /admin/catalog/reference-values/:id": ["catalog_taxonomy:read"],
-  "GET /admin/catalog/shelves": [
-    "catalog_merchandising:read",
-    "product:read",
-  ],
+  "GET /admin/catalog/shelves": ["catalog_merchandising:read", "product:read"],
   "GET /admin/catalog/shelves/:id": [
     "catalog_merchandising:read",
     "product:read",
@@ -189,9 +186,7 @@ const catalogExpectedPolicies: Record<string, string[]> = {
     "inventory_item:update",
     "inventory_item:delete",
   ],
-  "POST /admin/catalog/media/assets/:id/quarantine": [
-    "media_cleanup:update",
-  ],
+  "POST /admin/catalog/media/assets/:id/quarantine": ["media_cleanup:update"],
   "POST /admin/catalog/media/assets/:id/restore": ["media_cleanup:update"],
   "POST /admin/catalog/media/uploads": [
     "catalog_authoring:create",
@@ -251,7 +246,7 @@ const catalogExpectedPolicies: Record<string, string[]> = {
     "catalog_taxonomy:create",
     "product_variant:read",
   ],
-};
+}
 
 describe("Admin authorization manifest", () => {
   it("inventories variable, function, and named route exports", () => {
@@ -266,51 +261,51 @@ describe("Admin authorization manifest", () => {
           'export { worker as DELETE } from "./worker"',
           "export type { PUT }",
           "const PUT = async () => undefined",
-        ].join("\n"),
-      ),
-    ).toEqual(["GET", "POST", "PATCH", "DELETE"]);
-  });
+        ].join("\n")
+      )
+    ).toEqual(["GET", "POST", "PATCH", "DELETE"])
+  })
 
   it("covers every exported custom Admin method exactly once", () => {
-    const discovered = discoveredAuthorizationKeys();
-    const manifested = adminAuthorizationManifest.map(adminAuthorizationKey);
+    const discovered = discoveredAuthorizationKeys()
+    const manifested = adminAuthorizationManifest.map(adminAuthorizationKey)
 
-    expect(new Set(discovered).size).toBe(discovered.length);
-    expect(new Set(manifested).size).toBe(manifested.length);
-    expect(manifested.sort()).toEqual(discovered.sort());
-  });
+    expect(new Set(discovered).size).toBe(discovered.length)
+    expect(new Set(manifested).size).toBe(manifested.length)
+    expect(manifested.sort()).toEqual(discovered.sort())
+  })
 
   it("compiles Express-equivalent exact matchers with one-segment params", () => {
     adminAuthorizationManifest.forEach((entry, index) => {
-      const route = adminAuthorizationPolicyRoutes[index];
-      expect(route).toBeDefined();
-      expect(route?.matcher).toBeInstanceOf(RegExp);
+      const route = adminAuthorizationPolicyRoutes[index]
+      expect(route).toBeDefined()
+      expect(route?.matcher).toBeInstanceOf(RegExp)
       if (!(route?.matcher instanceof RegExp)) {
-        return;
+        return
       }
 
-      const rendered = renderTemplate(entry.template);
-      expect(route.matcher.test(rendered)).toBe(true);
-      expect(route.matcher.test(rendered.toUpperCase())).toBe(true);
-      expect(route.matcher.test(`${rendered}/`)).toBe(true);
-      expect(route.matcher.test(`${rendered}/nested`)).toBe(false);
-      expect(route.matcher.test(`/prefix${rendered}`)).toBe(false);
+      const rendered = renderTemplate(entry.template)
+      expect(route.matcher.test(rendered)).toBe(true)
+      expect(route.matcher.test(rendered.toUpperCase())).toBe(true)
+      expect(route.matcher.test(`${rendered}/`)).toBe(true)
+      expect(route.matcher.test(`${rendered}/nested`)).toBe(false)
+      expect(route.matcher.test(`/prefix${rendered}`)).toBe(false)
       if (entry.template.includes(":")) {
-        expect(route.matcher.test(`${rendered}/extra-segment`)).toBe(false);
+        expect(route.matcher.test(`${rendered}/extra-segment`)).toBe(false)
       }
-    });
-  });
+    })
+  })
 
   it("emits policy-only middleware entries", () => {
     expect(adminAuthorizationPolicyRoutes).toHaveLength(
-      adminAuthorizationManifest.length,
-    );
+      adminAuthorizationManifest.length
+    )
     adminAuthorizationPolicyRoutes.forEach((route) => {
-      expect(Array.isArray(route.policies)).toBe(true);
-      expect(route.middlewares).toBeUndefined();
-      expect(route.bodyParser).toBeUndefined();
-    });
-  });
+      expect(Array.isArray(route.policies)).toBe(true)
+      expect(route.middlewares).toBeUndefined()
+      expect(route.bodyParser).toBeUndefined()
+    })
+  })
 
   it("uses the reviewed catalog policy conjunctions exactly", () => {
     const actual = Object.fromEntries(
@@ -319,9 +314,9 @@ describe("Admin authorization manifest", () => {
         .map((entry) => [
           adminAuthorizationKey(entry),
           entry.policies.map(adminPermissionKey),
-        ]),
-    );
+        ])
+    )
 
-    expect(actual).toEqual(catalogExpectedPolicies);
-  });
-});
+    expect(actual).toEqual(catalogExpectedPolicies)
+  })
+})

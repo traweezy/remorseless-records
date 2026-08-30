@@ -93,9 +93,12 @@ export const extractRouteMethods = (source) => {
   }
 
   for (const match of source.matchAll(reexportPattern)) {
-    const exports = match[1]
-      .split(",")
-      .map((entry) => entry.trim().split(/\s+as\s+/u).at(-1))
+    const exports = match[1].split(",").map((entry) =>
+      entry
+        .trim()
+        .split(/\s+as\s+/u)
+        .at(-1)
+    )
     exports.forEach((name) => {
       if (HTTP_METHODS.includes(name)) {
         methods.add(name)
@@ -166,11 +169,13 @@ export const inventoryRoutes = async (repositoryRoot = REPOSITORY_ROOT) => {
     })
   )
 
-  return routeGroups.flat().sort((left, right) =>
-    `${left.routePath}:${left.service}:${left.sourcePath}`.localeCompare(
-      `${right.routePath}:${right.service}:${right.sourcePath}`
+  return routeGroups
+    .flat()
+    .sort((left, right) =>
+      `${left.routePath}:${left.service}:${left.sourcePath}`.localeCompare(
+        `${right.routePath}:${right.service}:${right.sourcePath}`
+      )
     )
-  )
 }
 
 const parameterFor = (name) => ({
@@ -231,8 +236,8 @@ const buildOperation = (entries, method) => {
 
   const envelope = envelopes[0]
   const providerBoundary = providerBoundaries[0]
-  const pathParameters = [...routePath.matchAll(/\{([^}]+)\}/gu)].map(
-    (match) => parameterFor(match[1])
+  const pathParameters = [...routePath.matchAll(/\{([^}]+)\}/gu)].map((match) =>
+    parameterFor(match[1])
   )
   const responses = {
     "2XX": successResponse,
@@ -327,7 +332,9 @@ export const serializeContract = (contract) =>
 const run = async () => {
   const mode = process.argv[2]
   if (mode !== "--check" && mode !== "--write") {
-    throw new Error("Usage: node scripts/generate-api-contract.mjs --check|--write")
+    throw new Error(
+      "Usage: node scripts/generate-api-contract.mjs --check|--write"
+    )
   }
 
   const serialized = serializeContract(
@@ -350,6 +357,9 @@ const run = async () => {
   await rename(temporaryPath, GENERATED_CONTRACT_PATH)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   await run()
 }

@@ -22,7 +22,9 @@ const listQuerySchema = z.object({
     .optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),
   offset: z.coerce.number().int().min(0).optional(),
-  order: z.enum(["rank", "label", "kind", "created_at", "updated_at"]).optional(),
+  order: z
+    .enum(["rank", "label", "kind", "created_at", "updated_at"])
+    .optional(),
   direction: z.enum(["asc", "desc"]).optional(),
 })
 

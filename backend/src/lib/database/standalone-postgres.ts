@@ -10,10 +10,7 @@ type QueryResult<Row> = {
 export type PostgreSqlClient = {
   connect: () => Promise<void>
   end: () => Promise<void>
-  query: <Row>(
-    query: string,
-    values?: unknown[]
-  ) => Promise<QueryResult<Row>>
+  query: <Row>(query: string, values?: unknown[]) => Promise<QueryResult<Row>>
 }
 
 type PostgreSqlClientConstructor = new (config: {

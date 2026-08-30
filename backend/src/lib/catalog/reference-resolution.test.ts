@@ -24,7 +24,7 @@ describe("catalog reference resolution", () => {
     } as never)
 
     await expect(
-      resolveOrCreateCatalogArtist(service, { artistId: "artist_1" }),
+      resolveOrCreateCatalogArtist(service, { artistId: "artist_1" })
     ).resolves.toMatchObject({
       created: false,
       record: { id: "artist_1" },
@@ -40,7 +40,7 @@ describe("catalog reference resolution", () => {
     ] as never)
 
     await expect(
-      resolveOrCreateCatalogArtist(service, { name: " Déjà Vu " }),
+      resolveOrCreateCatalogArtist(service, { name: " Déjà Vu " })
     ).resolves.toMatchObject({
       created: false,
       record: { id: "artist_existing" },
@@ -48,7 +48,7 @@ describe("catalog reference resolution", () => {
     expect(service.listCatalogArtists).toHaveBeenCalledWith(
       { slug: "deja-vu" },
       {},
-      undefined,
+      undefined
     )
     expect(service.createCatalogArtists).not.toHaveBeenCalled()
   })
@@ -61,7 +61,7 @@ describe("catalog reference resolution", () => {
     ] as never)
 
     await expect(
-      resolveOrCreateCatalogArtist(service, { name: "New Artist" }),
+      resolveOrCreateCatalogArtist(service, { name: "New Artist" })
     ).resolves.toMatchObject({
       created: true,
       record: { id: "artist_new" },
@@ -84,7 +84,7 @@ describe("catalog reference resolution", () => {
         kind: "format",
         label: "Compact Disc",
         value: " CD ",
-      }),
+      })
     ).resolves.toMatchObject({
       created: false,
       record: { id: "ref_existing" },
@@ -92,7 +92,7 @@ describe("catalog reference resolution", () => {
     expect(service.listCatalogReferenceValues).toHaveBeenCalledWith(
       { kind: "format", value: "CD" },
       {},
-      undefined,
+      undefined
     )
   })
 
@@ -112,7 +112,7 @@ describe("catalog reference resolution", () => {
       resolveOrCreateCatalogReferenceValue(service, {
         kind: "genre",
         label: "Death Metal",
-      }),
+      })
     ).resolves.toMatchObject({
       created: true,
       record: { id: "ref_new" },
@@ -121,7 +121,7 @@ describe("catalog reference resolution", () => {
       resolveOrCreateCatalogReferenceValue(service, {
         kind: "genre",
         label: " ",
-      }),
+      })
     ).resolves.toEqual({ created: false, record: null })
   })
 
@@ -143,13 +143,13 @@ describe("catalog reference resolution", () => {
       resolveOrCreateCatalogReferenceValue(service, {
         kind: "format",
         referenceValueId: "ref_genre",
-      }),
+      })
     ).rejects.toThrow("is not a format")
     await expect(
       resolveOrCreateCatalogReferenceValue(service, {
         kind: "format",
         referenceValueId: "ref_archived",
-      }),
+      })
     ).rejects.toThrow("archived")
   })
 })

@@ -22,30 +22,41 @@ import {
 
 const outputFlag = process.argv.indexOf("--output-dir")
 const outputValue = outputFlag >= 0 ? process.argv[outputFlag + 1] : undefined
-assert.ok(outputValue, "Usage: postgres-logical-backup --output-dir <absolute-dir>")
+assert.ok(
+  outputValue,
+  "Usage: postgres-logical-backup --output-dir <absolute-dir>"
+)
 assert.equal(
   resolve(outputValue),
   outputValue,
-  "The backup output directory must be absolute.",
+  "The backup output directory must be absolute."
 )
 const connection = createPostgresClientEnvironment(
   process.env.DATABASE_BACKUP_URL ?? "",
-  "DATABASE_BACKUP_URL",
+  "DATABASE_BACKUP_URL"
 )
 
 await mkdir(outputValue, { mode: 0o700, recursive: true })
 const outputMetadata = await lstat(outputValue)
-assert.equal(outputMetadata.isSymbolicLink(), false, "Backup directory is a symlink.")
-assert.equal(outputMetadata.isDirectory(), true, "Backup path is not a directory.")
+assert.equal(
+  outputMetadata.isSymbolicLink(),
+  false,
+  "Backup directory is a symlink."
+)
+assert.equal(
+  outputMetadata.isDirectory(),
+  true,
+  "Backup path is not a directory."
+)
 assert.equal(
   outputMetadata.mode & 0o077,
   0,
-  "Backup directory must not grant group or world access.",
+  "Backup directory must not grant group or world access."
 )
 assert.equal(
   await realpath(outputValue),
   outputValue,
-  "Backup directory must use its canonical path.",
+  "Backup directory must use its canonical path."
 )
 
 const pendingDirectory = await mkdtemp(join(outputValue, ".postgres-backup-"))
@@ -111,7 +122,7 @@ try {
   await rename(pendingArchive, archivePath)
   await rename(pendingManifest, manifestPath)
   process.stdout.write(
-    `${JSON.stringify({ archivePath, bytes: archiveStats.size, manifestPath, sha256, status: "verified" })}\n`,
+    `${JSON.stringify({ archivePath, bytes: archiveStats.size, manifestPath, sha256, status: "verified" })}\n`
   )
 } finally {
   await rm(pendingDirectory, { force: true, recursive: true })

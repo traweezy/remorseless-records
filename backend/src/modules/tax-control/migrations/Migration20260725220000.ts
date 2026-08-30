@@ -1,4 +1,4 @@
-import { Migration } from "@medusajs/framework/mikro-orm/migrations";
+import { Migration } from "@medusajs/framework/mikro-orm/migrations"
 
 export class Migration20260725220000 extends Migration {
   override async up(): Promise<void> {
@@ -24,32 +24,32 @@ export class Migration20260725220000 extends Migration {
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
         'constraint "tax_quote_evidences_pkey" primary key ("id")' +
-        ");",
-    );
+        ");"
+    )
     this.addSql(
-      'create unique index if not exists "tax_quote_evidences_payment_intent_id_key" on "tax_quote_evidences" ("payment_intent_id") where deleted_at is null;',
-    );
+      'create unique index if not exists "tax_quote_evidences_payment_intent_id_key" on "tax_quote_evidences" ("payment_intent_id") where deleted_at is null;'
+    )
     this.addSql(
-      'create unique index if not exists "tax_quote_evidences_calculation_id_key" on "tax_quote_evidences" ("calculation_id") where calculation_id is not null and deleted_at is null;',
-    );
+      'create unique index if not exists "tax_quote_evidences_calculation_id_key" on "tax_quote_evidences" ("calculation_id") where calculation_id is not null and deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_tax_quote_evidences_cart_id" on "tax_quote_evidences" ("cart_id") where deleted_at is null;',
-    );
+      'create index if not exists "idx_tax_quote_evidences_cart_id" on "tax_quote_evidences" ("cart_id") where deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_tax_quote_evidences_order_id" on "tax_quote_evidences" ("order_id") where order_id is not null and deleted_at is null;',
-    );
+      'create index if not exists "idx_tax_quote_evidences_order_id" on "tax_quote_evidences" ("order_id") where order_id is not null and deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_tax_quote_evidences_fingerprint" on "tax_quote_evidences" ("fingerprint") where deleted_at is null;',
-    );
+      'create index if not exists "idx_tax_quote_evidences_fingerprint" on "tax_quote_evidences" ("fingerprint") where deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_tax_quote_evidences_status" on "tax_quote_evidences" ("status", "last_verified_at") where deleted_at is null;',
-    );
+      'create index if not exists "idx_tax_quote_evidences_status" on "tax_quote_evidences" ("status", "last_verified_at") where deleted_at is null;'
+    )
     this.addSql(
-      'create index if not exists "idx_tax_quote_evidences_deleted_at" on "tax_quote_evidences" ("deleted_at");',
-    );
+      'create index if not exists "idx_tax_quote_evidences_deleted_at" on "tax_quote_evidences" ("deleted_at");'
+    )
   }
 
   override async down(): Promise<void> {
-    this.addSql('drop table if exists "tax_quote_evidences";');
+    this.addSql('drop table if exists "tax_quote_evidences";')
   }
 }

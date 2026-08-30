@@ -87,9 +87,7 @@ export const useCheckout = () => {
     queryKey: CHECKOUT_QUERY_KEY,
     queryFn: async () =>
       preservePreparedPayment(
-        queryClient.getQueryData<CheckoutProjection | null>(
-          CHECKOUT_QUERY_KEY
-        ),
+        queryClient.getQueryData<CheckoutProjection | null>(CHECKOUT_QUERY_KEY),
         await getCheckout()
       ),
     staleTime: 0,

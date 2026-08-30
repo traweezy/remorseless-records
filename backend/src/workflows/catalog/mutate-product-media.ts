@@ -5,10 +5,7 @@ import {
   transform,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import {
-  acquireLockStep,
-  releaseLockStep,
-} from "@medusajs/medusa/core-flows"
+import { acquireLockStep, releaseLockStep } from "@medusajs/medusa/core-flows"
 
 import {
   compensateCatalogProductMediaMutation,
@@ -31,7 +28,7 @@ const mutateProductMediaStep = createStep(
   "mutate-catalog-product-media",
   async (
     input: CatalogProductMediaMutationInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<CatalogProductMediaMutationResult, MutationCompensation | null>
   > => {
@@ -46,7 +43,7 @@ const mutateProductMediaStep = createStep(
             createdAssetIds: result.createdAssetIds,
             operationId: result.operationId,
             previous: result.previous,
-          },
+          }
     )
   },
   async (compensation, { container }) => {
@@ -55,13 +52,13 @@ const mutateProductMediaStep = createStep(
     }
     const catalogService = container.resolve("catalog") as CatalogService
     await compensateCatalogProductMediaMutation(catalogService, compensation)
-  },
+  }
 )
 
 const completeProductMediaStep = createStep(
   "complete-catalog-product-media",
   async (
-    mutation: CatalogProductMediaMutationResult,
+    mutation: CatalogProductMediaMutationResult
   ): Promise<StepResponse<CatalogProductMediaMutationResult>> => {
     if (mutation.replayed) {
       return new StepResponse(mutation)
@@ -73,24 +70,24 @@ const completeProductMediaStep = createStep(
         version: mutation.version,
       },
     })
-  },
+  }
 )
 
 const persistProductMediaOperationStep = createStep(
   "persist-catalog-product-media-operation",
   async (
     mutation: CatalogProductMediaMutationResult,
-    { container },
+    { container }
   ): Promise<StepResponse<CatalogProductMediaMutationResult>> => {
     if (!mutation.replayed) {
       const catalogService = container.resolve("catalog") as CatalogService
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,
-        mutation.result,
+        mutation.result
       )
     }
     return new StepResponse(mutation)
-  },
+  }
 )
 
 export const mutateCatalogProductMediaWorkflow = createWorkflow(
@@ -101,19 +98,16 @@ export const mutateCatalogProductMediaWorkflow = createWorkflow(
     timeout: 60,
   },
   function (input: CatalogProductMediaMutationInput) {
-    const lockKeys = transform(
-      { input },
-      ({ input: workflowInput }) => [
-        `catalog:product-media:${workflowInput.aggregateId}`,
-        ...[
-          ...new Set(
-            workflowInput.media
-              .map(({ mediaAssetId }) => mediaAssetId?.trim())
-              .filter((id): id is string => Boolean(id)),
-          ),
-        ].map((id) => `catalog:media-asset:${id}`),
-      ],
-    )
+    const lockKeys = transform({ input }, ({ input: workflowInput }) => [
+      `catalog:product-media:${workflowInput.aggregateId}`,
+      ...[
+        ...new Set(
+          workflowInput.media
+            .map(({ mediaAssetId }) => mediaAssetId?.trim())
+            .filter((id): id is string => Boolean(id))
+        ),
+      ].map((id) => `catalog:media-asset:${id}`),
+    ])
     acquireLockStep({
       key: lockKeys,
       timeout: 10,
@@ -124,5 +118,5 @@ export const mutateCatalogProductMediaWorkflow = createWorkflow(
     const persisted = persistProductMediaOperationStep(completed)
     releaseLockStep({ key: lockKeys })
     return new WorkflowResponse(persisted)
-  },
+  }
 )

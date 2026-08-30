@@ -10,12 +10,7 @@ import {
 } from "@/modules/news/serializers"
 import type { NewsCreateInput, NewsUpdateInput } from "./contracts"
 import type { NewsService, NewsTransactionContext } from "./command"
-import {
-  buildSeo,
-  normalizeList,
-  slugify,
-  toNullableString,
-} from "./utils"
+import { buildSeo, normalizeList, slugify, toNullableString } from "./utils"
 
 const parseStoredDate = (
   value: Date | string | null | undefined
@@ -85,9 +80,7 @@ const resolvePublication = ({
   const shouldPublishNow =
     input.status === "published" && existingStatus !== "published"
   const publishedAt =
-    suppliedPublishedAt ??
-    (shouldPublishNow ? now : existingPublishedAt) ??
-    now
+    suppliedPublishedAt ?? (shouldPublishNow ? now : existingPublishedAt) ?? now
   if (publishedAt.getTime() > now.getTime()) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
@@ -124,15 +117,15 @@ export const buildNewsEntryPatch = ({
   const excerpt =
     input.excerpt !== undefined
       ? toNullableString(input.excerpt)
-      : existing?.excerpt ?? null
+      : (existing?.excerpt ?? null)
   const coverUrl =
     input.coverUrl !== undefined
       ? toNullableString(input.coverUrl)
-      : existing?.cover_url ?? null
+      : (existing?.cover_url ?? null)
   const coverAltText =
     input.coverAltText !== undefined
       ? toNullableString(input.coverAltText)
-      : existing?.cover_alt_text ?? null
+      : (existing?.cover_alt_text ?? null)
   if (coverUrl && !coverAltText) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
@@ -153,7 +146,7 @@ export const buildNewsEntryPatch = ({
     tags:
       input.tags !== undefined
         ? normalizeList(input.tags)
-        : existing?.tags ?? [],
+        : (existing?.tags ?? []),
     title,
   }
 }
@@ -167,7 +160,8 @@ export const resolveUniqueNewsSlug = async (
   const normalizedBase =
     slugify(title).slice(0, 180).replace(/-+$/, "") || "news"
   for (let suffix = 0; suffix < 50; suffix += 1) {
-    const candidate = suffix === 0 ? normalizedBase : `${normalizedBase}-${suffix + 1}`
+    const candidate =
+      suffix === 0 ? normalizedBase : `${normalizedBase}-${suffix + 1}`
     const existing = await service.listNewsEntries(
       { slug: candidate },
       { take: 1 },

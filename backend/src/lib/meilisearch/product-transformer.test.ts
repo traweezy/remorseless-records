@@ -385,14 +385,18 @@ describe("buildSearchDocument", () => {
             variant_id: "var_available",
             required_quantity: 1,
             inventory: {
-              location_levels: [{ location_id: "loc_1", available_quantity: 12 }],
+              location_levels: [
+                { location_id: "loc_1", available_quantity: 12 },
+              ],
             },
           },
           {
             variant_id: "var_sold_out",
             required_quantity: 1,
             inventory: {
-              location_levels: [{ location_id: "loc_1", available_quantity: 0 }],
+              location_levels: [
+                { location_id: "loc_1", available_quantity: 0 },
+              ],
             },
           },
         ],

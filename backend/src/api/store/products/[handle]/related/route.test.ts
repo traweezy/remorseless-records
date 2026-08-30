@@ -1,6 +1,6 @@
-import { ProductStatus } from "@medusajs/framework/utils";
+import { ProductStatus } from "@medusajs/framework/utils"
 
-import { GET } from "./route";
+import { GET } from "./route"
 
 describe("GET /store/products/:handle/related", () => {
   it("uses only bounded published products linked to the key sales channel", async () => {
@@ -11,7 +11,7 @@ describe("GET /store/products/:handle/related", () => {
       id: "prod_target",
       metadata: { artist: "Target Artist" },
       title: "Target Artist - Target Release",
-    };
+    }
     const related = {
       categories: [{ handle: "death" }],
       collection: { id: "collection_1", title: "Collection" },
@@ -19,7 +19,7 @@ describe("GET /store/products/:handle/related", () => {
       id: "prod_related",
       metadata: { artist: "Another Artist" },
       title: "Another Artist - Related Release",
-    };
+    }
     const graph = jest
       .fn()
       .mockResolvedValueOnce({ data: [{ id: "prod_target" }] })
@@ -31,10 +31,10 @@ describe("GET /store/products/:handle/related", () => {
           { id: "prodsc_01", product_id: "prod_target" },
         ],
       })
-      .mockResolvedValueOnce({ data: [related, target] });
-    const json = jest.fn();
-    const setHeader = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+      .mockResolvedValueOnce({ data: [related, target] })
+    const json = jest.fn()
+    const setHeader = jest.fn()
+    const status = jest.fn().mockReturnValue({ json })
 
     await GET(
       {
@@ -45,8 +45,8 @@ describe("GET /store/products/:handle/related", () => {
         },
         scope: { resolve: jest.fn().mockReturnValue({ graph }) },
       } as never,
-      { json, setHeader, status } as never,
-    );
+      { json, setHeader, status } as never
+    )
 
     expect(graph).toHaveBeenNthCalledWith(1, {
       entity: "product",
@@ -56,33 +56,30 @@ describe("GET /store/products/:handle/related", () => {
         status: ProductStatus.PUBLISHED,
       },
       pagination: { take: 1 },
-    });
+    })
     expect(graph).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         entity: "product_sales_channel",
         filters: expect.objectContaining({ sales_channel_id: ["sc_web"] }),
-      }),
-    );
+      })
+    )
     expect(graph).toHaveBeenNthCalledWith(4, {
       entity: "product_sales_channel",
       fields: ["id", "product_id"],
       filters: { sales_channel_id: ["sc_web"] },
       pagination: { order: { id: "DESC" }, take: 101 },
-    });
-    expect(status).toHaveBeenCalledWith(200);
-    expect(setHeader).toHaveBeenCalledWith(
-      "Vary",
-      "x-publishable-api-key",
-    );
-    expect(json).toHaveBeenCalledWith({ products: [related] });
-  });
+    })
+    expect(status).toHaveBeenCalledWith(200)
+    expect(setHeader).toHaveBeenCalledWith("Vary", "x-publishable-api-key")
+    expect(json).toHaveBeenCalledWith({ products: [related] })
+  })
 
   it("does not expose a published product outside the key sales channel", async () => {
     const graph = jest
       .fn()
       .mockResolvedValueOnce({ data: [{ id: "prod_target" }] })
-      .mockResolvedValueOnce({ data: [] });
+      .mockResolvedValueOnce({ data: [] })
 
     await expect(
       GET(
@@ -94,8 +91,8 @@ describe("GET /store/products/:handle/related", () => {
           },
           scope: { resolve: jest.fn().mockReturnValue({ graph }) },
         } as never,
-        {} as never,
-      ),
-    ).rejects.toThrow("Product target-release not found");
-  });
-});
+        {} as never
+      )
+    ).rejects.toThrow("Product target-release not found")
+  })
+})

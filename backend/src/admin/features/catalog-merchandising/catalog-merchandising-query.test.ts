@@ -30,14 +30,14 @@ const productResponse = {
 describe("catalog merchandising product queries", () => {
   it("normalizes bounded product search input", () => {
     expect(normalizeCatalogProductSearch("  newest   arrivals  ")).toBe(
-      "newest arrivals",
+      "newest arrivals"
     )
     expect(normalizeCatalogProductSearch("x".repeat(110))).toHaveLength(100)
   })
 
   it("deduplicates selected product ids without empty values", () => {
     expect(
-      normalizeCatalogProductIds(["prod_2", " prod_1 ", "", "prod_2"]),
+      normalizeCatalogProductIds(["prod_2", " prod_1 ", "", "prod_2"])
     ).toEqual(["prod_2", "prod_1"])
   })
 
@@ -50,7 +50,7 @@ describe("catalog merchandising product queries", () => {
         client,
         offset: 40,
         search: "  newest   arrivals ",
-      }),
+      })
     ).resolves.toEqual({
       count: 2,
       limit: 20,
@@ -80,7 +80,7 @@ describe("catalog merchandising product queries", () => {
           order: "title",
           q: "newest arrivals",
         },
-      }),
+      })
     )
   })
 
@@ -101,7 +101,7 @@ describe("catalog merchandising product queries", () => {
           id: ["prod_2", "prod_1"],
           limit: 2,
         }),
-      }),
+      })
     )
   })
 
@@ -110,7 +110,7 @@ describe("catalog merchandising product queries", () => {
     const client: AdminSdkClient = { fetch }
 
     await expect(
-      loadCatalogProductsById({ client, ids: [" "] }),
+      loadCatalogProductsById({ client, ids: [" "] })
     ).resolves.toEqual([])
     expect(fetch).not.toHaveBeenCalled()
   })

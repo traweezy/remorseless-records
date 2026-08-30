@@ -30,7 +30,7 @@ export const createPostgresClientEnvironment = (raw, label) => {
   }
   if (!url.hostname || !url.username || !url.password || url.pathname === "/") {
     throw new Error(
-      `${label} must include a host, database, username, and password.`,
+      `${label} must include a host, database, username, and password.`
     )
   }
 

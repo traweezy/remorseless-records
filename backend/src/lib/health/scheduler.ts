@@ -1,9 +1,6 @@
 import { z } from "zod"
 
-import {
-  getSharedRedisClient,
-  withRedisTimeout,
-} from "../shared-redis-client"
+import { getSharedRedisClient, withRedisTimeout } from "../shared-redis-client"
 
 export const CHECKOUT_SCHEDULER_HEARTBEAT_KEY =
   "rr:health:checkout-reconciliation:latest:v1"
@@ -71,9 +68,7 @@ const schedulerSnapshotSchema = z.object({
   time_capped: z.boolean().optional(),
 })
 
-export type CheckoutSchedulerSnapshot = z.infer<
-  typeof schedulerSnapshotSchema
->
+export type CheckoutSchedulerSnapshot = z.infer<typeof schedulerSnapshotSchema>
 
 export type CheckoutSchedulerHealthPayload = {
   checked_at: string
@@ -116,10 +111,7 @@ export const buildCheckoutSchedulerSnapshot = (
     ...optionalField("completed", event.completed),
     ...optionalField("duration_ms", event.duration_ms),
     ...optionalField("eligible", event.eligible),
-    ...optionalField(
-      "event_loop_delay_max_ms",
-      event.event_loop_delay_max_ms
-    ),
+    ...optionalField("event_loop_delay_max_ms", event.event_loop_delay_max_ms),
     ...optionalField("failed", event.failed),
     ...optionalField("held_for_review", event.heldForReview),
     ...optionalField("lock_released", event.lock_released),
@@ -219,15 +211,11 @@ export const evaluateCheckoutSchedulerHealth = ({
   } else {
     const rawHeartbeatAgeSeconds =
       (now.getTime() - Date.parse(latest.snapshot.recorded_at)) / 1_000
-    heartbeatAgeSeconds = Number(
-      Math.max(0, rawHeartbeatAgeSeconds).toFixed(3)
-    )
+    heartbeatAgeSeconds = Number(Math.max(0, rawHeartbeatAgeSeconds).toFixed(3))
     if (rawHeartbeatAgeSeconds < -CHECKOUT_SCHEDULER_MAX_CLOCK_SKEW_SECONDS) {
       reasons.add("scheduler_heartbeat_from_future")
     }
-    if (
-      heartbeatAgeSeconds > CHECKOUT_SCHEDULER_MAX_HEARTBEAT_AGE_SECONDS
-    ) {
+    if (heartbeatAgeSeconds > CHECKOUT_SCHEDULER_MAX_HEARTBEAT_AGE_SECONDS) {
       reasons.add("scheduler_heartbeat_stale")
     }
     if (latest.snapshot.status !== "completed") {

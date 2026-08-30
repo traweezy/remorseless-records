@@ -83,7 +83,7 @@ describe("managed image normalization", () => {
     ])
 
     await expect(
-      normalizeManagedImageUpload(upload({ buffer: corruptPng })),
+      normalizeManagedImageUpload(upload({ buffer: corruptPng }))
     ).rejects.toMatchObject<Partial<MedusaError>>({
       message: "The image could not be decoded and normalized safely.",
       type: MedusaError.Types.INVALID_DATA,
@@ -104,8 +104,12 @@ describe("managed image normalization", () => {
 
     await expect(
       normalizeManagedImageUpload(
-        upload({ buffer: source, filename: "cover.jpg", mimeType: "image/jpeg" }),
-      ),
+        upload({
+          buffer: source,
+          filename: "cover.jpg",
+          mimeType: "image/jpeg",
+        })
+      )
     ).rejects.toThrow("could not be decoded and normalized safely")
   })
 
@@ -126,15 +130,19 @@ describe("managed image normalization", () => {
           pageHeight: height,
           width,
         },
-      },
+      }
     )
       .gif({ delay: [100, 100], loop: 0 })
       .toBuffer()
 
     await expect(
       normalizeManagedImageUpload(
-        upload({ buffer: source, filename: "animated.gif", mimeType: "image/gif" }),
-      ),
+        upload({
+          buffer: source,
+          filename: "animated.gif",
+          mimeType: "image/gif",
+        })
+      )
     ).rejects.toThrow("exceeds the safe dimension, pixel, frame")
   })
 
@@ -151,7 +159,7 @@ describe("managed image normalization", () => {
       .toBuffer()
 
     await expect(
-      normalizeManagedImageUpload(upload({ buffer: source })),
+      normalizeManagedImageUpload(upload({ buffer: source }))
     ).rejects.toThrow("exceeds the safe dimension, pixel, frame")
   })
 

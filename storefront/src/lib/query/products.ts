@@ -17,7 +17,8 @@ import type {
 
 type StoreProduct = HttpTypes.StoreProduct
 
-export const productDetailQueryKey = (handle: string) => ["product", handle] as const
+export const productDetailQueryKey = (handle: string) =>
+  ["product", handle] as const
 
 export const productDetailQueryOptions = (handle: string) => ({
   queryKey: productDetailQueryKey(handle),
@@ -46,8 +47,10 @@ export const useProductDetailQuery = (
     ...(options ?? {}),
   })
 
-export const prefetchProductDetail = (queryClient: QueryClient, handle: string) =>
-  queryClient.prefetchQuery(productDetailQueryOptions(handle))
+export const prefetchProductDetail = (
+  queryClient: QueryClient,
+  handle: string
+) => queryClient.prefetchQuery(productDetailQueryOptions(handle))
 
 export const useProductDetailPrefetch = (handle: string | null | undefined) => {
   const queryClient = useQueryClient()
@@ -75,7 +78,10 @@ export type ProductSearchParams = {
 }
 
 const normalizeFilters = (values: string[]) =>
-  [...values].map((value) => value.trim()).filter(Boolean).sort()
+  [...values]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .sort()
 
 export const productSearchQueryKey = ({
   query,
@@ -140,5 +146,7 @@ export const productSearchQueryOptions = ({
   }
 }
 
-export const prefetchProductSearch = (queryClient: QueryClient, params: ProductSearchParams) =>
-  queryClient.prefetchQuery(productSearchQueryOptions(params))
+export const prefetchProductSearch = (
+  queryClient: QueryClient,
+  params: ProductSearchParams
+) => queryClient.prefetchQuery(productSearchQueryOptions(params))

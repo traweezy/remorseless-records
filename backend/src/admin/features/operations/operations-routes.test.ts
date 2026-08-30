@@ -19,7 +19,7 @@ describe("operations Admin routes", () => {
 
       expect(operationsAppRoutePaths[workspace]).toBe(expected)
       expect(replace).toHaveBeenCalledWith(expected)
-    },
+    }
   )
 
   it("moves Tax control into native Admin settings", () => {

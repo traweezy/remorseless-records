@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import {
   memo,
@@ -7,8 +7,8 @@ import {
   useMemo,
   useState,
   type ChangeEvent,
-} from "react";
-import { ArrowDownTray } from "@medusajs/icons";
+} from "react"
+import { ArrowDownTray } from "@medusajs/icons"
 import {
   Alert,
   Button,
@@ -21,41 +21,41 @@ import {
   StatusBadge,
   Table,
   Text,
-} from "@medusajs/ui";
-import { useQuery } from "@tanstack/react-query";
+} from "@medusajs/ui"
+import { useQuery } from "@tanstack/react-query"
 
-import { operationsAdminActions } from "../../../lib/admin-permissions";
-import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
+import { operationsAdminActions } from "../../../lib/admin-permissions"
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import {
   AdminPageHeader,
   AdminSingleColumnLayout,
-} from "../../components/admin-page";
-import { AdminRetryState } from "../../components/admin-retry-state";
-import { AdminStatCard } from "../../components/admin-stat-card";
-import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation";
+} from "../../components/admin-page"
+import { AdminRetryState } from "../../components/admin-retry-state"
+import { AdminStatCard } from "../../components/admin-stat-card"
+import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation"
 import {
   replaceLegacyOperationsLocation,
   type ReplaceAdminLocation,
-} from "../../features/operations/operations-routes";
+} from "../../features/operations/operations-routes"
 import {
   filingBucketFor,
   TAX_FILING_PROFILES,
   TAX_FILING_STATES,
   type TaxFilingState,
-} from "../../../lib/tax-reporting/filing-states";
+} from "../../../lib/tax-reporting/filing-states"
 import {
   taxPeriodForPreset,
   taxPeriodPresetOptions,
   type TaxPeriodPreset,
-} from "../../../lib/tax-reporting/periods";
+} from "../../../lib/tax-reporting/periods"
 import type {
   TaxDestinationSummary,
   TaxRecord,
   TaxRecordProvider,
   TaxRecordQuality,
-} from "../../../lib/tax-reporting/types";
-import { getAdminRequestErrorMessage } from "../../lib/admin-request";
-import { taxRecordsQueryOptions, type TaxRecordFilters } from "./query";
+} from "../../../lib/tax-reporting/types"
+import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import { taxRecordsQueryOptions, type TaxRecordFilters } from "./query"
 
 const INITIAL_FILTERS: TaxRecordFilters = {
   collectionMode: "all",
@@ -65,52 +65,52 @@ const INITIAL_FILTERS: TaxRecordFilters = {
   q: "",
   quality: "all",
   type: "all",
-};
+}
 
-type UiPeriod = { end: string; start: string };
+type UiPeriod = { end: string; start: string }
 
 const uiPeriodForPreset = (
   filingState: TaxFilingState,
-  preset: TaxPeriodPreset,
+  preset: TaxPeriodPreset
 ): UiPeriod => {
-  const period = taxPeriodForPreset({ filingState, preset });
-  return { end: period.endDate, start: period.startDate };
-};
+  const period = taxPeriodForPreset({ filingState, preset })
+  return { end: period.endDate, start: period.startDate }
+}
 
 const formatMoney = (value: string, currencyCode = "usd"): string =>
   new Intl.NumberFormat(undefined, {
     currency: currencyCode.toUpperCase(),
     style: "currency",
-  }).format(Number(value));
+  }).format(Number(value))
 
 const formatDate = (value: string): string =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(value));
+  }).format(new Date(value))
 
 const providerLabel = (provider: TaxRecordProvider): string => {
   if (provider === "not_applicable") {
-    return "Not applicable";
+    return "Not applicable"
   }
   if (provider === "taxrate_io") {
-    return "TaxRate.io";
+    return "TaxRate.io"
   }
   if (provider === "stripe_tax") {
-    return "Stripe Tax";
+    return "Stripe Tax"
   }
-  return `${provider.charAt(0).toUpperCase()}${provider.slice(1)}`;
-};
+  return `${provider.charAt(0).toUpperCase()}${provider.slice(1)}`
+}
 
 const qualityColor = (quality: TaxRecordQuality): "green" | "orange" | "red" =>
-  quality === "complete" ? "green" : quality === "review" ? "orange" : "red";
+  quality === "complete" ? "green" : quality === "review" ? "orange" : "red"
 
 const qualityLabel = (quality: TaxRecordQuality): string =>
   quality === "complete"
     ? "Complete"
     : quality === "review"
       ? "Review"
-      : "Incomplete";
+      : "Incomplete"
 
 const destinationLabel = (record: TaxRecord): string =>
   [
@@ -120,7 +120,7 @@ const destinationLabel = (record: TaxRecord): string =>
     record.destination.postalCode,
   ]
     .filter(Boolean)
-    .join(", ") || "Destination missing";
+    .join(", ") || "Destination missing"
 
 const destinationSummaryLabel = (destination: TaxDestinationSummary): string =>
   [
@@ -130,22 +130,22 @@ const destinationSummaryLabel = (destination: TaxDestinationSummary): string =>
     destination.postalCode,
   ]
     .filter(Boolean)
-    .join(", ") || "Destination missing";
+    .join(", ") || "Destination missing"
 
 const refundTimingLabel = (
-  timing: TaxRecord["refundCreditTiming"],
+  timing: TaxRecord["refundCreditTiming"]
 ): string | null => {
   if (timing === "prior_period") {
-    return "Prior-period credit";
+    return "Prior-period credit"
   }
   if (timing === "same_period") {
-    return "Same-period credit";
+    return "Same-period credit"
   }
   if (timing === "unknown") {
-    return "Credit timing unknown";
+    return "Credit timing unknown"
   }
-  return null;
-};
+  return null
+}
 
 const LoadingState = memo(() => (
   <div
@@ -161,10 +161,10 @@ const LoadingState = memo(() => (
     </div>
     <Skeleton className="h-96 w-full" />
   </div>
-));
+))
 
 const MobileTaxRecord = memo(({ record }: { record: TaxRecord }) => {
-  const timing = refundTimingLabel(record.refundCreditTiming);
+  const timing = refundTimingLabel(record.refundCreditTiming)
   return (
     <article className="border-b border-ui-border-base p-4 last:border-b-0">
       <div className="flex items-start justify-between gap-3">
@@ -202,7 +202,7 @@ const MobileTaxRecord = memo(({ record }: { record: TaxRecord }) => {
               record.collectionMode === "disabled"
                 ? record.unclassifiedSales
                 : record.taxableSales,
-              record.currencyCode,
+              record.currencyCode
             )}
           </Text>
         </div>
@@ -245,16 +245,16 @@ const MobileTaxRecord = memo(({ record }: { record: TaxRecord }) => {
         </Text>
       ) : null}
     </article>
-  );
-});
+  )
+})
 
 const MobileDestination = memo(
   ({
     destination,
     filingState,
   }: {
-    destination: TaxDestinationSummary;
-    filingState: TaxFilingState;
+    destination: TaxDestinationSummary
+    filingState: TaxFilingState
   }) => (
     <article className="border-b border-ui-border-base p-4 last:border-b-0">
       <div className="flex items-start justify-between gap-3">
@@ -312,22 +312,22 @@ const MobileDestination = memo(
         </div>
       </div>
     </article>
-  ),
-);
+  )
+)
 
 export const TaxRecordsPageContent = memo(() => {
   const initialPeriod = useMemo(
     () => uiPeriodForPreset("CT", "current-quarter"),
-    [],
-  );
-  const [filingState, setFilingState] = useState<TaxFilingState>("CT");
-  const [preset, setPreset] = useState<TaxPeriodPreset>("current-quarter");
-  const [draftStart, setDraftStart] = useState(initialPeriod.start);
-  const [draftEnd, setDraftEnd] = useState(initialPeriod.end);
-  const [period, setPeriod] = useState(initialPeriod);
-  const [filters, setFilters] = useState<TaxRecordFilters>(INITIAL_FILTERS);
-  const [draftSearch, setDraftSearch] = useState("");
-  const [reportingCurrency, setReportingCurrency] = useState("usd");
+    []
+  )
+  const [filingState, setFilingState] = useState<TaxFilingState>("CT")
+  const [preset, setPreset] = useState<TaxPeriodPreset>("current-quarter")
+  const [draftStart, setDraftStart] = useState(initialPeriod.start)
+  const [draftEnd, setDraftEnd] = useState(initialPeriod.end)
+  const [period, setPeriod] = useState(initialPeriod)
+  const [filters, setFilters] = useState<TaxRecordFilters>(INITIAL_FILTERS)
+  const [draftSearch, setDraftSearch] = useState("")
+  const [reportingCurrency, setReportingCurrency] = useState("usd")
   const {
     data: report,
     error: queryError,
@@ -338,143 +338,143 @@ export const TaxRecordsPageContent = memo(() => {
       filingState,
       filters,
       period,
-    }),
-  );
+    })
+  )
   const error = queryError
     ? getAdminRequestErrorMessage(
         queryError,
-        "Tax records could not be loaded.",
+        "Tax records could not be loaded."
       )
-    : null;
+    : null
   const handleRetry = useCallback(() => {
-    void refetch();
-  }, [refetch]);
+    void refetch()
+  }, [refetch])
 
   const handleFilingState = useCallback((value: string) => {
-    const nextState = value as TaxFilingState;
-    const nextPeriod = uiPeriodForPreset(nextState, "current-quarter");
-    setFilingState(nextState);
-    setPreset("current-quarter");
-    setDraftStart(nextPeriod.start);
-    setDraftEnd(nextPeriod.end);
-    setPeriod(nextPeriod);
-    setFilters(INITIAL_FILTERS);
-    setDraftSearch("");
-    setReportingCurrency("usd");
-  }, []);
+    const nextState = value as TaxFilingState
+    const nextPeriod = uiPeriodForPreset(nextState, "current-quarter")
+    setFilingState(nextState)
+    setPreset("current-quarter")
+    setDraftStart(nextPeriod.start)
+    setDraftEnd(nextPeriod.end)
+    setPeriod(nextPeriod)
+    setFilters(INITIAL_FILTERS)
+    setDraftSearch("")
+    setReportingCurrency("usd")
+  }, [])
 
   const handlePreset = useCallback(
     (value: string) => {
-      const next = value as TaxPeriodPreset;
-      setPreset(next);
+      const next = value as TaxPeriodPreset
+      setPreset(next)
       if (next !== "custom") {
-        const nextPeriod = uiPeriodForPreset(filingState, next);
-        setDraftStart(nextPeriod.start);
-        setDraftEnd(nextPeriod.end);
+        const nextPeriod = uiPeriodForPreset(filingState, next)
+        setDraftStart(nextPeriod.start)
+        setDraftEnd(nextPeriod.end)
       }
     },
-    [filingState],
-  );
+    [filingState]
+  )
 
   const handleStart = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setPreset("custom");
+    setPreset("custom")
     setDraftStart(
       String(
-        (event.currentTarget as unknown as { value?: unknown }).value ?? "",
-      ),
-    );
-  }, []);
+        (event.currentTarget as unknown as { value?: unknown }).value ?? ""
+      )
+    )
+  }, [])
 
   const handleEnd = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setPreset("custom");
+    setPreset("custom")
     setDraftEnd(
       String(
-        (event.currentTarget as unknown as { value?: unknown }).value ?? "",
-      ),
-    );
-  }, []);
+        (event.currentTarget as unknown as { value?: unknown }).value ?? ""
+      )
+    )
+  }, [])
 
   const applyPeriod = useCallback(() => {
-    setFilters((current) => ({ ...current, page: 1 }));
-    setPeriod({ end: draftEnd, start: draftStart });
-  }, [draftEnd, draftStart]);
+    setFilters((current) => ({ ...current, page: 1 }))
+    setPeriod({ end: draftEnd, start: draftStart })
+  }, [draftEnd, draftStart])
 
   const handleSearch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setDraftSearch(
       String(
-        (event.currentTarget as unknown as { value?: unknown }).value ?? "",
-      ),
-    );
-  }, []);
+        (event.currentTarget as unknown as { value?: unknown }).value ?? ""
+      )
+    )
+  }, [])
 
   const applySearch = useCallback(() => {
     setFilters((current) => ({
       ...current,
       page: 1,
       q: draftSearch.trim(),
-    }));
-  }, [draftSearch]);
+    }))
+  }, [draftSearch])
 
   const clearSearch = useCallback(() => {
-    setDraftSearch("");
-    setFilters((current) => ({ ...current, page: 1, q: "" }));
-  }, []);
+    setDraftSearch("")
+    setFilters((current) => ({ ...current, page: 1, q: "" }))
+  }, [])
 
   const handleSearchKey = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
-        applySearch();
+        applySearch()
       }
     },
-    [applySearch],
-  );
+    [applySearch]
+  )
 
   const handleProvider = useCallback((value: string) => {
     setFilters((current) => ({
       ...current,
       page: 1,
       provider: value as TaxRecordFilters["provider"],
-    }));
-  }, []);
+    }))
+  }, [])
 
   const handleCollectionMode = useCallback((value: string) => {
     setFilters((current) => ({
       ...current,
       collectionMode: value as TaxRecordFilters["collectionMode"],
       page: 1,
-    }));
-  }, []);
+    }))
+  }, [])
 
   const handleQuality = useCallback((value: string) => {
     setFilters((current) => ({
       ...current,
       page: 1,
       quality: value as TaxRecordFilters["quality"],
-    }));
-  }, []);
+    }))
+  }, [])
 
   const handleType = useCallback((value: string) => {
     setFilters((current) => ({
       ...current,
       page: 1,
       type: value as TaxRecordFilters["type"],
-    }));
-  }, []);
+    }))
+  }, [])
 
   const handleReportingCurrency = useCallback((value: string) => {
-    setReportingCurrency(value);
-  }, []);
+    setReportingCurrency(value)
+  }, [])
 
   const previousPage = useCallback(() => {
     setFilters((current) => ({
       ...current,
       page: Math.max(1, current.page - 1),
-    }));
-  }, []);
+    }))
+  }, [])
 
   const nextPage = useCallback(() => {
-    setFilters((current) => ({ ...current, page: current.page + 1 }));
-  }, []);
+    setFilters((current) => ({ ...current, page: current.page + 1 }))
+  }, [])
 
   const download = useCallback(
     (format: "destinations" | "transactions") => {
@@ -483,65 +483,65 @@ export const TaxRecordsPageContent = memo(() => {
         filing_state: filingState,
         format,
         start: period.start,
-      });
+      })
       const browser = globalThis as unknown as {
-        location: { assign: (url: string) => void };
-      };
-      browser.location.assign(`/admin/tax-records/export?${searchParams}`);
+        location: { assign: (url: string) => void }
+      }
+      browser.location.assign(`/admin/tax-records/export?${searchParams}`)
     },
-    [filingState, period],
-  );
+    [filingState, period]
+  )
 
   const downloadTransactions = useCallback(
     () => download("transactions"),
-    [download],
-  );
+    [download]
+  )
   const downloadDestinations = useCallback(
     () => download("destinations"),
-    [download],
-  );
+    [download]
+  )
 
   const reportView = useMemo(() => {
     if (!report) {
-      return null;
+      return null
     }
     const activeSummary =
       report.summaries.find(
-        (summary) => summary.currencyCode === reportingCurrency,
-      ) ?? report.summaries[0];
-    const activeCurrency = activeSummary?.currencyCode;
+        (summary) => summary.currencyCode === reportingCurrency
+      ) ?? report.summaries[0]
+    const activeCurrency = activeSummary?.currencyCode
     return {
       activeCurrency,
       activeDestinations: activeCurrency
         ? report.destinations.filter(
-            (destination) => destination.currencyCode === activeCurrency,
+            (destination) => destination.currencyCode === activeCurrency
           )
         : [],
       activeSummary,
       currencies: report.summaries.map((summary) => summary.currencyCode),
       incompleteRecordCount: report.summaries.reduce(
         (total, summary) => total + summary.incompleteRecords,
-        0,
+        0
       ),
       pageCount: Math.max(1, Math.ceil(report.resultCount / filters.limit)),
       priorPeriodRefundCount: report.summaries.reduce(
         (total, summary) => total + summary.priorPeriodRefundCount,
-        0,
+        0
       ),
       reviewRecordCount: report.summaries.reduce(
         (total, summary) => total + summary.reviewRecords,
-        0,
+        0
       ),
-    };
-  }, [filters.limit, report, reportingCurrency]);
+    }
+  }, [filters.limit, report, reportingCurrency])
 
   const reportMatchesSelection =
     report?.filingState === filingState &&
     report.period.startDate === period.start &&
-    report.period.endDate === period.end;
+    report.period.endDate === period.end
 
   if ((!report || !reportMatchesSelection) && loading) {
-    return <LoadingState />;
+    return <LoadingState />
   }
 
   if (!report || !reportMatchesSelection) {
@@ -552,7 +552,7 @@ export const TaxRecordsPageContent = memo(() => {
         retrying={loading}
         title="Tax records are unavailable"
       />
-    );
+    )
   }
 
   if (!reportView?.activeSummary || !reportView.activeCurrency) {
@@ -563,7 +563,7 @@ export const TaxRecordsPageContent = memo(() => {
         retrying={loading}
         title="Tax summary is unavailable"
       />
-    );
+    )
   }
   const {
     activeCurrency,
@@ -574,12 +574,12 @@ export const TaxRecordsPageContent = memo(() => {
     pageCount,
     priorPeriodRefundCount,
     reviewRecordCount,
-  } = reportView;
-  const hasQualityIssues = reviewRecordCount > 0 || incompleteRecordCount > 0;
-  const filingProfile = TAX_FILING_PROFILES[filingState];
-  const periodOptions = taxPeriodPresetOptions(filingState);
+  } = reportView
+  const hasQualityIssues = reviewRecordCount > 0 || incompleteRecordCount > 0
+  const filingProfile = TAX_FILING_PROFILES[filingState]
+  const periodOptions = taxPeriodPresetOptions(filingState)
   const exportsBlocked =
-    report.source.truncated || report.source.unassignedStateRecords > 0;
+    report.source.truncated || report.source.unassignedStateRecords > 0
 
   return (
     <AdminSingleColumnLayout aria-busy={loading}>
@@ -1101,7 +1101,7 @@ export const TaxRecordsPageContent = memo(() => {
                         record.collectionMode === "disabled"
                           ? record.unclassifiedSales
                           : record.taxableSales,
-                        record.currencyCode,
+                        record.currencyCode
                       )}
                     </Table.Cell>
                     <Table.Cell className="text-right tabular-nums">
@@ -1271,31 +1271,31 @@ export const TaxRecordsPageContent = memo(() => {
                     <Table.Cell className="text-right tabular-nums">
                       {formatMoney(
                         destination.grossSales,
-                        destination.currencyCode,
+                        destination.currencyCode
                       )}
                     </Table.Cell>
                     <Table.Cell className="text-right tabular-nums">
                       {formatMoney(
                         destination.refundedSales,
-                        destination.currencyCode,
+                        destination.currencyCode
                       )}
                     </Table.Cell>
                     <Table.Cell className="text-right tabular-nums">
                       {formatMoney(
                         destination.taxableSales,
-                        destination.currencyCode,
+                        destination.currencyCode
                       )}
                     </Table.Cell>
                     <Table.Cell className="text-right tabular-nums">
                       {formatMoney(
                         destination.taxCollected,
-                        destination.currencyCode,
+                        destination.currencyCode
                       )}
                     </Table.Cell>
                     <Table.Cell className="text-right tabular-nums">
                       {formatMoney(
                         destination.refundedTax,
-                        destination.currencyCode,
+                        destination.currencyCode
                       )}
                     </Table.Cell>
                   </Table.Row>
@@ -1345,10 +1345,10 @@ export const TaxRecordsPageContent = memo(() => {
         </Text>
       </Container>
     </AdminSingleColumnLayout>
-  );
-});
+  )
+})
 
-TaxRecordsPageContent.displayName = "TaxRecordsPageContent";
+TaxRecordsPageContent.displayName = "TaxRecordsPageContent"
 
 export const TaxRecordsPage = memo(() => (
   <AdminPermissionBoundary
@@ -1357,21 +1357,21 @@ export const TaxRecordsPage = memo(() => (
   >
     <TaxRecordsPageContent />
   </AdminPermissionBoundary>
-));
+))
 
-TaxRecordsPage.displayName = "TaxRecordsPage";
+TaxRecordsPage.displayName = "TaxRecordsPage"
 
 const LegacyTaxRecordsPage = memo(() => {
   useEffect(() => {
     const { location } = globalThis as unknown as {
-      location: ReplaceAdminLocation;
-    };
-    replaceLegacyOperationsLocation(location, "tax-records");
-  }, []);
+      location: ReplaceAdminLocation
+    }
+    replaceLegacyOperationsLocation(location, "tax-records")
+  }, [])
 
-  return null;
-});
+  return null
+})
 
-LegacyTaxRecordsPage.displayName = "LegacyTaxRecordsPage";
+LegacyTaxRecordsPage.displayName = "LegacyTaxRecordsPage"
 
-export default LegacyTaxRecordsPage;
+export default LegacyTaxRecordsPage

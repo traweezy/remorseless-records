@@ -186,9 +186,9 @@ describe("searchProductsServer", () => {
     mockServerDependencies({ searchProductsWithClient })
 
     const { searchProductsServer } = await import("@/lib/search/server")
-    const result = await searchProductsServer({ query: faker.word.noun() }).catch(
-      (error: unknown) => error
-    )
+    const result = await searchProductsServer({
+      query: faker.word.noun(),
+    }).catch((error: unknown) => error)
 
     expect(result).toMatchObject({
       kind: "unavailable",

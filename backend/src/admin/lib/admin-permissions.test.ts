@@ -19,8 +19,8 @@ describe("Admin permission client", () => {
       isAdminPermissionGranted(
         false,
         new Set(),
-        contentAdminActions.news.delete,
-      ),
+        contentAdminActions.news.delete
+      )
     ).toBe(true)
   })
 
@@ -30,18 +30,14 @@ describe("Admin permission client", () => {
     ])
 
     expect(
-      isAdminPermissionGranted(
-        true,
-        permissions,
-        contentAdminActions.news.read,
-      ),
+      isAdminPermissionGranted(true, permissions, contentAdminActions.news.read)
     ).toBe(true)
     expect(
       isAdminPermissionGranted(
         true,
         permissions,
-        contentAdminActions.news.update,
-      ),
+        contentAdminActions.news.update
+      )
     ).toBe(false)
   })
 })

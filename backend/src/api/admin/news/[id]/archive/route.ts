@@ -2,10 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import type NewsModuleService from "@/modules/news/service"
-import {
-  newsLifecycleSchema,
-  setNewsEntryArchived,
-} from "../../helpers"
+import { newsLifecycleSchema, setNewsEntryArchived } from "../../helpers"
 
 type NewsService = InstanceType<typeof NewsModuleService>
 
@@ -22,12 +19,6 @@ export const POST = async (
     )
   }
   const service = req.scope.resolve("news") as NewsService
-  const result = await setNewsEntryArchived(
-    req,
-    service,
-    id,
-    parsed.data,
-    true
-  )
+  const result = await setNewsEntryArchived(req, service, id, parsed.data, true)
   res.status(200).json(result)
 }

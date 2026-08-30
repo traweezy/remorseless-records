@@ -132,8 +132,8 @@ describe("POST /admin/catalog/products", () => {
           ...requestBody,
           profile: { artists: [] },
         }),
-        res,
-      ),
+        res
+      )
     ).rejects.toThrow("Invalid catalog product creation payload")
     expect(workflowMock).not.toHaveBeenCalled()
   })

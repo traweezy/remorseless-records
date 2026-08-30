@@ -1,7 +1,4 @@
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import type { IApiKeyModuleService } from "@medusajs/framework/types"
 import { Modules } from "@medusajs/framework/utils"
 
@@ -20,11 +17,11 @@ const unavailable = (req: MedusaRequest, res: MedusaResponse): void => {
 
 export const GET = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   try {
     const apiKeyModuleService = req.scope.resolve<IApiKeyModuleService>(
-      Modules.API_KEY,
+      Modules.API_KEY
     )
     const apiKeys = await apiKeyModuleService.listApiKeys()
     const defaultApiKey = apiKeys.find((apiKey) => apiKey.title === "Webshop")

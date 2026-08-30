@@ -1,23 +1,16 @@
-import {
-  queryOptions,
-  type QueryFunctionContext,
-} from "@tanstack/react-query";
-import { z } from "zod";
+import { queryOptions, type QueryFunctionContext } from "@tanstack/react-query"
+import { z } from "zod"
 
-import type { RefundOperationsSnapshot } from "../../../lib/refund-operations/types";
-import { requestAdminJson } from "../../lib/admin-request";
+import type { RefundOperationsSnapshot } from "../../../lib/refund-operations/types"
+import { requestAdminJson } from "../../lib/admin-request"
 
 const refundCaseStatusSchema = z.enum([
   "action_required",
   "processing",
   "verified",
-]);
+])
 
-const refundProviderSchema = z.enum([
-  "stripe_tax",
-  "taxrate_io",
-  "untracked",
-]);
+const refundProviderSchema = z.enum(["stripe_tax", "taxrate_io", "untracked"])
 
 const refundTaxStatusSchema = z.enum([
   "attention",
@@ -25,7 +18,7 @@ const refundTaxStatusSchema = z.enum([
   "pending",
   "untracked",
   "verified",
-]);
+])
 
 const stripeRefundStatusSchema = z.enum([
   "canceled",
@@ -34,7 +27,7 @@ const stripeRefundStatusSchema = z.enum([
   "requires_action",
   "succeeded",
   "unknown",
-]);
+])
 
 export const refundOperationsSnapshotSchema: z.ZodType<RefundOperationsSnapshot> =
   z.object({
@@ -56,7 +49,7 @@ export const refundOperationsSnapshotSchema: z.ZodType<RefundOperationsSnapshot>
         stripeRefundCount: z.number().int().nonnegative().nullable(),
         stripeStatuses: z.array(stripeRefundStatusSchema),
         taxStatus: refundTaxStatusSchema,
-      }),
+      })
     ),
     generatedAt: z.string().min(1),
     reasonConfiguration: z.object({
@@ -75,15 +68,15 @@ export const refundOperationsSnapshotSchema: z.ZodType<RefundOperationsSnapshot>
         z.object({
           amountMinor: z.number().int().nonnegative(),
           currencyCode: z.string().regex(/^[a-z]{3}$/),
-        }),
+        })
       ),
       processing: z.number().int().nonnegative(),
       totalCases: z.number().int().nonnegative(),
       verified: z.number().int().nonnegative(),
     }),
-  });
+  })
 
-export const REFUND_OPERATIONS_QUERY_KEY = ["refund-operations"] as const;
+export const REFUND_OPERATIONS_QUERY_KEY = ["refund-operations"] as const
 
 const loadRefundOperations = ({
   signal,
@@ -94,7 +87,7 @@ const loadRefundOperations = ({
     path: "/admin/refund-operations",
     schema: refundOperationsSnapshotSchema,
     signal,
-  });
+  })
 
 export const refundOperationsQueryOptions = () =>
   queryOptions({
@@ -102,4 +95,4 @@ export const refundOperationsQueryOptions = () =>
     queryKey: REFUND_OPERATIONS_QUERY_KEY,
     retry: false,
     staleTime: 0,
-  });
+  })

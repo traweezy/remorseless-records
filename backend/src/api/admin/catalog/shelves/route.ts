@@ -46,8 +46,7 @@ export const GET = async (
     limit,
     offset,
     archived,
-  } =
-    shelfListQuerySchema.parse(req.query)
+  } = shelfListQuerySchema.parse(req.query)
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const filters: Record<string, unknown> = {}
   if (handle) {
@@ -84,7 +83,7 @@ export const GET = async (
   )
   const productsByShelfId = await loadShelfProductsByShelfId(
     catalogService,
-    shelves.map((shelf) => shelf.id),
+    shelves.map((shelf) => shelf.id)
   )
   const serialized = shelves.map((shelf) => ({
     shelf: serializeCatalogShelf(shelf),

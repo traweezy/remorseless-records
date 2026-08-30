@@ -1,7 +1,4 @@
-import {
-  getSharedRedisClient,
-  withRedisTimeout,
-} from "../shared-redis-client"
+import { getSharedRedisClient, withRedisTimeout } from "../shared-redis-client"
 import {
   CHECKOUT_SCHEDULER_HEARTBEAT_KEY,
   CHECKOUT_SCHEDULER_HEARTBEAT_TTL_SECONDS,
@@ -120,9 +117,9 @@ describe("checkout scheduler health", () => {
   })
 
   it("refreshes the bounded heartbeat without latching a completion", async () => {
-    await expect(
-      recordCheckoutSchedulerHealth(schedulerEvent())
-    ).resolves.toBe(true)
+    await expect(recordCheckoutSchedulerHealth(schedulerEvent())).resolves.toBe(
+      true
+    )
 
     expect(setMock).toHaveBeenCalledTimes(1)
     expect(setMock).toHaveBeenCalledWith(

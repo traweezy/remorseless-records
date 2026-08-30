@@ -9,10 +9,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react"
-import {
-  keepPreviousData,
-  useQuery,
-} from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import {
   Alert,
   Button,
@@ -97,21 +94,24 @@ export const CatalogProductPicker = memo<CatalogProductPickerProps>(
           setSelectedProductId(currentProductId)
         }
       },
-      [currentProductId],
+      [currentProductId]
     )
 
     const handleDraftSearchChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
         setDraftSearch(readInputValue(event))
       },
-      [],
+      []
     )
 
-    const handleSearch = useCallback((event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      setAppliedSearch(normalizeCatalogProductSearch(draftSearch))
-      setPageIndex(0)
-    }, [draftSearch])
+    const handleSearch = useCallback(
+      (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        setAppliedSearch(normalizeCatalogProductSearch(draftSearch))
+        setPageIndex(0)
+      },
+      [draftSearch]
+    )
 
     const handleClear = useCallback(() => {
       setDraftSearch("")
@@ -142,7 +142,12 @@ export const CatalogProductPicker = memo<CatalogProductPickerProps>(
     return (
       <FocusModal onOpenChange={handleOpenChange} open={open}>
         <FocusModal.Trigger asChild>
-          <Button disabled={disabled} size="small" type="button" variant="secondary">
+          <Button
+            disabled={disabled}
+            size="small"
+            type="button"
+            variant="secondary"
+          >
             {currentProductId ? "Change product" : "Choose product"}
           </Button>
         </FocusModal.Trigger>
@@ -152,7 +157,10 @@ export const CatalogProductPicker = memo<CatalogProductPickerProps>(
             title="Choose a shelf product"
           />
           <FocusModal.Body className="overflow-y-auto px-6 py-5">
-            <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={handleSearch}>
+            <form
+              className="flex flex-col gap-3 sm:flex-row sm:items-end"
+              onSubmit={handleSearch}
+            >
               <div className="min-w-0 flex-1">
                 <Label htmlFor={searchId}>Search products</Label>
                 <Input
@@ -186,7 +194,7 @@ export const CatalogProductPicker = memo<CatalogProductPickerProps>(
                   <Text size="small">
                     {getAdminRequestErrorMessage(
                       pageQuery.error,
-                      "Unable to search products.",
+                      "Unable to search products."
                     )}
                   </Text>
                   <Button
@@ -211,7 +219,9 @@ export const CatalogProductPicker = memo<CatalogProductPickerProps>(
                 >
                   {page.products.map((product) => (
                     <RadioGroup.ChoiceBox
-                      description={product.handle ? `/${product.handle}` : product.id}
+                      description={
+                        product.handle ? `/${product.handle}` : product.id
+                      }
                       key={product.id}
                       label={product.title}
                       value={product.id}
@@ -277,7 +287,7 @@ export const CatalogProductPicker = memo<CatalogProductPickerProps>(
         </FocusModal.Content>
       </FocusModal>
     )
-  },
+  }
 )
 
 CatalogProductPicker.displayName = "CatalogProductPicker"

@@ -26,10 +26,9 @@ export default async function checkObjectStorage({
   })
 
   try {
-    await client.send(
-      new HeadBucketCommand({ Bucket: config.bucket }),
-      { abortSignal: AbortSignal.timeout(STORAGE_CHECK_TIMEOUT_MS) }
-    )
+    await client.send(new HeadBucketCommand({ Bucket: config.bucket }), {
+      abortSignal: AbortSignal.timeout(STORAGE_CHECK_TIMEOUT_MS),
+    })
     logger.info(
       `[storage] Verified S3-compatible bucket '${config.bucket}' is reachable.`
     )

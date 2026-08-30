@@ -31,7 +31,7 @@ type ProductService = {
       relations: string[]
       skip: number
       take: number
-    },
+    }
   ) => Promise<[ProductRecord[], number]>
 }
 
@@ -40,7 +40,7 @@ type ServiceContainer = {
 }
 
 const listAll = async <T>(
-  listPage: (skip: number, take: number) => Promise<[T[], number]>,
+  listPage: (skip: number, take: number) => Promise<[T[], number]>
 ): Promise<T[]> => {
   const records: T[] = []
   const take = 250
@@ -57,7 +57,7 @@ const listAll = async <T>(
 }
 
 export const loadCatalogAuthoringAudit = async (
-  container: ServiceContainer,
+  container: ServiceContainer
 ): Promise<CatalogAuthoringAuditReport> => {
   const productService = container.resolve(Modules.PRODUCT) as ProductService
   const catalogService = container.resolve("catalog") as CatalogService
@@ -67,49 +67,40 @@ export const loadCatalogAuthoringAudit = async (
       listAll((skip, take) =>
         productService.listAndCountProducts(
           {},
-          { relations: ["type"], skip, take },
-        ),
+          { relations: ["type"], skip, take }
+        )
       ),
       listAll((skip, take) =>
-        catalogService.listAndCountCatalogProductProfiles(
-          {},
-          { skip, take },
-        ),
+        catalogService.listAndCountCatalogProductProfiles({}, { skip, take })
       ),
       listAll((skip, take) =>
         catalogService.listAndCountCatalogReferenceValues(
           { kind: "product_type" },
-          { skip, take },
-        ),
+          { skip, take }
+        )
       ),
       listAll((skip, take) =>
-        catalogService.listAndCountCatalogBundleProfiles({}, { skip, take }),
+        catalogService.listAndCountCatalogBundleProfiles({}, { skip, take })
       ),
     ])
 
   return buildCatalogAuthoringAudit({
-    bundles: bundleRecords.map(
-      (bundle): CatalogAuthoringAuditBundle => ({
-        bundleType: bundle.bundle_type,
-        productId: bundle.product_id,
-      }),
-    ),
-    products: productRecords.map(
-      (product): CatalogAuthoringAuditProduct => ({
-        handle: product.handle?.trim() || null,
-        id: product.id,
-        metadata: product.metadata ?? null,
-        nativeProductType: product.type?.value?.trim() || null,
-        status: product.status?.trim() || null,
-        title: product.title?.trim() || "Untitled product",
-      }),
-    ),
-    profiles: profileRecords.map(
-      (profile): CatalogAuthoringAuditProfile => ({
-        productId: profile.product_id,
-        productTypeId: profile.product_type_id ?? null,
-      }),
-    ),
+    bundles: bundleRecords.map((bundle): CatalogAuthoringAuditBundle => ({
+      bundleType: bundle.bundle_type,
+      productId: bundle.product_id,
+    })),
+    products: productRecords.map((product): CatalogAuthoringAuditProduct => ({
+      handle: product.handle?.trim() || null,
+      id: product.id,
+      metadata: product.metadata ?? null,
+      nativeProductType: product.type?.value?.trim() || null,
+      status: product.status?.trim() || null,
+      title: product.title?.trim() || "Untitled product",
+    })),
+    profiles: profileRecords.map((profile): CatalogAuthoringAuditProfile => ({
+      productId: profile.product_id,
+      productTypeId: profile.product_type_id ?? null,
+    })),
     references: referenceRecords.map(
       (reference): CatalogAuthoringAuditReference => ({
         id: reference.id,
@@ -117,7 +108,7 @@ export const loadCatalogAuthoringAudit = async (
         kind: reference.kind,
         label: reference.label,
         value: reference.value,
-      }),
+      })
     ),
   })
 }

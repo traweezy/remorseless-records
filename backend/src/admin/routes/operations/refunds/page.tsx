@@ -13,9 +13,7 @@ export const config = defineRouteConfig({
 
 export const handle = {
   breadcrumb: () => "Refunds",
-  permissions: adminPermissionKey(
-    operationsAdminActions.refundOperations.read,
-  ),
+  permissions: adminPermissionKey(operationsAdminActions.refundOperations.read),
 }
 
 export default RefundOperationsPage

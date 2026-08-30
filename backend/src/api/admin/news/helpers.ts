@@ -20,10 +20,7 @@ import type {
   NewsLifecycleInput,
   NewsUpdateInput,
 } from "./contracts"
-import {
-  buildNewsEntryPatch,
-  resolveUniqueNewsSlug,
-} from "./entry-payload"
+import { buildNewsEntryPatch, resolveUniqueNewsSlug } from "./entry-payload"
 import { resolveAdminUserName } from "./utils"
 
 export {
@@ -230,7 +227,9 @@ export const setNewsEntryArchived = async (
     if (!updated) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        archived ? "Unable to archive news post." : "Unable to restore news post."
+        archived
+          ? "Unable to archive news post."
+          : "Unable to restore news post."
       )
     }
     await completeNewsOperation(service, operation.id, updated, sharedContext)

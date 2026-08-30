@@ -1,29 +1,26 @@
-import { renderToStaticMarkup } from "react-dom/server";
-import {
-  createDataTableColumnHelper,
-  useDataTable,
-} from "@medusajs/ui";
+import { renderToStaticMarkup } from "react-dom/server"
+import { createDataTableColumnHelper, useDataTable } from "@medusajs/ui"
 
 import {
   AdminResponsiveDataTable,
   type AdminResponsiveDataTableProps,
-} from "./admin-responsive-data-table";
+} from "./admin-responsive-data-table"
 
 type TestRow = {
-  id: string;
-};
+  id: string
+}
 
-const columnHelper = createDataTableColumnHelper<TestRow>();
+const columnHelper = createDataTableColumnHelper<TestRow>()
 const columns = [
   columnHelper.accessor("id", {
     header: "ID",
   }),
-];
+]
 
 type FixtureProps = Pick<
   AdminResponsiveDataTableProps<TestRow>,
   "mobile" | "showPagination"
->;
+>
 
 const Fixture = ({ mobile, showPagination = true }: FixtureProps) => {
   const instance = useDataTable({
@@ -38,7 +35,7 @@ const Fixture = ({ mobile, showPagination = true }: FixtureProps) => {
       },
     },
     rowCount: 0,
-  });
+  })
 
   return (
     <AdminResponsiveDataTable
@@ -46,34 +43,32 @@ const Fixture = ({ mobile, showPagination = true }: FixtureProps) => {
       mobile={mobile}
       showPagination={showPagination}
     />
-  );
-};
+  )
+}
 
 describe("AdminResponsiveDataTable", () => {
   it("keeps custom mobile content and native desktop loading aligned", () => {
     const markup = renderToStaticMarkup(
       <Fixture
         mobile={
-          <div aria-label="Loading mobile collection">
-            Mobile skeleton
-          </div>
+          <div aria-label="Loading mobile collection">Mobile skeleton</div>
         }
-      />,
-    );
+      />
+    )
 
-    expect(markup).toContain("Mobile skeleton");
-    expect(markup).toContain("md:hidden");
-    expect(markup).toContain("scroll-mt-16");
-    expect(markup).toContain("hidden md:flex");
-    expect(markup.match(/h-12 w-full/g)).toHaveLength(3);
-  });
+    expect(markup).toContain("Mobile skeleton")
+    expect(markup).toContain("md:hidden")
+    expect(markup).toContain("scroll-mt-16")
+    expect(markup).toContain("hidden md:flex")
+    expect(markup.match(/h-12 w-full/g)).toHaveLength(3)
+  })
 
   it("can omit pagination for a settled empty collection", () => {
     const markup = renderToStaticMarkup(
-      <Fixture mobile={<div>No records</div>} showPagination={false} />,
-    );
+      <Fixture mobile={<div>No records</div>} showPagination={false} />
+    )
 
-    expect(markup).toContain("No records");
-    expect(markup).not.toContain("h-7 w-");
-  });
-});
+    expect(markup).toContain("No records")
+    expect(markup).not.toContain("h-7 w-")
+  })
+})

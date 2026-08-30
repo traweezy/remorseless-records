@@ -2,7 +2,7 @@ import {
   loadTaxControlImpact,
   summarizeTaxControlImpact,
   type TaxControlImpactQuery,
-} from "./impact";
+} from "./impact"
 
 const cart = ({
   collectionMode = "collect",
@@ -10,10 +10,10 @@ const cart = ({
   sessionProvider = "pp_stripe_stripe",
   status = "pending",
 }: {
-  collectionMode?: "collect" | "disabled";
-  provider?: string;
-  sessionProvider?: string;
-  status?: string;
+  collectionMode?: "collect" | "disabled"
+  provider?: string
+  sessionProvider?: string
+  status?: string
 } = {}) => ({
   id: crypto.randomUUID(),
   payment_collection: {
@@ -32,7 +32,7 @@ const cart = ({
       },
     ],
   },
-});
+})
 
 describe("tax-control checkout impact", () => {
   it("counts only processable Stripe checkout sessions", () => {
@@ -44,7 +44,7 @@ describe("tax-control checkout impact", () => {
         cart({ collectionMode: "disabled" }),
         cart({ status: "error" }),
         cart({ sessionProvider: "pp_system" }),
-      ]),
+      ])
     ).toEqual({
       activityWindowDays: 30,
       frozenByCollectionMode: {
@@ -57,11 +57,11 @@ describe("tax-control checkout impact", () => {
       },
       paymentsFinalizing: 1,
       preparedCheckouts: 4,
-    });
-  });
+    })
+  })
 
   it("counts a cart once when it has multiple processable sessions", () => {
-    const duplicateSessionCart = cart();
+    const duplicateSessionCart = cart()
     duplicateSessionCart.payment_collection.payment_sessions.push({
       data: {
         metadata: {
@@ -71,17 +71,17 @@ describe("tax-control checkout impact", () => {
       },
       provider_id: "pp_stripe_stripe",
       status: "pending_authorization",
-    });
+    })
 
     expect(summarizeTaxControlImpact([duplicateSessionCart])).toMatchObject({
       paymentsFinalizing: 1,
       preparedCheckouts: 1,
-    });
-  });
+    })
+  })
 
   it("paginates the full activity window instead of returning a sample", async () => {
-    const firstPage = Array.from({ length: 250 }, () => cart());
-    const secondPage = [cart({ provider: "stripe_tax" })];
+    const firstPage = Array.from({ length: 250 }, () => cart())
+    const secondPage = [cart({ provider: "stripe_tax" })]
     const query: TaxControlImpactQuery = {
       graph: jest
         .fn()
@@ -93,20 +93,20 @@ describe("tax-control checkout impact", () => {
           data: secondPage,
           metadata: { count: 251, skip: 250, take: 250 },
         }),
-    };
+    }
 
     const impact = await loadTaxControlImpact(
       query,
-      new Date("2026-07-26T12:00:00.000Z"),
-    );
+      new Date("2026-07-26T12:00:00.000Z")
+    )
 
-    expect(impact.preparedCheckouts).toBe(251);
+    expect(impact.preparedCheckouts).toBe(251)
     expect(query.graph).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         pagination: expect.objectContaining({ skip: 250, take: 250 }),
-      }),
-    );
+      })
+    )
     expect(query.graph).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -114,7 +114,7 @@ describe("tax-control checkout impact", () => {
           completed_at: null,
           updated_at: { $gte: "2026-06-26T12:00:00.000Z" },
         },
-      }),
-    );
-  });
-});
+      })
+    )
+  })
+})

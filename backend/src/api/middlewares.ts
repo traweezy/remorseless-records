@@ -4,67 +4,67 @@ import {
   type MedusaRequest,
   type MedusaResponse,
   type MiddlewareRoute,
-} from "@medusajs/framework/http";
-import multer from "multer";
+} from "@medusajs/framework/http"
+import multer from "multer"
 
 import {
   adminAuthorizationPolicyRoutes,
   adminAuthorizationPolicyRoutesForArea,
-} from "../lib/admin-authorization-manifest";
+} from "../lib/admin-authorization-manifest"
 import {
   nativeAdminActions,
   productImportAdminActions,
-} from "../lib/admin-permissions";
-import { STORE_CORS } from "../lib/constants";
+} from "../lib/admin-permissions"
+import { STORE_CORS } from "../lib/constants"
 import {
   attachRequestCorrelation,
   sendApiProblem,
-} from "../lib/http/correlation";
-import { resolveClientIp } from "../lib/security/client-ip";
+} from "../lib/http/correlation"
+import { resolveClientIp } from "../lib/security/client-ip"
 import {
   buildBackendSecurityHeaders,
   shouldDefaultToNoStore,
-} from "../lib/security/security-headers";
+} from "../lib/security/security-headers"
 import {
   consumeRateLimit,
   type RateLimitDecision,
   type RateLimitPolicy,
-} from "../lib/security/rate-limit";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_FILES } from "../lib/uploads/validation";
+} from "../lib/security/rate-limit"
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_FILES } from "../lib/uploads/validation"
 
 type RateLimitConsumer = (
   identity: string,
-  policy: RateLimitPolicy,
-) => Promise<RateLimitDecision>;
+  policy: RateLimitPolicy
+) => Promise<RateLimitDecision>
 
 const backendSecurityHeaders = buildBackendSecurityHeaders({
   isDevelopment: process.env.NODE_ENV === "development",
   mediaUrls: [process.env.MINIO_FILE_URL, process.env.BACKEND_PUBLIC_URL],
-});
+})
 
 export const applySecurityBoundaryHeaders = (
   req: MedusaRequest,
   res: MedusaResponse,
-  next: MedusaNextFunction,
+  next: MedusaNextFunction
 ): void => {
-  res.removeHeader("X-Powered-By");
+  res.removeHeader("X-Powered-By")
   Object.entries(backendSecurityHeaders).forEach(([name, value]) => {
-    res.setHeader(name, value);
-  });
+    res.setHeader(name, value)
+  })
   if (shouldDefaultToNoStore(req.method, req.path)) {
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "no-store")
   }
-  next();
-};
+  next()
+}
 
 export const applyRequestObservability = (
   req: MedusaRequest,
   res: MedusaResponse,
-  next: MedusaNextFunction,
+  next: MedusaNextFunction
 ): void => {
-  attachRequestCorrelation(req, res);
-  next();
-};
+  attachRequestCorrelation(req, res)
+  next()
+}
 
 const allowedStoreOriginHosts = new Set(
   STORE_CORS.split(",")
@@ -72,28 +72,26 @@ const allowedStoreOriginHosts = new Set(
     .filter(Boolean)
     .map((origin) => {
       try {
-        return new URL(origin).host.toLowerCase();
+        return new URL(origin).host.toLowerCase()
       } catch {
-        return "";
+        return ""
       }
     })
-    .filter(Boolean),
-);
+    .filter(Boolean)
+)
 
-export const createRateLimitMiddleware = (
-  rule: RateLimitPolicy,
-  consume: RateLimitConsumer = consumeRateLimit,
-) =>
+export const createRateLimitMiddleware =
+  (rule: RateLimitPolicy, consume: RateLimitConsumer = consumeRateLimit) =>
   async (
     req: MedusaRequest,
     res: MedusaResponse,
-    next: MedusaNextFunction,
+    next: MedusaNextFunction
   ): Promise<void> => {
-    const decision = await consume(resolveClientIp(req), rule);
+    const decision = await consume(resolveClientIp(req), rule)
 
     if (decision.status === "allowed") {
-      next();
-      return;
+      next()
+      return
     }
 
     if (decision.status === "unavailable") {
@@ -102,43 +100,43 @@ export const createRateLimitMiddleware = (
           event: "rate_limit.unavailable",
           message: "Distributed rate limiting unavailable",
           route_class: rule.key,
-        }),
-      );
+        })
+      )
       sendApiProblem(req, res, {
         code: "rate_limit_unavailable",
         title: "Service temporarily unavailable",
         status: 503,
         detail: "Please wait a moment and try again.",
         instance: req.path,
-      });
-      return;
+      })
+      return
     }
 
-    res.setHeader("Retry-After", String(decision.retryAfterSeconds));
+    res.setHeader("Retry-After", String(decision.retryAfterSeconds))
     sendApiProblem(req, res, {
       code: "rate_limit_exceeded",
       title: "Too many requests",
       status: 429,
       detail: "Too many requests. Please try again shortly.",
       instance: req.path,
-    });
-  };
+    })
+  }
 
 const enforceStoreOrigin = (
   req: MedusaRequest,
   res: MedusaResponse,
-  next: MedusaNextFunction,
+  next: MedusaNextFunction
 ): void => {
-  const origin = req.headers.origin;
+  const origin = req.headers.origin
 
   if (!origin || typeof origin !== "string") {
-    next();
-    return;
+    next()
+    return
   }
 
-  let originHost = "";
+  let originHost = ""
   try {
-    originHost = new URL(origin).host.toLowerCase();
+    originHost = new URL(origin).host.toLowerCase()
   } catch {
     sendApiProblem(req, res, {
       code: "invalid_origin",
@@ -146,8 +144,8 @@ const enforceStoreOrigin = (
       status: 403,
       detail: "Origin is not allowed.",
       instance: req.path,
-    });
-    return;
+    })
+    return
   }
 
   if (!allowedStoreOriginHosts.has(originHost)) {
@@ -157,89 +155,89 @@ const enforceStoreOrigin = (
       status: 403,
       detail: "Origin is not allowed.",
       instance: req.path,
-    });
-    return;
+    })
+    return
   }
 
-  next();
-};
+  next()
+}
 
 const strictStoreMutationRateLimit = createRateLimitMiddleware({
   key: "store:mutation",
   max: 120,
   windowMs: 60_000,
   onUnavailable: "reject",
-});
+})
 
 const catalogReadRateLimit = createRateLimitMiddleware({
   key: "store:catalog-read",
   max: 240,
   windowMs: 60_000,
   onUnavailable: "local-fallback",
-});
+})
 
 const checkoutStatusRateLimit = createRateLimitMiddleware({
   key: "store:checkout-status",
   max: 600,
   windowMs: 60_000,
   onUnavailable: "local-fallback",
-});
+})
 
 const publicFormRateLimit = createRateLimitMiddleware({
   key: "store:public-form",
   max: 15,
   windowMs: 60_000,
   onUnavailable: "reject",
-});
+})
 
 const adminTaxControlReadRateLimit = createRateLimitMiddleware({
   key: "admin:tax-control",
   max: 30,
   windowMs: 60_000,
   onUnavailable: "local-fallback",
-});
+})
 
 const adminTaxControlMutationRateLimit = createRateLimitMiddleware({
   key: "admin:tax-control",
   max: 30,
   windowMs: 60_000,
   onUnavailable: "reject",
-});
+})
 
 const adminTaxRecordsRateLimit = createRateLimitMiddleware({
   key: "admin:tax-records",
   max: 60,
   windowMs: 60_000,
   onUnavailable: "local-fallback",
-});
+})
 
 const adminRefundOperationsRateLimit = createRateLimitMiddleware({
   key: "admin:refund-operations",
   max: 60,
   windowMs: 60_000,
   onUnavailable: "local-fallback",
-});
+})
 
 const adminCatalogMediaMutationRateLimit = createRateLimitMiddleware({
   key: "admin:catalog-media-mutation",
   max: 60,
   windowMs: 60_000,
   onUnavailable: "reject",
-});
+})
 
 const adminManagedUploadRateLimit = createRateLimitMiddleware({
   key: "admin:managed-upload",
   max: 60,
   windowMs: 60_000,
   onUnavailable: "reject",
-});
+})
 
 const adminCatalogMediaReadRateLimit = createRateLimitMiddleware({
   key: "admin:catalog-media-read",
   max: 120,
   windowMs: 60_000,
   onUnavailable: "local-fallback",
-});
+})
 
 const managedUpload = multer({
   limits: {
@@ -250,11 +248,11 @@ const managedUpload = multer({
     parts: MAX_UPLOAD_FILES + 1,
   },
   storage: multer.memoryStorage(),
-});
+})
 
 const rejectPresignedUploads = (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): void => {
   sendApiProblem(req, res, {
     code: "not_allowed",
@@ -263,14 +261,14 @@ const rejectPresignedUploads = (
     detail:
       "Presigned uploads are disabled; use the validated managed upload endpoint.",
     instance: req.path,
-  });
-};
+  })
+}
 
 export const rejectDeprecatedProductImport = (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): void => {
-  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("Cache-Control", "private, no-store")
   sendApiProblem(req, res, {
     code: "deprecated_product_import",
     type: "urn:remorseless-records:problem:deprecated-product-import",
@@ -279,14 +277,14 @@ export const rejectDeprecatedProductImport = (
     detail:
       "Upload a validated CSV and prepare it through POST /admin/products/imports.",
     instance: req.path,
-  });
-};
+  })
+}
 
 export const rejectUnsafeNativeCatalogDeletion = (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): void => {
-  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("Cache-Control", "private, no-store")
   sendApiProblem(req, res, {
     code: "catalog_hard_deletion_disabled",
     type: "urn:remorseless-records:problem:catalog-hard-deletion-disabled",
@@ -295,8 +293,8 @@ export const rejectUnsafeNativeCatalogDeletion = (
     detail:
       "Use an audited, version-checked update, archive, restore, or quarantine workflow.",
     instance: req.path,
-  });
-};
+  })
+}
 
 export const operationsAdminMiddlewareRoutes = [
   {
@@ -346,24 +344,24 @@ export const operationsAdminMiddlewareRoutes = [
     methods: ["POST"],
     middlewares: [adminCatalogMediaMutationRateLimit],
   },
-] satisfies MiddlewareRoute[];
+] satisfies MiddlewareRoute[]
 
 export const contentAdminPolicyRoutes =
-  adminAuthorizationPolicyRoutesForArea("content");
+  adminAuthorizationPolicyRoutesForArea("content")
 
 export const operationsAdminPolicyRoutes =
-  adminAuthorizationPolicyRoutesForArea("operations");
+  adminAuthorizationPolicyRoutesForArea("operations")
 
 const productImportPreparePolicies = [
   nativeAdminActions.product.read,
   nativeAdminActions.file.create,
   productImportAdminActions.productImport.create,
-];
+]
 
 const productImportConfirmPolicies = [
   nativeAdminActions.product.read,
   productImportAdminActions.productImport.update,
-];
+]
 
 export const deprecatedProductImportAdminRoutes = [
   {
@@ -380,12 +378,12 @@ export const deprecatedProductImportAdminRoutes = [
     middlewares: [rejectDeprecatedProductImport],
     policies: productImportConfirmPolicies,
   },
-] satisfies MiddlewareRoute[];
+] satisfies MiddlewareRoute[]
 
 export const productImportAdminPolicyRoutes = [
   ...adminAuthorizationPolicyRoutesForArea("product_import"),
   ...deprecatedProductImportAdminRoutes,
-];
+]
 
 export const nativeAdminPolicyOverlayRoutes = [
   {
@@ -398,7 +396,7 @@ export const nativeAdminPolicyOverlayRoutes = [
     methods: ["POST"],
     policies: [nativeAdminActions.productVariant.update],
   },
-] satisfies MiddlewareRoute[];
+] satisfies MiddlewareRoute[]
 
 export const disabledNativeCatalogDeletionAdminRoutes = [
   {
@@ -460,7 +458,7 @@ export const disabledNativeCatalogDeletionAdminRoutes = [
     middlewares: [rejectUnsafeNativeCatalogDeletion],
     policies: [nativeAdminActions.productVariant.delete],
   },
-] satisfies MiddlewareRoute[];
+] satisfies MiddlewareRoute[]
 
 export default defineMiddlewares({
   routes: [
@@ -506,10 +504,7 @@ export default defineMiddlewares({
     {
       matcher: "/admin/managed-uploads",
       methods: ["POST"],
-      middlewares: [
-        adminManagedUploadRateLimit,
-        managedUpload.array("files"),
-      ],
+      middlewares: [adminManagedUploadRateLimit, managedUpload.array("files")],
     },
     ...adminAuthorizationPolicyRoutes,
     ...nativeAdminPolicyOverlayRoutes,
@@ -530,4 +525,4 @@ export default defineMiddlewares({
       middlewares: [rejectPresignedUploads],
     },
   ],
-});
+})

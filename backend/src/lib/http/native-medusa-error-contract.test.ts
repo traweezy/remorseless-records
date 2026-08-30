@@ -1,9 +1,6 @@
 import path from "node:path"
 
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import middlewares from "../../api/middlewares"
@@ -12,7 +9,7 @@ type NativeErrorHandler = (
   error: unknown,
   req: MedusaRequest,
   res: MedusaResponse,
-  next: jest.Mock,
+  next: jest.Mock
 ) => void
 
 type ResponseState = {
@@ -24,7 +21,7 @@ const nativeErrorHandler = (): NativeErrorHandler => {
   const frameworkEntry = require.resolve("@medusajs/framework")
   const errorHandlerPath = path.join(
     path.dirname(frameworkEntry),
-    "http/middlewares/error-handler.js",
+    "http/middlewares/error-handler.js"
   )
   const module = jest.requireActual<{
     errorHandler: () => NativeErrorHandler
@@ -71,7 +68,7 @@ describe("native Medusa error compatibility", () => {
       new MedusaError(type, "Safe native message"),
       req,
       res,
-      jest.fn(),
+      jest.fn()
     )
 
     expect(state.status).toBe(status)
@@ -90,7 +87,7 @@ describe("native Medusa error compatibility", () => {
       new Error("postgresql://operator:secret@database.internal/admin"),
       req,
       res,
-      jest.fn(),
+      jest.fn()
     )
 
     expect(state.status).toBe(500)

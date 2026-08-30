@@ -55,7 +55,9 @@ describe("planHomepageShelfCopy", () => {
     })
 
     expect(planHomepageShelfCopy(current)).toEqual([])
-    expect(current.find(({ handle }) => handle === "staff-picks")).toEqual(records[2])
+    expect(current.find(({ handle }) => handle === "staff-picks")).toEqual(
+      records[2]
+    )
   })
 
   it("fails closed when a required handle is missing or duplicated", () => {

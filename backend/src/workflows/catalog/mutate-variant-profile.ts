@@ -1,7 +1,4 @@
-import {
-  acquireLockStep,
-  releaseLockStep,
-} from "@medusajs/medusa/core-flows"
+import { acquireLockStep, releaseLockStep } from "@medusajs/medusa/core-flows"
 import {
   createStep,
   createWorkflow,
@@ -31,7 +28,7 @@ const mutateVariantProfileStep = createStep(
   "mutate-catalog-variant-profile",
   async (
     input: CatalogVariantProfileMutationInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<
       CatalogVariantProfileMutationResult,
@@ -49,7 +46,7 @@ const mutateVariantProfileStep = createStep(
             createdReferenceValueIds: result.createdReferenceValueIds,
             operationId: result.operationId,
             previous: result.previous,
-          },
+          }
     )
   },
   async (compensation, { container }) => {
@@ -57,17 +54,14 @@ const mutateVariantProfileStep = createStep(
       return
     }
     const catalogService = container.resolve("catalog") as CatalogService
-    await compensateCatalogVariantProfileMutation(
-      catalogService,
-      compensation,
-    )
-  },
+    await compensateCatalogVariantProfileMutation(catalogService, compensation)
+  }
 )
 
 const completeVariantProfileStep = createStep(
   "complete-catalog-variant-profile",
   async (
-    mutation: CatalogVariantProfileMutationResult,
+    mutation: CatalogVariantProfileMutationResult
   ): Promise<StepResponse<CatalogVariantProfileMutationResult>> => {
     if (mutation.replayed) {
       return new StepResponse(mutation)
@@ -81,24 +75,24 @@ const completeVariantProfileStep = createStep(
         version: mutation.version,
       },
     })
-  },
+  }
 )
 
 const persistVariantProfileOperationStep = createStep(
   "persist-catalog-variant-profile-operation",
   async (
     mutation: CatalogVariantProfileMutationResult,
-    { container },
+    { container }
   ): Promise<StepResponse<CatalogVariantProfileMutationResult>> => {
     if (!mutation.replayed) {
       const catalogService = container.resolve("catalog") as CatalogService
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,
-        mutation.result,
+        mutation.result
       )
     }
     return new StepResponse(mutation)
-  },
+  }
 )
 
 export const mutateCatalogVariantProfileWorkflow = createWorkflow(
@@ -111,7 +105,7 @@ export const mutateCatalogVariantProfileWorkflow = createWorkflow(
   function (input: CatalogVariantProfileMutationInput) {
     const lockKey = transform(
       { aggregateId: input.aggregateId },
-      ({ aggregateId }) => `catalog:variant-profile:${aggregateId}`,
+      ({ aggregateId }) => `catalog:variant-profile:${aggregateId}`
     )
     acquireLockStep({
       key: lockKey,
@@ -123,5 +117,5 @@ export const mutateCatalogVariantProfileWorkflow = createWorkflow(
     const persisted = persistVariantProfileOperationStep(completed)
     releaseLockStep({ key: lockKey })
     return new WorkflowResponse(persisted)
-  },
+  }
 )

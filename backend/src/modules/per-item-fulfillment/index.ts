@@ -1,6 +1,6 @@
-import type { ModuleProviderExports } from '@medusajs/framework/types'
+import type { ModuleProviderExports } from "@medusajs/framework/types"
 
-import PerItemFulfillmentService from './service'
+import PerItemFulfillmentService from "./service"
 
 const services = [PerItemFulfillmentService]
 

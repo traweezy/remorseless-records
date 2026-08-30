@@ -29,7 +29,7 @@ export const resolveOrCreateCatalogArtist = async (
     name?: string | null | undefined
     metadata?: JsonRecord
   },
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ): Promise<CatalogResolution<CatalogArtistRecord>> => {
   const artistId = toCatalogNullableString(input.artistId)
   if (artistId) {
@@ -38,7 +38,7 @@ export const resolveOrCreateCatalogArtist = async (
       record: (await catalogService.retrieveCatalogArtist(
         artistId,
         {},
-        sharedContext,
+        sharedContext
       )) as CatalogArtistRecord,
     }
   }
@@ -52,7 +52,7 @@ export const resolveOrCreateCatalogArtist = async (
   const existing = await catalogService.listCatalogArtists(
     { slug },
     {},
-    sharedContext,
+    sharedContext
   )
   const match = existing.at(0) as CatalogArtistRecord | undefined
   if (match) {
@@ -68,7 +68,7 @@ export const resolveOrCreateCatalogArtist = async (
         metadata: input.metadata ?? {},
       },
     ],
-    sharedContext,
+    sharedContext
   )
 
   return {
@@ -81,7 +81,7 @@ export const resolveOrCreateCatalogArtist = async (
 export const createOrReuseCatalogArtist = async (
   catalogService: CatalogService,
   input: Parameters<typeof resolveOrCreateCatalogArtist>[1],
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ): Promise<CatalogArtistRecord | null> =>
   (await resolveOrCreateCatalogArtist(catalogService, input, sharedContext))
     .record
@@ -95,25 +95,25 @@ export const resolveOrCreateCatalogReferenceValue = async (
     value?: string | null | undefined
     metadata?: JsonRecord
   },
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ): Promise<CatalogResolution<CatalogReferenceValueRecord>> => {
   const referenceValueId = toCatalogNullableString(input.referenceValueId)
   if (referenceValueId) {
     const record = (await catalogService.retrieveCatalogReferenceValue(
       referenceValueId,
       {},
-      sharedContext,
+      sharedContext
     )) as CatalogReferenceValueRecord
     if (input.kind && record.kind !== input.kind) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        `The selected reference value is not a ${input.kind}.`,
+        `The selected reference value is not a ${input.kind}.`
       )
     }
     if (record.is_active === false) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "The selected reference value is archived.",
+        "The selected reference value is archived."
       )
     }
     return {
@@ -129,12 +129,11 @@ export const resolveOrCreateCatalogReferenceValue = async (
   }
 
   const value =
-    toCatalogNullableString(input.value) ??
-    slugifyCatalogValue(label, kind)
+    toCatalogNullableString(input.value) ?? slugifyCatalogValue(label, kind)
   const existing = await catalogService.listCatalogReferenceValues(
     { kind, value },
     {},
-    sharedContext,
+    sharedContext
   )
   const match = existing.at(0) as CatalogReferenceValueRecord | undefined
   if (match) {
@@ -152,26 +151,26 @@ export const resolveOrCreateCatalogReferenceValue = async (
         metadata: input.metadata ?? {},
       },
     ],
-    sharedContext,
+    sharedContext
   )
 
   return {
     created: true,
     record:
-      (firstCatalogResult(created) as CatalogReferenceValueRecord | undefined) ??
-      null,
+      (firstCatalogResult(created) as
+        CatalogReferenceValueRecord | undefined) ?? null,
   }
 }
 
 export const createOrReuseCatalogReferenceValue = async (
   catalogService: CatalogService,
   input: Parameters<typeof resolveOrCreateCatalogReferenceValue>[1],
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ): Promise<CatalogReferenceValueRecord | null> =>
   (
     await resolveOrCreateCatalogReferenceValue(
       catalogService,
       input,
-      sharedContext,
+      sharedContext
     )
   ).record

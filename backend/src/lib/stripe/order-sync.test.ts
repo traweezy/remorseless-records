@@ -5,7 +5,7 @@ import {
   stripeOrderMetadata,
   stripePaymentReferencesFromOrder,
   syncStripeOrderReferences,
-} from "./order-sync";
+} from "./order-sync"
 
 describe("Stripe order sync", () => {
   it("extracts and deduplicates official Stripe payment references", () => {
@@ -39,7 +39,7 @@ describe("Stripe order sync", () => {
             ],
           },
         ],
-      }),
+      })
     ).toEqual([
       {
         amount: 24.99,
@@ -48,21 +48,21 @@ describe("Stripe order sync", () => {
         paymentIntentId: "pi_valid123",
         status: "succeeded",
       },
-    ]);
-  });
+    ])
+  })
 
   it("builds non-PII Stripe annotations and mode-safe dashboard links", () => {
     expect(
-      stripeOrderMetadata({ orderId: "order_01", orderNumber: "1042" }),
+      stripeOrderMetadata({ orderId: "order_01", orderNumber: "1042" })
     ).toEqual({
       commerce_platform: "medusa",
       medusa_order_id: "order_01",
       medusa_order_number: "1042",
       storefront: "remorseless-records",
-    });
+    })
     expect(stripeOrderDescription("1042")).toBe(
-      "Remorseless Records order #1042",
-    );
+      "Remorseless Records order #1042"
+    )
     expect(
       stripeDashboardPaymentUrl({
         amount: 24.99,
@@ -70,9 +70,9 @@ describe("Stripe order sync", () => {
         livemode: false,
         paymentIntentId: "pi_valid123",
         status: "succeeded",
-      }),
-    ).toBe("https://dashboard.stripe.com/test/payments/pi_valid123");
-  });
+      })
+    ).toBe("https://dashboard.stripe.com/test/payments/pi_valid123")
+  })
 
   it("rejects malformed and untrusted payment references", () => {
     expect(
@@ -87,9 +87,9 @@ describe("Stripe order sync", () => {
             ],
           },
         ],
-      }),
-    ).toEqual([]);
-  });
+      })
+    ).toEqual([])
+  })
 
   it("distinguishes non-Stripe orders from malformed Stripe sessions", () => {
     const nonStripeOrder = {
@@ -100,7 +100,7 @@ describe("Stripe order sync", () => {
           ],
         },
       ],
-    };
+    }
     const malformedStripeOrder = {
       payment_collections: [
         {
@@ -109,18 +109,18 @@ describe("Stripe order sync", () => {
           ],
         },
       ],
-    };
+    }
 
-    expect(orderUsesStripe(nonStripeOrder)).toBe(false);
-    expect(orderUsesStripe(malformedStripeOrder)).toBe(true);
-    expect(stripePaymentReferencesFromOrder(malformedStripeOrder)).toEqual([]);
-  });
+    expect(orderUsesStripe(nonStripeOrder)).toBe(false)
+    expect(orderUsesStripe(malformedStripeOrder)).toBe(true)
+    expect(stripePaymentReferencesFromOrder(malformedStripeOrder)).toEqual([])
+  })
 
   it("annotates both the PaymentIntent and an existing Charge", async () => {
     const updatePaymentIntent = jest.fn().mockResolvedValue({
       latest_charge: "ch_valid123",
-    });
-    const updateCharge = jest.fn().mockResolvedValue({});
+    })
+    const updateCharge = jest.fn().mockResolvedValue({})
 
     await expect(
       syncStripeOrderReferences({
@@ -139,8 +139,8 @@ describe("Stripe order sync", () => {
             status: "succeeded",
           },
         ],
-      }),
-    ).resolves.toBe(1);
+      })
+    ).resolves.toBe(1)
 
     const annotation = {
       description: "Remorseless Records order #1042",
@@ -150,16 +150,16 @@ describe("Stripe order sync", () => {
         medusa_order_number: "1042",
         storefront: "remorseless-records",
       },
-    };
+    }
     expect(updatePaymentIntent).toHaveBeenCalledWith(
       "pi_valid123",
       annotation,
       {
         idempotencyKey: "rr-order-sync:order_01:pi_valid123:intent:v1",
-      },
-    );
+      }
+    )
     expect(updateCharge).toHaveBeenCalledWith("ch_valid123", annotation, {
       idempotencyKey: "rr-order-sync:order_01:pi_valid123:charge:v1",
-    });
-  });
-});
+    })
+  })
+})

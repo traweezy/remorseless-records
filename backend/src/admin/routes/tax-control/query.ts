@@ -1,147 +1,147 @@
-import { queryOptions, type QueryFunctionContext } from "@tanstack/react-query";
-import { z } from "zod";
+import { queryOptions, type QueryFunctionContext } from "@tanstack/react-query"
+import { z } from "zod"
 
-import { requestAdminJson } from "../../lib/admin-request";
+import { requestAdminJson } from "../../lib/admin-request"
 import {
   collectionModes,
   providerNames,
   type CollectionMode,
   type ProviderName,
-} from "./ui-state";
+} from "./ui-state"
 
 export type ReadinessCheck = {
-  detail: string;
-  id: string;
-  label: string;
-  ready: boolean;
-};
+  detail: string
+  id: string
+  label: string
+  ready: boolean
+}
 
 export type ProviderReadiness = {
-  checks: ReadinessCheck[];
-  configured: boolean;
-  message: string;
-  ready: boolean;
-};
+  checks: ReadinessCheck[]
+  configured: boolean
+  message: string
+  ready: boolean
+}
 
 export type TaxControlSnapshot = {
   audits: Array<{
-    acknowledgementVersion: string;
-    actorId: string;
-    createdAt: string | null;
-    fromCollectionMode: CollectionMode;
-    fromGeneration: number;
-    fromProvider: ProviderName;
-    id: string;
-    reason: string;
-    toCollectionMode: CollectionMode;
-    toGeneration: number;
-    toProvider: ProviderName;
-  }>;
+    acknowledgementVersion: string
+    actorId: string
+    createdAt: string | null
+    fromCollectionMode: CollectionMode
+    fromGeneration: number
+    fromProvider: ProviderName
+    id: string
+    reason: string
+    toCollectionMode: CollectionMode
+    toGeneration: number
+    toProvider: ProviderName
+  }>
   control: {
-    activeProvider: ProviderName;
-    collectionMode: CollectionMode;
-    generation: number;
-    lastSwitchReason: string | null;
-    lastSwitchedAt: string | null;
-    lastSwitchedBy: string | null;
-  };
+    activeProvider: ProviderName
+    collectionMode: CollectionMode
+    generation: number
+    lastSwitchReason: string | null
+    lastSwitchedAt: string | null
+    lastSwitchedBy: string | null
+  }
   evidence: {
     incidents: Array<{
-      associationStatus: string | null;
-      currencyCode: string;
-      id: string;
-      lastVerifiedAt: string | null;
-      medusaRefundAmountMinor: number | null;
-      orderId: string | null;
-      paymentIntentId: string;
-      provider: ProviderName | null;
+      associationStatus: string | null
+      currencyCode: string
+      id: string
+      lastVerifiedAt: string | null
+      medusaRefundAmountMinor: number | null
+      orderId: string | null
+      paymentIntentId: string
+      provider: ProviderName | null
       status:
         | "association_failed"
         | "disputed"
         | "refund_ledger_mismatch"
-        | "refund_pending";
-      stripeEvidenceAvailable: boolean;
-      stripeRefundAmountMinor: number | null;
-    }>;
-    needsAttention: number;
-    pendingRefundReversals: number;
-    prepared: number;
+        | "refund_pending"
+      stripeEvidenceAvailable: boolean
+      stripeRefundAmountMinor: number | null
+    }>
+    needsAttention: number
+    pendingRefundReversals: number
+    prepared: number
     refundLedger: {
-      available: boolean;
-      checked: number;
-      mismatches: number;
-      truncated: boolean;
-    };
-    refunds: number;
-    succeeded: number;
-    tracked: number;
-  };
+      available: boolean
+      checked: number
+      mismatches: number
+      truncated: boolean
+    }
+    refunds: number
+    succeeded: number
+    tracked: number
+  }
   impact: {
-    activityWindowDays: number;
-    frozenByCollectionMode: Record<CollectionMode, number>;
-    frozenByProvider: Record<ProviderName, number>;
-    paymentsFinalizing: number;
-    preparedCheckouts: number;
-  };
+    activityWindowDays: number
+    frozenByCollectionMode: Record<CollectionMode, number>
+    frozenByProvider: Record<ProviderName, number>
+    paymentsFinalizing: number
+    preparedCheckouts: number
+  }
   providers: {
     stripeTax: ProviderReadiness & {
-      accountMode: "live" | "sandbox" | "unknown";
-      activeRegistrationCount: number;
-      missingFields: string[];
-    };
+      accountMode: "live" | "sandbox" | "unknown"
+      activeRegistrationCount: number
+      missingFields: string[]
+    }
     taxRateIo: ProviderReadiness & {
-      manualRefreshConfigured: boolean;
+      manualRefreshConfigured: boolean
       quota: {
-        observedAt: string | null;
-        quota: number;
-        remaining: number;
-        source: string;
-        usage: number;
-        usagePercent: number;
-      } | null;
-    };
-  };
-};
+        observedAt: string | null
+        quota: number
+        remaining: number
+        source: string
+        usage: number
+        usagePercent: number
+      } | null
+    }
+  }
+}
 
 type TaxControlTransitionBase = {
-  expectedGeneration: number;
-  idempotencyKey: string;
-  reason: string;
-  targetProvider: ProviderName;
-};
+  expectedGeneration: number
+  idempotencyKey: string
+  reason: string
+  targetProvider: ProviderName
+}
 
 export type TaxControlTransitionInput = TaxControlTransitionBase &
   (
     | {
-        acknowledgement: string;
-        targetCollectionMode: "disabled";
+        acknowledgement: string
+        targetCollectionMode: "disabled"
       }
     | {
-        acknowledgement?: never;
-        targetCollectionMode: "collect";
+        acknowledgement?: never
+        targetCollectionMode: "collect"
       }
-  );
+  )
 
-const nonEmptyTextSchema = z.string().min(1);
-const nullableTextSchema = nonEmptyTextSchema.nullable();
-const nonnegativeIntegerSchema = z.number().int().nonnegative();
-const positiveIntegerSchema = z.number().int().positive();
-const providerNameSchema = z.enum(providerNames);
-const collectionModeSchema = z.enum(collectionModes);
+const nonEmptyTextSchema = z.string().min(1)
+const nullableTextSchema = nonEmptyTextSchema.nullable()
+const nonnegativeIntegerSchema = z.number().int().nonnegative()
+const positiveIntegerSchema = z.number().int().positive()
+const providerNameSchema = z.enum(providerNames)
+const collectionModeSchema = z.enum(collectionModes)
 
 const readinessCheckSchema: z.ZodType<ReadinessCheck> = z.object({
   detail: nonEmptyTextSchema,
   id: nonEmptyTextSchema,
   label: nonEmptyTextSchema,
   ready: z.boolean(),
-});
+})
 
 const providerReadinessSchema = z.object({
   checks: z.array(readinessCheckSchema),
   configured: z.boolean(),
   message: nonEmptyTextSchema,
   ready: z.boolean(),
-});
+})
 
 export const taxControlSnapshotSchema: z.ZodType<TaxControlSnapshot> = z.object(
   {
@@ -158,7 +158,7 @@ export const taxControlSnapshotSchema: z.ZodType<TaxControlSnapshot> = z.object(
         toCollectionMode: collectionModeSchema,
         toGeneration: positiveIntegerSchema,
         toProvider: providerNameSchema,
-      }),
+      })
     ),
     control: z.object({
       activeProvider: providerNameSchema,
@@ -187,7 +187,7 @@ export const taxControlSnapshotSchema: z.ZodType<TaxControlSnapshot> = z.object(
           ]),
           stripeEvidenceAvailable: z.boolean(),
           stripeRefundAmountMinor: nonnegativeIntegerSchema.nullable(),
-        }),
+        })
       ),
       needsAttention: nonnegativeIntegerSchema,
       pendingRefundReversals: nonnegativeIntegerSchema,
@@ -235,10 +235,10 @@ export const taxControlSnapshotSchema: z.ZodType<TaxControlSnapshot> = z.object(
           .nullable(),
       }),
     }),
-  },
-);
+  }
+)
 
-export const TAX_CONTROL_QUERY_KEY = ["tax-control"] as const;
+export const TAX_CONTROL_QUERY_KEY = ["tax-control"] as const
 
 const loadTaxControl = ({
   signal,
@@ -250,7 +250,7 @@ const loadTaxControl = ({
     schema: taxControlSnapshotSchema,
     signal,
     timeoutMs: 20_000,
-  });
+  })
 
 export const taxControlQueryOptions = () =>
   queryOptions({
@@ -259,10 +259,10 @@ export const taxControlQueryOptions = () =>
     refetchOnWindowFocus: false,
     retry: false,
     staleTime: 30_000,
-  });
+  })
 
 export const transitionTaxControl = (
-  input: TaxControlTransitionInput,
+  input: TaxControlTransitionInput
 ): Promise<TaxControlSnapshot> =>
   requestAdminJson({
     body: input,
@@ -270,7 +270,7 @@ export const transitionTaxControl = (
     path: "/admin/tax-control/switch",
     schema: taxControlSnapshotSchema,
     timeoutMs: 20_000,
-  });
+  })
 
 export const refreshTaxRateIoQuota = (): Promise<TaxControlSnapshot> =>
   requestAdminJson({
@@ -278,4 +278,4 @@ export const refreshTaxRateIoQuota = (): Promise<TaxControlSnapshot> =>
     path: "/admin/tax-control/taxrate-io/refresh",
     schema: taxControlSnapshotSchema,
     timeoutMs: 20_000,
-  });
+  })

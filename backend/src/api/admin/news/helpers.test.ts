@@ -108,7 +108,8 @@ const serviceFixture = (initialEntries: NewsEntryRecord[] = []) => {
     ),
     retrieveNewsEntry: jest.fn(async (id: string) => entries.get(id) ?? null),
     runNewsTransaction: jest.fn(
-      async <T>(task: (context: Record<string, never>) => Promise<T>) => task({})
+      async <T>(task: (context: Record<string, never>) => Promise<T>) =>
+        task({})
     ),
     updateNewsEntries: jest.fn(
       async (payloads: Array<Record<string, unknown>>) =>
@@ -182,11 +183,14 @@ describe("news lifecycle commands", () => {
     if (!createdRecord) {
       throw new Error("Expected the created news record")
     }
-    entries.set(createdRecord.id, newsRecord({
-      ...createdRecord,
-      title: "Changed later",
-      version: 2,
-    }))
+    entries.set(
+      createdRecord.id,
+      newsRecord({
+        ...createdRecord,
+        title: "Changed later",
+        version: 2,
+      })
+    )
     const replayRequest = requestFixture()
     ;(replayRequest.scope.resolve as jest.Mock).mockImplementation(() => {
       throw new Error("Author lookup must not run during an exact replay")

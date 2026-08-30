@@ -99,34 +99,39 @@ export const GET = async (
   const activeShelves = shelves.filter((shelf) => {
     const startsAt = toTimestamp(shelf.starts_at)
     const endsAt = toTimestamp(shelf.ends_at)
-    return (!startsAt || startsAt <= now.getTime()) &&
+    return (
+      (!startsAt || startsAt <= now.getTime()) &&
       (!endsAt || endsAt > now.getTime())
+    )
   })
   const shelfIds = activeShelves.map((shelf) => shelf.id)
 
   const [memberships, profiles] = await Promise.all([
     shelfIds.length
-      ? catalogService.listCatalogShelfProducts(
+      ? (catalogService.listCatalogShelfProducts(
           { shelf_id: shelfIds },
           { take: 2_500, order: { sort_order: "ASC" } }
-        ) as Promise<CatalogShelfProductRecord[]>
+        ) as Promise<CatalogShelfProductRecord[]>)
       : Promise.resolve([]),
     activeShelves.some(
       (shelf) =>
         (shelf.mode === "automatic" || shelf.mode === "hybrid") &&
         shelf.automation_type === "new_release"
     )
-      ? catalogService.listCatalogProductProfiles({}, { take: 2_500 }) as Promise<
-          CatalogProductProfileRecord[]
-        >
+      ? (catalogService.listCatalogProductProfiles(
+          {},
+          { take: 2_500 }
+        ) as Promise<CatalogProductProfileRecord[]>)
       : Promise.resolve([]),
   ])
 
   const candidateIds = Array.from(
-    new Set([
-      ...memberships.map((membership) => membership.product_id),
-      ...profiles.map((profile) => profile.product_id),
-    ].filter(Boolean))
+    new Set(
+      [
+        ...memberships.map((membership) => membership.product_id),
+        ...profiles.map((profile) => profile.product_id),
+      ].filter(Boolean)
+    )
   )
   const visibleProducts = candidateIds.length
     ? await listVisibleProductsByIds({
@@ -177,7 +182,10 @@ export const GET = async (
             getCatalogSourceCreatedAt(right.metadata) ??
             productCreatedAt.get(right.product_id)
         )
-        return rightDate - leftDate || left.product_id.localeCompare(right.product_id)
+        return (
+          rightDate - leftDate ||
+          left.product_id.localeCompare(right.product_id)
+        )
       })
       .map((profile) => profile.product_id)
 

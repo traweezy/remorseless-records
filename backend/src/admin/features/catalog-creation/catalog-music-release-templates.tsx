@@ -1,12 +1,6 @@
 "use client"
 
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-  type MouseEvent,
-} from "react"
+import { memo, useCallback, useMemo, useState, type MouseEvent } from "react"
 import { Button, Text } from "@medusajs/ui"
 
 import { ConfirmAction } from "../../components/confirm-action"
@@ -27,9 +21,9 @@ export const CatalogMusicReleaseTemplates =
     const pendingTemplate = useMemo(
       () =>
         catalogCreationMusicReleaseTemplates.find(
-          (template) => template.id === pendingTemplateId,
+          (template) => template.id === pendingTemplateId
         ) ?? null,
-      [pendingTemplateId],
+      [pendingTemplateId]
     )
     const handleChoose = useCallback((event: MouseEvent<HTMLButtonElement>) => {
       const templateId = (
@@ -39,11 +33,11 @@ export const CatalogMusicReleaseTemplates =
       ).dataset.templateId
       if (
         catalogCreationMusicReleaseTemplates.some(
-          (template) => template.id === templateId,
+          (template) => template.id === templateId
         )
       ) {
         setPendingTemplateId(
-          templateId as CatalogCreationMusicReleaseTemplateId,
+          templateId as CatalogCreationMusicReleaseTemplateId
         )
       }
     }, [])

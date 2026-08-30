@@ -112,7 +112,7 @@ const normalizedKindAliases: Record<string, CatalogAuthoringProductKind> = {
 }
 
 const normalizeKindValue = (
-  value: unknown,
+  value: unknown
 ): CatalogAuthoringProductKind | null => {
   if (typeof value !== "string") {
     return null
@@ -121,12 +121,10 @@ const normalizeKindValue = (
 }
 
 const bundleKind = (value: string): CatalogAuthoringProductKind =>
-  value.trim().toLowerCase() === "mystery"
-    ? "mystery_bundle"
-    : "fixed_bundle"
+  value.trim().toLowerCase() === "mystery" ? "mystery_bundle" : "fixed_bundle"
 
 const groupByProductId = <T extends { productId: string }>(
-  records: T[],
+  records: T[]
 ): Map<string, T[]> => {
   const grouped = new Map<string, T[]>()
   for (const record of records) {
@@ -139,7 +137,7 @@ const groupByProductId = <T extends { productId: string }>(
 
 const addIssue = (
   issues: CatalogAuthoringAuditIssue[],
-  issue: CatalogAuthoringAuditIssue,
+  issue: CatalogAuthoringAuditIssue
 ): void => {
   if (!issues.some(({ code }) => code === issue.code)) {
     issues.push(issue)
@@ -229,8 +227,8 @@ const classifyProduct = ({
     const reference = referencesById.get(profile.productTypeId)
     const referenceKind =
       reference?.kind === "product_type"
-        ? normalizeKindValue(reference.value) ??
-          normalizeKindValue(reference.label)
+        ? (normalizeKindValue(reference.value) ??
+          normalizeKindValue(reference.label))
         : null
     if (reference && referenceKind) {
       signals.push({
@@ -272,7 +270,7 @@ const classifyProduct = ({
     })
   }
 
-  const kind = kinds.length === 1 ? kinds[0] ?? null : null
+  const kind = kinds.length === 1 ? (kinds[0] ?? null) : null
   if (
     (kind === "fixed_bundle" || kind === "mystery_bundle") &&
     bundles.length === 0
@@ -285,11 +283,10 @@ const classifyProduct = ({
   }
 
   const status: CatalogAuthoringAuditStatus = issues.some(
-    ({ severity }) => severity === "error",
+    ({ severity }) => severity === "error"
   )
     ? "conflict"
-    : kind === null ||
-        issues.some(({ severity }) => severity === "warning")
+    : kind === null || issues.some(({ severity }) => severity === "warning")
       ? "needs_review"
       : "classified"
 
@@ -331,7 +328,7 @@ export const buildCatalogAuthoringAudit = ({
   const bundlesByProductId = groupByProductId(bundles)
   const profilesByProductId = groupByProductId(profiles)
   const referencesById = new Map(
-    references.map((reference) => [reference.id, reference]),
+    references.map((reference) => [reference.id, reference])
   )
   const items = products
     .map((product) =>
@@ -340,11 +337,11 @@ export const buildCatalogAuthoringAudit = ({
         product,
         profiles: profilesByProductId.get(product.id) ?? [],
         referencesById,
-      }),
+      })
     )
     .sort(
       (left, right) =>
-        left.title.localeCompare(right.title) || left.id.localeCompare(right.id),
+        left.title.localeCompare(right.title) || left.id.localeCompare(right.id)
     )
   const byKind = emptyKindCounts()
   const byStatus = emptyStatusCounts()

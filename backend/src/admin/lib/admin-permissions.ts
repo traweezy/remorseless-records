@@ -30,7 +30,7 @@ export const adminFeatureFlagsQueryKey = ["admin", "feature-flags"] as const
 export const adminPermissionsQueryKey = ["me-permissions"] as const
 
 export const fetchAdminFeatureFlags = async (
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AdminFeatureFlags> => {
   const response = await requestAdminJson({
     path: "/admin/feature-flags",
@@ -41,7 +41,7 @@ export const fetchAdminFeatureFlags = async (
 }
 
 export const fetchAdminPermissions = async (
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AdminPermissionsResponse> =>
   requestAdminJson({
     path: "/admin/rbac/me/permissions",
@@ -52,7 +52,7 @@ export const fetchAdminPermissions = async (
 export const isAdminPermissionGranted = (
   rbacEnabled: boolean,
   permissions: ReadonlySet<string>,
-  action: AdminPolicyAction,
+  action: AdminPolicyAction
 ): boolean => !rbacEnabled || permissions.has(adminPermissionKey(action))
 
 export type UseAdminPermissionsResult = {
@@ -85,17 +85,17 @@ export const useAdminPermissions = (): UseAdminPermissionsResult => {
   })
   const permissionKeys = useMemo<ReadonlySet<string>>(
     () => new Set(permissionsQuery.data?.permissions ?? []),
-    [permissionsQuery.data?.permissions],
+    [permissionsQuery.data?.permissions]
   )
   const hasPermission = useCallback(
     (action: AdminPolicyAction) =>
       isAdminPermissionGranted(rbacEnabled, permissionKeys, action),
-    [permissionKeys, rbacEnabled],
+    [permissionKeys, rbacEnabled]
   )
   const hasSomePermission = useCallback(
     (actions: readonly AdminPolicyAction[]) =>
       actions.some((action) => hasPermission(action)),
-    [hasPermission],
+    [hasPermission]
   )
   const refetchFeatureFlags = featureFlagsQuery.refetch
   const refetchPermissions = permissionsQuery.refetch
@@ -136,6 +136,6 @@ export const useAdminPermissions = (): UseAdminPermissionsResult => {
       permissionsQuery.isPending,
       rbacEnabled,
       retry,
-    ],
+    ]
   )
 }

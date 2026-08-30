@@ -88,10 +88,14 @@ export const PUT = async (
     payload.label = parsed.data.label.trim()
   }
   if (parsed.data.value !== undefined) {
-    const currentKind = typeof existing.kind === "string" ? existing.kind : "reference"
+    const currentKind =
+      typeof existing.kind === "string" ? existing.kind : "reference"
     payload.value =
       toNullableString(parsed.data.value) ??
-      slugify(parsed.data.label ?? existing.label, parsed.data.kind ?? currentKind)
+      slugify(
+        parsed.data.label ?? existing.label,
+        parsed.data.kind ?? currentKind
+      )
   }
   if (parsed.data.description !== undefined) {
     payload.description = toNullableString(parsed.data.description)

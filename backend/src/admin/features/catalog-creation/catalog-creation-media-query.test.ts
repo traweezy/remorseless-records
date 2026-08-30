@@ -21,12 +21,12 @@ describe("catalog creation media upload query", () => {
             },
           ],
         }),
-        { status: 201 },
-      ),
+        { status: 201 }
+      )
     )
 
     await expect(
-      uploadCatalogCreationMedia([image()], { fetcher }),
+      uploadCatalogCreationMedia([image()], { fetcher })
     ).resolves.toEqual([
       expect.objectContaining({
         id: "file_1",
@@ -40,7 +40,7 @@ describe("catalog creation media upload query", () => {
         credentials: "include",
         method: "POST",
         signal: expect.any(AbortSignal),
-      }),
+      })
     )
     const request = fetcher.mock.calls[0]?.[1] as RequestInit
     const body = request.body as FormData
@@ -52,19 +52,19 @@ describe("catalog creation media upload query", () => {
     const failedFetcher = jest.fn().mockResolvedValue(
       new Response(JSON.stringify({ message: "Upload quota reached." }), {
         status: 429,
-      }),
+      })
     )
     await expect(
-      uploadCatalogCreationMedia([image()], { fetcher: failedFetcher }),
+      uploadCatalogCreationMedia([image()], { fetcher: failedFetcher })
     ).rejects.toThrow("Upload quota reached.")
 
     const invalidFetcher = jest.fn().mockResolvedValue(
       new Response(JSON.stringify({ files: [{ id: "file_1" }] }), {
         status: 201,
-      }),
+      })
     )
     await expect(
-      uploadCatalogCreationMedia([image()], { fetcher: invalidFetcher }),
+      uploadCatalogCreationMedia([image()], { fetcher: invalidFetcher })
     ).rejects.toThrow("invalid image upload response")
   })
 })

@@ -9,12 +9,7 @@ import {
   type ChangeEvent,
   type MouseEvent,
 } from "react"
-import {
-  ArrowDownMini,
-  ArrowUpMini,
-  Photo,
-  Trash,
-} from "@medusajs/icons"
+import { ArrowDownMini, ArrowUpMini, Photo, Trash } from "@medusajs/icons"
 import { Badge, Button, Input, Text } from "@medusajs/ui"
 
 import { AdminFormField } from "../../components/admin-form-field"
@@ -62,7 +57,7 @@ const formatBytes = (bytes: number): string =>
 
 const validateUploadSelection = (
   files: File[],
-  existingCount: number,
+  existingCount: number
 ): string | null => {
   if (!files.length) {
     return null
@@ -83,8 +78,7 @@ const validateUploadSelection = (
     return "Each image must be 12 MiB or smaller."
   }
   if (
-    files.reduce((total, file) => total + file.size, 0) >
-    MAX_UPLOAD_TOTAL_BYTES
+    files.reduce((total, file) => total + file.size, 0) > MAX_UPLOAD_TOTAL_BYTES
   ) {
     return "The selected images must total 20 MiB or less."
   }
@@ -92,7 +86,7 @@ const validateUploadSelection = (
 }
 
 const toDraftMedia = (
-  uploaded: CatalogCreationUploadedFile,
+  uploaded: CatalogCreationUploadedFile
 ): CatalogCreationMedia => ({
   altText: "",
   byteSize: uploaded.size,
@@ -198,7 +192,7 @@ const CatalogCreationMediaRow = memo<MediaRowProps>(
         </div>
       </li>
     )
-  },
+  }
 )
 
 CatalogCreationMediaRow.displayName = "CatalogCreationMediaRow"
@@ -261,7 +255,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
             }
             onChange([...mediaRef.current, ...uploaded.map(toDraftMedia)])
             setMessage(
-              `${uploaded.length} ${uploaded.length === 1 ? "image" : "images"} uploaded. Add alt text before continuing.`,
+              `${uploaded.length} ${uploaded.length === 1 ? "image" : "images"} uploaded. Add alt text before continuing.`
             )
           })
           .catch((uploadError: unknown) => {
@@ -269,7 +263,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
               setError(
                 uploadError instanceof Error
                   ? uploadError.message
-                  : "The images could not be uploaded.",
+                  : "The images could not be uploaded."
               )
             }
           })
@@ -283,7 +277,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
             }
           })
       },
-      [media, onChange, onUploadingChange],
+      [media, onChange, onUploadingChange]
     )
 
     const handleAltTextChange = useCallback(
@@ -299,11 +293,11 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
         const altText = input.value
         onChange(
           media.map((item) =>
-            item.id === mediaId ? { ...item, altText } : item,
-          ),
+            item.id === mediaId ? { ...item, altText } : item
+          )
         )
       },
-      [media, onChange],
+      [media, onChange]
     )
 
     const handleMove = useCallback(
@@ -324,7 +318,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
         next.splice(destination, 0, item)
         onChange(next)
       },
-      [media, onChange],
+      [media, onChange]
     )
 
     const handleRemove = useCallback(
@@ -336,10 +330,10 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
         }
         onChange(media.filter((item) => item.id !== mediaId))
         setMessage(
-          "Image removed from this draft. Its upload remains available in Media Cleanup.",
+          "Image removed from this draft. Its upload remains available in Media Cleanup."
         )
       },
-      [media, onChange],
+      [media, onChange]
     )
 
     return (
@@ -382,10 +376,10 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
           </div>
         </div>
         <Text className="mt-3 text-ui-fg-subtle" size="xsmall">
-          JPEG, PNG, WebP, or non-animated GIF · up to 10 at once · 12 MiB
-          each · 20 MiB combined. Images are decoded, stripped of metadata, and
-          saved as WebP before publication. Abandoned images stay in Media
-          Cleanup for safe review.
+          JPEG, PNG, WebP, or non-animated GIF · up to 10 at once · 12 MiB each
+          · 20 MiB combined. Images are decoded, stripped of metadata, and saved
+          as WebP before publication. Abandoned images stay in Media Cleanup for
+          safe review.
         </Text>
         {error ? (
           <Text
@@ -398,7 +392,11 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
           </Text>
         ) : null}
         {message ? (
-          <Text aria-live="polite" className="mt-3 text-ui-fg-subtle" size="small">
+          <Text
+            aria-live="polite"
+            className="mt-3 text-ui-fg-subtle"
+            size="small"
+          >
             {message}
           </Text>
         ) : null}
@@ -429,7 +427,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
         )}
       </section>
     )
-  },
+  }
 )
 
 CatalogCreationMediaEditor.displayName = "CatalogCreationMediaEditor"

@@ -1,5 +1,8 @@
 import type { MedusaRequest } from "@medusajs/framework"
-import { ContainerRegistrationKeys, remoteQueryObjectFromString } from "@medusajs/utils"
+import {
+  ContainerRegistrationKeys,
+  remoteQueryObjectFromString,
+} from "@medusajs/utils"
 
 import { richTextToPlainText } from "@/lib/content/rich-text"
 import type NewsModuleService from "@/modules/news/service"
@@ -21,7 +24,9 @@ export const slugify = (value: string): string => {
   return sanitized.length ? sanitized : "news"
 }
 
-export const toOptionalDate = (value: string | null | undefined): Date | null => {
+export const toOptionalDate = (
+  value: string | null | undefined
+): Date | null => {
   if (!value || typeof value !== "string") {
     return null
   }
@@ -55,9 +60,7 @@ export const resolveAdminUserName = async (
     return null
   }
 
-  const remoteQuery = req.scope.resolve(
-    ContainerRegistrationKeys.REMOTE_QUERY
-  )
+  const remoteQuery = req.scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
   const query = remoteQueryObjectFromString({
     entryPoint: "user",
     variables: { id: actorId },

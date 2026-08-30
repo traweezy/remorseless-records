@@ -57,10 +57,7 @@ import {
   type NewsWriteInput,
   type NewsWriteStatus,
 } from "../../features/news/news-query"
-import {
-  NewsCollection,
-  useNewsColumns,
-} from "../../features/news/news-table"
+import { NewsCollection, useNewsColumns } from "../../features/news/news-table"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 import { runRecoverableAdminMutation } from "../../components/admin-form-contract"
 import { useAdminPermissions } from "../../lib/admin-permissions"
@@ -142,7 +139,7 @@ const restoreFocus = (target: HTMLButtonElement | null): void => {
 const successMessage = (
   mode: "create" | "edit",
   intent: NewsPublicationIntent,
-  previousStatus?: NewsEntry["status"],
+  previousStatus?: NewsEntry["status"]
 ): string => {
   if (intent === "publish") {
     if (mode === "create") {
@@ -156,7 +153,9 @@ const successMessage = (
     if (mode === "create") {
       return "News post scheduled"
     }
-    return previousStatus === "scheduled" ? "Schedule updated" : "News post scheduled"
+    return previousStatus === "scheduled"
+      ? "Schedule updated"
+      : "News post scheduled"
   }
   if (mode === "create") {
     return "Draft saved"
@@ -168,10 +167,10 @@ const NewsAdminPageContent = memo(() => {
   const permissions = useAdminPermissions()
   const canCreate = permissions.hasPermission(contentAdminActions.news.create)
   const canUpdate = permissions.hasPermission(contentAdminActions.news.update)
-  const canUploadCover = permissions.hasPermission(nativeAdminActions.file.create)
-  const canReadDiscography = hasDiscographyReadAccess(
-    permissions.hasPermission,
+  const canUploadCover = permissions.hasPermission(
+    nativeAdminActions.file.create
   )
+  const canReadDiscography = hasDiscographyReadAccess(permissions.hasPermission)
   const [view, setView] = useState<ArchiveView>("active")
   const [pageIndex, setPageIndex] = useState(0)
   const [searchInput, setSearchInput] = useState("")
@@ -202,16 +201,9 @@ const NewsAdminPageContent = memo(() => {
           q: query,
           status: view === "archived" ? "all" : status,
         },
-        signal,
+        signal
       ),
-    queryKey: [
-      ...QUERY_KEY,
-      view,
-      status,
-      sortValue,
-      query,
-      offset,
-    ],
+    queryKey: [...QUERY_KEY, view, status, sortValue, query, offset],
     retry: false,
     staleTime: 10_000,
   })
@@ -269,7 +261,7 @@ const NewsAdminPageContent = memo(() => {
       updateNewsLifecycle(
         entry,
         entry.archivedAt ? "restore" : "archive",
-        idempotencyKey,
+        idempotencyKey
       ),
     onSuccess: async (_result, variables) => {
       const restored = Boolean(variables.entry.archivedAt)
@@ -308,10 +300,11 @@ const NewsAdminPageContent = memo(() => {
   }, [])
   const handleSearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      const value = (event.currentTarget as unknown as { value?: unknown }).value
+      const value = (event.currentTarget as unknown as { value?: unknown })
+        .value
       setSearchInput(typeof value === "string" ? value : "")
     },
-    [],
+    []
   )
   const applySearch = useCallback(() => {
     setQuery(searchInput.trim())
@@ -324,7 +317,7 @@ const NewsAdminPageContent = memo(() => {
         applySearch()
       }
     },
-    [applySearch],
+    [applySearch]
   )
   const clearSearch = useCallback(() => {
     setSearchInput("")
@@ -355,7 +348,7 @@ const NewsAdminPageContent = memo(() => {
       updateMutation.reset()
       setEditingEntry(entry)
     },
-    [updateMutation],
+    [updateMutation]
   )
   const handleEditClose = useCallback(() => {
     if (!updateMutation.isPending) {
@@ -371,7 +364,7 @@ const NewsAdminPageContent = memo(() => {
       lifecycleMutation.reset()
       setLifecycleEntry(entry)
     },
-    [lifecycleMutation],
+    [lifecycleMutation]
   )
   const handleLifecycleCancel = useCallback(() => {
     if (!lifecycleMutation.isPending) {
@@ -398,18 +391,18 @@ const NewsAdminPageContent = memo(() => {
     async (
       values: NewsWriteInput,
       idempotencyKey: string,
-      intent: NewsPublicationIntent,
+      intent: NewsPublicationIntent
     ) => {
       await createMutation.mutateAsync({ idempotencyKey, values })
       toast.success(successMessage("create", intent))
     },
-    [createMutation],
+    [createMutation]
   )
   const handleUpdateSubmit = useCallback(
     async (
       values: NewsWriteInput,
       idempotencyKey: string,
-      intent: NewsPublicationIntent,
+      intent: NewsPublicationIntent
     ) => {
       if (!editingEntry) {
         return
@@ -421,7 +414,7 @@ const NewsAdminPageContent = memo(() => {
       })
       toast.success(successMessage("edit", intent, editingEntry.status))
     },
-    [editingEntry, updateMutation],
+    [editingEntry, updateMutation]
   )
   const handleRetry = useCallback(() => {
     void pageQuery.refetch()
@@ -438,11 +431,11 @@ const NewsAdminPageContent = memo(() => {
   })
   const pagination = useMemo<DataTablePaginationState>(
     () => ({ pageIndex, pageSize: PAGE_SIZE }),
-    [pageIndex],
+    [pageIndex]
   )
   const handlePaginationChange = useCallback(
     (next: DataTablePaginationState) => setPageIndex(next.pageIndex),
-    [],
+    []
   )
   const dataTable = useDataTable({
     columns,
@@ -461,15 +454,21 @@ const NewsAdminPageContent = memo(() => {
     ? getAdminRequestErrorMessage(pageQuery.error, "Unable to load news posts.")
     : null
   const createError = createMutation.error
-    ? getAdminRequestErrorMessage(createMutation.error, "Unable to save the post.")
+    ? getAdminRequestErrorMessage(
+        createMutation.error,
+        "Unable to save the post."
+      )
     : null
   const updateError = updateMutation.error
-    ? getAdminRequestErrorMessage(updateMutation.error, "Unable to update the post.")
+    ? getAdminRequestErrorMessage(
+        updateMutation.error,
+        "Unable to update the post."
+      )
     : null
   const lifecycleError = lifecycleMutation.error
     ? getAdminRequestErrorMessage(
         lifecycleMutation.error,
-        "Unable to update this post.",
+        "Unable to update this post."
       )
     : null
 
@@ -479,7 +478,11 @@ const NewsAdminPageContent = memo(() => {
         <AdminPageHeader
           actions={
             canCreate ? (
-              <Button onClick={handleCreateOpen} ref={createTriggerRef} type="button">
+              <Button
+                onClick={handleCreateOpen}
+                ref={createTriggerRef}
+                type="button"
+              >
                 Create post
               </Button>
             ) : null
@@ -500,7 +503,8 @@ const NewsAdminPageContent = memo(() => {
         <Alert className="mt-5" variant="info">
           <Text weight="plus">Visibility is deliberate</Text>
           <Text size="small">
-            Drafts stay private. Scheduled posts appear automatically at their chosen time. Archiving hides a post without deleting its history.
+            Drafts stay private. Scheduled posts appear automatically at their
+            chosen time. Archiving hides a post without deleting its history.
           </Text>
         </Alert>
       </Container>
@@ -544,7 +548,11 @@ const NewsAdminPageContent = memo(() => {
                     value={searchInput}
                   />
                   {searchInput || query ? (
-                    <Button onClick={clearSearch} type="button" variant="secondary">
+                    <Button
+                      onClick={clearSearch}
+                      type="button"
+                      variant="secondary"
+                    >
                       Clear
                     </Button>
                   ) : null}
@@ -647,7 +655,9 @@ const NewsAdminPageContent = memo(() => {
       ) : null}
 
       <ConfirmAction
-        confirmLabel={lifecycleEntry?.archivedAt ? "Restore post" : "Archive post"}
+        confirmLabel={
+          lifecycleEntry?.archivedAt ? "Restore post" : "Archive post"
+        }
         description={
           lifecycleEntry?.archivedAt
             ? "The post returns to its previous publication state. If a scheduled time passed while archived, it may become visible immediately."

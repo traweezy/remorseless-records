@@ -11,9 +11,7 @@ import {
 import { Button, Container, Heading, Text } from "@medusajs/ui"
 import { Link } from "react-router-dom"
 
-import {
-  contentAdminActions,
-} from "../../../lib/admin-permissions"
+import { contentAdminActions } from "../../../lib/admin-permissions"
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import {
   AdminPageHeader,
@@ -63,7 +61,7 @@ const ContentWorkspaceCard = memo<ContentWorkspaceCardProps>(
         </Button>
       </div>
     </Container>
-  ),
+  )
 )
 
 ContentWorkspaceCard.displayName = "ContentWorkspaceCard"
@@ -71,9 +69,7 @@ ContentWorkspaceCard.displayName = "ContentWorkspaceCard"
 const ContentPageContent = memo(() => {
   const permissions = useAdminPermissions()
   const canReadNews = permissions.hasPermission(contentAdminActions.news.read)
-  const canReadDiscography = hasDiscographyReadAccess(
-    permissions.hasPermission,
-  )
+  const canReadDiscography = hasDiscographyReadAccess(permissions.hasPermission)
   const workspaceCount = Number(canReadNews) + Number(canReadDiscography)
 
   if (workspaceCount === 0) {
@@ -94,7 +90,8 @@ const ContentPageContent = memo(() => {
           description="Manage the label stories and release history customers see outside the product catalog."
           status={
             <Text className="text-ui-fg-subtle" size="small">
-              {workspaceCount} {workspaceCount === 1 ? "workspace" : "workspaces"}
+              {workspaceCount}{" "}
+              {workspaceCount === 1 ? "workspace" : "workspaces"}
             </Text>
           }
           title="Content"

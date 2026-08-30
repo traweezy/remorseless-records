@@ -1,23 +1,23 @@
-import type { MedusaContainer } from "@medusajs/framework/types";
+import type { MedusaContainer } from "@medusajs/framework/types"
 
-import { parseTaxReportPeriod } from "./periods";
+import { parseTaxReportPeriod } from "./periods"
 import {
   buildFullTaxReport,
   buildTaxReport,
   loadTaxReportOrders,
   parseTaxReportFilters,
-} from "./query";
+} from "./query"
 
-const mockGetOrdersListRun = jest.fn();
+const mockGetOrdersListRun = jest.fn()
 
 jest.mock("@medusajs/core-flows", () => ({
   getOrdersListWorkflow: () => ({ run: mockGetOrdersListRun }),
-}));
+}))
 
 const period = parseTaxReportPeriod({
   endDate: "2026-09-01",
   startDate: "2026-06-01",
-});
+})
 
 const order = {
   created_at: "2026-07-20T16:00:00.000Z",
@@ -58,45 +58,45 @@ const order = {
     province: "NY",
   },
   summary: { paid_total: "10.8" },
-};
+}
 
 const containerWith = (
   graph: (input: Record<string, unknown>) => Promise<{
-    data: Record<string, unknown>[];
-  }>,
+    data: Record<string, unknown>[]
+  }>
 ): MedusaContainer => {
   mockGetOrdersListRun.mockImplementation(
     async ({
       input,
     }: {
       input: {
-        fields: string[];
+        fields: string[]
         variables: Record<string, unknown> & {
-          order: Record<string, "ASC" | "DESC">;
-          skip: number;
-          take: number;
-        };
-      };
+          order: Record<string, "ASC" | "DESC">
+          skip: number
+          take: number
+        }
+      }
     }) => {
-      const { order: orderBy, skip, take, ...filters } = input.variables;
+      const { order: orderBy, skip, take, ...filters } = input.variables
       const { data } = await graph({
         entity: "orders",
         fields: input.fields,
         filters,
         pagination: { order: orderBy, skip, take },
-      });
+      })
       return {
         result: {
           metadata: { count: data.length, skip, take },
           rows: data,
         },
-      };
-    },
-  );
+      }
+    }
+  )
   return {
     resolve: () => ({ graph }),
-  } as unknown as MedusaContainer;
-};
+  } as unknown as MedusaContainer
+}
 
 describe("tax report query", () => {
   it("parses bounded table filters and rejects unsafe values", () => {
@@ -106,39 +106,36 @@ describe("tax report query", () => {
       page: 1,
       provider: "all",
       state: "ALL",
-    });
+    })
     expect(() =>
-      parseTaxReportFilters(new URLSearchParams({ limit: "1000" })),
-    ).toThrow();
+      parseTaxReportFilters(new URLSearchParams({ limit: "1000" }))
+    ).toThrow()
     expect(() =>
-      parseTaxReportFilters(new URLSearchParams({ state: "NY;DROP" })),
-    ).toThrow();
+      parseTaxReportFilters(new URLSearchParams({ state: "NY;DROP" }))
+    ).toThrow()
     expect(() =>
-      parseTaxReportFilters(
-        new URLSearchParams({ filing_state: "NJ" }),
-      ),
-    ).toThrow();
-  });
+      parseTaxReportFilters(new URLSearchParams({ filing_state: "NJ" }))
+    ).toThrow()
+  })
 
   it("scans orders before period end so older-sale refunds remain available", async () => {
-    const capturedInputs: Record<string, unknown>[] = [];
+    const capturedInputs: Record<string, unknown>[] = []
     const result = await loadTaxReportOrders({
       container: containerWith(async (input) => {
-        capturedInputs.push(input);
-        return { data: [] };
+        capturedInputs.push(input)
+        return { data: [] }
       }),
       period,
-    });
+    })
 
-    expect(result).toEqual({ orders: [], truncated: false });
-    expect(capturedInputs).toHaveLength(2);
+    expect(result).toEqual({ orders: [], truncated: false })
+    expect(capturedInputs).toHaveLength(2)
     const fullInput = capturedInputs.find((input) =>
-      (input.fields as string[]).includes("*payment_collections"),
-    );
+      (input.fields as string[]).includes("*payment_collections")
+    )
     const totalsInput = capturedInputs.find(
-      (input) =>
-        !(input.fields as string[]).includes("*payment_collections"),
-    );
+      (input) => !(input.fields as string[]).includes("*payment_collections")
+    )
     expect(fullInput).toMatchObject({
       entity: "orders",
       fields: expect.arrayContaining([
@@ -166,7 +163,7 @@ describe("tax report query", () => {
       filters: {
         created_at: { $lt: period.endExclusive },
       },
-    });
+    })
     expect(totalsInput).toMatchObject({
       entity: "orders",
       fields: expect.arrayContaining([
@@ -181,8 +178,8 @@ describe("tax report query", () => {
       filters: {
         created_at: { $lt: period.endExclusive },
       },
-    });
-  });
+    })
+  })
 
   it("merges a totals-only workflow result into the full order page", async () => {
     const fullOrder = {
@@ -206,7 +203,7 @@ describe("tax report query", () => {
           ],
         },
       ],
-    };
+    }
     const authoritativeTotals = {
       id: order.id,
       original_item_subtotal: "10",
@@ -216,7 +213,7 @@ describe("tax report query", () => {
       original_subtotal: "15",
       original_tax_total: "1.2",
       original_total: "16.2",
-    };
+    }
     const report = await buildFullTaxReport({
       container: containerWith(async (input) => ({
         data: (input.fields as string[]).includes("*payment_collections")
@@ -224,7 +221,7 @@ describe("tax report query", () => {
           : [authoritativeTotals],
       })),
       period,
-    });
+    })
 
     expect(report.records).toEqual([
       expect.objectContaining({
@@ -236,8 +233,8 @@ describe("tax report query", () => {
         taxAmount: "1.2000",
         total: "16.2000",
       }),
-    ]);
-  });
+    ])
+  })
 
   it("fails closed when the totals-only result omits an order", async () => {
     await expect(
@@ -248,14 +245,14 @@ describe("tax report query", () => {
             : [],
         })),
         period,
-      }),
+      })
     ).rejects.toThrow(
-      "Tax report could not load authoritative totals for every order.",
-    );
-  });
+      "Tax report could not load authoritative totals for every order."
+    )
+  })
 
   it("hydrates authoritative capture data from the Payment Module", async () => {
-    let paymentQuery: Record<string, unknown> | null = null;
+    let paymentQuery: Record<string, unknown> | null = null
     const sparseOrder = {
       ...order,
       payment_collections: [
@@ -269,11 +266,11 @@ describe("tax report query", () => {
         },
       ],
       summary: undefined,
-    };
+    }
     const report = await buildFullTaxReport({
       container: containerWith(async (input) => {
         if (input.entity === "payment") {
-          paymentQuery = input;
+          paymentQuery = input
           return {
             data: [
               {
@@ -290,12 +287,12 @@ describe("tax report query", () => {
                 refunds: [],
               },
             ],
-          };
+          }
         }
-        return { data: [sparseOrder] };
+        return { data: [sparseOrder] }
       }),
       period,
-    });
+    })
 
     expect(paymentQuery).toMatchObject({
       entity: "payment",
@@ -306,7 +303,7 @@ describe("tax report query", () => {
         "refunds.amount",
       ]),
       filters: { id: ["pay_42"] },
-    });
+    })
     expect(report.records).toEqual([
       expect.objectContaining({
         grossSales: "10.0000",
@@ -314,7 +311,7 @@ describe("tax report query", () => {
         taxAmount: "0.8000",
         total: "10.8000",
       }),
-    ]);
+    ])
     expect(report.source).toMatchObject({
       medusaOrdersScanned: 1,
       projectedRecords: 1,
@@ -327,8 +324,8 @@ describe("tax report query", () => {
         paymentCollections: 1,
         payments: 1,
       },
-    });
-  });
+    })
+  })
 
   it("fails closed when a linked payment cannot be hydrated", async () => {
     const sparseOrder = {
@@ -339,7 +336,7 @@ describe("tax report query", () => {
         },
       ],
       summary: undefined,
-    };
+    }
 
     await expect(
       buildFullTaxReport({
@@ -347,31 +344,29 @@ describe("tax report query", () => {
           data: input.entity === "payment" ? [] : [sparseOrder],
         })),
         period,
-      }),
-    ).rejects.toThrow(
-      "Tax report could not load every linked payment record.",
-    );
-  });
+      })
+    ).rejects.toThrow("Tax report could not load every linked payment record.")
+  })
 
   it("keeps period summaries complete when table filters match no rows", async () => {
     const report = await buildTaxReport({
       container: containerWith(async () => ({ data: [order] })),
       filters: parseTaxReportFilters(
-        new URLSearchParams({ quality: "incomplete" }),
+        new URLSearchParams({ quality: "incomplete" })
       ),
       period,
-    });
+    })
 
-    expect(report.resultCount).toBe(0);
-    expect(report.records).toEqual([]);
-    expect(report.filters.currencies).toEqual(["usd"]);
+    expect(report.resultCount).toBe(0)
+    expect(report.records).toEqual([])
+    expect(report.filters.currencies).toEqual(["usd"])
     expect(report.summaries[0]).toMatchObject({
       currencyCode: "usd",
       grossSales: "10.0000",
       reviewRecords: 1,
       taxCollected: "0.8000",
-    });
-  });
+    })
+  })
 
   it("scopes records, totals, and destinations before table filtering", async () => {
     const connecticutOrder = {
@@ -384,38 +379,38 @@ describe("tax report query", () => {
         postal_code: "06103",
         province: "Connecticut",
       },
-    };
+    }
     const report = await buildTaxReport({
       container: containerWith(async () => ({
         data: [order, connecticutOrder],
       })),
       filters: parseTaxReportFilters(
-        new URLSearchParams({ filing_state: "CT" }),
+        new URLSearchParams({ filing_state: "CT" })
       ),
       period,
-    });
+    })
 
-    expect(report.filingState).toBe("CT");
+    expect(report.filingState).toBe("CT")
     expect(report.records).toEqual([
       expect.objectContaining({
         destination: expect.objectContaining({ stateCode: "CT" }),
         displayId: 43,
       }),
-    ]);
+    ])
     expect(report.destinations).toEqual([
       expect.objectContaining({ stateCode: "CT" }),
-    ]);
-    expect(report.filters.states).toEqual(["CT"]);
+    ])
+    expect(report.filters.states).toEqual(["CT"])
     expect(report.summaries[0]).toMatchObject({
       grossSales: "10.0000",
       orderCount: 1,
-    });
+    })
     expect(report.source).toMatchObject({
       projectedRecords: 2,
       scopedRecords: 1,
       unassignedStateRecords: 0,
-    });
-  });
+    })
+  })
 
   it("reports domestic records that cannot be assigned to a filing state", async () => {
     const unassigned = {
@@ -425,32 +420,32 @@ describe("tax report query", () => {
         country_code: null,
         province: null,
       },
-    };
+    }
     const report = await buildTaxReport({
       container: containerWith(async () => ({ data: [unassigned] })),
       filters: parseTaxReportFilters(
-        new URLSearchParams({ filing_state: "PA" }),
+        new URLSearchParams({ filing_state: "PA" })
       ),
       period,
-    });
+    })
 
-    expect(report.records).toEqual([]);
+    expect(report.records).toEqual([])
     expect(report.source).toMatchObject({
       projectedRecords: 1,
       scopedRecords: 0,
       unassignedStateRecords: 1,
-    });
+    })
     expect(report.unassignedRecordExamples).toEqual([
       expect.objectContaining({
         displayId: 42,
         orderId: "order_42",
       }),
-    ]);
+    ])
     expect(report.summaries[0]).toMatchObject({
       grossSales: "0.0000",
       orderCount: 0,
-    });
-  });
+    })
+  })
 
   it("keeps a tracked state visible when its country is missing", async () => {
     const connecticutOrder = {
@@ -462,16 +457,16 @@ describe("tax report query", () => {
         postal_code: "06103",
         province: "Connecticut",
       },
-    };
+    }
     const report = await buildTaxReport({
       container: containerWith(async () => ({
         data: [connecticutOrder],
       })),
       filters: parseTaxReportFilters(
-        new URLSearchParams({ filing_state: "CT" }),
+        new URLSearchParams({ filing_state: "CT" })
       ),
       period,
-    });
+    })
 
     expect(report.records).toEqual([
       expect.objectContaining({
@@ -481,9 +476,9 @@ describe("tax report query", () => {
         }),
         quality: "incomplete",
       }),
-    ]);
-    expect(report.source.unassignedStateRecords).toBe(0);
-  });
+    ])
+    expect(report.source.unassignedStateRecords).toBe(0)
+  })
 
   it.each([
     ["provider", new URLSearchParams({ provider: "stripe_tax" })],
@@ -496,36 +491,36 @@ describe("tax report query", () => {
       container: containerWith(async () => ({ data: [order] })),
       filters: parseTaxReportFilters(searchParams),
       period,
-    });
+    })
 
-    expect(report.resultCount).toBe(0);
-    expect(report.summaries[0]?.grossSales).toBe("10.0000");
-  });
+    expect(report.resultCount).toBe(0)
+    expect(report.summaries[0]?.grossSales).toBe("10.0000")
+  })
 
   it("searches privacy-safe order and destination fields", async () => {
     const report = await buildTaxReport({
       container: containerWith(async () => ({ data: [order] })),
       filters: parseTaxReportFilters(new URLSearchParams({ q: "Buffalo" })),
       period,
-    });
+    })
 
-    expect(report.resultCount).toBe(1);
-    expect(report.records[0]?.displayId).toBe(42);
-  });
+    expect(report.resultCount).toBe(1)
+    expect(report.records[0]?.displayId).toBe(42)
+  })
 
   it("builds an unpaginated full-period export model", async () => {
     const report = await buildFullTaxReport({
       container: containerWith(async () => ({ data: [order] })),
       filingState: "NY",
       period,
-    });
+    })
 
-    expect(report.filingState).toBe("NY");
-    expect(report.records).toHaveLength(1);
-    expect(report.destinations).toHaveLength(1);
+    expect(report.filingState).toBe("NY")
+    expect(report.records).toHaveLength(1)
+    expect(report.destinations).toHaveLength(1)
     expect(report.summaries[0]).toMatchObject({
       currencyCode: "usd",
       netTax: "0.8000",
-    });
-  });
-});
+    })
+  })
+})

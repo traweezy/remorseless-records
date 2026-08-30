@@ -6,10 +6,7 @@ import {
   type Context,
   type Span,
 } from "@opentelemetry/api"
-import type {
-  ReadableSpan,
-  SpanProcessor,
-} from "@opentelemetry/sdk-trace-base"
+import type { ReadableSpan, SpanProcessor } from "@opentelemetry/sdk-trace-base"
 
 import type { RequestCorrelation } from "@/lib/http/correlation"
 
@@ -134,8 +131,7 @@ registryGlobal[REGISTRY_SYMBOL] = sharedRequests
 const requestRegistry = new BoundedRequestRegistry({ requests: sharedRequests })
 
 export const getActiveTraceContext = ():
-  | { traceFlags: string; traceId: string }
-  | undefined => {
+  { traceFlags: string; traceId: string } | undefined => {
   const spanContext = trace.getActiveSpan()?.spanContext()
   if (!spanContext || !isSpanContextValid(spanContext)) {
     return undefined

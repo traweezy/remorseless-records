@@ -19,7 +19,7 @@ const {
 } = require(
   fs.existsSync(compiledConstraintsPath)
     ? compiledConstraintsPath
-    : path.join(__dirname, "constraints.ts"),
+    : path.join(__dirname, "constraints.ts")
 )
 
 const MAX_STDIN_BYTES = Math.ceil((MAX_UPLOAD_BYTES * 4) / 3) + 16_384
@@ -216,9 +216,7 @@ process.stdin.on("end", async () => {
   } catch (error) {
     writeResult({
       code:
-        error instanceof ImageBoundaryError
-          ? error.code
-          : "invalid_request",
+        error instanceof ImageBoundaryError ? error.code : "invalid_request",
       ok: false,
     })
   }

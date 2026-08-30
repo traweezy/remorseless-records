@@ -5,10 +5,7 @@ import {
   transform,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import {
-  acquireLockStep,
-  releaseLockStep,
-} from "@medusajs/medusa/core-flows"
+import { acquireLockStep, releaseLockStep } from "@medusajs/medusa/core-flows"
 
 import {
   compensateCatalogMediaLifecycle,
@@ -29,7 +26,7 @@ const mutateMediaLifecycleStep = createStep(
   "mutate-catalog-media-lifecycle",
   async (
     input: CatalogMediaLifecycleInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<CatalogMediaLifecycleMutation, LifecycleCompensation | null>
   > => {
@@ -43,7 +40,7 @@ const mutateMediaLifecycleStep = createStep(
             assetId: mutation.assetId,
             operationId: mutation.operationId,
             previous: mutation.previous,
-          },
+          }
     )
   },
   async (compensation, { container }) => {
@@ -52,14 +49,14 @@ const mutateMediaLifecycleStep = createStep(
     }
     const catalogService = container.resolve("catalog") as CatalogService
     await compensateCatalogMediaLifecycle(catalogService, compensation)
-  },
+  }
 )
 
 const completeMediaLifecycleStep = createStep(
   "complete-catalog-media-lifecycle",
   async (
     mutation: CatalogMediaLifecycleMutation,
-    { container },
+    { container }
   ): Promise<StepResponse<CatalogMediaLifecycleMutation>> => {
     if (!mutation.replayed) {
       const catalogService = container.resolve("catalog") as CatalogService
@@ -71,11 +68,11 @@ const completeMediaLifecycleStep = createStep(
           purgeEligibleAt: mutation.purgeEligibleAt,
           quarantinedAt: mutation.quarantinedAt,
           version: mutation.version,
-        },
+        }
       )
     }
     return new StepResponse(mutation)
-  },
+  }
 )
 
 export const mutateCatalogMediaLifecycleWorkflow = createWorkflow(
@@ -88,12 +85,12 @@ export const mutateCatalogMediaLifecycleWorkflow = createWorkflow(
   function (input: CatalogMediaLifecycleInput) {
     const lockKey = transform(
       { assetId: input.assetId },
-      ({ assetId }) => `catalog:media-asset:${assetId}`,
+      ({ assetId }) => `catalog:media-asset:${assetId}`
     )
     acquireLockStep({ key: lockKey, timeout: 10, ttl: 120 })
     const mutation = mutateMediaLifecycleStep(input)
     const completed = completeMediaLifecycleStep(mutation)
     releaseLockStep({ key: lockKey })
     return new WorkflowResponse(completed)
-  },
+  }
 )

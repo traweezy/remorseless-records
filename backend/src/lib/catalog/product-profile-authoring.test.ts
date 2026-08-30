@@ -36,10 +36,8 @@ const serviceFixture = (): ServiceMock => {
     updateCatalogProductProfiles: jest.fn(),
   } as unknown as ServiceMock
 
-  service.runCatalogTransaction.mockImplementation(
-    (async (task) =>
-      task({ manager: {} } as never)) as CatalogService["runCatalogTransaction"],
-  )
+  service.runCatalogTransaction.mockImplementation((async (task) =>
+    task({ manager: {} } as never)) as CatalogService["runCatalogTransaction"])
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   service.listCatalogProductProfiles.mockResolvedValue([])
   service.listCatalogProductArtists.mockResolvedValue([])
@@ -51,7 +49,7 @@ const serviceFixture = (): ServiceMock => {
 }
 
 const profile = (
-  overrides: Partial<CatalogProductProfileRecord> = {},
+  overrides: Partial<CatalogProductProfileRecord> = {}
 ): CatalogProductProfileRecord => ({
   content_schema_version: 1,
   credits: {},
@@ -93,7 +91,7 @@ describe("catalogProductProfileUpsertSchema", () => {
         idempotencyKey: command.idempotencyKey,
         releaseTitle: "Album",
         artists: [{ name: "Artist", sortOrder: 0 }],
-      }).success,
+      }).success
     ).toBe(true)
     expect(
       catalogProductProfileUpsertSchema.safeParse({
@@ -103,14 +101,14 @@ describe("catalogProductProfileUpsertSchema", () => {
           kind: "genre",
           label: "Metal",
         })),
-      }).success,
+      }).success
     ).toBe(false)
     expect(
       catalogProductProfileUpsertSchema.safeParse({
         expectedVersion: 0,
         idempotencyKey: command.idempotencyKey,
         releaseDate: "not-a-date",
-      }).success,
+      }).success
     ).toBe(false)
   })
 })
@@ -126,7 +124,7 @@ describe("mutateCatalogProductProfile", () => {
     ] as never)
 
     await expect(
-      mutateCatalogProductProfile(service, command),
+      mutateCatalogProductProfile(service, command)
     ).resolves.toMatchObject({
       created: true,
       operationId: "operation_1",
@@ -145,7 +143,7 @@ describe("mutateCatalogProductProfile", () => {
           status: "pending",
         }),
       ],
-      expect.anything(),
+      expect.anything()
     )
     expect(service.createCatalogProductProfiles).toHaveBeenCalledWith(
       [
@@ -155,7 +153,7 @@ describe("mutateCatalogProductProfile", () => {
           version: 1,
         }),
       ],
-      expect.anything(),
+      expect.anything()
     )
     expect(service.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
@@ -164,9 +162,9 @@ describe("mutateCatalogProductProfile", () => {
     const service = serviceFixture()
     service.listCatalogProductProfiles.mockResolvedValue([profile()] as never)
 
-    await expect(
-      mutateCatalogProductProfile(service, command),
-    ).rejects.toThrow("changed after it was loaded")
+    await expect(mutateCatalogProductProfile(service, command)).rejects.toThrow(
+      "changed after it was loaded"
+    )
     expect(service.createCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
 
@@ -186,7 +184,7 @@ describe("mutateCatalogProductProfile", () => {
     ] as never)
 
     await expect(
-      mutateCatalogProductProfile(service, command),
+      mutateCatalogProductProfile(service, command)
     ).resolves.toMatchObject({
       operationId: "operation_1",
       profileId: "cprof_1",
@@ -199,7 +197,7 @@ describe("mutateCatalogProductProfile", () => {
       mutateCatalogProductProfile(service, {
         ...command,
         requestSha256: "different_hash",
-      }),
+      })
     ).rejects.toThrow("cannot be replayed")
   })
 
@@ -238,7 +236,7 @@ describe("mutateCatalogProductProfile", () => {
           label: { label: "Label" },
           references: [{ kind: "genre", label: "Metal" }],
         },
-      }),
+      })
     ).resolves.toMatchObject({
       createdArtistIds: ["artist_new"],
       createdReferenceValueIds: ["ref_label", "ref_genre"],
@@ -251,7 +249,7 @@ describe("mutateCatalogProductProfile", () => {
           product_profile_id: "cprof_1",
         }),
       ],
-      expect.anything(),
+      expect.anything()
     )
   })
 })
@@ -279,7 +277,7 @@ describe("compensateCatalogProductProfileMutation", () => {
     }
     service.listCatalogProductProfiles.mockImplementation(
       async (filters: Record<string, unknown>) =>
-        "product_id" in filters ? ([profile({ version: 4 })] as never) : [],
+        "product_id" in filters ? ([profile({ version: 4 })] as never) : []
     )
     service.listCatalogProductArtists
       .mockResolvedValueOnce([{ id: "current_artist_assignment" }] as never)
@@ -327,19 +325,19 @@ describe("compensateCatalogProductProfileMutation", () => {
           version: 3,
         }),
       ],
-      expect.anything(),
+      expect.anything()
     )
     expect(service.createCatalogProductArtists).toHaveBeenCalledWith(
       [expect.objectContaining({ id: "cpart_1" })],
-      expect.anything(),
+      expect.anything()
     )
     expect(service.deleteCatalogArtists).toHaveBeenCalledWith(
       "artist_new",
-      expect.anything(),
+      expect.anything()
     )
     expect(service.deleteCatalogReferenceValues).toHaveBeenCalledWith(
       "ref_new",
-      expect.anything(),
+      expect.anything()
     )
     expect(service.updateCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
@@ -349,7 +347,7 @@ describe("compensateCatalogProductProfileMutation", () => {
           status: "compensated",
         }),
       ],
-      expect.anything(),
+      expect.anything()
     )
   })
 })

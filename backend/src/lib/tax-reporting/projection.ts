@@ -1,8 +1,8 @@
-import { MathBN } from "@medusajs/framework/utils";
+import { MathBN } from "@medusajs/framework/utils"
 
-import { parseTaxLineCode } from "../tax-control/context";
-import { filingBucketFor } from "./filing-states";
-import type { TaxReportPeriod } from "./periods";
+import { parseTaxLineCode } from "../tax-control/context"
+import { filingBucketFor } from "./filing-states"
+import type { TaxReportPeriod } from "./periods"
 import type {
   TaxDestinationSummary,
   TaxRecord,
@@ -12,119 +12,117 @@ import type {
   TaxRecordQuality,
   TaxRefundCreditTiming,
   TaxReportSummary,
-} from "./types";
+} from "./types"
 
-type UnknownRecord = Record<string, unknown>;
-type Decimal = ReturnType<typeof MathBN.convert>;
+type UnknownRecord = Record<string, unknown>
+type Decimal = ReturnType<typeof MathBN.convert>
 
-const ZERO = MathBN.convert(0);
+const ZERO = MathBN.convert(0)
 
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as UnknownRecord)
-    : null;
+    : null
 
 const records = (value: unknown): UnknownRecord[] =>
   Array.isArray(value)
     ? value
         .map(asRecord)
         .filter((record): record is UnknownRecord => record !== null)
-    : [];
+    : []
 
 const text = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null;
+  typeof value === "string" && value.trim() ? value.trim() : null
 
 const TRACKED_STATE_NAMES = new Map([
   ["CONNECTICUT", "CT"],
   ["NEW YORK", "NY"],
   ["PENNSYLVANIA", "PA"],
-]);
+])
 
 const stateCode = (value: unknown): string | null => {
-  const normalized = text(value)?.toUpperCase();
-  return normalized
-    ? (TRACKED_STATE_NAMES.get(normalized) ?? normalized)
-    : null;
-};
+  const normalized = text(value)?.toUpperCase()
+  return normalized ? (TRACKED_STATE_NAMES.get(normalized) ?? normalized) : null
+}
 
 const decimal = (value: unknown): Decimal => {
   if (value === null || value === undefined || value === "") {
-    return MathBN.convert(0);
+    return MathBN.convert(0)
   }
   try {
     const converted = MathBN.convert(
-      value as Parameters<typeof MathBN.convert>[0],
-    );
+      value as Parameters<typeof MathBN.convert>[0]
+    )
     if (!converted.isFinite()) {
-      throw new Error("Non-finite monetary value.");
+      throw new Error("Non-finite monetary value.")
     }
-    return converted;
+    return converted
   } catch {
-    throw new Error("Tax projection encountered an invalid monetary value.");
+    throw new Error("Tax projection encountered an invalid monetary value.")
   }
-};
+}
 
-const money = (value: Decimal): string => value.toFixed(4);
+const money = (value: Decimal): string => value.toFixed(4)
 
 const decimalField = (
   record: UnknownRecord,
   rawField: string,
-  field: string,
-): Decimal => decimal(record[rawField] ?? record[field]);
+  field: string
+): Decimal => decimal(record[rawField] ?? record[field])
 
 const timestamp = (value: unknown): string | null => {
-  const parsed = value instanceof Date ? value : new Date(String(value ?? ""));
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-};
+  const parsed = value instanceof Date ? value : new Date(String(value ?? ""))
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+}
 
 const inPeriod = (value: string, period: TaxReportPeriod): boolean =>
-  value >= period.startInclusive && value < period.endExclusive;
+  value >= period.startInclusive && value < period.endExclusive
 
-const unique = <T>(values: T[]): T[] => [...new Set(values)];
+const unique = <T>(values: T[]): T[] => [...new Set(values)]
 
 const taxLines = (subject: UnknownRecord): UnknownRecord[] =>
-  records(subject.tax_lines);
+  records(subject.tax_lines)
 
 const subjects = (order: UnknownRecord): UnknownRecord[] => [
   ...records(order.items),
   ...records(order.shipping_methods),
-];
+]
 
 const providerIdentity = (
-  order: UnknownRecord,
+  order: UnknownRecord
 ): {
-  calculationId: string | null;
-  collectionMode: TaxRecordCollectionMode;
-  generation: number | null;
-  provider: TaxRecordProvider;
+  calculationId: string | null
+  collectionMode: TaxRecordCollectionMode
+  generation: number | null
+  provider: TaxRecordProvider
 } => {
-  const lines = subjects(order).flatMap(taxLines);
+  const lines = subjects(order).flatMap(taxLines)
   if (!lines.length) {
     return {
       calculationId: null,
       collectionMode: "unknown",
       generation: null,
       provider: "unknown",
-    };
+    }
   }
 
   const controlled = lines
     .map((line) => parseTaxLineCode(line.code))
     .filter((identity): identity is NonNullable<typeof identity> =>
-      Boolean(identity),
-    );
+      Boolean(identity)
+    )
   if (!controlled.length) {
     const isLegacy = lines.every(
       (line) =>
         text(line.code) === "sales_tax" &&
-        text(line.provider_id) === "rate_lookup",
-    );
+        text(line.provider_id) === "rate_lookup"
+    )
     return {
       calculationId: null,
       collectionMode: isLegacy ? "collect" : "unknown",
       generation: null,
       provider: isLegacy ? "legacy" : "unknown",
-    };
+    }
   }
   if (controlled.length !== lines.length) {
     return {
@@ -132,17 +130,17 @@ const providerIdentity = (
       collectionMode: "unknown",
       generation: null,
       provider: "mixed",
-    };
+    }
   }
 
   const collectionModes = unique(
-    controlled.map((identity) => identity.collectionMode),
-  );
-  const providers = unique(controlled.map((identity) => identity.provider));
-  const generations = unique(controlled.map((identity) => identity.generation));
+    controlled.map((identity) => identity.collectionMode)
+  )
+  const providers = unique(controlled.map((identity) => identity.provider))
+  const generations = unique(controlled.map((identity) => identity.generation))
   const calculationIds = unique(
-    controlled.map((identity) => identity.calculationId),
-  );
+    controlled.map((identity) => identity.calculationId)
+  )
   if (
     collectionModes.length !== 1 ||
     providers.length !== 1 ||
@@ -154,26 +152,26 @@ const providerIdentity = (
       collectionMode: "unknown",
       generation: null,
       provider: "mixed",
-    };
+    }
   }
 
-  const collectionMode = collectionModes[0]!;
+  const collectionMode = collectionModes[0]!
   if (collectionMode === "disabled") {
     return {
       calculationId: null,
       collectionMode,
       generation: generations[0] ?? null,
       provider: "not_applicable",
-    };
+    }
   }
-  const provider = providers[0];
+  const provider = providers[0]
   if (provider !== "stripe_tax" && provider !== "taxrate_io") {
     return {
       calculationId: null,
       collectionMode: "unknown",
       generation: null,
       provider: "mixed",
-    };
+    }
   }
 
   return {
@@ -181,27 +179,27 @@ const providerIdentity = (
     collectionMode,
     generation: generations[0] ?? null,
     provider,
-  };
-};
+  }
+}
 
 const lineJurisdiction = (order: UnknownRecord): UnknownRecord | null => {
   const jurisdictions = subjects(order)
     .flatMap(taxLines)
     .map((line) => asRecord(asRecord(line.data)?.jurisdiction))
-    .filter((value): value is UnknownRecord => value !== null);
-  const first = jurisdictions[0];
+    .filter((value): value is UnknownRecord => value !== null)
+  const first = jurisdictions[0]
   if (!first) {
-    return null;
+    return null
   }
-  const fingerprint = JSON.stringify(first);
+  const fingerprint = JSON.stringify(first)
   return jurisdictions.every((entry) => JSON.stringify(entry) === fingerprint)
     ? first
-    : null;
-};
+    : null
+}
 
 const destinationFrom = (order: UnknownRecord): TaxRecordDestination => {
-  const address = asRecord(order.shipping_address);
-  const jurisdiction = lineJurisdiction(order);
+  const address = asRecord(order.shipping_address)
+  const jurisdiction = lineJurisdiction(order)
   return {
     city: text(jurisdiction?.city) ?? text(address?.city),
     countryCode:
@@ -217,103 +215,99 @@ const destinationFrom = (order: UnknownRecord): TaxRecordDestination => {
       text(jurisdiction?.city),
     postalCode: text(address?.postal_code),
     stateCode: stateCode(jurisdiction?.state) ?? stateCode(address?.province),
-  };
-};
+  }
+}
 
 const originalAmounts = (
-  order: UnknownRecord,
+  order: UnknownRecord
 ): {
-  gross: Decimal;
-  tax: Decimal;
-  taxable: Decimal;
-  total: Decimal;
+  gross: Decimal
+  tax: Decimal
+  taxable: Decimal
+  total: Decimal
 } => {
   const orderGross = decimalField(
     order,
     "raw_original_subtotal",
-    "original_subtotal",
-  );
+    "original_subtotal"
+  )
   const orderTax = decimalField(
     order,
     "raw_original_tax_total",
-    "original_tax_total",
-  );
-  const orderTotal = decimalField(
-    order,
-    "raw_original_total",
-    "original_total",
-  );
-  const summary = asRecord(order.summary);
+    "original_tax_total"
+  )
+  const orderTotal = decimalField(order, "raw_original_total", "original_total")
+  const summary = asRecord(order.summary)
   const summaryTotal = decimalField(
     summary ?? {},
     "raw_original_order_total",
-    "original_order_total",
-  );
+    "original_order_total"
+  )
   const explicitGross = MathBN.add(
     decimalField(order, "raw_original_item_subtotal", "original_item_subtotal"),
     decimalField(
       order,
       "raw_original_shipping_subtotal",
-      "original_shipping_subtotal",
-    ),
-  );
+      "original_shipping_subtotal"
+    )
+  )
   const explicitTax = MathBN.add(
     decimalField(
       order,
       "raw_original_item_tax_total",
-      "original_item_tax_total",
+      "original_item_tax_total"
     ),
     decimalField(
       order,
       "raw_original_shipping_tax_total",
-      "original_shipping_tax_total",
-    ),
-  );
-  const orderSubjects = subjects(order);
-  let subjectGross = ZERO;
-  let subjectTax = ZERO;
-  let subjectTaxable = ZERO;
+      "original_shipping_tax_total"
+    )
+  )
+  const orderSubjects = subjects(order)
+  let subjectGross = ZERO
+  let subjectTax = ZERO
+  let subjectTaxable = ZERO
 
   for (const subject of orderSubjects) {
     const amount = decimalField(
       subject,
       "raw_original_subtotal",
-      "original_subtotal",
-    );
+      "original_subtotal"
+    )
     const taxAmount = decimalField(
       subject,
       "raw_original_tax_total",
-      "original_tax_total",
-    );
-    const rates = taxLines(subject).map((line) => decimal(line.rate));
-    subjectGross = MathBN.add(subjectGross, amount);
-    subjectTax = MathBN.add(subjectTax, taxAmount);
+      "original_tax_total"
+    )
+    const rates = taxLines(subject).map((line) => decimal(line.rate))
+    subjectGross = MathBN.add(subjectGross, amount)
+    subjectTax = MathBN.add(subjectTax, taxAmount)
     if (rates.some((rate) => rate.gt(0))) {
-      subjectTaxable = MathBN.add(subjectTaxable, amount);
+      subjectTaxable = MathBN.add(subjectTaxable, amount)
     }
   }
 
   const greater = (left: Decimal, right: Decimal): Decimal =>
-    right.gt(left) ? right : left;
-  const gross = [orderGross, explicitGross, subjectGross].reduce(greater, ZERO);
-  const tax = [orderTax, explicitTax, subjectTax].reduce(greater, ZERO);
+    right.gt(left) ? right : left
+  const gross = [orderGross, explicitGross, subjectGross].reduce(greater, ZERO)
+  const tax = [orderTax, explicitTax, subjectTax].reduce(greater, ZERO)
   const total = [orderTotal, summaryTotal, MathBN.add(gross, tax)].reduce(
     greater,
-    ZERO,
-  );
+    ZERO
+  )
   const taxable =
     subjectGross.gt(0) && gross.gte(0)
       ? MathBN.mult(gross, MathBN.div(subjectTaxable, subjectGross))
       : tax.gt(0)
         ? gross
-        : ZERO;
-  return { gross, tax, taxable, total };
-};
+        : ZERO
+  return { gross, tax, taxable, total }
+}
 
 const effectiveRate = (tax: Decimal, taxable: Decimal): string | null =>
   tax.gt(0) && taxable.gt(0)
     ? MathBN.mult(MathBN.div(tax, taxable), 100).toFixed(6)
-    : null;
+    : null
 
 const qualityFor = ({
   collectionMode,
@@ -322,51 +316,47 @@ const qualityFor = ({
   provider,
   tax,
 }: {
-  collectionMode: TaxRecordCollectionMode;
-  destination: TaxRecordDestination;
-  isEstimatedRefund: boolean;
-  provider: TaxRecordProvider;
-  tax: Decimal;
+  collectionMode: TaxRecordCollectionMode
+  destination: TaxRecordDestination
+  isEstimatedRefund: boolean
+  provider: TaxRecordProvider
+  tax: Decimal
 }): { issues: string[]; quality: TaxRecordQuality } => {
-  const issues: string[] = [];
-  let incomplete = false;
+  const issues: string[] = []
+  let incomplete = false
 
   if (
     !destination.countryCode ||
     !destination.stateCode ||
     !destination.postalCode
   ) {
-    issues.push("Delivery destination is incomplete.");
-    incomplete = true;
+    issues.push("Delivery destination is incomplete.")
+    incomplete = true
   }
   if (tax.gt(0) && provider === "unknown") {
-    issues.push("Tax line identity is missing.");
-    incomplete = true;
+    issues.push("Tax line identity is missing.")
+    incomplete = true
   }
   if (provider === "mixed") {
-    issues.push("Tax lines contain mixed provider identities.");
-    incomplete = true;
+    issues.push("Tax lines contain mixed provider identities.")
+    incomplete = true
   }
   if (provider === "legacy") {
-    issues.push(
-      "Legacy tax lines do not include provider-generation evidence.",
-    );
+    issues.push("Legacy tax lines do not include provider-generation evidence.")
   }
   if (collectionMode === "disabled") {
     issues.push(
-      "Tax was not collected for this order; confirm the operating decision and filing treatment.",
-    );
+      "Tax was not collected for this order; confirm the operating decision and filing treatment."
+    )
     if (tax.gt(0)) {
-      issues.push(
-        "Disabled collection evidence contains a nonzero tax amount.",
-      );
-      incomplete = true;
+      issues.push("Disabled collection evidence contains a nonzero tax amount.")
+      incomplete = true
     }
   }
   if (provider === "stripe_tax" && !destination.jurisdictionLevel) {
     issues.push(
-      "Use the Stripe itemized report to confirm sub-state jurisdiction rows.",
-    );
+      "Use the Stripe itemized report to confirm sub-state jurisdiction rows."
+    )
   }
   if (
     provider === "taxrate_io" &&
@@ -374,7 +364,7 @@ const qualityFor = ({
     !destination.county &&
     !destination.jurisdictionName
   ) {
-    issues.push("The TaxRate.io locality breakdown was not preserved.");
+    issues.push("The TaxRate.io locality breakdown was not preserved.")
   }
   if (
     destination.countryCode === "US" &&
@@ -384,8 +374,8 @@ const qualityFor = ({
     !destination.jurisdictionName
   ) {
     issues.push(
-      "New York filing requires confirming the destination locality and return schedule.",
-    );
+      "New York filing requires confirming the destination locality and return schedule."
+    )
   }
   if (
     destination.countryCode === "US" &&
@@ -397,33 +387,33 @@ const qualityFor = ({
     }).endsWith("— verify")
   ) {
     issues.push(
-      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation.",
-    );
+      "Pennsylvania filing requires confirming Philadelphia and Allegheny local-tax allocation."
+    )
   }
   if (isEstimatedRefund) {
     issues.push(
-      "The tax portion of this partial refund is proportionally estimated.",
-    );
+      "The tax portion of this partial refund is proportionally estimated."
+    )
   }
 
   return {
     issues,
     quality: incomplete ? "incomplete" : issues.length ? "review" : "complete",
-  };
-};
+  }
+}
 
 const payments = (order: UnknownRecord): UnknownRecord[] =>
   records(order.payment_collections).flatMap((collection) =>
-    records(collection.payments),
-  );
+    records(collection.payments)
+  )
 
 const captures = (payment: UnknownRecord): UnknownRecord[] =>
-  records(payment.captures);
+  records(payment.captures)
 
 const summaryPaidTotal = (order: UnknownRecord): Decimal => {
-  const summary = asRecord(order.summary);
-  return decimalField(summary ?? {}, "raw_paid_total", "paid_total");
-};
+  const summary = asRecord(order.summary)
+  return decimalField(summary ?? {}, "raw_paid_total", "paid_total")
+}
 
 const captureTotal = (order: UnknownRecord): Decimal =>
   payments(order)
@@ -431,18 +421,18 @@ const captureTotal = (order: UnknownRecord): Decimal =>
     .reduce(
       (total, capture) =>
         MathBN.add(total, decimalField(capture, "raw_amount", "amount")),
-      ZERO,
-    );
+      ZERO
+    )
 
 const collectionCapturedTotal = (order: UnknownRecord): Decimal =>
   records(order.payment_collections).reduce(
     (total, collection) =>
       MathBN.add(
         total,
-        decimalField(collection, "raw_captured_amount", "captured_amount"),
+        decimalField(collection, "raw_captured_amount", "captured_amount")
       ),
-    ZERO,
-  );
+    ZERO
+  )
 
 const capturedPaymentTotal = (order: UnknownRecord): Decimal =>
   payments(order).reduce(
@@ -455,64 +445,64 @@ const capturedPaymentTotal = (order: UnknownRecord): Decimal =>
               "raw_captured_amount",
               payment.captured_amount === undefined
                 ? "amount"
-                : "captured_amount",
-            ),
+                : "captured_amount"
+            )
           )
         : total,
-    ZERO,
-  );
+    ZERO
+  )
 
 const paidTotal = (order: UnknownRecord): Decimal => {
-  const summaryPaid = summaryPaidTotal(order);
+  const summaryPaid = summaryPaidTotal(order)
   if (summaryPaid.gt(0)) {
-    return summaryPaid;
+    return summaryPaid
   }
 
-  const capturesPaid = captureTotal(order);
+  const capturesPaid = captureTotal(order)
   if (capturesPaid.gt(0)) {
-    return capturesPaid;
+    return capturesPaid
   }
 
-  const collectionTotal = collectionCapturedTotal(order);
+  const collectionTotal = collectionCapturedTotal(order)
   if (collectionTotal.gt(0)) {
-    return collectionTotal;
+    return collectionTotal
   }
 
-  return capturedPaymentTotal(order);
-};
+  return capturedPaymentTotal(order)
+}
 
 const paymentCaptureTimestamp = (order: UnknownRecord): string | null => {
-  const orderPayments = payments(order);
+  const orderPayments = payments(order)
   const captureTimestamps = orderPayments
     .flatMap(captures)
     .filter((capture) => decimalField(capture, "raw_amount", "amount").gt(0))
-    .map((capture) => timestamp(capture.created_at));
+    .map((capture) => timestamp(capture.created_at))
   const paymentTimestamps = orderPayments.map((payment) =>
-    timestamp(payment.captured_at),
-  );
+    timestamp(payment.captured_at)
+  )
   const timestamps = [...captureTimestamps, ...paymentTimestamps]
     .filter((value): value is string => value !== null)
-    .sort();
-  return timestamps.at(-1) ?? null;
-};
+    .sort()
+  return timestamps.at(-1) ?? null
+}
 
 const baseRecord = (
-  order: UnknownRecord,
+  order: UnknownRecord
 ): {
-  currencyCode: string;
-  destination: TaxRecordDestination;
-  displayId: number;
-  identity: ReturnType<typeof providerIdentity>;
-  orderId: string;
+  currencyCode: string
+  destination: TaxRecordDestination
+  displayId: number
+  identity: ReturnType<typeof providerIdentity>
+  orderId: string
 } | null => {
-  const orderId = text(order.id);
-  const displayIdValue = decimal(order.display_id);
+  const orderId = text(order.id)
+  const displayIdValue = decimal(order.display_id)
   if (!orderId || !displayIdValue.isInteger()) {
-    return null;
+    return null
   }
-  const displayId = displayIdValue.toNumber();
+  const displayId = displayIdValue.toNumber()
   if (!Number.isSafeInteger(displayId)) {
-    return null;
+    return null
   }
   return {
     currencyCode: text(order.currency_code)?.toLowerCase() ?? "usd",
@@ -520,26 +510,26 @@ const baseRecord = (
     displayId,
     identity: providerIdentity(order),
     orderId,
-  };
-};
+  }
+}
 
 const saleRecord = (
   order: UnknownRecord,
-  period: TaxReportPeriod,
+  period: TaxReportPeriod
 ): TaxRecord | null => {
-  const base = baseRecord(order);
-  const capturedAt = paymentCaptureTimestamp(order);
-  const occurredAt = capturedAt ?? timestamp(order.created_at);
+  const base = baseRecord(order)
+  const capturedAt = paymentCaptureTimestamp(order)
+  const occurredAt = capturedAt ?? timestamp(order.created_at)
   if (!base || !occurredAt || !inPeriod(occurredAt, period)) {
-    return null;
+    return null
   }
-  const amounts = originalAmounts(order);
+  const amounts = originalAmounts(order)
   if (!amounts.total.gt(0)) {
-    return null;
+    return null
   }
-  const capturedTotal = paidTotal(order);
+  const capturedTotal = paidTotal(order)
   if (!capturedTotal.gt(0)) {
-    return null;
+    return null
   }
   const quality = qualityFor({
     collectionMode: base.identity.collectionMode,
@@ -547,25 +537,25 @@ const saleRecord = (
     isEstimatedRefund: false,
     provider: base.identity.provider,
     tax: amounts.tax,
-  });
+  })
   if (!capturedTotal.eq(amounts.total)) {
     quality.issues.push(
-      "Captured payment does not match the original order total.",
-    );
-    quality.quality = "incomplete";
+      "Captured payment does not match the original order total."
+    )
+    quality.quality = "incomplete"
   }
   if (!capturedAt) {
     quality.issues.push(
-      "Payment capture time is missing; the order timestamp was used.",
-    );
+      "Payment capture time is missing; the order timestamp was used."
+    )
     if (quality.quality === "complete") {
-      quality.quality = "review";
+      quality.quality = "review"
     }
   }
   if (base.currencyCode !== "usd") {
-    quality.issues.push("Confirm filing-currency conversion outside USD.");
+    quality.issues.push("Confirm filing-currency conversion outside USD.")
     if (quality.quality === "complete") {
-      quality.quality = "review";
+      quality.quality = "review"
     }
   }
 
@@ -602,84 +592,82 @@ const saleRecord = (
       base.identity.collectionMode === "disabled"
         ? money(amounts.gross)
         : money(ZERO),
-  };
-};
+  }
+}
 
 const refundRecords = (
   order: UnknownRecord,
-  period: TaxReportPeriod,
+  period: TaxReportPeriod
 ): TaxRecord[] => {
-  const base = baseRecord(order);
+  const base = baseRecord(order)
   if (!base) {
-    return [];
+    return []
   }
-  const amounts = originalAmounts(order);
+  const amounts = originalAmounts(order)
   if (!amounts.total.gt(0)) {
-    return [];
+    return []
   }
 
   const candidates = payments(order).flatMap((payment) =>
     records(payment.refunds).flatMap((refund) => {
-      const refundId = text(refund.id);
-      const occurredAt = timestamp(refund.created_at);
-      const refundTotal = decimalField(refund, "raw_amount", "amount");
+      const refundId = text(refund.id)
+      const occurredAt = timestamp(refund.created_at)
+      const refundTotal = decimalField(refund, "raw_amount", "amount")
       if (!refundId || !occurredAt || !refundTotal.gt(0)) {
-        return [];
+        return []
       }
-      return [{ occurredAt, refundId, refundTotal }];
-    }),
-  );
+      return [{ occurredAt, refundId, refundTotal }]
+    })
+  )
   const cumulativeRefundTotal = candidates.reduce(
     (total, candidate) => MathBN.add(total, candidate.refundTotal),
-    ZERO,
-  );
-  const cumulativeRefundExceedsOrder = cumulativeRefundTotal.gt(amounts.total);
-  const orderOccurredAt = timestamp(order.created_at);
+    ZERO
+  )
+  const cumulativeRefundExceedsOrder = cumulativeRefundTotal.gt(amounts.total)
+  const orderOccurredAt = timestamp(order.created_at)
 
   return candidates.flatMap(({ occurredAt, refundId, refundTotal }) => {
     if (!inPeriod(occurredAt, period)) {
-      return [];
+      return []
     }
-    const ratio = MathBN.div(refundTotal, amounts.total);
-    const gross = MathBN.mult(amounts.gross, ratio);
-    const tax = MathBN.mult(amounts.tax, ratio);
-    const taxable = MathBN.mult(amounts.taxable, ratio);
-    const isEstimated = !refundTotal.eq(amounts.total);
+    const ratio = MathBN.div(refundTotal, amounts.total)
+    const gross = MathBN.mult(amounts.gross, ratio)
+    const tax = MathBN.mult(amounts.tax, ratio)
+    const taxable = MathBN.mult(amounts.taxable, ratio)
+    const isEstimated = !refundTotal.eq(amounts.total)
     const quality = qualityFor({
       collectionMode: base.identity.collectionMode,
       destination: base.destination,
       isEstimatedRefund: isEstimated,
       provider: base.identity.provider,
       tax,
-    });
-    let refundCreditTiming: TaxRefundCreditTiming;
+    })
+    let refundCreditTiming: TaxRefundCreditTiming
     if (!orderOccurredAt || occurredAt < orderOccurredAt) {
-      refundCreditTiming = "unknown";
+      refundCreditTiming = "unknown"
       quality.issues.push(
-        "The refund cannot be matched to a valid original-sale timestamp.",
-      );
-      quality.quality = "incomplete";
+        "The refund cannot be matched to a valid original-sale timestamp."
+      )
+      quality.quality = "incomplete"
     } else if (orderOccurredAt < period.startInclusive) {
-      refundCreditTiming = "prior_period";
+      refundCreditTiming = "prior_period"
       quality.issues.push(
-        "This refund relates to a sale from an earlier filing period; confirm the destination-jurisdiction credit and required state support.",
-      );
+        "This refund relates to a sale from an earlier filing period; confirm the destination-jurisdiction credit and required state support."
+      )
       if (quality.quality === "complete") {
-        quality.quality = "review";
+        quality.quality = "review"
       }
     } else {
-      refundCreditTiming = "same_period";
+      refundCreditTiming = "same_period"
     }
     if (cumulativeRefundExceedsOrder) {
-      quality.issues.push(
-        "Cumulative refunds exceed the original order total.",
-      );
-      quality.quality = "incomplete";
+      quality.issues.push("Cumulative refunds exceed the original order total.")
+      quality.quality = "incomplete"
     }
     if (base.currencyCode !== "usd") {
-      quality.issues.push("Confirm filing-currency conversion outside USD.");
+      quality.issues.push("Confirm filing-currency conversion outside USD.")
       if (quality.quality === "complete") {
-        quality.quality = "review";
+        quality.quality = "review"
       }
     }
 
@@ -718,82 +706,80 @@ const refundRecords = (
             ? money(gross)
             : money(ZERO),
       },
-    ];
-  });
-};
+    ]
+  })
+}
 
 const addMoney = (left: string, right: string): string =>
-  money(MathBN.add(decimal(left), decimal(right)));
+  money(MathBN.add(decimal(left), decimal(right)))
 
 const subtractMoney = (left: string, right: string): string =>
-  money(MathBN.sub(decimal(left), decimal(right)));
+  money(MathBN.sub(decimal(left), decimal(right)))
 
 export const summarizeTaxRecords = (
-  recordsToSummarize: TaxRecord[],
+  recordsToSummarize: TaxRecord[]
 ): TaxReportSummary[] => {
   const currencies = unique(
-    recordsToSummarize.map((record) => record.currencyCode),
-  ).sort();
-  const reportingCurrencies = currencies.length ? currencies : ["usd"];
+    recordsToSummarize.map((record) => record.currencyCode)
+  ).sort()
+  const reportingCurrencies = currencies.length ? currencies : ["usd"]
 
   return reportingCurrencies.map((currencyCode) => {
     const currencyRecords = recordsToSummarize.filter(
-      (record) => record.currencyCode === currencyCode,
-    );
-    const sales = currencyRecords.filter((record) => record.type === "sale");
-    const refunds = currencyRecords.filter(
-      (record) => record.type === "refund",
-    );
+      (record) => record.currencyCode === currencyCode
+    )
+    const sales = currencyRecords.filter((record) => record.type === "sale")
+    const refunds = currencyRecords.filter((record) => record.type === "refund")
     const sum = (values: string[]): string =>
-      money(values.reduce((total, value) => MathBN.add(total, value), ZERO));
-    const grossSales = sum(sales.map((record) => record.grossSales));
-    const refundedSales = sum(refunds.map((record) => record.grossSales));
-    const taxCollected = sum(sales.map((record) => record.taxAmount));
-    const refundedTax = sum(refunds.map((record) => record.taxAmount));
+      money(values.reduce((total, value) => MathBN.add(total, value), ZERO))
+    const grossSales = sum(sales.map((record) => record.grossSales))
+    const refundedSales = sum(refunds.map((record) => record.grossSales))
+    const taxCollected = sum(sales.map((record) => record.taxAmount))
+    const refundedTax = sum(refunds.map((record) => record.taxAmount))
 
     return {
       completeRecords: currencyRecords.filter(
-        (record) => record.quality === "complete",
+        (record) => record.quality === "complete"
       ).length,
       currencyCode,
       disabledRecordCount: currencyRecords.filter(
-        (record) => record.collectionMode === "disabled",
+        (record) => record.collectionMode === "disabled"
       ).length,
       grossSales,
       incompleteRecords: currencyRecords.filter(
-        (record) => record.quality === "incomplete",
+        (record) => record.quality === "incomplete"
       ).length,
       netSales: subtractMoney(grossSales, refundedSales),
       netTax: subtractMoney(taxCollected, refundedTax),
       nontaxableSales: subtractMoney(
         sum(sales.map((record) => record.nontaxableSales)),
-        sum(refunds.map((record) => record.nontaxableSales)),
+        sum(refunds.map((record) => record.nontaxableSales))
       ),
       orderCount: new Set(sales.map((record) => record.orderId)).size,
       priorPeriodRefundCount: refunds.filter(
-        (record) => record.refundCreditTiming === "prior_period",
+        (record) => record.refundCreditTiming === "prior_period"
       ).length,
       refundCount: refunds.length,
       refundedSales,
       refundedTax,
       reviewRecords: currencyRecords.filter(
-        (record) => record.quality === "review",
+        (record) => record.quality === "review"
       ).length,
       samePeriodRefundCount: refunds.filter(
-        (record) => record.refundCreditTiming === "same_period",
+        (record) => record.refundCreditTiming === "same_period"
       ).length,
       taxCollected,
       taxableSales: subtractMoney(
         sum(sales.map((record) => record.taxableSales)),
-        sum(refunds.map((record) => record.taxableSales)),
+        sum(refunds.map((record) => record.taxableSales))
       ),
       unclassifiedSales: subtractMoney(
         sum(sales.map((record) => record.unclassifiedSales)),
-        sum(refunds.map((record) => record.unclassifiedSales)),
+        sum(refunds.map((record) => record.unclassifiedSales))
       ),
-    };
-  });
-};
+    }
+  })
+}
 
 const destinationKey = (record: TaxRecord): string =>
   JSON.stringify([
@@ -807,29 +793,29 @@ const destinationKey = (record: TaxRecord): string =>
     record.destination.jurisdictionLevel,
     record.destination.jurisdictionName,
     record.taxRatePercent,
-  ]);
+  ])
 
 export const summarizeDestinations = (
-  recordsToSummarize: TaxRecord[],
+  recordsToSummarize: TaxRecord[]
 ): TaxDestinationSummary[] => {
-  const grouped = new Map<string, TaxRecord[]>();
+  const grouped = new Map<string, TaxRecord[]>()
   for (const record of recordsToSummarize) {
-    const key = destinationKey(record);
-    grouped.set(key, [...(grouped.get(key) ?? []), record]);
+    const key = destinationKey(record)
+    grouped.set(key, [...(grouped.get(key) ?? []), record])
   }
 
   return [...grouped.values()]
     .map((group) => {
-      const first = group[0]!;
-      const sales = group.filter((record) => record.type === "sale");
-      const refunds = group.filter((record) => record.type === "refund");
+      const first = group[0]!
+      const sales = group.filter((record) => record.type === "sale")
+      const refunds = group.filter((record) => record.type === "refund")
       const sum = (field: keyof TaxRecord, values: TaxRecord[]): string =>
         money(
           values.reduce(
             (total, record) => MathBN.add(total, String(record[field] ?? "0")),
-            ZERO,
-          ),
-        );
+            ZERO
+          )
+        )
       return {
         city: first.destination.city,
         countryCode: first.destination.countryCode,
@@ -840,15 +826,15 @@ export const summarizeDestinations = (
         jurisdictionName: first.destination.jurisdictionName,
         netSales: subtractMoney(
           sum("grossSales", sales),
-          sum("grossSales", refunds),
+          sum("grossSales", refunds)
         ),
         netTax: subtractMoney(
           sum("taxAmount", sales),
-          sum("taxAmount", refunds),
+          sum("taxAmount", refunds)
         ),
         nontaxableSales: subtractMoney(
           sum("nontaxableSales", sales),
-          sum("nontaxableSales", refunds),
+          sum("nontaxableSales", refunds)
         ),
         postalCode: first.destination.postalCode,
         refundedSales: sum("grossSales", refunds),
@@ -857,14 +843,14 @@ export const summarizeDestinations = (
         taxCollected: sum("taxAmount", sales),
         taxableSales: subtractMoney(
           sum("taxableSales", sales),
-          sum("taxableSales", refunds),
+          sum("taxableSales", refunds)
         ),
         taxRatePercent: first.taxRatePercent,
         unclassifiedSales: subtractMoney(
           sum("unclassifiedSales", sales),
-          sum("unclassifiedSales", refunds),
+          sum("unclassifiedSales", refunds)
         ),
-      };
+      }
     })
     .sort((left, right) =>
       [
@@ -887,90 +873,90 @@ export const summarizeDestinations = (
             right.postalCode,
           ]
             .map((value) => value ?? "")
-            .join(":"),
-        ),
-    );
-};
+            .join(":")
+        )
+    )
+}
 
 export const projectTaxRecords = ({
   orders,
   period,
 }: {
-  orders: unknown[];
-  period: TaxReportPeriod;
+  orders: unknown[]
+  period: TaxReportPeriod
 }): TaxRecord[] =>
   orders
     .flatMap((value) => {
-      const order = asRecord(value);
+      const order = asRecord(value)
       if (!order) {
-        return [];
+        return []
       }
-      const sale = saleRecord(order, period);
-      return [...(sale ? [sale] : []), ...refundRecords(order, period)];
+      const sale = saleRecord(order, period)
+      return [...(sale ? [sale] : []), ...refundRecords(order, period)]
     })
-    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
 
 export const diagnoseTaxProjection = ({
   orders,
   period,
 }: {
-  orders: unknown[];
-  period: TaxReportPeriod;
+  orders: unknown[]
+  period: TaxReportPeriod
 }): {
-  ordersInPeriod: number;
-  ordersWithCaptureTimestamp: number;
-  ordersWithIntegerDisplayId: number;
-  ordersWithOccurredAt: number;
-  ordersWithOrderId: number;
-  ordersWithPositiveCaptureTotal: number;
-  ordersWithPositiveCapturedPaymentTotal: number;
-  ordersWithPositiveCollectionCapturedTotal: number;
-  ordersWithPositiveOriginalTotal: number;
-  ordersWithPositivePaidTotal: number;
-  ordersWithPositiveSummaryPaidTotal: number;
-  projectedSales: number;
-  structuredOrders: number;
+  ordersInPeriod: number
+  ordersWithCaptureTimestamp: number
+  ordersWithIntegerDisplayId: number
+  ordersWithOccurredAt: number
+  ordersWithOrderId: number
+  ordersWithPositiveCaptureTotal: number
+  ordersWithPositiveCapturedPaymentTotal: number
+  ordersWithPositiveCollectionCapturedTotal: number
+  ordersWithPositiveOriginalTotal: number
+  ordersWithPositivePaidTotal: number
+  ordersWithPositiveSummaryPaidTotal: number
+  projectedSales: number
+  structuredOrders: number
 } => {
   const structuredOrders = orders
     .map(asRecord)
-    .filter((order): order is UnknownRecord => order !== null);
+    .filter((order): order is UnknownRecord => order !== null)
   const count = (predicate: (order: UnknownRecord) => boolean): number =>
-    structuredOrders.filter(predicate).length;
+    structuredOrders.filter(predicate).length
   const occurredAt = (order: UnknownRecord): string | null =>
-    paymentCaptureTimestamp(order) ?? timestamp(order.created_at);
+    paymentCaptureTimestamp(order) ?? timestamp(order.created_at)
 
   return {
     ordersInPeriod: count((order) => {
-      const value = occurredAt(order);
-      return value !== null && inPeriod(value, period);
+      const value = occurredAt(order)
+      return value !== null && inPeriod(value, period)
     }),
     ordersWithCaptureTimestamp: count(
-      (order) => paymentCaptureTimestamp(order) !== null,
+      (order) => paymentCaptureTimestamp(order) !== null
     ),
     ordersWithIntegerDisplayId: count((order) => {
-      const value = decimal(order.display_id);
-      return value.isInteger() && Number.isSafeInteger(value.toNumber());
+      const value = decimal(order.display_id)
+      return value.isInteger() && Number.isSafeInteger(value.toNumber())
     }),
     ordersWithOccurredAt: count((order) => occurredAt(order) !== null),
     ordersWithOrderId: count((order) => text(order.id) !== null),
     ordersWithPositiveCaptureTotal: count((order) => captureTotal(order).gt(0)),
     ordersWithPositiveCapturedPaymentTotal: count((order) =>
-      capturedPaymentTotal(order).gt(0),
+      capturedPaymentTotal(order).gt(0)
     ),
     ordersWithPositiveCollectionCapturedTotal: count((order) =>
-      collectionCapturedTotal(order).gt(0),
+      collectionCapturedTotal(order).gt(0)
     ),
     ordersWithPositiveOriginalTotal: count((order) =>
-      originalAmounts(order).total.gt(0),
+      originalAmounts(order).total.gt(0)
     ),
     ordersWithPositivePaidTotal: count((order) => paidTotal(order).gt(0)),
     ordersWithPositiveSummaryPaidTotal: count((order) =>
-      summaryPaidTotal(order).gt(0),
+      summaryPaidTotal(order).gt(0)
     ),
     projectedSales: count((order) => saleRecord(order, period) !== null),
     structuredOrders: structuredOrders.length,
-  };
-};
+  }
+}
 
 export const totalWithTax = (summary: TaxDestinationSummary): string =>
-  addMoney(summary.grossSales, summary.taxCollected);
+  addMoney(summary.grossSales, summary.taxCollected)

@@ -19,27 +19,27 @@ import type { CatalogService } from "../../utils"
 export const runMediaLifecycleRoute = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse,
-  command: CatalogMediaLifecycleCommand,
+  command: CatalogMediaLifecycleCommand
 ): Promise<void> => {
   const assetId = req.params.id
   if (!assetId) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Catalog media asset id is required.",
+      "Catalog media asset id is required."
     )
   }
   const actorId = req.auth_context.actor_id
   if (!actorId) {
     throw new MedusaError(
       MedusaError.Types.UNAUTHORIZED,
-      "An authenticated Admin actor is required.",
+      "An authenticated Admin actor is required."
     )
   }
   const parsed = catalogMediaLifecycleCommandSchema.safeParse(req.body ?? {})
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "A valid catalog media lifecycle command is required.",
+      "A valid catalog media lifecycle command is required."
     )
   }
   const requestSha256 = hashCatalogCommand({
@@ -63,7 +63,7 @@ export const runMediaLifecycleRoute = async (
   })
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const asset = (await catalogService.retrieveCatalogMediaAsset(
-    assetId,
+    assetId
   )) as CatalogMediaAssetRecord
   res.setHeader("Cache-Control", "private, no-store")
   res.status(200).json({ asset: serializeCatalogMediaAsset(asset) })

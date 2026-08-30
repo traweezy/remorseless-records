@@ -86,15 +86,25 @@ type TextFieldProps = {
 }
 
 const NewsTextField = memo<TextFieldProps>(
-  ({ field, hint, id, label, maxLength, optional, placeholder, type = "text" }) => {
+  ({
+    field,
+    hint,
+    id,
+    label,
+    maxLength,
+    optional,
+    placeholder,
+    type = "text",
+  }) => {
     const value = typeof field.state.value === "string" ? field.state.value : ""
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
-        const value = (event.currentTarget as unknown as { value?: unknown }).value
+        const value = (event.currentTarget as unknown as { value?: unknown })
+          .value
         field.handleChange(typeof value === "string" ? value : "")
       },
-      [field],
+      [field]
     )
     const renderControl = useCallback(
       (control: AdminFormControlProps) => (
@@ -110,7 +120,15 @@ const NewsTextField = memo<TextFieldProps>(
           value={value}
         />
       ),
-      [field.name, handleBlur, handleChange, maxLength, placeholder, type, value],
+      [
+        field.name,
+        handleBlur,
+        handleChange,
+        maxLength,
+        placeholder,
+        type,
+        value,
+      ]
     )
 
     return (
@@ -124,7 +142,7 @@ const NewsTextField = memo<TextFieldProps>(
         {renderControl}
       </AdminFormField>
     )
-  },
+  }
 )
 
 NewsTextField.displayName = "NewsTextField"
@@ -146,10 +164,11 @@ const NewsTextareaField = memo<TextareaFieldProps>(
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLTextAreaElement>) => {
-        const value = (event.currentTarget as unknown as { value?: unknown }).value
+        const value = (event.currentTarget as unknown as { value?: unknown })
+          .value
         field.handleChange(typeof value === "string" ? value : "")
       },
-      [field],
+      [field]
     )
     const renderControl = useCallback(
       (control: AdminFormControlProps) => (
@@ -165,7 +184,15 @@ const NewsTextareaField = memo<TextareaFieldProps>(
           value={value}
         />
       ),
-      [field.name, handleBlur, handleChange, maxLength, placeholder, rows, value],
+      [
+        field.name,
+        handleBlur,
+        handleChange,
+        maxLength,
+        placeholder,
+        rows,
+        value,
+      ]
     )
     return (
       <AdminFormField
@@ -178,7 +205,7 @@ const NewsTextareaField = memo<TextareaFieldProps>(
         {renderControl}
       </AdminFormField>
     )
-  },
+  }
 )
 
 NewsTextareaField.displayName = "NewsTextareaField"
@@ -241,7 +268,7 @@ const NewsContentField = memo<ContentFieldProps>(({ field }) => {
   const handleBlur = useCallback(() => field.handleBlur(), [field])
   const handleChange = useCallback(
     (nextValue: string) => field.handleChange(nextValue),
-    [field],
+    [field]
   )
   const renderControl = useCallback(
     (control: AdminFormControlProps) => (
@@ -260,7 +287,7 @@ const NewsContentField = memo<ContentFieldProps>(({ field }) => {
         />
       </div>
     ),
-    [error, handleBlur, handleChange, value],
+    [error, handleBlur, handleChange, value]
   )
   return (
     <AdminFormField error={error} id="news-content" label="Post body">
@@ -282,195 +309,207 @@ type CoverFieldsProps = {
 
 const CoverFields = memo<CoverFieldsProps>(
   ({ altTextField, canUploadCover, coverUrlField, onUploadingChange }) => {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const uploadControllerRef = useRef<AbortController | null>(null)
-  const mountedRef = useRef(true)
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const coverUrl =
-    typeof coverUrlField.state.value === "string" ? coverUrlField.state.value : ""
-  const altText =
-    typeof altTextField.state.value === "string" ? altTextField.state.value : ""
-  const altError = showFieldError(altTextField)
+    const inputRef = useRef<HTMLInputElement>(null)
+    const uploadControllerRef = useRef<AbortController | null>(null)
+    const mountedRef = useRef(true)
+    const [uploading, setUploading] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
+    const coverUrl =
+      typeof coverUrlField.state.value === "string"
+        ? coverUrlField.state.value
+        : ""
+    const altText =
+      typeof altTextField.state.value === "string"
+        ? altTextField.state.value
+        : ""
+    const altError = showFieldError(altTextField)
 
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      uploadControllerRef.current?.abort()
-      onUploadingChange(false)
-    }
-  }, [onUploadingChange])
-
-  const handleChoose = useCallback(() => {
-    if (!canUploadCover) {
-      return
-    }
-    const target = inputRef.current as unknown as { click?: () => void } | null
-    target?.click?.()
-  }, [canUploadCover])
-  const handleUpload = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const input = event.currentTarget as unknown as {
-        files?: ArrayLike<File> | null
-        value: string
+    useEffect(() => {
+      mountedRef.current = true
+      return () => {
+        mountedRef.current = false
+        uploadControllerRef.current?.abort()
+        onUploadingChange(false)
       }
-      const file = Array.from(input.files ?? [])[0]
-      input.value = ""
-      if (!canUploadCover || !file) {
+    }, [onUploadingChange])
+
+    const handleChoose = useCallback(() => {
+      if (!canUploadCover) {
         return
       }
-      const validationError = validateNewsCover(file)
-      if (validationError) {
-        setUploadError(validationError)
-        return
-      }
-      const controller = new AbortController()
-      uploadControllerRef.current?.abort()
-      uploadControllerRef.current = controller
-      setUploading(true)
-      onUploadingChange(true)
-      setUploadError(null)
-      void uploadNewsCover(file, { signal: controller.signal })
-        .then((url) => {
-          if (mountedRef.current) {
-            coverUrlField.handleChange(url)
-            coverUrlField.handleBlur()
-          }
-        })
-        .catch((error: unknown) => {
-          if (mountedRef.current && !controller.signal.aborted) {
-            setUploadError(
-              error instanceof Error ? error.message : "The cover could not be uploaded.",
-            )
-          }
-        })
-        .finally(() => {
-          if (uploadControllerRef.current === controller) {
-            uploadControllerRef.current = null
+      const target = inputRef.current as unknown as {
+        click?: () => void
+      } | null
+      target?.click?.()
+    }, [canUploadCover])
+    const handleUpload = useCallback(
+      (event: ChangeEvent<HTMLInputElement>) => {
+        const input = event.currentTarget as unknown as {
+          files?: ArrayLike<File> | null
+          value: string
+        }
+        const file = Array.from(input.files ?? [])[0]
+        input.value = ""
+        if (!canUploadCover || !file) {
+          return
+        }
+        const validationError = validateNewsCover(file)
+        if (validationError) {
+          setUploadError(validationError)
+          return
+        }
+        const controller = new AbortController()
+        uploadControllerRef.current?.abort()
+        uploadControllerRef.current = controller
+        setUploading(true)
+        onUploadingChange(true)
+        setUploadError(null)
+        void uploadNewsCover(file, { signal: controller.signal })
+          .then((url) => {
             if (mountedRef.current) {
-              setUploading(false)
-              onUploadingChange(false)
+              coverUrlField.handleChange(url)
+              coverUrlField.handleBlur()
             }
-          }
-        })
-    },
-    [canUploadCover, coverUrlField, onUploadingChange],
-  )
-  const handleRemove = useCallback(() => {
-    uploadControllerRef.current?.abort()
-    coverUrlField.handleChange("")
-    altTextField.handleChange("")
-    setUploadError(null)
-  }, [altTextField, coverUrlField])
-  const handleAltBlur = useCallback(() => altTextField.handleBlur(), [altTextField])
-  const handleAltChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const value = (event.currentTarget as unknown as { value?: unknown }).value
-      altTextField.handleChange(typeof value === "string" ? value : "")
-    },
-    [altTextField],
-  )
+          })
+          .catch((error: unknown) => {
+            if (mountedRef.current && !controller.signal.aborted) {
+              setUploadError(
+                error instanceof Error
+                  ? error.message
+                  : "The cover could not be uploaded."
+              )
+            }
+          })
+          .finally(() => {
+            if (uploadControllerRef.current === controller) {
+              uploadControllerRef.current = null
+              if (mountedRef.current) {
+                setUploading(false)
+                onUploadingChange(false)
+              }
+            }
+          })
+      },
+      [canUploadCover, coverUrlField, onUploadingChange]
+    )
+    const handleRemove = useCallback(() => {
+      uploadControllerRef.current?.abort()
+      coverUrlField.handleChange("")
+      altTextField.handleChange("")
+      setUploadError(null)
+    }, [altTextField, coverUrlField])
+    const handleAltBlur = useCallback(
+      () => altTextField.handleBlur(),
+      [altTextField]
+    )
+    const handleAltChange = useCallback(
+      (event: ChangeEvent<HTMLInputElement>) => {
+        const value = (event.currentTarget as unknown as { value?: unknown })
+          .value
+        altTextField.handleChange(typeof value === "string" ? value : "")
+      },
+      [altTextField]
+    )
 
-  return (
-    <div className="space-y-4">
-      <input
-        accept="image/gif,image/jpeg,image/png,image/webp"
-        aria-label="Upload news cover image"
-        className="sr-only"
-        disabled={!canUploadCover || uploading}
-        onChange={handleUpload}
-        ref={inputRef}
-        tabIndex={-1}
-        type="file"
-      />
-      {coverUrl ? (
-        <div className="grid gap-4 rounded-lg border border-ui-border-base p-4 sm:grid-cols-[8rem_minmax(0,1fr)]">
-          <img
-            alt=""
-            aria-hidden="true"
-            className="h-32 w-32 rounded-md border border-ui-border-base object-cover"
-            height="128"
-            loading="lazy"
-            src={coverUrl}
-            width="128"
-          />
-          <div className="min-w-0">
-            <AdminFormField
-              error={altError}
-              hint="Describe the meaningful subject or artwork without starting with “image of.”"
-              id="news-cover-alt"
-              label="Cover description"
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  className="mt-2"
-                  maxLength={500}
-                  name={altTextField.name}
-                  onBlur={handleAltBlur}
-                  onChange={handleAltChange}
-                  value={altText}
-                />
-              )}
-            </AdminFormField>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {canUploadCover ? (
+    return (
+      <div className="space-y-4">
+        <input
+          accept="image/gif,image/jpeg,image/png,image/webp"
+          aria-label="Upload news cover image"
+          className="sr-only"
+          disabled={!canUploadCover || uploading}
+          onChange={handleUpload}
+          ref={inputRef}
+          tabIndex={-1}
+          type="file"
+        />
+        {coverUrl ? (
+          <div className="grid gap-4 rounded-lg border border-ui-border-base p-4 sm:grid-cols-[8rem_minmax(0,1fr)]">
+            <img
+              alt=""
+              aria-hidden="true"
+              className="h-32 w-32 rounded-md border border-ui-border-base object-cover"
+              height="128"
+              loading="lazy"
+              src={coverUrl}
+              width="128"
+            />
+            <div className="min-w-0">
+              <AdminFormField
+                error={altError}
+                hint="Describe the meaningful subject or artwork without starting with “image of.”"
+                id="news-cover-alt"
+                label="Cover description"
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    className="mt-2"
+                    maxLength={500}
+                    name={altTextField.name}
+                    onBlur={handleAltBlur}
+                    onChange={handleAltChange}
+                    value={altText}
+                  />
+                )}
+              </AdminFormField>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {canUploadCover ? (
+                  <Button
+                    disabled={uploading}
+                    onClick={handleChoose}
+                    size="small"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Replace cover
+                  </Button>
+                ) : null}
                 <Button
                   disabled={uploading}
-                  onClick={handleChoose}
+                  onClick={handleRemove}
                   size="small"
                   type="button"
                   variant="secondary"
                 >
-                  Replace cover
+                  Remove cover
                 </Button>
-              ) : null}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-ui-border-strong p-6 text-center">
+            <Text weight="plus">
+              {canUploadCover ? "Add a cover image" : "Cover upload restricted"}
+            </Text>
+            <Text className="mt-1 text-ui-fg-subtle" size="small">
+              {canUploadCover
+                ? "JPEG, PNG, WebP, or non-animated GIF · 12 MiB maximum · metadata removed and saved as WebP"
+                : "Your role can save this post but cannot upload files. Ask a super administrator for file creation access."}
+            </Text>
+            {canUploadCover ? (
               <Button
+                className="mt-4"
                 disabled={uploading}
-                onClick={handleRemove}
+                isLoading={uploading}
+                onClick={handleChoose}
                 size="small"
                 type="button"
                 variant="secondary"
               >
-                Remove cover
+                {uploading ? "Uploading…" : "Choose image"}
               </Button>
-            </div>
+            ) : null}
           </div>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed border-ui-border-strong p-6 text-center">
-          <Text weight="plus">
-            {canUploadCover ? "Add a cover image" : "Cover upload restricted"}
-          </Text>
-          <Text className="mt-1 text-ui-fg-subtle" size="small">
-            {canUploadCover
-              ? "JPEG, PNG, WebP, or non-animated GIF · 12 MiB maximum · metadata removed and saved as WebP"
-              : "Your role can save this post but cannot upload files. Ask a super administrator for file creation access."}
-          </Text>
-          {canUploadCover ? (
-            <Button
-              className="mt-4"
-              disabled={uploading}
-              isLoading={uploading}
-              onClick={handleChoose}
-              size="small"
-              type="button"
-              variant="secondary"
-            >
-              {uploading ? "Uploading…" : "Choose image"}
-            </Button>
-          ) : null}
-        </div>
-      )}
-      {uploadError ? (
-        <Alert role="alert" variant="error">
-          <Text size="small">{uploadError}</Text>
-        </Alert>
-      ) : null}
-    </div>
-  )
-  },
+        )}
+        {uploadError ? (
+          <Alert role="alert" variant="error">
+            <Text size="small">{uploadError}</Text>
+          </Alert>
+        ) : null}
+      </div>
+    )
+  }
 )
 
 CoverFields.displayName = "CoverFields"
@@ -484,7 +523,7 @@ type NewsEditorProps = {
   onSubmit: (
     values: NewsWriteInput,
     idempotencyKey: string,
-    intent: NewsPublicationIntent,
+    intent: NewsPublicationIntent
   ) => Promise<void>
   restoreFocusRef: RefObject<HTMLButtonElement | null>
 }
@@ -529,7 +568,9 @@ const focusSchedule = (): void => {
 
 const newsDraftStorage = (): Storage | null => {
   try {
-    return (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null
+    return (
+      (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null
+    )
   } catch {
     return null
   }
@@ -565,7 +606,10 @@ export const NewsEditor = memo<NewsEditorProps>(
           return
         }
         const serialized = JSON.stringify({ intent, value })
-        if (lastSubmittedRef.current && lastSubmittedRef.current !== serialized) {
+        if (
+          lastSubmittedRef.current &&
+          lastSubmittedRef.current !== serialized
+        ) {
           idempotencyKeyRef.current = crypto.randomUUID()
         }
         lastSubmittedRef.current = serialized
@@ -574,7 +618,7 @@ export const NewsEditor = memo<NewsEditorProps>(
           await onSubmit(
             buildNewsWriteInput(value, intent),
             idempotencyKeyRef.current,
-            intent,
+            intent
           )
           const storage = newsDraftStorage()
           if (storage) {
@@ -608,7 +652,7 @@ export const NewsEditor = memo<NewsEditorProps>(
       if (draft) {
         form.reset(draft.values, { keepDefaultValues: true })
         setDraftNotice(
-          `Recovered browser draft saved ${new Date(draft.savedAt).toLocaleString()}.`,
+          `Recovered browser draft saved ${new Date(draft.savedAt).toLocaleString()}.`
         )
       }
       draftLoadedRef.current = true
@@ -632,7 +676,7 @@ export const NewsEditor = memo<NewsEditorProps>(
           })
         } catch {
           setDraftNotice(
-            "This browser could not save a recovery draft. Keep the editor open until the post is saved.",
+            "This browser could not save a recovery draft. Keep the editor open until the post is saved."
           )
         }
       }, 500)
@@ -656,7 +700,7 @@ export const NewsEditor = memo<NewsEditorProps>(
           requestClose()
         }
       },
-      [requestClose],
+      [requestClose]
     )
     const cancelDiscard = useCallback(() => setDiscardOpen(false), [])
     const confirmDiscard = useCallback(() => {
@@ -670,10 +714,12 @@ export const NewsEditor = memo<NewsEditorProps>(
     const handleCloseAutoFocus = useCallback(
       (event: Event) => {
         event.preventDefault()
-        const target = restoreFocusRef.current as unknown as { focus?: () => void } | null
+        const target = restoreFocusRef.current as unknown as {
+          focus?: () => void
+        } | null
         target?.focus?.()
       },
-      [restoreFocusRef],
+      [restoreFocusRef]
     )
     const handleIntent = useCallback(
       (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -689,11 +735,11 @@ export const NewsEditor = memo<NewsEditorProps>(
         setActionError(null)
         void form.handleSubmit().finally(focusFirstInvalid)
       },
-      [busy, form],
+      [busy, form]
     )
     const handleUploadingChange = useCallback(
       (uploading: boolean) => setUploadingCover(uploading),
-      [],
+      []
     )
     const coverFields = useCallback(
       (coverUrlField: AnyFieldApi) => (
@@ -708,14 +754,16 @@ export const NewsEditor = memo<NewsEditorProps>(
           )}
         </form.Field>
       ),
-      [canUploadCover, form, handleUploadingChange],
+      [canUploadCover, form, handleUploadingChange]
     )
 
     const titlePreview = state.values.title.trim() || "Your headline"
     const descriptionPreview =
       state.values.excerpt.trim() ||
       "Add a short summary so readers and search engines understand this update."
-    const routePreview = entry ? `/news/${entry.slug}` : "/news/generated-from-headline"
+    const routePreview = entry
+      ? `/news/${entry.slug}`
+      : "/news/generated-from-headline"
     const currentStatus = entry?.status ?? "draft"
     const primaryLabel = mode === "create" ? "Publish now" : "Publish changes"
     const draftLabel =
@@ -733,7 +781,7 @@ export const NewsEditor = memo<NewsEditorProps>(
         state.submissionAttempts > 0
           ? newsEditorValidationIssues(state.values)
           : [],
-      [state.submissionAttempts, state.values],
+      [state.submissionAttempts, state.values]
     )
     const formIssues = useMemo<AdminFormIssue[]>(
       () => [
@@ -757,7 +805,7 @@ export const NewsEditor = memo<NewsEditorProps>(
             ]
           : []),
       ],
-      [actionError, error, validationIssues],
+      [actionError, error, validationIssues]
     )
     const saveState: AdminSaveState = state.isSubmitting
       ? "saving"
@@ -776,7 +824,11 @@ export const NewsEditor = memo<NewsEditorProps>(
           >
             <AdminFocusModalHeader
               description="Write once, then save privately, schedule for later, or publish now."
-              title={mode === "create" ? "Create news post" : `Edit ${entry?.title ?? "post"}`}
+              title={
+                mode === "create"
+                  ? "Create news post"
+                  : `Edit ${entry?.title ?? "post"}`
+              }
             />
             <FocusModal.Body
               aria-busy={busy}
@@ -785,7 +837,8 @@ export const NewsEditor = memo<NewsEditorProps>(
               <div className="mb-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <Text className="text-ui-fg-subtle" size="small">
-                    Move through the story, media, organization, and publishing tasks.
+                    Move through the story, media, organization, and publishing
+                    tasks.
                   </Text>
                   <AdminFormSaveState state={saveState} />
                 </div>
@@ -809,7 +862,8 @@ export const NewsEditor = memo<NewsEditorProps>(
                       Story
                     </Heading>
                     <Text className="mt-1 text-ui-fg-subtle" size="small">
-                      Lead with the update readers need, then add the useful context.
+                      Lead with the update readers need, then add the useful
+                      context.
                     </Text>
                     <div className="mt-4 space-y-5">
                       <form.Field children={TitleField} name="title" />
@@ -828,7 +882,8 @@ export const NewsEditor = memo<NewsEditorProps>(
                       Cover
                     </Heading>
                     <Text className="mt-1 text-ui-fg-subtle" size="small">
-                      Optional, but useful for the News feed and homepage carousel.
+                      Optional, but useful for the News feed and homepage
+                      carousel.
                     </Text>
                     <div className="mt-4">
                       <form.Field children={coverFields} name="coverUrl" />
@@ -878,7 +933,8 @@ export const NewsEditor = memo<NewsEditorProps>(
                       <form.Field children={ScheduleField} name="scheduleAt" />
                     </div>
                     <Text className="mt-4 text-ui-fg-subtle" size="xsmall">
-                      Publishing makes the post visible immediately. Saving a draft removes it from the storefront.
+                      Publishing makes the post visible immediately. Saving a
+                      draft removes it from the storefront.
                     </Text>
                   </section>
 
@@ -891,17 +947,24 @@ export const NewsEditor = memo<NewsEditorProps>(
                     <Heading id="news-preview-heading" level="h2">
                       Search preview
                     </Heading>
-                    <Text className="mt-3 break-words text-ui-fg-interactive" size="xsmall">
+                    <Text
+                      className="mt-3 break-words text-ui-fg-interactive"
+                      size="xsmall"
+                    >
                       {routePreview}
                     </Text>
                     <Text className="mt-2 break-words" weight="plus">
                       {titlePreview}
                     </Text>
-                    <Text className="mt-1 break-words text-ui-fg-subtle" size="small">
+                    <Text
+                      className="mt-1 break-words text-ui-fg-subtle"
+                      size="small"
+                    >
                       {descriptionPreview}
                     </Text>
                     <Text className="mt-3 text-ui-fg-subtle" size="xsmall">
-                      The public URL is generated when the post is first created and remains stable after headline edits.
+                      The public URL is generated when the post is first created
+                      and remains stable after headline edits.
                     </Text>
                   </section>
                 </aside>
@@ -962,7 +1025,7 @@ export const NewsEditor = memo<NewsEditorProps>(
         />
       </>
     )
-  },
+  }
 )
 
 NewsEditor.displayName = "NewsEditor"

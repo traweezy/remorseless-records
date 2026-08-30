@@ -59,10 +59,10 @@ const vocabulary: CatalogCreationVocabulary = {
 describe("catalog product creation form", () => {
   it("previews the same generated handle used by the backend", () => {
     expect(resolveCatalogCreationHandle("", "  Á New Record!  ")).toBe(
-      "a-new-record",
+      "a-new-record"
     )
     expect(resolveCatalogCreationHandle("custom-record", "Ignored")).toBe(
-      "custom-record",
+      "custom-record"
     )
     expect(resolveCatalogCreationHandle("", "---")).toBe("draft-product")
   })
@@ -86,20 +86,20 @@ describe("catalog product creation form", () => {
     expect(merch.offerings).toHaveLength(1)
     expect(merch.offerings[0]).toMatchObject({ size: "One size" })
     expect(validateCatalogCreationStep(merch, 1)).toContain(
-      "Choose or enter a merchandise type.",
+      "Choose or enter a merchandise type."
     )
   })
 
   it("uses the exact controlled product type for every catalog kind", () => {
     expect(createCatalogCreationDefaults("music_release").productType).toBe(
-      "Music release",
+      "Music release"
     )
     expect(createCatalogCreationDefaults("merch").productType).toBe("Merch")
     expect(createCatalogCreationDefaults("fixed_bundle").productType).toBe(
-      "Fixed bundle",
+      "Fixed bundle"
     )
     expect(createCatalogCreationDefaults("mystery_bundle").productType).toBe(
-      "Mystery bundle",
+      "Mystery bundle"
     )
   })
 
@@ -111,13 +111,13 @@ describe("catalog product creation form", () => {
       expect.arrayContaining([
         "Enter a product name.",
         "Choose or enter the primary artist.",
-      ]),
+      ])
     )
     expect(validateCatalogCreationStep(values, 2)).toEqual(
       expect.arrayContaining([
         "Enter a price greater than $0.00 with no more than two decimals.",
         "Enter the unique inventory SKU used for fulfillment.",
-      ]),
+      ])
     )
   })
 
@@ -141,7 +141,7 @@ describe("catalog product creation form", () => {
     const request = buildCatalogProductCreateRequest(
       values,
       "00000000-0000-4000-8000-000000000001",
-      [],
+      []
     )
 
     expect(request).toMatchObject({
@@ -194,7 +194,7 @@ describe("catalog product creation form", () => {
     const request = buildCatalogProductCreateRequest(
       values,
       "00000000-0000-4000-8000-000000000001",
-      [],
+      []
     )
 
     expect(request.media).toEqual([
@@ -216,7 +216,7 @@ describe("catalog product creation form", () => {
 
     values.media[1]!.altText = ""
     expect(validateCatalogCreationStep(values, 3)).toContain(
-      "Describe every image for customers who cannot see it.",
+      "Describe every image for customers who cannot see it."
     )
   })
 
@@ -237,7 +237,7 @@ describe("catalog product creation form", () => {
     const request = buildCatalogProductCreateRequest(
       values,
       "00000000-0000-4000-8000-000000000001",
-      [],
+      []
     )
 
     expect(request.variants[0]).toMatchObject({
@@ -264,7 +264,7 @@ describe("catalog product creation form", () => {
       values,
       "00000000-0000-4000-8000-000000000001",
       [],
-      vocabulary,
+      vocabulary
     )
 
     expect(request.profile).toMatchObject({
@@ -292,7 +292,7 @@ describe("catalog product creation form", () => {
   it("builds an accessible merchandise size/color matrix", () => {
     let values = applyCatalogCreationKind(
       createCatalogCreationDefaults(),
-      "merch",
+      "merch"
     )
     values = {
       ...values,
@@ -324,7 +324,7 @@ describe("catalog product creation form", () => {
       values,
       "00000000-0000-4000-8000-000000000001",
       [],
-      vocabulary,
+      vocabulary
     )
 
     expect(request.options).toEqual([
@@ -361,10 +361,12 @@ describe("catalog product creation form", () => {
     const offerings = createCatalogCreationMerchandiseOfferings(
       "apparel_standard",
       values.offerings,
-      () => `offering_${++nextId}`,
+      () => `offering_${++nextId}`
     )
 
-    expect(offerings.map(({ id, size, title }) => ({ id, size, title }))).toEqual([
+    expect(
+      offerings.map(({ id, size, title }) => ({ id, size, title }))
+    ).toEqual([
       { id: "offering_1", size: "S", title: "S" },
       { id: "offering_2", size: "M", title: "M" },
       { id: "offering_3", size: "L", title: "L" },
@@ -380,7 +382,7 @@ describe("catalog product creation form", () => {
           sku: "",
           stockQuantity: "0",
         }),
-      ]),
+      ])
     )
   })
 
@@ -388,7 +390,7 @@ describe("catalog product creation form", () => {
     let nextId = 0
     const offerings = createCatalogCreationMusicReleaseOfferings(
       "cassette_cd_vinyl",
-      () => `release_offering_${++nextId}`,
+      () => `release_offering_${++nextId}`
     )
 
     expect(
@@ -399,7 +401,7 @@ describe("catalog product creation form", () => {
         sku,
         stockQuantity,
         title,
-      })),
+      }))
     ).toEqual([
       {
         format: "Cassette",
@@ -434,12 +436,12 @@ describe("catalog product creation form", () => {
     values.title = "Dentro del Sarcófago"
     values.offerings = createCatalogCreationMusicReleaseOfferings(
       "cassette_cd",
-      () => crypto.randomUUID(),
+      () => crypto.randomUUID()
     )
     values.offerings[0]!.sku = "KEEP-MANUAL-SKU"
 
     expect(
-      fillCatalogCreationMissingSkus(values).map((offering) => offering.sku),
+      fillCatalogCreationMissingSkus(values).map((offering) => offering.sku)
     ).toEqual([
       "KEEP-MANUAL-SKU",
       "MUSIC_RELEASE_VOMITO_MORTUORIO_DENTRO_DEL_SARCOFAGO_CD_2",
@@ -464,14 +466,14 @@ describe("catalog product creation form", () => {
         "Enter a price greater than $0.00 with no more than two decimals.",
         "Each customer label must be unique within this product.",
         "Each SKU must be unique within this product.",
-      ]),
+      ])
     )
   })
 
   it("maps every fixed-bundle component to stable offering keys", () => {
     let values = applyCatalogCreationKind(
       createCatalogCreationDefaults(),
-      "fixed_bundle",
+      "fixed_bundle"
     )
     const first = values.offerings[0]!
     const second = {
@@ -501,12 +503,12 @@ describe("catalog product creation form", () => {
     const request = buildCatalogProductCreateRequest(
       values,
       "00000000-0000-4000-8000-000000000001",
-      choices,
+      choices
     )
 
-    expect(request.variants.every((variant) => variant.stockQuantity === undefined)).toBe(
-      true,
-    )
+    expect(
+      request.variants.every((variant) => variant.stockQuantity === undefined)
+    ).toBe(true)
     expect(request.bundle?.components).toEqual([
       expect.objectContaining({
         bundleVariantKeys: ["cd-bundle", "lp-bundle"],
@@ -529,7 +531,7 @@ describe("catalog product creation form", () => {
 
     const fixed = applyCatalogCreationKind(music, "fixed_bundle")
     expect(validateCatalogCreationStep(fixed, 2)).toContain(
-      "Add at least one included product.",
+      "Add at least one included product."
     )
     fixed.title = "Bundle"
     fixed.offerings[0]!.priceUsd = "20"
@@ -547,15 +549,15 @@ describe("catalog product creation form", () => {
       buildCatalogProductCreateRequest(
         fixed,
         "00000000-0000-4000-8000-000000000001",
-        choices,
-      ),
+        choices
+      )
     ).toThrow("no longer available")
 
     const merchPreorder = createCatalogCreationDefaults("merch")
     merchPreorder.merchandiseType = "Shirt"
     merchPreorder.offerings[0]!.availabilityPolicy = "preorder"
     expect(validateCatalogCreationStep(merchPreorder, 2)).toContain(
-      "Preorders are available only for music releases in this workflow.",
+      "Preorders are available only for music releases in this workflow."
     )
   })
 
@@ -571,7 +573,7 @@ describe("catalog product creation form", () => {
       values: { title: "Saved draft" },
     })
     expect(
-      parseCatalogCreationDraft(serialized, now + catalogCreationDraftTtlMs),
+      parseCatalogCreationDraft(serialized, now + catalogCreationDraftTtlMs)
     ).toBeNull()
     expect(parseCatalogCreationDraft("not json", now)).toBeNull()
   })
@@ -598,7 +600,7 @@ describe("catalog product creation form", () => {
       ({ availabilityPolicy: _availabilityPolicy, ...offering }) => ({
         ...offering,
         allowBackorder: false,
-      }),
+      })
     )
 
     expect(
@@ -609,13 +611,15 @@ describe("catalog product creation form", () => {
           values: { ...legacyValues, offerings: legacyOfferings },
           version: 1,
         }),
-        now,
-      ),
+        now
+      )
     ).toMatchObject({
       step: 1,
       values: {
         artistId: "",
-        offerings: [expect.objectContaining({ availabilityPolicy: "inventory_only" })],
+        offerings: [
+          expect.objectContaining({ availabilityPolicy: "inventory_only" }),
+        ],
         releaseDate: "2026-08-01",
         releaseDatePrecision: "day",
         sizeGuide: "",
@@ -631,7 +635,7 @@ describe("catalog product creation form", () => {
       ({ availabilityPolicy: _availabilityPolicy, ...offering }) => ({
         ...offering,
         allowBackorder: true,
-      }),
+      })
     )
 
     expect(
@@ -642,12 +646,14 @@ describe("catalog product creation form", () => {
           values: { ...values, offerings: versionTwoOfferings },
           version: 2,
         }),
-        now,
-      ),
+        now
+      )
     ).toMatchObject({
       step: 2,
       values: {
-        offerings: [expect.objectContaining({ availabilityPolicy: "backorder" })],
+        offerings: [
+          expect.objectContaining({ availabilityPolicy: "backorder" }),
+        ],
       },
     })
   })
@@ -665,8 +671,8 @@ describe("catalog product creation form", () => {
           values: versionThreeValues,
           version: 3,
         }),
-        now,
-      ),
+        now
+      )
     ).toMatchObject({
       step: 3,
       values: { media: [] },

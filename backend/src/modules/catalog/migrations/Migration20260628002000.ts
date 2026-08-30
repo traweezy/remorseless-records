@@ -11,7 +11,7 @@ export class Migration20260628002000 extends Migration {
         '"image_url" text null,' +
         '"bio" text null,' +
         '"location" text null,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -32,13 +32,13 @@ export class Migration20260628002000 extends Migration {
     this.addSql(
       'create table if not exists "catalog_reference_values" (' +
         '"id" text not null,' +
-        '"kind" text not null check ("kind" in (\'format\', \'format_detail\', \'genre\', \'label\', \'merch_type\', \'product_type\', \'utility_tag\')),' +
+        "\"kind\" text not null check (\"kind\" in ('format', 'format_detail', 'genre', 'label', 'merch_type', 'product_type', 'utility_tag'))," +
         '"label" text not null,' +
         '"value" text not null,' +
         '"description" text null,' +
         '"rank" integer not null default 0,' +
         '"is_active" boolean not null default true,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -69,12 +69,12 @@ export class Migration20260628002000 extends Migration {
         '"release_date" timestamptz null,' +
         '"release_year" integer null check ("release_year" is null or ("release_year" >= 1900 and "release_year" <= 2200)),' +
         '"description_html" text null,' +
-        '"search_keywords" text[] not null default \'{}\',' +
-        '"tracklist" jsonb not null default \'[]\',' +
-        '"credits" jsonb not null default \'{}\',' +
-        '"pressing_notes" jsonb not null default \'{}\',' +
-        '"merch_details" jsonb not null default \'{}\',' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"search_keywords\" text[] not null default '{}'," +
+        "\"tracklist\" jsonb not null default '[]'," +
+        "\"credits\" jsonb not null default '{}'," +
+        "\"pressing_notes\" jsonb not null default '{}'," +
+        "\"merch_details\" jsonb not null default '{}'," +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -109,9 +109,9 @@ export class Migration20260628002000 extends Migration {
         '"product_profile_id" text not null,' +
         '"artist_id" text null,' +
         '"display_name" text not null,' +
-        '"role" text not null default \'primary\',' +
+        "\"role\" text not null default 'primary'," +
         '"sort_order" integer not null default 0,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -136,9 +136,9 @@ export class Migration20260628002000 extends Migration {
         '"id" text not null,' +
         '"product_profile_id" text not null,' +
         '"reference_value_id" text not null,' +
-        '"kind" text not null check ("kind" in (\'format\', \'format_detail\', \'genre\', \'label\', \'merch_type\', \'product_type\', \'utility_tag\')),' +
+        "\"kind\" text not null check (\"kind\" in ('format', 'format_detail', 'genre', 'label', 'merch_type', 'product_type', 'utility_tag'))," +
         '"sort_order" integer not null default 0,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -168,12 +168,12 @@ export class Migration20260628002000 extends Migration {
         '"format_label" text null,' +
         '"format_detail_label" text null,' +
         '"display_label" text null,' +
-        '"availability_status" text not null default \'available\' check ("availability_status" in (\'available\', \'preorder\', \'backorder\', \'coming_soon\', \'sold_out\')),' +
+        "\"availability_status\" text not null default 'available' check (\"availability_status\" in ('available', 'preorder', 'backorder', 'coming_soon', 'sold_out'))," +
         '"preorder_release_date" timestamptz null,' +
         '"backorder_allowed" boolean not null default false,' +
         '"backorder_note" text null,' +
         '"image_url" text null,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +

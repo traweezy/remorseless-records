@@ -144,7 +144,7 @@ describe("catalog authoring audit", () => {
       status: "conflict",
     })
     expect(report.items[0]?.issues).toContainEqual(
-      expect.objectContaining({ code: "kind_signal_conflict" }),
+      expect.objectContaining({ code: "kind_signal_conflict" })
     )
   })
 
@@ -166,7 +166,7 @@ describe("catalog authoring audit", () => {
       status: "needs_review",
     })
     expect(report.items[0]?.issues).toContainEqual(
-      expect.objectContaining({ code: "invalid_authoring_kind" }),
+      expect.objectContaining({ code: "invalid_authoring_kind" })
     )
   })
 
@@ -178,7 +178,7 @@ describe("catalog authoring audit", () => {
       references: references.map((reference) =>
         reference.id === "ref_merch"
           ? { ...reference, isActive: false }
-          : reference,
+          : reference
       ),
     })
 
@@ -187,7 +187,7 @@ describe("catalog authoring audit", () => {
       status: "needs_review",
     })
     expect(report.items[0]?.issues).toContainEqual(
-      expect.objectContaining({ code: "catalog_product_type_inactive" }),
+      expect.objectContaining({ code: "catalog_product_type_inactive" })
     )
   })
 })

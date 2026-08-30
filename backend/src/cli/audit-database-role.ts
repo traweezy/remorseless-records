@@ -64,12 +64,12 @@ const auditDatabaseRole = async (): Promise<void> => {
     const errors = evaluateDatabaseRole(profile, facts)
     if (errors.length) {
       throw new Error(
-        `[database-role] ${profile} profile rejected: ${errors.join(",")}`,
+        `[database-role] ${profile} profile rejected: ${errors.join(",")}`
       )
     }
 
     process.stdout.write(
-      `[database-role] profile=${profile} transport=${connection.transport} cluster_privileges=none status=accepted\n`,
+      `[database-role] profile=${profile} transport=${connection.transport} cluster_privileges=none status=accepted\n`
     )
   } finally {
     await client.end()

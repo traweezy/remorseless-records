@@ -35,28 +35,28 @@ describe("news data layer", () => {
       ok: true,
       json: () =>
         Promise.resolve({
-        entries: [
-          {
-            id,
-            title,
-            slug,
-            excerpt: "  Excerpt  ",
-            content: "<p>Content</p>",
-            author: "  Admin ",
-            status: "published",
-            publishedAt: ` ${publishedAt} `,
-            tags: ["news"],
-            coverUrl: " https://cdn.example.com/news.jpg ",
-            coverAltText: "  A red and black concert photograph  ",
-            seoTitle: " SEO ",
-            seoDescription: " Description ",
-            createdAt: ` ${createdAt} `,
-            updatedAt: ` ${updatedAt} `,
-          },
-        ],
-        count: 1,
-        offset: 0,
-        limit: 6,
+          entries: [
+            {
+              id,
+              title,
+              slug,
+              excerpt: "  Excerpt  ",
+              content: "<p>Content</p>",
+              author: "  Admin ",
+              status: "published",
+              publishedAt: ` ${publishedAt} `,
+              tags: ["news"],
+              coverUrl: " https://cdn.example.com/news.jpg ",
+              coverAltText: "  A red and black concert photograph  ",
+              seoTitle: " SEO ",
+              seoDescription: " Description ",
+              createdAt: ` ${createdAt} `,
+              updatedAt: ` ${updatedAt} `,
+            },
+          ],
+          count: 1,
+          offset: 0,
+          limit: 6,
         }),
     } as Response)
 
@@ -173,19 +173,19 @@ describe("news data layer", () => {
         ok: true,
         json: () =>
           Promise.resolve({
-          entry: {
-            id,
-            title,
-            slug,
-            excerpt: null,
-            content: "<p>Body</p>",
-            author: null,
-            status: "published",
-            publishedAt: null,
-            coverUrl: null,
-            seoTitle: null,
-            seoDescription: null,
-          },
+            entry: {
+              id,
+              title,
+              slug,
+              excerpt: null,
+              content: "<p>Body</p>",
+              author: null,
+              status: "published",
+              publishedAt: null,
+              coverUrl: null,
+              seoTitle: null,
+              seoDescription: null,
+            },
           }),
       } as Response)
       .mockResolvedValueOnce({
@@ -193,7 +193,8 @@ describe("news data layer", () => {
         status: 404,
       } as Response)
 
-    const { fetchNewsEntryBySlug, getNewsEntryBySlug } = await import("@/lib/data/news")
+    const { fetchNewsEntryBySlug, getNewsEntryBySlug } =
+      await import("@/lib/data/news")
     await expect(fetchNewsEntryBySlug(slug)).resolves.toMatchObject({ slug })
     await expect(getNewsEntryBySlug("missing")).resolves.toBeNull()
     expect(fetchSpy).toHaveBeenCalledTimes(2)
@@ -246,14 +247,15 @@ describe("news data layer", () => {
       },
     }))
 
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(null, { status: 503 }))
 
-    const { fetchNewsEntryBySlug, getNewsEntryBySlug, fetchNewsEntries } = await import(
-      "@/lib/data/news"
-    )
+    const { fetchNewsEntryBySlug, getNewsEntryBySlug, fetchNewsEntries } =
+      await import("@/lib/data/news")
     await expect(fetchNewsEntryBySlug("   ")).resolves.toBeNull()
     await expect(getNewsEntryBySlug("   ")).resolves.toBeNull()
     await expect(fetchNewsEntries({ limit: 5, offset: 0 })).resolves.toEqual({

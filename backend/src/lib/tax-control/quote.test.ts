@@ -1,6 +1,6 @@
-import { TaxQuoteIdentityError, taxQuoteIdentityFromCart } from "./quote";
+import { TaxQuoteIdentityError, taxQuoteIdentityFromCart } from "./quote"
 
-const fingerprint = "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789";
+const fingerprint = "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789"
 
 const taxLine = ({
   calculationId = "taxcalc_test",
@@ -10,12 +10,12 @@ const taxLine = ({
   rate = 8.25,
   collectionMode = "collect",
 }: {
-  calculationId?: string | null;
-  fingerprintValue?: string;
-  generation?: number;
-  provider?: "stripe_tax" | "taxrate_io";
-  rate?: number;
-  collectionMode?: "collect" | "disabled";
+  calculationId?: string | null
+  fingerprintValue?: string
+  generation?: number
+  provider?: "stripe_tax" | "taxrate_io"
+  rate?: number
+  collectionMode?: "collect" | "disabled"
 } = {}) => ({
   code:
     collectionMode === "disabled"
@@ -31,7 +31,7 @@ const taxLine = ({
     ...(collectionMode === "collect" ? { provider } : {}),
   },
   rate,
-});
+})
 
 describe("taxQuoteIdentityFromCart", () => {
   it("extracts one uniform Stripe Tax quote", () => {
@@ -39,7 +39,7 @@ describe("taxQuoteIdentityFromCart", () => {
       taxQuoteIdentityFromCart({
         items: [{ tax_lines: [taxLine()] }],
         shipping_methods: [{ tax_lines: [taxLine({ rate: 6.5 })] }],
-      }),
+      })
     ).toEqual({
       calculationId: "taxcalc_test",
       collectionMode: "collect",
@@ -47,8 +47,8 @@ describe("taxQuoteIdentityFromCart", () => {
       generation: 2,
       provider: "stripe_tax",
       taxRatePercent: null,
-    });
-  });
+    })
+  })
 
   it("extracts the uniform TaxRate.io percentage", () => {
     const line = taxLine({
@@ -57,13 +57,13 @@ describe("taxQuoteIdentityFromCart", () => {
       generation: 4,
       provider: "taxrate_io",
       rate: 7.125,
-    });
+    })
 
     expect(
       taxQuoteIdentityFromCart({
         items: [{ tax_lines: [line] }],
         shipping_methods: [{ tax_lines: [line] }],
-      }),
+      })
     ).toEqual({
       calculationId: null,
       collectionMode: "collect",
@@ -71,8 +71,8 @@ describe("taxQuoteIdentityFromCart", () => {
       generation: 4,
       provider: "taxrate_io",
       taxRatePercent: 7.125,
-    });
-  });
+    })
+  })
 
   it("extracts an explicit disabled collection decision", () => {
     const line = taxLine({
@@ -80,13 +80,13 @@ describe("taxQuoteIdentityFromCart", () => {
       collectionMode: "disabled",
       generation: 5,
       rate: 0,
-    });
+    })
 
     expect(
       taxQuoteIdentityFromCart({
         items: [{ tax_lines: [line] }],
         shipping_methods: [{ tax_lines: [line] }],
-      }),
+      })
     ).toEqual({
       calculationId: null,
       collectionMode: "disabled",
@@ -94,8 +94,8 @@ describe("taxQuoteIdentityFromCart", () => {
       generation: 5,
       provider: null,
       taxRatePercent: null,
-    });
-  });
+    })
+  })
 
   it.each([
     {
@@ -174,6 +174,6 @@ describe("taxQuoteIdentityFromCart", () => {
       },
     },
   ])("rejects $name", ({ cart }) => {
-    expect(() => taxQuoteIdentityFromCart(cart)).toThrow(TaxQuoteIdentityError);
-  });
-});
+    expect(() => taxQuoteIdentityFromCart(cart)).toThrow(TaxQuoteIdentityError)
+  })
+})

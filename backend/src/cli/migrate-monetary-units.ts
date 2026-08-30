@@ -196,12 +196,9 @@ const loadAuditReport = async (
   monetaryRows: MonetaryQueryRow[]
   report: MonetaryAuditReport
 }> => {
-  const monetaryResult =
-    await client.query<MonetaryQueryRow>(monetaryRowsQuery)
-  const blockerResult =
-    await client.query<CountQueryRow>(blockerCountsQuery)
-  const rawParityResult =
-    await client.query<RawParityQueryRow>(rawParityQuery)
+  const monetaryResult = await client.query<MonetaryQueryRow>(monetaryRowsQuery)
+  const blockerResult = await client.query<CountQueryRow>(blockerCountsQuery)
+  const rawParityResult = await client.query<RawParityQueryRow>(rawParityQuery)
   const migrationStateResult =
     await client.query<MigrationStateQueryRow>(migrationStateQuery)
 
@@ -300,9 +297,7 @@ const applyMigration = async (
         `[money-migration] Expected ${expectedCount} conversions, audited ${before.report.summary.proposedConversions}.`
       )
     }
-    if (
-      before.report.summary.manifestSha256 !== expectedManifestSha256
-    ) {
+    if (before.report.summary.manifestSha256 !== expectedManifestSha256) {
       throw new Error(
         "[money-migration] Manifest SHA-256 changed; refusing migration."
       )

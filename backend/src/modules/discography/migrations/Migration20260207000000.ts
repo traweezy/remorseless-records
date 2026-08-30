@@ -13,10 +13,10 @@ export class Migration20260207000000 extends Migration {
         '"catalog_number" text null,' +
         '"release_date" timestamptz null,' +
         '"release_year" integer null,' +
-        '"formats" text[] not null default \'{}\',' +
-        '"genres" text[] not null default \'{}\',' +
-        '"tags" text[] not null default \'{}\',' +
-        '"availability" text not null default \'unknown\' check ("availability" in (\'in_print\', \'out_of_print\', \'preorder\', \'digital_only\', \'unknown\')),' +
+        "\"formats\" text[] not null default '{}'," +
+        "\"genres\" text[] not null default '{}'," +
+        "\"tags\" text[] not null default '{}'," +
+        "\"availability\" text not null default 'unknown' check (\"availability\" in ('in_print', 'out_of_print', 'preorder', 'digital_only', 'unknown'))," +
         '"cover_url" text null,' +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +

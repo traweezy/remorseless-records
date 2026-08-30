@@ -1,13 +1,7 @@
 export type OperationsWorkspace =
-  | "overview"
-  | "tax-records"
-  | "refunds"
-  | "media-cleanup"
+  "overview" | "tax-records" | "refunds" | "media-cleanup"
 
-export type OperationsDetailWorkspace = Exclude<
-  OperationsWorkspace,
-  "overview"
->
+export type OperationsDetailWorkspace = Exclude<OperationsWorkspace, "overview">
 
 export const operationsRoutePaths = {
   "media-cleanup": "/operations/media-cleanup",
@@ -31,13 +25,13 @@ export type ReplaceAdminLocation = {
 
 export const replaceLegacyOperationsLocation = (
   location: ReplaceAdminLocation,
-  workspace: OperationsDetailWorkspace,
+  workspace: OperationsDetailWorkspace
 ): void => {
   location.replace(operationsAppRoutePaths[workspace])
 }
 
 export const replaceLegacyTaxControlLocation = (
-  location: ReplaceAdminLocation,
+  location: ReplaceAdminLocation
 ): void => {
   location.replace(taxControlAppRoutePath)
 }

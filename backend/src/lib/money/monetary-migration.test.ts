@@ -23,9 +23,19 @@ describe("monetary migration arguments", () => {
 
   it.each([
     ["missing count", ["--apply", `--expected-manifest-sha256=${manifest}`]],
-    ["invalid count", ["--apply", "--expected-count=1.5", `--expected-manifest-sha256=${manifest}`]],
+    [
+      "invalid count",
+      [
+        "--apply",
+        "--expected-count=1.5",
+        `--expected-manifest-sha256=${manifest}`,
+      ],
+    ],
     ["missing hash", ["--apply", "--expected-count=588"]],
-    ["invalid hash", ["--apply", "--expected-count=588", "--expected-manifest-sha256=nope"]],
+    [
+      "invalid hash",
+      ["--apply", "--expected-count=588", "--expected-manifest-sha256=nope"],
+    ],
     ["unknown flag", ["--force"]],
   ])("rejects %s", (_label, args) => {
     expect(() => parseMonetaryMigrationArguments(args)).toThrow(

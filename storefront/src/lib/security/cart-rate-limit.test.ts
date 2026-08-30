@@ -77,11 +77,9 @@ describe("distributed cart rate limiting", () => {
     )
 
     const firstOptions = redisMocks.eval.mock.calls[0]?.[1] as
-      | { keys?: string[] }
-      | undefined
+      { keys?: string[] } | undefined
     const secondOptions = redisMocks.eval.mock.calls[1]?.[1] as
-      | { keys?: string[] }
-      | undefined
+      { keys?: string[] } | undefined
     expect(secondOptions?.keys?.[0]).toBe(firstOptions?.keys?.[0])
   })
 

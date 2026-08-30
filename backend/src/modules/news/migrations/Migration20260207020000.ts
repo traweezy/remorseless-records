@@ -10,9 +10,9 @@ export class Migration20260207020000 extends Migration {
         '"excerpt" text null,' +
         '"content" text not null,' +
         '"author" text null,' +
-        '"status" text not null default \'draft\' check ("status" in (\'draft\', \'published\', \'scheduled\', \'archived\')),' +
+        "\"status\" text not null default 'draft' check (\"status\" in ('draft', 'published', 'scheduled', 'archived'))," +
         '"published_at" timestamptz null,' +
-        '"tags" text[] not null default \'{}\',' +
+        "\"tags\" text[] not null default '{}'," +
         '"cover_url" text null,' +
         '"seo_title" text null,' +
         '"seo_description" text null,' +

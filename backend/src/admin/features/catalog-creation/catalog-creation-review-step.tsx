@@ -61,10 +61,7 @@ export const CatalogCreationReviewStep = memo<CatalogCreationReviewStepProps>(
                 {values.offerings.length}{" "}
                 {values.offerings.length === 1 ? "variant" : "variants"}
               </Text>
-              <Text
-                className="break-words text-ui-fg-subtle"
-                size="small"
-              >
+              <Text className="break-words text-ui-fg-subtle" size="small">
                 {values.offerings
                   .map(
                     (offering) =>
@@ -72,7 +69,7 @@ export const CatalogCreationReviewStep = memo<CatalogCreationReviewStepProps>(
                         values.kind === "fixed_bundle"
                           ? " · component stock"
                           : ` · ${offering.stockQuantity} stock`
-                      }`,
+                      }`
                   )
                   .join("; ")}
               </Text>
@@ -161,7 +158,7 @@ export const CatalogCreationReviewStep = memo<CatalogCreationReviewStepProps>(
         values={values}
       />
     </div>
-  ),
+  )
 )
 
 CatalogCreationReviewStep.displayName = "CatalogCreationReviewStep"

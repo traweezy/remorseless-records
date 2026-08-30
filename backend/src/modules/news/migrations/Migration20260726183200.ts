@@ -14,8 +14,6 @@ export class Migration20260726183200 extends Migration {
     this.addSql(
       'alter table "news_entries" drop constraint if exists "news_entries_version_check";'
     )
-    this.addSql(
-      'alter table "news_entries" drop column if exists "version";'
-    )
+    this.addSql('alter table "news_entries" drop column if exists "version";')
   }
 }

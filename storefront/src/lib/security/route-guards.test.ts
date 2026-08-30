@@ -404,7 +404,9 @@ describe("route guards", () => {
 
   it("logs client problems to stdout and server problems to stderr", async () => {
     vi.stubEnv("NODE_ENV", "production")
-    const infoLog = vi.spyOn(console, "info").mockImplementation(() => undefined)
+    const infoLog = vi
+      .spyOn(console, "info")
+      .mockImplementation(() => undefined)
     const warningLog = vi
       .spyOn(console, "warn")
       .mockImplementation(() => undefined)

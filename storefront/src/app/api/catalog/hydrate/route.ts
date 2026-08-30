@@ -90,12 +90,7 @@ export async function POST(request: Request) {
     console.error("[api/catalog/hydrate] Failed to hydrate handles")
     const problem = providerProblem(error, "catalog")
     if (problem) {
-      return jsonApiError(
-        request,
-        problem.detail,
-        problem.status,
-        problem.code
-      )
+      return jsonApiError(request, problem.detail, problem.status, problem.code)
     }
     return jsonApiError(
       request,

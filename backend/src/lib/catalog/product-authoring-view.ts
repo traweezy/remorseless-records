@@ -182,9 +182,8 @@ const toRecordOrNull = (value: unknown): DynamicRecord | null =>
 
 const toRecords = (value: unknown): DynamicRecord[] =>
   Array.isArray(value)
-    ? value.filter(
-        (entry): entry is DynamicRecord =>
-          Boolean(entry && typeof entry === "object" && !Array.isArray(entry)),
+    ? value.filter((entry): entry is DynamicRecord =>
+        Boolean(entry && typeof entry === "object" && !Array.isArray(entry))
       )
     : []
 
@@ -229,7 +228,7 @@ const mapPrice = (price: DynamicRecord): ProductAuthoringPrice | null => {
 }
 
 const mapVariantOption = (
-  option: DynamicRecord,
+  option: DynamicRecord
 ): ProductAuthoringVariantOption | null => {
   const id = toText(option.id)
   const value = toText(option.value)
@@ -252,7 +251,7 @@ const mapVariantOption = (
 }
 
 const mapVariant = (
-  variant: DynamicRecord,
+  variant: DynamicRecord
 ): ProductAuthoringCommerceVariant | null => {
   const id = toText(variant.id)
   if (!id) {
@@ -260,19 +259,19 @@ const mapVariant = (
   }
   return {
     allowBackorder: toBoolean(
-      variant.allow_backorder ?? variant.allowBackorder,
+      variant.allow_backorder ?? variant.allowBackorder
     ),
     barcode: toText(variant.barcode),
     ean: toText(variant.ean),
     id,
     manageInventory: toBoolean(
-      variant.manage_inventory ?? variant.manageInventory,
+      variant.manage_inventory ?? variant.manageInventory
     ),
     metadata: toRecord(variant.metadata),
     options: toRecords(variant.options)
       .map(mapVariantOption)
       .filter((option): option is ProductAuthoringVariantOption =>
-        Boolean(option),
+        Boolean(option)
       ),
     prices: toRecords(variant.prices)
       .map(mapPrice)
@@ -285,13 +284,13 @@ const mapVariant = (
 }
 
 const mapCommerceProduct = (
-  product: DynamicRecord,
+  product: DynamicRecord
 ): ProductAuthoringCommerceProduct => {
   const id = toText(product.id)
   if (!id) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      "The product authoring query returned a product without an id.",
+      "The product authoring query returned a product without an id."
     )
   }
   const type = toRecordOrNull(product.type)
@@ -329,12 +328,12 @@ const mapCommerceProduct = (
       })
       .filter(
         (
-          image,
+          image
         ): image is {
           id: string
           rank: number
           url: string
-        } => Boolean(image),
+        } => Boolean(image)
       )
       .sort((left, right) => left.rank - right.rank),
     metadata: toRecord(product.metadata),
@@ -371,30 +370,33 @@ const mapCommerceProduct = (
     variants: toRecords(product.variants)
       .map(mapVariant)
       .filter((variant): variant is ProductAuthoringCommerceVariant =>
-        Boolean(variant),
+        Boolean(variant)
       )
       .sort((left, right) => left.rank - right.rank),
   }
 }
 
-const unique = (values: Array<string | null | undefined>): string[] =>
-  [...new Set(values.filter((value): value is string => Boolean(value)))]
+const unique = (values: Array<string | null | undefined>): string[] => [
+  ...new Set(values.filter((value): value is string => Boolean(value))),
+]
 
 export const buildProductAuthoringView = (
-  source: ProductAuthoringViewSource,
+  source: ProductAuthoringViewSource
 ): ProductAuthoringView => {
   const commerce = mapCommerceProduct(source.product)
   const productProfile = source.productProfiles.at(0) ?? null
   const bundleProfile = source.bundleProfiles.at(0) ?? null
-  const artistsById = new Map(source.artists.map((artist) => [artist.id, artist]))
+  const artistsById = new Map(
+    source.artists.map((artist) => [artist.id, artist])
+  )
   const referencesById = new Map(
-    source.referenceValues.map((reference) => [reference.id, reference]),
+    source.referenceValues.map((reference) => [reference.id, reference])
   )
   const variantProfilesById = new Map(
-    source.variantProfiles.map((profile) => [profile.variant_id, profile]),
+    source.variantProfiles.map((profile) => [profile.variant_id, profile])
   )
   const nativeVariantIds = new Set(
-    commerce.variants.map((variant) => variant.id),
+    commerce.variants.map((variant) => variant.id)
   )
   const releaseDate = productProfile?.release_date ?? null
 
@@ -429,20 +431,20 @@ export const buildProductAuthoringView = (
   if (!classification) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      "The product authoring classification could not be generated.",
+      "The product authoring classification could not be generated."
     )
   }
 
   const missingArtistIds = unique(
     source.artistAssignments.map(({ artist_id }) =>
-      artist_id && !artistsById.has(artist_id) ? artist_id : null,
-    ),
+      artist_id && !artistsById.has(artist_id) ? artist_id : null
+    )
   )
   const selectedReferenceIds = unique([
     productProfile?.label_id,
     productProfile?.product_type_id,
     ...source.referenceAssignments.map(
-      ({ reference_value_id }) => reference_value_id,
+      ({ reference_value_id }) => reference_value_id
     ),
     ...source.variantProfiles.flatMap(({ format_id, format_detail_id }) => [
       format_id,
@@ -450,34 +452,32 @@ export const buildProductAuthoringView = (
     ]),
   ])
   const missingReferenceValueIds = selectedReferenceIds.filter(
-    (id) => !referencesById.has(id),
+    (id) => !referencesById.has(id)
   )
 
   return {
     catalog: {
-      artists: source.artistAssignments
-        .map((assignment) => {
-          const artist = assignment.artist_id
-            ? artistsById.get(assignment.artist_id)
-            : undefined
-          return {
-            artist: artist ? serializeCatalogArtist(artist) : null,
-            assignment: serializeCatalogProductArtist(assignment),
-          }
-        }),
+      artists: source.artistAssignments.map((assignment) => {
+        const artist = assignment.artist_id
+          ? artistsById.get(assignment.artist_id)
+          : undefined
+        return {
+          artist: artist ? serializeCatalogArtist(artist) : null,
+          assignment: serializeCatalogProductArtist(assignment),
+        }
+      }),
       bundle: bundleProfile
         ? {
             components: source.bundleComponents.map(
-              serializeCatalogBundleComponent,
+              serializeCatalogBundleComponent
             ),
             profile: serializeCatalogBundleProfile(bundleProfile),
           }
         : null,
       label:
-        productProfile?.label_id &&
-        referencesById.has(productProfile.label_id)
+        productProfile?.label_id && referencesById.has(productProfile.label_id)
           ? serializeCatalogReferenceValue(
-              referencesById.get(productProfile.label_id)!,
+              referencesById.get(productProfile.label_id)!
             )
           : null,
       media: source.media,
@@ -488,14 +488,14 @@ export const buildProductAuthoringView = (
         productProfile?.product_type_id &&
         referencesById.has(productProfile.product_type_id)
           ? serializeCatalogReferenceValue(
-              referencesById.get(productProfile.product_type_id)!,
+              referencesById.get(productProfile.product_type_id)!
             )
           : null,
       references: source.referenceAssignments.map((assignment) => ({
         assignment: serializeCatalogProductReference(assignment),
         value: referencesById.has(assignment.reference_value_id)
           ? serializeCatalogReferenceValue(
-              referencesById.get(assignment.reference_value_id)!,
+              referencesById.get(assignment.reference_value_id)!
             )
           : null,
       })),
@@ -505,14 +505,14 @@ export const buildProductAuthoringView = (
           format:
             profile?.format_id && referencesById.has(profile.format_id)
               ? serializeCatalogReferenceValue(
-                  referencesById.get(profile.format_id)!,
+                  referencesById.get(profile.format_id)!
                 )
               : null,
           formatDetail:
             profile?.format_detail_id &&
             referencesById.has(profile.format_detail_id)
               ? serializeCatalogReferenceValue(
-                  referencesById.get(profile.format_detail_id)!,
+                  referencesById.get(profile.format_detail_id)!
                 )
               : null,
           profile: profile ? serializeCatalogVariantProfile(profile) : null,
@@ -581,7 +581,7 @@ const productFields = [
 
 const loadAvailability = async (
   query: QueryGraph,
-  variantIds: string[],
+  variantIds: string[]
 ): Promise<{
   availabilityByVariantId: Record<string, number | null>
   availabilityLoaded: boolean
@@ -595,21 +595,21 @@ const loadAvailability = async (
   try {
     const availability = await getTotalVariantAvailability(
       query as Parameters<typeof getTotalVariantAvailability>[0],
-      { variant_ids: variantIds },
+      { variant_ids: variantIds }
     )
     return {
       availabilityByVariantId: Object.fromEntries(
         variantIds.map((variantId) => [
           variantId,
           availability[variantId]?.availability ?? null,
-        ]),
+        ])
       ),
       availabilityLoaded: true,
     }
   } catch {
     return {
       availabilityByVariantId: Object.fromEntries(
-        variantIds.map((variantId) => [variantId, null]),
+        variantIds.map((variantId) => [variantId, null])
       ),
       availabilityLoaded: false,
     }
@@ -618,11 +618,9 @@ const loadAvailability = async (
 
 export const loadProductAuthoringView = async (
   container: ServiceContainer,
-  productId: string,
+  productId: string
 ): Promise<ProductAuthoringView> => {
-  const query = container.resolve(
-    ContainerRegistrationKeys.QUERY,
-  ) as QueryGraph
+  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
   const catalogService = container.resolve("catalog") as CatalogService
   const { data } = await query.graph({
     entity: "product",
@@ -648,7 +646,7 @@ export const loadProductAuthoringView = async (
       warn: (message: string) => void
     }
     logger.warn(
-      `[catalog-authoring-view] Inventory availability is unavailable for ${productId}.`,
+      `[catalog-authoring-view] Inventory availability is unavailable for ${productId}.`
     )
   }
   const productProfile = productProfiles.at(0)
@@ -663,13 +661,13 @@ export const loadProductAuthoringView = async (
     productProfile
       ? catalogService.listCatalogProductArtists(
           { product_profile_id: productProfile.id },
-          { order: { sort_order: "ASC" } },
+          { order: { sort_order: "ASC" } }
         )
       : Promise.resolve([]),
     productProfile
       ? catalogService.listCatalogProductReferences(
           { product_profile_id: productProfile.id },
-          { order: { sort_order: "ASC" } },
+          { order: { sort_order: "ASC" } }
         )
       : Promise.resolve([]),
     variantIds.length
@@ -680,20 +678,16 @@ export const loadProductAuthoringView = async (
     bundleProfile
       ? catalogService.listCatalogBundleComponents(
           { bundle_profile_id: bundleProfile.id },
-          { order: { sort_order: "ASC" } },
+          { order: { sort_order: "ASC" } }
         )
       : Promise.resolve([]),
   ])
 
-  const artistIds = unique(
-    artistAssignments.map(({ artist_id }) => artist_id),
-  )
+  const artistIds = unique(artistAssignments.map(({ artist_id }) => artist_id))
   const referenceIds = unique([
     productProfile?.label_id,
     productProfile?.product_type_id,
-    ...referenceAssignments.map(
-      ({ reference_value_id }) => reference_value_id,
-    ),
+    ...referenceAssignments.map(({ reference_value_id }) => reference_value_id),
     ...variantProfiles.flatMap(({ format_id, format_detail_id }) => [
       format_id,
       format_detail_id,

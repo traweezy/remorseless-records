@@ -29,7 +29,7 @@ describe("catalog creation availability", () => {
       resolveCatalogCreationAvailability({
         ...input,
         offering: { ...offering, availabilityPolicy: "backorder" },
-      }),
+      })
     ).toMatchObject({ label: "Backorder", status: "backorder" })
     expect(
       resolveCatalogCreationAvailability({
@@ -40,20 +40,20 @@ describe("catalog creation availability", () => {
         },
         releaseDate: "2099-08-01",
         releaseDatePrecision: "day",
-      }),
+      })
     ).toMatchObject({ label: "Preorder", status: "preorder" })
     expect(
       resolveCatalogCreationAvailability({
         ...input,
         offering: { ...offering, stockQuantity: "3" },
-      }),
+      })
     ).toMatchObject({ label: "Low stock", status: "low_stock" })
   })
 
   it("derives fixed-bundle capacity from the limiting component", () => {
     const values = applyCatalogCreationKind(
       createCatalogCreationDefaults(),
-      "fixed_bundle",
+      "fixed_bundle"
     )
     const offering = values.offerings[0]!
     values.bundleComponents = [
@@ -118,7 +118,7 @@ describe("catalog creation availability", () => {
   it("explains incomplete bundle mappings and invalid preorder dates", () => {
     const fixedBundle = applyCatalogCreationKind(
       createCatalogCreationDefaults(),
-      "fixed_bundle",
+      "fixed_bundle"
     )
     expect(
       resolveCatalogCreationAvailability({
@@ -129,7 +129,7 @@ describe("catalog creation availability", () => {
         offering: fixedBundle.offerings[0]!,
         releaseDate: fixedBundle.releaseDate,
         releaseDatePrecision: fixedBundle.releaseDatePrecision,
-      }),
+      })
     ).toMatchObject({ label: "Stock unavailable", status: "unknown" })
 
     const music = createCatalogCreationDefaults()
@@ -145,7 +145,7 @@ describe("catalog creation availability", () => {
         },
         releaseDate: "2026-07-31",
         releaseDatePrecision: "day",
-      }),
+      })
     ).toMatchObject({ label: "Stock unavailable", status: "unknown" })
   })
 })

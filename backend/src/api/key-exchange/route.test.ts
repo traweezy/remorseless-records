@@ -1,7 +1,4 @@
-import type {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 
 import { GET } from "./route"
@@ -41,8 +38,7 @@ const requestFixture = (listApiKeys: jest.Mock): MedusaRequest =>
   ({
     headers: {
       "x-request-id": "key-exchange-contract-test",
-      traceparent:
-        "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01",
+      traceparent: "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01",
     },
     path: "/key-exchange",
     scope: {
@@ -61,7 +57,7 @@ describe("GET /key-exchange", () => {
       jest.fn(async () => [
         { title: "Other", token: "pk_other" },
         { title: "Webshop", token: "pk_webshop" },
-      ]),
+      ])
     )
     const { res, state } = responseFixture()
 
@@ -94,15 +90,15 @@ describe("GET /key-exchange", () => {
       "content-type": "application/problem+json",
       "x-request-id": "key-exchange-contract-test",
       traceparent: expect.stringMatching(
-        /^00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-[0-9a-f]{16}-01$/u,
+        /^00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-[0-9a-f]{16}-01$/u
       ),
     })
     expect(state.body).toEqual({
-      type:
-        "https://remorselessrecords.com/problems/publishable_key_unavailable",
+      type: "https://remorselessrecords.com/problems/publishable_key_unavailable",
       title: "Publishable key is unavailable",
       status: 503,
-      detail: "The Store API publishable key is unavailable. Try again shortly.",
+      detail:
+        "The Store API publishable key is unavailable. Try again shortly.",
       code: "publishable_key_unavailable",
       instance: "/key-exchange",
       request_id: "key-exchange-contract-test",

@@ -17,7 +17,7 @@ const uploadCommandSchema = z.object({
 
 export const POST = async (
   req: AuthenticatedMedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const logger = (() => {
     try {
@@ -33,11 +33,11 @@ export const POST = async (
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "A valid catalog upload idempotency key is required.",
+      "A valid catalog upload idempotency key is required."
     )
   }
   const validatedFiles = validateManagedImageUploads(
-    (req.files as Express.Multer.File[] | undefined) ?? [],
+    (req.files as Express.Multer.File[] | undefined) ?? []
   )
   const startedAt = Date.now()
   let files: Awaited<ReturnType<typeof normalizeManagedImageUploads>>
@@ -51,7 +51,7 @@ export const POST = async (
         file_count: validatedFiles.length,
         result: "rejected",
         route_class: "admin:catalog-media-upload",
-      }),
+      })
     )
     throw error
   }
@@ -64,7 +64,7 @@ export const POST = async (
       output_bytes: files.reduce((total, file) => total + file.size, 0),
       result: "accepted",
       route_class: "admin:catalog-media-upload",
-    }),
+    })
   )
   const workflowFiles = files.map((file, index) => ({
     content: file.buffer.toString("base64"),
@@ -73,7 +73,7 @@ export const POST = async (
     mimeType: file.mimeType,
     remoteFilename: buildCatalogMediaRemoteFilename(
       parsed.data.idempotencyKey,
-      index,
+      index
     ),
     sha256: file.sha256,
     size: file.size,

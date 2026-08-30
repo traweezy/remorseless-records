@@ -62,7 +62,9 @@ export default async function importProductsFromFile({
     )
 
     csv = await fileModuleService.getAsBuffer(inputPath)
-    logger.info(`[import-products] Retrieved ${inputPath} from file provider (${csv.length} bytes)`)
+    logger.info(
+      `[import-products] Retrieved ${inputPath} from file provider (${csv.length} bytes)`
+    )
     filename = providedName ?? inputPath
   }
 

@@ -1,10 +1,10 @@
-import type Stripe from "stripe";
+import type Stripe from "stripe"
 
-import type TaxControlModuleService from "../../modules/tax-control/service";
-import { reconcileTaxQuoteEvidence } from "./evidence-reconciliation";
+import type TaxControlModuleService from "../../modules/tax-control/service"
+import { reconcileTaxQuoteEvidence } from "./evidence-reconciliation"
 
 const paymentIntent = (
-  overrides: Partial<Stripe.PaymentIntent> = {},
+  overrides: Partial<Stripe.PaymentIntent> = {}
 ): Stripe.PaymentIntent =>
   ({
     amount: 1_080,
@@ -23,10 +23,10 @@ const paymentIntent = (
     object: "payment_intent",
     status: "succeeded",
     ...overrides,
-  }) as Stripe.PaymentIntent;
+  }) as Stripe.PaymentIntent
 
 const association = (
-  attempts: Stripe.Tax.Association["tax_transaction_attempts"],
+  attempts: Stripe.Tax.Association["tax_transaction_attempts"]
 ): Stripe.Tax.Association =>
   ({
     calculation: "taxcalc_test",
@@ -34,7 +34,7 @@ const association = (
     object: "tax.association",
     payment_intent: "pi_test",
     tax_transaction_attempts: attempts,
-  }) as Stripe.Tax.Association;
+  }) as Stripe.Tax.Association
 
 const serviceFixture = ({
   evidence = {
@@ -43,12 +43,12 @@ const serviceFixture = ({
     provider: "stripe_tax",
   },
 }: {
-  evidence?: Record<string, unknown> | null;
+  evidence?: Record<string, unknown> | null
 } = {}) =>
   ({
     listTaxQuoteEvidences: jest.fn(async () => (evidence ? [evidence] : [])),
     updateTaxQuoteEvidenceLifecycle: jest.fn(async (input) => input),
-  }) as unknown as TaxControlModuleService;
+  }) as unknown as TaxControlModuleService
 
 const stripeFixture = ({
   intent = paymentIntent(),
@@ -62,15 +62,15 @@ const stripeFixture = ({
     },
   ]),
 }: {
-  intent?: Stripe.PaymentIntent;
-  refunds?: Stripe.Refund[];
-  refundsHasMore?: boolean;
-  taxAssociation?: Stripe.Tax.Association;
+  intent?: Stripe.PaymentIntent
+  refunds?: Stripe.Refund[]
+  refundsHasMore?: boolean
+  taxAssociation?: Stripe.Tax.Association
 } = {}) => {
   const charge =
     intent.latest_charge && typeof intent.latest_charge === "object"
       ? intent.latest_charge
-      : null;
+      : null
   const defaultRefunds =
     charge && charge.amount_refunded > 0
       ? [
@@ -84,7 +84,7 @@ const stripeFixture = ({
             status: "succeeded",
           } as unknown as Stripe.Refund,
         ]
-      : [];
+      : []
 
   return {
     paymentIntents: {
@@ -103,30 +103,30 @@ const stripeFixture = ({
         find: jest.fn(async () => taxAssociation),
       },
     },
-  } as unknown as Stripe;
-};
+  } as unknown as Stripe
+}
 
 describe("reconcileTaxQuoteEvidence", () => {
   it("avoids Stripe calls when the PaymentIntent is not tracked", async () => {
-    const client = stripeFixture();
+    const client = stripeFixture()
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_untracked",
         service: serviceFixture({ evidence: null }),
-      }),
+      })
     ).resolves.toEqual({
       associationStatus: "not_tracked",
       evidenceFound: false,
       paymentIntentId: "pi_untracked",
       status: null,
-    });
-    expect(client.paymentIntents.retrieve).not.toHaveBeenCalled();
-  });
+    })
+    expect(client.paymentIntents.retrieve).not.toHaveBeenCalled()
+  })
 
   it("persists the committed Stripe Tax transaction and order identity", async () => {
-    const service = serviceFixture();
+    const service = serviceFixture()
 
     await expect(
       reconcileTaxQuoteEvidence({
@@ -134,22 +134,22 @@ describe("reconcileTaxQuoteEvidence", () => {
         orderId: "order_01",
         paymentIntentId: "pi_test",
         service,
-      }),
+      })
     ).resolves.toMatchObject({
       associationStatus: "committed",
       status: "succeeded",
-    });
+    })
     expect(service.updateTaxQuoteEvidenceLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         orderId: "order_01",
         status: "succeeded",
         taxTransactionId: "tax_sale",
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("records partial refunds and their Stripe Tax reversal transactions", async () => {
-    const service = serviceFixture();
+    const service = serviceFixture()
     const client = stripeFixture({
       intent: paymentIntent({
         latest_charge: {
@@ -171,27 +171,27 @@ describe("reconcileTaxQuoteEvidence", () => {
           status: "committed",
         },
       ]),
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service,
-      }),
+      })
     ).resolves.toMatchObject({
       associationStatus: "committed",
       status: "partially_refunded",
-    });
+    })
     expect(service.updateTaxQuoteEvidenceLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.objectContaining({
           refund_amount_minor: 400,
           refund_tax_transaction_ids: ["tax_refund"],
         }),
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("keeps refunded evidence eligible until its tax reversal appears", async () => {
     const client = stripeFixture({
@@ -203,19 +203,19 @@ describe("reconcileTaxQuoteEvidence", () => {
           object: "charge",
         } as Stripe.Charge,
       }),
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service: serviceFixture(),
-      }),
+      })
     ).resolves.toMatchObject({
       associationStatus: "refund_pending",
       status: "refunded",
-    });
-  });
+    })
+  })
 
   it("keeps a second partial refund pending until its own reversal appears", async () => {
     const client = stripeFixture({
@@ -259,22 +259,22 @@ describe("reconcileTaxQuoteEvidence", () => {
           status: "committed",
         },
       ]),
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service: serviceFixture(),
-      }),
+      })
     ).resolves.toMatchObject({
       associationStatus: "refund_pending",
       status: "partially_refunded",
-    });
-  });
+    })
+  })
 
   it("surfaces a refund that failed after Medusa accepted it", async () => {
-    const service = serviceFixture();
+    const service = serviceFixture()
     const client = stripeFixture({
       refunds: [
         {
@@ -287,26 +287,26 @@ describe("reconcileTaxQuoteEvidence", () => {
           status: "failed",
         } as Stripe.Refund,
       ],
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service,
-      }),
+      })
     ).resolves.toMatchObject({
       associationStatus: "refund_failed:expired_or_canceled_card",
       status: "association_failed",
-    });
+    })
     expect(service.updateTaxQuoteEvidenceLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.objectContaining({
           stripe_refund_failed_count: 1,
         }),
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("fails closed when more refunds exist than the bounded audit retrieved", async () => {
     await expect(
@@ -314,15 +314,15 @@ describe("reconcileTaxQuoteEvidence", () => {
         client: stripeFixture({ refundsHasMore: true }),
         paymentIntentId: "pi_test",
         service: serviceFixture(),
-      }),
+      })
     ).resolves.toMatchObject({
       associationStatus: "refund_list_truncated",
       status: "association_failed",
-    });
-  });
+    })
+  })
 
   it("raises disputes above the otherwise successful payment state", async () => {
-    const service = serviceFixture();
+    const service = serviceFixture()
     const client = stripeFixture({
       intent: paymentIntent({
         latest_charge: {
@@ -332,19 +332,19 @@ describe("reconcileTaxQuoteEvidence", () => {
           object: "charge",
         } as Stripe.Charge,
       }),
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service,
-      }),
-    ).resolves.toMatchObject({ status: "disputed" });
-  });
+      })
+    ).resolves.toMatchObject({ status: "disputed" })
+  })
 
   it("surfaces a failed tax association for operator attention", async () => {
-    const service = serviceFixture();
+    const service = serviceFixture()
     const client = stripeFixture({
       taxAssociation: association([
         {
@@ -353,24 +353,24 @@ describe("reconcileTaxQuoteEvidence", () => {
           status: "errored",
         },
       ]),
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service,
-      }),
+      })
     ).resolves.toEqual({
       associationStatus: "errored:calculation_expired",
       evidenceFound: true,
       paymentIntentId: "pi_test",
       status: "association_failed",
-    });
-  });
+    })
+  })
 
   it("records a failed confirmation without making the evidence terminal", async () => {
-    const service = serviceFixture();
+    const service = serviceFixture()
     const client = stripeFixture({
       intent: paymentIntent({
         amount_received: 0,
@@ -380,23 +380,23 @@ describe("reconcileTaxQuoteEvidence", () => {
         } as Stripe.PaymentIntent.LastPaymentError,
         status: "requires_payment_method",
       }),
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service,
-      }),
-    ).resolves.toMatchObject({ status: "failed" });
+      })
+    ).resolves.toMatchObject({ status: "failed" })
     expect(service.updateTaxQuoteEvidenceLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.objectContaining({
           stripe_payment_error_code: "card_declined",
         }),
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("does not query Stripe Tax for TaxRate.io evidence", async () => {
     const service = serviceFixture({
@@ -405,7 +405,7 @@ describe("reconcileTaxQuoteEvidence", () => {
         payment_intent_id: "pi_test",
         provider: "taxrate_io",
       },
-    });
+    })
     const client = stripeFixture({
       intent: paymentIntent({
         latest_charge: {
@@ -415,20 +415,20 @@ describe("reconcileTaxQuoteEvidence", () => {
           object: "charge",
         } as Stripe.Charge,
       }),
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service,
-      }),
+      })
     ).resolves.toMatchObject({
       associationStatus: "not_applicable",
       status: "refunded",
-    });
-    expect(client.tax.associations.find).not.toHaveBeenCalled();
-  });
+    })
+    expect(client.tax.associations.find).not.toHaveBeenCalled()
+  })
 
   it("tracks disabled refunds and disputes without expecting a tax association", async () => {
     const service = serviceFixture({
@@ -437,7 +437,7 @@ describe("reconcileTaxQuoteEvidence", () => {
         payment_intent_id: "pi_test",
         provider: null,
       },
-    });
+    })
     const client = stripeFixture({
       intent: paymentIntent({
         latest_charge: {
@@ -447,21 +447,21 @@ describe("reconcileTaxQuoteEvidence", () => {
           object: "charge",
         } as Stripe.Charge,
       }),
-    });
+    })
 
     await expect(
       reconcileTaxQuoteEvidence({
         client,
         paymentIntentId: "pi_test",
         service,
-      }),
+      })
     ).resolves.toMatchObject({
       associationStatus: "not_applicable",
       status: "partially_refunded",
-    });
-    expect(client.tax.associations.find).not.toHaveBeenCalled();
+    })
+    expect(client.tax.associations.find).not.toHaveBeenCalled()
     expect(service.updateTaxQuoteEvidenceLifecycle).toHaveBeenCalledWith(
-      expect.objectContaining({ taxTransactionId: null }),
-    );
-  });
-});
+      expect.objectContaining({ taxTransactionId: null })
+    )
+  })
+})

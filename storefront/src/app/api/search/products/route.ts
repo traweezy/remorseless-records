@@ -189,12 +189,7 @@ export const POST = async (request: Request) => {
     console.error("/api/search/products failed")
     const problem = providerProblem(error, "search")
     if (problem) {
-      return jsonApiError(
-        request,
-        problem.detail,
-        problem.status,
-        problem.code
-      )
+      return jsonApiError(request, problem.detail, problem.status, problem.code)
     }
     return jsonApiError(
       request,

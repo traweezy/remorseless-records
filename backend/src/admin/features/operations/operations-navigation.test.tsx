@@ -32,7 +32,7 @@ const renderNavigation = ({
       <QueryClientProvider client={queryClient}>
         <OperationsWorkspaceNavigation active={active} />
       </QueryClientProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
   queryClient.clear()
   return markup

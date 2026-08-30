@@ -20,10 +20,7 @@ const uploadResponseSchema = z.object({
 
 export type CatalogCreationUploadedFile = z.infer<typeof uploadFileSchema>
 
-type UploadFetch = (
-  input: string,
-  init: RequestInit,
-) => Promise<Response>
+type UploadFetch = (input: string, init: RequestInit) => Promise<Response>
 
 type UploadOptions = {
   fetcher?: UploadFetch
@@ -57,7 +54,7 @@ export const uploadCatalogCreationMedia = async (
     fetcher = globalThis.fetch.bind(globalThis),
     signal: externalSignal,
     timeoutMs = 120_000,
-  }: UploadOptions = {},
+  }: UploadOptions = {}
 ): Promise<CatalogCreationUploadedFile[]> => {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
     throw new RangeError("Upload timeout must be a positive integer.")

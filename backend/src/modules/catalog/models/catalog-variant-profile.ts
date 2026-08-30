@@ -16,7 +16,9 @@ const CatalogVariantProfile = model.define(
     format_label: model.text().nullable(),
     format_detail_label: model.text().nullable(),
     display_label: model.text().nullable(),
-    availability_status: model.enum([...catalogAvailabilityStatuses]).default("available"),
+    availability_status: model
+      .enum([...catalogAvailabilityStatuses])
+      .default("available"),
     preorder_allowed: model.boolean().default(false),
     preorder_release_date: model.dateTime().nullable(),
     backorder_allowed: model.boolean().default(false),

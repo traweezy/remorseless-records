@@ -1,14 +1,11 @@
-import {
-  projectRefundCases,
-  summarizeRefundCases,
-} from "./projection";
+import { projectRefundCases, summarizeRefundCases } from "./projection"
 
 type EvidenceOverrides = {
-  associationStatus?: string;
-  metadata?: Record<string, unknown>;
-  provider?: "stripe_tax" | "taxrate_io";
-  status?: string;
-};
+  associationStatus?: string
+  metadata?: Record<string, unknown>
+  provider?: "stripe_tax" | "taxrate_io"
+  status?: string
+}
 
 const evidenceFixture = ({
   associationStatus = "committed",
@@ -33,12 +30,12 @@ const evidenceFixture = ({
   payment_intent_id: "pi_test",
   provider,
   status,
-});
+})
 
 const orderFixture = ({
   refunds = [{ amount: 5, created_at: "2026-07-26T14:00:00.000Z" }],
 }: {
-  refunds?: unknown[];
+  refunds?: unknown[]
 } = {}) => ({
   currency_code: "usd",
   display_id: 42,
@@ -58,7 +55,7 @@ const orderFixture = ({
       ],
     },
   ],
-});
+})
 
 describe("refund operations projection", () => {
   it("omits payments without refund or dispute signals", () => {
@@ -71,16 +68,16 @@ describe("refund operations projection", () => {
           }),
         ],
         orders: [orderFixture({ refunds: [] })],
-      }),
-    ).toEqual([]);
-  });
+      })
+    ).toEqual([])
+  })
 
   it("marks a reconciled Stripe Tax refund as verified", () => {
     expect(
       projectRefundCases({
         evidence: [evidenceFixture()],
         orders: [orderFixture()],
-      }),
+      })
     ).toEqual([
       expect.objectContaining({
         medusaRefundAmountMinor: 500,
@@ -88,8 +85,8 @@ describe("refund operations projection", () => {
         stripeRefundAmountMinor: 500,
         taxStatus: "verified",
       }),
-    ]);
-  });
+    ])
+  })
 
   it("does not require a Stripe Tax reversal for TaxRate.io", () => {
     const refundCase = projectRefundCases({
@@ -104,14 +101,14 @@ describe("refund operations projection", () => {
         }),
       ],
       orders: [orderFixture()],
-    })[0];
+    })[0]
 
     expect(refundCase).toMatchObject({
       provider: "taxrate_io",
       status: "verified",
       taxStatus: "not_applicable",
-    });
-  });
+    })
+  })
 
   it("keeps a missing Stripe Tax reversal in processing", () => {
     const refundCase = projectRefundCases({
@@ -128,14 +125,14 @@ describe("refund operations projection", () => {
         }),
       ],
       orders: [orderFixture()],
-    })[0];
+    })[0]
 
     expect(refundCase).toMatchObject({
       status: "processing",
       taxStatus: "pending",
-    });
-    expect(refundCase?.nextAction).toContain("automatic verification job");
-  });
+    })
+    expect(refundCase?.nextAction).toContain("automatic verification job")
+  })
 
   it.each(["failed", "canceled"] as const)(
     "requires action for a %s provider refund",
@@ -153,15 +150,15 @@ describe("refund operations projection", () => {
           }),
         ],
         orders: [orderFixture()],
-      })[0];
+      })[0]
 
       expect(refundCase).toMatchObject({
         status: "action_required",
         taxStatus: "attention",
-      });
-      expect(refundCase?.nextAction).toContain("without retrying blindly");
-    },
-  );
+      })
+      expect(refundCase?.nextAction).toContain("without retrying blindly")
+    }
+  )
 
   it("guards against a refund made directly in Stripe", () => {
     const refundCase = projectRefundCases({
@@ -176,15 +173,15 @@ describe("refund operations projection", () => {
         }),
       ],
       orders: [orderFixture({ refunds: [] })],
-    })[0];
+    })[0]
 
     expect(refundCase).toMatchObject({
       medusaRefundAmountMinor: 0,
       status: "action_required",
       stripeRefundAmountMinor: 500,
-    });
-    expect(refundCase?.nextAction).toContain("Do not refund again");
-  });
+    })
+    expect(refundCase?.nextAction).toContain("Do not refund again")
+  })
 
   it("does not suggest a retry while Medusa is ahead of Stripe", () => {
     const refundCase = projectRefundCases({
@@ -199,11 +196,11 @@ describe("refund operations projection", () => {
         }),
       ],
       orders: [orderFixture()],
-    })[0];
+    })[0]
 
-    expect(refundCase?.status).toBe("action_required");
-    expect(refundCase?.nextAction).toContain("Do not retry yet");
-  });
+    expect(refundCase?.status).toBe("action_required")
+    expect(refundCase?.nextAction).toContain("Do not retry yet")
+  })
 
   it("makes a dispute the highest-priority action", () => {
     const refundCase = projectRefundCases({
@@ -220,25 +217,25 @@ describe("refund operations projection", () => {
         }),
       ],
       orders: [orderFixture()],
-    })[0];
+    })[0]
 
-    expect(refundCase?.status).toBe("action_required");
-    expect(refundCase?.nextAction).toContain("Pause additional refunds");
-  });
+    expect(refundCase?.status).toBe("action_required")
+    expect(refundCase?.nextAction).toContain("Pause additional refunds")
+  })
 
   it("tracks a Medusa refund while provider evidence is unavailable", () => {
     const refundCase = projectRefundCases({
       evidence: [],
       orders: [orderFixture()],
-    })[0];
+    })[0]
 
     expect(refundCase).toMatchObject({
       provider: "untracked",
       status: "processing",
       stripeRefundAmountMinor: null,
       taxStatus: "untracked",
-    });
-  });
+    })
+  })
 
   it("does not call a legacy refund verified without individual statuses", () => {
     const refundCase = projectRefundCases({
@@ -252,13 +249,13 @@ describe("refund operations projection", () => {
         }),
       ],
       orders: [orderFixture()],
-    })[0];
+    })[0]
 
     expect(refundCase).toMatchObject({
       status: "processing",
       stripeStatuses: [],
-    });
-  });
+    })
+  })
 
   it("surfaces checkout compensation refunds that have no order", () => {
     const refundCase = projectRefundCases({
@@ -277,21 +274,21 @@ describe("refund operations projection", () => {
         },
       ],
       orders: [],
-    })[0];
+    })[0]
 
     expect(refundCase).toMatchObject({
       displayId: null,
       medusaRefundAmountMinor: 0,
       orderId: null,
       status: "action_required",
-    });
-  });
+    })
+  })
 
   it("summarizes case states and Medusa-recorded amounts by currency", () => {
     const verified = projectRefundCases({
       evidence: [evidenceFixture()],
       orders: [orderFixture()],
-    })[0];
+    })[0]
     const processing = projectRefundCases({
       evidence: [],
       orders: [
@@ -316,7 +313,7 @@ describe("refund operations projection", () => {
           ],
         },
       ],
-    })[0];
+    })[0]
 
     expect(summarizeRefundCases([verified!, processing!])).toEqual({
       actionRequired: 0,
@@ -327,6 +324,6 @@ describe("refund operations projection", () => {
       processing: 1,
       totalCases: 2,
       verified: 1,
-    });
-  });
-});
+    })
+  })
+})

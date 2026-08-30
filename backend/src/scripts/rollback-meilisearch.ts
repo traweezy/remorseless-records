@@ -41,10 +41,8 @@ export default async function rollbackMeilisearch({
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const rollbackIndex =
-    process.env.MEILISEARCH_ROLLBACK_INDEX?.trim() ?? ""
-  const confirmation =
-    process.env.MEILISEARCH_ROLLBACK_CONFIRM?.trim() ?? ""
+  const rollbackIndex = process.env.MEILISEARCH_ROLLBACK_INDEX?.trim() ?? ""
+  const confirmation = process.env.MEILISEARCH_ROLLBACK_CONFIRM?.trim() ?? ""
   assertRollbackConfirmation({ confirmation, rollbackIndex })
 
   const meilisearch = resolveMeilisearchService<{
@@ -69,10 +67,7 @@ export default async function rollbackMeilisearch({
     apiKey: process.env.MEILISEARCH_ADMIN_KEY?.trim() ?? "",
     host: process.env.MEILISEARCH_HOST?.trim() ?? "",
   })
-  const swapTask = await adminClient.swapIndexes(
-    PRODUCTS_INDEX,
-    rollbackIndex
-  )
+  const swapTask = await adminClient.swapIndexes(PRODUCTS_INDEX, rollbackIndex)
   const completed = await live.tasks.waitForTask(swapTask, {
     timeout: TASK_TIMEOUT_MS,
     interval: 100,

@@ -3,8 +3,8 @@ import {
   productAuthoringFingerprint,
   productAuthoringValidationIssues,
   type ProductAuthoringDraft,
-} from "./product-authoring-form";
-import { FormApi } from "@tanstack/react-form";
+} from "./product-authoring-form"
+import { FormApi } from "@tanstack/react-form"
 
 const draft = (): ProductAuthoringDraft => ({
   bundle: {
@@ -56,19 +56,19 @@ const draft = (): ProductAuthoringDraft => ({
       version: 1,
     },
   ],
-});
+})
 
 describe("Product authoring form", () => {
   it("creates isolated empty defaults for each form instance", () => {
-    const first = createEmptyProductAuthoringDraft();
-    const second = createEmptyProductAuthoringDraft();
+    const first = createEmptyProductAuthoringDraft()
+    const second = createEmptyProductAuthoringDraft()
     first.profile.artists.push({
       artistId: "artist_1",
       displayName: "Test Artist",
       key: "artist_line_1",
       name: "Test Artist",
       role: "primary",
-    });
+    })
     first.bundle.components.push({
       componentProductId: "product_1",
       componentVariantId: "",
@@ -77,55 +77,55 @@ describe("Product authoring form", () => {
       sku: "",
       title: "Test Product",
       variantTitle: "",
-    });
+    })
 
-    expect(second.profile.artists).toEqual([]);
-    expect(second.bundle.components).toEqual([]);
-  });
+    expect(second.profile.artists).toEqual([])
+    expect(second.bundle.components).toEqual([])
+  })
 
   it("retains a hydrated snapshot when form options update", () => {
-    jest.useFakeTimers();
-    const defaultValues = createEmptyProductAuthoringDraft();
-    const form = new FormApi({ defaultValues });
-    const unmount = form.mount();
-    const hydrated = draft();
+    jest.useFakeTimers()
+    const defaultValues = createEmptyProductAuthoringDraft()
+    const form = new FormApi({ defaultValues })
+    const unmount = form.mount()
+    const hydrated = draft()
 
     try {
-      form.reset(hydrated, { keepDefaultValues: true });
-      form.update({ defaultValues });
+      form.reset(hydrated, { keepDefaultValues: true })
+      form.update({ defaultValues })
 
-      expect(form.state.values).toEqual(hydrated);
+      expect(form.state.values).toEqual(hydrated)
     } finally {
-      unmount();
-      jest.advanceTimersByTime(6_000);
-      jest.useRealTimers();
+      unmount()
+      jest.advanceTimersByTime(6_000)
+      jest.useRealTimers()
     }
-  });
+  })
 
   it("accepts an ordinary release draft", () => {
-    expect(productAuthoringValidationIssues(draft())).toEqual([]);
-  });
+    expect(productAuthoringValidationIssues(draft())).toEqual([])
+  })
 
   it("maps invalid fields and task groups to focus targets", () => {
-    const value = draft();
-    value.product.title = "";
-    value.profile.releaseYear = "20x6";
-    value.profile.tracklistJson = "{}";
-    value.variants[0]!.formatLabel = "";
-    const issues = productAuthoringValidationIssues(value);
+    const value = draft()
+    value.product.title = ""
+    value.profile.releaseYear = "20x6"
+    value.profile.tracklistJson = "{}"
+    value.variants[0]!.formatLabel = ""
+    const issues = productAuthoringValidationIssues(value)
     expect(issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ targetId: "product-authoring-title" }),
         expect.objectContaining({ targetId: "product-authoring-release-year" }),
         expect.objectContaining({ targetId: "product-authoring-tracklist" }),
         expect.objectContaining({ targetId: "product-authoring-variants" }),
-      ]),
-    );
-  });
+      ])
+    )
+  })
 
   it("requires safe bundle quantities and preorder dates", () => {
-    const value = draft();
-    value.bundle.enabled = true;
+    const value = draft()
+    value.bundle.enabled = true
     value.bundle.components = [
       {
         componentProductId: "",
@@ -136,26 +136,28 @@ describe("Product authoring form", () => {
         title: "",
         variantTitle: "",
       },
-    ];
-    value.variants[0]!.availabilityStatus = "preorder";
-    expect(productAuthoringValidationIssues(value).map(({ message }) => message)).toEqual(
+    ]
+    value.variants[0]!.availabilityStatus = "preorder"
+    expect(
+      productAuthoringValidationIssues(value).map(({ message }) => message)
+    ).toEqual(
       expect.arrayContaining([
         "Choose a release time for a preorder variant.",
         "Choose an included product.",
         "Quantity must be a whole number of at least 1.",
-      ]),
-    );
-  });
+      ])
+    )
+  })
 
   it("produces a stable dirty-state fingerprint", () => {
-    const value = draft();
-    const before = productAuthoringFingerprint(value);
-    expect(productAuthoringFingerprint({ ...value })).toBe(before);
+    const value = draft()
+    const before = productAuthoringFingerprint(value)
+    expect(productAuthoringFingerprint({ ...value })).toBe(before)
     expect(
       productAuthoringFingerprint({
         ...value,
         product: { ...value.product, title: "Changed" },
-      }),
-    ).not.toBe(before);
-  });
-});
+      })
+    ).not.toBe(before)
+  })
+})

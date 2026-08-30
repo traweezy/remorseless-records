@@ -52,11 +52,9 @@ const SmartLinkComponent = (
     }
 
     prefetched.current = true
-    void Promise.resolve(router.prefetch(normalizedHref)).catch(
-      () => {
-        // ignore prefetch failures
-      }
-    )
+    void Promise.resolve(router.prefetch(normalizedHref)).catch(() => {
+      // ignore prefetch failures
+    })
   }, [normalizedHref, router])
 
   useEffect(() => {

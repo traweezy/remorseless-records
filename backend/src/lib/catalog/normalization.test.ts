@@ -26,7 +26,7 @@ describe("catalog normalization", () => {
 
   it("rejects invalid dates and non-integer numeric values", () => {
     expect(toCatalogOptionalDate("2026-07-26")?.toISOString()).toBe(
-      "2026-07-26T00:00:00.000Z",
+      "2026-07-26T00:00:00.000Z"
     )
     expect(toCatalogOptionalDate("not-a-date")).toBeNull()
     expect(toCatalogOptionalInteger(5)).toBe(5)

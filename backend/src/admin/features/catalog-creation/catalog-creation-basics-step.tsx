@@ -27,7 +27,7 @@ const releaseDatePrecisionLabels: Record<
 }
 
 const releaseDateInputType = (
-  precision: CatalogCreationReleaseDatePrecision,
+  precision: CatalogCreationReleaseDatePrecision
 ): "date" | "month" | "number" => {
   if (precision === "day") {
     return "date"
@@ -58,7 +58,7 @@ type CatalogCreationBasicsStepProps = {
   onTextChange: (
     event: ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => void
   onVocabularyRetry: () => void
   referenceOptions: CatalogCreationReferenceOptions
@@ -314,7 +314,7 @@ export const CatalogCreationBasicsStep = memo<CatalogCreationBasicsStepProps>(
         </details>
       </div>
     </Container>
-  ),
+  )
 )
 
 CatalogCreationBasicsStep.displayName = "CatalogCreationBasicsStep"

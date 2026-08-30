@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 
-const endpointPattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/u
+const endpointPattern =
+  /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/u
 const checksumReleaseFloor = 20241002
 
 export const parseMinioClientVersion = (value) => {
@@ -11,14 +12,18 @@ export const parseMinioClientVersion = (value) => {
     throw new Error("MinIO Client version output is invalid.")
   }
   const match = value.match(
-    /\bRELEASE\.(\d{4})-(\d{2})-(\d{2})T\d{2}-\d{2}-\d{2}Z\b/u,
+    /\bRELEASE\.(\d{4})-(\d{2})-(\d{2})T\d{2}-\d{2}-\d{2}Z\b/u
   )
   const release = match
     ? Number.parseInt(`${match[1]}${match[2]}${match[3]}`, 10)
     : Number.NaN
-  if (!match || !Number.isSafeInteger(release) || release < checksumReleaseFloor) {
+  if (
+    !match ||
+    !Number.isSafeInteger(release) ||
+    release < checksumReleaseFloor
+  ) {
     throw new Error(
-      "MinIO Client must support the SHA-256 mirror checksum boundary.",
+      "MinIO Client must support the SHA-256 mirror checksum boundary."
     )
   }
   return match[0]
@@ -88,7 +93,7 @@ export const parseMediaInventory = (jsonLines) => {
 
 export const verifyMediaMirror = (source, target) => {
   const targetEntries = new Map(
-    target.entries.map(({ key, size }) => [key, size]),
+    target.entries.map(({ key, size }) => [key, size])
   )
   for (const { key, size } of source.entries) {
     if (targetEntries.get(key) !== size) {

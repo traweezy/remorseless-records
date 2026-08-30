@@ -484,7 +484,9 @@ const toCatalogReferenceKind = (value: unknown): CatalogReferenceKind => {
 const toCatalogAvailabilityStatus = (
   value: unknown
 ): CatalogAvailabilityStatus => {
-  const match = catalogAvailabilityStatusValues.find((status) => status === value)
+  const match = catalogAvailabilityStatusValues.find(
+    (status) => status === value
+  )
   return match ?? "available"
 }
 
@@ -512,7 +514,9 @@ const toCatalogBundleInventoryMode = (
 const toCatalogBundleFulfillmentMode = (
   value: unknown
 ): CatalogBundleFulfillmentMode => {
-  const match = catalogBundleFulfillmentModeValues.find((mode) => mode === value)
+  const match = catalogBundleFulfillmentModeValues.find(
+    (mode) => mode === value
+  )
   return match ?? "ship_components"
 }
 
@@ -600,8 +604,12 @@ export const serializeCatalogProductProfile = (
   searchKeywords: profile.search_keywords ?? [],
   tracklist: toList(profile.tracklist as JsonList | null | undefined),
   credits: toRecord(profile.credits as JsonRecord | null | undefined),
-  pressingNotes: toRecord(profile.pressing_notes as JsonRecord | null | undefined),
-  merchDetails: toRecord(profile.merch_details as JsonRecord | null | undefined),
+  pressingNotes: toRecord(
+    profile.pressing_notes as JsonRecord | null | undefined
+  ),
+  merchDetails: toRecord(
+    profile.merch_details as JsonRecord | null | undefined
+  ),
   contentSchemaVersion: profile.content_schema_version ?? 1,
   version: profile.version ?? 1,
   metadata: toRecord(profile.metadata as JsonRecord | null | undefined),

@@ -19,10 +19,7 @@ describe("Meilisearch admin client", () => {
     })
 
     await expect(
-      client.swapIndexes(
-        "products",
-        "products_build_20260727t001122z_deadbeef"
-      )
+      client.swapIndexes("products", "products_build_20260727t001122z_deadbeef")
     ).resolves.toEqual({ taskUid: 42 })
 
     expect(fetchImpl).toHaveBeenCalledWith(
@@ -30,10 +27,7 @@ describe("Meilisearch admin client", () => {
       expect.objectContaining({
         body: JSON.stringify([
           {
-            indexes: [
-              "products",
-              "products_build_20260727t001122z_deadbeef",
-            ],
+            indexes: ["products", "products_build_20260727t001122z_deadbeef"],
           },
         ]),
         headers: expect.objectContaining({

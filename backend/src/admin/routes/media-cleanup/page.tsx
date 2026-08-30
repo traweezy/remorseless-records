@@ -24,11 +24,7 @@ import {
   type DataTableEmptyStateProps,
   type DataTablePaginationState,
 } from "@medusajs/ui"
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { operationsAdminActions } from "../../../lib/admin-permissions"
 import { AdminEmptyState } from "../../components/admin-empty-state"
@@ -46,9 +42,7 @@ import {
   type ReplaceAdminLocation,
 } from "../../features/operations/operations-routes"
 import { useAdminPermissions } from "../../lib/admin-permissions"
-import {
-  getAdminRequestErrorMessage,
-} from "../../lib/admin-request"
+import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 import {
   MEDIA_CLEANUP_PAGE_SIZE,
   MEDIA_CLEANUP_QUERY_KEY,
@@ -147,7 +141,7 @@ const MediaActionButton = memo<MediaActionProps>(
         {quarantined ? "Restore" : "Quarantine"}
       </Button>
     )
-  },
+  }
 )
 
 MediaActionButton.displayName = "MediaActionButton"
@@ -165,33 +159,36 @@ const useMediaColumns = ({
 }: UseMediaColumnsOptions) =>
   useMemo(() => {
     const columns = [
-      mediaColumnHelper.accessor((asset) => asset.originalFilename ?? asset.id, {
-        cell: ({ row }) => {
-          const asset = row.original
-          return (
-            <div className="flex min-w-64 items-center gap-3">
-              <AssetPreview asset={asset} />
-              <div className="min-w-0">
-                <Text className="truncate" size="small" weight="plus">
-                  {asset.originalFilename ?? asset.id}
-                </Text>
-                <Text
-                  className="max-w-72 truncate text-ui-fg-subtle"
-                  size="xsmall"
-                  title={asset.sourceUrl}
-                >
-                  {asset.sourceUrl}
-                </Text>
+      mediaColumnHelper.accessor(
+        (asset) => asset.originalFilename ?? asset.id,
+        {
+          cell: ({ row }) => {
+            const asset = row.original
+            return (
+              <div className="flex min-w-64 items-center gap-3">
+                <AssetPreview asset={asset} />
+                <div className="min-w-0">
+                  <Text className="truncate" size="small" weight="plus">
+                    {asset.originalFilename ?? asset.id}
+                  </Text>
+                  <Text
+                    className="max-w-72 truncate text-ui-fg-subtle"
+                    size="xsmall"
+                    title={asset.sourceUrl}
+                  >
+                    {asset.sourceUrl}
+                  </Text>
+                </div>
               </div>
-            </div>
-          )
-        },
-        header: "Asset",
-        id: "asset",
-        minSize: 320,
-        size: 360,
-        truncateTooltip: false,
-      }),
+            )
+          },
+          header: "Asset",
+          id: "asset",
+          minSize: 320,
+          size: 360,
+          truncateTooltip: false,
+        }
+      ),
       mediaColumnHelper.accessor((asset) => asset.sourceFileKey, {
         cell: ({ row }) => {
           const asset = row.original
@@ -402,7 +399,7 @@ const MediaMobileCard = memo<MediaMobileCardProps>(
         ) : null}
       </li>
     )
-  },
+  }
 )
 
 MediaMobileCard.displayName = "MediaMobileCard"
@@ -458,24 +455,24 @@ export const MediaCleanupPageContent = memo(() => {
   const queryClient = useQueryClient()
   const permissions = useAdminPermissions()
   const canUpdate = permissions.hasPermission(
-    operationsAdminActions.mediaCleanup.update,
+    operationsAdminActions.mediaCleanup.update
   )
 
   const offset = pageIndex * MEDIA_CLEANUP_PAGE_SIZE
   const orphanQuery = useQuery(
-    mediaCleanupQueryOptions({ lifecycleStatus: view, offset }),
+    mediaCleanupQueryOptions({ lifecycleStatus: view, offset })
   )
   const page = orphanQuery.data ?? emptyMediaPage(offset)
   const loading = orphanQuery.isPending
   const error = orphanQuery.error
     ? getAdminRequestErrorMessage(
         orphanQuery.error,
-        "Unable to load unlinked media.",
+        "Unable to load unlinked media."
       )
     : null
   const countLabel = useMemo(
     () => `${page.count} ${page.count === 1 ? "asset" : "assets"}`,
-    [page.count],
+    [page.count]
   )
 
   const lifecycleMutation = useMutation({
@@ -495,9 +492,7 @@ export const MediaCleanupPageContent = memo(() => {
       lifecycleIdempotencyKeyRef.current = null
       setPendingAsset(null)
       toast.success(
-        action === "restore"
-          ? "Media restored"
-          : "Media moved to quarantine",
+        action === "restore" ? "Media restored" : "Media moved to quarantine"
       )
       if (page.assets.length === 1 && pageIndex > 0) {
         setPageIndex((current) => current - 1)
@@ -510,7 +505,7 @@ export const MediaCleanupPageContent = memo(() => {
   const lifecycleError = lifecycleMutation.error
     ? getAdminRequestErrorMessage(
         lifecycleMutation.error,
-        "Unable to update the media lifecycle.",
+        "Unable to update the media lifecycle."
       )
     : null
 
@@ -535,7 +530,7 @@ export const MediaCleanupPageContent = memo(() => {
       lifecycleIdempotencyKeyRef.current = crypto.randomUUID()
       setPendingAsset(asset)
     },
-    [canUpdate, lifecycleMutation],
+    [canUpdate, lifecycleMutation]
   )
   const handleLifecycleCancel = useCallback(() => {
     if (!lifecycleMutation.isPending) {
@@ -564,13 +559,13 @@ export const MediaCleanupPageContent = memo(() => {
       pageIndex,
       pageSize: MEDIA_CLEANUP_PAGE_SIZE,
     }),
-    [pageIndex],
+    [pageIndex]
   )
   const handlePaginationChange = useCallback(
     (state: DataTablePaginationState) => {
       setPageIndex(state.pageIndex)
     },
-    [],
+    []
   )
   const dataTable = useDataTable({
     columns,
@@ -589,7 +584,7 @@ export const MediaCleanupPageContent = memo(() => {
         custom: <MediaEmptyState view={view} />,
       },
     }),
-    [view],
+    [view]
   )
   const mobileCollection = useMemo<ReactNode>(() => {
     if (loading) {
@@ -626,11 +621,7 @@ export const MediaCleanupPageContent = memo(() => {
       <Container>
         <AdminPageHeader
           actions={
-            <Text
-              aria-live="polite"
-              className="text-ui-fg-subtle"
-              size="small"
-            >
+            <Text aria-live="polite" className="text-ui-fg-subtle" size="small">
               {loading ? "Loading assets…" : countLabel}
             </Text>
           }

@@ -69,7 +69,8 @@ class CatalogModuleService extends MedusaService({
   @InjectManager()
   async runCatalogTransaction<T>(
     task: (sharedContext: Context<EntityManager>) => Promise<T>,
-    @MedusaContext() sharedContext: Context<EntityManager> = {
+    @MedusaContext()
+    sharedContext: Context<EntityManager> = {
       isolationLevel: "serializable",
     }
   ): Promise<T> {
@@ -82,8 +83,7 @@ class CatalogModuleService extends MedusaService({
     input: OrphanCatalogMediaQuery,
     @MedusaContext() sharedContext: Context<EntityManager> = {}
   ): Promise<OrphanCatalogMediaPage> {
-    const manager =
-      sharedContext.transactionManager ?? sharedContext.manager
+    const manager = sharedContext.transactionManager ?? sharedContext.manager
     if (!manager) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
@@ -92,7 +92,7 @@ class CatalogModuleService extends MedusaService({
     }
     const { countQuery, rowsQuery } = buildOrphanCatalogMediaQueries(
       manager.getKnex(),
-      input,
+      input
     )
     const countRows = (await countQuery) as Array<{
       count: string | number
@@ -143,23 +143,21 @@ class CatalogModuleService extends MedusaService({
         version: profile.version,
         metadata: asJsonObject(profile.metadata),
       },
-      components: components.map(
-        (component): CatalogBundleComponentState => ({
-          id: component.id,
-          bundle_profile_id: component.bundle_profile_id,
-          component_product_id: component.component_product_id,
-          component_variant_id: component.component_variant_id ?? null,
-          component_inventory_item_id:
-            component.component_inventory_item_id ?? null,
-          title: component.title ?? null,
-          variant_title: component.variant_title ?? null,
-          sku: component.sku ?? null,
-          quantity: component.quantity,
-          sort_order: component.sort_order,
-          is_required: component.is_required,
-          metadata: asJsonObject(component.metadata),
-        })
-      ),
+      components: components.map((component): CatalogBundleComponentState => ({
+        id: component.id,
+        bundle_profile_id: component.bundle_profile_id,
+        component_product_id: component.component_product_id,
+        component_variant_id: component.component_variant_id ?? null,
+        component_inventory_item_id:
+          component.component_inventory_item_id ?? null,
+        title: component.title ?? null,
+        variant_title: component.variant_title ?? null,
+        sku: component.sku ?? null,
+        quantity: component.quantity,
+        sort_order: component.sort_order,
+        is_required: component.is_required,
+        metadata: asJsonObject(component.metadata),
+      })),
     }
   }
 
@@ -359,10 +357,7 @@ class CatalogModuleService extends MedusaService({
     },
     @MedusaContext() sharedContext: Context<EntityManager> = {}
   ): Promise<void> {
-    const current = await this.snapshotBundle_(
-      input.aggregateId,
-      sharedContext
-    )
+    const current = await this.snapshotBundle_(input.aggregateId, sharedContext)
     await this.deleteBundleSnapshot_(current, sharedContext)
     await this.createBundleSnapshot_(input.previous, sharedContext)
     await this.updateCatalogAuthoringOperations(

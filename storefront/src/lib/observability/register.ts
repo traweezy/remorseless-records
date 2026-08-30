@@ -12,4 +12,3 @@ export const registerStorefrontObservability = (): void => {
     traceSampler: "parentbased_always_on",
   })
 }
-

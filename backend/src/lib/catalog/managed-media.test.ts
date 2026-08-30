@@ -16,9 +16,7 @@ import {
 
 const png = (width: number, height: number): Buffer => {
   const buffer = Buffer.alloc(24)
-  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(
-    buffer
-  )
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(buffer)
   buffer.writeUInt32BE(width, 16)
   buffer.writeUInt32BE(height, 20)
   return buffer
@@ -102,7 +100,9 @@ describe("managed catalog media", () => {
   })
 
   it("produces deterministic checksums and safe filenames", () => {
-    expect(hashManagedMedia(Buffer.from("same bytes"))).toMatch(/^[0-9a-f]{64}$/)
+    expect(hashManagedMedia(Buffer.from("same bytes"))).toMatch(
+      /^[0-9a-f]{64}$/
+    )
     expect(
       buildManagedMediaFilename(
         `https://${BIG_CARTEL_ASSET_HOST}/product_images/123/Hëll+Cover!.jpeg?w=2000`,
@@ -113,9 +113,9 @@ describe("managed catalog media", () => {
 
   it("shares one in-flight upload for identical checksums", async () => {
     const uploads = new Map<string, Promise<{ id: string }>>()
-    const createUpload = jest.fn(
-      async (): Promise<{ id: string }> => ({ id: "file_1" })
-    )
+    const createUpload = jest.fn(async (): Promise<{ id: string }> => ({
+      id: "file_1",
+    }))
 
     await expect(
       Promise.all([
@@ -127,9 +127,9 @@ describe("managed catalog media", () => {
   })
 
   it("requires an exact destructive cutover confirmation", () => {
-    expect(() =>
-      parseManagedMediaCommandOptions(["--apply"])
-    ).toThrow("requires --confirm-cutover")
+    expect(() => parseManagedMediaCommandOptions(["--apply"])).toThrow(
+      "requires --confirm-cutover"
+    )
     expect(
       parseManagedMediaCommandOptions([
         "--apply",
@@ -164,9 +164,9 @@ describe("managed catalog media", () => {
       stage: true,
       stageConfirmation: MEDIA_STAGE_CONFIRMATION,
     })
-    expect(() =>
-      parseManagedMediaCommandOptions(["--stage"])
-    ).toThrow("requires --confirm-stage")
+    expect(() => parseManagedMediaCommandOptions(["--stage"])).toThrow(
+      "requires --confirm-stage"
+    )
   })
 
   it("bounds Retry-After and exponential backoff", () => {

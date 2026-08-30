@@ -93,11 +93,12 @@ const validateFile = (file: Express.Multer.File): void => {
 
   const extension = validateFilename(file.originalname)
   if (IMAGE_MIME_TYPES.has(file.mimetype)) {
-    const imageExtensions = IMAGE_EXTENSIONS[
-      file.mimetype as ManagedImageMimeType
-    ]
+    const imageExtensions =
+      IMAGE_EXTENSIONS[file.mimetype as ManagedImageMimeType]
     if (!imageExtensions.has(extension)) {
-      invalidUpload("An uploaded image extension does not match its media type.")
+      invalidUpload(
+        "An uploaded image extension does not match its media type."
+      )
     }
     if (!hasImageSignature(file.mimetype, file.buffer)) {
       invalidUpload("An uploaded image does not match its declared media type.")
@@ -139,7 +140,9 @@ export const validateManagedImageUploads = (
 ): Express.Multer.File[] => {
   const validated = validateManagedUploads(files)
   if (validated.some(({ mimetype }) => !IMAGE_MIME_TYPES.has(mimetype))) {
-    invalidUpload("Catalog media uploads must be JPEG, PNG, WebP, or GIF images.")
+    invalidUpload(
+      "Catalog media uploads must be JPEG, PNG, WebP, or GIF images."
+    )
   }
   return validated
 }

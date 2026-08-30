@@ -9,29 +9,27 @@ export default async function auditCatalogAuthoring({
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const report = await loadCatalogAuthoringAudit(container)
   const blockingItems = report.items.filter(
-    ({ status }) => status !== "classified",
+    ({ status }) => status !== "classified"
   )
 
-  logger.info(
-    `[catalog-authoring-audit] ${JSON.stringify(report.summary)}`,
-  )
+  logger.info(`[catalog-authoring-audit] ${JSON.stringify(report.summary)}`)
   for (const item of blockingItems.slice(0, 100)) {
     logger.error(
       `[catalog-authoring-audit] ${item.id} "${item.title}" ${item.status}: ${item.issues
         .filter(({ severity }) => severity !== "info")
         .map(({ code }) => code)
-        .join(", ")}`,
+        .join(", ")}`
     )
   }
 
   if (blockingItems.length > 100) {
     logger.error(
-      `[catalog-authoring-audit] ${blockingItems.length - 100} additional blocking item(s) omitted.`,
+      `[catalog-authoring-audit] ${blockingItems.length - 100} additional blocking item(s) omitted.`
     )
   }
   if (blockingItems.length > 0) {
     throw new Error(
-      `[catalog-authoring-audit] ${blockingItems.length} product(s) require review before Admin cutover.`,
+      `[catalog-authoring-audit] ${blockingItems.length} product(s) require review before Admin cutover.`
     )
   }
 }

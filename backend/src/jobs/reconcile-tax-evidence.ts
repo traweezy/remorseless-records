@@ -2,19 +2,19 @@ import type {
   ILockingModule,
   Logger,
   MedusaContainer,
-} from "@medusajs/framework/types";
-import { Modules } from "@medusajs/framework/utils";
-import Stripe from "stripe";
+} from "@medusajs/framework/types"
+import { Modules } from "@medusajs/framework/utils"
+import Stripe from "stripe"
 
-import { STRIPE_API_KEY } from "../lib/constants";
-import { reconcileTaxQuoteEvidence } from "../lib/tax-control/evidence-reconciliation";
+import { STRIPE_API_KEY } from "../lib/constants"
+import { reconcileTaxQuoteEvidence } from "../lib/tax-control/evidence-reconciliation"
 import {
   taxEvidenceLockKey,
   type TaxQuoteEvidenceStatus,
-} from "../modules/tax-control/constants";
-import type TaxControlModuleService from "../modules/tax-control/service";
+} from "../modules/tax-control/constants"
+import type TaxControlModuleService from "../modules/tax-control/service"
 
-const RECONCILIATION_LIMIT = 100;
+const RECONCILIATION_LIMIT = 100
 const RECONCILABLE_STATUSES: TaxQuoteEvidenceStatus[] = [
   "association_failed",
   "disputed",
@@ -23,25 +23,25 @@ const RECONCILABLE_STATUSES: TaxQuoteEvidenceStatus[] = [
   "prepared",
   "refunded",
   "succeeded",
-];
+]
 
 export default async function reconcileTaxEvidenceJob(
-  container: MedusaContainer,
+  container: MedusaContainer
 ): Promise<void> {
   if (!STRIPE_API_KEY) {
-    return;
+    return
   }
 
-  const logger = container.resolve<Logger>("logger");
-  const service = container.resolve<TaxControlModuleService>("tax_control");
-  const locking = container.resolve<ILockingModule>(Modules.LOCKING);
+  const logger = container.resolve<Logger>("logger")
+  const service = container.resolve<TaxControlModuleService>("tax_control")
+  const locking = container.resolve<ILockingModule>(Modules.LOCKING)
   const evidence = await service.listTaxQuoteEvidences(
     { status: RECONCILABLE_STATUSES },
     {
       order: { last_verified_at: "ASC" },
       take: RECONCILIATION_LIMIT,
-    },
-  );
+    }
+  )
   const client = new Stripe(STRIPE_API_KEY, {
     appInfo: {
       name: "remorseless-records-medusa",
@@ -50,10 +50,10 @@ export default async function reconcileTaxEvidenceJob(
     httpClient: Stripe.createFetchHttpClient(),
     maxNetworkRetries: 0,
     timeout: 10_000,
-  });
+  })
 
-  let failed = 0;
-  let needsAttention = 0;
+  let failed = 0
+  let needsAttention = 0
   for (const record of evidence) {
     try {
       const result = await locking.execute(
@@ -64,25 +64,25 @@ export default async function reconcileTaxEvidenceJob(
             ...(record.order_id ? { orderId: record.order_id } : {}),
             onRetry: (event) => {
               logger.warn(
-                `[tax-evidence] Stripe safe-read retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`,
-              );
+                `[tax-evidence] Stripe safe-read retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`
+              )
             },
             paymentIntentId: record.payment_intent_id,
             service,
           }),
-        { timeout: 5 },
-      );
+        { timeout: 5 }
+      )
       if (
         result.status === "association_failed" ||
         result.status === "disputed"
       ) {
-        needsAttention += 1;
+        needsAttention += 1
       }
     } catch {
-      failed += 1;
+      failed += 1
       logger.error(
-        "[tax-evidence] reconciliation failed (provider boundary or persistence error).",
-      );
+        "[tax-evidence] reconciliation failed (provider boundary or persistence error)."
+      )
     }
   }
 
@@ -91,19 +91,19 @@ export default async function reconcileTaxEvidenceJob(
     failed,
     inspected: evidence.length,
     needsAttention,
-  };
+  }
   if (failed || needsAttention || summary.capped) {
     logger.warn(
-      `Tax evidence reconciliation needs attention: ${JSON.stringify(summary)}`,
-    );
-    return;
+      `Tax evidence reconciliation needs attention: ${JSON.stringify(summary)}`
+    )
+    return
   }
   logger.info(
-    `Tax evidence reconciliation completed: ${JSON.stringify(summary)}`,
-  );
+    `Tax evidence reconciliation completed: ${JSON.stringify(summary)}`
+  )
 }
 
 export const config = {
   name: "reconcile-tax-evidence",
   schedule: "23 * * * *",
-};
+}

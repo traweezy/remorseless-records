@@ -33,11 +33,7 @@ describe("validateManagedUploads", () => {
       "image/png",
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     ],
-    [
-      "cover.webp",
-      "image/webp",
-      Buffer.from("RIFF0000WEBP", "ascii"),
-    ],
+    ["cover.webp", "image/webp", Buffer.from("RIFF0000WEBP", "ascii")],
     ["cover.gif", "image/gif", Buffer.from("GIF89a", "ascii")],
     ["products.csv", "text/csv", Buffer.from("title,handle\nAlbum,album")],
   ])("accepts a valid %s upload", (filename, mimeType, buffer) => {
@@ -120,7 +116,7 @@ describe("validateManagedImageUploads", () => {
 
     expect(validateManagedImageUploads([image])).toEqual([image])
     expect(() => validateManagedImageUploads([csv])).toThrow(
-      "Catalog media uploads must be",
+      "Catalog media uploads must be"
     )
   })
 })

@@ -1,20 +1,20 @@
-import path from "node:path";
+import path from "node:path"
 
 import type {
   MedusaRequest,
   MedusaResponse,
   MiddlewareRoute,
-} from "@medusajs/framework/http";
+} from "@medusajs/framework/http"
 
 import {
   adminAuthorizationManifest,
   adminAuthorizationPolicyRoutes,
-} from "../lib/admin-authorization-manifest";
+} from "../lib/admin-authorization-manifest"
 import {
   nativeAdminActions,
   operationsAdminActions,
   productImportAdminActions,
-} from "../lib/admin-permissions";
+} from "../lib/admin-permissions"
 import middlewares, {
   contentAdminPolicyRoutes,
   applySecurityBoundaryHeaders,
@@ -26,43 +26,42 @@ import middlewares, {
   productImportAdminPolicyRoutes,
   rejectDeprecatedProductImport,
   rejectUnsafeNativeCatalogDeletion,
-} from "./middlewares";
+} from "./middlewares"
 
 jest.mock("../lib/constants", () => ({
   STORE_CORS: "http://localhost:3000",
-}));
+}))
 
 const routeMatches = (
   route: MiddlewareRoute,
   method: string,
-  path: string,
+  path: string
 ): boolean => {
   if (!route.methods?.some((candidate) => candidate === method)) {
-    return false;
+    return false
   }
   return typeof route.matcher === "string"
     ? route.matcher === path
-    : route.matcher.test(path);
-};
+    : route.matcher.test(path)
+}
 
 const policyFor = (routes: MiddlewareRoute[], method: string, path: string) => {
   const matches = routes.filter(
-    (route) =>
-      route.policies !== undefined && routeMatches(route, method, path),
-  );
-  expect(matches).toHaveLength(1);
-  return matches[0]?.policies;
-};
+    (route) => route.policies !== undefined && routeMatches(route, method, path)
+  )
+  expect(matches).toHaveLength(1)
+  return matches[0]?.policies
+}
 
 type PinnedSortableRoute = {
-  [key: string]: unknown;
-  marker?: string;
-  matcher: string | RegExp;
-};
+  [key: string]: unknown
+  marker?: string
+  matcher: string | RegExp
+}
 
 type PinnedRouteSorter = new (routes: ReadonlyArray<PinnedSortableRoute>) => {
-  sort: () => PinnedSortableRoute[];
-};
+  sort: () => PinnedSortableRoute[]
+}
 
 describe("content Admin RBAC middleware", () => {
   it.each([
@@ -81,34 +80,34 @@ describe("content Admin RBAC middleware", () => {
     ["POST", "/admin/discography/disco_01/archive", "discography", "update"],
     ["POST", "/admin/discography/disco_01/restore", "discography", "update"],
   ])("maps %s %s to %s:%s", (method, path, resource, operation) => {
-    const expectedPolicies = [{ operation, resource }];
+    const expectedPolicies = [{ operation, resource }]
     if (resource === "discography" && operation === "read") {
-      expectedPolicies.push(nativeAdminActions.product.read);
+      expectedPolicies.push(nativeAdminActions.product.read)
     }
     expect(policyFor(contentAdminPolicyRoutes, method, path)).toEqual(
-      expectedPolicies,
-    );
-  });
+      expectedPolicies
+    )
+  })
 
   it("protects managed uploads with Medusa's native file permission", () => {
     expect(
-      policyFor(middlewares.routes ?? [], "POST", "/admin/managed-uploads"),
-    ).toEqual([nativeAdminActions.file.create]);
-  });
+      policyFor(middlewares.routes ?? [], "POST", "/admin/managed-uploads")
+    ).toEqual([nativeAdminActions.file.create])
+  })
 
   it("does not match nested or malformed content routes", () => {
     expect(
       contentAdminPolicyRoutes.some((route) =>
-        routeMatches(route, "GET", "/admin/news/news_01/extra"),
-      ),
-    ).toBe(false);
+        routeMatches(route, "GET", "/admin/news/news_01/extra")
+      )
+    ).toBe(false)
     expect(
       contentAdminPolicyRoutes.some((route) =>
-        routeMatches(route, "POST", "/admin/discography/disco_01/delete"),
-      ),
-    ).toBe(false);
-  });
-});
+        routeMatches(route, "POST", "/admin/discography/disco_01/delete")
+      )
+    ).toBe(false)
+  })
+})
 
 describe("operations Admin RBAC middleware", () => {
   it.each([
@@ -134,46 +133,46 @@ describe("operations Admin RBAC middleware", () => {
   ])("maps %s %s to %s:%s", (method, path, resource, operation) => {
     expect(policyFor(operationsAdminPolicyRoutes, method, path)).toEqual([
       { operation, resource },
-    ]);
-  });
+    ])
+  })
 
   it("uses distinct read and update capabilities for sensitive actions", () => {
     expect(
-      policyFor(operationsAdminPolicyRoutes, "GET", "/admin/tax-control"),
-    ).toEqual([operationsAdminActions.taxControl.read]);
+      policyFor(operationsAdminPolicyRoutes, "GET", "/admin/tax-control")
+    ).toEqual([operationsAdminActions.taxControl.read])
     expect(
       policyFor(
         operationsAdminPolicyRoutes,
         "POST",
-        "/admin/tax-control/switch",
-      ),
-    ).toEqual([operationsAdminActions.taxControl.update]);
+        "/admin/tax-control/switch"
+      )
+    ).toEqual([operationsAdminActions.taxControl.update])
     expect(
       policyFor(
         operationsAdminPolicyRoutes,
         "POST",
-        "/admin/catalog/media/assets/media_01/quarantine",
-      ),
-    ).toEqual([operationsAdminActions.mediaCleanup.update]);
-  });
+        "/admin/catalog/media/assets/media_01/quarantine"
+      )
+    ).toEqual([operationsAdminActions.mediaCleanup.update])
+  })
 
   it("does not grant a policy to malformed or unsupported operations routes", () => {
     expect(
       operationsAdminPolicyRoutes.some((route) =>
-        routeMatches(route, "POST", "/admin/tax-records/export"),
-      ),
-    ).toBe(false);
+        routeMatches(route, "POST", "/admin/tax-records/export")
+      )
+    ).toBe(false)
     expect(
       operationsAdminPolicyRoutes.some((route) =>
         routeMatches(
           route,
           "POST",
-          "/admin/catalog/media/assets/media_01/purge",
-        ),
-      ),
-    ).toBe(false);
-  });
-});
+          "/admin/catalog/media/assets/media_01/purge"
+        )
+      )
+    ).toBe(false)
+  })
+})
 
 describe("native Admin mutation policy overlays", () => {
   it.each([
@@ -189,12 +188,12 @@ describe("native Admin mutation policy overlays", () => {
     ],
   ])("protects POST %s with the exact update action", (requestPath, action) => {
     expect(
-      policyFor(nativeAdminPolicyOverlayRoutes, "POST", requestPath),
-    ).toEqual([action]);
+      policyFor(nativeAdminPolicyOverlayRoutes, "POST", requestPath)
+    ).toEqual([action])
     expect(policyFor(middlewares.routes ?? [], "POST", requestPath)).toEqual([
       action,
-    ]);
-  });
+    ])
+  })
 
   it.each([
     ["GET", "/admin/products/prod_01"],
@@ -208,28 +207,28 @@ describe("native Admin mutation policy overlays", () => {
   ])("does not overlay unsupported or static %s %s", (method, requestPath) => {
     expect(
       nativeAdminPolicyOverlayRoutes.some((route) =>
-        routeMatches(route, method, requestPath),
-      ),
-    ).toBe(false);
-  });
+        routeMatches(route, method, requestPath)
+      )
+    ).toBe(false)
+  })
 
   it("sorts each overlay before the pinned native validator and handler", () => {
-    const frameworkEntry = require.resolve("@medusajs/framework");
+    const frameworkEntry = require.resolve("@medusajs/framework")
     const routesSorterPath = path.join(
       path.dirname(frameworkEntry),
-      "http/routes-sorter.js",
-    );
-    const medusaEntry = require.resolve("@medusajs/medusa");
+      "http/routes-sorter.js"
+    )
+    const medusaEntry = require.resolve("@medusajs/medusa")
     const productMiddlewarePath = path.join(
       path.dirname(medusaEntry),
-      "api/admin/products/middlewares.js",
-    );
+      "api/admin/products/middlewares.js"
+    )
     const { RoutesSorter } = jest.requireActual<{
-      RoutesSorter: PinnedRouteSorter;
-    }>(routesSorterPath);
+      RoutesSorter: PinnedRouteSorter
+    }>(routesSorterPath)
     const { adminProductRoutesMiddlewares } = jest.requireActual<{
-      adminProductRoutesMiddlewares: MiddlewareRoute[];
-    }>(productMiddlewarePath);
+      adminProductRoutesMiddlewares: MiddlewareRoute[]
+    }>(productMiddlewarePath)
     const cases = [
       {
         requestPath: "/admin/products/prod_01",
@@ -239,23 +238,23 @@ describe("native Admin mutation policy overlays", () => {
         requestPath: "/admin/products/prod_01/variants/variant_01",
         template: "/admin/products/:id/variants/:variant_id",
       },
-    ] as const;
+    ] as const
 
     cases.forEach(({ requestPath, template }) => {
       const overlay = nativeAdminPolicyOverlayRoutes.find((route) =>
-        routeMatches(route, "POST", requestPath),
-      );
+        routeMatches(route, "POST", requestPath)
+      )
       const coreValidator = adminProductRoutesMiddlewares.find((route) => {
         const method = (
           route as MiddlewareRoute & { method?: readonly string[] }
-        ).method;
-        return route.matcher === template && method?.includes("POST");
-      });
-      expect(overlay).toBeDefined();
-      expect(coreValidator).toBeDefined();
-      expect(coreValidator?.policies).toBeUndefined();
+        ).method
+        return route.matcher === template && method?.includes("POST")
+      })
+      expect(overlay).toBeDefined()
+      expect(coreValidator).toBeDefined()
+      expect(coreValidator?.policies).toBeUndefined()
       if (!overlay || !coreValidator) {
-        return;
+        return
       }
 
       const sorted = new RoutesSorter([
@@ -267,24 +266,24 @@ describe("native Admin mutation policy overlays", () => {
           method: "POST",
           marker: "core-handler",
         },
-      ]).sort();
-      const markers = sorted.map(({ marker }) => marker);
+      ]).sort()
+      const markers = sorted.map(({ marker }) => marker)
 
       expect(markers.indexOf("project-overlay")).toBeLessThan(
-        markers.indexOf("core-validator"),
-      );
+        markers.indexOf("core-validator")
+      )
       expect(markers.indexOf("project-overlay")).toBeLessThan(
-        markers.indexOf("core-handler"),
-      );
-    });
-  });
-});
+        markers.indexOf("core-handler")
+      )
+    })
+  })
+})
 
 describe("Admin middleware composition", () => {
   it("applies global security and default no-store headers", () => {
-    const next = jest.fn();
-    const removeHeader = jest.fn();
-    const setHeader = jest.fn();
+    const next = jest.fn()
+    const removeHeader = jest.fn()
+    const setHeader = jest.fn()
 
     applySecurityBoundaryHeaders(
       {
@@ -292,49 +291,49 @@ describe("Admin middleware composition", () => {
         path: "/admin/products",
       } as MedusaRequest,
       { removeHeader, setHeader } as unknown as MedusaResponse,
-      next,
-    );
+      next
+    )
 
-    expect(removeHeader).toHaveBeenCalledWith("X-Powered-By");
-    expect(setHeader).toHaveBeenCalledWith("X-Frame-Options", "DENY");
-    expect(setHeader).toHaveBeenCalledWith("X-Content-Type-Options", "nosniff");
+    expect(removeHeader).toHaveBeenCalledWith("X-Powered-By")
+    expect(setHeader).toHaveBeenCalledWith("X-Frame-Options", "DENY")
+    expect(setHeader).toHaveBeenCalledWith("X-Content-Type-Options", "nosniff")
     expect(setHeader).toHaveBeenCalledWith(
       "Content-Security-Policy",
-      expect.stringContaining("base-uri 'none'"),
-    );
-    expect(setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
-    expect(next).toHaveBeenCalledTimes(1);
-  });
+      expect.stringContaining("base-uri 'none'")
+    )
+    expect(setHeader).toHaveBeenCalledWith("Cache-Control", "no-store")
+    expect(next).toHaveBeenCalledTimes(1)
+  })
 
   it("mounts every manifest policy exactly once", () => {
-    const configuredRoutes = middlewares.routes ?? [];
+    const configuredRoutes = middlewares.routes ?? []
 
     adminAuthorizationManifest.forEach((entry) => {
       const renderedPath = entry.template.replace(
         /:[a-z][a-z0-9_]*/gi,
-        "test_ID-01",
-      );
+        "test_ID-01"
+      )
       expect(policyFor(configuredRoutes, entry.method, renderedPath)).toEqual(
-        entry.policies,
-      );
-    });
-  });
+        entry.policies
+      )
+    })
+  })
 
   it("sorts every generated policy before its matching route handler", () => {
-    const frameworkEntry = require.resolve("@medusajs/framework");
+    const frameworkEntry = require.resolve("@medusajs/framework")
     const routesSorterPath = path.join(
       path.dirname(frameworkEntry),
-      "http/routes-sorter.js",
-    );
+      "http/routes-sorter.js"
+    )
     const { RoutesSorter } = jest.requireActual<{
-      RoutesSorter: PinnedRouteSorter;
-    }>(routesSorterPath);
+      RoutesSorter: PinnedRouteSorter
+    }>(routesSorterPath)
 
     adminAuthorizationManifest.forEach((entry, index) => {
-      const policyRoute = adminAuthorizationPolicyRoutes[index];
-      expect(policyRoute).toBeDefined();
+      const policyRoute = adminAuthorizationPolicyRoutes[index]
+      expect(policyRoute).toBeDefined()
       if (!policyRoute) {
-        return;
+        return
       }
 
       const sorted = new RoutesSorter([
@@ -345,48 +344,48 @@ describe("Admin middleware composition", () => {
           method: entry.method,
           marker: "route-handler",
         },
-      ]).sort();
-      const markers = sorted.map(({ marker }) => marker);
+      ]).sort()
+      const markers = sorted.map(({ marker }) => marker)
 
       expect(markers.indexOf("project-policy")).toBeLessThan(
-        markers.indexOf("route-handler"),
-      );
-    });
-  });
+        markers.indexOf("route-handler")
+      )
+    })
+  })
 
   it("keeps operational rate limits and body limits separate from policies", () => {
-    expect(operationsAdminMiddlewareRoutes).toHaveLength(8);
+    expect(operationsAdminMiddlewareRoutes).toHaveLength(8)
     expect(
       operationsAdminMiddlewareRoutes.every(
-        (route) => !Object.hasOwn(route, "policies"),
-      ),
-    ).toBe(true);
+        (route) => !Object.hasOwn(route, "policies")
+      )
+    ).toBe(true)
     expect(
       operationsAdminMiddlewareRoutes.find(
-        ({ matcher }) => matcher === "/admin/tax-control/switch",
-      )?.bodyParser,
-    ).toEqual({ sizeLimit: "8kb" });
+        ({ matcher }) => matcher === "/admin/tax-control/switch"
+      )?.bodyParser
+    ).toEqual({ sizeLimit: "8kb" })
     expect(
       operationsAdminMiddlewareRoutes.find(
-        ({ matcher }) => matcher === "/admin/tax-control/taxrate-io/refresh",
-      )?.bodyParser,
-    ).toEqual({ sizeLimit: "8kb" });
-  });
+        ({ matcher }) => matcher === "/admin/tax-control/taxrate-io/refresh"
+      )?.bodyParser
+    ).toEqual({ sizeLimit: "8kb" })
+  })
 
   it("shares a bounded raw-body boundary across public form routes", () => {
     const publicFormRoute = (middlewares.routes ?? []).find(
       (route) =>
         route.bodyParser !== undefined &&
         routeMatches(route, "POST", "/store/contact") &&
-        routeMatches(route, "POST", "/store/privacy-request"),
-    );
+        routeMatches(route, "POST", "/store/privacy-request")
+    )
 
-    expect(publicFormRoute?.middlewares).toHaveLength(2);
+    expect(publicFormRoute?.middlewares).toHaveLength(2)
     expect(publicFormRoute?.bodyParser).toEqual({
       preserveRawBody: true,
       sizeLimit: "16kb",
-    });
-  });
+    })
+  })
 
   it.each([
     "/admin/catalog/media/assets/media_01/quarantine",
@@ -394,12 +393,12 @@ describe("Admin middleware composition", () => {
     "/ADMIN/CATALOG/MEDIA/ASSETS/media_01/QuArAnTiNe/",
   ])("rate limits equivalent media lifecycle path %s", (path) => {
     const matches = operationsAdminMiddlewareRoutes.filter((route) =>
-      routeMatches(route, "POST", path),
-    );
+      routeMatches(route, "POST", path)
+    )
 
-    expect(matches).toHaveLength(1);
-    expect(matches[0]?.middlewares).toHaveLength(1);
-  });
+    expect(matches).toHaveLength(1)
+    expect(matches[0]?.middlewares).toHaveLength(1)
+  })
 
   it.each([
     "/admin/catalog/media/assets/media_01/purge",
@@ -409,34 +408,34 @@ describe("Admin middleware composition", () => {
   ])("does not rate limit near media lifecycle path %s", (path) => {
     expect(
       operationsAdminMiddlewareRoutes.some((route) =>
-        routeMatches(route, "POST", path),
-      ),
-    ).toBe(false);
-  });
+        routeMatches(route, "POST", path)
+      )
+    ).toBe(false)
+  })
 
   it("keeps upload parsing after the catalog media rate limiter", () => {
-    const configuredRoutes = middlewares.routes ?? [];
+    const configuredRoutes = middlewares.routes ?? []
     const managedUploadRoute = configuredRoutes.find(
       ({ matcher, methods, middlewares: routeMiddlewares }) =>
         matcher === "/admin/managed-uploads" &&
         methods?.includes("POST") &&
-        routeMiddlewares !== undefined,
-    );
+        routeMiddlewares !== undefined
+    )
     const catalogUploadRoute = configuredRoutes.find(
       ({ matcher, methods, middlewares: routeMiddlewares }) =>
         matcher === "/admin/catalog/media/uploads" &&
         methods?.includes("POST") &&
-        routeMiddlewares !== undefined,
-    );
+        routeMiddlewares !== undefined
+    )
 
-    expect(managedUploadRoute?.policies).toBeUndefined();
-    expect(managedUploadRoute?.middlewares).toHaveLength(2);
-    expect(catalogUploadRoute?.policies).toBeUndefined();
-    expect(catalogUploadRoute?.middlewares).toHaveLength(2);
+    expect(managedUploadRoute?.policies).toBeUndefined()
+    expect(managedUploadRoute?.middlewares).toHaveLength(2)
+    expect(catalogUploadRoute?.policies).toBeUndefined()
+    expect(catalogUploadRoute?.middlewares).toHaveLength(2)
     expect(catalogUploadRoute?.middlewares?.[1]?.name).toBe(
-      managedUploadRoute?.middlewares?.[1]?.name,
-    );
-  });
+      managedUploadRoute?.middlewares?.[1]?.name
+    )
+  })
 
   it.each([
     ["managed upload", "/admin/managed-uploads"],
@@ -444,30 +443,30 @@ describe("Admin middleware composition", () => {
   ])(
     "sorts the %s policy before multipart parsing and the handler",
     (_name, requestPath) => {
-      const frameworkEntry = require.resolve("@medusajs/framework");
+      const frameworkEntry = require.resolve("@medusajs/framework")
       const routesSorterPath = path.join(
         path.dirname(frameworkEntry),
-        "http/routes-sorter.js",
-      );
+        "http/routes-sorter.js"
+      )
       const { RoutesSorter } = jest.requireActual<{
-        RoutesSorter: PinnedRouteSorter;
-      }>(routesSorterPath);
-      const configuredRoutes = middlewares.routes ?? [];
+        RoutesSorter: PinnedRouteSorter
+      }>(routesSorterPath)
+      const configuredRoutes = middlewares.routes ?? []
       const policyRoute = configuredRoutes.find(
         (route) =>
           route.policies !== undefined &&
-          routeMatches(route, "POST", requestPath),
-      );
+          routeMatches(route, "POST", requestPath)
+      )
       const parserRoute = configuredRoutes.find(
         (route) =>
           route.middlewares !== undefined &&
-          routeMatches(route, "POST", requestPath),
-      );
+          routeMatches(route, "POST", requestPath)
+      )
 
-      expect(policyRoute).toBeDefined();
-      expect(parserRoute).toBeDefined();
+      expect(policyRoute).toBeDefined()
+      expect(parserRoute).toBeDefined()
       if (!policyRoute || !parserRoute) {
-        return;
+        return
       }
 
       const sorted = new RoutesSorter([
@@ -479,18 +478,18 @@ describe("Admin middleware composition", () => {
           method: "POST",
           marker: "route-handler",
         },
-      ]).sort();
-      const markers = sorted.map(({ marker }) => marker);
+      ]).sort()
+      const markers = sorted.map(({ marker }) => marker)
 
       expect(markers.indexOf("project-policy")).toBeLessThan(
-        markers.indexOf("multipart-parser"),
-      );
+        markers.indexOf("multipart-parser")
+      )
       expect(markers.indexOf("multipart-parser")).toBeLessThan(
-        markers.indexOf("route-handler"),
-      );
-    },
-  );
-});
+        markers.indexOf("route-handler")
+      )
+    }
+  )
+})
 
 describe("disabled native catalog deletion boundary", () => {
   it.each([
@@ -520,22 +519,29 @@ describe("disabled native catalog deletion boundary", () => {
       "/admin/products/custom-id/variants/custom-variant-id",
       [nativeAdminActions.productVariant.delete],
     ],
-  ])("blocks DELETE %s behind its native delete policies", (requestPath, policies) => {
-    const matches = disabledNativeCatalogDeletionAdminRoutes.filter((route) =>
-      routeMatches(route, "DELETE", requestPath),
-    );
-    expect(matches).toHaveLength(1);
-    expect(matches[0]?.bodyParser).toBe(false);
-    expect(matches[0]?.middlewares).toEqual([
-      rejectUnsafeNativeCatalogDeletion,
-    ]);
-    expect(policyFor(disabledNativeCatalogDeletionAdminRoutes, "DELETE", requestPath)).toEqual(
-      policies,
-    );
-    expect(policyFor(middlewares.routes ?? [], "DELETE", requestPath)).toEqual(
-      policies,
-    );
-  });
+  ])(
+    "blocks DELETE %s behind its native delete policies",
+    (requestPath, policies) => {
+      const matches = disabledNativeCatalogDeletionAdminRoutes.filter((route) =>
+        routeMatches(route, "DELETE", requestPath)
+      )
+      expect(matches).toHaveLength(1)
+      expect(matches[0]?.bodyParser).toBe(false)
+      expect(matches[0]?.middlewares).toEqual([
+        rejectUnsafeNativeCatalogDeletion,
+      ])
+      expect(
+        policyFor(
+          disabledNativeCatalogDeletionAdminRoutes,
+          "DELETE",
+          requestPath
+        )
+      ).toEqual(policies)
+      expect(
+        policyFor(middlewares.routes ?? [], "DELETE", requestPath)
+      ).toEqual(policies)
+    }
+  )
 
   it.each([
     ["GET", "/admin/products/prod_01"],
@@ -551,28 +557,25 @@ describe("disabled native catalog deletion boundary", () => {
   ])("does not intercept unsupported %s %s", (method, requestPath) => {
     expect(
       disabledNativeCatalogDeletionAdminRoutes.some((route) =>
-        routeMatches(route, method, requestPath),
-      ),
-    ).toBe(false);
-  });
+        routeMatches(route, method, requestPath)
+      )
+    ).toBe(false)
+  })
 
   it("returns a private Problem Details response without invoking a handler", () => {
-    const json = jest.fn();
-    const status = jest.fn(() => ({ json }));
-    const setHeader = jest.fn();
-    const type = jest.fn();
+    const json = jest.fn()
+    const status = jest.fn(() => ({ json }))
+    const setHeader = jest.fn()
+    const type = jest.fn()
 
     rejectUnsafeNativeCatalogDeletion(
       { path: "/admin/products/prod_01" } as MedusaRequest,
-      { json, setHeader, status, type } as unknown as MedusaResponse,
-    );
+      { json, setHeader, status, type } as unknown as MedusaResponse
+    )
 
-    expect(setHeader).toHaveBeenCalledWith(
-      "Cache-Control",
-      "private, no-store",
-    );
-    expect(type).toHaveBeenCalledWith("application/problem+json");
-    expect(status).toHaveBeenCalledWith(409);
+    expect(setHeader).toHaveBeenCalledWith("Cache-Control", "private, no-store")
+    expect(type).toHaveBeenCalledWith("application/problem+json")
+    expect(status).toHaveBeenCalledWith(409)
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
         code: "catalog_hard_deletion_disabled",
@@ -584,40 +587,41 @@ describe("disabled native catalog deletion boundary", () => {
         title: "Catalog hard deletion is disabled",
         trace_id: expect.stringMatching(/^[0-9a-f]{32}$/u),
         type: "urn:remorseless-records:problem:catalog-hard-deletion-disabled",
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("sorts the rejection before pinned native handlers", () => {
-    const frameworkEntry = require.resolve("@medusajs/framework");
+    const frameworkEntry = require.resolve("@medusajs/framework")
     const routesSorterPath = path.join(
       path.dirname(frameworkEntry),
-      "http/routes-sorter.js",
-    );
-    const medusaEntry = require.resolve("@medusajs/medusa");
+      "http/routes-sorter.js"
+    )
+    const medusaEntry = require.resolve("@medusajs/medusa")
     const productMiddlewarePath = path.join(
       path.dirname(medusaEntry),
-      "api/admin/products/middlewares.js",
-    );
+      "api/admin/products/middlewares.js"
+    )
     const { RoutesSorter } = jest.requireActual<{
-      RoutesSorter: PinnedRouteSorter;
-    }>(routesSorterPath);
+      RoutesSorter: PinnedRouteSorter
+    }>(routesSorterPath)
     const { adminProductRoutesMiddlewares } = jest.requireActual<{
-      adminProductRoutesMiddlewares: MiddlewareRoute[];
-    }>(productMiddlewarePath);
+      adminProductRoutesMiddlewares: MiddlewareRoute[]
+    }>(productMiddlewarePath)
     const coreDelete = adminProductRoutesMiddlewares.find((route) => {
-      const method = (
-        route as MiddlewareRoute & { method?: readonly string[] }
-      ).method;
-      return route.matcher === "/admin/products/:id" && method?.includes("DELETE");
-    });
+      const method = (route as MiddlewareRoute & { method?: readonly string[] })
+        .method
+      return (
+        route.matcher === "/admin/products/:id" && method?.includes("DELETE")
+      )
+    })
     const projectRejection = disabledNativeCatalogDeletionAdminRoutes.find(
-      (route) => routeMatches(route, "DELETE", "/admin/products/prod_01"),
-    );
-    expect(coreDelete).toBeDefined();
-    expect(projectRejection).toBeDefined();
+      (route) => routeMatches(route, "DELETE", "/admin/products/prod_01")
+    )
+    expect(coreDelete).toBeDefined()
+    expect(projectRejection).toBeDefined()
     if (!coreDelete || !projectRejection) {
-      return;
+      return
     }
 
     const sorted = new RoutesSorter([
@@ -629,67 +633,64 @@ describe("disabled native catalog deletion boundary", () => {
         marker: "core-delete-handler",
       },
       { ...projectRejection, marker: "project-rejection" },
-    ]).sort();
-    const markers = sorted.map(({ marker }) => marker);
+    ]).sort()
+    const markers = sorted.map(({ marker }) => marker)
 
     expect(markers.indexOf("project-rejection")).toBeLessThan(
-      markers.indexOf("core-delete-policy"),
-    );
+      markers.indexOf("core-delete-policy")
+    )
     expect(markers.indexOf("project-rejection")).toBeLessThan(
-      markers.indexOf("core-delete-handler"),
-    );
-  });
-});
+      markers.indexOf("core-delete-handler")
+    )
+  })
+})
 
 describe("product import Admin RBAC middleware", () => {
   const preparePolicies = [
     nativeAdminActions.product.read,
     nativeAdminActions.file.create,
     productImportAdminActions.productImport.create,
-  ];
+  ]
   const confirmPolicies = [
     nativeAdminActions.product.read,
     productImportAdminActions.productImport.update,
-  ];
+  ]
 
   it("uses exact regex matchers for every import route", () => {
     expect(
       productImportAdminPolicyRoutes.every(
-        ({ matcher }) => matcher instanceof RegExp,
-      ),
-    ).toBe(true);
-  });
+        ({ matcher }) => matcher instanceof RegExp
+      )
+    ).toBe(true)
+  })
 
   it("retires both deprecated routes before their core handlers", () => {
     const deprecatedPaths = [
       "/admin/products/import",
       "/admin/products/import/transaction_01/confirm",
-    ];
+    ]
     deprecatedPaths.forEach((path) => {
       const deprecatedRoute = productImportAdminPolicyRoutes.find(
-        ({ matcher }) => matcher instanceof RegExp && matcher.test(path),
-      );
-      expect(deprecatedRoute?.bodyParser).toBe(false);
+        ({ matcher }) => matcher instanceof RegExp && matcher.test(path)
+      )
+      expect(deprecatedRoute?.bodyParser).toBe(false)
       expect(deprecatedRoute?.middlewares).toEqual([
         rejectDeprecatedProductImport,
-      ]);
-    });
+      ])
+    })
 
-    const json = jest.fn();
-    const status = jest.fn(() => ({ json }));
-    const setHeader = jest.fn();
-    const type = jest.fn();
+    const json = jest.fn()
+    const status = jest.fn(() => ({ json }))
+    const setHeader = jest.fn()
+    const type = jest.fn()
     rejectDeprecatedProductImport(
       { path: "/admin/products/import" } as MedusaRequest,
-      { json, setHeader, status, type } as unknown as MedusaResponse,
-    );
+      { json, setHeader, status, type } as unknown as MedusaResponse
+    )
 
-    expect(setHeader).toHaveBeenCalledWith(
-      "Cache-Control",
-      "private, no-store",
-    );
-    expect(type).toHaveBeenCalledWith("application/problem+json");
-    expect(status).toHaveBeenCalledWith(410);
+    expect(setHeader).toHaveBeenCalledWith("Cache-Control", "private, no-store")
+    expect(type).toHaveBeenCalledWith("application/problem+json")
+    expect(status).toHaveBeenCalledWith(410)
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "urn:remorseless-records:problem:deprecated-product-import",
@@ -701,38 +702,38 @@ describe("product import Admin RBAC middleware", () => {
         instance: "/admin/products/import",
         request_id: expect.any(String),
         trace_id: expect.stringMatching(/^[0-9a-f]{32}$/u),
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("sorts the legacy rejection before Medusa's multipart parser", () => {
-    const frameworkEntry = require.resolve("@medusajs/framework");
+    const frameworkEntry = require.resolve("@medusajs/framework")
     const routesSorterPath = path.join(
       path.dirname(frameworkEntry),
-      "http/routes-sorter.js",
-    );
-    const medusaEntry = require.resolve("@medusajs/medusa");
+      "http/routes-sorter.js"
+    )
+    const medusaEntry = require.resolve("@medusajs/medusa")
     const productMiddlewarePath = path.join(
       path.dirname(medusaEntry),
-      "api/admin/products/middlewares.js",
-    );
+      "api/admin/products/middlewares.js"
+    )
     const { RoutesSorter } = jest.requireActual<{
-      RoutesSorter: PinnedRouteSorter;
-    }>(routesSorterPath);
+      RoutesSorter: PinnedRouteSorter
+    }>(routesSorterPath)
     const { adminProductRoutesMiddlewares } = jest.requireActual<{
-      adminProductRoutesMiddlewares: MiddlewareRoute[];
-    }>(productMiddlewarePath);
+      adminProductRoutesMiddlewares: MiddlewareRoute[]
+    }>(productMiddlewarePath)
     const coreMultipartRoute = adminProductRoutesMiddlewares.find(
-      ({ matcher }) => matcher === "/admin/products/import",
-    );
+      ({ matcher }) => matcher === "/admin/products/import"
+    )
     const projectRejectionRoute = productImportAdminPolicyRoutes.find(
       ({ matcher }) =>
-        matcher instanceof RegExp && matcher.test("/admin/products/import"),
-    );
-    expect(coreMultipartRoute).toBeDefined();
-    expect(projectRejectionRoute).toBeDefined();
+        matcher instanceof RegExp && matcher.test("/admin/products/import")
+    )
+    expect(coreMultipartRoute).toBeDefined()
+    expect(projectRejectionRoute).toBeDefined()
     if (!coreMultipartRoute || !projectRejectionRoute) {
-      return;
+      return
     }
 
     const sorted = new RoutesSorter([
@@ -744,16 +745,16 @@ describe("product import Admin RBAC middleware", () => {
         marker: "core-handler",
       },
       { ...projectRejectionRoute, marker: "project-rejection" },
-    ]).sort();
-    const markers = sorted.map(({ marker }) => marker);
+    ]).sort()
+    const markers = sorted.map(({ marker }) => marker)
 
     expect(markers.indexOf("project-rejection")).toBeLessThan(
-      markers.indexOf("core-multipart"),
-    );
+      markers.indexOf("core-multipart")
+    )
     expect(markers.indexOf("project-rejection")).toBeLessThan(
-      markers.indexOf("core-handler"),
-    );
-  });
+      markers.indexOf("core-handler")
+    )
+  })
 
   it.each([
     ["/admin/products/import", preparePolicies],
@@ -766,10 +767,10 @@ describe("product import Admin RBAC middleware", () => {
     ["/Admin/Products/Imports/transaction_01/Confirm/", confirmPolicies],
   ])("protects POST %s with its complete policy set", (path, policies) => {
     expect(policyFor(productImportAdminPolicyRoutes, "POST", path)).toEqual(
-      policies,
-    );
-    expect(policyFor(middlewares.routes ?? [], "POST", path)).toEqual(policies);
-  });
+      policies
+    )
+    expect(policyFor(middlewares.routes ?? [], "POST", path)).toEqual(policies)
+  })
 
   it.each([
     ["GET", "/admin/products/import"],
@@ -781,11 +782,11 @@ describe("product import Admin RBAC middleware", () => {
   ])("does not match unsupported %s %s", (method, path) => {
     expect(
       productImportAdminPolicyRoutes.some((route) =>
-        routeMatches(route, method, path),
-      ),
-    ).toBe(false);
-  });
-});
+        routeMatches(route, method, path)
+      )
+    ).toBe(false)
+  })
+})
 
 describe("distributed rate-limit middleware", () => {
   const policy = {
@@ -793,90 +794,90 @@ describe("distributed rate-limit middleware", () => {
     max: 2,
     windowMs: 60_000,
     onUnavailable: "reject" as const,
-  };
+  }
 
   const request = {
     headers: {},
     method: "POST",
     path: "/store/test",
     socket: { remoteAddress: "192.0.2.80" },
-  } as unknown as MedusaRequest;
+  } as unknown as MedusaRequest
 
   const responseHarness = () => {
-    const json = jest.fn();
-    const status = jest.fn(() => ({ json }));
-    const setHeader = jest.fn();
-    const type = jest.fn();
+    const json = jest.fn()
+    const status = jest.fn(() => ({ json }))
+    const setHeader = jest.fn()
+    const type = jest.fn()
     const response = {
       json,
       locals: {},
       setHeader,
       status,
       type,
-    } as unknown as MedusaResponse;
-    return { json, response, setHeader, status, type };
-  };
+    } as unknown as MedusaResponse
+    return { json, response, setHeader, status, type }
+  }
 
   it("continues only after the distributed decision allows the request", async () => {
     const consume = jest.fn(() =>
-      Promise.resolve({ status: "allowed" as const }),
-    );
-    const next = jest.fn();
-    const { response, status } = responseHarness();
+      Promise.resolve({ status: "allowed" as const })
+    )
+    const next = jest.fn()
+    const { response, status } = responseHarness()
 
-    await createRateLimitMiddleware(policy, consume)(request, response, next);
+    await createRateLimitMiddleware(policy, consume)(request, response, next)
 
-    expect(consume).toHaveBeenCalledWith("192.0.2.80", policy);
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(status).not.toHaveBeenCalled();
-  });
+    expect(consume).toHaveBeenCalledWith("192.0.2.80", policy)
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(status).not.toHaveBeenCalled()
+  })
 
   it("returns a correlated 429 with Retry-After", async () => {
     const consume = jest.fn(() =>
       Promise.resolve({
         status: "limited" as const,
         retryAfterSeconds: 17,
-      }),
-    );
-    const next = jest.fn();
-    const { json, response, setHeader, status, type } = responseHarness();
+      })
+    )
+    const next = jest.fn()
+    const { json, response, setHeader, status, type } = responseHarness()
 
-    await createRateLimitMiddleware(policy, consume)(request, response, next);
+    await createRateLimitMiddleware(policy, consume)(request, response, next)
 
-    expect(next).not.toHaveBeenCalled();
-    expect(setHeader).toHaveBeenCalledWith("Retry-After", "17");
-    expect(type).toHaveBeenCalledWith("application/problem+json");
-    expect(status).toHaveBeenCalledWith(429);
+    expect(next).not.toHaveBeenCalled()
+    expect(setHeader).toHaveBeenCalledWith("Retry-After", "17")
+    expect(type).toHaveBeenCalledWith("application/problem+json")
+    expect(status).toHaveBeenCalledWith(429)
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
         code: "rate_limit_exceeded",
         status: 429,
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("fails closed with a correlated 503 when Redis is unavailable", async () => {
-    const errorLog = jest.spyOn(console, "error").mockImplementation();
+    const errorLog = jest.spyOn(console, "error").mockImplementation()
     const consume = jest.fn(() =>
-      Promise.resolve({ status: "unavailable" as const }),
-    );
-    const next = jest.fn();
-    const { json, response, status } = responseHarness();
+      Promise.resolve({ status: "unavailable" as const })
+    )
+    const next = jest.fn()
+    const { json, response, status } = responseHarness()
 
-    await createRateLimitMiddleware(policy, consume)(request, response, next);
+    await createRateLimitMiddleware(policy, consume)(request, response, next)
 
-    expect(next).not.toHaveBeenCalled();
-    expect(status).toHaveBeenCalledWith(503);
+    expect(next).not.toHaveBeenCalled()
+    expect(status).toHaveBeenCalledWith(503)
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
         code: "rate_limit_unavailable",
         status: 503,
-      }),
-    );
+      })
+    )
     expect(JSON.parse(String(errorLog.mock.calls[0]?.[0]))).toMatchObject({
       event: "rate_limit.unavailable",
       route_class: policy.key,
-    });
-    errorLog.mockRestore();
-  });
-});
+    })
+    errorLog.mockRestore()
+  })
+})

@@ -1,10 +1,10 @@
-import type Stripe from "stripe";
+import type Stripe from "stripe"
 
-import { projectStripeLifecycleEvent } from "./stripe-event";
+import { projectStripeLifecycleEvent } from "./stripe-event"
 
 const eventFixture = (
   type: string,
-  object: Record<string, unknown>,
+  object: Record<string, unknown>
 ): Stripe.Event =>
   ({
     created: 1_750_000_000,
@@ -15,7 +15,7 @@ const eventFixture = (
     pending_webhooks: 1,
     request: null,
     type,
-  }) as unknown as Stripe.Event;
+  }) as unknown as Stripe.Event
 
 describe("Stripe lifecycle event projection", () => {
   it("projects refund receipts without retaining provider payloads", () => {
@@ -28,8 +28,8 @@ describe("Stripe lifecycle event projection", () => {
         payment_intent: "pi_01PAYMENT",
         status: "pending",
         customer_email: "must-not-be-persisted@example.com",
-      }),
-    );
+      })
+    )
 
     expect(projected).toEqual({
       amountMinor: 2_500,
@@ -42,9 +42,9 @@ describe("Stripe lifecycle event projection", () => {
       paymentIntentId: "pi_01PAYMENT",
       providerEventId: "evt_01LIFECYCLE",
       providerObjectStatus: "pending",
-    });
-    expect(JSON.stringify(projected)).not.toContain("example.com");
-  });
+    })
+    expect(JSON.stringify(projected)).not.toContain("example.com")
+  })
 
   it("projects dispute receipts with expandable references", () => {
     const projected = projectStripeLifecycleEvent(
@@ -55,8 +55,8 @@ describe("Stripe lifecycle event projection", () => {
         id: "du_01DISPUTE",
         payment_intent: { id: "pi_01PAYMENT" },
         status: "needs_response",
-      }),
-    );
+      })
+    )
 
     expect(projected).toMatchObject({
       chargeId: "ch_01CHARGE",
@@ -64,16 +64,16 @@ describe("Stripe lifecycle event projection", () => {
       objectId: "du_01DISPUTE",
       paymentIntentId: "pi_01PAYMENT",
       providerObjectStatus: "needs_response",
-    });
-  });
+    })
+  })
 
   it("ignores event types outside the explicit destination allowlist", () => {
     expect(
       projectStripeLifecycleEvent(
-        eventFixture("customer.updated", { id: "cus_01CUSTOMER" }),
-      ),
-    ).toBeNull();
-  });
+        eventFixture("customer.updated", { id: "cus_01CUSTOMER" })
+      )
+    ).toBeNull()
+  })
 
   it("rejects malformed identities inside supported event types", () => {
     expect(() =>
@@ -82,10 +82,10 @@ describe("Stripe lifecycle event projection", () => {
           amount: 100,
           currency: "usd",
           id: "not-a-refund",
-        }),
-      ),
-    ).toThrow("identity is invalid");
-  });
+        })
+      )
+    ).toThrow("identity is invalid")
+  })
 
   it("rejects a non-Stripe dispute object prefix", () => {
     expect(() =>
@@ -95,8 +95,8 @@ describe("Stripe lifecycle event projection", () => {
           currency: "usd",
           id: "dp_01DISPUTE",
           status: "needs_response",
-        }),
-      ),
-    ).toThrow("identity is invalid");
-  });
-});
+        })
+      )
+    ).toThrow("identity is invalid")
+  })
+})

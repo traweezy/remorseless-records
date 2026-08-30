@@ -1,6 +1,10 @@
 import { sanitizeRichTextHtml } from "@/lib/content/rich-text"
 
-export const newsWriteStatusValues = ["draft", "scheduled", "published"] as const
+export const newsWriteStatusValues = [
+  "draft",
+  "scheduled",
+  "published",
+] as const
 export const newsStatusValues = [...newsWriteStatusValues, "archived"] as const
 
 export type NewsStatus = (typeof newsStatusValues)[number]

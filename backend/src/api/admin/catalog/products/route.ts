@@ -14,13 +14,13 @@ const actorIdFromRequest = (req: MedusaRequest): string | null =>
 
 export const POST = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const parsed = catalogProductCreateSchema.safeParse(req.body ?? {})
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid catalog product creation payload.",
+      "Invalid catalog product creation payload."
     )
   }
 

@@ -1,13 +1,13 @@
-import { requestAdminJson } from "../../lib/admin-request";
+import { requestAdminJson } from "../../lib/admin-request"
 import {
   REFUND_OPERATIONS_QUERY_KEY,
   refundOperationsQueryOptions,
   refundOperationsSnapshotSchema,
-} from "./query";
+} from "./query"
 
 jest.mock("../../lib/admin-request", () => ({
   requestAdminJson: jest.fn(),
-}));
+}))
 
 const validSnapshot = {
   cases: [
@@ -53,18 +53,18 @@ const validSnapshot = {
     totalCases: 1,
     verified: 1,
   },
-} as const;
+} as const
 
 describe("refund operations query", () => {
   beforeEach(() => {
-    jest.mocked(requestAdminJson).mockReset();
-  });
+    jest.mocked(requestAdminJson).mockReset()
+  })
 
   it("accepts the complete operations snapshot contract", () => {
     expect(refundOperationsSnapshotSchema.parse(validSnapshot)).toEqual(
-      validSnapshot,
-    );
-  });
+      validSnapshot
+    )
+  })
 
   it("rejects invalid provider and count values", () => {
     expect(() =>
@@ -80,29 +80,29 @@ describe("refund operations query", () => {
           ...validSnapshot.summary,
           totalCases: -1,
         },
-      }),
-    ).toThrow();
-  });
+      })
+    ).toThrow()
+  })
 
   it("uses the shared request boundary and forwards Query cancellation", async () => {
-    jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot);
-    const options = refundOperationsQueryOptions();
-    const controller = new AbortController();
+    jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot)
+    const options = refundOperationsQueryOptions()
+    const controller = new AbortController()
 
     await expect(
       options.queryFn?.({
         meta: undefined,
         queryKey: REFUND_OPERATIONS_QUERY_KEY,
         signal: controller.signal,
-      }),
-    ).resolves.toEqual(validSnapshot);
+      })
+    ).resolves.toEqual(validSnapshot)
 
     expect(requestAdminJson).toHaveBeenCalledWith({
       path: "/admin/refund-operations",
       schema: refundOperationsSnapshotSchema,
       signal: controller.signal,
-    });
-    expect(options.retry).toBe(false);
-    expect(options.staleTime).toBe(0);
-  });
-});
+    })
+    expect(options.retry).toBe(false)
+    expect(options.staleTime).toBe(0)
+  })
+})

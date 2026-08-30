@@ -20,19 +20,25 @@ test("keeps migration and runtime database authorities on separate steps", () =>
   })
 
   assert.equal(plan.length, 4)
-  assert.equal(plan[0]?.environment.DATABASE_URL, environment.DATABASE_MIGRATION_URL)
-  assert.equal(plan[1]?.environment.DATABASE_URL, environment.DATABASE_MIGRATION_URL)
+  assert.equal(
+    plan[0]?.environment.DATABASE_URL,
+    environment.DATABASE_MIGRATION_URL
+  )
+  assert.equal(
+    plan[1]?.environment.DATABASE_URL,
+    environment.DATABASE_MIGRATION_URL
+  )
   assert.equal(plan[2]?.environment.DATABASE_URL, environment.DATABASE_URL)
   assert.equal(plan[3]?.environment.DATABASE_URL, environment.DATABASE_URL)
   assert.ok(
-    plan.every((step) => !("DATABASE_MIGRATION_URL" in step.environment)),
+    plan.every((step) => !("DATABASE_MIGRATION_URL" in step.environment))
   )
   assert.deepEqual(plan[0]?.args, ["exec", "medusa", "db:migrate"])
   assert.ok(
     plan.every(
       (step) =>
-        !step.args.some((argument) => argument.includes("postgresql://")),
-    ),
+        !step.args.some((argument) => argument.includes("postgresql://"))
+    )
   )
 })
 
@@ -60,7 +66,7 @@ test("fails closed when an enforced migration role is absent or reused", () => {
           },
           nodePath: "/usr/bin/node",
         }),
-      /distinct DATABASE_MIGRATION_URL/u,
+      /distinct DATABASE_MIGRATION_URL/u
     )
   }
 })
@@ -75,6 +81,6 @@ test("rejects ambiguous enforcement values", () => {
         },
         nodePath: "/usr/bin/node",
       }),
-    /must be true, false, 1, or 0/u,
+    /must be true, false, 1, or 0/u
   )
 })

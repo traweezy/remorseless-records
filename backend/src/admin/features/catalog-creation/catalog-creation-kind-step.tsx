@@ -1,12 +1,7 @@
 "use client"
 
 import { memo, type MouseEvent } from "react"
-import {
-  ArchiveBox,
-  GiftSolid,
-  ShoppingBag,
-  Sparkles,
-} from "@medusajs/icons"
+import { ArchiveBox, GiftSolid, ShoppingBag, Sparkles } from "@medusajs/icons"
 import { Container, Text } from "@medusajs/ui"
 
 import { AdminSectionHeader } from "../../components/admin-page"
@@ -65,7 +60,7 @@ export const CatalogCreationKindStep = memo<CatalogCreationKindStepProps>(
         })}
       </div>
     </Container>
-  ),
+  )
 )
 
 CatalogCreationKindStep.displayName = "CatalogCreationKindStep"

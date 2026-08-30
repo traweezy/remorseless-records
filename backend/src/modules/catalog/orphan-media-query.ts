@@ -13,7 +13,7 @@ export type OrphanCatalogMediaPage = {
 
 export const buildOrphanCatalogMediaQueries = (
   knex: Knex,
-  input: OrphanCatalogMediaQuery,
+  input: OrphanCatalogMediaQuery
 ): {
   countQuery: Knex.QueryBuilder
   rowsQuery: Knex.QueryBuilder
@@ -24,7 +24,7 @@ export const buildOrphanCatalogMediaQueries = (
       knex("catalog_product_media as media")
         .select(knex.raw("1"))
         .whereRaw("media.media_asset_id = asset.id")
-        .whereNull("media.deleted_at"),
+        .whereNull("media.deleted_at")
     )
   if (input.lifecycleStatus) {
     baseQuery.where("asset.lifecycle_status", input.lifecycleStatus)

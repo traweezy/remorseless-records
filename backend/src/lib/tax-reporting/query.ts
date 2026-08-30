@@ -1,41 +1,41 @@
-import { getOrdersListWorkflow } from "@medusajs/core-flows";
-import type { MedusaContainer } from "@medusajs/framework/types";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
-import { z } from "zod";
+import { getOrdersListWorkflow } from "@medusajs/core-flows"
+import type { MedusaContainer } from "@medusajs/framework/types"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { z } from "zod"
 
-import { TAX_FILING_STATES, type TaxFilingScope } from "./filing-states";
-import type { TaxReportPeriod } from "./periods";
+import { TAX_FILING_STATES, type TaxFilingScope } from "./filing-states"
+import type { TaxReportPeriod } from "./periods"
 import {
   diagnoseTaxProjection,
   projectTaxRecords,
   summarizeDestinations,
   summarizeTaxRecords,
-} from "./projection";
+} from "./projection"
 import type {
   TaxRecord,
   TaxRecordProvider,
   TaxRecordQuality,
   TaxRecordType,
-} from "./types";
+} from "./types"
 
-type UnknownRecord = Record<string, unknown>;
+type UnknownRecord = Record<string, unknown>
 
 type QueryGraph = {
   graph: (input: {
-    entity: string;
-    fields: string[];
-    filters: Record<string, unknown>;
+    entity: string
+    fields: string[]
+    filters: Record<string, unknown>
     pagination: {
-      order: Record<string, "ASC" | "DESC">;
-      skip: number;
-      take: number;
-    };
-  }) => Promise<{ data: UnknownRecord[] }>;
-};
+      order: Record<string, "ASC" | "DESC">
+      skip: number
+      take: number
+    }
+  }) => Promise<{ data: UnknownRecord[] }>
+}
 
-const PAGE_SIZE = 250;
-const MAX_ORDERS = 50_000;
-const PAYMENT_QUERY_CONCURRENCY = 4;
+const PAGE_SIZE = 250
+const MAX_ORDERS = 50_000
+const PAYMENT_QUERY_CONCURRENCY = 4
 
 const ORDER_TOTAL_FIELDS = [
   "id",
@@ -53,7 +53,7 @@ const ORDER_TOTAL_FIELDS = [
   "raw_original_shipping_subtotal",
   "original_shipping_tax_total",
   "raw_original_shipping_tax_total",
-] as const;
+] as const
 
 const PAYMENT_FIELDS = [
   "id",
@@ -70,7 +70,7 @@ const PAYMENT_FIELDS = [
   "refunds.amount",
   "refunds.raw_amount",
   "refunds.created_at",
-] as const;
+] as const
 
 const ORDER_FIELDS = [
   "id",
@@ -139,64 +139,64 @@ const ORDER_FIELDS = [
   "payment_collections.payments.refunds.created_at",
   "payment_collections.captured_amount",
   "payment_collections.raw_captured_amount",
-] as const;
+] as const
 
 const asRecord = (value: unknown): UnknownRecord | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as UnknownRecord)
-    : null;
+    : null
 
 const records = (value: unknown): UnknownRecord[] =>
   Array.isArray(value)
     ? value
         .map(asRecord)
         .filter((record): record is UnknownRecord => record !== null)
-    : [];
+    : []
 
 const text = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null;
+  typeof value === "string" && value.trim() ? value.trim() : null
 
 const workflowRows = (
   result:
     | {
-        rows: unknown[];
+        rows: unknown[]
       }
-    | unknown[],
+    | unknown[]
 ): UnknownRecord[] =>
-  (Array.isArray(result) ? result : result.rows) as UnknownRecord[];
+  (Array.isArray(result) ? result : result.rows) as UnknownRecord[]
 
 const mergeAuthoritativeTotals = ({
   orders,
   totals,
 }: {
-  orders: UnknownRecord[];
-  totals: UnknownRecord[];
+  orders: UnknownRecord[]
+  totals: UnknownRecord[]
 }): UnknownRecord[] => {
   const totalsById = new Map(
     totals.flatMap((order) => {
-      const id = text(order.id);
-      return id ? [[id, order] as const] : [];
-    }),
-  );
+      const id = text(order.id)
+      return id ? [[id, order] as const] : []
+    })
+  )
   return orders.map((order) => {
-    const id = text(order.id);
-    const authoritative = id ? totalsById.get(id) : undefined;
+    const id = text(order.id)
+    const authoritative = id ? totalsById.get(id) : undefined
     if (!id || !authoritative) {
       throw new Error(
-        "Tax report could not load authoritative totals for every order.",
-      );
+        "Tax report could not load authoritative totals for every order."
+      )
     }
     return Object.fromEntries(
       Object.entries(order).concat(
         ORDER_TOTAL_FIELDS.flatMap((field) =>
           field in authoritative
             ? ([[field, authoritative[field]]] as const)
-            : [],
-        ),
-      ),
-    );
-  });
-};
+            : []
+        )
+      )
+    )
+  })
+}
 
 const paymentIdsFrom = (orders: UnknownRecord[]): string[] => [
   ...new Set(
@@ -204,24 +204,24 @@ const paymentIdsFrom = (orders: UnknownRecord[]): string[] => [
       records(order.payment_collections).flatMap((collection) =>
         records(collection.payments)
           .map((payment) => text(payment.id))
-          .filter((id): id is string => id !== null),
-      ),
-    ),
+          .filter((id): id is string => id !== null)
+      )
+    )
   ),
-];
+]
 
 const loadPayments = async ({
   paymentIds,
   query,
 }: {
-  paymentIds: string[];
-  query: QueryGraph;
+  paymentIds: string[]
+  query: QueryGraph
 }): Promise<Map<string, UnknownRecord>> => {
-  const paymentsById = new Map<string, UnknownRecord>();
+  const paymentsById = new Map<string, UnknownRecord>()
   const batches = Array.from(
     { length: Math.ceil(paymentIds.length / PAGE_SIZE) },
-    (_, index) => paymentIds.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE),
-  );
+    (_, index) => paymentIds.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE)
+  )
   for (
     let offset = 0;
     offset < batches.length;
@@ -240,89 +240,89 @@ const loadPayments = async ({
               skip: 0,
               take: ids.length,
             },
-          }),
-        ),
-    );
+          })
+        )
+    )
     for (const { data } of results) {
       for (const payment of data) {
-        const id = text(payment.id);
+        const id = text(payment.id)
         if (id) {
-          paymentsById.set(id, payment);
+          paymentsById.set(id, payment)
         }
       }
     }
   }
   if (paymentIds.some((id) => !paymentsById.has(id))) {
-    throw new Error("Tax report could not load every linked payment record.");
+    throw new Error("Tax report could not load every linked payment record.")
   }
-  return paymentsById;
-};
+  return paymentsById
+}
 
 const hydrateOrderPayments = async ({
   orders,
   query,
 }: {
-  orders: UnknownRecord[];
-  query: QueryGraph;
+  orders: UnknownRecord[]
+  query: QueryGraph
 }): Promise<UnknownRecord[]> => {
-  const paymentIds = paymentIdsFrom(orders);
+  const paymentIds = paymentIdsFrom(orders)
   if (!paymentIds.length) {
-    return orders;
+    return orders
   }
-  const paymentsById = await loadPayments({ paymentIds, query });
+  const paymentsById = await loadPayments({ paymentIds, query })
   return orders.map((order) => ({
     ...order,
     payment_collections: records(order.payment_collections).map(
       (collection) => ({
         ...collection,
         payments: records(collection.payments).map((payment) => {
-          const id = text(payment.id);
-          const hydrated = id ? paymentsById.get(id) : undefined;
-          return hydrated ? { ...payment, ...hydrated } : payment;
+          const id = text(payment.id)
+          const hydrated = id ? paymentsById.get(id) : undefined
+          return hydrated ? { ...payment, ...hydrated } : payment
         }),
-      }),
+      })
     ),
-  }));
-};
+  }))
+}
 
 const relationshipDiagnostics = (
-  orders: UnknownRecord[],
+  orders: UnknownRecord[]
 ): {
-  ordersWithItems: number;
-  ordersWithPaymentCollections: number;
-  ordersWithPayments: number;
-  ordersWithShippingAddress: number;
-  ordersWithSummary: number;
-  paymentCollections: number;
-  payments: number;
+  ordersWithItems: number
+  ordersWithPaymentCollections: number
+  ordersWithPayments: number
+  ordersWithShippingAddress: number
+  ordersWithSummary: number
+  paymentCollections: number
+  payments: number
 } => {
   const collections = orders.flatMap((order) =>
-    records(order.payment_collections),
-  );
+    records(order.payment_collections)
+  )
   const linkedPayments = collections.flatMap((collection) =>
-    records(collection.payments),
-  );
+    records(collection.payments)
+  )
   return {
     ordersWithItems: orders.filter((order) => records(order.items).length > 0)
       .length,
     ordersWithPaymentCollections: orders.filter(
-      (order) => records(order.payment_collections).length > 0,
+      (order) => records(order.payment_collections).length > 0
     ).length,
     ordersWithPayments: orders.filter((order) =>
       records(order.payment_collections).some(
-        (collection) => records(collection.payments).length > 0,
-      ),
+        (collection) => records(collection.payments).length > 0
+      )
     ).length,
     ordersWithShippingAddress: orders.filter(
-      (order) => asRecord(order.shipping_address) !== null,
+      (order) => asRecord(order.shipping_address) !== null
     ).length,
     ordersWithSummary: orders.filter(
-      (order) => asRecord(order.summary) !== null,
+      (order) => asRecord(order.summary) !== null
     ).length,
     paymentCollections: collections.length,
     payments: linkedPayments.length,
-  };
-};
+  }
+}
 
 const filtersSchema = z.object({
   collectionMode: z
@@ -351,18 +351,18 @@ const filtersSchema = z.object({
     .refine((value) => value === "ALL" || /^[A-Z0-9-]{2,8}$/.test(value))
     .default("ALL"),
   type: z.enum(["all", "refund", "sale"]).default("all"),
-});
+})
 
-export type TaxReportFilters = z.infer<typeof filtersSchema>;
+export type TaxReportFilters = z.infer<typeof filtersSchema>
 
 export const parseTaxFilingState = (value: unknown): TaxFilingScope =>
   z
     .enum(["ALL", ...TAX_FILING_STATES])
     .default("ALL")
-    .parse(value);
+    .parse(value)
 
 export const parseTaxReportFilters = (
-  searchParams: URLSearchParams,
+  searchParams: URLSearchParams
 ): TaxReportFilters =>
   filtersSchema.parse({
     collectionMode: searchParams.get("collection_mode") ?? undefined,
@@ -374,18 +374,18 @@ export const parseTaxReportFilters = (
     quality: searchParams.get("quality") ?? undefined,
     state: searchParams.get("state") ?? undefined,
     type: searchParams.get("type") ?? undefined,
-  });
+  })
 
 export const loadTaxReportOrders = async ({
   container,
   period,
 }: {
-  container: MedusaContainer;
-  period: TaxReportPeriod;
+  container: MedusaContainer
+  period: TaxReportPeriod
 }): Promise<{ orders: UnknownRecord[]; truncated: boolean }> => {
-  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY);
-  const orderListWorkflow = getOrdersListWorkflow(container);
-  const orders: UnknownRecord[] = [];
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
+  const orderListWorkflow = getOrdersListWorkflow(container)
+  const orders: UnknownRecord[] = []
 
   while (orders.length < MAX_ORDERS) {
     const variables = {
@@ -393,7 +393,7 @@ export const loadTaxReportOrders = async ({
       order: { created_at: "DESC" as const },
       skip: orders.length,
       take: PAGE_SIZE,
-    };
+    }
     const [{ result }, { result: totalsResult }] = await Promise.all([
       orderListWorkflow.run({
         input: {
@@ -407,65 +407,65 @@ export const loadTaxReportOrders = async ({
           variables,
         },
       }),
-    ]);
+    ])
     const data = mergeAuthoritativeTotals({
       orders: workflowRows(result as { rows: unknown[] } | unknown[]),
       totals: workflowRows(totalsResult as { rows: unknown[] } | unknown[]),
-    });
-    orders.push(...data);
+    })
+    orders.push(...data)
     if (data.length < PAGE_SIZE) {
       return {
         orders: await hydrateOrderPayments({ orders, query }),
         truncated: false,
-      };
+      }
     }
   }
 
   return {
     orders: await hydrateOrderPayments({ orders, query }),
     truncated: true,
-  };
-};
+  }
+}
 
 const matchesFilters = (
   record: TaxRecord,
-  filters: TaxReportFilters,
+  filters: TaxReportFilters
 ): boolean => {
   if (
     filters.collectionMode !== "all" &&
     record.collectionMode !== filters.collectionMode
   ) {
-    return false;
+    return false
   }
   if (
     filters.provider !== "all" &&
     record.provider !== (filters.provider as TaxRecordProvider)
   ) {
-    return false;
+    return false
   }
   if (
     filters.quality !== "all" &&
     record.quality !== (filters.quality as TaxRecordQuality)
   ) {
-    return false;
+    return false
   }
   if (
     filters.type !== "all" &&
     record.type !== (filters.type as TaxRecordType)
   ) {
-    return false;
+    return false
   }
   if (
     filters.state !== "ALL" &&
     record.destination.stateCode !== filters.state
   ) {
-    return false;
+    return false
   }
   if (!filters.q) {
-    return true;
+    return true
   }
 
-  const query = filters.q.toLowerCase();
+  const query = filters.q.toLowerCase()
   return [
     record.displayId,
     record.orderId,
@@ -477,13 +477,13 @@ const matchesFilters = (
   ].some((value) =>
     String(value ?? "")
       .toLowerCase()
-      .includes(query),
-  );
-};
+      .includes(query)
+  )
+}
 
 const recordsForFilingState = (
   records: TaxRecord[],
-  filingState: TaxFilingScope,
+  filingState: TaxFilingScope
 ): TaxRecord[] =>
   filingState === "ALL"
     ? records
@@ -491,34 +491,34 @@ const recordsForFilingState = (
         (record) =>
           (!record.destination.countryCode ||
             record.destination.countryCode === "US") &&
-          record.destination.stateCode === filingState,
-      );
+          record.destination.stateCode === filingState
+      )
 
 const unassignedFilingRecords = (records: TaxRecord[]): TaxRecord[] =>
   records.filter(
     (record) =>
       (!record.destination.countryCode ||
         record.destination.countryCode === "US") &&
-      !record.destination.stateCode,
-  );
+      !record.destination.stateCode
+  )
 
 export const buildTaxReport = async ({
   container,
   filters,
   period,
 }: {
-  container: MedusaContainer;
-  filters: TaxReportFilters;
-  period: TaxReportPeriod;
+  container: MedusaContainer
+  filters: TaxReportFilters
+  period: TaxReportPeriod
 }) => {
-  const loaded = await loadTaxReportOrders({ container, period });
-  const allRecords = projectTaxRecords({ orders: loaded.orders, period });
-  const scopedRecords = recordsForFilingState(allRecords, filters.filingState);
-  const unassignedRecords = unassignedFilingRecords(allRecords);
+  const loaded = await loadTaxReportOrders({ container, period })
+  const allRecords = projectTaxRecords({ orders: loaded.orders, period })
+  const scopedRecords = recordsForFilingState(allRecords, filters.filingState)
+  const unassignedRecords = unassignedFilingRecords(allRecords)
   const filteredRecords = scopedRecords.filter((record) =>
-    matchesFilters(record, filters),
-  );
-  const offset = (filters.page - 1) * filters.limit;
+    matchesFilters(record, filters)
+  )
+  const offset = (filters.page - 1) * filters.limit
 
   return {
     destinations: summarizeDestinations(scopedRecords),
@@ -537,7 +537,7 @@ export const buildTaxReport = async ({
         ...new Set(
           scopedRecords
             .map((record) => record.destination.stateCode)
-            .filter((state): state is string => Boolean(state)),
+            .filter((state): state is string => Boolean(state))
         ),
       ].sort(),
     },
@@ -565,22 +565,22 @@ export const buildTaxReport = async ({
         occurredAt,
         orderId,
       })),
-  };
-};
+  }
+}
 
 export const buildFullTaxReport = async ({
   container,
   filingState = "ALL",
   period,
 }: {
-  container: MedusaContainer;
-  filingState?: TaxFilingScope;
-  period: TaxReportPeriod;
+  container: MedusaContainer
+  filingState?: TaxFilingScope
+  period: TaxReportPeriod
 }) => {
-  const loaded = await loadTaxReportOrders({ container, period });
-  const allRecords = projectTaxRecords({ orders: loaded.orders, period });
-  const records = recordsForFilingState(allRecords, filingState);
-  const unassignedRecords = unassignedFilingRecords(allRecords);
+  const loaded = await loadTaxReportOrders({ container, period })
+  const allRecords = projectTaxRecords({ orders: loaded.orders, period })
+  const records = recordsForFilingState(allRecords, filingState)
+  const unassignedRecords = unassignedFilingRecords(allRecords)
   return {
     destinations: summarizeDestinations(records),
     filingState,
@@ -600,5 +600,5 @@ export const buildFullTaxReport = async ({
       unassignedStateRecords: unassignedRecords.length,
     },
     summaries: summarizeTaxRecords(records),
-  };
-};
+  }
+}

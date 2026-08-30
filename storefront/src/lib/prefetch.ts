@@ -7,7 +7,11 @@ export const shouldBlockPrefetch = (): boolean => {
     return false
   }
 
-  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection
+  const connection = (
+    navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string }
+    }
+  ).connection
 
   if (!connection) {
     return false
@@ -17,5 +21,7 @@ export const shouldBlockPrefetch = (): boolean => {
     return true
   }
 
-  return connection.effectiveType ? SLOW_TYPES.has(connection.effectiveType) : false
+  return connection.effectiveType
+    ? SLOW_TYPES.has(connection.effectiveType)
+    : false
 }

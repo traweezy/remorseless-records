@@ -22,7 +22,7 @@ export const hashCatalogCommand = (value: unknown): string =>
 
 export const deriveCatalogCommandIdempotencyKey = (
   parentIdempotencyKey: string,
-  scope: string,
+  scope: string
 ): string => {
   const digest = createHash("sha256")
     .update(`${parentIdempotencyKey}:${scope}`)

@@ -1,10 +1,10 @@
-import type { RefundCase } from "../../../lib/refund-operations/types";
+import type { RefundCase } from "../../../lib/refund-operations/types"
 import {
   caseLabel,
   filterRefundCases,
   isProviderFilter,
   isStatusFilter,
-} from "./ui-state";
+} from "./ui-state"
 
 const refundCase = ({
   displayId,
@@ -31,7 +31,7 @@ const refundCase = ({
   stripeRefundCount: 1,
   stripeStatuses: ["succeeded"],
   taxStatus: provider === "stripe_tax" ? "verified" : "not_applicable",
-});
+})
 
 const cases = [
   refundCase({
@@ -52,7 +52,7 @@ const cases = [
     reasonLabels: [],
     status: "processing",
   }),
-];
+]
 
 describe("refund operations UI state", () => {
   it("applies search, status, and provider filters in conjunction", () => {
@@ -62,17 +62,17 @@ describe("refund operations UI state", () => {
         provider: "stripe_tax",
         search: "pricing",
         status: "action_required",
-      }),
-    ).toEqual([cases[0]]);
+      })
+    ).toEqual([cases[0]])
     expect(
       filterRefundCases({
         cases,
         provider: "stripe_tax",
         search: "pricing",
         status: "verified",
-      }),
-    ).toEqual([]);
-  });
+      })
+    ).toEqual([])
+  })
 
   it("searches order number, reason, and checkout-recovery label", () => {
     expect(
@@ -81,34 +81,34 @@ describe("refund operations UI state", () => {
         provider: "all",
         search: "43",
         status: "all",
-      }),
-    ).toEqual([cases[1]]);
+      })
+    ).toEqual([cases[1]])
     expect(
       filterRefundCases({
         cases,
         provider: "all",
         search: "customer care",
         status: "all",
-      }),
-    ).toEqual([cases[1]]);
+      })
+    ).toEqual([cases[1]])
     expect(
       filterRefundCases({
         cases,
         provider: "all",
         search: "checkout recovery",
         status: "all",
-      }),
-    ).toEqual([cases[2]]);
-  });
+      })
+    ).toEqual([cases[2]])
+  })
 
   it("rejects unknown select values at the UI boundary", () => {
-    expect(isStatusFilter("processing")).toBe(true);
-    expect(isStatusFilter("refunded")).toBe(false);
-    expect(isProviderFilter("stripe_tax")).toBe(true);
-    expect(isProviderFilter("stripe")).toBe(false);
-  });
+    expect(isStatusFilter("processing")).toBe(true)
+    expect(isStatusFilter("refunded")).toBe(false)
+    expect(isProviderFilter("stripe_tax")).toBe(true)
+    expect(isProviderFilter("stripe")).toBe(false)
+  })
 
   it("uses an explicit label when no order was created", () => {
-    expect(caseLabel(cases[2]!)).toBe("Checkout recovery");
-  });
-});
+    expect(caseLabel(cases[2]!)).toBe("Checkout recovery")
+  })
+})

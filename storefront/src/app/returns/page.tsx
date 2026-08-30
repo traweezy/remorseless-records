@@ -18,7 +18,9 @@ const ReturnsPolicyPage = () => (
     effectiveDate={LEGAL_EFFECTIVE_DATE}
     aside={
       <>
-        <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">Start a return</h2>
+        <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+          Start a return
+        </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Email{" "}
           <a
@@ -34,7 +36,9 @@ const ReturnsPolicyPage = () => (
   >
     <LegalSection title="Return Window and Item Condition">
       <p>
-        Eligible returns must be requested within {legalConfig.returns.windowDays} days from delivery. {legalConfig.returns.condition}
+        Eligible returns must be requested within{" "}
+        {legalConfig.returns.windowDays} days from delivery.{" "}
+        {legalConfig.returns.condition}
       </p>
     </LegalSection>
 
@@ -48,29 +52,36 @@ const ReturnsPolicyPage = () => (
 
     <LegalSection title="Return Shipping and Exchanges">
       <p>
-        Unless an item arrives damaged or incorrect, return shipping is the customer’s responsibility. Exchanges are processed after returned goods are inspected.
+        Unless an item arrives damaged or incorrect, return shipping is the
+        customer’s responsibility. Exchanges are processed after returned goods
+        are inspected.
       </p>
       <p>
-        If replacement stock is unavailable, we issue a refund to the original payment method.
+        If replacement stock is unavailable, we issue a refund to the original
+        payment method.
       </p>
     </LegalSection>
 
     <LegalSection title="Refund Method and Timing">
       <p>
-        Approved refunds are issued to the original payment method. Financial institution posting times vary, but most refunds appear within {legalConfig.returns.refundTimeline}.
+        Approved refunds are issued to the original payment method. Financial
+        institution posting times vary, but most refunds appear within{" "}
+        {legalConfig.returns.refundTimeline}.
       </p>
       <p>
-        Shipping charges are non-refundable unless the return is caused by our fulfillment error.
+        Shipping charges are non-refundable unless the return is caused by our
+        fulfillment error.
       </p>
     </LegalSection>
 
     <LegalSection title="Damaged, Defective, or Wrong Item">
       <p>
-        Report transit damage or fulfillment issues as soon as possible with photos of the product and packaging. We will resolve via replacement, store credit, or refund depending on stock and issue type.
+        Report transit damage or fulfillment issues as soon as possible with
+        photos of the product and packaging. We will resolve via replacement,
+        store credit, or refund depending on stock and issue type.
       </p>
     </LegalSection>
   </LegalPageShell>
 )
 
 export default ReturnsPolicyPage
-

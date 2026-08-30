@@ -1,49 +1,49 @@
-"use client";
+"use client"
 
-import { memo, useCallback, useMemo, type ChangeEvent } from "react";
-import { useForm, useStore, type AnyFieldApi } from "@tanstack/react-form";
-import { Alert, Input, Text, Textarea } from "@medusajs/ui";
+import { memo, useCallback, useMemo, type ChangeEvent } from "react"
+import { useForm, useStore, type AnyFieldApi } from "@tanstack/react-form"
+import { Alert, Input, Text, Textarea } from "@medusajs/ui"
 
-import { TAX_DISABLED_ACKNOWLEDGEMENT } from "../../../modules/tax-control/constants";
+import { TAX_DISABLED_ACKNOWLEDGEMENT } from "../../../modules/tax-control/constants"
 import {
   AdminFormErrorSummary,
   AdminFormSaveState,
   focusFirstAdminFormIssue,
   visibleAdminFormFieldError,
   type AdminSaveState,
-} from "../../components/admin-form-contract";
+} from "../../components/admin-form-contract"
 import {
   AdminFormField,
   type AdminFormControlProps,
-} from "../../components/admin-form-field";
-import { ConfirmAction } from "../../components/confirm-action";
+} from "../../components/admin-form-field"
+import { ConfirmAction } from "../../components/confirm-action"
 import {
   collectionChoiceLabel,
   taxControlTransitionFormSchema,
   taxControlTransitionIssues,
   type CollectionMode,
   type ProviderName,
-} from "./ui-state";
+} from "./ui-state"
 
 export type TaxControlTransitionConfirmation = {
-  acknowledgement?: string;
-  reason: string;
-};
+  acknowledgement?: string
+  reason: string
+}
 
 type TaxControlTransitionPromptProps = {
-  activeCollectionMode: CollectionMode;
-  activeProvider: ProviderName;
+  activeCollectionMode: CollectionMode
+  activeProvider: ProviderName
   impact: {
-    frozenByCollectionMode: Record<CollectionMode, number>;
-    paymentsFinalizing: number;
-    preparedCheckouts: number;
-  };
-  onCancel: () => void;
-  onConfirm: (input: TaxControlTransitionConfirmation) => Promise<void>;
-  pending: boolean;
-  targetCollectionMode: CollectionMode;
-  targetProvider: ProviderName;
-};
+    frozenByCollectionMode: Record<CollectionMode, number>
+    paymentsFinalizing: number
+    preparedCheckouts: number
+  }
+  onCancel: () => void
+  onConfirm: (input: TaxControlTransitionConfirmation) => Promise<void>
+  pending: boolean
+  targetCollectionMode: CollectionMode
+  targetProvider: ProviderName
+}
 
 const fieldError = (field: AnyFieldApi): string | undefined =>
   visibleAdminFormFieldError({
@@ -51,29 +51,28 @@ const fieldError = (field: AnyFieldApi): string | undefined =>
     isTouched: field.state.meta.isTouched,
     isValid: field.state.meta.isValid,
     submissionAttempts: field.form.state.submissionAttempts,
-  });
+  })
 
 type SwitchReasonFieldProps = {
-  autoFocus: boolean;
-  field: AnyFieldApi;
-};
+  autoFocus: boolean
+  field: AnyFieldApi
+}
 
 const SwitchReasonField = memo<SwitchReasonFieldProps>(
   ({ autoFocus, field }) => {
-    const value =
-      typeof field.state.value === "string" ? field.state.value : "";
-    const handleBlur = useCallback(() => field.handleBlur(), [field]);
+    const value = typeof field.state.value === "string" ? field.state.value : ""
+    const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLTextAreaElement>) => {
         const nextValue = (
           event.currentTarget as unknown as {
-            value?: unknown;
+            value?: unknown
           }
-        ).value;
-        field.handleChange(typeof nextValue === "string" ? nextValue : "");
+        ).value
+        field.handleChange(typeof nextValue === "string" ? nextValue : "")
       },
-      [field],
-    );
+      [field]
+    )
     const renderControl = useCallback(
       (controlProps: AdminFormControlProps) => (
         <Textarea
@@ -89,8 +88,8 @@ const SwitchReasonField = memo<SwitchReasonFieldProps>(
           value={value}
         />
       ),
-      [autoFocus, field.name, handleBlur, handleChange, value],
-    );
+      [autoFocus, field.name, handleBlur, handleChange, value]
+    )
 
     return (
       <AdminFormField
@@ -106,30 +105,30 @@ const SwitchReasonField = memo<SwitchReasonFieldProps>(
       >
         {renderControl}
       </AdminFormField>
-    );
-  },
-);
+    )
+  }
+)
 
-SwitchReasonField.displayName = "SwitchReasonField";
+SwitchReasonField.displayName = "SwitchReasonField"
 
 type AcknowledgementFieldProps = {
-  field: AnyFieldApi;
-};
+  field: AnyFieldApi
+}
 
 const AcknowledgementField = memo<AcknowledgementFieldProps>(({ field }) => {
-  const value = typeof field.state.value === "string" ? field.state.value : "";
-  const handleBlur = useCallback(() => field.handleBlur(), [field]);
+  const value = typeof field.state.value === "string" ? field.state.value : ""
+  const handleBlur = useCallback(() => field.handleBlur(), [field])
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const nextValue = (
         event.currentTarget as unknown as {
-          value?: unknown;
+          value?: unknown
         }
-      ).value;
-      field.handleChange(typeof nextValue === "string" ? nextValue : "");
+      ).value
+      field.handleChange(typeof nextValue === "string" ? nextValue : "")
     },
-    [field],
-  );
+    [field]
+  )
   const renderControl = useCallback(
     (controlProps: AdminFormControlProps) => (
       <Input
@@ -144,8 +143,8 @@ const AcknowledgementField = memo<AcknowledgementFieldProps>(({ field }) => {
         value={value}
       />
     ),
-    [field.name, handleBlur, handleChange, value],
-  );
+    [field.name, handleBlur, handleChange, value]
+  )
 
   return (
     <AdminFormField
@@ -156,14 +155,14 @@ const AcknowledgementField = memo<AcknowledgementFieldProps>(({ field }) => {
     >
       {renderControl}
     </AdminFormField>
-  );
-});
+  )
+})
 
-AcknowledgementField.displayName = "AcknowledgementField";
+AcknowledgementField.displayName = "AcknowledgementField"
 
 const renderAcknowledgementField = (field: AnyFieldApi) => (
   <AcknowledgementField field={field} />
-);
+)
 
 export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
   ({
@@ -178,45 +177,45 @@ export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
   }) => {
     const schema = useMemo(
       () => taxControlTransitionFormSchema(targetCollectionMode),
-      [targetCollectionMode],
-    );
+      [targetCollectionMode]
+    )
     const form = useForm({
       defaultValues: {
         acknowledgement: "",
         reason: "",
       },
       onSubmit: async ({ value }) => {
-        const parsed = schema.parse(value);
+        const parsed = schema.parse(value)
         await onConfirm(
           targetCollectionMode === "disabled"
             ? {
                 acknowledgement: parsed.acknowledgement,
                 reason: parsed.reason,
               }
-            : { reason: parsed.reason },
-        );
+            : { reason: parsed.reason }
+        )
       },
       validators: {
         onBlur: schema,
         onChange: schema,
       },
-    });
+    })
     const formState = useStore(form.store, (state) => ({
       canSubmit: state.canSubmit,
       isPristine: state.isPristine,
       isSubmitting: state.isSubmitting,
       submissionAttempts: state.submissionAttempts,
       values: state.values,
-    }));
-    const busy = pending || formState.isSubmitting;
+    }))
+    const busy = pending || formState.isSubmitting
     const currentChoice = collectionChoiceLabel(
       activeCollectionMode,
-      activeProvider,
-    );
+      activeProvider
+    )
     const targetChoice = collectionChoiceLabel(
       targetCollectionMode,
-      targetProvider,
-    );
+      targetProvider
+    )
 
     const renderReasonField = useCallback(
       (field: AnyFieldApi) => (
@@ -225,37 +224,30 @@ export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
           field={field}
         />
       ),
-      [targetCollectionMode],
-    );
+      [targetCollectionMode]
+    )
     const handleConfirm = useCallback(async () => {
-      await form.handleSubmit();
+      await form.handleSubmit()
       if (!form.state.canSubmit) {
         focusFirstAdminFormIssue(
-          taxControlTransitionIssues(targetCollectionMode, form.state.values),
-        );
+          taxControlTransitionIssues(targetCollectionMode, form.state.values)
+        )
       }
-    }, [form, targetCollectionMode]);
+    }, [form, targetCollectionMode])
     const formIssues = useMemo(
       () =>
         formState.submissionAttempts > 0
-          ? taxControlTransitionIssues(
-              targetCollectionMode,
-              formState.values,
-            )
+          ? taxControlTransitionIssues(targetCollectionMode, formState.values)
           : [],
-      [
-        formState.submissionAttempts,
-        formState.values,
-        targetCollectionMode,
-      ],
-    );
+      [formState.submissionAttempts, formState.values, targetCollectionMode]
+    )
     const saveState: AdminSaveState = busy
       ? "saving"
       : formState.submissionAttempts > 0 && !formState.canSubmit
         ? "error"
         : formState.isPristine
           ? "idle"
-          : "dirty";
+          : "dirty"
 
     return (
       <ConfirmAction
@@ -335,8 +327,8 @@ export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
           title="Review this tax decision"
         />
       </ConfirmAction>
-    );
-  },
-);
+    )
+  }
+)
 
-TaxControlTransitionPrompt.displayName = "TaxControlTransitionPrompt";
+TaxControlTransitionPrompt.displayName = "TaxControlTransitionPrompt"

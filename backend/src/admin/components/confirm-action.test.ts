@@ -1,4 +1,4 @@
-import { getConfirmActionState } from "./confirm-action";
+import { getConfirmActionState } from "./confirm-action"
 
 describe("getConfirmActionState", () => {
   it("keeps a guarded action disabled until the caller is ready", () => {
@@ -9,13 +9,13 @@ describe("getConfirmActionState", () => {
         pending: false,
         pendingAnnouncement: undefined,
         pendingLabel: undefined,
-      }),
+      })
     ).toEqual({
       announcement: "",
       disabled: true,
       label: "Publish post",
-    });
-  });
+    })
+  })
 
   it("locks the action and exposes explicit pending copy", () => {
     expect(
@@ -25,13 +25,13 @@ describe("getConfirmActionState", () => {
         pending: true,
         pendingAnnouncement: "Switching tax provider",
         pendingLabel: "Switching…",
-      }),
+      })
     ).toEqual({
       announcement: "Switching tax provider",
       disabled: true,
       label: "Switching…",
-    });
-  });
+    })
+  })
 
   it("enables a valid idle action", () => {
     expect(
@@ -41,11 +41,11 @@ describe("getConfirmActionState", () => {
         pending: false,
         pendingAnnouncement: undefined,
         pendingLabel: undefined,
-      }),
+      })
     ).toEqual({
       announcement: "",
       disabled: false,
       label: "Save shelf",
-    });
-  });
-});
+    })
+  })
+})

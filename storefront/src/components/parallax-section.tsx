@@ -11,7 +11,11 @@ type ParallaxSectionProps = {
   className?: string
 }
 
-export const ParallaxSection = ({ children, speed = 0.3, className }: ParallaxSectionProps) => {
+export const ParallaxSection = ({
+  children,
+  speed = 0.3,
+  className,
+}: ParallaxSectionProps) => {
   const ref = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: ref,

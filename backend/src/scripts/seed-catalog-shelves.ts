@@ -154,7 +154,9 @@ const loadInitialProducts = async (
     )
   }
 
-  return products.filter((product): product is ProductSummary => Boolean(product))
+  return products.filter((product): product is ProductSummary =>
+    Boolean(product)
+  )
 }
 
 export default async function seedCatalogShelves({

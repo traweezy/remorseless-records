@@ -28,15 +28,15 @@ export const POST = async (
     }
   })()
   const files = validateManagedUploads(
-    (req.files as Express.Multer.File[] | undefined) ?? [],
+    (req.files as Express.Multer.File[] | undefined) ?? []
   )
   const imageFiles = files.filter(({ mimetype }) =>
-    managedImageMimeTypes.has(mimetype),
+    managedImageMimeTypes.has(mimetype)
   )
   if (imageFiles.length && imageFiles.length !== files.length) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Image and CSV uploads must use separate requests.",
+      "Image and CSV uploads must use separate requests."
     )
   }
   const fileService = req.scope.resolve<FileTypes.IFileModuleService>(
@@ -57,7 +57,7 @@ export const POST = async (
           file_count: imageFiles.length,
           result: "rejected",
           route_class: "admin:managed-upload",
-        }),
+        })
       )
       throw error
     }
@@ -69,11 +69,11 @@ export const POST = async (
         input_bytes: imageFiles.reduce((total, file) => total + file.size, 0),
         output_bytes: normalizedImages.reduce(
           (total, file) => total + file.size,
-          0,
+          0
         ),
         result: "accepted",
         route_class: "admin:managed-upload",
-      }),
+      })
     )
   }
   const uploadInputs = normalizedImages.length
@@ -89,8 +89,6 @@ export const POST = async (
         filename: `managed-${randomUUID()}-${index}.csv`,
         mimeType: "text/csv",
       }))
-  const result = await fileService.createFiles(
-    uploadInputs,
-  )
+  const result = await fileService.createFiles(uploadInputs)
   res.status(200).json({ files: result })
 }

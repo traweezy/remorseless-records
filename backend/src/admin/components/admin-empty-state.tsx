@@ -1,27 +1,23 @@
-"use client";
+"use client"
 
 import {
   memo,
   useId,
   type ComponentPropsWithoutRef,
   type ReactNode,
-} from "react";
-import {
-  Heading,
-  Text,
-  clx,
-} from "@medusajs/ui";
+} from "react"
+import { Heading, Text, clx } from "@medusajs/ui"
 
 export type AdminEmptyStateProps = Omit<
   ComponentPropsWithoutRef<"div">,
   "aria-describedby" | "aria-labelledby" | "role" | "title"
 > & {
-  action?: ReactNode;
-  description: ReactNode;
-  headingLevel?: "h2" | "h3";
-  icon?: ReactNode;
-  title: ReactNode;
-};
+  action?: ReactNode
+  description: ReactNode
+  headingLevel?: "h2" | "h3"
+  icon?: ReactNode
+  title: ReactNode
+}
 
 export const AdminEmptyState = memo<AdminEmptyStateProps>(
   ({
@@ -33,8 +29,8 @@ export const AdminEmptyState = memo<AdminEmptyStateProps>(
     title,
     ...props
   }) => {
-    const headingId = useId();
-    const descriptionId = useId();
+    const headingId = useId()
+    const descriptionId = useId()
 
     return (
       <div
@@ -43,7 +39,7 @@ export const AdminEmptyState = memo<AdminEmptyStateProps>(
         aria-labelledby={headingId}
         className={clx(
           "flex min-h-52 flex-col items-center justify-center px-6 py-10 text-center",
-          className,
+          className
         )}
         role="status"
       >
@@ -68,8 +64,8 @@ export const AdminEmptyState = memo<AdminEmptyStateProps>(
         </Text>
         {action ? <div className="mt-4">{action}</div> : null}
       </div>
-    );
-  },
-);
+    )
+  }
+)
 
-AdminEmptyState.displayName = "AdminEmptyState";
+AdminEmptyState.displayName = "AdminEmptyState"

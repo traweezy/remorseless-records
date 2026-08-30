@@ -14,8 +14,8 @@ const responseSchema = z.object({
 const createClient = (
   implementation: (
     input: Parameters<AdminSdkClient["fetch"]>[0],
-    init?: FetchArgs,
-  ) => Promise<unknown>,
+    init?: FetchArgs
+  ) => Promise<unknown>
 ): AdminSdkClient => ({
   fetch: jest.fn(implementation) as AdminSdkClient["fetch"],
 })
@@ -32,7 +32,7 @@ describe("requestAdminJson", () => {
         path: "/admin/example",
         query: { limit: 25 },
         schema: responseSchema,
-      }),
+      })
     ).resolves.toEqual({ value: "ok" })
 
     expect(client.fetch).toHaveBeenCalledWith(
@@ -42,7 +42,7 @@ describe("requestAdminJson", () => {
         method: "POST",
         query: { limit: 25 },
         signal: expect.any(AbortSignal),
-      }),
+      })
     )
   })
 
@@ -54,7 +54,7 @@ describe("requestAdminJson", () => {
         client,
         path: "/admin/example",
         schema: responseSchema,
-      }),
+      })
     ).rejects.toMatchObject({
       kind: "invalid-response",
       message: "The server returned an unexpected response.",
@@ -71,7 +71,7 @@ describe("requestAdminJson", () => {
         client,
         path: "/admin/example",
         schema: responseSchema,
-      }),
+      })
     ).rejects.toMatchObject({
       kind: "http",
       message: "The asset changed.",
@@ -88,9 +88,9 @@ describe("requestAdminJson", () => {
             () => {
               reject(new DOMException("Aborted", "AbortError"))
             },
-            { once: true },
+            { once: true }
           )
-        }),
+        })
     )
 
     await expect(
@@ -99,7 +99,7 @@ describe("requestAdminJson", () => {
         path: "/admin/example",
         schema: responseSchema,
         timeoutMs: 1,
-      }),
+      })
     ).rejects.toMatchObject({
       kind: "timeout",
       message: "The request took too long. Try again.",
@@ -119,7 +119,7 @@ describe("requestAdminJson", () => {
         path: "/admin/example",
         schema: responseSchema,
         signal: controller.signal,
-      }),
+      })
     ).rejects.toBeInstanceOf(AdminRequestError)
     await expect(
       requestAdminJson({
@@ -127,7 +127,7 @@ describe("requestAdminJson", () => {
         path: "/admin/example",
         schema: responseSchema,
         signal: controller.signal,
-      }),
+      })
     ).rejects.toMatchObject({
       kind: "cancelled",
       message: "The request was cancelled.",
@@ -143,9 +143,9 @@ describe("requestAdminJson", () => {
         path: "/admin/example",
         schema: responseSchema,
         timeoutMs: 0,
-      }),
+      })
     ).rejects.toThrow(
-      new RangeError("Admin request timeout must be a positive integer"),
+      new RangeError("Admin request timeout must be a positive integer")
     )
   })
 })

@@ -3,26 +3,26 @@ import type {
   ILockingModule,
   Logger,
   MedusaContainer,
-} from "@medusajs/framework/types";
-import { Modules } from "@medusajs/framework/utils";
+} from "@medusajs/framework/types"
+import { Modules } from "@medusajs/framework/utils"
 
 import {
   CART_RETENTION_JOB_LOCK,
   removeExpiredAnonymousCarts,
   resolveCartRetentionConfig,
-} from "../lib/cart-retention";
-import { writeRetentionJobEvent } from "../lib/observability/retention-job";
+} from "../lib/cart-retention"
+import { writeRetentionJobEvent } from "../lib/observability/retention-job"
 
 export default async function removeExpiredAnonymousCartsJob(
-  container: MedusaContainer,
+  container: MedusaContainer
 ) {
-  const logger = container.resolve<Logger>("logger");
-  const runId = randomUUID();
-  const startedAt = new Date();
-  const timingStartedAt = performance.now();
+  const logger = container.resolve<Logger>("logger")
+  const runId = randomUUID()
+  const startedAt = new Date()
+  const timingStartedAt = performance.now()
 
   try {
-    const retentionConfig = resolveCartRetentionConfig();
+    const retentionConfig = resolveCartRetentionConfig()
     if (!retentionConfig.enabled) {
       await writeRetentionJobEvent({
         input: {
@@ -37,12 +37,12 @@ export default async function removeExpiredAnonymousCartsJob(
         },
         level: "info",
         logger,
-      });
-      return;
+      })
+      return
     }
 
-    const cartService = container.resolve<ICartModuleService>(Modules.CART);
-    const lockingService = container.resolve<ILockingModule>(Modules.LOCKING);
+    const cartService = container.resolve<ICartModuleService>(Modules.CART)
+    const lockingService = container.resolve<ILockingModule>(Modules.LOCKING)
     const result = await lockingService.execute(
       CART_RETENTION_JOB_LOCK,
       () =>
@@ -51,8 +51,8 @@ export default async function removeExpiredAnonymousCartsJob(
           lockingService,
           config: retentionConfig,
         }),
-      { timeout: 5 },
-    );
+      { timeout: 5 }
+    )
     await writeRetentionJobEvent({
       input: {
         capped: result.capped,
@@ -68,7 +68,7 @@ export default async function removeExpiredAnonymousCartsJob(
       },
       level: result.capped ? "warn" : "info",
       logger,
-    });
+    })
   } catch (error) {
     await writeRetentionJobEvent({
       input: {
@@ -80,14 +80,14 @@ export default async function removeExpiredAnonymousCartsJob(
       },
       level: "error",
       logger,
-    });
-    throw error;
+    })
+    throw error
   }
 }
 
 export const config = {
   name: "remove-expired-anonymous-carts",
   schedule: "17 4 * * *",
-};
-import { randomUUID } from "node:crypto";
-import { performance } from "node:perf_hooks";
+}
+import { randomUUID } from "node:crypto"
+import { performance } from "node:perf_hooks"

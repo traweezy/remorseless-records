@@ -18,7 +18,7 @@ const nullableDateSchema = z
   .max(100)
   .refine(
     (value) => value.length === 0 || Number.isFinite(Date.parse(value)),
-    "Invalid date.",
+    "Invalid date."
   )
   .optional()
   .nullable()

@@ -1,10 +1,10 @@
-import { model } from "@medusajs/framework/utils";
+import { model } from "@medusajs/framework/utils"
 
 import {
   taxCollectionModes,
   taxProviderNames,
   taxQuoteEvidenceStatuses,
-} from "../constants";
+} from "../constants"
 
 const TaxQuoteEvidence = model.define(
   {
@@ -29,7 +29,7 @@ const TaxQuoteEvidence = model.define(
     tax_transaction_id: model.text().nullable(),
     association_status: model.text().nullable(),
     metadata: model.json().default({}),
-  },
-);
+  }
+)
 
-export default TaxQuoteEvidence;
+export default TaxQuoteEvidence

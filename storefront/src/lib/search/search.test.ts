@@ -239,11 +239,9 @@ describe("searchProductsWithClient", () => {
       controller.signal
     )
 
-    expect(index.search).toHaveBeenCalledWith(
-      "deadline",
-      expect.any(Object),
-      { signal: controller.signal }
-    )
+    expect(index.search).toHaveBeenCalledWith("deadline", expect.any(Object), {
+      signal: controller.signal,
+    })
   })
 
   it.each([

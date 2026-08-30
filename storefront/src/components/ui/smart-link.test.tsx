@@ -47,7 +47,10 @@ class MockIntersectionObserver implements IntersectionObserver {
   observe: (target: Element) => void
   disconnect: () => void
 
-  constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+  constructor(
+    callback: IntersectionObserverCallback,
+    options?: IntersectionObserverInit
+  ) {
     this.rootMargin = options?.rootMargin ?? "0px"
     const observeSpy = vi.fn()
     const disconnectSpy = vi.fn()
@@ -87,13 +90,19 @@ describe("SmartLink", () => {
   it("renders normalized href and forwards refs", () => {
     const href = `${faker.internet.url()}  `
     const ref = createRef<HTMLAnchorElement>()
-    render(<SmartLink href={href}>Open</SmartLink>, { wrapper: ({ children }) => <>{children}</> })
+    render(<SmartLink href={href}>Open</SmartLink>, {
+      wrapper: ({ children }) => <>{children}</>,
+    })
 
     const link = screen.getByRole("link", { name: "Open" })
     expect(link).toHaveAttribute("href", href.trim())
     expect(link).toHaveAttribute("data-prefetch", "true")
 
-    render(<SmartLink href={href} ref={ref}>Open 2</SmartLink>)
+    render(
+      <SmartLink href={href} ref={ref}>
+        Open 2
+      </SmartLink>
+    )
     expect(ref.current).toBe(screen.getByRole("link", { name: "Open 2" }))
   })
 
@@ -120,7 +129,10 @@ describe("SmartLink", () => {
   it("prefetches via intersection observer and disconnects", () => {
     const href = faker.internet.url()
     render(
-      <SmartLink href={href} preloadOffset={faker.number.int({ min: 120, max: 320 })}>
+      <SmartLink
+        href={href}
+        preloadOffset={faker.number.int({ min: 120, max: 320 })}
+      >
         Observe
       </SmartLink>
     )

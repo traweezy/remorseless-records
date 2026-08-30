@@ -41,7 +41,7 @@ const renderBoundary = ({
       >
         <div>Protected news content</div>
       </AdminPermissionBoundary>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   )
   queryClient.clear()
   return markup
@@ -139,7 +139,7 @@ describe("AdminPermissionBoundary", () => {
         >
           <div>Protected news content</div>
         </AdminPermissionBoundary>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     )
     queryClient.clear()
 

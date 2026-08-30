@@ -1,40 +1,40 @@
-import type { CreateNotificationDTO } from "@medusajs/framework/types";
+import type { CreateNotificationDTO } from "@medusajs/framework/types"
 
-import { formatCurrencyAmount } from "../../modules/email-notifications/currency";
-import { emailIdempotencyFields } from "../../modules/email-notifications/idempotency";
+import { formatCurrencyAmount } from "../../modules/email-notifications/currency"
+import { emailIdempotencyFields } from "../../modules/email-notifications/idempotency"
 
 type RefundNotificationRefund = {
-  amount: unknown;
-  id: string;
-  note?: string | null;
-};
+  amount: unknown
+  id: string
+  note?: string | null
+}
 
 export type RefundNotificationContext = {
-  currencyCode: string;
-  customerId: string | null;
-  email: string;
-  referenceLabel: string;
-  refunds: RefundNotificationRefund[];
-  resourceId: string;
-  resourceType: "cart" | "order";
-};
+  currencyCode: string
+  customerId: string | null
+  email: string
+  referenceLabel: string
+  refunds: RefundNotificationRefund[]
+  resourceId: string
+  resourceType: "cart" | "order"
+}
 
 export const buildRefundNotificationPayloads = ({
   context,
   template,
 }: {
-  context: RefundNotificationContext;
-  template: string;
+  context: RefundNotificationContext
+  template: string
 }): CreateNotificationDTO[] =>
   context.refunds.flatMap((refund) => {
     const formattedAmount = formatCurrencyAmount(
       refund.amount,
-      context.currencyCode,
-    );
+      context.currencyCode
+    )
     if (!formattedAmount || !refund.id.trim() || !context.email.trim()) {
-      return [];
+      return []
     }
-    const idempotencyKey = `refund-issued:${refund.id}`;
+    const idempotencyKey = `refund-issued:${refund.id}`
     return [
       {
         ...emailIdempotencyFields(idempotencyKey),
@@ -55,5 +55,5 @@ export const buildRefundNotificationPayloads = ({
         to: context.email,
         trigger_type: "payment.refunded",
       },
-    ];
-  });
+    ]
+  })

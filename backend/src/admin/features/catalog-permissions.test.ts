@@ -8,12 +8,12 @@ import {
 } from "./catalog-permissions"
 
 const permissionKeys = (
-  actions: readonly { operation: string; resource: string }[],
+  actions: readonly { operation: string; resource: string }[]
 ): string[] => actions.map(adminPermissionKey)
 
 const expectExactPermissions = (
   actions: readonly { operation: string; resource: string }[],
-  expected: readonly string[],
+  expected: readonly string[]
 ): void => {
   const keys = permissionKeys(actions)
 

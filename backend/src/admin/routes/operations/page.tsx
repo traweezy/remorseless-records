@@ -58,7 +58,7 @@ const OperationsWorkspaceCard = memo<OperationsWorkspaceCardProps>(
         </Button>
       </div>
     </Container>
-  ),
+  )
 )
 
 OperationsWorkspaceCard.displayName = "OperationsWorkspaceCard"
@@ -66,13 +66,13 @@ OperationsWorkspaceCard.displayName = "OperationsWorkspaceCard"
 const OperationsPageContent = memo(() => {
   const permissions = useAdminPermissions()
   const canReadTaxRecords = permissions.hasPermission(
-    operationsAdminActions.taxRecords.read,
+    operationsAdminActions.taxRecords.read
   )
   const canReadRefunds = permissions.hasPermission(
-    operationsAdminActions.refundOperations.read,
+    operationsAdminActions.refundOperations.read
   )
   const canReadMediaCleanup = permissions.hasPermission(
-    operationsAdminActions.mediaCleanup.read,
+    operationsAdminActions.mediaCleanup.read
   )
   const workspaceCount =
     Number(canReadTaxRecords) +
@@ -86,15 +86,13 @@ const OperationsPageContent = memo(() => {
           description="Review financial records, resolve refund exceptions, and keep managed catalog media orderly."
           status={
             <Text className="text-ui-fg-subtle" size="small">
-              {workspaceCount} {workspaceCount === 1 ? "workspace" : "workspaces"}
+              {workspaceCount}{" "}
+              {workspaceCount === 1 ? "workspace" : "workspaces"}
             </Text>
           }
           title="Operations"
         />
-        <OperationsWorkspaceNavigation
-          active="overview"
-          className="mt-5"
-        />
+        <OperationsWorkspaceNavigation active="overview" className="mt-5" />
       </Container>
 
       <section

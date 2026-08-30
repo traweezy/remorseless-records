@@ -1,18 +1,18 @@
-import { CreateInventoryLevelInput, ExecArgs } from "@medusajs/framework/types";
+import { CreateInventoryLevelInput, ExecArgs } from "@medusajs/framework/types"
 import {
   ContainerRegistrationKeys,
   Modules,
   ProductStatus,
   MedusaError,
-} from "@medusajs/framework/utils";
+} from "@medusajs/framework/utils"
 
 const ensure = <T>(value: T | null | undefined, message: string): T => {
   if (value === null || value === undefined) {
-    throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, message);
+    throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, message)
   }
 
-  return value;
-};
+  return value
+}
 import {
   createApiKeysWorkflow,
   createInventoryLevelsWorkflow,
@@ -27,25 +27,25 @@ import {
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
   updateStoresWorkflow,
-} from "@medusajs/medusa/core-flows";
+} from "@medusajs/medusa/core-flows"
 
 export default async function seedDemoData({ container }: ExecArgs) {
-  const logger = container.resolve(ContainerRegistrationKeys.LOGGER);
-  const link = container.resolve(ContainerRegistrationKeys.LINK);
-  const query = container.resolve(ContainerRegistrationKeys.QUERY);
-  const fulfillmentModuleService = container.resolve(Modules.FULFILLMENT);
-  const salesChannelModuleService = container.resolve(Modules.SALES_CHANNEL);
-  const storeModuleService = container.resolve(Modules.STORE);
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+  const link = container.resolve(ContainerRegistrationKeys.LINK)
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const fulfillmentModuleService = container.resolve(Modules.FULFILLMENT)
+  const salesChannelModuleService = container.resolve(Modules.SALES_CHANNEL)
+  const storeModuleService = container.resolve(Modules.STORE)
 
-  const countries = ["gb", "de", "dk", "se", "fr", "es", "it"];
+  const countries = ["gb", "de", "dk", "se", "fr", "es", "it"]
 
-  logger.info("Seeding store data...");
-  const storeList = await storeModuleService.listStores();
-  const store = ensure(storeList[0], "Store record not found");
+  logger.info("Seeding store data...")
+  const storeList = await storeModuleService.listStores()
+  const store = ensure(storeList[0], "Store record not found")
 
   let salesChannels = await salesChannelModuleService.listSalesChannels({
     name: "Default Sales Channel",
-  });
+  })
 
   if (!salesChannels.length) {
     // create the default sales channel
@@ -59,14 +59,14 @@ export default async function seedDemoData({ container }: ExecArgs) {
           },
         ],
       },
-    });
-    salesChannels = salesChannelResult;
+    })
+    salesChannels = salesChannelResult
   }
 
   const defaultSalesChannel = ensure(
     salesChannels[0],
     "Default sales channel not initialized"
-  );
+  )
 
   await updateStoresWorkflow(container).run({
     input: {
@@ -84,8 +84,8 @@ export default async function seedDemoData({ container }: ExecArgs) {
         default_sales_channel_id: defaultSalesChannel.id,
       },
     },
-  });
-  logger.info("Seeding region data...");
+  })
+  logger.info("Seeding region data...")
   const { result: regionResult } = await createRegionsWorkflow(container).run({
     input: {
       regions: [
@@ -97,20 +97,20 @@ export default async function seedDemoData({ container }: ExecArgs) {
         },
       ],
     },
-  });
-  const region = ensure(regionResult[0], "Region creation failed");
-  logger.info("Finished seeding regions.");
+  })
+  const region = ensure(regionResult[0], "Region creation failed")
+  logger.info("Finished seeding regions.")
 
-  logger.info("Seeding tax regions...");
+  logger.info("Seeding tax regions...")
   await createTaxRegionsWorkflow(container).run({
     input: countries.map((country_code) => ({
       country_code,
-      provider_id: "tp_system"
+      provider_id: "tp_system",
     })),
-  });
-  logger.info("Finished seeding tax regions.");
+  })
+  logger.info("Finished seeding tax regions.")
 
-  logger.info("Seeding stock location data...");
+  logger.info("Seeding stock location data...")
   const { result: stockLocationResult } = await createStockLocationsWorkflow(
     container
   ).run({
@@ -126,11 +126,11 @@ export default async function seedDemoData({ container }: ExecArgs) {
         },
       ],
     },
-  });
+  })
   const stockLocation = ensure(
     stockLocationResult[0],
     "Stock location creation failed"
-  );
+  )
 
   await link.create({
     [Modules.STOCK_LOCATION]: {
@@ -139,32 +139,32 @@ export default async function seedDemoData({ container }: ExecArgs) {
     [Modules.FULFILLMENT]: {
       fulfillment_provider_id: "manual_manual",
     },
-  });
+  })
 
-  logger.info("Seeding fulfillment data...");
+  logger.info("Seeding fulfillment data...")
   const shippingProfiles = await fulfillmentModuleService.listShippingProfiles({
-    type: "default"
+    type: "default",
   })
   let shippingProfile = shippingProfiles.length ? shippingProfiles[0] : null
 
   if (!shippingProfile) {
     const { result: shippingProfileResult } =
-    await createShippingProfilesWorkflow(container).run({
-      input: {
-        data: [
-          {
-            name: "Default Shipping Profile",
-            type: "default",
-          },
-        ],
-      },
-    });
-    shippingProfile = shippingProfileResult[0];
+      await createShippingProfilesWorkflow(container).run({
+        input: {
+          data: [
+            {
+              name: "Default Shipping Profile",
+              type: "default",
+            },
+          ],
+        },
+      })
+    shippingProfile = shippingProfileResult[0]
   }
   const activeShippingProfile = ensure(
     shippingProfile,
     "Shipping profile creation failed"
-  );
+  )
 
   const fulfillmentSet = await fulfillmentModuleService.createFulfillmentSets({
     name: "European Warehouse delivery",
@@ -204,12 +204,12 @@ export default async function seedDemoData({ container }: ExecArgs) {
         ],
       },
     ],
-  });
+  })
 
   const serviceZone = ensure(
     fulfillmentSet.service_zones?.[0],
     "Fulfillment service zone was not created"
-  );
+  )
 
   await link.create({
     [Modules.STOCK_LOCATION]: {
@@ -218,7 +218,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
     [Modules.FULFILLMENT]: {
       fulfillment_set_id: fulfillmentSet.id,
     },
-  });
+  })
 
   await createShippingOptionsWorkflow(container).run({
     input: [
@@ -252,18 +252,18 @@ export default async function seedDemoData({ container }: ExecArgs) {
         ],
       },
     ],
-  });
-  logger.info("Finished seeding fulfillment data.");
+  })
+  logger.info("Finished seeding fulfillment data.")
 
   await linkSalesChannelsToStockLocationWorkflow(container).run({
     input: {
       id: stockLocation.id,
       add: [defaultSalesChannel.id],
     },
-  });
-  logger.info("Finished seeding stock location data.");
+  })
+  logger.info("Finished seeding stock location data.")
 
-  logger.info("Seeding publishable API key data...");
+  logger.info("Seeding publishable API key data...")
   const { result: publishableApiKeyResult } = await createApiKeysWorkflow(
     container
   ).run({
@@ -276,21 +276,21 @@ export default async function seedDemoData({ container }: ExecArgs) {
         },
       ],
     },
-  });
+  })
   const publishableApiKey = ensure(
     publishableApiKeyResult[0],
     "Publishable API key creation failed"
-  );
+  )
 
   await linkSalesChannelsToApiKeyWorkflow(container).run({
     input: {
       id: publishableApiKey.id,
       add: [defaultSalesChannel.id],
     },
-  });
-  logger.info("Finished seeding publishable API key data.");
+  })
+  logger.info("Finished seeding publishable API key data.")
 
-  logger.info("Seeding product data...");
+  logger.info("Seeding product data...")
 
   const { result: categoryResult } = await createProductCategoriesWorkflow(
     container
@@ -315,7 +315,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
         },
       ],
     },
-  });
+  })
 
   await createProductsWorkflow(container).run({
     input: {
@@ -812,31 +812,31 @@ export default async function seedDemoData({ container }: ExecArgs) {
         },
       ],
     },
-  });
-  logger.info("Finished seeding product data.");
+  })
+  logger.info("Finished seeding product data.")
 
-  logger.info("Seeding inventory levels.");
+  logger.info("Seeding inventory levels.")
 
   const { data: inventoryItems } = await query.graph({
     entity: "inventory_item",
     fields: ["id"],
-  });
+  })
 
-  const inventoryLevels: CreateInventoryLevelInput[] = [];
+  const inventoryLevels: CreateInventoryLevelInput[] = []
   for (const inventoryItem of inventoryItems) {
     const inventoryLevel = {
       location_id: stockLocation.id,
       stocked_quantity: 1000000,
       inventory_item_id: inventoryItem.id,
-    };
-    inventoryLevels.push(inventoryLevel);
+    }
+    inventoryLevels.push(inventoryLevel)
   }
 
   await createInventoryLevelsWorkflow(container).run({
     input: {
       inventory_levels: inventoryLevels,
     },
-  });
+  })
 
-  logger.info("Finished seeding inventory levels data.");
+  logger.info("Finished seeding inventory levels data.")
 }

@@ -1,4 +1,4 @@
-import { matchesTaxControlTransitionReplay } from "./switch-idempotency";
+import { matchesTaxControlTransitionReplay } from "./switch-idempotency"
 
 const audit = {
   acknowledgement_version: "tax-collection-control-2026-08-30",
@@ -8,7 +8,7 @@ const audit = {
   to_collection_mode: "collect" as const,
   to_generation: 5,
   to_provider: "stripe_tax" as const,
-};
+}
 
 describe("tax control transition idempotency", () => {
   it("accepts an exact replay of the original transition request", () => {
@@ -20,9 +20,9 @@ describe("tax control transition idempotency", () => {
         reason: "Validated Stripe Tax in sandbox.",
         targetCollectionMode: "collect",
         targetProvider: "stripe_tax",
-      }),
-    ).toBe(true);
-  });
+      })
+    ).toBe(true)
+  })
 
   it.each([
     ["actor", { actorId: "user_other" }],
@@ -41,9 +41,9 @@ describe("tax control transition idempotency", () => {
         targetCollectionMode: "collect",
         targetProvider: "stripe_tax",
         ...overrides,
-      }),
-    ).toBe(false);
-  });
+      })
+    ).toBe(false)
+  })
 
   it("rejects malformed audit generations", () => {
     expect(
@@ -56,8 +56,8 @@ describe("tax control transition idempotency", () => {
           reason: "Validated Stripe Tax in sandbox.",
           targetCollectionMode: "collect",
           targetProvider: "stripe_tax",
-        },
-      ),
-    ).toBe(false);
-  });
-});
+        }
+      )
+    ).toBe(false)
+  })
+})

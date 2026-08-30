@@ -9,39 +9,40 @@ import {
 } from "./catalog-product-create-query"
 
 jest.mock("../../lib/admin-request", () => ({
-  requestAdminJson: jest.fn(async (input: { path: string; schema: z.ZodType }) =>
-    input.schema.parse(
-      input.path === "/admin/catalog/artists"
-        ? {
-            artists: [{ id: "artist_1", name: "Artist" }],
-            count: 1,
-            limit: 500,
-            offset: 0,
-          }
-        : input.path === "/admin/catalog/reference-values"
+  requestAdminJson: jest.fn(
+    async (input: { path: string; schema: z.ZodType }) =>
+      input.schema.parse(
+        input.path === "/admin/catalog/artists"
           ? {
+              artists: [{ id: "artist_1", name: "Artist" }],
               count: 1,
               limit: 500,
               offset: 0,
-              values: [
-                {
-                  id: "reference_1",
-                  isActive: true,
-                  kind: "genre",
-                  label: "Metal",
-                },
-              ],
             }
-          : input.path.includes("/status/")
-        ? { state: "compensated" }
-        : {
-            kind: "music_release",
-            productId: "product_1",
-            profileId: "profile_1",
-            replayed: false,
-            variantIds: ["variant_1"],
-          },
-    ),
+          : input.path === "/admin/catalog/reference-values"
+            ? {
+                count: 1,
+                limit: 500,
+                offset: 0,
+                values: [
+                  {
+                    id: "reference_1",
+                    isActive: true,
+                    kind: "genre",
+                    label: "Metal",
+                  },
+                ],
+              }
+            : input.path.includes("/status/")
+              ? { state: "compensated" }
+              : {
+                  kind: "music_release",
+                  productId: "product_1",
+                  profileId: "profile_1",
+                  replayed: false,
+                  variantIds: ["variant_1"],
+                }
+      )
   ),
 }))
 
@@ -54,7 +55,7 @@ describe("catalog product creation query", () => {
         profileId: "profile_1",
         replayed: false,
         variantIds: ["variant_1"],
-      }).success,
+      }).success
     ).toBe(true)
     expect(
       catalogProductCreateResponseSchema.safeParse({
@@ -63,7 +64,7 @@ describe("catalog product creation query", () => {
         profileId: "profile_1",
         replayed: false,
         variantIds: [],
-      }).success,
+      }).success
     ).toBe(false)
   })
 
@@ -94,9 +95,7 @@ describe("catalog product creation query", () => {
 
   it("loads the actor-scoped status used to choose a safe retry key", async () => {
     await expect(
-      getCatalogProductCreationStatus(
-        "00000000-0000-4000-8000-000000000001",
-      ),
+      getCatalogProductCreationStatus("00000000-0000-4000-8000-000000000001")
     ).resolves.toEqual({ state: "compensated" })
   })
 
@@ -111,7 +110,7 @@ describe("catalog product creation query", () => {
 
   it("loads and validates the controlled creation vocabulary", async () => {
     const vocabulary = await loadCatalogCreationVocabulary(
-      new AbortController().signal,
+      new AbortController().signal
     )
 
     expect(vocabulary).toEqual({

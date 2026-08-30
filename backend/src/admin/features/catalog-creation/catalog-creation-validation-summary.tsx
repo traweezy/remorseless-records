@@ -24,7 +24,7 @@ export const CatalogCreationValidationSummary =
             : issue.message,
           targetId: issue.targetId,
         })),
-      [issues],
+      [issues]
     )
     const handleNavigate = useCallback(
       (selected: AdminFormIssue) => {
@@ -34,7 +34,7 @@ export const CatalogCreationValidationSummary =
           onNavigate(issue)
         }
       },
-      [issues, onNavigate],
+      [issues, onNavigate]
     )
 
     return (

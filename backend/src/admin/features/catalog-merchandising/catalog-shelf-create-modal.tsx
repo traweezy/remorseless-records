@@ -1,11 +1,6 @@
 "use client"
 
-import {
-  memo,
-  useCallback,
-  type ChangeEvent,
-  type RefObject,
-} from "react"
+import { memo, useCallback, type ChangeEvent, type RefObject } from "react"
 import { Button, FocusModal, Input, Label } from "@medusajs/ui"
 
 import { AdminFocusModalHeader } from "../../components/admin-focus-modal-header"
@@ -30,15 +25,11 @@ export type CreateShelfField = keyof CreateShelfState
 
 type CreateShelfChange = (
   field: CreateShelfField,
-  value: string | boolean,
+  value: string | boolean
 ) => void
 
 type CreateTextField =
-  | "handle"
-  | "productLimit"
-  | "ribbonLabel"
-  | "ribbonPriority"
-  | "title"
+  "handle" | "productLimit" | "ribbonLabel" | "ribbonPriority" | "title"
 
 const readInputValue = (event: ChangeEvent<HTMLInputElement>): string =>
   (event.currentTarget as unknown as { value?: string }).value ?? ""
@@ -59,7 +50,7 @@ const CreateInputField = memo<CreateInputFieldProps>(
       (event: ChangeEvent<HTMLInputElement>) => {
         onChange(field, readInputValue(event))
       },
-      [field, onChange],
+      [field, onChange]
     )
 
     return (
@@ -74,7 +65,7 @@ const CreateInputField = memo<CreateInputFieldProps>(
         />
       </div>
     )
-  },
+  }
 )
 
 CreateInputField.displayName = "CreateInputField"
@@ -107,21 +98,21 @@ export const CatalogShelfCreateModal = memo<CatalogShelfCreateModalProps>(
       (value: ShelfMode) => {
         onChange("mode", value)
       },
-      [onChange],
+      [onChange]
     )
 
     const handleAutomationChange = useCallback(
       (value: AutomationType) => {
         onChange("automationType", value)
       },
-      [onChange],
+      [onChange]
     )
 
     const handleRibbonChange = useCallback(
       (checked: boolean) => {
         onChange("showRibbon", checked)
       },
-      [onChange],
+      [onChange]
     )
 
     const handleCloseAutoFocus = useCallback(
@@ -132,7 +123,7 @@ export const CatalogShelfCreateModal = memo<CatalogShelfCreateModalProps>(
         } | null
         trigger?.focus()
       },
-      [restoreFocusRef],
+      [restoreFocusRef]
     )
 
     return (
@@ -228,7 +219,7 @@ export const CatalogShelfCreateModal = memo<CatalogShelfCreateModalProps>(
         </FocusModal.Content>
       </FocusModal>
     )
-  },
+  }
 )
 
 CatalogShelfCreateModal.displayName = "CatalogShelfCreateModal"

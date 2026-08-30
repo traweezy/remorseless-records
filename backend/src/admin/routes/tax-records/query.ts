@@ -2,14 +2,14 @@ import {
   keepPreviousData,
   queryOptions,
   type QueryFunctionContext,
-} from "@tanstack/react-query";
-import { z } from "zod";
+} from "@tanstack/react-query"
+import { z } from "zod"
 
 import {
   TAX_FILING_STATES,
   type TaxFilingState,
-} from "../../../lib/tax-reporting/filing-states";
-import type { TaxReportPeriod } from "../../../lib/tax-reporting/periods";
+} from "../../../lib/tax-reporting/filing-states"
+import type { TaxReportPeriod } from "../../../lib/tax-reporting/periods"
 import type {
   TaxDestinationSummary,
   TaxRecord,
@@ -18,58 +18,58 @@ import type {
   TaxRecordQuality,
   TaxRecordType,
   TaxReportSummary,
-} from "../../../lib/tax-reporting/types";
-import { requestAdminJson } from "../../lib/admin-request";
+} from "../../../lib/tax-reporting/types"
+import { requestAdminJson } from "../../lib/admin-request"
 
 export type TaxRecordFilters = {
-  collectionMode: "all" | TaxRecordCollectionMode;
-  limit: number;
-  page: number;
-  provider: "all" | TaxRecordProvider;
-  q: string;
-  quality: "all" | TaxRecordQuality;
-  type: "all" | TaxRecordType;
-};
+  collectionMode: "all" | TaxRecordCollectionMode
+  limit: number
+  page: number
+  provider: "all" | TaxRecordProvider
+  q: string
+  quality: "all" | TaxRecordQuality
+  type: "all" | TaxRecordType
+}
 
 export type TaxRecordsReport = {
-  destinations: TaxDestinationSummary[];
-  filingState: TaxFilingState;
+  destinations: TaxDestinationSummary[]
+  filingState: TaxFilingState
   filters: {
-    collectionModes: TaxRecordCollectionMode[];
-    currencies: string[];
-    providers: TaxRecordProvider[];
-    states: string[];
-  };
-  generatedAt: string;
-  period: TaxReportPeriod;
-  records: TaxRecord[];
-  resultCount: number;
+    collectionModes: TaxRecordCollectionMode[]
+    currencies: string[]
+    providers: TaxRecordProvider[]
+    states: string[]
+  }
+  generatedAt: string
+  period: TaxReportPeriod
+  records: TaxRecord[]
+  resultCount: number
   source: {
-    medusaOrdersScanned: number;
-    scopedRecords: number;
-    truncated: boolean;
-    unassignedStateRecords: number;
-  };
-  summaries: TaxReportSummary[];
+    medusaOrdersScanned: number
+    scopedRecords: number
+    truncated: boolean
+    unassignedStateRecords: number
+  }
+  summaries: TaxReportSummary[]
   unassignedRecordExamples: {
-    displayId: number;
-    occurredAt: string;
-    orderId: string;
-  }[];
-};
+    displayId: number
+    occurredAt: string
+    orderId: string
+  }[]
+}
 
 type TaxRecordsQueryInput = {
-  filingState: TaxFilingState;
-  filters: TaxRecordFilters;
+  filingState: TaxFilingState
+  filters: TaxRecordFilters
   period: {
-    end: string;
-    start: string;
-  };
-};
+    end: string
+    start: string
+  }
+}
 
-const currencyCodeSchema = z.string().regex(/^[a-z]{3}$/);
-const decimalSchema = z.string().regex(/^-?\d+(?:\.\d+)?$/);
-const nullableTextSchema = z.string().min(1).nullable();
+const currencyCodeSchema = z.string().regex(/^[a-z]{3}$/)
+const decimalSchema = z.string().regex(/^-?\d+(?:\.\d+)?$/)
+const nullableTextSchema = z.string().min(1).nullable()
 const taxRecordProviderSchema = z.enum([
   "legacy",
   "mixed",
@@ -77,14 +77,10 @@ const taxRecordProviderSchema = z.enum([
   "stripe_tax",
   "taxrate_io",
   "unknown",
-]);
-const taxRecordCollectionModeSchema = z.enum([
-  "collect",
-  "disabled",
-  "unknown",
-]);
-const taxRecordQualitySchema = z.enum(["complete", "incomplete", "review"]);
-const taxRecordTypeSchema = z.enum(["refund", "sale"]);
+])
+const taxRecordCollectionModeSchema = z.enum(["collect", "disabled", "unknown"])
+const taxRecordQualitySchema = z.enum(["complete", "incomplete", "review"])
+const taxRecordTypeSchema = z.enum(["refund", "sale"])
 
 const destinationSchema = z.object({
   city: nullableTextSchema,
@@ -94,7 +90,7 @@ const destinationSchema = z.object({
   jurisdictionName: nullableTextSchema,
   postalCode: nullableTextSchema,
   stateCode: nullableTextSchema,
-});
+})
 
 const taxRecordSchema: z.ZodType<TaxRecord> = z.object({
   collectionMode: taxRecordCollectionModeSchema,
@@ -122,7 +118,7 @@ const taxRecordSchema: z.ZodType<TaxRecord> = z.object({
   total: decimalSchema,
   type: taxRecordTypeSchema,
   unclassifiedSales: decimalSchema,
-});
+})
 
 const taxDestinationSummarySchema: z.ZodType<TaxDestinationSummary> = z.object({
   ...destinationSchema.shape,
@@ -137,7 +133,7 @@ const taxDestinationSummarySchema: z.ZodType<TaxDestinationSummary> = z.object({
   taxRatePercent: decimalSchema.nullable(),
   taxableSales: decimalSchema,
   unclassifiedSales: decimalSchema,
-});
+})
 
 const taxReportSummarySchema: z.ZodType<TaxReportSummary> = z.object({
   completeRecords: z.number().int().nonnegative(),
@@ -158,7 +154,7 @@ const taxReportSummarySchema: z.ZodType<TaxReportSummary> = z.object({
   taxCollected: decimalSchema,
   taxableSales: decimalSchema,
   unclassifiedSales: decimalSchema,
-});
+})
 
 export const taxRecordsReportSchema: z.ZodType<TaxRecordsReport> = z.object({
   destinations: z.array(taxDestinationSummarySchema),
@@ -192,11 +188,11 @@ export const taxRecordsReportSchema: z.ZodType<TaxRecordsReport> = z.object({
       displayId: z.number().int().nonnegative(),
       occurredAt: z.string().min(1),
       orderId: z.string().min(1),
-    }),
+    })
   ),
-});
+})
 
-export const TAX_RECORDS_QUERY_KEY = ["tax-records"] as const;
+export const TAX_RECORDS_QUERY_KEY = ["tax-records"] as const
 
 const queryParameters = ({
   filingState,
@@ -213,11 +209,11 @@ const queryParameters = ({
   quality: filters.quality,
   start: period.start,
   type: filters.type,
-});
+})
 
 export const taxRecordsQueryOptions = (input: TaxRecordsQueryInput) => {
-  const query = queryParameters(input);
-  const queryKey = [...TAX_RECORDS_QUERY_KEY, query] as const;
+  const query = queryParameters(input)
+  const queryKey = [...TAX_RECORDS_QUERY_KEY, query] as const
 
   const loadTaxRecords = ({
     signal,
@@ -228,7 +224,7 @@ export const taxRecordsQueryOptions = (input: TaxRecordsQueryInput) => {
       schema: taxRecordsReportSchema,
       signal,
       timeoutMs: 20_000,
-    });
+    })
 
   return queryOptions({
     placeholderData: keepPreviousData,
@@ -236,5 +232,5 @@ export const taxRecordsQueryOptions = (input: TaxRecordsQueryInput) => {
     queryKey,
     retry: false,
     staleTime: 0,
-  });
-};
+  })
+}

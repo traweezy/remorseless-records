@@ -1,0 +1,17 @@
+Default/
+**/node_modules/
+backend/.medusa/
+backend/coverage/
+backend/dist/
+# Medusa's runtime loader still requires JSON import-assertion syntax that
+# Prettier 3's JavaScript parser rejects after import assertions were removed.
+backend/medusa-config.js
+coverage/
+patches/
+storefront/.next/
+storefront/coverage/
+storefront/e2e/playwright-report/
+# Next.js owns and rewrites this generated declaration during every build.
+storefront/next-env.d.ts
+storefront/public/
+storefront/test-results/

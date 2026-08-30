@@ -64,27 +64,30 @@ const optionalUrlSchema = z
   )
 
 export const discographyManualDraftSchema = z.object({
-    artist: z.string().trim().max(500),
-    availability: z.enum(discographyAvailabilityValues),
-    catalogNumber: z.string().trim().max(200),
-    collectionTitle: z.string().trim().max(500),
-    coverAltText: z.string().trim().max(500),
-    coverUrl: z.string().trim().max(2_000),
-    datePrecision: z.enum(datePrecisionValues),
-    dateValue: z.string().trim().max(10),
-    formatsText: z.string().max(5_000),
-    genresText: z.string().max(5_000),
-    releaseTitle: z.string().trim().max(500),
-    tagsText: z.string().max(5_000),
-  })
+  artist: z.string().trim().max(500),
+  availability: z.enum(discographyAvailabilityValues),
+  catalogNumber: z.string().trim().max(200),
+  collectionTitle: z.string().trim().max(500),
+  coverAltText: z.string().trim().max(500),
+  coverUrl: z.string().trim().max(2_000),
+  datePrecision: z.enum(datePrecisionValues),
+  dateValue: z.string().trim().max(10),
+  formatsText: z.string().max(5_000),
+  genresText: z.string().max(5_000),
+  releaseTitle: z.string().trim().max(500),
+  tagsText: z.string().max(5_000),
+})
 
 export const discographyManualFormSchema = discographyManualDraftSchema
   .extend({
-    artist: discographyManualDraftSchema.shape.artist.min(1, "Enter an artist."),
+    artist: discographyManualDraftSchema.shape.artist.min(
+      1,
+      "Enter an artist."
+    ),
     coverUrl: optionalUrlSchema,
     releaseTitle: discographyManualDraftSchema.shape.releaseTitle.min(
       1,
-      "Enter a release title.",
+      "Enter a release title."
     ),
   })
   .superRefine((value, context) => {
@@ -134,7 +137,7 @@ const discographyFieldTargets: Record<string, string> = {
 }
 
 export const discographyManualValidationIssues = (
-  values: DiscographyManualFormValues,
+  values: DiscographyManualFormValues
 ): AdminFormIssue[] => {
   const result = discographyManualFormSchema.safeParse(values)
   if (result.success) {
@@ -244,7 +247,7 @@ export const buildManualDiscographyInput = (
 
 export const discographyEntryMatchesManualInput = (
   entry: DiscographyEntry,
-  input: ManualDiscographyInput,
+  input: ManualDiscographyInput
 ): boolean =>
   entry.artist === input.artist &&
   entry.availability === input.availability &&
@@ -261,7 +264,9 @@ export const discographyEntryMatchesManualInput = (
 
 const discographyDraftStorage = (): Storage | null => {
   try {
-    return (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null
+    return (
+      (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null
+    )
   } catch {
     return null
   }
@@ -287,7 +292,16 @@ type TextFieldProps = {
 }
 
 const DiscographyTextField = memo<TextFieldProps>(
-  ({ field, hint, id, label, maxLength, optional, placeholder, type = "text" }) => {
+  ({
+    field,
+    hint,
+    id,
+    label,
+    maxLength,
+    optional,
+    placeholder,
+    type = "text",
+  }) => {
     const value = typeof field.state.value === "string" ? field.state.value : ""
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
@@ -617,7 +631,7 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
       if (draft) {
         form.reset(draft.values, { keepDefaultValues: true })
         setDraftNotice(
-          `Recovered browser draft saved ${new Date(draft.savedAt).toLocaleString()}.`,
+          `Recovered browser draft saved ${new Date(draft.savedAt).toLocaleString()}.`
         )
       }
       draftLoadedRef.current = true
@@ -641,7 +655,7 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
           })
         } catch {
           setDraftNotice(
-            "This browser could not save a recovery draft. Keep the editor open until the release is saved.",
+            "This browser could not save a recovery draft. Keep the editor open until the release is saved."
           )
         }
       }, 500)
@@ -711,7 +725,7 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
             ]
           : []),
       ],
-      [error, state.submissionAttempts, state.values],
+      [error, state.submissionAttempts, state.values]
     )
     const saveState: AdminSaveState = state.isSubmitting
       ? "saving"
@@ -820,7 +834,8 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
       </>
     )
 
-    const editor = mode === "edit" ? (
+    const editor =
+      mode === "edit" ? (
         <Drawer onOpenChange={handleOpenChange} open>
           <Drawer.Content onCloseAutoFocus={handleCloseAutoFocus}>
             <Drawer.Header>
@@ -835,22 +850,22 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
           </Drawer.Content>
         </Drawer>
       ) : (
-      <FocusModal onOpenChange={handleOpenChange} open>
-        <FocusModal.Content
-          className="sm:inset-x-1/2 sm:inset-y-8 sm:w-full sm:max-w-4xl sm:-translate-x-1/2"
-          onCloseAutoFocus={handleCloseAutoFocus}
-        >
-          <AdminFocusModalHeader
-            description="Add a release that is part of the label history but is not sold as a current Product."
-            title="Add historical release"
-          />
-          <FocusModal.Body className="overflow-y-auto px-6 py-5">
-            {fields}
-          </FocusModal.Body>
-          <FocusModal.Footer>{footer}</FocusModal.Footer>
-        </FocusModal.Content>
-      </FocusModal>
-    )
+        <FocusModal onOpenChange={handleOpenChange} open>
+          <FocusModal.Content
+            className="sm:inset-x-1/2 sm:inset-y-8 sm:w-full sm:max-w-4xl sm:-translate-x-1/2"
+            onCloseAutoFocus={handleCloseAutoFocus}
+          >
+            <AdminFocusModalHeader
+              description="Add a release that is part of the label history but is not sold as a current Product."
+              title="Add historical release"
+            />
+            <FocusModal.Body className="overflow-y-auto px-6 py-5">
+              {fields}
+            </FocusModal.Body>
+            <FocusModal.Footer>{footer}</FocusModal.Footer>
+          </FocusModal.Content>
+        </FocusModal>
+      )
 
     return (
       <>

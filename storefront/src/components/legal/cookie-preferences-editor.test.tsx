@@ -31,8 +31,12 @@ describe("CookiePreferencesEditor", () => {
     const necessary = screen.getByRole("checkbox", {
       name: "Strictly necessary cookies",
     })
-    const analytics = screen.getByRole("checkbox", { name: "Analytics cookies" })
-    const marketing = screen.getByRole("checkbox", { name: "Marketing cookies" })
+    const analytics = screen.getByRole("checkbox", {
+      name: "Analytics cookies",
+    })
+    const marketing = screen.getByRole("checkbox", {
+      name: "Marketing cookies",
+    })
 
     expect(necessary).toBeDisabled()
     expect(necessary).not.toHaveAttribute("id")

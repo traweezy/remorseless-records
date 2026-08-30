@@ -41,7 +41,7 @@ const statusPresentation = {
 
 const preview = (
   status: AuthoringCustomerStatus,
-  reason: string,
+  reason: string
 ): CatalogCreationAvailabilityPreview => ({
   ...statusPresentation[status],
   reason,
@@ -58,12 +58,12 @@ const bundlePreview = ({
   offering: CatalogCreationOffering
 }): CatalogCreationAvailabilityPreview => {
   const mappings = bundleComponents.filter((component) =>
-    component.offeringIds.includes(offering.id),
+    component.offeringIds.includes(offering.id)
   )
   if (!mappings.length) {
     return preview(
       "unknown",
-      "Map at least one required component before bundle stock can be calculated.",
+      "Map at least one required component before bundle stock can be calculated."
     )
   }
 
@@ -72,7 +72,7 @@ const bundlePreview = ({
   mappings.forEach((component) => {
     const product = choices.find((choice) => choice.id === component.productId)
     const variant = product?.variants.find(
-      (choice) => choice.id === component.variantId,
+      (choice) => choice.id === component.variantId
     )
     const label =
       [product?.title, variant?.title].filter(Boolean).join(" · ") ||
@@ -97,13 +97,13 @@ const bundlePreview = ({
   if (unavailable.length) {
     return preview(
       "unknown",
-      `${unavailable.join(", ")} does not have readable component stock.`,
+      `${unavailable.join(", ")} does not have readable component stock.`
     )
   }
   if (!capacities.length) {
     return preview(
       "in_stock",
-      "Every mapped component has inventory tracking disabled, so Medusa treats this bundle as continuously available.",
+      "Every mapped component has inventory tracking disabled, so Medusa treats this bundle as continuously available."
     )
   }
 
@@ -115,18 +115,18 @@ const bundlePreview = ({
   if (capacity <= 0) {
     return preview(
       "sold_out",
-      `No complete bundles can be assembled; ${limiting} is the limiting component.`,
+      `No complete bundles can be assembled; ${limiting} is the limiting component.`
     )
   }
   if (capacity <= 5) {
     return preview(
       "low_stock",
-      `Only ${capacity} complete bundle${capacity === 1 ? "" : "s"} can be assembled; ${limiting} is the limiting component.`,
+      `Only ${capacity} complete bundle${capacity === 1 ? "" : "s"} can be assembled; ${limiting} is the limiting component.`
     )
   }
   return preview(
     "in_stock",
-    `${capacity} complete bundles can be assembled from current component stock.`,
+    `${capacity} complete bundles can be assembled from current component stock.`
   )
 }
 
@@ -153,7 +153,7 @@ export const resolveCatalogCreationAvailability = ({
 
   const normalizedReleaseDate = normalizeCatalogCreationReleaseDate(
     releaseDate,
-    releaseDatePrecision,
+    releaseDatePrecision
   )
   if (
     offering.availabilityPolicy === "preorder" &&
@@ -161,7 +161,7 @@ export const resolveCatalogCreationAvailability = ({
   ) {
     return preview(
       "unknown",
-      "Choose a future release date before this offering can be presented as a preorder.",
+      "Choose a future release date before this offering can be presented as a preorder."
     )
   }
 
@@ -179,7 +179,8 @@ export const resolveCatalogCreationAvailability = ({
   })
   const policyReason =
     offering.availabilityPolicy === "backorder" &&
-    (status.customerStatus === "in_stock" || status.customerStatus === "low_stock")
+    (status.customerStatus === "in_stock" ||
+      status.customerStatus === "low_stock")
       ? `${status.reason} Native backorders keep ordering open after stock reaches zero.`
       : offering.availabilityPolicy === "preorder" &&
           status.customerStatus === "preorder"

@@ -1,6 +1,6 @@
-import { stripeLifecycleEventIsDue } from "./reconcile-stripe-lifecycle-events";
+import { stripeLifecycleEventIsDue } from "./reconcile-stripe-lifecycle-events"
 
-const now = new Date("2026-08-29T12:00:00.000Z");
+const now = new Date("2026-08-29T12:00:00.000Z")
 
 describe("Stripe lifecycle scheduled recovery", () => {
   it.each([
@@ -59,6 +59,6 @@ describe("Stripe lifecycle scheduled recovery", () => {
       false,
     ],
   ])("classifies %s", (_label, record, expected) => {
-    expect(stripeLifecycleEventIsDue(record, now)).toBe(expected);
-  });
-});
+    expect(stripeLifecycleEventIsDue(record, now)).toBe(expected)
+  })
+})

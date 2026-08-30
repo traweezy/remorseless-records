@@ -1,8 +1,8 @@
-import { z } from "zod";
+import { z } from "zod"
 
-import type { AdminFormIssue } from "../../components/admin-form-contract";
+import type { AdminFormIssue } from "../../components/admin-form-contract"
 
-const productStatuses = ["draft", "published", "proposed", "rejected"] as const;
+const productStatuses = ["draft", "published", "proposed", "rejected"] as const
 const availabilityStatuses = [
   "available",
   "in_stock",
@@ -12,8 +12,8 @@ const availabilityStatuses = [
   "backorder",
   "sold_out",
   "unknown",
-] as const;
-const bundleTypes = ["fixed", "mystery", "deal", "selectable"] as const;
+] as const
+const bundleTypes = ["fixed", "mystery", "deal", "selectable"] as const
 const referenceKinds = [
   "format",
   "format_detail",
@@ -22,7 +22,7 @@ const referenceKinds = [
   "merch_type",
   "product_type",
   "utility_tag",
-] as const;
+] as const
 
 const optionalHttpUrlSchema = z
   .string()
@@ -30,35 +30,41 @@ const optionalHttpUrlSchema = z
   .max(2_000)
   .refine((value) => {
     if (!value) {
-      return true;
+      return true
     }
     try {
-      return ["http:", "https:"].includes(new URL(value).protocol);
+      return ["http:", "https:"].includes(new URL(value).protocol)
     } catch {
-      return false;
+      return false
     }
-  }, "Enter a complete http or https URL.");
+  }, "Enter a complete http or https URL.")
 
 const jsonTextSchema = (shape: "array" | "object") =>
-  z.string().max(200_000).superRefine((value, context) => {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      const valid = shape === "array"
-        ? Array.isArray(parsed)
-        : parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);
-      if (!valid) {
+  z
+    .string()
+    .max(200_000)
+    .superRefine((value, context) => {
+      try {
+        const parsed = JSON.parse(value) as unknown
+        const valid =
+          shape === "array"
+            ? Array.isArray(parsed)
+            : parsed !== null &&
+              typeof parsed === "object" &&
+              !Array.isArray(parsed)
+        if (!valid) {
+          context.addIssue({
+            code: "custom",
+            message: `Enter a JSON ${shape}.`,
+          })
+        }
+      } catch {
         context.addIssue({
           code: "custom",
-          message: `Enter a JSON ${shape}.`,
-        });
+          message: `Enter valid JSON for this ${shape}.`,
+        })
       }
-    } catch {
-      context.addIssue({
-        code: "custom",
-        message: `Enter valid JSON for this ${shape}.`,
-      });
-    }
-  });
+    })
 
 export const productAuthoringDraftSchema = z
   .object({
@@ -73,7 +79,7 @@ export const productAuthoringDraftSchema = z
           sku: z.string(),
           title: z.string(),
           variantTitle: z.string(),
-        }),
+        })
       ),
       descriptionHtml: z.string().max(200_000),
       displayTitle: z.string().trim().max(300),
@@ -96,7 +102,7 @@ export const productAuthoringDraftSchema = z
           key: z.string().min(1),
           name: z.string().trim().max(300),
           role: z.string().trim().max(100),
-        }),
+        })
       ),
       creditsJson: jsonTextSchema("object"),
       descriptionHtml: z.string().max(200_000),
@@ -112,7 +118,7 @@ export const productAuthoringDraftSchema = z
           kind: z.enum(referenceKinds),
           label: z.string().trim().max(300),
           referenceValueId: z.string(),
-        }),
+        })
       ),
       releaseDate: z.string(),
       releaseTitle: z.string().trim().max(300),
@@ -125,7 +131,7 @@ export const productAuthoringDraftSchema = z
             (/^\d{4}$/u.test(value) &&
               Number(value) >= 1000 &&
               Number(value) <= 2200),
-          "Enter a four-digit release year.",
+          "Enter a four-digit release year."
         ),
       searchKeywords: z.string().max(5_000),
       tracklistJson: jsonTextSchema("array"),
@@ -148,7 +154,7 @@ export const productAuthoringDraftSchema = z
         preorderReleaseDate: z.string(),
         variantId: z.string().min(1),
         version: z.number().int().nonnegative(),
-      }),
+      })
     ),
   })
   .superRefine((draft, context) => {
@@ -157,14 +163,14 @@ export const productAuthoringDraftSchema = z
         code: "custom",
         message: "Choose or enter a label/source.",
         path: ["profile", "labelLabel"],
-      });
+      })
     }
     if (!draft.profile.productTypeId && !draft.profile.productTypeLabel) {
       context.addIssue({
         code: "custom",
         message: "Choose or enter a product type.",
         path: ["profile", "productTypeLabel"],
-      });
+      })
     }
     draft.profile.artists.forEach((artist, index) => {
       if (!artist.artistId && !artist.displayName && !artist.name) {
@@ -172,9 +178,9 @@ export const productAuthoringDraftSchema = z
           code: "custom",
           message: "Choose an artist or enter the customer-facing name.",
           path: ["profile", "artists", index],
-        });
+        })
       }
-    });
+    })
     draft.variants.forEach((variant, index) => {
       if (
         variant.availabilityStatus === "preorder" &&
@@ -184,9 +190,9 @@ export const productAuthoringDraftSchema = z
           code: "custom",
           message: "Choose a release time for a preorder variant.",
           path: ["variants", index, "preorderReleaseDate"],
-        });
+        })
       }
-    });
+    })
     if (
       draft.bundle.enabled &&
       draft.bundle.bundleType !== "mystery" &&
@@ -196,7 +202,7 @@ export const productAuthoringDraftSchema = z
         code: "custom",
         message: "Add at least one included product to this bundle.",
         path: ["bundle", "components"],
-      });
+      })
     }
     draft.bundle.components.forEach((component, index) => {
       if (!component.componentProductId) {
@@ -204,19 +210,22 @@ export const productAuthoringDraftSchema = z
           code: "custom",
           message: "Choose an included product.",
           path: ["bundle", "components", index, "componentProductId"],
-        });
+        })
       }
-      if (!/^\d+$/u.test(component.quantity) || Number(component.quantity) < 1) {
+      if (
+        !/^\d+$/u.test(component.quantity) ||
+        Number(component.quantity) < 1
+      ) {
         context.addIssue({
           code: "custom",
           message: "Quantity must be a whole number of at least 1.",
           path: ["bundle", "components", index, "quantity"],
-        });
+        })
       }
-    });
-  });
+    })
+  })
 
-export type ProductAuthoringDraft = z.input<typeof productAuthoringDraftSchema>;
+export type ProductAuthoringDraft = z.input<typeof productAuthoringDraftSchema>
 
 export const createEmptyProductAuthoringDraft = (): ProductAuthoringDraft => ({
   bundle: {
@@ -253,14 +262,14 @@ export const createEmptyProductAuthoringDraft = (): ProductAuthoringDraft => ({
     tracklistJson: "[]",
   },
   variants: [],
-});
+})
 
 const sectionTargets = {
   bundle: "product-authoring-bundle",
   product: "product-authoring-commerce",
   profile: "product-authoring-profile",
   variants: "product-authoring-variants",
-} as const;
+} as const
 
 const exactTargets: Record<string, string> = {
   "product.handle": "product-authoring-handle",
@@ -272,48 +281,50 @@ const exactTargets: Record<string, string> = {
   "profile.productTypeLabel": "product-authoring-product-type",
   "profile.releaseYear": "product-authoring-release-year",
   "profile.tracklistJson": "product-authoring-tracklist",
-};
+}
 
 export const productAuthoringValidationIssues = (
-  draft: ProductAuthoringDraft,
+  draft: ProductAuthoringDraft
 ): AdminFormIssue[] => {
-  const result = productAuthoringDraftSchema.safeParse(draft);
+  const result = productAuthoringDraftSchema.safeParse(draft)
   if (result.success) {
-    return [];
+    return []
   }
   return result.error.issues.map((issue) => {
-    const path = issue.path.join(".");
-    const root = issue.path[0];
+    const path = issue.path.join(".")
+    const root = issue.path[0]
     const targetId =
       exactTargets[path] ??
       (typeof root === "string" && root in sectionTargets
         ? sectionTargets[root as keyof typeof sectionTargets]
-        : null);
+        : null)
     return {
       key: `${path}:${issue.message}`,
       message: issue.message,
       targetId,
-    };
-  });
-};
+    }
+  })
+}
 
 export const productAuthoringFingerprint = (
-  draft: ProductAuthoringDraft,
+  draft: ProductAuthoringDraft
 ): string =>
   JSON.stringify({
     ...draft,
     bundle: {
       ...draft.bundle,
-      components: draft.bundle.components.map(({ key: _key, ...component }) =>
-        component
+      components: draft.bundle.components.map(
+        ({ key: _key, ...component }) => component
       ),
     },
     profile: {
       ...draft.profile,
       artists: draft.profile.artists.map(({ key: _key, ...artist }) => artist),
       references: draft.profile.references.map(
-        ({ key: _key, ...reference }) => reference,
+        ({ key: _key, ...reference }) => reference
       ),
     },
-    variants: draft.variants.map(({ version: _version, ...variant }) => variant),
-  });
+    variants: draft.variants.map(
+      ({ version: _version, ...variant }) => variant
+    ),
+  })

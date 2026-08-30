@@ -49,10 +49,7 @@ export const createMeilisearchAdminClient = ({
     throw new Error("[meilisearch] Host URL must not contain credentials.")
   }
 
-  const request = async <T>(
-    path: string,
-    init?: RequestInit
-  ): Promise<T> => {
+  const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
     const response = await fetchImpl(new URL(path, baseUrl), {
       ...init,
       headers: {
@@ -82,9 +79,9 @@ export const createMeilisearchAdminClient = ({
       )
     },
     listIndexes: async (): Promise<MeilisearchIndexSummary[]> => {
-      const response = await request<
-        ResourceResults<MeilisearchIndexSummary>
-      >("/indexes?limit=1000")
+      const response = await request<ResourceResults<MeilisearchIndexSummary>>(
+        "/indexes?limit=1000"
+      )
       return response.results
     },
     swapIndexes: async (

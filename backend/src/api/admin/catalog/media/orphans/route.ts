@@ -18,7 +18,7 @@ const firstQueryValue = (value: unknown): unknown =>
   Array.isArray(value) ? value[0] : value
 
 const parseQuery = (
-  query: MedusaRequest["query"],
+  query: MedusaRequest["query"]
 ): z.infer<typeof querySchema> => {
   const parsed = querySchema.safeParse({
     lifecycleStatus: firstQueryValue(query?.lifecycleStatus),
@@ -28,7 +28,7 @@ const parseQuery = (
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid catalog media orphan query.",
+      "Invalid catalog media orphan query."
     )
   }
   return parsed.data
@@ -36,7 +36,7 @@ const parseQuery = (
 
 export const GET = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const startedAt = performance.now()
   const catalogService = req.scope.resolve("catalog") as CatalogService
@@ -53,7 +53,7 @@ export const GET = async (
   res.setHeader("Cache-Control", "private, no-store")
   res.setHeader(
     "Server-Timing",
-    `catalog-media-orphans;dur=${Math.round(performance.now() - startedAt)}`,
+    `catalog-media-orphans;dur=${Math.round(performance.now() - startedAt)}`
   )
   res.status(200).json({
     count: page.count,

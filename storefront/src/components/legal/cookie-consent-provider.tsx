@@ -29,7 +29,9 @@ type CookieConsentContextValue = {
   saveSelection: (selection: CookiePreferenceSelection) => void
 }
 
-const CookieConsentContext = createContext<CookieConsentContextValue | null>(null)
+const CookieConsentContext = createContext<CookieConsentContextValue | null>(
+  null
+)
 
 type CookieConsentProviderProps = {
   children: ReactNode
@@ -53,7 +55,9 @@ const loadStoredPreferences = (): CookiePreferences | null => {
     return fromCookie
   }
 
-  const fromLocalStorage = parseCookiePreferences(window.localStorage.getItem(COOKIE_PREFERENCES_STORAGE_KEY))
+  const fromLocalStorage = parseCookiePreferences(
+    window.localStorage.getItem(COOKIE_PREFERENCES_STORAGE_KEY)
+  )
   if (fromLocalStorage) {
     return fromLocalStorage
   }
@@ -119,7 +123,9 @@ const subscribeToCookieConsent = (onStoreChange: () => void): (() => void) => {
   }
 }
 
-export const CookieConsentProvider = ({ children }: CookieConsentProviderProps) => {
+export const CookieConsentProvider = ({
+  children,
+}: CookieConsentProviderProps) => {
   const snapshot = useSyncExternalStore(
     subscribeToCookieConsent,
     getSnapshot,
@@ -133,16 +139,23 @@ export const CookieConsentProvider = ({ children }: CookieConsentProviderProps) 
 
     const secure = window.location.protocol === "https:"
     document.cookie = buildCookiePreferencesHeader(next, { secure })
-    window.localStorage.setItem(COOKIE_PREFERENCES_STORAGE_KEY, JSON.stringify(next))
+    window.localStorage.setItem(
+      COOKIE_PREFERENCES_STORAGE_KEY,
+      JSON.stringify(next)
+    )
     window.dispatchEvent(new Event(COOKIE_CONSENT_EVENT))
   }, [])
 
   const acceptAll = useCallback(() => {
-    persistPreferences(buildCookiePreferences({ analytics: true, marketing: true }))
+    persistPreferences(
+      buildCookiePreferences({ analytics: true, marketing: true })
+    )
   }, [persistPreferences])
 
   const rejectNonEssential = useCallback(() => {
-    persistPreferences(buildCookiePreferences({ analytics: false, marketing: false }))
+    persistPreferences(
+      buildCookiePreferences({ analytics: false, marketing: false })
+    )
   }, [persistPreferences])
 
   const saveSelection = useCallback(
@@ -164,13 +177,19 @@ export const CookieConsentProvider = ({ children }: CookieConsentProviderProps) 
     [acceptAll, rejectNonEssential, saveSelection, snapshot]
   )
 
-  return <CookieConsentContext.Provider value={value}>{children}</CookieConsentContext.Provider>
+  return (
+    <CookieConsentContext.Provider value={value}>
+      {children}
+    </CookieConsentContext.Provider>
+  )
 }
 
 export const useCookieConsent = (): CookieConsentContextValue => {
   const context = useContext(CookieConsentContext)
   if (!context) {
-    throw new Error("useCookieConsent must be used within CookieConsentProvider")
+    throw new Error(
+      "useCookieConsent must be used within CookieConsentProvider"
+    )
   }
   return context
 }

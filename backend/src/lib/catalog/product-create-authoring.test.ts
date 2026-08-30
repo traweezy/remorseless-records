@@ -22,10 +22,8 @@ const serviceFixture = (): ServiceMock => {
     runCatalogTransaction: jest.fn(),
     updateCatalogAuthoringOperations: jest.fn(),
   } as unknown as ServiceMock
-  service.runCatalogTransaction.mockImplementation(
-    (async (task) =>
-      task({ manager: {} } as never)) as CatalogService["runCatalogTransaction"],
-  )
+  service.runCatalogTransaction.mockImplementation((async (task) =>
+    task({ manager: {} } as never)) as CatalogService["runCatalogTransaction"])
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   return service
 }
@@ -65,7 +63,7 @@ const commandFixture = (): CatalogProductCreateCommandInput => ({
 
 const mutationFixture = (
   variantId: string,
-  index: number,
+  index: number
 ): CatalogVariantProfileMutationResult => ({
   created: true,
   createdReferenceValueIds: [`reference_${index}`],
@@ -92,8 +90,8 @@ describe("catalog product creation audit", () => {
       inspectCatalogProductCreation(
         service,
         "user_1",
-        "00000000-0000-4000-8000-000000000001",
-      ),
+        "00000000-0000-4000-8000-000000000001"
+      )
     ).resolves.toBe("absent")
 
     service.listCatalogAuthoringOperations.mockResolvedValue([
@@ -108,16 +106,16 @@ describe("catalog product creation audit", () => {
       inspectCatalogProductCreation(
         service,
         "user_1",
-        "00000000-0000-4000-8000-000000000001",
-      ),
+        "00000000-0000-4000-8000-000000000001"
+      )
     ).resolves.toBe("compensated")
 
     await expect(
       inspectCatalogProductCreation(
         service,
         "user_2",
-        "00000000-0000-4000-8000-000000000001",
-      ),
+        "00000000-0000-4000-8000-000000000001"
+      )
     ).resolves.toBe("unavailable")
   })
 
@@ -141,8 +139,8 @@ describe("catalog product creation audit", () => {
       inspectCatalogProductCreation(
         service,
         "user_1",
-        "00000000-0000-4000-8000-000000000001",
-      ),
+        "00000000-0000-4000-8000-000000000001"
+      )
     ).resolves.toBe("succeeded")
 
     service.listCatalogAuthoringOperations.mockResolvedValue([
@@ -157,8 +155,8 @@ describe("catalog product creation audit", () => {
       inspectCatalogProductCreation(
         service,
         "user_1",
-        "00000000-0000-4000-8000-000000000001",
-      ),
+        "00000000-0000-4000-8000-000000000001"
+      )
     ).rejects.toThrow("no valid result")
   })
 
@@ -169,7 +167,7 @@ describe("catalog product creation audit", () => {
     ] as never)
 
     await expect(
-      beginCatalogProductCreation(service, commandFixture()),
+      beginCatalogProductCreation(service, commandFixture())
     ).resolves.toEqual({
       operationId: "creation_operation",
       replayed: false,
@@ -186,7 +184,7 @@ describe("catalog product creation audit", () => {
           status: "pending",
         }),
       ],
-      expect.anything(),
+      expect.anything()
     )
   })
 
@@ -211,7 +209,7 @@ describe("catalog product creation audit", () => {
     ] as never)
 
     await expect(
-      beginCatalogProductCreation(service, commandFixture()),
+      beginCatalogProductCreation(service, commandFixture())
     ).resolves.toEqual({
       operationId: "creation_operation",
       replayed: true,
@@ -223,7 +221,7 @@ describe("catalog product creation audit", () => {
       beginCatalogProductCreation(service, {
         ...commandFixture(),
         requestSha256: "different_hash",
-      }),
+      })
     ).rejects.toThrow("cannot be replayed")
 
     service.listCatalogAuthoringOperations.mockResolvedValue([
@@ -238,7 +236,7 @@ describe("catalog product creation audit", () => {
       },
     ] as never)
     await expect(
-      beginCatalogProductCreation(service, commandFixture()),
+      beginCatalogProductCreation(service, commandFixture())
     ).rejects.toThrow("no valid result")
 
     service.listCatalogAuthoringOperations.mockResolvedValue([
@@ -253,7 +251,7 @@ describe("catalog product creation audit", () => {
       },
     ] as never)
     await expect(
-      beginCatalogProductCreation(service, commandFixture()),
+      beginCatalogProductCreation(service, commandFixture())
     ).rejects.toThrow("no valid result")
   })
 
@@ -269,7 +267,7 @@ describe("catalog product creation audit", () => {
     await completeCatalogProductCreation(service, "creation_operation", result)
     expect(service.completeCatalogAuthoringOperation).toHaveBeenCalledWith(
       "creation_operation",
-      result,
+      result
     )
 
     await compensateCatalogProductCreation(service, "creation_operation")
@@ -281,7 +279,7 @@ describe("catalog product creation audit", () => {
           status: "compensated",
         }),
       ],
-      expect.anything(),
+      expect.anything()
     )
   })
 })
@@ -295,14 +293,14 @@ describe("catalog product variant profile batch", () => {
       "prod_1",
       "profile_1",
       targets[1]!,
-      1,
+      1
     )
     const replay = buildCatalogVariantProfileMutation(
       command,
       "prod_1",
       "profile_1",
       targets[1]!,
-      1,
+      1
     )
 
     expect(first.idempotencyKey).toBe(replay.idempotencyKey)
@@ -330,8 +328,8 @@ describe("catalog product variant profile batch", () => {
         "prod_1",
         "profile_1",
         targets,
-        { compensate, mutate },
-      ),
+        { compensate, mutate }
+      )
     ).resolves.toMatchObject({
       profileIds: ["variant_profile_0", "variant_profile_1"],
       variantIds: ["variant_0", "variant_1"],
@@ -358,13 +356,13 @@ describe("catalog product variant profile batch", () => {
         "prod_1",
         "profile_1",
         targets,
-        { compensate, mutate },
-      ),
+        { compensate, mutate }
+      )
     ).rejects.toBe(failure)
     expect(compensate).toHaveBeenCalledTimes(1)
     expect(compensate).toHaveBeenCalledWith(
       service,
-      expect.objectContaining({ aggregateId: "variant_0" }),
+      expect.objectContaining({ aggregateId: "variant_0" })
     )
   })
 
@@ -372,7 +370,7 @@ describe("catalog product variant profile batch", () => {
     const service = serviceFixture()
     const command = commandFixture()
     service.completeCatalogAuthoringOperation.mockRejectedValueOnce(
-      new Error("operation persistence failed"),
+      new Error("operation persistence failed")
     )
     const compensate = jest.fn().mockResolvedValue(undefined)
 
@@ -385,11 +383,9 @@ describe("catalog product variant profile batch", () => {
         targetsFixture(command).slice(0, 1),
         {
           compensate,
-          mutate: jest
-            .fn()
-            .mockResolvedValue(mutationFixture("variant_0", 0)),
-        },
-      ),
+          mutate: jest.fn().mockResolvedValue(mutationFixture("variant_0", 0)),
+        }
+      )
     ).rejects.toThrow("operation persistence failed")
     expect(compensate).toHaveBeenCalledTimes(1)
   })
@@ -428,7 +424,7 @@ describe("catalog product variant profile batch", () => {
       compensateCatalogProductVariantProfiles(service, result, {
         compensate,
         mutate: jest.fn(),
-      }),
+      })
     ).rejects.toThrow("variant profile compensations failed")
   })
 })

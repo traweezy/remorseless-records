@@ -15,10 +15,7 @@ import {
   type ReactElement,
 } from "react"
 import { HistoryExtension } from "@lexical/history"
-import {
-  $generateHtmlFromNodes,
-  $generateNodesFromDOM,
-} from "@lexical/html"
+import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html"
 import { LinkExtension, TOGGLE_LINK_COMMAND } from "@lexical/link"
 import {
   INSERT_ORDERED_LIST_COMMAND,
@@ -60,7 +57,7 @@ const ToolbarFirstEditorChildrenView = memo<EditorChildrenComponentProps>(
       {children}
       <div className="relative">{contentEditable}</div>
     </>
-  ),
+  )
 )
 
 ToolbarFirstEditorChildrenView.displayName = "ToolbarFirstEditorChildrenView"
@@ -194,7 +191,7 @@ const HtmlSyncPlugin = memo<HtmlSyncPluginProps>(({ syncedHtmlRef, value }) => {
             DOMParser: new () => {
               parseFromString: (
                 source: string,
-                mimeType: string,
+                mimeType: string
               ) => Parameters<typeof $generateNodesFromDOM>[1]
             }
           }
@@ -203,7 +200,7 @@ const HtmlSyncPlugin = memo<HtmlSyncPluginProps>(({ syncedHtmlRef, value }) => {
         const nodes = $generateNodesFromDOM(editor, document)
         root.append(...(nodes.length ? nodes : [$createParagraphNode()]))
       },
-      { tag: EXTERNAL_SYNC_TAG },
+      { tag: EXTERNAL_SYNC_TAG }
     )
   }, [editor, syncedHtmlRef, value])
 
@@ -284,14 +281,14 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
           })
         })
       }),
-    [editor],
+    [editor]
   )
 
   const handleToolbarMouseDown = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault()
     },
-    [],
+    []
   )
   const handleToolbarAction = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -299,9 +296,7 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
         event.currentTarget as unknown as {
           dataset: { action?: ToolbarAction }
         }
-      ).dataset.action as
-        | ToolbarAction
-        | undefined
+      ).dataset.action as ToolbarAction | undefined
       if (!action || disabled) {
         return
       }
@@ -314,7 +309,7 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
           action === "bullet"
             ? INSERT_UNORDERED_LIST_COMMAND
             : INSERT_ORDERED_LIST_COMMAND,
-          undefined,
+          undefined
         )
         return
       }
@@ -344,7 +339,7 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
         })
       })
     },
-    [disabled, editor],
+    [disabled, editor]
   )
   const handleLinkToggle = useCallback(() => {
     setLinkError(null)
@@ -352,11 +347,12 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
   }, [])
   const handleLinkChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      const value = (event.currentTarget as unknown as { value?: unknown }).value
+      const value = (event.currentTarget as unknown as { value?: unknown })
+        .value
       setLinkUrl(typeof value === "string" ? value : "")
       setLinkError(null)
     },
-    [],
+    []
   )
   const handleLinkApply = useCallback(() => {
     const normalized = normalizeLink(linkUrl)
@@ -380,7 +376,11 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
 
   return (
     <div className="border-b border-ui-border-base bg-ui-bg-subtle p-2">
-      <div aria-label="Text formatting" className="flex flex-wrap gap-1" role="toolbar">
+      <div
+        aria-label="Text formatting"
+        className="flex flex-wrap gap-1"
+        role="toolbar"
+      >
         {toolbarActions.map(({ action, label }) => (
           <Button
             aria-pressed={
@@ -413,9 +413,7 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
       </div>
       {linkOpen ? (
         <div className="mt-2 rounded-md border border-ui-border-base bg-ui-bg-base p-3">
-          <Label htmlFor="rich-text-link">
-            Link destination
-          </Label>
+          <Label htmlFor="rich-text-link">Link destination</Label>
           <div className="mt-2 flex flex-wrap gap-2">
             <Input
               aria-describedby={linkError ? "rich-text-link-error" : undefined}
@@ -441,7 +439,11 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
             </Button>
           </div>
           {linkError ? (
-            <Text className="mt-1 text-ui-fg-error" id="rich-text-link-error" size="xsmall">
+            <Text
+              className="mt-1 text-ui-fg-error"
+              id="rich-text-link-error"
+              size="xsmall"
+            >
               {linkError}
             </Text>
           ) : null}
@@ -467,7 +469,11 @@ const RichTextEditor = memo<RichTextEditorProps>(
   }) => {
     const syncedHtmlRef = useRef<string | null>(null)
     const handleChange = useCallback(
-      (_editorState: unknown, editor: Parameters<typeof $generateHtmlFromNodes>[0], tags: Set<string>) => {
+      (
+        _editorState: unknown,
+        editor: Parameters<typeof $generateHtmlFromNodes>[0],
+        tags: Set<string>
+      ) => {
         if (tags.has(EXTERNAL_SYNC_TAG)) {
           return
         }
@@ -477,7 +483,7 @@ const RichTextEditor = memo<RichTextEditorProps>(
           onChange(html)
         })
       },
-      [onChange],
+      [onChange]
     )
     const contentConfig = useMemo<RichTextContentConfig>(
       () => ({
@@ -489,7 +495,7 @@ const RichTextEditor = memo<RichTextEditorProps>(
         onBlur,
         placeholder,
       }),
-      [ariaDescribedBy, ariaLabel, disabled, error, id, onBlur, placeholder],
+      [ariaDescribedBy, ariaLabel, disabled, error, id, onBlur, placeholder]
     )
 
     return (
@@ -506,7 +512,7 @@ const RichTextEditor = memo<RichTextEditorProps>(
         </div>
       </RichTextContentContext.Provider>
     )
-  },
+  }
 )
 
 RichTextEditor.displayName = "RichTextEditor"

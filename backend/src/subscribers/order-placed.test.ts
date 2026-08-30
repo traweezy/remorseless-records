@@ -1,6 +1,6 @@
-import { Modules } from "@medusajs/framework/utils";
+import { Modules } from "@medusajs/framework/utils"
 
-import orderPlacedHandler from "./order-placed";
+import orderPlacedHandler from "./order-placed"
 
 const orderFixture = (overrides: Record<string, unknown> = {}) => ({
   created_at: "2026-08-29T12:00:00.000Z",
@@ -21,15 +21,15 @@ const orderFixture = (overrides: Record<string, unknown> = {}) => ({
   },
   summary: { raw_current_order_total: { value: 25 } },
   ...overrides,
-});
+})
 
 const fixture = (order = orderFixture()) => {
-  const createNotifications = jest.fn(async () => []);
-  const retrieveOrder = jest.fn(async () => order);
+  const createNotifications = jest.fn(async () => [])
+  const retrieveOrder = jest.fn(async () => order)
   const dependencies = new Map<string, unknown>([
     [Modules.NOTIFICATION, { createNotifications }],
     [Modules.ORDER, { retrieveOrder }],
-  ]);
+  ])
   const input = {
     container: {
       resolve: (name: string) => dependencies.get(name),
@@ -38,16 +38,16 @@ const fixture = (order = orderFixture()) => {
       data: { id: "order_01" },
       name: "order.placed",
     },
-  } as unknown as Parameters<typeof orderPlacedHandler>[0];
+  } as unknown as Parameters<typeof orderPlacedHandler>[0]
 
-  return { createNotifications, input, retrieveOrder };
-};
+  return { createNotifications, input, retrieveOrder }
+}
 
 describe("order confirmation subscriber", () => {
   it("uses database and provider idempotency scoped to the order", async () => {
-    const input = fixture();
+    const input = fixture()
 
-    await expect(orderPlacedHandler(input.input)).resolves.toBeUndefined();
+    await expect(orderPlacedHandler(input.input)).resolves.toBeUndefined()
 
     expect(input.createNotifications).toHaveBeenCalledWith([
       expect.objectContaining({
@@ -65,28 +65,28 @@ describe("order confirmation subscriber", () => {
         resource_type: "order",
         trigger_type: "order.placed",
       }),
-    ]);
-  });
+    ])
+  })
 
   it.each([
     ["missing email", { email: null }],
     ["missing shipping address", { shipping_address: null }],
   ])("does not create a notification for %s", async (_label, overrides) => {
-    const input = fixture(orderFixture(overrides));
+    const input = fixture(orderFixture(overrides))
 
-    await orderPlacedHandler(input.input);
+    await orderPlacedHandler(input.input)
 
-    expect(input.createNotifications).not.toHaveBeenCalled();
-  });
+    expect(input.createNotifications).not.toHaveBeenCalled()
+  })
 
   it("propagates delivery failure so the idempotent event can retry", async () => {
-    const input = fixture();
+    const input = fixture()
     input.createNotifications.mockRejectedValue(
-      new Error("safe provider failure"),
-    );
+      new Error("safe provider failure")
+    )
 
     await expect(orderPlacedHandler(input.input)).rejects.toThrow(
-      "safe provider failure",
-    );
-  });
-});
+      "safe provider failure"
+    )
+  })
+})

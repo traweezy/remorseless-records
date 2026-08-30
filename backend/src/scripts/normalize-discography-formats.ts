@@ -48,7 +48,9 @@ const normalizeFormats = (formats: string[] | null | undefined): string[] => {
     }
   })
 
-  return DISCOGRAPHY_FORMATS.map((entry) => entry.label).filter((label) => found.has(label))
+  return DISCOGRAPHY_FORMATS.map((entry) => entry.label).filter((label) =>
+    found.has(label)
+  )
 }
 
 const listAll = async <T>(
@@ -83,7 +85,9 @@ export default async function normalizeDiscographyFormatsScript({
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const discographyService = container.resolve("discography") as DiscographyService
+  const discographyService = container.resolve(
+    "discography"
+  ) as DiscographyService
 
   const entries = await listAll<DiscographyEntryRecord>((skip, take) =>
     discographyService.listAndCountDiscographyEntries({}, { skip, take })
@@ -93,7 +97,9 @@ export default async function normalizeDiscographyFormatsScript({
 
   entries.forEach((entry) => {
     const normalized = normalizeFormats(entry.formats ?? [])
-    const current = (entry.formats ?? []).filter((value): value is string => typeof value === "string")
+    const current = (entry.formats ?? []).filter(
+      (value): value is string => typeof value === "string"
+    )
     if (!hasSameFormats(current, normalized)) {
       updates.push({ id: entry.id, formats: normalized })
     }

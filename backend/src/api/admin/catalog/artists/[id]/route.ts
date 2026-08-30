@@ -37,7 +37,10 @@ export const GET = async (
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const artist = await catalogService.retrieveCatalogArtist(id)
   if (!artist) {
-    throw new MedusaError(MedusaError.Types.NOT_FOUND, "Catalog artist not found")
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "Catalog artist not found"
+    )
   }
 
   res.status(200).json({ artist: serializeCatalogArtist(artist) })
@@ -69,7 +72,10 @@ export const PUT = async (
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const existing = await catalogService.retrieveCatalogArtist(id)
   if (!existing) {
-    throw new MedusaError(MedusaError.Types.NOT_FOUND, "Catalog artist not found")
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "Catalog artist not found"
+    )
   }
 
   const payload: Record<string, unknown> = {}
@@ -106,7 +112,10 @@ export const PUT = async (
     ? updatedResult[0]
     : updatedResult
   if (!updated) {
-    throw new MedusaError(MedusaError.Types.NOT_FOUND, "Catalog artist not found")
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "Catalog artist not found"
+    )
   }
 
   res.status(200).json({ artist: serializeCatalogArtist(updated) })

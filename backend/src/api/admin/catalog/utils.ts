@@ -54,7 +54,9 @@ export const resolveUniqueSlug = async (
   let suffix = 1
 
   while (suffix < 50) {
-    const existing = await catalogService.listCatalogArtists({ slug: candidate })
+    const existing = await catalogService.listCatalogArtists({
+      slug: candidate,
+    })
     const collision = existing.find((artist) => artist.id !== excludeId)
     if (!collision) {
       return candidate
@@ -97,7 +99,7 @@ export const assertProductExists = async (
 
 export const assertProductsExist = async (
   req: MedusaRequest,
-  productIds: readonly string[],
+  productIds: readonly string[]
 ): Promise<void> => {
   const uniqueProductIds = [...new Set(productIds)]
   if (!uniqueProductIds.length) {
@@ -113,14 +115,14 @@ export const assertProductsExist = async (
   })
   const found = new Set(
     result.data.flatMap((product) =>
-      typeof product.id === "string" ? [product.id] : [],
-    ),
+      typeof product.id === "string" ? [product.id] : []
+    )
   )
   const missing = uniqueProductIds.find((productId) => !found.has(productId))
   if (missing) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
-      `Product not found: ${missing}`,
+      `Product not found: ${missing}`
     )
   }
 }
@@ -170,9 +172,6 @@ export const assertVariantBelongsToProduct = async (
         : null
 
   if (variantProductId !== productId) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      message
-    )
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, message)
   }
 }

@@ -40,7 +40,7 @@ export const CatalogCreationProgress = memo<{ current: number }>(
         </li>
       ))}
     </ol>
-  ),
+  )
 )
 
 CatalogCreationProgress.displayName = "CatalogCreationProgress"
@@ -107,7 +107,7 @@ export const CatalogCreationActions = memo<CatalogCreationActionsProps>(
         )}
       </div>
     </div>
-  ),
+  )
 )
 
 CatalogCreationActions.displayName = "CatalogCreationActions"

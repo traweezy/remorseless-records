@@ -4,12 +4,12 @@ import {
   resolveTaxCacheConfig,
   TAX_CACHE_CONFIG_DEFAULTS,
   validateTaxCacheConfig,
-} from "./cache-config";
+} from "./cache-config"
 
 describe("tax cache configuration", () => {
   it("uses bounded defaults when cache settings are absent", () => {
-    expect(resolveTaxCacheConfig({})).toEqual(TAX_CACHE_CONFIG_DEFAULTS);
-  });
+    expect(resolveTaxCacheConfig({})).toEqual(TAX_CACHE_CONFIG_DEFAULTS)
+  })
 
   it("accepts explicit bounded integer settings", () => {
     expect(
@@ -18,14 +18,14 @@ describe("tax cache configuration", () => {
         STRIPE_TAX_QUOTE_TTL_MS: "1800000",
         TAX_RATE_LOOKUP_CACHE_MAX_ENTRIES: "10000",
         TAX_RATE_LOOKUP_CACHE_TTL_MS: "3600000",
-      }),
+      })
     ).toEqual({
       rateLookupMaxEntries: 10_000,
       rateLookupTtlMs: 3_600_000,
       stripeQuoteMaxEntries: 1_000,
       stripeQuoteTtlMs: 1_800_000,
-    });
-  });
+    })
+  })
 
   it.each([
     ["TAX_RATE_LOOKUP_CACHE_TTL_MS", ""],
@@ -39,30 +39,30 @@ describe("tax cache configuration", () => {
     ["STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES", "1001"],
   ])("rejects an invalid %s setting", (name, value) => {
     expect(() => resolveTaxCacheConfig({ [name]: value })).toThrow(
-      `${name} must be an integer between`,
-    );
-  });
+      `${name} must be an integer between`
+    )
+  })
 
   it("does not echo a malformed setting value", () => {
-    expect.assertions(1);
-    const malformedValue = "sensitive-cache-value";
+    expect.assertions(1)
+    const malformedValue = "sensitive-cache-value"
     try {
       resolveTaxCacheConfig({
         TAX_RATE_LOOKUP_CACHE_TTL_MS: malformedValue,
-      });
+      })
     } catch (error) {
-      expect(String(error)).not.toContain(malformedValue);
+      expect(String(error)).not.toContain(malformedValue)
     }
-  });
+  })
 
   it("validates programmatic provider configuration", () => {
     expect(() =>
       validateTaxCacheConfig({
         ...TAX_CACHE_CONFIG_DEFAULTS,
         stripeQuoteMaxEntries: Number.POSITIVE_INFINITY,
-      }),
-    ).toThrow("STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES");
-  });
+      })
+    ).toThrow("STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES")
+  })
 
   it("maps provider options through the same bounded validation", () => {
     expect(
@@ -71,21 +71,21 @@ describe("tax cache configuration", () => {
         rateCacheTtlMs: 60_000,
         stripeQuoteCacheMaxEntries: 128,
         stripeQuoteTtlMs: 120_000,
-      }),
+      })
     ).toEqual({
       rateLookupMaxEntries: 512,
       rateLookupTtlMs: 60_000,
       stripeQuoteMaxEntries: 128,
       stripeQuoteTtlMs: 120_000,
-    });
+    })
     expect(() =>
-      resolveProviderTaxCacheConfig({ rateCacheMaxEntries: "512" }),
-    ).toThrow("TAX_RATE_LOOKUP_CACHE_MAX_ENTRIES");
-  });
+      resolveProviderTaxCacheConfig({ rateCacheMaxEntries: "512" })
+    ).toThrow("TAX_RATE_LOOKUP_CACHE_MAX_ENTRIES")
+  })
 
   it("formats a key-free startup summary", () => {
     expect(formatTaxCacheConfigLog(TAX_CACHE_CONFIG_DEFAULTS)).toBe(
-      "Tax local caches configured (rate_ttl_ms=300000, rate_max_entries=2048, stripe_quote_ttl_ms=1800000, stripe_quote_max_entries=256).",
-    );
-  });
-});
+      "Tax local caches configured (rate_ttl_ms=300000, rate_max_entries=2048, stripe_quote_ttl_ms=1800000, stripe_quote_max_entries=256)."
+    )
+  })
+})

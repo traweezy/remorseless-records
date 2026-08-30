@@ -57,14 +57,14 @@ describe("catalog creation review", () => {
           step: 1,
           targetId: "catalog-create-artist",
         }),
-      ]),
+      ])
     )
 
     const markup = renderToStaticMarkup(
       <CatalogCreationValidationSummary
         issues={issues}
         onNavigate={jest.fn()}
-      />,
+      />
     )
     expect(markup).toContain("Review these details")
     expect(markup).toContain("Step 2: Enter a product name.")
@@ -92,7 +92,7 @@ describe("catalog creation review", () => {
           message: "Describe every image for customers who cannot see it.",
           targetId: "catalog-create-media-alt-media_1",
         }),
-      ]),
+      ])
     )
 
     const bundle = createCatalogCreationDefaults("fixed_bundle")
@@ -103,7 +103,7 @@ describe("catalog creation review", () => {
           message: "Add at least one included product.",
           targetId: "catalog-create-add-bundle-component",
         }),
-      ]),
+      ])
     )
   })
 
@@ -148,7 +148,7 @@ describe("catalog creation review", () => {
       <CatalogCreationReview
         availabilityByOfferingId={new Map([[offering.id, availability]])}
         values={values}
-      />,
+      />
     )
 
     expect(markup).toContain("Ready to create a draft")

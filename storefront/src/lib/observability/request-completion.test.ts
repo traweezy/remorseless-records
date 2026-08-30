@@ -61,10 +61,7 @@ describe("Storefront request completion registry", () => {
   })
 
   it("shares request state across separately bundled registry wrappers", () => {
-    const requests = new Map<
-      string,
-      { expiresAt: number; requestId: string }
-    >()
+    const requests = new Map<string, { expiresAt: number; requestId: string }>()
     const proxyRegistry = new BoundedRequestRegistry({ requests })
     const instrumentationRegistry = new BoundedRequestRegistry({ requests })
 

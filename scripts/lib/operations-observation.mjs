@@ -1,22 +1,22 @@
-const SHA_PATTERN = /^(?:[0-9a-f]{40}|unknown)$/u;
-const REASON_PATTERN = /^[a-z0-9][a-z0-9_.:-]{0,191}$/u;
-const NAME_PATTERN = /^[a-z][a-z0-9_]{0,63}$/u;
-const MAX_CLOCK_SKEW_SECONDS = 60;
-const MAX_RESPONSE_AGE_SECONDS = 2 * 60;
+const SHA_PATTERN = /^(?:[0-9a-f]{40}|unknown)$/u
+const REASON_PATTERN = /^[a-z0-9][a-z0-9_.:-]{0,191}$/u
+const NAME_PATTERN = /^[a-z][a-z0-9_]{0,63}$/u
+const MAX_CLOCK_SKEW_SECONDS = 60
+const MAX_RESPONSE_AGE_SECONDS = 2 * 60
 
 const isRecord = (value) =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+  typeof value === "object" && value !== null && !Array.isArray(value)
 const validTimestamp = (value) =>
-  typeof value === "string" && Number.isFinite(Date.parse(value));
+  typeof value === "string" && Number.isFinite(Date.parse(value))
 const validReasons = (value) =>
   Array.isArray(value) &&
   value.every(
-    (reason) => typeof reason === "string" && REASON_PATTERN.test(reason),
-  );
+    (reason) => typeof reason === "string" && REASON_PATTERN.test(reason)
+  )
 
 const sanitizeRetentionJob = (value) => {
   if (value === null) {
-    return null;
+    return null
   }
   if (
     !isRecord(value) ||
@@ -26,12 +26,12 @@ const sanitizeRetentionJob = (value) => {
     typeof value.commit_sha !== "string" ||
     !SHA_PATTERN.test(value.commit_sha)
   ) {
-    return undefined;
+    return undefined
   }
   const count = (field) =>
     Number.isInteger(value[field]) && value[field] >= 0
       ? value[field]
-      : undefined;
+      : undefined
   return {
     capped: typeof value.capped === "boolean" ? value.capped : null,
     commitSha: value.commit_sha,
@@ -39,14 +39,14 @@ const sanitizeRetentionJob = (value) => {
     recordedAt: value.recorded_at,
     scanned: count("scanned") ?? null,
     status: value.status,
-  };
-};
+  }
+}
 
 const sanitizeDependencies = (value) => {
   if (!Array.isArray(value)) {
-    return null;
+    return null
   }
-  const dependencies = [];
+  const dependencies = []
   for (const dependency of value) {
     if (
       !isRecord(dependency) ||
@@ -57,23 +57,23 @@ const sanitizeDependencies = (value) => {
       !Number.isFinite(dependency.duration_ms) ||
       dependency.duration_ms < 0
     ) {
-      return null;
+      return null
     }
     dependencies.push({
       durationMs: dependency.duration_ms,
       name: dependency.name,
       status: dependency.status,
-    });
+    })
   }
-  return dependencies;
-};
+  return dependencies
+}
 
 const parsePayload = (body) => {
-  let value;
+  let value
   try {
-    value = JSON.parse(body);
+    value = JSON.parse(body)
   } catch {
-    return null;
+    return null
   }
   if (
     !isRecord(value) ||
@@ -83,9 +83,9 @@ const parsePayload = (body) => {
     !validReasons(value.reasons) ||
     !isRecord(value.components)
   ) {
-    return null;
+    return null
   }
-  const { incidents, retention, scheduler } = value.components;
+  const { incidents, retention, scheduler } = value.components
   if (
     !isRecord(incidents) ||
     !isRecord(retention) ||
@@ -99,40 +99,40 @@ const parsePayload = (body) => {
     !isRecord(retention.jobs) ||
     !Array.isArray(incidents.incidents)
   ) {
-    return null;
+    return null
   }
-  const anonymousCart = sanitizeRetentionJob(retention.jobs.anonymous_cart);
+  const anonymousCart = sanitizeRetentionJob(retention.jobs.anonymous_cart)
   const abandonedCheckout = sanitizeRetentionJob(
-    retention.jobs.abandoned_checkout,
-  );
+    retention.jobs.abandoned_checkout
+  )
   if (anonymousCart === undefined || abandonedCheckout === undefined) {
-    return null;
+    return null
   }
-  const incidentTypes = [];
+  const incidentTypes = []
   for (const incident of incidents.incidents) {
     if (
       !isRecord(incident) ||
       !["payment_tax_mismatch", "webhook_failure"].includes(
-        incident.incident_type,
+        incident.incident_type
       ) ||
       !validTimestamp(incident.recorded_at)
     ) {
-      return null;
+      return null
     }
-    incidentTypes.push(incident.incident_type);
+    incidentTypes.push(incident.incident_type)
   }
-  const dependencies = sanitizeDependencies(value.dependencies);
+  const dependencies = sanitizeDependencies(value.dependencies)
   if (dependencies === null) {
-    return null;
+    return null
   }
-  const redisLatencyMs = scheduler.redis_latency_ms;
+  const redisLatencyMs = scheduler.redis_latency_ms
   if (
     redisLatencyMs !== null &&
     (typeof redisLatencyMs !== "number" ||
       !Number.isFinite(redisLatencyMs) ||
       redisLatencyMs < 0)
   ) {
-    return null;
+    return null
   }
   return {
     checkedAt: value.checked_at,
@@ -155,8 +155,8 @@ const parsePayload = (body) => {
       typeof value.version === "string" && SHA_PATTERN.test(value.version)
         ? value.version
         : "unknown",
-  };
-};
+  }
+}
 
 export const evaluateOperationsHealthResponse = ({
   body,
@@ -167,7 +167,7 @@ export const evaluateOperationsHealthResponse = ({
   sourceErrors = [],
 }) => {
   if (typeof body !== "string") {
-    throw new TypeError("Operations health body must be a string");
+    throw new TypeError("Operations health body must be a string")
   }
   if (
     !Number.isInteger(httpStatus) ||
@@ -177,48 +177,48 @@ export const evaluateOperationsHealthResponse = ({
     readyHttpStatus < 0 ||
     readyHttpStatus > 599
   ) {
-    throw new TypeError("Operations HTTP statuses must be bounded");
+    throw new TypeError("Operations HTTP statuses must be bounded")
   }
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
-    throw new TypeError("Operations observation time must be valid");
+    throw new TypeError("Operations observation time must be valid")
   }
   if (
     !Array.isArray(sourceErrors) ||
     sourceErrors.some(
-      (error) => typeof error !== "string" || !REASON_PATTERN.test(error),
+      (error) => typeof error !== "string" || !REASON_PATTERN.test(error)
     )
   ) {
-    throw new TypeError("Operations source errors must be machine codes");
+    throw new TypeError("Operations source errors must be machine codes")
   }
 
-  const reasons = new Set(sourceErrors.map((error) => `source_error:${error}`));
-  const payload = parsePayload(body);
+  const reasons = new Set(sourceErrors.map((error) => `source_error:${error}`))
+  const payload = parsePayload(body)
   if (!payload) {
-    reasons.add("health_payload_invalid");
+    reasons.add("health_payload_invalid")
   } else {
     for (const reason of payload.reasons) {
-      reasons.add(reason);
+      reasons.add(reason)
     }
     const responseAgeSeconds =
-      (now.getTime() - Date.parse(payload.checkedAt)) / 1_000;
+      (now.getTime() - Date.parse(payload.checkedAt)) / 1_000
     if (responseAgeSeconds > MAX_RESPONSE_AGE_SECONDS) {
-      reasons.add("health_response_stale");
+      reasons.add("health_response_stale")
     }
     if (responseAgeSeconds < -MAX_CLOCK_SKEW_SECONDS) {
-      reasons.add("health_response_from_future");
+      reasons.add("health_response_from_future")
     }
     if (httpStatus !== 200 || payload.status !== "healthy") {
-      reasons.add("operations_endpoint_unhealthy");
+      reasons.add("operations_endpoint_unhealthy")
     }
   }
   if (readyHttpStatus !== 200) {
-    reasons.add("readiness_endpoint_unhealthy");
+    reasons.add("readiness_endpoint_unhealthy")
   }
   if (forceAlert) {
-    reasons.add("forced_acceptance_alert");
+    reasons.add("forced_acceptance_alert")
   }
 
-  const reasonList = [...reasons].toSorted();
+  const reasonList = [...reasons].toSorted()
   return {
     schemaVersion: 1,
     status: reasonList.length === 0 ? "healthy" : "alert",
@@ -228,14 +228,14 @@ export const evaluateOperationsHealthResponse = ({
     readyHttpStatus,
     endpoint: payload,
     reasons: reasonList,
-  };
-};
+  }
+}
 
 export const renderOperationsObservationMarkdown = (report) => {
   if (!isRecord(report) || typeof report.status !== "string") {
-    throw new TypeError("Operations observation report is required");
+    throw new TypeError("Operations observation report is required")
   }
-  const endpoint = report.endpoint;
+  const endpoint = report.endpoint
   const lines = [
     "# Staging operations observation",
     "",
@@ -253,21 +253,21 @@ export const renderOperationsObservationMarkdown = (report) => {
     "",
     "## Dependencies",
     "",
-  ];
+  ]
   lines.push(
     ...(endpoint?.dependencies.length
       ? endpoint.dependencies.map(
           (dependency) =>
-            `- \`${dependency.name}\`: \`${dependency.status}\` (${dependency.durationMs} ms)`,
+            `- \`${dependency.name}\`: \`${dependency.status}\` (${dependency.durationMs} ms)`
         )
-      : ["- None reported"]),
-  );
-  lines.push("", "## Alert reasons", "");
+      : ["- None reported"])
+  )
+  lines.push("", "## Alert reasons", "")
   lines.push(
     ...(report.reasons.length
       ? report.reasons.map((reason) => `- \`${reason}\``)
-      : ["- None"]),
-  );
-  lines.push("");
-  return lines.join("\n");
-};
+      : ["- None"])
+  )
+  lines.push("")
+  return lines.join("\n")
+}

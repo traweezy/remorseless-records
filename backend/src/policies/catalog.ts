@@ -1,5 +1,5 @@
-import { definePolicies } from "@medusajs/framework/utils";
+import { definePolicies } from "@medusajs/framework/utils"
 
-import { catalogAdminPolicyDefinitions } from "../lib/admin-permissions";
+import { catalogAdminPolicyDefinitions } from "../lib/admin-permissions"
 
-export const catalogPolicies = definePolicies(catalogAdminPolicyDefinitions);
+export const catalogPolicies = definePolicies(catalogAdminPolicyDefinitions)

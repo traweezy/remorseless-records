@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url"
 
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const backendRequire = createRequire(
-  join(repositoryRoot, "backend", "package.json"),
+  join(repositoryRoot, "backend", "package.json")
 )
 const dashboardRoot = dirname(
-  backendRequire.resolve("@medusajs/dashboard/package.json"),
+  backendRequire.resolve("@medusajs/dashboard/package.json")
 )
 const distRoot = join(dashboardRoot, "dist")
 const readDashboardFile = (relativePath) =>
@@ -24,20 +24,20 @@ const [
   customRoute,
   legacyRoute,
 ] = await Promise.all([
-    readDashboardFile("src/dashboard-app/routes/get-route.map.tsx"),
-    readDashboardFile("src/components/layout-composer/layout-composer.tsx"),
-    readDashboardFile("src/dashboard-app/dashboard-app.tsx"),
-    readDashboardFile("dist/app.js"),
-    readdir(distRoot),
-    readFile(
-      join(repositoryRoot, "backend/src/admin/routes/products/create/page.tsx"),
-      "utf8",
-    ),
-    readFile(
-      join(repositoryRoot, "backend/src/admin/routes/catalog/new/page.tsx"),
-      "utf8",
-    ),
-  ])
+  readDashboardFile("src/dashboard-app/routes/get-route.map.tsx"),
+  readDashboardFile("src/components/layout-composer/layout-composer.tsx"),
+  readDashboardFile("src/dashboard-app/dashboard-app.tsx"),
+  readDashboardFile("dist/app.js"),
+  readdir(distRoot),
+  readFile(
+    join(repositoryRoot, "backend/src/admin/routes/products/create/page.tsx"),
+    "utf8"
+  ),
+  readFile(
+    join(repositoryRoot, "backend/src/admin/routes/catalog/new/page.tsx"),
+    "utf8"
+  ),
+])
 
 const nativeCreateRoutePattern =
   /path:\s*"create",\s*lazy:[^}]+(?:routes\/products\/product-create|product-create-)/su
@@ -56,10 +56,10 @@ assert.match(commonJsBundle, naturalOrderPattern)
 const moduleBundleSources = await Promise.all(
   distEntries
     .filter((entry) => entry.endsWith(".mjs"))
-    .map((entry) => readFile(join(distRoot, entry), "utf8")),
+    .map((entry) => readFile(join(distRoot, entry), "utf8"))
 )
 const routeMapBundles = moduleBundleSources.filter((source) =>
-  source.includes("src/dashboard-app/routes/get-route.map.tsx"),
+  source.includes("src/dashboard-app/routes/get-route.map.tsx")
 )
 assert.equal(routeMapBundles.length, 1)
 assert.doesNotMatch(routeMapBundles[0], nativeCreateRoutePattern)
@@ -72,5 +72,5 @@ assert.match(customRoute, /catalogAdminActions\.authoring\.create/u)
 assert.match(legacyRoute, /<Navigate replace to="\/products\/create"/u)
 
 console.log(
-  "Medusa Dashboard catalog boundary verified: the guided workflow owns /products/create and widget placement intent is preserved in source and production bundles.",
+  "Medusa Dashboard catalog boundary verified: the guided workflow owns /products/create and widget placement intent is preserved in source and production bundles."
 )

@@ -6,10 +6,7 @@ import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { resolveRegionId } from "@/lib/regions"
-import {
-  SEARCH_MAX_LIMIT,
-  SEARCH_MAX_RESULT_WINDOW,
-} from "@/lib/search/search"
+import { SEARCH_MAX_LIMIT, SEARCH_MAX_RESULT_WINDOW } from "@/lib/search/search"
 import {
   enforceRateLimit,
   jsonApiError,
@@ -123,12 +120,7 @@ export const GET = async (request: Request) => {
     console.error("Product fallback endpoint failed")
     const problem = providerProblem(error, "catalog")
     if (problem) {
-      return jsonApiError(
-        request,
-        problem.detail,
-        problem.status,
-        problem.code
-      )
+      return jsonApiError(request, problem.detail, problem.status, problem.code)
     }
     return jsonApiError(
       request,

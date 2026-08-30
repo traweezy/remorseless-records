@@ -1,6 +1,6 @@
-import { model } from "@medusajs/framework/utils";
+import { model } from "@medusajs/framework/utils"
 
-import { stripeLifecycleEventStatuses } from "../constants";
+import { stripeLifecycleEventStatuses } from "../constants"
 
 const StripeLifecycleEvent = model.define(
   {
@@ -17,9 +17,7 @@ const StripeLifecycleEvent = model.define(
     order_id: model.text().index().nullable(),
     livemode: model.boolean(),
     event_created_at: model.dateTime(),
-    status: model
-      .enum([...stripeLifecycleEventStatuses])
-      .default("received"),
+    status: model.enum([...stripeLifecycleEventStatuses]).default("received"),
     attempt_count: model.number().default(0),
     received_at: model.dateTime(),
     processing_started_at: model.dateTime().nullable(),
@@ -30,7 +28,7 @@ const StripeLifecycleEvent = model.define(
     currency_code: model.text().nullable(),
     provider_object_status: model.text().nullable(),
     metadata: model.json().default({}),
-  },
-);
+  }
+)
 
-export default StripeLifecycleEvent;
+export default StripeLifecycleEvent

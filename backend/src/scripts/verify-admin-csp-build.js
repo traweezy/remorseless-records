@@ -14,8 +14,7 @@ const verifyAdminCspBuild = (adminAssetsDirectory) => {
   const indexAssets = fs
     .readdirSync(adminAssetsDirectory, { withFileTypes: true })
     .filter(
-      (entry) =>
-        entry.isFile() && /^index-[A-Za-z\d_-]+\.js$/.test(entry.name)
+      (entry) => entry.isFile() && /^index-[A-Za-z\d_-]+\.js$/.test(entry.name)
     )
     .map((entry) => path.join(adminAssetsDirectory, entry.name))
 

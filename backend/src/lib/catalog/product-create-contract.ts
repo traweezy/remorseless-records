@@ -71,7 +71,7 @@ export const catalogProductCreateBundleComponentSchema = z.object({
         .trim()
         .min(1)
         .max(100)
-        .regex(/^[a-zA-Z0-9_-]+$/),
+        .regex(/^[a-zA-Z0-9_-]+$/)
     )
     .min(1)
     .max(100)
@@ -96,11 +96,7 @@ export const catalogProductCreateBundleSchema = z.object({
 })
 
 export const catalogProductCreateMediaSchema = z.object({
-  altText: z
-    .string()
-    .trim()
-    .min(1)
-    .max(MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH),
+  altText: z.string().trim().min(1).max(MAX_CATALOG_MEDIA_ALT_TEXT_LENGTH),
   isPrimary: z.boolean(),
   mediaAssetId: z.string().trim().min(1).max(255),
   role: z.enum(["primary", "gallery"]),
@@ -119,16 +115,16 @@ const hasNamedReference = (
         value?: string | null | undefined
       }
     | null
-    | undefined,
+    | undefined
 ): boolean =>
   Boolean(
     input?.referenceValueId?.trim() ||
-      input?.label?.trim() ||
-      input?.value?.trim(),
+    input?.label?.trim() ||
+    input?.value?.trim()
   )
 
 const hasPrimaryArtist = (
-  artists: z.infer<typeof productProfileSchema>["artists"],
+  artists: z.infer<typeof productProfileSchema>["artists"]
 ): boolean =>
   Boolean(
     artists?.some(
@@ -136,10 +132,10 @@ const hasPrimaryArtist = (
         (artist.role ?? "primary") === "primary" &&
         Boolean(
           artist.artistId?.trim() ||
-            artist.displayName?.trim() ||
-            artist.name?.trim(),
-        ),
-    ),
+          artist.displayName?.trim() ||
+          artist.name?.trim()
+        )
+    )
   )
 
 export const catalogProductCreateSchema = z
@@ -154,7 +150,7 @@ export const catalogProductCreateSchema = z
       .max(255)
       .regex(
         /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-        "Use a lowercase, hyphen-separated handle.",
+        "Use a lowercase, hyphen-separated handle."
       )
       .optional(),
     description: z.string().trim().max(250_000).optional().nullable(),
@@ -259,7 +255,8 @@ export const catalogProductCreateSchema = z
       if (providedOptions.length !== input.options.length) {
         context.addIssue({
           code: "custom",
-          message: "Each variant must select every product option exactly once.",
+          message:
+            "Each variant must select every product option exactly once.",
           path: ["variants", variantIndex, "options"],
         })
       }
@@ -308,14 +305,16 @@ export const catalogProductCreateSchema = z
         if (input.kind !== "music_release") {
           context.addIssue({
             code: "custom",
-            message: "This creation workflow supports preorders only for music releases.",
+            message:
+              "This creation workflow supports preorders only for music releases.",
             path: ["variants", variantIndex, "profile", "preorderAllowed"],
           })
         }
         if (variant.allowBackorder !== true) {
           context.addIssue({
             code: "custom",
-            message: "Preorders require native variant backorders to be enabled.",
+            message:
+              "Preorders require native variant backorders to be enabled.",
             path: ["variants", variantIndex, "allowBackorder"],
           })
         }
@@ -349,7 +348,10 @@ export const catalogProductCreateSchema = z
       }
     })
 
-    if (input.kind === "music_release" && !hasPrimaryArtist(input.profile.artists)) {
+    if (
+      input.kind === "music_release" &&
+      !hasPrimaryArtist(input.profile.artists)
+    ) {
       context.addIssue({
         code: "custom",
         message: "Music releases require a primary artist.",
@@ -381,7 +383,8 @@ export const catalogProductCreateSchema = z
       if (input.bundle?.components.length) {
         context.addIssue({
           code: "custom",
-          message: "Mystery bundles use manual inventory and cannot list components.",
+          message:
+            "Mystery bundles use manual inventory and cannot list components.",
           path: ["bundle", "components"],
         })
       }
@@ -431,8 +434,8 @@ export const catalogProductCreateSchema = z
             (!component.bundleVariantKeys ||
               component.bundleVariantKeys.some(
                 (key) =>
-                  key.toLocaleLowerCase() === variant.key.toLocaleLowerCase(),
-              )),
+                  key.toLocaleLowerCase() === variant.key.toLocaleLowerCase()
+              ))
         )
         if (!hasRequiredComponent) {
           context.addIssue({

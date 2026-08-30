@@ -61,14 +61,14 @@ const componentFieldTargets = {
 
 const resolveStep = (field: keyof CatalogCreationFormValues): number => {
   const step = catalogCreationStepFields.findIndex((fields) =>
-    fields.includes(field),
+    fields.includes(field)
   )
   return step >= 0 ? step : 4
 }
 
 const resolveOfferingTarget = (
   values: CatalogCreationFormValues,
-  path: Array<number | string>,
+  path: Array<number | string>
 ): string | null => {
   const index = path[1]
   if (typeof index !== "number") {
@@ -91,7 +91,7 @@ const resolveOfferingTarget = (
 
 const resolveComponentTarget = (
   values: CatalogCreationFormValues,
-  path: Array<number | string>,
+  path: Array<number | string>
 ): string => {
   const index = path[1]
   if (typeof index !== "number") {
@@ -111,7 +111,7 @@ const resolveComponentTarget = (
 
 const resolveMediaTarget = (
   values: CatalogCreationFormValues,
-  path: Array<number | string>,
+  path: Array<number | string>
 ): string => {
   const index = path[1]
   const item = typeof index === "number" ? values.media[index] : undefined
@@ -122,7 +122,7 @@ const resolveMediaTarget = (
 
 const resolveTarget = (
   values: CatalogCreationFormValues,
-  path: Array<number | string>,
+  path: Array<number | string>
 ): string | null => {
   const field = path[0]
   if (field === "offerings") {
@@ -141,7 +141,7 @@ const resolveTarget = (
 
 export const resolveCatalogCreationValidationIssues = (
   values: CatalogCreationFormValues,
-  step?: number,
+  step?: number
 ): CatalogCreationValidationIssue[] => {
   const result = catalogCreationFormSchema.safeParse(values)
   if (result.success) {
@@ -151,7 +151,7 @@ export const resolveCatalogCreationValidationIssues = (
     .map((issue) => {
       const path = issue.path.filter(
         (part): part is number | string =>
-          typeof part === "number" || typeof part === "string",
+          typeof part === "number" || typeof part === "string"
       )
       const field = path[0]
       const issueStep =
@@ -171,7 +171,7 @@ export const resolveCatalogCreationValidationIssues = (
 
 export const createCatalogCreationGeneralIssue = (
   message: string,
-  step: number,
+  step: number
 ): CatalogCreationValidationIssue => ({
   key: `general:${step}:${message}`,
   message,

@@ -31,8 +31,9 @@ describe("legal config", () => {
     expect(legalConfig.businessName.length).toBeGreaterThanOrEqual(5)
     expect(legalConfig.supportEmail).toMatch(/@/)
     expect(legalConfig.shipping.processingWindow).toContain("business")
-    expect(legalConfig.returns.windowDays).toBeGreaterThan(faker.number.int({ min: 10, max: 20 }))
+    expect(legalConfig.returns.windowDays).toBeGreaterThan(
+      faker.number.int({ min: 10, max: 20 })
+    )
     expect(legalConfig.privacy.processors.length).toBeGreaterThanOrEqual(3)
   })
 })
-

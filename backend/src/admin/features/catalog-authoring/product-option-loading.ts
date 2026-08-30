@@ -56,8 +56,7 @@ export const shouldLoadBundleProductOptions = ({
   bundleEnabled: boolean
   dedicatedProductId: string | undefined
   status: ProductOptionStatus
-}): boolean =>
-  Boolean(dedicatedProductId) && bundleEnabled && status === "idle"
+}): boolean => Boolean(dedicatedProductId) && bundleEnabled && status === "idle"
 
 type BundleVariantLabelInput = {
   title: string | null | undefined

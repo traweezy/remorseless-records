@@ -78,9 +78,7 @@ describe("monetary unit audit", () => {
       action: "manual_review",
       proposedMajorAmount: null,
     })
-    expect(
-      auditMonetaryRecord(record({ amount: 12.5 }))
-    ).toMatchObject({
+    expect(auditMonetaryRecord(record({ amount: 12.5 }))).toMatchObject({
       action: "manual_review",
       proposedMajorAmount: null,
     })

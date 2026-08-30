@@ -1,32 +1,32 @@
-"use client";
+"use client"
 
-import { defineWidgetConfig } from "@medusajs/admin-sdk";
-import type { AdminOrder, DetailWidgetProps } from "@medusajs/framework/types";
-import { Badge, Button, Container, Heading, Text } from "@medusajs/ui";
+import { defineWidgetConfig } from "@medusajs/admin-sdk"
+import type { AdminOrder, DetailWidgetProps } from "@medusajs/framework/types"
+import { Badge, Button, Container, Heading, Text } from "@medusajs/ui"
 
 import {
   stripeDashboardPaymentUrl,
   stripePaymentReferencesFromOrder,
-} from "../../lib/stripe/order-sync";
-import { operationsAppRoutePaths } from "../features/operations/operations-routes";
+} from "../../lib/stripe/order-sync"
+import { operationsAppRoutePaths } from "../features/operations/operations-routes"
 
 const formatAmount = (
   amount: number | null,
-  currencyCode: string | null,
+  currencyCode: string | null
 ): string => {
   if (amount === null || !currencyCode) {
-    return "Amount unavailable";
+    return "Amount unavailable"
   }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currencyCode.toUpperCase(),
-  }).format(amount);
-};
+  }).format(amount)
+}
 
 const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
-  const references = stripePaymentReferencesFromOrder(data);
+  const references = stripePaymentReferencesFromOrder(data)
   if (!references.length) {
-    return <></>;
+    return <></>
   }
 
   return (
@@ -77,8 +77,8 @@ const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
               </Text>
               <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
                 If an item is coming back, create a return or claim and record
-                the inventory outcome first. For a payment-only correction,
-                use this order&apos;s payment-row Refund action.
+                the inventory outcome first. For a payment-only correction, use
+                this order&apos;s payment-row Refund action.
               </Text>
             </div>
             <Button asChild size="small" variant="secondary">
@@ -94,12 +94,12 @@ const StripeOrderPaymentWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
         </div>
       </div>
     </Container>
-  );
-};
+  )
+}
 
 export const config = defineWidgetConfig({
   id: "remorseless:order-stripe-payment",
   zone: "order.details.after",
-});
+})
 
-export default StripeOrderPaymentWidget;
+export default StripeOrderPaymentWidget

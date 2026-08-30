@@ -10,7 +10,7 @@ import { PUT } from "./route"
 
 jest.mock("@/lib/catalog/variant-profile-authoring", () => {
   const actual = jest.requireActual(
-    "@/lib/catalog/variant-profile-authoring",
+    "@/lib/catalog/variant-profile-authoring"
   ) as Record<string, unknown>
   return {
     ...actual,
@@ -25,18 +25,16 @@ jest.mock("../../../utils", () => ({
   assertVariantExists: jest.fn(),
 }))
 
-const resolveProfileMock =
-  resolveCatalogVariantProfile as jest.MockedFunction<
-    typeof resolveCatalogVariantProfile
-  >
+const resolveProfileMock = resolveCatalogVariantProfile as jest.MockedFunction<
+  typeof resolveCatalogVariantProfile
+>
 const serializeResponseMock =
   serializeCatalogVariantProfileResponse as jest.MockedFunction<
     typeof serializeCatalogVariantProfileResponse
   >
-const workflowMock =
-  mutateCatalogVariantProfileWorkflow as jest.MockedFunction<
-    typeof mutateCatalogVariantProfileWorkflow
-  >
+const workflowMock = mutateCatalogVariantProfileWorkflow as jest.MockedFunction<
+  typeof mutateCatalogVariantProfileWorkflow
+>
 const assertVariantExistsMock = assertVariantExists as jest.MockedFunction<
   typeof assertVariantExists
 >
@@ -125,7 +123,7 @@ describe("PUT /admin/catalog/variants/:variant_id/profile", () => {
     const { res } = responseFixture()
 
     await expect(PUT(req, res)).rejects.toThrow(
-      "Invalid catalog variant profile payload",
+      "Invalid catalog variant profile payload"
     )
     expect(assertVariantExistsMock).not.toHaveBeenCalled()
     expect(workflowMock).not.toHaveBeenCalled()

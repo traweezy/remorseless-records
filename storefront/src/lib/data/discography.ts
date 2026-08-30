@@ -1,9 +1,7 @@
 import { unstable_cache } from "next/cache"
 
 import { runtimeEnv } from "@/config/env"
-import {
-  toProviderRequestError,
-} from "@/lib/http/provider-boundary"
+import { toProviderRequestError } from "@/lib/http/provider-boundary"
 import { fetchObservedProviderRead } from "@/lib/http/provider-read.server"
 import { buildPublicProductPath } from "@/lib/products/routes"
 

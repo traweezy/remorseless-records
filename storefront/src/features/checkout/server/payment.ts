@@ -84,9 +84,7 @@ const assertStripeIntentAmount = (
   const data = asRecord(session.data)
   const intentAmount = Number(data?.amount)
   const intentCurrency =
-    typeof data?.currency === "string"
-      ? data.currency.trim().toLowerCase()
-      : ""
+    typeof data?.currency === "string" ? data.currency.trim().toLowerCase() : ""
   if (
     !Number.isSafeInteger(intentAmount) ||
     intentAmount !== payableUsdMinorUnits(total, "Cart total")
@@ -140,11 +138,7 @@ const assertTaxQuoteIdentity = (
 
   if (quote.provider === "taxrate_io") {
     const rate = Number(metadata?.rr_tax_rate_percent)
-    if (
-      !Number.isFinite(rate) ||
-      rate < 0 ||
-      rate !== quote.taxRatePercent
-    ) {
+    if (!Number.isFinite(rate) || rate < 0 || rate !== quote.taxRatePercent) {
       throw new CheckoutPaymentError(
         "payment_session_stale",
         "The payment session tax rate changed."

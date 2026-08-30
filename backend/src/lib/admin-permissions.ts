@@ -1,48 +1,48 @@
-import type { PolicyDefinition } from "@medusajs/framework/utils";
+import type { PolicyDefinition } from "@medusajs/framework/utils"
 
 export const adminPolicyOperations = {
   create: "create",
   delete: "delete",
   read: "read",
   update: "update",
-} as const;
+} as const
 
 export const contentAdminResources = {
   discography: "discography",
   news: "news",
-} as const;
+} as const
 
 export const operationsAdminResources = {
   mediaCleanup: "media_cleanup",
   refundOperations: "refund_operations",
   taxControl: "tax_control",
   taxRecords: "tax_records",
-} as const;
+} as const
 
 export const productImportAdminResources = {
   productImport: "product_import",
-} as const;
+} as const
 
 export const catalogAdminResources = {
   authoring: "catalog_authoring",
   merchandising: "catalog_merchandising",
   taxonomy: "catalog_taxonomy",
-} as const;
+} as const
 
 export type AdminPolicyAction = {
-  operation: string;
-  resource: string;
-};
+  operation: string
+  resource: string
+}
 
-export type AdminPermissionKey = `${string}:${string}`;
+export type AdminPermissionKey = `${string}:${string}`
 
 export const adminPermissionKey = ({
   operation,
   resource,
-}: AdminPolicyAction): AdminPermissionKey => `${resource}:${operation}`;
+}: AdminPolicyAction): AdminPermissionKey => `${resource}:${operation}`
 
 const createResourceActions = <const TResource extends string>(
-  resource: TResource,
+  resource: TResource
 ) => ({
   create: {
     operation: adminPolicyOperations.create,
@@ -60,12 +60,12 @@ const createResourceActions = <const TResource extends string>(
     operation: adminPolicyOperations.update,
     resource,
   },
-});
+})
 
 export const contentAdminActions = {
   discography: createResourceActions(contentAdminResources.discography),
   news: createResourceActions(contentAdminResources.news),
-} as const;
+} as const
 
 export const operationsAdminActions = {
   mediaCleanup: {
@@ -100,7 +100,7 @@ export const operationsAdminActions = {
       resource: operationsAdminResources.taxRecords,
     },
   },
-} as const;
+} as const
 
 export const productImportAdminActions = {
   productImport: {
@@ -113,7 +113,7 @@ export const productImportAdminActions = {
       resource: productImportAdminResources.productImport,
     },
   },
-} as const;
+} as const
 
 export const catalogAdminActions = {
   authoring: createResourceActions(catalogAdminResources.authoring),
@@ -132,7 +132,7 @@ export const catalogAdminActions = {
     },
   },
   taxonomy: createResourceActions(catalogAdminResources.taxonomy),
-} as const;
+} as const
 
 export const nativeAdminActions = {
   productCategory: {
@@ -263,11 +263,11 @@ export const nativeAdminActions = {
       resource: "refund_reason",
     },
   },
-} as const;
+} as const
 
 const createResourcePolicyDefinitions = (
   resource: (typeof contentAdminResources)[keyof typeof contentAdminResources],
-  displayName: string,
+  displayName: string
 ): PolicyDefinition[] => [
   {
     description: `Read ${displayName}`,
@@ -293,15 +293,15 @@ const createResourcePolicyDefinitions = (
     operation: adminPolicyOperations.delete,
     resource,
   },
-];
+]
 
 export const contentAdminPolicyDefinitions: PolicyDefinition[] = [
   ...createResourcePolicyDefinitions(contentAdminResources.news, "News"),
   ...createResourcePolicyDefinitions(
     contentAdminResources.discography,
-    "Discography",
+    "Discography"
   ),
-];
+]
 
 export const operationsAdminPolicyDefinitions: PolicyDefinition[] = [
   {
@@ -344,7 +344,7 @@ export const operationsAdminPolicyDefinitions: PolicyDefinition[] = [
     operation: adminPolicyOperations.update,
     resource: operationsAdminResources.mediaCleanup,
   },
-];
+]
 
 export const productImportAdminPolicyDefinitions: PolicyDefinition[] = [
   {
@@ -359,7 +359,7 @@ export const productImportAdminPolicyDefinitions: PolicyDefinition[] = [
     operation: adminPolicyOperations.update,
     resource: productImportAdminResources.productImport,
   },
-];
+]
 
 const createCatalogPolicyDefinition = ({
   description,
@@ -373,7 +373,7 @@ const createCatalogPolicyDefinition = ({
   name,
   operation,
   resource,
-});
+})
 
 export const catalogAdminPolicyDefinitions: PolicyDefinition[] = [
   createCatalogPolicyDefinition({
@@ -442,16 +442,16 @@ export const catalogAdminPolicyDefinitions: PolicyDefinition[] = [
     operation: adminPolicyOperations.update,
     resource: catalogAdminResources.merchandising,
   }),
-];
+]
 
 export const contentReadPermissionKeys = [
   adminPermissionKey(contentAdminActions.news.read),
   adminPermissionKey(contentAdminActions.discography.read),
-] as const;
+] as const
 
 export const operationsReadPermissionKeys = [
   adminPermissionKey(operationsAdminActions.taxControl.read),
   adminPermissionKey(operationsAdminActions.taxRecords.read),
   adminPermissionKey(operationsAdminActions.refundOperations.read),
   adminPermissionKey(operationsAdminActions.mediaCleanup.read),
-] as const;
+] as const

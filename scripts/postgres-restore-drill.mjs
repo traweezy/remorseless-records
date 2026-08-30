@@ -17,7 +17,7 @@ const archivePath = readFlag("--archive")
 const manifestPath = readFlag("--manifest")
 assert.ok(
   archivePath && manifestPath,
-  "Usage: postgres-restore-drill --archive <path> --manifest <path> [--apply]",
+  "Usage: postgres-restore-drill --archive <path> --manifest <path> [--apply]"
 )
 for (const path of [archivePath, manifestPath]) {
   assert.equal(resolve(path), path, "Restore inputs must use absolute paths.")
@@ -30,27 +30,27 @@ for (const path of [archivePath, manifestPath]) {
 const manifestStats = await stat(manifestPath)
 assert.ok(
   manifestStats.size > 0 && manifestStats.size <= 64 * 1024,
-  "Backup manifest must be between 1 byte and 64 KiB.",
+  "Backup manifest must be between 1 byte and 64 KiB."
 )
 
 const manifest = parseBackupManifest(
-  JSON.parse(await readFile(manifestPath, "utf8")),
+  JSON.parse(await readFile(manifestPath, "utf8"))
 )
 const archiveStats = await stat(archivePath)
 assert.equal(archiveStats.size, manifest.bytes, "Backup byte length changed.")
 assert.equal(
   await hashFileSha256(archivePath),
   manifest.sha256,
-  "Backup checksum verification failed.",
+  "Backup checksum verification failed."
 )
 const connection = createPostgresClientEnvironment(
   process.env.DATABASE_RESTORE_URL ?? "",
-  "DATABASE_RESTORE_URL",
+  "DATABASE_RESTORE_URL"
 )
 assert.notEqual(
   connection.fingerprint,
   manifest.sourceFingerprint,
-  "Restore drills must target a different database service.",
+  "Restore drills must target a different database service."
 )
 
 const commandEnvironment = {
@@ -84,22 +84,26 @@ const applicationTableCount = () =>
       "--no-align",
       "--command=select count(*) from information_schema.tables where table_schema not in ('pg_catalog', 'information_schema');",
     ]),
-    10,
+    10
   )
 const beforeTables = applicationTableCount()
-assert.equal(beforeTables, 0, "Restore target is not an empty disposable database.")
+assert.equal(
+  beforeTables,
+  0,
+  "Restore target is not an empty disposable database."
+)
 
 const apply = process.argv.includes("--apply")
 if (!apply) {
   process.stdout.write(
-    `${JSON.stringify({ confirmation: connection.fingerprint, sourceChecksum: manifest.sha256, status: "dry_run_verified", targetTables: beforeTables })}\n`,
+    `${JSON.stringify({ confirmation: connection.fingerprint, sourceChecksum: manifest.sha256, status: "dry_run_verified", targetTables: beforeTables })}\n`
   )
   process.exit(0)
 }
 assert.equal(
   process.env.DATABASE_RESTORE_CONFIRM,
   connection.fingerprint,
-  "DATABASE_RESTORE_CONFIRM must equal the dry-run target fingerprint.",
+  "DATABASE_RESTORE_CONFIRM must equal the dry-run target fingerprint."
 )
 
 const startedAt = Date.now()
@@ -114,5 +118,5 @@ run("pg_restore", [
 const afterTables = applicationTableCount()
 assert.ok(afterTables > 0, "Restore completed without application tables.")
 process.stdout.write(
-  `${JSON.stringify({ durationMs: Date.now() - startedAt, sourceChecksum: manifest.sha256, status: "restore_verified", targetTables: afterTables })}\n`,
+  `${JSON.stringify({ durationMs: Date.now() - startedAt, sourceChecksum: manifest.sha256, status: "restore_verified", targetTables: afterTables })}\n`
 )

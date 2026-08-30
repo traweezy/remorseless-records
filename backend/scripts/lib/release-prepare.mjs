@@ -9,9 +9,7 @@ const parseRequiredSplit = (value) => {
   if (falseValues.has(normalized)) {
     return false
   }
-  throw new Error(
-    "DATABASE_ROLE_SPLIT_REQUIRED must be true, false, 1, or 0.",
-  )
+  throw new Error("DATABASE_ROLE_SPLIT_REQUIRED must be true, false, 1, or 0.")
 }
 
 export const buildReleasePreparePlan = ({
@@ -26,14 +24,14 @@ export const buildReleasePreparePlan = ({
   }
 
   const splitRequired = parseRequiredSplit(
-    environment.DATABASE_ROLE_SPLIT_REQUIRED,
+    environment.DATABASE_ROLE_SPLIT_REQUIRED
   )
   if (
     splitRequired &&
     (!configuredMigrationUrl || configuredMigrationUrl === runtimeUrl)
   ) {
     throw new Error(
-      "A distinct DATABASE_MIGRATION_URL is required when the database role split is enforced.",
+      "A distinct DATABASE_MIGRATION_URL is required when the database role split is enforced."
     )
   }
   const migrationUrl = configuredMigrationUrl || runtimeUrl

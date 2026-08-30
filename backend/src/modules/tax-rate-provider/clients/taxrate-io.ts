@@ -73,11 +73,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
 const parseRateValue = (value: unknown): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const normalized = value.trim()
     if (!normalized) {
       return null
@@ -258,16 +258,16 @@ export const fetchTaxRateIo = async ({
   zip: string
   timeoutMs: number
 }): Promise<TaxRateIoResult> => {
-  const url = new URL('https://www.taxrate.io/api/v1/rate/getratebyzip')
-  url.searchParams.set('api_key', apiKey)
-  url.searchParams.set('zip', zip)
+  const url = new URL("https://www.taxrate.io/api/v1/rate/getratebyzip")
+  url.searchParams.set("api_key", apiKey)
+  url.searchParams.set("zip", zip)
   const signal = AbortSignal.timeout(timeoutMs)
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     let response: Response
     try {
       response = await fetch(url.toString(), {
-        method: 'GET',
+        method: "GET",
         signal,
       })
     } catch {

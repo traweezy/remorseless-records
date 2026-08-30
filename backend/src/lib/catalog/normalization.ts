@@ -1,11 +1,8 @@
-import type {
-  JsonList,
-  JsonRecord,
-} from "../../modules/catalog/serializers"
+import type { JsonList, JsonRecord } from "../../modules/catalog/serializers"
 
 export const slugifyCatalogValue = (
   value: string,
-  fallback = "catalog",
+  fallback = "catalog"
 ): string => {
   const normalized = value
     .trim()
@@ -19,9 +16,7 @@ export const slugifyCatalogValue = (
   return normalized.length ? normalized : fallback
 }
 
-export const normalizeCatalogList = (
-  values?: string[] | null,
-): string[] =>
+export const normalizeCatalogList = (values?: string[] | null): string[] =>
   (values ?? [])
     .map((value) => value.trim())
     .filter((value) => value.length > 0)
@@ -43,7 +38,7 @@ export const toCatalogOptionalDate = (value: unknown): Date | null => {
 }
 
 export const toCatalogOptionalInteger = (
-  value: number | null | undefined,
+  value: number | null | undefined
 ): number | null =>
   typeof value === "number" && Number.isInteger(value) ? value : null
 

@@ -1,7 +1,7 @@
-import { definePolicies } from "@medusajs/framework/utils";
+import { definePolicies } from "@medusajs/framework/utils"
 
-import { productImportAdminPolicyDefinitions } from "../lib/admin-permissions";
+import { productImportAdminPolicyDefinitions } from "../lib/admin-permissions"
 
 export const productImportPolicies = definePolicies(
-  productImportAdminPolicyDefinitions,
-);
+  productImportAdminPolicyDefinitions
+)

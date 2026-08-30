@@ -5,7 +5,7 @@ import { CatalogMerchandiseTemplates } from "./catalog-merchandise-templates"
 describe("CatalogMerchandiseTemplates", () => {
   it("explains replacement safety and exposes every preset", () => {
     const markup = renderToStaticMarkup(
-      <CatalogMerchandiseTemplates currentCount={3} onApply={jest.fn()} />,
+      <CatalogMerchandiseTemplates currentCount={3} onApply={jest.fn()} />
     )
 
     expect(markup).toContain("Start from a merchandise template")

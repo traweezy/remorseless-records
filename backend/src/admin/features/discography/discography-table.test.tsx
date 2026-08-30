@@ -30,7 +30,7 @@ const ColumnsProbe = ({
 describe("Discography table permissions", () => {
   it("omits the entire actions column for fully read-only roles", () => {
     const markup = renderToStaticMarkup(
-      <ColumnsProbe canReadProducts={false} canUpdate={false} />,
+      <ColumnsProbe canReadProducts={false} canUpdate={false} />
     )
 
     expect(markup).not.toContain(">actions<")
@@ -43,13 +43,10 @@ describe("Discography table permissions", () => {
     "includes actions when product reading is %s and updating is %s",
     (canReadProducts, canUpdate) => {
       const markup = renderToStaticMarkup(
-        <ColumnsProbe
-          canReadProducts={canReadProducts}
-          canUpdate={canUpdate}
-        />,
+        <ColumnsProbe canReadProducts={canReadProducts} canUpdate={canUpdate} />
       )
 
       expect(markup).toContain(">actions<")
-    },
+    }
   )
 })

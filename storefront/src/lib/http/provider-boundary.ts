@@ -33,9 +33,7 @@ const isAbortLikeError = (error: unknown): boolean => {
   return name === "AbortError" || name === "TimeoutError"
 }
 
-export const toProviderRequestError = (
-  error: unknown
-): ProviderRequestError =>
+export const toProviderRequestError = (error: unknown): ProviderRequestError =>
   error instanceof ProviderRequestError
     ? error
     : new ProviderRequestError(
@@ -80,8 +78,7 @@ const safelyRecordProviderMetric = (
 }
 
 export type ProviderRetryDecision =
-  | { retry: false }
-  | { response?: Response; retry: true }
+  { retry: false } | { response?: Response; retry: true }
 
 export type ProviderRetryEvent = {
   attempt: number
@@ -148,10 +145,7 @@ const retryDelayMs = (
   return Math.max(backoffMs, retryAfterMs ?? 0)
 }
 
-const waitForRetry = (
-  delayMs: number,
-  signal: AbortSignal
-): Promise<void> =>
+const waitForRetry = (delayMs: number, signal: AbortSignal): Promise<void> =>
   new Promise((resolve, reject) => {
     if (signal.aborted) {
       reject(new ProviderRequestError("timeout"))
@@ -322,13 +316,11 @@ export const fetchProviderRead = async (
 export const providerProblem = (
   error: unknown,
   codePrefix: string
-):
-  | {
-      code: string
-      detail: string
-      status: 502 | 504
-    }
-  | null => {
+): {
+  code: string
+  detail: string
+  status: 502 | 504
+} | null => {
   if (!(error instanceof ProviderRequestError)) {
     return null
   }

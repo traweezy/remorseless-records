@@ -18,15 +18,13 @@ const actorIdFromRequest = (req: MedusaRequest): string | null =>
 
 export const GET = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
-  const parsed = idempotencyKeySchema.safeParse(
-    req.params.idempotency_key,
-  )
+  const parsed = idempotencyKeySchema.safeParse(req.params.idempotency_key)
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid catalog product creation idempotency key.",
+      "Invalid catalog product creation idempotency key."
     )
   }
 
@@ -34,7 +32,7 @@ export const GET = async (
   const state = await inspectCatalogProductCreation(
     catalogService,
     actorIdFromRequest(req),
-    parsed.data,
+    parsed.data
   )
   res.setHeader("Cache-Control", "no-store")
   res.status(200).json({ state })

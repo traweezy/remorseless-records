@@ -5,7 +5,7 @@ import { loadCatalogAuthoringAudit } from "@/lib/catalog/load-authoring-audit"
 import { loadProductAuthoringView } from "@/lib/catalog/product-authoring-view"
 
 const hasDiagnosticsBlocker = (
-  view: Awaited<ReturnType<typeof loadProductAuthoringView>>,
+  view: Awaited<ReturnType<typeof loadProductAuthoringView>>
 ): boolean =>
   view.diagnostics.duplicateBundleProfileIds.length > 0 ||
   view.diagnostics.duplicateProductProfileIds.length > 0 ||
@@ -23,7 +23,7 @@ export default async function checkCatalogAuthoringViews({
   const audit = await loadCatalogAuthoringAudit(container)
   if (audit.summary.blockingItemCount > 0) {
     throw new Error(
-      "[catalog-authoring-view-check] Classification blockers must be resolved first.",
+      "[catalog-authoring-view-check] Classification blockers must be resolved first."
     )
   }
 
@@ -36,7 +36,7 @@ export default async function checkCatalogAuthoringViews({
   for (let offset = 0; offset < audit.items.length; offset += batchSize) {
     const items = audit.items.slice(offset, offset + batchSize)
     const views = await Promise.all(
-      items.map((item) => loadProductAuthoringView(container, item.id)),
+      items.map((item) => loadProductAuthoringView(container, item.id))
     )
     for (const [index, view] of views.entries()) {
       const item = items[index]!
@@ -48,7 +48,7 @@ export default async function checkCatalogAuthoringViews({
         hasDiagnosticsBlocker(view)
       ) {
         throw new Error(
-          `[catalog-authoring-view-check] ${item.id} failed the complete ${item.kind ?? "unknown"} check.`,
+          `[catalog-authoring-view-check] ${item.id} failed the complete ${item.kind ?? "unknown"} check.`
         )
       }
       checkedByKind[item.kind] = (checkedByKind[item.kind] ?? 0) + 1
@@ -64,6 +64,6 @@ export default async function checkCatalogAuthoringViews({
       count: checkedCount,
       durationMs: Date.now() - startedAt,
       variantCount,
-    })}`,
+    })}`
   )
 }

@@ -1,93 +1,95 @@
 import type {
   AuthenticatedMedusaRequest,
   MedusaResponse,
-} from "@medusajs/framework/http";
+} from "@medusajs/framework/http"
 
 import {
   taxDestinationsCsv,
   taxTransactionsCsv,
-} from "../../../../lib/tax-reporting/csv";
-import { buildFullTaxReport } from "../../../../lib/tax-reporting/query";
+} from "../../../../lib/tax-reporting/csv"
+import { buildFullTaxReport } from "../../../../lib/tax-reporting/query"
 
-import { GET } from "./route";
+import { GET } from "./route"
 
 jest.mock("../../../../lib/tax-reporting/csv", () => ({
   taxDestinationsCsv: jest.fn(() => "destination csv"),
   taxTransactionsCsv: jest.fn(() => "transaction csv"),
-}));
+}))
 jest.mock("../../../../lib/tax-reporting/query", () => {
   const actual = jest.requireActual(
-    "../../../../lib/tax-reporting/query",
-  ) as object;
+    "../../../../lib/tax-reporting/query"
+  ) as object
   return {
     ...actual,
     buildFullTaxReport: jest.fn(),
-  };
-});
+  }
+})
 
-const buildFullTaxReportMock =
-  buildFullTaxReport as jest.MockedFunction<typeof buildFullTaxReport>;
-const destinationsCsvMock =
-  taxDestinationsCsv as jest.MockedFunction<typeof taxDestinationsCsv>;
-const transactionsCsvMock =
-  taxTransactionsCsv as jest.MockedFunction<typeof taxTransactionsCsv>;
+const buildFullTaxReportMock = buildFullTaxReport as jest.MockedFunction<
+  typeof buildFullTaxReport
+>
+const destinationsCsvMock = taxDestinationsCsv as jest.MockedFunction<
+  typeof taxDestinationsCsv
+>
+const transactionsCsvMock = taxTransactionsCsv as jest.MockedFunction<
+  typeof taxTransactionsCsv
+>
 
 type ResponseState = {
-  body: unknown;
-  headers: Record<string, string>;
-  status: number;
-  type: string | null;
-};
+  body: unknown
+  headers: Record<string, string>
+  status: number
+  type: string | null
+}
 
 const responseFixture = (): {
-  res: MedusaResponse;
-  state: ResponseState;
+  res: MedusaResponse
+  state: ResponseState
 } => {
   const state: ResponseState = {
     body: null,
     headers: {},
     status: 200,
     type: null,
-  };
-  const response = {} as MedusaResponse;
+  }
+  const response = {} as MedusaResponse
   response.setHeader = jest.fn((name: string, value: string) => {
-    state.headers[name.toLowerCase()] = value;
-    return response;
-  }) as MedusaResponse["setHeader"];
+    state.headers[name.toLowerCase()] = value
+    return response
+  }) as MedusaResponse["setHeader"]
   response.status = jest.fn((status: number) => {
-    state.status = status;
-    return response;
-  }) as MedusaResponse["status"];
+    state.status = status
+    return response
+  }) as MedusaResponse["status"]
   response.type = jest.fn((value: string) => {
-    state.type = value;
-    return response;
-  }) as MedusaResponse["type"];
+    state.type = value
+    return response
+  }) as MedusaResponse["type"]
   response.json = jest.fn((body: unknown) => {
-    state.body = body;
-    return response;
-  }) as MedusaResponse["json"];
+    state.body = body
+    return response
+  }) as MedusaResponse["json"]
   response.send = jest.fn((body: unknown) => {
-    state.body = body;
-    return response;
-  }) as MedusaResponse["send"];
-  return { res: response, state };
-};
+    state.body = body
+    return response
+  }) as MedusaResponse["send"]
+  return { res: response, state }
+}
 
 const requestFixture = (
-  originalUrl =
-    "/admin/tax-records/export?format=transactions&filing_state=PA&start=2026-01-01&end=2026-04-01",
+  originalUrl = "/admin/tax-records/export?format=transactions&filing_state=PA&start=2026-01-01&end=2026-04-01"
 ): AuthenticatedMedusaRequest =>
   ({
     originalUrl,
     scope: {
       resolve: jest.fn(() => ({ error: jest.fn() })),
     },
-  }) as unknown as AuthenticatedMedusaRequest;
+  }) as unknown as AuthenticatedMedusaRequest
 
 const reportFixture = ({
   unassignedStateRecords = 0,
 }: {
-  unassignedStateRecords?: number;
+  unassignedStateRecords?: number
 } = {}) =>
   ({
     destinations: [],
@@ -120,26 +122,26 @@ const reportFixture = ({
       unassignedStateRecords,
     },
     summaries: [],
-  }) as Awaited<ReturnType<typeof buildFullTaxReport>>;
+  }) as Awaited<ReturnType<typeof buildFullTaxReport>>
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  buildFullTaxReportMock.mockResolvedValue(reportFixture());
-});
+  jest.clearAllMocks()
+  buildFullTaxReportMock.mockResolvedValue(reportFixture())
+})
 
 describe("GET /admin/tax-records/export", () => {
   it("scopes the export and filename to the selected filing state", async () => {
-    const { res, state } = responseFixture();
+    const { res, state } = responseFixture()
 
-    await GET(requestFixture(), res);
+    await GET(requestFixture(), res)
 
     expect(buildFullTaxReportMock).toHaveBeenCalledWith(
-      expect.objectContaining({ filingState: "PA" }),
-    );
+      expect.objectContaining({ filingState: "PA" })
+    )
     expect(transactionsCsvMock).toHaveBeenCalledWith(
-      expect.objectContaining({ filingState: "PA" }),
-    );
-    expect(destinationsCsvMock).not.toHaveBeenCalled();
+      expect.objectContaining({ filingState: "PA" })
+    )
+    expect(destinationsCsvMock).not.toHaveBeenCalled()
     expect(state).toMatchObject({
       body: "transaction csv",
       headers: {
@@ -150,16 +152,16 @@ describe("GET /admin/tax-records/export", () => {
       },
       status: 200,
       type: "text/csv; charset=utf-8",
-    });
-  });
+    })
+  })
 
   it("fails closed when a filing record has no state", async () => {
     buildFullTaxReportMock.mockResolvedValue(
-      reportFixture({ unassignedStateRecords: 1 }),
-    );
-    const { res, state } = responseFixture();
+      reportFixture({ unassignedStateRecords: 1 })
+    )
+    const { res, state } = responseFixture()
 
-    await GET(requestFixture(), res);
+    await GET(requestFixture(), res)
 
     expect(state).toMatchObject({
       body: expect.objectContaining({
@@ -168,19 +170,19 @@ describe("GET /admin/tax-records/export", () => {
       }),
       status: 409,
       type: "application/problem+json",
-    });
-    expect(transactionsCsvMock).not.toHaveBeenCalled();
-  });
+    })
+    expect(transactionsCsvMock).not.toHaveBeenCalled()
+  })
 
   it("requires an explicit supported filing state", async () => {
-    const { res, state } = responseFixture();
+    const { res, state } = responseFixture()
 
     await GET(
       requestFixture(
-        "/admin/tax-records/export?format=transactions&start=2026-01-01&end=2026-04-01",
+        "/admin/tax-records/export?format=transactions&start=2026-01-01&end=2026-04-01"
       ),
-      res,
-    );
+      res
+    )
 
     expect(state).toMatchObject({
       body: expect.objectContaining({
@@ -189,7 +191,7 @@ describe("GET /admin/tax-records/export", () => {
       }),
       status: 400,
       type: "application/problem+json",
-    });
-    expect(buildFullTaxReportMock).not.toHaveBeenCalled();
-  });
-});
+    })
+    expect(buildFullTaxReportMock).not.toHaveBeenCalled()
+  })
+})

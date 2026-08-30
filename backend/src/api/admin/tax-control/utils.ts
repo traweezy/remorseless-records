@@ -1,57 +1,57 @@
-import type { Logger, MedusaContainer } from "@medusajs/framework/types";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import type { Logger, MedusaContainer } from "@medusajs/framework/types"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import {
   resolveStripeTaxReadiness,
   resolveTaxRateIoReadiness,
-} from "../../../lib/tax-control/readiness";
+} from "../../../lib/tax-control/readiness"
 import {
   buildRefundLedgerMismatches,
   type RefundEvidenceRecord,
-} from "../../../lib/tax-control/refund-ledger";
+} from "../../../lib/tax-control/refund-ledger"
 import {
   loadTaxControlImpact,
   type TaxControlImpactQuery,
-} from "../../../lib/tax-control/impact";
-import { TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE } from "../../../lib/constants";
-import { syncTaxRateIoQuota } from "../../../lib/tax-control/quota";
-import type TaxControlModuleService from "../../../modules/tax-control/service";
+} from "../../../lib/tax-control/impact"
+import { TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE } from "../../../lib/constants"
+import { syncTaxRateIoQuota } from "../../../lib/tax-control/quota"
+import type TaxControlModuleService from "../../../modules/tax-control/service"
 
-type UnknownRecord = Record<string, unknown>;
+type UnknownRecord = Record<string, unknown>
 
 type QueryGraph = {
   graph: (input: {
-    entity: string;
-    fields: string[];
-    filters?: Record<string, unknown>;
+    entity: string
+    fields: string[]
+    filters?: Record<string, unknown>
     pagination?: {
-      order?: Record<string, "ASC" | "DESC">;
-      take?: number;
-    };
-  }) => Promise<{ data: UnknownRecord[] }>;
-};
+      order?: Record<string, "ASC" | "DESC">
+      take?: number
+    }
+  }) => Promise<{ data: UnknownRecord[] }>
+}
 
-const REFUND_LEDGER_QUERY_LIMIT = 500;
+const REFUND_LEDGER_QUERY_LIMIT = 500
 
 const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null;
+  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
 
 const text = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null;
+  typeof value === "string" && value.trim() ? value.trim() : null
 
 const dateString = (value: unknown): string | null => {
-  const date = value instanceof Date ? value : new Date(String(value ?? ""));
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-};
+  const date = value instanceof Date ? value : new Date(String(value ?? ""))
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
 
 const evidenceSnapshot = async ({
   container,
   logger,
   service,
 }: {
-  container: MedusaContainer;
-  logger: Logger;
-  service: TaxControlModuleService;
+  container: MedusaContainer
+  logger: Logger
+  service: TaxControlModuleService
 }) => {
   const [
     [, tracked],
@@ -68,52 +68,52 @@ const evidenceSnapshot = async ({
     service.listAndCountTaxQuoteEvidences({ status: "succeeded" }, { take: 1 }),
     service.listAndCountTaxQuoteEvidences(
       { status: ["partially_refunded", "refunded"] },
-      { take: 1 },
+      { take: 1 }
     ),
     service.listAndCountTaxQuoteEvidences(
       { status: ["association_failed", "disputed"] },
-      { take: 1 },
+      { take: 1 }
     ),
     service.listTaxQuoteEvidences(
       { status: ["association_failed", "disputed"] },
-      { order: { last_verified_at: "DESC" }, take: 25 },
+      { order: { last_verified_at: "DESC" }, take: 25 }
     ),
     service.listAndCountTaxQuoteEvidences(
       { association_status: "refund_pending" },
-      { order: { last_verified_at: "DESC" }, take: 25 },
+      { order: { last_verified_at: "DESC" }, take: 25 }
     ),
     service.listTaxQuoteEvidences(
       {},
       {
         order: { last_verified_at: "DESC" },
         take: REFUND_LEDGER_QUERY_LIMIT,
-      },
+      }
     ),
-  ]);
+  ])
 
-  let refundLedgerAvailable = true;
+  let refundLedgerAvailable = true
   let refundLedgerMismatches: ReturnType<typeof buildRefundLedgerMismatches> =
-    [];
+    []
   const orderIds = Array.from(
     new Set(
       refundEvidence
         .map((evidence) => text(evidence.order_id))
-        .filter((id): id is string => Boolean(id)),
-    ),
-  );
+        .filter((id): id is string => Boolean(id))
+    )
+  )
   const cartIds = Array.from(
     new Set(
       refundEvidence
         .filter((evidence) => !text(evidence.order_id))
         .map((evidence) => text(evidence.cart_id))
-        .filter((id): id is string => Boolean(id)),
-    ),
-  );
+        .filter((id): id is string => Boolean(id))
+    )
+  )
   if (orderIds.length || cartIds.length) {
     try {
       const query = container.resolve<QueryGraph>(
-        ContainerRegistrationKeys.QUERY,
-      );
+        ContainerRegistrationKeys.QUERY
+      )
       const [orders, carts] = await Promise.all([
         orderIds.length
           ? query.graph({
@@ -141,18 +141,18 @@ const evidenceSnapshot = async ({
               pagination: { take: cartIds.length },
             })
           : Promise.resolve({ data: [] }),
-      ]);
+      ])
       refundLedgerMismatches = buildRefundLedgerMismatches({
         evidence: refundEvidence as RefundEvidenceRecord[],
         paymentRecords: [...orders.data, ...carts.data],
-      });
+      })
     } catch (caught) {
-      refundLedgerAvailable = false;
+      refundLedgerAvailable = false
       logger.warn(
         `[tax-control] refund ledger comparison unavailable: ${
           caught instanceof Error ? caught.message : "unknown query error"
-        }`,
-      );
+        }`
+      )
     }
   }
 
@@ -168,7 +168,7 @@ const evidenceSnapshot = async ({
     status: "refund_ledger_mismatch" as const,
     stripeEvidenceAvailable: mismatch.stripeEvidenceAvailable,
     stripeRefundAmountMinor: mismatch.stripeRefundAmountMinor,
-  }));
+  }))
 
   return {
     incidents: [
@@ -201,7 +201,7 @@ const evidenceSnapshot = async ({
       ...ledgerIncidents,
     ]
       .sort((left, right) =>
-        (right.lastVerifiedAt ?? "").localeCompare(left.lastVerifiedAt ?? ""),
+        (right.lastVerifiedAt ?? "").localeCompare(left.lastVerifiedAt ?? "")
       )
       .slice(0, 25),
     needsAttention:
@@ -209,7 +209,7 @@ const evidenceSnapshot = async ({
       refundLedgerMismatches.filter(
         (mismatch) =>
           mismatch.evidence.status !== "association_failed" &&
-          mismatch.evidence.status !== "disputed",
+          mismatch.evidence.status !== "disputed"
       ).length,
     pendingRefundReversals,
     prepared,
@@ -222,26 +222,26 @@ const evidenceSnapshot = async ({
       mismatches: refundLedgerMismatches.length,
       truncated: tracked > REFUND_LEDGER_QUERY_LIMIT,
     },
-  };
-};
+  }
+}
 
 export const taxControlSnapshot = async (container: MedusaContainer) => {
-  const service = container.resolve<TaxControlModuleService>("tax_control");
-  const logger = container.resolve<Logger>("logger");
+  const service = container.resolve<TaxControlModuleService>("tax_control")
+  const logger = container.resolve<Logger>("logger")
   const [control, quota, stripe, audits, impact, evidence] = await Promise.all([
     service.ensureTaxProviderControl(),
     syncTaxRateIoQuota({ logger, service }),
     resolveStripeTaxReadiness({ logger }),
     service.listTaxProviderAudits(
       {},
-      { order: { created_at: "DESC" }, take: 25 },
+      { order: { created_at: "DESC" }, take: 25 }
     ),
     loadTaxControlImpact(
-      container.resolve<TaxControlImpactQuery>(ContainerRegistrationKeys.QUERY),
+      container.resolve<TaxControlImpactQuery>(ContainerRegistrationKeys.QUERY)
     ),
     evidenceSnapshot({ container, logger, service }),
-  ]);
-  const remaining = quota ? Number(quota.remaining) : null;
+  ])
+  const remaining = quota ? Number(quota.remaining) : null
 
   return {
     audits: audits.map((audit) => ({
@@ -272,7 +272,7 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
       taxRateIo: {
         ...resolveTaxRateIoReadiness(remaining),
         manualRefreshConfigured: Boolean(
-          TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE?.trim(),
+          TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE?.trim()
         ),
         quota: quota
           ? {
@@ -286,5 +286,5 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
           : null,
       },
     },
-  };
-};
+  }
+}

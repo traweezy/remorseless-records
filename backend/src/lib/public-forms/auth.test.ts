@@ -2,20 +2,20 @@ import {
   PUBLIC_FORM_PROOF_MAX_SKEW_SECONDS,
   createPublicFormProof,
   verifyPublicFormProof,
-} from "./auth";
+} from "./auth"
 
-const secret = ["unit", "test", "public", "form", "key"].join("-").repeat(2);
+const secret = ["unit", "test", "public", "form", "key"].join("-").repeat(2)
 const alternateSecret = ["alternate", "public", "form", "key"]
   .join("-")
-  .repeat(2);
+  .repeat(2)
 const body = JSON.stringify({
   name: "Test Person",
   email: "person@example.com",
   reason: "other",
   message: "A deterministic public form payload.",
   honeypot: "",
-});
-const timestamp = 1_800_000_000;
+})
+const timestamp = 1_800_000_000
 
 describe("public-form BFF proof", () => {
   it("creates and verifies the shared deterministic fixture", () => {
@@ -24,9 +24,9 @@ describe("public-form BFF proof", () => {
       purpose: "contact",
       secret,
       timestamp,
-    });
+    })
 
-    expect(proof).toBe("jjSQ7TKiv-TAwlb8PDvCY6Q5cQufbH7aAAENcCUNJfE");
+    expect(proof).toBe("jjSQ7TKiv-TAwlb8PDvCY6Q5cQufbH7aAAENcCUNJfE")
     expect(
       verifyPublicFormProof({
         body,
@@ -35,9 +35,9 @@ describe("public-form BFF proof", () => {
         timestamp,
         proof,
         nowSeconds: timestamp,
-      }),
-    ).toBe(true);
-  });
+      })
+    ).toBe(true)
+  })
 
   it.each([
     ["another body", `${body} `, "contact", timestamp, secret],
@@ -52,7 +52,7 @@ describe("public-form BFF proof", () => {
         purpose: "contact",
         secret,
         timestamp,
-      });
+      })
 
       expect(
         verifyPublicFormProof({
@@ -62,10 +62,10 @@ describe("public-form BFF proof", () => {
           timestamp: nextTimestamp,
           proof,
           nowSeconds: timestamp,
-        }),
-      ).toBe(false);
-    },
-  );
+        })
+      ).toBe(false)
+    }
+  )
 
   it.each([
     timestamp - PUBLIC_FORM_PROOF_MAX_SKEW_SECONDS - 1,
@@ -76,7 +76,7 @@ describe("public-form BFF proof", () => {
       purpose: "contact",
       secret,
       timestamp,
-    });
+    })
 
     expect(
       verifyPublicFormProof({
@@ -86,9 +86,9 @@ describe("public-form BFF proof", () => {
         timestamp,
         proof,
         nowSeconds,
-      }),
-    ).toBe(false);
-  });
+      })
+    ).toBe(false)
+  })
 
   it.each([
     ["empty body", "", timestamp, secret],
@@ -101,9 +101,9 @@ describe("public-form BFF proof", () => {
         purpose: "contact",
         secret: key,
         timestamp: nextTimestamp,
-      }),
-    ).toThrow();
-  });
+      })
+    ).toThrow()
+  })
 
   it("accepts a proof signed by the previous key during rotation", () => {
     const proof = createPublicFormProof({
@@ -111,7 +111,7 @@ describe("public-form BFF proof", () => {
       purpose: "contact",
       secret: alternateSecret,
       timestamp,
-    });
+    })
 
     expect(
       verifyPublicFormProof({
@@ -122,7 +122,7 @@ describe("public-form BFF proof", () => {
         timestamp,
         proof,
         nowSeconds: timestamp,
-      }),
-    ).toBe(true);
-  });
-});
+      })
+    ).toBe(true)
+  })
+})

@@ -1,11 +1,7 @@
 "use client"
 
 import { memo, useMemo, type ReactNode } from "react"
-import {
-  CheckCircleSolid,
-  ExclamationCircle,
-  Photo,
-} from "@medusajs/icons"
+import { CheckCircleSolid, ExclamationCircle, Photo } from "@medusajs/icons"
 import { Badge, Container, Heading, Tabs, Text } from "@medusajs/ui"
 
 import type { CatalogCreationAvailabilityPreview } from "./catalog-creation-availability"
@@ -30,7 +26,7 @@ export type CatalogCreationReadiness = {
 }
 
 export const resolveCatalogCreationReadiness = (
-  values: CatalogCreationFormValues,
+  values: CatalogCreationFormValues
 ): CatalogCreationReadiness => {
   const validation = catalogCreationFormSchema.safeParse(values)
   const publicationChecks: PublicationCheck[] = [
@@ -48,7 +44,7 @@ export const resolveCatalogCreationReadiness = (
       id: "price",
       label: "Non-zero price for every offering",
       ready: values.offerings.every(
-        (offering) => Number(offering.priceUsd) > 0,
+        (offering) => Number(offering.priceUsd) > 0
       ),
     },
   ]
@@ -71,8 +67,7 @@ export const resolveCatalogCreationReadiness = (
     draftIssueCount: validation.success ? 0 : validation.error.issues.length,
     draftReady,
     publicationChecks,
-    publishReady:
-      draftReady && publicationChecks.every((check) => check.ready),
+    publishReady: draftReady && publicationChecks.every((check) => check.ready),
   }
 }
 
@@ -92,8 +87,8 @@ const uniqueOfferingLabels = (values: CatalogCreationFormValues): string[] =>
       values.offerings.map((offering) => [
         offering.title.trim().toLowerCase(),
         offering.title.trim() || "Untitled",
-      ]),
-    ).values(),
+      ])
+    ).values()
   )
 
 const aggregateAvailability = (
@@ -101,12 +96,12 @@ const aggregateAvailability = (
   availabilityByOfferingId: ReadonlyMap<
     string,
     CatalogCreationAvailabilityPreview
-  >,
+  >
 ): CatalogCreationAvailabilityPreview | null => {
   const availability = values.offerings
     .map((offering) => availabilityByOfferingId.get(offering.id))
     .filter(
-      (item): item is CatalogCreationAvailabilityPreview => item !== undefined,
+      (item): item is CatalogCreationAvailabilityPreview => item !== undefined
     )
   if (!availability.length) {
     return null
@@ -134,10 +129,10 @@ const ReadinessPanel = memo<{ values: CatalogCreationFormValues }>(
   ({ values }) => {
     const readiness = useMemo(
       () => resolveCatalogCreationReadiness(values),
-      [values],
+      [values]
     )
     const missingPublicationDetails = readiness.publicationChecks.filter(
-      (check) => !check.ready,
+      (check) => !check.ready
     ).length
     return (
       <div className="grid gap-3 md:grid-cols-2">
@@ -224,7 +219,7 @@ const ReadinessPanel = memo<{ values: CatalogCreationFormValues }>(
         </div>
       </div>
     )
-  },
+  }
 )
 
 ReadinessPanel.displayName = "ReadinessPanel"
@@ -247,10 +242,7 @@ const CatalogCardPreview = memo<{
         className="relative overflow-hidden rounded-[1.75rem] border-2 border-ui-border-base bg-ui-bg-base shadow-elevation-card-rest"
       >
         {aggregate && aggregate.status !== "in_stock" ? (
-          <Badge
-            className="absolute left-4 top-4 z-10"
-            color={aggregate.color}
-          >
+          <Badge className="absolute left-4 top-4 z-10" color={aggregate.color}>
             {aggregate.label}
           </Badge>
         ) : null}
@@ -446,10 +438,18 @@ const CatalogDetailPreview = memo<{
           values.merchandiseCare) ? (
           <PreviewSection title="Product details">
             <div className="grid gap-2 text-ui-fg-subtle">
-              {values.material ? <Text size="small">{values.material}</Text> : null}
-              {values.merchandiseFit ? <Text size="small">{values.merchandiseFit}</Text> : null}
-              {values.sizeGuide ? <Text size="small">{values.sizeGuide}</Text> : null}
-              {values.merchandiseCare ? <Text size="small">{values.merchandiseCare}</Text> : null}
+              {values.material ? (
+                <Text size="small">{values.material}</Text>
+              ) : null}
+              {values.merchandiseFit ? (
+                <Text size="small">{values.merchandiseFit}</Text>
+              ) : null}
+              {values.sizeGuide ? (
+                <Text size="small">{values.sizeGuide}</Text>
+              ) : null}
+              {values.merchandiseCare ? (
+                <Text size="small">{values.merchandiseCare}</Text>
+              ) : null}
             </div>
           </PreviewSection>
         ) : null}

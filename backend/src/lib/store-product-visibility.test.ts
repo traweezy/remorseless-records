@@ -1,4 +1,7 @@
-import { ContainerRegistrationKeys, ProductStatus } from "@medusajs/framework/utils";
+import {
+  ContainerRegistrationKeys,
+  ProductStatus,
+} from "@medusajs/framework/utils"
 
 import {
   decodeStoreProductCursor,
@@ -7,27 +10,27 @@ import {
   listVisibleProductsByIds,
   resolveStoreProductVisibility,
   type StoreProductQueryGraph,
-} from "./store-product-visibility";
+} from "./store-product-visibility"
 
-const graph = jest.fn();
-const query = { graph } as StoreProductQueryGraph;
+const graph = jest.fn()
+const query = { graph } as StoreProductQueryGraph
 
 describe("store product visibility", () => {
   beforeEach(() => {
-    graph.mockReset();
-  });
+    graph.mockReset()
+  })
 
   it("requires a publishable-key sales channel", () => {
     expect(() =>
       resolveStoreProductVisibility({
         publishable_key_context: { key: "pk_test", sales_channel_ids: [] },
         scope: { resolve: jest.fn() },
-      } as never),
-    ).toThrow("A publishable key with a sales channel is required");
-  });
+      } as never)
+    ).toThrow("A publishable key with a sales channel is required")
+  })
 
   it("resolves the query graph and de-duplicates sales channels", () => {
-    const resolve = jest.fn().mockReturnValue(query);
+    const resolve = jest.fn().mockReturnValue(query)
 
     expect(
       resolveStoreProductVisibility({
@@ -36,25 +39,22 @@ describe("store product visibility", () => {
           sales_channel_ids: ["sc_1", "sc_1", "sc_2"],
         },
         scope: { resolve },
-      } as never),
-    ).toEqual({ query, salesChannelIds: ["sc_1", "sc_2"] });
-    expect(resolve).toHaveBeenCalledWith(ContainerRegistrationKeys.QUERY);
-  });
+      } as never)
+    ).toEqual({ query, salesChannelIds: ["sc_1", "sc_2"] })
+    expect(resolve).toHaveBeenCalledWith(ContainerRegistrationKeys.QUERY)
+  })
 
   it("returns only linked published products in candidate order", async () => {
     graph
       .mockResolvedValueOnce({
-        data: [
-          { product_id: "prod_3" },
-          { product_id: "prod_1" },
-        ],
+        data: [{ product_id: "prod_3" }, { product_id: "prod_1" }],
       })
       .mockResolvedValueOnce({
         data: [
           { id: "prod_1", handle: "first" },
           { id: "prod_3", handle: "third" },
         ],
-      });
+      })
 
     await expect(
       listVisibleProductsByIds({
@@ -62,11 +62,11 @@ describe("store product visibility", () => {
         productIds: ["prod_1", "prod_2", "prod_3"],
         query,
         salesChannelIds: ["sc_1"],
-      }),
+      })
     ).resolves.toEqual([
       { id: "prod_1", handle: "first" },
       { id: "prod_3", handle: "third" },
-    ]);
+    ])
     expect(graph).toHaveBeenNthCalledWith(1, {
       entity: "product_sales_channel",
       fields: ["product_id"],
@@ -75,7 +75,7 @@ describe("store product visibility", () => {
         sales_channel_id: ["sc_1"],
       },
       pagination: { take: 3 },
-    });
+    })
     expect(graph).toHaveBeenNthCalledWith(2, {
       entity: "product",
       fields: ["id", "handle"],
@@ -84,14 +84,14 @@ describe("store product visibility", () => {
         status: ProductStatus.PUBLISHED,
       },
       pagination: { take: 2 },
-    });
-  });
+    })
+  })
 
   it("uses an opaque keyset cursor and a bounded published page", async () => {
-    const cursor = encodeStoreProductCursor("prodsc_01ABC");
-    const decodedCursor = decodeStoreProductCursor(cursor);
+    const cursor = encodeStoreProductCursor("prodsc_01ABC")
+    const decodedCursor = decodeStoreProductCursor(cursor)
     if (!decodedCursor) {
-      throw new Error("Expected a decoded cursor");
+      throw new Error("Expected a decoded cursor")
     }
     graph
       .mockResolvedValueOnce({
@@ -106,7 +106,7 @@ describe("store product visibility", () => {
           { id: "prod_2", handle: "second" },
           { id: "prod_1", handle: "first" },
         ],
-      });
+      })
 
     await expect(
       listVisibleProductPage({
@@ -115,14 +115,14 @@ describe("store product visibility", () => {
         limit: 2,
         query,
         salesChannelIds: ["sc_1"],
-      }),
+      })
     ).resolves.toEqual({
       nextCursor: "prodsc_01ABE",
       products: [
         { id: "prod_1", handle: "first" },
         { id: "prod_2", handle: "second" },
       ],
-    });
+    })
     expect(graph).toHaveBeenNthCalledWith(1, {
       entity: "product_sales_channel",
       fields: ["id", "product_id"],
@@ -131,21 +131,21 @@ describe("store product visibility", () => {
         sales_channel_id: ["sc_1"],
       },
       pagination: { order: { id: "ASC" }, take: 3 },
-    });
+    })
     expect(graph).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         filters: expect.objectContaining({ status: ProductStatus.PUBLISHED }),
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("rejects malformed and non-canonical cursors", () => {
     expect(() => decodeStoreProductCursor("../../etc/passwd")).toThrow(
-      "Invalid product page cursor",
-    );
+      "Invalid product page cursor"
+    )
     expect(() => decodeStoreProductCursor("cHJvZHNjXzAxQUJD=")).toThrow(
-      "Invalid product page cursor",
-    );
-  });
-});
+      "Invalid product page cursor"
+    )
+  })
+})

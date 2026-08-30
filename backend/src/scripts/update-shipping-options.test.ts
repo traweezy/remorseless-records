@@ -1,46 +1,43 @@
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from '@medusajs/framework/utils'
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 const mockUpdateProductsRun = jest.fn()
 
-jest.mock('@medusajs/medusa/core-flows', () => ({
+jest.mock("@medusajs/medusa/core-flows", () => ({
   updateProductsWorkflow: jest.fn(() => ({
     run: mockUpdateProductsRun,
   })),
 }))
 
-import updateShippingOptions from './update-shipping-options'
+import updateShippingOptions from "./update-shipping-options"
 
 const createHarness = ({
   providerLinked = false,
   products = [
     {
-      id: 'prod_unprofiled',
+      id: "prod_unprofiled",
       is_giftcard: false,
       shipping_profile: null,
     },
     {
-      id: 'prod_profiled',
+      id: "prod_profiled",
       is_giftcard: false,
-      shipping_profile: { id: 'sp_default' },
+      shipping_profile: { id: "sp_default" },
     },
     {
-      id: 'prod_giftcard',
+      id: "prod_giftcard",
       is_giftcard: true,
       shipping_profile: null,
     },
   ],
   stockLocations = [
     {
-      id: 'sloc_hq',
-      name: 'HQ',
+      id: "sloc_hq",
+      name: "HQ",
       fulfillment_providers: [],
       fulfillment_sets: [
         {
-          id: 'fuset_hq',
-          service_zones: [{ id: 'serzo_hq' }],
+          id: "fuset_hq",
+          service_zones: [{ id: "serzo_hq" }],
         },
       ],
     },
@@ -50,46 +47,48 @@ const createHarness = ({
   products?: unknown[]
   stockLocations?: unknown[]
 } = {}) => {
-  const graph = jest.fn().mockImplementation(({ entity }: { entity: string }) => {
-    if (entity === 'stock_location') {
-      return Promise.resolve({
-        data: providerLinked
-          ? [
-              {
-                ...(stockLocations[0] as Record<string, unknown>),
-                fulfillment_providers: [{ id: 'per_item_standard' }],
-              },
-            ]
-          : stockLocations,
-      })
-    }
-    if (entity === 'product') {
-      return Promise.resolve({ data: products })
-    }
-    return Promise.reject(new Error(`Unexpected entity: ${entity}`))
-  })
+  const graph = jest
+    .fn()
+    .mockImplementation(({ entity }: { entity: string }) => {
+      if (entity === "stock_location") {
+        return Promise.resolve({
+          data: providerLinked
+            ? [
+                {
+                  ...(stockLocations[0] as Record<string, unknown>),
+                  fulfillment_providers: [{ id: "per_item_standard" }],
+                },
+              ]
+            : stockLocations,
+        })
+      }
+      if (entity === "product") {
+        return Promise.resolve({ data: products })
+      }
+      return Promise.reject(new Error(`Unexpected entity: ${entity}`))
+    })
   const create = jest.fn().mockResolvedValue(undefined)
   const updateServiceZones = jest.fn().mockResolvedValue(undefined)
   const updateShippingOptions = jest.fn().mockResolvedValue(undefined)
   const deleteShippingOptions = jest.fn().mockResolvedValue(undefined)
   const listShippingOptions = jest.fn().mockResolvedValue([
     {
-      id: 'so_obsolete',
-      name: 'Standard Shipping',
-      service_zone_id: 'serzo_obsolete',
-      type: { code: 'standard' },
+      id: "so_obsolete",
+      name: "Standard Shipping",
+      service_zone_id: "serzo_obsolete",
+      type: { code: "standard" },
     },
     {
-      id: 'so_hq',
-      name: 'Default Shipping',
-      service_zone_id: 'serzo_hq',
-      type: { code: 'default' },
+      id: "so_hq",
+      name: "Default Shipping",
+      service_zone_id: "serzo_hq",
+      type: { code: "default" },
     },
     {
-      id: 'so_express',
-      name: 'Express Shipping',
-      service_zone_id: 'serzo_obsolete',
-      type: { code: 'express' },
+      id: "so_express",
+      name: "Express Shipping",
+      service_zone_id: "serzo_obsolete",
+      type: { code: "express" },
     },
   ])
   const logger = { info: jest.fn(), warn: jest.fn() }
@@ -109,7 +108,7 @@ const createHarness = ({
           deleteShippingOptions,
           listShippingProfiles: jest
             .fn()
-            .mockResolvedValue([{ id: 'sp_default' }]),
+            .mockResolvedValue([{ id: "sp_default" }]),
           listShippingOptions,
           updateServiceZones,
           updateShippingOptions,
@@ -129,13 +128,13 @@ const createHarness = ({
   }
 }
 
-describe('updateShippingOptions', () => {
+describe("updateShippingOptions", () => {
   beforeEach(() => {
     mockUpdateProductsRun.mockReset()
     mockUpdateProductsRun.mockResolvedValue(undefined)
   })
 
-  it('moves the storefront contract to the configured inventory location', async () => {
+  it("moves the storefront contract to the configured inventory location", async () => {
     const harness = createHarness()
 
     await updateShippingOptions({
@@ -144,49 +143,49 @@ describe('updateShippingOptions', () => {
     })
 
     expect(harness.graph).toHaveBeenCalledWith({
-      entity: 'stock_location',
+      entity: "stock_location",
       fields: [
-        'id',
-        'name',
-        'fulfillment_providers.id',
-        'fulfillment_sets.id',
-        'fulfillment_sets.service_zones.id',
+        "id",
+        "name",
+        "fulfillment_providers.id",
+        "fulfillment_sets.id",
+        "fulfillment_sets.service_zones.id",
       ],
-      filters: { name: 'HQ' },
+      filters: { name: "HQ" },
     })
     expect(harness.create).toHaveBeenCalledWith({
-      [Modules.STOCK_LOCATION]: { stock_location_id: 'sloc_hq' },
+      [Modules.STOCK_LOCATION]: { stock_location_id: "sloc_hq" },
       [Modules.FULFILLMENT]: {
-        fulfillment_provider_id: 'per_item_standard',
+        fulfillment_provider_id: "per_item_standard",
       },
     })
-    expect(harness.updateServiceZones).toHaveBeenCalledWith('serzo_hq', {
-      geo_zones: [{ type: 'country', country_code: 'us' }],
+    expect(harness.updateServiceZones).toHaveBeenCalledWith("serzo_hq", {
+      geo_zones: [{ type: "country", country_code: "us" }],
     })
     expect(mockUpdateProductsRun).toHaveBeenCalledWith({
       input: {
         products: [
           {
-            id: 'prod_unprofiled',
-            shipping_profile_id: 'sp_default',
+            id: "prod_unprofiled",
+            shipping_profile_id: "sp_default",
           },
         ],
       },
     })
-    expect(harness.updateShippingOptions).toHaveBeenCalledWith('so_hq', {
-      name: 'Standard Shipping',
-      provider_id: 'per_item_standard',
-      price_type: 'calculated',
+    expect(harness.updateShippingOptions).toHaveBeenCalledWith("so_hq", {
+      name: "Standard Shipping",
+      provider_id: "per_item_standard",
+      price_type: "calculated",
       data: {
         base_amount: 5,
         additional_amount: 0.5,
-        currency_code: 'usd',
+        currency_code: "usd",
       },
     })
-    expect(harness.deleteShippingOptions).toHaveBeenCalledWith(['so_express'])
+    expect(harness.deleteShippingOptions).toHaveBeenCalledWith(["so_express"])
   })
 
-  it('is idempotent when the provider link already exists', async () => {
+  it("is idempotent when the provider link already exists", async () => {
     const harness = createHarness({ providerLinked: true })
 
     await updateShippingOptions({
@@ -198,11 +197,11 @@ describe('updateShippingOptions', () => {
     expect(harness.updateShippingOptions).toHaveBeenCalledTimes(1)
   })
 
-  it('fails closed when the target stock location is ambiguous', async () => {
+  it("fails closed when the target stock location is ambiguous", async () => {
     const harness = createHarness({
       stockLocations: [
-        { id: 'sloc_1', name: 'HQ' },
-        { id: 'sloc_2', name: 'HQ' },
+        { id: "sloc_1", name: "HQ" },
+        { id: "sloc_2", name: "HQ" },
       ],
     })
 

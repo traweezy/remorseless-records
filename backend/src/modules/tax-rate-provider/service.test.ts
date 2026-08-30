@@ -3,20 +3,20 @@ import type {
   Logger,
   ShippingTaxCalculationLine,
   TaxCalculationContext,
-} from "@medusajs/framework/types";
+} from "@medusajs/framework/types"
 
 jest.mock("../../lib/constants", () => ({
   REDIS_URL: "",
-}));
+}))
 jest.mock("./clients/taxrate-io", () => ({
   fetchTaxRateIo: jest.fn(),
-}));
+}))
 
-import { createTaxContextFingerprint } from "../../lib/tax-control/context";
-import { fetchTaxRateIo } from "./clients/taxrate-io";
-import TaxRateLookupProviderService from "./service";
+import { createTaxContextFingerprint } from "../../lib/tax-control/context"
+import { fetchTaxRateIo } from "./clients/taxrate-io"
+import TaxRateLookupProviderService from "./service"
 
-const mockFetchTaxRateIo = jest.mocked(fetchTaxRateIo);
+const mockFetchTaxRateIo = jest.mocked(fetchTaxRateIo)
 
 const service = () =>
   new TaxRateLookupProviderService(
@@ -29,8 +29,8 @@ const service = () =>
     {
       apiKey: "",
       provider: "taxrate_io",
-    },
-  );
+    }
+  )
 
 const item = (id: string): ItemTaxCalculationLine =>
   ({
@@ -40,7 +40,7 @@ const item = (id: string): ItemTaxCalculationLine =>
       quantity: 1,
       unit_price: 20,
     },
-  }) as unknown as ItemTaxCalculationLine;
+  }) as unknown as ItemTaxCalculationLine
 
 const shipping = (id: string): ShippingTaxCalculationLine =>
   ({
@@ -48,11 +48,11 @@ const shipping = (id: string): ShippingTaxCalculationLine =>
       id,
       unit_price: 5,
     },
-  }) as unknown as ShippingTaxCalculationLine;
+  }) as unknown as ShippingTaxCalculationLine
 
 const context = (
   preservedItemRates: Record<string, number>,
-  preservedShippingRates: Record<string, number>,
+  preservedShippingRates: Record<string, number>
 ): TaxCalculationContext =>
   ({
     additional_context: {
@@ -79,7 +79,7 @@ const context = (
       country_code: "us",
       postal_code: "14201",
     },
-  }) as unknown as TaxCalculationContext;
+  }) as unknown as TaxCalculationContext
 
 const lookupContext = (postalCode: string): TaxCalculationContext =>
   ({
@@ -101,7 +101,7 @@ const lookupContext = (postalCode: string): TaxCalculationContext =>
       country_code: "us",
       postal_code: postalCode,
     },
-  }) as unknown as TaxCalculationContext;
+  }) as unknown as TaxCalculationContext
 
 describe("controlled tax provider order rate preservation", () => {
   it("reuses reviewed order rates without requiring another Stripe lookup", async () => {
@@ -109,8 +109,8 @@ describe("controlled tax provider order rate preservation", () => {
       service().getTaxLines(
         [item("orli_01")],
         [shipping("ordsm_01")],
-        context({ orli_01: 8.75 }, { ordsm_01: 8.75 }),
-      ),
+        context({ orli_01: 8.75 }, { ordsm_01: 8.75 })
+      )
     ).resolves.toEqual([
       expect.objectContaining({
         code: "rr_tax:stripe_tax:g2:taxcalc_original",
@@ -122,19 +122,19 @@ describe("controlled tax provider order rate preservation", () => {
         rate: 8.75,
         shipping_line_id: "ordsm_01",
       }),
-    ]);
-  });
+    ])
+  })
 
   it("fails closed when only part of a recalculation has preserved rates", async () => {
     await expect(
       service().getTaxLines(
         [item("orli_01"), item("orli_02")],
         [],
-        context({ orli_01: 8.75 }, {}),
-      ),
-    ).rejects.toThrow("preserved order rates are incomplete");
-  });
-});
+        context({ orli_01: 8.75 }, {})
+      )
+    ).rejects.toThrow("preserved order rates are incomplete")
+  })
+})
 
 describe("controlled tax provider disabled collection", () => {
   it("emits one explicit zero line per subject without a provider call", async () => {
@@ -153,14 +153,14 @@ describe("controlled tax provider disabled collection", () => {
           subjectId: "cart-disabled",
         },
       },
-    } as unknown as TaxCalculationContext;
+    } as unknown as TaxCalculationContext
 
     await expect(
       service().getTaxLines(
         [item("item-disabled")],
         [shipping("shipping-disabled")],
-        disabledContext,
-      ),
+        disabledContext
+      )
     ).resolves.toEqual([
       expect.objectContaining({
         code: "rr_tax:disabled:g4:decision",
@@ -178,26 +178,26 @@ describe("controlled tax provider disabled collection", () => {
         rate: 0,
         shipping_line_id: "shipping-disabled",
       }),
-    ]);
-    expect(mockFetchTaxRateIo).not.toHaveBeenCalled();
-  });
-});
+    ])
+    expect(mockFetchTaxRateIo).not.toHaveBeenCalled()
+  })
+})
 
 describe("controlled tax provider local cache", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.clearAllMocks()
     mockFetchTaxRateIo.mockResolvedValue({
       jurisdiction: null,
       quota: null,
       ratePercent: 8.75,
-    });
-  });
+    })
+  })
 
   it("bounds lookup entries and rate-limits key-free capacity warnings", async () => {
     const logger = {
       info: jest.fn(),
       warn: jest.fn(),
-    } as unknown as Logger;
+    } as unknown as Logger
     const provider = new TaxRateLookupProviderService(
       { logger },
       {
@@ -205,22 +205,22 @@ describe("controlled tax provider local cache", () => {
         provider: "taxrate_io",
         rateCacheMaxEntries: 1,
         rateCacheTtlMs: 1_000,
-      },
-    );
+      }
+    )
 
-    await provider.getTaxLines([item("item-1")], [], lookupContext("10001"));
-    await provider.getTaxLines([item("item-2")], [], lookupContext("10002"));
-    await provider.getTaxLines([item("item-3")], [], lookupContext("10001"));
+    await provider.getTaxLines([item("item-1")], [], lookupContext("10001"))
+    await provider.getTaxLines([item("item-2")], [], lookupContext("10002"))
+    await provider.getTaxLines([item("item-3")], [], lookupContext("10001"))
 
-    expect(mockFetchTaxRateIo).toHaveBeenCalledTimes(3);
-    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(mockFetchTaxRateIo).toHaveBeenCalledTimes(3)
+    expect(logger.warn).toHaveBeenCalledTimes(1)
     expect(logger.warn).toHaveBeenCalledWith(
-      "Tax rate local cache reached capacity; least-recently-used entries were evicted.",
-    );
+      "Tax rate local cache reached capacity; least-recently-used entries were evicted."
+    )
     expect(JSON.stringify(jest.mocked(logger.warn).mock.calls)).not.toContain(
-      "1000",
-    );
-  });
+      "1000"
+    )
+  })
 
   it("rejects invalid programmatic cache settings during construction", () => {
     expect(
@@ -236,8 +236,8 @@ describe("controlled tax provider local cache", () => {
             apiKey: "configured",
             provider: "taxrate_io",
             stripeQuoteCacheMaxEntries: 1_001,
-          },
-        ),
-    ).toThrow("STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES");
-  });
-});
+          }
+        )
+    ).toThrow("STRIPE_TAX_QUOTE_CACHE_MAX_ENTRIES")
+  })
+})

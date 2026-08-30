@@ -1,7 +1,4 @@
-import {
-  deleteFilesWorkflow,
-  uploadFilesWorkflow,
-} from "@medusajs/core-flows"
+import { deleteFilesWorkflow, uploadFilesWorkflow } from "@medusajs/core-flows"
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
@@ -82,5 +79,7 @@ export default async function verifyObjectStorageProvider({
     }
     await wait(attempt * 200)
   }
-  throw new Error("[storage] Canary object still exists after provider deletion.")
+  throw new Error(
+    "[storage] Canary object still exists after provider deletion."
+  )
 }

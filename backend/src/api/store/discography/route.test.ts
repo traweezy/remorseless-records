@@ -7,10 +7,7 @@ import type { DiscographyEntryRecord } from "@/modules/discography/serializers"
 
 import { GET } from "./route"
 
-const entry = (
-  id: string,
-  productId: string
-): DiscographyEntryRecord => ({
+const entry = (id: string, productId: string): DiscographyEntryRecord => ({
   album: `${id} album`,
   artist: `${id} artist`,
   availability: "in_print",
@@ -94,10 +91,7 @@ describe("GET /store/discography", () => {
       },
       pagination: { take: 1 },
     })
-    expect(setHeader).toHaveBeenCalledWith(
-      "Vary",
-      "x-publishable-api-key"
-    )
+    expect(setHeader).toHaveBeenCalledWith("Vary", "x-publishable-api-key")
     expect(status).toHaveBeenCalledWith(200)
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -4,10 +4,7 @@ import { memo } from "react"
 import { Button, clx } from "@medusajs/ui"
 import { Link } from "react-router-dom"
 
-import {
-  contentRoutePaths,
-  type ContentWorkspace,
-} from "./content-routes"
+import { contentRoutePaths, type ContentWorkspace } from "./content-routes"
 
 type ContentWorkspaceNavigationProps = {
   active: ContentWorkspace
@@ -32,33 +29,33 @@ const NavigationItem = memo<NavigationItemProps>(({ active, label, to }) => (
 
 NavigationItem.displayName = "NavigationItem"
 
-export const ContentWorkspaceNavigation = memo<
-  ContentWorkspaceNavigationProps
->(({ active, className, showDiscography = true, showNews = true }) => (
-  <nav
-    aria-label="Content workspaces"
-    className={clx("flex flex-wrap gap-2", className)}
-  >
-    <NavigationItem
-      active={active === "overview"}
-      label="Overview"
-      to={contentRoutePaths.overview}
-    />
-    {showNews ? (
+export const ContentWorkspaceNavigation = memo<ContentWorkspaceNavigationProps>(
+  ({ active, className, showDiscography = true, showNews = true }) => (
+    <nav
+      aria-label="Content workspaces"
+      className={clx("flex flex-wrap gap-2", className)}
+    >
       <NavigationItem
-        active={active === "news"}
-        label="News"
-        to={contentRoutePaths.news}
+        active={active === "overview"}
+        label="Overview"
+        to={contentRoutePaths.overview}
       />
-    ) : null}
-    {showDiscography ? (
-      <NavigationItem
-        active={active === "discography"}
-        label="Discography"
-        to={contentRoutePaths.discography}
-      />
-    ) : null}
-  </nav>
-))
+      {showNews ? (
+        <NavigationItem
+          active={active === "news"}
+          label="News"
+          to={contentRoutePaths.news}
+        />
+      ) : null}
+      {showDiscography ? (
+        <NavigationItem
+          active={active === "discography"}
+          label="Discography"
+          to={contentRoutePaths.discography}
+        />
+      ) : null}
+    </nav>
+  )
+)
 
 ContentWorkspaceNavigation.displayName = "ContentWorkspaceNavigation"

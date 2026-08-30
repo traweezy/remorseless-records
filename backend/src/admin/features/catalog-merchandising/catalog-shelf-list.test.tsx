@@ -70,7 +70,7 @@ describe("CatalogShelfList", () => {
             title: "Archive",
           }),
         ]}
-      />,
+      />
     )
 
     expect(markup).toContain('aria-label="Merchandising shelves"')

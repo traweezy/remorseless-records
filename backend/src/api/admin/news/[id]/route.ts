@@ -26,9 +26,9 @@ export const GET = async (
   res: MedusaResponse
 ): Promise<void> => {
   const newsService = req.scope.resolve("news") as NewsService
-  const entry = (await newsService.retrieveNewsEntry(requireId(req))) as
-    | NewsEntryRecord
-    | null
+  const entry = (await newsService.retrieveNewsEntry(
+    requireId(req)
+  )) as NewsEntryRecord | null
   if (!entry) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "News post not found.")
   }

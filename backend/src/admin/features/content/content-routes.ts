@@ -19,7 +19,7 @@ export type ReplaceContentLocation = {
 
 export const replaceLegacyContentLocation = (
   location: ReplaceContentLocation,
-  workspace: ContentDetailWorkspace,
+  workspace: ContentDetailWorkspace
 ): void => {
   location.replace(contentAppRoutePaths[workspace])
 }

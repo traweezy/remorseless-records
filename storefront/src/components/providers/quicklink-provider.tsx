@@ -3,7 +3,10 @@
 import { useEffect } from "react"
 import { shouldBlockPrefetch } from "@/lib/prefetch"
 
-type QuicklinkFn = (options?: { ignores?: Array<RegExp | string>; origins?: boolean }) => void
+type QuicklinkFn = (options?: {
+  ignores?: Array<RegExp | string>
+  origins?: boolean
+}) => void
 
 const QuicklinkProvider = () => {
   useEffect(() => {

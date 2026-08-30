@@ -1,12 +1,12 @@
-import { requestAdminJson } from "../../lib/admin-request";
+import { requestAdminJson } from "../../lib/admin-request"
 import {
   productAuthoringViewPayloadSchema,
   productAuthoringViewQueryOptions,
-} from "./product-authoring-query";
+} from "./product-authoring-query"
 
 jest.mock("../../lib/admin-request", () => ({
   requestAdminJson: jest.fn(),
-}));
+}))
 
 const validPayload = {
   view: {
@@ -71,18 +71,18 @@ const validPayload = {
       orphanVariantProfileIds: [],
     },
   },
-} as const;
+} as const
 
 describe("product authoring view query boundary", () => {
   beforeEach(() => {
-    jest.mocked(requestAdminJson).mockReset();
-  });
+    jest.mocked(requestAdminJson).mockReset()
+  })
 
   it("accepts the consolidated commerce, catalog, and diagnostic summary", () => {
     expect(productAuthoringViewPayloadSchema.parse(validPayload)).toEqual(
-      validPayload,
-    );
-  });
+      validPayload
+    )
+  })
 
   it("rejects unsupported classifications and malformed inventory", () => {
     expect(() =>
@@ -107,30 +107,30 @@ describe("product authoring view query boundary", () => {
             kind: "deal",
           },
         },
-      }),
-    ).toThrow();
-  });
+      })
+    ).toThrow()
+  })
 
   it("encodes the product id and forwards Query cancellation", async () => {
-    jest.mocked(requestAdminJson).mockResolvedValue(validPayload);
-    const options = productAuthoringViewQueryOptions("prod/01");
-    const controller = new AbortController();
+    jest.mocked(requestAdminJson).mockResolvedValue(validPayload)
+    const options = productAuthoringViewQueryOptions("prod/01")
+    const controller = new AbortController()
 
     await expect(
       options.queryFn?.({
         meta: undefined,
         queryKey: options.queryKey,
         signal: controller.signal,
-      }),
-    ).resolves.toEqual(validPayload.view);
+      })
+    ).resolves.toEqual(validPayload.view)
 
     expect(requestAdminJson).toHaveBeenCalledWith({
       path: "/admin/catalog/products/prod%2F01/authoring-view",
       schema: productAuthoringViewPayloadSchema,
       signal: controller.signal,
-    });
-    expect(options.refetchOnWindowFocus).toBe(false);
-    expect(options.retry).toBe(false);
-    expect(options.staleTime).toBe(30_000);
-  });
-});
+    })
+    expect(options.refetchOnWindowFocus).toBe(false)
+    expect(options.retry).toBe(false)
+    expect(options.staleTime).toBe(30_000)
+  })
+})

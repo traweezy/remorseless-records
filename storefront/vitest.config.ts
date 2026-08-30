@@ -26,10 +26,7 @@ export default defineConfig({
         "src/lib/**/*.ts",
         "src/components/ui/smart-link.tsx",
       ],
-      exclude: [
-        "src/lib/cart/**",
-        "src/lib/medusa.ts",
-      ],
+      exclude: ["src/lib/cart/**", "src/lib/medusa.ts"],
       thresholds: {
         lines: 90,
         statements: 90,

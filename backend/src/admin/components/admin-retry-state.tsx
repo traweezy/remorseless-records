@@ -1,38 +1,23 @@
-"use client";
+"use client"
 
-import {
-  memo,
-  useCallback,
-  type ReactNode,
-} from "react";
-import {
-  Alert,
-  Button,
-  Container,
-  Text,
-} from "@medusajs/ui";
+import { memo, useCallback, type ReactNode } from "react"
+import { Alert, Button, Container, Text } from "@medusajs/ui"
 
 export type AdminRetryStateProps = {
-  message: ReactNode;
-  onRetry: () => void;
-  retryLabel?: string;
-  retrying?: boolean;
-  title: ReactNode;
-};
+  message: ReactNode
+  onRetry: () => void
+  retryLabel?: string
+  retrying?: boolean
+  title: ReactNode
+}
 
 export const AdminRetryState = memo<AdminRetryStateProps>(
-  ({
-    message,
-    onRetry,
-    retryLabel = "Try again",
-    retrying = false,
-    title,
-  }) => {
+  ({ message, onRetry, retryLabel = "Try again", retrying = false, title }) => {
     const handleRetry = useCallback(() => {
       if (!retrying) {
-        onRetry();
+        onRetry()
       }
-    }, [onRetry, retrying]);
+    }, [onRetry, retrying])
 
     return (
       <Container aria-busy={retrying}>
@@ -52,8 +37,8 @@ export const AdminRetryState = memo<AdminRetryStateProps>(
           {retryLabel}
         </Button>
       </Container>
-    );
-  },
-);
+    )
+  }
+)
 
-AdminRetryState.displayName = "AdminRetryState";
+AdminRetryState.displayName = "AdminRetryState"

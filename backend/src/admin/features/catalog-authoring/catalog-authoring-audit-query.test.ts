@@ -56,8 +56,8 @@ describe("catalog authoring audit query boundary", () => {
   it("accepts the catalog health summary", () => {
     expect(
       catalogAuthoringAuditPayloadSchema.parse(
-        catalogAuthoringAuditPayloadFixture,
-      ),
+        catalogAuthoringAuditPayloadFixture
+      )
     ).toEqual(catalogAuthoringAuditPayloadFixture)
   })
 
@@ -69,7 +69,7 @@ describe("catalog authoring audit query boundary", () => {
           ...catalogAuthoringAuditPayloadFixture.summary,
           total: -1,
         },
-      }),
+      })
     ).toThrow()
     expect(() =>
       catalogAuthoringAuditPayloadSchema.parse({
@@ -80,7 +80,7 @@ describe("catalog authoring audit query boundary", () => {
             kind: "deal",
           },
         ],
-      }),
+      })
     ).toThrow()
   })
 
@@ -96,7 +96,7 @@ describe("catalog authoring audit query boundary", () => {
         meta: undefined,
         queryKey: options.queryKey,
         signal: controller.signal,
-      }),
+      })
     ).resolves.toEqual(catalogAuthoringAuditPayloadFixture)
 
     expect(requestAdminJson).toHaveBeenCalledWith({

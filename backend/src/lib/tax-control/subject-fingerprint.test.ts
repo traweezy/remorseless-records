@@ -1,13 +1,13 @@
-import { createTaxSubjectFingerprint } from "./subject-fingerprint";
+import { createTaxSubjectFingerprint } from "./subject-fingerprint"
 
 const taxSubject = ({
   shippingAmount = 5,
   shippingMethodId = "casm_original",
   shippingOptionId = "so_standard",
 }: {
-  shippingAmount?: number;
-  shippingMethodId?: string;
-  shippingOptionId?: string;
+  shippingAmount?: number
+  shippingMethodId?: string
+  shippingOptionId?: string
 } = {}) => ({
   id: "cart_01",
   currency_code: "usd",
@@ -36,7 +36,7 @@ const taxSubject = ({
       adjustments: [],
     },
   ],
-});
+})
 
 describe("tax subject fingerprint", () => {
   it("survives replacement of the selected shipping-method row", () => {
@@ -45,16 +45,16 @@ describe("tax subject fingerprint", () => {
       generation: 1,
       orderOrCart: taxSubject(),
       provider: "taxrate_io",
-    });
+    })
     const replaced = createTaxSubjectFingerprint({
       collectionMode: "collect",
       generation: 1,
       orderOrCart: taxSubject({ shippingMethodId: "casm_replacement" }),
       provider: "taxrate_io",
-    });
+    })
 
-    expect(replaced).toBe(original);
-  });
+    expect(replaced).toBe(original)
+  })
 
   it.each([
     ["selected option", { shippingOptionId: "so_express" }],
@@ -65,16 +65,16 @@ describe("tax subject fingerprint", () => {
       generation: 1,
       orderOrCart: taxSubject(),
       provider: "taxrate_io",
-    });
+    })
     const changed = createTaxSubjectFingerprint({
       collectionMode: "collect",
       generation: 1,
       orderOrCart: taxSubject(change),
       provider: "taxrate_io",
-    });
+    })
 
-    expect(changed).not.toBe(original);
-  });
+    expect(changed).not.toBe(original)
+  })
 
   it("separates an explicit disabled decision from provider collection", () => {
     const collected = createTaxSubjectFingerprint({
@@ -82,14 +82,14 @@ describe("tax subject fingerprint", () => {
       generation: 2,
       orderOrCart: taxSubject(),
       provider: "taxrate_io",
-    });
+    })
     const disabled = createTaxSubjectFingerprint({
       collectionMode: "disabled",
       generation: 2,
       orderOrCart: taxSubject(),
       provider: null,
-    });
+    })
 
-    expect(disabled).not.toBe(collected);
-  });
-});
+    expect(disabled).not.toBe(collected)
+  })
+})

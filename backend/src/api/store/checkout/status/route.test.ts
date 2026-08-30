@@ -33,7 +33,7 @@ const responseFixture = (): {
     (name: string, value: string): MedusaResponse => {
       state.headers[name.toLowerCase()] = value
       return response
-    },
+    }
   ) as MedusaResponse["setHeader"]
   response.status = jest.fn((status: number): MedusaResponse => {
     state.status = status
@@ -65,9 +65,7 @@ const requestFixture = ({
     body,
     headers: {
       ...(proof ? { "x-rr-checkout-proof": proof } : {}),
-      ...(timestamp
-        ? { "x-rr-checkout-timestamp": String(timestamp) }
-        : {}),
+      ...(timestamp ? { "x-rr-checkout-timestamp": String(timestamp) } : {}),
     },
     scope: { resolve },
   }) as unknown as MedusaStoreRequest
@@ -118,7 +116,7 @@ describe("POST /store/checkout/status", () => {
     const graph = jest.fn(async ({ entity }: { entity: string }) =>
       entity === "order_cart"
         ? { data: [{ order_id: "order_01K123ABC" }] }
-        : { data: [{ id: cartId }] },
+        : { data: [{ id: cartId }] }
     )
     const resolve = jest.fn(() => ({ graph }))
     const { res, state } = responseFixture()

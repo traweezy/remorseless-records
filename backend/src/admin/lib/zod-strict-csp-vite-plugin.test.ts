@@ -6,11 +6,10 @@ type ZodStrictCspVitePlugin = {
   transform: (source: string, moduleId: string) => TransformResult
 }
 
-const { createZodStrictCspVitePlugin } = require(
-  "./zod-strict-csp-vite-plugin.cjs"
-) as {
-  createZodStrictCspVitePlugin: () => ZodStrictCspVitePlugin
-}
+const { createZodStrictCspVitePlugin } =
+  require("./zod-strict-csp-vite-plugin.cjs") as {
+    createZodStrictCspVitePlugin: () => ZodStrictCspVitePlugin
+  }
 
 const probeSource = `
 export const allowsEval = cached(() => {

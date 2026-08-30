@@ -1,45 +1,45 @@
-import type { Context } from "@medusajs/framework/types";
-import { EntityManager } from "@medusajs/framework/mikro-orm/knex";
+import type { Context } from "@medusajs/framework/types"
+import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import {
   InjectManager,
   InjectTransactionManager,
   MedusaContext,
   MedusaError,
   MedusaService,
-} from "@medusajs/framework/utils";
+} from "@medusajs/framework/utils"
 
 import type {
   StripeLifecycleEventStatus,
   StripeLifecycleEventType,
-} from "./constants";
-import StripeLifecycleEvent from "./models/stripe-lifecycle-event";
+} from "./constants"
+import StripeLifecycleEvent from "./models/stripe-lifecycle-event"
 
 export type RecordStripeLifecycleEventInput = {
-  amountMinor: number | null;
-  chargeId: string | null;
-  currencyCode: string | null;
-  eventCreatedAt: Date;
-  eventType: StripeLifecycleEventType;
-  livemode: boolean;
-  objectId: string;
-  paymentIntentId: string | null;
-  providerEventId: string;
-  providerObjectStatus: string | null;
-};
+  amountMinor: number | null
+  chargeId: string | null
+  currencyCode: string | null
+  eventCreatedAt: Date
+  eventType: StripeLifecycleEventType
+  livemode: boolean
+  objectId: string
+  paymentIntentId: string | null
+  providerEventId: string
+  providerObjectStatus: string | null
+}
 
 type CompleteStripeLifecycleEventInput = {
-  id: string;
-  metadata: Record<string, unknown>;
-  orderId?: string;
-  providerObjectStatus: string | null;
-  status: Extract<StripeLifecycleEventStatus, "ignored" | "processed">;
-};
+  id: string
+  metadata: Record<string, unknown>
+  orderId?: string
+  providerObjectStatus: string | null
+  status: Extract<StripeLifecycleEventStatus, "ignored" | "processed">
+}
 
-const dateValue = (value: unknown): number => new Date(String(value)).getTime();
+const dateValue = (value: unknown): number => new Date(String(value)).getTime()
 
 const immutableReceiptMatches = (
   existing: Record<string, unknown>,
-  input: RecordStripeLifecycleEventInput,
+  input: RecordStripeLifecycleEventInput
 ): boolean =>
   existing.event_type === input.eventType &&
   existing.object_id === input.objectId &&
@@ -48,10 +48,10 @@ const immutableReceiptMatches = (
   existing.livemode === input.livemode &&
   existing.amount_minor === input.amountMinor &&
   existing.currency_code === input.currencyCode &&
-  dateValue(existing.event_created_at) === input.eventCreatedAt.getTime();
+  dateValue(existing.event_created_at) === input.eventCreatedAt.getTime()
 
 const retryDelayMs = (attemptCount: number): number =>
-  Math.min(60 * 60 * 1_000, 60 * 1_000 * 2 ** Math.max(0, attemptCount - 1));
+  Math.min(60 * 60 * 1_000, 60 * 1_000 * 2 ** Math.max(0, attemptCount - 1))
 
 class PaymentLifecycleModuleService extends MedusaService({
   StripeLifecycleEvent,
@@ -59,28 +59,28 @@ class PaymentLifecycleModuleService extends MedusaService({
   @InjectTransactionManager()
   protected async recordStripeLifecycleEvent_(
     input: RecordStripeLifecycleEventInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     const existing = (
       await this.listStripeLifecycleEvents(
         { provider_event_id: input.providerEventId },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
-    )[0];
+    )[0]
     if (existing) {
       if (
         !immutableReceiptMatches(
           existing as unknown as Record<string, unknown>,
-          input,
+          input
         )
       ) {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The Stripe event ID is already bound to different lifecycle data.",
-        );
+          "The Stripe event ID is already bound to different lifecycle data."
+        )
       }
-      return { lifecycleEvent: existing, replayed: true };
+      return { lifecycleEvent: existing, replayed: true }
     }
 
     const [created] = await this.createStripeLifecycleEvents(
@@ -107,40 +107,40 @@ class PaymentLifecycleModuleService extends MedusaService({
           status: "received",
         },
       ],
-      sharedContext,
-    );
+      sharedContext
+    )
     if (!created) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The Stripe lifecycle receipt was not persisted.",
-      );
+        "The Stripe lifecycle receipt was not persisted."
+      )
     }
-    return { lifecycleEvent: created, replayed: false };
+    return { lifecycleEvent: created, replayed: false }
   }
 
   @InjectManager()
   async recordStripeLifecycleEvent(
     input: RecordStripeLifecycleEventInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
-    return this.recordStripeLifecycleEvent_(input, sharedContext);
+    return this.recordStripeLifecycleEvent_(input, sharedContext)
   }
 
   @InjectTransactionManager()
   protected async markStripeLifecycleEventProcessing_(
     id: string,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     const lifecycleEvent = await this.retrieveStripeLifecycleEvent(
       id,
       {},
-      sharedContext,
-    );
+      sharedContext
+    )
     if (
       lifecycleEvent.status === "processed" ||
       lifecycleEvent.status === "ignored"
     ) {
-      return lifecycleEvent;
+      return lifecycleEvent
     }
 
     const [updated] = await this.updateStripeLifecycleEvents(
@@ -154,35 +154,35 @@ class PaymentLifecycleModuleService extends MedusaService({
           status: "processing",
         },
       ],
-      sharedContext,
-    );
+      sharedContext
+    )
     if (!updated) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The Stripe lifecycle processing state was not persisted.",
-      );
+        "The Stripe lifecycle processing state was not persisted."
+      )
     }
-    return updated;
+    return updated
   }
 
   @InjectManager()
   async markStripeLifecycleEventProcessing(
     id: string,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
-    return this.markStripeLifecycleEventProcessing_(id, sharedContext);
+    return this.markStripeLifecycleEventProcessing_(id, sharedContext)
   }
 
   @InjectTransactionManager()
   protected async completeStripeLifecycleEvent_(
     input: CompleteStripeLifecycleEventInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     const lifecycleEvent = await this.retrieveStripeLifecycleEvent(
       input.id,
       {},
-      sharedContext,
-    );
+      sharedContext
+    )
     const [updated] = await this.updateStripeLifecycleEvents(
       [
         {
@@ -199,50 +199,50 @@ class PaymentLifecycleModuleService extends MedusaService({
           status: input.status,
         },
       ],
-      sharedContext,
-    );
+      sharedContext
+    )
     if (!updated) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The Stripe lifecycle completion state was not persisted.",
-      );
+        "The Stripe lifecycle completion state was not persisted."
+      )
     }
-    return updated;
+    return updated
   }
 
   @InjectManager()
   async completeStripeLifecycleEvent(
     input: CompleteStripeLifecycleEventInput,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
-    return this.completeStripeLifecycleEvent_(input, sharedContext);
+    return this.completeStripeLifecycleEvent_(input, sharedContext)
   }
 
   @InjectTransactionManager()
   protected async markStripeLifecycleEventFailed_(
     id: string,
     errorCode: string,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     if (!/^[a-z0-9_]{3,64}$/.test(errorCode)) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "The Stripe lifecycle error code is invalid.",
-      );
+        "The Stripe lifecycle error code is invalid."
+      )
     }
     const lifecycleEvent = await this.retrieveStripeLifecycleEvent(
       id,
       {},
-      sharedContext,
-    );
+      sharedContext
+    )
     if (
       lifecycleEvent.status === "processed" ||
       lifecycleEvent.status === "ignored"
     ) {
-      return lifecycleEvent;
+      return lifecycleEvent
     }
 
-    const attemptCount = Math.max(1, lifecycleEvent.attempt_count);
+    const attemptCount = Math.max(1, lifecycleEvent.attempt_count)
     const [updated] = await this.updateStripeLifecycleEvents(
       [
         {
@@ -252,29 +252,25 @@ class PaymentLifecycleModuleService extends MedusaService({
           status: "failed",
         },
       ],
-      sharedContext,
-    );
+      sharedContext
+    )
     if (!updated) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The Stripe lifecycle failure state was not persisted.",
-      );
+        "The Stripe lifecycle failure state was not persisted."
+      )
     }
-    return updated;
+    return updated
   }
 
   @InjectManager()
   async markStripeLifecycleEventFailed(
     id: string,
     errorCode: string,
-    @MedusaContext() sharedContext: Context<EntityManager> = {},
+    @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
-    return this.markStripeLifecycleEventFailed_(
-      id,
-      errorCode,
-      sharedContext,
-    );
+    return this.markStripeLifecycleEventFailed_(id, errorCode, sharedContext)
   }
 }
 
-export default PaymentLifecycleModuleService;
+export default PaymentLifecycleModuleService

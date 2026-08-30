@@ -29,10 +29,7 @@ const optionalCoverUrlSchema = z
   .trim()
   .url()
   .max(2_000)
-  .refine(
-    isHttpUrl,
-    "Cover URL must use http or https."
-  )
+  .refine(isHttpUrl, "Cover URL must use http or https.")
   .optional()
   .nullable()
 
@@ -43,10 +40,7 @@ const newsFieldsSchema = z.object({
   excerpt: optionalText(1_000),
   publishedAt: optionalPublicationDateSchema,
   status: z.enum(newsWriteStatusValues).optional(),
-  tags: z
-    .array(z.string().trim().min(1).max(100))
-    .max(50)
-    .optional(),
+  tags: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
   title: z.string().trim().min(1).max(300).optional(),
 })
 

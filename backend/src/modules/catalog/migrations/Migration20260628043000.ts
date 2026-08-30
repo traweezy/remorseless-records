@@ -8,8 +8,8 @@ export class Migration20260628043000 extends Migration {
         '"handle" text not null,' +
         '"title" text not null,' +
         '"description" text null,' +
-        '"mode" text not null default \'manual\' check ("mode" in (\'manual\', \'automatic\', \'hybrid\')),' +
-        '"automation_type" text not null default \'none\' check ("automation_type" in (\'none\', \'new_release\')),' +
+        "\"mode\" text not null default 'manual' check (\"mode\" in ('manual', 'automatic', 'hybrid'))," +
+        "\"automation_type\" text not null default 'none' check (\"automation_type\" in ('none', 'new_release'))," +
         '"show_ribbon" boolean not null default false,' +
         '"ribbon_label" text null,' +
         '"ribbon_priority" integer not null default 100 check ("ribbon_priority" >= 0),' +
@@ -17,7 +17,7 @@ export class Migration20260628043000 extends Migration {
         '"starts_at" timestamptz null,' +
         '"ends_at" timestamptz null,' +
         '"is_active" boolean not null default true,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +
@@ -47,7 +47,7 @@ export class Migration20260628043000 extends Migration {
         '"is_pinned" boolean not null default false,' +
         '"starts_at" timestamptz null,' +
         '"ends_at" timestamptz null,' +
-        '"metadata" jsonb not null default \'{}\',' +
+        "\"metadata\" jsonb not null default '{}'," +
         '"created_at" timestamptz not null default now(),' +
         '"updated_at" timestamptz not null default now(),' +
         '"deleted_at" timestamptz null,' +

@@ -9,9 +9,7 @@ import {
   type CatalogMediaRole,
   type CatalogProductMediaItemRecord,
 } from "../../modules/catalog/serializers"
-import {
-  coerceCatalogJsonRecord,
-} from "./normalization"
+import { coerceCatalogJsonRecord } from "./normalization"
 import {
   listProductMediaItems,
   loadProductMediaResponse,
@@ -24,7 +22,7 @@ import type {
 import type { CatalogService } from "./reference-resolution"
 
 const toMediaDerivativeStatus = (
-  value: unknown,
+  value: unknown
 ): CatalogMediaDerivativeStatus =>
   catalogMediaDerivativeStatusValues.find((status) => status === value) ??
   "source_only"
@@ -33,7 +31,7 @@ const toMediaRole = (value: unknown): CatalogMediaRole =>
   catalogMediaRoleValues.find((role) => role === value) ?? "gallery"
 
 export const catalogMediaAssetState = (
-  asset: CatalogMediaAssetRecord,
+  asset: CatalogMediaAssetRecord
 ): CatalogMediaAssetState => ({
   alt_text: asset.alt_text,
   byte_size: asset.byte_size,
@@ -56,7 +54,7 @@ export const catalogMediaAssetState = (
 })
 
 const productMediaItemState = (
-  item: CatalogProductMediaItemRecord,
+  item: CatalogProductMediaItemRecord
 ): CatalogProductMediaItemState => ({
   id: item.id,
   is_primary: item.is_primary,
@@ -72,7 +70,7 @@ const productMediaItemState = (
 export const resolveCatalogProductMediaVersion = async (
   catalogService: CatalogService,
   productId: string,
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ): Promise<number> => {
   const operations = await catalogService.listCatalogAuthoringOperations(
     {
@@ -81,7 +79,7 @@ export const resolveCatalogProductMediaVersion = async (
       status: "succeeded",
     },
     { order: { created_at: "DESC" }, take: 100 },
-    sharedContext,
+    sharedContext
   )
   return operations.reduce((version, operation) => {
     const result = coerceCatalogJsonRecord(operation.result)
@@ -96,36 +94,34 @@ export const resolveCatalogProductMediaVersion = async (
 export const loadCatalogProductMediaResponse = async (
   catalogService: CatalogService,
   productId: string,
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ) => ({
-  ...(await loadProductMediaResponse(
-    catalogService,
-    productId,
-    sharedContext,
-  )),
+  ...(await loadProductMediaResponse(catalogService, productId, sharedContext)),
   version: await resolveCatalogProductMediaVersion(
     catalogService,
     productId,
-    sharedContext,
+    sharedContext
   ),
 })
 
 export const snapshotCatalogProductMedia = async (
   catalogService: CatalogService,
   productId: string,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<CatalogProductMediaSnapshot> => {
   const items = (await listProductMediaItems(
     catalogService,
     productId,
-    sharedContext,
+    sharedContext
   )) as CatalogProductMediaItemRecord[]
-  const assetIds = [...new Set(items.map(({ media_asset_id }) => media_asset_id))]
+  const assetIds = [
+    ...new Set(items.map(({ media_asset_id }) => media_asset_id)),
+  ]
   const assets = assetIds.length
     ? ((await catalogService.listCatalogMediaAssets(
         { id: assetIds },
         {},
-        sharedContext,
+        sharedContext
       )) as CatalogMediaAssetRecord[])
     : []
   return {
@@ -136,7 +132,7 @@ export const snapshotCatalogProductMedia = async (
 
 export const rememberCatalogMediaAsset = (
   snapshot: CatalogProductMediaSnapshot,
-  asset: CatalogMediaAssetRecord,
+  asset: CatalogMediaAssetRecord
 ): void => {
   if (!snapshot.assets.some(({ id }) => id === asset.id)) {
     snapshot.assets.push(catalogMediaAssetState(asset))
@@ -147,17 +143,17 @@ export const restoreCatalogProductMediaSnapshot = async (
   catalogService: CatalogService,
   productId: string,
   snapshot: CatalogProductMediaSnapshot,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const currentItems = await listProductMediaItems(
     catalogService,
     productId,
-    sharedContext,
+    sharedContext
   )
   if (currentItems.length) {
     await catalogService.deleteCatalogProductMediaItems(
       currentItems.map(({ id }) => id),
-      sharedContext,
+      sharedContext
     )
   }
 
@@ -165,7 +161,7 @@ export const restoreCatalogProductMediaSnapshot = async (
     const existingAssets = await catalogService.listCatalogMediaAssets(
       { id: snapshot.assets.map(({ id }) => id) },
       {},
-      sharedContext,
+      sharedContext
     )
     const existingIds = new Set(existingAssets.map(({ id }) => id))
     const updates = snapshot.assets.filter(({ id }) => existingIds.has(id))
@@ -173,20 +169,20 @@ export const restoreCatalogProductMediaSnapshot = async (
     if (updates.length) {
       await catalogService.updateCatalogMediaAssets(
         updates as never,
-        sharedContext,
+        sharedContext
       )
     }
     if (creates.length) {
       await catalogService.createCatalogMediaAssets(
         creates as never,
-        sharedContext,
+        sharedContext
       )
     }
   }
   if (snapshot.items.length) {
     await catalogService.createCatalogProductMediaItems(
       snapshot.items as never,
-      sharedContext,
+      sharedContext
     )
   }
 }
@@ -194,12 +190,12 @@ export const restoreCatalogProductMediaSnapshot = async (
 export const deleteCreatedMediaAssetIfOrphaned = async (
   catalogService: CatalogService,
   assetId: string,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const links = await catalogService.listCatalogProductMediaItems(
     { media_asset_id: assetId },
     { take: 1 },
-    sharedContext,
+    sharedContext
   )
   if (!links.length) {
     await catalogService.deleteCatalogMediaAssets(assetId, sharedContext)

@@ -1,11 +1,11 @@
-import * as React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import * as React from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 
 import {
   isOrderPlacedTemplateData,
   OrderPlacedTemplate,
   type OrderPlacedTemplateProps,
-} from "./order-placed";
+} from "./order-placed"
 
 const templateData = {
   order: {
@@ -32,19 +32,19 @@ const templateData = {
     postal_code: "10001",
     province: "NY",
   },
-} as unknown as OrderPlacedTemplateProps;
+} as unknown as OrderPlacedTemplateProps
 
 describe("order placed email", () => {
   it("renders cent-rounded currency totals and item prices", () => {
-    const html = renderToStaticMarkup(<OrderPlacedTemplate {...templateData} />);
+    const html = renderToStaticMarkup(<OrderPlacedTemplate {...templateData} />)
 
-    expect(html).toContain("Total: $6.53");
-    expect(html).toContain("$1.00");
-    expect(html).not.toContain("6.5325 usd");
-  });
+    expect(html).toContain("Total: $6.53")
+    expect(html).toContain("$1.00")
+    expect(html).not.toContain("6.5325 usd")
+  })
 
   it("rejects invalid monetary template data", () => {
-    expect(isOrderPlacedTemplateData(templateData)).toBe(true);
+    expect(isOrderPlacedTemplateData(templateData)).toBe(true)
     expect(
       isOrderPlacedTemplateData({
         ...templateData,
@@ -52,8 +52,8 @@ describe("order placed email", () => {
           ...templateData.order,
           summary: { raw_current_order_total: { value: "invalid" } },
         },
-      }),
-    ).toBe(false);
+      })
+    ).toBe(false)
     expect(
       isOrderPlacedTemplateData({
         ...templateData,
@@ -61,7 +61,7 @@ describe("order placed email", () => {
           ...templateData.order,
           items: [{ unit_price: null }],
         },
-      }),
-    ).toBe(false);
-  });
-});
+      })
+    ).toBe(false)
+  })
+})

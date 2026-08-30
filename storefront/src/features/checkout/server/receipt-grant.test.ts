@@ -48,12 +48,7 @@ describe("checkout receipt grant", () => {
     const token = createReceiptGrant("order_01K123ABC", alternateSecret, now)
 
     expect(
-      verifyReceiptGrantWithRotation(
-        token,
-        secret,
-        alternateSecret,
-        now
-      )
+      verifyReceiptGrantWithRotation(token, secret, alternateSecret, now)
     ).toEqual({
       orderId: "order_01K123ABC",
       issuedAt: now,

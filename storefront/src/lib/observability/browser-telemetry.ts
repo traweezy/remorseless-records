@@ -1,4 +1,11 @@
-export const webVitalNames = ["CLS", "FCP", "FID", "INP", "LCP", "TTFB"] as const
+export const webVitalNames = [
+  "CLS",
+  "FCP",
+  "FID",
+  "INP",
+  "LCP",
+  "TTFB",
+] as const
 export const webVitalRatings = ["good", "needs-improvement", "poor"] as const
 
 export type WebVitalName = (typeof webVitalNames)[number]

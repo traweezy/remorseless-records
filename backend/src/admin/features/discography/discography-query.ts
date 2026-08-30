@@ -125,7 +125,7 @@ export const listDiscographyEntries = (
 
 export const getDiscographyEntry = (
   id: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<DiscographyEntry> =>
   requestAdminJson({
     path: `/admin/discography/${encodeURIComponent(id)}`,

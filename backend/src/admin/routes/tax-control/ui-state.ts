@@ -1,27 +1,27 @@
-import { z } from "zod";
+import { z } from "zod"
 
-import { TAX_DISABLED_ACKNOWLEDGEMENT } from "../../../modules/tax-control/constants";
-import type { AdminFormIssue } from "../../components/admin-form-contract";
+import { TAX_DISABLED_ACKNOWLEDGEMENT } from "../../../modules/tax-control/constants"
+import type { AdminFormIssue } from "../../components/admin-form-contract"
 
-export const providerNames = ["taxrate_io", "stripe_tax"] as const;
+export const providerNames = ["taxrate_io", "stripe_tax"] as const
 
-export type ProviderName = (typeof providerNames)[number];
+export type ProviderName = (typeof providerNames)[number]
 
-export const collectionModes = ["collect", "disabled"] as const;
+export const collectionModes = ["collect", "disabled"] as const
 
-export type CollectionMode = (typeof collectionModes)[number];
+export type CollectionMode = (typeof collectionModes)[number]
 
 export const providerLabel = (provider: ProviderName): string =>
-  provider === "stripe_tax" ? "Stripe Tax" : "TaxRate.io";
+  provider === "stripe_tax" ? "Stripe Tax" : "TaxRate.io"
 
 const transitionReasonSchema = z
   .string()
   .trim()
   .min(10, "Enter at least 10 characters.")
-  .max(500, "Enter no more than 500 characters.");
+  .max(500, "Enter no more than 500 characters.")
 
 export const taxControlTransitionFormSchema = (
-  targetCollectionMode: CollectionMode,
+  targetCollectionMode: CollectionMode
 ) =>
   z
     .object({
@@ -37,22 +37,21 @@ export const taxControlTransitionFormSchema = (
           code: "custom",
           message: "Type the acknowledgement exactly as shown.",
           path: ["acknowledgement"],
-        });
+        })
       }
-    });
+    })
 
 export const taxControlTransitionIssues = (
   targetCollectionMode: CollectionMode,
-  values: { acknowledgement: string; reason: string },
+  values: { acknowledgement: string; reason: string }
 ): AdminFormIssue[] => {
-  const result = taxControlTransitionFormSchema(targetCollectionMode).safeParse(
-    values,
-  );
+  const result =
+    taxControlTransitionFormSchema(targetCollectionMode).safeParse(values)
   if (result.success) {
-    return [];
+    return []
   }
   return result.error.issues.map((issue) => {
-    const field = String(issue.path[0] ?? "");
+    const field = String(issue.path[0] ?? "")
     return {
       key: `${issue.path.join(".")}:${issue.message}`,
       message: issue.message,
@@ -62,9 +61,9 @@ export const taxControlTransitionIssues = (
           : field === "reason"
             ? "tax-transition-reason"
             : null,
-    };
-  });
-};
+    }
+  })
+}
 
 export const taxControlTransitionWasApplied = ({
   activeProvider,
@@ -74,22 +73,22 @@ export const taxControlTransitionWasApplied = ({
   targetCollectionMode,
   targetProvider,
 }: {
-  activeProvider: ProviderName | undefined;
-  collectionMode: CollectionMode | undefined;
-  currentGeneration: number | undefined;
-  expectedGeneration: number;
-  targetCollectionMode: CollectionMode;
-  targetProvider: ProviderName;
+  activeProvider: ProviderName | undefined
+  collectionMode: CollectionMode | undefined
+  currentGeneration: number | undefined
+  expectedGeneration: number
+  targetCollectionMode: CollectionMode
+  targetProvider: ProviderName
 }): boolean =>
   activeProvider === targetProvider &&
   collectionMode === targetCollectionMode &&
   currentGeneration !== undefined &&
-  currentGeneration > expectedGeneration;
+  currentGeneration > expectedGeneration
 
 export const collectionChoiceLabel = (
   collectionMode: CollectionMode,
-  provider: ProviderName,
+  provider: ProviderName
 ): string =>
   collectionMode === "disabled"
     ? "Do not collect tax"
-    : `Collect with ${providerLabel(provider)}`;
+    : `Collect with ${providerLabel(provider)}`

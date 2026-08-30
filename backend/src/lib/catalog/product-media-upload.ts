@@ -60,10 +60,7 @@ export type CatalogMediaUploadCompensation = {
 export class CatalogMediaUploadPartialFailure extends Error {
   readonly compensation: CatalogMediaUploadCompensation
 
-  constructor(
-    compensation: CatalogMediaUploadCompensation,
-    cause: unknown,
-  ) {
+  constructor(compensation: CatalogMediaUploadCompensation, cause: unknown) {
     super("Unable to persist the catalog media upload.", { cause })
     this.name = "CatalogMediaUploadPartialFailure"
     this.compensation = compensation
@@ -72,14 +69,13 @@ export class CatalogMediaUploadPartialFailure extends Error {
 
 export const buildCatalogMediaRemoteFilename = (
   idempotencyKey: string,
-  index: number,
-): string =>
-  `${idempotencyKey}-${String(index).padStart(2, "0")}.webp`
+  index: number
+): string => `${idempotencyKey}-${String(index).padStart(2, "0")}.webp`
 
 export const performCatalogMediaUpload = async (
   catalogService: CatalogService,
   fileService: FileTypes.IFileModuleService,
-  input: CatalogMediaUploadInput,
+  input: CatalogMediaUploadInput
 ): Promise<{
   compensation: CatalogMediaUploadCompensation | null
   mutation: CatalogMediaUploadMutationResult
@@ -87,7 +83,7 @@ export const performCatalogMediaUpload = async (
   const existingOperation = (
     await catalogService.listCatalogAuthoringOperations(
       { idempotency_key: input.idempotencyKey },
-      { take: 1 },
+      { take: 1 }
     )
   )[0]
   if (existingOperation) {
@@ -100,7 +96,7 @@ export const performCatalogMediaUpload = async (
     if (!matches || existingOperation.status !== "succeeded") {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The catalog upload idempotency key cannot be replayed.",
+        "The catalog upload idempotency key cannot be replayed."
       )
     }
     const result = coerceCatalogJsonRecord(existingOperation.result)
@@ -137,7 +133,7 @@ export const performCatalogMediaUpload = async (
   if (!operation) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      "The catalog upload audit record was not created.",
+      "The catalog upload audit record was not created."
     )
   }
 
@@ -219,7 +215,7 @@ export const performCatalogMediaUpload = async (
 export const compensateCatalogMediaUpload = async (
   catalogService: CatalogService,
   fileService: FileTypes.IFileModuleService,
-  compensation: CatalogMediaUploadCompensation,
+  compensation: CatalogMediaUploadCompensation
 ): Promise<void> => {
   let cleanupError: unknown
   try {

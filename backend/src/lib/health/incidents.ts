@@ -1,17 +1,13 @@
 import { z } from "zod"
 
 import { getBackendRuntimeIdentity } from "../observability/runtime-identity"
-import {
-  getSharedRedisClient,
-  withRedisTimeout,
-} from "../shared-redis-client"
+import { getSharedRedisClient, withRedisTimeout } from "../shared-redis-client"
 
 export const operationalIncidentTypes = [
   "payment_tax_mismatch",
   "webhook_failure",
 ] as const
-export type OperationalIncidentType =
-  (typeof operationalIncidentTypes)[number]
+export type OperationalIncidentType = (typeof operationalIncidentTypes)[number]
 
 export const OPERATIONAL_INCIDENT_TTL_SECONDS = 24 * 60 * 60
 const incidentKey = (type: OperationalIncidentType): string =>
@@ -31,9 +27,7 @@ const incidentSnapshotSchema = z.object({
   service: z.literal("backend"),
 })
 
-export type OperationalIncidentSnapshot = z.infer<
-  typeof incidentSnapshotSchema
->
+export type OperationalIncidentSnapshot = z.infer<typeof incidentSnapshotSchema>
 
 export type OperationalIncidentHealthPayload = {
   checked_at: string
@@ -78,7 +72,9 @@ export const recordOperationalIncident = async (
   return true
 }
 
-const parseIncident = (value: string | null): OperationalIncidentSnapshot | null => {
+const parseIncident = (
+  value: string | null
+): OperationalIncidentSnapshot | null => {
   if (value === null) {
     return null
   }
@@ -140,7 +136,9 @@ export const readOperationalIncidentHealth =
       const [ping, ...incidentValues] = await withRedisTimeout(
         Promise.all([
           client.ping(),
-          ...operationalIncidentTypes.map((type) => client.get(incidentKey(type))),
+          ...operationalIncidentTypes.map((type) =>
+            client.get(incidentKey(type))
+          ),
         ])
       )
       return evaluateOperationalIncidentHealth({

@@ -31,7 +31,9 @@ export type HomepageShelfCopyChange = {
   }
 }
 
-const handles = Object.keys(homepageShelfCopy).sort() as HomepageShelfCopyHandle[]
+const handles = Object.keys(
+  homepageShelfCopy
+).sort() as HomepageShelfCopyHandle[]
 
 export const planHomepageShelfCopy = (
   records: HomepageShelfCopyRecord[]
@@ -40,7 +42,9 @@ export const planHomepageShelfCopy = (
 
   records.forEach((record) => {
     if (byHandle.has(record.handle)) {
-      throw new Error(`[homepage-shelves] Multiple shelves use handle '${record.handle}'.`)
+      throw new Error(
+        `[homepage-shelves] Multiple shelves use handle '${record.handle}'.`
+      )
     }
     byHandle.set(record.handle, record)
   })
@@ -48,11 +52,16 @@ export const planHomepageShelfCopy = (
   return handles.flatMap((handle) => {
     const record = byHandle.get(handle)
     if (!record) {
-      throw new Error(`[homepage-shelves] Required shelf '${handle}' does not exist.`)
+      throw new Error(
+        `[homepage-shelves] Required shelf '${handle}' does not exist.`
+      )
     }
 
     const desired = homepageShelfCopy[handle]
-    if (record.title === desired.title && record.description === desired.description) {
+    if (
+      record.title === desired.title &&
+      record.description === desired.description
+    ) {
       return []
     }
 

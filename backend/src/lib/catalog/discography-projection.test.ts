@@ -101,12 +101,12 @@ describe("catalog discography projection", () => {
         }),
       ])
     ).toThrow("not a published")
-    expect(() =>
-      buildDiscographyProjection([source({ artists: [] })])
-    ).toThrow("missing")
-    expect(() =>
-      buildDiscographyProjection([source(), source()])
-    ).toThrow("duplicate product")
+    expect(() => buildDiscographyProjection([source({ artists: [] })])).toThrow(
+      "missing"
+    )
+    expect(() => buildDiscographyProjection([source(), source()])).toThrow(
+      "duplicate product"
+    )
   })
 
   it("requires exact confirmation before replacement", () => {

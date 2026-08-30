@@ -32,7 +32,9 @@ describe("serverEnv", () => {
   })
 
   it("throws on invalid backend url", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     vi.stubEnv("MEDUSA_BACKEND_URL", "invalid-url")
 
     await expect(loadServerEnv()).rejects.toThrow(

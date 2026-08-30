@@ -32,9 +32,7 @@ const createCheckoutProof = ({
   }
 
   return createHmac("sha256", secret.trim())
-    .update(
-      [PROOF_VERSION, purpose, String(timestamp), cartId].join("\n")
-    )
+    .update([PROOF_VERSION, purpose, String(timestamp), cartId].join("\n"))
     .digest("base64url")
 }
 
@@ -44,10 +42,8 @@ type CheckoutProofInput = {
   secret: string
 }
 
-export const createCheckoutStatusProof = (
-  input: CheckoutProofInput
-): string => createCheckoutProof({ ...input, purpose: "checkout-status" })
+export const createCheckoutStatusProof = (input: CheckoutProofInput): string =>
+  createCheckoutProof({ ...input, purpose: "checkout-status" })
 
-export const createCheckoutTaxLinkProof = (
-  input: CheckoutProofInput
-): string => createCheckoutProof({ ...input, purpose: "checkout-tax-link" })
+export const createCheckoutTaxLinkProof = (input: CheckoutProofInput): string =>
+  createCheckoutProof({ ...input, purpose: "checkout-tax-link" })

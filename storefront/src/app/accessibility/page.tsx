@@ -18,7 +18,9 @@ const AccessibilityPage = () => (
     effectiveDate={LEGAL_EFFECTIVE_DATE}
     aside={
       <>
-        <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">Accessibility support</h2>
+        <h2 className="font-headline text-sm uppercase tracking-[0.35rem] text-foreground">
+          Accessibility support
+        </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Report accessibility barriers at{" "}
           <a
@@ -27,14 +29,16 @@ const AccessibilityPage = () => (
           >
             {legalConfig.supportEmail}
           </a>
-          . Include the page URL, device, and assistive technology so we can reproduce and fix quickly.
+          . Include the page URL, device, and assistive technology so we can
+          reproduce and fix quickly.
         </p>
       </>
     }
   >
     <LegalSection title="Commitment and Standard">
       <p>
-        We target conformance with WCAG 2.1 AA for key storefront flows, including navigation, product discovery, cart, and checkout.
+        We target conformance with WCAG 2.1 AA for key storefront flows,
+        including navigation, product discovery, cart, and checkout.
       </p>
     </LegalSection>
 
@@ -49,14 +53,16 @@ const AccessibilityPage = () => (
 
     <LegalSection title="Known Limitations and Response">
       <p>
-        Some third-party embeds and integrations may have limitations outside our direct control. We monitor issues and provide alternatives when possible.
+        Some third-party embeds and integrations may have limitations outside
+        our direct control. We monitor issues and provide alternatives when
+        possible.
       </p>
       <p>
-        Accessibility reports are reviewed in ongoing release QA and prioritized by severity and user impact.
+        Accessibility reports are reviewed in ongoing release QA and prioritized
+        by severity and user impact.
       </p>
     </LegalSection>
   </LegalPageShell>
 )
 
 export default AccessibilityPage
-

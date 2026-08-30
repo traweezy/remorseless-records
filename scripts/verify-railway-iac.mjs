@@ -1,84 +1,84 @@
-import assert from "node:assert/strict";
-import fs from "node:fs";
+import assert from "node:assert/strict"
+import fs from "node:fs"
 
-import railwayProgram, { partial } from "../.railway/railway.ts";
-import { createRailwayContext } from "railway/iac";
+import railwayProgram, { partial } from "../.railway/railway.ts"
+import { createRailwayContext } from "railway/iac"
 
-const legacyConfigPaths = ["backend/railway.json", "storefront/railway.json"];
+const legacyConfigPaths = ["backend/railway.json", "storefront/railway.json"]
 const STOREFRONT_PRIVATE_REDIS_URL =
-  "redis://${{Redis.REDISUSER}}:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379";
-const STOREFRONT_PRIVATE_MEILISEARCH_HOST = "${{Backend.MEILISEARCH_HOST}}";
+  "redis://${{Redis.REDISUSER}}:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379"
+const STOREFRONT_PRIVATE_MEILISEARCH_HOST = "${{Backend.MEILISEARCH_HOST}}"
 const SHARED_BUILD_WATCH_PATTERNS = [
   "/.nvmrc",
   "/package.json",
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",
   "/patches/**",
-];
+]
 
 for (const legacyConfigPath of legacyConfigPaths) {
   assert.equal(
     fs.existsSync(legacyConfigPath),
     false,
-    `${legacyConfigPath} must not compete with project-level Railway IaC`,
-  );
+    `${legacyConfigPath} must not compete with project-level Railway IaC`
+  )
 }
 
-const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
-const pnpmLock = fs.readFileSync("pnpm-lock.yaml", "utf8");
-const pnpmWorkspace = fs.readFileSync("pnpm-workspace.yaml", "utf8");
+const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"))
+const pnpmLock = fs.readFileSync("pnpm-lock.yaml", "utf8")
+const pnpmWorkspace = fs.readFileSync("pnpm-workspace.yaml", "utf8")
 const railwayCliPatch = fs.readFileSync(
   "patches/@railway__cli@5.45.0.patch",
-  "utf8",
-);
+  "utf8"
+)
 const railwayConfigWrapper = fs.readFileSync(
   "scripts/railway-config.mjs",
-  "utf8",
-);
+  "utf8"
+)
 
-assert.equal(packageJson.packageManager, "pnpm@11.17.0");
+assert.equal(packageJson.packageManager, "pnpm@11.17.0")
 assert.equal(
   packageJson.devDependencies?.["@railway/cli"],
   "5.45.0",
-  "Railway operations must use the reviewed, exact CLI version",
-);
+  "Railway operations must use the reviewed, exact CLI version"
+)
 assert.equal(
   packageJson.devDependencies?.railway,
   "3.11.0",
-  "Railway IaC must use the reviewed, exact SDK version",
-);
-assert.match(pnpmWorkspace, /^  "@railway\/cli": true$/mu);
-assert.match(pnpmWorkspace, /^  "@railway\/cli>tar": 7\.5\.22$/mu);
+  "Railway IaC must use the reviewed, exact SDK version"
+)
+assert.match(pnpmWorkspace, /^  "@railway\/cli": true$/mu)
+assert.match(pnpmWorkspace, /^  "@railway\/cli>tar": 7\.5\.22$/mu)
 assert.match(
   pnpmWorkspace,
-  /^  "@railway\/cli@5\.45\.0": patches\/@railway__cli@5\.45\.0\.patch$/mu,
-);
-assert.doesNotMatch(pnpmLock, /tar@6\.2\.1/u);
-assert.match(pnpmLock, /tar@7\.5\.22/u);
-assert.match(railwayCliPatch, /createHash\("sha256"\)/u);
-assert.match(railwayCliPatch, /actualDigest !== expectedDigest/u);
-assert.match(railwayCliPatch, /import \{ x as extract \} from "tar"/u);
-assert.doesNotMatch(railwayCliPatch, /^\+import tar from "tar"/mu);
+  /^  "@railway\/cli@5\.45\.0": patches\/@railway__cli@5\.45\.0\.patch$/mu
+)
+assert.doesNotMatch(pnpmLock, /tar@6\.2\.1/u)
+assert.match(pnpmLock, /tar@7\.5\.22/u)
+assert.match(railwayCliPatch, /createHash\("sha256"\)/u)
+assert.match(railwayCliPatch, /actualDigest !== expectedDigest/u)
+assert.match(railwayCliPatch, /import \{ x as extract \} from "tar"/u)
+assert.doesNotMatch(railwayCliPatch, /^\+import tar from "tar"/mu)
 assert.match(
   railwayConfigWrapper,
   /id: "1f39263a-25e4-4d69-abc2-f0287b331d1e"/u,
-  "Railway wrapper must guard the exact project ID",
-);
+  "Railway wrapper must guard the exact project ID"
+)
 assert.match(
   railwayConfigWrapper,
   /id: "799a2f98-f819-495d-b8b6-12e71af86568"/u,
-  "Railway wrapper must guard the exact staging environment ID",
-);
+  "Railway wrapper must guard the exact staging environment ID"
+)
 assert.match(
   railwayConfigWrapper,
   /configArgs\.push\("--yes", "--confirm-destructive"\)/u,
-  "Non-interactive applies must explicitly confirm reviewed deletions",
-);
+  "Non-interactive applies must explicitly confirm reviewed deletions"
+)
 assert.doesNotMatch(
   railwayConfigWrapper,
   /--show-values/u,
-  "Railway wrapper must never expose variable values",
-);
+  "Railway wrapper must never expose variable values"
+)
 
 for (const digest of [
   "617b9d9db29d55616e4fe59b55e3586e8d8b994e11a665190384c74e235481d6",
@@ -94,72 +94,72 @@ for (const digest of [
   assert.match(
     railwayCliPatch,
     new RegExp(digest, "u"),
-    `Missing reviewed Railway release digest: ${digest}`,
-  );
+    `Missing reviewed Railway release digest: ${digest}`
+  )
 }
 
-delete process.env.RAILWAY_IAC_TARGET_ENVIRONMENT;
+delete process.env.RAILWAY_IAC_TARGET_ENVIRONMENT
 assert.throws(
   () => railwayProgram(createRailwayContext()),
   /staging-only/u,
-  "Railway IaC must fail closed without the guarded staging wrapper",
-);
+  "Railway IaC must fail closed without the guarded staging wrapper"
+)
 
-process.env.RAILWAY_IAC_TARGET_ENVIRONMENT = "staging";
+process.env.RAILWAY_IAC_TARGET_ENVIRONMENT = "staging"
 const definition = await railwayProgram(
   createRailwayContext({
     environment: "staging",
     environmentName: "staging",
-  }),
-);
+  })
+)
 
-assert.equal(definition.name, "store");
+assert.equal(definition.name, "store")
 assert.equal(
   partial,
   "applications",
-  "The stable partial name protects resources owned outside this repository slice",
-);
+  "The stable partial name protects resources owned outside this repository slice"
+)
 assert.deepEqual(
   definition.resources.map(({ name }) => name).sort(),
   ["Backend", "Storefront"],
-  "The application partial must not take ownership of data or support resources",
-);
+  "The application partial must not take ownership of data or support resources"
+)
 
 const getService = (name) => {
   const resource = definition.resources.find(
-    (candidate) => candidate.type === "service" && candidate.name === name,
-  );
+    (candidate) => candidate.type === "service" && candidate.name === name
+  )
 
-  assert.ok(resource, `Missing Railway service: ${name}`);
-  return resource;
-};
+  assert.ok(resource, `Missing Railway service: ${name}`)
+  return resource
+}
 
-const backend = getService("Backend");
-const storefront = getService("Storefront");
+const backend = getService("Backend")
+const storefront = getService("Storefront")
 
 assert.deepEqual(
   storefront.variables.REDIS_URL,
   { type: "literal", value: STOREFRONT_PRIVATE_REDIS_URL },
-  "Storefront Redis must use Railway's private service reference",
-);
+  "Storefront Redis must use Railway's private service reference"
+)
 assert.deepEqual(
   storefront.variables.MEILISEARCH_HOST,
   { type: "literal", value: STOREFRONT_PRIVATE_MEILISEARCH_HOST },
-  "Storefront search must use the Backend's server-only Meilisearch host",
-);
+  "Storefront search must use the Backend's server-only Meilisearch host"
+)
 for (const name of ["NEXT_PUBLIC_MEILI_HOST", "NEXT_PUBLIC_MEILI_SEARCH_KEY"]) {
   assert.equal(
     Object.hasOwn(storefront.variables, name),
     false,
-    `Storefront.${name} must not persist after the server-only migration`,
-  );
+    `Storefront.${name} must not persist after the server-only migration`
+  )
 }
 for (const name of ["MEDUSA_ADMIN_EMAIL", "MEDUSA_ADMIN_PASSWORD"]) {
   assert.equal(
     Object.hasOwn(backend.variables, name),
     false,
-    `Backend.${name} must not persist in the normal application runtime`,
-  );
+    `Backend.${name} must not persist in the normal application runtime`
+  )
 }
 
 for (const service of [backend, storefront]) {
@@ -169,30 +169,30 @@ for (const service of [backend, storefront]) {
     branch: "staging",
     checkSuites: true,
     rootDirectory: "/",
-  });
+  })
   assert.equal(
     Object.hasOwn(service, "configFile"),
     false,
-    `${service.name} must not use deprecated Config as Code`,
-  );
+    `${service.name} must not use deprecated Config as Code`
+  )
   assert.ok(
     Object.keys(service.variables).length > 0,
-    `${service.name} must retain its imported variables`,
-  );
+    `${service.name} must retain its imported variables`
+  )
 
   for (const [name, value] of Object.entries(service.variables)) {
     if (
       service.name === "Storefront" &&
       ["MEILISEARCH_HOST", "REDIS_URL"].includes(name)
     ) {
-      continue;
+      continue
     }
 
     assert.deepEqual(
       value,
       { type: "preserve" },
-      `${service.name}.${name} must preserve its existing Railway value`,
-    );
+      `${service.name}.${name} must preserve its existing Railway value`
+    )
   }
 }
 
@@ -201,7 +201,7 @@ assert.deepEqual(backend.build, {
   buildCommand: "pnpm --filter backend run build",
   buildEnvironment: "V3",
   watchPatterns: ["/backend/**", ...SHARED_BUILD_WATCH_PATTERNS],
-});
+})
 assert.deepEqual(
   {
     startCommand: backend.deploy.startCommand,
@@ -218,24 +218,24 @@ assert.deepEqual(
     healthcheckTimeout: 300,
     restartPolicyType: "ON_FAILURE",
     restartPolicyMaxRetries: 10,
-  },
-);
+  }
+)
 
 assert.deepEqual(storefront.build, {
   builder: "RAILPACK",
   buildCommand: "pnpm --filter remorseless-records-storefront run build",
   watchPatterns: ["/storefront/**", ...SHARED_BUILD_WATCH_PATTERNS],
-});
+})
 
 assert.deepEqual(
   backend.build.watchPatterns.filter((pattern) =>
-    storefront.build.watchPatterns.includes(pattern),
+    storefront.build.watchPatterns.includes(pattern)
   ),
   SHARED_BUILD_WATCH_PATTERNS,
-  "Both application builds must follow every shared toolchain input",
-);
-assert.equal(storefront.build.watchPatterns.includes("/backend/**"), false);
-assert.equal(backend.build.watchPatterns.includes("/storefront/**"), false);
+  "Both application builds must follow every shared toolchain input"
+)
+assert.equal(storefront.build.watchPatterns.includes("/backend/**"), false)
+assert.equal(backend.build.watchPatterns.includes("/storefront/**"), false)
 assert.deepEqual(
   {
     startCommand: storefront.deploy.startCommand,
@@ -253,8 +253,8 @@ assert.deepEqual(
     healthcheckTimeout: 180,
     restartPolicyType: "ON_FAILURE",
     restartPolicyMaxRetries: 10,
-  },
-);
+  }
+)
 
 const applicationCommands = [
   backend.build.buildCommand,
@@ -262,13 +262,13 @@ const applicationCommands = [
   ...backend.deploy.preDeployCommand,
   storefront.build.buildCommand,
   storefront.deploy.startCommand,
-];
+]
 
 for (const command of applicationCommands) {
-  assert.match(command, /^pnpm\b/u);
-  assert.doesNotMatch(command, /(?:^|\s)(?:npm|yarn|bun)(?:\s|$)/u);
+  assert.match(command, /^pnpm\b/u)
+  assert.doesNotMatch(command, /(?:^|\s)(?:npm|yarn|bun)(?:\s|$)/u)
 }
 
 console.log(
-  "Railway IaC verified: scoped staging ownership, pnpm-only commands, dependency readiness, and preserved secrets.",
-);
+  "Railway IaC verified: scoped staging ownership, pnpm-only commands, dependency readiness, and preserved secrets."
+)

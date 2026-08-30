@@ -1,9 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import {
-  getSharedRedisClient,
-  withRedisTimeout,
-} from "../shared-redis-client"
+import { getSharedRedisClient, withRedisTimeout } from "../shared-redis-client"
 import {
   ANONYMOUS_CART_RETENTION_HEALTH_KEY,
   RETENTION_HEALTH_TTL_SECONDS,

@@ -1,21 +1,21 @@
-import type { FrozenTaxQuote } from "./context";
+import type { FrozenTaxQuote } from "./context"
 import {
   preservedRateForNewShipping,
   preservedRatesFromTaxLines,
   requirePreservedStripeOrderRates,
-} from "./order-rate-preservation";
+} from "./order-rate-preservation"
 
 const identity: FrozenTaxQuote = {
   collectionMode: "collect",
   generation: 3,
   provider: "stripe_tax",
   stripeCalculationId: "taxcalc_original",
-};
+}
 
 const taxLine = (rate: number, calculationId = "taxcalc_original") => ({
   code: `rr_tax:stripe_tax:g3:${calculationId}`,
   rate,
-});
+})
 
 describe("Stripe Tax order rate preservation", () => {
   it("preserves the exact effective rates on existing order lines", () => {
@@ -30,13 +30,13 @@ describe("Stripe Tax order rate preservation", () => {
           ],
           shipping_methods: [{ id: "ordsm_01", tax_lines: [taxLine(8.75)] }],
         },
-        identity,
-      ),
+        identity
+      )
     ).toEqual({
       itemRates: { orli_01: 8.75 },
       shippingRates: { ordsm_01: 8.75 },
-    });
-  });
+    })
+  })
 
   it.each([
     ["missing tax lines", { id: "orli_01", tax_lines: [] }],
@@ -49,10 +49,10 @@ describe("Stripe Tax order rate preservation", () => {
     expect(
       preservedRatesFromTaxLines(
         { items: [item], shipping_methods: [] },
-        identity,
-      ),
-    ).toBeNull();
-  });
+        identity
+      )
+    ).toBeNull()
+  })
 
   it("uses the reviewed original shipping rate for a new return method", () => {
     expect(
@@ -69,13 +69,13 @@ describe("Stripe Tax order rate preservation", () => {
             { id: "ordsm_return_2" },
           ],
         },
-        identity,
-      ),
+        identity
+      )
     ).toEqual({
       ordsm_return_1: 8.75,
       ordsm_return_2: 8.75,
-    });
-  });
+    })
+  })
 
   it("rejects ambiguous original shipping rates", () => {
     expect(
@@ -87,10 +87,10 @@ describe("Stripe Tax order rate preservation", () => {
           ],
         },
         { items: [], shipping_methods: [{ id: "ordsm_return" }] },
-        identity,
-      ),
-    ).toBeNull();
-  });
+        identity
+      )
+    ).toBeNull()
+  })
 
   it("fails closed when an order edit adds an unbound taxable item", () => {
     expect(() =>
@@ -106,12 +106,12 @@ describe("Stripe Tax order rate preservation", () => {
           ],
           shipping_methods: [],
         },
-        identity,
-      ),
+        identity
+      )
     ).toThrow(
-      "Create a new order so its payment and tax calculation remain bound",
-    );
-  });
+      "Create a new order so its payment and tax calculation remain bound"
+    )
+  })
 
   it("returns reviewed rates for a safe existing-line update", () => {
     expect(
@@ -124,11 +124,11 @@ describe("Stripe Tax order rate preservation", () => {
           items: [{ id: "orli_01", tax_lines: [taxLine(8.75)] }],
           shipping_methods: [],
         },
-        identity,
-      ),
+        identity
+      )
     ).toEqual({
       itemRates: { orli_01: 8.75 },
       shippingRates: {},
-    });
-  });
-});
+    })
+  })
+})

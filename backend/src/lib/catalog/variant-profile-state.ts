@@ -15,17 +15,15 @@ import type {
 import type { CatalogService } from "./reference-resolution"
 
 const toCatalogAvailabilityStatus = (
-  value: unknown,
+  value: unknown
 ): CatalogAvailabilityStatus =>
   catalogAvailabilityStatusValues.find((status) => status === value) ??
   "available"
 
 const profileState = (
-  profile: CatalogVariantProfileRecord,
+  profile: CatalogVariantProfileRecord
 ): CatalogVariantProfileState => ({
-  availability_status: toCatalogAvailabilityStatus(
-    profile.availability_status,
-  ),
+  availability_status: toCatalogAvailabilityStatus(profile.availability_status),
   backorder_allowed: profile.backorder_allowed,
   backorder_note: profile.backorder_note,
   display_label: profile.display_label,
@@ -46,12 +44,12 @@ const profileState = (
 export const resolveCatalogVariantProfile = async (
   catalogService: CatalogService,
   variantId: string,
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ) => {
   const profiles = await catalogService.listCatalogVariantProfiles(
     { variant_id: variantId },
     {},
-    sharedContext,
+    sharedContext
   )
   return profiles.at(0) ?? null
 }
@@ -59,7 +57,7 @@ export const resolveCatalogVariantProfile = async (
 export const serializeCatalogVariantProfileResponse = (
   profile: NonNullable<
     Awaited<ReturnType<typeof resolveCatalogVariantProfile>>
-  > | null,
+  > | null
 ) => ({
   profile: profile ? serializeCatalogVariantProfile(profile) : null,
 })
@@ -67,12 +65,12 @@ export const serializeCatalogVariantProfileResponse = (
 export const snapshotCatalogVariantProfile = async (
   catalogService: CatalogService,
   variantId: string,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<CatalogVariantProfileSnapshot> => {
   const profile = await resolveCatalogVariantProfile(
     catalogService,
     variantId,
-    sharedContext,
+    sharedContext
   )
   return {
     profile: profile
@@ -85,38 +83,35 @@ export const restoreCatalogVariantProfileSnapshot = async (
   catalogService: CatalogService,
   variantId: string,
   snapshot: CatalogVariantProfileSnapshot,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const current = await resolveCatalogVariantProfile(
     catalogService,
     variantId,
-    sharedContext,
+    sharedContext
   )
   if (!snapshot.profile) {
     if (current) {
       await catalogService.deleteCatalogVariantProfiles(
         current.id,
-        sharedContext,
+        sharedContext
       )
     }
     return
   }
   if (current && current.id !== snapshot.profile.id) {
-    await catalogService.deleteCatalogVariantProfiles(
-      current.id,
-      sharedContext,
-    )
+    await catalogService.deleteCatalogVariantProfiles(current.id, sharedContext)
   }
   const { id: profileId, ...profileData } = snapshot.profile
   if (current?.id === profileId) {
     await catalogService.updateCatalogVariantProfiles(
       [{ id: profileId, ...profileData }] as never,
-      sharedContext,
+      sharedContext
     )
     return
   }
   await catalogService.createCatalogVariantProfiles(
     [{ id: profileId, ...profileData }] as never,
-    sharedContext,
+    sharedContext
   )
 }

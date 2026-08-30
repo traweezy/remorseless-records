@@ -31,7 +31,7 @@ type ShelfTextField =
 
 type ShelfSettingsChange = (
   field: ShelfSettingsField,
-  value: string | boolean,
+  value: string | boolean
 ) => void
 
 const readInputValue = (event: ChangeEvent<HTMLInputElement>): string =>
@@ -57,7 +57,7 @@ const ShelfInputField = memo<ShelfInputFieldProps>(
       (event: ChangeEvent<HTMLInputElement>) => {
         onChange(field, readInputValue(event))
       },
-      [field, onChange],
+      [field, onChange]
     )
 
     return (
@@ -73,7 +73,7 @@ const ShelfInputField = memo<ShelfInputFieldProps>(
         />
       </div>
     )
-  },
+  }
 )
 
 ShelfInputField.displayName = "ShelfInputField"
@@ -90,35 +90,35 @@ export const CatalogShelfSettings = memo<CatalogShelfSettingsProps>(
       (event: ChangeEvent<HTMLTextAreaElement>) => {
         onChange("description", readTextareaValue(event))
       },
-      [onChange],
+      [onChange]
     )
 
     const handleModeChange = useCallback(
       (value: ShelfMode) => {
         onChange("mode", value)
       },
-      [onChange],
+      [onChange]
     )
 
     const handleAutomationChange = useCallback(
       (value: AutomationType) => {
         onChange("automationType", value)
       },
-      [onChange],
+      [onChange]
     )
 
     const handleShowRibbonChange = useCallback(
       (checked: boolean) => {
         onChange("showRibbon", checked)
       },
-      [onChange],
+      [onChange]
     )
 
     const handleActiveChange = useCallback(
       (checked: boolean) => {
         onChange("isActive", checked)
       },
-      [onChange],
+      [onChange]
     )
 
     return (
@@ -228,7 +228,7 @@ export const CatalogShelfSettings = memo<CatalogShelfSettingsProps>(
         />
       </fieldset>
     )
-  },
+  }
 )
 
 CatalogShelfSettings.displayName = "CatalogShelfSettings"

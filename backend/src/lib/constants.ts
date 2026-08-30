@@ -75,7 +75,7 @@ export const BACKEND_URL =
 export const DATABASE_URL = resolveDatabaseConnection({
   connectionString: assertValue(
     process.env.DATABASE_URL,
-    "Environment variable for DATABASE_URL is not set",
+    "Environment variable for DATABASE_URL is not set"
   ),
   environment: process.env.NODE_ENV,
 }).connectionString

@@ -1,6 +1,6 @@
-import { ProductStatus } from "@medusajs/framework/utils";
+import { ProductStatus } from "@medusajs/framework/utils"
 
-import { GET } from "./route";
+import { GET } from "./route"
 
 describe("GET /store/products/handles", () => {
   it("returns a bounded keyset page scoped to published channel products", async () => {
@@ -28,10 +28,10 @@ describe("GET /store/products/handles", () => {
             updated_at: null,
           },
         ],
-      });
-    const setHeader = jest.fn();
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+      })
+    const setHeader = jest.fn()
+    const json = jest.fn()
+    const status = jest.fn().mockReturnValue({ json })
 
     await GET(
       {
@@ -42,15 +42,15 @@ describe("GET /store/products/handles", () => {
         query: { limit: "2" },
         scope: { resolve: jest.fn().mockReturnValue({ graph }) },
       } as never,
-      { json, setHeader, status } as never,
-    );
+      { json, setHeader, status } as never
+    )
 
     expect(graph).toHaveBeenNthCalledWith(1, {
       entity: "product_sales_channel",
       fields: ["id", "product_id"],
       filters: { sales_channel_id: ["sc_web"] },
       pagination: { order: { id: "ASC" }, take: 3 },
-    });
+    })
     expect(graph).toHaveBeenNthCalledWith(2, {
       entity: "product",
       fields: ["id", "handle", "updated_at", "created_at"],
@@ -59,12 +59,9 @@ describe("GET /store/products/handles", () => {
         status: ProductStatus.PUBLISHED,
       },
       pagination: { take: 2 },
-    });
-    expect(setHeader).toHaveBeenCalledWith(
-      "Vary",
-      "x-publishable-api-key",
-    );
-    expect(status).toHaveBeenCalledWith(200);
+    })
+    expect(setHeader).toHaveBeenCalledWith("Vary", "x-publishable-api-key")
+    expect(status).toHaveBeenCalledWith(200)
     expect(json).toHaveBeenCalledWith({
       handles: [
         {
@@ -81,11 +78,11 @@ describe("GET /store/products/handles", () => {
         },
       ],
       next_cursor: Buffer.from("prodsc_01AAB", "utf8").toString("base64url"),
-    });
-  });
+    })
+  })
 
   it("rejects an invalid cursor before querying products", async () => {
-    const graph = jest.fn();
+    const graph = jest.fn()
 
     await expect(
       GET(
@@ -97,9 +94,9 @@ describe("GET /store/products/handles", () => {
           query: { cursor: "../../invalid" },
           scope: { resolve: jest.fn().mockReturnValue({ graph }) },
         } as never,
-        {} as never,
-      ),
-    ).rejects.toThrow("Invalid product page cursor");
-    expect(graph).not.toHaveBeenCalled();
-  });
-});
+        {} as never
+      )
+    ).rejects.toThrow("Invalid product page cursor")
+    expect(graph).not.toHaveBeenCalled()
+  })
+})

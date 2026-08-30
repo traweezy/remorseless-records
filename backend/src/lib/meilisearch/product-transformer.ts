@@ -10,10 +10,7 @@ import {
   isScheduledRecordActive,
 } from "../catalog/shelves"
 import { LOW_STOCK_THRESHOLD } from "../catalog/stock"
-import {
-  richTextToPlainText,
-  sanitizeRichTextHtml,
-} from "../content/rich-text"
+import { richTextToPlainText, sanitizeRichTextHtml } from "../content/rich-text"
 
 type DefaultTransformer = (
   product: Record<string, unknown>,
@@ -262,7 +259,10 @@ const isFutureIso = (value: string | null): boolean => {
 }
 
 const getFirstImageUrl = (product: DynamicRecord): string | null => {
-  if (typeof product.thumbnail === "string" && product.thumbnail.trim().length) {
+  if (
+    typeof product.thumbnail === "string" &&
+    product.thumbnail.trim().length
+  ) {
     return product.thumbnail.trim()
   }
 
@@ -334,7 +334,7 @@ const findRootCategory = (
   category: DynamicRecord | null | undefined
 ): DynamicRecord | null => {
   const ancestors = collectAncestors(category)
-  return ancestors.length ? ancestors[ancestors.length - 1] ?? null : null
+  return ancestors.length ? (ancestors[ancestors.length - 1] ?? null) : null
 }
 
 const shouldExcludeCategory = (
@@ -438,9 +438,7 @@ const findFormatOptionValues = (product: DynamicRecord): string[] => {
       )
 
       if (optionTitle?.toLowerCase() === "format") {
-        const value = toStringOrNull(
-          variantOption?.value ?? optionValue?.value
-        )
+        const value = toStringOrNull(variantOption?.value ?? optionValue?.value)
         if (value) {
           formatValues.add(value)
         }
@@ -470,12 +468,16 @@ const selectPrimaryVariant = (
     return manageInventory ? quantity > 0 : true
   })
 
-  return (available ?? variants[0]) ?? null
+  return available ?? variants[0] ?? null
 }
 
 const pickPrice = (
   variant: DynamicRecord | null
-): { amount: number | null; currency: string | null; compareAt: number | null } => {
+): {
+  amount: number | null
+  currency: string | null
+  compareAt: number | null
+} => {
   const prices = toRecordList(variant?.prices)
     .map((price) => {
       const amount = toNumberOrNull(price.amount)
@@ -517,7 +519,9 @@ const pickPrice = (
   }
 }
 
-const resolveStockStatus = (variant: DynamicRecord | null): {
+const resolveStockStatus = (
+  variant: DynamicRecord | null
+): {
   status: SearchStockStatus
   quantity: number | null
 } => {
@@ -567,8 +571,7 @@ const isLowStockBadgeEligible = (
     return true
   }
 
-  const metadata =
-    toRecord(profile?.metadata) ?? toRecord(variant.metadata)
+  const metadata = toRecord(profile?.metadata) ?? toRecord(variant.metadata)
   const countStatus = toStringOrNull(metadata?.inventory_count_status)
   if (countStatus === "verified") {
     return true
@@ -605,7 +608,10 @@ const resolveReferenceValue = (
   if (!id) {
     return null
   }
-  return facts?.referenceValues?.find((value) => toStringOrNull(value.id) === id) ?? null
+  return (
+    facts?.referenceValues?.find((value) => toStringOrNull(value.id) === id) ??
+    null
+  )
 }
 
 const resolveReferenceLabel = (
@@ -662,7 +668,11 @@ const mapMediaDocuments = (
       } satisfies MediaSearchDocument
     })
     .filter((media): media is MediaSearchDocument => Boolean(media))
-    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
+    .sort(
+      (a, b) =>
+        Number(b.is_primary) - Number(a.is_primary) ||
+        a.sort_order - b.sort_order
+    )
 }
 
 const variantProfileFor = (
@@ -672,9 +682,11 @@ const variantProfileFor = (
   if (!variantId) {
     return null
   }
-  return facts?.variantProfiles?.find(
-    (profile) => toStringOrNull(profile.variant_id) === variantId
-  ) ?? null
+  return (
+    facts?.variantProfiles?.find(
+      (profile) => toStringOrNull(profile.variant_id) === variantId
+    ) ?? null
+  )
 }
 
 const mapVariantDocument = (
@@ -707,11 +719,14 @@ const mapVariantDocument = (
       format ??
       toStringOrNull(variant.title),
     format_detail:
-      toStringOrNull(profile?.format_detail_label ?? profile?.formatDetailLabel) ??
-      formatDetail,
+      toStringOrNull(
+        profile?.format_detail_label ?? profile?.formatDetailLabel
+      ) ?? formatDetail,
     display_label:
       toStringOrNull(profile?.display_label ?? profile?.displayLabel) ??
-      toStringOrNull(profile?.format_detail_label ?? profile?.formatDetailLabel) ??
+      toStringOrNull(
+        profile?.format_detail_label ?? profile?.formatDetailLabel
+      ) ??
       formatDetail ??
       toStringOrNull(profile?.format_label ?? profile?.formatLabel) ??
       format ??
@@ -771,7 +786,9 @@ export const buildSearchDocument = (
   facts?: CatalogSearchFacts
 ): SearchDocument => {
   const normalizedProduct = product ?? {}
-  const defaultVariant = selectPrimaryVariant(toRecordList(normalizedProduct.variants))
+  const defaultVariant = selectPrimaryVariant(
+    toRecordList(normalizedProduct.variants)
+  )
   const { amount, currency, compareAt } = pickPrice(defaultVariant)
 
   const collection = toRecord(normalizedProduct.collection)
@@ -785,8 +802,10 @@ export const buildSearchDocument = (
   const categoryLabels = Array.from(nonArtistEntries.values())
   const metalGenres = collectMetalGenreLabels(categories)
 
-  const metadata = (normalizedProduct.metadata ??
-    null) as Record<string, unknown> | null
+  const metadata = (normalizedProduct.metadata ?? null) as Record<
+    string,
+    unknown
+  > | null
   const catalogImport = getCatalogImport(metadata)
   const legacyImport = toRecord(metadata?.legacy_import)
   const profile = facts?.profile ?? null
@@ -810,7 +829,10 @@ export const buildSearchDocument = (
     (facts?.artists ?? []).map((artist) => toStringOrNull(artist.artist_id))
   )
 
-  const labelValue = resolveReferenceValue(facts, toStringOrNull(profile?.label_id))
+  const labelValue = resolveReferenceValue(
+    facts,
+    toStringOrNull(profile?.label_id)
+  )
   const label =
     toStringOrNull(labelValue?.label ?? labelValue?.value) ??
     toStringOrNull(catalogImport?.label)
@@ -889,18 +911,19 @@ export const buildSearchDocument = (
   const formatDetails = unique(
     variantDocuments.map((variant) => variant.format_detail)
   )
-  const variantTitles = unique(
-    variantDocuments.map((variant) => variant.title)
-  )
+  const variantTitles = unique(variantDocuments.map((variant) => variant.title))
 
   const media = mapMediaDocuments(facts)
   const imageUrls = unique([
     ...media.map((entry) => entry.url),
     getFirstImageUrl(normalizedProduct),
-    ...toRecordList(normalizedProduct.images).map((image) => toStringOrNull(image?.url)),
+    ...toRecordList(normalizedProduct.images).map((image) =>
+      toStringOrNull(image?.url)
+    ),
     ...variantDocuments.map((variant) => variant.image_url),
   ])
-  const thumbnail = media.find((entry) => entry.is_primary)?.url ?? imageUrls[0] ?? null
+  const thumbnail =
+    media.find((entry) => entry.is_primary)?.url ?? imageUrls[0] ?? null
 
   const activeMembershipShelfIds = new Set(
     (facts?.shelfProducts ?? [])
@@ -925,8 +948,11 @@ export const buildSearchDocument = (
   const ribbonShelf =
     activeShelves
       .filter((shelf) => toBoolean(shelf.show_ribbon))
-      .sort((a, b) => toSortNumber(a.ribbon_priority, 100) - toSortNumber(b.ribbon_priority, 100))[0] ??
-    null
+      .sort(
+        (a, b) =>
+          toSortNumber(a.ribbon_priority, 100) -
+          toSortNumber(b.ribbon_priority, 100)
+      )[0] ?? null
 
   const bundleComponentCount = facts?.bundleComponents?.length ?? 0
   const bundleSummary =
@@ -939,7 +965,9 @@ export const buildSearchDocument = (
     ...referenceGenres,
     ...toStringList(catalogImport?.genres),
     ...categoryGenres,
-    ...toStringList(toRecordList(normalizedProduct.tags).map((tag) => tag?.value)),
+    ...toStringList(
+      toRecordList(normalizedProduct.tags).map((tag) => tag?.value)
+    ),
   ])
 
   const availabilityStates = resolveAvailabilityStates(
@@ -952,7 +980,10 @@ export const buildSearchDocument = (
     handle: toStringOrNull(normalizedProduct.handle),
     status: toStringOrNull(normalizedProduct.status),
     title: toStringOrNull(normalizedProduct.title),
-    title_sort: (releaseTitle ?? toStringOrNull(normalizedProduct.title))?.toLowerCase() ?? null,
+    title_sort:
+      (
+        releaseTitle ?? toStringOrNull(normalizedProduct.title)
+      )?.toLowerCase() ?? null,
     release_title: releaseTitle,
     description,
     description_html: descriptionHtml,
@@ -1004,27 +1035,37 @@ export const buildSearchDocument = (
     stock_status: stockStatus,
     stock_statuses: stockStatuses,
     availability_states: availabilityStates,
-    preorder_allowed: variantDocuments.some((variant) => variant.preorder_allowed),
-    backorder_allowed: variantDocuments.some((variant) => variant.backorder_allowed),
+    preorder_allowed: variantDocuments.some(
+      (variant) => variant.preorder_allowed
+    ),
+    backorder_allowed: variantDocuments.some(
+      (variant) => variant.backorder_allowed
+    ),
     release_date: releaseDate,
     release_year: releaseYear,
     created_at:
       sourceCreatedAt ??
       toIsoOrNull(normalizedProduct.created_at ?? normalizedProduct.createdAt),
-    updated_at: toIsoOrNull(normalizedProduct.updated_at ?? normalizedProduct.updatedAt),
+    updated_at: toIsoOrNull(
+      normalizedProduct.updated_at ?? normalizedProduct.updatedAt
+    ),
     product_type: productType,
     product_type_label: productTypeLabel,
     bundle_type: toStringOrNull(facts?.bundleProfile?.bundle_type),
     bundle_summary: bundleSummary,
     bundle_component_count: bundleComponentCount,
-    shelf_handles: unique(activeShelves.map((shelf) => toStringOrNull(shelf.handle))),
-    shelf_titles: unique(activeShelves.map((shelf) => toStringOrNull(shelf.title))),
-    ribbon_label: toStringOrNull(ribbonShelf?.ribbon_label ?? ribbonShelf?.title),
+    shelf_handles: unique(
+      activeShelves.map((shelf) => toStringOrNull(shelf.handle))
+    ),
+    shelf_titles: unique(
+      activeShelves.map((shelf) => toStringOrNull(shelf.title))
+    ),
+    ribbon_label: toStringOrNull(
+      ribbonShelf?.ribbon_label ?? ribbonShelf?.title
+    ),
     ribbon_priority: toNumberOrNull(ribbonShelf?.ribbon_priority),
     metadata:
-      typeof metadata === "object" && metadata !== null
-        ? metadata
-        : null,
+      typeof metadata === "object" && metadata !== null ? metadata : null,
   }
 }
 
@@ -1090,9 +1131,13 @@ const loadCatalogFacts = async (
 
   try {
     const catalogService = container.resolve("catalog") as DynamicRecord
-    const profiles = await safeList(catalogService, "listCatalogProductProfiles", {
-      product_id: productId,
-    })
+    const profiles = await safeList(
+      catalogService,
+      "listCatalogProductProfiles",
+      {
+        product_id: productId,
+      }
+    )
     const profile = profiles[0] ?? null
     const profileId = toStringOrNull(profile?.id)
     const productVariants = Array.isArray(product.variants)
@@ -1146,7 +1191,9 @@ const loadCatalogFacts = async (
     const referenceIds = unique([
       toStringOrNull(profile?.label_id),
       toStringOrNull(profile?.product_type_id),
-      ...references.map((reference) => toStringOrNull(reference.reference_value_id)),
+      ...references.map((reference) =>
+        toStringOrNull(reference.reference_value_id)
+      ),
       ...variantProfiles.flatMap((profile) => [
         toStringOrNull(profile.format_id ?? profile.formatId),
         toStringOrNull(profile.format_detail_id ?? profile.formatDetailId),
@@ -1159,18 +1206,23 @@ const loadCatalogFacts = async (
       shelfProducts.map((item) => toStringOrNull(item.shelf_id))
     )
 
-    const [referenceValues, mediaAssets, linkedShelves, automaticShelves] = await Promise.all([
-      referenceIds.length
-        ? safeList(catalogService, "listCatalogReferenceValues", { id: referenceIds })
-        : Promise.resolve([]),
-      mediaAssetIds.length
-        ? safeList(catalogService, "listCatalogMediaAssets", { id: mediaAssetIds })
-        : Promise.resolve([]),
-      shelfIds.length
-        ? safeList(catalogService, "listCatalogShelves", { id: shelfIds })
-        : Promise.resolve([]),
-      loadAutomaticShelves(catalogService),
-    ])
+    const [referenceValues, mediaAssets, linkedShelves, automaticShelves] =
+      await Promise.all([
+        referenceIds.length
+          ? safeList(catalogService, "listCatalogReferenceValues", {
+              id: referenceIds,
+            })
+          : Promise.resolve([]),
+        mediaAssetIds.length
+          ? safeList(catalogService, "listCatalogMediaAssets", {
+              id: mediaAssetIds,
+            })
+          : Promise.resolve([]),
+        shelfIds.length
+          ? safeList(catalogService, "listCatalogShelves", { id: shelfIds })
+          : Promise.resolve([]),
+        loadAutomaticShelves(catalogService),
+      ])
     const eligibleAutomaticShelves = automaticShelves.filter(
       (shelf) =>
         (shelf.mode === "automatic" || shelf.mode === "hybrid") &&
@@ -1227,9 +1279,9 @@ const loadVariantAvailability = async (
   }
 
   try {
-    const query = container.resolve(ContainerRegistrationKeys.QUERY) as Parameters<
-      typeof getTotalVariantAvailability
-    >[0]
+    const query = container.resolve(
+      ContainerRegistrationKeys.QUERY
+    ) as Parameters<typeof getTotalVariantAvailability>[0]
     const availability = await getTotalVariantAvailability(query, {
       variant_ids: variantIds,
     })
@@ -1264,7 +1316,10 @@ const productSearchTransformer = async (
   defaultTransformer: DefaultTransformer,
   options?: TransformerOptions
 ): Promise<SearchDocument> => {
-  const transformed = (await defaultTransformer(product, options)) as DynamicRecord
+  const transformed = (await defaultTransformer(
+    product,
+    options
+  )) as DynamicRecord
   const [catalogFacts, availability] = await Promise.all([
     loadCatalogFacts(transformed, options),
     loadVariantAvailability(transformed, options),

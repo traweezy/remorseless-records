@@ -1,14 +1,14 @@
-import { requestAdminJson } from "../../lib/admin-request";
+import { requestAdminJson } from "../../lib/admin-request"
 import {
   refreshTaxRateIoQuota,
   taxControlQueryOptions,
   taxControlSnapshotSchema,
   transitionTaxControl,
-} from "./query";
+} from "./query"
 
 jest.mock("../../lib/admin-request", () => ({
   requestAdminJson: jest.fn(),
-}));
+}))
 
 const validSnapshot = {
   audits: [
@@ -116,18 +116,16 @@ const validSnapshot = {
       ready: true,
     },
   },
-} as const;
+} as const
 
 describe("tax control query boundary", () => {
   beforeEach(() => {
-    jest.mocked(requestAdminJson).mockReset();
-  });
+    jest.mocked(requestAdminJson).mockReset()
+  })
 
   it("accepts the complete control, provider, impact, and evidence snapshot", () => {
-    expect(taxControlSnapshotSchema.parse(validSnapshot)).toEqual(
-      validSnapshot,
-    );
-  });
+    expect(taxControlSnapshotSchema.parse(validSnapshot)).toEqual(validSnapshot)
+  })
 
   it("rejects malformed providers, money, and bounded counts", () => {
     expect(() =>
@@ -147,48 +145,48 @@ describe("tax control query boundary", () => {
           ...validSnapshot.impact,
           preparedCheckouts: -1,
         },
-      }),
-    ).toThrow();
-  });
+      })
+    ).toThrow()
+  })
 
   it("forwards Query cancellation and uses a bounded freshness window", async () => {
-    jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot);
-    const options = taxControlQueryOptions();
-    const controller = new AbortController();
+    jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot)
+    const options = taxControlQueryOptions()
+    const controller = new AbortController()
 
     await expect(
       options.queryFn?.({
         meta: undefined,
         queryKey: options.queryKey,
         signal: controller.signal,
-      }),
-    ).resolves.toEqual(validSnapshot);
+      })
+    ).resolves.toEqual(validSnapshot)
 
     expect(requestAdminJson).toHaveBeenCalledWith({
       path: "/admin/tax-control",
       schema: taxControlSnapshotSchema,
       signal: controller.signal,
       timeoutMs: 20_000,
-    });
-    expect(options.refetchOnWindowFocus).toBe(false);
-    expect(options.retry).toBe(false);
-    expect(options.staleTime).toBe(30_000);
-  });
+    })
+    expect(options.refetchOnWindowFocus).toBe(false)
+    expect(options.retry).toBe(false)
+    expect(options.staleTime).toBe(30_000)
+  })
 
   it("validates switch and quota-refresh responses through the same contract", async () => {
-    jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot);
+    jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot)
     const switchInput = {
       expectedGeneration: 1,
       idempotencyKey: "00000000-0000-4000-8000-000000000001",
       reason: "Stripe sandbox validation completed.",
       targetCollectionMode: "collect",
       targetProvider: "stripe_tax",
-    } as const;
+    } as const
 
     await expect(transitionTaxControl(switchInput)).resolves.toEqual(
-      validSnapshot,
-    );
-    await expect(refreshTaxRateIoQuota()).resolves.toEqual(validSnapshot);
+      validSnapshot
+    )
+    await expect(refreshTaxRateIoQuota()).resolves.toEqual(validSnapshot)
 
     expect(requestAdminJson).toHaveBeenNthCalledWith(1, {
       body: switchInput,
@@ -196,12 +194,12 @@ describe("tax control query boundary", () => {
       path: "/admin/tax-control/switch",
       schema: taxControlSnapshotSchema,
       timeoutMs: 20_000,
-    });
+    })
     expect(requestAdminJson).toHaveBeenNthCalledWith(2, {
       method: "POST",
       path: "/admin/tax-control/taxrate-io/refresh",
       schema: taxControlSnapshotSchema,
       timeoutMs: 20_000,
-    });
-  });
-});
+    })
+  })
+})

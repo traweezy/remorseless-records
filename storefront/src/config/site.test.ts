@@ -17,7 +17,10 @@ describe("siteMetadata", () => {
     }))
 
     const { siteMetadata, seoHelpers } = await import("@/config/site")
-    const heroLogoUrl = new URL("/remorseless-hero-logo.png", siteUrl).toString()
+    const heroLogoUrl = new URL(
+      "/remorseless-hero-logo.png",
+      siteUrl
+    ).toString()
     const catalogUrl = new URL("/catalog", siteUrl).toString()
 
     expect(siteMetadata.siteUrl).toBe(siteUrl)

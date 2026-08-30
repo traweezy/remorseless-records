@@ -265,7 +265,8 @@ export type CatalogCreationMerchandiseTemplate = {
 
 export const catalogCreationMerchandiseTemplates = [
   {
-    description: "A single variant for buttons, patches, bags, books, and other unsized items.",
+    description:
+      "A single variant for buttons, patches, bags, books, and other unsized items.",
     id: "one_size",
     label: "One size",
     sizes: ["One size"],
@@ -289,7 +290,9 @@ export type CatalogCreationMerchandiseTemplateId =
 
 const key = (): string => crypto.randomUUID()
 
-const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => {
+const defaultOffering = (
+  kind: CatalogCreationKind
+): CatalogCreationOffering => {
   if (kind === "merch") {
     return {
       availabilityPolicy: "inventory_only",
@@ -304,7 +307,12 @@ const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => 
       title: "One size",
     }
   }
-  const title = kind === "mystery_bundle" ? "Mystery box" : kind === "fixed_bundle" ? "Bundle" : "Vinyl"
+  const title =
+    kind === "mystery_bundle"
+      ? "Mystery box"
+      : kind === "fixed_bundle"
+        ? "Bundle"
+        : "Vinyl"
   return {
     availabilityPolicy: "inventory_only",
     color: "",
@@ -321,10 +329,10 @@ const defaultOffering = (kind: CatalogCreationKind): CatalogCreationOffering => 
 
 export const createCatalogCreationMusicReleaseOfferings = (
   templateId: CatalogCreationMusicReleaseTemplateId,
-  createId: () => string = key,
+  createId: () => string = key
 ): CatalogCreationOffering[] => {
   const template = catalogCreationMusicReleaseTemplates.find(
-    (candidate) => candidate.id === templateId,
+    (candidate) => candidate.id === templateId
   )
   if (!template) {
     throw new Error(`Unknown music release offering template: ${templateId}`)
@@ -346,10 +354,10 @@ export const createCatalogCreationMusicReleaseOfferings = (
 export const createCatalogCreationMerchandiseOfferings = (
   templateId: CatalogCreationMerchandiseTemplateId,
   currentOfferings: CatalogCreationOffering[],
-  createId: () => string = key,
+  createId: () => string = key
 ): CatalogCreationOffering[] => {
   const template = catalogCreationMerchandiseTemplates.find(
-    (candidate) => candidate.id === templateId,
+    (candidate) => candidate.id === templateId
   )
   if (!template) {
     throw new Error(`Unknown merchandise offering template: ${templateId}`)
@@ -383,7 +391,7 @@ const productTypeForKind = (kind: CatalogCreationKind): string => {
 }
 
 export const createCatalogCreationDefaults = (
-  kind: CatalogCreationKind = "music_release",
+  kind: CatalogCreationKind = "music_release"
 ): CatalogCreationFormValues => ({
   artistId: "",
   artistName: "",
@@ -417,7 +425,7 @@ export const createCatalogCreationDefaults = (
 
 export const applyCatalogCreationKind = (
   values: CatalogCreationFormValues,
-  kind: CatalogCreationKind,
+  kind: CatalogCreationKind
 ): CatalogCreationFormValues => ({
   ...values,
   bundleComponents: kind === "fixed_bundle" ? values.bundleComponents : [],
@@ -437,7 +445,7 @@ const skuSegment = (value: string): string =>
     .replace(/^_+|_+$/g, "")
 
 export const fillCatalogCreationMissingSkus = (
-  values: CatalogCreationFormValues,
+  values: CatalogCreationFormValues
 ): CatalogCreationOffering[] =>
   values.offerings.map((offering, index) => {
     if (offering.sku.trim()) {
@@ -460,7 +468,7 @@ export const fillCatalogCreationMissingSkus = (
       ...offering,
       sku: `${(generated || "CATALOG_PRODUCT").slice(
         0,
-        500 - suffix.length,
+        500 - suffix.length
       )}${suffix}`,
     }
   })
@@ -474,7 +482,7 @@ const moneyString = z
   .trim()
   .refine(
     (value) => /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) > 0,
-    "Enter a price greater than $0.00 with no more than two decimals.",
+    "Enter a price greater than $0.00 with no more than two decimals."
   )
 
 const releaseDatePatterns: Record<
@@ -488,7 +496,7 @@ const releaseDatePatterns: Record<
 
 export const normalizeCatalogCreationReleaseDate = (
   value: string,
-  precision: CatalogCreationReleaseDatePrecision,
+  precision: CatalogCreationReleaseDatePrecision
 ): string | null => {
   const trimmed = value.trim()
   if (!trimmed || precision === "unknown") {
@@ -508,7 +516,7 @@ export const normalizeCatalogCreationReleaseDate = (
 
 const isValidReleaseDate = (
   value: string,
-  precision: CatalogCreationReleaseDatePrecision,
+  precision: CatalogCreationReleaseDatePrecision
 ): boolean => {
   const normalized = normalizeCatalogCreationReleaseDate(value, precision)
   if (!normalized) {
@@ -540,12 +548,18 @@ const offeringSchema = z.object({
     .min(1, "Enter the unique inventory SKU used for fulfillment.")
     .max(500),
   stockQuantity: nonnegativeIntegerString,
-  title: z.string().trim().min(1, "Give this offering a customer-facing name.").max(500),
+  title: z
+    .string()
+    .trim()
+    .min(1, "Give this offering a customer-facing name.")
+    .max(500),
 })
 
 const componentSchema = z.object({
   id: z.string().min(1),
-  offeringIds: z.array(z.string().min(1)).min(1, "Choose at least one bundle offering."),
+  offeringIds: z
+    .array(z.string().min(1))
+    .min(1, "Choose at least one bundle offering."),
   productId: z.string().trim().min(1, "Choose an included product."),
   quantity: z
     .string()
@@ -585,7 +599,7 @@ export const catalogCreationFormSchema = z
       .max(255)
       .refine(
         (value) => !value || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value),
-        "Use lowercase words separated by hyphens.",
+        "Use lowercase words separated by hyphens."
       ),
     kind: z.enum(catalogCreationKinds),
     labelId: z.string().trim().max(255),
@@ -643,14 +657,15 @@ export const catalogCreationFormSchema = z
       ) {
         context.addIssue({
           code: "custom",
-          message: "Preorders are available only for music releases in this workflow.",
+          message:
+            "Preorders are available only for music releases in this workflow.",
           path: ["offerings", index, "availabilityPolicy"],
         })
       }
       if (offering.availabilityPolicy === "preorder") {
         const releaseDate = normalizeCatalogCreationReleaseDate(
           values.releaseDate,
-          values.releaseDatePrecision,
+          values.releaseDatePrecision
         )
         if (!releaseDate || Date.parse(releaseDate) <= Date.now()) {
           context.addIssue({
@@ -716,7 +731,8 @@ export const catalogCreationFormSchema = z
           if (!offering.color) {
             context.addIssue({
               code: "custom",
-              message: "Enter a color for every offering or leave all colors blank.",
+              message:
+                "Enter a color for every offering or leave all colors blank.",
               path: ["offerings", index, "color"],
             })
           }
@@ -734,12 +750,13 @@ export const catalogCreationFormSchema = z
       values.offerings.forEach((offering, index) => {
         if (
           !values.bundleComponents.some((component) =>
-            component.offeringIds.includes(offering.id),
+            component.offeringIds.includes(offering.id)
           )
         ) {
           context.addIssue({
             code: "custom",
-            message: "Map at least one included product to this bundle offering.",
+            message:
+              "Map at least one included product to this bundle offering.",
             path: ["offerings", index],
           })
         }
@@ -760,13 +777,13 @@ const slugify = (value: string, fallback: string): string => {
 
 export const resolveCatalogCreationHandle = (
   handle: string,
-  title: string,
+  title: string
 ): string => handle.trim() || slugify(title, "draft-product")
 
 const nullable = (value: string): string | null => value.trim() || null
 
 const offeringKeyMap = (
-  offerings: CatalogCreationOffering[],
+  offerings: CatalogCreationOffering[]
 ): Map<string, string> => {
   const used = new Set<string>()
   return new Map(
@@ -780,13 +797,13 @@ const offeringKeyMap = (
       }
       used.add(candidate)
       return [offering.id, candidate]
-    }),
+    })
   )
 }
 
 const findProductChoice = (
   choices: CatalogCreationProductChoice[],
-  productId: string,
+  productId: string
 ): CatalogCreationProductChoice | undefined =>
   choices.find((choice) => choice.id === productId)
 
@@ -795,7 +812,7 @@ const normalizeVocabularyLabel = (value: string): string =>
 
 const resolveArtistId = (
   values: CatalogCreationFormValues,
-  vocabulary: CatalogCreationVocabulary,
+  vocabulary: CatalogCreationVocabulary
 ): string | undefined => {
   const explicitId = values.artistId.trim()
   const normalizedName = normalizeVocabularyLabel(values.artistName)
@@ -805,14 +822,13 @@ const resolveArtistId = (
       vocabulary.artists.some(
         (artist) =>
           artist.id === explicitId &&
-          normalizeVocabularyLabel(artist.name) === normalizedName,
+          normalizeVocabularyLabel(artist.name) === normalizedName
       ))
   ) {
     return explicitId
   }
   return vocabulary.artists.find(
-    (artist) =>
-      normalizeVocabularyLabel(artist.name) === normalizedName,
+    (artist) => normalizeVocabularyLabel(artist.name) === normalizedName
   )?.id
 }
 
@@ -820,7 +836,7 @@ const resolveReferenceId = (
   explicitId: string,
   kind: CatalogCreationReferenceChoice["kind"],
   label: string,
-  vocabulary: CatalogCreationVocabulary,
+  vocabulary: CatalogCreationVocabulary
 ): string | undefined => {
   const selectedId = explicitId.trim()
   const normalizedLabel = normalizeVocabularyLabel(label)
@@ -832,7 +848,7 @@ const resolveReferenceId = (
           reference.id === selectedId &&
           reference.isActive &&
           reference.kind === kind &&
-          normalizeVocabularyLabel(reference.label) === normalizedLabel,
+          normalizeVocabularyLabel(reference.label) === normalizedLabel
       ))
   ) {
     return selectedId
@@ -841,7 +857,7 @@ const resolveReferenceId = (
     (reference) =>
       reference.isActive &&
       reference.kind === kind &&
-      normalizeVocabularyLabel(reference.label) === normalizedLabel,
+      normalizeVocabularyLabel(reference.label) === normalizedLabel
   )?.id
 }
 
@@ -854,7 +870,7 @@ export const buildCatalogProductCreateRequest = (
   rawValues: CatalogCreationFormValues,
   idempotencyKey: string,
   choices: CatalogCreationProductChoice[],
-  vocabulary: CatalogCreationVocabulary = emptyVocabulary,
+  vocabulary: CatalogCreationVocabulary = emptyVocabulary
 ): CatalogProductCreateRequest => {
   const values = catalogCreationFormSchema.parse(rawValues)
   const keys = offeringKeyMap(values.offerings)
@@ -867,7 +883,7 @@ export const buildCatalogProductCreateRequest = (
           {
             title: "Size",
             values: Array.from(
-              new Set(values.offerings.map((offering) => offering.size)),
+              new Set(values.offerings.map((offering) => offering.size))
             ),
           },
           ...(usesColor
@@ -875,7 +891,7 @@ export const buildCatalogProductCreateRequest = (
                 {
                   title: "Color",
                   values: Array.from(
-                    new Set(values.offerings.map((offering) => offering.color)),
+                    new Set(values.offerings.map((offering) => offering.color))
                   ),
                 },
               ]
@@ -885,7 +901,7 @@ export const buildCatalogProductCreateRequest = (
           {
             title: "Format",
             values: Array.from(
-              new Set(values.offerings.map((offering) => offering.title)),
+              new Set(values.offerings.map((offering) => offering.title))
             ),
           },
         ]
@@ -893,7 +909,7 @@ export const buildCatalogProductCreateRequest = (
     values.kind === "music_release"
       ? normalizeCatalogCreationReleaseDate(
           values.releaseDate,
-          values.releaseDatePrecision,
+          values.releaseDatePrecision
         )
       : null
   const variants = values.offerings.map((offering) => ({
@@ -906,10 +922,16 @@ export const buildCatalogProductCreateRequest = (
             ...(usesColor ? { Color: offering.color } : {}),
           }
         : { Format: offering.title },
-    prices: [{ amount: Number(offering.priceUsd), currencyCode: "usd" as const }],
+    prices: [
+      { amount: Number(offering.priceUsd), currencyCode: "usd" as const },
+    ],
     profile: {
       displayLabel: offering.title,
-      format: { label: offering.format || (values.kind === "merch" ? "Merch" : offering.title) },
+      format: {
+        label:
+          offering.format ||
+          (values.kind === "merch" ? "Merch" : offering.title),
+      },
       formatDetail: { label: nullable(offering.formatDetail) },
       preorderAllowed: offering.availabilityPolicy === "preorder",
       preorderReleaseDate:
@@ -931,25 +953,25 @@ export const buildCatalogProductCreateRequest = (
     values.genreId,
     "genre",
     values.genre,
-    vocabulary,
+    vocabulary
   )
   const labelId = resolveReferenceId(
     values.labelId,
     "label",
     values.label,
-    vocabulary,
+    vocabulary
   )
   const merchandiseTypeId = resolveReferenceId(
     values.merchandiseTypeId,
     "merch_type",
     values.merchandiseType,
-    vocabulary,
+    vocabulary
   )
   const productTypeId = resolveReferenceId(
     values.productTypeId,
     "product_type",
     values.productType,
-    vocabulary,
+    vocabulary
   )
   const releaseYear = releaseDate ? Number(releaseDate.slice(0, 4)) : null
   const references = [
@@ -977,20 +999,21 @@ export const buildCatalogProductCreateRequest = (
       : []),
   ]
   const profile: Record<string, unknown> = {
-    artists: values.kind === "music_release" && values.artistName
-      ? [
-          {
-            ...(artistId
-              ? { artistId, displayName: values.artistName }
-              : {
-                  displayName: values.artistName,
-                  name: values.artistName,
-                }),
-            role: "primary",
-            sortOrder: 0,
-          },
-        ]
-      : [],
+    artists:
+      values.kind === "music_release" && values.artistName
+        ? [
+            {
+              ...(artistId
+                ? { artistId, displayName: values.artistName }
+                : {
+                    displayName: values.artistName,
+                    name: values.artistName,
+                  }),
+              role: "primary",
+              sortOrder: 0,
+            },
+          ]
+        : [],
     credits:
       values.kind === "music_release" && values.credits
         ? { notes: values.credits }
@@ -1020,9 +1043,7 @@ export const buildCatalogProductCreateRequest = (
     references,
     releaseDate,
     releaseDatePrecision:
-      values.kind === "music_release"
-        ? values.releaseDatePrecision
-        : "unknown",
+      values.kind === "music_release" ? values.releaseDatePrecision : "unknown",
     releaseYear,
     releaseTitle: values.title,
     tracklist: values.kind === "music_release" ? tracklist : [],
@@ -1033,16 +1054,16 @@ export const buildCatalogProductCreateRequest = (
           components: values.bundleComponents.map((component, index) => {
             const product = findProductChoice(choices, component.productId)
             const variant = product?.variants.find(
-              (choice) => choice.id === component.variantId,
+              (choice) => choice.id === component.variantId
             )
             if (!product || !variant) {
               throw new Error(
-                "An included bundle product is no longer available. Refresh the choices and review the mapping.",
+                "An included bundle product is no longer available. Refresh the choices and review the mapping."
               )
             }
             return {
-              bundleVariantKeys: component.offeringIds.map(
-                (offeringId) => keys.get(offeringId)!,
+              bundleVariantKeys: component.offeringIds.map((offeringId) =>
+                keys.get(offeringId)!
               ),
               componentProductId: product.id,
               componentVariantId: variant.id,
@@ -1062,7 +1083,7 @@ export const buildCatalogProductCreateRequest = (
             descriptionHtml: nullable(
               [values.mysteryPromise, values.mysteryDisclaimer]
                 .filter(Boolean)
-                .join("\n\n"),
+                .join("\n\n")
             ),
             displayTitle: values.title,
           }
@@ -1128,7 +1149,7 @@ export const catalogCreationStepFields: Array<
 
 export const validateCatalogCreationStep = (
   values: CatalogCreationFormValues,
-  step: number,
+  step: number
 ): string[] => {
   const result = catalogCreationFormSchema.safeParse(values)
   if (result.success) {
@@ -1138,7 +1159,10 @@ export const validateCatalogCreationStep = (
   return result.error.issues
     .filter((issue) => {
       const field = issue.path[0]
-      return typeof field === "string" && fields.has(field as keyof CatalogCreationFormValues)
+      return (
+        typeof field === "string" &&
+        fields.has(field as keyof CatalogCreationFormValues)
+      )
     })
     .map((issue) => issue.message)
 }
@@ -1271,7 +1295,7 @@ const storedDraftSchema = z.discriminatedUnion("version", [
 export const serializeCatalogCreationDraft = (
   values: CatalogCreationFormValues,
   step: number,
-  now = Date.now(),
+  now = Date.now()
 ): string =>
   JSON.stringify({
     expiresAt: now + catalogCreationDraftTtlMs,
@@ -1282,7 +1306,7 @@ export const serializeCatalogCreationDraft = (
 
 export const parseCatalogCreationDraft = (
   serialized: string | null,
-  now = Date.now(),
+  now = Date.now()
 ): { step: number; values: CatalogCreationFormValues } | null => {
   if (!serialized) {
     return null
@@ -1322,7 +1346,7 @@ export const parseCatalogCreationDraft = (
             availabilityPolicy: allowBackorder
               ? ("backorder" as const)
               : ("inventory_only" as const),
-          }),
+          })
         ),
       },
     }

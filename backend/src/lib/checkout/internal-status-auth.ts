@@ -34,7 +34,7 @@ const validateSigningInput = ({
   }
   if (secret.trim().length < MINIMUM_SECRET_LENGTH) {
     throw new Error(
-      `CHECKOUT_BFF_SECRET must contain at least ${MINIMUM_SECRET_LENGTH} characters`,
+      `CHECKOUT_BFF_SECRET must contain at least ${MINIMUM_SECRET_LENGTH} characters`
     )
   }
 }
@@ -42,9 +42,8 @@ const validateSigningInput = ({
 const signedPayload = (
   purpose: CheckoutProofPurpose,
   cartId: string,
-  timestamp: number,
-): string =>
-  [PROOF_VERSION, purpose, String(timestamp), cartId].join("\n")
+  timestamp: number
+): string => [PROOF_VERSION, purpose, String(timestamp), cartId].join("\n")
 
 const createCheckoutProof = ({
   cartId,
@@ -93,11 +92,10 @@ const verifyCheckoutProof = ({
       return false
     }
     const expected = Buffer.from(
-      createCheckoutProof({ cartId, timestamp, secret: candidate, purpose }),
+      createCheckoutProof({ cartId, timestamp, secret: candidate, purpose })
     )
     return (
-      expected.length === supplied.length &&
-      timingSafeEqual(expected, supplied)
+      expected.length === supplied.length && timingSafeEqual(expected, supplied)
     )
   }
 
@@ -108,17 +106,17 @@ const verifyCheckoutProof = ({
 }
 
 export const createCheckoutStatusProof = (
-  input: CheckoutStatusProofInput,
+  input: CheckoutStatusProofInput
 ): string => createCheckoutProof({ ...input, purpose: "checkout-status" })
 
 export const createCheckoutTaxLinkProof = (
-  input: CheckoutStatusProofInput,
+  input: CheckoutStatusProofInput
 ): string => createCheckoutProof({ ...input, purpose: "checkout-tax-link" })
 
 export const verifyCheckoutStatusProof = (
-  input: VerifyCheckoutStatusProofInput,
+  input: VerifyCheckoutStatusProofInput
 ): boolean => verifyCheckoutProof({ ...input, purpose: "checkout-status" })
 
 export const verifyCheckoutTaxLinkProof = (
-  input: VerifyCheckoutStatusProofInput,
+  input: VerifyCheckoutStatusProofInput
 ): boolean => verifyCheckoutProof({ ...input, purpose: "checkout-tax-link" })

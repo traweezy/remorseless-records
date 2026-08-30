@@ -55,7 +55,7 @@ export const GET = async (
           created_at: "DESC",
         }),
       }
-  )
+    )
   const records = entries as DiscographyEntryRecord[]
   const productIds = Array.from(
     new Set(

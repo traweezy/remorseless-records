@@ -1,7 +1,4 @@
-import {
-  fetchTaxRateIo,
-  TaxRateIoClientError,
-} from "./taxrate-io"
+import { fetchTaxRateIo, TaxRateIoClientError } from "./taxrate-io"
 
 const originalFetch = global.fetch
 
@@ -82,9 +79,11 @@ describe("fetchTaxRateIo", () => {
   })
 
   it("keeps a valid rate when an older response omits usage data", async () => {
-    global.fetch = jest.fn().mockResolvedValue(
-      new Response(JSON.stringify({ rate_pct: 6.35 }), { status: 200 })
-    )
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ rate_pct: 6.35 }), { status: 200 })
+      )
 
     await expect(
       fetchTaxRateIo({
@@ -170,9 +169,9 @@ describe("fetchTaxRateIo", () => {
   })
 
   it("does not retry or expose details from a rejected request", async () => {
-    global.fetch = jest.fn().mockResolvedValue(
-      new Response("quota exhausted", { status: 429 })
-    )
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(new Response("quota exhausted", { status: 429 }))
 
     const error = await rejectedClientError(
       fetchTaxRateIo({
@@ -228,9 +227,11 @@ describe("fetchTaxRateIo", () => {
   it.each(["not-a-rate", "6.35 trailing-data", -0.01, 101])(
     "rejects invalid rate %p without retrying",
     async (rate) => {
-      global.fetch = jest.fn().mockResolvedValue(
-        new Response(JSON.stringify({ rate }), { status: 200 })
-      )
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ rate }), { status: 200 })
+        )
 
       const error = await rejectedClientError(
         fetchTaxRateIo({
@@ -246,12 +247,14 @@ describe("fetchTaxRateIo", () => {
   )
 
   it("discards an invalid optional breakdown component", async () => {
-    global.fetch = jest.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({ rate_pct: 0.0635, rate_state: 101, state: "NY" }),
-        { status: 200 }
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ rate_pct: 0.0635, rate_state: 101, state: "NY" }),
+          { status: 200 }
+        )
       )
-    )
 
     await expect(
       fetchTaxRateIo({

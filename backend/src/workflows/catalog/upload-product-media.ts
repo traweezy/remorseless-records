@@ -7,10 +7,7 @@ import {
   transform,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import {
-  acquireLockStep,
-  releaseLockStep,
-} from "@medusajs/medusa/core-flows"
+import { acquireLockStep, releaseLockStep } from "@medusajs/medusa/core-flows"
 
 import {
   CatalogMediaUploadPartialFailure,
@@ -29,7 +26,7 @@ const uploadCatalogMediaStep = createStep(
   "upload-catalog-product-media",
   async (
     input: CatalogMediaUploadWorkflowInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<
       CatalogMediaUploadMutationResult,
@@ -37,21 +34,19 @@ const uploadCatalogMediaStep = createStep(
     >
   > => {
     const catalogService = container.resolve("catalog") as CatalogService
-    const fileService =
-      container.resolve<FileTypes.IFileModuleService>(Modules.FILE)
+    const fileService = container.resolve<FileTypes.IFileModuleService>(
+      Modules.FILE
+    )
     try {
       const result = await performCatalogMediaUpload(
         catalogService,
         fileService,
-        input,
+        input
       )
       return new StepResponse(result.mutation, result.compensation)
     } catch (error) {
       if (error instanceof CatalogMediaUploadPartialFailure) {
-        return StepResponse.permanentFailure(
-          error.message,
-          error.compensation,
-        )
+        return StepResponse.permanentFailure(error.message, error.compensation)
       }
       throw error
     }
@@ -61,31 +56,32 @@ const uploadCatalogMediaStep = createStep(
       return
     }
     const catalogService = container.resolve("catalog") as CatalogService
-    const fileService =
-      container.resolve<FileTypes.IFileModuleService>(Modules.FILE)
+    const fileService = container.resolve<FileTypes.IFileModuleService>(
+      Modules.FILE
+    )
     await compensateCatalogMediaUpload(
       catalogService,
       fileService,
-      compensation,
+      compensation
     )
-  },
+  }
 )
 
 const completeCatalogMediaUploadStep = createStep(
   "complete-catalog-product-media-upload",
   async (
     mutation: CatalogMediaUploadMutationResult,
-    { container },
+    { container }
   ): Promise<StepResponse<CatalogMediaUploadMutationResult>> => {
     if (!mutation.replayed) {
       const catalogService = container.resolve("catalog") as CatalogService
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,
-        { files: mutation.files },
+        { files: mutation.files }
       )
     }
     return new StepResponse(mutation)
-  },
+  }
 )
 
 export const uploadCatalogProductMediaWorkflow = createWorkflow(
@@ -97,12 +93,12 @@ export const uploadCatalogProductMediaWorkflow = createWorkflow(
   function (input: CatalogMediaUploadWorkflowInput) {
     const lockKey = transform(
       { idempotencyKey: input.idempotencyKey },
-      ({ idempotencyKey }) => `catalog:media-upload:${idempotencyKey}`,
+      ({ idempotencyKey }) => `catalog:media-upload:${idempotencyKey}`
     )
     acquireLockStep({ key: lockKey, timeout: 10, ttl: 180 })
     const uploaded = uploadCatalogMediaStep(input)
     const completed = completeCatalogMediaUploadStep(uploaded)
     releaseLockStep({ key: lockKey })
     return new WorkflowResponse(completed)
-  },
+  }
 )

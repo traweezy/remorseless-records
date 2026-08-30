@@ -1,31 +1,31 @@
-import { filingBucketFor, type TaxFilingScope } from "./filing-states";
-import type { TaxReportPeriod } from "./periods";
+import { filingBucketFor, type TaxFilingScope } from "./filing-states"
+import type { TaxReportPeriod } from "./periods"
 import type {
   TaxDestinationSummary,
   TaxRecord,
   TaxReportSummary,
-} from "./types";
+} from "./types"
 
-const FORMULA_PREFIX = /^[\t\r\n ]*[=+\-@]/;
-const DECIMAL_VALUE = /^-?\d+(?:\.\d+)?$/;
+const FORMULA_PREFIX = /^[\t\r\n ]*[=+\-@]/
+const DECIMAL_VALUE = /^-?\d+(?:\.\d+)?$/
 
 const safeText = (value: unknown): string => {
-  const text = String(value ?? "");
+  const text = String(value ?? "")
   return FORMULA_PREFIX.test(text) && !DECIMAL_VALUE.test(text)
     ? `'${text}`
-    : text;
-};
+    : text
+}
 
 const cell = (value: unknown): string => {
-  const text = safeText(value);
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-};
+  const text = safeText(value)
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
 
 const rowsToCsv = (rows: unknown[][]): string =>
-  `\uFEFF${rows.map((row) => row.map(cell).join(",")).join("\r\n")}\r\n`;
+  `\uFEFF${rows.map((row) => row.map(cell).join(",")).join("\r\n")}\r\n`
 
 const signed = (value: string, type: TaxRecord["type"]): string =>
-  type === "refund" && Number(value) !== 0 ? `-${value}` : value;
+  type === "refund" && Number(value) !== 0 ? `-${value}` : value
 
 export const taxTransactionsCsv = ({
   filingState,
@@ -34,15 +34,15 @@ export const taxTransactionsCsv = ({
   records,
   summaries,
 }: {
-  filingState: TaxFilingScope;
-  generatedAt: string;
-  period: TaxReportPeriod;
-  records: TaxRecord[];
-  summaries: TaxReportSummary[];
+  filingState: TaxFilingScope
+  generatedAt: string
+  period: TaxReportPeriod
+  records: TaxRecord[]
+  summaries: TaxReportSummary[]
 }): string => {
   const summaryByCurrency = new Map(
-    summaries.map((summary) => [summary.currencyCode, summary]),
-  );
+    summaries.map((summary) => [summary.currencyCode, summary])
+  )
   return rowsToCsv([
     [
       "record_type",
@@ -83,7 +83,7 @@ export const taxTransactionsCsv = ({
       "period_net_tax",
     ],
     ...records.map((record) => {
-      const summary = summaryByCurrency.get(record.currencyCode);
+      const summary = summaryByCurrency.get(record.currencyCode)
       return [
         record.type,
         record.collectionMode,
@@ -124,10 +124,10 @@ export const taxTransactionsCsv = ({
         generatedAt,
         summary?.netSales ?? "",
         summary?.netTax ?? "",
-      ];
+      ]
     }),
-  ]);
-};
+  ])
+}
 
 export const taxDestinationsCsv = ({
   destinations,
@@ -136,11 +136,11 @@ export const taxDestinationsCsv = ({
   period,
   summaries,
 }: {
-  destinations: TaxDestinationSummary[];
-  filingState: TaxFilingScope;
-  generatedAt: string;
-  period: TaxReportPeriod;
-  summaries: TaxReportSummary[];
+  destinations: TaxDestinationSummary[]
+  filingState: TaxFilingScope
+  generatedAt: string
+  period: TaxReportPeriod
+  summaries: TaxReportSummary[]
 }): string =>
   rowsToCsv([
     [
@@ -226,4 +226,4 @@ export const taxDestinationsCsv = ({
       summary.samePeriodRefundCount,
       summary.priorPeriodRefundCount,
     ]),
-  ]);
+  ])

@@ -33,21 +33,24 @@ export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const { q, limit, offset, order, direction } = listQuerySchema.parse(req.query)
+  const { q, limit, offset, order, direction } = listQuerySchema.parse(
+    req.query
+  )
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const take = limit ?? 100
   const skip = offset ?? 0
   const sortField = order ?? "name"
   const sortDirection = (direction ?? "asc").toUpperCase() as "ASC" | "DESC"
 
-  const [rawArtists, rawCount] = await catalogService.listAndCountCatalogArtists(
-    {},
-    {
-      skip: q ? 0 : skip,
-      take: q ? Math.max(take + skip, 500) : take,
-      order: { [sortField]: sortDirection },
-    }
-  )
+  const [rawArtists, rawCount] =
+    await catalogService.listAndCountCatalogArtists(
+      {},
+      {
+        skip: q ? 0 : skip,
+        take: q ? Math.max(take + skip, 500) : take,
+        order: { [sortField]: sortDirection },
+      }
+    )
 
   const needle = q?.toLowerCase() ?? null
   const artists = needle

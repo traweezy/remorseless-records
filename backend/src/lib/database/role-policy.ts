@@ -15,9 +15,7 @@ export type DatabaseRoleFacts = {
   writeAllData: boolean
 }
 
-const privilegedAttributeErrors = (
-  facts: DatabaseRoleFacts,
-): string[] => [
+const privilegedAttributeErrors = (facts: DatabaseRoleFacts): string[] => [
   ...(facts.defaultAdministrator ? ["default_administrator"] : []),
   ...(facts.superuser ? ["superuser"] : []),
   ...(facts.createDatabase ? ["createdb"] : []),
@@ -28,7 +26,7 @@ const privilegedAttributeErrors = (
 
 export const evaluateDatabaseRole = (
   profile: DatabaseRoleProfile,
-  facts: DatabaseRoleFacts,
+  facts: DatabaseRoleFacts
 ): string[] => {
   const errors = privilegedAttributeErrors(facts)
   if (facts.transport === "tls" && !facts.tls) {
@@ -61,12 +59,12 @@ export const evaluateDatabaseRole = (
 }
 
 export const parseDatabaseRoleProfile = (
-  value: string | undefined,
+  value: string | undefined
 ): DatabaseRoleProfile => {
   if (value === "backup" || value === "migration" || value === "runtime") {
     return value
   }
   throw new Error(
-    "DATABASE_ROLE_PROFILE must be backup, migration, or runtime.",
+    "DATABASE_ROLE_PROFILE must be backup, migration, or runtime."
   )
 }

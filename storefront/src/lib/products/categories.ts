@@ -14,12 +14,19 @@ export const humanizeCategoryHandle = (handle: string): string =>
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ")
 
-const coerceHandle = (category: StoreProductCategory | null | undefined): string | null => {
+const coerceHandle = (
+  category: StoreProductCategory | null | undefined
+): string | null => {
   const handle = category?.handle
-  return typeof handle === "string" && handle.trim().length ? handle.trim().toLowerCase() : null
+  return typeof handle === "string" && handle.trim().length
+    ? handle.trim().toLowerCase()
+    : null
 }
 
-const coerceLabel = (category: StoreProductCategory | null | undefined, fallbackHandle: string): string => {
+const coerceLabel = (
+  category: StoreProductCategory | null | undefined,
+  fallbackHandle: string
+): string => {
   const name = category?.name
   if (typeof name === "string" && name.trim().length) {
     return name.trim()
@@ -31,7 +38,9 @@ const TYPE_HANDLES = new Set(["music", "bundles", "merch"])
 const GENRE_HANDLES = new Set(["metal", "death", "doom", "grind", "sludge"])
 const STRUCTURAL_HANDLES = new Set(["artists", "genres"])
 
-const collectAncestors = (category: StoreProductCategory | null | undefined): StoreProductCategory[] => {
+const collectAncestors = (
+  category: StoreProductCategory | null | undefined
+): StoreProductCategory[] => {
   const ancestors: StoreProductCategory[] = []
   let current: StoreProductCategory | null = category ?? null
   const guard = 16
@@ -46,7 +55,9 @@ const collectAncestors = (category: StoreProductCategory | null | undefined): St
   return ancestors
 }
 
-const findRootCategory = (category: StoreProductCategory | null | undefined): StoreProductCategory | null => {
+const findRootCategory = (
+  category: StoreProductCategory | null | undefined
+): StoreProductCategory | null => {
   const ancestors = collectAncestors(category)
   if (!ancestors.length) {
     return null
@@ -56,7 +67,9 @@ const findRootCategory = (category: StoreProductCategory | null | undefined): St
   return root ?? null
 }
 
-const shouldExcludeCategory = (category: StoreProductCategory | null | undefined): boolean => {
+const shouldExcludeCategory = (
+  category: StoreProductCategory | null | undefined
+): boolean => {
   const handle = coerceHandle(category)
   if (!handle) {
     return true
@@ -97,7 +110,10 @@ export const extractProductCategoryGroups = (
 
   const excludes = new Set(
     (options?.excludeHandles ?? [])
-      .filter((handle): handle is string => typeof handle === "string" && handle.trim().length > 0)
+      .filter(
+        (handle): handle is string =>
+          typeof handle === "string" && handle.trim().length > 0
+      )
       .map((handle) => handle.trim().toLowerCase())
   )
 

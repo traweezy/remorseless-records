@@ -121,9 +121,8 @@ describe("catalog filter server loaders", () => {
   it("does not multiply attempts outside the search provider boundary", async () => {
     const searchProductsServer = vi.fn().mockRejectedValue(new Error("offline"))
     mockDependencies({ searchProductsServer })
-    const { getCatalogGenreOptions } = await import(
-      "@/lib/catalog/filters.server"
-    )
+    const { getCatalogGenreOptions } =
+      await import("@/lib/catalog/filters.server")
 
     await expect(getCatalogGenreOptions()).rejects.toThrow("offline")
     expect(searchProductsServer).toHaveBeenCalledTimes(1)

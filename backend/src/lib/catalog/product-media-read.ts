@@ -13,30 +13,30 @@ type CatalogService = InstanceType<typeof CatalogModuleService>
 export const listProductMediaItems = async (
   catalogService: CatalogService,
   productId: string,
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ): Promise<CatalogProductMediaItemRecord[]> =>
   (await catalogService.listCatalogProductMediaItems(
     { product_id: productId },
     { order: { sort_order: "ASC" } },
-    sharedContext,
+    sharedContext
   )) as CatalogProductMediaItemRecord[]
 
 export const loadProductMediaResponse = async (
   catalogService: CatalogService,
   productId: string,
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ) => {
   const items = await listProductMediaItems(
     catalogService,
     productId,
-    sharedContext,
+    sharedContext
   )
   const assetIds = [...new Set(items.map((item) => item.media_asset_id))]
   const assets = assetIds.length
     ? ((await catalogService.listCatalogMediaAssets(
         { id: assetIds },
         {},
-        sharedContext,
+        sharedContext
       )) as CatalogMediaAssetRecord[])
     : []
   const assetsById = new Map(assets.map((asset) => [asset.id, asset]))
@@ -46,8 +46,8 @@ export const loadProductMediaResponse = async (
     media: items.map((item) =>
       serializeCatalogProductMediaItem(
         item,
-        assetsById.get(item.media_asset_id) ?? null,
-      ),
+        assetsById.get(item.media_asset_id) ?? null
+      )
     ),
   }
 }

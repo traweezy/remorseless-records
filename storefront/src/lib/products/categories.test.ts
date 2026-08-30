@@ -49,7 +49,10 @@ describe("extractProductCategoryGroups", () => {
   })
 
   it("returns empty groups for missing categories", () => {
-    expect(extractProductCategoryGroups(null)).toEqual({ types: [], genres: [] })
+    expect(extractProductCategoryGroups(null)).toEqual({
+      types: [],
+      genres: [],
+    })
   })
 
   it("extracts type and genre handles with labels and excludes requested handles", () => {
@@ -68,7 +71,9 @@ describe("extractProductCategoryGroups", () => {
       excludeHandles: ["grind", "  merch  ", null, undefined],
     })
 
-    expect(groups.types).toEqual([{ handle: "music", label: "Music Duplicate" }])
+    expect(groups.types).toEqual([
+      { handle: "music", label: "Music Duplicate" },
+    ])
     expect(groups.genres).toEqual([
       { handle: "death", label: "Death Metal" },
       { handle: "doom", label: "Doom" },
@@ -122,7 +127,9 @@ describe("extractNonArtistCategoryFacets", () => {
   })
 
   it("excludes categories with blank handles", () => {
-    const facets = extractNonArtistCategoryFacets(asFacetInput([category({ handle: "   " })]))
+    const facets = extractNonArtistCategoryFacets(
+      asFacetInput([category({ handle: "   " })])
+    )
     expect(facets).toEqual([])
   })
 
@@ -137,7 +144,9 @@ describe("extractNonArtistCategoryFacets", () => {
       parent_category: null,
     } as unknown as CategoryNode
 
-    const facets = extractNonArtistCategoryFacets(asFacetInput([unstableCategory]))
+    const facets = extractNonArtistCategoryFacets(
+      asFacetInput([unstableCategory])
+    )
     expect(facets).toEqual([])
   })
 })

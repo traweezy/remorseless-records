@@ -64,7 +64,7 @@ describe("news Admin query boundary", () => {
         q: "  release update  ",
         status: "scheduled",
       },
-      signal,
+      signal
     )
 
     expect(requestMock).toHaveBeenCalledWith(
@@ -80,7 +80,7 @@ describe("news Admin query boundary", () => {
           status: "scheduled",
         },
         signal,
-      }),
+      })
     )
   })
 
@@ -104,7 +104,7 @@ describe("news Admin query boundary", () => {
           offset: 0,
           order: "title",
         },
-      }),
+      })
     )
   })
 
@@ -113,7 +113,7 @@ describe("news Admin query boundary", () => {
 
     await expect(getNewsEntry("news/one")).resolves.toEqual(entry())
     expect(requestMock).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "/admin/news/news%2Fone" }),
+      expect.objectContaining({ path: "/admin/news/news%2Fone" })
     )
   })
 
@@ -137,7 +137,7 @@ describe("news Admin query boundary", () => {
         }),
         method: "POST",
         path: "/admin/news",
-      }),
+      })
     )
     expect(requestMock).toHaveBeenNthCalledWith(
       2,
@@ -148,7 +148,7 @@ describe("news Admin query boundary", () => {
         }),
         method: "PUT",
         path: `/admin/news/${current.id}`,
-      }),
+      })
     )
     expect(requestMock).toHaveBeenNthCalledWith(
       3,
@@ -159,7 +159,7 @@ describe("news Admin query boundary", () => {
         },
         method: "POST",
         path: `/admin/news/${current.id}/archive`,
-      }),
+      })
     )
   })
 })

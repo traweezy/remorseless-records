@@ -12,7 +12,7 @@ describe("resolveAuthoringVariantStatus", () => {
         now,
         preorderAllowed: false,
         productStatus: "draft",
-      }),
+      })
     ).toEqual({
       customerStatus: "hidden",
       inventoryQuantity: 12,
@@ -32,13 +32,13 @@ describe("resolveAuthoringVariantStatus", () => {
     } as const
 
     expect(
-      resolveAuthoringVariantStatus({ ...input, preorderAllowed: true }),
+      resolveAuthoringVariantStatus({ ...input, preorderAllowed: true })
     ).toMatchObject({
       customerStatus: "preorder",
       inventoryStatus: "sold_out",
     })
     expect(
-      resolveAuthoringVariantStatus({ ...input, preorderAllowed: false }),
+      resolveAuthoringVariantStatus({ ...input, preorderAllowed: false })
     ).toMatchObject({
       customerStatus: "coming_soon",
       inventoryStatus: "sold_out",
@@ -54,7 +54,7 @@ describe("resolveAuthoringVariantStatus", () => {
         now,
         preorderAllowed: false,
         productStatus: "published",
-      }),
+      })
     ).toMatchObject({
       customerStatus: "backorder",
       inventoryQuantity: 0,
@@ -77,12 +77,12 @@ describe("resolveAuthoringVariantStatus", () => {
           now,
           preorderAllowed: false,
           productStatus: "published",
-        }),
+        })
       ).toMatchObject({
         customerStatus,
         inventoryQuantity,
       })
-    },
+    }
   )
 
   it("distinguishes untracked inventory from an unreadable managed quantity", () => {
@@ -94,7 +94,7 @@ describe("resolveAuthoringVariantStatus", () => {
         now,
         preorderAllowed: false,
         productStatus: "published",
-      }),
+      })
     ).toMatchObject({
       customerStatus: "in_stock",
       inventoryStatus: "not_managed",
@@ -107,7 +107,7 @@ describe("resolveAuthoringVariantStatus", () => {
         now,
         preorderAllowed: false,
         productStatus: "published",
-      }),
+      })
     ).toMatchObject({
       customerStatus: "unknown",
       inventoryStatus: "unknown",

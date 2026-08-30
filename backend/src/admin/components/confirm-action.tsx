@@ -1,33 +1,25 @@
-"use client";
+"use client"
 
-import {
-  memo,
-  useCallback,
-  type FormEvent,
-  type ReactNode,
-} from "react";
-import {
-  Button,
-  Prompt,
-} from "@medusajs/ui";
+import { memo, useCallback, type FormEvent, type ReactNode } from "react"
+import { Button, Prompt } from "@medusajs/ui"
 
-type ConfirmActionVariant = "confirmation" | "danger";
+type ConfirmActionVariant = "confirmation" | "danger"
 
 export type ConfirmActionProps = {
-  cancelLabel?: string;
-  children?: ReactNode;
-  confirmDisabled?: boolean;
-  confirmLabel: string;
-  description: ReactNode;
-  onCancel: () => void;
-  onConfirm: () => void | Promise<void>;
-  open: boolean;
-  pending?: boolean;
-  pendingAnnouncement?: string;
-  pendingLabel?: string;
-  title: ReactNode;
-  variant?: ConfirmActionVariant;
-};
+  cancelLabel?: string
+  children?: ReactNode
+  confirmDisabled?: boolean
+  confirmLabel: string
+  description: ReactNode
+  onCancel: () => void
+  onConfirm: () => void | Promise<void>
+  open: boolean
+  pending?: boolean
+  pendingAnnouncement?: string
+  pendingLabel?: string
+  title: ReactNode
+  variant?: ConfirmActionVariant
+}
 
 export const getConfirmActionState = ({
   confirmDisabled,
@@ -36,13 +28,13 @@ export const getConfirmActionState = ({
   pendingAnnouncement,
   pendingLabel,
 }: {
-  confirmDisabled: boolean | undefined;
-  confirmLabel: string;
-  pending: boolean | undefined;
-  pendingAnnouncement: string | undefined;
-  pendingLabel: string | undefined;
+  confirmDisabled: boolean | undefined
+  confirmLabel: string
+  pending: boolean | undefined
+  pendingAnnouncement: string | undefined
+  pendingLabel: string | undefined
 }) => {
-  const isPending = pending ?? false;
+  const isPending = pending ?? false
 
   return {
     announcement: isPending
@@ -50,8 +42,8 @@ export const getConfirmActionState = ({
       : "",
     disabled: isPending || (confirmDisabled ?? false),
     label: isPending ? (pendingLabel ?? confirmLabel) : confirmLabel,
-  };
-};
+  }
+}
 
 export const ConfirmAction = memo<ConfirmActionProps>(
   ({
@@ -75,49 +67,39 @@ export const ConfirmAction = memo<ConfirmActionProps>(
       pending,
       pendingAnnouncement,
       pendingLabel,
-    });
+    })
 
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen && !pending) {
-          onCancel();
+          onCancel()
         }
       },
-      [onCancel, pending],
-    );
+      [onCancel, pending]
+    )
 
     const handleSubmit = useCallback(
       (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        event.stopPropagation();
+        event.preventDefault()
+        event.stopPropagation()
         if (!state.disabled) {
-          void onConfirm();
+          void onConfirm()
         }
       },
-      [onConfirm, state.disabled],
-    );
+      [onConfirm, state.disabled]
+    )
 
     return (
-      <Prompt
-        onOpenChange={handleOpenChange}
-        open={open}
-        variant={variant}
-      >
+      <Prompt onOpenChange={handleOpenChange} open={open} variant={variant}>
         <Prompt.Content className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto">
-          <form
-            aria-busy={pending}
-            noValidate
-            onSubmit={handleSubmit}
-          >
+          <form aria-busy={pending} noValidate onSubmit={handleSubmit}>
             <Prompt.Header>
               <Prompt.Title>{title}</Prompt.Title>
               <Prompt.Description>{description}</Prompt.Description>
             </Prompt.Header>
 
             {children ? (
-              <div className="flex flex-col gap-y-4 px-6 pt-4">
-                {children}
-              </div>
+              <div className="flex flex-col gap-y-4 px-6 pt-4">{children}</div>
             ) : null}
 
             <Prompt.Footer>
@@ -140,8 +122,8 @@ export const ConfirmAction = memo<ConfirmActionProps>(
           </form>
         </Prompt.Content>
       </Prompt>
-    );
-  },
-);
+    )
+  }
+)
 
-ConfirmAction.displayName = "ConfirmAction";
+ConfirmAction.displayName = "ConfirmAction"

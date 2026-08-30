@@ -25,6 +25,6 @@ describe("Content Admin routes", () => {
 
       expect(contentAppRoutePaths[workspace]).toBe(target)
       expect(replace).toHaveBeenCalledWith(target)
-    },
+    }
   )
 })

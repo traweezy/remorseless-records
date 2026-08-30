@@ -5,13 +5,13 @@ import { loadProductAuthoringView } from "../../../../../../lib/catalog/product-
 
 export const GET = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const productId = req.params.product_id?.trim()
   if (!productId) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Product id is required.",
+      "Product id is required."
     )
   }
 

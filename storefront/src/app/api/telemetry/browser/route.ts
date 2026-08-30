@@ -19,9 +19,7 @@ const webVitalSchema = z
   .strict()
 const clientErrorSchema = z
   .object({
-    digest: z
-      .string()
-      .regex(/^(?:[A-Za-z\d_-]{1,128}|unavailable)$/u),
+    digest: z.string().regex(/^(?:[A-Za-z\d_-]{1,128}|unavailable)$/u),
     kind: z.literal("client_error"),
     scope: z.enum(["application", "route"]),
   })

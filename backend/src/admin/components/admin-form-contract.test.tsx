@@ -1,4 +1,4 @@
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToStaticMarkup } from "react-dom/server"
 
 import {
   AdminFormErrorSummary,
@@ -11,7 +11,7 @@ import {
   runRecoverableAdminMutation,
   visibleAdminFormFieldError,
   type AdminFormIssue,
-} from "./admin-form-contract";
+} from "./admin-form-contract"
 
 const issues = (): AdminFormIssue[] => [
   {
@@ -29,67 +29,67 @@ const issues = (): AdminFormIssue[] => [
     message: "Choose a publication status.",
     targetId: null,
   },
-];
+]
 
 describe("Admin form contract", () => {
   it("normalizes string and schema errors at one boundary", () => {
     expect(firstAdminFormError([null, { message: " Required. " }])).toBe(
-      "Required.",
-    );
+      "Required."
+    )
     expect(
       visibleAdminFormFieldError({
         errors: ["Enter a title."],
         isTouched: false,
         isValid: false,
         submissionAttempts: 1,
-      }),
-    ).toBe("Enter a title.");
+      })
+    ).toBe("Enter a title.")
     expect(
       visibleAdminFormFieldError({
         errors: ["Enter a title."],
         isTouched: false,
         isValid: false,
         submissionAttempts: 0,
-      }),
-    ).toBeUndefined();
-  });
+      })
+    ).toBeUndefined()
+  })
 
   it("deduplicates issues and renders linked and summary-only errors", () => {
-    expect(normalizeAdminFormIssues(issues())).toHaveLength(2);
+    expect(normalizeAdminFormIssues(issues())).toHaveLength(2)
     const markup = renderToStaticMarkup(
-      <AdminFormErrorSummary issues={issues()} />,
-    );
-    expect(markup).toContain("Check the highlighted fields");
-    expect(markup).toContain("Enter a title.");
-    expect(markup).toContain("Choose a publication status.");
-    expect(markup).toContain('role="alert"');
-    expect(markup).toContain('type="button"');
-  });
+      <AdminFormErrorSummary issues={issues()} />
+    )
+    expect(markup).toContain("Check the highlighted fields")
+    expect(markup).toContain("Enter a title.")
+    expect(markup).toContain("Choose a publication status.")
+    expect(markup).toContain('role="alert"')
+    expect(markup).toContain('type="button"')
+  })
 
   it("focuses and centers the first issue with a field target", () => {
-    const focus = jest.fn();
-    const scrollIntoView = jest.fn();
-    const getElementById = jest.fn(() => ({ focus, scrollIntoView }));
+    const focus = jest.fn()
+    const scrollIntoView = jest.fn()
+    const getElementById = jest.fn(() => ({ focus, scrollIntoView }))
 
-    expect(focusFirstAdminFormIssue(issues(), { getElementById })).toBe(true);
-    expect(getElementById).toHaveBeenCalledWith("product-title");
+    expect(focusFirstAdminFormIssue(issues(), { getElementById })).toBe(true)
+    expect(getElementById).toHaveBeenCalledWith("product-title")
     expect(scrollIntoView).toHaveBeenCalledWith({
       behavior: "smooth",
       block: "center",
-    });
-    expect(focus).toHaveBeenCalledTimes(1);
-  });
+    })
+    expect(focus).toHaveBeenCalledTimes(1)
+  })
 
   it("announces save and reconciliation states without a spinner-only status", () => {
-    expect(adminSaveStateMessage({ state: "dirty" })).toBe("Unsaved changes");
-    expect(adminSaveStateMessage({ state: "reconciling" })).toMatch("Checking");
+    expect(adminSaveStateMessage({ state: "dirty" })).toBe("Unsaved changes")
+    expect(adminSaveStateMessage({ state: "reconciling" })).toMatch("Checking")
     expect(
-      renderToStaticMarkup(<AdminFormSaveState state="saving" />),
-    ).toContain("Saving changes…");
+      renderToStaticMarkup(<AdminFormSaveState state="saving" />)
+    ).toContain("Saving changes…")
     expect(
-      renderToStaticMarkup(<AdminFormSaveState state="error" />),
-    ).toContain('role="alert"');
-  });
+      renderToStaticMarkup(<AdminFormSaveState state="error" />)
+    ).toContain('role="alert"')
+  })
 
   it("renders a keyboard-visible task navigation landmark", () => {
     const markup = renderToStaticMarkup(
@@ -98,12 +98,12 @@ describe("Admin form contract", () => {
           { href: "#product", label: "Product" },
           { href: "#variants", label: "Variants" },
         ]}
-      />,
-    );
-    expect(markup).toContain("Jump to an editing task");
-    expect(markup).toContain('href="#product"');
-    expect(markup).toContain('href="#variants"');
-  });
+      />
+    )
+    expect(markup).toContain("Jump to an editing task")
+    expect(markup).toContain('href="#product"')
+    expect(markup).toContain('href="#variants"')
+  })
 
   it("returns a confirmed mutation result", async () => {
     await expect(
@@ -111,30 +111,30 @@ describe("Admin form contract", () => {
         mutate: async () => ({ id: "product_1" }),
         readAfterFailure: async () => ({ exists: false }),
         wasApplied: (snapshot) => snapshot.exists,
-      }),
-    ).resolves.toEqual({ outcome: "confirmed", value: { id: "product_1" } });
-  });
+      })
+    ).resolves.toEqual({ outcome: "confirmed", value: { id: "product_1" } })
+  })
 
   it("reconciles an ambiguous response and preserves an unapplied error", async () => {
-    const ambiguousError = new Error("Response lost");
+    const ambiguousError = new Error("Response lost")
     await expect(
       runRecoverableAdminMutation({
         mutate: async () => {
-          throw ambiguousError;
+          throw ambiguousError
         },
         readAfterFailure: async () => ({ exists: true }),
         wasApplied: (snapshot) => snapshot.exists,
-      }),
-    ).resolves.toEqual({ outcome: "reconciled", value: { exists: true } });
+      })
+    ).resolves.toEqual({ outcome: "reconciled", value: { exists: true } })
 
     await expect(
       runRecoverableAdminMutation({
         mutate: async () => {
-          throw ambiguousError;
+          throw ambiguousError
         },
         readAfterFailure: async () => ({ exists: false }),
         wasApplied: (snapshot) => snapshot.exists,
-      }),
-    ).rejects.toBe(ambiguousError);
-  });
-});
+      })
+    ).rejects.toBe(ambiguousError)
+  })
+})

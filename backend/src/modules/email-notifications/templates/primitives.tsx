@@ -1,11 +1,11 @@
-import * as React from 'react'
+import * as React from "react"
 import type {
   AnchorHTMLAttributes,
   CSSProperties,
   ImgHTMLAttributes,
   PropsWithChildren,
   ReactElement,
-} from 'react'
+} from "react"
 
 type StyleProps = {
   style?: CSSProperties
@@ -33,12 +33,12 @@ export const Head = (): ReactElement => (
 export const Preview = ({ children }: PropsWithChildren): ReactElement => (
   <div
     style={{
-      display: 'none',
+      display: "none",
       maxHeight: 0,
       maxWidth: 0,
       opacity: 0,
-      overflow: 'hidden',
-      lineHeight: '1px',
+      overflow: "hidden",
+      lineHeight: "1px",
     }}
   >
     {children}
@@ -70,7 +70,7 @@ export const Text = ({
   children,
   style,
 }: PropsWithChildren<StyleProps>): ReactElement => (
-  <p style={mergeStyles({ margin: '0 0 16px' }, style)}>{children}</p>
+  <p style={mergeStyles({ margin: "0 0 16px" }, style)}>{children}</p>
 )
 
 export const Hr = ({ style }: StyleProps): ReactElement => (
@@ -78,9 +78,9 @@ export const Hr = ({ style }: StyleProps): ReactElement => (
     style={mergeStyles(
       {
         border: 0,
-        borderTop: '1px solid #eaeaea',
-        margin: '20px 0',
-        width: '100%',
+        borderTop: "1px solid #eaeaea",
+        margin: "20px 0",
+        width: "100%",
       },
       style
     )}
@@ -92,7 +92,9 @@ export const Link = ({
   href,
   style,
   ...attributes
-}: PropsWithChildren<AnchorHTMLAttributes<HTMLAnchorElement> & StyleProps>): ReactElement => (
+}: PropsWithChildren<
+  AnchorHTMLAttributes<HTMLAnchorElement> & StyleProps
+>): ReactElement => (
   <a {...attributes} href={href} style={style}>
     {children}
   </a>
@@ -103,7 +105,9 @@ export const Button = ({
   href,
   style,
   ...attributes
-}: PropsWithChildren<AnchorHTMLAttributes<HTMLAnchorElement> & StyleProps>): ReactElement => (
+}: PropsWithChildren<
+  AnchorHTMLAttributes<HTMLAnchorElement> & StyleProps
+>): ReactElement => (
   <a {...attributes} href={href} style={style}>
     {children}
   </a>

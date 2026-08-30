@@ -21,7 +21,9 @@ const requestFixture = (idempotencyKey: string): MedusaRequest =>
 const responseFixture = () => {
   const response = {} as MedusaResponse
   response.setHeader = jest.fn() as MedusaResponse["setHeader"]
-  response.status = jest.fn().mockReturnValue(response) as MedusaResponse["status"]
+  response.status = jest
+    .fn()
+    .mockReturnValue(response) as MedusaResponse["status"]
   response.json = jest.fn().mockReturnValue(response) as MedusaResponse["json"]
   return response
 }
@@ -31,9 +33,7 @@ beforeEach(() => jest.clearAllMocks())
 describe("GET /admin/catalog/products/status/:idempotency_key", () => {
   it("returns a private actor-scoped, non-cacheable creation state", async () => {
     inspectMock.mockResolvedValue("compensated")
-    const request = requestFixture(
-      "00000000-0000-4000-8000-000000000001",
-    )
+    const request = requestFixture("00000000-0000-4000-8000-000000000001")
     const response = responseFixture()
 
     await GET(request, response)
@@ -41,19 +41,16 @@ describe("GET /admin/catalog/products/status/:idempotency_key", () => {
     expect(inspectMock).toHaveBeenCalledWith(
       expect.anything(),
       "user_1",
-      "00000000-0000-4000-8000-000000000001",
+      "00000000-0000-4000-8000-000000000001"
     )
-    expect(response.setHeader).toHaveBeenCalledWith(
-      "Cache-Control",
-      "no-store",
-    )
+    expect(response.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store")
     expect(response.status).toHaveBeenCalledWith(200)
     expect(response.json).toHaveBeenCalledWith({ state: "compensated" })
   })
 
   it("rejects malformed keys before reading the ledger", async () => {
     await expect(
-      GET(requestFixture("not-a-uuid"), responseFixture()),
+      GET(requestFixture("not-a-uuid"), responseFixture())
     ).rejects.toThrow("Invalid catalog product creation idempotency key")
     expect(inspectMock).not.toHaveBeenCalled()
   })

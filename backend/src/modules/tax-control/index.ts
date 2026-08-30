@@ -1,9 +1,9 @@
-import { Module } from "@medusajs/framework/utils";
+import { Module } from "@medusajs/framework/utils"
 
-import TaxControlModuleService from "./service";
+import TaxControlModuleService from "./service"
 
 const taxControlModule = Module("tax_control", {
   service: TaxControlModuleService,
-});
+})
 
-export default taxControlModule;
+export default taxControlModule

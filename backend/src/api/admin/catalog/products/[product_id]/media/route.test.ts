@@ -10,7 +10,7 @@ import { PUT } from "./route"
 
 jest.mock("@/lib/catalog/product-media-authoring", () => {
   const actual = jest.requireActual(
-    "@/lib/catalog/product-media-authoring",
+    "@/lib/catalog/product-media-authoring"
   ) as Record<string, unknown>
   return {
     ...actual,
@@ -25,14 +25,12 @@ jest.mock("../../../utils", () => ({
   assertVariantBelongsToProduct: jest.fn(),
 }))
 
-const loadResponseMock =
-  loadCatalogProductMediaResponse as jest.MockedFunction<
-    typeof loadCatalogProductMediaResponse
-  >
-const workflowMock =
-  mutateCatalogProductMediaWorkflow as jest.MockedFunction<
-    typeof mutateCatalogProductMediaWorkflow
-  >
+const loadResponseMock = loadCatalogProductMediaResponse as jest.MockedFunction<
+  typeof loadCatalogProductMediaResponse
+>
+const workflowMock = mutateCatalogProductMediaWorkflow as jest.MockedFunction<
+  typeof mutateCatalogProductMediaWorkflow
+>
 const assertProductExistsMock = assertProductExists as jest.MockedFunction<
   typeof assertProductExists
 >
@@ -108,7 +106,7 @@ describe("PUT /admin/catalog/products/:product_id/media", () => {
     expect(assertVariantBelongsMock).toHaveBeenCalledWith(
       req,
       "prod_1",
-      "variant_1",
+      "variant_1"
     )
     expect(run).toHaveBeenCalledWith({
       context: {
@@ -145,7 +143,7 @@ describe("PUT /admin/catalog/products/:product_id/media", () => {
     const { res } = responseFixture()
 
     await expect(PUT(req, res)).rejects.toThrow(
-      "Invalid catalog product media payload",
+      "Invalid catalog product media payload"
     )
     expect(assertProductExistsMock).not.toHaveBeenCalled()
     expect(workflowMock).not.toHaveBeenCalled()

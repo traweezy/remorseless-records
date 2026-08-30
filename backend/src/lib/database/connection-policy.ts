@@ -3,10 +3,7 @@ const ENCRYPTED_SSL_MODES = new Set(["require", "verify-ca", "verify-full"])
 const RAILWAY_PRIVATE_SUFFIX = ".railway.internal"
 const RAILWAY_PUBLIC_PROXY_SUFFIX = ".proxy.rlwy.net"
 
-export type DatabaseConnectionTransport =
-  | "local"
-  | "railway_private"
-  | "tls"
+export type DatabaseConnectionTransport = "local" | "railway_private" | "tls"
 
 export type ResolvedDatabaseConnection = {
   connectionString: string
@@ -56,7 +53,7 @@ export const resolveDatabaseConnection = ({
   ) {
     throw invalidDatabaseUrl(
       label,
-      "must include a database, username, and password in production.",
+      "must include a database, username, and password in production."
     )
   }
 
@@ -87,7 +84,7 @@ export const resolveDatabaseConnection = ({
   ) {
     throw invalidDatabaseUrl(
       label,
-      "must require TLS for every non-private database connection.",
+      "must require TLS for every non-private database connection."
     )
   }
 

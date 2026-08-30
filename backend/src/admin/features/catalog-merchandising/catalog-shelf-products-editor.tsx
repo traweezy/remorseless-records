@@ -1,10 +1,6 @@
 "use client"
 
-import {
-  memo,
-  useCallback,
-  type ChangeEvent,
-} from "react"
+import { memo, useCallback, type ChangeEvent } from "react"
 import { Trash } from "@medusajs/icons"
 import { Alert, Button, Input, Label, Text } from "@medusajs/ui"
 
@@ -53,35 +49,35 @@ const ProductLineCard = memo<ProductLineCardProps>(
       (nextProduct: AdminProduct) => {
         onProductSelect(line.key, nextProduct)
       },
-      [line.key, onProductSelect],
+      [line.key, onProductSelect]
     )
 
     const handleOrderChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
         onChange(line.key, { sortOrder: readInputValue(event) })
       },
-      [line.key, onChange],
+      [line.key, onChange]
     )
 
     const handlePinnedChange = useCallback(
       (checked: boolean) => {
         onChange(line.key, { isPinned: checked })
       },
-      [line.key, onChange],
+      [line.key, onChange]
     )
 
     const handleStartsAtChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
         onChange(line.key, { startsAt: readInputValue(event) })
       },
-      [line.key, onChange],
+      [line.key, onChange]
     )
 
     const handleEndsAtChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
         onChange(line.key, { endsAt: readInputValue(event) })
       },
-      [line.key, onChange],
+      [line.key, onChange]
     )
 
     const handleMoveUp = useCallback(() => {
@@ -192,7 +188,7 @@ const ProductLineCard = memo<ProductLineCardProps>(
         </div>
       </li>
     )
-  },
+  }
 )
 
 ProductLineCard.displayName = "ProductLineCard"
@@ -211,24 +207,77 @@ type CatalogShelfProductsEditorProps = {
   productById: Map<string, AdminProduct>
 }
 
-export const CatalogShelfProductsEditor =
-  memo<CatalogShelfProductsEditorProps>(
-    ({
-      disabled = false,
-      lines,
-      lookupError = null,
-      lookupRetrying = false,
-      onAdd,
-      onChange,
-      onMove,
-      onProductSelect,
-      onRemove,
-      onRetryLookup,
-      productById,
-    }) => (
-      <div className="min-w-0 p-4">
-        <AdminSectionHeader
-          actions={
+export const CatalogShelfProductsEditor = memo<CatalogShelfProductsEditorProps>(
+  ({
+    disabled = false,
+    lines,
+    lookupError = null,
+    lookupRetrying = false,
+    onAdd,
+    onChange,
+    onMove,
+    onProductSelect,
+    onRemove,
+    onRetryLookup,
+    productById,
+  }) => (
+    <div className="min-w-0 p-4">
+      <AdminSectionHeader
+        actions={
+          <Button
+            disabled={disabled}
+            onClick={onAdd}
+            size="small"
+            type="button"
+            variant="secondary"
+          >
+            Add product
+          </Button>
+        }
+        description="Choose products from the full catalog, then order, pin, or schedule each item."
+        title="Products"
+      />
+
+      {lookupError ? (
+        <Alert className="mt-4" role="alert" variant="error">
+          <Text weight="plus">Selected product details could not load</Text>
+          <Text size="small">{lookupError}</Text>
+          {onRetryLookup ? (
+            <Button
+              className="mt-3"
+              disabled={lookupRetrying}
+              isLoading={lookupRetrying}
+              onClick={onRetryLookup}
+              size="small"
+              type="button"
+              variant="secondary"
+            >
+              Try again
+            </Button>
+          ) : null}
+        </Alert>
+      ) : null}
+
+      {lines.length > 0 ? (
+        <ol className="mt-4 min-w-0 space-y-3">
+          {lines.map((line, index) => (
+            <ProductLineCard
+              disabled={disabled}
+              index={index}
+              key={line.key}
+              line={line}
+              onChange={onChange}
+              onMove={onMove}
+              onProductSelect={onProductSelect}
+              onRemove={onRemove}
+              product={productById.get(line.productId)}
+              total={lines.length}
+            />
+          ))}
+        </ol>
+      ) : (
+        <AdminEmptyState
+          action={
             <Button
               disabled={disabled}
               onClick={onAdd}
@@ -236,71 +285,17 @@ export const CatalogShelfProductsEditor =
               type="button"
               variant="secondary"
             >
-              Add product
+              Add the first product
             </Button>
           }
-          description="Choose products from the full catalog, then order, pin, or schedule each item."
-          title="Products"
+          className="mt-4 min-h-44 rounded-lg border border-dashed border-ui-border-base"
+          description="Automatic shelves can stay empty. Add products when you want manual or pinned placements."
+          headingLevel="h3"
+          title="No manual products"
         />
-
-        {lookupError ? (
-          <Alert className="mt-4" role="alert" variant="error">
-            <Text weight="plus">Selected product details could not load</Text>
-            <Text size="small">{lookupError}</Text>
-            {onRetryLookup ? (
-              <Button
-                className="mt-3"
-                disabled={lookupRetrying}
-                isLoading={lookupRetrying}
-                onClick={onRetryLookup}
-                size="small"
-                type="button"
-                variant="secondary"
-              >
-                Try again
-              </Button>
-            ) : null}
-          </Alert>
-        ) : null}
-
-        {lines.length > 0 ? (
-          <ol className="mt-4 min-w-0 space-y-3">
-            {lines.map((line, index) => (
-              <ProductLineCard
-                disabled={disabled}
-                index={index}
-                key={line.key}
-                line={line}
-                onChange={onChange}
-                onMove={onMove}
-                onProductSelect={onProductSelect}
-                onRemove={onRemove}
-                product={productById.get(line.productId)}
-                total={lines.length}
-              />
-            ))}
-          </ol>
-        ) : (
-          <AdminEmptyState
-            action={
-              <Button
-                disabled={disabled}
-                onClick={onAdd}
-                size="small"
-                type="button"
-                variant="secondary"
-              >
-                Add the first product
-              </Button>
-            }
-            className="mt-4 min-h-44 rounded-lg border border-dashed border-ui-border-base"
-            description="Automatic shelves can stay empty. Add products when you want manual or pinned placements."
-            headingLevel="h3"
-            title="No manual products"
-          />
-        )}
-      </div>
-    ),
+      )}
+    </div>
   )
+)
 
 CatalogShelfProductsEditor.displayName = "CatalogShelfProductsEditor"

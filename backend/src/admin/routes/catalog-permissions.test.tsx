@@ -57,7 +57,7 @@ const protectedCatalogRoutes: readonly ProtectedCatalogRoute[] = [
     name: "Catalog Merchandising",
     path: "/catalog-merchandising",
     primaryPermission: adminPermissionKey(
-      catalogAdminActions.merchandising.read,
+      catalogAdminActions.merchandising.read
     ),
     routePattern: "/catalog-merchandising",
   },
@@ -84,7 +84,7 @@ const renderDeniedRoute = ({
           <Route element={<Component />} path={routePattern} />
         </Routes>
       </QueryClientProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
   const catalogQueryKeys = queryClient
     .getQueryCache()
@@ -101,7 +101,7 @@ describe("Catalog Admin route permissions", () => {
     "declares the $name primary route permission",
     ({ handle, primaryPermission }) => {
       expect(handle.permissions).toBe(primaryPermission)
-    },
+    }
   )
 
   it.each(protectedCatalogRoutes)(
@@ -118,6 +118,6 @@ describe("Catalog Admin route permissions", () => {
       expect(markup).toContain(`${name} workspace`)
       expect(markup).not.toContain(marker)
       expect(catalogQueryKeys).toEqual([])
-    },
+    }
   )
 })

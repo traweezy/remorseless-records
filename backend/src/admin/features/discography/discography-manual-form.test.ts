@@ -37,17 +37,21 @@ const entry: DiscographyEntry = {
 describe("discography historical form", () => {
   it("keeps a new untouched form invalid until required fields are present", () => {
     const incomplete = {
-        ...valuesFromDiscographyEntry(entry),
-        artist: "",
-        releaseTitle: "",
-      }
-    expect(discographyManualDraftSchema.safeParse(incomplete).success).toBe(true)
-    expect(discographyManualFormSchema.safeParse(incomplete).success).toBe(false)
+      ...valuesFromDiscographyEntry(entry),
+      artist: "",
+      releaseTitle: "",
+    }
+    expect(discographyManualDraftSchema.safeParse(incomplete).success).toBe(
+      true
+    )
+    expect(discographyManualFormSchema.safeParse(incomplete).success).toBe(
+      false
+    )
     expect(discographyManualValidationIssues(incomplete)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ targetId: "discography-artist" }),
         expect.objectContaining({ targetId: "discography-release-title" }),
-      ]),
+      ])
     )
   })
 
@@ -76,8 +80,8 @@ describe("discography historical form", () => {
           formats: input.formats,
           tags: input.tags,
         },
-        input,
-      ),
+        input
+      )
     ).toBe(true)
   })
 

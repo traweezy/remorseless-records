@@ -176,10 +176,7 @@ export const enforceRateLimit = (
       title: "Too many requests",
       detail: "Too many requests. Please try again shortly.",
     })
-    response.headers.set(
-      "Retry-After",
-      String(decision.retryAfterSeconds)
-    )
+    response.headers.set("Retry-After", String(decision.retryAfterSeconds))
     return response
   })
 }

@@ -92,10 +92,7 @@ const workflowData = (output: unknown) => ({
   output: new StepResponse(output, output).toJSON(),
 })
 
-const installStepDoubles = (
-  failAt: string | null,
-  compensated: string[],
-) => {
+const installStepDoubles = (failAt: string | null, compensated: string[]) => {
   const handlers = getWorkflow().handlers_
 
   for (const boundary of expectedBoundaries) {
@@ -116,7 +113,7 @@ const installStepDoubles = (
 
 const expectedCompensationsThrough = (failedAction: string) => {
   const failureIndex = expectedBoundaries.findIndex(
-    ({ action }) => action === failedAction,
+    ({ action }) => action === failedAction
   )
 
   return expectedBoundaries
@@ -159,7 +156,7 @@ describe("catalog product creation workflow contract", () => {
   it("keeps every external boundary and compensation owner explicit", () => {
     expect(readBoundaries()).toEqual(expectedBoundaries)
     expect(Array.from(workflow.handlers_.keys())).toEqual(
-      expectedBoundaries.map(({ action }) => action),
+      expectedBoundaries.map(({ action }) => action)
     )
   })
 
@@ -192,9 +189,9 @@ describe("catalog product creation workflow contract", () => {
       })
 
       expect(
-        execution.errors.map(({ error }) => errorMessage(error)),
+        execution.errors.map(({ error }) => errorMessage(error))
       ).toContain(`Injected failure at ${failedAction}`)
       expect(compensated).toEqual(expectedCompensationsThrough(failedAction))
-    },
+    }
   )
 })

@@ -48,14 +48,12 @@ export const GET = async (
     filters.is_active = active
   }
 
-  const [bundles, count] = await catalogService.listAndCountCatalogBundleProfiles(
-    filters,
-    {
+  const [bundles, count] =
+    await catalogService.listAndCountCatalogBundleProfiles(filters, {
       skip,
       take,
       order: { created_at: "DESC" },
-    }
-  )
+    })
   const serialized = await Promise.all(
     bundles.map(async (bundle) => ({
       bundle: serializeCatalogBundleProfile(bundle),

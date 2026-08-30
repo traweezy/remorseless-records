@@ -1,26 +1,26 @@
 import type {
   TaxCollectionMode,
   TaxProviderName,
-} from "../../modules/tax-control/constants";
-import { createTaxContextFingerprint } from "./context";
+} from "../../modules/tax-control/constants"
+import { createTaxContextFingerprint } from "./context"
 
-type UnknownRecord = Record<string, unknown>;
+type UnknownRecord = Record<string, unknown>
 
 const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null;
+  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
 
 const text = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null;
+  typeof value === "string" && value.trim() ? value.trim() : null
 
 const sorted = (values: unknown[]): unknown[] =>
   [...values].sort((left, right) =>
-    JSON.stringify(left).localeCompare(JSON.stringify(right)),
-  );
+    JSON.stringify(left).localeCompare(JSON.stringify(right))
+  )
 
 const adjustmentsFrom = (value: unknown): UnknownRecord[] =>
   (Array.isArray(value) ? value : [])
     .map(asRecord)
-    .filter((adjustment): adjustment is UnknownRecord => adjustment !== null);
+    .filter((adjustment): adjustment is UnknownRecord => adjustment !== null)
 
 export const createTaxSubjectFingerprint = ({
   collectionMode,
@@ -28,12 +28,12 @@ export const createTaxSubjectFingerprint = ({
   orderOrCart,
   provider,
 }: {
-  collectionMode: TaxCollectionMode;
-  generation: number;
-  orderOrCart: UnknownRecord;
-  provider: TaxProviderName | null;
+  collectionMode: TaxCollectionMode
+  generation: number
+  orderOrCart: UnknownRecord
+  provider: TaxProviderName | null
 }): string => {
-  const address = asRecord(orderOrCart.shipping_address);
+  const address = asRecord(orderOrCart.shipping_address)
   const items = Array.isArray(orderOrCart.items)
     ? orderOrCart.items
         .map(asRecord)
@@ -48,10 +48,10 @@ export const createTaxSubjectFingerprint = ({
             adjustmentsFrom(item.adjustments).map((adjustment) => ({
               amount: String(adjustment.amount ?? ""),
               inclusive: adjustment.is_tax_inclusive === true,
-            })),
+            }))
           ),
         }))
-    : [];
+    : []
   const shippingMethods = Array.isArray(orderOrCart.shipping_methods)
     ? orderOrCart.shipping_methods
         .map(asRecord)
@@ -63,10 +63,10 @@ export const createTaxSubjectFingerprint = ({
             adjustmentsFrom(method.adjustments).map((adjustment) => ({
               amount: String(adjustment.amount ?? ""),
               inclusive: adjustment.is_tax_inclusive === true,
-            })),
+            }))
           ),
         }))
-    : [];
+    : []
 
   return createTaxContextFingerprint({
     address: {
@@ -84,5 +84,5 @@ export const createTaxSubjectFingerprint = ({
     provider,
     shippingMethods: sorted(shippingMethods),
     subjectId: text(orderOrCart.id),
-  });
-};
+  })
+}

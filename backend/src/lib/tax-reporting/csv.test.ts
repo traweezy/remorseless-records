@@ -1,11 +1,11 @@
-import { taxDestinationsCsv, taxTransactionsCsv } from "./csv";
-import { parseTaxReportPeriod } from "./periods";
-import type { TaxRecord } from "./types";
+import { taxDestinationsCsv, taxTransactionsCsv } from "./csv"
+import { parseTaxReportPeriod } from "./periods"
+import type { TaxRecord } from "./types"
 
 const period = parseTaxReportPeriod({
   endDate: "2027-03-01",
   startDate: "2026-03-01",
-});
+})
 
 describe("tax reporting CSV", () => {
   it("uses signed refund rows and neutralizes spreadsheet formulas", () => {
@@ -41,7 +41,7 @@ describe("tax reporting CSV", () => {
       total: "5.4000",
       type: "refund",
       unclassifiedSales: "0.0000",
-    };
+    }
     const csv = taxTransactionsCsv({
       filingState: "NY",
       generatedAt: "2026-07-21T12:00:00.000Z",
@@ -69,16 +69,16 @@ describe("tax reporting CSV", () => {
           unclassifiedSales: "0.0000",
         },
       ],
-    });
+    })
 
-    expect(csv.startsWith("\uFEFFrecord_type")).toBe(true);
-    expect(csv).toContain("refund,collect,NY,'=cmd() 14201 — verify locality");
-    expect(csv).toContain("unclassified_sales_pending_review");
-    expect(csv).toContain(",-5.0000,");
-    expect(csv).toContain("'=cmd()");
-    expect(csv).toContain("'+review");
-    expect(csv).toContain("prior_period");
-  });
+    expect(csv.startsWith("\uFEFFrecord_type")).toBe(true)
+    expect(csv).toContain("refund,collect,NY,'=cmd() 14201 — verify locality")
+    expect(csv).toContain("unclassified_sales_pending_review")
+    expect(csv).toContain(",-5.0000,")
+    expect(csv).toContain("'=cmd()")
+    expect(csv).toContain("'+review")
+    expect(csv).toContain("prior_period")
+  })
 
   it("preserves each destination and summary currency", () => {
     const summaries = [
@@ -102,7 +102,7 @@ describe("tax reporting CSV", () => {
         taxableSales: "10.0000",
         unclassifiedSales: "0.0000",
       },
-    ];
+    ]
     const csv = taxDestinationsCsv({
       destinations: [
         {
@@ -130,12 +130,12 @@ describe("tax reporting CSV", () => {
       generatedAt: "2026-07-21T12:00:00.000Z",
       period,
       summaries,
-    });
+    })
 
-    expect(csv).toContain("IDF,");
-    expect(csv).toContain(",eur,10.0000,");
-    expect(csv).toContain("eur,10.0000,0.0000,10.0000");
-  });
+    expect(csv).toContain("IDF,")
+    expect(csv).toContain(",eur,10.0000,")
+    expect(csv).toContain("eur,10.0000,0.0000,10.0000")
+  })
 
   it("adds state-specific filing buckets to destination workpapers", () => {
     const csv = taxDestinationsCsv({
@@ -165,10 +165,10 @@ describe("tax reporting CSV", () => {
       generatedAt: "2026-07-21T12:00:00.000Z",
       period,
       summaries: [],
-    });
+    })
 
-    expect(csv).toContain("filing_state,filing_bucket,country_code,state_code");
-    expect(csv).toContain("PA,Philadelphia local,US,PA");
-    expect(csv).toContain("filing_state,PA");
-  });
-});
+    expect(csv).toContain("filing_state,filing_bucket,country_code,state_code")
+    expect(csv).toContain("PA,Philadelphia local,US,PA")
+    expect(csv).toContain("filing_state,PA")
+  })
+})

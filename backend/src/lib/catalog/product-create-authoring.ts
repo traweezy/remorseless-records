@@ -80,7 +80,9 @@ export type CatalogProductVariantBatchResult = {
 const creationAggregateId = (idempotencyKey: string): string =>
   `catalog-product-create:${idempotencyKey}`
 
-const isCreateResult = (value: unknown): value is CatalogProductCreateResult => {
+const isCreateResult = (
+  value: unknown
+): value is CatalogProductCreateResult => {
   const result = coerceCatalogJsonRecord(value)
   return (
     catalogProductCreationKinds.some((kind) => kind === result.kind) &&
@@ -94,12 +96,12 @@ const isCreateResult = (value: unknown): value is CatalogProductCreateResult => 
 export const inspectCatalogProductCreation = async (
   catalogService: CatalogService,
   actorId: string | null,
-  idempotencyKey: string,
+  idempotencyKey: string
 ): Promise<CatalogProductCreationState> => {
   const existing = (
     await catalogService.listCatalogAuthoringOperations(
       { idempotency_key: idempotencyKey },
-      { take: 1 },
+      { take: 1 }
     )
   )[0]
   if (!existing) {
@@ -115,7 +117,7 @@ export const inspectCatalogProductCreation = async (
     if (!isCreateResult(existing.result)) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The completed catalog creation command has no valid result.",
+        "The completed catalog creation command has no valid result."
       )
     }
     return "succeeded"
@@ -132,14 +134,14 @@ export const inspectCatalogProductCreation = async (
 
 export const beginCatalogProductCreation = async (
   catalogService: CatalogService,
-  input: CatalogProductCreateCommandInput,
+  input: CatalogProductCreateCommandInput
 ): Promise<CatalogProductCreateOperation> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     const existing = (
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
     )[0]
     if (existing) {
@@ -151,13 +153,13 @@ export const beginCatalogProductCreation = async (
       if (!exactCommand || existing.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The catalog creation idempotency key cannot be replayed for this command.",
+          "The catalog creation idempotency key cannot be replayed for this command."
         )
       }
       if (!isCreateResult(existing.result)) {
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          "The completed catalog creation command has no valid result.",
+          "The completed catalog creation command has no valid result."
         )
       }
       return {
@@ -181,12 +183,12 @@ export const beginCatalogProductCreation = async (
           status: "pending",
         },
       ],
-      sharedContext,
+      sharedContext
     )
     if (!operation) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog creation audit record was not created.",
+        "The catalog creation audit record was not created."
       )
     }
     return { operationId: operation.id, replayed: false, result: null }
@@ -195,13 +197,13 @@ export const beginCatalogProductCreation = async (
 export const completeCatalogProductCreation = async (
   catalogService: CatalogService,
   operationId: string,
-  result: CatalogProductCreateResult,
+  result: CatalogProductCreateResult
 ): Promise<void> =>
   catalogService.completeCatalogAuthoringOperation(operationId, result)
 
 export const compensateCatalogProductCreation = async (
   catalogService: CatalogService,
-  operationId: string,
+  operationId: string
 ): Promise<void> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     await catalogService.updateCatalogAuthoringOperations(
@@ -215,7 +217,7 @@ export const compensateCatalogProductCreation = async (
           status: "compensated",
         },
       ],
-      sharedContext,
+      sharedContext
     )
   })
 
@@ -224,7 +226,7 @@ export const buildCatalogVariantProfileMutation = (
   productId: string,
   productProfileId: string,
   target: VariantTarget,
-  index: number,
+  index: number
 ): CatalogVariantProfileMutationInput => {
   const patch = {
     ...target.definition.profile,
@@ -248,7 +250,7 @@ export const buildCatalogVariantProfileMutation = (
     expectedVersion: 0,
     idempotencyKey: deriveCatalogCommandIdempotencyKey(
       input.idempotencyKey,
-      `variant:${index}:${target.definition.key}`,
+      `variant:${index}:${target.definition.key}`
     ),
     patch,
     requestSha256: hashCatalogCommand(commandPayload),
@@ -256,7 +258,7 @@ export const buildCatalogVariantProfileMutation = (
 }
 
 const compensationFromMutation = (
-  mutation: CatalogVariantProfileMutationResult,
+  mutation: CatalogVariantProfileMutationResult
 ): VariantMutationCompensation => ({
   aggregateId: mutation.variantId,
   createdReferenceValueIds: mutation.createdReferenceValueIds,
@@ -267,15 +269,12 @@ const compensationFromMutation = (
 const compensateVariantMutations = async (
   catalogService: CatalogService,
   compensations: VariantMutationCompensation[],
-  dependencies: VariantMutationDependencies,
+  dependencies: VariantMutationDependencies
 ): Promise<void> => {
   const failures: unknown[] = []
   for (const compensation of [...compensations].reverse()) {
     try {
-      await dependencies.compensate(
-        catalogService,
-        compensation,
-      )
+      await dependencies.compensate(catalogService, compensation)
     } catch (error) {
       failures.push(error)
     }
@@ -283,7 +282,7 @@ const compensateVariantMutations = async (
   if (failures.length) {
     throw new AggregateError(
       failures,
-      "One or more variant profile compensations failed.",
+      "One or more variant profile compensations failed."
     )
   }
 }
@@ -294,7 +293,7 @@ export const mutateCatalogProductVariantProfiles = async (
   productId: string,
   productProfileId: string,
   targets: VariantTarget[],
-  dependencies: VariantMutationDependencies = variantMutationDependencies,
+  dependencies: VariantMutationDependencies = variantMutationDependencies
 ): Promise<CatalogProductVariantBatchResult> => {
   const compensations: VariantMutationCompensation[] = []
   const profileIds: string[] = []
@@ -307,8 +306,8 @@ export const mutateCatalogProductVariantProfiles = async (
           productId,
           productProfileId,
           target,
-          index,
-        ),
+          index
+        )
       )
       if (!mutation.replayed) {
         compensations.push(compensationFromMutation(mutation))
@@ -319,7 +318,7 @@ export const mutateCatalogProductVariantProfiles = async (
             profileId: mutation.profileId,
             variantId: mutation.variantId,
             version: mutation.version,
-          },
+          }
         )
       }
       profileIds.push(mutation.profileId)
@@ -329,12 +328,12 @@ export const mutateCatalogProductVariantProfiles = async (
       await compensateVariantMutations(
         catalogService,
         compensations,
-        dependencies,
+        dependencies
       )
     } catch (compensationError) {
       throw new AggregateError(
         [error, compensationError],
-        "Variant profile creation and its rollback both failed.",
+        "Variant profile creation and its rollback both failed."
       )
     }
     throw error
@@ -350,10 +349,6 @@ export const mutateCatalogProductVariantProfiles = async (
 export const compensateCatalogProductVariantProfiles = async (
   catalogService: CatalogService,
   result: CatalogProductVariantBatchResult,
-  dependencies: VariantMutationDependencies = variantMutationDependencies,
+  dependencies: VariantMutationDependencies = variantMutationDependencies
 ): Promise<void> =>
-  compensateVariantMutations(
-    catalogService,
-    result.compensations,
-    dependencies,
-  )
+  compensateVariantMutations(catalogService, result.compensations, dependencies)

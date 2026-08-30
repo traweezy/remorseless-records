@@ -20,7 +20,7 @@ const productIdFromRequest = (req: MedusaRequest): string => {
   if (!productId) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Product id is required.",
+      "Product id is required."
     )
   }
   return productId
@@ -28,7 +28,7 @@ const productIdFromRequest = (req: MedusaRequest): string => {
 
 export const GET = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const productId = productIdFromRequest(req)
   await assertProductExists(req, productId)
@@ -40,13 +40,13 @@ export const GET = async (
 
 export const PUT = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const parsed = catalogProductMediaReplaceSchema.safeParse(req.body ?? {})
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid catalog product media payload.",
+      "Invalid catalog product media payload."
     )
   }
   const productId = productIdFromRequest(req)
@@ -64,11 +64,7 @@ export const PUT = async (
         auth_context?: { actor_id?: string | null }
       }
     ).auth_context?.actor_id ?? null
-  const {
-    expectedVersion,
-    idempotencyKey,
-    media,
-  } = parsed.data
+  const { expectedVersion, idempotencyKey, media } = parsed.data
   const requestSha256 = hashCatalogCommand({
     command: "catalog.product-media.replace",
     expectedVersion,
@@ -98,6 +94,5 @@ export const PUT = async (
 
 export const DELETE = async (
   req: MedusaRequest,
-  res: MedusaResponse,
-): Promise<void> =>
-  rejectCatalogHardDeletion(req, res, "catalog product media")
+  res: MedusaResponse
+): Promise<void> => rejectCatalogHardDeletion(req, res, "catalog product media")

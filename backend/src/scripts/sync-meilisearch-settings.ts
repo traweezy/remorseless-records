@@ -47,11 +47,7 @@ const areEqual = (left: unknown, right: unknown): boolean => {
 }
 
 const isConfiguredSubset = (actual: unknown, expected: unknown): boolean => {
-  if (
-    !expected ||
-    typeof expected !== "object" ||
-    Array.isArray(expected)
-  ) {
+  if (!expected || typeof expected !== "object" || Array.isArray(expected)) {
     return areEqual(actual, expected)
   }
   if (!actual || typeof actual !== "object" || Array.isArray(actual)) {
@@ -59,10 +55,7 @@ const isConfiguredSubset = (actual: unknown, expected: unknown): boolean => {
   }
 
   return Object.entries(expected).every(([key, value]) => {
-    return isConfiguredSubset(
-      (actual as Record<string, unknown>)[key],
-      value
-    )
+    return isConfiguredSubset((actual as Record<string, unknown>)[key], value)
   })
 }
 
@@ -143,7 +136,9 @@ export default async function syncMeilisearchSettings({
   })
 
   const expectedSettings = productConfig.indexSettings ?? {}
-  const currentSettings = await meilisearch.getIndex(PRODUCTS_INDEX).getSettings()
+  const currentSettings = await meilisearch
+    .getIndex(PRODUCTS_INDEX)
+    .getSettings()
 
   assertConfiguredIndexSettings({
     actual: currentSettings,
@@ -151,5 +146,7 @@ export default async function syncMeilisearchSettings({
     indexKey: PRODUCTS_INDEX,
   })
 
-  logger.info("[meilisearch] Synchronized index settings for 'products' and validated attributes.")
+  logger.info(
+    "[meilisearch] Synchronized index settings for 'products' and validated attributes."
+  )
 }

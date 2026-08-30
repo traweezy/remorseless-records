@@ -7,9 +7,7 @@ import { homedir } from "node:os"
 
 import indexSettings from "../../config/meilisearch-settings.json"
 import { writePrivateJsonArtifact } from "../lib/security/private-json-artifact"
-import {
-  assertConfiguredIndexSettings,
-} from "./sync-meilisearch-settings"
+import { assertConfiguredIndexSettings } from "./sync-meilisearch-settings"
 import {
   loadProductIndexIdentity,
   validateProductIndex,
@@ -39,9 +37,7 @@ type SearchIndex = {
   deleteDocuments: (documentIds: string[]) => Promise<EnqueuedTask>
   getSettings: () => Promise<Record<string, unknown>>
   getStats: () => Promise<{ numberOfDocuments: number }>
-  updateSettings: (
-    settings: Record<string, unknown>
-  ) => Promise<EnqueuedTask>
+  updateSettings: (settings: Record<string, unknown>) => Promise<EnqueuedTask>
   tasks: {
     waitForTask: (
       task: EnqueuedTask,
@@ -139,9 +135,9 @@ export const upsertAllProductDocuments = async ({
 const isIndexNotFound = (error: unknown): boolean => {
   return Boolean(
     error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "index_not_found"
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "index_not_found"
   )
 }
 
@@ -199,9 +195,7 @@ type SearchRebuildCompletionReport = {
 export const writeCompletionReport = async (
   report: SearchRebuildCompletionReport
 ): Promise<string> => {
-  const timestamp = new Date()
-    .toISOString()
-    .replaceAll(":", "-")
+  const timestamp = new Date().toISOString().replaceAll(":", "-")
   return writePrivateJsonArtifact({
     baseDirectory: homedir(),
     fileName: `completed-${timestamp}.json`,
@@ -284,7 +278,11 @@ export default async function reindexMeilisearch({
   })
   if (candidateAlreadyExisted) {
     const clearTask = await candidate.deleteAllDocuments()
-    await waitForTask(candidate, clearTask, `clear retry candidate '${candidateIndex}'`)
+    await waitForTask(
+      candidate,
+      clearTask,
+      `clear retry candidate '${candidateIndex}'`
+    )
   }
 
   const settingsTask = await candidate.updateSettings(
@@ -321,10 +319,7 @@ export default async function reindexMeilisearch({
     indexKey: PRODUCTS_INDEX,
     meilisearch,
   })
-  const swapTask = await adminClient.swapIndexes(
-    PRODUCTS_INDEX,
-    candidateIndex
-  )
+  const swapTask = await adminClient.swapIndexes(PRODUCTS_INDEX, candidateIndex)
   await waitForTask(live, swapTask, "atomic product-index swap")
 
   const reconciliation = await reconcileLiveProductIndex({
@@ -350,7 +345,11 @@ export default async function reindexMeilisearch({
   })
   for (const staleIndex of staleIndexes) {
     const deleteTask = await adminClient.deleteIndex(staleIndex)
-    await waitForTask(live, deleteTask, `delete stale candidate '${staleIndex}'`)
+    await waitForTask(
+      live,
+      deleteTask,
+      `delete stale candidate '${staleIndex}'`
+    )
   }
 
   const completedAt = new Date()

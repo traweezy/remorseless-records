@@ -1,12 +1,6 @@
 "use client"
 
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-  type MouseEvent,
-} from "react"
+import { memo, useCallback, useMemo, useState, type MouseEvent } from "react"
 import { Button, Text } from "@medusajs/ui"
 
 import { ConfirmAction } from "../../components/confirm-action"
@@ -27,9 +21,9 @@ export const CatalogMerchandiseTemplates =
     const pendingTemplate = useMemo(
       () =>
         catalogCreationMerchandiseTemplates.find(
-          (template) => template.id === pendingTemplateId,
+          (template) => template.id === pendingTemplateId
         ) ?? null,
-      [pendingTemplateId],
+      [pendingTemplateId]
     )
     const handleChoose = useCallback((event: MouseEvent<HTMLButtonElement>) => {
       const templateId = (
@@ -39,7 +33,7 @@ export const CatalogMerchandiseTemplates =
       ).dataset.templateId
       if (
         catalogCreationMerchandiseTemplates.some(
-          (template) => template.id === templateId,
+          (template) => template.id === templateId
         )
       ) {
         setPendingTemplateId(templateId as CatalogCreationMerchandiseTemplateId)
@@ -59,7 +53,11 @@ export const CatalogMerchandiseTemplates =
         aria-labelledby="catalog-merchandise-template-title"
         className="rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4"
       >
-        <Text id="catalog-merchandise-template-title" size="small" weight="plus">
+        <Text
+          id="catalog-merchandise-template-title"
+          size="small"
+          weight="plus"
+        >
           Start from a merchandise template
         </Text>
         <Text className="mt-1 text-ui-fg-subtle" size="xsmall">

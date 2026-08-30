@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import {
   memo,
@@ -8,8 +8,8 @@ import {
   useState,
   type MouseEvent,
   type ReactNode,
-} from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+} from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Alert,
   Button,
@@ -20,24 +20,24 @@ import {
   Table,
   Text,
   toast,
-} from "@medusajs/ui";
-import { operationsAdminActions } from "../../../lib/admin-permissions";
-import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
+} from "@medusajs/ui"
+import { operationsAdminActions } from "../../../lib/admin-permissions"
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import {
   AdminPageHeader,
   AdminSingleColumnLayout,
-} from "../../components/admin-page";
-import { AdminRetryState } from "../../components/admin-retry-state";
+} from "../../components/admin-page"
+import { AdminRetryState } from "../../components/admin-retry-state"
 import {
   replaceLegacyTaxControlLocation,
   type ReplaceAdminLocation,
-} from "../../features/operations/operations-routes";
-import { useAdminPermissions } from "../../lib/admin-permissions";
-import { getAdminRequestErrorMessage } from "../../lib/admin-request";
+} from "../../features/operations/operations-routes"
+import { useAdminPermissions } from "../../lib/admin-permissions"
+import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 import {
   TaxControlTransitionPrompt,
   type TaxControlTransitionConfirmation,
-} from "./provider-switch-prompt";
+} from "./provider-switch-prompt"
 import {
   refreshTaxRateIoQuota,
   TAX_CONTROL_QUERY_KEY,
@@ -45,80 +45,80 @@ import {
   transitionTaxControl,
   type ProviderReadiness,
   type TaxControlSnapshot,
-} from "./query";
+} from "./query"
 import {
   collectionChoiceLabel,
   providerLabel,
   taxControlTransitionWasApplied,
   type CollectionMode,
   type ProviderName,
-} from "./ui-state";
+} from "./ui-state"
 
 type ProviderCardProps = {
-  active: boolean;
-  canUpdate: boolean;
-  children?: ReactNode;
-  description: string;
-  name: string;
-  onSwitch: (provider: ProviderName, trigger: HTMLButtonElement) => void;
-  provider: ProviderName;
-  readiness: ProviderReadiness;
-  saving: boolean;
-  selectedForReenable: boolean;
-};
+  active: boolean
+  canUpdate: boolean
+  children?: ReactNode
+  description: string
+  name: string
+  onSwitch: (provider: ProviderName, trigger: HTMLButtonElement) => void
+  provider: ProviderName
+  readiness: ProviderReadiness
+  saving: boolean
+  selectedForReenable: boolean
+}
 
 type TaxControlTransitionDraft = {
-  idempotencyKey: string;
-  targetCollectionMode: CollectionMode;
-  targetProvider: ProviderName;
-};
+  idempotencyKey: string
+  targetCollectionMode: CollectionMode
+  targetProvider: ProviderName
+}
 
 const incidentLabel = (
-  incident: TaxControlSnapshot["evidence"]["incidents"][number],
+  incident: TaxControlSnapshot["evidence"]["incidents"][number]
 ): string => {
   if (incident.status === "disputed") {
-    return "Disputed";
+    return "Disputed"
   }
   if (incident.status === "refund_pending") {
-    return "Tax reversal pending";
+    return "Tax reversal pending"
   }
   if (incident.status === "refund_ledger_mismatch") {
-    return "Refund ledger mismatch";
+    return "Refund ledger mismatch"
   }
   if (incident.associationStatus?.includes("refund_failed:")) {
-    return "Refund failed";
+    return "Refund failed"
   }
   if (incident.associationStatus?.includes("refund_list_truncated")) {
-    return "Refund audit incomplete";
+    return "Refund audit incomplete"
   }
-  return "Tax association failed";
-};
+  return "Tax association failed"
+}
 
 const formatDate = (value: string | null): string => {
   if (!value) {
-    return "Not yet";
+    return "Not yet"
   }
-  const date = new Date(value);
+  const date = new Date(value)
   return Number.isNaN(date.getTime())
     ? "Unknown"
     : new Intl.DateTimeFormat(undefined, {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(date);
-};
+      }).format(date)
+}
 
 const formatMinorAmount = (amount: number, currencyCode: string): string =>
   new Intl.NumberFormat(undefined, {
     currency: currencyCode.toUpperCase(),
     style: "currency",
-  }).format(amount / 100);
+  }).format(amount / 100)
 
 const quotaSourceLabel = (source: string): string =>
   source === "manual_refresh"
     ? "manual refresh"
     : source === "checkout_lookup"
       ? "checkout calculation"
-      : "provider response";
+      : "provider response"
 
 const ProviderCard = memo<ProviderCardProps>(
   ({
@@ -135,10 +135,10 @@ const ProviderCard = memo<ProviderCardProps>(
   }) => {
     const handleSwitch = useCallback(
       (event: MouseEvent<HTMLButtonElement>) => {
-        onSwitch(provider, event.currentTarget);
+        onSwitch(provider, event.currentTarget)
       },
-      [onSwitch, provider],
-    );
+      [onSwitch, provider]
+    )
 
     return (
       <section
@@ -236,9 +236,9 @@ const ProviderCard = memo<ProviderCardProps>(
           )}
         </div>
       </section>
-    );
-  },
-);
+    )
+  }
+)
 
 const LoadingState = memo(() => (
   <div
@@ -252,19 +252,19 @@ const LoadingState = memo(() => (
       <Skeleton className="h-80 w-full" />
     </div>
   </div>
-));
+))
 
 export const TaxControlPageContent = memo(() => {
   const [transitionDraft, setTransitionDraft] =
-    useState<TaxControlTransitionDraft | null>(null);
-  const transitionTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const quotaRefreshLockRef = useRef(false);
-  const queryClient = useQueryClient();
-  const permissions = useAdminPermissions();
+    useState<TaxControlTransitionDraft | null>(null)
+  const transitionTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const quotaRefreshLockRef = useRef(false)
+  const queryClient = useQueryClient()
+  const permissions = useAdminPermissions()
   const canUpdate = permissions.hasPermission(
-    operationsAdminActions.taxControl.update,
-  );
-  const taxControlQuery = useQuery(taxControlQueryOptions());
+    operationsAdminActions.taxControl.update
+  )
+  const taxControlQuery = useQuery(taxControlQueryOptions())
   const {
     isPending: saving,
     mutateAsync: mutateTaxControlTransition,
@@ -272,31 +272,31 @@ export const TaxControlPageContent = memo(() => {
   } = useMutation({
     mutationFn: transitionTaxControl,
     retry: false,
-  });
+  })
   const { isPending: refreshingQuota, mutateAsync: mutateQuotaRefresh } =
     useMutation({
       mutationFn: refreshTaxRateIoQuota,
       retry: false,
-    });
-  const snapshot = taxControlQuery.data;
+    })
+  const snapshot = taxControlQuery.data
 
   const dismissTaxControlTransition = useCallback(() => {
-    const trigger = transitionTriggerRef.current;
-    setTransitionDraft(null);
+    const trigger = transitionTriggerRef.current
+    setTransitionDraft(null)
     globalThis.setTimeout(() => {
-      (
+      ;(
         trigger as unknown as {
-          focus: () => void;
+          focus: () => void
         } | null
-      )?.focus();
-    }, 0);
-  }, []);
+      )?.focus()
+    }, 0)
+  }, [])
 
   const beginTaxControlTransition = useCallback(
     (
       targetCollectionMode: CollectionMode,
       provider: ProviderName,
-      trigger: HTMLButtonElement,
+      trigger: HTMLButtonElement
     ) => {
       if (
         !canUpdate ||
@@ -304,35 +304,35 @@ export const TaxControlPageContent = memo(() => {
         (targetCollectionMode === snapshot.control.collectionMode &&
           provider === snapshot.control.activeProvider)
       ) {
-        return;
+        return
       }
       if (targetCollectionMode === "collect") {
         const readiness =
           provider === "stripe_tax"
             ? snapshot.providers.stripeTax
-            : snapshot.providers.taxRateIo;
+            : snapshot.providers.taxRateIo
         if (!readiness.ready) {
-          return;
+          return
         }
       }
 
-      transitionTriggerRef.current = trigger;
-      resetTaxControlTransition();
+      transitionTriggerRef.current = trigger
+      resetTaxControlTransition()
       setTransitionDraft({
         idempotencyKey: crypto.randomUUID(),
         targetCollectionMode,
         targetProvider: provider,
-      });
+      })
     },
-    [canUpdate, resetTaxControlTransition, snapshot],
-  );
+    [canUpdate, resetTaxControlTransition, snapshot]
+  )
 
   const beginProviderCollection = useCallback(
     (provider: ProviderName, trigger: HTMLButtonElement) => {
-      beginTaxControlTransition("collect", provider, trigger);
+      beginTaxControlTransition("collect", provider, trigger)
     },
-    [beginTaxControlTransition],
-  );
+    [beginTaxControlTransition]
+  )
 
   const beginDisableCollection = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -340,30 +340,30 @@ export const TaxControlPageContent = memo(() => {
         beginTaxControlTransition(
           "disabled",
           snapshot.control.activeProvider,
-          event.currentTarget,
-        );
+          event.currentTarget
+        )
       }
     },
-    [beginTaxControlTransition, snapshot],
-  );
+    [beginTaxControlTransition, snapshot]
+  )
 
   const cancelTaxControlTransition = useCallback(() => {
     if (!saving) {
-      dismissTaxControlTransition();
+      dismissTaxControlTransition()
     }
-  }, [dismissTaxControlTransition, saving]);
+  }, [dismissTaxControlTransition, saving])
 
   const confirmTaxControlTransition = useCallback(
     async ({ acknowledgement, reason }: TaxControlTransitionConfirmation) => {
       if (!canUpdate || !snapshot || !transitionDraft || saving) {
-        return;
+        return
       }
       const transitionBase = {
         expectedGeneration: snapshot.control.generation,
         idempotencyKey: transitionDraft.idempotencyKey,
         reason,
         targetProvider: transitionDraft.targetProvider,
-      };
+      }
       const input =
         transitionDraft.targetCollectionMode === "disabled"
           ? {
@@ -374,22 +374,22 @@ export const TaxControlPageContent = memo(() => {
           : {
               ...transitionBase,
               targetCollectionMode: "collect" as const,
-            };
+            }
       const targetLabel = collectionChoiceLabel(
         transitionDraft.targetCollectionMode,
-        transitionDraft.targetProvider,
-      );
+        transitionDraft.targetProvider
+      )
 
       try {
-        const next = await mutateTaxControlTransition(input);
-        queryClient.setQueryData(TAX_CONTROL_QUERY_KEY, next);
-        dismissTaxControlTransition();
-        toast.success(`${targetLabel} is now active`);
+        const next = await mutateTaxControlTransition(input)
+        queryClient.setQueryData(TAX_CONTROL_QUERY_KEY, next)
+        dismissTaxControlTransition()
+        toast.success(`${targetLabel} is now active`)
         await queryClient.invalidateQueries({
           queryKey: TAX_CONTROL_QUERY_KEY,
-        });
+        })
       } catch (caught) {
-        const reconciled = await taxControlQuery.refetch();
+        const reconciled = await taxControlQuery.refetch()
         if (
           taxControlTransitionWasApplied({
             activeProvider: reconciled.data?.control.activeProvider,
@@ -400,17 +400,17 @@ export const TaxControlPageContent = memo(() => {
             targetProvider: transitionDraft.targetProvider,
           })
         ) {
-          resetTaxControlTransition();
-          dismissTaxControlTransition();
-          toast.success(`${targetLabel} was confirmed after refresh`);
-          return;
+          resetTaxControlTransition()
+          dismissTaxControlTransition()
+          toast.success(`${targetLabel} was confirmed after refresh`)
+          return
         }
         toast.error(
           getAdminRequestErrorMessage(
             caught,
-            "The tax collection decision could not be changed.",
-          ),
-        );
+            "The tax collection decision could not be changed."
+          )
+        )
       }
     },
     [
@@ -423,46 +423,46 @@ export const TaxControlPageContent = memo(() => {
       snapshot,
       transitionDraft,
       taxControlQuery,
-    ],
-  );
+    ]
+  )
 
   const refreshQuota = useCallback(async () => {
     if (!canUpdate || quotaRefreshLockRef.current || refreshingQuota) {
-      return;
+      return
     }
-    quotaRefreshLockRef.current = true;
+    quotaRefreshLockRef.current = true
     try {
-      const next = await mutateQuotaRefresh();
-      queryClient.setQueryData(TAX_CONTROL_QUERY_KEY, next);
-      toast.success("TaxRate.io quota refreshed");
+      const next = await mutateQuotaRefresh()
+      queryClient.setQueryData(TAX_CONTROL_QUERY_KEY, next)
+      toast.success("TaxRate.io quota refreshed")
       await queryClient.invalidateQueries({
         queryKey: TAX_CONTROL_QUERY_KEY,
-      });
+      })
     } catch (caught) {
       toast.error(
         getAdminRequestErrorMessage(
           caught,
-          "TaxRate.io quota could not be refreshed.",
-        ),
-      );
+          "TaxRate.io quota could not be refreshed."
+        )
+      )
     } finally {
-      quotaRefreshLockRef.current = false;
+      quotaRefreshLockRef.current = false
     }
-  }, [canUpdate, mutateQuotaRefresh, queryClient, refreshingQuota]);
+  }, [canUpdate, mutateQuotaRefresh, queryClient, refreshingQuota])
 
   const retryLoad = useCallback(() => {
-    void taxControlQuery.refetch();
-  }, [taxControlQuery]);
+    void taxControlQuery.refetch()
+  }, [taxControlQuery])
 
   if (taxControlQuery.isPending) {
-    return <LoadingState />;
+    return <LoadingState />
   }
 
   if (!snapshot) {
     const error = getAdminRequestErrorMessage(
       taxControlQuery.error,
-      "The tax control state could not be loaded.",
-    );
+      "The tax control state could not be loaded."
+    )
     return (
       <AdminRetryState
         message={error}
@@ -470,25 +470,25 @@ export const TaxControlPageContent = memo(() => {
         retrying={taxControlQuery.isFetching}
         title="Tax control is unavailable"
       />
-    );
+    )
   }
 
-  const quota = snapshot.providers.taxRateIo.quota;
+  const quota = snapshot.providers.taxRateIo.quota
   const quotaPercent = quota
     ? Math.max(0, Math.min(100, quota.usagePercent))
-    : 0;
-  const activeProvider = snapshot.control.activeProvider;
-  const collectionMode = snapshot.control.collectionMode;
-  const collectingTax = collectionMode === "collect";
+    : 0
+  const activeProvider = snapshot.control.activeProvider
+  const collectionMode = snapshot.control.collectionMode
+  const collectingTax = collectionMode === "collect"
   const selectedProviderReadiness =
     activeProvider === "stripe_tax"
       ? snapshot.providers.stripeTax
-      : snapshot.providers.taxRateIo;
+      : snapshot.providers.taxRateIo
   const activeCalculationBasis = !collectingTax
     ? "$0.00 decision without a provider lookup"
     : activeProvider === "stripe_tax"
       ? "Shipping address and line tax codes"
-      : "US shipping ZIP code";
+      : "US shipping ZIP code"
   const activeProviderDetail =
     activeProvider === "stripe_tax"
       ? `${snapshot.providers.stripeTax.accountMode === "sandbox" ? "Sandbox" : snapshot.providers.stripeTax.accountMode === "live" ? "Live" : "Unknown"} account · ${snapshot.providers.stripeTax.activeRegistrationCount} active registration${
@@ -496,7 +496,7 @@ export const TaxControlPageContent = memo(() => {
         }`
       : quota
         ? `${quota.remaining} of ${quota.quota} monthly lookups remaining`
-        : "No usage response recorded yet";
+        : "No usage response recorded yet"
 
   return (
     <AdminSingleColumnLayout>
@@ -526,7 +526,7 @@ export const TaxControlPageContent = memo(() => {
         <section
           aria-label={`Current tax collection decision: ${collectionChoiceLabel(
             collectionMode,
-            activeProvider,
+            activeProvider
           )}`}
           className="mt-6 border-t border-ui-border-base pt-5"
           data-testid="active-provider-overview"
@@ -1015,13 +1015,13 @@ export const TaxControlPageContent = memo(() => {
                           Medusa{" "}
                           {formatMinorAmount(
                             incident.medusaRefundAmountMinor,
-                            incident.currencyCode,
+                            incident.currencyCode
                           )}{" "}
                           · Stripe{" "}
                           {incident.stripeEvidenceAvailable
                             ? formatMinorAmount(
                                 incident.stripeRefundAmountMinor,
-                                incident.currencyCode,
+                                incident.currencyCode
                               )
                             : "not yet verified"}
                         </>
@@ -1065,12 +1065,12 @@ export const TaxControlPageContent = memo(() => {
                       <Text size="small" weight="plus">
                         {collectionChoiceLabel(
                           audit.fromCollectionMode,
-                          audit.fromProvider,
+                          audit.fromProvider
                         )}{" "}
                         →{" "}
                         {collectionChoiceLabel(
                           audit.toCollectionMode,
-                          audit.toProvider,
+                          audit.toProvider
                         )}
                       </Text>
                       <Text size="xsmall" className="mt-1 text-ui-fg-subtle">
@@ -1096,10 +1096,10 @@ export const TaxControlPageContent = memo(() => {
         )}
       </Container>
     </AdminSingleColumnLayout>
-  );
-});
+  )
+})
 
-TaxControlPageContent.displayName = "TaxControlPageContent";
+TaxControlPageContent.displayName = "TaxControlPageContent"
 
 export const TaxControlPage = memo(() => (
   <AdminPermissionBoundary
@@ -1108,21 +1108,21 @@ export const TaxControlPage = memo(() => (
   >
     <TaxControlPageContent />
   </AdminPermissionBoundary>
-));
+))
 
-TaxControlPage.displayName = "TaxControlPage";
+TaxControlPage.displayName = "TaxControlPage"
 
 const LegacyTaxControlPage = memo(() => {
   useEffect(() => {
     const { location } = globalThis as unknown as {
-      location: ReplaceAdminLocation;
-    };
-    replaceLegacyTaxControlLocation(location);
-  }, []);
+      location: ReplaceAdminLocation
+    }
+    replaceLegacyTaxControlLocation(location)
+  }, [])
 
-  return null;
-});
+  return null
+})
 
-LegacyTaxControlPage.displayName = "LegacyTaxControlPage";
+LegacyTaxControlPage.displayName = "LegacyTaxControlPage"
 
-export default LegacyTaxControlPage;
+export default LegacyTaxControlPage

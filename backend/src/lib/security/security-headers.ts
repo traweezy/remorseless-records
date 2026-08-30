@@ -1,54 +1,52 @@
 type SecurityHeaderOptions = {
-  isDevelopment: boolean;
-  mediaUrls?: ReadonlyArray<string | null | undefined>;
-};
+  isDevelopment: boolean
+  mediaUrls?: ReadonlyArray<string | null | undefined>
+}
 
 const unique = (values: Array<string | null>): string[] =>
-  Array.from(
-    new Set(values.filter((value): value is string => value !== null)),
-  );
+  Array.from(new Set(values.filter((value): value is string => value !== null)))
 
 export const parseSecurityHeaderOrigin = (
-  value: string | null | undefined,
+  value: string | null | undefined
 ): string | null => {
-  const candidate = value?.trim();
+  const candidate = value?.trim()
   if (!candidate) {
-    return null;
+    return null
   }
 
   try {
     const url = new URL(
       /^[a-z][a-z\d+.-]*:\/\//i.test(candidate)
         ? candidate
-        : `https://${candidate}`,
-    );
+        : `https://${candidate}`
+    )
     if (
       (url.protocol !== "https:" && url.protocol !== "http:") ||
       url.username ||
       url.password
     ) {
-      return null;
+      return null
     }
-    return url.origin;
+    return url.origin
   } catch {
-    return null;
+    return null
   }
-};
+}
 
 export const buildBackendContentSecurityPolicy = ({
   isDevelopment,
   mediaUrls = [],
 }: SecurityHeaderOptions): string => {
   const mediaOrigins = unique(mediaUrls.map(parseSecurityHeaderOrigin)).filter(
-    (origin) => isDevelopment || origin.startsWith("https://"),
-  );
-  const scriptSources = ["'self'", ...(isDevelopment ? ["'unsafe-eval'"] : [])];
+    (origin) => isDevelopment || origin.startsWith("https://")
+  )
+  const scriptSources = ["'self'", ...(isDevelopment ? ["'unsafe-eval'"] : [])]
   const connectSources = [
     "'self'",
     ...(isDevelopment
       ? ["http://localhost:*", "ws://localhost:*", "ws://127.0.0.1:*"]
       : []),
-  ];
+  ]
   const directives = [
     "default-src 'self'",
     `script-src ${scriptSources.join(" ")}`,
@@ -68,13 +66,13 @@ export const buildBackendContentSecurityPolicy = ({
     ...(isDevelopment
       ? []
       : ["upgrade-insecure-requests", "block-all-mixed-content"]),
-  ];
+  ]
 
-  return directives.join("; ");
-};
+  return directives.join("; ")
+}
 
 export const buildBackendSecurityHeaders = (
-  options: SecurityHeaderOptions,
+  options: SecurityHeaderOptions
 ): Readonly<Record<string, string>> => {
   const headers: Record<string, string> = {
     "Content-Security-Policy": buildBackendContentSecurityPolicy(options),
@@ -84,35 +82,34 @@ export const buildBackendSecurityHeaders = (
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
-  };
-
-  if (!options.isDevelopment) {
-    headers["Strict-Transport-Security"] =
-      "max-age=31536000; includeSubDomains";
   }
 
-  return headers;
-};
+  if (!options.isDevelopment) {
+    headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+  }
+
+  return headers
+}
 
 export const buildBackendResponseHeaders = (
-  options: SecurityHeaderOptions,
+  options: SecurityHeaderOptions
 ): Readonly<Record<string, string>> => ({
   ...buildBackendSecurityHeaders(options),
   "Cache-Control": "no-store",
-});
+})
 
 export const shouldDefaultToNoStore = (
   method: string | undefined,
-  path: string | undefined,
+  path: string | undefined
 ): boolean => {
-  const normalizedMethod = method?.toUpperCase() ?? "GET";
-  const normalizedPath = path ?? "/";
+  const normalizedMethod = method?.toUpperCase() ?? "GET"
+  const normalizedPath = path ?? "/"
   const isPublicAsset =
     normalizedPath.startsWith("/app/assets/") ||
-    normalizedPath.startsWith("/static/");
+    normalizedPath.startsWith("/static/")
 
   return (
     (normalizedMethod !== "GET" && normalizedMethod !== "HEAD") ||
     !isPublicAsset
-  );
-};
+  )
+}

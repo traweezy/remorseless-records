@@ -47,12 +47,16 @@ describe("useProximityPrefetch", () => {
         right: 100,
         top: 10,
         bottom: 100,
-      } as DOMRect)
+      }) as DOMRect
     document.body.appendChild(anchor)
 
     render(<TestHook radius={faker.number.int({ min: 100, max: 300 })} />)
-    window.dispatchEvent(new PointerEvent("pointermove", { clientX: 20, clientY: 20 }))
-    window.dispatchEvent(new PointerEvent("pointermove", { clientX: 20, clientY: 20 }))
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 20, clientY: 20 })
+    )
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 20, clientY: 20 })
+    )
 
     expect(prefetchMock).toHaveBeenCalledTimes(1)
     expect(prefetchMock).toHaveBeenCalledWith(href, { kind: "full" })
@@ -69,15 +73,19 @@ describe("useProximityPrefetch", () => {
         right: 600,
         top: 500,
         bottom: 600,
-      } as DOMRect)
+      }) as DOMRect
     document.body.appendChild(anchor)
 
     render(<TestHook radius={50} />)
-    window.dispatchEvent(new PointerEvent("pointermove", { clientX: 0, clientY: 0 }))
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 0, clientY: 0 })
+    )
     expect(prefetchMock).not.toHaveBeenCalled()
 
     vi.mocked(shouldBlockPrefetch).mockReturnValue(true)
-    window.dispatchEvent(new PointerEvent("pointermove", { clientX: 550, clientY: 550 }))
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 550, clientY: 550 })
+    )
     expect(prefetchMock).not.toHaveBeenCalled()
   })
 
@@ -95,12 +103,14 @@ describe("useProximityPrefetch", () => {
         right: 10,
         top: 0,
         bottom: 10,
-      } as DOMRect)
+      }) as DOMRect
     document.body.appendChild(anchor)
 
     render(<TestHook radius={25} />)
     expect(() =>
-      window.dispatchEvent(new PointerEvent("pointermove", { clientX: 5, clientY: 5 }))
+      window.dispatchEvent(
+        new PointerEvent("pointermove", { clientX: 5, clientY: 5 })
+      )
     ).not.toThrow()
   })
 })

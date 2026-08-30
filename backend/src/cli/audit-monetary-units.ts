@@ -26,8 +26,7 @@ const run = async (): Promise<void> => {
 
     const monetaryResult =
       await client.query<MonetaryQueryRow>(monetaryRowsQuery)
-    const blockerResult =
-      await client.query<CountQueryRow>(blockerCountsQuery)
+    const blockerResult = await client.query<CountQueryRow>(blockerCountsQuery)
     const rawParityResult =
       await client.query<RawParityQueryRow>(rawParityQuery)
     const migrationStateResult =

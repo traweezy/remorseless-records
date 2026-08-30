@@ -1,9 +1,9 @@
-import { requestAdminJson } from "../../lib/admin-request";
-import { taxRecordsQueryOptions, taxRecordsReportSchema } from "./query";
+import { requestAdminJson } from "../../lib/admin-request"
+import { taxRecordsQueryOptions, taxRecordsReportSchema } from "./query"
 
 jest.mock("../../lib/admin-request", () => ({
   requestAdminJson: jest.fn(),
-}));
+}))
 
 const validReport = {
   destinations: [
@@ -109,7 +109,7 @@ const validReport = {
     },
   ],
   unassignedRecordExamples: [],
-} as const;
+} as const
 
 const input = {
   filingState: "CT",
@@ -126,16 +126,16 @@ const input = {
     end: "2026-07-01",
     start: "2026-04-01",
   },
-} as const;
+} as const
 
 describe("tax records query", () => {
   beforeEach(() => {
-    jest.mocked(requestAdminJson).mockReset();
-  });
+    jest.mocked(requestAdminJson).mockReset()
+  })
 
   it("accepts a complete state filing report", () => {
-    expect(taxRecordsReportSchema.parse(validReport)).toEqual(validReport);
-  });
+    expect(taxRecordsReportSchema.parse(validReport)).toEqual(validReport)
+  })
 
   it("rejects malformed money, currency, and bounded counts", () => {
     expect(() =>
@@ -152,22 +152,22 @@ describe("tax records query", () => {
             netTax: "not-money",
           },
         ],
-      }),
-    ).toThrow();
-  });
+      })
+    ).toThrow()
+  })
 
   it("forwards the complete selection and Query cancellation", async () => {
-    jest.mocked(requestAdminJson).mockResolvedValue(validReport);
-    const options = taxRecordsQueryOptions(input);
-    const controller = new AbortController();
+    jest.mocked(requestAdminJson).mockResolvedValue(validReport)
+    const options = taxRecordsQueryOptions(input)
+    const controller = new AbortController()
 
     await expect(
       options.queryFn?.({
         meta: undefined,
         queryKey: options.queryKey,
         signal: controller.signal,
-      }),
-    ).resolves.toEqual(validReport);
+      })
+    ).resolves.toEqual(validReport)
 
     expect(requestAdminJson).toHaveBeenCalledWith({
       path: "/admin/tax-records",
@@ -186,9 +186,9 @@ describe("tax records query", () => {
       schema: taxRecordsReportSchema,
       signal: controller.signal,
       timeoutMs: 20_000,
-    });
-    expect(options.placeholderData).toBeDefined();
-    expect(options.retry).toBe(false);
-    expect(options.staleTime).toBe(0);
-  });
-});
+    })
+    expect(options.placeholderData).toBeDefined()
+    expect(options.retry).toBe(false)
+    expect(options.staleTime).toBe(0)
+  })
+})

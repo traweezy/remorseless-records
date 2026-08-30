@@ -13,12 +13,13 @@ describe("medusa client initialization", () => {
   })
 
   it("creates medusa sdk and exposes store client", async () => {
-    const fetch = vi.fn<
-      (
-        input: string,
-        init?: { query?: Record<string, unknown>; signal?: AbortSignal }
-      ) => Promise<Response>
-    >()
+    const fetch =
+      vi.fn<
+        (
+          input: string,
+          init?: { query?: Record<string, unknown>; signal?: AbortSignal }
+        ) => Promise<Response>
+      >()
     const ctorSpy = vi.fn()
 
     class MedusaMock {
@@ -61,15 +62,12 @@ describe("medusa client initialization", () => {
     fetch.mockResolvedValue(response)
     await expect(medusa.client.fetch("/store/products")).resolves.toBe(response)
     expect(fetch.mock.calls[0]?.[0]).toBe("/store/products")
-    const init = fetch.mock.calls[0]?.[1] as
-      | { signal?: unknown }
-      | undefined
+    const init = fetch.mock.calls[0]?.[1] as { signal?: unknown } | undefined
     expect(init?.signal).toBeInstanceOf(AbortSignal)
 
     await storeClient.product.list({ limit: 1 })
     const storeInit = fetch.mock.calls[1]?.[1] as
-      | { signal?: unknown }
-      | undefined
+      { signal?: unknown } | undefined
     expect(storeInit?.signal).toBeInstanceOf(AbortSignal)
   })
 

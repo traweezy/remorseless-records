@@ -6,11 +6,7 @@ import { sdk } from "./sdk"
 const DEFAULT_TIMEOUT_MS = 15_000
 
 export type AdminRequestFailureKind =
-  | "cancelled"
-  | "http"
-  | "invalid-response"
-  | "timeout"
-  | "unknown"
+  "cancelled" | "http" | "invalid-response" | "timeout" | "unknown"
 
 export class AdminRequestError extends Error {
   readonly kind: AdminRequestFailureKind
@@ -20,7 +16,7 @@ export class AdminRequestError extends Error {
     message: string,
     kind: AdminRequestFailureKind,
     status?: number,
-    cause?: unknown,
+    cause?: unknown
   ) {
     super(message, { cause })
     this.name = "AdminRequestError"
@@ -99,7 +95,7 @@ export const requestAdminJson = async <T>({
         "The request was cancelled.",
         "cancelled",
         undefined,
-        error,
+        error
       )
     }
     if (timedOut) {
@@ -107,7 +103,7 @@ export const requestAdminJson = async <T>({
         "The request took too long. Try again.",
         "timeout",
         undefined,
-        error,
+        error
       )
     }
     if (error instanceof FetchError) {
@@ -115,7 +111,7 @@ export const requestAdminJson = async <T>({
         error.message || "The request failed.",
         "http",
         error.status,
-        error,
+        error
       )
     }
     if (error instanceof z.ZodError) {
@@ -123,14 +119,14 @@ export const requestAdminJson = async <T>({
         "The server returned an unexpected response.",
         "invalid-response",
         undefined,
-        error,
+        error
       )
     }
     throw new AdminRequestError(
       error instanceof Error ? error.message : "The request failed.",
       "unknown",
       undefined,
-      error,
+      error
     )
   } finally {
     globalThis.clearTimeout(timeout)
@@ -140,5 +136,5 @@ export const requestAdminJson = async <T>({
 
 export const getAdminRequestErrorMessage = (
   error: unknown,
-  fallback: string,
+  fallback: string
 ): string => (error instanceof Error ? error.message : fallback)

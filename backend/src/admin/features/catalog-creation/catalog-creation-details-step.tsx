@@ -16,7 +16,7 @@ type CatalogCreationDetailsStepProps = {
   onTextChange: (
     event: ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => void
   onUploadingChange: (uploading: boolean) => void
   values: CatalogCreationFormValues
@@ -183,7 +183,7 @@ export const CatalogCreationDetailsStep = memo<CatalogCreationDetailsStepProps>(
         onUploadingChange={onUploadingChange}
       />
     </Container>
-  ),
+  )
 )
 
 CatalogCreationDetailsStep.displayName = "CatalogCreationDetailsStep"

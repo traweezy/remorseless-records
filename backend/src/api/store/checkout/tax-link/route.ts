@@ -1,64 +1,64 @@
 import type {
   MedusaResponse,
   MedusaStoreRequest,
-} from "@medusajs/framework/http";
-import type { ILockingModule, Logger } from "@medusajs/framework/types";
+} from "@medusajs/framework/http"
+import type { ILockingModule, Logger } from "@medusajs/framework/types"
 import {
   ContainerRegistrationKeys,
   MedusaError,
   Modules,
-} from "@medusajs/framework/utils";
-import { z } from "zod";
-import Stripe from "stripe";
+} from "@medusajs/framework/utils"
+import { z } from "zod"
+import Stripe from "stripe"
 
-import { verifyCheckoutTaxLinkProof } from "../../../../lib/checkout/internal-status-auth";
-import { bindCheckoutTaxToPayment } from "../../../../lib/tax-control/payment-binding";
-import type { StripePaymentBindingRetryEvent } from "../../../../lib/tax-control/stripe-payment-binding-client";
-import { STRIPE_API_KEY } from "../../../../lib/constants";
-import { taxBindingLockKey } from "../../../../modules/tax-control/constants";
-import type TaxControlModuleService from "../../../../modules/tax-control/service";
+import { verifyCheckoutTaxLinkProof } from "../../../../lib/checkout/internal-status-auth"
+import { bindCheckoutTaxToPayment } from "../../../../lib/tax-control/payment-binding"
+import type { StripePaymentBindingRetryEvent } from "../../../../lib/tax-control/stripe-payment-binding-client"
+import { STRIPE_API_KEY } from "../../../../lib/constants"
+import { taxBindingLockKey } from "../../../../modules/tax-control/constants"
+import type TaxControlModuleService from "../../../../modules/tax-control/service"
 
-type UnknownRecord = Record<string, unknown>;
+type UnknownRecord = Record<string, unknown>
 
 type QueryGraph = {
   graph: (input: {
-    entity: string;
-    fields: string[];
-    filters: Record<string, unknown>;
-    pagination?: { take?: number };
-  }) => Promise<{ data: UnknownRecord[] }>;
-};
+    entity: string
+    fields: string[]
+    filters: Record<string, unknown>
+    pagination?: { take?: number }
+  }) => Promise<{ data: UnknownRecord[] }>
+}
 
 const bodySchema = z
   .object({
     cart_id: z.string().regex(/^cart_[A-Za-z0-9]+$/),
   })
-  .strict();
+  .strict()
 
-const TIMESTAMP_HEADER = "x-rr-checkout-timestamp";
-const PROOF_HEADER = "x-rr-checkout-proof";
+const TIMESTAMP_HEADER = "x-rr-checkout-timestamp"
+const PROOF_HEADER = "x-rr-checkout-proof"
 
 const header = (req: MedusaStoreRequest, name: string): string | undefined => {
-  const value = req.headers[name];
-  return typeof value === "string" ? value.trim() : undefined;
-};
+  const value = req.headers[name]
+  return typeof value === "string" ? value.trim() : undefined
+}
 
 export const POST = async (
   req: MedusaStoreRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
-  const parsed = bodySchema.safeParse(req.body);
+  const parsed = bodySchema.safeParse(req.body)
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "The checkout tax-link request is invalid.",
-    );
+      "The checkout tax-link request is invalid."
+    )
   }
 
-  const secret = process.env.CHECKOUT_BFF_SECRET?.trim();
-  const timestampValue = header(req, TIMESTAMP_HEADER);
-  const proof = header(req, PROOF_HEADER);
-  const timestamp = timestampValue ? Number(timestampValue) : Number.NaN;
+  const secret = process.env.CHECKOUT_BFF_SECRET?.trim()
+  const timestampValue = header(req, TIMESTAMP_HEADER)
+  const proof = header(req, PROOF_HEADER)
+  const timestamp = timestampValue ? Number(timestampValue) : Number.NaN
   if (
     !secret ||
     secret.length < 32 ||
@@ -73,24 +73,24 @@ export const POST = async (
   ) {
     throw new MedusaError(
       MedusaError.Types.UNAUTHORIZED,
-      "The checkout tax-link proof is missing or invalid.",
-    );
+      "The checkout tax-link proof is missing or invalid."
+    )
   }
   if (!STRIPE_API_KEY) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      "Stripe payment binding is not configured.",
-    );
+      "Stripe payment binding is not configured."
+    )
   }
 
-  const query = req.scope.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY);
-  const service = req.scope.resolve<TaxControlModuleService>("tax_control");
-  const locking = req.scope.resolve<ILockingModule>(Modules.LOCKING);
-  const logger = req.scope.resolve<Logger>("logger");
+  const query = req.scope.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
+  const service = req.scope.resolve<TaxControlModuleService>("tax_control")
+  const locking = req.scope.resolve<ILockingModule>(Modules.LOCKING)
+  const logger = req.scope.resolve<Logger>("logger")
   const client = new Stripe(STRIPE_API_KEY, {
     httpClient: Stripe.createFetchHttpClient(),
     maxNetworkRetries: 0,
-  });
+  })
   const result = await locking.execute(
     taxBindingLockKey(parsed.data.cart_id),
     async () => {
@@ -143,34 +143,34 @@ export const POST = async (
         ],
         filters: { id: parsed.data.cart_id },
         pagination: { take: 1 },
-      });
-      const cart = data[0];
+      })
+      const cart = data[0]
       if (!cart) {
         throw new MedusaError(
           MedusaError.Types.NOT_FOUND,
-          "The checkout cart was not found.",
-        );
+          "The checkout cart was not found."
+        )
       }
       return bindCheckoutTaxToPayment({
         cart,
         client,
         onRetry: (event: StripePaymentBindingRetryEvent) => {
           logger.warn(
-            `[tax-control] Stripe payment binding ${event.operation} retry scheduled (${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`,
-          );
+            `[tax-control] Stripe payment binding ${event.operation} retry scheduled (${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`
+          )
         },
         service,
         timeoutMs: 8_000,
-      });
+      })
     },
-    { timeout: 8 },
-  );
+    { timeout: 8 }
+  )
 
-  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Cache-Control", "no-store")
   res.status(200).json({
     linked: true,
     provider: result.provider,
     generation: result.generation,
     replayed: result.replayed,
-  });
-};
+  })
+}

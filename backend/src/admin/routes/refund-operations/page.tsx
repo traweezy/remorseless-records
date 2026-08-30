@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import {
   memo,
@@ -7,8 +7,8 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from "react";
-import { ArrowPath, ArrowUturnLeft, ExclamationCircle } from "@medusajs/icons";
+} from "react"
+import { ArrowPath, ArrowUturnLeft, ExclamationCircle } from "@medusajs/icons"
 import {
   Alert,
   Button,
@@ -21,36 +21,36 @@ import {
   StatusBadge,
   Table,
   Text,
-} from "@medusajs/ui";
-import { useQuery } from "@tanstack/react-query";
+} from "@medusajs/ui"
+import { useQuery } from "@tanstack/react-query"
 
 import {
   nativeAdminActions,
   operationsAdminActions,
-} from "../../../lib/admin-permissions";
+} from "../../../lib/admin-permissions"
 import type {
   RefundCase,
   RefundCaseStatus,
   RefundProvider,
   RefundTaxStatus,
-} from "../../../lib/refund-operations/types";
-import { AdminEmptyState } from "../../components/admin-empty-state";
-import { AdminPermissionBoundary } from "../../components/admin-permission-boundary";
+} from "../../../lib/refund-operations/types"
+import { AdminEmptyState } from "../../components/admin-empty-state"
+import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import {
   AdminPageHeader,
   AdminSectionHeader,
   AdminSingleColumnLayout,
-} from "../../components/admin-page";
-import { AdminRetryState } from "../../components/admin-retry-state";
-import { AdminStatCard } from "../../components/admin-stat-card";
-import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation";
+} from "../../components/admin-page"
+import { AdminRetryState } from "../../components/admin-retry-state"
+import { AdminStatCard } from "../../components/admin-stat-card"
+import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation"
 import {
   replaceLegacyOperationsLocation,
   type ReplaceAdminLocation,
-} from "../../features/operations/operations-routes";
-import { useAdminPermissions } from "../../lib/admin-permissions";
-import { getAdminRequestErrorMessage } from "../../lib/admin-request";
-import { refundOperationsQueryOptions } from "./query";
+} from "../../features/operations/operations-routes"
+import { useAdminPermissions } from "../../lib/admin-permissions"
+import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import { refundOperationsQueryOptions } from "./query"
 import {
   caseLabel,
   filterRefundCases,
@@ -58,64 +58,62 @@ import {
   isStatusFilter,
   type ProviderFilter,
   type StatusFilter,
-} from "./ui-state";
+} from "./ui-state"
 
 type CaseCardProps = {
-  canOpenOrder: boolean;
-  refundCase: RefundCase;
-};
+  canOpenOrder: boolean
+  refundCase: RefundCase
+}
 
-type OrderActionProps = CaseCardProps;
+type OrderActionProps = CaseCardProps
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 20
 
 const statusLabel = (status: RefundCaseStatus): string => {
   if (status === "action_required") {
-    return "Needs attention";
+    return "Needs attention"
   }
   if (status === "processing") {
-    return "Processing";
+    return "Processing"
   }
-  return "Verified";
-};
+  return "Verified"
+}
 
-const statusColor = (
-  status: RefundCaseStatus,
-): "green" | "orange" | "red" =>
+const statusColor = (status: RefundCaseStatus): "green" | "orange" | "red" =>
   status === "action_required"
     ? "red"
     : status === "processing"
       ? "orange"
-      : "green";
+      : "green"
 
 const providerLabel = (provider: RefundProvider): string => {
   if (provider === "stripe_tax") {
-    return "Stripe Tax";
+    return "Stripe Tax"
   }
   if (provider === "taxrate_io") {
-    return "TaxRate.io";
+    return "TaxRate.io"
   }
-  return "Not linked yet";
-};
+  return "Not linked yet"
+}
 
 const taxStatusLabel = (status: RefundTaxStatus): string => {
   if (status === "not_applicable") {
-    return "Not required";
+    return "Not required"
   }
   if (status === "attention") {
-    return "Needs review";
+    return "Needs review"
   }
   if (status === "pending") {
-    return "Reversal pending";
+    return "Reversal pending"
   }
   if (status === "untracked") {
-    return "Not linked yet";
+    return "Not linked yet"
   }
-  return "Reversal verified";
-};
+  return "Reversal verified"
+}
 
 const taxStatusColor = (
-  status: RefundTaxStatus,
+  status: RefundTaxStatus
 ): "blue" | "green" | "orange" | "red" =>
   status === "attention"
     ? "red"
@@ -123,37 +121,37 @@ const taxStatusColor = (
       ? "orange"
       : status === "verified"
         ? "green"
-        : "blue";
+        : "blue"
 
 const formatMinorAmount = (amount: number, currencyCode: string): string =>
   new Intl.NumberFormat(undefined, {
     currency: currencyCode.toUpperCase(),
     style: "currency",
-  }).format(amount / 100);
+  }).format(amount / 100)
 
 const formatDate = (value: string | null): string => {
   if (!value) {
-    return "Not yet";
+    return "Not yet"
   }
-  const date = new Date(value);
+  const date = new Date(value)
   return Number.isNaN(date.getTime())
     ? "Unknown"
     : new Intl.DateTimeFormat(undefined, {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(date);
-};
+      }).format(date)
+}
 
 const stripeAmountLabel = (refundCase: RefundCase): string =>
   refundCase.stripeRefundAmountMinor === null
     ? "Waiting for Stripe"
     : formatMinorAmount(
         refundCase.stripeRefundAmountMinor,
-        refundCase.currencyCode,
-      );
+        refundCase.currencyCode
+      )
 
 const refundCountLabel = (count: number): string =>
-  `${count} refund${count === 1 ? "" : "s"}`;
+  `${count} refund${count === 1 ? "" : "s"}`
 
 const CaseStatus = memo<{ status: RefundCaseStatus }>(({ status }) => (
   <StatusBadge
@@ -162,9 +160,9 @@ const CaseStatus = memo<{ status: RefundCaseStatus }>(({ status }) => (
   >
     {statusLabel(status)}
   </StatusBadge>
-));
+))
 
-CaseStatus.displayName = "CaseStatus";
+CaseStatus.displayName = "CaseStatus"
 
 const OrderAction = memo<OrderActionProps>(({ canOpenOrder, refundCase }) =>
   refundCase.orderId && canOpenOrder ? (
@@ -182,10 +180,10 @@ const OrderAction = memo<OrderActionProps>(({ canOpenOrder, refundCase }) =>
       No order was created. Investigate the checkout payment before taking any
       further action.
     </Text>
-  ),
-);
+  )
+)
 
-OrderAction.displayName = "OrderAction";
+OrderAction.displayName = "OrderAction"
 
 const CaseCard = memo<CaseCardProps>(({ canOpenOrder, refundCase }) => (
   <article className="rounded-lg border border-ui-border-base p-4">
@@ -201,13 +199,11 @@ const CaseCard = memo<CaseCardProps>(({ canOpenOrder, refundCase }) => (
 
     <dl className="mt-4 grid grid-cols-2 gap-3">
       <div>
-        <dt className="txt-compact-xsmall text-ui-fg-subtle">
-          Medusa ledger
-        </dt>
+        <dt className="txt-compact-xsmall text-ui-fg-subtle">Medusa ledger</dt>
         <dd className="txt-compact-small-plus mt-0.5 tabular-nums">
           {formatMinorAmount(
             refundCase.medusaRefundAmountMinor,
-            refundCase.currencyCode,
+            refundCase.currencyCode
           )}
         </dd>
       </div>
@@ -218,9 +214,7 @@ const CaseCard = memo<CaseCardProps>(({ canOpenOrder, refundCase }) => (
         </dd>
       </div>
       <div>
-        <dt className="txt-compact-xsmall text-ui-fg-subtle">
-          Tax reversal
-        </dt>
+        <dt className="txt-compact-xsmall text-ui-fg-subtle">Tax reversal</dt>
         <dd className="mt-1">
           <StatusBadge
             className="whitespace-nowrap"
@@ -251,77 +245,77 @@ const CaseCard = memo<CaseCardProps>(({ canOpenOrder, refundCase }) => (
       <OrderAction canOpenOrder={canOpenOrder} refundCase={refundCase} />
     </div>
   </article>
-));
+))
 
-CaseCard.displayName = "CaseCard";
+CaseCard.displayName = "CaseCard"
 
 export const RefundOperationsPageContent = memo(() => {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const [provider, setProvider] = useState<ProviderFilter>("all");
-  const [page, setPage] = useState(0);
-  const permissions = useAdminPermissions();
-  const canReadOrders = permissions.hasPermission(nativeAdminActions.order.read);
+  const [search, setSearch] = useState("")
+  const [status, setStatus] = useState<StatusFilter>("all")
+  const [provider, setProvider] = useState<ProviderFilter>("all")
+  const [page, setPage] = useState(0)
+  const permissions = useAdminPermissions()
+  const canReadOrders = permissions.hasPermission(nativeAdminActions.order.read)
   const canReadRefundReasons = permissions.hasPermission(
-    nativeAdminActions.refundReason.read,
-  );
+    nativeAdminActions.refundReason.read
+  )
   const {
     data: snapshot,
     error: queryError,
     isFetching: loading,
     refetch,
-  } = useQuery(refundOperationsQueryOptions());
+  } = useQuery(refundOperationsQueryOptions())
   const error = queryError
     ? getAdminRequestErrorMessage(
         queryError,
-        "Unable to load refund operations.",
+        "Unable to load refund operations."
       )
-    : null;
+    : null
 
   const handleRefresh = useCallback(() => {
-    void refetch();
-  }, [refetch]);
+    void refetch()
+  }, [refetch])
 
   const handleSearch = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setSearch(
         String(
-          (event.currentTarget as unknown as { value?: unknown }).value ?? "",
-        ),
-      );
-      setPage(0);
+          (event.currentTarget as unknown as { value?: unknown }).value ?? ""
+        )
+      )
+      setPage(0)
     },
-    [],
-  );
+    []
+  )
 
   const handleStatus = useCallback((value: string) => {
     if (isStatusFilter(value)) {
-      setStatus(value);
-      setPage(0);
+      setStatus(value)
+      setPage(0)
     }
-  }, []);
+  }, [])
 
   const handleProvider = useCallback((value: string) => {
     if (isProviderFilter(value)) {
-      setProvider(value);
-      setPage(0);
+      setProvider(value)
+      setPage(0)
     }
-  }, []);
+  }, [])
 
   const handleClearFilters = useCallback(() => {
-    setSearch("");
-    setStatus("all");
-    setProvider("all");
-    setPage(0);
-  }, []);
+    setSearch("")
+    setStatus("all")
+    setProvider("all")
+    setPage(0)
+  }, [])
 
   const handlePreviousPage = useCallback(() => {
-    setPage((current) => Math.max(0, current - 1));
-  }, []);
+    setPage((current) => Math.max(0, current - 1))
+  }, [])
 
   const handleNextPage = useCallback(() => {
-    setPage((current) => current + 1);
-  }, []);
+    setPage((current) => current + 1)
+  }, [])
 
   const filteredCases = useMemo(() => {
     return filterRefundCases({
@@ -329,38 +323,38 @@ export const RefundOperationsPageContent = memo(() => {
       provider,
       search,
       status,
-    });
-  }, [provider, search, snapshot?.cases, status]);
+    })
+  }, [provider, search, snapshot?.cases, status])
 
-  const pageCount = Math.max(1, Math.ceil(filteredCases.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount - 1);
+  const pageCount = Math.max(1, Math.ceil(filteredCases.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount - 1)
   const visibleCases = useMemo(
     () =>
       filteredCases.slice(
         safePage * PAGE_SIZE,
-        safePage * PAGE_SIZE + PAGE_SIZE,
+        safePage * PAGE_SIZE + PAGE_SIZE
       ),
-    [filteredCases, safePage],
-  );
+    [filteredCases, safePage]
+  )
 
   const operationsStatus = useMemo(() => {
     if (!snapshot) {
-      return null;
+      return null
     }
     if (snapshot.summary.actionRequired > 0) {
-      return { color: "red" as const, label: "Needs attention" };
+      return { color: "red" as const, label: "Needs attention" }
     }
     if (snapshot.summary.processing > 0) {
-      return { color: "orange" as const, label: "Monitoring" };
+      return { color: "orange" as const, label: "Monitoring" }
     }
-    return { color: "green" as const, label: "Operational" };
-  }, [snapshot]);
+    return { color: "green" as const, label: "Operational" }
+  }, [snapshot])
 
   const totalRefunded = snapshot?.summary.amountsByCurrency
     .map(({ amountMinor, currencyCode }) =>
-      formatMinorAmount(amountMinor, currencyCode),
+      formatMinorAmount(amountMinor, currencyCode)
     )
-    .join(" · ");
+    .join(" · ")
 
   return (
     <AdminSingleColumnLayout>
@@ -400,12 +394,10 @@ export const RefundOperationsPageContent = memo(() => {
         <OperationsWorkspaceNavigation active="refunds" className="mt-5" />
 
         <Alert className="mt-5" variant="warning">
-          <Text weight="plus">
-            Issue every refund from its Medusa order
-          </Text>
+          <Text weight="plus">Issue every refund from its Medusa order</Text>
           <Text size="small">
-            Use Stripe only to investigate provider details. A refund created
-            in Stripe bypasses the Medusa order ledger and can lead to a second
+            Use Stripe only to investigate provider details. A refund created in
+            Stripe bypasses the Medusa order ledger and can lead to a second
             reimbursement.
           </Text>
         </Alert>
@@ -431,8 +423,8 @@ export const RefundOperationsPageContent = memo(() => {
             </Heading>
             <Text size="small" className="mt-2 text-ui-fg-subtle">
               Cancel the unfulfilled items or order where appropriate. Then
-              check the order summary and Payments for any amount still owed
-              to the customer.
+              check the order summary and Payments for any amount still owed to
+              the customer.
             </Text>
           </li>
           <li className="rounded-lg border border-ui-border-base p-4">
@@ -443,9 +435,9 @@ export const RefundOperationsPageContent = memo(() => {
               Item is coming back
             </Heading>
             <Text size="small" className="mt-2 text-ui-fg-subtle">
-              Create a return, or a claim for damaged or incorrect goods.
-              Record received and damaged quantities before completing any
-              refund shown in Payments.
+              Create a return, or a claim for damaged or incorrect goods. Record
+              received and damaged quantities before completing any refund shown
+              in Payments.
             </Text>
           </li>
           <li className="rounded-lg border border-ui-border-base p-4">
@@ -456,9 +448,9 @@ export const RefundOperationsPageContent = memo(() => {
               Payment-only correction
             </Heading>
             <Text size="small" className="mt-2 text-ui-fg-subtle">
-              For a goodwill adjustment, shipping refund, or pricing
-              correction with no inventory change, use the payment row&apos;s
-              Refund action and record a reason and customer-facing note.
+              For a goodwill adjustment, shipping refund, or pricing correction
+              with no inventory change, use the payment row&apos;s Refund action
+              and record a reason and customer-facing note.
             </Text>
           </li>
         </ol>
@@ -549,8 +541,8 @@ export const RefundOperationsPageContent = memo(() => {
               }
               description={
                 <>
-                  Medusa-recorded refunds, checked against Stripe and the
-                  active tax evidence.
+                  Medusa-recorded refunds, checked against Stripe and the active
+                  tax evidence.
                 </>
               }
               title="Refund health"
@@ -622,9 +614,7 @@ export const RefundOperationsPageContent = memo(() => {
 
             {snapshot.source.truncated ? (
               <Alert className="mt-4" variant="error">
-                <Text weight="plus">
-                  The audit reached its safety limit
-                </Text>
+                <Text weight="plus">The audit reached its safety limit</Text>
                 <Text size="small">
                   Some evidence may be missing from this view. Do not rely on a
                   missing row as proof that a refund is safe to repeat.
@@ -692,9 +682,7 @@ export const RefundOperationsPageContent = memo(() => {
                     <Select.Item value="all">All providers</Select.Item>
                     <Select.Item value="stripe_tax">Stripe Tax</Select.Item>
                     <Select.Item value="taxrate_io">TaxRate.io</Select.Item>
-                    <Select.Item value="untracked">
-                      Not linked yet
-                    </Select.Item>
+                    <Select.Item value="untracked">Not linked yet</Select.Item>
                   </Select.Content>
                 </Select>
               </div>
@@ -746,8 +734,7 @@ export const RefundOperationsPageContent = memo(() => {
                                 size="xsmall"
                                 className="mt-2 text-ui-fg-subtle"
                               >
-                                Checked{" "}
-                                {formatDate(refundCase.lastVerifiedAt)}
+                                Checked {formatDate(refundCase.lastVerifiedAt)}
                               </Text>
                             </div>
                           </Table.Cell>
@@ -759,16 +746,14 @@ export const RefundOperationsPageContent = memo(() => {
                             >
                               {formatMinorAmount(
                                 refundCase.medusaRefundAmountMinor,
-                                refundCase.currencyCode,
+                                refundCase.currencyCode
                               )}
                             </Text>
                             <Text
                               size="xsmall"
                               className="mt-1 text-ui-fg-subtle"
                             >
-                              {refundCountLabel(
-                                refundCase.medusaRefundCount,
-                              )}
+                              {refundCountLabel(refundCase.medusaRefundCount)}
                             </Text>
                           </Table.Cell>
                           <Table.Cell className="align-top">
@@ -786,7 +771,7 @@ export const RefundOperationsPageContent = memo(() => {
                               {refundCase.stripeRefundCount === null
                                 ? "Audit pending"
                                 : refundCountLabel(
-                                    refundCase.stripeRefundCount,
+                                    refundCase.stripeRefundCount
                                   )}
                             </Text>
                           </Table.Cell>
@@ -804,9 +789,7 @@ export const RefundOperationsPageContent = memo(() => {
                             </Text>
                           </Table.Cell>
                           <Table.Cell className="min-w-80 align-top">
-                            <Text size="small">
-                              {refundCase.nextAction}
-                            </Text>
+                            <Text size="small">{refundCase.nextAction}</Text>
                             <div className="mt-3">
                               <OrderAction
                                 canOpenOrder={canReadOrders}
@@ -885,8 +868,8 @@ export const RefundOperationsPageContent = memo(() => {
                 <Text size="small" className="mt-2 text-ui-fg-subtle">
                   Confirm the intended items and amount, the inventory outcome,
                   the customer note, and the final provider state. A
-                  &ldquo;Verified&rdquo; row confirms system agreement; it
-                  does not replace the customer conversation or the store&apos;s
+                  &ldquo;Verified&rdquo; row confirms system agreement; it does
+                  not replace the customer conversation or the store&apos;s
                   return policy.
                 </Text>
               </div>
@@ -895,10 +878,10 @@ export const RefundOperationsPageContent = memo(() => {
         </>
       ) : null}
     </AdminSingleColumnLayout>
-  );
-});
+  )
+})
 
-RefundOperationsPageContent.displayName = "RefundOperationsPageContent";
+RefundOperationsPageContent.displayName = "RefundOperationsPageContent"
 
 export const RefundOperationsPage = memo(() => (
   <AdminPermissionBoundary
@@ -907,21 +890,21 @@ export const RefundOperationsPage = memo(() => (
   >
     <RefundOperationsPageContent />
   </AdminPermissionBoundary>
-));
+))
 
-RefundOperationsPage.displayName = "RefundOperationsPage";
+RefundOperationsPage.displayName = "RefundOperationsPage"
 
 const LegacyRefundOperationsPage = memo(() => {
   useEffect(() => {
     const { location } = globalThis as unknown as {
-      location: ReplaceAdminLocation;
-    };
-    replaceLegacyOperationsLocation(location, "refunds");
-  }, []);
+      location: ReplaceAdminLocation
+    }
+    replaceLegacyOperationsLocation(location, "refunds")
+  }, [])
 
-  return null;
-});
+  return null
+})
 
-LegacyRefundOperationsPage.displayName = "LegacyRefundOperationsPage";
+LegacyRefundOperationsPage.displayName = "LegacyRefundOperationsPage"
 
-export default LegacyRefundOperationsPage;
+export default LegacyRefundOperationsPage

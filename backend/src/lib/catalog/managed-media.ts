@@ -122,12 +122,10 @@ export const parseManagedMediaCommandOptions = (
     apply,
     confirmation,
     maxAssets,
-    maxBytes: readIntegerOption(
-      args,
-      "--max-bytes",
-      DEFAULT_MEDIA_MAX_BYTES,
-      { min: 1_024, max: 100 * 1024 * 1024 }
-    ),
+    maxBytes: readIntegerOption(args, "--max-bytes", DEFAULT_MEDIA_MAX_BYTES, {
+      min: 1_024,
+      max: 100 * 1024 * 1024,
+    }),
     minDelayMs: readIntegerOption(args, "--min-delay-ms", 1_000, {
       min: 500,
       max: 60_000,
@@ -136,12 +134,10 @@ export const parseManagedMediaCommandOptions = (
       min: 0,
       max: 25,
     }),
-    requestTimeoutMs: readIntegerOption(
-      args,
-      "--request-timeout-ms",
-      20_000,
-      { min: 1_000, max: 120_000 }
-    ),
+    requestTimeoutMs: readIntegerOption(args, "--request-timeout-ms", 20_000, {
+      min: 1_000,
+      max: 120_000,
+    }),
     stage,
     stageConfirmation,
     stateDirectory: readOption(args, "--state-dir"),
@@ -189,7 +185,9 @@ export const isBigCartelProductImageUrl = (value: unknown): value is string => {
 }
 
 const readPngMetadata = (buffer: Buffer): SupportedManagedImage | null => {
-  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  const signature = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ])
   if (buffer.length < 24 || !buffer.subarray(0, 8).equals(signature)) {
     return null
   }
@@ -202,16 +200,11 @@ const readPngMetadata = (buffer: Buffer): SupportedManagedImage | null => {
 }
 
 const jpegStartOfFrameMarkers = new Set([
-  0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce,
-  0xcf,
+  0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
 ])
 
 const readJpegMetadata = (buffer: Buffer): SupportedManagedImage | null => {
-  if (
-    buffer.length < 4 ||
-    buffer[0] !== 0xff ||
-    buffer[1] !== 0xd8
-  ) {
+  if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) {
     return null
   }
 
@@ -308,7 +301,9 @@ export const inspectManagedImage = (
     readWebpMetadata(buffer)
 
   if (!inspected) {
-    throw new Error("The downloaded bytes are not a supported JPEG, PNG, or WebP image.")
+    throw new Error(
+      "The downloaded bytes are not a supported JPEG, PNG, or WebP image."
+    )
   }
   if (inspected.width < 1 || inspected.height < 1) {
     throw new Error("The downloaded image has invalid dimensions.")

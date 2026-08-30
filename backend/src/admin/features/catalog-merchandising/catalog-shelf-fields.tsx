@@ -42,17 +42,13 @@ export const CatalogShelfModeField = memo<ShelfModeFieldProps>(
           onChange(nextValue)
         }
       },
-      [onChange],
+      [onChange]
     )
 
     return (
       <div className="space-y-2">
         <Label htmlFor={id}>Mode</Label>
-        <Select
-          disabled={disabled}
-          onValueChange={handleChange}
-          value={value}
-        >
+        <Select disabled={disabled} onValueChange={handleChange} value={value}>
           <Select.Trigger className="w-full" id={id}>
             <Select.Value />
           </Select.Trigger>
@@ -66,7 +62,7 @@ export const CatalogShelfModeField = memo<ShelfModeFieldProps>(
         </Select>
       </div>
     )
-  },
+  }
 )
 
 CatalogShelfModeField.displayName = "CatalogShelfModeField"
@@ -86,17 +82,13 @@ export const CatalogAutomationField = memo<AutomationFieldProps>(
           onChange(nextValue)
         }
       },
-      [onChange],
+      [onChange]
     )
 
     return (
       <div className="space-y-2">
         <Label htmlFor={id}>Automation</Label>
-        <Select
-          disabled={disabled}
-          onValueChange={handleChange}
-          value={value}
-        >
+        <Select disabled={disabled} onValueChange={handleChange} value={value}>
           <Select.Trigger className="w-full" id={id}>
             <Select.Value />
           </Select.Trigger>
@@ -110,7 +102,7 @@ export const CatalogAutomationField = memo<AutomationFieldProps>(
         </Select>
       </div>
     )
-  },
+  }
 )
 
 CatalogAutomationField.displayName = "CatalogAutomationField"
@@ -129,7 +121,7 @@ export const CatalogCheckboxField = memo<CheckboxFieldProps>(
       (nextChecked: boolean | "indeterminate") => {
         onChange(nextChecked === true)
       },
-      [onChange],
+      [onChange]
     )
 
     return (
@@ -149,7 +141,7 @@ export const CatalogCheckboxField = memo<CheckboxFieldProps>(
         </Label>
       </div>
     )
-  },
+  }
 )
 
 CatalogCheckboxField.displayName = "CatalogCheckboxField"

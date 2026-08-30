@@ -1,7 +1,4 @@
-import {
-  acquireLockStep,
-  releaseLockStep,
-} from "@medusajs/medusa/core-flows"
+import { acquireLockStep, releaseLockStep } from "@medusajs/medusa/core-flows"
 import {
   createStep,
   createWorkflow,
@@ -51,7 +48,7 @@ const mutateBundleStep = createStep(
   "mutate-catalog-bundle",
   async (
     input: CatalogBundleMutationInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<CatalogBundleMutationResult, MutationCompensation | null>
   > => {
@@ -65,7 +62,7 @@ const mutateBundleStep = createStep(
             aggregateId: input.aggregateId,
             operationId: result.operationId,
             previous: result.previous,
-          },
+          }
     )
   },
   async (compensation, { container }) => {
@@ -74,7 +71,7 @@ const mutateBundleStep = createStep(
     }
     const catalogService = container.resolve("catalog") as CatalogService
     await catalogService.compensateBundleMutation(compensation)
-  },
+  }
 )
 
 const reconcileBundleInventoryStep = createStep(
@@ -85,7 +82,7 @@ const reconcileBundleInventoryStep = createStep(
   },
   async (
     { input, mutation }: InventoryStepInput,
-    { container },
+    { container }
   ): Promise<
     StepResponse<InventoryStepOutput, InventoryCompensation | null>
   > => {
@@ -95,11 +92,11 @@ const reconcileBundleInventoryStep = createStep(
     const { snapshot } = await reconcileComponentDerivedBundleInventory(
       container,
       input.aggregateId,
-      mutation.previous,
+      mutation.previous
     )
     return new StepResponse(
       { snapshot },
-      { productId: input.aggregateId, snapshot },
+      { productId: input.aggregateId, snapshot }
     )
   },
   async (compensation, { container }) => {
@@ -109,9 +106,9 @@ const reconcileBundleInventoryStep = createStep(
     await restoreBundleInventoryReconciliation(
       container,
       compensation.productId,
-      compensation.snapshot,
+      compensation.snapshot
     )
-  },
+  }
 )
 
 const completeBundleOperationStep = createStep(
@@ -119,7 +116,9 @@ const completeBundleOperationStep = createStep(
   async ({
     input,
     mutation,
-  }: CompletionStepInput): Promise<StepResponse<CatalogBundleMutationResult>> => {
+  }: CompletionStepInput): Promise<
+    StepResponse<CatalogBundleMutationResult>
+  > => {
     if (mutation.replayed) {
       return new StepResponse(mutation)
     }
@@ -133,24 +132,24 @@ const completeBundleOperationStep = createStep(
       ...mutation,
       result,
     })
-  },
+  }
 )
 
 const persistBundleOperationStep = createStep(
   "persist-catalog-bundle-operation",
   async (
     mutation: CatalogBundleMutationResult,
-    { container },
+    { container }
   ): Promise<StepResponse<CatalogBundleMutationResult>> => {
     if (!mutation.replayed) {
       const catalogService = container.resolve("catalog") as CatalogService
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,
-        mutation.result,
+        mutation.result
       )
     }
     return new StepResponse(mutation)
-  },
+  }
 )
 
 export const mutateCatalogBundleWorkflow = createWorkflow(
@@ -163,7 +162,7 @@ export const mutateCatalogBundleWorkflow = createWorkflow(
   function (input: CatalogBundleMutationInput) {
     const lockKey = transform(
       { aggregateId: input.aggregateId },
-      ({ aggregateId }) => `catalog:bundle:${aggregateId}`,
+      ({ aggregateId }) => `catalog:bundle:${aggregateId}`
     )
     acquireLockStep({
       key: lockKey,
@@ -180,5 +179,5 @@ export const mutateCatalogBundleWorkflow = createWorkflow(
     const persisted = persistBundleOperationStep(completed)
     releaseLockStep({ key: lockKey })
     return new WorkflowResponse(persisted)
-  },
+  }
 )

@@ -10,9 +10,7 @@ describe("rich-text sanitization", () => {
       sanitizeRichTextHtml(
         "<h2>Release</h2><p>New <strong>record</strong>.</p><hr>"
       )
-    ).toBe(
-      "<h2>Release</h2><p>New <strong>record</strong>.</p><hr />"
-    )
+    ).toBe("<h2>Release</h2><p>New <strong>record</strong>.</p><hr />")
   })
 
   it.each([
@@ -20,7 +18,7 @@ describe("rich-text sanitization", () => {
     '<img src=x onerror="alert(1)"><p>Safe</p>',
     '<svg><a xlink:href="javascript:alert(1)">bad</a></svg><p>Safe</p>',
     '<iframe srcdoc="<script>alert(1)</script>"></iframe><p>Safe</p>',
-    '<math><mtext><option><style><img src=x onerror=alert(1)></style></option></mtext></math><p>Safe</p>',
+    "<math><mtext><option><style><img src=x onerror=alert(1)></style></option></mtext></math><p>Safe</p>",
   ])("removes executable markup from %s", (input) => {
     const sanitized = sanitizeRichTextHtml(input)
 
@@ -46,9 +44,9 @@ describe("rich-text sanitization", () => {
     "data:text/html,<script>alert(1)</script>",
     "//evil.example/path",
   ])("removes unsafe link target %s", (href) => {
-    expect(
-      sanitizeRichTextHtml(`<a href="${href}">Unsafe</a>`)
-    ).toBe("<a>Unsafe</a>")
+    expect(sanitizeRichTextHtml(`<a href="${href}">Unsafe</a>`)).toBe(
+      "<a>Unsafe</a>"
+    )
   })
 
   it("removes attributes and styles outside the allow-list", () => {
@@ -61,7 +59,9 @@ describe("rich-text sanitization", () => {
 
   it("unwraps unknown formatting while retaining safe text", () => {
     expect(
-      sanitizeRichTextHtml("<custom-element>Keep <em>this</em></custom-element>")
+      sanitizeRichTextHtml(
+        "<custom-element>Keep <em>this</em></custom-element>"
+      )
     ).toBe("Keep <em>this</em>")
   })
 

@@ -18,18 +18,14 @@ describe("CatalogControlledInput", () => {
         options={[{ id: "artist_1", label: "Existing Artist" }]}
         unavailable={false}
         value="Existing Artist"
-      />,
+      />
     )
 
     expect(markup).toContain('id="artist"')
     expect(markup).toContain('list="artist-choices"')
-    expect(markup).toContain(
-      'aria-describedby="artist-hint artist-selection"',
-    )
+    expect(markup).toContain('aria-describedby="artist-hint artist-selection"')
     expect(markup).toContain('<option value="Existing Artist"></option>')
-    expect(markup).toContain(
-      "Using existing artist: Existing Artist.",
-    )
+    expect(markup).toContain("Using existing artist: Existing Artist.")
   })
 
   it("explains the safe fallback when controlled choices are unavailable", () => {
@@ -47,12 +43,12 @@ describe("CatalogControlledInput", () => {
         options={[]}
         unavailable
         value="Death metal"
-      />,
+      />
     )
 
     expect(markup).toContain('aria-describedby="genre-selection"')
     expect(markup).toContain(
-      "Name matching will still be checked safely when the draft is created.",
+      "Name matching will still be checked safely when the draft is created."
     )
   })
 })

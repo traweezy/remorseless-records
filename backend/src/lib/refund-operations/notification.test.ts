@@ -1,4 +1,4 @@
-import { buildRefundNotificationPayloads } from "./notification";
+import { buildRefundNotificationPayloads } from "./notification"
 
 describe("refund customer notification payloads", () => {
   it("builds one idempotent message for every partial refund", () => {
@@ -17,7 +17,7 @@ describe("refund customer notification payloads", () => {
           resourceType: "order",
         },
         template: "refund-issued",
-      }),
+      })
     ).toEqual([
       expect.objectContaining({
         data: expect.objectContaining({
@@ -45,8 +45,8 @@ describe("refund customer notification payloads", () => {
           idempotency_key: "refund-issued:refund_02",
         },
       }),
-    ]);
-  });
+    ])
+  })
 
   it("supports a compensated checkout that never created an order", () => {
     expect(
@@ -61,15 +61,15 @@ describe("refund customer notification payloads", () => {
           resourceType: "cart",
         },
         template: "refund-issued",
-      }),
+      })
     ).toEqual([
       expect.objectContaining({
         receiver_id: null,
         resource_id: "cart_01",
         resource_type: "cart",
       }),
-    ]);
-  });
+    ])
+  })
 
   it("drops malformed amounts instead of sending a misleading email", () => {
     expect(
@@ -84,7 +84,7 @@ describe("refund customer notification payloads", () => {
           resourceType: "cart",
         },
         template: "refund-issued",
-      }),
-    ).toEqual([]);
-  });
-});
+      })
+    ).toEqual([])
+  })
+})

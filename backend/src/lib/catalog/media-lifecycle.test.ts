@@ -27,7 +27,7 @@ const serviceFixture = () => {
   }
   service.runCatalogTransaction.mockImplementation(
     async (callback: (context: Record<string, unknown>) => unknown) =>
-      callback({ transactionManager: {} }),
+      callback({ transactionManager: {} })
   )
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   service.listCatalogProductMediaItems.mockResolvedValue([])
@@ -46,7 +46,7 @@ const serviceFixture = () => {
 }
 
 const commandFixture = (
-  command: CatalogMediaLifecycleInput["command"] = "catalog.media.quarantine",
+  command: CatalogMediaLifecycleInput["command"] = "catalog.media.quarantine"
 ): CatalogMediaLifecycleInput => ({
   actorId: "user_1",
   assetId: "cmedia_1",
@@ -62,7 +62,7 @@ describe("catalog media lifecycle", () => {
       catalogMediaLifecycleCommandSchema.safeParse({
         expectedVersion: 0,
         idempotencyKey: "not-a-uuid",
-      }).success,
+      }).success
     ).toBe(false)
   })
 
@@ -72,7 +72,7 @@ describe("catalog media lifecycle", () => {
     const input = commandFixture()
 
     await expect(
-      mutateCatalogMediaLifecycle(service as never, input, now),
+      mutateCatalogMediaLifecycle(service as never, input, now)
     ).resolves.toEqual({
       assetId: "cmedia_1",
       lifecycleStatus: "quarantined",
@@ -92,7 +92,7 @@ describe("catalog media lifecycle", () => {
     expect(service.listCatalogProductMediaItems).toHaveBeenCalledWith(
       { media_asset_id: "cmedia_1" },
       { take: 1 },
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.createCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
@@ -105,7 +105,7 @@ describe("catalog media lifecycle", () => {
           status: "pending",
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.updateCatalogMediaAssets).toHaveBeenCalledWith(
       [
@@ -118,7 +118,7 @@ describe("catalog media lifecycle", () => {
           version: 2,
         },
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
   })
 
@@ -128,13 +128,10 @@ describe("catalog media lifecycle", () => {
       { id: "cpmedia_1" },
     ])
     await expect(
-      mutateCatalogMediaLifecycle(
-        linkedService as never,
-        commandFixture(),
-      ),
+      mutateCatalogMediaLifecycle(linkedService as never, commandFixture())
     ).rejects.toThrow("Linked catalog media")
     expect(
-      linkedService.createCatalogAuthoringOperations,
+      linkedService.createCatalogAuthoringOperations
     ).not.toHaveBeenCalled()
 
     const staleService = serviceFixture()
@@ -142,7 +139,7 @@ describe("catalog media lifecycle", () => {
       mutateCatalogMediaLifecycle(staleService as never, {
         ...commandFixture(),
         expectedVersion: 2,
-      }),
+      })
     ).rejects.toThrow("changed after it was loaded")
 
     const quarantinedService = serviceFixture()
@@ -151,10 +148,7 @@ describe("catalog media lifecycle", () => {
       lifecycle_status: "quarantined",
     })
     await expect(
-      mutateCatalogMediaLifecycle(
-        quarantinedService as never,
-        commandFixture(),
-      ),
+      mutateCatalogMediaLifecycle(quarantinedService as never, commandFixture())
     ).rejects.toThrow("already quarantined")
   })
 
@@ -181,8 +175,8 @@ describe("catalog media lifecycle", () => {
           ...commandFixture("catalog.media.restore"),
           expectedVersion: 2,
         },
-        new Date("2026-07-26T20:00:00.000Z"),
-      ),
+        new Date("2026-07-26T20:00:00.000Z")
+      )
     ).resolves.toMatchObject({
       lifecycleStatus: "active",
       purgeEligibleAt: null,
@@ -200,7 +194,7 @@ describe("catalog media lifecycle", () => {
           version: 3,
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
   })
 
@@ -227,7 +221,7 @@ describe("catalog media lifecycle", () => {
     ])
 
     await expect(
-      mutateCatalogMediaLifecycle(service as never, input),
+      mutateCatalogMediaLifecycle(service as never, input)
     ).resolves.toMatchObject({
       assetId: "cmedia_1",
       lifecycleStatus: "quarantined",
@@ -242,7 +236,7 @@ describe("catalog media lifecycle", () => {
       mutateCatalogMediaLifecycle(service as never, {
         ...input,
         requestSha256: "b".repeat(64),
-      }),
+      })
     ).rejects.toThrow("cannot be replayed")
 
     service.listCatalogAuthoringOperations.mockResolvedValue([
@@ -258,7 +252,7 @@ describe("catalog media lifecycle", () => {
       },
     ])
     await expect(
-      mutateCatalogMediaLifecycle(service as never, input),
+      mutateCatalogMediaLifecycle(service as never, input)
     ).rejects.toThrow("stored catalog media lifecycle result is invalid")
   })
 
@@ -278,7 +272,7 @@ describe("catalog media lifecycle", () => {
           quarantined_by: "user_1",
           version: 2,
         },
-      }),
+      })
     ).resolves.toBeUndefined()
     expect(service.updateCatalogMediaAssets).toHaveBeenCalledWith(
       [
@@ -291,7 +285,7 @@ describe("catalog media lifecycle", () => {
           version: 2,
         },
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
     expect(service.updateCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
@@ -301,7 +295,7 @@ describe("catalog media lifecycle", () => {
           status: "compensated",
         }),
       ],
-      expect.any(Object),
+      expect.any(Object)
     )
   })
 })

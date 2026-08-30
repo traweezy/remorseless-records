@@ -16,7 +16,9 @@ describe("homepage shelf copy reconciliation guards", () => {
   })
 
   it("requires reviewed count and manifest identity in apply mode", () => {
-    expect(() => parseHomepageShelfCopyArguments(["--apply"])).toThrow("Apply mode requires")
+    expect(() => parseHomepageShelfCopyArguments(["--apply"])).toThrow(
+      "Apply mode requires"
+    )
     expect(
       parseHomepageShelfCopyArguments([
         "--apply",
@@ -31,9 +33,9 @@ describe("homepage shelf copy reconciliation guards", () => {
   })
 
   it("rejects malformed guard values", () => {
-    expect(() => parseHomepageShelfCopyArguments(["--expected-count=-1"])).toThrow(
-      "non-negative integer"
-    )
+    expect(() =>
+      parseHomepageShelfCopyArguments(["--expected-count=-1"])
+    ).toThrow("non-negative integer")
     expect(() =>
       parseHomepageShelfCopyArguments(["--expected-manifest-sha256=not-a-hash"])
     ).toThrow("lowercase SHA-256")

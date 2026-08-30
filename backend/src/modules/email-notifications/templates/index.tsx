@@ -1,13 +1,17 @@
-import * as React from 'react'
-import type { ReactNode } from 'react'
-import { MedusaError } from '@medusajs/framework/utils'
-import { InviteUserEmail, INVITE_USER, isInviteUserData } from './invite-user'
-import { OrderPlacedTemplate, ORDER_PLACED, isOrderPlacedTemplateData } from './order-placed'
+import * as React from "react"
+import type { ReactNode } from "react"
+import { MedusaError } from "@medusajs/framework/utils"
+import { InviteUserEmail, INVITE_USER, isInviteUserData } from "./invite-user"
+import {
+  OrderPlacedTemplate,
+  ORDER_PLACED,
+  isOrderPlacedTemplateData,
+} from "./order-placed"
 import {
   isRefundIssuedTemplateData,
   RefundIssuedTemplate,
   REFUND_ISSUED,
-} from './refund-issued'
+} from "./refund-issued"
 
 export const EmailTemplates = {
   INVITE_USER,
@@ -17,7 +21,10 @@ export const EmailTemplates = {
 
 export type EmailTemplateType = keyof typeof EmailTemplates
 
-export function generateEmailTemplate(templateKey: string, data: unknown): ReactNode {
+export function generateEmailTemplate(
+  templateKey: string,
+  data: unknown
+): ReactNode {
   switch (templateKey) {
     case EmailTemplates.INVITE_USER:
       if (!isInviteUserData(data)) {

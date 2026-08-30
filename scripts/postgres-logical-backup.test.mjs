@@ -17,7 +17,7 @@ test("streams deterministic archive hashing", async () => {
     await writeFile(archive, "portable backup evidence", { mode: 0o600 })
     assert.equal(
       await hashFileSha256(archive),
-      "8be9870e10ec18c488e3450fe249f24fac6808fb697b61965df8ae814897173f",
+      "8be9870e10ec18c488e3450fe249f24fac6808fb697b61965df8ae814897173f"
     )
   } finally {
     await rm(directory, { force: true, recursive: true })
@@ -27,7 +27,7 @@ test("streams deterministic archive hashing", async () => {
 test("moves PostgreSQL credentials into process environment only", () => {
   const result = createPostgresClientEnvironment(
     "postgresql://backup:p%40ss@db.example.com:6432/store?sslmode=verify-full&sslrootcert=system",
-    "DATABASE_BACKUP_URL",
+    "DATABASE_BACKUP_URL"
   )
 
   assert.deepEqual(result.environment, {
@@ -49,9 +49,9 @@ test("rejects a public backup connection that can fall back to plaintext", () =>
     () =>
       createPostgresClientEnvironment(
         "postgresql://backup:secret@db.example.com/store?sslmode=prefer",
-        "DATABASE_BACKUP_URL",
+        "DATABASE_BACKUP_URL"
       ),
-    /must require TLS/u,
+    /must require TLS/u
   )
 })
 
@@ -62,7 +62,7 @@ test("rejects ambiguous PostgreSQL destinations", () => {
   ]) {
     assert.throws(
       () => createPostgresClientEnvironment(value, "DATABASE_BACKUP_URL"),
-      /unsafe database name|must not include a URL fragment/u,
+      /unsafe database name|must not include a URL fragment/u
     )
   }
 })
@@ -81,10 +81,10 @@ test("accepts a strict bounded backup manifest", () => {
   assert.equal(parseBackupManifest(manifest), manifest)
   assert.throws(() => parseBackupManifest({ ...manifest, bytes: 0 }))
   assert.throws(() =>
-    parseBackupManifest({ ...manifest, sourceFingerprint: "source" }),
+    parseBackupManifest({ ...manifest, sourceFingerprint: "source" })
   )
   assert.throws(() =>
-    parseBackupManifest({ ...manifest, createdAt: "2026-08-30T20:00:00Z" }),
+    parseBackupManifest({ ...manifest, createdAt: "2026-08-30T20:00:00Z" })
   )
   assert.throws(() => parseBackupManifest({ ...manifest, unexpected: true }))
 })

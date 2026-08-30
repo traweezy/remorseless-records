@@ -121,7 +121,9 @@ describe("catalog shelf resolution", () => {
         source_created_at: "2026-07-10T12:30:00-04:00",
       })
     ).toBe("2026-07-10T16:30:00.000Z")
-    expect(getCatalogSourceCreatedAt({ source_created_at: "invalid" })).toBeNull()
+    expect(
+      getCatalogSourceCreatedAt({ source_created_at: "invalid" })
+    ).toBeNull()
     expect(getCatalogSourceCreatedAt(null)).toBeNull()
   })
 })

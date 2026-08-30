@@ -5,7 +5,7 @@
  */
 export function assertValue<T extends string | undefined>(
   v: T | undefined,
-  errorMessage: string,
+  errorMessage: string
 ): T {
   if (v === undefined) {
     throw new Error(errorMessage)

@@ -16,7 +16,7 @@ const variantIdFromRequest = (req: MedusaRequest): string => {
   if (!variantId) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Product variant id is required.",
+      "Product variant id is required."
     )
   }
   return variantId
@@ -24,7 +24,7 @@ const variantIdFromRequest = (req: MedusaRequest): string => {
 
 export const GET = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const variantId = variantIdFromRequest(req)
   await assertVariantExists(req, variantId)
@@ -35,14 +35,14 @@ export const GET = async (
 
 export const PUT = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const variantId = variantIdFromRequest(req)
   const parsed = catalogVariantProfileUpsertSchema.safeParse(req.body ?? {})
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid catalog variant profile payload.",
+      "Invalid catalog variant profile payload."
     )
   }
 
@@ -54,11 +54,7 @@ export const PUT = async (
         auth_context?: { actor_id?: string | null }
       }
     ).auth_context?.actor_id ?? null
-  const {
-    expectedVersion,
-    idempotencyKey,
-    ...patch
-  } = parsed.data
+  const { expectedVersion, idempotencyKey, ...patch } = parsed.data
   const requestSha256 = hashCatalogCommand({
     command: "catalog.variant-profile.upsert",
     input: { expectedVersion, ...patch },
@@ -87,6 +83,6 @@ export const PUT = async (
 
 export const DELETE = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> =>
   rejectCatalogHardDeletion(req, res, "catalog variant profiles")

@@ -19,7 +19,7 @@ import {
 } from "./product-create-planning"
 
 const commandFixture = (
-  kind: CatalogProductCreateCommandInput["kind"] = "music_release",
+  kind: CatalogProductCreateCommandInput["kind"] = "music_release"
 ): CatalogProductCreateCommandInput => {
   const bundle =
     kind === "fixed_bundle"
@@ -133,8 +133,8 @@ describe("catalog product creation planning", () => {
     await expect(
       resolveCatalogProductCreateContext(
         containerFixture(queryGraph),
-        commandFixture("fixed_bundle"),
-      ),
+        commandFixture("fixed_bundle")
+      )
     ).resolves.toEqual({
       bundleComponents: [
         expect.objectContaining({
@@ -158,9 +158,7 @@ describe("catalog product creation planning", () => {
       }
       if (entity === "product_variant") {
         return {
-          data: [
-            { id: "component_variant", product_id: "different_product" },
-          ],
+          data: [{ id: "component_variant", product_id: "different_product" }],
         }
       }
       if (entity === "product_variant_inventory_items") {
@@ -184,8 +182,8 @@ describe("catalog product creation planning", () => {
     await expect(
       resolveCatalogProductCreateContext(
         container,
-        commandFixture("fixed_bundle"),
-      ),
+        commandFixture("fixed_bundle")
+      )
     ).rejects.toThrow("does not belong")
 
     queryGraph.mockImplementation(async ({ entity }) => {
@@ -218,19 +216,19 @@ describe("catalog product creation planning", () => {
     await expect(
       resolveCatalogProductCreateContext(
         container,
-        commandFixture("fixed_bundle"),
-      ),
+        commandFixture("fixed_bundle")
+      )
     ).rejects.toThrow("exactly one inventory item")
   })
 
   it("builds draft native products with kind-owned inventory", () => {
     const managed = buildCatalogNativeProduct(
       commandFixture("music_release"),
-      contextFixture(),
+      contextFixture()
     )
     const fixed = buildCatalogNativeProduct(
       commandFixture("fixed_bundle"),
-      contextFixture(),
+      contextFixture()
     )
 
     expect(managed).toMatchObject({
@@ -268,8 +266,8 @@ describe("catalog product creation planning", () => {
       resolveCatalogCreatedProduct(
         containerFixture(queryGraph),
         commandFixture(),
-        products,
-      ),
+        products
+      )
     ).resolves.toMatchObject({
       productId: "product_1",
       targets: [{ variantId: "variant_1" }],
@@ -280,15 +278,15 @@ describe("catalog product creation planning", () => {
       resolveCatalogCreatedProduct(
         containerFixture(queryGraph),
         commandFixture(),
-        products,
-      ),
+        products
+      )
     ).rejects.toThrow("could not be resolved")
   })
 
   it("builds deterministic catalog profile and bundle child commands", () => {
     const profile = buildCatalogProductProfileMutation(
       commandFixture("music_release"),
-      "product_1",
+      "product_1"
     )
     const fixed = buildCatalogBundleMutation(
       commandFixture("fixed_bundle"),
@@ -320,7 +318,7 @@ describe("catalog product creation planning", () => {
         ],
       },
       "product_1",
-      "profile_1",
+      "profile_1"
     )
     const mystery = buildCatalogBundleMutation(
       commandFixture("mystery_bundle"),
@@ -335,7 +333,7 @@ describe("catalog product creation planning", () => {
         ],
       },
       "product_2",
-      "profile_2",
+      "profile_2"
     )
 
     expect(profile.patch).toMatchObject({
@@ -396,7 +394,7 @@ describe("catalog product creation planning", () => {
     const mutation = buildCatalogProductMediaMutation(
       command,
       "product_1",
-      "profile_1",
+      "profile_1"
     )
 
     expect(mutation).toMatchObject({
@@ -424,7 +422,7 @@ describe("catalog product creation planning", () => {
     expect(mutation.idempotencyKey).not.toBe(command.idempotencyKey)
     expect(
       buildCatalogProductMediaMutation(command, "product_1", "profile_1")
-        .requestSha256,
+        .requestSha256
     ).toBe(mutation.requestSha256)
   })
 
@@ -452,8 +450,8 @@ describe("catalog product creation planning", () => {
         containerFixture(queryGraph),
         commandFixture(),
         contextFixture(),
-        created,
-      ),
+        created
+      )
     ).resolves.toEqual([
       {
         inventory_item_id: "inventory_1",
@@ -466,8 +464,8 @@ describe("catalog product creation planning", () => {
         containerFixture(queryGraph),
         commandFixture("fixed_bundle"),
         contextFixture(),
-        created,
-      ),
+        created
+      )
     ).resolves.toEqual([])
   })
 })

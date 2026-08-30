@@ -2,10 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import type NewsModuleService from "@/modules/news/service"
-import {
-  newsLifecycleSchema,
-  setNewsEntryArchived,
-} from "../../helpers"
+import { newsLifecycleSchema, setNewsEntryArchived } from "../../helpers"
 
 type NewsService = InstanceType<typeof NewsModuleService>
 

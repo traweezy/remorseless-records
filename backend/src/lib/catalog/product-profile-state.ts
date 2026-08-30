@@ -24,13 +24,11 @@ import type {
 } from "./product-profile-contract"
 import type { CatalogService } from "./reference-resolution"
 
-export const toCatalogReferenceKind = (
-  value: unknown,
-): CatalogReferenceKind =>
+export const toCatalogReferenceKind = (value: unknown): CatalogReferenceKind =>
   catalogReferenceKindValues.find((kind) => kind === value) ?? "utility_tag"
 
 const profileState = (
-  profile: CatalogProductProfileRecord,
+  profile: CatalogProductProfileRecord
 ): CatalogProductProfileState => ({
   content_schema_version: profile.content_schema_version,
   credits: coerceCatalogJsonRecord(profile.credits),
@@ -52,7 +50,7 @@ const profileState = (
 })
 
 const artistState = (
-  artist: CatalogProductArtistRecord,
+  artist: CatalogProductArtistRecord
 ): CatalogProductArtistState => ({
   artist_id: artist.artist_id,
   display_name: artist.display_name,
@@ -64,7 +62,7 @@ const artistState = (
 })
 
 const referenceState = (
-  reference: CatalogProductReferenceRecord,
+  reference: CatalogProductReferenceRecord
 ): CatalogProductReferenceState => ({
   id: reference.id,
   kind: toCatalogReferenceKind(reference.kind),
@@ -77,12 +75,12 @@ const referenceState = (
 export const resolveCatalogProductProfile = async (
   catalogService: CatalogService,
   productId: string,
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ) => {
   const profiles = await catalogService.listCatalogProductProfiles(
     { product_id: productId },
     {},
-    sharedContext,
+    sharedContext
   )
   return profiles.at(0) ?? null
 }
@@ -90,18 +88,18 @@ export const resolveCatalogProductProfile = async (
 export const loadCatalogProductProfileRelations = async (
   catalogService: CatalogService,
   profileId: string,
-  sharedContext?: Context<EntityManager>,
+  sharedContext?: Context<EntityManager>
 ) => {
   const [artists, references] = await Promise.all([
     catalogService.listCatalogProductArtists(
       { product_profile_id: profileId },
       { order: { sort_order: "ASC" } },
-      sharedContext,
+      sharedContext
     ),
     catalogService.listCatalogProductReferences(
       { product_profile_id: profileId },
       { order: { sort_order: "ASC" } },
-      sharedContext,
+      sharedContext
     ),
   ])
 
@@ -115,7 +113,7 @@ export const serializeCatalogProductProfileResponse = async (
   catalogService: CatalogService,
   profile: NonNullable<
     Awaited<ReturnType<typeof resolveCatalogProductProfile>>
-  > | null,
+  > | null
 ) => {
   if (!profile) {
     return {
@@ -134,12 +132,12 @@ export const serializeCatalogProductProfileResponse = async (
 export const snapshotCatalogProductProfile = async (
   catalogService: CatalogService,
   productId: string,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<CatalogProductProfileSnapshot> => {
   const profile = await resolveCatalogProductProfile(
     catalogService,
     productId,
-    sharedContext,
+    sharedContext
   )
   if (!profile) {
     return { artists: [], profile: null, references: [] }
@@ -149,19 +147,19 @@ export const snapshotCatalogProductProfile = async (
     catalogService.listCatalogProductArtists(
       { product_profile_id: profile.id },
       { order: { sort_order: "ASC" } },
-      sharedContext,
+      sharedContext
     ),
     catalogService.listCatalogProductReferences(
       { product_profile_id: profile.id },
       { order: { sort_order: "ASC" } },
-      sharedContext,
+      sharedContext
     ),
   ])
   return {
     artists: (artists as CatalogProductArtistRecord[]).map(artistState),
     profile: profileState(profile as CatalogProductProfileRecord),
     references: (references as CatalogProductReferenceRecord[]).map(
-      referenceState,
+      referenceState
     ),
   }
 }
@@ -169,30 +167,30 @@ export const snapshotCatalogProductProfile = async (
 const deleteProfileRelations = async (
   catalogService: CatalogService,
   profileId: string,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const [artists, references] = await Promise.all([
     catalogService.listCatalogProductArtists(
       { product_profile_id: profileId },
       {},
-      sharedContext,
+      sharedContext
     ),
     catalogService.listCatalogProductReferences(
       { product_profile_id: profileId },
       {},
-      sharedContext,
+      sharedContext
     ),
   ])
   if (artists.length) {
     await catalogService.deleteCatalogProductArtists(
       artists.map(({ id }) => id),
-      sharedContext,
+      sharedContext
     )
   }
   if (references.length) {
     await catalogService.deleteCatalogProductReferences(
       references.map(({ id }) => id),
-      sharedContext,
+      sharedContext
     )
   }
 }
@@ -201,12 +199,12 @@ export const restoreCatalogProductProfileSnapshot = async (
   catalogService: CatalogService,
   aggregateId: string,
   snapshot: CatalogProductProfileSnapshot,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const current = await resolveCatalogProductProfile(
     catalogService,
     aggregateId,
-    sharedContext,
+    sharedContext
   )
   if (current) {
     await deleteProfileRelations(catalogService, current.id, sharedContext)
@@ -215,39 +213,36 @@ export const restoreCatalogProductProfileSnapshot = async (
     if (current) {
       await catalogService.deleteCatalogProductProfiles(
         current.id,
-        sharedContext,
+        sharedContext
       )
     }
     return
   }
   if (current && current.id !== snapshot.profile.id) {
-    await catalogService.deleteCatalogProductProfiles(
-      current.id,
-      sharedContext,
-    )
+    await catalogService.deleteCatalogProductProfiles(current.id, sharedContext)
   }
   const { id: profileId, ...profileData } = snapshot.profile
   if (current?.id === snapshot.profile.id) {
     await catalogService.updateCatalogProductProfiles(
       [{ id: profileId, ...profileData }] as never,
-      sharedContext,
+      sharedContext
     )
   } else {
     await catalogService.createCatalogProductProfiles(
       [{ id: profileId, ...profileData }] as never,
-      sharedContext,
+      sharedContext
     )
   }
   if (snapshot.artists.length) {
     await catalogService.createCatalogProductArtists(
       snapshot.artists,
-      sharedContext,
+      sharedContext
     )
   }
   if (snapshot.references.length) {
     await catalogService.createCatalogProductReferences(
       snapshot.references,
-      sharedContext,
+      sharedContext
     )
   }
 }
@@ -255,12 +250,12 @@ export const restoreCatalogProductProfileSnapshot = async (
 export const deleteCreatedArtistIfOrphaned = async (
   catalogService: CatalogService,
   artistId: string,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const assignments = await catalogService.listCatalogProductArtists(
     { artist_id: artistId },
     { take: 1 },
-    sharedContext,
+    sharedContext
   )
   if (!assignments.length) {
     await catalogService.deleteCatalogArtists(artistId, sharedContext)
@@ -270,41 +265,36 @@ export const deleteCreatedArtistIfOrphaned = async (
 export const deleteCreatedReferenceIfOrphaned = async (
   catalogService: CatalogService,
   referenceValueId: string,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
-  const [
-    labels,
-    productTypes,
-    productReferences,
-    formats,
-    formatDetails,
-  ] = await Promise.all([
-    catalogService.listCatalogProductProfiles(
-      { label_id: referenceValueId },
-      { take: 1 },
-      sharedContext,
-    ),
-    catalogService.listCatalogProductProfiles(
-      { product_type_id: referenceValueId },
-      { take: 1 },
-      sharedContext,
-    ),
-    catalogService.listCatalogProductReferences(
-      { reference_value_id: referenceValueId },
-      { take: 1 },
-      sharedContext,
-    ),
-    catalogService.listCatalogVariantProfiles(
-      { format_id: referenceValueId },
-      { take: 1 },
-      sharedContext,
-    ),
-    catalogService.listCatalogVariantProfiles(
-      { format_detail_id: referenceValueId },
-      { take: 1 },
-      sharedContext,
-    ),
-  ])
+  const [labels, productTypes, productReferences, formats, formatDetails] =
+    await Promise.all([
+      catalogService.listCatalogProductProfiles(
+        { label_id: referenceValueId },
+        { take: 1 },
+        sharedContext
+      ),
+      catalogService.listCatalogProductProfiles(
+        { product_type_id: referenceValueId },
+        { take: 1 },
+        sharedContext
+      ),
+      catalogService.listCatalogProductReferences(
+        { reference_value_id: referenceValueId },
+        { take: 1 },
+        sharedContext
+      ),
+      catalogService.listCatalogVariantProfiles(
+        { format_id: referenceValueId },
+        { take: 1 },
+        sharedContext
+      ),
+      catalogService.listCatalogVariantProfiles(
+        { format_detail_id: referenceValueId },
+        { take: 1 },
+        sharedContext
+      ),
+    ])
   if (
     labels.length === 0 &&
     productTypes.length === 0 &&
@@ -314,7 +304,7 @@ export const deleteCreatedReferenceIfOrphaned = async (
   ) {
     await catalogService.deleteCatalogReferenceValues(
       referenceValueId,
-      sharedContext,
+      sharedContext
     )
   }
 }

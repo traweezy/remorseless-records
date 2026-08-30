@@ -1,9 +1,9 @@
 import type {
   MedusaResponse,
   MedusaStoreRequest,
-} from "@medusajs/framework/http";
-import { MedusaError } from "@medusajs/framework/utils";
-import { z } from "zod";
+} from "@medusajs/framework/http"
+import { MedusaError } from "@medusajs/framework/utils"
+import { z } from "zod"
 
 import {
   decodeStoreProductCursor,
@@ -11,21 +11,21 @@ import {
   listVisibleProductPage,
   resolveStoreProductVisibility,
   STORE_PRODUCT_PAGE_LIMIT,
-} from "@/lib/store-product-visibility";
+} from "@/lib/store-product-visibility"
 
 type ProductHandleRecord = Record<string, unknown> & {
-  created_at?: string | null;
-  handle?: string | null;
-  id?: string | null;
-  updated_at?: string | null;
-};
+  created_at?: string | null
+  handle?: string | null
+  id?: string | null
+  updated_at?: string | null
+}
 
 const PRODUCT_HANDLE_FIELDS = [
   "id",
   "handle",
   "updated_at",
   "created_at",
-] as const;
+] as const
 
 const listQuerySchema = z
   .object({
@@ -37,25 +37,25 @@ const listQuerySchema = z
       .max(STORE_PRODUCT_PAGE_LIMIT)
       .optional(),
   })
-  .strict();
+  .strict()
 
 const asString = (value: unknown): string | null =>
-  typeof value === "string" && value.trim().length ? value.trim() : null;
+  typeof value === "string" && value.trim().length ? value.trim() : null
 
 export const GET = async (
   req: MedusaStoreRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
-  const parsed = listQuerySchema.safeParse(req.query);
+  const parsed = listQuerySchema.safeParse(req.query)
   if (!parsed.success) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Invalid product handle page query",
-    );
+      "Invalid product handle page query"
+    )
   }
 
-  const { query, salesChannelIds } = resolveStoreProductVisibility(req);
-  const cursor = decodeStoreProductCursor(parsed.data.cursor);
+  const { query, salesChannelIds } = resolveStoreProductVisibility(req)
+  const cursor = decodeStoreProductCursor(parsed.data.cursor)
   const { nextCursor, products } =
     await listVisibleProductPage<ProductHandleRecord>({
       ...(cursor ? { cursor } : {}),
@@ -63,12 +63,12 @@ export const GET = async (
       limit: parsed.data.limit ?? STORE_PRODUCT_PAGE_LIMIT,
       query,
       salesChannelIds,
-    });
+    })
   const handles = products.flatMap((product) => {
-    const handle = asString(product.handle);
-    const id = asString(product.id);
+    const handle = asString(product.handle)
+    const id = asString(product.id)
     if (!handle || !id) {
-      return [];
+      return []
     }
     return [
       {
@@ -77,16 +77,16 @@ export const GET = async (
         id,
         updated_at: asString(product.updated_at),
       },
-    ];
-  });
+    ]
+  })
 
   res.setHeader(
     "Cache-Control",
-    "public, max-age=60, s-maxage=900, stale-while-revalidate=1800",
-  );
-  res.setHeader("Vary", "x-publishable-api-key");
+    "public, max-age=60, s-maxage=900, stale-while-revalidate=1800"
+  )
+  res.setHeader("Vary", "x-publishable-api-key")
   res.status(200).json({
     handles,
     next_cursor: nextCursor ? encodeStoreProductCursor(nextCursor) : null,
-  });
-};
+  })
+}

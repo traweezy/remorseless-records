@@ -13,10 +13,7 @@ import {
 import { useForm, useStore } from "@tanstack/react-form"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Badge, Button, Text } from "@medusajs/ui"
-import {
-  useBlocker,
-  useNavigate,
-} from "react-router-dom"
+import { useBlocker, useNavigate } from "react-router-dom"
 
 import { AdminPageHeader } from "../../components/admin-page"
 import {
@@ -29,9 +26,7 @@ import { ConfirmAction } from "../../components/confirm-action"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 import { catalogProductCreateActions } from "../catalog-permissions"
 import type { CatalogControlledOption } from "./catalog-controlled-input"
-import {
-  resolveCatalogCreationAvailability,
-} from "./catalog-creation-availability"
+import { resolveCatalogCreationAvailability } from "./catalog-creation-availability"
 import {
   CatalogCreationBasicsStep,
   type CatalogCreationReferenceOptions,
@@ -40,9 +35,7 @@ import { CatalogCreationDetailsStep } from "./catalog-creation-details-step"
 import { CatalogCreationKindStep } from "./catalog-creation-kind-step"
 import { CatalogCreationOfferingsStep } from "./catalog-creation-offerings-step"
 import { CatalogCreationReviewStep } from "./catalog-creation-review-step"
-import {
-  CatalogCreationValidationSummary,
-} from "./catalog-creation-validation-summary"
+import { CatalogCreationValidationSummary } from "./catalog-creation-validation-summary"
 import {
   createCatalogCreationGeneralIssue,
   resolveCatalogCreationValidationIssues,
@@ -89,7 +82,7 @@ const restoredDraft = (): {
 } | null => {
   try {
     return parseCatalogCreationDraft(
-      globalThis.localStorage?.getItem(catalogCreationDraftKey) ?? null,
+      globalThis.localStorage?.getItem(catalogCreationDraftKey) ?? null
     )
   } catch {
     return null
@@ -100,7 +93,7 @@ const writeDraft = (values: CatalogCreationFormValues, step: number): void => {
   try {
     globalThis.localStorage?.setItem(
       catalogCreationDraftKey,
-      serializeCatalogCreationDraft(values, step),
+      serializeCatalogCreationDraft(values, step)
     )
   } catch {
     // The form remains usable when browser storage is blocked or full.
@@ -116,9 +109,8 @@ const removeDraft = (): void => {
 }
 
 const readInputValue = (
-  event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
-): string =>
-  (event.currentTarget as unknown as { value?: string }).value ?? ""
+  event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+): string => (event.currentTarget as unknown as { value?: string }).value ?? ""
 
 type DataTarget = {
   checked?: boolean
@@ -142,10 +134,7 @@ type BrowserEnvironment = {
 type FocusTarget = {
   closest: (selector: string) => { open: boolean } | null
   focus: (options: { preventScroll: boolean }) => void
-  scrollIntoView: (options: {
-    behavior: "smooth"
-    block: "center"
-  }) => void
+  scrollIntoView: (options: { behavior: "smooth"; block: "center" }) => void
 }
 
 type ScrollTarget = {
@@ -170,7 +159,7 @@ const offeringLabel = (kind: CatalogCreationKind): string => {
 
 const selectedProduct = (
   choices: CatalogCreationProductChoiceWithStock[],
-  productId: string,
+  productId: string
 ): CatalogCreationProductChoiceWithStock | undefined =>
   choices.find((choice) => choice.id === productId)
 
@@ -178,7 +167,7 @@ const CatalogProductCreatePageContent = memo(() => {
   const initialDraft = useMemo(restoredDraft, [])
   const initialValues = useMemo(
     () => initialDraft?.values ?? createCatalogCreationDefaults(),
-    [initialDraft],
+    [initialDraft]
   )
   const navigate = useNavigate()
   const [step, setStep] = useState(initialDraft?.step ?? 0)
@@ -189,10 +178,10 @@ const CatalogProductCreatePageContent = memo(() => {
   const [leaveOpen, setLeaveOpen] = useState(false)
   const [allowNavigation, setAllowNavigation] = useState(false)
   const [draftPersistenceEnabled, setDraftPersistenceEnabled] = useState(
-    Boolean(initialDraft),
+    Boolean(initialDraft)
   )
   const [draftSaveState, setDraftSaveState] = useState<AdminSaveState>(
-    initialDraft ? "saved" : "idle",
+    initialDraft ? "saved" : "idle"
   )
   const [resumed, setResumed] = useState(Boolean(initialDraft))
   const [submitted, setSubmitted] = useState(false)
@@ -235,7 +224,7 @@ const CatalogProductCreatePageContent = memo(() => {
         value,
         idempotencyKeyRef.current,
         choicesData ?? [],
-        vocabulary,
+        vocabulary
       )
       let result: Awaited<ReturnType<typeof createCatalogProduct>>
       try {
@@ -266,7 +255,7 @@ const CatalogProductCreatePageContent = memo(() => {
     ({ currentLocation, nextLocation }) =>
       formState.isDirty &&
       !allowNavigation &&
-      currentLocation.pathname !== nextLocation.pathname,
+      currentLocation.pathname !== nextLocation.pathname
   )
   const artistOptions = useMemo<CatalogControlledOption[]>(
     () =>
@@ -274,11 +263,11 @@ const CatalogProductCreatePageContent = memo(() => {
         id: artist.id,
         label: artist.name,
       })),
-    [vocabulary?.artists],
+    [vocabulary?.artists]
   )
   const referenceOptions = useMemo<CatalogCreationReferenceOptions>(() => {
     const byKind = (
-      kind: CatalogCreationReferenceChoice["kind"],
+      kind: CatalogCreationReferenceChoice["kind"]
     ): CatalogControlledOption[] =>
       (vocabulary?.references ?? [])
         .filter((reference) => reference.kind === kind && reference.isActive)
@@ -308,9 +297,9 @@ const CatalogProductCreatePageContent = memo(() => {
             releaseDate: values.releaseDate,
             releaseDatePrecision: values.releaseDatePrecision,
           }),
-        ]),
+        ])
       ),
-    [choicesData, values],
+    [choicesData, values]
   )
 
   useEffect(() => {
@@ -335,7 +324,7 @@ const CatalogProductCreatePageContent = memo(() => {
   useAdminUnsavedChanges(
     formState.isDirty && !allowNavigation,
     "Your catalog draft has unsaved changes.",
-    persistBeforeUnload,
+    persistBeforeUnload
   )
 
   useEffect(() => {
@@ -348,12 +337,7 @@ const CatalogProductCreatePageContent = memo(() => {
       resetCreationMutation()
       resetRetryStatusMutation()
     }
-  }, [
-    creationIsError,
-    resetCreationMutation,
-    resetRetryStatusMutation,
-    values,
-  ])
+  }, [creationIsError, resetCreationMutation, resetRetryStatusMutation, values])
 
   useEffect(() => {
     if (blocker.state === "blocked") {
@@ -370,7 +354,13 @@ const CatalogProductCreatePageContent = memo(() => {
     ) {
       void refetchChoices()
     }
-  }, [choicesData, choicesFetched, choicesFetching, refetchChoices, values.kind])
+  }, [
+    choicesData,
+    choicesFetched,
+    choicesFetching,
+    refetchChoices,
+    values.kind,
+  ])
 
   const focusValidationTarget = useCallback((targetId: string) => {
     const browser = globalThis as BrowserEnvironment
@@ -408,7 +398,7 @@ const CatalogProductCreatePageContent = memo(() => {
       form.setFieldValue(field, value as never)
       setStepErrors([])
     },
-    [form],
+    [form]
   )
 
   const setControlledField = useCallback(
@@ -416,39 +406,34 @@ const CatalogProductCreatePageContent = memo(() => {
       field: keyof CatalogCreationFormValues,
       idField: keyof CatalogCreationFormValues,
       value: string,
-      selectedId: string,
+      selectedId: string
     ) => {
       form.setFieldValue(field, value as never)
       form.setFieldValue(idField, selectedId as never)
       setStepErrors([])
     },
-    [form],
+    [form]
   )
 
   const handleArtistChange = useCallback(
     (value: string, selectedId: string) =>
       setControlledField("artistName", "artistId", value, selectedId),
-    [setControlledField],
+    [setControlledField]
   )
   const handleLabelChange = useCallback(
     (value: string, selectedId: string) =>
       setControlledField("label", "labelId", value, selectedId),
-    [setControlledField],
+    [setControlledField]
   )
   const handleGenreChange = useCallback(
     (value: string, selectedId: string) =>
       setControlledField("genre", "genreId", value, selectedId),
-    [setControlledField],
+    [setControlledField]
   )
   const handleProductTypeChange = useCallback(
     (value: string, selectedId: string) =>
-      setControlledField(
-        "productType",
-        "productTypeId",
-        value,
-        selectedId,
-      ),
-    [setControlledField],
+      setControlledField("productType", "productTypeId", value, selectedId),
+    [setControlledField]
   )
   const handleMerchandiseTypeChange = useCallback(
     (value: string, selectedId: string) =>
@@ -456,41 +441,41 @@ const CatalogProductCreatePageContent = memo(() => {
         "merchandiseType",
         "merchandiseTypeId",
         value,
-        selectedId,
+        selectedId
       ),
-    [setControlledField],
+    [setControlledField]
   )
   const handleReleaseDatePrecisionChange = useCallback(
     (precision: string) => {
       if (
         !catalogCreationReleaseDatePrecisions.includes(
-          precision as CatalogCreationReleaseDatePrecision,
+          precision as CatalogCreationReleaseDatePrecision
         )
       ) {
         return
       }
       form.setFieldValue(
         "releaseDatePrecision",
-        precision as CatalogCreationReleaseDatePrecision,
+        precision as CatalogCreationReleaseDatePrecision
       )
       form.setFieldValue("releaseDate", "")
       setStepErrors([])
     },
-    [form],
+    [form]
   )
 
   const handleTextChange = useCallback(
     (
       event: ChangeEvent<
         HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-      >,
+      >
     ) => {
       setField(
         dataTarget(event).name as keyof CatalogCreationFormValues,
-        readInputValue(event),
+        readInputValue(event)
       )
     },
-    [setField],
+    [setField]
   )
 
   const handleMediaChange = useCallback(
@@ -498,14 +483,13 @@ const CatalogProductCreatePageContent = memo(() => {
       form.setFieldValue("media", media)
       setStepErrors([])
     },
-    [form],
+    [form]
   )
 
   const handleKindSelect = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const kind = dataTarget(event).dataset?.kind as
-        | CatalogCreationKind
-        | undefined
+        CatalogCreationKind | undefined
       if (!kind || kind === values.kind) {
         return
       }
@@ -517,20 +501,19 @@ const CatalogProductCreatePageContent = memo(() => {
       lastSubmittedValuesRef.current = null
       setStepErrors([])
     },
-    [form, values],
+    [form, values]
   )
 
   const updateOffering = useCallback(
     (
       event: ChangeEvent<
         HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >,
+      >
     ) => {
       const target = dataTarget(event)
       const offeringId = target.dataset?.offeringId
       const field = target.dataset?.offeringField as
-        | keyof CatalogCreationOffering
-        | undefined
+        keyof CatalogCreationOffering | undefined
       if (!offeringId || !field) {
         return
       }
@@ -543,12 +526,12 @@ const CatalogProductCreatePageContent = memo(() => {
         values.offerings.map((offering) =>
           offering.id === offeringId
             ? { ...offering, [field]: value }
-            : offering,
-        ),
+            : offering
+        )
       )
       setStepErrors([])
     },
-    [form, values.offerings],
+    [form, values.offerings]
   )
 
   const addOffering = useCallback(() => {
@@ -568,25 +551,22 @@ const CatalogProductCreatePageContent = memo(() => {
     (templateId: CatalogCreationMerchandiseTemplateId) => {
       form.setFieldValue(
         "offerings",
-        createCatalogCreationMerchandiseOfferings(
-          templateId,
-          values.offerings,
-        ),
+        createCatalogCreationMerchandiseOfferings(templateId, values.offerings)
       )
       setStepErrors([])
     },
-    [form, values.offerings],
+    [form, values.offerings]
   )
 
   const applyMusicReleaseTemplate = useCallback(
     (templateId: CatalogCreationMusicReleaseTemplateId) => {
       form.setFieldValue(
         "offerings",
-        createCatalogCreationMusicReleaseOfferings(templateId),
+        createCatalogCreationMusicReleaseOfferings(templateId)
       )
       setStepErrors([])
     },
-    [form],
+    [form]
   )
 
   const fillMissingSkus = useCallback(() => {
@@ -602,19 +582,17 @@ const CatalogProductCreatePageContent = memo(() => {
       }
       form.setFieldValue(
         "offerings",
-        values.offerings.filter((offering) => offering.id !== offeringId),
+        values.offerings.filter((offering) => offering.id !== offeringId)
       )
       form.setFieldValue(
         "bundleComponents",
         values.bundleComponents.map((component) => ({
           ...component,
-          offeringIds: component.offeringIds.filter(
-            (id) => id !== offeringId,
-          ),
-        })),
+          offeringIds: component.offeringIds.filter((id) => id !== offeringId),
+        }))
       )
     },
-    [form, values.bundleComponents, values.offerings],
+    [form, values.bundleComponents, values.offerings]
   )
 
   const addBundleComponent = useCallback(() => {
@@ -637,10 +615,7 @@ const CatalogProductCreatePageContent = memo(() => {
       const target = dataTarget(event)
       const componentId = target.dataset?.componentId
       const field = target.dataset?.componentField as
-        | "productId"
-        | "quantity"
-        | "variantId"
-        | undefined
+        "productId" | "quantity" | "variantId" | undefined
       if (!componentId || !field) {
         return
       }
@@ -660,11 +635,11 @@ const CatalogProductCreatePageContent = memo(() => {
             }
           }
           return { ...component, [field]: value }
-        }),
+        })
       )
       setStepErrors([])
     },
-    [choicesData, form, values.bundleComponents],
+    [choicesData, form, values.bundleComponents]
   )
 
   const updateBundleMapping = useCallback(
@@ -687,11 +662,11 @@ const CatalogProductCreatePageContent = memo(() => {
               ? Array.from(new Set([...component.offeringIds, offeringId]))
               : component.offeringIds.filter((id) => id !== offeringId),
           }
-        }),
+        })
       )
       setStepErrors([])
     },
-    [form, values.bundleComponents],
+    [form, values.bundleComponents]
   )
 
   const removeBundleComponent = useCallback(
@@ -703,11 +678,11 @@ const CatalogProductCreatePageContent = memo(() => {
       form.setFieldValue(
         "bundleComponents",
         values.bundleComponents.filter(
-          (component) => component.id !== componentId,
-        ),
+          (component) => component.id !== componentId
+        )
       )
     },
-    [form, values.bundleComponents],
+    [form, values.bundleComponents]
   )
 
   const goToStep = useCallback((nextStep: number) => {
@@ -738,7 +713,7 @@ const CatalogProductCreatePageContent = memo(() => {
         goToStep(nextStep)
       }
     },
-    [goToStep],
+    [goToStep]
   )
 
   const handleValidationNavigate = useCallback(
@@ -753,7 +728,7 @@ const CatalogProductCreatePageContent = memo(() => {
       pendingFocusTargetRef.current = issue.targetId
       setStep(issue.step)
     },
-    [focusValidationTarget, step],
+    [focusValidationTarget, step]
   )
 
   const handleSave = useCallback(() => {
@@ -777,18 +752,16 @@ const CatalogProductCreatePageContent = memo(() => {
         ReturnType<typeof getCatalogProductCreationStatus>
       >["state"]
       try {
-        const status = await inspectRetryStatus(
-          idempotencyKeyRef.current,
-        )
+        const status = await inspectRetryStatus(idempotencyKeyRef.current)
         state = status.state
       } catch (error) {
         setStepErrors([
           createCatalogCreationGeneralIssue(
             getAdminRequestErrorMessage(
               error,
-              "The previous attempt could not be checked. Try again.",
+              "The previous attempt could not be checked. Try again."
             ),
-            step,
+            step
           ),
         ])
         return
@@ -798,7 +771,7 @@ const CatalogProductCreatePageContent = memo(() => {
         setStepErrors([
           createCatalogCreationGeneralIssue(
             "The previous creation attempt is still running. Wait a moment, then try again.",
-            step,
+            step
           ),
         ])
         return
@@ -807,7 +780,7 @@ const CatalogProductCreatePageContent = memo(() => {
         setStepErrors([
           createCatalogCreationGeneralIssue(
             "This attempt needs an operator to reconcile it before the product can be retried safely.",
-            step,
+            step
           ),
         ])
         return
@@ -890,10 +863,19 @@ const CatalogProductCreatePageContent = memo(() => {
         ? "error"
         : draftSaveState
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4" ref={pageStartRef}>
+    <div
+      className="mx-auto flex w-full max-w-6xl flex-col gap-4"
+      ref={pageStartRef}
+    >
       <AdminPageHeader
         actions={
-          <Button disabled={busy} onClick={handleClearDraftRequest} size="small" type="button" variant="secondary">
+          <Button
+            disabled={busy}
+            onClick={handleClearDraftRequest}
+            size="small"
+            type="button"
+            variant="secondary"
+          >
             Clear draft
           </Button>
         }
@@ -917,7 +899,7 @@ const CatalogProductCreatePageContent = memo(() => {
         <AdminRetryState
           message={getAdminRequestErrorMessage(
             creationMutation.error,
-            "The product could not be created. Your form values are still here.",
+            "The product could not be created. Your form values are still here."
           )}
           onRetry={handleRetry}
           retrying={busy}

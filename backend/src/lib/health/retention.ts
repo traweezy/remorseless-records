@@ -1,10 +1,7 @@
 import { z } from "zod"
 
 import { getBackendRuntimeIdentity } from "../observability/runtime-identity"
-import {
-  getSharedRedisClient,
-  withRedisTimeout,
-} from "../shared-redis-client"
+import { getSharedRedisClient, withRedisTimeout } from "../shared-redis-client"
 
 export const RETENTION_HEALTH_TTL_SECONDS = 3 * 24 * 60 * 60
 export const RETENTION_MAX_HEARTBEAT_AGE_SECONDS = 36 * 60 * 60
@@ -222,34 +219,35 @@ export const evaluateRetentionHealth = ({
   }
 }
 
-export const readRetentionHealth = async (): Promise<RetentionHealthPayload> => {
-  try {
-    const client = await getSharedRedisClient()
-    if (!client) {
+export const readRetentionHealth =
+  async (): Promise<RetentionHealthPayload> => {
+    try {
+      const client = await getSharedRedisClient()
+      if (!client) {
+        return evaluateRetentionHealth({
+          abandonedCheckoutValue: null,
+          anonymousCartValue: null,
+          redisAvailable: false,
+        })
+      }
+      const [ping, anonymousCartValue, abandonedCheckoutValue] =
+        await withRedisTimeout(
+          Promise.all([
+            client.ping(),
+            client.get(ANONYMOUS_CART_RETENTION_HEALTH_KEY),
+            client.get(ABANDONED_CHECKOUT_RETENTION_HEALTH_KEY),
+          ])
+        )
+      return evaluateRetentionHealth({
+        abandonedCheckoutValue,
+        anonymousCartValue,
+        redisAvailable: ping === "PONG",
+      })
+    } catch {
       return evaluateRetentionHealth({
         abandonedCheckoutValue: null,
         anonymousCartValue: null,
         redisAvailable: false,
       })
     }
-    const [ping, anonymousCartValue, abandonedCheckoutValue] =
-      await withRedisTimeout(
-        Promise.all([
-          client.ping(),
-          client.get(ANONYMOUS_CART_RETENTION_HEALTH_KEY),
-          client.get(ABANDONED_CHECKOUT_RETENTION_HEALTH_KEY),
-        ])
-      )
-    return evaluateRetentionHealth({
-      abandonedCheckoutValue,
-      anonymousCartValue,
-      redisAvailable: ping === "PONG",
-    })
-  } catch {
-    return evaluateRetentionHealth({
-      abandonedCheckoutValue: null,
-      anonymousCartValue: null,
-      redisAvailable: false,
-    })
   }
-}

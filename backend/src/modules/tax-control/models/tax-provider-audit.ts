@@ -1,6 +1,6 @@
-import { model } from "@medusajs/framework/utils";
+import { model } from "@medusajs/framework/utils"
 
-import { taxCollectionModes, taxProviderNames } from "../constants";
+import { taxCollectionModes, taxProviderNames } from "../constants"
 
 const TaxProviderAudit = model.define(
   {
@@ -20,7 +20,7 @@ const TaxProviderAudit = model.define(
     to_generation: model.number(),
     reason: model.text(),
     metadata: model.json().default({}),
-  },
-);
+  }
+)
 
-export default TaxProviderAudit;
+export default TaxProviderAudit

@@ -4,12 +4,9 @@ import { loadProductAuthoringView } from "../../../../../../lib/catalog/product-
 
 import { GET } from "./route"
 
-jest.mock(
-  "../../../../../../lib/catalog/product-authoring-view",
-  () => ({
-    loadProductAuthoringView: jest.fn(),
-  }),
-)
+jest.mock("../../../../../../lib/catalog/product-authoring-view", () => ({
+  loadProductAuthoringView: jest.fn(),
+}))
 
 const loadViewMock = loadProductAuthoringView as jest.MockedFunction<
   typeof loadProductAuthoringView
@@ -72,7 +69,7 @@ describe("GET /admin/catalog/products/:product_id/authoring-view", () => {
     const { res } = responseFixture()
 
     await expect(GET(requestFixture(undefined), res)).rejects.toThrow(
-      "Product id is required",
+      "Product id is required"
     )
     expect(loadViewMock).not.toHaveBeenCalled()
   })

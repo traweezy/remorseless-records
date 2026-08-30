@@ -9,9 +9,7 @@ import {
   getRecentProducts,
 } from "@/lib/data/products"
 import { normalizeRibbonLabel } from "@/lib/products/ribbons"
-import {
-  toProviderRequestError,
-} from "@/lib/http/provider-boundary"
+import { toProviderRequestError } from "@/lib/http/provider-boundary"
 import { fetchObservedProviderRead } from "@/lib/http/provider-read.server"
 
 type StoreProduct = HttpTypes.StoreProduct

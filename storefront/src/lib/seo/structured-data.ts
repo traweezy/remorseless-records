@@ -24,7 +24,6 @@ type VariantJsonLdShape = {
   currency: string
 }
 
-
 export const organizationJsonLd: JsonLd = {
   "@context": "https://schema.org",
   "@type": "MusicStore",
@@ -111,7 +110,9 @@ export const buildProductJsonLd = ({
   genreTags: string[]
 }): JsonLd => {
   const images =
-    product.images?.map((image) => image.url).filter((url): url is string => Boolean(url)) ?? []
+    product.images
+      ?.map((image) => image.url)
+      .filter((url): url is string => Boolean(url)) ?? []
 
   const priceValue = variant?.price
   const priceCurrency = variant?.currency
@@ -121,9 +122,7 @@ export const buildProductJsonLd = ({
     "@type": "Product",
     name: product.title ?? "Remorseless Records Release",
     description:
-      product.description ??
-      product.subtitle ??
-      siteMetadata.description,
+      product.description ?? product.subtitle ?? siteMetadata.description,
     url: productUrl,
     sku: variant?.sku ?? product.handle ?? product.id,
     mpn: product.id ?? undefined,
@@ -178,7 +177,9 @@ export const buildMusicReleaseJsonLd = ({
   },
   genre: genres.length ? genres : undefined,
   image:
-    product.images?.map((image) => image.url).filter((url): url is string => Boolean(url)) ?? [],
+    product.images
+      ?.map((image) => image.url)
+      .filter((url): url is string => Boolean(url)) ?? [],
   track: tracks.map((title, index) => ({
     "@type": "MusicRecording",
     name: title,
@@ -191,22 +192,29 @@ export const buildMusicReleaseJsonLd = ({
   inLanguage: siteMetadata.defaultLocale,
   url: productUrl,
   description:
-    product.description ??
-    product.subtitle ??
-    siteMetadata.description,
+    product.description ?? product.subtitle ?? siteMetadata.description,
   albumProductionType: "StudioAlbum",
 })
 
-export const selectPrimaryVariantForJsonLd = (product: StoreProduct): VariantJsonLdShape | null => {
+export const selectPrimaryVariantForJsonLd = (
+  product: StoreProduct
+): VariantJsonLdShape | null => {
   const variant = product?.variants?.[0] as StoreVariant | undefined
   if (!variant) {
     return null
   }
 
-  const firstPrice = Array.isArray(variant.prices) && variant.prices.length ? variant.prices[0] : null
+  const firstPrice =
+    Array.isArray(variant.prices) && variant.prices.length
+      ? variant.prices[0]
+      : null
 
-  const firstPriceAmount = typeof firstPrice?.amount === "number" ? firstPrice.amount : null
-  const firstPriceCurrency = typeof firstPrice?.currency_code === "string" ? firstPrice.currency_code : null
+  const firstPriceAmount =
+    typeof firstPrice?.amount === "number" ? firstPrice.amount : null
+  const firstPriceCurrency =
+    typeof firstPrice?.currency_code === "string"
+      ? firstPrice.currency_code
+      : null
 
   const calculatedCurrency =
     typeof variant.calculated_price?.currency_code === "string"
@@ -224,16 +232,15 @@ export const selectPrimaryVariantForJsonLd = (product: StoreProduct): VariantJso
   const derivedCurrency =
     firstPriceCurrency ??
     calculatedCurrency ??
-    (typeof variant.currency_code === "string" ? variant.currency_code : null) ??
+    (typeof variant.currency_code === "string"
+      ? variant.currency_code
+      : null) ??
     "usd"
 
   const currency = derivedCurrency.toUpperCase()
 
   const amount =
-    firstPriceAmount ??
-    calculatedAmount ??
-    calculatedOriginalAmount ??
-    null
+    firstPriceAmount ?? calculatedAmount ?? calculatedOriginalAmount ?? null
 
   return {
     sku: variant.sku ?? variant.id ?? undefined,

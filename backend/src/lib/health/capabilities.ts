@@ -50,7 +50,9 @@ const taxReady = (environment: CapabilityEnvironment): boolean => {
   if (provider === "stripe_tax") {
     return (
       present(environment.STRIPE_API_KEY) &&
-      /^txcd_\d{8}$/u.test(environment.STRIPE_TAX_SHIPPING_TAX_CODE?.trim() ?? "")
+      /^txcd_\d{8}$/u.test(
+        environment.STRIPE_TAX_SHIPPING_TAX_CODE?.trim() ?? ""
+      )
     )
   }
   return false
@@ -79,7 +81,10 @@ export const resolveOperationalCapabilities = (
   capability("tax", taxReady(environment)),
   capability(
     "notification",
-    allPresent(environment.RESEND_API_KEY, environment.RESEND_FROM_EMAIL ?? environment.RESEND_FROM) ||
+    allPresent(
+      environment.RESEND_API_KEY,
+      environment.RESEND_FROM_EMAIL ?? environment.RESEND_FROM
+    ) ||
       allPresent(
         environment.SENDGRID_API_KEY,
         environment.SENDGRID_FROM_EMAIL ?? environment.SENDGRID_FROM

@@ -1,41 +1,41 @@
-const fs = require("fs");
-const { execSync } = require("child_process");
-const path = require("path");
-const { updateExistingRegularFile } = require("./secure-file-operations");
-const { verifyAdminCspBuild } = require("./verify-admin-csp-build");
+const fs = require("fs")
+const { execSync } = require("child_process")
+const path = require("path")
+const { updateExistingRegularFile } = require("./secure-file-operations")
+const { verifyAdminCspBuild } = require("./verify-admin-csp-build")
 
-const MEDUSA_SERVER_PATH = path.join(process.cwd(), ".medusa", "server");
-const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, "package.json");
+const MEDUSA_SERVER_PATH = path.join(process.cwd(), ".medusa", "server")
+const MEDUSA_PACKAGE_JSON = path.join(MEDUSA_SERVER_PATH, "package.json")
 const MEDUSA_WORKSPACE_YAML = path.join(
   MEDUSA_SERVER_PATH,
-  "pnpm-workspace.yaml",
-);
-const MEDUSA_PATCHES_DIR = path.join(MEDUSA_SERVER_PATH, "patches");
+  "pnpm-workspace.yaml"
+)
+const MEDUSA_PATCHES_DIR = path.join(MEDUSA_SERVER_PATH, "patches")
 const MEDUSA_ADMIN_INDEX = path.join(
   MEDUSA_SERVER_PATH,
   "public",
   "admin",
-  "index.html",
-);
+  "index.html"
+)
 const OBSERVABILITY_BOOTSTRAP_SOURCE = path.join(
   process.cwd(),
   "scripts",
-  "observability-register.cjs",
-);
+  "observability-register.cjs"
+)
 const OBSERVABILITY_BOOTSTRAP_TARGET = path.join(
   MEDUSA_SERVER_PATH,
-  "observability-register.cjs",
-);
-const LOCAL_PACKAGE_JSON = path.join(process.cwd(), "package.json");
-const REPOSITORY_ROOT = path.resolve(process.cwd(), "..");
-const ROOT_PACKAGE_JSON = path.join(REPOSITORY_ROOT, "package.json");
-const ROOT_WORKSPACE_YAML = path.join(REPOSITORY_ROOT, "pnpm-workspace.yaml");
+  "observability-register.cjs"
+)
+const LOCAL_PACKAGE_JSON = path.join(process.cwd(), "package.json")
+const REPOSITORY_ROOT = path.resolve(process.cwd(), "..")
+const ROOT_PACKAGE_JSON = path.join(REPOSITORY_ROOT, "package.json")
+const ROOT_WORKSPACE_YAML = path.join(REPOSITORY_ROOT, "pnpm-workspace.yaml")
 const ADMIN_IS_DISABLED = ["true", "1"].includes(
-  process.env.MEDUSA_DISABLE_ADMIN,
-);
+  process.env.MEDUSA_DISABLE_ADMIN
+)
 const PNPM_CONFIG_CWD = fs.existsSync(ROOT_WORKSPACE_YAML)
   ? REPOSITORY_ROOT
-  : process.cwd();
+  : process.cwd()
 const DEFAULT_ALLOWED_BUILDS = [
   "@medusajs/telemetry",
   "@swc/core",
@@ -45,25 +45,23 @@ const DEFAULT_ALLOWED_BUILDS = [
   "puppeteer",
   "protobufjs",
   "sharp",
-];
+]
 
 // Check if .medusa/server exists - if not, build process failed
 if (!fs.existsSync(MEDUSA_SERVER_PATH)) {
   throw new Error(
-    ".medusa/server directory not found. This indicates the Medusa build process failed. Please check for build errors.",
-  );
+    ".medusa/server directory not found. This indicates the Medusa build process failed. Please check for build errors."
+  )
 }
 
-const observabilityBootstrap = fs.lstatSync(OBSERVABILITY_BOOTSTRAP_SOURCE);
+const observabilityBootstrap = fs.lstatSync(OBSERVABILITY_BOOTSTRAP_SOURCE)
 if (
   !observabilityBootstrap.isFile() ||
   observabilityBootstrap.isSymbolicLink()
 ) {
-  throw new Error(
-    "OpenTelemetry bootstrap must be a regular non-symlink file.",
-  );
+  throw new Error("OpenTelemetry bootstrap must be a regular non-symlink file.")
 }
-fs.copyFileSync(OBSERVABILITY_BOOTSTRAP_SOURCE, OBSERVABILITY_BOOTSTRAP_TARGET);
+fs.copyFileSync(OBSERVABILITY_BOOTSTRAP_SOURCE, OBSERVABILITY_BOOTSTRAP_TARGET)
 
 const adminDocumentFound = updateExistingRegularFile(
   MEDUSA_ADMIN_INDEX,
@@ -71,122 +69,120 @@ const adminDocumentFound = updateExistingRegularFile(
     adminDocument
       .replace("<html>", '<html lang="en">')
       .replace(/,\s*user-scalable=no/g, ""),
-  { missingOkay: true },
-);
+  { missingOkay: true }
+)
 
 if (adminDocumentFound) {
   verifyAdminCspBuild(
-    path.join(MEDUSA_SERVER_PATH, "public", "admin", "assets"),
-  );
+    path.join(MEDUSA_SERVER_PATH, "public", "admin", "assets")
+  )
 } else if (!ADMIN_IS_DISABLED) {
   throw new Error(
-    "Admin index is required when MEDUSA_DISABLE_ADMIN is not enabled.",
-  );
+    "Admin index is required when MEDUSA_DISABLE_ADMIN is not enabled."
+  )
 }
 
 // Copy pnpm-lock.yaml (scoped to the backend importer for frozen installs)
-const localLockPath = path.join(process.cwd(), "pnpm-lock.yaml");
-const rootLockPath = path.join(process.cwd(), "..", "pnpm-lock.yaml");
+const localLockPath = path.join(process.cwd(), "pnpm-lock.yaml")
+const rootLockPath = path.join(process.cwd(), "..", "pnpm-lock.yaml")
 const lockSource = fs.existsSync(ROOT_WORKSPACE_YAML)
   ? rootLockPath
-  : localLockPath;
+  : localLockPath
 
 if (!fs.existsSync(lockSource)) {
-  throw new Error("pnpm-lock.yaml not found in backend or repository root.");
+  throw new Error("pnpm-lock.yaml not found in backend or repository root.")
 }
 
-const lockTarget = path.join(MEDUSA_SERVER_PATH, "pnpm-lock.yaml");
-const rawLock = fs.readFileSync(lockSource, "utf-8");
+const lockTarget = path.join(MEDUSA_SERVER_PATH, "pnpm-lock.yaml")
+const rawLock = fs.readFileSync(lockSource, "utf-8")
 
 const rewriteLockfile = (source) => {
-  const lines = source.split(/\r?\n/);
-  const importersIndex = lines.findIndex(
-    (line) => line.trim() === "importers:",
-  );
+  const lines = source.split(/\r?\n/)
+  const importersIndex = lines.findIndex((line) => line.trim() === "importers:")
   if (importersIndex === -1) {
-    return source;
+    return source
   }
 
-  let endIndex = lines.length;
+  let endIndex = lines.length
   for (let i = importersIndex + 1; i < lines.length; i += 1) {
-    const line = lines[i];
+    const line = lines[i]
     if (line.trim().length === 0) {
-      continue;
+      continue
     }
     if (/^[^\s].*:$/.test(line)) {
-      endIndex = i;
-      break;
+      endIndex = i
+      break
     }
   }
 
-  let importerIndent = null;
+  let importerIndent = null
   for (let i = importersIndex + 1; i < endIndex; i += 1) {
-    const line = lines[i];
+    const line = lines[i]
     if (line.trim().length === 0) {
-      continue;
+      continue
     }
-    const match = line.match(/^(\s+)\S.*:$/);
+    const match = line.match(/^(\s+)\S.*:$/)
     if (match) {
-      importerIndent = match[1];
-      break;
+      importerIndent = match[1]
+      break
     }
   }
 
   if (!importerIndent) {
-    return source;
+    return source
   }
 
-  const blocks = new Map();
-  let currentKey = null;
-  let blockLines = [];
+  const blocks = new Map()
+  let currentKey = null
+  let blockLines = []
 
   for (let i = importersIndex + 1; i < endIndex; i += 1) {
-    const line = lines[i];
+    const line = lines[i]
     const match = line.match(
-      new RegExp(`^${importerIndent.replace(/\\s/g, "\\\\s")}([^\\s].*):$`),
-    );
+      new RegExp(`^${importerIndent.replace(/\\s/g, "\\\\s")}([^\\s].*):$`)
+    )
     if (match) {
       if (currentKey) {
-        blocks.set(currentKey, blockLines);
+        blocks.set(currentKey, blockLines)
       }
-      currentKey = match[1].trim();
-      blockLines = [line];
-      continue;
+      currentKey = match[1].trim()
+      blockLines = [line]
+      continue
     }
     if (currentKey) {
-      blockLines.push(line);
+      blockLines.push(line)
     }
   }
 
   if (currentKey) {
-    blocks.set(currentKey, blockLines);
+    blocks.set(currentKey, blockLines)
   }
 
-  let backendBlock = blocks.get("backend") ?? blocks.get(".");
+  let backendBlock = blocks.get("backend") ?? blocks.get(".")
 
   if (!backendBlock && blocks.size > 0) {
-    let bestKey = null;
-    let bestCount = -1;
+    let bestKey = null
+    let bestCount = -1
     for (const [key, value] of blocks.entries()) {
       const specCount = value.filter((entry) =>
-        entry.trim().startsWith("specifier:"),
-      ).length;
+        entry.trim().startsWith("specifier:")
+      ).length
       if (specCount > bestCount) {
-        bestCount = specCount;
-        bestKey = key;
+        bestCount = specCount
+        bestKey = key
       }
     }
     if (bestKey) {
-      backendBlock = blocks.get(bestKey);
+      backendBlock = blocks.get(bestKey)
     }
   }
 
   if (!backendBlock) {
-    return source;
+    return source
   }
 
-  const normalizedBlock = backendBlock.slice();
-  normalizedBlock[0] = `${importerIndent}.:`;
+  const normalizedBlock = backendBlock.slice()
+  normalizedBlock[0] = `${importerIndent}.:`
 
   const output = [
     ...lines.slice(0, importersIndex + 1),
@@ -194,21 +190,21 @@ const rewriteLockfile = (source) => {
     ...normalizedBlock,
     "",
     ...lines.slice(endIndex),
-  ];
+  ]
 
-  return output.join("\n");
-};
+  return output.join("\n")
+}
 
-fs.writeFileSync(lockTarget, rewriteLockfile(rawLock), "utf-8");
+fs.writeFileSync(lockTarget, rewriteLockfile(rawLock), "utf-8")
 
 const readOverrides = (packagePath) => {
   if (!fs.existsSync(packagePath)) {
-    return null;
+    return null
   }
-  const content = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
-  const overrides = content?.pnpm?.overrides;
-  return overrides && typeof overrides === "object" ? overrides : null;
-};
+  const content = JSON.parse(fs.readFileSync(packagePath, "utf-8"))
+  const overrides = content?.pnpm?.overrides
+  return overrides && typeof overrides === "object" ? overrides : null
+}
 
 const readPnpmConfigOverrides = () => {
   try {
@@ -216,21 +212,21 @@ const readPnpmConfigOverrides = () => {
       cwd: PNPM_CONFIG_CWD,
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+    }).trim()
     if (!output || output === "undefined") {
-      return null;
+      return null
     }
 
-    const overrides = JSON.parse(output);
+    const overrides = JSON.parse(output)
     return overrides &&
       typeof overrides === "object" &&
       !Array.isArray(overrides)
       ? overrides
-      : null;
+      : null
   } catch {
-    return null;
+    return null
   }
-};
+}
 
 const readPnpmConfigArray = (name) => {
   try {
@@ -238,19 +234,19 @@ const readPnpmConfigArray = (name) => {
       cwd: PNPM_CONFIG_CWD,
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+    }).trim()
     if (!output || output === "undefined") {
-      return [];
+      return []
     }
 
-    const values = JSON.parse(output);
+    const values = JSON.parse(output)
     return Array.isArray(values)
       ? values.filter((value) => typeof value === "string" && value.length > 0)
-      : [];
+      : []
   } catch {
-    return [];
+    return []
   }
-};
+}
 
 const readPnpmConfigObject = (name) => {
   try {
@@ -258,19 +254,19 @@ const readPnpmConfigObject = (name) => {
       cwd: PNPM_CONFIG_CWD,
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+    }).trim()
     if (!output || output === "undefined") {
-      return null;
+      return null
     }
 
-    const value = JSON.parse(output);
+    const value = JSON.parse(output)
     return value && typeof value === "object" && !Array.isArray(value)
       ? value
-      : null;
+      : null
   } catch {
-    return null;
+    return null
   }
-};
+}
 
 const readPnpmConfigBoolean = (name, fallback) => {
   try {
@@ -278,17 +274,17 @@ const readPnpmConfigBoolean = (name, fallback) => {
       cwd: PNPM_CONFIG_CWD,
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+    }).trim()
     if (!output || output === "undefined") {
-      return fallback;
+      return fallback
     }
 
-    const value = JSON.parse(output);
-    return typeof value === "boolean" ? value : fallback;
+    const value = JSON.parse(output)
+    return typeof value === "boolean" ? value : fallback
   } catch {
-    return fallback;
+    return fallback
   }
-};
+}
 
 const readPnpmPatchedDependencies = () => {
   try {
@@ -296,37 +292,37 @@ const readPnpmPatchedDependencies = () => {
       cwd: PNPM_CONFIG_CWD,
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+    }).trim()
     if (!output || output === "undefined") {
-      return null;
+      return null
     }
 
-    const patchedDependencies = JSON.parse(output);
+    const patchedDependencies = JSON.parse(output)
     return patchedDependencies &&
       typeof patchedDependencies === "object" &&
       !Array.isArray(patchedDependencies)
       ? patchedDependencies
-      : null;
+      : null
   } catch {
-    return null;
+    return null
   }
-};
+}
 
-const yamlScalar = (value) => JSON.stringify(value);
+const yamlScalar = (value) => JSON.stringify(value)
 
 const appendYamlMapping = (lines, mapping, indent = 0) => {
-  const prefix = " ".repeat(indent);
+  const prefix = " ".repeat(indent)
 
   for (const [key, value] of Object.entries(mapping)) {
     if (value && typeof value === "object" && !Array.isArray(value)) {
-      lines.push(`${prefix}${yamlScalar(key)}:`);
-      appendYamlMapping(lines, value, indent + 2);
-      continue;
+      lines.push(`${prefix}${yamlScalar(key)}:`)
+      appendYamlMapping(lines, value, indent + 2)
+      continue
     }
 
-    lines.push(`${prefix}${yamlScalar(key)}: ${yamlScalar(value)}`);
+    lines.push(`${prefix}${yamlScalar(key)}: ${yamlScalar(value)}`)
   }
-};
+}
 
 const readPnpmAllowBuilds = () => {
   try {
@@ -334,55 +330,53 @@ const readPnpmAllowBuilds = () => {
       cwd: PNPM_CONFIG_CWD,
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
+    }).trim()
     if (!output || output === "undefined") {
-      return [];
+      return []
     }
 
-    const values = JSON.parse(output);
+    const values = JSON.parse(output)
     if (!values || typeof values !== "object" || Array.isArray(values)) {
-      return [];
+      return []
     }
 
     return Object.entries(values)
       .filter(([, approved]) => approved === true)
-      .map(([dependency]) => dependency);
+      .map(([dependency]) => dependency)
   } catch {
-    return [];
+    return []
   }
-};
+}
 
 const copyPatchedDependencies = (patchedDependencies) => {
   if (!patchedDependencies || Object.keys(patchedDependencies).length === 0) {
-    return null;
+    return null
   }
 
-  fs.mkdirSync(MEDUSA_PATCHES_DIR, { recursive: true });
+  fs.mkdirSync(MEDUSA_PATCHES_DIR, { recursive: true })
 
   return Object.fromEntries(
     Object.entries(patchedDependencies).map(([dependency, patchPath]) => {
       if (typeof patchPath !== "string" || patchPath.length === 0) {
-        throw new Error(`Invalid patch path for ${dependency}.`);
+        throw new Error(`Invalid patch path for ${dependency}.`)
       }
 
       const sourcePath = path.isAbsolute(patchPath)
         ? patchPath
-        : path.resolve(PNPM_CONFIG_CWD, patchPath);
+        : path.resolve(PNPM_CONFIG_CWD, patchPath)
 
       if (!fs.existsSync(sourcePath)) {
-        throw new Error(
-          `Patch file not found for ${dependency}: ${sourcePath}`,
-        );
+        throw new Error(`Patch file not found for ${dependency}: ${sourcePath}`)
       }
 
-      const targetFileName = path.basename(sourcePath);
-      const targetPath = path.join(MEDUSA_PATCHES_DIR, targetFileName);
-      fs.copyFileSync(sourcePath, targetPath);
+      const targetFileName = path.basename(sourcePath)
+      const targetPath = path.join(MEDUSA_PATCHES_DIR, targetFileName)
+      fs.copyFileSync(sourcePath, targetPath)
 
-      return [dependency, `patches/${targetFileName}`];
-    }),
-  );
-};
+      return [dependency, `patches/${targetFileName}`]
+    })
+  )
+}
 
 const writePnpmWorkspaceConfig = ({
   allowBuilds,
@@ -393,79 +387,79 @@ const writePnpmWorkspaceConfig = ({
   resolvePeersFromWorkspaceRoot,
   patchedDependencies,
 }) => {
-  const lines = ["packages:", '  - "."'];
+  const lines = ["packages:", '  - "."']
 
   if (hoistPattern.length > 0) {
-    lines.push("", "hoistPattern:");
+    lines.push("", "hoistPattern:")
     for (const pattern of hoistPattern) {
-      lines.push(`  - ${yamlScalar(pattern)}`);
+      lines.push(`  - ${yamlScalar(pattern)}`)
     }
   }
 
   lines.push(
     "",
-    `resolvePeersFromWorkspaceRoot: ${yamlScalar(resolvePeersFromWorkspaceRoot)}`,
-  );
+    `resolvePeersFromWorkspaceRoot: ${yamlScalar(resolvePeersFromWorkspaceRoot)}`
+  )
 
   if (packageExtensions && Object.keys(packageExtensions).length > 0) {
-    lines.push("", "packageExtensions:");
-    appendYamlMapping(lines, packageExtensions, 2);
+    lines.push("", "packageExtensions:")
+    appendYamlMapping(lines, packageExtensions, 2)
   }
 
   if (allowBuilds.length > 0) {
-    lines.push("", "allowBuilds:");
+    lines.push("", "allowBuilds:")
     for (const dependency of allowBuilds) {
-      lines.push(`  ${yamlScalar(dependency)}: true`);
+      lines.push(`  ${yamlScalar(dependency)}: true`)
     }
   }
 
   if (overrides && Object.keys(overrides).length > 0) {
-    lines.push("", "overrides:");
+    lines.push("", "overrides:")
     for (const [dependency, version] of Object.entries(overrides)) {
-      lines.push(`  ${yamlScalar(dependency)}: ${yamlScalar(version)}`);
+      lines.push(`  ${yamlScalar(dependency)}: ${yamlScalar(version)}`)
     }
   }
 
   if (minimumReleaseAgeExclude.length > 0) {
-    lines.push("", "minimumReleaseAgeExclude:");
+    lines.push("", "minimumReleaseAgeExclude:")
     for (const dependency of minimumReleaseAgeExclude) {
-      lines.push(`  - ${yamlScalar(dependency)}`);
+      lines.push(`  - ${yamlScalar(dependency)}`)
     }
   }
 
   if (patchedDependencies && Object.keys(patchedDependencies).length > 0) {
-    lines.push("", "patchedDependencies:");
+    lines.push("", "patchedDependencies:")
     for (const [dependency, patchPath] of Object.entries(patchedDependencies)) {
-      lines.push(`  ${yamlScalar(dependency)}: ${yamlScalar(patchPath)}`);
+      lines.push(`  ${yamlScalar(dependency)}: ${yamlScalar(patchPath)}`)
     }
   }
 
-  fs.writeFileSync(MEDUSA_WORKSPACE_YAML, `${lines.join("\n")}\n`, "utf-8");
-};
+  fs.writeFileSync(MEDUSA_WORKSPACE_YAML, `${lines.join("\n")}\n`, "utf-8")
+}
 
 const overrides =
   readPnpmConfigOverrides() ??
   readOverrides(LOCAL_PACKAGE_JSON) ??
-  readOverrides(ROOT_PACKAGE_JSON);
+  readOverrides(ROOT_PACKAGE_JSON)
 const allowBuilds = Array.from(
   new Set([
     ...DEFAULT_ALLOWED_BUILDS,
     ...readPnpmAllowBuilds(),
     ...readPnpmConfigArray("onlyBuiltDependencies"),
-  ]),
-);
+  ])
+)
 const minimumReleaseAgeExclude = Array.from(
-  new Set(readPnpmConfigArray("minimumReleaseAgeExclude")),
-);
-const hoistPattern = readPnpmConfigArray("hoistPattern");
-const packageExtensions = readPnpmConfigObject("packageExtensions");
+  new Set(readPnpmConfigArray("minimumReleaseAgeExclude"))
+)
+const hoistPattern = readPnpmConfigArray("hoistPattern")
+const packageExtensions = readPnpmConfigObject("packageExtensions")
 const resolvePeersFromWorkspaceRoot = readPnpmConfigBoolean(
   "resolvePeersFromWorkspaceRoot",
-  true,
-);
+  true
+)
 const patchedDependencies = copyPatchedDependencies(
-  readPnpmPatchedDependencies(),
-);
+  readPnpmPatchedDependencies()
+)
 
 writePnpmWorkspaceConfig({
   allowBuilds,
@@ -475,20 +469,20 @@ writePnpmWorkspaceConfig({
   packageExtensions,
   resolvePeersFromWorkspaceRoot,
   patchedDependencies,
-});
+})
 
 updateExistingRegularFile(
   MEDUSA_PACKAGE_JSON,
   (packageDocument) => {
-    const packageJson = JSON.parse(packageDocument);
-    delete packageJson.pnpm;
-    return `${JSON.stringify(packageJson, null, 2)}\n`;
+    const packageJson = JSON.parse(packageDocument)
+    delete packageJson.pnpm
+    return `${JSON.stringify(packageJson, null, 2)}\n`
   },
-  { missingOkay: true },
-);
+  { missingOkay: true }
+)
 
 // Install dependencies
-console.log("Installing dependencies in .medusa/server...");
+console.log("Installing dependencies in .medusa/server...")
 execSync("pnpm i --prod --frozen-lockfile --lockfile-dir .", {
   cwd: MEDUSA_SERVER_PATH,
   stdio: "inherit",
@@ -496,4 +490,4 @@ execSync("pnpm i --prod --frozen-lockfile --lockfile-dir .", {
     ...process.env,
     CI: process.env.CI ?? "true",
   },
-});
+})

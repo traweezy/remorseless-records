@@ -20,8 +20,7 @@ export const catalogMediaLifecycleCommandSchema = z.object({
 })
 
 export type CatalogMediaLifecycleCommand =
-  | "catalog.media.quarantine"
-  | "catalog.media.restore"
+  "catalog.media.quarantine" | "catalog.media.restore"
 
 export type CatalogMediaLifecycleInput = {
   actorId: string
@@ -70,14 +69,12 @@ const toDate = (value: Date | string | null | undefined): Date | null => {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-const toLifecycleStatus = (
-  value: unknown,
-): CatalogMediaLifecycleStatus =>
+const toLifecycleStatus = (value: unknown): CatalogMediaLifecycleStatus =>
   value === "quarantined" ? "quarantined" : "active"
 
 const resultFromRecord = (
   operationId: string,
-  value: unknown,
+  value: unknown
 ): CatalogMediaLifecycleResult => {
   const result = coerceCatalogJsonRecord(value)
   if (
@@ -88,7 +85,7 @@ const resultFromRecord = (
   ) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      "The stored catalog media lifecycle result is invalid.",
+      "The stored catalog media lifecycle result is invalid."
     )
   }
   return {
@@ -100,16 +97,14 @@ const resultFromRecord = (
         ? result.purgeEligibleAt
         : null,
     quarantinedAt:
-      typeof result.quarantinedAt === "string"
-        ? result.quarantinedAt
-        : null,
+      typeof result.quarantinedAt === "string" ? result.quarantinedAt : null,
     replayed: true,
     version: result.version,
   }
 }
 
 const snapshotAsset = (
-  asset: CatalogMediaAssetRecord,
+  asset: CatalogMediaAssetRecord
 ): CatalogMediaLifecycleSnapshot => ({
   lifecycle_status: toLifecycleStatus(asset.lifecycle_status),
   purge_eligible_at: toDate(asset.purge_eligible_at),
@@ -121,17 +116,17 @@ const snapshotAsset = (
 const assertUnlinked = async (
   catalogService: CatalogService,
   assetId: string,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<void> => {
   const links = (await catalogService.listCatalogProductMediaItems(
     { media_asset_id: assetId },
     { take: 1 },
-    sharedContext,
+    sharedContext
   )) as CatalogProductMediaItemRecord[]
   if (links.length) {
     throw new MedusaError(
       MedusaError.Types.CONFLICT,
-      "Linked catalog media cannot be quarantined.",
+      "Linked catalog media cannot be quarantined."
     )
   }
 }
@@ -139,14 +134,14 @@ const assertUnlinked = async (
 export const mutateCatalogMediaLifecycle = async (
   catalogService: CatalogService,
   input: CatalogMediaLifecycleInput,
-  now = new Date(),
+  now = new Date()
 ): Promise<CatalogMediaLifecycleMutation> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     const existingOperation = (
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
     )[0]
     if (existingOperation) {
@@ -159,12 +154,12 @@ export const mutateCatalogMediaLifecycle = async (
       if (!matches || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The catalog media lifecycle idempotency key cannot be replayed.",
+          "The catalog media lifecycle idempotency key cannot be replayed."
         )
       }
       const result = resultFromRecord(
         existingOperation.id,
-        existingOperation.result,
+        existingOperation.result
       )
       return {
         ...result,
@@ -181,12 +176,12 @@ export const mutateCatalogMediaLifecycle = async (
     const asset = (await catalogService.retrieveCatalogMediaAsset(
       input.assetId,
       {},
-      sharedContext,
+      sharedContext
     )) as CatalogMediaAssetRecord
     if (asset.version !== input.expectedVersion) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The catalog media asset changed after it was loaded.",
+        "The catalog media asset changed after it was loaded."
       )
     }
     const previous = snapshotAsset(asset)
@@ -194,40 +189,39 @@ export const mutateCatalogMediaLifecycle = async (
       if (previous.lifecycle_status !== "active") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The catalog media asset is already quarantined.",
+          "The catalog media asset is already quarantined."
         )
       }
       await assertUnlinked(catalogService, input.assetId, sharedContext)
     } else if (previous.lifecycle_status !== "quarantined") {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The catalog media asset is not quarantined.",
+        "The catalog media asset is not quarantined."
       )
     }
 
-    const [operation] =
-      await catalogService.createCatalogAuthoringOperations(
-        [
-          {
-            actor_id: input.actorId,
-            aggregate_id: input.assetId,
-            command: input.command,
-            expected_version: input.expectedVersion,
-            idempotency_key: input.idempotencyKey,
-            metadata: {
-              retention_days: QUARANTINE_RETENTION_DAYS,
-            },
-            request_sha256: input.requestSha256,
-            result: {},
-            status: "pending",
+    const [operation] = await catalogService.createCatalogAuthoringOperations(
+      [
+        {
+          actor_id: input.actorId,
+          aggregate_id: input.assetId,
+          command: input.command,
+          expected_version: input.expectedVersion,
+          idempotency_key: input.idempotencyKey,
+          metadata: {
+            retention_days: QUARANTINE_RETENTION_DAYS,
           },
-        ],
-        sharedContext,
-      )
+          request_sha256: input.requestSha256,
+          result: {},
+          status: "pending",
+        },
+      ],
+      sharedContext
+    )
     if (!operation) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog media lifecycle audit record was not created.",
+        "The catalog media lifecycle audit record was not created."
       )
     }
 
@@ -236,7 +230,7 @@ export const mutateCatalogMediaLifecycle = async (
     const purgeEligibleAt = quarantinedAt
       ? new Date(
           quarantinedAt.getTime() +
-            QUARANTINE_RETENTION_DAYS * DAY_IN_MILLISECONDS,
+            QUARANTINE_RETENTION_DAYS * DAY_IN_MILLISECONDS
         )
       : null
     const lifecycleStatus: CatalogMediaLifecycleStatus = quarantinedAt
@@ -253,15 +247,14 @@ export const mutateCatalogMediaLifecycle = async (
           version: previous.version + 1,
         },
       ],
-      sharedContext,
+      sharedContext
     )
     const updatedAsset = firstCatalogResult(updated) as
-      | CatalogMediaAssetRecord
-      | undefined
+      CatalogMediaAssetRecord | undefined
     if (!updatedAsset) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog media lifecycle state was not updated.",
+        "The catalog media lifecycle state was not updated."
       )
     }
 
@@ -282,7 +275,7 @@ export const compensateCatalogMediaLifecycle = async (
   mutation: Pick<
     CatalogMediaLifecycleMutation,
     "assetId" | "operationId" | "previous"
-  >,
+  >
 ): Promise<void> => {
   await catalogService.runCatalogTransaction(async (sharedContext) => {
     await catalogService.updateCatalogMediaAssets(
@@ -292,20 +285,19 @@ export const compensateCatalogMediaLifecycle = async (
           ...mutation.previous,
         },
       ],
-      sharedContext,
+      sharedContext
     )
     await catalogService.updateCatalogAuthoringOperations(
       [
         {
           completed_at: new Date(),
           error_code: "workflow_compensated",
-          error_detail:
-            "The prior catalog media lifecycle state was restored.",
+          error_detail: "The prior catalog media lifecycle state was restored.",
           id: mutation.operationId,
           status: "compensated",
         },
       ],
-      sharedContext,
+      sharedContext
     )
   })
 }

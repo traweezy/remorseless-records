@@ -14,10 +14,9 @@ jest.mock("../../../../../workflows/catalog/upload-product-media", () => ({
   uploadCatalogProductMediaWorkflow: jest.fn(),
 }))
 
-const workflowMock =
-  uploadCatalogProductMediaWorkflow as jest.MockedFunction<
-    typeof uploadCatalogProductMediaWorkflow
-  >
+const workflowMock = uploadCatalogProductMediaWorkflow as jest.MockedFunction<
+  typeof uploadCatalogProductMediaWorkflow
+>
 const normalizeMock = normalizeManagedImageUploads as jest.MockedFunction<
   typeof normalizeManagedImageUploads
 >
@@ -68,7 +67,7 @@ const upload = ({
 
 const requestFixture = (
   body: unknown,
-  files: Express.Multer.File[],
+  files: Express.Multer.File[]
 ): AuthenticatedMedusaRequest =>
   ({
     auth_context: { actor_id: "user_1" },
@@ -120,16 +119,13 @@ describe("POST /admin/catalog/media/uploads", () => {
     ]
     const run = jest.fn().mockResolvedValue({ result: { files } })
     workflowMock.mockReturnValue({ run } as never)
-    const req = requestFixture(
-      { idempotencyKey },
-      [
-        upload({
-          buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]),
-          filename: "The Album Cover.JPG",
-          mimeType: "image/jpeg",
-        }),
-      ],
-    )
+    const req = requestFixture({ idempotencyKey }, [
+      upload({
+        buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]),
+        filename: "The Album Cover.JPG",
+        mimeType: "image/jpeg",
+      }),
+    ])
     const { res, state } = responseFixture()
 
     await POST(req, res)
@@ -175,20 +171,17 @@ describe("POST /admin/catalog/media/uploads", () => {
   })
 
   it("rejects an invalid idempotency key before validating or uploading", async () => {
-    const req = requestFixture(
-      { idempotencyKey: "not-a-uuid" },
-      [
-        upload({
-          buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]),
-          filename: "cover.jpg",
-          mimeType: "image/jpeg",
-        }),
-      ],
-    )
+    const req = requestFixture({ idempotencyKey: "not-a-uuid" }, [
+      upload({
+        buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]),
+        filename: "cover.jpg",
+        mimeType: "image/jpeg",
+      }),
+    ])
     const { res } = responseFixture()
 
     await expect(POST(req, res)).rejects.toThrow(
-      "valid catalog upload idempotency key",
+      "valid catalog upload idempotency key"
     )
     expect(workflowMock).not.toHaveBeenCalled()
   })

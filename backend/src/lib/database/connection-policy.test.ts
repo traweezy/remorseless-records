@@ -7,7 +7,7 @@ describe("database connection policy", () => {
         connectionString:
           "postgresql://runtime:secret@postgres.railway.internal:5432/railway",
         environment: "production",
-      }),
+      })
     ).toEqual({
       connectionString:
         "postgresql://runtime:secret@postgres.railway.internal:5432/railway",
@@ -35,9 +35,9 @@ describe("database connection policy", () => {
         resolveDatabaseConnection({
           connectionString: `postgresql://runtime:secret@db.example.com:5432/app?sslmode=${sslmode}`,
           environment: "production",
-        }),
+        })
       ).toThrow("must require TLS")
-    },
+    }
   )
 
   it("accepts certificate-verifying external TLS", () => {
@@ -46,7 +46,7 @@ describe("database connection policy", () => {
         connectionString:
           "postgresql://runtime:secret@db.example.com:5432/app?sslmode=verify-full&sslrootcert=system",
         environment: "production",
-      }).transport,
+      }).transport
     ).toBe("tls")
   })
 
@@ -56,9 +56,9 @@ describe("database connection policy", () => {
         connectionString: "postgresql://db.example.com/app?sslmode=require",
         environment: "production",
         label: "DATABASE_MIGRATION_URL",
-      }),
+      })
     ).toThrow(
-      "DATABASE_MIGRATION_URL must include a database, username, and password",
+      "DATABASE_MIGRATION_URL must include a database, username, and password"
     )
   })
 
@@ -67,7 +67,7 @@ describe("database connection policy", () => {
       resolveDatabaseConnection({
         connectionString: "postgresql://localhost:5432/remorseless",
         environment: "development",
-      }).transport,
+      }).transport
     ).toBe("local")
   })
 })

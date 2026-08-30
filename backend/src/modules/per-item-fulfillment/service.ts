@@ -9,8 +9,8 @@ import type {
   FulfillmentOrderDTO,
   Logger,
   ValidateFulfillmentDataContext,
-} from '@medusajs/framework/types'
-import { AbstractFulfillmentProviderService } from '@medusajs/framework/utils'
+} from "@medusajs/framework/types"
+import { AbstractFulfillmentProviderService } from "@medusajs/framework/utils"
 
 type InjectedDependencies = {
   logger: Logger
@@ -32,11 +32,11 @@ const DEFAULT_BASE_AMOUNT = 5
 const DEFAULT_ADDITIONAL_AMOUNT = 0.5
 
 const toNumber = (value: unknown): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value
   }
 
-  if (typeof value === 'string' && value.trim().length) {
+  if (typeof value === "string" && value.trim().length) {
     const parsed = Number(value)
     return Number.isFinite(parsed) ? parsed : null
   }
@@ -78,12 +78,15 @@ export const calculatePerItemShippingAmount = ({
 }
 
 export default class PerItemFulfillmentService extends AbstractFulfillmentProviderService {
-  static override identifier = 'per_item'
+  static override identifier = "per_item"
 
   protected logger_: Logger
   protected options_: PerItemFulfillmentOptions
 
-  constructor({ logger }: InjectedDependencies, options: PerItemFulfillmentOptions) {
+  constructor(
+    { logger }: InjectedDependencies,
+    options: PerItemFulfillmentOptions
+  ) {
     super()
 
     this.logger_ = logger
@@ -93,8 +96,8 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
   override async getFulfillmentOptions(): Promise<FulfillmentOption[]> {
     return [
       {
-        id: 'standard',
-        name: 'Standard',
+        id: "standard",
+        name: "Standard",
       },
     ]
   }
@@ -110,7 +113,9 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
     }
   }
 
-  override async validateOption(data: Record<string, unknown>): Promise<boolean> {
+  override async validateOption(
+    data: Record<string, unknown>
+  ): Promise<boolean> {
     const base = resolveShippingAmount(
       (data as ShippingOptionData).base_amount,
       DEFAULT_BASE_AMOUNT
@@ -123,14 +128,16 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
     return Number.isFinite(base) && Number.isFinite(additional)
   }
 
-  override async canCalculate(_data: CreateShippingOptionDTO): Promise<boolean> {
+  override async canCalculate(
+    _data: CreateShippingOptionDTO
+  ): Promise<boolean> {
     return true
   }
 
   override async calculatePrice(
-    optionData: CalculateShippingOptionPriceDTO['optionData'],
-    _data: CalculateShippingOptionPriceDTO['data'],
-    context: CalculateShippingOptionPriceDTO['context']
+    optionData: CalculateShippingOptionPriceDTO["optionData"],
+    _data: CalculateShippingOptionPriceDTO["data"],
+    context: CalculateShippingOptionPriceDTO["context"]
   ): Promise<CalculatedShippingOptionPrice> {
     const baseAmount = resolveShippingAmount(
       (optionData as ShippingOptionData).base_amount,
@@ -142,7 +149,10 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
     )
 
     const itemCount = Array.isArray(context.items)
-      ? context.items.reduce((total, item) => total + Number(item?.quantity ?? 0), 0)
+      ? context.items.reduce(
+          (total, item) => total + Number(item?.quantity ?? 0),
+          0
+        )
       : 0
 
     const calculated = calculatePerItemShippingAmount({
@@ -152,7 +162,7 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
     })
 
     const currencyCode =
-      typeof context.currency_code === 'string' ? context.currency_code : null
+      typeof context.currency_code === "string" ? context.currency_code : null
     if (currencyCode && this.options_.currencyCode) {
       const normalized = currencyCode.toLowerCase()
       if (normalized !== this.options_.currencyCode.toLowerCase()) {
@@ -170,9 +180,11 @@ export default class PerItemFulfillmentService extends AbstractFulfillmentProvid
 
   override async createFulfillment(
     _data: Record<string, unknown>,
-    _items: Partial<Omit<FulfillmentItemDTO, 'fulfillment'>>[],
+    _items: Partial<Omit<FulfillmentItemDTO, "fulfillment">>[],
     _order: Partial<FulfillmentOrderDTO> | undefined,
-    _fulfillment: Partial<Omit<FulfillmentDTO, 'provider_id' | 'data' | 'items'>>
+    _fulfillment: Partial<
+      Omit<FulfillmentDTO, "provider_id" | "data" | "items">
+    >
   ): Promise<CreateFulfillmentResult> {
     return {
       data: {},

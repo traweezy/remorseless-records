@@ -26,13 +26,13 @@ const createRequest = (
       ...(rawCookie
         ? { cookie: `${CART_COOKIE_NAME}=${rawCookie}` }
         : cartId
-        ? {
-            cookie: `${CART_COOKIE_NAME}=${signCartId(
-              cartId,
-              TEST_CART_COOKIE_SECRET
-            )}`,
-          }
-        : {}),
+          ? {
+              cookie: `${CART_COOKIE_NAME}=${signCartId(
+                cartId,
+                TEST_CART_COOKIE_SECRET
+              )}`,
+            }
+          : {}),
     },
   })
 

@@ -17,7 +17,7 @@ const querySchema = z.object({
 
 export const GET = async (
   req: MedusaRequest,
-  res: MedusaResponse,
+  res: MedusaResponse
 ): Promise<void> => {
   const { kind, limit, offset, q, status } = querySchema.parse(req.query)
   const report = await loadCatalogAuthoringAudit(req.scope)

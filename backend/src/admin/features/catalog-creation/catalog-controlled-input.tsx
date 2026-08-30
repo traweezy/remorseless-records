@@ -1,11 +1,6 @@
 "use client"
 
-import {
-  memo,
-  useCallback,
-  useMemo,
-  type ChangeEvent,
-} from "react"
+import { memo, useCallback, useMemo, type ChangeEvent } from "react"
 import { Input, Text } from "@medusajs/ui"
 
 import type { AdminFormControlProps } from "../../components/admin-form-field"
@@ -47,9 +42,9 @@ export const CatalogControlledInput = memo<CatalogControlledInputProps>(
         options.find(
           (option) =>
             normalizeControlledLabel(option.label) ===
-            normalizeControlledLabel(value),
+            normalizeControlledLabel(value)
         ),
-      [options, value],
+      [options, value]
     )
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
@@ -58,11 +53,11 @@ export const CatalogControlledInput = memo<CatalogControlledInputProps>(
         const match = options.find(
           (option) =>
             normalizeControlledLabel(option.label) ===
-            normalizeControlledLabel(nextValue),
+            normalizeControlledLabel(nextValue)
         )
         onChange(nextValue, match?.id ?? "")
       },
-      [onChange, options],
+      [onChange, options]
     )
     const description = [control["aria-describedby"], statusId]
       .filter(Boolean)
@@ -96,7 +91,7 @@ export const CatalogControlledInput = memo<CatalogControlledInputProps>(
         </Text>
       </div>
     )
-  },
+  }
 )
 
 CatalogControlledInput.displayName = "CatalogControlledInput"

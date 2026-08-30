@@ -100,10 +100,7 @@ describe("GET /store/catalog/products/:handle/bundle", () => {
       })
     )
     expect(graph).toHaveBeenCalledTimes(4)
-    expect(setHeader).toHaveBeenCalledWith(
-      "Vary",
-      "x-publishable-api-key"
-    )
+    expect(setHeader).toHaveBeenCalledWith("Vary", "x-publishable-api-key")
     expect(status).toHaveBeenCalledWith(200)
 
     const response = json.mock.calls[0]?.[0]

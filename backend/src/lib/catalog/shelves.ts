@@ -86,7 +86,9 @@ export const isCatalogShelfActive = (
 
 export const getNewReleaseLookbackDays = (shelf: ResolvableShelf): number => {
   const metadata =
-    shelf.metadata && typeof shelf.metadata === "object" && !Array.isArray(shelf.metadata)
+    shelf.metadata &&
+    typeof shelf.metadata === "object" &&
+    !Array.isArray(shelf.metadata)
       ? (shelf.metadata as Record<string, unknown>)
       : {}
   const candidate = metadata.lookbackDays ?? metadata.lookback_days
@@ -150,7 +152,9 @@ export const resolveShelfProductIds = ({
       index,
     }))
     .filter(
-      (membership): membership is {
+      (
+        membership
+      ): membership is {
         id: string
         pinned: boolean
         order: number
@@ -169,9 +173,10 @@ export const resolveShelfProductIds = ({
   const automaticIds = unique(
     automaticProductIds.filter((id) => visibleProductIds.has(id))
   )
-  const mode = shelf.mode === "automatic" || shelf.mode === "hybrid"
-    ? shelf.mode
-    : "manual"
+  const mode =
+    shelf.mode === "automatic" || shelf.mode === "hybrid"
+      ? shelf.mode
+      : "manual"
 
   const resolved =
     mode === "automatic"

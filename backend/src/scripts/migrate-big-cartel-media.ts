@@ -4,10 +4,7 @@ import os from "node:os"
 import path from "node:path"
 
 import type { ExecArgs } from "@medusajs/framework/types"
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { updateProductsWorkflow } from "@medusajs/medusa/core-flows"
 
 import {
@@ -361,7 +358,10 @@ const downloadMedia = async (
   for (let attempt = 0; attempt < DOWNLOAD_ATTEMPTS; attempt += 1) {
     await scheduler.waitForTurn()
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), options.requestTimeoutMs)
+    const timeout = setTimeout(
+      () => controller.abort(),
+      options.requestTimeoutMs
+    )
     try {
       const response = await fetch(sourceUrl, {
         headers: {
@@ -388,7 +388,7 @@ const downloadMedia = async (
 
       const buffer = await readResponseWithLimit(
         response,
-        Math.min(options.maxBytes, MAX_UPLOAD_BYTES),
+        Math.min(options.maxBytes, MAX_UPLOAD_BYTES)
       )
       const image = inspectManagedImage(
         buffer,
@@ -533,10 +533,7 @@ const stageManagedMedia = async (
     validateStateEntry(entry)
     stateBySha.set(entry.sha256, entry)
   })
-  const uploadsBySha = new Map<
-    string,
-    Promise<{ id: string; url: string }>
-  >()
+  const uploadsBySha = new Map<string, Promise<{ id: string; url: string }>>()
   const scheduler = new PoliteHostScheduler(options.minDelayMs)
   let cursor = 0
   let completed = 0
@@ -581,10 +578,7 @@ const stageManagedMedia = async (
               async () =>
                 await fileModuleService.createFiles({
                   content: downloaded.buffer,
-                  filename: buildManagedMediaFilename(
-                    sourceUrl,
-                    ".webp",
-                  ),
+                  filename: buildManagedMediaFilename(sourceUrl, ".webp"),
                   mimeType: downloaded.image.mimeType,
                 })
             )
@@ -730,7 +724,7 @@ const updateCatalogMedia = async (
         mime_type: managed.mimeType,
         original_filename: buildManagedMediaFilename(
           managed.sourceUrl,
-          ".webp",
+          ".webp"
         ),
         source_file_key: managed.fileKey,
         source_url: managed.managedUrl,

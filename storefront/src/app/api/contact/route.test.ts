@@ -111,13 +111,11 @@ describe("contact route", () => {
 
   it("redacts Backend and network failures", async () => {
     const providerDetail = faker.lorem.sentence()
-    const backendFailure = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ message: providerDetail }), {
-          status: 503,
-        })
-      )
+    const backendFailure = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ message: providerDetail }), {
+        status: 503,
+      })
+    )
     const backendResponse = await createHandler(backendFailure)(
       createRequest(validPayload())
     )

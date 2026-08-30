@@ -10,7 +10,7 @@ import { PUT } from "./route"
 
 jest.mock("@/lib/catalog/product-profile-authoring", () => {
   const actual = jest.requireActual(
-    "@/lib/catalog/product-profile-authoring",
+    "@/lib/catalog/product-profile-authoring"
   ) as Record<string, unknown>
   return {
     ...actual,
@@ -32,10 +32,9 @@ const serializeResponseMock =
   serializeCatalogProductProfileResponse as jest.MockedFunction<
     typeof serializeCatalogProductProfileResponse
   >
-const workflowMock =
-  mutateCatalogProductProfileWorkflow as jest.MockedFunction<
-    typeof mutateCatalogProductProfileWorkflow
-  >
+const workflowMock = mutateCatalogProductProfileWorkflow as jest.MockedFunction<
+  typeof mutateCatalogProductProfileWorkflow
+>
 const assertProductExistsMock = assertProductExists as jest.MockedFunction<
   typeof assertProductExists
 >
@@ -124,7 +123,7 @@ describe("PUT /admin/catalog/products/:product_id/profile", () => {
     const { res } = responseFixture()
 
     await expect(PUT(req, res)).rejects.toThrow(
-      "Invalid catalog product profile payload",
+      "Invalid catalog product profile payload"
     )
     expect(assertProductExistsMock).not.toHaveBeenCalled()
     expect(workflowMock).not.toHaveBeenCalled()

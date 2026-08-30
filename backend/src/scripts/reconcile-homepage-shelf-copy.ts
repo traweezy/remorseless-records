@@ -27,20 +27,31 @@ const expectedManifestPrefix = "--expected-manifest-sha256="
 const sha256Pattern = /^[a-f0-9]{64}$/
 
 const readOption = (args: string[], prefix: string): string | null =>
-  args.find((argument) => argument.startsWith(prefix))?.slice(prefix.length) ?? null
+  args.find((argument) => argument.startsWith(prefix))?.slice(prefix.length) ??
+  null
 
-export const parseHomepageShelfCopyArguments = (args: string[]): ReconciliationArguments => {
+export const parseHomepageShelfCopyArguments = (
+  args: string[]
+): ReconciliationArguments => {
   const apply = args.includes("--apply")
   const countValue = readOption(args, expectedCountPrefix)
   const manifestValue = readOption(args, expectedManifestPrefix)
   const expectedCount = countValue === null ? null : Number(countValue)
   const expectedManifestSha256 = manifestValue?.toLowerCase() ?? null
 
-  if (countValue !== null && (!Number.isInteger(expectedCount) || (expectedCount ?? -1) < 0)) {
+  if (
+    countValue !== null &&
+    (!Number.isInteger(expectedCount) || (expectedCount ?? -1) < 0)
+  ) {
     throw new Error("--expected-count must be a non-negative integer.")
   }
-  if (expectedManifestSha256 !== null && !sha256Pattern.test(expectedManifestSha256)) {
-    throw new Error("--expected-manifest-sha256 must be a lowercase SHA-256 digest.")
+  if (
+    expectedManifestSha256 !== null &&
+    !sha256Pattern.test(expectedManifestSha256)
+  ) {
+    throw new Error(
+      "--expected-manifest-sha256 must be a lowercase SHA-256 digest."
+    )
   }
   if (apply && (expectedCount === null || expectedManifestSha256 === null)) {
     throw new Error(
@@ -68,7 +79,9 @@ const callCatalogService = async <T>(
   args: unknown[]
 ): Promise<T> => {
   const methods = catalogService as unknown as CatalogServiceMethods
-  const methodName = candidates.find((candidate) => typeof methods[candidate] === "function")
+  const methodName = candidates.find(
+    (candidate) => typeof methods[candidate] === "function"
+  )
   const method = methodName ? methods[methodName] : undefined
   if (!method) {
     throw new Error(`Catalog service is missing ${candidates.join(" or ")}`)
@@ -99,7 +112,9 @@ const loadHomepageShelves = async (
   return shelves
 }
 
-export default async function reconcileHomepageShelfCopy({ container }: ExecArgs): Promise<void> {
+export default async function reconcileHomepageShelfCopy({
+  container,
+}: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const catalogService = container.resolve("catalog") as CatalogService
   const options = parseHomepageShelfCopyArguments(process.argv.slice(2))
@@ -134,7 +149,9 @@ export default async function reconcileHomepageShelfCopy({ container }: ExecArgs
     )
   }
   if (!changes.length) {
-    logger.info("[homepage-shelves] Copy is already current; nothing to update.")
+    logger.info(
+      "[homepage-shelves] Copy is already current; nothing to update."
+    )
     return
   }
 
@@ -150,12 +167,16 @@ export default async function reconcileHomepageShelfCopy({ container }: ExecArgs
     ]
   )
 
-  const remaining = planHomepageShelfCopy(await loadHomepageShelves(catalogService))
+  const remaining = planHomepageShelfCopy(
+    await loadHomepageShelves(catalogService)
+  )
   if (remaining.length) {
     throw new Error(
       `[homepage-shelves] Verification failed for ${remaining.length} shelf change(s).`
     )
   }
 
-  logger.info(`[homepage-shelves] Applied and verified ${changes.length} shelf copy change(s).`)
+  logger.info(
+    `[homepage-shelves] Applied and verified ${changes.length} shelf copy change(s).`
+  )
 }

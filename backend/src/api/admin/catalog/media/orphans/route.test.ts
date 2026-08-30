@@ -4,9 +4,10 @@ import { serializeCatalogMediaAsset } from "@/modules/catalog/serializers"
 import { GET } from "./route"
 
 jest.mock("@/modules/catalog/serializers", () => {
-  const actual = jest.requireActual(
-    "@/modules/catalog/serializers",
-  ) as Record<string, unknown>
+  const actual = jest.requireActual("@/modules/catalog/serializers") as Record<
+    string,
+    unknown
+  >
   return {
     ...actual,
     serializeCatalogMediaAsset: jest.fn((asset: unknown) => asset),
@@ -26,7 +27,7 @@ const responseFixture = (): MedusaResponse => {
 }
 
 const requestFixture = (
-  query: Record<string, unknown>,
+  query: Record<string, unknown>
 ): {
   req: MedusaRequest
   listOrphans: jest.Mock
@@ -71,11 +72,11 @@ describe("GET /admin/catalog/media/orphans", () => {
     expect(serializeMock).toHaveBeenCalledTimes(2)
     expect(res.setHeader).toHaveBeenCalledWith(
       "Cache-Control",
-      "private, no-store",
+      "private, no-store"
     )
     expect(res.setHeader).toHaveBeenCalledWith(
       "Server-Timing",
-      expect.stringMatching(/^catalog-media-orphans;dur=\d+$/),
+      expect.stringMatching(/^catalog-media-orphans;dur=\d+$/)
     )
     expect(res.json).toHaveBeenCalledWith({
       assets: [{ id: "cmedia_1" }, { id: "cmedia_2" }],
@@ -90,7 +91,7 @@ describe("GET /admin/catalog/media/orphans", () => {
     const { req, listOrphans } = requestFixture({ limit: "1000" })
 
     await expect(GET(req, responseFixture())).rejects.toThrow(
-      "Invalid catalog media orphan query",
+      "Invalid catalog media orphan query"
     )
     expect(listOrphans).not.toHaveBeenCalled()
   })

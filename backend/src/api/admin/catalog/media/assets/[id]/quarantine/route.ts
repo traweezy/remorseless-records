@@ -7,6 +7,5 @@ import { runMediaLifecycleRoute } from "../../lifecycle-route"
 
 export const POST = async (
   req: AuthenticatedMedusaRequest,
-  res: MedusaResponse,
-): Promise<void> =>
-  runMediaLifecycleRoute(req, res, "catalog.media.quarantine")
+  res: MedusaResponse
+): Promise<void> => runMediaLifecycleRoute(req, res, "catalog.media.quarantine")

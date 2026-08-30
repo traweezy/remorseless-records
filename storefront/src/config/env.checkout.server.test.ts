@@ -50,18 +50,15 @@ describe("checkoutServerEnv", () => {
     "CHECKOUT_BFF_SECRET",
     "CHECKOUT_RECEIPT_SECRET",
     "CHECKOUT_RECEIPT_SECRET_PREVIOUS",
-  ] as const)(
-    "rejects a short %s",
-    async (name) => {
-      const errorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => undefined)
-      vi.stubEnv(name, "too-short")
+  ] as const)("rejects a short %s", async (name) => {
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    vi.stubEnv(name, "too-short")
 
-      await expect(loadCheckoutServerEnv()).rejects.toThrow(
-        "Checkout server environment validation failed"
-      )
-      expect(errorSpy).toHaveBeenCalled()
-    }
-  )
+    await expect(loadCheckoutServerEnv()).rejects.toThrow(
+      "Checkout server environment validation failed"
+    )
+    expect(errorSpy).toHaveBeenCalled()
+  })
 })

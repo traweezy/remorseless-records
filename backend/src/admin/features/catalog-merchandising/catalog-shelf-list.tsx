@@ -38,7 +38,7 @@ const ShelfListItem = memo<ShelfListItemProps>(
             "focus-visible:shadow-borders-interactive-with-focus flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 text-left outline-none transition-colors",
             selected
               ? "border-ui-border-interactive bg-ui-bg-base-pressed"
-              : "border-transparent hover:bg-ui-bg-base-hover",
+              : "border-transparent hover:bg-ui-bg-base-hover"
           )}
           onClick={handleSelect}
           type="button"
@@ -50,7 +50,7 @@ const ShelfListItem = memo<ShelfListItemProps>(
             <Text
               className={clx(
                 "mt-0.5 truncate",
-                selected ? "text-ui-fg-base" : "text-ui-fg-subtle",
+                selected ? "text-ui-fg-base" : "text-ui-fg-subtle"
               )}
               size="xsmall"
             >
@@ -59,21 +59,28 @@ const ShelfListItem = memo<ShelfListItemProps>(
           </span>
           <span className="flex shrink-0 flex-col items-end gap-1">
             <StatusBadge
-              color={archived ? "orange" : entry.shelf.isActive ? "green" : "grey"}
+              color={
+                archived ? "orange" : entry.shelf.isActive ? "green" : "grey"
+              }
             >
-              {archived ? "Archived" : entry.shelf.isActive ? "Active" : "Draft"}
+              {archived
+                ? "Archived"
+                : entry.shelf.isActive
+                  ? "Active"
+                  : "Draft"}
             </StatusBadge>
             <Text
               className={selected ? "text-ui-fg-base" : "text-ui-fg-subtle"}
               size="xsmall"
             >
-              {entry.products.length} {entry.products.length === 1 ? "product" : "products"}
+              {entry.products.length}{" "}
+              {entry.products.length === 1 ? "product" : "products"}
             </Text>
           </span>
         </button>
       </li>
     )
-  },
+  }
 )
 
 ShelfListItem.displayName = "ShelfListItem"
@@ -96,7 +103,7 @@ export const CatalogShelfList = memo<CatalogShelfListProps>(
         />
       ))}
     </ul>
-  ),
+  )
 )
 
 CatalogShelfList.displayName = "CatalogShelfList"

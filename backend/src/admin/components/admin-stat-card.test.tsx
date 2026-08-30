@@ -7,7 +7,7 @@ describe("AdminStatCard", () => {
     const markup = renderToStaticMarkup(
       <AdminStatCard description="Requires review" label="Exceptions">
         <strong>3</strong>
-      </AdminStatCard>,
+      </AdminStatCard>
     )
 
     expect(markup).toContain(">Exceptions</")
@@ -18,7 +18,7 @@ describe("AdminStatCard", () => {
 
   it("omits an empty description", () => {
     const markup = renderToStaticMarkup(
-      <AdminStatCard label="Verified">12</AdminStatCard>,
+      <AdminStatCard label="Verified">12</AdminStatCard>
     )
 
     expect(markup).toContain(">Verified</")

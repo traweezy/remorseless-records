@@ -60,7 +60,9 @@ const auditQuery = `
   order by handle, title, option_id
 `
 
-const loadAuditRows = async (database: Knex): Promise<DuplicateProductOptionRow[]> => {
+const loadAuditRows = async (
+  database: Knex
+): Promise<DuplicateProductOptionRow[]> => {
   const result = await database.raw<{ rows: AuditRow[] }>(auditQuery)
   return result.rows.map((row) => ({
     productId: row.product_id,

@@ -6,10 +6,17 @@ import { cn } from "@/lib/ui/cn"
 
 type ScrollAreaProps = HTMLAttributes<HTMLDivElement>
 
-export const ScrollArea = ({ className, children, ...props }: ScrollAreaProps) => {
+export const ScrollArea = ({
+  className,
+  children,
+  ...props
+}: ScrollAreaProps) => {
   return (
     <div
-      className={cn("relative h-full overflow-y-auto overscroll-contain", className)}
+      className={cn(
+        "relative h-full overflow-y-auto overscroll-contain",
+        className
+      )}
       {...props}
     >
       {children}

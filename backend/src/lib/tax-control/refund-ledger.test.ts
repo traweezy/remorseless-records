@@ -1,4 +1,4 @@
-import { buildRefundLedgerMismatches } from "./refund-ledger";
+import { buildRefundLedgerMismatches } from "./refund-ledger"
 
 const evidence = (refundAmountMinor: number) => ({
   association_status: "committed",
@@ -12,7 +12,7 @@ const evidence = (refundAmountMinor: number) => ({
   payment_intent_id: "pi_test",
   provider: "stripe_tax" as const,
   status: "partially_refunded" as const,
-});
+})
 
 const order = (refundAmounts: unknown[]) => ({
   id: "order_01",
@@ -27,7 +27,7 @@ const order = (refundAmounts: unknown[]) => ({
       ],
     },
   ],
-});
+})
 
 describe("Stripe and Medusa refund ledger comparison", () => {
   it("accepts matching partial refunds across both systems", () => {
@@ -35,16 +35,16 @@ describe("Stripe and Medusa refund ledger comparison", () => {
       buildRefundLedgerMismatches({
         evidence: [evidence(725)],
         paymentRecords: [order([5, "2.25"])],
-      }),
-    ).toEqual([]);
-  });
+      })
+    ).toEqual([])
+  })
 
   it("surfaces a refund created outside Medusa", () => {
     expect(
       buildRefundLedgerMismatches({
         evidence: [evidence(725)],
         paymentRecords: [order([])],
-      }),
+      })
     ).toEqual([
       {
         evidence: evidence(725),
@@ -52,15 +52,15 @@ describe("Stripe and Medusa refund ledger comparison", () => {
         stripeEvidenceAvailable: true,
         stripeRefundAmountMinor: 725,
       },
-    ]);
-  });
+    ])
+  })
 
   it("surfaces a Medusa refund not yet reflected by Stripe", () => {
     expect(
       buildRefundLedgerMismatches({
         evidence: [evidence(500)],
         paymentRecords: [order([7.25])],
-      }),
+      })
     ).toEqual([
       {
         evidence: evidence(500),
@@ -68,15 +68,15 @@ describe("Stripe and Medusa refund ledger comparison", () => {
         stripeEvidenceAvailable: true,
         stripeRefundAmountMinor: 500,
       },
-    ]);
-  });
+    ])
+  })
 
   it("surfaces a Medusa refund before Stripe evidence has been recorded", () => {
     expect(
       buildRefundLedgerMismatches({
         evidence: [{ ...evidence(0), metadata: {} }],
         paymentRecords: [order([7.25])],
-      }),
+      })
     ).toEqual([
       {
         evidence: { ...evidence(0), metadata: {} },
@@ -84,22 +84,22 @@ describe("Stripe and Medusa refund ledger comparison", () => {
         stripeEvidenceAvailable: false,
         stripeRefundAmountMinor: 0,
       },
-    ]);
-  });
+    ])
+  })
 
   it("matches a pre-order compensation refund on the cart", () => {
     const cart = {
       id: "cart_01",
       payment_collection: order([7.25]).payment_collections[0],
-    };
+    }
 
     expect(
       buildRefundLedgerMismatches({
         evidence: [{ ...evidence(725), order_id: null }],
         paymentRecords: [cart],
-      }),
-    ).toEqual([]);
-  });
+      })
+    ).toEqual([])
+  })
 
   it("ignores untrusted providers, malformed amounts, and unrelated intents", () => {
     expect(
@@ -130,7 +130,7 @@ describe("Stripe and Medusa refund ledger comparison", () => {
             ],
           },
         ],
-      }),
+      })
     ).toEqual([
       {
         evidence: evidence(500),
@@ -138,6 +138,6 @@ describe("Stripe and Medusa refund ledger comparison", () => {
         stripeEvidenceAvailable: true,
         stripeRefundAmountMinor: 500,
       },
-    ]);
-  });
-});
+    ])
+  })
+})

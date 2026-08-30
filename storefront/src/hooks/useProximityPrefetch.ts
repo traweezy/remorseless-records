@@ -13,9 +13,10 @@ type Options = {
 const DEFAULT_SELECTOR = "a[data-prefetch='true']"
 const DEFAULT_RADIUS = 220
 
-export const useProximityPrefetch = (
-  { selector = DEFAULT_SELECTOR, radius = DEFAULT_RADIUS }: Options = {}
-) => {
+export const useProximityPrefetch = ({
+  selector = DEFAULT_SELECTOR,
+  radius = DEFAULT_RADIUS,
+}: Options = {}) => {
   const router = useRouter()
 
   useEffect(() => {

@@ -72,21 +72,17 @@ describe("correlatedMedusaFetch", () => {
       .mockResolvedValueOnce(response)
     const request = new Request("https://storefront.test/api/products")
 
-    const pending = correlatedMedusaFetch(
-      request,
-      "/store/products",
-      { method: "GET" }
-    )
+    const pending = correlatedMedusaFetch(request, "/store/products", {
+      method: "GET",
+    })
     await vi.advanceTimersByTimeAsync(100)
 
     await expect(pending).resolves.toBe(response)
     expect(fetchMock).toHaveBeenCalledTimes(2)
     const firstInit = fetchMock.mock.calls[0]?.[1] as
-      | { signal?: AbortSignal }
-      | undefined
+      { signal?: AbortSignal } | undefined
     const secondInit = fetchMock.mock.calls[1]?.[1] as
-      | { signal?: AbortSignal }
-      | undefined
+      { signal?: AbortSignal } | undefined
     const firstSignal = firstInit?.signal
     const secondSignal = secondInit?.signal
     expect(firstSignal).toBeInstanceOf(AbortSignal)
@@ -128,11 +124,9 @@ describe("correlatedMedusaFetch", () => {
     )
     const request = new Request("https://storefront.test/api/products")
 
-    const failure = await correlatedMedusaFetch(
-      request,
-      "/store/products",
-      { signal: caller.signal }
-    ).catch((error: unknown) => error)
+    const failure = await correlatedMedusaFetch(request, "/store/products", {
+      signal: caller.signal,
+    }).catch((error: unknown) => error)
 
     expect(failure).toMatchObject({
       kind: "unavailable",

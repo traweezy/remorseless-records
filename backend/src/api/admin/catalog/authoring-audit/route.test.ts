@@ -39,9 +39,7 @@ const responseFixture = (): {
   return { res: response, state }
 }
 
-const requestFixture = (
-  query: Record<string, unknown> = {},
-): MedusaRequest =>
+const requestFixture = (query: Record<string, unknown> = {}): MedusaRequest =>
   ({
     query,
     scope: { resolve: jest.fn() },
@@ -132,7 +130,7 @@ describe("GET /admin/catalog/authoring-audit", () => {
         q: "shirt",
         status: "needs_review",
       }),
-      res,
+      res
     )
 
     expect(state.body).toMatchObject({
@@ -152,7 +150,7 @@ describe("GET /admin/catalog/authoring-audit", () => {
     const { res } = responseFixture()
 
     await expect(
-      GET(requestFixture({ kind: "box-set" }), res),
+      GET(requestFixture({ kind: "box-set" }), res)
     ).rejects.toThrow()
     expect(loadAuditMock).not.toHaveBeenCalled()
   })

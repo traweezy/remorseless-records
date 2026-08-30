@@ -1,10 +1,7 @@
 import { queryOptions } from "@tanstack/react-query"
 import { z } from "zod"
 
-import {
-  requestAdminJson,
-  type AdminSdkClient,
-} from "../../lib/admin-request"
+import { requestAdminJson, type AdminSdkClient } from "../../lib/admin-request"
 import type { AdminProduct } from "./catalog-merchandising-types"
 
 export const catalogProductPageSize = 20
@@ -47,7 +44,7 @@ type SelectedProductsRequest = {
 }
 
 const normalizeProduct = (
-  product: ProductListResponse["products"][number],
+  product: ProductListResponse["products"][number]
 ): AdminProduct => ({
   handle: product.handle?.trim() || null,
   id: product.id,
@@ -58,9 +55,11 @@ const normalizeProduct = (
 export const normalizeCatalogProductSearch = (value: string): string =>
   value.trim().replace(/\s+/g, " ").slice(0, 100)
 
-export const normalizeCatalogProductIds = (ids: string[]): string[] => [
-  ...new Set(ids.map((id) => id.trim()).filter(Boolean)),
-].slice(0, MAX_SELECTED_PRODUCTS)
+export const normalizeCatalogProductIds = (ids: string[]): string[] =>
+  [...new Set(ids.map((id) => id.trim()).filter(Boolean))].slice(
+    0,
+    MAX_SELECTED_PRODUCTS
+  )
 
 export const loadCatalogProductPage = async ({
   client,

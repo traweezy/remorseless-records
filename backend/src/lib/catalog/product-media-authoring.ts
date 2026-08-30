@@ -45,14 +45,14 @@ export type {
 const findReusableAsset = async (
   catalogService: CatalogService,
   input: CatalogProductMediaInput,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<CatalogMediaAssetRecord | null> => {
   const sourceFileKey = toCatalogNullableString(input.sourceFileKey)
   if (sourceFileKey) {
     const matches = await catalogService.listCatalogMediaAssets(
       { lifecycle_status: "active", source_file_key: sourceFileKey },
       { take: 1 },
-      sharedContext,
+      sharedContext
     )
     return (matches.at(0) as CatalogMediaAssetRecord | undefined) ?? null
   }
@@ -63,13 +63,13 @@ const findReusableAsset = async (
   const matches = await catalogService.listCatalogMediaAssets(
     { lifecycle_status: "active", source_url: sourceUrl },
     { take: 1 },
-    sharedContext,
+    sharedContext
   )
   return (matches.at(0) as CatalogMediaAssetRecord | undefined) ?? null
 }
 
 const buildAssetPatch = (
-  input: CatalogProductMediaInput,
+  input: CatalogProductMediaInput
 ): Record<string, unknown> => {
   const payload: Record<string, unknown> = {}
   const sourceUrl = toCatalogNullableString(input.sourceUrl)
@@ -80,9 +80,7 @@ const buildAssetPatch = (
     payload.source_file_key = toCatalogNullableString(input.sourceFileKey)
   }
   if (input.originalFilename !== undefined) {
-    payload.original_filename = toCatalogNullableString(
-      input.originalFilename,
-    )
+    payload.original_filename = toCatalogNullableString(input.originalFilename)
   }
   if (input.mimeType !== undefined) {
     payload.mime_type = toCatalogNullableString(input.mimeType)
@@ -126,23 +124,23 @@ const resolveMediaAsset = async (
   input: CatalogProductMediaInput,
   previous: CatalogProductMediaMutationResult["previous"],
   createdAssetIds: Set<string>,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<CatalogMediaAssetRecord> => {
   const mediaAssetId = toCatalogNullableString(input.mediaAssetId)
   const patch = buildAssetPatch(input)
   if (mediaAssetId) {
     const existing = (await catalogService.retrieveCatalogMediaAsset(
-        mediaAssetId,
-        {},
-        sharedContext,
-      )) as CatalogMediaAssetRecord
+      mediaAssetId,
+      {},
+      sharedContext
+    )) as CatalogMediaAssetRecord
     if (
       existing.lifecycle_status !== undefined &&
       existing.lifecycle_status !== "active"
     ) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "Quarantined catalog media cannot be linked or edited.",
+        "Quarantined catalog media cannot be linked or edited."
       )
     }
     rememberCatalogMediaAsset(previous, existing)
@@ -151,15 +149,14 @@ const resolveMediaAsset = async (
     }
     const updated = await catalogService.updateCatalogMediaAssets(
       [{ id: existing.id, ...patch, version: existing.version + 1 }],
-      sharedContext,
+      sharedContext
     )
     const asset = firstCatalogResult(updated) as
-      | CatalogMediaAssetRecord
-      | undefined
+      CatalogMediaAssetRecord | undefined
     if (!asset) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to update catalog media asset.",
+        "Unable to update catalog media asset."
       )
     }
     return asset
@@ -191,20 +188,19 @@ const resolveMediaAsset = async (
   if (!createPayload.source_url) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Each media item requires sourceUrl or mediaAssetId.",
+      "Each media item requires sourceUrl or mediaAssetId."
     )
   }
   const created = await catalogService.createCatalogMediaAssets(
     [createPayload],
-    sharedContext,
+    sharedContext
   )
   const asset = firstCatalogResult(created) as
-    | CatalogMediaAssetRecord
-    | undefined
+    CatalogMediaAssetRecord | undefined
   if (!asset) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      "Unable to create catalog media asset.",
+      "Unable to create catalog media asset."
     )
   }
   createdAssetIds.add(asset.id)
@@ -215,19 +211,19 @@ const resolveProductProfileId = async (
   catalogService: CatalogService,
   productId: string,
   explicitProductProfileId: string | null | undefined,
-  sharedContext: Context<EntityManager>,
+  sharedContext: Context<EntityManager>
 ): Promise<string | null> => {
   const explicit = toCatalogNullableString(explicitProductProfileId)
   if (explicit) {
     const profile = await catalogService.retrieveCatalogProductProfile(
       explicit,
       {},
-      sharedContext,
+      sharedContext
     )
     if (profile.product_id !== productId) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "The selected catalog product profile belongs to another product.",
+        "The selected catalog product profile belongs to another product."
       )
     }
     return explicit
@@ -235,13 +231,13 @@ const resolveProductProfileId = async (
   const profiles = await catalogService.listCatalogProductProfiles(
     { product_id: productId },
     { take: 1 },
-    sharedContext,
+    sharedContext
   )
   return profiles.at(0)?.id ?? null
 }
 
 export const assertCatalogProductMediaPrimaryShape = (
-  inputs: CatalogProductMediaInput[],
+  inputs: CatalogProductMediaInput[]
 ): Map<number, boolean> => {
   const primaryByScope = new Set<string>()
   const primaryByIndex = new Map<number, boolean>()
@@ -261,7 +257,7 @@ export const assertCatalogProductMediaPrimaryShape = (
     if (primaryByScope.has(scope)) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "Only one primary media item is allowed per product or variant.",
+        "Only one primary media item is allowed per product or variant."
       )
     }
     primaryByScope.add(scope)
@@ -275,14 +271,14 @@ export const assertCatalogProductMediaPrimaryShape = (
 
 export const mutateCatalogProductMedia = async (
   catalogService: CatalogService,
-  input: CatalogProductMediaMutationInput,
+  input: CatalogProductMediaMutationInput
 ): Promise<CatalogProductMediaMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     const existingOperation = (
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
         { take: 1 },
-        sharedContext,
+        sharedContext
       )
     )[0]
     if (existingOperation) {
@@ -295,7 +291,7 @@ export const mutateCatalogProductMedia = async (
       if (!sameCommand || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
-          "The catalog idempotency key cannot be replayed for this product media command.",
+          "The catalog idempotency key cannot be replayed for this product media command."
         )
       }
       const result = coerceCatalogJsonRecord(existingOperation.result)
@@ -316,18 +312,18 @@ export const mutateCatalogProductMedia = async (
     const currentVersion = await resolveCatalogProductMediaVersion(
       catalogService,
       input.aggregateId,
-      sharedContext,
+      sharedContext
     )
     if (currentVersion !== input.expectedVersion) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
-        "The product media changed after it was loaded. Refresh before saving.",
+        "The product media changed after it was loaded. Refresh before saving."
       )
     }
     const previous = await snapshotCatalogProductMedia(
       catalogService,
       input.aggregateId,
-      sharedContext,
+      sharedContext
     )
     const [operation] = await catalogService.createCatalogAuthoringOperations(
       [
@@ -343,12 +339,12 @@ export const mutateCatalogProductMedia = async (
           status: "pending",
         },
       ],
-      sharedContext,
+      sharedContext
     )
     if (!operation) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        "The product media command audit record was not created.",
+        "The product media command audit record was not created."
       )
     }
 
@@ -358,7 +354,7 @@ export const mutateCatalogProductMedia = async (
       catalogService,
       input.aggregateId,
       undefined,
-      sharedContext,
+      sharedContext
     )
     const resolvedItems = []
     for (const [index, media] of input.media.entries()) {
@@ -367,7 +363,7 @@ export const mutateCatalogProductMedia = async (
         media,
         previous,
         createdAssetIds,
-        sharedContext,
+        sharedContext
       )
       const productProfileId =
         media.productProfileId === undefined
@@ -376,7 +372,7 @@ export const mutateCatalogProductMedia = async (
               catalogService,
               input.aggregateId,
               media.productProfileId,
-              sharedContext,
+              sharedContext
             )
       resolvedItems.push({
         asset,
@@ -390,7 +386,7 @@ export const mutateCatalogProductMedia = async (
     if (previous.items.length) {
       await catalogService.deleteCatalogProductMediaItems(
         previous.items.map(({ id }) => id),
-        sharedContext,
+        sharedContext
       )
     }
     if (resolvedItems.length) {
@@ -406,17 +402,13 @@ export const mutateCatalogProductMedia = async (
               product_profile_id: productProfileId,
               role:
                 media.role ??
-                (variantId
-                  ? "variant"
-                  : isPrimary
-                    ? "primary"
-                    : "gallery"),
+                (variantId ? "variant" : isPrimary ? "primary" : "gallery"),
               sort_order: media.sortOrder ?? index,
               variant_id: variantId,
             }
-          },
+          }
         ),
-        sharedContext,
+        sharedContext
       )
     }
 
@@ -438,20 +430,20 @@ export const compensateCatalogProductMediaMutation = async (
     createdAssetIds: string[]
     operationId: string
     previous: CatalogProductMediaMutationResult["previous"]
-  },
+  }
 ): Promise<void> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
     await restoreCatalogProductMediaSnapshot(
       catalogService,
       input.aggregateId,
       input.previous,
-      sharedContext,
+      sharedContext
     )
     for (const assetId of input.createdAssetIds) {
       await deleteCreatedMediaAssetIfOrphaned(
         catalogService,
         assetId,
-        sharedContext,
+        sharedContext
       )
     }
     await catalogService.updateCatalogAuthoringOperations(
@@ -465,6 +457,6 @@ export const compensateCatalogProductMediaMutation = async (
           status: "compensated",
         },
       ],
-      sharedContext,
+      sharedContext
     )
   })

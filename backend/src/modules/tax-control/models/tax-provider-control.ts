@@ -1,6 +1,6 @@
-import { model } from "@medusajs/framework/utils";
+import { model } from "@medusajs/framework/utils"
 
-import { taxCollectionModes, taxProviderNames } from "../constants";
+import { taxCollectionModes, taxProviderNames } from "../constants"
 
 const TaxProviderControl = model.define(
   {
@@ -15,7 +15,7 @@ const TaxProviderControl = model.define(
     last_switched_by: model.text().nullable(),
     last_switch_reason: model.text().nullable(),
     metadata: model.json().default({}),
-  },
-);
+  }
+)
 
-export default TaxProviderControl;
+export default TaxProviderControl

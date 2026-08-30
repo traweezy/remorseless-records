@@ -1,7 +1,4 @@
-import {
-  queryOptions,
-  type QueryFunctionContext,
-} from "@tanstack/react-query"
+import { queryOptions, type QueryFunctionContext } from "@tanstack/react-query"
 import { z } from "zod"
 
 import { requestAdminJson } from "../../lib/admin-request"
@@ -48,7 +45,7 @@ export const catalogAuthoringAuditPayloadSchema = z.object({
           code: z.string().min(1),
           message: z.string().min(1),
           severity: z.enum(["info", "warning", "error"]),
-        }),
+        })
       ),
       kind: catalogAuthoringKindSchema.nullable(),
       signals: z.array(
@@ -56,11 +53,11 @@ export const catalogAuthoringAuditPayloadSchema = z.object({
           kind: catalogAuthoringKindSchema,
           source: z.string().min(1),
           value: z.string(),
-        }),
+        })
       ),
       status: catalogAuthoringStatusSchema,
       title: z.string().min(1),
-    }),
+    })
   ),
   limit: z.number().int().positive(),
   offset: z.number().int().nonnegative(),

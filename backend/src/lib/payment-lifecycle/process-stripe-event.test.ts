@@ -1,16 +1,15 @@
-import type Stripe from "stripe";
+import type Stripe from "stripe"
 
-import { reconcileTaxQuoteEvidence } from "../tax-control/evidence-reconciliation";
-import { processStripeLifecycleEvent } from "./process-stripe-event";
+import { reconcileTaxQuoteEvidence } from "../tax-control/evidence-reconciliation"
+import { processStripeLifecycleEvent } from "./process-stripe-event"
 
 jest.mock("../tax-control/evidence-reconciliation", () => ({
   reconcileTaxQuoteEvidence: jest.fn(),
-}));
+}))
 
-const reconcileMock =
-  reconcileTaxQuoteEvidence as jest.MockedFunction<
-    typeof reconcileTaxQuoteEvidence
-  >;
+const reconcileMock = reconcileTaxQuoteEvidence as jest.MockedFunction<
+  typeof reconcileTaxQuoteEvidence
+>
 
 const lifecycleEvent = {
   amount_minor: 2_500,
@@ -24,7 +23,7 @@ const lifecycleEvent = {
   object_id: "re_01REFUND",
   payment_intent_id: "pi_01PAYMENT",
   status: "processing",
-};
+}
 
 const fixture = ({
   currentObject = {
@@ -38,14 +37,14 @@ const fixture = ({
   },
   record = lifecycleEvent,
 }: {
-  currentObject?: Record<string, unknown>;
-  record?: Record<string, unknown>;
+  currentObject?: Record<string, unknown>
+  record?: Record<string, unknown>
 } = {}) => {
   const lifecycleService = {
     completeStripeLifecycleEvent: jest.fn(async () => undefined),
     markStripeLifecycleEventFailed: jest.fn(async () => undefined),
     markStripeLifecycleEventProcessing: jest.fn(async () => record),
-  };
+  }
   const client = {
     disputes: { retrieve: jest.fn() },
     paymentIntents: {
@@ -65,10 +64,10 @@ const fixture = ({
       retrieve: jest.fn(async () => currentObject),
     },
     tax: { associations: { find: jest.fn() } },
-  } as unknown as Stripe;
+  } as unknown as Stripe
   const taxControlService = {} as Parameters<
     typeof processStripeLifecycleEvent
-  >[0]["taxControlService"];
+  >[0]["taxControlService"]
 
   return {
     client,
@@ -77,18 +76,18 @@ const fixture = ({
     >[0]["lifecycleService"],
     lifecycleServiceMocks: lifecycleService,
     taxControlService,
-  };
-};
+  }
+}
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.clearAllMocks()
   reconcileMock.mockResolvedValue({
     associationStatus: "not_applicable",
     evidenceFound: true,
     paymentIntentId: "pi_01PAYMENT",
     status: "partially_refunded",
-  });
-});
+  })
+})
 
 describe("Stripe lifecycle event processing", () => {
   it("does not call Stripe again for a terminal replay", async () => {
@@ -98,7 +97,7 @@ describe("Stripe lifecycle event processing", () => {
         metadata: { tax_evidence_found: true },
         status: "processed",
       },
-    });
+    })
 
     await expect(
       processStripeLifecycleEvent({
@@ -106,18 +105,18 @@ describe("Stripe lifecycle event processing", () => {
         eventId: "stripelinevt_01",
         lifecycleService: input.lifecycleService,
         taxControlService: input.taxControlService,
-      }),
-    ).resolves.toEqual({ evidenceFound: true, status: "processed" });
+      })
+    ).resolves.toEqual({ evidenceFound: true, status: "processed" })
 
-    expect(input.client.refunds.retrieve).not.toHaveBeenCalled();
-    expect(reconcileMock).not.toHaveBeenCalled();
+    expect(input.client.refunds.retrieve).not.toHaveBeenCalled()
+    expect(reconcileMock).not.toHaveBeenCalled()
     expect(
-      input.lifecycleServiceMocks.completeStripeLifecycleEvent,
-    ).not.toHaveBeenCalled();
-  });
+      input.lifecycleServiceMocks.completeStripeLifecycleEvent
+    ).not.toHaveBeenCalled()
+  })
 
   it("accepts the current Refund shape and reconciles tracked evidence", async () => {
-    const input = fixture();
+    const input = fixture()
 
     await expect(
       processStripeLifecycleEvent({
@@ -125,26 +124,26 @@ describe("Stripe lifecycle event processing", () => {
         eventId: "stripelinevt_01",
         lifecycleService: input.lifecycleService,
         taxControlService: input.taxControlService,
-      }),
-    ).resolves.toEqual({ evidenceFound: true, status: "processed" });
+      })
+    ).resolves.toEqual({ evidenceFound: true, status: "processed" })
 
     expect(reconcileMock).toHaveBeenCalledWith(
       expect.objectContaining({
         orderId: "order_01ORDER",
         paymentIntentId: "pi_01PAYMENT",
-      }),
-    );
+      })
+    )
     expect(
-      input.lifecycleServiceMocks.completeStripeLifecycleEvent,
+      input.lifecycleServiceMocks.completeStripeLifecycleEvent
     ).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "stripelinevt_01",
         orderId: "order_01ORDER",
         providerObjectStatus: "succeeded",
         status: "processed",
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("records non-PaymentIntent refunds as ignored without retrying", async () => {
     const input = fixture({
@@ -157,7 +156,7 @@ describe("Stripe lifecycle event processing", () => {
         status: "succeeded",
       },
       record: { ...lifecycleEvent, payment_intent_id: null },
-    });
+    })
 
     await expect(
       processStripeLifecycleEvent({
@@ -165,21 +164,21 @@ describe("Stripe lifecycle event processing", () => {
         eventId: "stripelinevt_01",
         lifecycleService: input.lifecycleService,
         taxControlService: input.taxControlService,
-      }),
-    ).resolves.toEqual({ evidenceFound: false, status: "ignored" });
+      })
+    ).resolves.toEqual({ evidenceFound: false, status: "ignored" })
 
-    expect(reconcileMock).not.toHaveBeenCalled();
+    expect(reconcileMock).not.toHaveBeenCalled()
     expect(
-      input.lifecycleServiceMocks.completeStripeLifecycleEvent,
+      input.lifecycleServiceMocks.completeStripeLifecycleEvent
     ).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.objectContaining({
           ignored_reason: "payment_intent_missing",
         }),
         status: "ignored",
-      }),
-    );
-  });
+      })
+    )
+  })
 
   it("fails closed when immutable provider object data changes", async () => {
     const input = fixture({
@@ -191,7 +190,7 @@ describe("Stripe lifecycle event processing", () => {
         payment_intent: "pi_01PAYMENT",
         status: "succeeded",
       },
-    });
+    })
 
     await expect(
       processStripeLifecycleEvent({
@@ -199,16 +198,16 @@ describe("Stripe lifecycle event processing", () => {
         eventId: "stripelinevt_01",
         lifecycleService: input.lifecycleService,
         taxControlService: input.taxControlService,
-      }),
-    ).rejects.toThrow("stripe_object_integrity_mismatch");
+      })
+    ).rejects.toThrow("stripe_object_integrity_mismatch")
     expect(
-      input.lifecycleServiceMocks.markStripeLifecycleEventFailed,
+      input.lifecycleServiceMocks.markStripeLifecycleEventFailed
     ).toHaveBeenCalledWith(
       "stripelinevt_01",
-      "stripe_object_integrity_mismatch",
-    );
-    expect(reconcileMock).not.toHaveBeenCalled();
-  });
+      "stripe_object_integrity_mismatch"
+    )
+    expect(reconcileMock).not.toHaveBeenCalled()
+  })
 
   it("fails closed when a provider object exposes a different mode", async () => {
     const input = fixture({
@@ -227,7 +226,7 @@ describe("Stripe lifecycle event processing", () => {
         event_type: "charge.dispute.created",
         object_id: "du_01DISPUTE",
       },
-    });
+    })
 
     await expect(
       processStripeLifecycleEvent({
@@ -235,15 +234,15 @@ describe("Stripe lifecycle event processing", () => {
         eventId: "stripelinevt_01",
         lifecycleService: input.lifecycleService,
         taxControlService: input.taxControlService,
-      }),
-    ).rejects.toThrow("stripe_object_integrity_mismatch");
+      })
+    ).rejects.toThrow("stripe_object_integrity_mismatch")
     expect(
-      input.lifecycleServiceMocks.markStripeLifecycleEventFailed,
+      input.lifecycleServiceMocks.markStripeLifecycleEventFailed
     ).toHaveBeenCalledWith(
       "stripelinevt_01",
-      "stripe_object_integrity_mismatch",
-    );
-    expect(input.client.disputes.retrieve).toHaveBeenCalled();
-    expect(reconcileMock).not.toHaveBeenCalled();
-  });
-});
+      "stripe_object_integrity_mismatch"
+    )
+    expect(input.client.disputes.retrieve).toHaveBeenCalled()
+    expect(reconcileMock).not.toHaveBeenCalled()
+  })
+})

@@ -1,9 +1,6 @@
 import "server-only"
 
-import {
-  getSharedRedisClient,
-  withRedisTimeout,
-} from "@/lib/redis/client"
+import { getSharedRedisClient, withRedisTimeout } from "@/lib/redis/client"
 
 const BACKEND_TIMEOUT_MS = 3_000
 

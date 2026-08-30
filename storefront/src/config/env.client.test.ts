@@ -72,7 +72,9 @@ describe("clientEnv", () => {
   })
 
   it("throws when required variables are invalid", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "not-a-url")
     vi.stubEnv("NEXT_PUBLIC_MEDUSA_URL", "")
     vi.stubEnv("NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY", "")

@@ -31,13 +31,10 @@ describe("catalog product option loading", () => {
 
   it("replaces the exact product without discarding loaded choices", () => {
     expect(
-      mergeExactProduct(
-        { id: "prod_selected", title: "Updated" },
-        [
-          { id: "prod_selected", title: "Stale" },
-          { id: "prod_component", title: "Component" },
-        ]
-      )
+      mergeExactProduct({ id: "prod_selected", title: "Updated" }, [
+        { id: "prod_selected", title: "Stale" },
+        { id: "prod_component", title: "Component" },
+      ])
     ).toEqual([
       { id: "prod_selected", title: "Updated" },
       { id: "prod_component", title: "Component" },
