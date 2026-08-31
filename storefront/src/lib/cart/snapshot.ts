@@ -103,13 +103,15 @@ const validateItem = (item: UnknownRecord): void => {
   }
 }
 
-export const cartSnapshotFrom = (value: unknown): HttpTypes.StoreCart => {
-  const cart = asUnknownRecord(value)
-  const cartId = readBoundedText(cart?.id)
-  const currencyCode = readBoundedText(cart?.currency_code, 3)?.toLowerCase()
-  const items = readRecordArray(cart?.items)
+type AssertCartSnapshot = (
+  cart: UnknownRecord
+) => asserts cart is UnknownRecord & HttpTypes.StoreCart
+
+const assertCartSnapshot: AssertCartSnapshot = (cart) => {
+  const cartId = readBoundedText(cart.id)
+  const currencyCode = readBoundedText(cart.currency_code, 3)?.toLowerCase()
+  const items = readRecordArray(cart.items)
   if (
-    !cart ||
     !cartId ||
     !/^cart_[A-Za-z0-9]+$/.test(cartId) ||
     currencyCode !== "usd" ||
@@ -149,8 +151,15 @@ export const cartSnapshotFrom = (value: unknown): HttpTypes.StoreCart => {
   if (cartAmount(cart.subtotal) === null || cartAmount(cart.total) === null) {
     throw new CartSnapshotError("The cart subtotal or total is malformed.")
   }
+}
 
-  return cart as unknown as HttpTypes.StoreCart
+export const cartSnapshotFrom = (value: unknown): HttpTypes.StoreCart => {
+  const cart = asUnknownRecord(value)
+  if (!cart) {
+    throw new CartSnapshotError("The cart response is malformed.")
+  }
+  assertCartSnapshot(cart)
+  return cart
 }
 
 export const cartEnvelopeFrom = (

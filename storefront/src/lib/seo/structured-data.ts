@@ -1,6 +1,7 @@
 import type { HttpTypes } from "@medusajs/types"
 
 import { siteMetadata, seoHelpers } from "@/config/site"
+import { asUnknownRecord, readIsoTimestamp } from "@/lib/provider-boundary"
 
 type StoreProduct = HttpTypes.StoreProduct
 type StoreVariant = HttpTypes.StoreProductVariant & {
@@ -167,34 +168,38 @@ export const buildMusicReleaseJsonLd = ({
   artist: string
   tracks: string[]
   genres: string[]
-}): JsonLd => ({
-  "@context": "https://schema.org",
-  "@type": "MusicAlbum",
-  name: product.title ?? "Exclusive Release",
-  byArtist: {
-    "@type": "MusicGroup",
-    name: artist,
-  },
-  genre: genres.length ? genres : undefined,
-  image:
-    product.images
-      ?.map((image) => image.url)
-      .filter((url): url is string => Boolean(url)) ?? [],
-  track: tracks.map((title, index) => ({
-    "@type": "MusicRecording",
-    name: title,
-    position: index + 1,
-  })),
-  datePublished:
-    (product as unknown as { published_at?: string }).published_at ??
-    product.created_at ??
-    undefined,
-  inLanguage: siteMetadata.defaultLocale,
-  url: productUrl,
-  description:
-    product.description ?? product.subtitle ?? siteMetadata.description,
-  albumProductionType: "StudioAlbum",
-})
+}): JsonLd => {
+  const productRecord = asUnknownRecord(product)
+  const datePublished =
+    readIsoTimestamp(productRecord?.published_at) ??
+    readIsoTimestamp(product.created_at) ??
+    undefined
+  return {
+    "@context": "https://schema.org",
+    "@type": "MusicAlbum",
+    name: product.title ?? "Exclusive Release",
+    byArtist: {
+      "@type": "MusicGroup",
+      name: artist,
+    },
+    genre: genres.length ? genres : undefined,
+    image:
+      product.images
+        ?.map((image) => image.url)
+        .filter((url): url is string => Boolean(url)) ?? [],
+    track: tracks.map((title, index) => ({
+      "@type": "MusicRecording",
+      name: title,
+      position: index + 1,
+    })),
+    datePublished,
+    inLanguage: siteMetadata.defaultLocale,
+    url: productUrl,
+    description:
+      product.description ?? product.subtitle ?? siteMetadata.description,
+    albumProductionType: "StudioAlbum",
+  }
+}
 
 export const selectPrimaryVariantForJsonLd = (
   product: StoreProduct

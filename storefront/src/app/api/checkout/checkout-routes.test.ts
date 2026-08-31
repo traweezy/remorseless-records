@@ -211,10 +211,9 @@ describe("semantic checkout routes", () => {
           id: "so_standard",
           name: "Standard Shipping",
           amount: 5,
+          description: "Tracked delivery",
           insufficient_inventory: false,
-          type: { description: "Tracked delivery" },
-          provider_id: "standard",
-          service_zone: { internal: "not-public" },
+          price_type: "flat_rate",
         },
       ],
     })

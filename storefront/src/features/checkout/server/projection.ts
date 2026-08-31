@@ -34,6 +34,12 @@ const PROCESSABLE_STATUSES = new Set([
 ])
 const FAILED_STATUSES = new Set(["canceled", "error"])
 
+type CheckoutPaymentSessionProjection = {
+  data: UnknownRecord | null
+  providerId: string
+  status: string
+}
+
 export class CheckoutProjectionError extends Error {
   constructor(message: string) {
     super(message)
@@ -283,7 +289,7 @@ const totalsFrom = (cart: HttpTypes.StoreCart): CheckoutTotals => {
 
 const paymentSessionFrom = (
   cart: HttpTypes.StoreCart
-): HttpTypes.StorePaymentSession | null => {
+): CheckoutPaymentSessionProjection | null => {
   const cartRecord = asUnknownRecord(cart)
   const collectionValue = cartRecord?.payment_collection
   if (collectionValue === null || collectionValue === undefined) {
@@ -300,28 +306,30 @@ const paymentSessionFrom = (
   }
   const sessions = sessionRecords.map((session) => {
     const data = asUnknownRecord(session.data)
+    const providerId = readBoundedText(session.provider_id)
+    const status = readBoundedText(session.status, 64)
     if (
-      !readBoundedText(session.provider_id) ||
-      !readBoundedText(session.status, 64) ||
+      !providerId ||
+      !status ||
       (session.data !== null && session.data !== undefined && !data)
     ) {
       throw new CheckoutProjectionError("Cart payment session is malformed")
     }
-    return session as unknown as HttpTypes.StorePaymentSession
+    return { data, providerId, status }
   })
   return (
     sessions.find(
       (session) =>
-        session.provider_id === STRIPE_PROVIDER_ID &&
+        session.providerId === STRIPE_PROVIDER_ID &&
         PROCESSABLE_STATUSES.has(session.status)
     ) ??
-    sessions.find((session) => session.provider_id === STRIPE_PROVIDER_ID) ??
+    sessions.find((session) => session.providerId === STRIPE_PROVIDER_ID) ??
     null
   )
 }
 
 const clientSecretFrom = (
-  session: HttpTypes.StorePaymentSession | null
+  session: CheckoutPaymentSessionProjection | null
 ): string | null => {
   const data = asUnknownRecord(session?.data)
   const value = readBoundedText(data?.client_secret, 512)
@@ -337,7 +345,7 @@ const paymentFrom = (
   const session = paymentSessionFrom(cart)
   const status = session?.status ?? null
   return {
-    provider: session?.provider_id === STRIPE_PROVIDER_ID ? "stripe" : null,
+    provider: session?.providerId === STRIPE_PROVIDER_ID ? "stripe" : null,
     clientSecret: includeClientSecret ? clientSecretFrom(session) : null,
     status,
     canRestart: status ? FAILED_STATUSES.has(status) : false,

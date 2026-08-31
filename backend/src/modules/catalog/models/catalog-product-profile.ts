@@ -2,6 +2,10 @@ import { model } from "@medusajs/framework/utils"
 
 import { catalogReleaseDatePrecisions } from "../constants"
 
+class JsonArrayDefault extends Array<unknown> {
+  [key: string]: unknown
+}
+
 const CatalogProductProfile = model.define(
   {
     name: "catalog_product_profile",
@@ -20,7 +24,7 @@ const CatalogProductProfile = model.define(
       .default("unknown"),
     description_html: model.text().nullable(),
     search_keywords: model.array().default([]),
-    tracklist: model.json().default([] as unknown as Record<string, unknown>),
+    tracklist: model.json().default(new JsonArrayDefault()),
     credits: model.json().default({}),
     pressing_notes: model.json().default({}),
     merch_details: model.json().default({}),

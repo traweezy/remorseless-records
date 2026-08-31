@@ -70,8 +70,23 @@ type CartReadInit = Omit<FetchArgs, "body" | "method" | "signal">
 type CartMutationInit = Omit<FetchArgs, "method" | "signal"> & {
   method: "DELETE" | "PATCH" | "POST" | "PUT"
 }
-type StoreShippingOption =
-  HttpTypes.StoreShippingOptionListResponse["shipping_options"][number]
+export type StorefrontShippingOption = {
+  amount: number
+  description: string | null
+  id: string
+  insufficient_inventory: boolean
+  name: string
+  price_type: "calculated" | "flat_rate"
+}
+export type StorefrontShippingOptionListResponse = {
+  shipping_options: StorefrontShippingOption[]
+}
+type ShippingOptionCandidate = Omit<StorefrontShippingOption, "amount"> & {
+  amount: number | null
+}
+type ShippingOptionCandidateList = {
+  shipping_options: ShippingOptionCandidate[]
+}
 
 const requiredCartFromEnvelope = (value: unknown): HttpTypes.StoreCart => {
   const { cart } = cartEnvelopeFrom(value)
@@ -83,7 +98,7 @@ const requiredCartFromEnvelope = (value: unknown): HttpTypes.StoreCart => {
 
 const shippingOptionListFrom = (
   value: unknown
-): HttpTypes.StoreShippingOptionListResponse => {
+): ShippingOptionCandidateList => {
   const response = asUnknownRecord(value)
   const options = readRecordArray(response?.shipping_options)
   const count = readNonNegativeSafeInteger(response?.count)
@@ -109,6 +124,11 @@ const shippingOptionListFrom = (
     const priceType = readBoundedText(option.price_type, 32)
     const amount = cartAmount(option.amount)
     const insufficientInventory = option.insufficient_inventory
+    const optionType = asUnknownRecord(option.type)
+    const description =
+      option.type === null || option.type === undefined
+        ? null
+        : readBoundedText(optionType?.description, 1_000)
     if (
       !id ||
       !/^so_[A-Za-z0-9]+$/.test(id) ||
@@ -118,20 +138,29 @@ const shippingOptionListFrom = (
       (priceType === "flat_rate" && amount === null) ||
       (insufficientInventory !== null &&
         insufficientInventory !== undefined &&
-        typeof insufficientInventory !== "boolean")
+        typeof insufficientInventory !== "boolean") ||
+      (option.type !== null &&
+        option.type !== undefined &&
+        (!optionType ||
+          (optionType.description !== null &&
+            optionType.description !== undefined &&
+            !description)))
     ) {
       throw new Error("A Medusa shipping option is malformed.")
     }
+    const normalizedPriceType: StorefrontShippingOption["price_type"] =
+      priceType === "calculated" ? "calculated" : "flat_rate"
     optionIds.add(id)
     return {
-      ...option,
-      ...(priceType === "flat_rate" ? { amount } : {}),
-    } as unknown as StoreShippingOption
+      amount,
+      description,
+      id,
+      insufficient_inventory: insufficientInventory === true,
+      name,
+      price_type: normalizedPriceType,
+    }
   })
-  return {
-    ...(response as unknown as HttpTypes.StoreShippingOptionListResponse),
-    shipping_options: shippingOptions,
-  }
+  return { shipping_options: shippingOptions }
 }
 
 const calculatedShippingAmountFrom = (
@@ -317,7 +346,7 @@ export const setCartAddresses = async (
 export const listShippingOptions = async (
   cartId: string,
   request?: Request
-): Promise<HttpTypes.StoreShippingOptionListResponse> => {
+): Promise<StorefrontShippingOptionListResponse> => {
   const response = shippingOptionListFrom(
     await cartReadRequest<unknown>(
       "/store/shipping-options",
@@ -329,7 +358,10 @@ export const listShippingOptions = async (
   const resolved = await Promise.allSettled(
     (response.shipping_options ?? []).map(async (option) => {
       if (option.price_type !== "calculated") {
-        return option
+        if (option.amount === null) {
+          throw new Error("A Medusa shipping option is malformed.")
+        }
+        return { ...option, amount: option.amount }
       }
 
       const amount = calculatedShippingAmountFrom(

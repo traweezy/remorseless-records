@@ -3804,10 +3804,47 @@ create acknowledgement, exact idempotency-key readback, retained-data update,
 and final retrieval without trusting a widened service cast. Eleven focused
 catalog, media, notification, route, and maintenance suites pass all 164 tests
 with strict Backend TypeScript and Biome. The dated debt item remains open for
-the remaining Storefront cart, checkout, SEO, and other provider projections.
+the remaining Storefront and service-container projections.
 Complete local acceptance passes the 1,229-file repository QA gate and all 265
 Backend suites / 2,017 tests at 91.44% statements, 84.81% branches, 95.62%
 functions, and 91.46% lines.
+
+## Storefront projection and JSON-default boundary hardening
+
+Shipping-option reads no longer widen provider records into Medusa's complete
+shipping type. The Storefront validates bounded pagination, unique canonical
+IDs, names, price modes, amounts, inventory state, and optional descriptions,
+then returns an application-owned allowlist. Provider IDs, service zones,
+metadata, and every other upstream field are discarded before the checkout
+route receives the options. Calculated prices must still return the exact
+requested option identity.
+
+Checkout payment inspection now rebuilds Stripe-session projections from a
+canonical session ID, finite amount, three-letter currency, bounded provider
+and status, and structured data. The customer checkout projection retains only
+provider, status, and validated data needed for its state machine. Cart
+snapshots use an explicit runtime assertion contract after validating the USD
+cart, bounded amounts and quantities, unique items, complete Product/Variant
+relationships, and inventory policy. Music-release structured data reads only
+valid ISO publication or creation timestamps.
+
+The last production double assertion was Medusa DML's object-only TypeScript
+definition for JSON defaults applied to the intentionally array-shaped
+`tracklist` column. A runtime `Array` default now structurally satisfies the
+pinned DML contract without changing the existing `[]` database default; a
+model-metadata test pins both `Array.isArray` and JSON serialization. Six
+focused Storefront suites pass 132 tests, the model regression passes, and
+strict TypeScript plus Biome are clean. No production `as unknown as` escape
+hatches remain in Backend or Storefront source. The dated debt item remains
+open for service-container declarations and test-only fixtures that do not
+cross a production provider boundary.
+
+Complete local acceptance passes the 1,230-file repository QA gate, all 266
+Backend suites / 2,018 tests at 91.44/84.81/95.62/91.46 coverage, 134
+Storefront baseline files / 797 tests at 94.28/86.77/96.02/94.28, and 35
+transactional files / 313 tests at 83.35/75.98/85.81/83.43. This tranche
+changes server-side validation and response projection only; it does not alter
+rendered layout or interaction behavior.
 
 ## Legal, accessibility, and launch acceptance
 

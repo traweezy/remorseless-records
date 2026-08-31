@@ -37,6 +37,15 @@ export type PreparedPayment = {
   status: string
 }
 
+type StripePaymentSessionProjection = {
+  amount: number
+  currency_code: string
+  data: Record<string, unknown>
+  id: string
+  provider_id: typeof STRIPE_PROVIDER_ID
+  status: string
+}
+
 export class CheckoutPaymentError extends Error {
   readonly code:
     | "payment_not_configured"
@@ -81,7 +90,7 @@ const payableUsdMinorUnits = (value: number, name: string): number => {
 }
 
 const assertStripeIntentAmount = (
-  session: HttpTypes.StorePaymentSession,
+  session: StripePaymentSessionProjection,
   total: number
 ): void => {
   const data = asUnknownRecord(session.data)
@@ -107,7 +116,7 @@ const assertStripeIntentAmount = (
 
 const assertTaxQuoteIdentity = (
   cart: HttpTypes.StoreCart,
-  session: HttpTypes.StorePaymentSession
+  session: StripePaymentSessionProjection
 ): void => {
   let quote: ReturnType<typeof taxQuoteIdentityFromCart>
   try {
@@ -168,7 +177,7 @@ const assertTaxQuoteIdentity = (
 }
 
 const clientSecretFrom = (
-  session: HttpTypes.StorePaymentSession
+  session: StripePaymentSessionProjection
 ): string | null => {
   const data = asUnknownRecord(session.data)
   if (!data) {
@@ -182,7 +191,7 @@ const clientSecretFrom = (
 
 const stripeSessions = (
   cart: HttpTypes.StoreCart
-): HttpTypes.StorePaymentSession[] => {
+): StripePaymentSessionProjection[] => {
   const cartRecord = asUnknownRecord(cart)
   const collectionValue = cartRecord?.payment_collection
   if (collectionValue === null || collectionValue === undefined) {
@@ -199,17 +208,46 @@ const stripeSessions = (
     )
   }
   return sessions.flatMap((session) => {
+    const id = readBoundedText(session.id)
     const providerId = readBoundedText(session.provider_id)
     const status = readBoundedText(session.status, 64)
-    if (!providerId || !status) {
+    if (!id || !/^payses_[A-Za-z0-9]+$/.test(id) || !providerId || !status) {
       throw new CheckoutPaymentError(
         "payment_session_stale",
         "The payment session projection is malformed."
       )
     }
-    return providerId === STRIPE_PROVIDER_ID
-      ? [session as unknown as HttpTypes.StorePaymentSession]
-      : []
+    if (providerId !== STRIPE_PROVIDER_ID) {
+      return []
+    }
+    const amount = readFiniteNumber(session.amount)
+    const currencyCode = readBoundedText(
+      session.currency_code,
+      3
+    )?.toLowerCase()
+    const data = asUnknownRecord(session.data)
+    if (
+      amount === null ||
+      amount < 0 ||
+      !currencyCode ||
+      !/^[a-z]{3}$/.test(currencyCode) ||
+      !data
+    ) {
+      throw new CheckoutPaymentError(
+        "payment_session_stale",
+        "The payment session projection is malformed."
+      )
+    }
+    return [
+      {
+        amount,
+        currency_code: currencyCode,
+        data,
+        id,
+        provider_id: STRIPE_PROVIDER_ID,
+        status,
+      },
+    ]
   })
 }
 
