@@ -112,6 +112,64 @@ describe("checkout persistence contracts", () => {
     })
   })
 
+  it.each([undefined, null, []])(
+    "normalizes an absent payment-collection relation (%p)",
+    (paymentCollection) => {
+      expect(
+        readCheckoutReconciliationPage(
+          {
+            data: [
+              reconciliationCart({ payment_collection: paymentCollection }),
+            ],
+          },
+          1
+        )
+      ).toMatchObject([{ paymentSessions: [] }])
+      expect(
+        readCheckoutRetentionCart(
+          {
+            data: [retentionCart({ payment_collection: paymentCollection })],
+          },
+          "cart_retention"
+        )
+      ).toMatchObject({ paymentCollection: null })
+    }
+  )
+
+  it("normalizes a singleton relationship array and rejects ambiguity", () => {
+    const collection = reconciliationCart().payment_collection
+    expect(
+      readCheckoutReconciliationPage(
+        {
+          data: [reconciliationCart({ payment_collection: [collection] })],
+        },
+        1
+      )
+    ).toMatchObject([
+      {
+        paymentSessions: [
+          {
+            id: "payses_reconcile",
+            providerId: "pp_stripe_stripe",
+            status: "authorized",
+          },
+        ],
+      },
+    ])
+    expect(() =>
+      readCheckoutReconciliationPage(
+        {
+          data: [
+            reconciliationCart({
+              payment_collection: [collection, collection],
+            }),
+          ],
+        },
+        1
+      )
+    ).toThrow(INVALID_PERSISTENCE)
+  })
+
   it.each([
     null,
     {},

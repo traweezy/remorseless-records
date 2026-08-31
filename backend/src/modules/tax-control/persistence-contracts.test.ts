@@ -5,6 +5,7 @@ import {
   taxProviderAuditListFrom,
   taxProviderControlFrom,
   taxProviderControlMutationFrom,
+  taxProviderQuotaFrom,
   taxQuoteEvidenceFrom,
   taxQuoteEvidenceListFrom,
   taxQuoteEvidenceMatches,
@@ -70,6 +71,22 @@ describe("tax control persistence contracts", () => {
     expect(taxQuoteEvidenceFrom(evidence())).toEqual(evidence())
   })
 
+  it("normalizes PostgreSQL numeric quota percentages", () => {
+    expect(
+      taxProviderQuotaFrom({
+        id: "taxquota_01QUOTA",
+        metadata: {},
+        observed_at: observedAt,
+        provider: "taxrate_io",
+        quota: 100,
+        remaining: 97,
+        source: "checkout_lookup",
+        usage: 3,
+        usage_percent: "3.0000",
+      })
+    ).toMatchObject({ usage_percent: 3 })
+  })
+
   it("rejects ambiguous singleton queries and mutations", () => {
     expect(() => taxQuoteEvidenceListFrom([evidence(), evidence()])).toThrow(
       MedusaError
@@ -95,6 +112,19 @@ describe("tax control persistence contracts", () => {
     ).toThrow(MedusaError)
     expect(() =>
       taxProviderAuditFrom({ ...audit(), idempotency_key: "reused-key" })
+    ).toThrow(MedusaError)
+    expect(() =>
+      taxProviderQuotaFrom({
+        id: "taxquota_01QUOTA",
+        metadata: {},
+        observed_at: observedAt,
+        provider: "taxrate_io",
+        quota: 100,
+        remaining: 97,
+        source: "checkout_lookup",
+        usage: 3,
+        usage_percent: "101",
+      })
     ).toThrow(MedusaError)
   })
 

@@ -4,7 +4,10 @@ import {
   asUnknownRecord,
   type UnknownRecord,
 } from "../../lib/provider-boundary/records"
-import { readIsoTimestamp } from "../../lib/provider-boundary/primitives"
+import {
+  readFiniteNumber,
+  readIsoTimestamp,
+} from "../../lib/provider-boundary/primitives"
 import {
   taxCollectionModes,
   taxProviderNames,
@@ -328,12 +331,12 @@ export const taxProviderQuotaFrom = (
   const quota = safeInteger(source.quota, 1, 1_000_000_000, message)
   const remaining = safeInteger(source.remaining, 0, 1_000_000_000, message)
   const usage = safeInteger(source.usage, 0, 1_000_000_000, message)
+  const parsedUsagePercent = readFiniteNumber(source.usage_percent)
   const usagePercent =
-    typeof source.usage_percent === "number" &&
-    Number.isFinite(source.usage_percent) &&
-    source.usage_percent >= 0 &&
-    source.usage_percent <= 100
-      ? source.usage_percent
+    parsedUsagePercent !== null &&
+    parsedUsagePercent >= 0 &&
+    parsedUsagePercent <= 100
+      ? parsedUsagePercent
       : invalidPersistence(message)
   if (source.provider !== "taxrate_io" || remaining !== quota - usage) {
     return invalidPersistence(message)

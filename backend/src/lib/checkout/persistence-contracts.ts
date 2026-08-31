@@ -31,6 +31,19 @@ const invalidCheckoutPersistence = (): never => {
 const record = (value: unknown): UnknownRecord =>
   asUnknownRecord(value) ?? invalidCheckoutPersistence()
 
+const singletonRelation = (value: unknown): UnknownRecord | null => {
+  if (value === null || value === undefined) {
+    return null
+  }
+  if (!Array.isArray(value)) {
+    return record(value)
+  }
+  if (value.length === 0) {
+    return null
+  }
+  return value.length === 1 ? record(value[0]) : invalidCheckoutPersistence()
+}
+
 const recordArray = (value: unknown, maximumRows: number): UnknownRecord[] => {
   let parsed: UnknownRecord[]
   try {
@@ -172,10 +185,10 @@ const paymentCollectionSessions = (
   value: unknown,
   options: { requireKnownStatus: boolean }
 ): CheckoutPaymentSessionRecord[] => {
-  if (value === null) {
+  const collection = singletonRelation(value)
+  if (!collection) {
     return []
   }
-  const collection = record(value)
   return paymentSessions(collection.payment_sessions, options)
 }
 
@@ -277,19 +290,16 @@ const retentionCart = (
   if (expectedId !== undefined && id !== expectedId) {
     return invalidCheckoutPersistence()
   }
-  const paymentCollection =
-    source.payment_collection === null
-      ? null
-      : (() => {
-          const collection = record(source.payment_collection)
-          return {
-            id: identifierWithPrefixes(collection.id, ["paycol_", "pay_col_"]),
-            sessions: paymentSessions(collection.payment_sessions, {
-              requireKnownStatus: false,
-            }),
-            status: statusToken(collection.status),
-          }
-        })()
+  const collection = singletonRelation(source.payment_collection)
+  const paymentCollection = collection
+    ? {
+        id: identifierWithPrefixes(collection.id, ["paycol_", "pay_col_"]),
+        sessions: paymentSessions(collection.payment_sessions, {
+          requireKnownStatus: false,
+        }),
+        status: statusToken(collection.status),
+      }
+    : null
   return {
     completedAt: nullableTimestamp(source.completed_at),
     customerId: optionalIdentifier(source.customer_id, "cus_"),
