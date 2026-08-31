@@ -15,7 +15,11 @@ const config: CartRetentionConfig = {
 const cart = (overrides: Partial<CartDTO> = {}): CartDTO =>
   ({
     id: "cart_anonymous",
+    completed_at: null,
+    customer_id: null,
     currency_code: "usd",
+    email: null,
+    updated_at: "2026-01-01T00:00:00.000Z",
     ...overrides,
   }) as CartDTO
 
@@ -36,7 +40,13 @@ const createServices = (pages: CartDTO[][]) => {
         }
         const start = options.skip ?? 0
         return Promise.resolve(
-          activeCarts.slice(start, start + (options.take ?? 250))
+          [...activeCarts]
+            .sort((left, right) => {
+              const leftKey = `${String(left.updated_at)}\u0000${left.id}`
+              const rightKey = `${String(right.updated_at)}\u0000${right.id}`
+              return leftKey.localeCompare(rightKey)
+            })
+            .slice(start, start + (options.take ?? 250))
         )
       }
     )
@@ -122,5 +132,20 @@ describe("anonymous cart retention", () => {
 
     expect(services.cartService.deleteCarts).not.toHaveBeenCalled()
     expect(result.deleted).toBe(0)
+  })
+
+  it("rejects a successful delete acknowledgement when the cart remains", async () => {
+    const services = createServices([[cart({ id: "cart_retained" })]])
+    services.cartService.deleteCarts.mockImplementationOnce(() =>
+      Promise.resolve()
+    )
+
+    await expect(
+      removeExpiredAnonymousCarts({
+        ...services,
+        config,
+        now: new Date("2026-07-24T00:00:00.000Z"),
+      })
+    ).rejects.toThrow("deletion was not persisted")
   })
 })

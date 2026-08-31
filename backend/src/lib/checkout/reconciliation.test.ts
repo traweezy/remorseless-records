@@ -18,6 +18,7 @@ const config: CheckoutReconciliationConfig = {
 const cart = (overrides: RecordFixture = {}): RecordFixture => ({
   id: "cart_reconcile",
   completed_at: null,
+  metadata: {},
   updated_at: "2026-07-25T11:00:00.000Z",
   payment_collection: {
     payment_sessions: [
@@ -42,9 +43,13 @@ const services = ({
     async ({
       entity,
       filters,
+      pagination,
     }: {
       entity: string
       filters?: Record<string, unknown>
+      pagination?: {
+        order?: Record<string, "ASC" | "DESC">
+      }
     }) => {
       if (entity === "order_cart") {
         const cartId = filters?.cart_id
@@ -56,11 +61,18 @@ const services = ({
         }
       }
       const id = filters?.id
+      if (typeof id === "string") {
+        return { data: carts.filter((value) => value.id === id) }
+      }
+      const direction = pagination?.order?.updated_at ?? "ASC"
       return {
-        data:
-          typeof id === "string"
-            ? carts.filter((value) => value.id === id)
-            : carts,
+        data: [...carts].sort((left, right) => {
+          const leftKey = `${String(left.updated_at)}\u0000${String(left.id)}`
+          const rightKey = `${String(right.updated_at)}\u0000${String(right.id)}`
+          return direction === "ASC"
+            ? leftKey.localeCompare(rightKey)
+            : rightKey.localeCompare(leftKey)
+        }),
       }
     }
   )
@@ -321,6 +333,49 @@ describe("checkout payment reconciliation", () => {
     expect(result.attempted).toBe(0)
   })
 
+  it("requires the exact durable attempt marker before completion", async () => {
+    const fixture = services({ carts: [cart()] })
+    fixture.updateCartMetadata.mockImplementationOnce(async () => undefined)
+
+    const result = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      createAttemptId: () => "attempt_missing",
+      currentTime: () => new Date("2026-07-25T12:00:01.000Z"),
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    })
+
+    expect(fixture.completeCart).not.toHaveBeenCalled()
+    expect(result).toMatchObject({ attempted: 0, failed: 1 })
+  })
+
+  it("rechecks the order link after persisting the attempt marker", async () => {
+    const durableCart = cart()
+    const racedOrderIds: string[] = []
+    const fixture = services({
+      carts: [durableCart],
+      orderCartIds: racedOrderIds,
+    })
+    fixture.updateCartMetadata.mockImplementationOnce(
+      async (_cartId, metadata) => {
+        durableCart.metadata = metadata
+        racedOrderIds.push("cart_reconcile")
+      }
+    )
+
+    const result = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    })
+
+    expect(fixture.completeCart).not.toHaveBeenCalled()
+    expect(result).toMatchObject({
+      attempted: 0,
+      protectedByOrder: 1,
+    })
+  })
+
   it("records a completion failure without exposing cart details", async () => {
     const fixture = services({ carts: [cart()] })
     fixture.completeCart.mockRejectedValue(new Error("provider detail"))
@@ -368,7 +423,7 @@ describe("checkout payment reconciliation", () => {
       1,
       expect.objectContaining({
         pagination: {
-          order: { updated_at: "DESC" },
+          order: { updated_at: "DESC", id: "DESC" },
           take: 2_000,
         },
       })

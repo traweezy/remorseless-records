@@ -3479,6 +3479,14 @@ lines. The Admin main bundle is 1,807,782 gzip bytes and total JavaScript is
 documented ignored moderate findings; Trivy reports zero high/critical
 dependency, misconfiguration, or secret findings.
 
+Remote acceptance is complete for financial persistence commit
+`467a7e451bcff84ecc5e4cd7fb7fb9c350da5f43`: Root CI `33357363933`, Backend CI
+`33357363963`, and Storefront CI `33357363965` passed. Railway staging
+deployment `c9fabb3d-260c-4cf9-add6-6efe7feade39` succeeded with image digest
+`sha256:2e0342991ae8e178de067c50371d63af089d21939f534bf5d45c0c678dd2b1b8`;
+external `/live`, `/ready`, and `/api/health` probes were healthy and reported
+the exact commit SHA before the next queued release.
+
 ## Discography projection persistence hardening
 
 - [x] Replace the unbounded 10,000-row replacement read with stable, exact
@@ -3517,6 +3525,44 @@ Admin main bundle is 1,808,228 gzip bytes and total JavaScript is 2,388,963 gzip
 bytes. The production dependency audit retains only the three documented
 ignored moderate findings; Trivy reports zero high/critical dependency,
 misconfiguration, or secret findings.
+
+## Checkout recovery and retention persistence hardening
+
+- [x] Validate complete reconciliation, guest-retention, anonymous-retention,
+      and internal-status Cart projections before applying any state decision.
+- [x] Request beyond singleton cardinality for Cart and order-link reads and
+      reject duplicate, mismatched, malformed, or unexpected identities.
+- [x] Bound payment collections/sessions and validate canonical provider,
+      session, collection, status, timestamp, customer, and Cart values.
+- [x] Bound reconciliation metadata depth, width, strings, and keys and reject
+      non-JSON objects, non-finite values, or prototype-sensitive keys.
+- [x] Require deterministic `updated_at`/`id` page order and unique identities
+      for both reconciliation and daily retention scans.
+- [x] Re-read the exact durable reconciliation marker and current payment state,
+      then recheck the order link before invoking Medusa complete-cart.
+- [x] Re-read every anonymous and guest Cart after deletion and count success
+      only when the exact bounded ID read proves the row is gone.
+- [x] Cover ambiguous rows, malformed payment graphs, unsafe metadata,
+      marker/order races, and false delete acknowledgements with adversarial
+      tests and strengthen the checkout-recovery source verifier.
+
+The shared boundary treats Medusa graph envelopes and generated module-service
+DTOs as runtime input. Malformed persistence aborts the scheduled operation and
+therefore its existing health heartbeat; it is never silently filtered into a
+safe-to-complete or safe-to-delete result. Unknown but canonical retention
+payment states remain protected, while recovery/status accepts only the known
+Medusa payment-session state machine.
+
+Eighty-nine focused persistence, reconciliation, status, retention, route, and
+scheduled-job tests pass. Complete local acceptance passes the 1,216-file
+repository QA gate, all 260 Backend suites and 1,900 tests, both strict
+TypeScript checks, the production Backend/Admin build, frozen packaged install
+with Medusa 2.18.0, and the Admin bundle budget. Backend coverage is 91.41%
+statements, 84.70% branches, 95.61% functions, and 91.43% lines. The Admin main
+bundle is 1,808,056 gzip bytes and total JavaScript is 2,388,626 gzip bytes
+across 330 files. The production dependency audit retains only the three
+documented ignored moderate findings; Trivy reports zero high/critical
+dependency or secret findings.
 
 ## Legal, accessibility, and launch acceptance
 

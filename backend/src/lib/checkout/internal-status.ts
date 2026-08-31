@@ -1,3 +1,9 @@
+import {
+  readCheckoutOrderLink,
+  readCheckoutStatusCart,
+  type CheckoutStatusCartRecord,
+} from "./persistence-contracts"
+
 export type InternalCheckoutStatus =
   | {
       state:
@@ -19,29 +25,14 @@ export type CheckoutStatusQueryGraph = {
     fields: string[]
     filters?: Record<string, unknown>
     pagination?: { take?: number; skip?: number }
-  }) => Promise<{ data: Array<Record<string, unknown>> }>
+  }) => Promise<unknown>
 }
 
-type UnknownRecord = Record<string, unknown>
-
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
-
-const text = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null
-
-const paymentStatusesFrom = (cart: UnknownRecord): Set<string> => {
-  const paymentCollection = asRecord(cart.payment_collection)
-  const sessions = Array.isArray(paymentCollection?.payment_sessions)
-    ? paymentCollection.payment_sessions
-    : []
+const paymentStatusesFrom = (cart: CheckoutStatusCartRecord): Set<string> => {
   return new Set(
-    sessions.flatMap((value) => {
-      const session = asRecord(value)
-      const providerId = text(session?.provider_id)
-      const status = text(session?.status)
-      return providerId === "pp_stripe_stripe" && status ? [status] : []
-    })
+    cart.paymentSessions.flatMap(({ providerId, status }) =>
+      providerId === "pp_stripe_stripe" ? [status] : []
+    )
   )
 }
 
@@ -54,24 +45,25 @@ export const resolveInternalCheckoutStatus = async (
       entity: "order_cart",
       fields: ["order_id"],
       filters: { cart_id: cartId },
-      pagination: { take: 1 },
+      pagination: { take: 2 },
     }),
     query.graph({
       entity: "cart",
       fields: [
         "id",
         "completed_at",
+        "payment_collection.payment_sessions.id",
         "payment_collection.payment_sessions.provider_id",
         "payment_collection.payment_sessions.status",
       ],
       filters: { id: cartId },
-      pagination: { take: 1 },
+      pagination: { take: 2 },
     }),
   ])
 
-  const orderId = text(orderLinkResult.data[0]?.order_id)
-  const cart = cartResult.data[0]
-  if (orderId && cart?.completed_at) {
+  const orderId = readCheckoutOrderLink(orderLinkResult)
+  const cart = readCheckoutStatusCart(cartResult, cartId)
+  if (orderId && cart?.completedAt) {
     return { state: "order_confirmed", orderId }
   }
   if (orderId) {
@@ -99,7 +91,7 @@ export const resolveInternalCheckoutStatus = async (
   if (statuses.has("error") || statuses.has("canceled")) {
     return { state: "payment_failed" }
   }
-  if (cart.completed_at) {
+  if (cart.completedAt) {
     return { state: "finalizing_order" }
   }
 

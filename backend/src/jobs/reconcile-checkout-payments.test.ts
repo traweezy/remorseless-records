@@ -114,7 +114,10 @@ describe("checkout reconciliation scheduled job", () => {
     )
     expect(fixture.query.graph).toHaveBeenCalledWith(
       expect.objectContaining({
-        pagination: { order: { updated_at: "DESC" }, take: 2_000 },
+        pagination: {
+          order: { updated_at: "DESC", id: "DESC" },
+          take: 2_000,
+        },
       })
     )
     expect(fixture.logger.info).toHaveBeenCalledTimes(1)

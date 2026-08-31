@@ -819,6 +819,13 @@ links also redirect into the same clean recovery path.
 Both deletion jobs are disabled by default, capped, lock-protected, and re-read
 eligibility immediately before mutation. Reconciliation is also disabled by
 default and never creates or confirms a Stripe payment.
+Candidate pages, locked cart reads, payment sessions, order links, and checkout
+status projections cross one strict runtime persistence boundary. Ambiguous
+singletons, duplicate identities, malformed timestamps/statuses, unsafe
+metadata, and nondeterministic page order fail closed. A cleanup reports a
+deletion only after an exact read proves that the cart is gone; reconciliation
+re-reads its exact durable attempt marker and checks the order link again before
+calling Medusa completion.
 
 ### Semantic checkout endpoints
 

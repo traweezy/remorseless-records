@@ -532,6 +532,11 @@ official complete-cart workflow only when a fresh read shows:
 It never creates, confirms, captures, cancels, or refunds a Stripe payment
 directly. Immediately before complete-cart, it rechecks the order link and
 payment session and durably writes a non-PII attempt marker into cart metadata.
+The job requests two rows for every singleton cart/order read, validates the
+complete bounded candidate page in deterministic `updated_at`/`id` order, then
+re-reads the exact marker and payment state and checks the order link a second
+time before completion. Ambiguous rows, unknown payment status, unsafe metadata,
+or a marker acknowledgement without matching durable state fail closed.
 Any prior marker is a fail-closed `heldForReview` result: a stalled or ambiguous
 retry cannot blindly repeat completion, and an operator must reconcile Medusa
 order/payment/refund state with Stripe before an approved recovery action. It
@@ -579,6 +584,14 @@ unresolved or successful payment state. It deletes only no-payment carts or
 unused sessions in safe `pending`, `canceled`, or `error` states; safe sessions
 are removed through Medusa's official payment workflow before cart soft
 deletion.
+
+Both cleanup jobs validate every selected field, canonical cart/customer/
+collection/session identity, timestamp, payment status, unique row, page bound,
+and deterministic `updated_at`/`id` order before making a deletion decision.
+Locked ID selections reject duplicate or unexpected rows. After Medusa accepts
+a delete call, a second bounded ID read must return no cart before the result is
+counted; malformed readback or retained state fails the job and its retention
+heartbeat instead of producing false deletion evidence.
 
 The 37-day minimum preserves the storefront's 30-day cart-cookie lifetime plus
 a seven-day grace period. Read-only candidate counts must be reviewed before

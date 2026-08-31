@@ -5,7 +5,7 @@ import {
 
 const queryFor = ({
   cart = {
-    id: "cart_test",
+    id: "cart_01K123ABC",
     completed_at: null,
     payment_collection: { payment_sessions: [] },
   },
@@ -49,10 +49,12 @@ describe("internal checkout status", () => {
   ] as const)("maps Stripe session %s to %s", async (status, state) => {
     const query = queryFor({
       cart: {
-        id: "cart_test",
+        id: "cart_01K123ABC",
+        completed_at: null,
         payment_collection: {
           payment_sessions: [
             {
+              id: "payses_01K123ABC",
               provider_id: "pp_stripe_stripe",
               status,
             },
@@ -72,6 +74,7 @@ describe("internal checkout status", () => {
       cart: {
         id: "cart_01K123ABC",
         completed_at: "2026-07-25T17:00:00.000Z",
+        payment_collection: null,
       },
     })
 
@@ -86,9 +89,16 @@ describe("internal checkout status", () => {
   it("ignores sessions from other payment providers", async () => {
     const query = queryFor({
       cart: {
-        id: "cart_test",
+        id: "cart_01K123ABC",
+        completed_at: null,
         payment_collection: {
-          payment_sessions: [{ provider_id: "pp_other", status: "captured" }],
+          payment_sessions: [
+            {
+              id: "payses_01K123ABC",
+              provider_id: "pp_other",
+              status: "captured",
+            },
+          ],
         },
       },
     })
@@ -103,8 +113,9 @@ describe("internal checkout status", () => {
       resolveInternalCheckoutStatus(
         queryFor({
           cart: {
-            id: "cart_test",
+            id: "cart_01K123ABC",
             completed_at: "2026-07-25T12:00:00.000Z",
+            payment_collection: null,
           },
         }),
         "cart_01K123ABC"

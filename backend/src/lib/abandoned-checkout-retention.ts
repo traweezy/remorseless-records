@@ -3,6 +3,13 @@ import type {
   ILockingModule,
 } from "@medusajs/framework/types"
 
+import {
+  readCheckoutOrderLink,
+  readCheckoutRetentionCart,
+  readCheckoutRetentionPage,
+  type CheckoutRetentionCartRecord,
+} from "./checkout/persistence-contracts"
+
 const DAY_MS = 24 * 60 * 60 * 1_000
 const MINIMUM_RETENTION_DAYS = 37
 const DEFAULT_RETENTION_DAYS = MINIMUM_RETENTION_DAYS
@@ -16,8 +23,6 @@ const SAFE_PAYMENT_COLLECTION_STATUSES = new Set([
   "canceled",
 ])
 const SAFE_PAYMENT_SESSION_STATUSES = new Set(["pending", "canceled", "error"])
-
-type UnknownRecord = Record<string, unknown>
 
 export type AbandonedCheckoutRetentionConfig = {
   enabled: boolean
@@ -45,7 +50,7 @@ export type AbandonedCheckoutQuery = {
       skip?: number
       order?: Record<string, "ASC" | "DESC">
     }
-  }) => Promise<{ data: UnknownRecord[] }>
+  }) => Promise<unknown>
 }
 
 type RetentionServices = {
@@ -103,20 +108,14 @@ export const resolveAbandonedCheckoutRetentionConfig = (
   }),
 })
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
-
-const text = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null
-
 const paymentSafety = (
-  cart: UnknownRecord
+  cart: CheckoutRetentionCartRecord
 ): {
   safe: boolean
   paymentSessionIds: string[]
   requiresCancellation: boolean
 } => {
-  const collection = asRecord(cart.payment_collection)
+  const collection = cart.paymentCollection
   if (!collection) {
     return {
       safe: true,
@@ -125,13 +124,7 @@ const paymentSafety = (
     }
   }
 
-  const paymentCollectionId = text(collection.id)
-  const collectionStatus = text(collection.status)
-  if (
-    !paymentCollectionId ||
-    !collectionStatus ||
-    !SAFE_PAYMENT_COLLECTION_STATUSES.has(collectionStatus)
-  ) {
+  if (!SAFE_PAYMENT_COLLECTION_STATUSES.has(collection.status)) {
     return {
       safe: false,
       paymentSessionIds: [],
@@ -139,17 +132,10 @@ const paymentSafety = (
     }
   }
 
-  const sessions = Array.isArray(collection.payment_sessions)
-    ? collection.payment_sessions
-    : []
-  const paymentSessionIds = sessions
-    .map((value) => text(asRecord(value)?.id))
-    .filter((id): id is string => id !== null)
-  const sessionsAreSafe = sessions.every((value) => {
-    const session = asRecord(value)
-    const status = text(session?.status)
-    return status !== null && SAFE_PAYMENT_SESSION_STATUSES.has(status)
-  })
+  const paymentSessionIds = collection.sessions.map(({ id }) => id)
+  const sessionsAreSafe = collection.sessions.every(({ status }) =>
+    SAFE_PAYMENT_SESSION_STATUSES.has(status)
+  )
 
   return {
     safe: sessionsAreSafe,
@@ -158,16 +144,17 @@ const paymentSafety = (
   }
 }
 
-const checkoutCandidate = (cart: UnknownRecord, cutoff: string): boolean => {
-  const updatedAt = text(cart.updated_at)
-  const updatedAtTime = updatedAt ? Date.parse(updatedAt) : Number.NaN
+const checkoutCandidate = (
+  cart: CheckoutRetentionCartRecord,
+  cutoff: string
+): boolean => {
+  const updatedAtTime = Date.parse(cart.updatedAt)
   const cutoffTime = Date.parse(cutoff)
 
   return (
-    text(cart.id) !== null &&
-    text(cart.email) !== null &&
-    text(cart.customer_id) === null &&
-    (cart.completed_at === null || cart.completed_at === undefined) &&
+    cart.email !== null &&
+    cart.customerId === null &&
+    cart.completedAt === null &&
     Number.isFinite(updatedAtTime) &&
     Number.isFinite(cutoffTime) &&
     updatedAtTime < cutoffTime
@@ -191,7 +178,7 @@ const listCandidates = (
   query: AbandonedCheckoutQuery,
   cutoff: string,
   skip: number
-): Promise<{ data: UnknownRecord[] }> =>
+): Promise<unknown> =>
   query.graph({
     entity: "cart",
     fields: cartFields,
@@ -203,34 +190,37 @@ const listCandidates = (
     pagination: {
       take: PAGE_SIZE,
       skip,
-      order: { updated_at: "ASC" },
+      order: { updated_at: "ASC", id: "ASC" },
     },
   })
 
 const retrieveCandidate = async (
   query: AbandonedCheckoutQuery,
   cartId: string
-): Promise<UnknownRecord | null> => {
+): Promise<CheckoutRetentionCartRecord | null> => {
   const result = await query.graph({
     entity: "cart",
     fields: cartFields,
     filters: { id: cartId },
-    pagination: { take: 1 },
+    pagination: { take: 2 },
   })
-  return result.data[0] ?? null
+  return readCheckoutRetentionCart(result, cartId)
 }
 
 const hasOrder = async (
   query: AbandonedCheckoutQuery,
   cartId: string
 ): Promise<boolean> => {
-  const result = await query.graph({
-    entity: "order_cart",
-    fields: ["order_id"],
-    filters: { cart_id: cartId },
-    pagination: { take: 1 },
-  })
-  return text(result.data[0]?.order_id) !== null
+  return (
+    readCheckoutOrderLink(
+      await query.graph({
+        entity: "order_cart",
+        fields: ["order_id"],
+        filters: { cart_id: cartId },
+        pagination: { take: 2 },
+      })
+    ) !== null
+  )
 }
 
 type CandidateResult =
@@ -268,10 +258,16 @@ const processCandidate = async ({
     if (payment.requiresCancellation) {
       await cancelPaymentSessions(payment.paymentSessionIds)
       await cartService.deleteCarts([candidateId])
+      if (await retrieveCandidate(query, candidateId)) {
+        throw new Error("The abandoned checkout deletion was not persisted.")
+      }
       return "deleted_after_cancel"
     }
 
     await cartService.deleteCarts([candidateId])
+    if (await retrieveCandidate(query, candidateId)) {
+      throw new Error("The abandoned checkout deletion was not persisted.")
+    }
     return "deleted"
   })
 
@@ -297,7 +293,10 @@ export const removeAbandonedGuestCheckouts = async ({
   let skip = 0
 
   while (deleted < config.maxDeletionsPerRun) {
-    const { data } = await listCandidates(query, cutoff, skip)
+    const data = readCheckoutRetentionPage(
+      await listCandidates(query, cutoff, skip),
+      PAGE_SIZE
+    )
     if (!data.length) {
       break
     }
@@ -316,10 +315,7 @@ export const removeAbandonedGuestCheckouts = async ({
 
     let changedPage = false
     for (const candidate of candidates) {
-      const candidateId = text(candidate.id)
-      if (!candidateId) {
-        continue
-      }
+      const candidateId = candidate.id
       const result = await processCandidate({
         cartService,
         cancelPaymentSessions,

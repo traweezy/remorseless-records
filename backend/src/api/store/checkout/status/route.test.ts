@@ -116,7 +116,15 @@ describe("POST /store/checkout/status", () => {
     const graph = jest.fn(async ({ entity }: { entity: string }) =>
       entity === "order_cart"
         ? { data: [{ order_id: "order_01K123ABC" }] }
-        : { data: [{ id: cartId }] }
+        : {
+            data: [
+              {
+                completed_at: null,
+                id: cartId,
+                payment_collection: null,
+              },
+            ],
+          }
     )
     const resolve = jest.fn(() => ({ graph }))
     const { res, state } = responseFixture()

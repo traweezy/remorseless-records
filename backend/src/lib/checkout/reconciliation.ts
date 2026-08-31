@@ -1,6 +1,17 @@
 import { randomUUID } from "node:crypto"
 import { performance } from "node:perf_hooks"
 
+import {
+  asUnknownRecord,
+  type UnknownRecord,
+} from "../provider-boundary/records"
+import {
+  readCheckoutOrderLink,
+  readCheckoutReconciliationCart,
+  readCheckoutReconciliationPage,
+  type CheckoutReconciliationCartRecord,
+} from "./persistence-contracts"
+
 const DEFAULT_MINIMUM_AGE_SECONDS = 120
 const MINIMUM_AGE_SECONDS = 60
 const MAXIMUM_AGE_SECONDS = 3_600
@@ -21,8 +32,6 @@ const PROCESSABLE_PAYMENT_STATUSES = new Set([
   "captured",
   "pending_authorization",
 ])
-
-type UnknownRecord = Record<string, unknown>
 
 export type CheckoutReconciliationConfig = {
   enabled: boolean
@@ -55,7 +64,7 @@ export type CheckoutReconciliationQuery = {
       take?: number
       order?: Record<string, "ASC" | "DESC">
     }
-  }) => Promise<{ data: UnknownRecord[] }>
+  }) => Promise<unknown>
 }
 
 type ReconciliationServices = {
@@ -138,38 +147,43 @@ export const resolveCheckoutReconciliationConfig = (
   }),
 })
 
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" ? (value as UnknownRecord) : null
+const cartHasReconciliationAttempt = (
+  cart: CheckoutReconciliationCartRecord
+): boolean => Object.hasOwn(cart.metadata, CHECKOUT_RECONCILIATION_METADATA_KEY)
 
-const text = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null
-
-const cartHasReconciliationAttempt = (cart: UnknownRecord): boolean => {
-  const metadata = asRecord(cart.metadata)
+const cartHasExactReconciliationAttempt = (
+  cart: CheckoutReconciliationCartRecord,
+  expected: CheckoutReconciliationAttempt
+): boolean => {
+  const attempt = asUnknownRecord(
+    cart.metadata[CHECKOUT_RECONCILIATION_METADATA_KEY]
+  )
   return Boolean(
-    metadata && Object.hasOwn(metadata, CHECKOUT_RECONCILIATION_METADATA_KEY)
+    attempt &&
+      Object.keys(attempt).length === 4 &&
+      attempt.attempt_id === expected.attempt_id &&
+      attempt.started_at === expected.started_at &&
+      attempt.state === expected.state &&
+      attempt.updated_at === expected.updated_at
   )
 }
 
 const metadataWithAttempt = (
-  cart: UnknownRecord,
+  cart: CheckoutReconciliationCartRecord,
   attempt: CheckoutReconciliationAttempt
 ): UnknownRecord => ({
-  ...(asRecord(cart.metadata) ?? {}),
+  ...cart.metadata,
   [CHECKOUT_RECONCILIATION_METADATA_KEY]: attempt,
 })
 
 const checkoutNeedsReconciliation = (
-  cart: UnknownRecord,
+  cart: CheckoutReconciliationCartRecord,
   cutoff: string
 ): boolean => {
-  const cartId = text(cart.id)
-  const updatedAt = text(cart.updated_at)
-  const updatedAtTime = updatedAt ? Date.parse(updatedAt) : Number.NaN
+  const updatedAtTime = Date.parse(cart.updatedAt)
   const cutoffTime = Date.parse(cutoff)
   if (
-    !cartId ||
-    (cart.completed_at !== null && cart.completed_at !== undefined) ||
+    cart.completedAt !== null ||
     !Number.isFinite(updatedAtTime) ||
     !Number.isFinite(cutoffTime) ||
     updatedAtTime >= cutoffTime
@@ -177,25 +191,15 @@ const checkoutNeedsReconciliation = (
     return false
   }
 
-  const collection = asRecord(cart.payment_collection)
-  const sessions = Array.isArray(collection?.payment_sessions)
-    ? collection.payment_sessions.map(asRecord).filter(Boolean)
-    : []
-  const stripeProcessable = sessions.filter(
-    (session): session is UnknownRecord => {
-      const providerId = text(session?.provider_id)
-      const status = text(session?.status)
-      return (
-        providerId === STRIPE_PROVIDER_ID &&
-        status !== null &&
-        PROCESSABLE_PAYMENT_STATUSES.has(status)
-      )
-    }
+  const stripeProcessable = cart.paymentSessions.filter(
+    ({ providerId, status }) =>
+      providerId === STRIPE_PROVIDER_ID &&
+      PROCESSABLE_PAYMENT_STATUSES.has(status)
   )
 
   return (
     stripeProcessable.length === 1 &&
-    FINALIZED_PAYMENT_STATUSES.has(text(stripeProcessable[0]?.status) ?? "")
+    FINALIZED_PAYMENT_STATUSES.has(stripeProcessable[0]?.status ?? "")
   )
 }
 
@@ -213,7 +217,7 @@ const listCandidates = (
   query: CheckoutReconciliationQuery,
   cutoff: string,
   maxScanPerRun: number
-): Promise<{ data: UnknownRecord[] }> =>
+): Promise<unknown> =>
   query.graph({
     entity: "cart",
     fields: cartFields,
@@ -223,34 +227,37 @@ const listCandidates = (
     },
     pagination: {
       take: maxScanPerRun,
-      order: { updated_at: "DESC" },
+      order: { updated_at: "DESC", id: "DESC" },
     },
   })
 
 const retrieveCandidate = async (
   query: CheckoutReconciliationQuery,
   cartId: string
-): Promise<UnknownRecord | null> => {
+): Promise<CheckoutReconciliationCartRecord | null> => {
   const result = await query.graph({
     entity: "cart",
     fields: cartFields,
     filters: { id: cartId },
-    pagination: { take: 1 },
+    pagination: { take: 2 },
   })
-  return result.data[0] ?? null
+  return readCheckoutReconciliationCart(result, cartId)
 }
 
 const hasOrder = async (
   query: CheckoutReconciliationQuery,
   cartId: string
 ): Promise<boolean> => {
-  const result = await query.graph({
-    entity: "order_cart",
-    fields: ["order_id"],
-    filters: { cart_id: cartId },
-    pagination: { take: 1 },
-  })
-  return text(result.data[0]?.order_id) !== null
+  return (
+    readCheckoutOrderLink(
+      await query.graph({
+        entity: "order_cart",
+        fields: ["order_id"],
+        filters: { cart_id: cartId },
+        pagination: { take: 2 },
+      })
+    ) !== null
+  )
 }
 
 export const reconcileCheckoutPayments = async ({
@@ -273,7 +280,10 @@ export const reconcileCheckoutPayments = async ({
   const cutoff = new Date(
     now.getTime() - config.minimumAgeSeconds * 1_000
   ).toISOString()
-  const { data } = await listCandidates(query, cutoff, config.maxScanPerRun)
+  const data = readCheckoutReconciliationPage(
+    await listCandidates(query, cutoff, config.maxScanPerRun),
+    config.maxScanPerRun
+  )
   const candidates = data.filter((cart) =>
     checkoutNeedsReconciliation(cart, cutoff)
   )
@@ -294,10 +304,7 @@ export const reconcileCheckoutPayments = async ({
       break
     }
     inspectedEligible += 1
-    const cartId = text(candidate.id)
-    if (!cartId) {
-      continue
-    }
+    const cartId = candidate.id
     const fresh = await retrieveCandidate(query, cartId)
     if (!fresh || !checkoutNeedsReconciliation(fresh, cutoff)) {
       continue
@@ -329,6 +336,20 @@ export const reconcileCheckoutPayments = async ({
       continue
     }
 
+    const marked = await retrieveCandidate(query, cartId)
+    if (
+      !marked ||
+      !checkoutNeedsReconciliation(marked, cutoff) ||
+      !cartHasExactReconciliationAttempt(marked, startedAttempt)
+    ) {
+      failed += 1
+      continue
+    }
+    if (await hasOrder(query, cartId)) {
+      protectedByOrder += 1
+      continue
+    }
+
     attempted += 1
     try {
       await completeCart(cartId)
@@ -338,7 +359,7 @@ export const reconcileCheckoutPayments = async ({
       const reviewRequiredAt = currentTime().toISOString()
       await updateCartMetadata(
         cartId,
-        metadataWithAttempt(fresh, {
+        metadataWithAttempt(marked, {
           ...startedAttempt,
           state: "review_required",
           updated_at: reviewRequiredAt,

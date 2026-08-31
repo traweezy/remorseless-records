@@ -154,6 +154,8 @@ assertOrdered(reconciliationSource, [
   "if (await hasOrder(query, cartId))",
   "if (cartHasReconciliationAttempt(fresh))",
   "await updateCartMetadata",
+  "const marked = await retrieveCandidate",
+  "!cartHasExactReconciliationAttempt(marked, startedAttempt)",
   "await completeCart(cartId)",
 ])
 

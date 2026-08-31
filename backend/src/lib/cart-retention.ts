@@ -1,9 +1,14 @@
 import type {
-  CartDTO,
   FilterableCartProps,
   ICartModuleService,
   ILockingModule,
 } from "@medusajs/framework/types"
+
+import {
+  readCheckoutAnonymousRetentionPage,
+  readCheckoutAnonymousRetentionSelection,
+  type CheckoutAnonymousRetentionCartRecord,
+} from "./checkout/persistence-contracts"
 
 const DAY_MS = 24 * 60 * 60 * 1_000
 const MINIMUM_RETENTION_DAYS = 37
@@ -81,8 +86,8 @@ export const resolveCartRetentionConfig = (
   }),
 })
 
-const eligibleCart = (cart: CartDTO): boolean =>
-  !cart.customer_id && !cart.email && !cart.completed_at
+const eligibleCart = (cart: CheckoutAnonymousRetentionCartRecord): boolean =>
+  cart.customerId === null && cart.email === null && cart.completedAt === null
 
 const buildFilters = (cutoff: string): FilterableCartProps => ({
   customer_id: { $eq: null },
@@ -108,15 +113,18 @@ const lockAndDeleteFreshCandidates = async ({
   cutoff: string
 }): Promise<number> =>
   lockingService.execute(candidateIds, async () => {
-    const freshCandidates = await cartService.listCarts(
-      {
-        ...buildFilters(cutoff),
-        id: candidateIds,
-      },
-      {
-        select: ["id", "customer_id", "email", "completed_at", "updated_at"],
-        take: candidateIds.length,
-      }
+    const freshCandidates = readCheckoutAnonymousRetentionSelection(
+      await cartService.listCarts(
+        {
+          ...buildFilters(cutoff),
+          id: candidateIds,
+        },
+        {
+          select: ["id", "customer_id", "email", "completed_at", "updated_at"],
+          take: candidateIds.length + 1,
+        }
+      ),
+      candidateIds
     )
     const safeIds = freshCandidates.filter(eligibleCart).map(({ id }) => id)
     if (!safeIds.length) {
@@ -124,6 +132,19 @@ const lockAndDeleteFreshCandidates = async ({
     }
 
     await cartService.deleteCarts(safeIds)
+    const retained = readCheckoutAnonymousRetentionSelection(
+      await cartService.listCarts(
+        { id: safeIds },
+        {
+          select: ["id", "customer_id", "email", "completed_at", "updated_at"],
+          take: safeIds.length + 1,
+        }
+      ),
+      safeIds
+    )
+    if (retained.length > 0) {
+      throw new Error("The anonymous cart deletion was not persisted.")
+    }
     return safeIds.length
   })
 
@@ -145,19 +166,22 @@ export const removeExpiredAnonymousCarts = async ({
   let skip = 0
 
   while (deleted < config.maxDeletionsPerRun) {
-    const carts = await cartService.listCarts(buildFilters(cutoff), {
-      select: ["id", "customer_id", "email", "completed_at", "updated_at"],
-      order: { updated_at: "ASC" },
-      skip,
-      take: PAGE_SIZE,
-    })
+    const carts = readCheckoutAnonymousRetentionPage(
+      await cartService.listCarts(buildFilters(cutoff), {
+        select: ["id", "customer_id", "email", "completed_at", "updated_at"],
+        order: { updated_at: "ASC", id: "ASC" },
+        skip,
+        take: PAGE_SIZE,
+      }),
+      PAGE_SIZE
+    )
     if (!carts.length) {
       break
     }
 
     scanned += carts.length
     const eligible = carts.filter((cart) => {
-      if (cart.email) {
+      if (cart.email !== null) {
         protectedIds.add(cart.id)
       }
       return eligibleCart(cart)

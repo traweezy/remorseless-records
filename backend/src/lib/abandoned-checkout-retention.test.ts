@@ -126,7 +126,13 @@ describe("abandoned checkout retention", () => {
           payment_collection: {
             id: "paycol_unused",
             status: "awaiting",
-            payment_sessions: [{ id: "payses_unused", status: "pending" }],
+            payment_sessions: [
+              {
+                id: "payses_unused",
+                provider_id: "pp_stripe_stripe",
+                status: "pending",
+              },
+            ],
           },
         }),
       ],
@@ -167,7 +173,13 @@ describe("abandoned checkout retention", () => {
           payment_collection: {
             id: "paycol_protected",
             status: "awaiting",
-            payment_sessions: [{ id: "payses_protected", status }],
+            payment_sessions: [
+              {
+                id: "payses_protected",
+                provider_id: "pp_stripe_stripe",
+                status,
+              },
+            ],
           },
         }),
       ],
@@ -238,5 +250,20 @@ describe("abandoned checkout retention", () => {
     expect(fixture.cartService.deleteCarts).not.toHaveBeenCalled()
     expect(fixture.cancelPaymentSessions).not.toHaveBeenCalled()
     expect(result.deleted).toBe(0)
+  })
+
+  it("rejects a successful delete acknowledgement when the cart remains", async () => {
+    const fixture = services({ carts: [cart()] })
+    ;(fixture.cartService.deleteCarts as jest.Mock).mockImplementationOnce(
+      async () => undefined
+    )
+
+    await expect(
+      removeAbandonedGuestCheckouts({
+        ...fixture,
+        config,
+        now: new Date("2026-07-25T00:00:00.000Z"),
+      })
+    ).rejects.toThrow("deletion was not persisted")
   })
 })
