@@ -28,7 +28,7 @@ const shelf = {
 
 const membership = {
   ends_at: null,
-  id: "cshelfprod_1",
+  id: "cshelfp_1",
   is_pinned: false,
   metadata: {},
   product_id: "prod_1",
@@ -119,5 +119,22 @@ describe("GET /store/catalog/shelves", () => {
     ).rejects.toThrow(
       "The Store product projection returned invalid structured data."
     )
+  })
+
+  it("rejects a membership returned for an unrequested shelf", async () => {
+    const catalog = {
+      listAndCountCatalogShelves: jest.fn().mockResolvedValue([[shelf], 1]),
+      listCatalogShelfProducts: jest
+        .fn()
+        .mockResolvedValue([{ ...membership, shelf_id: "cshelf_other" }]),
+    }
+    const graph = jest.fn()
+
+    await expect(
+      GET(request(catalog, graph) as never, {} as never)
+    ).rejects.toThrow(
+      "The Store module projection returned invalid structured data."
+    )
+    expect(graph).not.toHaveBeenCalled()
   })
 })

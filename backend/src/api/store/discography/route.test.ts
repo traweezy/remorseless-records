@@ -9,6 +9,7 @@ import { GET } from "./route"
 
 const entry = (id: string, productId: string): DiscographyEntryRecord => ({
   album: `${id} album`,
+  archived_at: null,
   artist: `${id} artist`,
   availability: "in_print",
   catalog_number: null,
@@ -149,5 +150,34 @@ describe("GET /store/discography", () => {
     ).rejects.toThrow(
       "The Store product projection returned invalid structured data."
     )
+  })
+
+  it("rejects malformed discography persistence before querying Products", async () => {
+    const malformedEntry = { ...entry("disc_visible", "prod_visible") }
+    malformedEntry.version = 0
+    const listAndCountDiscographyEntries = jest
+      .fn()
+      .mockResolvedValue([[malformedEntry], 1])
+    const graph = jest.fn()
+    const resolve = jest.fn((key: string) =>
+      key === "discography" ? { listAndCountDiscographyEntries } : { graph }
+    )
+
+    await expect(
+      GET(
+        {
+          publishable_key_context: {
+            key: "pk_test",
+            sales_channel_ids: ["sc_web"],
+          },
+          query: {},
+          scope: { resolve },
+        } as never,
+        {} as never
+      )
+    ).rejects.toThrow(
+      "The Store module projection returned invalid structured data."
+    )
+    expect(graph).not.toHaveBeenCalled()
   })
 })

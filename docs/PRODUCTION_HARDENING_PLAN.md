@@ -2980,6 +2980,33 @@ total JavaScript is 2,388,398 gzip bytes. The production audit retains only the
 three documented ignored moderate findings; Trivy reports zero high/critical
 dependency, misconfiguration, or secret findings.
 
+The eleventh post-migration boundary tranche closes the project-owned Store
+module-read family. Discography and News counted pages now require exact tuple
+shape, safe counts, bounded page sizes, canonical unique identities, coherent
+lifecycle state, due timestamps, bounded text and lists, safe HTTP(S) media
+URLs, and consistent catalog linkage before serialization. The exact News
+detail path rejects multiple or mismatched rows instead of selecting the first
+result, while a genuine empty result remains a not-found response.
+
+Catalog shelves independently validate active, unarchived, uniquely identified
+shelf rows, schedule ranges, modes, limits, and ribbon state. Memberships must
+belong to the exact requested shelf set and remain unique per shelf/Product;
+automatic profiles remain unique per Product. Only the public
+`lookbackDays` and `source_created_at` automation inputs survive metadata
+projection, preventing arbitrary project-owned metadata from crossing the
+Store response boundary. Twenty-nine focused contract and route tests cover
+valid projections plus malformed counts, ownership, lifecycle, schedule,
+identity, URL, list, duplicate, and exact-result cases.
+
+Complete local acceptance passes the 1,188-file repository QA gate, all 240
+Backend suites and 1,673 tests, the production Backend/Admin build, frozen
+packaged install with Medusa 2.18.0, and the Admin bundle budget. Backend
+coverage remains 91.35% statements, 84.60% branches, 95.52% functions, and
+91.39% lines. The Admin main bundle is 1,807,700 gzip bytes and total JavaScript
+is 2,388,594 gzip bytes. The production audit retains only the three documented
+ignored moderate findings; Trivy reports zero high/critical dependency,
+misconfiguration, or secret findings.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

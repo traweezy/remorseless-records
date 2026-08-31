@@ -3,10 +3,8 @@ import { z } from "@medusajs/framework/zod"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import type NewsModuleService from "@/modules/news/service"
-import {
-  type NewsEntryRecord,
-  serializeStoreNewsEntry,
-} from "@/modules/news/serializers"
+import { readStoreNewsDetail } from "@/lib/store-module-projections"
+import { serializeStoreNewsEntry } from "@/modules/news/serializers"
 import { buildStoreNewsFilters } from "@/modules/news/store-visibility"
 
 type NewsService = InstanceType<typeof NewsModuleService>
@@ -26,12 +24,13 @@ export const GET = async (
   const { slug } = parsed.data
   const newsService = req.scope.resolve("news") as NewsService
 
+  const now = new Date()
   const entries = await newsService.listNewsEntries({
-    ...buildStoreNewsFilters(new Date()),
+    ...buildStoreNewsFilters(now),
     slug,
   })
 
-  const entry = entries.at(0) as NewsEntryRecord | undefined
+  const entry = readStoreNewsDetail(entries, slug, now)
   if (!entry) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "News entry not found")
   }

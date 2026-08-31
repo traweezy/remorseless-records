@@ -4,10 +4,8 @@ import { MedusaError } from "@medusajs/framework/utils"
 
 import { withStableNewsOrder } from "@/modules/news/list-order"
 import type NewsModuleService from "@/modules/news/service"
-import {
-  type NewsEntryRecord,
-  serializeStoreNewsEntry,
-} from "@/modules/news/serializers"
+import { readStoreNewsPage } from "@/lib/store-module-projections"
+import { serializeStoreNewsEntry } from "@/modules/news/serializers"
 import { buildStoreNewsFilters } from "@/modules/news/store-visibility"
 
 type NewsService = InstanceType<typeof NewsModuleService>
@@ -34,8 +32,9 @@ export const GET = async (
   const take = limit ?? 20
   const skip = offset ?? 0
 
-  const [entries, count] = await newsService.listAndCountNewsEntries(
-    buildStoreNewsFilters(new Date()),
+  const now = new Date()
+  const result = await newsService.listAndCountNewsEntries(
+    buildStoreNewsFilters(now),
     {
       skip,
       take,
@@ -45,9 +44,10 @@ export const GET = async (
       }),
     }
   )
+  const { count, records } = readStoreNewsPage(result, now)
 
   res.status(200).json({
-    entries: (entries as NewsEntryRecord[]).map(serializeStoreNewsEntry),
+    entries: records.map(serializeStoreNewsEntry),
     count,
     offset: skip,
     limit: take,

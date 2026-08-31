@@ -1488,6 +1488,15 @@ artist/album metadata used for ranking. Corrupt provider data therefore cannot
 become a misleading 404, skipped page row, leaked metadata field, or available
 bundle option.
 
+Project-owned Store module reads are validated independently of the Product
+graph. Discography and News require coherent counted pages, lifecycle state,
+bounded public text/lists, safe media URLs, and exact schedule timestamps.
+Shelves require active, unarchived, uniquely identified shelf, membership, and
+profile rows with consistent ownership and schedules. Shelf/profile metadata
+is reconstructed from the two public automation fields instead of serializing
+arbitrary stored metadata. Malformed ORM results therefore fail as an
+operational incident rather than becoming public content or a false empty page.
+
 Physical media deletion is deliberately unavailable. The displayed 30-day
 date is only the earliest future review point; no job or route automatically
 deletes the catalog row or File Module object. A future audited purge also

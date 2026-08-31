@@ -348,3 +348,12 @@ and Product visibility configured through the guided Catalog workflows are the
 exact state customers receive. The related-product endpoint also returns only
 the small artist/album metadata allowlist used for ranking, so unrelated Admin
 metadata cannot cross the Store boundary.
+
+Discography, shelf, and News persistence now receives the same treatment. The
+customer view accepts only coherent active records that satisfy the lifecycle,
+schedule, identity, bounded-content, safe-URL, and relationship invariants
+already enforced by the Admin workflows. Shelf and Product-profile metadata is
+reduced to the public automation inputs, preventing support notes or future
+internal keys from crossing the Store boundary. These checks do not add client
+choices; they ensure that an impossible stored state is surfaced for recovery
+instead of being silently defaulted into plausible customer content.

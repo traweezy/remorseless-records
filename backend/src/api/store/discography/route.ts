@@ -6,16 +6,14 @@ import { z } from "@medusajs/framework/zod"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import { readStoreDiscographyProductProjections } from "@/lib/store-product-projections"
+import { readStoreDiscographyPage } from "@/lib/store-module-projections"
 import {
   listVisibleProductsByIds,
   resolveStoreProductVisibility,
 } from "@/lib/store-product-visibility"
 import type DiscographyModuleService from "@/modules/discography/service"
 import { withStableDiscographyOrder } from "@/modules/discography/list-order"
-import {
-  type DiscographyEntryRecord,
-  serializeDiscographyEntry,
-} from "@/modules/discography/serializers"
+import { serializeDiscographyEntry } from "@/modules/discography/serializers"
 
 type DiscographyService = InstanceType<typeof DiscographyModuleService>
 
@@ -44,20 +42,19 @@ export const GET = async (
   const take = limit ?? 200
   const skip = offset ?? 0
 
-  const [entries, count] =
-    await discographyService.listAndCountDiscographyEntries(
-      { archived_at: null },
-      {
-        skip,
-        take,
-        order: withStableDiscographyOrder({
-          release_year: "DESC",
-          release_date: "DESC",
-          created_at: "DESC",
-        }),
-      }
-    )
-  const records = entries as DiscographyEntryRecord[]
+  const result = await discographyService.listAndCountDiscographyEntries(
+    { archived_at: null },
+    {
+      skip,
+      take,
+      order: withStableDiscographyOrder({
+        release_year: "DESC",
+        release_date: "DESC",
+        created_at: "DESC",
+      }),
+    }
+  )
+  const { count, records } = readStoreDiscographyPage(result)
   const productIds = Array.from(
     new Set(
       records.flatMap((entry) =>

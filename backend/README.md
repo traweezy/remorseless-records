@@ -127,6 +127,15 @@ references require their exact public fields. Related Products are rebuilt from
 an allowlisted projection, including only the artist/album metadata used for
 ranking rather than returning arbitrary Product metadata.
 
+The project-owned Discography, Catalog, and News module services are a separate
+untrusted persistence boundary. Their Store routes validate counted-page
+shape, bounded row counts, canonical and unique identities, exact lifecycle
+visibility, dates, URLs, lists, and cross-row ownership before using the normal
+serializers. Shelf membership must belong to the active requested shelf set,
+and automatic profile rows are unique per Product. Only `lookbackDays` and
+`source_created_at` survive the shelf automation metadata projection; arbitrary
+module metadata is not public Store data.
+
 The Store bundle route additionally validates the active project-owned profile,
 every component row and declared mapping, the visible Product/Variant graph,
 and the availability map. A mapping may reference only a Variant on its exact

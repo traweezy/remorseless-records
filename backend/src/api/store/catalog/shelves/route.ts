@@ -10,17 +10,17 @@ import {
   resolveShelfProductIds,
 } from "@/lib/catalog/shelves"
 import type CatalogModuleService from "@/modules/catalog/service"
-import {
-  type CatalogProductProfileRecord,
-  type CatalogShelfProductRecord,
-  type CatalogShelfRecord,
-  serializeCatalogShelf,
-} from "@/modules/catalog/serializers"
+import { serializeCatalogShelf } from "@/modules/catalog/serializers"
 import {
   listVisibleProductsByIds,
   resolveStoreProductVisibility,
 } from "@/lib/store-product-visibility"
 import { readStoreShelfProductProjections } from "@/lib/store-product-projections"
+import {
+  readStoreShelfMemberships,
+  readStoreShelfPage,
+  readStoreShelfProductProfiles,
+} from "@/lib/store-module-projections"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
 type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
@@ -83,7 +83,7 @@ export const GET = async (
     shelfFilters.handle = handles
   }
 
-  const [shelves] = await callCatalogService<[CatalogShelfRecord[], number]>(
+  const rawShelfPage = await callCatalogService<unknown>(
     catalogService,
     ["listAndCountCatalogShelves", "listAndCountCatalogShelfs"],
     [
@@ -94,6 +94,7 @@ export const GET = async (
       },
     ]
   )
+  const { records: shelves } = readStoreShelfPage(rawShelfPage)
   const activeShelves = shelves.filter((shelf) => {
     const startsAt = toTimestamp(shelf.starts_at)
     const endsAt = toTimestamp(shelf.ends_at)
@@ -104,24 +105,23 @@ export const GET = async (
   })
   const shelfIds = activeShelves.map((shelf) => shelf.id)
 
-  const [memberships, profiles] = await Promise.all([
+  const [rawMemberships, rawProfiles] = await Promise.all([
     shelfIds.length
-      ? (catalogService.listCatalogShelfProducts(
+      ? catalogService.listCatalogShelfProducts(
           { shelf_id: shelfIds },
           { take: 2_500, order: { sort_order: "ASC" } }
-        ) as Promise<CatalogShelfProductRecord[]>)
+        )
       : Promise.resolve([]),
     activeShelves.some(
       (shelf) =>
         (shelf.mode === "automatic" || shelf.mode === "hybrid") &&
         shelf.automation_type === "new_release"
     )
-      ? (catalogService.listCatalogProductProfiles(
-          {},
-          { take: 2_500 }
-        ) as Promise<CatalogProductProfileRecord[]>)
+      ? catalogService.listCatalogProductProfiles({}, { take: 2_500 })
       : Promise.resolve([]),
   ])
+  const memberships = readStoreShelfMemberships(rawMemberships, shelfIds)
+  const profiles = readStoreShelfProductProfiles(rawProfiles)
 
   const candidateIds = Array.from(
     new Set(
@@ -146,7 +146,10 @@ export const GET = async (
   const productCreatedAt = new Map(
     visibleProducts.map((product) => [product.id, product.created_at])
   )
-  const membershipsByShelf = new Map<string, CatalogShelfProductRecord[]>()
+  const membershipsByShelf = new Map<
+    string,
+    ReturnType<typeof readStoreShelfMemberships>
+  >()
   memberships.forEach((membership) => {
     const existing = membershipsByShelf.get(membership.shelf_id) ?? []
     existing.push(membership)
