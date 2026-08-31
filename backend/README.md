@@ -146,6 +146,15 @@ News replays validate the complete stored DTO; Discography replays require the
 current retained entry to match the recorded version instead of returning a
 later edit as the old command response.
 
+Admin Merchandising shelf reads and commands pass through
+`src/lib/catalog/shelf-persistence-contracts.ts`. It validates complete shelf,
+membership, Product-profile, and audit-operation projections, then verifies
+exact mutation and membership-replacement acknowledgements inside the shared
+serializable transaction. The Admin list accepts at most 100 shelves and reads
+at most 200 memberships for each shelf. Command completion and replay require
+the same audit-row identity, actor, aggregate, request hash, result, shelf
+identity, next version, and archive state before returning success.
+
 The Store bundle route additionally validates the active project-owned profile,
 every component row and declared mapping, the visible Product/Variant graph,
 and the availability map. A mapping may reference only a Variant on its exact

@@ -377,3 +377,40 @@ technical field to either client workflow.
 Both authoring surfaces accept only HTTP(S) artwork. News and manual
 Discography also require alternative text whenever artwork is present, with the
 same accessible validation shown in the form and enforced before a write begins.
+
+### Merchandising shelf persistence hardening — August 30, 2026
+
+The Merchandising workspace keeps its existing guided form, selection context,
+preview, and recovery language, but now treats every backing service response
+as untrusted. Counted pages, shelf rows, Product memberships, Product-profile
+ownership, shelf mutations, relationship replacements, and audit operations
+must be complete, bounded, canonical, and internally coherent before the UI can
+render them or report success.
+
+Shelf metadata and memberships are saved in one serializable transaction. The
+workflow validates Product and profile ownership inside that transaction,
+deletes the previous relationship set, verifies the exact creation
+acknowledgement, and reads back the requested final set before completing its
+audit operation. The completion acknowledgement must identify the same audit
+row and preserve the actor, shelf command, expected version, idempotency key,
+request hash, exact result, and terminal state.
+
+Create, edit, archive, restore, and response-loss replay now require the exact
+shelf identity and next version; lifecycle paths also require the expected
+archive and active state. Handle allocation makes 50 deterministic attempts and
+then asks the operator for a more specific handle instead of manufacturing a
+clock-based value. The list stays compatible with the workspace's existing
+100-shelf request while bounding relationship expansion to 200 Products per
+shelf. These safeguards add no technical fields or recovery decisions to the
+client workflow.
+
+Local acceptance passes 38 focused shelf tests, all 245 Backend suites and
+1,729 tests, strict TypeScript, the 1,195-file repository Biome/policy gate,
+the production Backend/Admin build, frozen packaged install with Medusa
+2.18.0, and the Admin bundle budget. Backend coverage is 91.35% statements,
+84.60% branches, 95.52% functions, and 91.39% lines. The Admin main bundle is
+1,807,790 gzip bytes and total JavaScript is 2,388,187 gzip bytes. The
+production audit retains only the three documented ignored moderate findings;
+Trivy reports zero high/critical dependency or secret findings. No rendered
+layout changed in this server-side tranche, so the prior Merchandising visual
+acceptance remains the applicable screenshot evidence.

@@ -4,6 +4,7 @@ import type { CatalogService } from "../utils"
 import {
   loadShelfProductsByShelfId,
   prepareShelfProducts,
+  resolveUniqueShelfHandle,
   setShelfArchived,
   shelfUpsertSchema,
   upsertShelf,
@@ -63,21 +64,48 @@ const requestWithProducts = (productIds: string[]) => {
 
 const transactionService = (overrides: Record<string, unknown> = {}) => {
   const sharedContext = { transactionManager: { id: "tx" } }
+  let storedOperation: Record<string, unknown> | null = null
   const service = {
     createCatalogAuthoringOperations: jest
       .fn()
-      .mockResolvedValue([{ id: operationId }]),
-    createCatalogShelfProducts: jest.fn().mockResolvedValue([]),
+      .mockImplementation(async (payloads: Record<string, unknown>[]) =>
+        payloads.map((payload) => {
+          storedOperation = {
+            ...payload,
+            completed_at: null,
+            error_code: null,
+            error_detail: null,
+            id: operationId,
+          }
+          return storedOperation
+        })
+      ),
+    createCatalogShelfProducts: jest
+      .fn()
+      .mockImplementation(async (payloads: Record<string, unknown>[]) =>
+        payloads.map((payload, index) => ({
+          ...payload,
+          id: `cshelfp_created_${index + 1}`,
+        }))
+      ),
     createCatalogShelves: jest.fn(),
     deleteCatalogShelfProducts: jest.fn().mockResolvedValue(undefined),
     listCatalogAuthoringOperations: jest.fn().mockResolvedValue([]),
+    listCatalogShelves: jest.fn().mockResolvedValue([]),
     listCatalogShelfProducts: jest.fn().mockResolvedValue([]),
     retrieveCatalogShelf: jest.fn(),
     runCatalogTransaction: jest.fn(
       async (task: (context: unknown) => Promise<unknown>) =>
         task(sharedContext)
     ),
-    updateCatalogAuthoringOperations: jest.fn().mockResolvedValue([]),
+    updateCatalogAuthoringOperations: jest
+      .fn()
+      .mockImplementation(async (payloads: Record<string, unknown>[]) =>
+        payloads.map((payload) => {
+          storedOperation = { ...storedOperation, ...payload }
+          return storedOperation
+        })
+      ),
     updateCatalogShelves: jest.fn(),
     ...overrides,
   }
@@ -89,6 +117,14 @@ const transactionService = (overrides: Record<string, unknown> = {}) => {
 }
 
 describe("catalog shelf authoring", () => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-02T03:30:00.000Z"))
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
   it("validates every product before returning normalized membership rows", async () => {
     const { graph, req } = requestWithProducts(["prod_01", "prod_02"])
     const service = {
@@ -163,11 +199,11 @@ describe("catalog shelf authoring", () => {
     const service = {
       listCatalogProductProfiles: jest
         .fn()
-        .mockResolvedValue([{ id: "cprod_01", product_id: "prod_other" }]),
+        .mockResolvedValue([{ id: "cprof_01", product_id: "prod_other" }]),
     } as unknown as CatalogService
     await expect(
       prepareShelfProducts(req, service, [
-        { productId: "prod_01", productProfileId: "cprod_01" },
+        { productId: "prod_01", productProfileId: "cprof_01" },
       ])
     ).rejects.toThrow("must belong to its selected product")
   })
@@ -176,8 +212,8 @@ describe("catalog shelf authoring", () => {
     const listCatalogShelfProducts = jest
       .fn()
       .mockResolvedValue([
-        shelfProductRecord("line_02", "prod_02", 0, "cshelf_02"),
-        shelfProductRecord("line_01", "prod_01", 0),
+        shelfProductRecord("cshelfp_02", "prod_02", 0, "cshelf_02"),
+        shelfProductRecord("cshelfp_01", "prod_01", 0),
       ])
     const service = {
       listCatalogShelfProducts,
@@ -192,7 +228,7 @@ describe("catalog shelf authoring", () => {
     expect(listCatalogShelfProducts).toHaveBeenCalledTimes(1)
     expect(listCatalogShelfProducts).toHaveBeenCalledWith(
       { shelf_id: [shelfId, "cshelf_02"] },
-      { order: { sort_order: "ASC" }, take: 400 }
+      { order: { sort_order: "ASC", id: "ASC" }, take: 400 }
     )
     expect(result.get(shelfId)?.map((line) => line.productId)).toEqual([
       "prod_01",
@@ -205,8 +241,8 @@ describe("catalog shelf authoring", () => {
   it("saves metadata and memberships in one versioned transaction", async () => {
     const before = shelfRecord()
     const after = shelfRecord({ title: "New title", version: 2 })
-    const oldLine = shelfProductRecord("line_old", "prod_old", 0)
-    const newLine = shelfProductRecord("line_new", "prod_01", 0)
+    const oldLine = shelfProductRecord("cshelfp_old", "prod_old", 0)
+    const newLine = shelfProductRecord("cshelfp_new", "prod_01", 0)
     const { req, graph } = requestWithProducts(["prod_01"])
     const { service, sharedContext, spies } = transactionService({
       listCatalogShelfProducts: jest
@@ -247,7 +283,7 @@ describe("catalog shelf authoring", () => {
       sharedContext
     )
     expect(spies.deleteCatalogShelfProducts).toHaveBeenCalledWith(
-      ["line_old"],
+      ["cshelfp_old"],
       sharedContext
     )
     expect(spies.createCatalogShelfProducts).toHaveBeenCalledWith(
@@ -265,6 +301,59 @@ describe("catalog shelf authoring", () => {
       sharedContext
     )
     expect(response.body.shelf.version).toBe(2)
+  })
+
+  it("creates a complete shelf and verifies its exact acknowledgement", async () => {
+    const created = shelfRecord({
+      handle: "new-shelf",
+      id: "cshelf_created",
+      title: "New shelf",
+    })
+    const { req } = requestWithProducts([])
+    const { service, sharedContext, spies } = transactionService({
+      createCatalogShelves: jest.fn().mockResolvedValue([created]),
+      retrieveCatalogShelf: jest.fn().mockResolvedValue(created),
+    })
+
+    const response = await upsertShelf(req, service, {
+      expectedVersion: 0,
+      idempotencyKey,
+      title: "New shelf",
+    })
+
+    expect(spies.createCatalogShelves).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          archived_at: null,
+          handle: "new-shelf",
+          metadata: {},
+          title: "New shelf",
+          version: 1,
+        }),
+      ],
+      sharedContext
+    )
+    expect(response).toMatchObject({
+      body: { shelf: { id: "cshelf_created", version: 1 } },
+      status: 201,
+    })
+  })
+
+  it("fails deterministically after exhausting unique handle candidates", async () => {
+    const listCatalogShelves = jest
+      .fn()
+      .mockImplementation(async ({ handle }: { handle: string }) => [
+        shelfRecord({ handle, id: "cshelf_collision" }),
+      ])
+    const service = { listCatalogShelves } as unknown as CatalogService
+
+    await expect(resolveUniqueShelfHandle(service, "featured")).rejects.toThrow(
+      "Choose a more specific handle"
+    )
+    expect(listCatalogShelves).toHaveBeenCalledTimes(50)
+    expect(listCatalogShelves).toHaveBeenLastCalledWith({
+      handle: "featured-49",
+    })
   })
 
   it("rejects a stale version before creating an operation or mutating rows", async () => {
@@ -314,7 +403,7 @@ describe("catalog shelf authoring", () => {
         .mockRejectedValue(new Error("injected membership failure")),
       listCatalogShelfProducts: jest
         .fn()
-        .mockResolvedValue([shelfProductRecord("line_old", "prod_old", 0)]),
+        .mockResolvedValue([shelfProductRecord("cshelfp_old", "prod_old", 0)]),
       retrieveCatalogShelf: jest
         .fn()
         .mockResolvedValueOnce(shelfRecord())
@@ -340,6 +429,151 @@ describe("catalog shelf authoring", () => {
     expect(spies.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
 
+  it("rejects a partial audit-operation creation acknowledgement", async () => {
+    const { req } = requestWithProducts([])
+    const { service, spies } = transactionService({
+      createCatalogAuthoringOperations: jest
+        .fn()
+        .mockResolvedValue([{ id: operationId }]),
+      retrieveCatalogShelf: jest.fn().mockResolvedValue(shelfRecord()),
+    })
+
+    await expect(
+      upsertShelf(
+        req,
+        service,
+        { expectedVersion: 1, idempotencyKey, title: "Updated" },
+        shelfId
+      )
+    ).rejects.toThrow(
+      "The catalog shelf persistence boundary returned invalid structured data."
+    )
+    expect(spies.updateCatalogShelves).not.toHaveBeenCalled()
+  })
+
+  it("rejects a mismatched shelf mutation acknowledgement", async () => {
+    const { req } = requestWithProducts([])
+    const { service, spies } = transactionService({
+      retrieveCatalogShelf: jest.fn().mockResolvedValue(shelfRecord()),
+      updateCatalogShelves: jest
+        .fn()
+        .mockResolvedValue([shelfRecord({ id: "cshelf_other", version: 2 })]),
+    })
+
+    await expect(
+      upsertShelf(
+        req,
+        service,
+        { expectedVersion: 1, idempotencyKey, title: "Updated" },
+        shelfId
+      )
+    ).rejects.toThrow(
+      "The catalog shelf persistence boundary returned invalid structured data."
+    )
+    expect(spies.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
+  })
+
+  it("rejects membership creation that acknowledges the wrong Product", async () => {
+    const { req } = requestWithProducts(["prod_01"])
+    const { service, spies } = transactionService({
+      createCatalogShelfProducts: jest
+        .fn()
+        .mockResolvedValue([
+          shelfProductRecord("cshelfp_wrong", "prod_other", 0),
+        ]),
+      listCatalogShelfProducts: jest
+        .fn()
+        .mockResolvedValue([shelfProductRecord("cshelfp_old", "prod_old", 0)]),
+      retrieveCatalogShelf: jest.fn().mockResolvedValue(shelfRecord()),
+      updateCatalogShelves: jest
+        .fn()
+        .mockResolvedValue([shelfRecord({ version: 2 })]),
+    })
+
+    await expect(
+      upsertShelf(
+        req,
+        service,
+        {
+          expectedVersion: 1,
+          idempotencyKey,
+          products: [{ productId: "prod_01" }],
+        },
+        shelfId
+      )
+    ).rejects.toThrow(
+      "The catalog shelf persistence boundary returned invalid structured data."
+    )
+    expect(spies.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
+  })
+
+  it("rejects a malformed audit completion acknowledgement", async () => {
+    const { req } = requestWithProducts([])
+    const { service } = transactionService({
+      retrieveCatalogShelf: jest.fn().mockResolvedValue(shelfRecord()),
+      updateCatalogAuthoringOperations: jest.fn().mockResolvedValue([null]),
+      updateCatalogShelves: jest
+        .fn()
+        .mockResolvedValue([shelfRecord({ version: 2 })]),
+    })
+
+    await expect(
+      upsertShelf(
+        req,
+        service,
+        { expectedVersion: 1, idempotencyKey, title: "Updated" },
+        shelfId
+      )
+    ).rejects.toThrow(
+      "The catalog shelf persistence boundary returned invalid structured data."
+    )
+  })
+
+  it("rejects completion of a different audit operation", async () => {
+    const { req } = requestWithProducts([])
+    let pendingOperation: Record<string, unknown> | null = null
+    const { service } = transactionService({
+      createCatalogAuthoringOperations: jest
+        .fn()
+        .mockImplementation(async (payloads: Record<string, unknown>[]) =>
+          payloads.map((payload) => {
+            pendingOperation = {
+              ...payload,
+              completed_at: null,
+              error_code: null,
+              error_detail: null,
+              id: operationId,
+            }
+            return pendingOperation
+          })
+        ),
+      retrieveCatalogShelf: jest.fn().mockResolvedValue(shelfRecord()),
+      updateCatalogAuthoringOperations: jest
+        .fn()
+        .mockImplementation(async (payloads: Record<string, unknown>[]) =>
+          payloads.map((payload) => ({
+            ...pendingOperation,
+            ...payload,
+            id: "catop_other",
+          }))
+        ),
+      updateCatalogShelves: jest
+        .fn()
+        .mockResolvedValue([shelfRecord({ version: 2 })]),
+    })
+
+    await expect(
+      upsertShelf(
+        req,
+        service,
+        { expectedVersion: 1, idempotencyKey, title: "Updated" },
+        shelfId
+      )
+    ).rejects.toThrow(
+      "The catalog shelf persistence boundary returned invalid structured data."
+    )
+  })
+
   it("replays an identical completed command without a second write", async () => {
     const { req } = requestWithProducts([])
     const completed = {
@@ -347,14 +581,21 @@ describe("catalog shelf authoring", () => {
       aggregate_id: shelfId,
       command: "catalog.shelf.upsert",
       expected_version: 1,
+      completed_at: new Date("2026-08-02T03:30:00.000Z"),
+      error_code: null,
+      error_detail: null,
       id: operationId,
       idempotency_key: idempotencyKey,
+      metadata: {},
       request_sha256: "placeholder",
       result: { created: false, shelfId, version: 2 },
       status: "succeeded",
     }
     const first = transactionService({
-      retrieveCatalogShelf: jest.fn().mockResolvedValue(shelfRecord()),
+      retrieveCatalogShelf: jest
+        .fn()
+        .mockResolvedValueOnce(shelfRecord())
+        .mockResolvedValueOnce(shelfRecord({ title: "Updated", version: 2 })),
       updateCatalogShelves: jest
         .fn()
         .mockResolvedValue([shelfRecord({ title: "Updated", version: 2 })]),

@@ -7,6 +7,7 @@ import {
   catalogShelfModeValues,
   serializeCatalogShelf,
 } from "@/modules/catalog/serializers"
+import { readAdminCatalogShelfPage } from "@/lib/catalog/shelf-persistence-contracts"
 import type { CatalogService } from "../utils"
 import {
   listAndCountCatalogShelves,
@@ -28,7 +29,7 @@ const shelfListQuerySchema = z.object({
     .enum(["true", "false"])
     .transform((value) => value === "true")
     .optional(),
-  limit: z.coerce.number().int().min(1).max(500).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).optional(),
   archived: z.enum(["active", "archived", "all"]).default("active"),
 })
@@ -72,14 +73,13 @@ export const GET = async (
 
   const take = limit ?? 100
   const skip = offset ?? 0
-  const [shelves, count] = await listAndCountCatalogShelves(
-    catalogService,
-    filters,
-    {
+  const { count, records: shelves } = readAdminCatalogShelfPage(
+    await listAndCountCatalogShelves(catalogService, filters, {
       skip,
       take,
       order: { ribbon_priority: "ASC", created_at: "DESC" },
-    }
+    }),
+    take
   )
   const productsByShelfId = await loadShelfProductsByShelfId(
     catalogService,

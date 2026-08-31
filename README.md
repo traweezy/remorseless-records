@@ -1504,6 +1504,15 @@ transitions require exact identities, versions, content lifecycle, safe rich
 text/media, and command hashes. A malformed service response therefore cannot
 become a successful save, an unsafe replay, or a plausible default in Admin.
 
+Admin Merchandising shelves apply the same fail-closed contract to counted
+pages, shelf rows, Product memberships, Product-profile ownership, mutations,
+and command-audit records. A save replaces and reads back the exact membership
+set inside the serializable shelf transaction; create, edit, archive, restore,
+and replay responses must retain the requested shelf identity and next version.
+The list contract is capped at 100 shelves and 200 memberships per shelf so a
+malformed or oversized persistence response cannot become an unbounded Admin
+relationship expansion.
+
 Physical media deletion is deliberately unavailable. The displayed 30-day
 date is only the earliest future review point; no job or route automatically
 deletes the catalog row or File Module object. A future audited purge also

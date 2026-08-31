@@ -3034,6 +3034,42 @@ is 2,388,451 gzip bytes. The production audit retains only the three documented
 ignored moderate findings; Trivy reports zero high/critical dependency or
 secret findings.
 
+The thirteenth post-migration boundary tranche closes the Admin Merchandising
+shelf persistence family. Counted pages, individual shelves, Product
+memberships, and Product-profile ownership now require canonical identities,
+bounded row counts, coherent schedules and lifecycle state, unique
+relationships, and safe bounded metadata before serialization. The Admin list
+accepts at most 100 shelves and the service read remains bounded to 200
+memberships per shelf.
+
+Create and update verify every acknowledged shelf field and next version.
+Membership changes validate Product/profile ownership inside the serializable
+transaction, verify the exact create result, and read back the exact final set.
+Archive and restore verify both the mutation acknowledgement and retained
+lifecycle state. Pending-to-succeeded audit transitions require the same exact
+operation identity, actor, aggregate, expected version, idempotency key,
+request SHA-256, result, and terminal timestamp; replays must still match the
+recorded shelf version and archive state. Handle allocation is deterministic
+and fails after 50 collisions rather than introducing a time-derived value.
+
+Thirty-eight focused contract, route, transaction, replay, lifecycle,
+membership, profile, mutation, and cost-bound tests cover valid authoring and
+adversarial persistence acknowledgements.
+
+Complete local acceptance passes the 1,195-file repository QA gate, all 245
+Backend suites and 1,729 tests, the production Backend/Admin build, frozen
+packaged install with Medusa 2.18.0, and the Admin bundle budget. Backend
+coverage remains 91.35% statements, 84.60% branches, 95.52% functions, and
+91.39% lines. The Admin main bundle is 1,807,790 gzip bytes and total JavaScript
+is 2,388,187 gzip bytes. The production audit retains only the three documented
+ignored moderate findings; Trivy reports zero high/critical dependency or
+secret findings.
+
+The preceding content tranche also exposed one generic-key false positive for
+a synthetic UUID shared by two content-authoring tests. The Gitleaks exception
+is limited to that exact value and those exact test paths; the pinned 8.30.1
+full-history scan still inspects all 885 commits and reports zero findings.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace
