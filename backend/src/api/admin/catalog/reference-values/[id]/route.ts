@@ -40,7 +40,7 @@ export const GET = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const value = readCatalogReferenceValue(
     await catalogService.retrieveCatalogReferenceValue(id),
     id
@@ -78,7 +78,7 @@ export const PUT = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const existing = readCatalogReferenceValue(
     await catalogService.retrieveCatalogReferenceValue(id),
     id

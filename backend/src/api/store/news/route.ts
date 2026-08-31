@@ -27,7 +27,7 @@ export const GET = async (
     )
   }
   const { limit, offset } = parsed.data
-  const newsService = req.scope.resolve("news") as NewsService
+  const newsService = req.scope.resolve<NewsService>("news")
 
   const take = limit ?? 20
   const skip = offset ?? 0

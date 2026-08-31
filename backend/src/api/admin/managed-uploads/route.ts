@@ -19,10 +19,10 @@ export const POST = async (
 ): Promise<void> => {
   const logger = (() => {
     try {
-      return req.scope.resolve("logger") as {
+      return req.scope.resolve<{
         info?: (message: string) => void
         warn?: (message: string) => void
-      }
+      }>("logger")
     } catch {
       return null
     }

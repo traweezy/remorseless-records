@@ -97,7 +97,7 @@ export const upsertAllProductDocuments = async ({
       options?: Record<string, unknown>
     ) => Promise<EnqueuedTask>
   }>(container)
-  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
   const productFields = await meilisearch.getFieldsForType(PRODUCTS_INDEX)
   const index = meilisearch.getIndex(indexKey)
   let offset = 0

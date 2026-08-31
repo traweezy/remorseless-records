@@ -26,9 +26,8 @@ export const GET = async (
       "Discography entry id is required"
     )
   }
-  const discographyService = req.scope.resolve(
-    "discography"
-  ) as DiscographyService
+  const discographyService =
+    req.scope.resolve<DiscographyService>("discography")
   const entry = readAdminDiscographyEntry(
     await discographyService.retrieveDiscographyEntry(id),
     id
@@ -41,9 +40,9 @@ export const GET = async (
     )
   }
 
-  const productService = req.scope.resolve(
+  const productService = req.scope.resolve<DiscographyProductReader>(
     Modules.PRODUCT
-  ) as DiscographyProductReader
+  )
   const productsById = await loadDiscographyProductLinks(productService, [
     entry,
   ])
@@ -82,7 +81,7 @@ export const PUT = async (
     )
   }
 
-  const service = req.scope.resolve("discography") as DiscographyService
+  const service = req.scope.resolve<DiscographyService>("discography")
   const result = await updateManualDiscographyEntry(
     req,
     service,

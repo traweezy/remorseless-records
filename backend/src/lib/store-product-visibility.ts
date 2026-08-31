@@ -180,9 +180,9 @@ export const resolveStoreProductVisibility = (
   }
 
   return {
-    query: req.scope.resolve(
+    query: req.scope.resolve<StoreProductQueryGraph>(
       ContainerRegistrationKeys.QUERY
-    ) as StoreProductQueryGraph,
+    ),
     salesChannelIds,
   }
 }

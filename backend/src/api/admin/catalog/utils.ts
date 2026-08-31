@@ -74,7 +74,7 @@ export const resolveUniqueSlug = async (
 }
 
 const getQuery = (req: MedusaRequest): QueryGraph =>
-  req.scope.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  req.scope.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
 
 export const assertQueryEntityExists = async (
   req: MedusaRequest,

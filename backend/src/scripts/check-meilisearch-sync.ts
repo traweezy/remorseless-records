@@ -209,12 +209,12 @@ export const loadProductIndexIdentity = async ({
   const meilisearch = resolveMeilisearchService<{
     getIndex: (requestedIndexKey: string) => ProductIndex
   }>(container)
-  const productModuleService = container.resolve(Modules.PRODUCT) as {
+  const productModuleService = container.resolve<{
     listAndCountProducts: (
       filters?: Record<string, unknown>,
       config?: Record<string, unknown>
     ) => Promise<[Array<{ id: string }>, number]>
-  }
+  }>(Modules.PRODUCT)
   const [{ ids: publishedIds }, documents] = await Promise.all([
     loadPublishedProductIds(productModuleService),
     loadAllDocuments(meilisearch.getIndex(indexKey)),
@@ -239,12 +239,12 @@ export const validateProductIndex = async ({
     getIndex: (requestedIndexKey: string) => ProductIndex
   }>(container)
 
-  const productModuleService = container.resolve(Modules.PRODUCT) as {
+  const productModuleService = container.resolve<{
     listAndCountProducts: (
       filters?: Record<string, unknown>,
       config?: Record<string, unknown>
     ) => Promise<[Array<{ id: string }>, number]>
-  }
+  }>(Modules.PRODUCT)
 
   const { ids: publishedIds, total: publishedProductCount } =
     await loadPublishedProductIds(productModuleService)

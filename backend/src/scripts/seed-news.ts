@@ -128,7 +128,7 @@ export default async function seedNewsScript({
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const newsService = container.resolve("news") as NewsService
+  const newsService = container.resolve<NewsService>("news")
 
   const [, count] = await newsService.listAndCountNewsEntries({}, { take: 1 })
 

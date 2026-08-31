@@ -86,7 +86,7 @@ const beginCatalogProductCreationStep = createStep(
       CreationOperationCompensation | null
     >
   > => {
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     const operation = await beginCatalogProductCreation(catalogService, input)
     return new StepResponse(
       operation,
@@ -97,7 +97,7 @@ const beginCatalogProductCreationStep = createStep(
     if (!compensation) {
       return
     }
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     await compensateCatalogProductCreation(
       catalogService,
       compensation.operationId
@@ -142,7 +142,7 @@ const mutateCatalogProductVariantProfilesStep = createStep(
       CatalogProductVariantBatchResult
     >
   > => {
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     const result = await mutateCatalogProductVariantProfiles(
       catalogService,
       input.command,
@@ -156,7 +156,7 @@ const mutateCatalogProductVariantProfilesStep = createStep(
     if (!result) {
       return
     }
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     await compensateCatalogProductVariantProfiles(catalogService, result)
   }
 )
@@ -225,7 +225,7 @@ const completeCatalogProductCreationStep = createStep(
       profileId: input.profile.profileId,
       variantIds: input.variants.variantIds,
     }
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     await completeCatalogProductCreation(
       catalogService,
       input.operation.operationId,

@@ -56,7 +56,7 @@ export const GET = async (
   if (archiveFilter === "active") filters.archived_at = null
   if (archiveFilter === "archived") filters.archived_at = { $ne: null }
 
-  const newsService = req.scope.resolve("news") as NewsService
+  const newsService = req.scope.resolve<NewsService>("news")
   const result = await newsService.listAndCountNewsEntries(filters, {
     skip,
     take,
@@ -83,7 +83,7 @@ export const POST = async (
       "Invalid news payload."
     )
   }
-  const newsService = req.scope.resolve("news") as NewsService
+  const newsService = req.scope.resolve<NewsService>("news")
   const result = await createNewsEntry(req, newsService, parsed.data)
   res.status(result.replayed ? 200 : 201).json(result)
 }

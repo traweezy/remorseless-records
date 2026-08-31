@@ -565,10 +565,10 @@ const restoreRemoteInventory = async (
   productId: string,
   snapshot: BundleInventoryReconciliationSnapshot
 ): Promise<void> => {
-  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
-  const remoteLink = container.resolve(
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
+  const remoteLink = container.resolve<RemoteLink>(
     ContainerRegistrationKeys.REMOTE_LINK
-  ) as RemoteLink
+  )
   const current = flattenActualInventory(
     await readBundleVariants(query, productId)
   )
@@ -615,7 +615,7 @@ export const restoreBundleInventoryReconciliation = async (
   productId: string,
   snapshot: BundleInventoryReconciliationSnapshot
 ): Promise<void> => {
-  const catalogService = container.resolve("catalog") as CatalogService
+  const catalogService = container.resolve<CatalogService>("catalog")
   await restoreRemoteInventory(container, productId, snapshot)
   await restoreProvenance(catalogService, snapshot.provenanceBefore)
 }
@@ -628,7 +628,7 @@ export const reconcileComponentDerivedBundleInventory = async (
   plan: BundleVariantInventoryPlan[]
   snapshot: BundleInventoryReconciliationSnapshot
 }> => {
-  const catalogService = container.resolve("catalog") as CatalogService
+  const catalogService = container.resolve<CatalogService>("catalog")
   const profiles = readCatalogBundleProfiles(
     await catalogService.listCatalogBundleProfiles(
       { product_id: productId },
@@ -638,7 +638,7 @@ export const reconcileComponentDerivedBundleInventory = async (
   )
   const profile = profiles[0]
   const bundleVariants = await readBundleVariants(
-    container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph,
+    container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY),
     productId
   )
 
@@ -776,10 +776,10 @@ export const reconcileComponentDerivedBundleInventory = async (
         : [],
   }))
 
-  const remoteLink = container.resolve(
+  const remoteLink = container.resolve<RemoteLink>(
     ContainerRegistrationKeys.REMOTE_LINK
-  ) as RemoteLink
-  const logger = container.resolve(ContainerRegistrationKeys.LOGGER) as Logger
+  )
+  const logger = container.resolve<Logger>(ContainerRegistrationKeys.LOGGER)
   let changes = 0
   try {
     for (const link of linksToDismiss) {
@@ -801,7 +801,7 @@ export const reconcileComponentDerivedBundleInventory = async (
 
     const actualAfter = flattenActualInventory(
       await readBundleVariants(
-        container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph,
+        container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY),
         productId
       )
     )
@@ -835,7 +835,7 @@ export const syncComponentDerivedBundleInventory = async (
   container: MedusaContainer,
   productId: string
 ): Promise<BundleVariantInventoryPlan[]> => {
-  const catalogService = container.resolve("catalog") as CatalogService
+  const catalogService = container.resolve<CatalogService>("catalog")
   const profiles = readCatalogBundleProfiles(
     await catalogService.listCatalogBundleProfiles(
       { product_id: productId },

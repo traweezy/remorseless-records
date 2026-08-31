@@ -32,7 +32,7 @@ export const GET = async (
 ): Promise<void> => {
   const productId = productIdFromRequest(req)
   await assertProductExists(req, productId)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   res
     .status(200)
     .json(await loadCatalogProductMediaResponse(catalogService, productId))
@@ -86,7 +86,7 @@ export const PUT = async (
       requestSha256,
     },
   })
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   res
     .status(200)
     .json(await loadCatalogProductMediaResponse(catalogService, productId))

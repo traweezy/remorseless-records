@@ -52,7 +52,7 @@ const mutateBundleStep = createStep(
   ): Promise<
     StepResponse<CatalogBundleMutationResult, MutationCompensation | null>
   > => {
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     const result = await catalogService.mutateBundle(input)
     return new StepResponse(
       result,
@@ -69,7 +69,7 @@ const mutateBundleStep = createStep(
     if (!compensation) {
       return
     }
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     await catalogService.compensateBundleMutation(compensation)
   }
 )
@@ -142,7 +142,7 @@ const persistBundleOperationStep = createStep(
     { container }
   ): Promise<StepResponse<CatalogBundleMutationResult>> => {
     if (!mutation.replayed) {
-      const catalogService = container.resolve("catalog") as CatalogService
+      const catalogService = container.resolve<CatalogService>("catalog")
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,
         mutation.result

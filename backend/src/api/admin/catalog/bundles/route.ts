@@ -35,7 +35,7 @@ export const GET = async (
 ): Promise<void> => {
   const { productId, bundleType, active, limit, offset } =
     bundleListQuerySchema.parse(req.query)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const take = limit ?? 100
   const skip = offset ?? 0
   const filters: Record<string, unknown> = {}
@@ -87,7 +87,7 @@ export const POST = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const { productId, ...input } = parsed.data
   const result = await upsertBundleForProduct(
     req,

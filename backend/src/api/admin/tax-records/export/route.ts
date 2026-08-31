@@ -93,9 +93,9 @@ export const GET = async (
   } catch (error) {
     const problem = taxReportProblem({ error, operation: "export" })
     if (problem.status === 500) {
-      const logger = req.scope.resolve("logger") as {
+      const logger = req.scope.resolve<{
         error?: (message: string) => void
-      }
+      }>("logger")
       logger.error?.(
         `[tax-records] Export generation failed (${taxReportErrorName(error)}).`
       )

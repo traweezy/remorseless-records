@@ -48,16 +48,10 @@ import { loadProductMediaResponse } from "./product-media-read"
 type CatalogService = InstanceType<typeof CatalogModuleService>
 type DynamicRecord = Record<string, unknown>
 
-type QueryGraph = {
-  graph: (query: {
-    entity: string
-    fields: string[]
-    filters: Record<string, unknown>
-  }) => Promise<{ data: DynamicRecord[] }>
-}
+type QueryGraph = Parameters<typeof getTotalVariantAvailability>[0]
 
 type ServiceContainer = {
-  resolve: (key: string) => unknown
+  resolve: <T = unknown>(key: string) => T
 }
 
 export type ProductAuthoringPrice = {
@@ -605,10 +599,9 @@ const loadAvailability = async (
     }
   }
   try {
-    const availability = await getTotalVariantAvailability(
-      query as Parameters<typeof getTotalVariantAvailability>[0],
-      { variant_ids: variantIds }
-    )
+    const availability = await getTotalVariantAvailability(query, {
+      variant_ids: variantIds,
+    })
     return {
       availabilityByVariantId: Object.fromEntries(
         variantIds.map((variantId) => [
@@ -632,8 +625,8 @@ export const loadProductAuthoringView = async (
   container: ServiceContainer,
   productId: string
 ): Promise<ProductAuthoringView> => {
-  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
-  const catalogService = container.resolve("catalog") as CatalogService
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
+  const catalogService = container.resolve<CatalogService>("catalog")
   const { data } = await query.graph({
     entity: "product",
     fields: productFields,
@@ -658,9 +651,9 @@ export const loadProductAuthoringView = async (
       loadAvailability(query, variantIds),
     ])
   if (!availabilityResult.availabilityLoaded) {
-    const logger = container.resolve(ContainerRegistrationKeys.LOGGER) as {
+    const logger = container.resolve<{
       warn: (message: string) => void
-    }
+    }>(ContainerRegistrationKeys.LOGGER)
     logger.warn(
       `[catalog-authoring-view] Inventory availability is unavailable for ${productId}.`
     )

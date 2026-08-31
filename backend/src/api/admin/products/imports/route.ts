@@ -524,7 +524,7 @@ const normalizeCommaDelimitedCsv = async (
     )
   }
 
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  const query = req.scope.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
   const existingProductRows: ReturnType<typeof readProductLookupRows> = []
   const seenProductIds = new Set<string>()
   const seenProductHandles = new Set<string>()
@@ -812,11 +812,11 @@ export const POST = async (
   const logger =
     (() => {
       try {
-        return req.scope.resolve("logger") as {
+        return req.scope.resolve<{
           info?: (...args: unknown[]) => void
           warn?: (...args: unknown[]) => void
           error?: (...args: unknown[]) => void
-        }
+        }>("logger")
       } catch {
         return console
       }
@@ -840,7 +840,7 @@ export const POST = async (
 
   const fileModuleService = (() => {
     try {
-      return req.scope.resolve(Modules.FILE) as {
+      return req.scope.resolve<{
         createFiles: (input: {
           filename: string
           content: string
@@ -848,7 +848,7 @@ export const POST = async (
         }) => Promise<unknown>
         getAsBuffer: (id: string) => Promise<unknown>
         deleteFiles: (id: string | string[]) => Promise<void>
-      }
+      }>(Modules.FILE)
     } catch {
       logger.warn?.("[admin][products/imports] file module resolution failed.")
       return null

@@ -36,7 +36,7 @@ const mutateVariantProfileStep = createStep(
       MutationCompensation | null
     >
   > => {
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     const result = await mutateCatalogVariantProfile(catalogService, input)
     return new StepResponse(
       result,
@@ -54,7 +54,7 @@ const mutateVariantProfileStep = createStep(
     if (!compensation) {
       return
     }
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     await compensateCatalogVariantProfileMutation(catalogService, compensation)
   }
 )
@@ -86,7 +86,7 @@ const persistVariantProfileOperationStep = createStep(
     { container }
   ): Promise<StepResponse<CatalogVariantProfileMutationResult>> => {
     if (!mutation.replayed) {
-      const catalogService = container.resolve("catalog") as CatalogService
+      const catalogService = container.resolve<CatalogService>("catalog")
       readProfileOperationMutation(
         await catalogService.completeCatalogAuthoringOperation(
           mutation.operationId,

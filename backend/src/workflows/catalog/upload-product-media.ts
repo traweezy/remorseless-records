@@ -33,7 +33,7 @@ const uploadCatalogMediaStep = createStep(
       Awaited<ReturnType<typeof performCatalogMediaUpload>>["compensation"]
     >
   > => {
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     const fileService = container.resolve<FileTypes.IFileModuleService>(
       Modules.FILE
     )
@@ -55,7 +55,7 @@ const uploadCatalogMediaStep = createStep(
     if (!compensation) {
       return
     }
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     const fileService = container.resolve<FileTypes.IFileModuleService>(
       Modules.FILE
     )
@@ -74,7 +74,7 @@ const completeCatalogMediaUploadStep = createStep(
     { container }
   ): Promise<StepResponse<CatalogMediaUploadMutationResult>> => {
     if (!mutation.replayed) {
-      const catalogService = container.resolve("catalog") as CatalogService
+      const catalogService = container.resolve<CatalogService>("catalog")
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,
         { files: mutation.files }

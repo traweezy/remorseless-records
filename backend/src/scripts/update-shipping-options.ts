@@ -49,11 +49,11 @@ export default async function updateShippingOptions({
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const link = container.resolve(ContainerRegistrationKeys.LINK) as {
+  const link = container.resolve<{
     create: (data: Record<string, unknown>) => Promise<unknown>
-  }
-  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
-  const fulfillmentModuleService = container.resolve(Modules.FULFILLMENT) as {
+  }>(ContainerRegistrationKeys.LINK)
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
+  const fulfillmentModuleService = container.resolve<{
     listShippingProfiles: (
       filters?: Record<string, unknown>
     ) => Promise<Array<{ id: string }>>
@@ -70,7 +70,7 @@ export default async function updateShippingOptions({
       id: string,
       data: Record<string, unknown>
     ) => Promise<unknown>
-  }
+  }>(Modules.FULFILLMENT)
 
   const stockLocationName =
     process.env.SHIPPING_STOCK_LOCATION_NAME?.trim() ||

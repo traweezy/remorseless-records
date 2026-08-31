@@ -48,7 +48,7 @@ export const GET = async (
     offset,
     archived,
   } = shelfListQuerySchema.parse(req.query)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const filters: Record<string, unknown> = {}
   if (handle) {
     filters.handle = handle
@@ -110,7 +110,7 @@ export const POST = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const result = await upsertShelf(req, catalogService, parsed.data)
   await emitCatalogShelfChanged(req, result.body.shelf.id)
   res.status(result.status).json(result.body)

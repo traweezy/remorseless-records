@@ -32,7 +32,7 @@ const mutateProductMediaStep = createStep(
   ): Promise<
     StepResponse<CatalogProductMediaMutationResult, MutationCompensation | null>
   > => {
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     const result = await mutateCatalogProductMedia(catalogService, input)
     return new StepResponse(
       result,
@@ -50,7 +50,7 @@ const mutateProductMediaStep = createStep(
     if (!compensation) {
       return
     }
-    const catalogService = container.resolve("catalog") as CatalogService
+    const catalogService = container.resolve<CatalogService>("catalog")
     await compensateCatalogProductMediaMutation(catalogService, compensation)
   }
 )
@@ -80,7 +80,7 @@ const persistProductMediaOperationStep = createStep(
     { container }
   ): Promise<StepResponse<CatalogProductMediaMutationResult>> => {
     if (!mutation.replayed) {
-      const catalogService = container.resolve("catalog") as CatalogService
+      const catalogService = container.resolve<CatalogService>("catalog")
       await catalogService.completeCatalogAuthoringOperation(
         mutation.operationId,
         mutation.result

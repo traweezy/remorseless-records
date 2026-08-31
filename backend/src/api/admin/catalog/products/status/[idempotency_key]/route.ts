@@ -28,7 +28,7 @@ export const GET = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const state = await inspectCatalogProductCreation(
     catalogService,
     actorIdFromRequest(req),

@@ -20,7 +20,7 @@ type DefaultTransformer = (
 type TransformerOptions = {
   container?: {
     hasRegistration?: (key: string) => boolean
-    resolve: (key: string) => unknown
+    resolve: <T = unknown>(key: string) => T
   }
   [key: string]: unknown
 }
@@ -1136,7 +1136,7 @@ const loadCatalogFacts = async (
   }
 
   try {
-    const catalogService = container.resolve("catalog") as DynamicRecord
+    const catalogService = container.resolve<DynamicRecord>("catalog")
     const profiles = await safeList(
       catalogService,
       "listCatalogProductProfiles",
@@ -1285,9 +1285,9 @@ const loadVariantAvailability = async (
   }
 
   try {
-    const query = container.resolve(
-      ContainerRegistrationKeys.QUERY
-    ) as Parameters<typeof getTotalVariantAvailability>[0]
+    const query = container.resolve<
+      Parameters<typeof getTotalVariantAvailability>[0]
+    >(ContainerRegistrationKeys.QUERY)
     const availability = await getTotalVariantAvailability(query, {
       variant_ids: variantIds,
     })

@@ -18,7 +18,7 @@ export const POST = async (
       "A news post, expected version, and idempotency key are required."
     )
   }
-  const service = req.scope.resolve("news") as NewsService
+  const service = req.scope.resolve<NewsService>("news")
   const result = await setNewsEntryArchived(req, service, id, parsed.data, true)
   res.status(200).json(result)
 }

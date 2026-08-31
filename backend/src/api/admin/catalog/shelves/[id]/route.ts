@@ -28,7 +28,7 @@ export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const shelf = await resolveShelf(catalogService, getShelfId(req))
   res.status(200).json(await serializeShelfResponse(catalogService, shelf))
 }
@@ -45,7 +45,7 @@ export const PUT = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const result = await upsertShelf(
     req,
     catalogService,
@@ -67,7 +67,7 @@ export const DELETE = async (
       "Invalid catalog shelf archive payload"
     )
   }
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const shelfId = getShelfId(req)
   await setShelfArchived(req, catalogService, shelfId, parsed.data, true)
   await emitCatalogShelfChanged(req, shelfId)

@@ -51,7 +51,7 @@ export const GET = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const artist = readCatalogArtist(
     await catalogService.retrieveCatalogArtist(id),
     id
@@ -89,7 +89,7 @@ export const PUT = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const existing = readCatalogArtist(
     await catalogService.retrieveCatalogArtist(id),
     id

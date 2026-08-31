@@ -53,7 +53,7 @@ export const GET = async (
   const { q, limit, offset, order, direction } = listQuerySchema.parse(
     req.query
   )
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const take = limit ?? 100
   const skip = offset ?? 0
   const sortField = order ?? "name"
@@ -106,7 +106,7 @@ export const POST = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const baseSlug = slugify(parsed.data.slug ?? parsed.data.name, "artist")
   const slug = await resolveUniqueSlug(catalogService, baseSlug)
   const payload = {

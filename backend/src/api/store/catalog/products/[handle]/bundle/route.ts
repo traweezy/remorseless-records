@@ -98,7 +98,7 @@ export const GET = async (
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "Product not found")
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const profiles = readCatalogStoreBundleProfiles(
     await catalogService.listCatalogBundleProfiles({
       product_id: productId,

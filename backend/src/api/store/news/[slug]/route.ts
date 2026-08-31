@@ -22,7 +22,7 @@ export const GET = async (
     throw new MedusaError(MedusaError.Types.INVALID_DATA, "Invalid news slug.")
   }
   const { slug } = parsed.data
-  const newsService = req.scope.resolve("news") as NewsService
+  const newsService = req.scope.resolve<NewsService>("news")
 
   const now = new Date()
   const entries = await newsService.listNewsEntries(

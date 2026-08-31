@@ -92,9 +92,9 @@ export const POST = async (
   }
 
   try {
-    const query = req.scope.resolve(
+    const query = req.scope.resolve<CheckoutStatusQueryGraph>(
       ContainerRegistrationKeys.QUERY
-    ) as CheckoutStatusQueryGraph
+    )
     const status = await resolveInternalCheckoutStatus(
       query,
       parsed.data.cart_id

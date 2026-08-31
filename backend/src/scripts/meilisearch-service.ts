@@ -14,5 +14,5 @@ export const resolveMeilisearchService = <T>(
     )
   }
 
-  return container.resolve(MEILISEARCH_MODULE) as T
+  return container.resolve<T>(MEILISEARCH_MODULE)
 }

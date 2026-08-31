@@ -34,9 +34,8 @@ export const GET = async (
     )
   }
   const { limit, offset } = parsed.data
-  const discographyService = req.scope.resolve(
-    "discography"
-  ) as DiscographyService
+  const discographyService =
+    req.scope.resolve<DiscographyService>("discography")
   const { query, salesChannelIds } = resolveStoreProductVisibility(req)
 
   const take = limit ?? 200

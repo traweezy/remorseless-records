@@ -30,10 +30,10 @@ export const POST = async (
   const transactionId = readProductImportFileKey(req.params.transaction_id)
   const logger = req.scope.resolve<Logger>("logger")
   const locking = req.scope.resolve<ILockingModule>(Modules.LOCKING)
-  const fileModuleService = req.scope.resolve(Modules.FILE) as {
+  const fileModuleService = req.scope.resolve<{
     deleteFiles: (id: string | string[]) => Promise<void>
     getAsBuffer: (id: string) => Promise<unknown>
-  }
+  }>(Modules.FILE)
 
   try {
     const summary = await locking.execute<ConfirmationSummary>(

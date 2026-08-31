@@ -19,7 +19,7 @@ export const POST = async (
       "A discography entry, expected version, and idempotency key are required."
     )
   }
-  const service = req.scope.resolve("discography") as DiscographyService
+  const service = req.scope.resolve<DiscographyService>("discography")
   const result = await setDiscographyEntryArchived(
     req,
     service,

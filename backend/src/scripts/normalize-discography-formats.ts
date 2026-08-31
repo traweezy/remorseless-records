@@ -85,9 +85,8 @@ export default async function normalizeDiscographyFormatsScript({
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const discographyService = container.resolve(
-    "discography"
-  ) as DiscographyService
+  const discographyService =
+    container.resolve<DiscographyService>("discography")
 
   const entries = await listAll<DiscographyEntryRecord>((skip, take) =>
     discographyService.listAndCountDiscographyEntries({}, { skip, take })

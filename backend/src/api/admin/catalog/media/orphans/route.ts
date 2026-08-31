@@ -38,7 +38,7 @@ export const GET = async (
   res: MedusaResponse
 ): Promise<void> => {
   const startedAt = performance.now()
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const query = parseQuery(req.query)
   const page = await catalogService.listOrphanCatalogMediaAssets({
     ...(query.lifecycleStatus

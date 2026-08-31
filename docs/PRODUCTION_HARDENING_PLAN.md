@@ -3846,6 +3846,28 @@ transactional files / 313 tests at 83.35/75.98/85.81/83.43. This tranche
 changes server-side validation and response projection only; it does not alter
 rendered layout or interaction behavior.
 
+## Service-container resolution hardening
+
+Backend workflows, routes, subscribers, catalog operations, maintenance
+scripts, and Meilisearch transforms now declare their expected service port at
+the Medusa/Awilix resolver call. Catalog, news, discography, query, logger,
+file, fulfillment, store, event-bus, remote-link, and purpose-built narrow
+service contracts no longer resolve an unknown value and widen it afterward.
+The small transformer container ports expose the same typed resolver contract
+as Medusa's pinned container while retaining optional registration detection.
+
+Repository QA now scans every production Backend TypeScript file and fails if
+a container or request-scope lookup is followed by a type assertion. This pins
+the declaration at the dependency-injection boundary and prevents a future
+refactor from silently restoring post-resolution widening. Production runtime
+behavior is unchanged; the improvement is compile-time boundary ownership and
+an explicit regression gate.
+
+Complete local acceptance passes the 1,231-file repository QA gate, including
+the new 440-file production resolver scan, all 266 Backend suites / 2,018 tests
+at 91.44/84.81/95.62/91.46 coverage, strict TypeScript, and the complete
+Backend production build with its frozen packaged-server dependency install.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,

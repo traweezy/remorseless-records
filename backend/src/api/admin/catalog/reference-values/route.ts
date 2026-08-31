@@ -48,7 +48,7 @@ export const GET = async (
 ): Promise<void> => {
   const { kind, q, active, limit, offset, order, direction } =
     listQuerySchema.parse(req.query)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const take = limit ?? 100
   const skip = offset ?? 0
   const sortField = order ?? "rank"
@@ -100,7 +100,7 @@ export const POST = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const value =
     toNullableString(parsed.data.value) ??
     slugify(parsed.data.label, parsed.data.kind)

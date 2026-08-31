@@ -28,7 +28,7 @@ export const GET = async (
 ): Promise<void> => {
   const variantId = variantIdFromRequest(req)
   await assertVariantExists(req, variantId)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const profile = await resolveCatalogVariantProfile(catalogService, variantId)
   res.status(200).json(serializeCatalogVariantProfileResponse(profile))
 }
@@ -47,7 +47,7 @@ export const PUT = async (
   }
 
   await assertVariantExists(req, variantId)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const actorId =
     (
       req as MedusaRequest & {

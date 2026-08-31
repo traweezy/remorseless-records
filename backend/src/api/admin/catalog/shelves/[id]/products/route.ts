@@ -34,7 +34,7 @@ export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const shelf = await resolveShelf(catalogService, getShelfId(req))
   res.status(200).json({
     shelfId: shelf.id,
@@ -54,7 +54,7 @@ export const PUT = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const shelf = await resolveShelf(catalogService, getShelfId(req))
   const result = await upsertShelf(req, catalogService, parsed.data, shelf.id)
   await emitCatalogShelfChanged(req, shelf.id)

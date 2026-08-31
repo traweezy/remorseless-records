@@ -8,9 +8,7 @@ export const emitCatalogShelfChanged = async (
   req: MedusaRequest,
   shelfId: string
 ): Promise<void> => {
-  const eventBus = req.scope.resolve(
-    Modules.EVENT_BUS
-  ) as IEventBusModuleService
+  const eventBus = req.scope.resolve<IEventBusModuleService>(Modules.EVENT_BUS)
   await observeOperation({ domain: "queue", operation: "publish" }, () =>
     eventBus.emit({
       name: "catalog.shelf.changed",

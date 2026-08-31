@@ -11,14 +11,14 @@ export default async function importProductsFromFile({
 }: ExecArgs): Promise<void> {
   console.log("[import-products] received args", args)
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const fileModuleService = container.resolve(Modules.FILE) as {
+  const fileModuleService = container.resolve<{
     createFiles: (file: {
       filename: string
       mimeType: string
       content: Buffer | string
     }) => Promise<{ id: string }>
     getAsBuffer: (id: string) => Promise<Buffer>
-  }
+  }>(Modules.FILE)
 
   const rawArgs = Array.isArray(args) ? args : []
   const sanitizedArgs = rawArgs.filter((arg) => {

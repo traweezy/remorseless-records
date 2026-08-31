@@ -151,11 +151,11 @@ export const resolveCatalogProductCreateContext = async (
   container: MedusaContainer,
   input: CatalogProductCreateCommandInput
 ): Promise<CatalogProductCreateContext> => {
-  const fulfillmentService = container.resolve(
+  const fulfillmentService = container.resolve<FulfillmentService>(
     Modules.FULFILLMENT
-  ) as FulfillmentService
-  const storeService = container.resolve(Modules.STORE) as StoreService
-  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  )
+  const storeService = container.resolve<StoreService>(Modules.STORE)
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
   const stockLocationName =
     process.env.SHIPPING_STOCK_LOCATION_NAME?.trim() ||
     DEFAULT_STOCK_LOCATION_NAME
@@ -248,7 +248,7 @@ export const resolveCatalogCreatedProduct = async (
   products: ProductTypes.ProductDTO[]
 ): Promise<CatalogCreatedProduct> => {
   const productId = readCatalogCreatedProductId(products)
-  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
   const result = await query.graph({
     entity: "product",
     fields: ["id", "variants.id", "variants.metadata"],
@@ -450,7 +450,7 @@ export const resolveCatalogProductInventoryLevels = async (
   if (input.kind === "fixed_bundle") {
     return []
   }
-  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
   const variantIds = created.targets.map((target) => target.variantId)
   const result = await query.graph({
     entity: "product_variant_inventory_items",

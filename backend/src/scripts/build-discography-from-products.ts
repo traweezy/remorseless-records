@@ -207,11 +207,10 @@ export default async function buildDiscographyFromProducts({
     ...args,
     ...process.argv.slice(2),
   ])
-  const productService = container.resolve(Modules.PRODUCT) as ProductService
-  const catalogService = container.resolve("catalog") as CatalogService
-  const discographyService = container.resolve(
-    "discography"
-  ) as DiscographyService
+  const productService = container.resolve<ProductService>(Modules.PRODUCT)
+  const catalogService = container.resolve<CatalogService>("catalog")
+  const discographyService =
+    container.resolve<DiscographyService>("discography")
 
   const [
     products,
@@ -332,9 +331,9 @@ export default async function buildDiscographyFromProducts({
   const variantIds = publishedProducts.flatMap((product) =>
     (product.variants ?? []).map(({ id }) => id)
   )
-  const query = container.resolve(
-    ContainerRegistrationKeys.QUERY
-  ) as Parameters<typeof getTotalVariantAvailability>[0]
+  const query = container.resolve<
+    Parameters<typeof getTotalVariantAvailability>[0]
+  >(ContainerRegistrationKeys.QUERY)
   const inventoryByVariantId = variantIds.length
     ? await getTotalVariantAvailability(query, {
         variant_ids: variantIds,

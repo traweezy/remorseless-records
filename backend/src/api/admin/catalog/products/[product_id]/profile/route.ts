@@ -36,7 +36,7 @@ export const GET = async (
 ): Promise<void> => {
   const productId = productIdFromRequest(req)
   await assertProductExists(req, productId)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const profile = await resolveCatalogProductProfile(catalogService, productId)
   res
     .status(200)
@@ -77,7 +77,7 @@ export const PUT = async (
     },
   })
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const refreshed = await resolveCatalogProductProfile(
     catalogService,
     productId

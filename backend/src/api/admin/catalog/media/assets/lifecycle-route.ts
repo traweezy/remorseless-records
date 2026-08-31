@@ -59,7 +59,7 @@ export const runMediaLifecycleRoute = async (
       requestSha256,
     },
   })
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const asset = readCatalogMediaAsset(
     await catalogService.retrieveCatalogMediaAsset(assetId),
     assetId

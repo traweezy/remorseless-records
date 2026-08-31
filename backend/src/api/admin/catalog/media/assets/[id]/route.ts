@@ -21,7 +21,7 @@ export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const assetId = getAssetId(req)
   const asset = readCatalogMediaAsset(
     await catalogService.retrieveCatalogMediaAsset(assetId),

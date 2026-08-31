@@ -428,7 +428,7 @@ describe("buildSearchDocument", () => {
       {
         container: {
           hasRegistration: (key) => key !== "catalog",
-          resolve: () => query,
+          resolve: <T = unknown>() => query as T,
         },
       }
     )

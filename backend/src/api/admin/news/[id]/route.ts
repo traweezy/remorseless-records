@@ -23,7 +23,7 @@ export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> => {
-  const newsService = req.scope.resolve("news") as NewsService
+  const newsService = req.scope.resolve<NewsService>("news")
   const id = requireId(req)
   const entry = readAdminNewsEntry(await newsService.retrieveNewsEntry(id), id)
   if (!entry) {
@@ -43,7 +43,7 @@ export const PUT = async (
       "Invalid news payload."
     )
   }
-  const newsService = req.scope.resolve("news") as NewsService
+  const newsService = req.scope.resolve<NewsService>("news")
   const result = await updateNewsEntry(
     req,
     newsService,

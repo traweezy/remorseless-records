@@ -74,8 +74,8 @@ export default async function stripeOrderSyncHandler({
     throw new Error("Stripe order sync received an invalid order identity")
   }
 
-  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
-  const logger = container.resolve(ContainerRegistrationKeys.LOGGER) as Logger
+  const query = container.resolve<QueryGraph>(ContainerRegistrationKeys.QUERY)
+  const logger = container.resolve<Logger>(ContainerRegistrationKeys.LOGGER)
   const result = await query.graph({
     entity: "order",
     fields: [

@@ -62,12 +62,11 @@ export const GET = async (
     q,
     sourceMode,
   } = parsed.data
-  const discographyService = req.scope.resolve(
-    "discography"
-  ) as DiscographyService
-  const productService = req.scope.resolve(
+  const discographyService =
+    req.scope.resolve<DiscographyService>("discography")
+  const productService = req.scope.resolve<DiscographyProductReader>(
     Modules.PRODUCT
-  ) as DiscographyProductReader
+  )
 
   const take = limit ?? 25
   const skip = offset ?? 0
@@ -126,7 +125,7 @@ export const POST = async (
     )
   }
 
-  const service = req.scope.resolve("discography") as DiscographyService
+  const service = req.scope.resolve<DiscographyService>("discography")
   const result = await createManualDiscographyEntry(req, service, parsed.data)
   res.status(result.replayed ? 200 : 201).json(result)
 }

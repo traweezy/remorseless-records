@@ -24,7 +24,7 @@ export const GET = async (
   }
 
   await assertProductExists(req, productId)
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const bundle = await resolveBundleProfile(catalogService, productId)
   res.status(200).json(await serializeBundleResponse(catalogService, bundle))
 }
@@ -49,7 +49,7 @@ export const PUT = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const result = await upsertBundleForProduct(
     req,
     catalogService,
@@ -79,7 +79,7 @@ export const DELETE = async (
     )
   }
 
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   await deleteBundleForProduct(req, catalogService, productId, parsed.data)
   res.sendStatus(204)
 }

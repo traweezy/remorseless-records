@@ -27,7 +27,7 @@ export const POST = async (
       "Invalid catalog shelf restore payload"
     )
   }
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const shelfId = getShelfId(req)
   const result = await setShelfArchived(
     req,

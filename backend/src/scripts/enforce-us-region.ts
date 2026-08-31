@@ -51,12 +51,12 @@ export default async function enforceUsRegion({
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const regionModule = container.resolve(Modules.REGION) as {
+  const regionModule = container.resolve<{
     listRegions: (
       filters?: Record<string, unknown>,
       config?: { relations?: string[] }
     ) => Promise<RegionRecord[]>
-  }
+  }>(Modules.REGION)
   let paymentModule: null | {
     listPaymentProviders: (
       filters?: Record<string, unknown>
@@ -67,7 +67,7 @@ export default async function enforceUsRegion({
   } catch (error) {
     logger.warn(`[payment] Payment module unavailable: ${String(error)}`)
   }
-  const taxModule = container.resolve(Modules.TAX) as {
+  const taxModule = container.resolve<{
     listTaxProviders: (
       filters?: Record<string, unknown>
     ) => Promise<TaxProviderRecord[]>
@@ -82,11 +82,11 @@ export default async function enforceUsRegion({
       id: string
       provider_id?: string | null
     }) => Promise<unknown>
-  }
-  const storeModule = container.resolve(Modules.STORE) as {
+  }>(Modules.TAX)
+  const storeModule = container.resolve<{
     listStores: (filters?: Record<string, unknown>) => Promise<{ id: string }[]>
-  }
-  const fulfillmentModule = container.resolve(Modules.FULFILLMENT) as {
+  }>(Modules.STORE)
+  const fulfillmentModule = container.resolve<{
     listShippingOptions: (
       filters?: Record<string, unknown>,
       config?: { relations?: string[] }
@@ -101,7 +101,7 @@ export default async function enforceUsRegion({
       id: string,
       data: Record<string, unknown>
     ) => Promise<unknown>
-  }
+  }>(Modules.FULFILLMENT)
 
   const regions = await regionModule.listRegions(
     {},
