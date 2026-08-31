@@ -120,6 +120,16 @@ The safe GET boundary can make one additional attempt after a transport, 408,
 425, or 5xx failure, so a transient failure can consume two metered lookups.
 Quota rejection and other 4xx responses are never retried.
 
+TaxRate.io's response fields use two different units: `rate` and
+`rate_state`/`rate_county`/`rate_city`/`rate_special` are percentages, while
+`rate_pct` is a decimal fraction. The backend converts only `rate_pct`, checks
+the two total fields agree when both are present, and rejects malformed or
+contradictory totals. This prevents an exact 1% result or a fractional local
+component from being multiplied by 100 accidentally. TaxRate.io's
+[published response example](https://www.taxrate.io/) documents the same unit
+distinction with `rate: 9.5`, `rate_pct: 0.095`, and percentage-valued
+jurisdiction components.
+
 Stripe Tax quote creation and retrieval use one shared eight-second deadline
 across the calculation and any required line-item read. Nested SDK retries are
 disabled; the client schedules at most one transient retry and reuses the cart
@@ -175,6 +185,18 @@ per cache per minute. Those records never contain postal codes, fingerprints,
 cache keys, provider messages, or payloads. A capacity warning means the cache
 is still bounded and serving, but repeated warnings should trigger a review of
 traffic cardinality and the configured ceiling before any increase.
+
+Redis is treated as an untrusted persistence boundary. A cached TaxRate.io
+result must contain a 0–100 rate and either no jurisdiction or a complete,
+bounded jurisdiction projection. A cached Stripe quote must retain a future
+cache and provider expiry, canonical calculation ID and currency, boolean
+mode, no more than 100 safe line amounts, and an exact item-plus-shipping tax
+total. Invalid Stripe entries are deleted before a fresh quote is requested;
+invalid rate entries are ignored before a fresh lookup. Quota snapshots are
+accepted only when timestamp, source, integer usage, quota, remaining, and
+0–100 usage percentage are coherent. The same projection validates the
+database row before readiness or Admin display, so corrupt evidence cannot
+silently make a provider appear ready.
 
 ## Payment binding invariant
 

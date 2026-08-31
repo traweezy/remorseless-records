@@ -954,6 +954,12 @@ amount is sent to or received from Stripe as `2300`. Conversion belongs only in
 the Stripe adapter/provider. The browser must never multiply prices, and
 Medusa/PostgreSQL values must never be divided merely for display.
 
+Customer emails format major-unit amounts through the same strict numeric
+boundary. Explicit finite decimal values and Medusa value wrappers are
+accepted; coercive strings such as hexadecimal or values with trailing text,
+negative amounts, and invalid currency codes are rejected rather than shown
+to a customer.
+
 | Boundary                         | Example for USD 23.00 | Rule                                                          |
 | -------------------------------- | --------------------- | ------------------------------------------------------------- |
 | Medusa, PostgreSQL, search, UI   | `23`                  | Major units are the application-wide source of truth.         |

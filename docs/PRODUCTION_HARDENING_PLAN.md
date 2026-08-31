@@ -2866,6 +2866,34 @@ two intentional device/desktop skips across all 57 scheduled cases. The
 Storefront production build, client-secret scan, strict TypeScript, and Biome
 also pass locally.
 
+The seventh post-migration boundary tranche closes TaxRate.io response, tax
+cache, quota persistence, Admin readiness, and email money projection as one
+family. TaxRate.io's documented `rate` and jurisdiction component percentages
+remain percentages, while only fractional `rate_pct` is multiplied by 100;
+when both total fields are present they must agree. Numeric literals, response
+text, usage counts, ranges, and optional metadata are bounded before entering
+the tax line or quota snapshot. Redis rate and Stripe quote values are
+reconstructed through allowlisted contracts that validate jurisdiction,
+calculation identity, future expiry, mode, currency, safe integer amounts, no
+more than 100 references, and exact item-plus-shipping tax totals. Invalid
+Stripe cache entries are deleted before recalculation. Quota snapshots must
+remain coherent across provider response, Redis, database persistence,
+readiness, and Admin projection; malformed persisted rows fail closed instead
+of becoming provider availability through JavaScript coercion. Customer email
+money uses the shared strict decimal reader, rejecting hexadecimal, trailing
+text, non-finite, negative, and malformed wrapper values.
+
+Sixty-six focused provider, cache, quota, Admin switch, and email projection
+tests pass with strict TypeScript and Biome. Complete local acceptance passes
+the 1,173-file repository QA gate, all 230 Backend suites and 1,538 tests, the
+production Backend/Admin build, frozen packaged install, and Admin bundle
+budget. Backend coverage is 91.35% statements, 84.60% branches, 95.52%
+functions, and 91.39% lines. The Admin main bundle is 1,808,259 gzip bytes and
+total JavaScript is 2,389,091 gzip bytes. The production audit retains only
+the three documented ignored moderate findings; Trivy reports zero
+high/critical dependency, misconfiguration, or secret findings. The broader
+dated debt item remains open for unrelated provider and service families.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

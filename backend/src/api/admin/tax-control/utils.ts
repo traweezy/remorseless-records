@@ -238,7 +238,7 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
     ),
     evidenceSnapshot({ container, logger, service }),
   ])
-  const remaining = quota ? Number(quota.remaining) : null
+  const remaining = quota?.remaining ?? null
 
   return {
     audits: audits.map((audit) => ({
@@ -273,12 +273,12 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
         ),
         quota: quota
           ? {
-              observedAt: dateString(quota.observed_at),
-              quota: Number(quota.quota),
-              remaining: Number(quota.remaining),
+              observedAt: quota.observedAt,
+              quota: quota.quota,
+              remaining: quota.remaining,
               source: quota.source,
-              usage: Number(quota.usage),
-              usagePercent: Number(quota.usage_percent),
+              usage: quota.usage,
+              usagePercent: quota.usagePercent,
             }
           : null,
       },

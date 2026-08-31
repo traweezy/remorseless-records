@@ -8,6 +8,9 @@ describe("notification currency formatting", () => {
 
   it.each([
     ["not-an-amount", "usd"],
+    ["0x10", "usd"],
+    ["12 dollars", "usd"],
+    ["Infinity", "usd"],
     ["", "usd"],
     [-1, "usd"],
     [null, "usd"],

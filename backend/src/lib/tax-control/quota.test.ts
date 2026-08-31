@@ -4,7 +4,7 @@ jest.mock("../constants", () => ({
   REDIS_URL: "",
 }))
 
-import { persistTaxRateIoQuota } from "./quota"
+import { persistTaxRateIoQuota, syncTaxRateIoQuota } from "./quota"
 import type TaxControlModuleService from "../../modules/tax-control/service"
 
 const quota = (observedAt: string) => ({
@@ -22,6 +22,23 @@ const record = (observedAt: string) => ({
 })
 
 describe("TaxRate.io quota persistence", () => {
+  it("rejects an incoherent quota before persistence", async () => {
+    const service = {
+      listTaxProviderQuotas: jest.fn(),
+    } as unknown as TaxControlModuleService
+
+    await expect(
+      persistTaxRateIoQuota({
+        quota: { ...quota("2026-07-26T12:00:00.000Z"), remaining: 74 },
+        service,
+        source: "checkout_lookup",
+      })
+    ).rejects.toMatchObject({
+      message: "TaxRate.io returned an invalid quota snapshot.",
+    })
+    expect(service.listTaxProviderQuotas).not.toHaveBeenCalled()
+  })
+
   it("does not overwrite a newer authoritative snapshot", async () => {
     const current = record("2026-07-26T12:05:00.000Z")
     const service = {
@@ -79,5 +96,58 @@ describe("TaxRate.io quota persistence", () => {
       })
     ).resolves.toBe(updated)
     expect(service.updateTaxProviderQuotas).toHaveBeenCalledTimes(1)
+  })
+
+  it("normalizes a complete persisted snapshot during synchronization", async () => {
+    const service = {
+      listTaxProviderQuotas: jest.fn(async () => [
+        {
+          observed_at: new Date("2026-07-26T12:00:00.000Z"),
+          provider: "taxrate_io",
+          quota: "100",
+          remaining: "75",
+          source: "manual_refresh",
+          usage: "25",
+          usage_percent: "25",
+        },
+      ]),
+    } as unknown as TaxControlModuleService
+
+    await expect(
+      syncTaxRateIoQuota({
+        logger: { warn: jest.fn() } as never,
+        service,
+      })
+    ).resolves.toEqual({
+      observedAt: "2026-07-26T12:00:00.000Z",
+      quota: 100,
+      remaining: 75,
+      source: "manual_refresh",
+      usage: 25,
+      usagePercent: 25,
+    })
+  })
+
+  it("fails closed on a malformed persisted snapshot", async () => {
+    const service = {
+      listTaxProviderQuotas: jest.fn(async () => [
+        {
+          observed_at: new Date("2026-07-26T12:00:00.000Z"),
+          provider: "taxrate_io",
+          quota: 100,
+          remaining: 74,
+          source: "checkout_lookup",
+          usage: 25,
+          usage_percent: 25,
+        },
+      ]),
+    } as unknown as TaxControlModuleService
+
+    await expect(
+      syncTaxRateIoQuota({
+        logger: { warn: jest.fn() } as never,
+        service,
+      })
+    ).rejects.toThrow("persisted TaxRate.io quota snapshot is invalid")
   })
 })

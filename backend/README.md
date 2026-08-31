@@ -474,7 +474,21 @@ telemetry records only the reason class and attempt count. Provider messages,
 statuses, API keys, and postal codes are never copied into terminal errors or
 retry logs. Returned total rates must be finite and between 0% and 100%;
 malformed, negative, or larger totals fail closed, while invalid optional
-breakdown components are discarded.
+breakdown components are discarded. TaxRate.io defines `rate` and each
+jurisdiction component as percentage values, while `rate_pct` is the decimal
+fraction; the adapter preserves that distinction and rejects a response when
+both total fields disagree.
+
+Redis tax-rate and Stripe Tax quote hits are reconstructed through a complete
+allowlisted cache contract before use. The contract bounds identifiers and
+jurisdiction text, validates percentage ranges, safe integer amounts,
+calculation expiry, currency/mode, unique line references, and exact item plus
+shipping tax totals. Invalid or expired Stripe quote entries are deleted and
+recalculated. TaxRate.io quota snapshots must contain a canonical timestamp,
+coherent usage/quota/remaining values, an allowed source, and a 0–100 usage
+percentage before Redis write, database persistence, readiness evaluation, or
+Admin display; malformed persisted evidence fails closed instead of being
+coerced into provider readiness.
 
 Stripe Tax calculation creation and retrieval share the provider's eight-second
 deadline with a possible line-item read. The Stripe fetch transport cancels a

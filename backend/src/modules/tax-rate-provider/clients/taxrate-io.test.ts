@@ -30,11 +30,12 @@ describe("fetchTaxRateIo", () => {
           city: "Buffalo",
           country: "US",
           county: "Erie",
-          rate: "0.0635",
-          rate_city: "0.01",
-          rate_county: "0.0175",
-          rate_special: "0.0025",
-          rate_state: "0.035",
+          rate: "6.35",
+          rate_city: "1",
+          rate_county: "1.75",
+          rate_pct: "0.0635",
+          rate_special: "0.25",
+          rate_state: "3.5",
           state: "NY",
           tax_name: "Sales Tax",
           usage_data: {
@@ -82,7 +83,7 @@ describe("fetchTaxRateIo", () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue(
-        new Response(JSON.stringify({ rate_pct: 6.35 }), { status: 200 })
+        new Response(JSON.stringify({ rate_pct: 0.0635 }), { status: 200 })
       )
 
     await expect(
@@ -96,6 +97,46 @@ describe("fetchTaxRateIo", () => {
       quota: null,
       ratePercent: 6.35,
     })
+  })
+
+  it.each([
+    [{ rate: 1 }, 1],
+    [{ rate_pct: 0.01 }, 1],
+  ])(
+    "keeps percent and fractional fields semantically distinct",
+    async (payload, expected) => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(payload), { status: 200 })
+        )
+
+      await expect(
+        fetchTaxRateIo({
+          apiKey: "secret",
+          timeoutMs: 500,
+          zip: "06902",
+        })
+      ).resolves.toMatchObject({ ratePercent: expected })
+    }
+  )
+
+  it("rejects contradictory percent and fractional fields", async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(JSON.stringify({ rate: 6.35, rate_pct: 0.07 }), {
+        status: 200,
+      })
+    )
+
+    const error = await rejectedClientError(
+      fetchTaxRateIo({
+        apiKey: "secret",
+        timeoutMs: 500,
+        zip: "06902",
+      })
+    )
+
+    expect(error).toMatchObject({ code: "invalid_response" })
   })
 
   it("retries one transient status under the same request boundary", async () => {

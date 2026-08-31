@@ -1,17 +1,11 @@
-type TaxRateIoResponse = {
-  city?: unknown
-  country?: unknown
-  county?: unknown
-  rate?: unknown
-  rate_city?: unknown
-  rate_county?: unknown
-  rate_pct?: unknown
-  rate_special?: unknown
-  rate_state?: unknown
-  state?: unknown
-  tax_name?: unknown
-  usage_data?: unknown
-}
+import {
+  readFiniteNumber,
+  readNonNegativeSafeInteger,
+} from "../../../lib/provider-boundary/primitives"
+import {
+  asUnknownRecord,
+  type UnknownRecord,
+} from "../../../lib/provider-boundary/records"
 
 export type TaxRateIoErrorCode =
   | "deadline_exceeded"
@@ -69,51 +63,22 @@ const MAX_ATTEMPTS = 2
 const RETRY_DELAY_MS = 100
 const RETRYABLE_STATUSES = new Set([408, 425, 500, 502, 503, 504])
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
-
-const parseRateValue = (value: unknown): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === "string") {
-    const normalized = value.trim()
-    if (!normalized) {
-      return null
-    }
-    const parsed = Number(normalized)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  return null
-}
-
-const normalizeRatePercent = (rawRate: number): number => {
-  if (rawRate <= 1) {
-    return rawRate * 100
-  }
-
-  return rawRate
-}
-
 const normalizedText = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null
+  typeof value === "string" && value.trim() && value.trim().length <= 200
+    ? value.trim()
+    : null
 
 const componentRate = (value: unknown): number | null => {
-  const parsed = parseRateValue(value)
+  const parsed = readFiniteNumber(value)
   if (parsed === null) {
     return null
   }
 
-  const normalized = normalizeRatePercent(parsed)
-  return normalized < 0 || normalized > 100
-    ? null
-    : Number(normalized.toFixed(12))
+  return parsed < 0 || parsed > 100 ? null : Number(parsed.toFixed(12))
 }
 
 const parseJurisdiction = (
-  value: TaxRateIoResponse
+  value: UnknownRecord
 ): TaxRateIoJurisdiction | null => {
   const city = normalizedText(value.city)
   const county = normalizedText(value.county)
@@ -149,26 +114,22 @@ const parseJurisdiction = (
   }
 }
 
-const nonNegativeInteger = (value: unknown): number | null => {
-  const parsed = parseRateValue(value)
-  if (parsed === null || parsed < 0 || !Number.isInteger(parsed)) {
+const parseQuota = (value: unknown): TaxRateIoQuota | null => {
+  const record = asUnknownRecord(value)
+  if (!record) {
     return null
   }
 
-  return parsed
-}
-
-const parseQuota = (
-  value: TaxRateIoResponse["usage_data"]
-): TaxRateIoQuota | null => {
-  if (!isRecord(value)) {
-    return null
-  }
-
-  const usage = nonNegativeInteger(value.usage)
-  const quota = nonNegativeInteger(value.quota)
-  const reportedPercent = parseRateValue(value.usage_pct)
-  if (usage === null || quota === null || quota === 0) {
+  const usage = readNonNegativeSafeInteger(record.usage)
+  const quota = readNonNegativeSafeInteger(record.quota)
+  const reportedPercent = readFiniteNumber(record.usage_pct)
+  if (
+    usage === null ||
+    quota === null ||
+    quota === 0 ||
+    usage > quota ||
+    (reportedPercent !== null && (reportedPercent < 0 || reportedPercent > 100))
+  ) {
     return null
   }
 
@@ -184,6 +145,36 @@ const parseQuota = (
     usage,
     usagePercent,
   }
+}
+
+const parseRatePercent = (value: UnknownRecord): number | null => {
+  const hasRate = Object.hasOwn(value, "rate")
+  const hasFraction = Object.hasOwn(value, "rate_pct")
+  if (!hasRate && !hasFraction) {
+    return null
+  }
+
+  const directRate = hasRate ? readFiniteNumber(value.rate) : null
+  const fractionalRate = hasFraction ? readFiniteNumber(value.rate_pct) : null
+  if (
+    (hasRate && directRate === null) ||
+    (hasFraction && fractionalRate === null) ||
+    (directRate !== null && (directRate < 0 || directRate > 100)) ||
+    (fractionalRate !== null && (fractionalRate < 0 || fractionalRate > 1))
+  ) {
+    return null
+  }
+
+  const fractionPercent = fractionalRate === null ? null : fractionalRate * 100
+  if (
+    directRate !== null &&
+    fractionPercent !== null &&
+    Math.abs(directRate - fractionPercent) > 1e-9
+  ) {
+    return null
+  }
+  const ratePercent = directRate ?? fractionPercent
+  return ratePercent === null ? null : Number(ratePercent.toFixed(12))
 }
 
 const cancelResponseBody = async (response: Response): Promise<void> => {
@@ -225,18 +216,13 @@ const parseResponse = async (
     )
   }
 
-  if (!isRecord(value)) {
+  const payload = asUnknownRecord(value)
+  if (!payload) {
     throw new TaxRateIoClientError("invalid_response")
   }
 
-  const payload = value as TaxRateIoResponse
-  const rawRate = parseRateValue(payload.rate ?? payload.rate_pct)
-  if (rawRate === null) {
-    throw new TaxRateIoClientError("invalid_response")
-  }
-
-  const ratePercent = normalizeRatePercent(rawRate)
-  if (ratePercent < 0 || ratePercent > 100) {
+  const ratePercent = parseRatePercent(payload)
+  if (ratePercent === null) {
     throw new TaxRateIoClientError("invalid_response")
   }
 

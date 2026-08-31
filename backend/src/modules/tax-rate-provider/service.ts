@@ -29,6 +29,11 @@ import {
   type CacheEvictionEvent,
 } from "./bounded-expiring-cache"
 import {
+  type CachedStripeQuote,
+  parseCachedStripeQuote,
+  parseCachedTaxRateIoResult,
+} from "./cache-contracts"
+import {
   createStripeTaxCalculation,
   retrieveStripeTaxCalculation,
   type StripeTaxCalculationResult,
@@ -57,11 +62,6 @@ type InjectedDependencies = {
   logger: Logger
 }
 
-type CachedStripeQuote = {
-  expiresAt: number
-  result: StripeTaxCalculationResult
-}
-
 type LocalTaxCache = "rate" | "stripe_quote"
 
 const DEFAULT_TIMEOUT_MS = 8_000
@@ -85,34 +85,6 @@ const buildRateCacheKey = (
 
   const provinceCode = address.province_code?.toLowerCase() ?? ""
   return `${countryCode}:${provinceCode}:${postalCode}`
-}
-
-const parseCachedTaxRateIoResult = (value: string): TaxRateIoResult | null => {
-  try {
-    const parsed = JSON.parse(value) as Partial<TaxRateIoResult> | number
-    if (typeof parsed === "number" && Number.isFinite(parsed)) {
-      return { jurisdiction: null, quota: null, ratePercent: parsed }
-    }
-    const ratePercent = Number(
-      typeof parsed === "object" && parsed ? parsed.ratePercent : Number.NaN
-    )
-    if (!Number.isFinite(ratePercent) || ratePercent < 0) {
-      return null
-    }
-    return {
-      jurisdiction:
-        typeof parsed === "object" && parsed && parsed.jurisdiction
-          ? parsed.jurisdiction
-          : null,
-      quota: null,
-      ratePercent,
-    }
-  } catch {
-    const legacyRate = Number(value)
-    return Number.isFinite(legacyRate) && legacyRate >= 0
-      ? { jurisdiction: null, quota: null, ratePercent: legacyRate }
-      : null
-  }
 }
 
 const getRedisClient = async (
@@ -219,24 +191,6 @@ const rateForExactTax = (taxMinor: number, amountMinor: number): number => {
   }
 
   return Number(((taxMinor / amountMinor) * 100).toFixed(12))
-}
-
-const parseCachedStripeQuote = (value: string): CachedStripeQuote | null => {
-  try {
-    const parsed = JSON.parse(value) as CachedStripeQuote
-    if (
-      !parsed ||
-      !Number.isFinite(parsed.expiresAt) ||
-      parsed.expiresAt <= Date.now() ||
-      typeof parsed.result?.calculationId !== "string" ||
-      !parsed.result.calculationId.startsWith("taxcalc_")
-    ) {
-      return null
-    }
-    return parsed
-  } catch {
-    return null
-  }
 }
 
 export default class TaxRateLookupProviderService implements ITaxProvider {

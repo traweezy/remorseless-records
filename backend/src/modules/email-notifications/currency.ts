@@ -1,21 +1,8 @@
-type UnknownRecord = Record<string, unknown>
-
-const asRecord = (value: unknown): UnknownRecord | null =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as UnknownRecord)
-    : null
+import { readFiniteNumber } from "../../lib/provider-boundary/primitives"
 
 const numericAmount = (value: unknown): number | null => {
-  const record = asRecord(value)
-  const candidate = record?.value ?? value
-  if (
-    (typeof candidate !== "number" && typeof candidate !== "string") ||
-    (typeof candidate === "string" && candidate.trim().length === 0)
-  ) {
-    return null
-  }
-  const amount = Number(candidate)
-  return Number.isFinite(amount) && amount >= 0 ? amount : null
+  const amount = readFiniteNumber(value)
+  return amount !== null && amount >= 0 ? amount : null
 }
 
 export const formatCurrencyAmount = (

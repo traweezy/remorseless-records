@@ -74,7 +74,7 @@ export const POST = async (
           parsed.data.targetProvider === "taxrate_io"
             ? await syncTaxRateIoQuota({ logger, service })
             : null
-        const remaining = quota ? Number(quota.remaining) : null
+        const remaining = quota?.remaining ?? null
         const readiness =
           parsed.data.targetProvider === "stripe_tax"
             ? await resolveStripeTaxReadiness({ logger })

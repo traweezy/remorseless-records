@@ -11,6 +11,11 @@ import {
 } from "../../modules/tax-control/constants"
 import type TaxControlModuleService from "../../modules/tax-control/service"
 import type { TaxRateIoQuota } from "../../modules/tax-rate-provider/clients/taxrate-io"
+import {
+  parsePersistedTaxRateIoQuota,
+  parseTaxRateIoQuotaSnapshot,
+  type PersistedTaxRateIoQuota,
+} from "../../modules/tax-rate-provider/cache-contracts"
 
 let quotaRedisClient: RedisClientType | null = null
 let quotaRedisConnectPromise: Promise<RedisClientType | null> | null = null
@@ -25,24 +30,32 @@ const parseQuota = (value: string | null): TaxRateIoQuota | null => {
   }
 
   try {
-    const parsed = JSON.parse(value) as TaxRateIoQuota
-    const observed = Date.parse(parsed.observedAt)
-    if (
-      !Number.isFinite(observed) ||
-      !Number.isSafeInteger(parsed.usage) ||
-      !Number.isSafeInteger(parsed.quota) ||
-      !Number.isSafeInteger(parsed.remaining) ||
-      !Number.isFinite(parsed.usagePercent) ||
-      parsed.usage < 0 ||
-      parsed.quota <= 0 ||
-      parsed.remaining < 0
-    ) {
-      return null
-    }
-    return parsed
+    return parseTaxRateIoQuotaSnapshot(JSON.parse(value))
   } catch {
     return null
   }
+}
+
+const validQuota = (quota: TaxRateIoQuota): TaxRateIoQuota => {
+  const parsed = parseTaxRateIoQuotaSnapshot(quota)
+  if (!parsed) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "TaxRate.io returned an invalid quota snapshot."
+    )
+  }
+  return parsed
+}
+
+const validPersistedQuota = (value: unknown): PersistedTaxRateIoQuota => {
+  const parsed = parsePersistedTaxRateIoQuota(value)
+  if (!parsed) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "The persisted TaxRate.io quota snapshot is invalid."
+    )
+  }
+  return parsed
 }
 
 const redisClient = async (logger: Logger): Promise<RedisClientType | null> => {
@@ -98,9 +111,10 @@ export const writeTaxRateIoQuotaToRedis = async (
   logger: Logger,
   quota: TaxRateIoQuota
 ): Promise<void> => {
+  const parsed = validQuota(quota)
   const client = await redisClient(logger)
   if (client) {
-    await client.set(TAXRATE_IO_QUOTA_REDIS_KEY, JSON.stringify(quota))
+    await client.set(TAXRATE_IO_QUOTA_REDIS_KEY, JSON.stringify(parsed))
   }
 }
 
@@ -113,21 +127,22 @@ export const persistTaxRateIoQuota = async ({
   service: TaxControlModuleService
   source: "checkout_lookup" | "manual_refresh"
 }) => {
+  const validatedQuota = validQuota(quota)
   const existing = await service.listTaxProviderQuotas(
     { provider: "taxrate_io" },
     { take: 1 }
   )
-  const observedAt = new Date(quota.observedAt)
+  const observedAt = new Date(validatedQuota.observedAt)
   const payload = {
     id: TAXRATE_IO_QUOTA_ID,
     metadata: {},
     observed_at: observedAt,
     provider: "taxrate_io",
-    quota: quota.quota,
-    remaining: quota.remaining,
+    quota: validatedQuota.quota,
+    remaining: validatedQuota.remaining,
     source,
-    usage: quota.usage,
-    usage_percent: quota.usagePercent,
+    usage: validatedQuota.usage,
+    usage_percent: validatedQuota.usagePercent,
   }
   const updateExisting = async (current: (typeof existing)[number]) => {
     const currentObservedAt = new Date(current.observed_at)
@@ -181,11 +196,12 @@ export const syncTaxRateIoQuota = async ({
     try {
       const quota = parseQuota(await client.get(TAXRATE_IO_QUOTA_REDIS_KEY))
       if (quota) {
-        return persistTaxRateIoQuota({
+        const persisted = await persistTaxRateIoQuota({
           quota,
           service,
           source: "checkout_lookup",
         })
+        return persisted ? validPersistedQuota(persisted) : null
       }
     } catch {
       warn(
@@ -200,5 +216,5 @@ export const syncTaxRateIoQuota = async ({
     { provider: "taxrate_io" },
     { order: { observed_at: "DESC" }, take: 1 }
   )
-  return persisted[0] ?? null
+  return persisted[0] ? validPersistedQuota(persisted[0]) : null
 }

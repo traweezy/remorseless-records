@@ -196,7 +196,14 @@ describe("POST /admin/tax-control/switch", () => {
   })
 
   it("refreshes TaxRate.io quota before evaluating that provider", async () => {
-    syncQuotaMock.mockResolvedValue({ remaining: 18 } as never)
+    syncQuotaMock.mockResolvedValue({
+      observedAt: "2026-08-30T16:00:00.000Z",
+      quota: 100,
+      remaining: 18,
+      source: "manual_refresh",
+      usage: 82,
+      usagePercent: 82,
+    })
     const fixture = requestFixture({
       body: { ...validBody, targetProvider: "taxrate_io" },
     })

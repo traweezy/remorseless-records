@@ -45,7 +45,10 @@ Customer-facing money must use the shared `formatCurrencyAmount` helper. Medusa
 retains high-precision major-unit values for accounting and tax calculations;
 never interpolate those raw values into an email. The formatter validates the
 input and applies the currency's display precision at this presentation
-boundary.
+boundary. Numeric strings must be explicit decimal literals; hexadecimal,
+trailing text, booleans, arrays, empty strings, non-finite values, negative
+amounts, and malformed value wrappers fail closed instead of being coerced by
+JavaScript.
 
 ### Trigger an email notification
 
