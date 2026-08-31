@@ -3526,6 +3526,14 @@ bytes. The production dependency audit retains only the three documented
 ignored moderate findings; Trivy reports zero high/critical dependency,
 misconfiguration, or secret findings.
 
+Remote acceptance is complete for Discography projection commit
+`0b2092d5a4cfcc06b4d19af8f4d5c501b2ec8e87`: Root CI `33358225469`, Backend CI
+`33358225458`, and Storefront CI `33358225554` passed. Railway staging
+deployment `1b9d52f3-312c-44e4-8590-c2a135c68a5a` succeeded with image digest
+`sha256:227c7ae1f5fab7414406d28221eeade25f2d3b8aa762fd0650e1555c218a2921`;
+external `/live`, `/ready`, and `/api/health` returned healthy responses with
+the exact commit SHA before the next queued release.
+
 ## Checkout recovery and retention persistence hardening
 
 - [x] Validate complete reconciliation, guest-retention, anonymous-retention,
@@ -3563,6 +3571,40 @@ bundle is 1,808,056 gzip bytes and total JavaScript is 2,388,626 gzip bytes
 across 330 files. The production dependency audit retains only the three
 documented ignored moderate findings; Trivy reports zero high/critical
 dependency or secret findings.
+
+## News durable-state persistence hardening
+
+- [x] Require complete, runtime-validated News entries with canonical
+      identities, lifecycle state, safe rich text, accessible HTTP(S) covers,
+      bounded lists, versions, and creation/update timestamps.
+- [x] Require complete Admin and Store counted-page windows for the requested
+      offset/limit instead of accepting false short pages or empty tails.
+- [x] Request beyond singleton cardinality for slug, Store detail, and
+      idempotency reads and reject duplicate or mismatched results.
+- [x] Require canonical UUID idempotency keys, empty operation metadata, exact
+      pending/succeeded transitions, and the complete historical replay DTO.
+- [x] Compare every mutation acknowledgement with the requested entry state,
+      including unchanged fields across edits and lifecycle transitions.
+- [x] Re-read the exact entry and succeeded operation inside the serializable
+      transaction and compare their full durable result before returning.
+- [x] Reject unsafe stored Store rich text and cover/alternative-text mismatch
+      instead of sanitizing corruption into plausible public content.
+
+The News boundary treats generated module-service records as runtime input and
+does not infer success from declared TypeScript DTOs. Historical replay remains
+stable after a legitimate later edit, while a new command proves its exact
+entry and audit pair before commit. No additional operator field or technical
+choice was added to the Admin form.
+
+Sixty-seven focused persistence, command, Admin route, Store route, serializer,
+visibility, and ordering tests pass. Complete local acceptance passes the
+1,216-file repository QA gate and all 260 Backend suites / 1,912 tests. Backend
+coverage remains 91.41% statements, 84.70% branches, 95.61% functions, and
+91.43% lines. The production Backend/Admin build and frozen packaged install
+pass with Medusa 2.18.0. The 330-file Admin bundle measures 1,807,796 gzip bytes
+for its main file and 2,388,484 gzip bytes total. The production dependency
+audit retains only the three documented ignored moderate findings; Trivy
+reports zero high/critical dependency, misconfiguration, or secret findings.
 
 ## Legal, accessibility, and launch acceptance
 

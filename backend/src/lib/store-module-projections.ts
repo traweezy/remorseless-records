@@ -1,5 +1,9 @@
 import { MedusaError } from "@medusajs/framework/utils"
 
+import {
+  hasVisibleRichText,
+  sanitizeRichTextHtml,
+} from "@/lib/content/rich-text"
 import type {
   CatalogShelfProductRecord,
   CatalogShelfRecord,
@@ -97,6 +101,9 @@ const nullableTimestamp = (value: unknown): string | null =>
   value === null
     ? null
     : (readIsoTimestamp(value) ?? invalidStoreModuleProjection())
+
+const requiredTimestamp = (value: unknown): string =>
+  readIsoTimestamp(value) ?? invalidStoreModuleProjection()
 
 const optionalTimestamp = (value: unknown): string | null =>
   value === null || value === undefined
@@ -396,13 +403,25 @@ const readNewsEntry = (record: UnknownRecord, now: Date): NewsEntryRecord => {
   if (!STORE_SLUG.test(slug)) {
     return invalidStoreModuleProjection()
   }
+  const content = requiredText(record.content, 200_000)
+  if (
+    sanitizeRichTextHtml(content) !== content ||
+    !hasVisibleRichText(content)
+  ) {
+    return invalidStoreModuleProjection()
+  }
+  const coverUrl = httpUrl(record.cover_url)
+  const coverAltText = nullableText(record.cover_alt_text, 500)
+  if ((coverUrl === null) !== (coverAltText === null)) {
+    return invalidStoreModuleProjection()
+  }
   return {
     archived_at: null,
     author: nullableText(record.author, 500),
-    content: requiredText(record.content, 200_000),
-    cover_alt_text: nullableText(record.cover_alt_text, 500),
-    cover_url: httpUrl(record.cover_url),
-    created_at: optionalTimestamp(record.created_at),
+    content,
+    cover_alt_text: coverAltText,
+    cover_url: coverUrl,
+    created_at: requiredTimestamp(record.created_at),
     excerpt: nullableText(record.excerpt, 1_000),
     id: requiredIdentifier(record.id, "news_"),
     published_at: publishedAt,
@@ -412,7 +431,7 @@ const readNewsEntry = (record: UnknownRecord, now: Date): NewsEntryRecord => {
     status,
     tags: stringList(record.tags, 50, 100),
     title: requiredText(record.title, 300),
-    updated_at: optionalTimestamp(record.updated_at),
+    updated_at: requiredTimestamp(record.updated_at),
     version: boundedInteger(record.version, 1, Number.MAX_SAFE_INTEGER),
   }
 }
@@ -430,11 +449,21 @@ const readNewsRecords = (value: unknown, now: Date): NewsEntryRecord[] => {
 
 export const readStoreNewsPage = (
   value: unknown,
-  now: Date
+  now: Date,
+  pageWindow?: { limit: number; offset: number }
 ): { count: number; records: NewsEntryRecord[] } => {
   const page = countedRecords(value, "Store news service")
   if (page.records.length > 200) {
     return invalidStoreModuleProjection()
+  }
+  if (pageWindow) {
+    const expectedRows = Math.min(
+      pageWindow.limit,
+      Math.max(page.count - pageWindow.offset, 0)
+    )
+    if (page.records.length !== expectedRows) {
+      return invalidStoreModuleProjection()
+    }
   }
   const parsed = readNewsRecords(page.records, now)
   return { count: page.count, records: parsed }

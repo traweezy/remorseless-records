@@ -378,6 +378,22 @@ Both authoring surfaces accept only HTTP(S) artwork. News and manual
 Discography also require alternative text whenever artwork is present, with the
 same accessible validation shown in the form and enforced before a write begins.
 
+### News durable-state hardening — August 31, 2026
+
+The News form still asks the client only for editorial intent; persistence
+recovery became stricter behind that same workflow. Slug and idempotency
+lookups request a second row and reject ambiguity. Create, edit, archive, and
+restore compare every operator-controlled field with the exact mutation
+acknowledgement, then re-read the complete entry and succeeded audit operation
+inside the serializable transaction before showing success.
+
+Admin and Store reads require complete counted-page windows, canonical UUID
+retry keys, empty audit metadata, complete creation/update timestamps, and
+exact cover/alternative-text pairs. Store News rejects unsafe stored rich text
+instead of sanitizing corruption into a plausible public post. These checks add
+no client field or recovery decision; they make the existing saved, conflict,
+and retry states authoritative.
+
 ### Merchandising shelf persistence hardening — August 30, 2026
 
 The Merchandising workspace keeps its existing guided form, selection context,

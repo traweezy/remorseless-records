@@ -198,6 +198,11 @@ describe("news lifecycle commands", () => {
     const replayed = await createNewsEntry(replayRequest, service, input)
     expect(replayed).toEqual({ ...created, replayed: true })
     expect(entries.size).toBe(1)
+    expect(service.listNewsOperations).toHaveBeenCalledWith(
+      { idempotency_key: idempotencyKey },
+      { take: 2 },
+      expect.anything()
+    )
   })
 
   it("uses a deterministic numeric slug after a title collision", async () => {
@@ -211,6 +216,11 @@ describe("news lifecycle commands", () => {
       title: "Studio Update",
     })
     expect(created.entry.slug).toBe("studio-update-2")
+    expect(service.listNewsEntries).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: expect.any(String) }),
+      { take: 2 },
+      expect.anything()
+    )
   })
 
   it("preserves author and slug while enforcing expected version", async () => {
@@ -402,6 +412,92 @@ describe("news lifecycle commands", () => {
         expectedVersion: 0,
         idempotencyKey: randomUUID(),
         title: "Invalid audit acknowledgement",
+      })
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+  })
+
+  it("rejects a valid-shaped entry acknowledgement with unintended fields", async () => {
+    const { service } = serviceFixture()
+    ;(service.createNewsEntries as jest.Mock).mockResolvedValue([
+      newsRecord({ id: "news_1", title: "Unexpected title" }),
+    ])
+
+    await expect(
+      createNewsEntry(requestFixture(), service, {
+        content: "<p>Body</p>",
+        expectedVersion: 0,
+        idempotencyKey: randomUUID(),
+        title: "Expected title",
+      })
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+    expect(service.updateNewsOperations).not.toHaveBeenCalled()
+  })
+
+  it("rejects a changed entry during the final durable readback", async () => {
+    const { entries, service } = serviceFixture()
+    ;(service.retrieveNewsEntry as jest.Mock).mockImplementation(
+      async (id: string) => {
+        const persisted = entries.get(id)
+        return persisted
+          ? { ...persisted, title: "Changed during commit" }
+          : null
+      }
+    )
+
+    await expect(
+      createNewsEntry(requestFixture(), service, {
+        content: "<p>Body</p>",
+        expectedVersion: 0,
+        idempotencyKey: randomUUID(),
+        title: "Expected title",
+      })
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+  })
+
+  it("rejects duplicate durable idempotency rows", async () => {
+    const { operations, service } = serviceFixture()
+    const idempotencyKey = randomUUID()
+    const input = {
+      content: "<p>Body</p>",
+      expectedVersion: 0 as const,
+      idempotencyKey,
+      title: "Expected title",
+    }
+    await createNewsEntry(requestFixture(), service, input)
+    const persisted = operations.get(idempotencyKey)
+    if (!persisted) {
+      throw new Error("Expected the persisted News operation")
+    }
+    ;(service.listNewsOperations as jest.Mock).mockResolvedValue([
+      persisted,
+      { ...persisted, id: "newsop_duplicate" },
+    ])
+
+    await expect(
+      createNewsEntry(requestFixture(), service, input)
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+  })
+
+  it("rejects a mismatched slug lookup row", async () => {
+    const { service } = serviceFixture()
+    ;(service.listNewsEntries as jest.Mock).mockResolvedValue([
+      newsRecord({ slug: "different-slug" }),
+    ])
+
+    await expect(
+      createNewsEntry(requestFixture(), service, {
+        content: "<p>Body</p>",
+        expectedVersion: 0,
+        idempotencyKey: randomUUID(),
+        title: "Expected title",
       })
     ).rejects.toThrow(
       "The Admin content persistence boundary returned invalid structured data."

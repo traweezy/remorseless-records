@@ -1,7 +1,10 @@
 import type { MedusaRequest } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 
-import { readAdminNewsMutation } from "@/lib/content/persistence-contracts"
+import {
+  assertExactNewsEntry,
+  readAdminNewsMutation,
+} from "@/lib/content/persistence-contracts"
 import { serializeNewsEntry } from "@/modules/news/serializers"
 import {
   completeNewsOperation,
@@ -12,6 +15,7 @@ import {
   requestNewsActorId,
   resolveNewsEntry,
   runNewsTransaction,
+  verifyNewsCommandPersistence,
 } from "./command"
 import type {
   NewsCreateInput,
@@ -66,7 +70,7 @@ export const createNewsEntry = async (
       input.idempotencyKey,
       sharedContext
     )
-    const created = readAdminNewsMutation(
+    const createdAcknowledgement = readAdminNewsMutation(
       await service.createNewsEntries(
         [
           {
@@ -81,8 +85,27 @@ export const createNewsEntry = async (
       ),
       { version: 1 }
     )
-    await completeNewsOperation(service, operation, created, sharedContext)
-    return { entry: serializeNewsEntry(created), replayed: false }
+    const created = assertExactNewsEntry(createdAcknowledgement, {
+      ...createdAcknowledgement,
+      ...patch,
+      archived_at: null,
+      author,
+      slug,
+      version: 1,
+    } as typeof createdAcknowledgement)
+    const completed = await completeNewsOperation(
+      service,
+      operation,
+      created,
+      sharedContext
+    )
+    const durable = await verifyNewsCommandPersistence(
+      service,
+      completed,
+      created,
+      sharedContext
+    )
+    return { entry: serializeNewsEntry(durable), replayed: false }
   })
 }
 
@@ -138,15 +161,33 @@ export const updateNewsEntry = async (
     )
     const patch = buildNewsEntryPatch({ existing, input, now: new Date() })
     const version = existing.version + 1
-    const updated = readAdminNewsMutation(
+    const updatedAcknowledgement = readAdminNewsMutation(
       await service.updateNewsEntries(
         [{ id, ...patch, version }],
         sharedContext
       ),
       { id, version }
     )
-    await completeNewsOperation(service, operation, updated, sharedContext)
-    return { entry: serializeNewsEntry(updated), replayed: false }
+    const updated = assertExactNewsEntry(updatedAcknowledgement, {
+      ...existing,
+      ...patch,
+      id,
+      updated_at: updatedAcknowledgement.updated_at ?? null,
+      version,
+    } as typeof updatedAcknowledgement)
+    const completed = await completeNewsOperation(
+      service,
+      operation,
+      updated,
+      sharedContext
+    )
+    const durable = await verifyNewsCommandPersistence(
+      service,
+      completed,
+      updated,
+      sharedContext
+    )
+    return { entry: serializeNewsEntry(durable), replayed: false }
   })
 }
 
@@ -196,13 +237,16 @@ export const setNewsEntryArchived = async (
       sharedContext
     )
     const version = existing.version + 1
-    const updated = readAdminNewsMutation(
+    const archivedAt = archived ? new Date() : null
+    const nextStatus =
+      existing.status === "archived" ? "draft" : existing.status
+    const updatedAcknowledgement = readAdminNewsMutation(
       await service.updateNewsEntries(
         [
           {
-            archived_at: archived ? new Date() : null,
+            archived_at: archivedAt,
             id,
-            status: existing.status === "archived" ? "draft" : existing.status,
+            status: nextStatus,
             version,
           },
         ],
@@ -210,7 +254,26 @@ export const setNewsEntryArchived = async (
       ),
       { id, version }
     )
-    await completeNewsOperation(service, operation, updated, sharedContext)
-    return { entry: serializeNewsEntry(updated), replayed: false }
+    const updated = assertExactNewsEntry(updatedAcknowledgement, {
+      ...existing,
+      archived_at: archivedAt,
+      id,
+      status: nextStatus,
+      updated_at: updatedAcknowledgement.updated_at ?? null,
+      version,
+    })
+    const completed = await completeNewsOperation(
+      service,
+      operation,
+      updated,
+      sharedContext
+    )
+    const durable = await verifyNewsCommandPersistence(
+      service,
+      completed,
+      updated,
+      sharedContext
+    )
+    return { entry: serializeNewsEntry(durable), replayed: false }
   })
 }

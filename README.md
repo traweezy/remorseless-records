@@ -1523,7 +1523,9 @@ bundle option.
 
 Project-owned Store module reads are validated independently of the Product
 graph. Discography and News require coherent counted pages, lifecycle state,
-bounded public text/lists, safe media URLs, and exact schedule timestamps.
+bounded public text/lists, safe media URLs, exact schedule timestamps, complete
+page windows, and singleton detail identities. News additionally rejects unsafe
+stored rich text and cover/alternative-text mismatches before serialization.
 Shelves require active, unarchived, uniquely identified shelf, membership, and
 profile rows with consistent ownership and schedules. Shelf/profile metadata
 is reconstructed from the two public automation fields instead of serializing
@@ -1536,6 +1538,11 @@ create/update results, replay records, and pending-to-succeeded audit
 transitions require exact identities, versions, content lifecycle, safe rich
 text/media, and command hashes. A malformed service response therefore cannot
 become a successful save, an unsafe replay, or a plausible default in Admin.
+News mutations also compare the acknowledgement with the exact requested state
+and read back both the durable entry and succeeded operation inside the
+serializable transaction before returning success. Idempotency and slug reads
+request beyond singleton cardinality so duplicate rows cannot be hidden by a
+one-row query.
 
 Admin Merchandising shelves apply the same fail-closed contract to counted
 pages, shelf rows, Product memberships, Product-profile ownership, mutations,

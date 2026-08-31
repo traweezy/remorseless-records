@@ -25,10 +25,13 @@ export const GET = async (
   const newsService = req.scope.resolve("news") as NewsService
 
   const now = new Date()
-  const entries = await newsService.listNewsEntries({
-    ...buildStoreNewsFilters(now),
-    slug,
-  })
+  const entries = await newsService.listNewsEntries(
+    {
+      ...buildStoreNewsFilters(now),
+      slug,
+    },
+    { take: 2 }
+  )
 
   const entry = readStoreNewsDetail(entries, slug, now)
   if (!entry) {

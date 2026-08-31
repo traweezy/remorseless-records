@@ -44,7 +44,10 @@ export const GET = async (
       }),
     }
   )
-  const { count, records } = readStoreNewsPage(result, now)
+  const { count, records } = readStoreNewsPage(result, now, {
+    limit: take,
+    offset: skip,
+  })
 
   res.status(200).json({
     entries: records.map(serializeStoreNewsEntry),

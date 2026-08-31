@@ -4,6 +4,7 @@ import {
   hasVisibleRichText,
   sanitizeRichTextHtml,
 } from "@/lib/content/rich-text"
+import { readNewsSlugLookup } from "@/lib/content/persistence-contracts"
 import {
   type NewsEntryRecord,
   type NewsWriteStatus,
@@ -164,10 +165,10 @@ export const resolveUniqueNewsSlug = async (
       suffix === 0 ? normalizedBase : `${normalizedBase}-${suffix + 1}`
     const existing = await service.listNewsEntries(
       { slug: candidate },
-      { take: 1 },
+      { take: 2 },
       sharedContext
     )
-    if (!existing.length) {
+    if (!readNewsSlugLookup(existing, candidate)) {
       return candidate
     }
   }

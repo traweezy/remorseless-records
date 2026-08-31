@@ -3,7 +3,7 @@ import { GET } from "./route"
 const newsEntry = (overrides: Record<string, unknown> = {}) => ({
   archived_at: null,
   author: "Remorseless Records",
-  content: "<p>Visible</p><script>hidden()</script>",
+  content: "<p>Visible</p>",
   cover_alt_text: null,
   cover_url: null,
   created_at: "2026-08-01T00:00:00.000Z",
@@ -29,7 +29,7 @@ const request = (listAndCountNewsEntries: jest.Mock) => ({
 })
 
 describe("GET /store/news", () => {
-  it("returns validated due entries with sanitized public content", async () => {
+  it("returns validated due entries with safe public content", async () => {
     const listAndCountNewsEntries = jest
       .fn()
       .mockResolvedValue([[newsEntry()], 1])
@@ -74,6 +74,33 @@ describe("GET /store/news", () => {
         [newsEntry({ published_at: "2200-01-01T00:00:00.000Z" })],
         1,
       ])
+
+    await expect(
+      GET(request(listAndCountNewsEntries) as never, {} as never)
+    ).rejects.toThrow(
+      "The Store module projection returned invalid structured data."
+    )
+  })
+
+  it.each([
+    ["an incomplete page", [[newsEntry()], 2]],
+    [
+      "unsafe stored rich text",
+      [
+        [
+          newsEntry({
+            content: "<p>Visible</p><script>hidden()</script>",
+          }),
+        ],
+        1,
+      ],
+    ],
+    [
+      "cover artwork without alternative text",
+      [[newsEntry({ cover_url: "https://media.example/news.jpg" })], 1],
+    ],
+  ])("rejects %s", async (_label, value) => {
+    const listAndCountNewsEntries = jest.fn().mockResolvedValue(value)
 
     await expect(
       GET(request(listAndCountNewsEntries) as never, {} as never)

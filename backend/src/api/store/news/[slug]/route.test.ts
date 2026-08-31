@@ -38,6 +38,10 @@ describe("GET /store/news/:slug", () => {
     expect(json).toHaveBeenCalledWith({
       entry: expect.objectContaining({ id: "news_1", slug: "update" }),
     })
+    expect(listNewsEntries).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: "update" }),
+      { take: 2 }
+    )
   })
 
   it("keeps an empty exact result as not found", async () => {
@@ -52,6 +56,20 @@ describe("GET /store/news/:slug", () => {
     const listNewsEntries = jest
       .fn()
       .mockResolvedValue([entry(), entry({ id: "news_2" })])
+
+    await expect(
+      GET(request(listNewsEntries) as never, {} as never)
+    ).rejects.toThrow(
+      "The Store module projection returned invalid structured data."
+    )
+  })
+
+  it("rejects unsafe stored detail content", async () => {
+    const listNewsEntries = jest
+      .fn()
+      .mockResolvedValue([
+        entry({ content: "<p>Visible</p><script>hidden()</script>" }),
+      ])
 
     await expect(
       GET(request(listNewsEntries) as never, {} as never)

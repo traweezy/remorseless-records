@@ -11,6 +11,7 @@ import {
 } from "@/modules/discography/serializers"
 import {
   newsStatusValues,
+  serializeNewsEntry,
   type NewsEntryDTO,
   type NewsEntryRecord,
 } from "@/modules/news/serializers"
@@ -29,6 +30,8 @@ import {
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$/u
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const SHA256 = /^[a-f0-9]{64}$/u
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
 const HTTP_PROTOCOLS = new Set(["http:", "https:"])
 
 export const DISCOGRAPHY_PROJECTION_MAXIMUM_RECORDS = 25_000
@@ -116,6 +119,9 @@ const nullableTimestamp = (value: unknown): string | null =>
   value === null
     ? null
     : (readIsoTimestamp(value) ?? invalidContentPersistence())
+
+const requiredTimestamp = (value: unknown): string =>
+  readIsoTimestamp(value) ?? invalidContentPersistence()
 
 const optionalTimestamp = (value: unknown): string | null =>
   value === undefined || value === null
@@ -252,7 +258,7 @@ export const readAdminNewsEntry = (
     content,
     cover_alt_text: cover.altText,
     cover_url: cover.url,
-    created_at: optionalTimestamp(record.created_at),
+    created_at: requiredTimestamp(record.created_at),
     excerpt: nullableText(record.excerpt, 1_000),
     id,
     published_at: publishedAt,
@@ -262,16 +268,21 @@ export const readAdminNewsEntry = (
     status,
     tags: stringList(record.tags, 50, 100),
     title: requiredText(record.title, 300),
-    updated_at: optionalTimestamp(record.updated_at),
+    updated_at: requiredTimestamp(record.updated_at),
     version: boundedInteger(record.version, 1),
   }
 }
 
 export const readAdminNewsPage = (
   value: unknown,
-  maximumRows = 100
+  maximumRows = 100,
+  offset = 0
 ): { count: number; records: NewsEntryRecord[] } => {
   const page = countedPage(value, maximumRows)
+  const expectedRows = Math.min(maximumRows, Math.max(page.count - offset, 0))
+  if (page.records.length !== expectedRows) {
+    return invalidContentPersistence()
+  }
   const ids = new Set<string>()
   const slugs = new Set<string>()
   const parsed = page.records.map((record) => {
@@ -293,6 +304,21 @@ export const readAdminNewsMutation = (
   return entry.version === expected.version
     ? entry
     : invalidContentPersistence()
+}
+
+export const readNewsSlugLookup = (
+  value: unknown,
+  expectedSlug: string
+): NewsEntryRecord | null => {
+  const parsed = records(value)
+  if (parsed.length > 1) {
+    return invalidContentPersistence()
+  }
+  const entry = parsed[0] ? readAdminNewsEntry(parsed[0]) : null
+  if (entry && entry.slug !== expectedSlug) {
+    return invalidContentPersistence()
+  }
+  return entry
 }
 
 export const readAdminDiscographyEntry = (
@@ -682,11 +708,14 @@ const readOperation = (
   const completedAt = optionalTimestamp(record.completed_at)
   const status = enumValue(record.status, ["pending", "succeeded"] as const)
   const result = requiredRecord(record.result)
+  const metadata = requiredRecord(record.metadata)
+  const idempotencyKey = requiredText(record.idempotency_key, 255)
   if (
     !SHA256.test(requestSha256) ||
+    !UUID.test(idempotencyKey) ||
     (status === "pending" && completedAt !== null) ||
     (status === "succeeded" && completedAt === null) ||
-    !asUnknownRecord(record.metadata) ||
+    Object.keys(metadata).length !== 0 ||
     (status === "pending" && Object.keys(result).length !== 0)
   ) {
     return invalidContentPersistence()
@@ -697,7 +726,7 @@ const readOperation = (
     command: requiredText(record.command, 255),
     expectedVersion: boundedInteger(record.expected_version, 0),
     id: requiredIdentifier(record.id, prefix),
-    idempotencyKey: requiredText(record.idempotency_key, 255),
+    idempotencyKey,
     requestSha256,
     result,
     status,
@@ -789,7 +818,7 @@ export const readNewsOperationResult = (value: unknown): NewsEntryDTO => {
     content,
     coverAltText: cover.altText,
     coverUrl: cover.url,
-    createdAt: optionalTimestamp(entry.createdAt),
+    createdAt: requiredTimestamp(entry.createdAt),
     excerpt: nullableText(entry.excerpt, 1_000),
     id,
     publishedAt,
@@ -799,7 +828,7 @@ export const readNewsOperationResult = (value: unknown): NewsEntryDTO => {
     status,
     tags: stringList(entry.tags, 50, 100),
     title: requiredText(entry.title, 300),
-    updatedAt: optionalTimestamp(entry.updatedAt),
+    updatedAt: requiredTimestamp(entry.updatedAt),
     version,
   }
 }
@@ -816,6 +845,21 @@ export const readExactNewsOperationResult = (
   return canonical(parsed) === canonical(expected)
     ? parsed
     : invalidContentPersistence()
+}
+
+export const assertExactNewsEntry = (
+  actual: NewsEntryRecord,
+  expected: NewsEntryRecord
+): NewsEntryRecord => {
+  readExactNewsOperationResult(
+    {
+      entry: serializeNewsEntry(actual),
+      entryId: actual.id,
+      version: actual.version,
+    },
+    serializeNewsEntry(expected)
+  )
+  return actual
 }
 
 export const readDiscographyOperationResult = (

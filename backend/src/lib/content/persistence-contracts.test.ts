@@ -9,6 +9,7 @@ import {
   readContentOperationMutation,
   readDiscographyOperationResult,
   readExactNewsOperationResult,
+  readNewsSlugLookup,
 } from "./persistence-contracts"
 
 const INVALID_PERSISTENCE =
@@ -81,8 +82,8 @@ const operation = (
 
 describe("Admin content persistence contracts", () => {
   it("accepts exact counted News and Discography pages", () => {
-    expect(readAdminNewsPage([[news()], 3], 25)).toMatchObject({
-      count: 3,
+    expect(readAdminNewsPage([[news()], 1], 25)).toMatchObject({
+      count: 1,
       records: [{ id: "news_1", slug: "update" }],
     })
     expect(readAdminDiscographyPage([[discography()], 1], 25)).toMatchObject({
@@ -93,6 +94,7 @@ describe("Admin content persistence contracts", () => {
 
   it.each([
     ["a short counted page", [[news()], 0]],
+    ["an incomplete counted window", [[news()], 2]],
     ["duplicate News slugs", [[news(), news({ id: "news_2" })], 2]],
     [
       "unsafe stored rich text",
@@ -109,6 +111,17 @@ describe("Admin content persistence contracts", () => {
     ],
   ])("rejects %s", (_label, value) => {
     expect(() => readAdminNewsPage(value, 25)).toThrow(INVALID_PERSISTENCE)
+  })
+
+  it("requires an exact singleton News slug lookup", () => {
+    expect(readNewsSlugLookup([], "update")).toBeNull()
+    expect(readNewsSlugLookup([news()], "update")?.id).toBe("news_1")
+    expect(() => readNewsSlugLookup([news()], "other")).toThrow(
+      INVALID_PERSISTENCE
+    )
+    expect(() =>
+      readNewsSlugLookup([news(), news({ id: "news_2" })], "update")
+    ).toThrow(INVALID_PERSISTENCE)
   })
 
   it.each([
@@ -189,6 +202,8 @@ describe("Admin content persistence contracts", () => {
       [operation({ result: { entryId: "news_1" } })],
     ],
     ["a malformed request digest", [operation({ request_sha256: "invalid" })]],
+    ["a non-UUID idempotency key", [operation({ idempotency_key: "retry" })]],
+    ["unexpected operation metadata", [operation({ metadata: { raw: true } })]],
   ])("rejects %s", (_label, value) => {
     expect(() => readContentOperationList(value, "news")).toThrow(
       INVALID_PERSISTENCE

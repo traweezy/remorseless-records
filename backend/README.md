@@ -936,6 +936,11 @@ in a serializable transaction, reject stale versions, and record the actor,
 command, request digest, result, and completion state in `news_operations`.
 An exact successful retry replays its stored result; a key reused for another
 actor, aggregate, version, command, or payload fails with a conflict.
+Singleton idempotency and slug reads request a second row and reject ambiguity.
+Before a new command returns success, the same serializable transaction reads
+back the complete entry and succeeded operation, then compares the exact stored
+DTO, operation identity, actor, request digest, and result with the requested
+state. A valid-shaped but partial or stale write acknowledgement is not enough.
 
 The Store API is deliberately narrower. `GET /store/news` and
 `GET /store/news/:slug` expose only rows where `archived_at` is null,
@@ -944,11 +949,14 @@ Scheduled rows therefore become visible without a timer-dependent database
 update. Their Store DTO status is normalized to `published`; Draft and Archived
 never cross this boundary. Stable ID ordering resolves timestamp ties.
 
-Rich HTML is sanitized during serialization for both Admin and Store output.
-The Admin uses Lexical for accessible structured authoring and validates every
-API response before rendering it. Covers continue through
-`POST /admin/managed-uploads`; the browser validates image type/size before the
-request, while the upload route performs the authoritative content checks.
+Rich HTML is sanitized before persistence. Admin and Store persistence
+boundaries reject unsafe stored markup rather than silently rewriting it into a
+plausible post, and require complete creation/update timestamps and exact
+counted pagination windows. The Admin uses Lexical for accessible structured
+authoring and validates every API response before rendering it. Covers continue
+through `POST /admin/managed-uploads`; the browser validates image type/size
+before the request, while the upload route performs the authoritative content
+checks.
 Both the upload response and News write contract allow only `http` or `https`
 cover URLs. A persisted cover requires descriptive alt text in the Admin, and
 the Storefront propagates it into cards, detail imagery, and social metadata.

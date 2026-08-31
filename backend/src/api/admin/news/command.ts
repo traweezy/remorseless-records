@@ -5,6 +5,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import {
+  assertExactNewsEntry,
   readAdminNewsEntry,
   readContentOperationList,
   readContentOperationMutation,
@@ -111,7 +112,7 @@ export const replayNewsCommand = async (
   const operation = readContentOperationList(
     await service.listNewsOperations(
       { idempotency_key: input.idempotencyKey },
-      { take: 1 },
+      { take: 2 },
       sharedContext
     ),
     "news"
@@ -183,7 +184,7 @@ export const completeNewsOperation = async (
   operation: ContentOperationProjection,
   entry: NewsEntryRecord,
   sharedContext: NewsTransactionContext
-): Promise<void> => {
+): Promise<ContentOperationProjection> => {
   const response = serializeNewsEntry(entry)
   const completed = readContentOperationMutation(
     await service.updateNewsOperations(
@@ -213,4 +214,46 @@ export const completeNewsOperation = async (
     }
   )
   readExactNewsOperationResult(completed.result, response)
+  return completed
+}
+
+export const verifyNewsCommandPersistence = async (
+  service: NewsService,
+  operation: ContentOperationProjection,
+  entry: NewsEntryRecord,
+  sharedContext: NewsTransactionContext
+): Promise<NewsEntryRecord> => {
+  const durableEntry = assertExactNewsEntry(
+    await resolveNewsEntry(service, entry.id, sharedContext),
+    entry
+  )
+  const durableOperation = readContentOperationList(
+    await service.listNewsOperations(
+      { idempotency_key: operation.idempotencyKey },
+      { take: 2 },
+      sharedContext
+    ),
+    "news"
+  )
+  if (
+    !durableOperation ||
+    durableOperation.id !== operation.id ||
+    durableOperation.actorId !== operation.actorId ||
+    durableOperation.aggregateId !== operation.aggregateId ||
+    durableOperation.command !== operation.command ||
+    durableOperation.expectedVersion !== operation.expectedVersion ||
+    durableOperation.idempotencyKey !== operation.idempotencyKey ||
+    durableOperation.requestSha256 !== operation.requestSha256 ||
+    durableOperation.status !== "succeeded"
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "The completed news command did not persist its exact audit state."
+    )
+  }
+  readExactNewsOperationResult(
+    durableOperation.result,
+    serializeNewsEntry(durableEntry)
+  )
+  return durableEntry
 }

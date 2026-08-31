@@ -62,7 +62,7 @@ export const GET = async (
     take,
     order: withStableNewsOrder({ [sortField]: sortDirection }),
   })
-  const { count, records } = readAdminNewsPage(result, take)
+  const { count, records } = readAdminNewsPage(result, take, skip)
 
   res.status(200).json({
     entries: records.map(serializeNewsEntry),
