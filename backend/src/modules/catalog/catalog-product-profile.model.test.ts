@@ -1,4 +1,4 @@
-import CatalogProductProfile from "./catalog-product-profile"
+import CatalogProductProfile from "./models/catalog-product-profile"
 
 describe("catalog product profile model", () => {
   it("keeps the tracklist JSON default as an empty array", () => {

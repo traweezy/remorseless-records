@@ -207,7 +207,7 @@ describe("store product visibility", () => {
         id: { $gt: "prodsc_01ABC" },
         sales_channel_id: ["sc_1"],
       },
-      pagination: { order: { id: "ASC" }, take: 3 },
+      pagination: { order: { id: "ASC" }, skip: 0, take: 3 },
     })
     expect(graph).toHaveBeenNthCalledWith(
       2,

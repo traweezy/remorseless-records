@@ -360,6 +360,9 @@ export const listVisibleProductPage = async <
     filters: linkFilters,
     pagination: {
       order: { id: direction },
+      // Medusa 2.18 selects listAndCount only when skip or cursor is present;
+      // without an explicit zero offset, `take` is ignored by graph queries.
+      skip: 0,
       take: boundedLimit + 1,
     },
   })

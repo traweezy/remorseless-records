@@ -49,7 +49,7 @@ describe("GET /store/products/handles", () => {
       entity: "product_sales_channel",
       fields: ["id", "product_id"],
       filters: { sales_channel_id: ["sc_web"] },
-      pagination: { order: { id: "ASC" }, take: 3 },
+      pagination: { order: { id: "ASC" }, skip: 0, take: 3 },
     })
     expect(graph).toHaveBeenNthCalledWith(2, {
       entity: "product",

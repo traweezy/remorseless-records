@@ -3,7 +3,7 @@ import type { Logger, NotificationTypes } from "@medusajs/framework/types"
 import {
   RESEND_NOTIFICATION_TIMEOUT_MS,
   ResendNotificationService,
-} from "./resend"
+} from "./services/resend"
 
 type ResendClientOverride = {
   resendClient: {

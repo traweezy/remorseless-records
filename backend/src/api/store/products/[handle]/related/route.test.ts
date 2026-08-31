@@ -88,7 +88,7 @@ describe("GET /store/products/:handle/related", () => {
       entity: "product_sales_channel",
       fields: ["id", "product_id"],
       filters: { sales_channel_id: ["sc_web"] },
-      pagination: { order: { id: "DESC" }, take: 101 },
+      pagination: { order: { id: "DESC" }, skip: 0, take: 101 },
     })
     expect(status).toHaveBeenCalledWith(200)
     expect(setHeader).toHaveBeenCalledWith("Vary", "x-publishable-api-key")
