@@ -3,6 +3,7 @@ const REASON_PATTERN = /^[a-z0-9][a-z0-9_.:-]{0,191}$/u
 const NAME_PATTERN = /^[a-z][a-z0-9_]{0,63}$/u
 const MAX_CLOCK_SKEW_SECONDS = 60
 const MAX_RESPONSE_AGE_SECONDS = 2 * 60
+const CATALOG_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$/u
 
 const isRecord = (value) =>
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -13,6 +14,86 @@ const validReasons = (value) =>
   value.every(
     (reason) => typeof reason === "string" && REASON_PATTERN.test(reason)
   )
+const validCatalogIdentifier = (value) =>
+  typeof value === "string" && CATALOG_IDENTIFIER_PATTERN.test(value)
+const validCatalogText = (value, maximumLength) =>
+  typeof value === "string" &&
+  value.length > 0 &&
+  value.length <= maximumLength &&
+  value === value.trim() &&
+  !/[\u0000-\u001f\u007f]/u.test(value)
+
+const parseCatalogHandles = (body) => {
+  let value
+  try {
+    value = JSON.parse(body)
+  } catch {
+    return null
+  }
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.handles) ||
+    value.handles.length > 1 ||
+    !(value.next_cursor === null || validCatalogText(value.next_cursor, 256))
+  ) {
+    return null
+  }
+  const ids = new Set()
+  for (const handle of value.handles) {
+    if (
+      !isRecord(handle) ||
+      !validCatalogIdentifier(handle.id) ||
+      !validCatalogText(handle.handle, 200) ||
+      ids.has(handle.id)
+    ) {
+      return null
+    }
+    ids.add(handle.id)
+  }
+  return { count: value.handles.length }
+}
+
+const parseCatalogShelves = (body) => {
+  let value
+  try {
+    value = JSON.parse(body)
+  } catch {
+    return null
+  }
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.shelves) ||
+    value.shelves.length > 50
+  ) {
+    return null
+  }
+  const shelfIds = new Set()
+  let productCount = 0
+  for (const entry of value.shelves) {
+    if (
+      !isRecord(entry) ||
+      !isRecord(entry.shelf) ||
+      !validCatalogIdentifier(entry.shelf.id) ||
+      !validCatalogText(entry.shelf.handle, 200) ||
+      !validCatalogText(entry.shelf.title, 500) ||
+      shelfIds.has(entry.shelf.id) ||
+      !Array.isArray(entry.productIds) ||
+      entry.productIds.length > 3_000
+    ) {
+      return null
+    }
+    const productIds = new Set()
+    for (const productId of entry.productIds) {
+      if (!validCatalogIdentifier(productId) || productIds.has(productId)) {
+        return null
+      }
+      productIds.add(productId)
+    }
+    shelfIds.add(entry.shelf.id)
+    productCount += productIds.size
+  }
+  return { count: value.shelves.length, productCount }
+}
 
 const sanitizeRetentionJob = (value) => {
   if (value === null) {
@@ -161,21 +242,35 @@ const parsePayload = (body) => {
 export const evaluateOperationsHealthResponse = ({
   body,
   forceAlert = false,
+  handlesBody,
+  handlesHttpStatus,
   httpStatus,
   now = new Date(),
   readyHttpStatus,
+  shelvesBody,
+  shelvesHttpStatus,
   sourceErrors = [],
 }) => {
-  if (typeof body !== "string") {
-    throw new TypeError("Operations health body must be a string")
+  if (
+    typeof body !== "string" ||
+    typeof handlesBody !== "string" ||
+    typeof shelvesBody !== "string"
+  ) {
+    throw new TypeError("Operations observation bodies must be strings")
   }
   if (
     !Number.isInteger(httpStatus) ||
     httpStatus < 0 ||
     httpStatus > 599 ||
+    !Number.isInteger(handlesHttpStatus) ||
+    handlesHttpStatus < 0 ||
+    handlesHttpStatus > 599 ||
     !Number.isInteger(readyHttpStatus) ||
     readyHttpStatus < 0 ||
-    readyHttpStatus > 599
+    readyHttpStatus > 599 ||
+    !Number.isInteger(shelvesHttpStatus) ||
+    shelvesHttpStatus < 0 ||
+    shelvesHttpStatus > 599
   ) {
     throw new TypeError("Operations HTTP statuses must be bounded")
   }
@@ -193,6 +288,8 @@ export const evaluateOperationsHealthResponse = ({
 
   const reasons = new Set(sourceErrors.map((error) => `source_error:${error}`))
   const payload = parsePayload(body)
+  const handles = parseCatalogHandles(handlesBody)
+  const shelves = parseCatalogShelves(shelvesBody)
   if (!payload) {
     reasons.add("health_payload_invalid")
   } else {
@@ -214,6 +311,27 @@ export const evaluateOperationsHealthResponse = ({
   if (readyHttpStatus !== 200) {
     reasons.add("readiness_endpoint_unhealthy")
   }
+  if (handlesHttpStatus !== 200) {
+    reasons.add("catalog_handles_endpoint_unhealthy")
+  }
+  if (!handles) {
+    reasons.add("catalog_handles_payload_invalid")
+  } else if (handles.count === 0) {
+    reasons.add("catalog_handles_empty")
+  }
+  if (shelvesHttpStatus !== 200) {
+    reasons.add("catalog_shelves_endpoint_unhealthy")
+  }
+  if (!shelves) {
+    reasons.add("catalog_shelves_payload_invalid")
+  } else {
+    if (shelves.count === 0) {
+      reasons.add("catalog_shelves_empty")
+    }
+    if (shelves.productCount === 0) {
+      reasons.add("catalog_shelf_products_empty")
+    }
+  }
   if (forceAlert) {
     reasons.add("forced_acceptance_alert")
   }
@@ -224,6 +342,14 @@ export const evaluateOperationsHealthResponse = ({
     status: reasonList.length === 0 ? "healthy" : "alert",
     environment: "staging",
     evaluatedAt: now.toISOString(),
+    catalog: {
+      handles: { count: handles?.count ?? null, httpStatus: handlesHttpStatus },
+      shelves: {
+        count: shelves?.count ?? null,
+        httpStatus: shelvesHttpStatus,
+        productCount: shelves?.productCount ?? null,
+      },
+    },
     httpStatus,
     readyHttpStatus,
     endpoint: payload,
@@ -243,6 +369,8 @@ export const renderOperationsObservationMarkdown = (report) => {
     `- Evaluated: \`${report.evaluatedAt}\``,
     `- Operations HTTP status: \`${report.httpStatus}\``,
     `- Readiness HTTP status: \`${report.readyHttpStatus}\``,
+    `- Catalog handles: HTTP \`${report.catalog?.handles.httpStatus ?? "invalid"}\`, count \`${report.catalog?.handles.count ?? "invalid"}\``,
+    `- Catalog shelves: HTTP \`${report.catalog?.shelves.httpStatus ?? "invalid"}\`, shelves \`${report.catalog?.shelves.count ?? "invalid"}\`, memberships \`${report.catalog?.shelves.productCount ?? "invalid"}\``,
     `- Commit: \`${endpoint?.version ?? "unknown"}\``,
     `- Scheduler: \`${endpoint?.components.scheduler.status ?? "invalid"}\``,
     `- Redis latency ms: \`${endpoint?.components.scheduler.redisLatencyMs ?? "n/a"}\``,

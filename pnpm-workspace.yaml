@@ -139,6 +139,7 @@ patchedDependencies:
   "@medusajs/file-s3@2.18.0": patches/@medusajs__file-s3@2.18.0.patch
   "@medusajs/framework@2.18.0": patches/@medusajs__framework@2.18.0.patch
   "@medusajs/medusa@2.18.0": patches/@medusajs__medusa@2.18.0.patch
+  "@medusajs/utils@2.18.0": patches/@medusajs__utils@2.18.0.patch
   "@medusajs/workflow-engine-redis@2.18.0": patches/@medusajs__workflow-engine-redis@2.18.0.patch
   "@railway/cli@5.45.0": patches/@railway__cli@5.45.0.patch
   "@radix-ui/react-select@2.3.7": patches/@radix-ui__react-select@2.3.7.patch

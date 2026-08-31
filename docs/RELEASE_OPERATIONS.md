@@ -77,8 +77,10 @@ The Redis outage matrix is explicit:
 After a staging deployment that changes these boundaries:
 
 1. Require `/live` and dependency-aware `/ready` to return 200 on both services.
-2. Exercise one successful catalog/search read and one non-mutating cart read;
-   do not deliberately exhaust a shared public bucket.
+2. Exercise the standard Product list, bounded Product-handle feed, public
+   merchandising shelves, one catalog/search read, and one non-mutating cart
+   read. Require at least one visible Product and one shelf membership; do not
+   deliberately exhaust a shared public bucket.
 3. Confirm ordinary responses do not contain `rate_limit_unavailable` and
    inspect the exact-deployment logs for `rate_limit.unavailable`, Redis
    connection errors, or unexpected 429/503 growth.

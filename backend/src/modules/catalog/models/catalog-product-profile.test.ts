@@ -5,6 +5,7 @@ describe("catalog product profile model", () => {
     const property = CatalogProductProfile.schema.tracklist.parse("tracklist")
 
     expect(Array.isArray(property.defaultValue)).toBe(true)
+    expect(Object.getPrototypeOf(property.defaultValue)).toBe(Array.prototype)
     expect(JSON.stringify(property.defaultValue)).toBe("[]")
   })
 })

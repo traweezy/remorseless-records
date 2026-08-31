@@ -3830,9 +3830,11 @@ valid ISO publication or creation timestamps.
 
 The last production double assertion was Medusa DML's object-only TypeScript
 definition for JSON defaults applied to the intentionally array-shaped
-`tracklist` column. A runtime `Array` default now structurally satisfies the
-pinned DML contract without changing the existing `[]` database default; a
-model-metadata test pins both `Array.isArray` and JSON serialization. Six
+`tracklist` column. The pinned `@medusajs/utils` declaration now broadens only
+the JSON property's `default` input to accept arrays, matching Medusa's runtime
+and PostgreSQL JSONB without widening the model's stored field type. A native
+`Array` remains the runtime and database default; a model-metadata test pins
+`Array.isArray`, the exact native prototype, and JSON serialization. Six
 focused Storefront suites pass 132 tests, the model regression passes, and
 strict TypeScript plus Biome are clean. No production `as unknown as` escape
 hatches remain in Backend or Storefront source. The dated debt item remains
@@ -3928,6 +3930,38 @@ Backend suites pass 110 tests, strict Backend and Storefront TypeScript pass,
 and the Backend production build completes with the frozen packaged-server
 dependency install. These changes alter data decoding only; rendered layout and
 interaction behavior are unchanged.
+
+## Public catalog runtime regression and synthetic acceptance
+
+The first Storefront browser failures after `1414f1d` were traced to the live
+Backend rather than Playwright: the standard Store Product list returned 200
+with 461 Products, while `/store/products/handles` and
+`/store/catalog/shelves` returned 500 with a validated query-projection error.
+The only Backend runtime change since the last healthy deployment had replaced
+the `tracklist` JSON default with an `Array` subclass to satisfy Medusa's narrow
+declaration. Medusa's model/query machinery requires the native JSON value.
+The model again supplies a native array, and the pinned declaration patch
+removes the need for a runtime-altering workaround or type escape hatch.
+
+The external staging operations monitor now performs authenticated, bounded
+reads of both public catalog projections in addition to operations health and
+readiness. It fails on transport errors, non-200 responses, malformed or
+duplicate identities, an empty Product feed, empty shelves, or zero visible
+shelf memberships. Retained JSON/Markdown evidence contains only HTTP status
+and aggregate counts; Product IDs, handles, titles, response bodies, and the
+publishable key are never retained. The release and observability runbooks now
+make these projections an explicit release and P1 incident boundary.
+
+Complete local acceptance passes the 1,235-file repository QA gate, all 269
+Backend suites / 2,027 tests at 91.44% statements, 84.81% branches, 95.62%
+functions, and 91.46% lines, 134 Storefront baseline files / 797 tests at
+94.25/86.65/96.02/94.24, and 35 transactional files / 313 tests at
+83.37/76.02/85.81/83.46. Focused acceptance includes all 34 model, route, and
+visibility tests plus six external-monitor tests. Strict Backend and Storefront
+TypeScript, Biome, the complete Backend production build with frozen packaged
+dependencies, and the Storefront production build with its client-secret and
+Stripe Trusted Types scanner are green. Deployed endpoint and browser evidence
+follows on this section's exact release SHA.
 
 ## Legal, accessibility, and launch acceptance
 

@@ -1,0 +1,11 @@
+diff --git a/dist/dml/properties/json.d.ts b/dist/dml/properties/json.d.ts
+index ea964822272134aed0504fd9d4f0fd773b4a4b5c..2c784deaf09159b4418654d68b71b31022fe53f5 100644
+--- a/dist/dml/properties/json.d.ts
++++ b/dist/dml/properties/json.d.ts
+@@ -4,5 +4,6 @@ import { BaseProperty } from "./base";
+  * data as a JSON string
+  */
+ export declare class JSONProperty extends BaseProperty<Record<string, unknown>> {
++    default(value: Record<string, unknown> | unknown[]): this;
+     protected dataType: {
+         readonly name: "json";

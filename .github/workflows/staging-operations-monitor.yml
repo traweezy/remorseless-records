@@ -26,6 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      CATALOG_HANDLES_URL: https://remorseless-records-admin-staging.up.railway.app/store/products/handles?limit=1
+      CATALOG_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY }}
+      CATALOG_SHELVES_URL: https://remorseless-records-admin-staging.up.railway.app/store/catalog/shelves
       OPERATIONS_HEALTH_URL: https://remorseless-records-admin-staging.up.railway.app/health/operations
       READY_HEALTH_URL: https://remorseless-records-admin-staging.up.railway.app/ready
     steps:
@@ -45,6 +48,8 @@ jobs:
           monitor_dir="${RUNNER_TEMP}/operations-monitor"
           install -d -m 700 "${monitor_dir}"
           printf '{}\n' > "${monitor_dir}/health.json"
+          printf '{}\n' > "${monitor_dir}/handles.json"
+          printf '{}\n' > "${monitor_dir}/shelves.json"
 
           set +e
           operations_status="$(curl \
@@ -71,10 +76,42 @@ jobs:
             --write-out '%{http_code}' \
             "${READY_HEALTH_URL}")"
           ready_exit=$?
+          handles_status="$(curl \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.2 \
+            --connect-timeout 5 \
+            --max-time 10 \
+            --max-filesize 131072 \
+            --header "x-publishable-api-key: ${CATALOG_PUBLISHABLE_KEY}" \
+            --output "${monitor_dir}/handles.next.json" \
+            --write-out '%{http_code}' \
+            "${CATALOG_HANDLES_URL}")"
+          handles_exit=$?
+          shelves_status="$(curl \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.2 \
+            --connect-timeout 5 \
+            --max-time 10 \
+            --max-filesize 131072 \
+            --header "x-publishable-api-key: ${CATALOG_PUBLISHABLE_KEY}" \
+            --output "${monitor_dir}/shelves.next.json" \
+            --write-out '%{http_code}' \
+            "${CATALOG_SHELVES_URL}")"
+          shelves_exit=$?
           set -e
 
           if (( operations_exit == 0 )); then
             mv "${monitor_dir}/health.next.json" "${monitor_dir}/health.json"
+          fi
+          if (( handles_exit == 0 )); then
+            mv "${monitor_dir}/handles.next.json" "${monitor_dir}/handles.json"
+          fi
+          if (( shelves_exit == 0 )); then
+            mv "${monitor_dir}/shelves.next.json" "${monitor_dir}/shelves.json"
           fi
           if [[ ! "${operations_status}" =~ ^[0-9]{3}$ ]]; then
             operations_status=0
@@ -82,11 +119,21 @@ jobs:
           if [[ ! "${ready_status}" =~ ^[0-9]{3}$ ]]; then
             ready_status=0
           fi
+          if [[ ! "${handles_status}" =~ ^[0-9]{3}$ ]]; then
+            handles_status=0
+          fi
+          if [[ ! "${shelves_status}" =~ ^[0-9]{3}$ ]]; then
+            shelves_status=0
+          fi
+          printf 'handles_status=%s\n' "${handles_status}" >> "${GITHUB_OUTPUT}"
+          printf 'handles_exit=%s\n' "${handles_exit}" >> "${GITHUB_OUTPUT}"
           printf 'operations_status=%s\n' "${operations_status}" >> "${GITHUB_OUTPUT}"
           printf 'ready_status=%s\n' "${ready_status}" >> "${GITHUB_OUTPUT}"
           printf 'operations_exit=%s\n' "${operations_exit}" >> "${GITHUB_OUTPUT}"
           printf 'ready_exit=%s\n' "${ready_exit}" >> "${GITHUB_OUTPUT}"
-          if (( operations_exit != 0 || ready_exit != 0 )); then
+          printf 'shelves_status=%s\n' "${shelves_status}" >> "${GITHUB_OUTPUT}"
+          printf 'shelves_exit=%s\n' "${shelves_exit}" >> "${GITHUB_OUTPUT}"
+          if (( operations_exit != 0 || ready_exit != 0 || handles_exit != 0 || shelves_exit != 0 )); then
             exit 1
           fi
       - name: Evaluate and redact observation
@@ -94,10 +141,14 @@ jobs:
         continue-on-error: true
         env:
           FORCE_ALERT: ${{ inputs.force_alert }}
+          HANDLES_EXIT: ${{ steps.fetch.outputs.handles_exit }}
+          HANDLES_STATUS: ${{ steps.fetch.outputs.handles_status }}
           OPERATIONS_EXIT: ${{ steps.fetch.outputs.operations_exit }}
           OPERATIONS_STATUS: ${{ steps.fetch.outputs.operations_status }}
           READY_EXIT: ${{ steps.fetch.outputs.ready_exit }}
           READY_STATUS: ${{ steps.fetch.outputs.ready_status }}
+          SHELVES_EXIT: ${{ steps.fetch.outputs.shelves_exit }}
+          SHELVES_STATUS: ${{ steps.fetch.outputs.shelves_status }}
         run: |
           set -euo pipefail
           monitor_dir="${RUNNER_TEMP}/operations-monitor"
@@ -105,8 +156,12 @@ jobs:
           install -d -m 700 "${artifacts_dir}"
           args=(
             --body-file "${monitor_dir}/health.json"
+            --handles-body-file "${monitor_dir}/handles.json"
+            --handles-http-status "${HANDLES_STATUS:-0}"
             --http-status "${OPERATIONS_STATUS:-0}"
             --ready-http-status "${READY_STATUS:-0}"
+            --shelves-body-file "${monitor_dir}/shelves.json"
+            --shelves-http-status "${SHELVES_STATUS:-0}"
             --now "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           )
           if [[ "${OPERATIONS_EXIT:-1}" != "0" ]]; then
@@ -114,6 +169,12 @@ jobs:
           fi
           if [[ "${READY_EXIT:-1}" != "0" ]]; then
             args+=(--source-error readiness_endpoint_unreachable)
+          fi
+          if [[ "${HANDLES_EXIT:-1}" != "0" ]]; then
+            args+=(--source-error catalog_handles_endpoint_unreachable)
+          fi
+          if [[ "${SHELVES_EXIT:-1}" != "0" ]]; then
+            args+=(--source-error catalog_shelves_endpoint_unreachable)
           fi
           if [[ "${FORCE_ALERT:-false}" == "true" ]]; then
             args+=(--force-alert)
