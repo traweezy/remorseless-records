@@ -11,7 +11,7 @@ const linkableStatuses: ReadonlySet<PaymentIntentStatus> = new Set([
   "requires_confirmation",
   "requires_payment_method",
 ] as const)
-const paymentIntentStatuses = new Set([
+const paymentIntentStatuses: ReadonlySet<string> = new Set([
   "canceled",
   "processing",
   "requires_action",
