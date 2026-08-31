@@ -23,6 +23,8 @@ import {
   type SupportedManagedImage,
 } from "@/lib/catalog/managed-media"
 import { readCatalogUploadedFile } from "@/lib/catalog/transaction-persistence-contracts"
+import { readIsoTimestamp } from "@/lib/provider-boundary/primitives"
+import { asUnknownRecord } from "@/lib/provider-boundary/records"
 import {
   MANAGED_IMAGE_NORMALIZER_VERSION,
   normalizeManagedImageUpload,
@@ -117,6 +119,8 @@ type ManagedMediaState = {
   schemaVersion: 2
   updatedAt: string
 }
+
+const MAXIMUM_MANAGED_MEDIA_STATE_ENTRIES = 100_000
 
 type SourceUsage = {
   catalogAssetIds: Set<string>
@@ -441,19 +445,136 @@ const defaultStateDirectory = (): string =>
     "media-migration"
   )
 
+const readStateText = (value: unknown, maximum: number): string | null =>
+  typeof value === "string" &&
+  value.length > 0 &&
+  value.length <= maximum &&
+  value === value.trim() &&
+  !/[\u0000-\u001f\u007f]/u.test(value)
+    ? value
+    : null
+
+const readStateUrl = (value: unknown): string | null => {
+  const text = readStateText(value, 2_048)
+  if (!text) {
+    return null
+  }
+  try {
+    const url = new URL(text)
+    return ["http:", "https:"].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+      ? text
+      : null
+  } catch {
+    return null
+  }
+}
+
+const readPositiveStateInteger = (value: unknown): number | null =>
+  typeof value === "number" && Number.isSafeInteger(value) && value > 0
+    ? value
+    : null
+
+const readManagedMediaStateEntry = (
+  value: unknown,
+  sourceKey: string
+): ManagedMediaStateEntry => {
+  const record = asUnknownRecord(value)
+  const byteSize = readPositiveStateInteger(record?.byteSize)
+  const completedAt = readIsoTimestamp(record?.completedAt)
+  const fileKey = readStateText(record?.fileKey, 1_024)
+  const height = readPositiveStateInteger(record?.height)
+  const managedUrl = readStateUrl(record?.managedUrl)
+  const originalUrls = Array.isArray(record?.originalUrls)
+    ? record.originalUrls.map(readStateUrl)
+    : []
+  const sourceByteSize = readPositiveStateInteger(record?.sourceByteSize)
+  const sourceMimeType =
+    record?.sourceMimeType === "image/jpeg" ||
+    record?.sourceMimeType === "image/png" ||
+    record?.sourceMimeType === "image/webp"
+      ? record.sourceMimeType
+      : null
+  const sourceUrl = readStateUrl(record?.sourceUrl)
+  const width = readPositiveStateInteger(record?.width)
+  if (
+    !record ||
+    byteSize === null ||
+    !completedAt ||
+    !fileKey ||
+    height === null ||
+    !managedUrl ||
+    record.mimeType !== "image/webp" ||
+    record.normalizerVersion !== MANAGED_IMAGE_NORMALIZER_VERSION ||
+    originalUrls.length > 100 ||
+    originalUrls.some((url) => !url) ||
+    new Set(originalUrls).size !== originalUrls.length ||
+    typeof record.sha256 !== "string" ||
+    !/^[0-9a-f]{64}$/.test(record.sha256) ||
+    sourceByteSize === null ||
+    !sourceMimeType ||
+    typeof record.sourceSha256 !== "string" ||
+    !/^[0-9a-f]{64}$/.test(record.sourceSha256) ||
+    !sourceUrl ||
+    sourceUrl !== sourceKey ||
+    width === null
+  ) {
+    throw new Error(`Managed-media state for ${sourceKey} is invalid.`)
+  }
+  return {
+    byteSize,
+    completedAt,
+    fileKey,
+    height,
+    managedUrl,
+    mimeType: "image/webp",
+    normalizerVersion: MANAGED_IMAGE_NORMALIZER_VERSION,
+    originalUrls: originalUrls.filter((url): url is string => Boolean(url)),
+    sha256: record.sha256,
+    sourceByteSize,
+    sourceMimeType,
+    sourceSha256: record.sourceSha256,
+    sourceUrl,
+    width,
+  }
+}
+
+export const readManagedMediaState = (value: unknown): ManagedMediaState => {
+  const record = asUnknownRecord(value)
+  const entriesRecord = asUnknownRecord(record?.entries)
+  const createdAt = readIsoTimestamp(record?.createdAt)
+  const updatedAt = readIsoTimestamp(record?.updatedAt)
+  if (
+    !record ||
+    record.schemaVersion !== 2 ||
+    record.masterWidth !== managedMediaUsagePlan.masterWidth ||
+    !entriesRecord ||
+    Object.keys(entriesRecord).length > MAXIMUM_MANAGED_MEDIA_STATE_ENTRIES ||
+    !createdAt ||
+    !updatedAt
+  ) {
+    throw new Error("Managed-media state has an unsupported schema.")
+  }
+  const entries = Object.fromEntries(
+    Object.entries(entriesRecord).map(([sourceUrl, entry]) => [
+      sourceUrl,
+      readManagedMediaStateEntry(entry, sourceUrl),
+    ])
+  )
+  return {
+    createdAt,
+    entries,
+    masterWidth: managedMediaUsagePlan.masterWidth,
+    schemaVersion: 2,
+    updatedAt,
+  }
+}
+
 const loadState = async (statePath: string): Promise<ManagedMediaState> => {
   try {
     const raw = await fs.readFile(statePath, "utf8")
-    const parsed = JSON.parse(raw) as Partial<ManagedMediaState>
-    if (
-      parsed.schemaVersion !== 2 ||
-      parsed.masterWidth !== managedMediaUsagePlan.masterWidth ||
-      !parsed.entries ||
-      typeof parsed.entries !== "object"
-    ) {
-      throw new Error("Managed-media state has an unsupported schema.")
-    }
-    return parsed as ManagedMediaState
+    return readManagedMediaState(JSON.parse(raw))
   } catch (error: unknown) {
     const code =
       error && typeof error === "object" && "code" in error

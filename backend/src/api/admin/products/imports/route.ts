@@ -376,11 +376,7 @@ const normalizeSemicolonDelimitedCsv = (
 
       if (Object.keys(extraMetadata).length > 0) {
         const legacy =
-          typeof existingMetadata[metadataNamespace] === "object" &&
-          existingMetadata[metadataNamespace] !== null &&
-          !Array.isArray(existingMetadata[metadataNamespace])
-            ? (existingMetadata[metadataNamespace] as Record<string, unknown>)
-            : {}
+          asUnknownRecord(existingMetadata[metadataNamespace]) ?? {}
 
         existingMetadata[metadataNamespace] = {
           ...legacy,
@@ -699,7 +695,13 @@ const buildImportPlan = (
   }
 
   normalizedRows.forEach((row) => {
-    const normalizedRow = row as Record<string, unknown>
+    const normalizedRow = asUnknownRecord(row)
+    if (!normalizedRow) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "A normalized product import row is malformed."
+      )
+    }
     const handle = normalizedValue(normalizedRow, "product handle")
     const productId = normalizedValue(normalizedRow, "product id")
     if (handle && productId) {

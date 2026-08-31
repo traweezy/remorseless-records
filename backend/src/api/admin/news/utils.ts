@@ -5,13 +5,13 @@ import {
 } from "@medusajs/utils"
 
 import { richTextToPlainText } from "@/lib/content/rich-text"
+import {
+  asUnknownRecord,
+  readRecordArray,
+} from "@/lib/provider-boundary/records"
 import type NewsModuleService from "@/modules/news/service"
 
 export type NewsService = InstanceType<typeof NewsModuleService>
-
-type AdminAuthContext = {
-  actor_id?: string | null
-}
 
 export const slugify = (value: string): string => {
   const trimmed = value.trim().toLowerCase()
@@ -54,37 +54,44 @@ export const toNullableString = (
 export const resolveAdminUserName = async (
   req: MedusaRequest
 ): Promise<string | null> => {
-  const authContext = (req as { auth_context?: AdminAuthContext }).auth_context
-  const actorId = authContext?.actor_id ?? null
-  if (!actorId) {
+  const requestRecord = asUnknownRecord(req)
+  const authContext = asUnknownRecord(requestRecord?.auth_context)
+  const actorId = authContext?.actor_id
+  if (typeof actorId !== "string" || !actorId.trim()) {
     return null
   }
 
   const remoteQuery = req.scope.resolve(ContainerRegistrationKeys.REMOTE_QUERY)
   const query = remoteQueryObjectFromString({
     entryPoint: "user",
-    variables: { id: actorId },
+    variables: { id: actorId.trim() },
     fields: ["first_name", "last_name", "email"],
   })
 
-  const [user] = (await remoteQuery(query)) as Array<{
-    first_name?: string | null
-    last_name?: string | null
-    email?: string | null
-  }>
+  const users = readRecordArray(await remoteQuery(query), {
+    context: "Admin user query",
+  })
+  if (users.length > 1) {
+    throw new Error("Admin user query returned multiple identities.")
+  }
+  const [user] = users
 
   if (!user) {
     return null
   }
 
-  const first = (user.first_name ?? "").trim()
-  const last = (user.last_name ?? "").trim()
+  const text = (value: unknown, maximum: number): string =>
+    typeof value === "string" && value.trim().length <= maximum
+      ? value.trim()
+      : ""
+  const first = text(user.first_name, 255)
+  const last = text(user.last_name, 255)
   const fullName = `${first} ${last}`.trim()
   if (fullName.length) {
     return fullName
   }
 
-  return user.email?.trim() ?? null
+  return text(user.email, 320) || null
 }
 
 export const buildSeo = (input: {

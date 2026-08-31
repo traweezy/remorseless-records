@@ -1,5 +1,6 @@
 import { Button, Link, Section, Text, Img, Hr } from "./primitives"
 import { Base } from "./base"
+import { asUnknownRecord } from "../../../lib/provider-boundary/records"
 
 /**
  * The key for the InviteUserEmail template, used to identify it
@@ -28,10 +29,10 @@ export interface InviteUserEmailProps {
 export const isInviteUserData = (
   data: unknown
 ): data is InviteUserEmailProps => {
-  if (!data || typeof data !== "object") {
+  const candidate = asUnknownRecord(data)
+  if (!candidate) {
     return false
   }
-  const candidate = data as Record<string, unknown>
   if (
     typeof candidate.inviteLink !== "string" ||
     candidate.inviteLink.length > 4_096 ||

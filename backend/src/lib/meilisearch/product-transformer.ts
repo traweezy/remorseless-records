@@ -11,6 +11,7 @@ import {
 } from "../catalog/shelves"
 import { LOW_STOCK_THRESHOLD } from "../catalog/stock"
 import { richTextToPlainText, sanitizeRichTextHtml } from "../content/rich-text"
+import { readRecordArray } from "../provider-boundary/records"
 
 type DefaultTransformer = (
   product: Record<string, unknown>,
@@ -1147,7 +1148,9 @@ const loadCatalogFacts = async (
     const profile = profiles[0] ?? null
     const profileId = toStringOrNull(profile?.id)
     const productVariants = Array.isArray(product.variants)
-      ? (product.variants as Array<DynamicRecord>)
+      ? readRecordArray(product.variants, {
+          context: "Meilisearch product variants",
+        })
       : []
     const variantIds = productVariants
       .map((variant) => toStringOrNull(variant.id))

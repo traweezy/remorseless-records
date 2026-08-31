@@ -19,7 +19,10 @@ import { Button } from "@/components/ui/button"
 import SmartLink from "@/components/ui/smart-link"
 import { cartAmount, cartQuantity } from "@/lib/cart/snapshot"
 import { formatAmount } from "@/lib/money"
-import { readNonNegativeSafeInteger } from "@/lib/provider-boundary"
+import {
+  asUnknownRecord,
+  readNonNegativeSafeInteger,
+} from "@/lib/provider-boundary"
 import {
   buildPublicProductPath,
   resolvePublicProductRouteType,
@@ -62,16 +65,11 @@ const productClass = (item: CartLineItem): string | null => {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
     return null
   }
-  const catalogImport = metadata.catalog_import
-  if (
-    !catalogImport ||
-    typeof catalogImport !== "object" ||
-    Array.isArray(catalogImport)
-  ) {
+  const catalogImport = asUnknownRecord(metadata.catalog_import)
+  if (!catalogImport) {
     return null
   }
-  const importedProductType = (catalogImport as Record<string, unknown>)
-    .product_type
+  const importedProductType = catalogImport.product_type
   return typeof importedProductType === "string" ? importedProductType : null
 }
 

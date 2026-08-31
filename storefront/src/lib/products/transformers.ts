@@ -11,6 +11,7 @@ import {
   summarizeStockStatus,
 } from "@/lib/products/stock"
 import { normalizeFormatValue } from "@/lib/search/normalize"
+import { asUnknownRecord } from "@/lib/provider-boundary"
 import type {
   ProductSearchHit,
   RelatedProductSummary,
@@ -18,9 +19,7 @@ import type {
 } from "@/types/product"
 
 const coerceRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
+  asUnknownRecord(value)
 
 const addCanonicalFormat = (
   set: Set<string>,

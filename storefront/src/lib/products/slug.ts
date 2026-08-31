@@ -1,5 +1,7 @@
 import type { HttpTypes } from "@medusajs/types"
 
+import { asUnknownRecord } from "@/lib/provider-boundary"
+
 type MaybeRecord = Record<string, unknown> | null | undefined
 
 type CategoryRecord = {
@@ -44,9 +46,7 @@ const coerceString = (value: unknown): string | null => {
 }
 
 const coerceRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
+  asUnknownRecord(value)
 
 const coerceArtistName = (value: unknown): string | null => {
   const directName = coerceString(value)

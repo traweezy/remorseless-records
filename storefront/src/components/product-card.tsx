@@ -26,6 +26,7 @@ import {
   resolvePublicProductRouteType,
 } from "@/lib/products/routes"
 import { normalizeRibbonLabel } from "@/lib/products/ribbons"
+import { asUnknownRecord } from "@/lib/provider-boundary"
 import { useProductDetailPrefetch } from "@/lib/query/products"
 import { shouldBlockPrefetch } from "@/lib/prefetch"
 import type {
@@ -78,7 +79,7 @@ type RibbonCandidate = {
 }
 
 const coerceMetadata = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" ? (value as Record<string, unknown>) : null
+  asUnknownRecord(value)
 
 const addCandidate = (
   list: RibbonCandidate[],

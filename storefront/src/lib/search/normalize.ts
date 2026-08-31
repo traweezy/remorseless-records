@@ -3,6 +3,7 @@ import type { FacetDistribution } from "meilisearch"
 import { humanizeCategoryHandle } from "@/lib/products/categories"
 import { buildProductSlugParts } from "@/lib/products/slug"
 import { resolveVariantStockStatus } from "@/lib/products/stock"
+import { asUnknownRecord } from "@/lib/provider-boundary"
 import type {
   ProductSearchHit,
   StockStatus,
@@ -552,6 +553,4 @@ export const extractFacetMaps = (
   }
 }
 const coerceRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
+  asUnknownRecord(value)

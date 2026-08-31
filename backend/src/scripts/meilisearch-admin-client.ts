@@ -1,4 +1,14 @@
+import {
+  readIsoTimestamp,
+  readNonNegativeSafeInteger,
+} from "../lib/provider-boundary/primitives"
+import {
+  asUnknownRecord,
+  readRecordArray,
+} from "../lib/provider-boundary/records"
+
 const REQUEST_TIMEOUT_MS = 30_000
+const MAXIMUM_INDEXES = 1_000
 
 export type MeilisearchTask = {
   taskUid: number
@@ -11,13 +21,44 @@ export type MeilisearchIndexSummary = {
 
 type Fetch = typeof fetch
 
-type ResourceResults<T> = {
-  results: T[]
-}
-
 const parseErrorDetail = async (response: Response): Promise<string> => {
   const body = await response.text()
   return body.slice(0, 500) || response.statusText
+}
+
+const malformedAdminResponse = (): never => {
+  throw new Error("[meilisearch] Admin API returned malformed structured data.")
+}
+
+const readTask = (value: unknown): MeilisearchTask => {
+  const record = asUnknownRecord(value)
+  const taskUid = readNonNegativeSafeInteger(record?.taskUid)
+  return taskUid === null ? malformedAdminResponse() : { taskUid }
+}
+
+const readIndexes = (value: unknown): MeilisearchIndexSummary[] => {
+  const envelope = asUnknownRecord(value)
+  const records = readRecordArray(envelope?.results, {
+    context: "Meilisearch index list",
+  })
+  if (records.length > MAXIMUM_INDEXES) {
+    return malformedAdminResponse()
+  }
+  const seen = new Set<string>()
+  return records.map((record) => {
+    const uid =
+      typeof record.uid === "string" &&
+      record.uid === record.uid.trim() &&
+      /^[A-Za-z0-9_-]{1,255}$/.test(record.uid)
+        ? record.uid
+        : null
+    const createdAt = readIsoTimestamp(record.createdAt)
+    if (!uid || !createdAt || seen.has(uid)) {
+      return malformedAdminResponse()
+    }
+    seen.add(uid)
+    return { createdAt, uid }
+  })
 }
 
 export const assertCandidateIndexName = (indexKey: string): void => {
@@ -49,7 +90,11 @@ export const createMeilisearchAdminClient = ({
     throw new Error("[meilisearch] Host URL must not contain credentials.")
   }
 
-  const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  const request = async <T>(
+    path: string,
+    decode: (value: unknown) => T,
+    init?: RequestInit
+  ): Promise<T> => {
     const response = await fetchImpl(new URL(path, baseUrl), {
       ...init,
       headers: {
@@ -67,22 +112,19 @@ export const createMeilisearchAdminClient = ({
       )
     }
 
-    return (await response.json()) as T
+    const payload: unknown = await response.json()
+    return decode(payload)
   }
 
   return {
     deleteIndex: async (indexKey: string): Promise<MeilisearchTask> => {
       assertCandidateIndexName(indexKey)
-      return request<MeilisearchTask>(
-        `/indexes/${encodeURIComponent(indexKey)}`,
-        { method: "DELETE" }
-      )
+      return request(`/indexes/${encodeURIComponent(indexKey)}`, readTask, {
+        method: "DELETE",
+      })
     },
     listIndexes: async (): Promise<MeilisearchIndexSummary[]> => {
-      const response = await request<ResourceResults<MeilisearchIndexSummary>>(
-        "/indexes?limit=1000"
-      )
-      return response.results
+      return request("/indexes?limit=1000", readIndexes)
     },
     swapIndexes: async (
       liveIndex: string,
@@ -92,7 +134,7 @@ export const createMeilisearchAdminClient = ({
         throw new Error("[meilisearch] Live index must be 'products'.")
       }
       assertCandidateIndexName(candidateIndex)
-      return request<MeilisearchTask>("/swap-indexes", {
+      return request("/swap-indexes", readTask, {
         body: JSON.stringify([
           {
             indexes: [liveIndex, candidateIndex],

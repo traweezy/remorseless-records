@@ -88,17 +88,17 @@ export const getCatalogFilterDefinitions =
 
     if (formatResult.status === "rejected") {
       console.error("[getCatalogFilterDefinitions] Format definitions failed", {
-        reason: describeError(formatResult.reason as unknown),
+        reason: describeError(formatResult.reason),
       })
     }
     if (searchResult.status === "rejected") {
       console.error("[getCatalogFilterDefinitions] Search definitions failed", {
-        reason: describeError(searchResult.reason as unknown),
+        reason: describeError(searchResult.reason),
       })
     }
     if (priceResult.status === "rejected") {
       console.error("[getCatalogFilterDefinitions] Price range failed", {
-        reason: describeError(priceResult.reason as unknown),
+        reason: describeError(priceResult.reason),
       })
     }
 

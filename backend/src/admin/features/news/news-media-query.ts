@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { asUnknownRecord } from "../../../lib/provider-boundary/records"
 import {
   MANAGED_IMAGE_MIME_TYPES,
   MAX_UPLOAD_BYTES,
@@ -47,9 +48,10 @@ type UploadNewsCoverOptions = {
 const uploadFailureMessage = async (response: Response): Promise<string> => {
   const fallback = `Cover upload failed with status ${response.status}.`
   try {
-    const payload = (await response.json()) as unknown
-    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-      const message = (payload as Record<string, unknown>).message
+    const payload: unknown = await response.json()
+    const payloadRecord = asUnknownRecord(payload)
+    if (payloadRecord) {
+      const message = payloadRecord.message
       if (typeof message === "string" && message.trim()) {
         return message.trim().slice(0, 1_000)
       }

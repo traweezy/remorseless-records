@@ -3868,6 +3868,38 @@ the new 440-file production resolver scan, all 266 Backend suites / 2,018 tests
 at 91.44/84.81/95.62/91.46 coverage, strict TypeScript, and the complete
 Backend production build with its frozen packaged-server dependency install.
 
+## Provider payload and persisted-state decoding
+
+Meilisearch maintenance no longer treats successful response JSON as the
+caller's requested generic type. Task responses now retain only a non-negative
+safe task id, while index listings enforce a 1,000-row cap, canonical unique
+identities, and valid ISO creation timestamps before cleanup logic sees them.
+Malformed success payloads fail closed and have dedicated regression coverage.
+
+The Big Cartel media migration now reconstructs its entire persisted checkpoint
+from unknown JSON. Schema and normalizer versions, row limits, timestamps,
+source-key identity, credential-free HTTP(S) URLs, unique original URLs, SHA-256
+digests, supported MIME types, file keys, byte sizes, and dimensions are all
+validated before any resume operation. Checkout receipt grants likewise rebuild
+signed payloads from a record plus exact numeric primitives instead of trusting
+a partial type assertion.
+
+Admin upload errors, news actor lookups, product import metadata and rows,
+catalog command hashing, Meilisearch settings, invite-email data, catalog search
+variants, Storefront cookie preferences, product metadata, cart import metadata,
+slugs, and search normalization now use the shared unknown-record boundaries.
+This removes duplicated permissive object casts and consistently rejects arrays
+where keyed records are required. The component changes affect data validation
+only and do not alter rendered layout or interaction behavior.
+
+Complete local acceptance passes the 1,232-file repository QA gate, 267 Backend
+suites / 2,021 tests at 91.44/84.81/95.62/91.46 coverage, 134 Storefront
+baseline files / 797 tests at 94.25/86.65/96.02/94.24, and 35 transactional
+files / 313 tests at 83.37/76.02/85.81/83.46. Seven focused Backend suites pass
+25 tests, eight focused Storefront files pass 65 tests, both strict TypeScript
+projects pass, and both production builds complete with the client secret and
+Stripe Trusted Types scanner green.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,

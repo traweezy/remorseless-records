@@ -1,3 +1,5 @@
+import { asUnknownRecord } from "@/lib/provider-boundary"
+
 export const COOKIE_PREFERENCES_COOKIE_NAME = "rr_cookie_preferences"
 export const COOKIE_PREFERENCES_STORAGE_KEY = "rr.cookie.preferences"
 export const COOKIE_PREFERENCES_VERSION = 1
@@ -64,7 +66,10 @@ const tryParseCookiePreferences = (
   }
 
   try {
-    const parsed = JSON.parse(value) as Partial<CookiePreferences>
+    const parsed = asUnknownRecord(JSON.parse(value))
+    if (!parsed) {
+      return null
+    }
     return {
       necessary: true,
       analytics: normalizeBoolean(parsed.analytics),

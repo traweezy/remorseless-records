@@ -107,4 +107,39 @@ describe("Meilisearch admin client", () => {
     )
     await expect(client.listIndexes()).rejects.not.toThrow("secret-key")
   })
+
+  it("rejects malformed task and index projections", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ taskUid: "not-an-integer" }), {
+          status: 202,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                createdAt: "not-a-timestamp",
+                uid: "products_build_20260831_invalid",
+              },
+            ],
+          }),
+          { status: 200 }
+        )
+      )
+    const client = createMeilisearchAdminClient({
+      apiKey: "test-admin-key",
+      fetchImpl,
+      host: "https://search.example.test",
+    })
+
+    await expect(
+      client.deleteIndex("products_build_20260831_invalid")
+    ).rejects.toThrow("malformed structured data")
+    await expect(client.listIndexes()).rejects.toThrow(
+      "malformed structured data"
+    )
+  })
 })

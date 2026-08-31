@@ -6,6 +6,7 @@ import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 import { checkoutServerEnv } from "@/config/env.checkout.server"
+import { asUnknownRecord } from "@/lib/provider-boundary"
 
 export const CHECKOUT_RECEIPT_COOKIE_NAME = "rr_checkout_receipt_v1"
 export const CHECKOUT_RECEIPT_TTL_SECONDS = 30 * 60
@@ -101,28 +102,40 @@ export const verifyReceiptGrant = (
   }
 
   try {
-    const payload = JSON.parse(
+    const parsed: unknown = JSON.parse(
       Buffer.from(encoded, "base64url").toString("utf8")
-    ) as Partial<ReceiptPayload>
+    )
+    const payload = asUnknownRecord(parsed)
+    const issuedAt =
+      typeof payload?.iat === "number" &&
+      Number.isSafeInteger(payload.iat) &&
+      payload.iat > 0
+        ? payload.iat
+        : null
+    const expiresAt =
+      typeof payload?.exp === "number" &&
+      Number.isSafeInteger(payload.exp) &&
+      payload.exp > 0
+        ? payload.exp
+        : null
     if (
+      !payload ||
       payload.v !== 1 ||
       typeof payload.orderId !== "string" ||
       !ORDER_ID_PATTERN.test(payload.orderId) ||
-      !Number.isSafeInteger(payload.iat) ||
-      !Number.isSafeInteger(payload.exp) ||
-      (payload.iat as number) <= 0 ||
-      (payload.exp as number) <= (payload.iat as number) ||
-      (payload.exp as number) >
-        (payload.iat as number) + CHECKOUT_RECEIPT_TTL_SECONDS ||
-      nowSeconds < (payload.iat as number) - 30 ||
-      nowSeconds >= (payload.exp as number)
+      issuedAt === null ||
+      expiresAt === null ||
+      expiresAt <= issuedAt ||
+      expiresAt > issuedAt + CHECKOUT_RECEIPT_TTL_SECONDS ||
+      nowSeconds < issuedAt - 30 ||
+      nowSeconds >= expiresAt
     ) {
       return null
     }
     return {
       orderId: payload.orderId,
-      issuedAt: payload.iat as number,
-      expiresAt: payload.exp as number,
+      issuedAt,
+      expiresAt,
     }
   } catch {
     return null

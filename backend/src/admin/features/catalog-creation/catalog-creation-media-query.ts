@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { asUnknownRecord } from "../../../lib/provider-boundary/records"
 import {
   MAX_UPLOAD_FILES,
   MAX_NORMALIZED_IMAGE_BYTES,
@@ -35,9 +36,10 @@ const uploadErrorMessage = async (response: Response): Promise<string> => {
     if (!body) {
       return fallback
     }
-    const parsed = JSON.parse(body) as unknown
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const message = (parsed as Record<string, unknown>).message
+    const parsed: unknown = JSON.parse(body)
+    const payload = asUnknownRecord(parsed)
+    if (payload) {
+      const message = payload.message
       if (typeof message === "string" && message.trim()) {
         return message.trim().slice(0, 1_000)
       }

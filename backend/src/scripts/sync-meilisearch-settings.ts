@@ -2,6 +2,7 @@ import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import indexSettings from "../../config/meilisearch-settings.json"
+import { asUnknownRecord } from "../lib/provider-boundary/records"
 import { resolveMeilisearchService } from "./meilisearch-service"
 
 const PRODUCTS_INDEX = "products"
@@ -54,8 +55,12 @@ const isConfiguredSubset = (actual: unknown, expected: unknown): boolean => {
     return false
   }
 
+  const actualRecord = asUnknownRecord(actual)
+  if (!actualRecord) {
+    return false
+  }
   return Object.entries(expected).every(([key, value]) => {
-    return isConfiguredSubset((actual as Record<string, unknown>)[key], value)
+    return isConfiguredSubset(actualRecord[key], value)
   })
 }
 
