@@ -3154,6 +3154,40 @@ dependency, misconfiguration, or secret findings. This server-side tranche
 does not change rendered layout, so the previous Product-authoring, bundle, and
 Media Cleanup screenshot evidence remains applicable.
 
+The sixteenth post-migration boundary tranche closes the Catalog authoring
+audit and release-readiness persistence family. The Admin audit route,
+operator command, and complete Product authoring-view release check now share a
+strict loader for native Products, Catalog profiles, controlled Product Types,
+and bundle profiles. Required service methods, complete records, canonical
+identities, bounded recursive metadata, known Product lifecycle status,
+control-free operator text, and relationship ownership must validate before
+classification begins.
+
+Every family is read in deterministic ID order through exact 250-row counted
+pages with a 25,000-record ceiling. Page totals must remain stable, every
+non-final page must be complete, and identities must remain unique across page
+boundaries. Profiles and bundles must belong to a Product in the same audit;
+bundle-to-profile links must preserve that Product ownership. Product Type
+natural keys remain globally unique. A short, drifting, duplicate, malformed,
+or orphaned result is therefore an operational incident rather than a partial
+or falsely healthy cutover report.
+
+Twenty-six focused persistence, pagination, relationship, classification, and
+route tests pass across four suites. Complete local acceptance passes the
+1,209-file repository QA gate, all 255 Backend suites and 1,831 tests, the
+production Backend/Admin build, frozen packaged install with Medusa 2.18.0,
+and the Admin bundle budget. Backend coverage remains 91.35% statements,
+84.60% branches, 95.52% functions, and 91.39% lines. The Admin main bundle is
+1,807,582 gzip bytes and total JavaScript
+is 2,388,193 gzip bytes. The production audit retains only the three documented
+ignored moderate findings; Trivy reports zero high/critical dependency,
+misconfiguration, or secret findings. The read-only live-catalog command
+cannot use Railway's private Postgres hostname from a local process; exact
+staging execution remains an after-deploy acceptance check inside the service
+network.
+This server-side tranche changes no rendered layout, so the existing Catalog
+workspace and authoring audit screenshot evidence remains applicable.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

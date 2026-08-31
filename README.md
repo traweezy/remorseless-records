@@ -1538,6 +1538,15 @@ and must restore the exact prior snapshots. Product authoring and Media Cleanup
 therefore fail as operational incidents instead of turning corrupt service
 state into plausible defaults, partial media, or a false empty orphan page.
 
+The Catalog workspace audit and release-time authoring checks use the same
+strict whole-catalog loader. Native Products, Catalog profiles, controlled
+Product Types, and bundle profiles are read in deterministic ID order through
+exact bounded counted pages. Stable totals, cross-page identity and natural-key
+uniqueness, complete records, and Product/profile/bundle ownership are required
+before classification. A short, drifting, duplicate, malformed, orphaned, or
+oversized result therefore blocks cutover instead of producing a partial or
+falsely healthy Admin summary.
+
 Physical media deletion is deliberately unavailable. The displayed 30-day
 date is only the earliest future review point; no job or route automatically
 deletes the catalog row or File Module object. A future audited purge also

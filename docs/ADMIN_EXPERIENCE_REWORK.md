@@ -483,3 +483,33 @@ findings; Trivy reports zero high/critical dependency, misconfiguration, or
 secret findings. No rendered component or layout changed, so the existing
 Product-authoring, bundle, and Media Cleanup screenshot evidence remains
 applicable.
+
+### Catalog audit and release-readiness hardening — August 31, 2026
+
+The Catalog workspace keeps the same classification summary, filters, search,
+and plain-language review states, but its whole-catalog source now rejects
+partial or ambiguous persistence. Native Products, Catalog profiles,
+controlled Product Types, and bundle profiles are loaded in deterministic ID
+order through exact counted pages. Totals cannot drift between pages, and a
+short page, duplicate identity, malformed field, unsafe metadata object, or
+oversized family becomes an operational incident instead of a falsely healthy
+summary.
+
+The release command and complete Product authoring-view check use the exact
+same loader as the Admin endpoint. Profiles and bundles must belong to a
+Product in that audit, bundle-to-profile ownership must agree, and controlled
+Product Type natural keys remain unique across page boundaries. Each family is
+capped at 25,000 records and each read at 250 rows, keeping the operator and
+release paths predictable under corrupted or unexpectedly large state.
+
+These changes add no controls or client decisions. They make the current
+classification, conflict, needs-review, and release-blocking states
+authoritative. Twenty-six focused tests pass across four suites; the complete
+Backend suite passes 255 suites and 1,831 tests, and the 1,209-file repository
+Biome/policy gate is clean. The production Backend/Admin build and frozen
+Medusa 2.18.0 packaged install pass, with a 1,807,582-byte main gzip bundle and
+2,388,193-byte total JavaScript bundle. The production audit retains only the
+three documented ignored moderate findings; Trivy reports zero high/critical
+dependency, misconfiguration, or secret findings. No rendered layout changed,
+so the existing Catalog workspace and audit screenshot evidence remains
+applicable.

@@ -189,6 +189,15 @@ metadata, and native Medusa Product Types. Search, kind, status, and pagination
 filters are server-owned; the response always includes whole-catalog summary
 counts.
 
+The endpoint and both release commands share one fail-closed persistence
+loader. Products, Catalog profiles, controlled Product Types, and bundle
+profiles are ordered by ID and loaded through exact 250-row counted pages with
+a 25,000-record ceiling per family. Stable totals, complete pages, unique
+identities and Product Type natural keys, bounded fields, and Product/profile/
+bundle ownership are mandatory. Corrupt, drifting, duplicate, orphaned, or
+oversized state is an operational incident and cannot become a partial or
+falsely healthy classification report.
+
 Run `pnpm --filter backend run catalog:authoring:audit` as a release or
 operator gate. The command exits non-zero when any product is unclassified,
 needs review, or has conflicting authorities. Informational migration work,

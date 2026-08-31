@@ -10,79 +10,96 @@ import {
   type CatalogAuthoringAuditReference,
   type CatalogAuthoringAuditReport,
 } from "./authoring-audit"
+import {
+  assertCatalogAuthoringAuditRelationships,
+  loadAllCatalogAuthoringAuditRecords,
+  readCatalogAuthoringAuditBundlePage,
+  readCatalogAuthoringAuditProductPage,
+  readCatalogAuthoringAuditProfilePage,
+  readCatalogAuthoringAuditReferencePage,
+  readCatalogAuthoringAuditService,
+} from "./authoring-audit-persistence-contracts"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
-
-type ProductRecord = {
-  handle?: string | null
-  id: string
-  metadata?: Record<string, unknown> | null
-  status?: string | null
-  title?: string | null
-  type?: {
-    value?: string | null
-  } | null
-}
 
 type ProductService = {
   listAndCountProducts: (
     filters: Record<string, unknown>,
     config: {
+      order: { id: "ASC" }
       relations: string[]
       skip: number
       take: number
     }
-  ) => Promise<[ProductRecord[], number]>
+  ) => Promise<unknown>
 }
 
 type ServiceContainer = {
   resolve: (key: string) => unknown
 }
 
-const listAll = async <T>(
-  listPage: (skip: number, take: number) => Promise<[T[], number]>
-): Promise<T[]> => {
-  const records: T[] = []
-  const take = 250
-  let skip = 0
-
-  while (true) {
-    const [page, count] = await listPage(skip, take)
-    records.push(...page)
-    skip += page.length
-    if (page.length === 0 || skip >= count) {
-      return records
-    }
-  }
-}
-
 export const loadCatalogAuthoringAudit = async (
   container: ServiceContainer
 ): Promise<CatalogAuthoringAuditReport> => {
-  const productService = container.resolve(Modules.PRODUCT) as ProductService
-  const catalogService = container.resolve("catalog") as CatalogService
+  const productService = readCatalogAuthoringAuditService<ProductService>(
+    container.resolve(Modules.PRODUCT),
+    ["listAndCountProducts"]
+  )
+  const catalogService = readCatalogAuthoringAuditService<CatalogService>(
+    container.resolve("catalog"),
+    [
+      "listAndCountCatalogBundleProfiles",
+      "listAndCountCatalogProductProfiles",
+      "listAndCountCatalogReferenceValues",
+    ]
+  )
 
   const [productRecords, profileRecords, referenceRecords, bundleRecords] =
     await Promise.all([
-      listAll((skip, take) =>
-        productService.listAndCountProducts(
-          {},
-          { relations: ["type"], skip, take }
-        )
-      ),
-      listAll((skip, take) =>
-        catalogService.listAndCountCatalogProductProfiles({}, { skip, take })
-      ),
-      listAll((skip, take) =>
-        catalogService.listAndCountCatalogReferenceValues(
-          { kind: "product_type" },
-          { skip, take }
-        )
-      ),
-      listAll((skip, take) =>
-        catalogService.listAndCountCatalogBundleProfiles({}, { skip, take })
-      ),
+      loadAllCatalogAuthoringAuditRecords({
+        identity: ({ id }) => id,
+        listPage: (skip, take) =>
+          productService.listAndCountProducts(
+            {},
+            { order: { id: "ASC" }, relations: ["type"], skip, take }
+          ),
+        readPage: readCatalogAuthoringAuditProductPage,
+      }),
+      loadAllCatalogAuthoringAuditRecords({
+        identity: ({ id }) => id,
+        listPage: (skip, take) =>
+          catalogService.listAndCountCatalogProductProfiles(
+            {},
+            { order: { id: "ASC" }, skip, take }
+          ),
+        readPage: readCatalogAuthoringAuditProfilePage,
+      }),
+      loadAllCatalogAuthoringAuditRecords({
+        identity: ({ id }) => id,
+        listPage: (skip, take) =>
+          catalogService.listAndCountCatalogReferenceValues(
+            { kind: "product_type" },
+            { order: { id: "ASC" }, skip, take }
+          ),
+        readPage: readCatalogAuthoringAuditReferencePage,
+      }),
+      loadAllCatalogAuthoringAuditRecords({
+        identity: ({ id }) => id,
+        listPage: (skip, take) =>
+          catalogService.listAndCountCatalogBundleProfiles(
+            {},
+            { order: { id: "ASC" }, skip, take }
+          ),
+        readPage: readCatalogAuthoringAuditBundlePage,
+      }),
     ])
+
+  assertCatalogAuthoringAuditRelationships({
+    bundles: bundleRecords,
+    products: productRecords,
+    profiles: profileRecords,
+    references: referenceRecords,
+  })
 
   return buildCatalogAuthoringAudit({
     bundles: bundleRecords.map(
@@ -111,7 +128,7 @@ export const loadCatalogAuthoringAudit = async (
       (reference): CatalogAuthoringAuditReference => ({
         id: reference.id,
         isActive: reference.is_active,
-        kind: reference.kind,
+        kind: "product_type",
         label: reference.label,
         value: reference.value,
       })

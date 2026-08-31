@@ -191,6 +191,22 @@ error; a terminal operation cannot be compensated again. The Product authoring
 view and Media Cleanup routes use the same contracts rather than coercing a
 malformed persistence response into an empty editor or orphan page.
 
+The whole-catalog Admin audit and both release commands use
+`src/lib/catalog/authoring-audit-persistence-contracts.ts`. Native Products,
+Catalog profiles, controlled Product Types, and bundle profiles are read in
+deterministic ID order through exact 250-row counted pages. Each family is
+capped at 25,000 records; totals must remain stable, non-final pages must be
+complete, and identities and controlled natural keys must remain unique across
+page boundaries. Profiles and bundles must belong to a Product in the same
+audit, and a bundle's optional profile must belong to that same Product.
+
+Required service methods and complete bounded fields are verified before the
+classification report is built. Malformed metadata, control-bearing text,
+unknown Product state, short or drifting pages, and orphaned relationships are
+unexpected-state incidents rather than missing items or a partial release
+approval. `catalog:authoring:audit`, `catalog:authoring:view-check`, and
+`GET /admin/catalog/authoring-audit` therefore share one persistence authority.
+
 The Store bundle route additionally validates the active project-owned profile,
 every component row and declared mapping, the visible Product/Variant graph,
 and the availability map. A mapping may reference only a Variant on its exact

@@ -511,6 +511,22 @@ export const readCatalogProductProfiles = (
   return source.map((entry) => productProfileRecord(entry, expectedProductId))
 }
 
+export const readCatalogProductProfileList = (
+  value: unknown,
+  maximumRows = 250
+): CatalogProductProfileRecord[] => {
+  const source = rows(value)
+  if (source.length > maximumRows) {
+    return invalidProfilePersistence()
+  }
+  const ids = new Set<string>()
+  return source.map((entry) => {
+    const profile = productProfileRecord(entry)
+    unique(profile.id, ids)
+    return profile
+  })
+}
+
 export const readCatalogProductProfileMutation = (
   value: unknown,
   expected: {
