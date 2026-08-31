@@ -203,7 +203,13 @@ The permission model is deliberately small:
 - Product imports separate CSV upload/plan preparation from execution. Preparing
   requires native Product read and file-create permissions plus
   `product_import:create`; confirming requires Product read plus
-  `product_import:update`.
+  `product_import:update`. The complete lifecycle is fail-closed: uploads are
+  limited to 12 MiB, 25,000 data rows, and 256 columns; normalized plans are
+  limited to 5,000 Product operations and expire after 24 hours. Preparation
+  and confirmation use distributed locks, plan execution uses a stable hashed
+  workflow transaction ID, and the plan is deleted only after Medusa returns
+  the exact created/updated acknowledgement. Logs contain aggregate counts,
+  never filenames, storage IDs, CSV values, or provider errors.
 
 The backend is the authority. A typed manifest covers all 64 active custom
 Admin methods exactly once: 41 under `/admin/catalog/**` and 23 elsewhere. It

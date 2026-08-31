@@ -166,6 +166,26 @@ action and route because that drawer begins with the disabled presigned-upload
 route. `pnpm run qa:dashboard-product-import` verifies the source and production
 bundles fail closed.
 
+The plural workflow validates each boundary rather than trusting declared
+Medusa types. Uploads must be non-empty UTF-8 without NUL bytes and stay within
+12 MiB, 25,000 data rows, and 256 columns. Product graph envelopes, relationship
+rows, normalized CSV trees, and persisted Medusa create/update operations are
+reconstructed through runtime contracts. A plan may contain at most 5,000
+operations, must contain at least one operation, rejects duplicate update IDs,
+and expires 24 hours after preparation. Path-bearing display filenames are
+reduced to a bounded basename, while opaque File Module IDs use a separate
+control-free identifier contract.
+
+Both phases run under a distributed lock. Confirmation supplies a deterministic
+SHA-256-derived transaction ID to Medusa's batch workflow so a response-loss
+retry resumes the same workflow instead of creating Products twice. The plan
+file remains available after a workflow or acknowledgement failure and is
+deleted only after the returned created and updated sets exactly match the
+validated plan and the deleted set is empty. Preparation deletes its source
+upload only after a valid plan ID is persisted; an upload-cleanup failure
+attempts to remove the new plan before returning an error. Product-import logs
+contain fixed event names and aggregate counts only.
+
 Physical catalog deletion is disabled independently of the Admin UI. Native
 DELETE routes for Products, Variants, Collections, Categories, Options, Option
 values, Tags, and Types retain their exact native policies and then return a

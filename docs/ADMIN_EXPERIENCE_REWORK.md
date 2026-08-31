@@ -294,3 +294,23 @@ and Discography were inspected at 1,600×1,000 and 760×900. Every project-owned
 surface has zero scoped axe violations, no console or failed-response errors,
 and no horizontal document overflow. Product authoring was additionally run
 in a headed graphical browser and inspected from a real desktop screenshot.
+
+### Product-import lifecycle hardening — August 30, 2026
+
+The supported managed-upload plus plural prepare/confirm path now protects the
+operator from ambiguous retries and damaged import plans without adding more
+decisions to the task. Preparation accepts only bounded UTF-8 CSV, validates
+the Medusa catalog lookup and normalizer outputs, sanitizes the display
+filename, and persists an exact create/update plan. Confirmation accepts only a
+fresh 24-hour plan with at most 5,000 operations, serializes concurrent attempts
+under a distributed lock, and gives Medusa a deterministic transaction ID so a
+response-loss retry cannot create the same products twice.
+
+The source upload is removed only after a valid plan is stored, with plan
+rollback on upload-cleanup failure. The plan remains recoverable after a
+workflow or acknowledgement failure and is removed only after Medusa confirms
+the exact created and updated sets. Operator-visible errors remain stable;
+server logs keep only phase and aggregate counts rather than filenames, file
+IDs, CSV values, or provider diagnostics. The stock import drawer remains
+disabled because it starts at the intentionally unavailable presigned-upload
+boundary.

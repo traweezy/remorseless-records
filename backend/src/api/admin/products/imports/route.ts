@@ -1,16 +1,28 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
-import type {
-  CreateProductWorkflowInputDTO,
-  UpdateProductWorkflowInputDTO,
-} from "@medusajs/framework/types"
+import type { ILockingModule } from "@medusajs/framework/types"
 import {
   CSVNormalizer,
   ContainerRegistrationKeys,
   MedusaError,
   Modules,
-  productValidators,
 } from "@medusajs/framework/utils"
 import { parse } from "csv-parse/sync"
+
+import {
+  createProductImportPlan,
+  MAX_PRODUCT_IMPORT_OPERATIONS,
+  normalizeProductImportFilename,
+  type NormalizedProductRecord,
+  type ProductImportPlan,
+  productImportLockKey,
+  readCsvMatrix,
+  readCsvRecords,
+  readNormalizedProductTree,
+  readProductImportBuffer,
+  readProductImportFileKey,
+  readProductLookupRows,
+} from "../../../../lib/catalog/product-import-contract"
+import { asUnknownRecord } from "../../../../lib/provider-boundary/records"
 
 type HeaderInstruction = {
   sourceIndex: number
@@ -40,13 +52,6 @@ export type ResolvedProductOption = {
   createdAt: string
 }
 
-type ProductImportPlan = {
-  filename: string
-  generatedAt: string
-  create: CreateProductWorkflowInputDTO[]
-  update: UpdateProductWorkflowInputDTO[]
-}
-
 type ProductImportPlanSummary = {
   rows: number
   toCreate: number
@@ -63,20 +68,7 @@ type QueryGraph = {
       take?: number
       skip?: number
     }
-  }) => Promise<{ data: Array<Record<string, unknown>> }>
-}
-
-type NormalizedProductRecord = Record<string, unknown> & {
-  handle?: string
-  id?: string
-  option_ids?: string[]
-  options?: Array<Record<string, unknown>>
-  variants?: Array<Record<string, unknown> & { id?: string; sku?: string }>
-}
-
-type NormalizedProductTree = {
-  toCreate: Record<string, NormalizedProductRecord>
-  toUpdate: Record<string, NormalizedProductRecord>
+  }) => Promise<unknown>
 }
 
 const PRODUCT_LOOKUP_FIELDS = [
@@ -263,10 +255,13 @@ const normalizeHeaders = (
 const normalizeSemicolonDelimitedCsv = (
   csvText: string
 ): NormalizedCsvResult => {
-  const records = parse(csvText, {
-    delimiter: ";",
-    relax_column_count: true,
-  })
+  const records = readCsvMatrix(
+    parse(csvText, {
+      bom: true,
+      delimiter: ";",
+      relax_column_count: true,
+    })
+  )
 
   if (!records.length) {
     return {
@@ -370,7 +365,10 @@ const normalizeSemicolonDelimitedCsv = (
 
       if (existingRaw && existingRaw.trim().length > 0) {
         try {
-          existingMetadata = JSON.parse(existingRaw)
+          const parsedMetadata: unknown = JSON.parse(existingRaw)
+          existingMetadata = asUnknownRecord(parsedMetadata) ?? {
+            value: existingRaw,
+          }
         } catch {
           existingMetadata = { value: existingRaw }
         }
@@ -459,9 +457,12 @@ const normalizeCommaDelimitedCsv = async (
     metadataKeys: [],
   }
 ): Promise<NormalizedCsvResult> => {
-  const records = parse(csvText, {
-    relax_column_count: true,
-  }) as string[][]
+  const records = readCsvMatrix(
+    parse(csvText, {
+      bom: true,
+      relax_column_count: true,
+    })
+  )
 
   if (!records.length) {
     return {
@@ -516,51 +517,65 @@ const normalizeCommaDelimitedCsv = async (
       resolvedVariants: 0,
     }
   }
+  if (handles.length > MAX_PRODUCT_IMPORT_OPERATIONS) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "The product import data is invalid."
+    )
+  }
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
-  const existingProductRows: Array<Record<string, unknown>> = []
+  const existingProductRows: ReturnType<typeof readProductLookupRows> = []
   const seenProductIds = new Set<string>()
+  const seenProductHandles = new Set<string>()
 
-  for (let index = 0; index < handles.length; index += 50) {
-    const chunk = handles.slice(index, index + 50)
-    const existingProducts = await query.graph({
-      entity: "product",
-      fields: PRODUCT_LOOKUP_FIELDS,
-      filters: { handle: { $in: chunk } },
-      pagination: { take: chunk.length },
-    })
-
-    existingProducts.data.forEach((product) => {
-      const id = nonEmptyString(product, "id")
-      if (id && seenProductIds.has(id)) {
-        return
+  const addLookupRows = (
+    lookupRows: ReturnType<typeof readProductLookupRows>
+  ): void => {
+    lookupRows.forEach((product) => {
+      if (
+        seenProductIds.has(product.id) ||
+        seenProductHandles.has(product.handle)
+      ) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          "The product import data is invalid."
+        )
       }
-      if (id) {
-        seenProductIds.add(id)
-      }
+      seenProductIds.add(product.id)
+      seenProductHandles.add(product.handle)
       existingProductRows.push(product)
     })
   }
 
+  for (let index = 0; index < handles.length; index += 50) {
+    const chunk = handles.slice(index, index + 50)
+    addLookupRows(
+      readProductLookupRows(
+        await query.graph({
+          entity: "product",
+          fields: PRODUCT_LOOKUP_FIELDS,
+          filters: { handle: { $in: chunk } },
+          pagination: { take: chunk.length },
+        }),
+        chunk
+      )
+    )
+  }
+
   if (existingProductRows.length === 0 && handles.length <= 100) {
     for (const handle of handles) {
-      const existingProducts = await query.graph({
-        entity: "product",
-        fields: PRODUCT_LOOKUP_FIELDS,
-        filters: { handle },
-        pagination: { take: 1 },
-      })
-
-      existingProducts.data.forEach((product) => {
-        const id = nonEmptyString(product, "id")
-        if (id && seenProductIds.has(id)) {
-          return
-        }
-        if (id) {
-          seenProductIds.add(id)
-        }
-        existingProductRows.push(product)
-      })
+      addLookupRows(
+        readProductLookupRows(
+          await query.graph({
+            entity: "product",
+            fields: PRODUCT_LOOKUP_FIELDS,
+            filters: { handle },
+            pagination: { take: 1 },
+          }),
+          [handle]
+        )
+      )
     }
   }
 
@@ -568,65 +583,25 @@ const normalizeCommaDelimitedCsv = async (
   const variantIdByHandleSku = new Map<string, string>()
   const productOptionsByHandle = new Map<string, ResolvedProductOption[]>()
   existingProductRows.forEach((product) => {
-    const handle = nonEmptyString(product, "handle")
-    const id = nonEmptyString(product, "id")
-    if (!handle || !id) {
-      return
-    }
+    const { handle, id } = product
     productIdByHandle.set(handle, id)
 
-    const options = product["options"]
-    if (Array.isArray(options)) {
-      const resolvedOptions = options.flatMap((option) => {
-        if (!option || typeof option !== "object") {
-          return []
-        }
-        const optionRecord = option as Record<string, unknown>
-        const optionId = nonEmptyString(optionRecord, "id")
-        const title = nonEmptyString(optionRecord, "title")
-        if (!optionId || !title) {
-          return []
-        }
-        const optionValues = Array.isArray(optionRecord["values"])
-          ? optionRecord["values"].flatMap((value) => {
-              if (!value || typeof value !== "object") {
-                return []
-              }
-              const resolved = nonEmptyString(
-                value as Record<string, unknown>,
-                "value"
-              )
-              return resolved ? [resolved] : []
-            })
-          : []
-        return [
-          {
-            id: optionId,
-            title,
-            values: optionValues,
-            createdAt: nonEmptyString(optionRecord, "created_at") ?? "",
-          },
-        ]
-      })
-      if (resolvedOptions.length) {
-        productOptionsByHandle.set(handle, resolvedOptions)
-      }
+    if (product.options.length) {
+      productOptionsByHandle.set(handle, product.options)
     }
 
-    const variants = product["variants"]
-    if (!Array.isArray(variants)) {
-      return
-    }
-    variants.forEach((variant) => {
-      if (!variant || typeof variant !== "object") {
+    product.variants.forEach((variant) => {
+      if (!variant.sku) {
         return
       }
-      const variantRecord = variant as Record<string, unknown>
-      const sku = nonEmptyString(variantRecord, "sku")
-      const variantId = nonEmptyString(variantRecord, "id")
-      if (sku && variantId) {
-        variantIdByHandleSku.set(`${handle}\u0000${sku}`, variantId)
+      const compoundKey = `${handle}\u0000${variant.sku}`
+      if (variantIdByHandleSku.has(compoundKey)) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          "The product import data is invalid."
+        )
       }
+      variantIdByHandleSku.set(compoundKey, variant.id)
     })
   })
 
@@ -689,16 +664,19 @@ const buildImportPlan = (
   plan: ProductImportPlan
   summary: ProductImportPlanSummary
 } => {
-  const rows = parse(csvText, {
-    columns: true,
-    skip_empty_lines: true,
-  }) as Array<Record<string, string>>
+  const rows = readCsvRecords(
+    parse(csvText, {
+      bom: true,
+      columns: true,
+      skip_empty_lines: true,
+    })
+  )
 
   const normalizedRows = rows.map((row, index) =>
     CSVNormalizer.preProcess(row, index + 1)
   )
   const normalizer = new CSVNormalizer(normalizedRows)
-  const products = normalizer.proccess() as NormalizedProductTree
+  const products = readNormalizedProductTree(normalizer.proccess())
   const productHandleCount = new Set(
     normalizedRows
       .map((row) => row["product handle"])
@@ -782,14 +760,13 @@ const buildImportPlan = (
     }
   })
 
-  const create = Object.values(products.toCreate).map((product) =>
-    productValidators.CreateProduct.parse(product)
-  ) as CreateProductWorkflowInputDTO[]
-  const update = Object.values(products.toUpdate).map((product) =>
-    productValidators.UpdateProduct.parse(product)
-  ) as UpdateProductWorkflowInputDTO[]
+  const plan = createProductImportPlan({
+    create: Object.values(products.toCreate),
+    filename,
+    update: Object.values(products.toUpdate),
+  })
 
-  if (rows.length > 0 && create.length + update.length === 0) {
+  if (rows.length > 0 && plan.create.length + plan.update.length === 0) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
       `CSV import did not produce product records (rows=${rows.length}, productHandles=${productHandleCount}).`
@@ -797,16 +774,11 @@ const buildImportPlan = (
   }
 
   return {
-    plan: {
-      filename,
-      generatedAt: new Date().toISOString(),
-      create,
-      update,
-    },
+    plan,
     summary: {
       rows: rows.length,
-      toCreate: create.length,
-      toUpdate: update.length,
+      toCreate: plan.create.length,
+      toUpdate: plan.update.length,
       recoveredUpdates,
     },
   }
@@ -820,6 +792,14 @@ type ImportProductsBody = {
   file_key?: string
   fileKey?: string
   key?: string
+}
+
+type PreparedProductImport = {
+  delimiter: "comma" | "semicolon"
+  resolvedProducts: number
+  resolvedVariants: number
+  summary: ProductImportPlanSummary
+  transactionId: string
 }
 
 export const POST = async (
@@ -851,37 +831,12 @@ export const POST = async (
       "file_key is required to start the import. Upload the CSV first to obtain it."
     )
   }
-
-  try {
-    req.body = {
-      ...(req.body ?? {}),
-      file_key: resolvedKey,
-      filename: body.filename ?? resolvedKey,
-      originalname: body.originalname ?? body.original_name,
-    } as ImportProductsBody
-  } catch {
-    // noop: request body may be read-only
-  }
-
-  try {
-    if (req.validatedBody) {
-      ;(req.validatedBody as ImportProductsBody).file_key = resolvedKey
-    }
-  } catch {
-    // noop: validated body may be immutable
-  }
-
-  const filename =
-    body.originalname ??
-    body.original_name ??
-    body.filename ??
-    body.fileName ??
-    resolvedKey ??
-    "products-import.csv"
-
-  logger.info?.(
-    `[admin][products/imports] starting import ${filename} (key=${resolvedKey})`
+  const fileKey = readProductImportFileKey(resolvedKey)
+  const filename = normalizeProductImportFilename(
+    body.originalname ?? body.original_name ?? body.filename ?? body.fileName
   )
+
+  logger.info?.("[admin][products/imports] import preparation started.")
 
   const fileModuleService = (() => {
     try {
@@ -890,16 +845,12 @@ export const POST = async (
           filename: string
           content: string
           mimeType: string
-        }) => Promise<{ id: string; url: string }>
-        getAsBuffer: (id: string) => Promise<Buffer>
+        }) => Promise<unknown>
+        getAsBuffer: (id: string) => Promise<unknown>
         deleteFiles: (id: string | string[]) => Promise<void>
       }
-    } catch (error) {
-      logger.warn?.(
-        `[admin][products/imports] unable to resolve file module: ${
-          (error as Error)?.message ?? "unknown error"
-        }`
-      )
+    } catch {
+      logger.warn?.("[admin][products/imports] file module resolution failed.")
       return null
     }
   })()
@@ -910,87 +861,83 @@ export const POST = async (
       "The file module is required to import products from an uploaded CSV."
     )
   }
-
-  let importCsvText: string
-  let normalizedSummary: NormalizedCsvResult
-
+  const locking = req.scope.resolve<ILockingModule>(Modules.LOCKING)
   try {
-    const originalBuffer = await fileModuleService.getAsBuffer(resolvedKey)
-    const csvText = originalBuffer.toString("utf-8")
-
-    const headerLine =
-      csvText.split(/\r?\n/).find((line) => line.trim().length > 0) ?? ""
-    const semicolonColumns = headerLine.split(";").length
-    const commaColumns = headerLine.split(",").length
-    const shouldNormalize =
-      semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";")
-
-    const delimiterNormalized = shouldNormalize
-      ? normalizeSemicolonDelimitedCsv(csvText)
-      : {
-          csv: csvText,
-          renamedColumns: [],
-          droppedColumns: [],
-          metadataKeys: [],
-          resolvedProducts: 0,
-          resolvedVariants: 0,
+    const prepared = await locking.execute<PreparedProductImport>(
+      productImportLockKey(fileKey),
+      async () => {
+        const originalBuffer = await fileModuleService.getAsBuffer(fileKey)
+        const csvText = readProductImportBuffer(originalBuffer)
+        const headerLine =
+          csvText.split(/\r?\n/).find((line) => line.trim().length > 0) ?? ""
+        const semicolonColumns = headerLine.split(";").length
+        const commaColumns = headerLine.split(",").length
+        const shouldNormalize =
+          semicolonColumns > 1 && commaColumns <= 1 && csvText.includes(";")
+        const delimiterNormalized = shouldNormalize
+          ? normalizeSemicolonDelimitedCsv(csvText)
+          : {
+              csv: csvText,
+              renamedColumns: [],
+              droppedColumns: [],
+              metadataKeys: [],
+              resolvedProducts: 0,
+              resolvedVariants: 0,
+            }
+        const normalized = await normalizeCommaDelimitedCsv(
+          req,
+          delimiterNormalized.csv,
+          delimiterNormalized
+        )
+        const { plan, summary } = buildImportPlan(
+          filename,
+          normalized.csv,
+          normalized
+        )
+        const planContent = readProductImportBuffer(
+          Buffer.from(JSON.stringify(plan), "utf-8")
+        )
+        const planFile = asUnknownRecord(
+          await fileModuleService.createFiles({
+            filename: "product-import-plan.json",
+            content: planContent,
+            mimeType: "application/json",
+          })
+        )
+        const transactionId = readProductImportFileKey(planFile?.id)
+        try {
+          await fileModuleService.deleteFiles(fileKey)
+        } catch (error) {
+          try {
+            await fileModuleService.deleteFiles(transactionId)
+          } catch {
+            logger.warn?.(
+              "[admin][products/imports] import plan rollback cleanup failed."
+            )
+          }
+          throw error
         }
-    const normalized = await normalizeCommaDelimitedCsv(
-      req,
-      delimiterNormalized.csv,
-      delimiterNormalized
+        return {
+          delimiter: shouldNormalize ? "semicolon" : "comma",
+          resolvedProducts: normalized.resolvedProducts,
+          resolvedVariants: normalized.resolvedVariants,
+          summary,
+          transactionId,
+        }
+      },
+      { timeout: 5 }
     )
-
-    importCsvText = normalized.csv
-    normalizedSummary = normalized
 
     logger.info?.(
-      `[admin][products/imports] normalized CSV for ${resolvedKey} (delimiter=${
-        shouldNormalize ? "semicolon" : "comma"
-      }, resolvedProducts=${normalized.resolvedProducts}, resolvedVariants=${
-        normalized.resolvedVariants
-      })`
+      `[admin][products/imports] import plan created (delimiter=${prepared.delimiter}, rows=${prepared.summary.rows}, toCreate=${prepared.summary.toCreate}, toUpdate=${prepared.summary.toUpdate}, resolvedProducts=${prepared.resolvedProducts}, resolvedVariants=${prepared.resolvedVariants}, recoveredUpdates=${prepared.summary.recoveredUpdates}).`
     )
-  } catch (error) {
-    logger.error?.(
-      `[admin][products/imports] failed to prepare uploaded CSV: ${
-        (error as Error)?.message ?? "unknown error"
-      }`,
-      error
-    )
-    throw error
-  }
 
-  try {
-    const { plan, summary } = buildImportPlan(
-      filename,
-      importCsvText,
-      normalizedSummary
-    )
-    const planFile = await fileModuleService.createFiles({
-      filename: `${filename.replace(/\.csv$/i, "")}-import-plan.json`,
-      content: JSON.stringify(plan),
-      mimeType: "application/json",
+    res.status(202).json({
+      transaction_id: prepared.transactionId,
+      summary: prepared.summary,
     })
-
-    await fileModuleService.deleteFiles(resolvedKey)
-
-    logger.info?.(
-      `[admin][products/imports] import plan created for ${filename} (transaction=${
-        planFile.id
-      }, rows=${summary.rows}, toCreate=${summary.toCreate}, toUpdate=${summary.toUpdate}, resolvedProducts=${
-        normalizedSummary.resolvedProducts
-      }, resolvedVariants=${
-        normalizedSummary.resolvedVariants
-      }, recoveredUpdates=${summary.recoveredUpdates})`
-    )
-
-    res.status(202).json({ transaction_id: planFile.id, summary })
   } catch (error) {
-    logger.error?.(
-      `[admin][products/imports] import plan failed ${(error as Error)?.message}`,
-      error
-    )
+    logger.error?.("[admin][products/imports] import preparation failed.")
     throw error
   }
 }

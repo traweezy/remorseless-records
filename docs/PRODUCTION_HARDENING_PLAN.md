@@ -2894,6 +2894,33 @@ the three documented ignored moderate findings; Trivy reports zero
 high/critical dependency, misconfiguration, or secret findings. The broader
 dated debt item remains open for unrelated provider and service families.
 
+The eighth post-migration boundary tranche closes the complete Product-import
+lifecycle. Managed upload content, CSV matrices and records, Product graph
+envelopes and relationships, Medusa normalizer trees, persisted plans, and
+batch-workflow acknowledgements are now validated at runtime. Imports accept at
+most 12 MiB, 25,000 data rows, 256 columns, and 5,000 create/update operations;
+plans require at least one operation, reject duplicate update IDs, and expire
+after 24 hours. Preparation and confirmation serialize on distributed locks.
+Confirmation supplies a stable hashed Medusa workflow transaction ID, retains
+the plan after workflow/acknowledgement failure, and deletes it only after the
+created and updated result sets exactly match the plan with no deletions.
+Preparation deletes the upload only after persistence returns a valid opaque
+plan ID and attempts plan rollback if upload cleanup fails. Filenames are
+basename-normalized, File Module identifiers are separately bounded, and logs
+contain only fixed event classes plus aggregate counts.
+
+Twenty-six focused contract, preparation, rollback, replay, expiry, graph,
+workflow-acknowledgement, and option-reuse tests pass with strict TypeScript and
+Biome. Complete local acceptance passes the 1,176-file repository QA gate, all
+232 Backend suites and 1,562 tests, the production Backend/Admin build, frozen
+packaged install, and Admin bundle budget. Backend coverage remains 91.35%
+statements, 84.60% branches, 95.52% functions, and 91.39% lines. The Admin main
+bundle is 1,807,790 gzip bytes and total JavaScript is 2,388,253 gzip bytes. The
+production audit retains only the three documented ignored moderate findings;
+Trivy reports zero high/critical dependency, misconfiguration, or secret
+findings. The broader dated debt item remains open for unrelated import,
+provider, and service families.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace
