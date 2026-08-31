@@ -5,11 +5,9 @@ import {
   loadDiscographyProductLinks,
   type DiscographyProductReader,
 } from "@/lib/discography/product-links"
+import { readAdminDiscographyEntry } from "@/lib/content/persistence-contracts"
 import type DiscographyModuleService from "@/modules/discography/service"
-import {
-  type DiscographyEntryRecord,
-  serializeDiscographyEntry,
-} from "@/modules/discography/serializers"
+import { serializeDiscographyEntry } from "@/modules/discography/serializers"
 import {
   manualDiscographyUpdateSchema,
   updateManualDiscographyEntry,
@@ -31,9 +29,10 @@ export const GET = async (
   const discographyService = req.scope.resolve(
     "discography"
   ) as DiscographyService
-  const entry = (await discographyService.retrieveDiscographyEntry(
+  const entry = readAdminDiscographyEntry(
+    await discographyService.retrieveDiscographyEntry(id),
     id
-  )) as DiscographyEntryRecord | null
+  )
 
   if (!entry) {
     throw new MedusaError(

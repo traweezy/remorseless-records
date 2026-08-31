@@ -4,6 +4,14 @@ import type { Context } from "@medusajs/framework/types"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
+import {
+  readAdminNewsEntry,
+  readContentOperationList,
+  readContentOperationMutation,
+  readExactNewsOperationResult,
+  readNewsOperationResult,
+  type ContentOperationProjection,
+} from "@/lib/content/persistence-contracts"
 import type NewsModuleService from "@/modules/news/service"
 import {
   type NewsEntryDTO,
@@ -28,14 +36,6 @@ export const requestNewsActorId = (req: MedusaRequest): string | null =>
       auth_context?: { actor_id?: string | null }
     }
   ).auth_context?.actor_id ?? null
-
-const firstResult = <T>(value: T | T[]): T | undefined =>
-  Array.isArray(value) ? value[0] : value
-
-const asRecord = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
 
 const hasTransactionConflict = (error: unknown): boolean => {
   let current = error
@@ -86,11 +86,10 @@ export const resolveNewsEntry = async (
   id: string,
   sharedContext?: NewsTransactionContext
 ): Promise<NewsEntryRecord> => {
-  const entry = (await service.retrieveNewsEntry(
-    id,
-    {},
-    sharedContext
-  )) as NewsEntryRecord | null
+  const entry = readAdminNewsEntry(
+    await service.retrieveNewsEntry(id, {}, sharedContext),
+    id
+  )
   if (!entry) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "News post not found")
   }
@@ -109,22 +108,24 @@ export const replayNewsCommand = async (
     expectedVersion: input.expectedVersion,
     payload: input.payload ?? {},
   })
-  const operation = (
+  const operation = readContentOperationList(
     await service.listNewsOperations(
       { idempotency_key: input.idempotencyKey },
       { take: 1 },
       sharedContext
-    )
-  )[0]
+    ),
+    "news"
+  )
   if (!operation) {
     return null
   }
   const sameCommand =
-    operation.aggregate_id === input.aggregateId &&
+    operation.aggregateId === input.aggregateId &&
     operation.command === input.command &&
-    operation.actor_id === actorId &&
-    operation.expected_version === input.expectedVersion &&
-    operation.request_sha256 === requestSha256 &&
+    operation.actorId === actorId &&
+    operation.expectedVersion === input.expectedVersion &&
+    operation.idempotencyKey === input.idempotencyKey &&
+    operation.requestSha256 === requestSha256 &&
     operation.status === "succeeded"
   if (!sameCommand) {
     throw new MedusaError(
@@ -132,14 +133,7 @@ export const replayNewsCommand = async (
       "The news idempotency key cannot be replayed for this command."
     )
   }
-  const entry = asRecord(asRecord(operation.result).entry)
-  if (typeof entry.id !== "string" || typeof entry.version !== "number") {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "The completed news command has no post response."
-    )
-  }
-  return entry as NewsEntryDTO
+  return readNewsOperationResult(operation.result)
 }
 
 export const createNewsOperation = async (
@@ -147,8 +141,14 @@ export const createNewsOperation = async (
   actorId: string | null,
   input: NewsCommandInput,
   sharedContext: NewsTransactionContext
-) => {
-  const created = firstResult(
+): Promise<ContentOperationProjection> => {
+  const requestSha256 = hashCatalogCommand({
+    aggregateId: input.aggregateId,
+    command: input.command,
+    expectedVersion: input.expectedVersion,
+    payload: input.payload ?? {},
+  })
+  return readContentOperationMutation(
     await service.createNewsOperations(
       [
         {
@@ -158,44 +158,59 @@ export const createNewsOperation = async (
           expected_version: input.expectedVersion,
           idempotency_key: input.idempotencyKey,
           metadata: {},
-          request_sha256: hashCatalogCommand({
-            aggregateId: input.aggregateId,
-            command: input.command,
-            expectedVersion: input.expectedVersion,
-            payload: input.payload ?? {},
-          }),
+          request_sha256: requestSha256,
           result: {},
           status: "pending",
         },
       ],
       sharedContext
-    )
+    ),
+    {
+      actorId,
+      aggregateId: input.aggregateId,
+      command: input.command,
+      expectedVersion: input.expectedVersion,
+      idempotencyKey: input.idempotencyKey,
+      kind: "news",
+      requestSha256,
+      status: "pending",
+    }
   )
-  if (!created) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "The news command audit record was not created."
-    )
-  }
-  return created
 }
 
 export const completeNewsOperation = async (
   service: NewsService,
-  operationId: string,
+  operation: ContentOperationProjection,
   entry: NewsEntryRecord,
   sharedContext: NewsTransactionContext
 ): Promise<void> => {
   const response = serializeNewsEntry(entry)
-  await service.updateNewsOperations(
-    [
-      {
-        completed_at: new Date(),
-        id: operationId,
-        result: { entry: response, entryId: entry.id, version: entry.version },
-        status: "succeeded",
-      },
-    ],
-    sharedContext
+  const completed = readContentOperationMutation(
+    await service.updateNewsOperations(
+      [
+        {
+          completed_at: new Date(),
+          id: operation.id,
+          result: {
+            entry: response,
+            entryId: entry.id,
+            version: entry.version,
+          },
+          status: "succeeded",
+        },
+      ],
+      sharedContext
+    ),
+    {
+      actorId: operation.actorId,
+      aggregateId: operation.aggregateId,
+      command: operation.command,
+      expectedVersion: operation.expectedVersion,
+      idempotencyKey: operation.idempotencyKey,
+      kind: "news",
+      requestSha256: operation.requestSha256,
+      status: "succeeded",
+    }
   )
+  readExactNewsOperationResult(completed.result, response)
 }

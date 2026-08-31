@@ -372,4 +372,39 @@ describe("news lifecycle commands", () => {
       })
     ).rejects.toThrow("cannot be replayed")
   })
+
+  it("rejects a malformed entry creation acknowledgement", async () => {
+    const { service } = serviceFixture()
+    ;(service.createNewsEntries as jest.Mock).mockResolvedValue([
+      newsRecord({ id: "news_created", version: 0 }),
+    ])
+
+    await expect(
+      createNewsEntry(requestFixture(), service, {
+        content: "<p>Body</p>",
+        expectedVersion: 0,
+        idempotencyKey: randomUUID(),
+        title: "Invalid acknowledgement",
+      })
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+    expect(service.updateNewsOperations).not.toHaveBeenCalled()
+  })
+
+  it("rejects a malformed operation completion acknowledgement", async () => {
+    const { service } = serviceFixture()
+    ;(service.updateNewsOperations as jest.Mock).mockResolvedValue([false])
+
+    await expect(
+      createNewsEntry(requestFixture(), service, {
+        content: "<p>Body</p>",
+        expectedVersion: 0,
+        idempotencyKey: randomUUID(),
+        title: "Invalid audit acknowledgement",
+      })
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+  })
 })

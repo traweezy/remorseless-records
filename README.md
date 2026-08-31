@@ -1497,6 +1497,13 @@ is reconstructed from the two public automation fields instead of serializing
 arbitrary stored metadata. Malformed ORM results therefore fail as an
 operational incident rather than becoming public content or a false empty page.
 
+Admin News and Discography use a stricter authoring persistence contract before
+rendering or acknowledging work. List/detail rows, Product-link hydration,
+create/update results, replay records, and pending-to-succeeded audit
+transitions require exact identities, versions, content lifecycle, safe rich
+text/media, and command hashes. A malformed service response therefore cannot
+become a successful save, an unsafe replay, or a plausible default in Admin.
+
 Physical media deletion is deliberately unavailable. The displayed 30-day
 date is only the earliest future review point; no job or route automatically
 deletes the catalog row or File Module object. A future audited purge also

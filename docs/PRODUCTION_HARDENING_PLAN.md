@@ -3007,6 +3007,33 @@ is 2,388,594 gzip bytes. The production audit retains only the three documented
 ignored moderate findings; Trivy reports zero high/critical dependency,
 misconfiguration, or secret findings.
 
+The twelfth post-migration boundary tranche closes the Admin News and
+Discography persistence family. Counted list pages, exact retrieval, Product
+hydration, create/update acknowledgements, and lifecycle results now validate
+complete bounded records before serialization. News lifecycle, sanitized rich
+text, safe HTTP(S) cover URLs, slugs, timestamps, tags, and versions remain
+coherent. Discography source/Product linkage, release date/year, lists,
+availability, media URL, identity, and version must likewise agree.
+
+Idempotency operation reads reject primitive, duplicate, malformed, or
+ambiguous rows. Pending and succeeded transitions preserve the exact actor,
+aggregate, command, expected version, idempotency key, request SHA-256, result,
+and completion state. News replays validate the entire stored response;
+Discography replays require the retained entry version to equal the recorded
+result so a later edit cannot masquerade as an earlier command response.
+Forty-four focused contract, route, lifecycle, replay, form, and
+Product-hydration
+tests cover both valid authoring and adversarial persistence acknowledgements.
+
+Complete local acceptance passes the 1,192-file repository QA gate, all 243
+Backend suites and 1,701 tests, the production Backend/Admin build, frozen
+packaged install with Medusa 2.18.0, and the Admin bundle budget. Backend
+coverage remains 91.35% statements, 84.60% branches, 95.52% functions, and
+91.39% lines. The Admin main bundle is 1,807,718 gzip bytes and total JavaScript
+is 2,388,451 gzip bytes. The production audit retains only the three documented
+ignored moderate findings; Trivy reports zero high/critical dependency or
+secret findings.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

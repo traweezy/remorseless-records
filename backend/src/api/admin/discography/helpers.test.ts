@@ -4,6 +4,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 import type { DiscographyEntryRecord } from "@/modules/discography/serializers"
 import {
   createManualDiscographyEntry,
+  manualDiscographyCreateSchema,
   setDiscographyEntryArchived,
   updateManualDiscographyEntry,
   type DiscographyService,
@@ -265,5 +266,69 @@ describe("discography authoring commands", () => {
         releaseTitle: "Archive Demo",
       })
     ).rejects.toMatchObject({ type: MedusaError.Types.CONFLICT })
+  })
+
+  it("rejects non-HTTP cover URLs before creating an operation", () => {
+    expect(
+      manualDiscographyCreateSchema.safeParse({
+        artist: "Test Artist",
+        coverUrl: "file:///tmp/cover.jpg",
+        expectedVersion: 0,
+        idempotencyKey: createKey,
+        releaseTitle: "Archive Demo",
+      }).success
+    ).toBe(false)
+  })
+
+  it("requires alternative text before persisting manual cover artwork", async () => {
+    const { service } = serviceFixture()
+
+    await expect(
+      createManualDiscographyEntry(requestFixture(), service, {
+        artist: "Test Artist",
+        coverUrl: "https://cdn.example.com/release.jpg",
+        expectedVersion: 0,
+        idempotencyKey: createKey,
+        releaseTitle: "Archive Demo",
+      })
+    ).rejects.toMatchObject({ type: MedusaError.Types.INVALID_DATA })
+    expect(service.createDiscographyOperations).not.toHaveBeenCalled()
+  })
+
+  it("rejects a malformed entry mutation acknowledgement", async () => {
+    const { service } = serviceFixture()
+    ;(service.createDiscographyEntries as jest.Mock).mockResolvedValue([
+      entryFixture({ id: "disc_created", version: 0 }),
+    ])
+
+    await expect(
+      createManualDiscographyEntry(requestFixture(), service, {
+        artist: "Test Artist",
+        expectedVersion: 0,
+        idempotencyKey: createKey,
+        releaseTitle: "Archive Demo",
+      })
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+    expect(service.updateDiscographyOperations).not.toHaveBeenCalled()
+  })
+
+  it("rejects a malformed operation completion acknowledgement", async () => {
+    const { service } = serviceFixture()
+    ;(service.updateDiscographyOperations as jest.Mock).mockResolvedValue([
+      null,
+    ])
+
+    await expect(
+      createManualDiscographyEntry(requestFixture(), service, {
+        artist: "Test Artist",
+        expectedVersion: 0,
+        idempotencyKey: createKey,
+        releaseTitle: "Archive Demo",
+      })
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
   })
 })

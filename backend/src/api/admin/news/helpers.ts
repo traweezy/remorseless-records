@@ -1,10 +1,8 @@
 import type { MedusaRequest } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 
-import {
-  type NewsEntryRecord,
-  serializeNewsEntry,
-} from "@/modules/news/serializers"
+import { readAdminNewsMutation } from "@/lib/content/persistence-contracts"
+import { serializeNewsEntry } from "@/modules/news/serializers"
 import {
   completeNewsOperation,
   createNewsOperation,
@@ -29,9 +27,6 @@ export {
   newsUpdateSchema,
 } from "./contracts"
 export type { NewsService } from "./command"
-
-const firstResult = <T>(value: T | T[]): T | undefined =>
-  Array.isArray(value) ? value[0] : value
 
 export const createNewsEntry = async (
   req: MedusaRequest,
@@ -71,7 +66,7 @@ export const createNewsEntry = async (
       input.idempotencyKey,
       sharedContext
     )
-    const created = firstResult(
+    const created = readAdminNewsMutation(
       await service.createNewsEntries(
         [
           {
@@ -83,15 +78,10 @@ export const createNewsEntry = async (
           },
         ],
         sharedContext
-      )
-    ) as NewsEntryRecord | undefined
-    if (!created) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to create news post."
-      )
-    }
-    await completeNewsOperation(service, operation.id, created, sharedContext)
+      ),
+      { version: 1 }
+    )
+    await completeNewsOperation(service, operation, created, sharedContext)
     return { entry: serializeNewsEntry(created), replayed: false }
   })
 }
@@ -148,19 +138,14 @@ export const updateNewsEntry = async (
     )
     const patch = buildNewsEntryPatch({ existing, input, now: new Date() })
     const version = existing.version + 1
-    const updated = firstResult(
+    const updated = readAdminNewsMutation(
       await service.updateNewsEntries(
         [{ id, ...patch, version }],
         sharedContext
-      )
-    ) as NewsEntryRecord | undefined
-    if (!updated) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to update news post."
-      )
-    }
-    await completeNewsOperation(service, operation.id, updated, sharedContext)
+      ),
+      { id, version }
+    )
+    await completeNewsOperation(service, operation, updated, sharedContext)
     return { entry: serializeNewsEntry(updated), replayed: false }
   })
 }
@@ -211,7 +196,7 @@ export const setNewsEntryArchived = async (
       sharedContext
     )
     const version = existing.version + 1
-    const updated = firstResult(
+    const updated = readAdminNewsMutation(
       await service.updateNewsEntries(
         [
           {
@@ -222,17 +207,10 @@ export const setNewsEntryArchived = async (
           },
         ],
         sharedContext
-      )
-    ) as NewsEntryRecord | undefined
-    if (!updated) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        archived
-          ? "Unable to archive news post."
-          : "Unable to restore news post."
-      )
-    }
-    await completeNewsOperation(service, operation.id, updated, sharedContext)
+      ),
+      { id, version }
+    )
+    await completeNewsOperation(service, operation, updated, sharedContext)
     return { entry: serializeNewsEntry(updated), replayed: false }
   })
 }

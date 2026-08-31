@@ -4,6 +4,14 @@ import type { Context } from "@medusajs/framework/types"
 import { z } from "@medusajs/framework/zod"
 import { MedusaError } from "@medusajs/framework/utils"
 
+import {
+  readAdminDiscographyEntry,
+  readAdminDiscographyMutation,
+  readContentOperationList,
+  readContentOperationMutation,
+  readDiscographyOperationResult,
+  type ContentOperationProjection,
+} from "@/lib/content/persistence-contracts"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import type DiscographyModuleService from "@/modules/discography/service"
 import {
@@ -29,6 +37,14 @@ const optionalDateSchema = z
 const optionalText = (maximum: number) =>
   z.string().trim().max(maximum).optional().nullable()
 
+const isHttpUrl = (value: string): boolean => {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol)
+  } catch {
+    return false
+  }
+}
+
 const normalizedListSchema = z
   .array(z.string().trim().min(1).max(200))
   .max(100)
@@ -40,7 +56,14 @@ const manualFieldsSchema = z.object({
   catalogNumber: optionalText(200),
   collectionTitle: optionalText(500),
   coverAltText: optionalText(500),
-  coverUrl: z.string().trim().url().max(2_000).optional().nullable(),
+  coverUrl: z
+    .string()
+    .trim()
+    .url()
+    .max(2_000)
+    .refine(isHttpUrl, "Cover URL must use http or https.")
+    .optional()
+    .nullable(),
   formats: normalizedListSchema,
   genres: normalizedListSchema,
   releaseDate: optionalDateSchema,
@@ -49,12 +72,22 @@ const manualFieldsSchema = z.object({
   tags: normalizedListSchema,
 })
 
-export const manualDiscographyCreateSchema = manualFieldsSchema.extend({
-  artist: z.string().trim().min(1).max(500),
-  expectedVersion: z.literal(0),
-  idempotencyKey: z.string().uuid(),
-  releaseTitle: z.string().trim().min(1).max(500),
-})
+export const manualDiscographyCreateSchema = manualFieldsSchema
+  .extend({
+    artist: z.string().trim().min(1).max(500),
+    expectedVersion: z.literal(0),
+    idempotencyKey: z.string().uuid(),
+    releaseTitle: z.string().trim().min(1).max(500),
+  })
+  .superRefine((value, context) => {
+    if (value.coverUrl && !value.coverAltText) {
+      context.addIssue({
+        code: "custom",
+        message: "Cover alt text is required when cover artwork is present.",
+        path: ["coverAltText"],
+      })
+    }
+  })
 
 export const manualDiscographyUpdateSchema = manualFieldsSchema.extend({
   expectedVersion: z.number().int().min(1),
@@ -119,14 +152,6 @@ const toOptionalDate = (value: string | null | undefined): Date | null => {
   return new Date(value)
 }
 
-const firstResult = <T>(value: T | T[]): T | undefined =>
-  Array.isArray(value) ? value[0] : value
-
-const asRecord = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
-
 const hasTransactionConflict = (error: unknown): boolean => {
   let current = error
   for (let depth = 0; depth < 5; depth += 1) {
@@ -173,11 +198,10 @@ const resolveEntry = async (
   id: string,
   sharedContext?: DiscographyTransactionContext
 ): Promise<DiscographyEntryRecord> => {
-  const entry = (await service.retrieveDiscographyEntry(
-    id,
-    {},
-    sharedContext
-  )) as DiscographyEntryRecord | null
+  const entry = readAdminDiscographyEntry(
+    await service.retrieveDiscographyEntry(id, {}, sharedContext),
+    id
+  )
   if (!entry) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
@@ -199,22 +223,24 @@ const replayCommand = async (
     expectedVersion: input.expectedVersion,
     payload: input.payload ?? {},
   })
-  const operation = (
+  const operation = readContentOperationList(
     await service.listDiscographyOperations(
       { idempotency_key: input.idempotencyKey },
       { take: 1 },
       sharedContext
-    )
-  )[0]
+    ),
+    "discography"
+  )
   if (!operation) {
     return null
   }
   const sameCommand =
-    operation.aggregate_id === input.aggregateId &&
+    operation.aggregateId === input.aggregateId &&
     operation.command === input.command &&
-    operation.actor_id === actorId &&
-    operation.expected_version === input.expectedVersion &&
-    operation.request_sha256 === requestSha256 &&
+    operation.actorId === actorId &&
+    operation.expectedVersion === input.expectedVersion &&
+    operation.idempotencyKey === input.idempotencyKey &&
+    operation.requestSha256 === requestSha256 &&
     operation.status === "succeeded"
   if (!sameCommand) {
     throw new MedusaError(
@@ -222,14 +248,15 @@ const replayCommand = async (
       "The discography idempotency key cannot be replayed for this command."
     )
   }
-  const entryId = asRecord(operation.result).entryId
-  if (typeof entryId !== "string") {
+  const result = readDiscographyOperationResult(operation.result)
+  const entry = await resolveEntry(service, result.entryId, sharedContext)
+  if (entry.version !== result.version) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      "The completed discography command has no entry result."
+      "The completed discography command no longer has its exact entry response."
     )
   }
-  return resolveEntry(service, entryId, sharedContext)
+  return entry
 }
 
 const createOperation = async (
@@ -237,14 +264,14 @@ const createOperation = async (
   actorId: string | null,
   input: DiscographyCommandInput,
   sharedContext: DiscographyTransactionContext
-) => {
+): Promise<ContentOperationProjection> => {
   const requestSha256 = hashCatalogCommand({
     aggregateId: input.aggregateId,
     command: input.command,
     expectedVersion: input.expectedVersion,
     payload: input.payload ?? {},
   })
-  const created = firstResult(
+  return readContentOperationMutation(
     await service.createDiscographyOperations(
       [
         {
@@ -260,35 +287,56 @@ const createOperation = async (
         },
       ],
       sharedContext
-    )
+    ),
+    {
+      actorId,
+      aggregateId: input.aggregateId,
+      command: input.command,
+      expectedVersion: input.expectedVersion,
+      idempotencyKey: input.idempotencyKey,
+      kind: "discography",
+      requestSha256,
+      status: "pending",
+    }
   )
-  if (!created) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "The discography command audit record was not created."
-    )
-  }
-  return created
 }
 
 const completeOperation = async (
   service: DiscographyService,
-  operationId: string,
-  entryId: string,
-  version: number,
+  operation: ContentOperationProjection,
+  entry: DiscographyEntryRecord,
   sharedContext: DiscographyTransactionContext
 ): Promise<void> => {
-  await service.updateDiscographyOperations(
-    [
-      {
-        completed_at: new Date(),
-        id: operationId,
-        result: { entryId, version },
-        status: "succeeded",
-      },
-    ],
-    sharedContext
+  const completed = readContentOperationMutation(
+    await service.updateDiscographyOperations(
+      [
+        {
+          completed_at: new Date(),
+          id: operation.id,
+          result: { entryId: entry.id, version: entry.version },
+          status: "succeeded",
+        },
+      ],
+      sharedContext
+    ),
+    {
+      actorId: operation.actorId,
+      aggregateId: operation.aggregateId,
+      command: operation.command,
+      expectedVersion: operation.expectedVersion,
+      idempotencyKey: operation.idempotencyKey,
+      kind: "discography",
+      requestSha256: operation.requestSha256,
+      status: "succeeded",
+    }
   )
+  const result = readDiscographyOperationResult(completed.result)
+  if (result.entryId !== entry.id || result.version !== entry.version) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "The discography command audit acknowledgement did not match the entry."
+    )
+  }
 }
 
 const validateDateAndYear = (
@@ -345,6 +393,24 @@ const buildManualPatch = (
     patch.cover_alt_text = toNullableString(input.coverAltText)
   }
 
+  const effectiveCoverUrl =
+    patch.cover_url !== undefined
+      ? (patch.cover_url as string | null)
+      : (existing?.cover_url ?? null)
+  const effectiveCoverAltText =
+    patch.cover_alt_text !== undefined
+      ? (patch.cover_alt_text as string | null)
+      : (existing?.cover_alt_text ?? null)
+  if (effectiveCoverUrl && !effectiveCoverAltText) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Cover alt text is required when cover artwork is present."
+    )
+  }
+  if (!effectiveCoverUrl && effectiveCoverAltText) {
+    patch.cover_alt_text = null
+  }
+
   const effectiveDate =
     patch.release_date !== undefined
       ? (patch.release_date as Date | null)
@@ -363,6 +429,7 @@ export const createManualDiscographyEntry = async (
   input: ManualDiscographyCreateInput
 ) => {
   const actorId = requestActorId(req)
+  const patch = buildManualPatch(input)
   const aggregateId = `new:${input.idempotencyKey}`
   const commandInput: DiscographyCommandInput = {
     aggregateId,
@@ -387,8 +454,7 @@ export const createManualDiscographyEntry = async (
       commandInput,
       sharedContext
     )
-    const patch = buildManualPatch(input)
-    const created = firstResult(
+    const created = readAdminDiscographyMutation(
       await service.createDiscographyEntries(
         [
           {
@@ -401,15 +467,10 @@ export const createManualDiscographyEntry = async (
           },
         ],
         sharedContext
-      )
-    ) as DiscographyEntryRecord | undefined
-    if (!created) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to create discography entry"
-      )
-    }
-    await completeOperation(service, operation.id, created.id, 1, sharedContext)
+      ),
+      { version: 1 }
+    )
+    await completeOperation(service, operation, created, sharedContext)
     return { entry: serializeDiscographyEntry(created), replayed: false }
   })
 }
@@ -471,25 +532,14 @@ export const updateManualDiscographyEntry = async (
       sharedContext
     )
     const version = existing.version + 1
-    const updated = firstResult(
+    const updated = readAdminDiscographyMutation(
       await service.updateDiscographyEntries(
         [{ id, ...patch, version }],
         sharedContext
-      )
-    ) as DiscographyEntryRecord | undefined
-    if (!updated) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to update discography entry"
-      )
-    }
-    await completeOperation(
-      service,
-      operation.id,
-      updated.id,
-      version,
-      sharedContext
+      ),
+      { id, version }
     )
+    await completeOperation(service, operation, updated, sharedContext)
     return { entry: serializeDiscographyEntry(updated), replayed: false }
   })
 }
@@ -542,7 +592,7 @@ export const setDiscographyEntryArchived = async (
       sharedContext
     )
     const version = existing.version + 1
-    const updated = firstResult(
+    const updated = readAdminDiscographyMutation(
       await service.updateDiscographyEntries(
         [
           {
@@ -552,23 +602,10 @@ export const setDiscographyEntryArchived = async (
           },
         ],
         sharedContext
-      )
-    ) as DiscographyEntryRecord | undefined
-    if (!updated) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        archived
-          ? "Unable to archive discography entry"
-          : "Unable to restore discography entry"
-      )
-    }
-    await completeOperation(
-      service,
-      operation.id,
-      updated.id,
-      version,
-      sharedContext
+      ),
+      { id, version }
     )
+    await completeOperation(service, operation, updated, sharedContext)
     return { entry: serializeDiscographyEntry(updated), replayed: false }
   })
 }

@@ -29,4 +29,18 @@ describe("discography product-link hydration", () => {
       status: "published",
     })
   })
+
+  it("rejects unexpected or duplicate Product hydration rows", async () => {
+    const listProducts = jest.fn(async () => [
+      { handle: "release-one", id: "prod_other", status: "published" },
+    ])
+
+    await expect(
+      loadDiscographyProductLinks({ listProducts }, [
+        entry("prod_1", "catalog_product"),
+      ])
+    ).rejects.toThrow(
+      "The Admin content persistence boundary returned invalid structured data."
+    )
+  })
 })

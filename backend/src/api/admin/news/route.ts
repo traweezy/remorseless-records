@@ -4,9 +4,9 @@ import { MedusaError } from "@medusajs/framework/utils"
 
 import { withStableNewsOrder } from "@/modules/news/list-order"
 import type NewsModuleService from "@/modules/news/service"
+import { readAdminNewsPage } from "@/lib/content/persistence-contracts"
 import {
   newsStatusValues,
-  type NewsEntryRecord,
   serializeNewsEntry,
 } from "@/modules/news/serializers"
 import { createNewsEntry, newsCreateSchema } from "./helpers"
@@ -57,14 +57,15 @@ export const GET = async (
   if (archiveFilter === "archived") filters.archived_at = { $ne: null }
 
   const newsService = req.scope.resolve("news") as NewsService
-  const [entries, count] = await newsService.listAndCountNewsEntries(filters, {
+  const result = await newsService.listAndCountNewsEntries(filters, {
     skip,
     take,
     order: withStableNewsOrder({ [sortField]: sortDirection }),
   })
+  const { count, records } = readAdminNewsPage(result, take)
 
   res.status(200).json({
-    entries: (entries as NewsEntryRecord[]).map(serializeNewsEntry),
+    entries: records.map(serializeNewsEntry),
     count,
     offset: skip,
     limit: take,

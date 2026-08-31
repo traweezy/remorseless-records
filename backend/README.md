@@ -136,6 +136,16 @@ and automatic profile rows are unique per Product. Only `lookbackDays` and
 `source_created_at` survive the shelf automation metadata projection; arbitrary
 module metadata is not public Store data.
 
+Admin News and Discography reads and commands pass through
+`src/lib/content/persistence-contracts.ts`. The boundary validates complete
+counted pages, exact retrieve/mutation acknowledgements, Product-link hydration,
+and idempotency-operation rows. A command completion is accepted only when the
+returned audit row preserves the exact actor, aggregate, command, expected
+version, idempotency key, SHA-256 request hash, terminal timestamp, and result.
+News replays validate the complete stored DTO; Discography replays require the
+current retained entry to match the recorded version instead of returning a
+later edit as the old command response.
+
 The Store bundle route additionally validates the active project-owned profile,
 every component row and declared mapping, the visible Product/Variant graph,
 and the availability map. A mapping may reference only a Variant on its exact

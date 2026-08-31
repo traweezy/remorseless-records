@@ -357,3 +357,23 @@ reduced to the public automation inputs, preventing support notes or future
 internal keys from crossing the Store boundary. These checks do not add client
 choices; they ensure that an impossible stored state is surfaced for recovery
 instead of being silently defaulted into plausible customer content.
+
+### Content authoring persistence hardening — August 30, 2026
+
+News and Discography now validate the exact persistence acknowledgement behind
+every Admin list, detail, create, update, archive, restore, and idempotent replay
+path. The visible workflow stays simple, but a malformed row, unsafe stored
+HTML or media scheme, incoherent lifecycle, mismatched Product link, wrong
+version, or incomplete command audit can no longer be shown as a successful
+operator action. Pending and succeeded audit rows retain an exact actor,
+aggregate, command, idempotency key, request hash, completion time, and result.
+
+News preserves and validates the complete historical response for replay.
+Discography validates the recorded entry identity and version and refuses to
+return a later edit as though it were the exact old response. This makes the
+existing response-loss recovery copy truthful without adding a retry choice or
+technical field to either client workflow.
+
+Both authoring surfaces accept only HTTP(S) artwork. News and manual
+Discography also require alternative text whenever artwork is present, with the
+same accessible validation shown in the form and enforced before a write begins.

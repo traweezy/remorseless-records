@@ -85,7 +85,7 @@ describe("discography historical form", () => {
     ).toBe(true)
   })
 
-  it("rejects impossible dates and malformed artwork URLs", () => {
+  it("rejects impossible dates and inaccessible or unsafe artwork", () => {
     const values = valuesFromDiscographyEntry(entry)
     expect(
       discographyManualFormSchema.safeParse({
@@ -93,6 +93,19 @@ describe("discography historical form", () => {
         coverUrl: "not-a-url",
         datePrecision: "day",
         dateValue: "2026-02-31",
+      }).success
+    ).toBe(false)
+    expect(
+      discographyManualFormSchema.safeParse({
+        ...values,
+        coverAltText: "",
+        coverUrl: "https://cdn.example.com/release.jpg",
+      }).success
+    ).toBe(false)
+    expect(
+      discographyManualFormSchema.safeParse({
+        ...values,
+        coverUrl: "ftp://cdn.example.com/release.jpg",
       }).success
     ).toBe(false)
   })

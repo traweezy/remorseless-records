@@ -6,12 +6,12 @@ import {
   loadDiscographyProductLinks,
   type DiscographyProductReader,
 } from "@/lib/discography/product-links"
+import { readAdminDiscographyPage } from "@/lib/content/persistence-contracts"
 import type DiscographyModuleService from "@/modules/discography/service"
 import { withStableDiscographyOrder } from "@/modules/discography/list-order"
 import {
   discographySourceModeValues,
   discographyAvailabilityValues,
-  type DiscographyEntryRecord,
   serializeDiscographyEntry,
 } from "@/modules/discography/serializers"
 import {
@@ -80,13 +80,15 @@ export const GET = async (
   if (archived === "active") filters.archived_at = null
   if (archived === "archived") filters.archived_at = { $ne: null }
 
-  const [entries, count] =
-    await discographyService.listAndCountDiscographyEntries(filters, {
+  const result = await discographyService.listAndCountDiscographyEntries(
+    filters,
+    {
       skip,
       take,
       order: withStableDiscographyOrder({ [sortField]: sortDirection }),
-    })
-  const records = entries as DiscographyEntryRecord[]
+    }
+  )
+  const { count, records } = readAdminDiscographyPage(result, take)
   const productsById = await loadDiscographyProductLinks(
     productService,
     records

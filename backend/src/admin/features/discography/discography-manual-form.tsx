@@ -54,12 +54,20 @@ import {
 
 const datePrecisionValues = ["day", "year", "unknown"] as const
 
+const isHttpUrl = (value: string): boolean => {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol)
+  } catch {
+    return false
+  }
+}
+
 const optionalUrlSchema = z
   .string()
   .trim()
   .max(2_000)
   .refine(
-    (value) => value.length === 0 || z.url().safeParse(value).success,
+    (value) => value.length === 0 || isHttpUrl(value),
     "Enter a valid http or https URL."
   )
 
@@ -91,6 +99,13 @@ export const discographyManualFormSchema = discographyManualDraftSchema
     ),
   })
   .superRefine((value, context) => {
+    if (value.coverUrl && !value.coverAltText) {
+      context.addIssue({
+        code: "custom",
+        message: "Describe the cover for screen-reader users.",
+        path: ["coverAltText"],
+      })
+    }
     if (value.datePrecision === "day") {
       const parsed = new Date(`${value.dateValue}T00:00:00.000Z`)
       if (

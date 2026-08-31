@@ -2,12 +2,13 @@ import type {
   DiscographyEntryRecord,
   DiscographyLinkedProduct,
 } from "@/modules/discography/serializers"
+import { readAdminDiscographyProducts } from "@/lib/content/persistence-contracts"
 
 export type DiscographyProductReader = {
   listProducts: (
     filters: Record<string, unknown>,
     config: { take: number }
-  ) => Promise<DiscographyLinkedProductWithId[]>
+  ) => Promise<unknown>
 }
 
 export type DiscographyLinkedProductWithId = DiscographyLinkedProduct & {
@@ -31,9 +32,12 @@ export const loadDiscographyProductLinks = async (
     return new Map()
   }
 
-  const products = await productReader.listProducts(
-    { id: productIds },
-    { take: productIds.length }
+  const products = readAdminDiscographyProducts(
+    await productReader.listProducts(
+      { id: productIds },
+      { take: productIds.length }
+    ),
+    productIds
   )
   return new Map(products.map((product) => [product.id, product]))
 }

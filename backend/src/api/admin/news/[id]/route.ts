@@ -2,10 +2,8 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 
 import type NewsModuleService from "@/modules/news/service"
-import {
-  type NewsEntryRecord,
-  serializeNewsEntry,
-} from "@/modules/news/serializers"
+import { readAdminNewsEntry } from "@/lib/content/persistence-contracts"
+import { serializeNewsEntry } from "@/modules/news/serializers"
 import { newsUpdateSchema, updateNewsEntry } from "../helpers"
 
 type NewsService = InstanceType<typeof NewsModuleService>
@@ -26,9 +24,8 @@ export const GET = async (
   res: MedusaResponse
 ): Promise<void> => {
   const newsService = req.scope.resolve("news") as NewsService
-  const entry = (await newsService.retrieveNewsEntry(
-    requireId(req)
-  )) as NewsEntryRecord | null
+  const id = requireId(req)
+  const entry = readAdminNewsEntry(await newsService.retrieveNewsEntry(id), id)
   if (!entry) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "News post not found.")
   }
