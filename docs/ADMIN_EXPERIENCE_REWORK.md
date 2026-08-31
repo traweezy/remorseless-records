@@ -605,3 +605,13 @@ builds. The built Admin contains 330 JavaScript assets; its largest bundle is
 enforced budgets. The production dependency audit retains only the three
 documented ignored moderate findings, and the React Router production-artifact
 backport verifier passes.
+
+Post-push handoff status at August 31, 2026 08:46 EDT: the slice is commit
+`7a82faf07f6d0ca144f45d9e9d17af35f33e3e9a`. Root CI run `33392299754` and
+Backend CI run `33392299776` are green. Storefront CI run `33392299802` is also
+complete and green, including Lighthouse, pa11y, and Browser Smoke.
+Railway Backend deployment `f61cd05d-4fa0-4de9-88ef-4ebb7112fa14` and
+Storefront deployment `11143ddb-5be4-4a87-b167-7c594f2120a6` are both
+`BUILDING` on that exact SHA. This section is locally complete, but staging
+acceptance is not complete until both exact-SHA deployments succeed and their
+logs and health probes are reviewed.

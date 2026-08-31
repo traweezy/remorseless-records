@@ -124,3 +124,35 @@ Apply retention rules from policy and counsel guidance; update policy text if re
 - [ ] Privacy request submissions verified end-to-end.
 - [ ] Shipping delay and refund operational playbooks trained with support staff.
 - [ ] Contact methods monitored and staffed.
+
+---
+
+## 7. Current Local Acceptance Handoff (August 31, 2026)
+
+No legal/launch implementation was changed during the final audit session.
+The next local slice must close these testable gaps before requesting counsel
+or client sign-off:
+
+1. Put the exact amount and policy/fulfillment disclosure immediately before
+   every paid or free order submit control and bind it with accessible
+   description semantics.
+2. Gate optional Web Vitals telemetry on analytics consent, then use a fresh
+   browser profile to prove that no optional cookie, storage entry, external
+   request, or Bandcamp frame operates before consent. Exercise accept,
+   reject, granular selection, persistence, and later revocation.
+3. Return the Backend privacy request's opaque request ID through the
+   Storefront and present it in a focused, announced success state. Exercise
+   validation, redacted failure/retry, signed Storefront-to-Backend delivery,
+   and the monitored mailbox procedure without putting customer data in test
+   reports or screenshots.
+4. Run one deterministic launch matrix across commerce, recovery, content,
+   privacy, and cookie states for keyboard order, visible/unobscured focus,
+   error summaries, screen-reader semantics, WCAG 2.2 AA contrast and
+   24-pixel targets, 320-pixel reflow, reduced motion, and runtime errors.
+5. Run repeated production-like Lighthouse checks with explicit Core Web
+   Vital and resource budgets, and inspect real graphical-desktop screenshots
+   for every representative customer journey.
+
+Qualified counsel must still approve policy wording, jurisdiction scope,
+retention, consumer-request deadlines, and operating procedures. Automated
+acceptance proves implementation behavior; it does not provide legal approval.

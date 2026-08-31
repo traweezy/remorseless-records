@@ -1,11 +1,79 @@
 # Production Hardening Plan
 
-Last verified: August 30, 2026
+Last verified: August 31, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
+
+## Active handoff — August 31, 2026 at 08:46 EDT
+
+Stop point: no Storefront launch-acceptance implementation was started. The
+working tree is clean except for the pre-existing untracked `Default/`
+directory, which is unrelated user content and must remain unread, untouched,
+and unstaged.
+
+The completed Admin accessibility/support slice is commit
+`7a82faf07f6d0ca144f45d9e9d17af35f33e3e9a` on `staging`. Root CI run
+`33392299754`, Backend CI run `33392299776`, and Storefront CI run
+`33392299802` are complete and green. Storefront acceptance includes security,
+Biome, CodeQL, strict typecheck/Trivy, secret scan, coverage, production build,
+pa11y, Lighthouse, and responsive/cross-browser Playwright Browser Smoke.
+
+Railway has registered the exact same SHA as Backend deployment
+`f61cd05d-4fa0-4de9-88ef-4ebb7112fa14` and Storefront deployment
+`11143ddb-5be4-4a87-b167-7c594f2120a6`. Both advanced to `BUILDING` on the
+exact SHA after GitHub checks completed and still reported their deployment as
+stopped during the build. The next session must watch both to `SUCCESS`, prove
+their commit hash is still the exact SHA,
+inspect exact-deployment build/runtime logs, and run Backend and Storefront
+live/readiness plus representative route probes before accepting this slice.
+The deliberate 24-hour `scheduler_incident_latched` operations reason remains
+open and must never be cleared manually or with synthetic state.
+
+After that promotion closes, resume the complete **Legal, accessibility, and
+launch acceptance** local slice. The read-only audit identified these exact
+implementation gaps; no code change for them has been made yet:
+
+- Move a reusable checkout disclosure immediately before both paid and free
+  order submission. Associate it with the submit control and disclose the
+  exact charged total, current tax/shipping total state, processing window,
+  and Terms, Privacy, Shipping, and Returns links. Remove the less-direct
+  duplicate disclosure below the whole checkout flow.
+- Prove the pre-consent browser boundary. Web-vital telemetry currently mounts
+  unconditionally, while the public policy describes analytics as optional;
+  gate optional telemetry on analytics consent or explicitly reclassify it
+  only after counsel approval. Verify cookies, local/session storage, external
+  requests, Bandcamp loading, accept/reject/customize, persistence, and
+  revocation in a fresh browser context.
+- Preserve the Backend privacy request's bounded opaque request ID through the
+  Storefront BFF and show it in an accessible success status. Add a focused
+  error summary/focus path, neutral redacted errors, retry coverage, and a
+  browser journey that proves the monitored-delivery contract without storing
+  request PII in artifacts.
+- Replace the fragmented static-page checks with a deterministic Storefront
+  launch matrix covering home, catalog, Product detail, cart, checkout contact
+  and validation states, payment disclosure/error state, confirmation,
+  recovery, privacy form, cookie preferences, and content/legal pages. Fail on
+  axe violations **and incomplete/manual-review results**, console/runtime or
+  response errors, unnamed controls, invalid ARIA, positive tab order,
+  undersized targets, horizontal overflow, ineffective reduced-motion, and
+  hidden or obscured keyboard focus.
+- Expand Lighthouse beyond the current four static paths. Use repeat runs and
+  enforce performance, accessibility, best-practice, SEO, Core Web Vital, and
+  resource-size/count budgets for representative production-like commerce
+  routes; retain private CI artifacts instead of relying only on temporary
+  public upload links.
+- Capture and inspect real graphical-desktop screenshots for responsive
+  checkout, catalog, Product, cart, content, privacy/cookie, confirmation, and
+  recovery states. Keep automated screenshots as regression evidence but do
+  not treat them as the required real-desktop review.
+- Update this plan, `docs/QA_RUNBOOK.md`,
+  `docs/LEGAL_COMPLIANCE_RUNBOOK.md`, and support/checkout operating guidance
+  with exact local evidence before the next push. Counsel, training, monitored
+  support ownership, and named launch sign-offs remain external gates and must
+  not be marked complete from local automation.
 
 ## Operating contract
 
