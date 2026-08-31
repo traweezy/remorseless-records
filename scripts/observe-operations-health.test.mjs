@@ -224,6 +224,15 @@ describe("external operations observation", () => {
     assert.match(workflow, /NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY/u)
     assert.match(workflow, /cron: "3 5 \* \* \*"/u)
     assert.match(workflow, /issues: write/u)
+    assert.match(
+      workflow,
+      /artifacts_dir="\$\{OBSERVATION_PATH:-\$\{RUNNER_TEMP\}\/operations-monitor-artifacts\}"/u
+    )
+    assert.match(workflow, /report="\$\{artifacts_dir\}\/observation\.md"/u)
+    assert.doesNotMatch(
+      workflow,
+      /report="\$\{OBSERVATION_PATH:-\$\{RUNNER_TEMP\}\/operations-monitor-artifacts\}\/observation\.md"/u
+    )
     assert.doesNotMatch(workflow, /RAILWAY_(?:API_)?TOKEN/u)
     assert.doesNotMatch(workflow, /production/u)
   })

@@ -46,6 +46,14 @@ text.
   contains only the Web Vital name/rating/rounded value or an already-normalized
   framework error digest and boundary scope.
 
+An alert observation is expected to make the monitor job fail after the issue
+is reconciled. It must still upload and deliver the real sanitized
+`observation.md`; `steps.evaluate.outputs.artifact_path` is a directory, not a
+file. The issue step appends the fixed report filename before reading it. The
+`observation_evaluation_failed` fallback is reserved for a genuinely missing
+report and must be investigated as a monitor defect, not presented as the
+underlying service alert.
+
 OpenTelemetry initializes from the generated server preload before Medusa
 loads. Automatic instrumentation is deliberately limited to PostgreSQL/Knex,
 Redis/ioredis, and Node runtime signals. The Backend framework seam creates the

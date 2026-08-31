@@ -4076,8 +4076,30 @@ suites / 2,033 tests at 91.46% statements, 84.87% branches, 95.62% functions,
 and 91.48% lines. Strict Backend and Storefront TypeScript, six external
 operations-monitor tests, focused production-shape tests, and the complete
 Backend/Admin production build with its frozen packaged-server install are
-green. Exact corrected-deployment evidence remains the final acceptance step
-for this slice.
+green.
+
+Corrected release `f271f1bb24a6f0145e561e0be3bff715ae365034` passed Root
+GitHub run `33382962642`, Backend run `33382962660`, and Storefront run
+`33382962647`. Railway Backend deployment
+`8848c273-9750-43b3-b70d-b0eb126e7ac3` waited for those checks and succeeded;
+the unchanged Storefront correctly skipped deployment. `/live` and `/ready`
+returned 200 on the exact Backend SHA. Authenticated bounded reads returned 461
+Products, 442 discography entries, one requested handle, three shelves, and 25
+shelf memberships. Three ordinary two-minute reconciliation runs completed
+with no failed, held, capped, or unreleased-lock state, and the ordinary
+five-minute quota schedule emitted no persistence/synchronization error. The
+latest scheduler failure cleared without synthetic state; operations now
+reports only the deliberate 24-hour `scheduler_incident_latched` reason.
+
+Manual external-monitor run `33384744955` independently retained those same
+catalog counts, healthy dependencies, the exact SHA, and only the latch reason.
+It also exposed a report-delivery defect: the alert-issue step treated the
+artifact directory output as the report file, then substituted the generic
+`observation_evaluation_failed` fallback. The workflow now joins that directory
+with `observation.md`, and its repository test prevents the ambiguous parameter
+expansion from returning. Exact workflow acceptance and the no-recurrence
+observation window remain open; the catalog/runtime corrections themselves are
+accepted.
 
 ## Legal, accessibility, and launch acceptance
 

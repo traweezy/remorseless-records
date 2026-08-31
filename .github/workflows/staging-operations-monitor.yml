@@ -277,7 +277,8 @@ jobs:
           set -euo pipefail
           title="Staging operations monitor alert"
           status="${OBSERVATION_STATUS:-alert}"
-          report="${OBSERVATION_PATH:-${RUNNER_TEMP}/operations-monitor-artifacts}/observation.md"
+          artifacts_dir="${OBSERVATION_PATH:-${RUNNER_TEMP}/operations-monitor-artifacts}"
+          report="${artifacts_dir}/observation.md"
           if [[ ! -f "${report}" ]]; then
             install -d -m 700 "$(dirname "${report}")"
             printf '%s\n' '# Staging operations observation' '' '- Status: `alert`' '- Alert reason: `observation_evaluation_failed`' > "${report}"
