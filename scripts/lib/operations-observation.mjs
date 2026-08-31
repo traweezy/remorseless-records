@@ -22,6 +22,82 @@ const validCatalogText = (value, maximumLength) =>
   value.length <= maximumLength &&
   value === value.trim() &&
   !/[\u0000-\u001f\u007f]/u.test(value)
+const validCatalogCount = (value, minimum = 0) =>
+  Number.isSafeInteger(value) && value >= minimum && value <= 10_000_000
+
+const parseCatalogProducts = (body) => {
+  let value
+  try {
+    value = JSON.parse(body)
+  } catch {
+    return null
+  }
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.products) ||
+    value.products.length > 1 ||
+    !validCatalogCount(value.count, value.products.length) ||
+    value.offset !== 0 ||
+    value.limit !== 1
+  ) {
+    return null
+  }
+  const ids = new Set()
+  for (const product of value.products) {
+    if (
+      !isRecord(product) ||
+      !validCatalogIdentifier(product.id) ||
+      !validCatalogText(product.handle, 200) ||
+      ids.has(product.id)
+    ) {
+      return null
+    }
+    ids.add(product.id)
+  }
+  return { count: value.count, pageCount: value.products.length }
+}
+
+const parseDiscography = (body) => {
+  let value
+  try {
+    value = JSON.parse(body)
+  } catch {
+    return null
+  }
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.entries) ||
+    value.entries.length > 1 ||
+    !validCatalogCount(value.count, value.entries.length) ||
+    value.offset !== 0 ||
+    value.limit !== 1
+  ) {
+    return null
+  }
+  const ids = new Set()
+  for (const entry of value.entries) {
+    if (
+      !isRecord(entry) ||
+      !validCatalogIdentifier(entry.id) ||
+      !validCatalogText(entry.title, 500) ||
+      !validCatalogText(entry.artist, 500) ||
+      !validCatalogText(entry.album, 500) ||
+      !["catalog_product", "manual"].includes(entry.sourceMode) ||
+      ![
+        "healthy",
+        "missing",
+        "not_applicable",
+        "unknown",
+        "unpublished",
+      ].includes(entry.linkHealth) ||
+      ids.has(entry.id)
+    ) {
+      return null
+    }
+    ids.add(entry.id)
+  }
+  return { count: value.count, pageCount: value.entries.length }
+}
 
 const parseCatalogHandles = (body) => {
   let value
@@ -241,11 +317,15 @@ const parsePayload = (body) => {
 
 export const evaluateOperationsHealthResponse = ({
   body,
+  discographyBody,
+  discographyHttpStatus,
   forceAlert = false,
   handlesBody,
   handlesHttpStatus,
   httpStatus,
   now = new Date(),
+  productsBody,
+  productsHttpStatus,
   readyHttpStatus,
   shelvesBody,
   shelvesHttpStatus,
@@ -253,7 +333,9 @@ export const evaluateOperationsHealthResponse = ({
 }) => {
   if (
     typeof body !== "string" ||
+    typeof discographyBody !== "string" ||
     typeof handlesBody !== "string" ||
+    typeof productsBody !== "string" ||
     typeof shelvesBody !== "string"
   ) {
     throw new TypeError("Operations observation bodies must be strings")
@@ -262,9 +344,15 @@ export const evaluateOperationsHealthResponse = ({
     !Number.isInteger(httpStatus) ||
     httpStatus < 0 ||
     httpStatus > 599 ||
+    !Number.isInteger(discographyHttpStatus) ||
+    discographyHttpStatus < 0 ||
+    discographyHttpStatus > 599 ||
     !Number.isInteger(handlesHttpStatus) ||
     handlesHttpStatus < 0 ||
     handlesHttpStatus > 599 ||
+    !Number.isInteger(productsHttpStatus) ||
+    productsHttpStatus < 0 ||
+    productsHttpStatus > 599 ||
     !Number.isInteger(readyHttpStatus) ||
     readyHttpStatus < 0 ||
     readyHttpStatus > 599 ||
@@ -288,7 +376,9 @@ export const evaluateOperationsHealthResponse = ({
 
   const reasons = new Set(sourceErrors.map((error) => `source_error:${error}`))
   const payload = parsePayload(body)
+  const discography = parseDiscography(discographyBody)
   const handles = parseCatalogHandles(handlesBody)
+  const products = parseCatalogProducts(productsBody)
   const shelves = parseCatalogShelves(shelvesBody)
   if (!payload) {
     reasons.add("health_payload_invalid")
@@ -311,6 +401,14 @@ export const evaluateOperationsHealthResponse = ({
   if (readyHttpStatus !== 200) {
     reasons.add("readiness_endpoint_unhealthy")
   }
+  if (productsHttpStatus !== 200) {
+    reasons.add("catalog_products_endpoint_unhealthy")
+  }
+  if (!products) {
+    reasons.add("catalog_products_payload_invalid")
+  } else if (products.count === 0 || products.pageCount === 0) {
+    reasons.add("catalog_products_empty")
+  }
   if (handlesHttpStatus !== 200) {
     reasons.add("catalog_handles_endpoint_unhealthy")
   }
@@ -318,6 +416,14 @@ export const evaluateOperationsHealthResponse = ({
     reasons.add("catalog_handles_payload_invalid")
   } else if (handles.count === 0) {
     reasons.add("catalog_handles_empty")
+  }
+  if (discographyHttpStatus !== 200) {
+    reasons.add("catalog_discography_endpoint_unhealthy")
+  }
+  if (!discography) {
+    reasons.add("catalog_discography_payload_invalid")
+  } else if (discography.count === 0 || discography.pageCount === 0) {
+    reasons.add("catalog_discography_empty")
   }
   if (shelvesHttpStatus !== 200) {
     reasons.add("catalog_shelves_endpoint_unhealthy")
@@ -343,7 +449,15 @@ export const evaluateOperationsHealthResponse = ({
     environment: "staging",
     evaluatedAt: now.toISOString(),
     catalog: {
+      discography: {
+        count: discography?.count ?? null,
+        httpStatus: discographyHttpStatus,
+      },
       handles: { count: handles?.count ?? null, httpStatus: handlesHttpStatus },
+      products: {
+        count: products?.count ?? null,
+        httpStatus: productsHttpStatus,
+      },
       shelves: {
         count: shelves?.count ?? null,
         httpStatus: shelvesHttpStatus,
@@ -369,8 +483,10 @@ export const renderOperationsObservationMarkdown = (report) => {
     `- Evaluated: \`${report.evaluatedAt}\``,
     `- Operations HTTP status: \`${report.httpStatus}\``,
     `- Readiness HTTP status: \`${report.readyHttpStatus}\``,
+    `- Catalog products: HTTP \`${report.catalog?.products.httpStatus ?? "invalid"}\`, count \`${report.catalog?.products.count ?? "invalid"}\``,
     `- Catalog handles: HTTP \`${report.catalog?.handles.httpStatus ?? "invalid"}\`, count \`${report.catalog?.handles.count ?? "invalid"}\``,
     `- Catalog shelves: HTTP \`${report.catalog?.shelves.httpStatus ?? "invalid"}\`, shelves \`${report.catalog?.shelves.count ?? "invalid"}\`, memberships \`${report.catalog?.shelves.productCount ?? "invalid"}\``,
+    `- Discography: HTTP \`${report.catalog?.discography.httpStatus ?? "invalid"}\`, count \`${report.catalog?.discography.count ?? "invalid"}\``,
     `- Commit: \`${endpoint?.version ?? "unknown"}\``,
     `- Scheduler: \`${endpoint?.components.scheduler.status ?? "invalid"}\``,
     `- Redis latency ms: \`${endpoint?.components.scheduler.redisLatencyMs ?? "n/a"}\``,

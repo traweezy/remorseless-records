@@ -9,11 +9,15 @@ import {
 const MAX_INPUT_BYTES = 128 * 1024
 const VALUE_OPTIONS = new Set([
   "--body-file",
+  "--discography-body-file",
+  "--discography-http-status",
   "--handles-body-file",
   "--handles-http-status",
   "--format",
   "--http-status",
   "--now",
+  "--products-body-file",
+  "--products-http-status",
   "--ready-http-status",
   "--shelves-body-file",
   "--shelves-http-status",
@@ -47,6 +51,8 @@ const parseArguments = (arguments_) => {
     }
   }
   const bodyFile = values.get("--body-file")
+  const discographyBodyFile = values.get("--discography-body-file")
+  const discographyHttpStatus = Number(values.get("--discography-http-status"))
   const handlesBodyFile = values.get("--handles-body-file")
   const handlesHttpStatus = Number(values.get("--handles-http-status"))
   const httpStatus = Number(values.get("--http-status"))
@@ -55,13 +61,19 @@ const parseArguments = (arguments_) => {
   const shelvesHttpStatus = Number(values.get("--shelves-http-status"))
   const format = values.get("--format") ?? "json"
   const now = values.has("--now") ? new Date(values.get("--now")) : new Date()
+  const productsBodyFile = values.get("--products-body-file")
+  const productsHttpStatus = Number(values.get("--products-http-status"))
   if (
     !bodyFile ||
+    !discographyBodyFile ||
     !handlesBodyFile ||
     !shelvesBodyFile ||
     !Number.isInteger(handlesHttpStatus) ||
+    !Number.isInteger(discographyHttpStatus) ||
     !Number.isInteger(httpStatus) ||
     !Number.isInteger(readyHttpStatus) ||
+    !productsBodyFile ||
+    !Number.isInteger(productsHttpStatus) ||
     !Number.isInteger(shelvesHttpStatus) ||
     !["json", "markdown"].includes(format) ||
     !Number.isFinite(now.getTime())
@@ -70,12 +82,16 @@ const parseArguments = (arguments_) => {
   }
   return {
     bodyFile,
+    discographyBodyFile,
+    discographyHttpStatus,
     forceAlert,
     format,
     handlesBodyFile,
     handlesHttpStatus,
     httpStatus,
     now,
+    productsBodyFile,
+    productsHttpStatus,
     readyHttpStatus,
     shelvesBodyFile,
     shelvesHttpStatus,
@@ -98,11 +114,15 @@ const main = async () => {
   const options = parseArguments(process.argv.slice(2))
   const report = evaluateOperationsHealthResponse({
     body: await readBoundedFile(options.bodyFile),
+    discographyBody: await readBoundedFile(options.discographyBodyFile),
+    discographyHttpStatus: options.discographyHttpStatus,
     forceAlert: options.forceAlert,
     handlesBody: await readBoundedFile(options.handlesBodyFile),
     handlesHttpStatus: options.handlesHttpStatus,
     httpStatus: options.httpStatus,
     now: options.now,
+    productsBody: await readBoundedFile(options.productsBodyFile),
+    productsHttpStatus: options.productsHttpStatus,
     readyHttpStatus: options.readyHttpStatus,
     shelvesBody: await readBoundedFile(options.shelvesBodyFile),
     shelvesHttpStatus: options.shelvesHttpStatus,

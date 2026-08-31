@@ -4029,6 +4029,56 @@ one transient label. Storefront coverage remains 94.25/86.65/96.02/94.24
 across 134 baseline files and 797 tests, and 83.37/76.02/85.81/83.46 across 35
 transactional files and 313 tests.
 
+## Catalog and scheduler production-shape recovery
+
+Exact release `039600387dd7ebafdd5093ed9574faddf92cbca1` passed Root GitHub
+run `33377766721`, Backend run `33377766746`, and Storefront run
+`33377766736`, including the 54-journey responsive matrix, 21-journey critical
+cross-browser matrix, Pa11y, and Lighthouse. Railway Backend deployment
+`0ee3d0fb-1868-470c-ace0-f03e188f5a37` and Storefront deployment
+`009facee-dd15-4555-b961-b100b29e4b00` also succeeded at that exact SHA. The
+release was not accepted: authenticated live reads found 461 standard Products
+and 442 discography entries, while the Product-handle and shelf projections
+returned HTTP 500 and `/health/operations` returned fail-closed HTTP 503.
+
+Read-only production-shaped diagnostics identified four transport/runtime
+contracts rather than catalog-data corruption:
+
+- PostgreSQL returns the numeric `tax_provider_quotas.usage_percent` as a
+  decimal string. The quota projection now normalizes a finite 0–100 number at
+  the persistence boundary and rejects values outside the invariant.
+- A cart may legitimately have no payment collection before checkout begins,
+  while Medusa can represent a populated singleton relation as either a record
+  or a one-element array. Reconciliation now accepts exactly those shapes and
+  rejects ambiguous multi-row relations.
+- Medusa 2.18 does not apply Query Graph `take` to this link projection unless
+  pagination is activated by `skip` or `cursor`. The initial sales-channel
+  link page now sends `skip: 0`, retaining the 101-row fail-closed decoder and
+  keyset cursor for subsequent pages.
+- Medusa auto-discovers every direct source module under a custom module's
+  `models`, `repositories`, and `services` directories. Co-located Jest modules
+  made directory import fail before repository-manager injection, leaving the
+  Catalog service's base repository without a manager. Those tests now live
+  outside runtime-discovery directories, and a repository test prevents any
+  direct `test` or `spec` module from returning there.
+
+No staging row was changed. A local Medusa process against a read-only staging
+database connection restored the Catalog repository manager, returned a
+bounded 100-handle page with a continuation cursor, and listed all three
+shelves. The operations monitor now validates the standard Product list and
+discography projection as well as handles and shelves, retaining only bounded
+status and aggregate-count evidence. The existing 24-hour scheduler incident
+latch remains authoritative; recovery requires healthy real job heartbeats and
+the full observation window, never synthetic or manual latch deletion.
+
+Complete local acceptance passes the repository QA gate and all 270 Backend
+suites / 2,033 tests at 91.46% statements, 84.87% branches, 95.62% functions,
+and 91.48% lines. Strict Backend and Storefront TypeScript, six external
+operations-monitor tests, focused production-shape tests, and the complete
+Backend/Admin production build with its frozen packaged-server install are
+green. Exact corrected-deployment evidence remains the final acceptance step
+for this slice.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,

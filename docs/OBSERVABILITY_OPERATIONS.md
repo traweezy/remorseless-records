@@ -3,8 +3,9 @@
 This runbook defines the production signals, service objectives, alert owners,
 and safe first responses for the Backend and Storefront. It is the operational
 contract for `/live`, `/ready`, `/health/scheduler`, `/health/retention`, and
-`/health/operations`, plus the public Product-handle and merchandising-shelf
-projections required to render the Storefront catalog.
+`/health/operations`, plus the standard Product list, Product-handle,
+merchandising-shelf, and discography projections required to render the
+Storefront catalog.
 
 The system records aggregate state and machine codes only. Health payloads,
 metrics, retained monitor artifacts, and incident latches must never contain
@@ -31,11 +32,12 @@ text.
 - The staging scheduler monitor runs every ten minutes. The staging operations
   monitor runs on the alternate ten-minute boundary and again at `05:03 UTC`,
   after both retention jobs. The operations monitor also authenticates a
-  bounded one-record Product-handle read and the public shelf projection. It
-  alerts on non-200, malformed, empty-catalog, or empty-membership responses and
-  retains only response statuses and aggregate counts. Each monitor opens or
-  updates one GitHub issue on failure, closes it after recovery, and retains
-  sanitized daily/manual/alert evidence for 30 days.
+  bounded standard Product read, one-record Product-handle read, public shelf
+  projection, and one-record discography read. It alerts on non-200, malformed,
+  empty-catalog, or empty-membership responses and retains only response
+  statuses and aggregate counts. Each monitor opens or updates one GitHub issue
+  on failure, closes it after recovery, and retains sanitized daily/manual/alert
+  evidence for 30 days.
 - Backend and Storefront request completion events are fixed-schema JSON with
   request, trace, span, service, environment, and commit identity. Paths,
   queries, IP addresses, user agents, headers, bodies, and raw errors are
@@ -84,7 +86,7 @@ uses a shorter safety window.
 | ------------------------------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Storefront document/API availability | 99.9% non-5xx                                                                             | Server RED request counter, excluding `/live` and synthetic acceptance routes |
 | Backend Store/Admin API availability | 99.9% non-5xx                                                                             | Server RED request counter, excluding health probes                           |
-| Public catalog projection integrity  | 100% successful synthetic probes; at least one Product and one shelf membership              | Staging operations monitor                                                    |
+| Public catalog projection integrity  | 100% successful synthetic probes across Products, handles, shelves, and discography; at least one Product and one shelf membership | Staging operations monitor                                                    |
 | Storefront API latency               | p95 under 500 ms, p99 under 1.5 s                                                         | Server request-duration histogram by bounded route family and status class    |
 | Backend read latency                 | p95 under 750 ms, p99 under 2 s                                                           | Server request-duration histogram by bounded route family and status class    |
 | Checkout mutation latency            | p95 under 2 s, p99 under 5 s                                                              | Checkout operation-duration histogram; payment-provider wait is included      |
@@ -131,7 +133,7 @@ Railway/Redis/PostgreSQL/object-storage incidents add the infrastructure owner.
 | Webhook processing failure        | Any valid-delivery 503 latch; invalid-signature 400s are security-rate telemetry, not this alert       | P1                                             | Engineering → Stripe/platform                         | [Webhooks](#payment-lifecycle-webhook-failure)          |
 | Readiness failure                 | Two consecutive external probes or any Railway rollout health failure                                  | P1                                             | Engineering → failing dependency owner                | [Readiness](#readiness-or-capability-failure)           |
 | Capability incomplete             | Any production `capability_*` readiness error                                                          | P1 during rollout; P2 before release           | Engineering → relevant provider owner                 | [Readiness](#readiness-or-capability-failure)           |
-| Public catalog projection failure  | Product handles or shelves are non-200, malformed, empty, or contain no visible shelf memberships         | P1                                              | Engineering → Backend/catalog owner                   | [Catalog](#public-catalog-projection-failure)           |
+| Public catalog projection failure  | Products, handles, shelves, or discography are non-200, malformed, empty, or contain no visible shelf memberships | P1                                              | Engineering → Backend/catalog owner                   | [Catalog](#public-catalog-projection-failure)           |
 | Database saturation/unavailable   | Probe error, probe ≥1 s, connection wait p95 ≥250 ms, or pool ≥85% busy for 10 min                     | P1                                             | Engineering → PostgreSQL provider                     | [Database](#database-saturation-or-failure)             |
 | Object storage unavailable        | HeadBucket error or ≥3.5 s                                                                             | P1                                             | Engineering → object-storage provider                 | [Storage](#storage-availability-or-capacity)            |
 | Object storage capacity           | Platform volume/object store ≥80% warning; ≥90% critical                                               | P2/P1                                          | Infrastructure → business owner if uploads must pause | [Storage](#storage-availability-or-capacity)            |
@@ -151,8 +153,9 @@ include a request URL, customer or order data, or raw provider error.
 ### Public catalog projection failure
 
 1. Compare Backend and Storefront accepted SHAs, then probe the standard
-   `/store/products?limit=1`, bounded `/store/products/handles?limit=1`, and
-   `/store/catalog/shelves` reads with the staging publishable key.
+   `/store/products?limit=1`, bounded `/store/products/handles?limit=1`,
+   `/store/catalog/shelves`, and `/store/discography?limit=1&offset=0` reads
+   with the staging publishable key.
 2. If the standard Product route is healthy but a projection fails, inspect
    the custom Store-route error code and the Backend logs for the correlated
    fixed-schema error. Do not copy response bodies, keys, or Product records
@@ -163,7 +166,7 @@ include a request URL, customer or order data, or raw provider error.
 4. Roll back or correct the exact failing commit. Do not bypass publishable-key
    sales-channel visibility or replace the projection with an unscoped Product
    query.
-5. Resolve only after both custom endpoints are 200 with nonempty validated
+5. Resolve only after all four reads are 200 with nonempty validated
    projections, the Storefront homepage/catalog render products, and the next
    external observation is healthy.
 
