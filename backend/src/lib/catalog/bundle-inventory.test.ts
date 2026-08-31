@@ -159,8 +159,8 @@ describe("bundle inventory planning", () => {
     ).toEqual([{ inventoryItemId: "shared-item", requiredQuantity: 5 }])
   })
 
-  it("rejects malformed resolved metadata by returning no mappings", () => {
-    expect(
+  it("rejects malformed declared resolved metadata", () => {
+    expect(() =>
       parseResolvedVariantMappings(
         component({
           metadata: {
@@ -173,7 +173,7 @@ describe("bundle inventory planning", () => {
           },
         })
       )
-    ).toEqual([])
+    ).toThrow("Bundle component resolved variant mappings are malformed")
   })
 })
 
@@ -198,11 +198,19 @@ const reconciliationHarness = (input: {
     is_active: input.active ?? true,
   }
   const components = [
-    component({
-      id: "component",
-      component_variant_id: "component-variant",
-      component_inventory_item_id: "component-item",
-    }),
+    {
+      ...component({
+        id: "component",
+        component_variant_id: "component-variant",
+        component_inventory_item_id: "component-item",
+      }),
+      bundle_profile_id: "profile",
+      component_product_id: "component-product",
+      sku: null,
+      sort_order: 0,
+      title: null,
+      variant_title: null,
+    },
   ]
   const remoteLink = {
     create: jest.fn(async (definitions: Array<Record<string, unknown>>) => {
@@ -310,6 +318,7 @@ const reconciliationHarness = (input: {
     container,
     profile,
     provenance: () => provenance,
+    query,
     remoteLink,
   }
 }
@@ -417,5 +426,51 @@ describe("bundle inventory reconciliation", () => {
     ).rejects.toThrow("not owned by the bundle workflow")
     expect(harness.remoteLink.create).not.toHaveBeenCalled()
     expect(harness.remoteLink.dismiss).not.toHaveBeenCalled()
+  })
+
+  it("rejects malformed persisted inventory quantities", async () => {
+    const harness = reconciliationHarness({
+      actual: [
+        {
+          variantId: "bundle",
+          inventoryItemId: "component-item",
+          requiredQuantity: 0,
+        },
+      ],
+    })
+
+    await expect(
+      reconcileComponentDerivedBundleInventory(
+        harness.container as never,
+        "bundle-product",
+        activePreviousSnapshot()
+      )
+    ).rejects.toThrow(
+      "The catalog persistence boundary returned invalid structured data"
+    )
+    expect(harness.remoteLink.create).not.toHaveBeenCalled()
+    expect(harness.remoteLink.dismiss).not.toHaveBeenCalled()
+  })
+
+  it("does not persist provenance when a remote link mutation is unverified", async () => {
+    const harness = reconciliationHarness({})
+    harness.remoteLink.create.mockResolvedValue([])
+
+    await expect(
+      reconcileComponentDerivedBundleInventory(
+        harness.container as never,
+        "bundle-product",
+        activePreviousSnapshot()
+      )
+    ).rejects.toThrow(
+      "The bundle inventory mutation did not persist its expected state"
+    )
+    expect(
+      harness.catalogService.replaceBundleInventoryLinks
+    ).toHaveBeenCalledTimes(1)
+    expect(
+      harness.catalogService.replaceBundleInventoryLinks
+    ).toHaveBeenCalledWith("profile", [])
+    expect(harness.provenance()).toEqual([])
   })
 })

@@ -186,6 +186,25 @@ upload only after a valid plan ID is persisted; an upload-cleanup failure
 attempts to remove the new plan before returning an error. Product-import logs
 contain fixed event names and aggregate counts only.
 
+Catalog mutation queries use a shared fail-closed persistence contract. Product
+and Variant existence checks accept only exact graph envelopes, canonical and
+unique requested IDs, and consistent direct/nested Product ownership. The
+guided Product-create workflow applies the same boundary to shipping profiles,
+store sales-channel defaults, stock locations, component ownership, inventory
+links, Medusa's create acknowledgement, and the stable key assigned to every
+created Variant. A malformed provider or database row is an unexpected-state
+error; it is never silently discarded and never becomes a false not-found
+result or a partial inventory plan.
+
+Component-derived bundles validate the stored profile, every component,
+resolved mapping metadata, current Medusa inventory links, and project-owned
+provenance rows before changing inventory. Declaring resolved mappings is
+all-or-nothing: malformed or duplicate mappings do not fall back to the legacy
+single-component fields. After a remote link or provenance mutation, the
+workflow re-reads the affected state and requires exact link/quantity equality
+before completing. Failure restores both snapshots and verifies the rollback,
+so an unacknowledged remote write cannot be recorded as owned provenance.
+
 Physical catalog deletion is disabled independently of the Admin UI. Native
 DELETE routes for Products, Variants, Collections, Categories, Options, Option
 values, Tags, and Types retain their exact native policies and then return a
@@ -199,10 +218,13 @@ entity. `pnpm run qa:dashboard-product-deletion` verifies that the pinned
 Dashboard source and both production bundle formats expose no Product or Variant
 delete action.
 
-The Admin **Operations → Media cleanup** route is the safe review surface for catalog assets
-that are not linked to any product. Its server-side anti-join returns exact,
-paginated active or quarantined results instead of filtering an arbitrary
-in-memory slice. Quarantining requires an expected asset version and UUID
+The Admin **Operations → Media cleanup** route is the safe review surface for
+catalog assets that are not linked to any product. Its server-side anti-join
+returns exact, paginated active or quarantined results instead of filtering an
+arbitrary in-memory slice. The database count, row array, and every returned
+asset ID are runtime-validated; malformed or duplicate rows fail closed rather
+than becoming an empty or incomplete orphan page. Quarantining requires an
+expected asset version and UUID
 idempotency key, runs under the same asset lock used by product-media writes,
 and records the actor plus a 30-day review date. Quarantined assets cannot be
 linked, edited, or reused, but an operator can restore them at any time.

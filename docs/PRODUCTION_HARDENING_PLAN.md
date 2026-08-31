@@ -2921,6 +2921,37 @@ Trivy reports zero high/critical dependency, misconfiguration, or secret
 findings. The broader dated debt item remains open for unrelated import,
 provider, and service families.
 
+The ninth post-migration boundary tranche closes the Catalog mutation and
+bundle-inventory persistence family. Product, Variant, stock-location,
+shipping-profile, store, inventory-link, bundle-profile, bundle-component,
+bundle-provenance, and orphan-media results are now treated as untrusted
+runtime data. Envelopes, canonical identifiers, expected-set membership,
+relationship agreement, uniqueness, positive quantities, exact Product-create
+acknowledgements, stable Variant creation keys, and counted-page consistency
+must all validate before a missing entity, inventory plan, or orphan page can
+be accepted. Malformed rows can no longer be silently discarded or converted
+into a misleading 404, empty result, or default quantity of one.
+
+Declared bundle mapping metadata is all-or-nothing: malformed mappings fail as
+invalid operator input or unexpected persisted state instead of falling back
+to a different component link. Bundle reconciliation re-reads both Medusa's
+remote inventory links and the project-owned provenance rows after mutation.
+It reports success only when affected links and quantities exactly match the
+plan; otherwise it restores and verifies the pre-mutation remote and provenance
+snapshots. Orphan-media count and row identities likewise fail closed instead
+of coercing a malformed database count to zero.
+
+Thirty-eight focused contract, Admin assertion, Product-create, bundle
+planning/reconciliation, and orphan-media tests pass with strict TypeScript and
+Biome. Complete local acceptance passes the 1,179-file repository QA gate, all
+234 Backend suites and 1,582 tests, the production Backend/Admin build, frozen
+packaged install, and Admin bundle budget. Backend coverage remains 91.35%
+statements, 84.60% branches, 95.52% functions, and 91.39% lines. The Admin main
+bundle is 1,807,723 gzip bytes and total JavaScript is 2,388,267 gzip bytes.
+The production audit retains only the three documented ignored moderate
+findings; Trivy reports zero high/critical dependency, misconfiguration, or
+secret findings.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

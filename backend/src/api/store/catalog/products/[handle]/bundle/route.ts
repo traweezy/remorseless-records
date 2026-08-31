@@ -108,7 +108,7 @@ export const GET = async (
       Number((right as JsonRecord).sort_order ?? 0)
   )
   const mappingsByComponent = components.map((component) =>
-    parseResolvedVariantMappings(component)
+    parseResolvedVariantMappings(component, "persistence")
   )
   const componentProductIds = unique(
     components.map((component) =>

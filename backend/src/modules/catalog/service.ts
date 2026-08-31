@@ -35,6 +35,7 @@ import {
   type OrphanCatalogMediaPage,
   type OrphanCatalogMediaQuery,
 } from "./orphan-media-query"
+import { readCatalogOrphanMediaPage } from "../../lib/catalog/persistence-contracts"
 
 const asJsonObject = (value: unknown): JsonObject =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -93,19 +94,7 @@ class CatalogModuleService extends MedusaService({
       manager.getKnex(),
       input
     )
-    const countRows = (await countQuery) as Array<{
-      count: string | number
-    }>
-    const rows = (await rowsQuery) as Record<string, unknown>[]
-    const countValue = countRows.at(0)?.count ?? 0
-    const count =
-      typeof countValue === "number"
-        ? countValue
-        : Number.parseInt(countValue, 10)
-    return {
-      count: Number.isFinite(count) ? count : 0,
-      rows,
-    }
+    return readCatalogOrphanMediaPage(await countQuery, await rowsQuery)
   }
 
   private async snapshotBundle_(

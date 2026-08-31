@@ -1465,7 +1465,17 @@ catalog assets not linked to products, separated into **Needs review** and
 **Quarantined** views. Quarantine is versioned, idempotent, actor-attributed,
 and protected by the same distributed asset lock as product-media editing.
 Quarantined assets cannot be linked, edited, or reused, and they remain
-restorable.
+restorable. The orphan count and every returned asset identity are validated at
+runtime, so malformed database results fail as an operational incident instead
+of showing a false empty or partial page.
+
+Catalog Product creation and fixed-bundle editing apply the same fail-closed
+rule to Medusa graph responses and project-owned bundle tables. Product/Variant
+ownership, store defaults, stock location, created Variant keys, component
+inventory quantities, and bundle provenance must be exact and unambiguous.
+Bundle link changes are read back after mutation and are not reported complete
+until both Medusa inventory state and owned provenance match the requested
+plan; failed verification restores and verifies the prior snapshots.
 
 Physical media deletion is deliberately unavailable. The displayed 30-day
 date is only the earliest future review point; no job or route automatically

@@ -13,6 +13,10 @@ import {
   toCatalogOptionalInteger,
 } from "@/lib/catalog/normalization"
 import {
+  readCatalogEntityIds,
+  readCatalogVariantOwnerships,
+} from "@/lib/catalog/persistence-contracts"
+import {
   createOrReuseCatalogArtist,
   createOrReuseCatalogReferenceValue,
   type CatalogService,
@@ -41,7 +45,7 @@ type QueryGraph = {
       take?: number
       skip?: number
     }
-  }) => Promise<{ data: Array<Record<string, unknown>> }>
+  }) => Promise<unknown>
 }
 
 export const resolveUniqueSlug = async (
@@ -85,7 +89,8 @@ export const assertQueryEntityExists = async (
     pagination: { take: 1 },
   })
 
-  if (!result.data.length) {
+  const foundIds = readCatalogEntityIds(result, [id])
+  if (!foundIds.length) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, message)
   }
 }
@@ -113,11 +118,7 @@ export const assertProductsExist = async (
     filters: { id: uniqueProductIds },
     pagination: { take: uniqueProductIds.length },
   })
-  const found = new Set(
-    result.data.flatMap((product) =>
-      typeof product.id === "string" ? [product.id] : []
-    )
-  )
+  const found = new Set(readCatalogEntityIds(result, uniqueProductIds))
   const missing = uniqueProductIds.find((productId) => !found.has(productId))
   if (missing) {
     throw new MedusaError(
@@ -153,7 +154,8 @@ export const assertVariantBelongsToProduct = async (
     pagination: { take: 1 },
   })
 
-  const variant = result.data.at(0)
+  const variants = readCatalogVariantOwnerships(result, [variantId])
+  const variant = variants[0]
   if (!variant) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
@@ -161,17 +163,7 @@ export const assertVariantBelongsToProduct = async (
     )
   }
 
-  const variantProductId =
-    typeof variant.product_id === "string"
-      ? variant.product_id
-      : variant.product &&
-          typeof variant.product === "object" &&
-          "id" in variant.product &&
-          typeof variant.product.id === "string"
-        ? variant.product.id
-        : null
-
-  if (variantProductId !== productId) {
+  if (variant.productId !== productId) {
     throw new MedusaError(MedusaError.Types.INVALID_DATA, message)
   }
 }

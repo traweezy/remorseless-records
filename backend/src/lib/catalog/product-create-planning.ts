@@ -17,6 +17,15 @@ import {
   hashCatalogCommand,
 } from "../../modules/catalog/catalog-command"
 import { coerceCatalogJsonRecord, slugifyCatalogValue } from "./normalization"
+import {
+  readCatalogCreatedProductId,
+  readCatalogCreatedProductVariants,
+  readCatalogEntityIds,
+  readCatalogServiceIds,
+  readCatalogStoreDefaults,
+  readCatalogVariantInventoryLinks,
+  readCatalogVariantOwnerships,
+} from "./persistence-contracts"
 import type { CatalogProductCreateCommandInput } from "./product-create-authoring"
 import type { CatalogProductProfileMutationInput } from "./product-profile-contract"
 import type { CatalogProductMediaMutationInput } from "./product-media-contract"
@@ -30,19 +39,15 @@ type QueryGraph = {
     fields: string[]
     filters?: Record<string, unknown>
     pagination?: { take?: number; skip?: number }
-  }) => Promise<{ data: Array<Record<string, unknown>> }>
+  }) => Promise<unknown>
 }
 
 type FulfillmentService = {
-  listShippingProfiles: (
-    filters: Record<string, unknown>
-  ) => Promise<Array<{ id: string }>>
+  listShippingProfiles: (filters: Record<string, unknown>) => Promise<unknown>
 }
 
 type StoreService = {
-  listStores: () => Promise<
-    Array<{ id: string; default_sales_channel_id?: string | null }>
-  >
+  listStores: () => Promise<unknown>
 }
 
 export type CatalogProductCreateComponent =
@@ -65,22 +70,6 @@ export type CatalogProductCreateVariantTarget = {
 export type CatalogCreatedProduct = {
   productId: string
   targets: CatalogProductCreateVariantTarget[]
-}
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
-
-const asString = (value: unknown): string | null =>
-  typeof value === "string" && value.trim().length ? value.trim() : null
-
-const variantProductId = (variant: Record<string, unknown>): string | null => {
-  const direct = asString(variant.product_id)
-  if (direct) {
-    return direct
-  }
-  return asString(asRecord(variant.product)?.id)
 }
 
 const resolveBundleComponents = async (
@@ -106,21 +95,16 @@ const resolveBundleComponents = async (
     }),
   ])
   const variantsById = new Map(
-    variantResult.data.flatMap((variant) => {
-      const id = asString(variant.id)
-      return id ? [[id, variant] as const] : []
-    })
+    readCatalogVariantOwnerships(variantResult, variantIds).map((variant) => [
+      variant.id,
+      variant,
+    ])
   )
   const inventoryByVariantId = new Map<string, string[]>()
-  linkResult.data.forEach((link) => {
-    const variantId = asString(link.variant_id)
-    const inventoryItemId = asString(link.inventory_item_id)
-    if (!variantId || !inventoryItemId) {
-      return
-    }
-    inventoryByVariantId.set(variantId, [
-      ...(inventoryByVariantId.get(variantId) ?? []),
-      inventoryItemId,
+  readCatalogVariantInventoryLinks(linkResult, variantIds).forEach((link) => {
+    inventoryByVariantId.set(link.variantId, [
+      ...(inventoryByVariantId.get(link.variantId) ?? []),
+      link.inventoryItemId,
     ])
   })
 
@@ -132,7 +116,7 @@ const resolveBundleComponents = async (
         `Bundle component variant ${component.componentVariantId} was not found.`
       )
     }
-    if (variantProductId(variant) !== component.componentProductId) {
+    if (variant.productId !== component.componentProductId) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
         `Bundle component variant ${component.componentVariantId} does not belong to its selected product.`
@@ -175,24 +159,28 @@ export const resolveCatalogProductCreateContext = async (
   const stockLocationName =
     process.env.SHIPPING_STOCK_LOCATION_NAME?.trim() ||
     DEFAULT_STOCK_LOCATION_NAME
-  const [shippingProfiles, stores, stockLocationResult] = await Promise.all([
-    fulfillmentService.listShippingProfiles({ type: "default" }),
-    storeService.listStores(),
-    query.graph({
-      entity: "stock_location",
-      fields: ["id", "name"],
-      filters: { name: stockLocationName },
-    }),
-  ])
+  const [rawShippingProfiles, rawStores, stockLocationResult] =
+    await Promise.all([
+      fulfillmentService.listShippingProfiles({ type: "default" }),
+      storeService.listStores(),
+      query.graph({
+        entity: "stock_location",
+        fields: ["id", "name"],
+        filters: { name: stockLocationName },
+      }),
+    ])
+  const shippingProfileIds = readCatalogServiceIds(rawShippingProfiles)
+  const stores = readCatalogStoreDefaults(rawStores)
+  const stockLocationIds = readCatalogEntityIds(stockLocationResult)
 
-  if (shippingProfiles.length !== 1 || !shippingProfiles[0]) {
+  if (shippingProfileIds.length !== 1) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      `Catalog creation requires exactly one default shipping profile; found ${shippingProfiles.length}.`
+      `Catalog creation requires exactly one default shipping profile; found ${shippingProfileIds.length}.`
     )
   }
   const storesWithSalesChannel = stores.filter(
-    (store) => typeof store.default_sales_channel_id === "string"
+    (store) => store.defaultSalesChannelId !== null
   )
   if (storesWithSalesChannel.length !== 1) {
     throw new MedusaError(
@@ -200,28 +188,25 @@ export const resolveCatalogProductCreateContext = async (
       `Catalog creation requires exactly one store with a default sales channel; found ${storesWithSalesChannel.length}.`
     )
   }
-  const salesChannelId = storesWithSalesChannel[0]?.default_sales_channel_id
+  const salesChannelId = storesWithSalesChannel[0]?.defaultSalesChannelId
   if (!salesChannelId) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
       "The store default sales channel is unavailable."
     )
   }
-  if (
-    stockLocationResult.data.length !== 1 ||
-    !asString(stockLocationResult.data[0]?.id)
-  ) {
+  if (stockLocationIds.length !== 1) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      `Catalog creation requires exactly one ${stockLocationName} stock location; found ${stockLocationResult.data.length}.`
+      `Catalog creation requires exactly one ${stockLocationName} stock location; found ${stockLocationIds.length}.`
     )
   }
 
   return {
     bundleComponents: await resolveBundleComponents(query, input),
     salesChannelId,
-    shippingProfileId: shippingProfiles[0].id,
-    stockLocationId: asString(stockLocationResult.data[0]?.id)!,
+    shippingProfileId: shippingProfileIds[0]!,
+    stockLocationId: stockLocationIds[0]!,
   }
 }
 
@@ -262,13 +247,7 @@ export const resolveCatalogCreatedProduct = async (
   input: CatalogProductCreateCommandInput,
   products: ProductTypes.ProductDTO[]
 ): Promise<CatalogCreatedProduct> => {
-  const productId = products[0]?.id
-  if (!productId) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Medusa did not return the created catalog product."
-    )
-  }
+  const productId = readCatalogCreatedProductId(products)
   const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
   const result = await query.graph({
     entity: "product",
@@ -276,18 +255,15 @@ export const resolveCatalogCreatedProduct = async (
     filters: { id: productId },
     pagination: { take: 1 },
   })
-  const product = result.data[0]
-  const rawVariants = Array.isArray(product?.variants) ? product.variants : []
-  const variantIdsByKey = new Map<string, string>()
-  rawVariants.forEach((rawVariant) => {
-    const variant = asRecord(rawVariant)
-    const variantId = asString(variant?.id)
-    const key = asString(asRecord(variant?.metadata)?.[CREATION_VARIANT_KEY])
-    if (!variantId || !key || variantIdsByKey.has(key)) {
-      return
-    }
-    variantIdsByKey.set(key, variantId)
-  })
+  const variants = readCatalogCreatedProductVariants(
+    result,
+    productId,
+    input.variants.map((variant) => variant.key),
+    CREATION_VARIANT_KEY
+  )
+  const variantIdsByKey = new Map(
+    variants.map((variant) => [variant.creationKey, variant.id])
+  )
   const targets = input.variants.map((definition) => {
     const variantId = variantIdsByKey.get(definition.key)
     if (!variantId) {
@@ -298,12 +274,6 @@ export const resolveCatalogCreatedProduct = async (
     }
     return { definition, variantId }
   })
-  if (targets.length !== rawVariants.length) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "The created product variants do not match the catalog creation request."
-    )
-  }
   return { productId, targets }
 }
 
@@ -488,15 +458,10 @@ export const resolveCatalogProductInventoryLevels = async (
     filters: { variant_id: variantIds },
   })
   const inventoryByVariantId = new Map<string, string[]>()
-  result.data.forEach((link) => {
-    const variantId = asString(link.variant_id)
-    const inventoryItemId = asString(link.inventory_item_id)
-    if (!variantId || !inventoryItemId) {
-      return
-    }
-    inventoryByVariantId.set(variantId, [
-      ...(inventoryByVariantId.get(variantId) ?? []),
-      inventoryItemId,
+  readCatalogVariantInventoryLinks(result, variantIds).forEach((link) => {
+    inventoryByVariantId.set(link.variantId, [
+      ...(inventoryByVariantId.get(link.variantId) ?? []),
+      link.inventoryItemId,
     ])
   })
 

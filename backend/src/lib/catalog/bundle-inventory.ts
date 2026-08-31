@@ -9,6 +9,13 @@ import type {
   CatalogBundleInventoryLinkState,
   CatalogBundleStateSnapshot,
 } from "@/modules/catalog/bundle-authoring"
+import {
+  readCatalogBundleComponents,
+  readCatalogBundleInventoryProvenance,
+  readCatalogBundleProfiles,
+  readCatalogProductVariantIds,
+  readCatalogVariantInventoryLinks,
+} from "./persistence-contracts"
 
 type JsonRecord = Record<string, unknown>
 type MedusaContainer = MedusaRequest["scope"]
@@ -60,7 +67,7 @@ type QueryGraph = {
     fields: string[]
     filters?: Record<string, unknown>
     pagination?: { take?: number; skip?: number }
-  }) => Promise<{ data: Array<Record<string, unknown>> }>
+  }) => Promise<unknown>
 }
 
 type RemoteLink = {
@@ -114,17 +121,21 @@ const isRecord = (value: unknown): value is JsonRecord =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
 
 const asString = (value: unknown): string | null =>
-  typeof value === "string" && value.trim().length ? value.trim() : null
+  typeof value === "string" && value.length > 0 && value === value.trim()
+    ? value
+    : null
+
+const BUNDLE_IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$/
+
+const asIdentifier = (value: unknown): string | null => {
+  const parsed = asString(value)
+  return parsed && BUNDLE_IDENTIFIER.test(parsed) ? parsed : null
+}
 
 const asPositiveInteger = (value: unknown, fallback = 1): number =>
   typeof value === "number" && Number.isInteger(value) && value > 0
     ? value
     : fallback
-
-const asStringList = (value: unknown): string[] =>
-  Array.isArray(value)
-    ? value.map(asString).filter((entry): entry is string => Boolean(entry))
-    : []
 
 const parseResolvedComponentVariant = (
   value: unknown
@@ -133,58 +144,111 @@ const parseResolvedComponentVariant = (
     return null
   }
 
-  const variantId = asString(value.variant_id ?? value.variantId)
-  const inventoryItemId = asString(
+  const variantId = asIdentifier(value.variant_id ?? value.variantId)
+  const inventoryItemId = asIdentifier(
     value.inventory_item_id ?? value.inventoryItemId
   )
-  if (!variantId || !inventoryItemId) {
+  const sku = asString(value.sku)
+  if (
+    !variantId ||
+    !inventoryItemId ||
+    (value.sku !== null && value.sku !== undefined && !sku)
+  ) {
     return null
   }
 
   return {
     variantId,
     inventoryItemId,
-    sku: asString(value.sku),
+    sku,
   }
 }
 
+type ResolvedMappingBoundary = "input" | "persistence"
+
+const malformedResolvedMappings = (
+  boundary: ResolvedMappingBoundary
+): never => {
+  throw new MedusaError(
+    boundary === "persistence"
+      ? MedusaError.Types.UNEXPECTED_STATE
+      : MedusaError.Types.INVALID_DATA,
+    "Bundle component resolved variant mappings are malformed."
+  )
+}
+
+const readResolvedMappingIds = (
+  value: unknown,
+  boundary: ResolvedMappingBoundary
+): string[] => {
+  if (!Array.isArray(value) || !value.length) {
+    return malformedResolvedMappings(boundary)
+  }
+  const ids = value.map(asIdentifier)
+  if (ids.some((id) => id === null) || new Set(ids).size !== ids.length) {
+    return malformedResolvedMappings(boundary)
+  }
+  return ids as string[]
+}
+
 export const parseResolvedVariantMappings = (
-  component: CatalogBundleComponentRecord
+  component: CatalogBundleComponentRecord,
+  boundary: ResolvedMappingBoundary = "input"
 ): ResolvedVariantMapping[] => {
   if (!isRecord(component.metadata)) {
-    return []
+    return component.metadata === undefined || component.metadata === null
+      ? []
+      : malformedResolvedMappings(boundary)
   }
 
   const rawMappings =
     component.metadata.resolved_variant_mappings ??
     component.metadata.resolvedVariantMappings
-  if (!Array.isArray(rawMappings)) {
+  if (rawMappings === undefined) {
     return []
   }
+  if (!Array.isArray(rawMappings) || !rawMappings.length) {
+    return malformedResolvedMappings(boundary)
+  }
 
-  return rawMappings.flatMap((rawMapping) => {
+  return rawMappings.map((rawMapping) => {
     if (!isRecord(rawMapping)) {
-      return []
+      return malformedResolvedMappings(boundary)
     }
 
-    const bundleVariantIds = asStringList(
-      rawMapping.bundle_variant_ids ?? rawMapping.bundleVariantIds
+    const bundleVariantIds = readResolvedMappingIds(
+      rawMapping.bundle_variant_ids ?? rawMapping.bundleVariantIds,
+      boundary
     )
     const rawMode = asString(
       rawMapping.selection_mode ?? rawMapping.selectionMode
     )
+    if (rawMode !== null && rawMode !== "any" && rawMode !== "exact") {
+      return malformedResolvedMappings(boundary)
+    }
     const selectionMode = rawMode === "any" ? "any" : "exact"
     const rawVariants =
       rawMapping.component_variants ?? rawMapping.componentVariants
-    const componentVariants = Array.isArray(rawVariants)
-      ? rawVariants
-          .map(parseResolvedComponentVariant)
-          .filter((entry): entry is ResolvedComponentVariant => Boolean(entry))
-      : []
+    if (!Array.isArray(rawVariants) || !rawVariants.length) {
+      return malformedResolvedMappings(boundary)
+    }
+    const parsedVariants = rawVariants.map(parseResolvedComponentVariant)
+    if (parsedVariants.some((variant) => variant === null)) {
+      return malformedResolvedMappings(boundary)
+    }
+    const componentVariants = parsedVariants as ResolvedComponentVariant[]
+    const variantIds = componentVariants.map((variant) => variant.variantId)
+    const linkKeys = componentVariants.map(
+      (variant) => `${variant.variantId}:${variant.inventoryItemId}`
+    )
+    if (
+      new Set(variantIds).size !== variantIds.length ||
+      new Set(linkKeys).size !== linkKeys.length
+    ) {
+      return malformedResolvedMappings(boundary)
+    }
 
-    return bundleVariantIds.length && componentVariants.length
-      ? [{ bundleVariantIds, selectionMode, componentVariants }]
-      : []
+    return { bundleVariantIds, selectionMode, componentVariants }
   })
 }
 
@@ -192,8 +256,8 @@ const fallbackMapping = (
   component: CatalogBundleComponentRecord,
   bundleVariantIds: string[]
 ): ResolvedVariantMapping[] => {
-  const variantId = asString(component.component_variant_id)
-  const inventoryItemId = asString(component.component_inventory_item_id)
+  const variantId = asIdentifier(component.component_variant_id)
+  const inventoryItemId = asIdentifier(component.component_inventory_item_id)
   if (!variantId || !inventoryItemId) {
     return []
   }
@@ -237,7 +301,7 @@ export const buildBundleVariantInventoryPlan = ({
       }
 
       const componentQuantity = asPositiveInteger(component.quantity)
-      const mappings = parseResolvedVariantMappings(component)
+      const mappings = parseResolvedVariantMappings(component, "persistence")
       const applicableMappings = (
         mappings.length
           ? mappings
@@ -302,15 +366,7 @@ const readBundleVariants = async (
     filters: { id: productId },
     pagination: { take: 1 },
   })
-  const product = productResult.data[0]
-  const variants = Array.isArray(product?.variants) ? product.variants : []
-  const variantIds = variants.flatMap((rawVariant) => {
-    if (!isRecord(rawVariant)) {
-      return []
-    }
-    const id = asString(rawVariant.id)
-    return id ? [id] : []
-  })
+  const variantIds = readCatalogProductVariantIds(productResult, productId)
   if (!variantIds.length) {
     return []
   }
@@ -326,30 +382,21 @@ const readBundleVariants = async (
     string,
     Array<{ inventoryItemId: string; requiredQuantity: number }>
   >()
-  linkResult.data.forEach((rawLink) => {
-    const variantId = asString(rawLink.variant_id)
-    const inventoryItemId = asString(rawLink.inventory_item_id)
-    if (!variantId || !inventoryItemId) {
-      return
-    }
-    const links = inventoryItemsByVariantId.get(variantId) ?? []
+  readCatalogVariantInventoryLinks(linkResult, variantIds, {
+    requireQuantity: true,
+  }).forEach((link) => {
+    const links = inventoryItemsByVariantId.get(link.variantId) ?? []
     links.push({
-      inventoryItemId,
-      requiredQuantity: asPositiveInteger(rawLink.required_quantity),
+      inventoryItemId: link.inventoryItemId,
+      requiredQuantity: link.requiredQuantity!,
     })
-    inventoryItemsByVariantId.set(variantId, links)
+    inventoryItemsByVariantId.set(link.variantId, links)
   })
 
-  return variants.flatMap((rawVariant) => {
-    if (!isRecord(rawVariant)) {
-      return []
-    }
-    const id = asString(rawVariant.id)
-    if (!id) {
-      return []
-    }
-    return [{ id, inventoryItems: inventoryItemsByVariantId.get(id) ?? [] }]
-  })
+  return variantIds.map((id) => ({
+    id,
+    inventoryItems: inventoryItemsByVariantId.get(id) ?? [],
+  }))
 }
 
 const inventoryLinkKey = (variantId: string, inventoryItemId: string): string =>
@@ -374,6 +421,28 @@ const toInventoryMap = (
       link,
     ])
   )
+
+const assertAffectedInventoryMatches = (
+  actual: InventoryLinkWithVariant[],
+  expectedByKey: ReadonlyMap<string, InventoryLinkWithVariant>,
+  affectedKeys: readonly string[]
+): void => {
+  const actualByKey = toInventoryMap(actual)
+  const mismatch = affectedKeys.some((key) => {
+    const actualLink = actualByKey.get(key)
+    const expectedLink = expectedByKey.get(key)
+    return (
+      Boolean(actualLink) !== Boolean(expectedLink) ||
+      actualLink?.requiredQuantity !== expectedLink?.requiredQuantity
+    )
+  })
+  if (mismatch) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "The bundle inventory mutation did not persist its expected state."
+    )
+  }
+}
 
 const flattenActualInventory = (
   variants: Awaited<ReturnType<typeof readBundleVariants>>
@@ -420,20 +489,52 @@ const readProvenance = async (
   Promise.all(
     bundleProfileIds.map(async (bundleProfileId) => ({
       bundleProfileId,
-      links: (
+      links: readCatalogBundleInventoryProvenance(
         await catalogService.listCatalogBundleInventoryLinks({
           bundle_profile_id: bundleProfileId,
-        })
-      ).map((link) => ({
-        id: link.id,
-        bundle_profile_id: link.bundle_profile_id,
-        bundle_variant_id: link.bundle_variant_id,
-        inventory_item_id: link.inventory_item_id,
-        required_quantity: link.required_quantity,
-        metadata: isRecord(link.metadata) ? link.metadata : {},
-      })),
+        }),
+        bundleProfileId
+      ),
     }))
   )
+
+const assertProvenanceMatches = (
+  actual: ProvenanceSnapshot[],
+  expected: ProvenanceSnapshot[]
+): void => {
+  const snapshotMap = (
+    snapshots: ProvenanceSnapshot[]
+  ): Map<string, string[]> =>
+    new Map(
+      snapshots.map((snapshot) => [
+        snapshot.bundleProfileId,
+        snapshot.links
+          .map(
+            (link) =>
+              `${link.bundle_variant_id}:${link.inventory_item_id}:${link.required_quantity}`
+          )
+          .sort(),
+      ])
+    )
+  const actualByProfile = snapshotMap(actual)
+  const expectedByProfile = snapshotMap(expected)
+  const mismatch =
+    actualByProfile.size !== expectedByProfile.size ||
+    Array.from(expectedByProfile).some(([profileId, expectedLinks]) => {
+      const actualLinks = actualByProfile.get(profileId)
+      return (
+        !actualLinks ||
+        actualLinks.length !== expectedLinks.length ||
+        actualLinks.some((link, index) => link !== expectedLinks[index])
+      )
+    })
+  if (mismatch) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "The bundle inventory provenance did not persist its expected state."
+    )
+  }
+}
 
 const restoreProvenance = async (
   catalogService: CatalogService,
@@ -445,6 +546,11 @@ const restoreProvenance = async (
       snapshot.links
     )
   }
+  const restored = await readProvenance(
+    catalogService,
+    provenance.map((snapshot) => snapshot.bundleProfileId)
+  )
+  assertProvenanceMatches(restored, provenance)
 }
 
 const restoreRemoteInventory = async (
@@ -491,6 +597,10 @@ const restoreRemoteInventory = async (
       ])
     }
   }
+  const restored = flattenActualInventory(
+    await readBundleVariants(query, productId)
+  )
+  assertAffectedInventoryMatches(restored, beforeByKey, snapshot.affectedKeys)
 }
 
 export const restoreBundleInventoryReconciliation = async (
@@ -512,9 +622,12 @@ export const reconcileComponentDerivedBundleInventory = async (
   snapshot: BundleInventoryReconciliationSnapshot
 }> => {
   const catalogService = container.resolve("catalog") as CatalogService
-  const profiles = await catalogService.listCatalogBundleProfiles({
-    product_id: productId,
-  })
+  const profiles = readCatalogBundleProfiles(
+    await catalogService.listCatalogBundleProfiles({
+      product_id: productId,
+    }),
+    productId
+  )
   const profile = profiles[0]
   const bundleVariants = await readBundleVariants(
     container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph,
@@ -540,9 +653,12 @@ export const reconcileComponentDerivedBundleInventory = async (
     profile &&
     profile.inventory_mode === "component_derived" &&
     profile.is_active !== false
-      ? await catalogService.listCatalogBundleComponents({
-          bundle_profile_id: profile.id,
-        })
+      ? readCatalogBundleComponents(
+          await catalogService.listCatalogBundleComponents({
+            bundle_profile_id: profile.id,
+          }),
+          profile.id
+        )
       : []
   const plan =
     profile &&
@@ -637,6 +753,19 @@ export const reconcileComponentDerivedBundleInventory = async (
     affectedKeys,
     provenanceBefore,
   }
+  const provenanceAfter: ProvenanceSnapshot[] = profileIds.map((profileId) => ({
+    bundleProfileId: profileId,
+    links:
+      profile?.id === profileId
+        ? desiredLinks.map((link) => ({
+            bundle_profile_id: profileId,
+            bundle_variant_id: link.bundleVariantId,
+            inventory_item_id: link.inventoryItemId,
+            required_quantity: link.requiredQuantity,
+            metadata: {},
+          }))
+        : [],
+  }))
 
   const remoteLink = container.resolve(
     ContainerRegistrationKeys.REMOTE_LINK
@@ -661,20 +790,24 @@ export const reconcileComponentDerivedBundleInventory = async (
       changes += 1
     }
 
-    for (const profileId of profileIds) {
+    const actualAfter = flattenActualInventory(
+      await readBundleVariants(
+        container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph,
+        productId
+      )
+    )
+    assertAffectedInventoryMatches(actualAfter, desiredByKey, affectedKeys)
+
+    for (const provenance of provenanceAfter) {
       await catalogService.replaceBundleInventoryLinks(
-        profileId,
-        profile?.id === profileId
-          ? desiredLinks.map((link) => ({
-              bundle_profile_id: profileId,
-              bundle_variant_id: link.bundleVariantId,
-              inventory_item_id: link.inventoryItemId,
-              required_quantity: link.requiredQuantity,
-              metadata: {},
-            }))
-          : []
+        provenance.bundleProfileId,
+        provenance.links
       )
     }
+    assertProvenanceMatches(
+      await readProvenance(catalogService, profileIds),
+      provenanceAfter
+    )
   } catch (error) {
     await restoreRemoteInventory(container, productId, snapshot)
     await restoreProvenance(catalogService, provenanceBefore)
@@ -694,9 +827,12 @@ export const syncComponentDerivedBundleInventory = async (
   productId: string
 ): Promise<BundleVariantInventoryPlan[]> => {
   const catalogService = container.resolve("catalog") as CatalogService
-  const profiles = await catalogService.listCatalogBundleProfiles({
-    product_id: productId,
-  })
+  const profiles = readCatalogBundleProfiles(
+    await catalogService.listCatalogBundleProfiles({
+      product_id: productId,
+    }),
+    productId
+  )
   const profile = profiles[0]
   const previous: CatalogBundleStateSnapshot = profile
     ? {
@@ -716,27 +852,12 @@ export const syncComponentDerivedBundleInventory = async (
           version: 1,
           metadata: {},
         },
-        components: await catalogService
-          .listCatalogBundleComponents({
+        components: readCatalogBundleComponents(
+          await catalogService.listCatalogBundleComponents({
             bundle_profile_id: profile.id,
-          })
-          .then((components) =>
-            components.map((component, index) => ({
-              id: component.id ?? `legacy-${index}`,
-              bundle_profile_id: profile.id,
-              component_product_id: "",
-              component_variant_id: component.component_variant_id ?? null,
-              component_inventory_item_id:
-                component.component_inventory_item_id ?? null,
-              title: null,
-              variant_title: null,
-              sku: null,
-              quantity: component.quantity ?? 1,
-              sort_order: index,
-              is_required: component.is_required !== false,
-              metadata: isRecord(component.metadata) ? component.metadata : {},
-            }))
-          ),
+          }),
+          profile.id
+        ),
       }
     : { profile: null, components: [] }
   return (

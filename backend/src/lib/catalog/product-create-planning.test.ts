@@ -186,7 +186,7 @@ describe("catalog product creation planning", () => {
       )
     ).rejects.toThrow("does not belong")
 
-    queryGraph.mockImplementation(async ({ entity }) => {
+    const ambiguousLinkQuery = jest.fn(async ({ entity }) => {
       if (entity === "stock_location") {
         return { data: [{ id: "stock_location_1" }] }
       }
@@ -215,10 +215,63 @@ describe("catalog product creation planning", () => {
     })
     await expect(
       resolveCatalogProductCreateContext(
-        container,
+        containerFixture(ambiguousLinkQuery),
         commandFixture("fixed_bundle")
       )
     ).rejects.toThrow("exactly one inventory item")
+  })
+
+  it("rejects malformed bundle ownership and inventory rows before creation", async () => {
+    const queryGraph = jest.fn(async ({ entity }) => {
+      if (entity === "stock_location") {
+        return { data: [{ id: "stock_location_1" }] }
+      }
+      if (entity === "product_variant") {
+        return { data: [null] }
+      }
+      return { data: [] }
+    })
+
+    await expect(
+      resolveCatalogProductCreateContext(
+        containerFixture(queryGraph),
+        commandFixture("fixed_bundle")
+      )
+    ).rejects.toThrow(
+      "The catalog persistence boundary returned invalid structured data"
+    )
+
+    const malformedLinkQuery = jest.fn(async ({ entity }) => {
+      if (entity === "stock_location") {
+        return { data: [{ id: "stock_location_1" }] }
+      }
+      if (entity === "product_variant") {
+        return {
+          data: [
+            {
+              id: "component_variant",
+              product_id: "component_product",
+            },
+          ],
+        }
+      }
+      return {
+        data: [
+          {
+            inventory_item_id: false,
+            variant_id: "component_variant",
+          },
+        ],
+      }
+    })
+    await expect(
+      resolveCatalogProductCreateContext(
+        containerFixture(malformedLinkQuery),
+        commandFixture("fixed_bundle")
+      )
+    ).rejects.toThrow(
+      "The catalog persistence boundary returned invalid structured data"
+    )
   })
 
   it("builds draft native products with kind-owned inventory", () => {
@@ -280,7 +333,19 @@ describe("catalog product creation planning", () => {
         commandFixture(),
         products
       )
-    ).rejects.toThrow("could not be resolved")
+    ).rejects.toThrow(
+      "The catalog persistence boundary returned invalid structured data"
+    )
+
+    await expect(
+      resolveCatalogCreatedProduct(
+        containerFixture(queryGraph),
+        commandFixture(),
+        [{ id: "product_1" }, { id: "product_2" }] as ProductTypes.ProductDTO[]
+      )
+    ).rejects.toThrow(
+      "The catalog persistence boundary returned invalid structured data"
+    )
   })
 
   it("builds deterministic catalog profile and bundle child commands", () => {
@@ -467,5 +532,19 @@ describe("catalog product creation planning", () => {
         created
       )
     ).resolves.toEqual([])
+
+    queryGraph.mockResolvedValue({
+      data: [{ inventory_item_id: null, variant_id: "variant_1" }],
+    })
+    await expect(
+      resolveCatalogProductInventoryLevels(
+        containerFixture(queryGraph),
+        commandFixture(),
+        contextFixture(),
+        created
+      )
+    ).rejects.toThrow(
+      "The catalog persistence boundary returned invalid structured data"
+    )
   })
 })

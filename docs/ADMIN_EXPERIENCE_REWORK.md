@@ -314,3 +314,21 @@ server logs keep only phase and aggregate counts rather than filenames, file
 IDs, CSV values, or provider diagnostics. The stock import drawer remains
 disabled because it starts at the intentionally unavailable presigned-upload
 boundary.
+
+### Catalog mutation persistence hardening — August 30, 2026
+
+The guided create and short Catalog edit tasks keep the same operator flow,
+but their server-side prerequisites now fail closed. Product and Variant
+choices, component ownership, shipping profile, default sales channel, stock
+location, created Product/Variant acknowledgements, and inventory links must
+return exact runtime-validated identities. Corrupt or ambiguous persistence
+data is surfaced as an unavailable operation instead of being presented as a
+missing choice, a partial create, or a usable default.
+
+Fixed-bundle mapping metadata is now all-or-nothing. A malformed declared
+mapping cannot silently fall back to another component inventory item, and the
+bundle workflow verifies the final remote link quantities plus its owned
+provenance before completing. Media Cleanup also requires a coherent count and
+unique asset rows, so the Admin cannot render a false empty state from a
+malformed database response. These changes add no operator fields or technical
+decisions; they make existing recovery copy and retry behavior authoritative.
