@@ -26,20 +26,39 @@ This ensures a unified look and feel across all email communications while allow
 
 ## Usage
 
-### Commerce notification delivery safety
+### Transactional notification delivery safety
 
-Order confirmations and refund notices are side effects of retryable commerce
-events. Build both with `emailIdempotencyFields`: it stores one validated key in
-Medusa's `idempotency_key` and forwards the same key through
-`provider_data.idempotency_key` to Resend. Use a stable business identifier
-(`order-placed:<order_id>` or `refund-issued:<refund_id>`), never a random value
-or customer PII.
+Order confirmations, refund notices, and administrator invites are side
+effects of retryable events. Build every message with
+`emailIdempotencyFields`: it stores one validated key in Medusa's
+`idempotency_key` and forwards the same key through
+`provider_data.idempotency_key` to Resend. Orders and refunds use stable opaque
+business identifiers. Invites use the invite ID plus a truncated SHA-256 token
+digest so a resent invite gets a new operation without storing the raw token in
+the key. Never use an email address or raw credential as an idempotency key.
 
-The Resend provider rejects either sensitive template when this key is absent,
-applies a five-second provider deadline, and treats a resolved `{ error }`
-response as a failed delivery. Errors and logs include no recipient, provider
-message, or response payload. Subscribers must let delivery failure propagate
-so Medusa can retry the same idempotent operation.
+Subscribers call `createAndVerifyNotifications`, not the generated create
+method directly. Medusa may return an empty acknowledgement for a successful
+idempotent replay, so the helper always re-reads by the pinned Medusa
+idempotency filter and requires exactly one successful row per request. The
+stored recipient, channel, template, trigger, resource, receiver, provider
+key, provider ID, external delivery ID, data projection, and timestamp must
+match. Missing, duplicate, failed, or malformed state propagates an error so
+the event can retry.
+
+An invite needs its one-time URL only while Resend renders the message. After a
+verified send, the subscriber replaces the stored template data with a stable
+non-secret redaction marker, validates the update acknowledgement, and re-reads
+the final row. A replay accepts that already-redacted state without sending
+again. If redaction fails after delivery, the unchanged provider idempotency
+key prevents another email while the retry completes redaction.
+
+The Resend provider accepts one validated recipient, the configured sender,
+one of the three known templates, a subject-only options object, and no
+attachments or per-message sender. Every template requires provider
+idempotency. Calls have a five-second deadline and success requires Resend's
+exact non-empty external ID response. Errors and logs include no recipient,
+provider message, template data, or response payload.
 
 Customer-facing money must use the shared `formatCurrencyAmount` helper. Medusa
 retains high-precision major-unit values for accounting and tax calculations;
@@ -52,21 +71,22 @@ JavaScript.
 
 ### Trigger an email notification
 
-To send a notification using an email template, specify the template key and required data when calling `createNotifications`:
+Build a validated, minimal projection and verify its durable result:
 
 ```typescript
-await notificationModuleService.createNotifications({
-  to: invite.email,
-  channel: 'email',
-  template: EmailTemplates.INVITE_USER, // Use the enum for the template key
-  data: {
-    emailOptions: {
-      subject: "You've been invited!",
-    },
-    inviteLink: `${BACKEND_URL}/app/invite?token=${invite.token}`,
-    preview: 'Get started with your invitation...',
-  },
-})
+const idempotencyKey = `order-placed:${order.id}`
+const payload = {
+  ...emailIdempotencyFields(idempotencyKey),
+  channel: "email",
+  data: validatedMinimalTemplateData,
+  resource_id: order.id,
+  resource_type: "order",
+  template: EmailTemplates.ORDER_PLACED,
+  to: validatedRecipient,
+  trigger_type: "order.placed",
+}
+
+await createAndVerifyNotifications(notificationModuleService, [payload])
 ```
 
 ### Adding a new template

@@ -7,6 +7,10 @@ import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 import { buildRefundNotificationPayloads } from "../lib/refund-operations/notification"
+import {
+  createAndVerifyNotifications,
+  readNotificationEmail,
+} from "../lib/notifications/contracts"
 import { readNonNegativeSafeInteger } from "../lib/provider-boundary/primitives"
 import {
   asUnknownRecord,
@@ -153,8 +157,20 @@ export default async function refundIssuedHandler({
   if ((order && (!orderId || !parsedOrderDisplayId)) || (cart && !cartId)) {
     throw malformedRefundProjection()
   }
-  const orderEmail = optionalText(order?.email)
-  const cartEmail = optionalText(cart?.email)
+  const orderEmail =
+    order?.email === null || order?.email === undefined
+      ? null
+      : readNotificationEmail(order.email)
+  const cartEmail =
+    cart?.email === null || cart?.email === undefined
+      ? null
+      : readNotificationEmail(cart.email)
+  if (
+    (order?.email !== null && order?.email !== undefined && !orderEmail) ||
+    (cart?.email !== null && cart?.email !== undefined && !cartEmail)
+  ) {
+    throw malformedRefundProjection()
+  }
   const paymentCurrency = optionalCurrency(payment.currency_code)
   const orderCurrency = optionalCurrency(order?.currency_code)
   const cartCurrency = optionalCurrency(cart?.currency_code)
@@ -210,7 +226,7 @@ export default async function refundIssuedHandler({
   const notificationService = container.resolve<INotificationModuleService>(
     Modules.NOTIFICATION
   )
-  await notificationService.createNotifications(notifications)
+  await createAndVerifyNotifications(notificationService, notifications)
   logger.info(
     `[refund-notification] recorded ${notifications.length} idempotent customer notification(s) for payment ${paymentId}`
   )

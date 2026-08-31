@@ -1,3 +1,4 @@
+import type { CreateNotificationDTO } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 import refundIssuedHandler from "./refund-issued"
@@ -18,13 +19,30 @@ const handlerInput = ({
       },
     ],
   },
+  replay = false,
 }: {
   collection: unknown
   eventData?: unknown
   graphResult?: unknown
   payment?: unknown
+  replay?: boolean
 }) => {
-  const createNotifications = jest.fn(async () => [])
+  let submitted: CreateNotificationDTO[] = []
+  const notificationRow = (payload: CreateNotificationDTO, index: number) => ({
+    ...payload,
+    created_at: "2026-08-29T12:00:00.000Z",
+    external_id: `email_${index + 1}`,
+    id: `noti_${index + 1}`,
+    provider_id: "provider_resend",
+    status: "success",
+  })
+  const createNotifications = jest.fn(
+    async (payloads: CreateNotificationDTO[]) => {
+      submitted = payloads
+      return replay ? [] : payloads.map(notificationRow)
+    }
+  )
+  const listNotifications = jest.fn(async () => submitted.map(notificationRow))
   const graph = jest.fn(async () => graphResult ?? { data: [collection] })
   const logger = {
     info: jest.fn(),
@@ -38,7 +56,7 @@ const handlerInput = ({
       },
     ],
     [ContainerRegistrationKeys.QUERY, { graph }],
-    [Modules.NOTIFICATION, { createNotifications }],
+    [Modules.NOTIFICATION, { createNotifications, listNotifications }],
     ["logger", logger],
   ])
   const input = {
@@ -54,6 +72,7 @@ const handlerInput = ({
     createNotifications,
     graph,
     input,
+    listNotifications,
     logger,
   }
 }
@@ -95,6 +114,10 @@ describe("payment refund notification subscriber", () => {
     ])
     expect(fixture.logger.info).toHaveBeenCalledWith(
       expect.not.stringContaining("customer@example.com")
+    )
+    expect(fixture.listNotifications).toHaveBeenCalledWith(
+      { idempotency_key: ["refund-issued:refund_01"] },
+      { take: 2 }
     )
   })
 
@@ -266,5 +289,54 @@ describe("payment refund notification subscriber", () => {
       "Refund notification payment data is malformed"
     )
     expect(fixture.createNotifications).not.toHaveBeenCalled()
+  })
+
+  it("rejects an invalid present recipient instead of silently skipping", async () => {
+    const fixture = handlerInput({
+      collection: {
+        cart: { email: false, id: "cart_01" },
+        id: "paycol_01",
+      },
+    })
+
+    await expect(refundIssuedHandler(fixture.input)).rejects.toThrow(
+      "Refund notification payment data is malformed"
+    )
+    expect(fixture.createNotifications).not.toHaveBeenCalled()
+  })
+
+  it("rejects a missing durable notification row", async () => {
+    const fixture = handlerInput({
+      collection: {
+        cart: {
+          currency_code: "usd",
+          email: "guest@example.com",
+          id: "cart_01",
+        },
+        id: "paycol_01",
+      },
+    })
+    fixture.listNotifications.mockResolvedValue([])
+
+    await expect(refundIssuedHandler(fixture.input)).rejects.toThrow(
+      "Notification delivery readback is malformed"
+    )
+    expect(fixture.logger.info).not.toHaveBeenCalled()
+  })
+
+  it("accepts Medusa's empty acknowledgement only with a successful readback", async () => {
+    const fixture = handlerInput({
+      collection: {
+        cart: {
+          currency_code: "usd",
+          email: "guest@example.com",
+          id: "cart_01",
+        },
+        id: "paycol_01",
+      },
+      replay: true,
+    })
+
+    await expect(refundIssuedHandler(fixture.input)).resolves.toBeUndefined()
   })
 })

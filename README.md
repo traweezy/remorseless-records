@@ -910,6 +910,12 @@ the cart email even when order creation failed. The provider call has a bounded
 deadline, treats a resolved Resend error as failure, and logs no recipient or
 provider detail. The message states the amount and original-payment method
 behavior but does not promise when the customer's bank will post the credit.
+Every order/refund/invite subscriber then proves the exact successful Medusa
+notification row and external delivery ID rather than trusting the create
+return. Receipt messages persist only their render allowlist instead of a full
+Order DTO. Administrator invite delivery uses an ID plus token digest for
+idempotency and replaces the stored invite URL with a verified non-secret
+marker immediately after delivery.
 
 Immediate event handling and the existing hourly tax-evidence job reconcile
 Medusa, Stripe refund statuses/amounts, and Stripe Tax reversals. TaxRate.io

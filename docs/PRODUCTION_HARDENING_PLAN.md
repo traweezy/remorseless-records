@@ -3606,6 +3606,48 @@ for its main file and 2,388,484 gzip bytes total. The production dependency
 audit retains only the three documented ignored moderate findings; Trivy
 reports zero high/critical dependency, misconfiguration, or secret findings.
 
+## Transactional notification delivery hardening
+
+- [x] Validate administrator invite, order-receipt, payment, refund, cart,
+      recipient, address, item, amount, currency, and event projections at
+      runtime before provider or persistence access.
+- [x] Persist only the receipt fields rendered by the order template instead
+      of the complete Medusa Order DTO and unrelated metadata.
+- [x] Require one stable Medusa and provider idempotency key for every order,
+      refund, and invite notification; derive invite keys from an opaque token
+      digest rather than a raw token or email address.
+- [x] Accept Medusa's empty replay acknowledgement only after an exact durable
+      query proves one successful stored notification and provider delivery ID.
+- [x] Reject missing, duplicate, failed, foreign, malformed, or mismatched
+      acknowledgement/readback state across complete notification batches.
+- [x] Remove invite URLs and tokens from stored template data immediately after
+      verified delivery, then validate both the update acknowledgement and
+      final readback while accepting an already-redacted replay.
+- [x] Restrict the Resend adapter to one validated recipient, the configured
+      sender, known templates, subject-only options, no attachments, a bounded
+      deadline, and an exact external-ID success response.
+- [x] Propagate subscriber/provider failures for retry and keep recipient,
+      credential, provider response, raw Order, and exception detail out of
+      logs and errors.
+
+The boundary follows pinned Medusa 2.18 behavior: successful replays can return
+an empty create array, while the generated notification model retains a unique
+idempotency key and update method. The application therefore verifies stored
+state rather than weakening replay checks. If invite-data redaction fails after
+Resend accepted the message, the same provider key prevents a duplicate email
+while the event retry completes and proves redaction.
+
+One hundred eleven focused notification, subscriber, refund-builder, provider,
+template, pinned-package, and persistence-contract tests pass. Complete local
+acceptance passes the 1,220-file repository QA gate, all 263 Backend suites and
+2,000 tests, both strict TypeScript projects, and the production Backend/Admin
+build with a frozen packaged Medusa 2.18.0 install. Backend coverage is 91.44%
+statements, 84.81% branches, 95.62% functions, and 91.46% lines. The 330-file
+Admin bundle measures 1,808,081 gzip bytes for its main file and 2,388,159 gzip
+bytes total. The production dependency audit retains only the three documented
+ignored moderate findings; Trivy reports zero high/critical dependency,
+misconfiguration, or secret findings.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,

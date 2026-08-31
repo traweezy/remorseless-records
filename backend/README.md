@@ -458,6 +458,18 @@ body ceiling, and abort Resend delivery after five seconds. Provider and
 configuration failures return correlated, neutral problems without copying
 email addresses, request bodies, provider diagnostics, or credentials.
 
+Retryable order, refund, and administrator-invite subscribers use one shared
+notification boundary. It validates minimal runtime projections, requires a
+stable database/provider idempotency key, and proves the exact successful
+Medusa row with a post-send readback; an empty create acknowledgement is
+accepted only for an already-successful replay. The Resend adapter accepts one
+validated recipient, the configured sender, a subject-only options object, no
+attachments, a five-second deadline, and an exact external delivery ID. It
+never logs recipients or provider payloads. Order data is reduced to receipt
+fields instead of persisting the complete Order DTO. Invite keys contain only
+an invite ID and token digest, and the delivered invite URL is immediately
+replaced with a verified non-secret marker in the stored notification row.
+
 ## Stripe configuration
 
 Configure all Stripe values together or leave all three empty:

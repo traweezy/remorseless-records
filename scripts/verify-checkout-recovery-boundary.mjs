@@ -39,8 +39,11 @@ const [
   taxEvidenceReconciliationSource,
   stripeEvidenceClientSource,
   resendSource,
+  notificationContractsSource,
+  inviteNotificationSource,
   orderNotificationSource,
   refundNotificationSource,
+  refundSubscriberSource,
 ] = await Promise.all([
   readPackageFile(coreFlowsRoot, "package.json"),
   readPackageFile(notificationRoot, "package.json"),
@@ -69,8 +72,11 @@ const [
   readRepositoryFile(
     "backend/src/modules/email-notifications/services/resend.ts"
   ),
+  readRepositoryFile("backend/src/lib/notifications/contracts.ts"),
+  readRepositoryFile("backend/src/subscribers/invite-created.ts"),
   readRepositoryFile("backend/src/subscribers/order-placed.ts"),
   readRepositoryFile("backend/src/lib/refund-operations/notification.ts"),
+  readRepositoryFile("backend/src/subscribers/refund-issued.ts"),
 ])
 
 assert.equal(JSON.parse(coreFlowsPackageSource).version, "2.18.0")
@@ -189,12 +195,22 @@ assert.match(
 assert.match(lifecycleJobSource, /stripeLifecycleEventIsDue/u)
 assert.match(lifecycleJobSource, /PROCESSING_STALE_MS/u)
 
-assert.match(resendSource, /IDEMPOTENCY_REQUIRED_TEMPLATES/u)
+assert.match(resendSource, /SUPPORTED_TEMPLATES/u)
+assert.match(resendSource, /EmailTemplates\.INVITE_USER/u)
+assert.match(resendSource, /!providerIdempotencyKey/u)
 assert.match(resendSource, /idempotencyKey: providerIdempotencyKey/u)
 assert.match(resendSource, /AbortSignal\.timeout/u)
-assert.match(resendSource, /if \(result\.error\)/u)
+assert.match(resendSource, /resultRecord\?\.error !== null/u)
+assert.match(notificationContractsSource, /idempotency_key: keys/u)
+assert.match(notificationContractsSource, /updateNotifications/u)
+assert.match(notificationContractsSource, /retrieveNotification/u)
+assert.match(inviteNotificationSource, /inviteNotificationIdempotencyKey/u)
+assert.match(inviteNotificationSource, /secret_fields: "redacted"/u)
+assert.match(inviteNotificationSource, /createAndVerifyNotifications/u)
 assert.match(orderNotificationSource, /emailIdempotencyFields/u)
+assert.match(orderNotificationSource, /createAndVerifyNotifications/u)
 assert.match(refundNotificationSource, /emailIdempotencyFields/u)
+assert.match(refundSubscriberSource, /createAndVerifyNotifications/u)
 
 console.log(
   "Checkout recovery boundary verified: Medusa cart/payment guards, durable scheduled-attempt holds, and provider-level email idempotency are intact."

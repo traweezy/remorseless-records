@@ -1,25 +1,23 @@
 import { Text, Section, Hr } from "./primitives"
 import * as React from "react"
 import { Base } from "./base"
-import { OrderDTO, OrderAddressDTO } from "@medusajs/framework/types"
+import type {
+  OrderNotificationAddress,
+  OrderNotificationProjection,
+} from "../../../lib/notifications/contracts"
+import { readOrderNotificationProjection } from "../../../lib/notifications/contracts"
 import { formatCurrencyAmount } from "../currency"
 
 export const ORDER_PLACED = "order-placed"
 
 interface OrderPlacedPreviewProps {
-  order: OrderDTO & {
-    display_id: string
-    summary: { raw_current_order_total: { value: number } }
-  }
-  shippingAddress: OrderAddressDTO
+  order: OrderNotificationProjection["order"]
+  shippingAddress: OrderNotificationAddress
 }
 
 export interface OrderPlacedTemplateProps {
-  order: OrderDTO & {
-    display_id: string
-    summary: { raw_current_order_total: { value: number } }
-  }
-  shippingAddress: OrderAddressDTO
+  order: OrderNotificationProjection["order"]
+  shippingAddress: OrderNotificationAddress
   preview?: string
 }
 
@@ -36,25 +34,27 @@ export const isOrderPlacedTemplateData = (
   const data = asRecord(value)
   const order = asRecord(data?.order)
   const summary = asRecord(order?.summary)
-  const items = order?.items
-
+  if (!data || !order || !summary) {
+    return false
+  }
+  try {
+    readOrderNotificationProjection(
+      {
+        ...order,
+        customer_id: null,
+        email: "template-validation@example.com",
+        shipping_address: data.shippingAddress,
+      },
+      order.id as string
+    )
+  } catch {
+    return false
+  }
   return (
-    order !== null &&
-    asRecord(data?.shippingAddress) !== null &&
-    formatCurrencyAmount(
-      summary?.raw_current_order_total,
-      order.currency_code
-    ) !== null &&
-    (items === undefined ||
-      (Array.isArray(items) &&
-        items.every((item) => {
-          const itemRecord = asRecord(item)
-          return (
-            itemRecord !== null &&
-            formatCurrencyAmount(itemRecord.unit_price, order.currency_code) !==
-              null
-          )
-        })))
+    data.preview === undefined ||
+    (typeof data.preview === "string" &&
+      data.preview.trim().length > 0 &&
+      data.preview.length <= 255)
   )
 }
 
@@ -94,7 +94,8 @@ export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
         </Text>
 
         <Text style={{ margin: "0 0 15px" }}>
-          Dear {shippingAddress.first_name} {shippingAddress.last_name},
+          Dear {shippingAddress.first_name}
+          {shippingAddress.last_name ? ` ${shippingAddress.last_name}` : ""},
         </Text>
 
         <Text style={{ margin: "0 0 30px" }}>
@@ -121,7 +122,8 @@ export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
         </Text>
         <Text style={{ margin: "0 0 5px" }}>{shippingAddress.address_1}</Text>
         <Text style={{ margin: "0 0 5px" }}>
-          {shippingAddress.city}, {shippingAddress.province}{" "}
+          {shippingAddress.city}
+          {shippingAddress.province ? `, ${shippingAddress.province}` : ""}{" "}
           {shippingAddress.postal_code}
         </Text>
         <Text style={{ margin: "0 0 20px" }}>
@@ -182,37 +184,28 @@ export const OrderPlacedTemplate: React.FC<OrderPlacedTemplateProps> & {
 
 OrderPlacedTemplate.PreviewProps = {
   order: {
-    id: "test-order-id",
-    display_id: "ORD-123",
+    id: "order_test",
+    display_id: 123,
     created_at: new Date().toISOString(),
     email: "test@example.com",
     currency_code: "USD",
     items: [
       {
-        id: "item-1",
+        id: "ordli_1",
         title: "Item 1",
         product_title: "Product 1",
         quantity: 2,
         unit_price: 10,
       },
       {
-        id: "item-2",
+        id: "ordli_2",
         title: "Item 2",
         product_title: "Product 2",
         quantity: 1,
         unit_price: 25,
       },
     ],
-    shipping_address: {
-      first_name: "Test",
-      last_name: "User",
-      address_1: "123 Main St",
-      city: "Anytown",
-      province: "CA",
-      postal_code: "12345",
-      country_code: "US",
-    },
-    summary: { raw_current_order_total: { value: 45 } },
+    summary: { raw_current_order_total: 45 },
   },
   shippingAddress: {
     first_name: "Test",

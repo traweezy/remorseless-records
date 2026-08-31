@@ -87,4 +87,52 @@ describe("refund customer notification payloads", () => {
       })
     ).toEqual([])
   })
+
+  it.each([
+    ["recipient", { email: "guest" }],
+    ["resource", { resourceId: "unsafe" }],
+    ["customer", { customerId: "unsafe" }],
+    ["reference", { referenceLabel: "x".repeat(121) }],
+    ["refund ID", { refunds: [{ amount: 20, id: "unsafe" }] }],
+    [
+      "refund note",
+      { refunds: [{ amount: 20, id: "refund_01", note: "x".repeat(2_001) }] },
+    ],
+  ])("drops a malformed %s", (_label, overrides) => {
+    expect(
+      buildRefundNotificationPayloads({
+        context: {
+          currencyCode: "usd",
+          customerId: "cus_01",
+          email: "guest@example.com",
+          referenceLabel: "order #42",
+          refunds: [{ amount: 20, id: "refund_01" }],
+          resourceId: "order_01",
+          resourceType: "order",
+          ...overrides,
+        },
+        template: "refund-issued",
+      })
+    ).toEqual([])
+  })
+
+  it("rejects duplicate refund IDs before building a partial batch", () => {
+    expect(
+      buildRefundNotificationPayloads({
+        context: {
+          currencyCode: "usd",
+          customerId: null,
+          email: "guest@example.com",
+          referenceLabel: "your payment",
+          refunds: [
+            { amount: 5, id: "refund_01" },
+            { amount: 5, id: "refund_01" },
+          ],
+          resourceId: "cart_01",
+          resourceType: "cart",
+        },
+        template: "refund-issued",
+      })
+    ).toEqual([])
+  })
 })

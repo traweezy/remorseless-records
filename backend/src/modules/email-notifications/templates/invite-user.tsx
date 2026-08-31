@@ -32,10 +32,32 @@ export const isInviteUserData = (
     return false
   }
   const candidate = data as Record<string, unknown>
-  return (
-    typeof candidate.inviteLink === "string" &&
-    (typeof candidate.preview === "string" || candidate.preview === undefined)
-  )
+  if (
+    typeof candidate.inviteLink !== "string" ||
+    candidate.inviteLink.length > 4_096 ||
+    (candidate.preview !== undefined &&
+      (typeof candidate.preview !== "string" ||
+        !candidate.preview.trim() ||
+        candidate.preview.length > 255))
+  ) {
+    return false
+  }
+  try {
+    const link = new URL(candidate.inviteLink)
+    const developmentHost =
+      link.hostname === "localhost" || link.hostname === "127.0.0.1"
+    return (
+      (link.protocol === "https:" ||
+        (developmentHost && link.protocol === "http:")) &&
+      !link.username &&
+      !link.password &&
+      link.pathname === "/app/invite" &&
+      link.searchParams.size === 1 &&
+      Boolean(link.searchParams.get("token"))
+    )
+  } catch {
+    return false
+  }
 }
 
 /**

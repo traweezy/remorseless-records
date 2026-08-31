@@ -30,6 +30,23 @@ const refundNotification = (
   ...overrides,
 })
 
+const inviteNotification = (
+  overrides: Partial<NotificationTypes.ProviderSendNotificationDTO> = {}
+): NotificationTypes.ProviderSendNotificationDTO => ({
+  channel: "email",
+  data: {
+    emailOptions: { subject: "Administrator invite" },
+    inviteLink: "https://backend.example.com/app/invite?token=token_01",
+    preview: "Your administrator invite is ready.",
+  },
+  provider_data: {
+    idempotency_key: "invite-user:invite_01:abcdef0123456789",
+  },
+  template: "invite-user",
+  to: "operator@example.com",
+  ...overrides,
+})
+
 const fixture = () => {
   const logger = {
     error: jest.fn(),
@@ -89,6 +106,15 @@ describe("Resend notification provider", () => {
     expect(input.send).not.toHaveBeenCalled()
   })
 
+  it("requires provider idempotency for administrator invites", async () => {
+    const input = fixture()
+
+    await expect(
+      input.provider.send(inviteNotification({ provider_data: null }))
+    ).rejects.toThrow("requires provider idempotency")
+    expect(input.send).not.toHaveBeenCalled()
+  })
+
   it("redacts resolved provider error details", async () => {
     const input = fixture()
     input.send.mockResolvedValue({
@@ -111,5 +137,93 @@ describe("Resend notification provider", () => {
     expect(message).toContain("email (validation_error)")
     expect(message).not.toContain("customer@example.com")
     expect(input.send).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ["missing data", { data: null }],
+    [
+      "unexpected email option",
+      {
+        data: {
+          emailOptions: {
+            bcc: "private@example.com",
+            subject: "Refund issued",
+          },
+          formattedAmount: "$5.00",
+          referenceLabel: "order #42",
+        },
+      },
+    ],
+    ["multiple recipients", { to: ["one@example.com", "two@example.com"] }],
+    ["invalid recipient", { to: "customer" }],
+    ["sender override", { from: "other@example.com" }],
+    [
+      "attachment",
+      {
+        attachments: [
+          {
+            content: "private",
+            filename: "private.txt",
+          },
+        ],
+      },
+    ],
+    ["unsupported channel", { channel: "sms" }],
+    ["unsupported template", { template: "untrusted-template" }],
+  ])("rejects %s before contacting Resend", async (_label, overrides) => {
+    const input = fixture()
+
+    await expect(
+      input.provider.send(
+        refundNotification(
+          overrides as unknown as Partial<NotificationTypes.ProviderSendNotificationDTO>
+        )
+      )
+    ).rejects.toThrow()
+    expect(input.send).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { data: null, error: null },
+    { data: {}, error: null },
+    { data: { id: false }, error: null },
+    { data: { id: "email_01", unexpected: true }, error: null },
+  ])("rejects a malformed resolved provider response", async (response) => {
+    const input = fixture()
+    input.send.mockResolvedValue(response)
+
+    await expect(input.provider.send(refundNotification())).rejects.toThrow(
+      "provider_response"
+    )
+    expect(input.logger.info).not.toHaveBeenCalled()
+  })
+
+  it("sends only the allowlisted Resend message fields", async () => {
+    const input = fixture()
+
+    await input.provider.send(inviteNotification())
+
+    expect(input.send.mock.calls[0]?.[0]).toEqual({
+      from: "store@example.com",
+      react: expect.anything(),
+      subject: "Administrator invite",
+      to: "operator@example.com",
+    })
+  })
+
+  it("rejects malformed provider configuration without exposing it", () => {
+    const logger = {
+      error: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+    }
+
+    expect(
+      () =>
+        new ResendNotificationService(
+          { logger: logger as unknown as Logger },
+          { api_key: "", from: "not-an-email" }
+        )
+    ).toThrow("configuration is invalid")
   })
 })

@@ -19,20 +19,23 @@ const asRecord = (value: unknown): UnknownRecord | null =>
     ? (value as UnknownRecord)
     : null
 
-const nonEmptyText = (value: unknown): value is string =>
-  typeof value === "string" && value.trim().length > 0
+const boundedText = (value: unknown, maximumLength: number): value is string =>
+  typeof value === "string" &&
+  value.trim().length > 0 &&
+  value.length <= maximumLength &&
+  !/[\u0000-\u001f\u007f]/.test(value)
 
 export const isRefundIssuedTemplateData = (
   value: unknown
 ): value is RefundIssuedTemplateProps => {
   const record = asRecord(value)
   return (
-    nonEmptyText(record?.formattedAmount) &&
-    nonEmptyText(record?.referenceLabel) &&
-    (record.preview === undefined || nonEmptyText(record.preview)) &&
+    boundedText(record?.formattedAmount, 64) &&
+    boundedText(record?.referenceLabel, 120) &&
+    (record.preview === undefined || boundedText(record.preview, 255)) &&
     (record.note === undefined ||
       record.note === null ||
-      nonEmptyText(record.note))
+      boundedText(record.note, 2_000))
   )
 }
 

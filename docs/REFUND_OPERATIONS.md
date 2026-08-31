@@ -126,6 +126,14 @@ is all-or-none: one malformed refund causes the event to retry without sending
 any notices from that batch. This prevents a partial email success from hiding
 an incomplete payment/refund projection.
 
+After the provider call, the subscriber queries the notification module by all
+requested refund idempotency keys and requires one unique successful row per
+refund. The recipient, provider key, trigger, resource, receiver, template,
+render data, provider identity, external delivery ID, and timestamp must match
+the request. Medusa's empty create response is valid only when this readback
+proves a prior successful delivery. Missing, duplicate, failed, or malformed
+rows fail the event before the success log and retry with the same keys.
+
 The email states the amount, order number when one exists, the operator's note,
 and that the credit returns to the original payment method. It does not promise
 a fixed arrival date because the customer's bank controls statement posting.

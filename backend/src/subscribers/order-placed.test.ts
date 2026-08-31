@@ -1,3 +1,4 @@
+import type { CreateNotificationDTO } from "@medusajs/framework/types"
 import { Modules } from "@medusajs/framework/utils"
 
 import orderPlacedHandler from "./order-placed"
@@ -6,10 +7,19 @@ const orderFixture = (overrides: Record<string, unknown> = {}) => ({
   created_at: "2026-08-29T12:00:00.000Z",
   currency_code: "usd",
   customer_id: "cus_01",
-  display_id: "42",
+  display_id: 42,
   email: "customer@example.com",
   id: "order_01",
-  items: [],
+  items: [
+    {
+      id: "ordli_01",
+      product_title: "Test release",
+      quantity: 1,
+      title: "Black vinyl",
+      unit_price: 25,
+    },
+  ],
+  metadata: { private_note: "do not persist" },
   shipping_address: {
     address_1: "123 Main St",
     city: "Baltimore",
@@ -23,11 +33,27 @@ const orderFixture = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
+const notificationRow = (payload: CreateNotificationDTO) => ({
+  ...payload,
+  created_at: "2026-08-29T12:00:00.000Z",
+  external_id: "email_01",
+  id: "noti_01",
+  provider_id: "provider_resend",
+  status: "success",
+})
+
 const fixture = (order = orderFixture()) => {
-  const createNotifications = jest.fn(async () => [])
+  let submitted: CreateNotificationDTO[] = []
+  const createNotifications = jest.fn(
+    async (payloads: CreateNotificationDTO[]) => {
+      submitted = payloads
+      return payloads.map(notificationRow)
+    }
+  )
+  const listNotifications = jest.fn(async () => submitted.map(notificationRow))
   const retrieveOrder = jest.fn(async () => order)
   const dependencies = new Map<string, unknown>([
-    [Modules.NOTIFICATION, { createNotifications }],
+    [Modules.NOTIFICATION, { createNotifications, listNotifications }],
     [Modules.ORDER, { retrieveOrder }],
   ])
   const input = {
@@ -40,7 +66,7 @@ const fixture = (order = orderFixture()) => {
     },
   } as unknown as Parameters<typeof orderPlacedHandler>[0]
 
-  return { createNotifications, input, retrieveOrder }
+  return { createNotifications, input, listNotifications, retrieveOrder }
 }
 
 describe("order confirmation subscriber", () => {
@@ -66,6 +92,19 @@ describe("order confirmation subscriber", () => {
         trigger_type: "order.placed",
       }),
     ])
+    const created = input.createNotifications.mock.calls[0]?.[0]?.[0]
+    expect(created?.data).toEqual(
+      expect.objectContaining({
+        order: expect.not.objectContaining({
+          email: expect.anything(),
+          metadata: expect.anything(),
+        }),
+      })
+    )
+    expect(input.listNotifications).toHaveBeenCalledWith(
+      { idempotency_key: ["order-placed:order_01"] },
+      { take: 2 }
+    )
   })
 
   it.each([
@@ -88,5 +127,52 @@ describe("order confirmation subscriber", () => {
     await expect(orderPlacedHandler(input.input)).rejects.toThrow(
       "safe provider failure"
     )
+  })
+
+  it("accepts an idempotent replay only after its durable row is verified", async () => {
+    const input = fixture()
+    let submitted: CreateNotificationDTO[] = []
+    input.createNotifications.mockImplementation(async (payloads) => {
+      submitted = payloads
+      return []
+    })
+    input.listNotifications.mockImplementation(async () =>
+      submitted.map(notificationRow)
+    )
+
+    await expect(orderPlacedHandler(input.input)).resolves.toBeUndefined()
+  })
+
+  it("rejects a missing durable delivery row", async () => {
+    const input = fixture()
+    input.listNotifications.mockResolvedValue([])
+
+    await expect(orderPlacedHandler(input.input)).rejects.toThrow(
+      "Notification delivery readback is malformed"
+    )
+  })
+
+  it.each([
+    ["mismatched order ID", { id: "order_02" }],
+    ["coercive order number", { display_id: false }],
+    ["malformed present email", { email: false }],
+    ["missing item relation", { items: undefined }],
+  ])("rejects a %s", async (_label, overrides) => {
+    const input = fixture(orderFixture(overrides))
+
+    await expect(orderPlacedHandler(input.input)).rejects.toThrow(
+      /Order notification/
+    )
+    expect(input.createNotifications).not.toHaveBeenCalled()
+  })
+
+  it("rejects a malformed event before querying the order", async () => {
+    const input = fixture()
+    input.input.event.data = { id: false } as never
+
+    await expect(orderPlacedHandler(input.input)).rejects.toThrow(
+      "Order notification event is malformed"
+    )
+    expect(input.retrieveOrder).not.toHaveBeenCalled()
   })
 })

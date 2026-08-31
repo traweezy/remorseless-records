@@ -10,17 +10,18 @@ const templateData = {
   order: {
     created_at: "2026-08-29T12:00:00.000Z",
     currency_code: "usd",
-    display_id: "42",
+    display_id: 42,
+    id: "order_01",
     items: [
       {
-        id: "item_01",
+        id: "ordli_01",
         product_title: "Test release",
         quantity: 1,
         title: "Test release",
         unit_price: 1,
       },
     ],
-    summary: { raw_current_order_total: { value: "6.5325" } },
+    summary: { raw_current_order_total: 6.5325 },
   },
   shippingAddress: {
     address_1: "1 Test Way",
