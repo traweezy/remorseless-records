@@ -1,3 +1,5 @@
+import { asUnknownRecord } from "../provider-boundary/records"
+
 type ScheduledRecord = {
   starts_at?: unknown
   startsAt?: unknown
@@ -52,10 +54,10 @@ const unique = (values: readonly string[]): string[] =>
   Array.from(new Set(values))
 
 export const getCatalogSourceCreatedAt = (metadata: unknown): string | null => {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+  const record = asUnknownRecord(metadata)
+  if (!record) {
     return null
   }
-  const record = metadata as Record<string, unknown>
   const sourceCreatedAt = toDate(
     record.source_created_at ?? record.sourceCreatedAt
   )
@@ -85,12 +87,7 @@ export const isCatalogShelfActive = (
   isScheduledRecordActive(shelf, now)
 
 export const getNewReleaseLookbackDays = (shelf: ResolvableShelf): number => {
-  const metadata =
-    shelf.metadata &&
-    typeof shelf.metadata === "object" &&
-    !Array.isArray(shelf.metadata)
-      ? (shelf.metadata as Record<string, unknown>)
-      : {}
+  const metadata = asUnknownRecord(shelf.metadata) ?? {}
   const candidate = metadata.lookbackDays ?? metadata.lookback_days
   const days = toInteger(candidate, 180)
   return Math.min(Math.max(days, 1), 3650)

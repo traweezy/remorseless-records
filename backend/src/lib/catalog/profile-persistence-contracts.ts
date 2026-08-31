@@ -220,7 +220,7 @@ const assertExactRows = <T>(
   }
   const remaining = [...expected]
   actual.forEach((entry) => {
-    const source = entry as UnknownRecord
+    const source = record(entry)
     const matchIndex = remaining.findIndex((candidate) =>
       Object.entries(candidate).every(([key, expectedValue]) =>
         matchesExpected(source[key], expectedValue)
@@ -319,7 +319,7 @@ export const readCatalogArtistMutation = (
   expected: { fields: Readonly<Record<string, unknown>>; id?: string }
 ): CatalogArtistRecord => {
   const artist = artistRecord(single(value), expected.id)
-  const source = artist as unknown as UnknownRecord
+  const source = record(artist)
   Object.entries(expected.fields).forEach(([key, expectedValue]) => {
     if (!matchesExpected(source[key], expectedValue)) {
       invalidProfilePersistence()
@@ -416,7 +416,7 @@ export const readCatalogReferenceValueMutation = (
   expected: { fields: Readonly<Record<string, unknown>>; id?: string }
 ): CatalogReferenceValueRecord => {
   const reference = referenceRecord(single(value), expected.id)
-  const source = reference as unknown as UnknownRecord
+  const source = record(reference)
   Object.entries(expected.fields).forEach(([key, expectedValue]) => {
     if (!matchesExpected(source[key], expectedValue)) {
       invalidProfilePersistence()
@@ -543,7 +543,7 @@ export const readCatalogProductProfileMutation = (
   ) {
     return invalidProfilePersistence()
   }
-  const source = profile as unknown as UnknownRecord
+  const source = record(profile)
   Object.entries(expected.fields).forEach(([key, expectedValue]) => {
     if (!matchesExpected(source[key], expectedValue)) {
       invalidProfilePersistence()
@@ -720,7 +720,7 @@ export const readCatalogVariantProfileMutation = (
   ) {
     return invalidProfilePersistence()
   }
-  const source = profile as unknown as UnknownRecord
+  const source = record(profile)
   Object.entries(expected.fields).forEach(([key, expectedValue]) => {
     if (!matchesExpected(source[key], expectedValue)) {
       invalidProfilePersistence()
@@ -761,7 +761,7 @@ const operationRecord = (value: unknown): ProfileOperationProjection => {
     "succeeded",
   ] as const)
   const completedAt = optionalTimestamp(source.completed_at)
-  const result = jsonRecord(source.result) as UnknownRecord
+  const result = jsonRecord(source.result)
   const requestSha256 = text(source.request_sha256, 64)
   const idempotencyKey = text(source.idempotency_key, 255)
   jsonRecord(source.metadata)

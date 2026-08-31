@@ -9,6 +9,7 @@ import {
   isNewReleaseCandidate,
   resolveShelfProductIds,
 } from "@/lib/catalog/shelves"
+import { callCatalogServiceMethod } from "@/lib/catalog/catalog-service-method"
 import type CatalogModuleService from "@/modules/catalog/service"
 import { serializeCatalogShelf } from "@/modules/catalog/serializers"
 import {
@@ -23,8 +24,6 @@ import {
 } from "@/lib/store-module-projections"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
-type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
-type CatalogServiceMethods = Record<string, CatalogServiceMethod | undefined>
 const listQuerySchema = z.object({
   handles: z
     .string()
@@ -54,36 +53,20 @@ const toTimestamp = (value: unknown): number => {
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
 
-const callCatalogService = async <T>(
-  catalogService: CatalogService,
-  candidates: readonly string[],
-  args: unknown[]
-): Promise<T> => {
-  const methods = catalogService as unknown as CatalogServiceMethods
-  const methodName = candidates.find(
-    (candidate) => typeof methods[candidate] === "function"
-  )
-  const method = methodName ? methods[methodName] : undefined
-  if (!method) {
-    throw new Error(`Catalog service is missing ${candidates.join(" or ")}`)
-  }
-  return (await method.apply(catalogService, args)) as T
-}
-
 export const GET = async (
   req: MedusaStoreRequest,
   res: MedusaResponse
 ): Promise<void> => {
   const { handles } = listQuerySchema.parse(req.query)
   const now = new Date()
-  const catalogService = req.scope.resolve("catalog") as CatalogService
+  const catalogService = req.scope.resolve<CatalogService>("catalog")
   const { query, salesChannelIds } = resolveStoreProductVisibility(req)
   const shelfFilters: Record<string, unknown> = { is_active: true }
   if (handles?.length) {
     shelfFilters.handle = handles
   }
 
-  const rawShelfPage = await callCatalogService<unknown>(
+  const rawShelfPage = await callCatalogServiceMethod(
     catalogService,
     ["listAndCountCatalogShelves", "listAndCountCatalogShelfs"],
     [

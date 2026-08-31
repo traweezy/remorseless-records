@@ -6,6 +6,10 @@ import { z } from "zod"
 
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import {
+  callCatalogServiceMethod,
+  CatalogServiceMethodError,
+} from "@/lib/catalog/catalog-service-method"
+import {
   readAdminCatalogProductProfiles,
   readAdminCatalogShelf,
   readAdminCatalogShelfList,
@@ -83,8 +87,6 @@ export type ShelfUpsertInput = z.infer<typeof shelfUpsertSchema>
 export type ShelfProductInput = z.infer<typeof shelfProductInputSchema>
 export type ShelfLifecycleInput = z.infer<typeof shelfLifecycleSchema>
 
-type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
-type CatalogServiceMethods = Record<string, CatalogServiceMethod | undefined>
 type ServiceQueryConfig = {
   skip?: number
   take?: number
@@ -92,25 +94,19 @@ type ServiceQueryConfig = {
 }
 type CatalogTransactionContext = Context<EntityManager>
 
-const callCatalogService = async <T>(
+const callCatalogService = async (
   catalogService: CatalogService,
   candidates: readonly string[],
   args: unknown[]
-): Promise<T> => {
-  const methods = catalogService as unknown as CatalogServiceMethods
-  const methodName = candidates.find(
-    (candidate) => typeof methods[candidate] === "function"
-  )
-  const method = methodName ? methods[methodName] : undefined
-
-  if (!method) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      `Catalog service is missing ${candidates.join(" or ")}`
-    )
+): Promise<unknown> => {
+  try {
+    return await callCatalogServiceMethod(catalogService, candidates, args)
+  } catch (error) {
+    if (error instanceof CatalogServiceMethodError) {
+      throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, error.message)
+    }
+    throw error
   }
-
-  return (await method.apply(catalogService, args)) as T
 }
 
 export const listCatalogShelves = async (
@@ -119,7 +115,7 @@ export const listCatalogShelves = async (
   config?: ServiceQueryConfig,
   sharedContext?: CatalogTransactionContext
 ): Promise<unknown> =>
-  callCatalogService<unknown>(
+  callCatalogService(
     catalogService,
     ["listCatalogShelves", "listCatalogShelfs"],
     sharedContext
@@ -134,7 +130,7 @@ export const listAndCountCatalogShelves = async (
   filters: Record<string, unknown>,
   config?: ServiceQueryConfig
 ): Promise<unknown> =>
-  callCatalogService<unknown>(
+  callCatalogService(
     catalogService,
     ["listAndCountCatalogShelves", "listAndCountCatalogShelfs"],
     config ? [filters, config] : [filters]
@@ -145,7 +141,7 @@ const createCatalogShelves = async (
   payloads: Record<string, unknown>[],
   sharedContext?: CatalogTransactionContext
 ): Promise<unknown> =>
-  callCatalogService<unknown>(
+  callCatalogService(
     catalogService,
     ["createCatalogShelves", "createCatalogShelfs"],
     sharedContext ? [payloads, sharedContext] : [payloads]
@@ -156,7 +152,7 @@ const updateCatalogShelves = async (
   payloads: Record<string, unknown>[],
   sharedContext?: CatalogTransactionContext
 ): Promise<unknown> =>
-  callCatalogService<unknown>(
+  callCatalogService(
     catalogService,
     ["updateCatalogShelves", "updateCatalogShelfs"],
     sharedContext ? [payloads, sharedContext] : [payloads]
@@ -168,7 +164,7 @@ const listCatalogShelfProducts = async (
   config?: ServiceQueryConfig,
   sharedContext?: CatalogTransactionContext
 ): Promise<unknown> =>
-  callCatalogService<unknown>(
+  callCatalogService(
     catalogService,
     ["listCatalogShelfProducts"],
     sharedContext
@@ -183,7 +179,7 @@ const createCatalogShelfProducts = async (
   payloads: Record<string, unknown>[],
   sharedContext?: CatalogTransactionContext
 ): Promise<unknown> =>
-  callCatalogService<unknown>(
+  callCatalogService(
     catalogService,
     ["createCatalogShelfProducts"],
     sharedContext ? [payloads, sharedContext] : [payloads]
@@ -193,12 +189,13 @@ const deleteCatalogShelfProducts = async (
   catalogService: CatalogService,
   ids: string[],
   sharedContext?: CatalogTransactionContext
-): Promise<void> =>
-  callCatalogService<void>(
+): Promise<void> => {
+  await callCatalogService(
     catalogService,
     ["deleteCatalogShelfProducts"],
     sharedContext ? [ids, sharedContext] : [ids]
   )
+}
 
 export const resolveShelf = async (
   catalogService: CatalogService,

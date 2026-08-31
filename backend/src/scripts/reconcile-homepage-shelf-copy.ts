@@ -3,18 +3,18 @@ import { createHash } from "node:crypto"
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
+import { callCatalogServiceMethod } from "@/lib/catalog/catalog-service-method"
 import {
   homepageShelfCopy,
   planHomepageShelfCopy,
   type HomepageShelfCopyChange,
   type HomepageShelfCopyHandle,
-  type HomepageShelfCopyRecord,
 } from "@/lib/catalog/homepage-shelf-copy"
+import { readAdminCatalogShelfList } from "@/lib/catalog/shelf-persistence-contracts"
 import type CatalogModuleService from "@/modules/catalog/service"
+import type { CatalogShelfRecord } from "@/modules/catalog/serializers"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
-type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
-type CatalogServiceMethods = Record<string, CatalogServiceMethod | undefined>
 
 type ReconciliationArguments = {
   apply: boolean
@@ -73,33 +73,20 @@ export const hashHomepageShelfCopyManifest = (
   manifest: ReturnType<typeof buildHomepageShelfCopyManifest>
 ): string => createHash("sha256").update(JSON.stringify(manifest)).digest("hex")
 
-const callCatalogService = async <T>(
-  catalogService: CatalogService,
-  candidates: readonly string[],
-  args: unknown[]
-): Promise<T> => {
-  const methods = catalogService as unknown as CatalogServiceMethods
-  const methodName = candidates.find(
-    (candidate) => typeof methods[candidate] === "function"
-  )
-  const method = methodName ? methods[methodName] : undefined
-  if (!method) {
-    throw new Error(`Catalog service is missing ${candidates.join(" or ")}`)
-  }
-  return (await method.apply(catalogService, args)) as T
-}
-
 const copyHandles = Object.keys(homepageShelfCopy) as HomepageShelfCopyHandle[]
 
 const loadHomepageShelves = async (
   catalogService: CatalogService
-): Promise<HomepageShelfCopyRecord[]> => {
+): Promise<CatalogShelfRecord[]> => {
   const shelves = await Promise.all(
     copyHandles.map(async (handle) => {
-      const matches = await callCatalogService<HomepageShelfCopyRecord[]>(
-        catalogService,
-        ["listCatalogShelves", "listCatalogShelfs"],
-        [{ handle }]
+      const matches = readAdminCatalogShelfList(
+        await callCatalogServiceMethod(
+          catalogService,
+          ["listCatalogShelves", "listCatalogShelfs"],
+          [{ handle }]
+        ),
+        { expectedHandle: handle, maximumRows: 1 }
       )
       if (matches.length !== 1) {
         throw new Error(
@@ -116,7 +103,7 @@ export default async function reconcileHomepageShelfCopy({
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const catalogService = container.resolve("catalog") as CatalogService
+  const catalogService = container.resolve<CatalogService>("catalog")
   const options = parseHomepageShelfCopyArguments(process.argv.slice(2))
   const current = await loadHomepageShelves(catalogService)
   const changes = planHomepageShelfCopy(current)
@@ -155,17 +142,44 @@ export default async function reconcileHomepageShelfCopy({
     return
   }
 
-  await callCatalogService(
-    catalogService,
-    ["updateCatalogShelves", "updateCatalogShelfs"],
-    [
-      changes.map((change) => ({
-        id: change.id,
-        title: change.after.title,
-        description: change.after.description,
-      })),
-    ]
+  const currentById = new Map(current.map((shelf) => [shelf.id, shelf]))
+  const acknowledgement = readAdminCatalogShelfList(
+    await callCatalogServiceMethod(
+      catalogService,
+      ["updateCatalogShelves", "updateCatalogShelfs"],
+      [
+        changes.map((change) => ({
+          id: change.id,
+          title: change.after.title,
+          description: change.after.description,
+        })),
+      ]
+    ),
+    { maximumRows: changes.length }
   )
+  if (acknowledgement.length !== changes.length) {
+    throw new Error(
+      "[homepage-shelves] Update acknowledgement did not cover every reviewed change."
+    )
+  }
+  const acknowledgementById = new Map(
+    acknowledgement.map((shelf) => [shelf.id, shelf])
+  )
+  changes.forEach((change) => {
+    const before = currentById.get(change.id)
+    const after = acknowledgementById.get(change.id)
+    if (
+      !before ||
+      !after ||
+      after.version !== before.version + 1 ||
+      after.title !== change.after.title ||
+      after.description !== change.after.description
+    ) {
+      throw new Error(
+        `[homepage-shelves] Update acknowledgement failed for '${change.handle}'.`
+      )
+    }
+  })
 
   const remaining = planHomepageShelfCopy(
     await loadHomepageShelves(catalogService)

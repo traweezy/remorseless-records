@@ -439,6 +439,20 @@ describe("notification boundary contracts", () => {
       ).rejects.toThrow("Notification delivery payload is malformed")
       expect(input.createNotifications).not.toHaveBeenCalled()
     })
+
+    it("rejects a notification service without durable verification methods", async () => {
+      const input = service()
+      const incompleteService = {
+        createNotifications: input.createNotifications,
+        listNotifications: input.listNotifications,
+        retrieveNotification: input.retrieveNotification,
+      } as unknown as INotificationModuleService
+
+      await expect(
+        createAndVerifyNotifications(incompleteService, [payload()])
+      ).rejects.toThrow("Notification persistence service is malformed")
+      expect(input.createNotifications).not.toHaveBeenCalled()
+    })
   })
 
   it.each(["customer@example.com", "orders+test@records.example"])(

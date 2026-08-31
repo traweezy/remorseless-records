@@ -3777,6 +3777,38 @@ Types enforcement remains blocked on the documented clean staging observation
 window; report-only coverage is the safe rollback-free boundary for this
 slice.
 
+## Catalog and notification persistence boundary hardening
+
+The next post-migration boundary tranche removes four copies of an unchecked
+generic catalog-service dispatcher. One bounded adapter now accepts only a
+small unique list of valid method names, preserves the service receiver, uses
+the supported generated-name fallback, returns `unknown`, and distinguishes a
+missing runtime capability from a provider failure. Store and Admin callers
+must pass its result through the existing catalog persistence projections
+before using it.
+
+Catalog seeding now validates complete shelf rows, unique handle results,
+creation versions, existing memberships, every new membership acknowledgement,
+and the metadata/version update acknowledgement. Homepage-copy reconciliation
+validates every source row and requires an exact, version-incremented update
+acknowledgement before performing its independent readback. The managed-media
+migration uses Medusa's actual file-module interface, sends the documented
+base64 public-upload DTO, and validates the returned file identity and URL
+before writing resumable state. Catalog profile, shelf, transaction, source
+metadata, and discography projections use the shared record readers rather
+than repeated structural assertions.
+
+Notification delivery now proves that the runtime service exposes both durable
+listing and redaction-update capabilities before sending. It validates the
+create acknowledgement, exact idempotency-key readback, retained-data update,
+and final retrieval without trusting a widened service cast. Eleven focused
+catalog, media, notification, route, and maintenance suites pass all 164 tests
+with strict Backend TypeScript and Biome. The dated debt item remains open for
+the remaining Storefront cart, checkout, SEO, and other provider projections.
+Complete local acceptance passes the 1,229-file repository QA gate and all 265
+Backend suites / 2,017 tests at 91.44% statements, 84.81% branches, 95.62%
+functions, and 91.46% lines.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,

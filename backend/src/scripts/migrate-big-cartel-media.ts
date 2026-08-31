@@ -3,7 +3,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 
-import type { ExecArgs } from "@medusajs/framework/types"
+import type { ExecArgs, FileTypes } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { updateProductsWorkflow } from "@medusajs/medusa/core-flows"
 
@@ -22,6 +22,7 @@ import {
   type ManagedMediaCommandOptions,
   type SupportedManagedImage,
 } from "@/lib/catalog/managed-media"
+import { readCatalogUploadedFile } from "@/lib/catalog/transaction-persistence-contracts"
 import {
   MANAGED_IMAGE_NORMALIZER_VERSION,
   normalizeManagedImageUpload,
@@ -90,14 +91,6 @@ type CatalogArtistRecord = {
 type NewsEntryRecord = {
   cover_url?: string | null
   id: string
-}
-
-type FileModuleService = {
-  createFiles: (input: {
-    content: Buffer
-    filename: string
-    mimeType: string
-  }) => Promise<{ id: string; url: string }>
 }
 
 type ManagedMediaStateEntry = {
@@ -523,7 +516,7 @@ const stageManagedMedia = async (
   sources: Map<string, SourceUsage>,
   state: ManagedMediaState,
   statePath: string,
-  fileModuleService: FileModuleService,
+  fileModuleService: FileTypes.IFileModuleService,
   options: ManagedMediaCommandOptions,
   onProgress: (completed: number, total: number) => void
 ): Promise<void> => {
@@ -576,11 +569,14 @@ const stageManagedMedia = async (
               uploadsBySha,
               downloaded.sha256,
               async () =>
-                await fileModuleService.createFiles({
-                  content: downloaded.buffer,
-                  filename: buildManagedMediaFilename(sourceUrl, ".webp"),
-                  mimeType: downloaded.image.mimeType,
-                })
+                readCatalogUploadedFile(
+                  await fileModuleService.createFiles({
+                    access: "public",
+                    content: downloaded.buffer.toString("base64"),
+                    filename: buildManagedMediaFilename(sourceUrl, ".webp"),
+                    mimeType: downloaded.image.mimeType,
+                  })
+                )
             )
         const entry: ManagedMediaStateEntry = {
           byteSize: downloaded.buffer.length,
@@ -836,12 +832,12 @@ export default async function migrateBigCartelMedia({
     ...args,
     ...process.argv.slice(2),
   ])
-  const productService = container.resolve(Modules.PRODUCT) as ProductService
-  const fileModuleService = container.resolve(
+  const productService = container.resolve<ProductService>(Modules.PRODUCT)
+  const fileModuleService = container.resolve<FileTypes.IFileModuleService>(
     Modules.FILE
-  ) as unknown as FileModuleService
-  const catalogService = container.resolve("catalog") as CatalogService
-  const newsService = container.resolve("news") as NewsService
+  )
+  const catalogService = container.resolve<CatalogService>("catalog")
+  const newsService = container.resolve<NewsService>("news")
 
   const stateDirectory = path.resolve(
     options.stateDirectory ?? defaultStateDirectory()

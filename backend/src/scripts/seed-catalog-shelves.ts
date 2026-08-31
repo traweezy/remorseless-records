@@ -5,15 +5,19 @@ import {
   ProductStatus,
 } from "@medusajs/framework/utils"
 
+import { callCatalogServiceMethod } from "@/lib/catalog/catalog-service-method"
 import { homepageShelfCopy } from "@/lib/catalog/homepage-shelf-copy"
+import {
+  readAdminCatalogShelfList,
+  readAdminCatalogShelfMutation,
+  readAdminCatalogShelfProducts,
+  readExactAdminCatalogShelfProducts,
+} from "@/lib/catalog/shelf-persistence-contracts"
 import type CatalogModuleService from "@/modules/catalog/service"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
-type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
-type CatalogServiceMethods = Record<string, CatalogServiceMethod | undefined>
 type ProductCollection = { id: string; handle?: string | null }
 type ProductSummary = { id: string; handle?: string | null }
-type ShelfSummary = { id: string; metadata?: unknown }
 type ProductService = {
   listProductCollections: (
     filters: Record<string, unknown>,
@@ -88,30 +92,6 @@ const shelfSeeds = [
 
 const initialSeedVersion = 1
 
-const first = <T>(value: T | T[]): T | undefined =>
-  Array.isArray(value) ? value[0] : value
-
-const toMetadata = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
-
-const callCatalogService = async <T>(
-  catalogService: CatalogService,
-  candidates: readonly string[],
-  args: unknown[]
-): Promise<T> => {
-  const methods = catalogService as unknown as CatalogServiceMethods
-  const methodName = candidates.find(
-    (candidate) => typeof methods[candidate] === "function"
-  )
-  const method = methodName ? methods[methodName] : undefined
-  if (!method) {
-    throw new Error(`Catalog service is missing ${candidates.join(" or ")}`)
-  }
-  return (await method.apply(catalogService, args)) as T
-}
-
 const loadInitialProducts = async (
   productService: ProductService,
   seed: (typeof shelfSeeds)[number]
@@ -163,20 +143,23 @@ export default async function seedCatalogShelves({
   container,
 }: ExecArgs): Promise<void> {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const catalogService = container.resolve("catalog") as CatalogService
-  const productService = container.resolve(Modules.PRODUCT) as ProductService
+  const catalogService = container.resolve<CatalogService>("catalog")
+  const productService = container.resolve<ProductService>(Modules.PRODUCT)
 
   for (const seed of shelfSeeds) {
-    const existing = await callCatalogService<ShelfSummary[]>(
-      catalogService,
-      ["listCatalogShelves", "listCatalogShelfs"],
-      [{ handle: seed.handle }]
+    const existing = readAdminCatalogShelfList(
+      await callCatalogServiceMethod(
+        catalogService,
+        ["listCatalogShelves", "listCatalogShelfs"],
+        [{ handle: seed.handle }]
+      ),
+      { expectedHandle: seed.handle, maximumRows: 1 }
     )
     let shelf = existing[0]
     let createdNow = false
     if (!shelf) {
-      shelf = first(
-        await callCatalogService<ShelfSummary[] | ShelfSummary>(
+      shelf = readAdminCatalogShelfMutation(
+        await callCatalogServiceMethod(
           catalogService,
           ["createCatalogShelves", "createCatalogShelfs"],
           [
@@ -196,7 +179,11 @@ export default async function seedCatalogShelves({
               },
             ],
           ]
-        )
+        ),
+        {
+          fields: { handle: seed.handle },
+          version: 1,
+        }
       )
       createdNow = true
     }
@@ -204,51 +191,72 @@ export default async function seedCatalogShelves({
       throw new Error(`Unable to create '${seed.handle}' catalog shelf`)
     }
 
-    const metadata = toMetadata(shelf.metadata)
+    const metadata = shelf.metadata ?? {}
     if (metadata.initialSeedVersion === initialSeedVersion) {
       logger.info(`[catalog-shelves] Kept existing '${seed.handle}' shelf.`)
       continue
     }
 
-    const existingMemberships = await catalogService.listCatalogShelfProducts(
-      { shelf_id: shelf.id },
-      { take: 1 }
+    const existingMemberships = readAdminCatalogShelfProducts(
+      await catalogService.listCatalogShelfProducts(
+        { shelf_id: shelf.id },
+        { take: 1 }
+      ),
+      [shelf.id],
+      1
     )
     let importedCount = 0
     if (!existingMemberships.length) {
       const products = await loadInitialProducts(productService, seed)
       if (products.length) {
-        await catalogService.createCatalogShelfProducts(
-          products.map((product, index) => ({
-            shelf_id: shelf.id,
-            product_id: product.id,
-            sort_order: index,
-            is_pinned: false,
-            metadata: {
-              initialSeedVersion,
-              legacyCollectionHandle: seed.legacyCollectionHandle,
-            },
-          }))
+        const expectedMemberships = products.map((product, index) => ({
+          ends_at: null,
+          is_pinned: false,
+          metadata: {
+            initialSeedVersion,
+            legacyCollectionHandle: seed.legacyCollectionHandle,
+          },
+          product_id: product.id,
+          product_profile_id: null,
+          sort_order: index,
+          starts_at: null,
+        }))
+        readExactAdminCatalogShelfProducts(
+          await catalogService.createCatalogShelfProducts(
+            products.map((product, index) => ({
+              shelf_id: shelf.id,
+              product_id: product.id,
+              sort_order: index,
+              is_pinned: false,
+              metadata: {
+                initialSeedVersion,
+                legacyCollectionHandle: seed.legacyCollectionHandle,
+              },
+            }))
+          ),
+          shelf.id,
+          expectedMemberships
         )
         importedCount = products.length
       }
     }
 
-    await callCatalogService<ShelfSummary[] | ShelfSummary>(
-      catalogService,
-      ["updateCatalogShelves", "updateCatalogShelfs"],
-      [
-        [
-          {
-            id: shelf.id,
-            metadata: {
-              ...seed.metadata,
-              ...metadata,
-              initialSeedVersion,
-            },
-          },
-        ],
-      ]
+    const updatedMetadata = {
+      ...seed.metadata,
+      ...metadata,
+      initialSeedVersion,
+    }
+    readAdminCatalogShelfMutation(
+      await callCatalogServiceMethod(
+        catalogService,
+        ["updateCatalogShelves", "updateCatalogShelfs"],
+        [[{ id: shelf.id, metadata: updatedMetadata }]]
+      ),
+      {
+        fields: { metadata: updatedMetadata },
+        id: shelf.id,
+        version: shelf.version + 1,
+      }
     )
 
     logger.info(

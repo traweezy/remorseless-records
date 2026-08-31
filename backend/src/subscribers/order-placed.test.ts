@@ -51,9 +51,21 @@ const fixture = (order = orderFixture()) => {
     }
   )
   const listNotifications = jest.fn(async () => submitted.map(notificationRow))
+  const retrieveNotification = jest.fn(async (id: string) =>
+    submitted.map(notificationRow).find((record) => record.id === id)
+  )
+  const updateNotifications = jest.fn(async () => null)
   const retrieveOrder = jest.fn(async () => order)
   const dependencies = new Map<string, unknown>([
-    [Modules.NOTIFICATION, { createNotifications, listNotifications }],
+    [
+      Modules.NOTIFICATION,
+      {
+        createNotifications,
+        listNotifications,
+        retrieveNotification,
+        updateNotifications,
+      },
+    ],
     [Modules.ORDER, { retrieveOrder }],
   ])
   const input = {
@@ -66,7 +78,14 @@ const fixture = (order = orderFixture()) => {
     },
   } as unknown as Parameters<typeof orderPlacedHandler>[0]
 
-  return { createNotifications, input, listNotifications, retrieveOrder }
+  return {
+    createNotifications,
+    input,
+    listNotifications,
+    retrieveNotification,
+    retrieveOrder,
+    updateNotifications,
+  }
 }
 
 describe("order confirmation subscriber", () => {

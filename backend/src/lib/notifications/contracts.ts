@@ -329,17 +329,25 @@ export const readOrderNotificationProjection = (
   }
 }
 
-type NotificationServiceReadback = {
-  createNotifications: (payloads: CreateNotificationDTO[]) => Promise<unknown>
+type NotificationPersistenceService = {
   listNotifications: (
     filters: Record<string, unknown>,
     config: Record<string, unknown>
   ) => Promise<unknown>
-  retrieveNotification: (id: string) => Promise<unknown>
   updateNotifications: (input: {
     data: Record<string, unknown>
     id: string
   }) => Promise<unknown>
+}
+
+const supportsNotificationPersistence = (
+  service: INotificationModuleService
+): service is INotificationModuleService & NotificationPersistenceService => {
+  const record = asUnknownRecord(service)
+  return (
+    typeof record?.listNotifications === "function" &&
+    typeof record.updateNotifications === "function"
+  )
 }
 
 export type NotificationDataRetention = Readonly<
@@ -426,9 +434,11 @@ export const createAndVerifyNotifications = async (
   ) {
     throw malformed("Notification data-retention policy")
   }
-  const readback = service as unknown as NotificationServiceReadback
+  if (!supportsNotificationPersistence(service)) {
+    throw malformed("Notification persistence service")
+  }
   const acknowledgement = readRecordResult(
-    await readback.createNotifications(payloads),
+    await service.createNotifications(payloads),
     "Notification delivery acknowledgement"
   )
   if (
@@ -444,7 +454,7 @@ export const createAndVerifyNotifications = async (
   }
 
   const persisted = readRecordResult(
-    await readback.listNotifications(
+    await service.listNotifications(
       { idempotency_key: keys },
       { take: payloads.length + 1 }
     ),
@@ -490,17 +500,21 @@ export const createAndVerifyNotifications = async (
     if (!record) {
       throw malformed("Notification data-retention readback")
     }
+    if (typeof record.id !== "string") {
+      throw malformed("Notification data-retention readback")
+    }
+    const notificationId = record.id
     if (persistedNotificationMatches(record, payload, retained)) {
       continue
     }
-    const acknowledgement = await readback.updateNotifications({
+    const acknowledgement = await service.updateNotifications({
       data: retained,
-      id: record.id as string,
+      id: notificationId,
     })
     if (!persistedNotificationMatches(acknowledgement, payload, retained)) {
       throw malformed("Notification data-retention acknowledgement")
     }
-    const finalRecord = await readback.retrieveNotification(record.id as string)
+    const finalRecord = await service.retrieveNotification(notificationId)
     if (!persistedNotificationMatches(finalRecord, payload, retained)) {
       throw malformed("Notification data-retention readback")
     }

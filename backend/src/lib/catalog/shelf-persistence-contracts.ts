@@ -317,7 +317,7 @@ export const readAdminCatalogShelfMutation = (
   if (!shelf || shelf.version !== expected.version) {
     return invalidShelfPersistence()
   }
-  const shelfRecord = shelf as unknown as UnknownRecord
+  const shelfRecord = requiredRecord(shelf)
   Object.entries(expected.fields ?? {}).forEach(([key, expectedValue]) => {
     const actual = shelfRecord[key]
     const matches =

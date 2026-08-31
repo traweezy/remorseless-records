@@ -43,6 +43,10 @@ const handlerInput = ({
     }
   )
   const listNotifications = jest.fn(async () => submitted.map(notificationRow))
+  const retrieveNotification = jest.fn(async (id: string) =>
+    submitted.map(notificationRow).find((record) => record.id === id)
+  )
+  const updateNotifications = jest.fn(async () => null)
   const graph = jest.fn(async () => graphResult ?? { data: [collection] })
   const logger = {
     info: jest.fn(),
@@ -56,7 +60,15 @@ const handlerInput = ({
       },
     ],
     [ContainerRegistrationKeys.QUERY, { graph }],
-    [Modules.NOTIFICATION, { createNotifications, listNotifications }],
+    [
+      Modules.NOTIFICATION,
+      {
+        createNotifications,
+        listNotifications,
+        retrieveNotification,
+        updateNotifications,
+      },
+    ],
     ["logger", logger],
   ])
   const input = {
@@ -74,6 +86,8 @@ const handlerInput = ({
     input,
     listNotifications,
     logger,
+    retrieveNotification,
+    updateNotifications,
   }
 }
 

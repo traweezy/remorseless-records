@@ -118,9 +118,7 @@ const normalizeFormats = (values: string[]): string[] =>
   )
 
 const coerceRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null
+  asUnknownRecord(value)
 
 const extractString = (
   records: Array<Record<string, unknown> | null>,
@@ -351,3 +349,4 @@ export const parseDiscographyReplacementCommandOptions = (
     stateDirectory: readOption(args, "--state-dir"),
   }
 }
+import { asUnknownRecord } from "../provider-boundary/records"

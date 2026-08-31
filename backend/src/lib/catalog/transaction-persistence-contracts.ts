@@ -367,7 +367,7 @@ export const readCatalogMediaAssetMutation = (
   expected: Readonly<Record<string, unknown>>
 ): CatalogMediaAssetPersistenceRecord => {
   const asset = mediaAssetRecord(single(value))
-  assertExpectedFields(asset as unknown as UnknownRecord, expected)
+  assertExpectedFields(record(asset), expected)
   return asset
 }
 
@@ -445,7 +445,7 @@ export const readExactCatalogProductMediaItems = (
   for (const expectation of expected) {
     const index = unmatched.findIndex((item) => {
       try {
-        assertExpectedFields(item as unknown as UnknownRecord, expectation)
+        assertExpectedFields(record(item), expectation)
         return true
       } catch {
         return false
@@ -810,7 +810,7 @@ export const readCatalogBundleProfileMutation = (
   expected: Readonly<Record<string, unknown>>
 ): CatalogBundleProfileState => {
   const profile = bundleProfileRecord(single(value))
-  assertExpectedFields(profile as unknown as UnknownRecord, expected)
+  assertExpectedFields(record(profile), expected)
   return profile
 }
 
@@ -875,7 +875,7 @@ export const readExactCatalogBundleComponents = (
   for (const expectation of expected) {
     const index = unmatched.findIndex((component) => {
       try {
-        assertExpectedFields(component as unknown as UnknownRecord, expectation)
+        assertExpectedFields(record(component), expectation)
         return true
       } catch {
         return false
