@@ -2854,6 +2854,18 @@ bytes and total JavaScript is 2,388,013 gzip bytes. The production audit
 retains only the three documented ignored moderate findings; Trivy reports
 zero high/critical dependency, misconfiguration, or secret findings.
 
+The first Storefront CI run after the cart-boundary tranche exposed three
+responsive Playwright fixtures that still emitted pre-contract cart rows.
+Their missing item totals/product/variant projections and non-canonical mocked
+Medusa IDs were correctly rejected by the customer-side boundary, leaving
+quantity actions disabled in seven Desktop, Pixel 7, and iPhone 15 Pro cases.
+All E2E cart responses now pass through the production cart-envelope validator
+and use complete canonical fixtures. The seven previously failing cases pass
+focused, and the complete responsive production-artifact suite passes 55 with
+two intentional device/desktop skips across all 57 scheduled cases. The
+Storefront production build, client-secret scan, strict TypeScript, and Biome
+also pass locally.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

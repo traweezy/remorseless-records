@@ -4,11 +4,12 @@ import type {
   ProductSearchRequest,
   ProductSearchResponse,
 } from "@/lib/search/search"
+import { cartEnvelopeFrom } from "@/lib/cart/snapshot"
 
 const catalogSearchFixture: ProductSearchResponse = {
   hits: [
     {
-      id: "prod_ci_pathologist",
+      id: "prod_CIPATHOLOGIST",
       handle: "music-release-pathologist-pathological-decomposition",
       title: "Pathological Decomposition",
       artist: "Pathologist",
@@ -23,7 +24,7 @@ const catalogSearchFixture: ProductSearchResponse = {
       thumbnail: null,
       collectionTitle: null,
       defaultVariant: {
-        id: "variant_ci_pathologist_cd",
+        id: "variant_CIPATHOLOGISTCD",
         title: "CD",
         currency: "usd",
         amount: 15,
@@ -94,7 +95,7 @@ const catalogFilterFixtures: Record<string, unknown> = {
 }
 
 const productDetailFixture = {
-  id: "prod_ci_pathologist",
+  id: "prod_CIPATHOLOGIST",
   handle: "music-release-pathologist-pathological-decomposition",
   title: "Pathological Decomposition",
   subtitle: "Pathologist",
@@ -103,7 +104,7 @@ const productDetailFixture = {
   images: [],
   variants: [
     {
-      id: "variant_ci_pathologist_cd",
+      id: "variant_CIPATHOLOGISTCD",
       title: "CD",
       calculated_price: {
         calculated_amount: 15,
@@ -130,7 +131,7 @@ const createPaginationFixture = (
 
     return {
       ...baseHit,
-      id: `prod_ci_pagination_${sequence}`,
+      id: `prod_CIPAGINATION${sequence}`,
       handle: `music-release-ci-pagination-${sequence}`,
       title: `Pagination Test ${sequence}`,
       album: `Pagination Test ${sequence}`,
@@ -409,25 +410,26 @@ test("cart drawer stays usable and contained on mobile devices", async ({
   page,
 }, testInfo) => {
   const cartItem = {
-    id: "cali_ci_mobile",
+    id: "cali_CIMOBILE",
     title: "Pathological Decomposition",
     product_title: "Pathological Decomposition",
     product_handle: "music-release-pathologist-pathological-decomposition",
-    variant_id: "variant_ci_pathologist_lp",
+    variant_id: "variant_CIPATHOLOGISTLP",
     variant_title: "LP",
     quantity: 2,
     unit_price: 18,
     subtotal: 36,
+    total: 36,
     thumbnail: null,
     variant: {
-      id: "variant_ci_pathologist_lp",
+      id: "variant_CIPATHOLOGISTLP",
       title: "LP",
       manage_inventory: true,
       allow_backorder: false,
       inventory_quantity: 3,
     },
     product: {
-      id: "prod_ci_pathologist",
+      id: "prod_CIPATHOLOGIST",
       handle: "music-release-pathologist-pathological-decomposition",
       metadata: {
         artist_names: ["Pathologist"],
@@ -439,13 +441,15 @@ test("cart drawer stays usable and contained on mobile devices", async ({
   }
   let cartItems = [cartItem]
   const cartResponse = () => ({
-    cart: {
-      id: "cart_ci_mobile",
-      currency_code: "usd",
-      subtotal: cartItems.length ? 36 : 0,
-      total: cartItems.length ? 36 : 0,
-      items: cartItems,
-    },
+    ...cartEnvelopeFrom({
+      cart: {
+        id: "cart_CIMOBILE",
+        currency_code: "usd",
+        subtotal: cartItems.length ? 36 : 0,
+        total: cartItems.length ? 36 : 0,
+        items: cartItems,
+      },
+    }),
   })
 
   await page.route("**/api/cart", async (route) => {
@@ -460,7 +464,7 @@ test("cart drawer stays usable and contained on mobile devices", async ({
       body: JSON.stringify(cartResponse()),
     })
   })
-  await page.route("**/api/cart/items/cali_ci_mobile", async (route) => {
+  await page.route("**/api/cart/items/cali_CIMOBILE", async (route) => {
     if (route.request().method() !== "DELETE") {
       await route.continue()
       return
@@ -577,16 +581,28 @@ test("adding from quick shop confirms in place without opening the cart", async 
 }, testInfo) => {
   let activeCart: Record<string, unknown> | null = null
   const cartItem = {
-    id: "cali_ci_added",
+    id: "cali_CIADDED",
     title: "Pathological Decomposition",
     product_title: "Pathological Decomposition",
     product_handle: "music-release-pathologist-pathological-decomposition",
-    variant_id: "variant_ci_pathologist_cd",
+    variant_id: "variant_CIPATHOLOGISTCD",
     variant_title: "CD",
     quantity: 1,
     unit_price: 15,
     subtotal: 15,
+    total: 15,
     thumbnail: null,
+    variant: {
+      id: "variant_CIPATHOLOGISTCD",
+      title: "CD",
+      manage_inventory: true,
+      allow_backorder: false,
+      inventory_quantity: 10,
+    },
+    product: {
+      id: "prod_CIPATHOLOGIST",
+      handle: "music-release-pathologist-pathological-decomposition",
+    },
   }
 
   await page.route("**/api/catalog/filters/**", async (route) => {
@@ -624,7 +640,7 @@ test("adding from quick shop confirms in place without opening the cart", async 
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ cart: activeCart }),
+      body: JSON.stringify(cartEnvelopeFrom({ cart: activeCart })),
     })
   })
   await page.route("**/api/cart/items", async (route) => {
@@ -633,7 +649,7 @@ test("adding from quick shop confirms in place without opening the cart", async 
       return
     }
     activeCart = {
-      id: "cart_ci_added",
+      id: "cart_CIADDED",
       currency_code: "usd",
       subtotal: 15,
       total: 15,
@@ -642,7 +658,7 @@ test("adding from quick shop confirms in place without opening the cart", async 
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ cart: activeCart }),
+      body: JSON.stringify(cartEnvelopeFrom({ cart: activeCart })),
     })
   })
 
@@ -1125,7 +1141,7 @@ test("checkout remains accessible and contained with device emulation", async ({
       cart: {
         items: [
           {
-            id: "cali_checkout_mobile",
+            id: "cali_CHECKOUTMOBILE",
             productHandle:
               "music-release-pathologist-pathological-decomposition",
             productTitle: "Pathological Decomposition",
@@ -1168,22 +1184,34 @@ test("checkout remains accessible and contained with device emulation", async ({
   }
 
   const cart = () => ({
-    id: "cart_checkout_mobile",
+    id: "cart_CHECKOUTMOBILE",
     currency_code: "usd",
     subtotal: 20 * checkoutQuantity,
     total: 20 * checkoutQuantity,
     items: [
       {
-        id: "cali_checkout_mobile",
+        id: "cali_CHECKOUTMOBILE",
         title: "Pathological Decomposition",
         product_title: "Pathological Decomposition",
         product_handle: "music-release-pathologist-pathological-decomposition",
-        variant_id: "variant_checkout_mobile",
+        variant_id: "variant_CHECKOUTMOBILE",
         variant_title: "LP",
         quantity: checkoutQuantity,
         unit_price: 20,
         subtotal: 20 * checkoutQuantity,
+        total: 20 * checkoutQuantity,
         thumbnail: null,
+        variant: {
+          id: "variant_CHECKOUTMOBILE",
+          title: "LP",
+          manage_inventory: true,
+          allow_backorder: false,
+          inventory_quantity: 5,
+        },
+        product: {
+          id: "prod_CHECKOUTMOBILE",
+          handle: "music-release-pathologist-pathological-decomposition",
+        },
       },
     ],
   })
@@ -1192,7 +1220,7 @@ test("checkout remains accessible and contained with device emulation", async ({
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ cart: cart() }),
+      body: JSON.stringify(cartEnvelopeFrom({ cart: cart() })),
     })
   })
   await page.route("**/api/cart/items/**", async (route) => {
@@ -1202,7 +1230,7 @@ test("checkout remains accessible and contained with device emulation", async ({
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ cart: cart() }),
+        body: JSON.stringify(cartEnvelopeFrom({ cart: cart() })),
       })
       return
     }
