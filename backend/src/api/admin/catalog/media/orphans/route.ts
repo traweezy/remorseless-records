@@ -2,10 +2,9 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
-import {
-  serializeCatalogMediaAsset,
-  type CatalogMediaAssetRecord,
-} from "@/modules/catalog/serializers"
+import { serializeCatalogMediaAsset } from "@/modules/catalog/serializers"
+import { readCatalogOrphanMediaPage } from "@/lib/catalog/persistence-contracts"
+import { readCatalogMediaAssets } from "@/lib/catalog/transaction-persistence-contracts"
 import type { CatalogService } from "../../utils"
 
 const querySchema = z.object({
@@ -48,7 +47,16 @@ export const GET = async (
     limit: query.limit,
     offset: query.offset,
   })
-  const assets = page.rows as unknown as CatalogMediaAssetRecord[]
+  const validatedPage = readCatalogOrphanMediaPage(
+    [{ count: page.count }],
+    page.rows
+  )
+  const assets = readCatalogMediaAssets(validatedPage.rows, {
+    ...(query.lifecycleStatus === undefined
+      ? {}
+      : { expectedLifecycleStatus: query.lifecycleStatus }),
+    maximumRows: query.limit,
+  })
 
   res.setHeader("Cache-Control", "private, no-store")
   res.setHeader(
@@ -56,9 +64,9 @@ export const GET = async (
     `catalog-media-orphans;dur=${Math.round(performance.now() - startedAt)}`
   )
   res.status(200).json({
-    count: page.count,
+    count: validatedPage.count,
     assets: assets.map(serializeCatalogMediaAsset),
-    hasMore: query.offset + assets.length < page.count,
+    hasMore: query.offset + assets.length < validatedPage.count,
     limit: query.limit,
     offset: query.offset,
   })

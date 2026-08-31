@@ -1,10 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 
-import {
-  serializeCatalogMediaAsset,
-  type CatalogMediaAssetRecord,
-} from "@/modules/catalog/serializers"
+import { readCatalogMediaAsset } from "@/lib/catalog/transaction-persistence-contracts"
+import { serializeCatalogMediaAsset } from "@/modules/catalog/serializers"
 import type { CatalogService } from "../../../utils"
 
 const getAssetId = (req: MedusaRequest): string => {
@@ -24,9 +22,11 @@ export const GET = async (
   res: MedusaResponse
 ): Promise<void> => {
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const asset = (await catalogService.retrieveCatalogMediaAsset(
-    getAssetId(req)
-  )) as CatalogMediaAssetRecord
+  const assetId = getAssetId(req)
+  const asset = readCatalogMediaAsset(
+    await catalogService.retrieveCatalogMediaAsset(assetId),
+    assetId
+  )
 
   res.status(200).json({ asset: serializeCatalogMediaAsset(asset) })
 }

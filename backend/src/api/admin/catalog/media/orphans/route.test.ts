@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 
 import { serializeCatalogMediaAsset } from "@/modules/catalog/serializers"
+import { catalogMediaAssetFixture } from "@/lib/catalog/transaction-persistence-fixtures.test-helpers"
 import { GET } from "./route"
 
 jest.mock("@/modules/catalog/serializers", () => {
@@ -10,7 +11,9 @@ jest.mock("@/modules/catalog/serializers", () => {
   >
   return {
     ...actual,
-    serializeCatalogMediaAsset: jest.fn((asset: unknown) => asset),
+    serializeCatalogMediaAsset: jest.fn((asset: { id: string }) => ({
+      id: asset.id,
+    })),
   }
 })
 
@@ -34,7 +37,22 @@ const requestFixture = (
 } => {
   const listOrphans = jest.fn().mockResolvedValue({
     count: 3,
-    rows: [{ id: "cmedia_1" }, { id: "cmedia_2" }],
+    rows: [
+      catalogMediaAssetFixture({
+        id: "cmedia_1",
+        lifecycle_status: "quarantined",
+        purge_eligible_at: "2026-09-29T00:00:00.000Z",
+        quarantined_at: "2026-08-30T00:00:00.000Z",
+        quarantined_by: "user_1",
+      }),
+      catalogMediaAssetFixture({
+        id: "cmedia_2",
+        lifecycle_status: "quarantined",
+        purge_eligible_at: "2026-09-29T00:00:00.000Z",
+        quarantined_at: "2026-08-30T00:00:00.000Z",
+        quarantined_by: "user_1",
+      }),
+    ],
   })
   return {
     listOrphans,
@@ -94,5 +112,15 @@ describe("GET /admin/catalog/media/orphans", () => {
       "Invalid catalog media orphan query"
     )
     expect(listOrphans).not.toHaveBeenCalled()
+  })
+
+  it("rejects malformed orphan projections before serialization", async () => {
+    const { req, listOrphans } = requestFixture({})
+    listOrphans.mockResolvedValue({ count: 1, rows: [{ id: "cmedia_1" }] })
+
+    await expect(GET(req, responseFixture())).rejects.toThrow(
+      "transaction persistence boundary"
+    )
+    expect(serializeMock).not.toHaveBeenCalled()
   })
 })

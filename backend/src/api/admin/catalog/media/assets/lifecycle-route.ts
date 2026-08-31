@@ -8,11 +8,9 @@ import {
   catalogMediaLifecycleCommandSchema,
   type CatalogMediaLifecycleCommand,
 } from "@/lib/catalog/media-lifecycle"
+import { readCatalogMediaAsset } from "@/lib/catalog/transaction-persistence-contracts"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
-import {
-  serializeCatalogMediaAsset,
-  type CatalogMediaAssetRecord,
-} from "@/modules/catalog/serializers"
+import { serializeCatalogMediaAsset } from "@/modules/catalog/serializers"
 import { mutateCatalogMediaLifecycleWorkflow } from "../../../../../workflows/catalog/mutate-media-lifecycle"
 import type { CatalogService } from "../../utils"
 
@@ -62,9 +60,10 @@ export const runMediaLifecycleRoute = async (
     },
   })
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const asset = (await catalogService.retrieveCatalogMediaAsset(
+  const asset = readCatalogMediaAsset(
+    await catalogService.retrieveCatalogMediaAsset(assetId),
     assetId
-  )) as CatalogMediaAssetRecord
+  )
   res.setHeader("Cache-Control", "private, no-store")
   res.status(200).json({ asset: serializeCatalogMediaAsset(asset) })
 }

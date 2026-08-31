@@ -3,13 +3,18 @@ import type { Context } from "@medusajs/framework/types"
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
-import type {
-  CatalogMediaAssetRecord,
-  CatalogMediaLifecycleStatus,
-  CatalogProductMediaItemRecord,
-} from "@/modules/catalog/serializers"
-import { coerceCatalogJsonRecord, firstCatalogResult } from "./normalization"
+import type { CatalogMediaLifecycleStatus } from "@/modules/catalog/serializers"
 import type { CatalogService } from "./reference-resolution"
+import {
+  readCatalogMediaAsset,
+  readCatalogMediaAssetMutation,
+  readCatalogMediaLifecycleOperationResult,
+  readCatalogProductMediaItems,
+  readCatalogTransactionOperationList,
+  readCatalogTransactionOperationMutation,
+  type CatalogMediaAssetPersistenceRecord,
+  type CatalogTransactionOperationExpectation,
+} from "./transaction-persistence-contracts"
 
 const QUARANTINE_RETENTION_DAYS = 30
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1_000
@@ -77,35 +82,20 @@ const resultFromRecord = (
   operationId: string,
   value: unknown
 ): CatalogMediaLifecycleResult => {
-  const result = coerceCatalogJsonRecord(value)
-  if (
-    typeof result.assetId !== "string" ||
-    typeof result.version !== "number" ||
-    (result.lifecycleStatus !== "active" &&
-      result.lifecycleStatus !== "quarantined")
-  ) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "The stored catalog media lifecycle result is invalid."
-    )
-  }
+  const result = readCatalogMediaLifecycleOperationResult(value)
   return {
     assetId: result.assetId,
     lifecycleStatus: result.lifecycleStatus,
     operationId,
-    purgeEligibleAt:
-      typeof result.purgeEligibleAt === "string"
-        ? result.purgeEligibleAt
-        : null,
-    quarantinedAt:
-      typeof result.quarantinedAt === "string" ? result.quarantinedAt : null,
+    purgeEligibleAt: result.purgeEligibleAt,
+    quarantinedAt: result.quarantinedAt,
     replayed: true,
     version: result.version,
   }
 }
 
 const snapshotAsset = (
-  asset: CatalogMediaAssetRecord
+  asset: CatalogMediaAssetPersistenceRecord
 ): CatalogMediaLifecycleSnapshot => ({
   lifecycle_status: toLifecycleStatus(asset.lifecycle_status),
   purge_eligible_at: toDate(asset.purge_eligible_at),
@@ -119,11 +109,15 @@ const assertUnlinked = async (
   assetId: string,
   sharedContext: Context<EntityManager>
 ): Promise<void> => {
-  const links = (await catalogService.listCatalogProductMediaItems(
-    { media_asset_id: assetId },
-    { take: 1 },
-    sharedContext
-  )) as CatalogProductMediaItemRecord[]
+  const links = readCatalogProductMediaItems(
+    await catalogService.listCatalogProductMediaItems(
+      { media_asset_id: assetId },
+      { take: 2 },
+      sharedContext
+    ),
+    { mediaAssetId: assetId },
+    1
+  )
   if (links.length) {
     throw new MedusaError(
       MedusaError.Types.CONFLICT,
@@ -138,20 +132,30 @@ export const mutateCatalogMediaLifecycle = async (
   now = new Date()
 ): Promise<CatalogMediaLifecycleMutation> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
-    const existingOperation = (
+    const operationExpectation: CatalogTransactionOperationExpectation = {
+      actorId: input.actorId,
+      aggregateId: input.assetId,
+      command: input.command,
+      expectedVersion: input.expectedVersion,
+      idempotencyKey: input.idempotencyKey,
+      metadata: { retention_days: QUARANTINE_RETENTION_DAYS },
+      requestSha256: input.requestSha256,
+      status: "pending",
+    }
+    const existingOperation = readCatalogTransactionOperationList(
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
-        { take: 1 },
+        { take: 2 },
         sharedContext
       )
-    )[0]
+    )
     if (existingOperation) {
       const matches =
         existingOperation.command === input.command &&
-        existingOperation.aggregate_id === input.assetId &&
-        existingOperation.actor_id === input.actorId &&
-        existingOperation.expected_version === input.expectedVersion &&
-        existingOperation.request_sha256 === input.requestSha256
+        existingOperation.aggregateId === input.assetId &&
+        existingOperation.actorId === input.actorId &&
+        existingOperation.expectedVersion === input.expectedVersion &&
+        existingOperation.requestSha256 === input.requestSha256
       if (!matches || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
@@ -174,11 +178,14 @@ export const mutateCatalogMediaLifecycle = async (
       }
     }
 
-    const asset = (await catalogService.retrieveCatalogMediaAsset(
-      input.assetId,
-      {},
-      sharedContext
-    )) as CatalogMediaAssetRecord
+    const asset = readCatalogMediaAsset(
+      await catalogService.retrieveCatalogMediaAsset(
+        input.assetId,
+        {},
+        sharedContext
+      ),
+      input.assetId
+    )
     if (asset.version !== input.expectedVersion) {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
@@ -201,30 +208,27 @@ export const mutateCatalogMediaLifecycle = async (
       )
     }
 
-    const [operation] = await catalogService.createCatalogAuthoringOperations(
-      [
-        {
-          actor_id: input.actorId,
-          aggregate_id: input.assetId,
-          command: input.command,
-          expected_version: input.expectedVersion,
-          idempotency_key: input.idempotencyKey,
-          metadata: {
-            retention_days: QUARANTINE_RETENTION_DAYS,
+    const operation = readCatalogTransactionOperationMutation(
+      await catalogService.createCatalogAuthoringOperations(
+        [
+          {
+            actor_id: input.actorId,
+            aggregate_id: input.assetId,
+            command: input.command,
+            expected_version: input.expectedVersion,
+            idempotency_key: input.idempotencyKey,
+            metadata: {
+              retention_days: QUARANTINE_RETENTION_DAYS,
+            },
+            request_sha256: input.requestSha256,
+            result: {},
+            status: "pending",
           },
-          request_sha256: input.requestSha256,
-          result: {},
-          status: "pending",
-        },
-      ],
-      sharedContext
+        ],
+        sharedContext
+      ),
+      operationExpectation
     )
-    if (!operation) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog media lifecycle audit record was not created."
-      )
-    }
 
     const quarantinedAt =
       input.command === "catalog.media.quarantine" ? now : null
@@ -237,28 +241,21 @@ export const mutateCatalogMediaLifecycle = async (
     const lifecycleStatus: CatalogMediaLifecycleStatus = quarantinedAt
       ? "quarantined"
       : "active"
-    const updated = await catalogService.updateCatalogMediaAssets(
-      [
-        {
-          id: input.assetId,
-          lifecycle_status: lifecycleStatus,
-          purge_eligible_at: purgeEligibleAt,
-          quarantined_at: quarantinedAt,
-          quarantined_by: quarantinedAt ? input.actorId : null,
-          version: previous.version + 1,
-        },
-      ],
-      sharedContext
-    )
-    const updatedAsset = firstCatalogResult(updated) as
-      | CatalogMediaAssetRecord
-      | undefined
-    if (!updatedAsset) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog media lifecycle state was not updated."
-      )
+    const expectedAsset = {
+      id: input.assetId,
+      lifecycle_status: lifecycleStatus,
+      purge_eligible_at: purgeEligibleAt,
+      quarantined_at: quarantinedAt,
+      quarantined_by: quarantinedAt ? input.actorId : null,
+      version: previous.version + 1,
     }
+    readCatalogMediaAssetMutation(
+      await catalogService.updateCatalogMediaAssets(
+        [expectedAsset],
+        sharedContext
+      ),
+      expectedAsset
+    )
 
     return {
       assetId: input.assetId,
@@ -280,26 +277,46 @@ export const compensateCatalogMediaLifecycle = async (
   >
 ): Promise<void> => {
   await catalogService.runCatalogTransaction(async (sharedContext) => {
-    await catalogService.updateCatalogMediaAssets(
-      [
-        {
-          id: mutation.assetId,
-          ...mutation.previous,
-        },
-      ],
-      sharedContext
+    const operation = readCatalogTransactionOperationList(
+      await catalogService.listCatalogAuthoringOperations(
+        { id: mutation.operationId },
+        { take: 2 },
+        sharedContext
+      )
     )
-    await catalogService.updateCatalogAuthoringOperations(
-      [
-        {
-          completed_at: new Date(),
-          error_code: "workflow_compensated",
-          error_detail: "The prior catalog media lifecycle state was restored.",
-          id: mutation.operationId,
-          status: "compensated",
-        },
-      ],
-      sharedContext
+    if (
+      !operation ||
+      operation.id !== mutation.operationId ||
+      operation.status !== "pending"
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The media lifecycle compensation operation could not be verified."
+      )
+    }
+    const expectedAsset = { id: mutation.assetId, ...mutation.previous }
+    readCatalogMediaAssetMutation(
+      await catalogService.updateCatalogMediaAssets(
+        [expectedAsset],
+        sharedContext
+      ),
+      expectedAsset
+    )
+    readCatalogTransactionOperationMutation(
+      await catalogService.updateCatalogAuthoringOperations(
+        [
+          {
+            completed_at: new Date(),
+            error_code: "workflow_compensated",
+            error_detail:
+              "The prior catalog media lifecycle state was restored.",
+            id: mutation.operationId,
+            status: "compensated",
+          },
+        ],
+        sharedContext
+      ),
+      { ...operation, id: mutation.operationId, status: "compensated" }
     )
   })
 }

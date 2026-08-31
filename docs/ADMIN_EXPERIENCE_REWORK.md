@@ -448,3 +448,38 @@ findings; Trivy reports zero high/critical dependency, misconfiguration, or
 secret findings. No rendered component or layout changed in this server-side
 tranche, so the previous Product-authoring and controlled-choice screenshot
 evidence remains applicable.
+
+### Catalog media and bundle persistence hardening — August 30, 2026
+
+The Product workspace, fixed-bundle editor, upload flow, and Media Cleanup keep
+their existing guided controls and recovery copy, but now validate every
+project-owned persistence response before showing data or success. Media
+assets, Product-media relationships, lifecycle state, bundle profiles,
+components, inventory provenance, and authoring operations must be complete,
+bounded, canonical, unique, and internally coherent. Product authoring cannot
+silently default malformed profile, bundle, relationship, or media state into
+a plausible form.
+
+Media upload retries must match the original files exactly, including count,
+name, MIME type, size, unique provider identity, and safe URL. Product-media
+replacement, quarantine, restore, bundle component replacement, and inventory
+link changes validate the write acknowledgement and read back the exact final
+state before their audit operation can complete. Compensation is restricted to
+the same verified pending operation and verifies restored snapshots, so a
+partial provider or database response cannot be described as recovered.
+
+These safeguards introduce no client-facing technical fields or extra choices.
+They make the existing save, conflict, retry, incident, quarantine, restore,
+and rollback messages authoritative across the main Catalog workflow.
+
+Local acceptance passes 102 focused tests across 13 suites, all 253 Backend
+suites and 1,813 tests, strict TypeScript, the 1,206-file repository
+Biome/policy gate, the production Backend/Admin build, frozen packaged install
+with Medusa 2.18.0, and the Admin bundle budget. Backend coverage remains
+91.35% statements, 84.60% branches, 95.52% functions, and 91.39% lines. The
+Admin main bundle is 1,808,021 gzip bytes and total JavaScript is 2,388,859 gzip
+bytes. The production audit retains only the three documented ignored moderate
+findings; Trivy reports zero high/critical dependency, misconfiguration, or
+secret findings. No rendered component or layout changed, so the existing
+Product-authoring, bundle, and Media Cleanup screenshot evidence remains
+applicable.

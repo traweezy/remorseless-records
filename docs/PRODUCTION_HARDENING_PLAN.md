@@ -3114,6 +3114,46 @@ generic key because of its `idempotencyKey` label. The exception is limited to
 that exact value and exact test path; it does not suppress other UUIDs, paths,
 or rules.
 
+Exact staging acceptance for the taxonomy/profile tranche: source head
+`f6e14833c5e55236e747e8e738d453d3eee61cf1` passed Root CI `33353517479`,
+Backend CI `33353517345`, and Storefront CI `33353517361`. Railway released
+Backend deployment `8befe592-d2a7-4ab4-aa4f-eee7e4d1df74` at `SUCCESS` with
+image digest
+`sha256:9d2a1c1793466508d7e354c7164639a283b2b2216b0b7396fb66fb7ee882ebdb`.
+
+The fifteenth post-migration boundary tranche closes the Catalog media and
+bundle transaction persistence family. Media asset, Product-media item,
+upload, lifecycle, bundle profile, bundle component, inventory provenance, and
+authoring-operation responses now require complete bounded records, canonical
+identities, safe URLs, coherent lifecycle timestamps, unique relationships,
+and exact ownership before Admin can serialize or acknowledge them. Product
+authoring hydration and Media Cleanup use the same contracts, so malformed
+state cannot become a plausible editor default, incomplete media strip, or
+false orphan count.
+
+Every media and bundle mutation validates its create/update/delete response
+and reads back the exact final relationship set before completing the audit
+operation. Upload replay also matches the original file count, names, MIME
+types, sizes, unique File Module IDs, and URLs. Pending-to-succeeded and
+pending-to-compensated transitions preserve the exact operation identity,
+actor, aggregate, command, expected version, UUID idempotency key, SHA-256
+request hash, result, timestamps, and stable error; terminal operations cannot
+be compensated again. Bundle rollback verifies both the restored component
+snapshot and the owned inventory-link provenance.
+
+One hundred two focused contract, stateful service, route, authoring, upload,
+lifecycle, replay, compensation, rollback, hydration, and cost-bound tests pass
+across 13 suites. Complete local acceptance passes the 1,206-file repository
+QA gate, all 253 Backend suites and 1,813 tests, the production Backend/Admin
+build, frozen packaged install with Medusa 2.18.0, and the Admin bundle budget.
+Backend coverage remains 91.35% statements, 84.60% branches, 95.52% functions,
+and 91.39% lines. The Admin main bundle is 1,808,021 gzip bytes and total
+JavaScript is 2,388,859 gzip bytes. The production audit retains only the three
+documented ignored moderate findings; Trivy reports zero high/critical
+dependency, misconfiguration, or secret findings. This server-side tranche
+does not change rendered layout, so the previous Product-authoring, bundle, and
+Media Cleanup screenshot evidence remains applicable.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

@@ -3,7 +3,14 @@ import { MedusaError } from "@medusajs/framework/utils"
 
 import type CatalogModuleService from "../../modules/catalog/service"
 import { MANAGED_IMAGE_NORMALIZER_VERSION } from "../uploads/image-normalization"
-import { coerceCatalogJsonRecord } from "./normalization"
+import {
+  readCatalogMediaAssetMutation,
+  readCatalogMediaUploadOperationResult,
+  readCatalogTransactionOperationList,
+  readCatalogTransactionOperationMutation,
+  readCatalogUploadedFile,
+  type CatalogTransactionOperationExpectation,
+} from "./transaction-persistence-contracts"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
 
@@ -80,29 +87,44 @@ export const performCatalogMediaUpload = async (
   compensation: CatalogMediaUploadCompensation | null
   mutation: CatalogMediaUploadMutationResult
 }> => {
-  const existingOperation = (
+  const operationMetadata = {
+    file_sha256s: input.files.map(({ sha256 }) => sha256),
+    remote_prefix: input.idempotencyKey,
+    source_file_sha256s: input.files.map(({ source }) => source.sha256),
+  }
+  const operationExpectation: CatalogTransactionOperationExpectation = {
+    actorId: input.actorId,
+    aggregateId: input.idempotencyKey,
+    command: "catalog.product-media.upload",
+    expectedVersion: 0,
+    idempotencyKey: input.idempotencyKey,
+    metadata: operationMetadata,
+    requestSha256: input.requestSha256,
+    status: "pending",
+  }
+  const existingOperation = readCatalogTransactionOperationList(
     await catalogService.listCatalogAuthoringOperations(
       { idempotency_key: input.idempotencyKey },
-      { take: 1 }
+      { take: 2 }
     )
-  )[0]
+  )
   if (existingOperation) {
     const matches =
       existingOperation.command === "catalog.product-media.upload" &&
-      existingOperation.aggregate_id === input.idempotencyKey &&
-      existingOperation.actor_id === input.actorId &&
-      existingOperation.expected_version === 0 &&
-      existingOperation.request_sha256 === input.requestSha256
+      existingOperation.aggregateId === input.idempotencyKey &&
+      existingOperation.actorId === input.actorId &&
+      existingOperation.expectedVersion === 0 &&
+      existingOperation.requestSha256 === input.requestSha256
     if (!matches || existingOperation.status !== "succeeded") {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
         "The catalog upload idempotency key cannot be replayed."
       )
     }
-    const result = coerceCatalogJsonRecord(existingOperation.result)
-    const files = Array.isArray(result.files)
-      ? (result.files as CatalogMediaUploadResultFile[])
-      : []
+    const files = readCatalogMediaUploadOperationResult(
+      existingOperation.result,
+      input.files
+    )
     return {
       compensation: null,
       mutation: {
@@ -113,29 +135,22 @@ export const performCatalogMediaUpload = async (
     }
   }
 
-  const [operation] = await catalogService.createCatalogAuthoringOperations([
-    {
-      actor_id: input.actorId,
-      aggregate_id: input.idempotencyKey,
-      command: "catalog.product-media.upload",
-      expected_version: 0,
-      idempotency_key: input.idempotencyKey,
-      metadata: {
-        file_sha256s: input.files.map(({ sha256 }) => sha256),
-        remote_prefix: input.idempotencyKey,
-        source_file_sha256s: input.files.map(({ source }) => source.sha256),
+  const operation = readCatalogTransactionOperationMutation(
+    await catalogService.createCatalogAuthoringOperations([
+      {
+        actor_id: input.actorId,
+        aggregate_id: input.idempotencyKey,
+        command: "catalog.product-media.upload",
+        expected_version: 0,
+        idempotency_key: input.idempotencyKey,
+        metadata: operationMetadata,
+        request_sha256: input.requestSha256,
+        result: {},
+        status: "pending",
       },
-      request_sha256: input.requestSha256,
-      result: {},
-      status: "pending",
-    },
-  ])
-  if (!operation) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "The catalog upload audit record was not created."
-    )
-  }
+    ]),
+    operationExpectation
+  )
 
   const compensation: CatalogMediaUploadCompensation = {
     assetIds: [],
@@ -145,49 +160,50 @@ export const performCatalogMediaUpload = async (
   const files: CatalogMediaUploadResultFile[] = []
   try {
     for (const file of input.files) {
-      const uploaded = await fileService.createFiles({
-        access: "public",
-        content: file.content,
-        filename: file.remoteFilename,
-        mimeType: file.mimeType,
-      })
+      const uploaded = readCatalogUploadedFile(
+        await fileService.createFiles({
+          access: "public",
+          content: file.content,
+          filename: file.remoteFilename,
+          mimeType: file.mimeType,
+        })
+      )
       compensation.fileIds.push(uploaded.id)
-      const [asset] = await catalogService.createCatalogMediaAssets([
-        {
-          byte_size: file.size,
-          content_sha256: file.sha256,
-          derivative_status: "source_only",
-          height: file.height,
-          metadata: {
-            safety_pipeline: {
-              normalized_format: "webp",
-              normalized_sha256: file.sha256,
-              status: "passed",
-              validation: "strict-decode-reencode",
-              version: MANAGED_IMAGE_NORMALIZER_VERSION,
-            },
-            source: {
-              channels: file.source.channels,
-              format: file.source.format,
-              frames: file.source.frames,
-              height: file.source.height,
-              mime_type: file.source.mimeType,
-              sha256: file.source.sha256,
-              size: file.source.size,
-              width: file.source.width,
-            },
-            upload_idempotency_key: input.idempotencyKey,
+      const assetPayload = {
+        byte_size: file.size,
+        content_sha256: file.sha256,
+        derivative_status: "source_only" as const,
+        height: file.height,
+        metadata: {
+          safety_pipeline: {
+            normalized_format: "webp",
+            normalized_sha256: file.sha256,
+            status: "passed",
+            validation: "strict-decode-reencode",
+            version: MANAGED_IMAGE_NORMALIZER_VERSION,
           },
-          mime_type: file.mimeType,
-          original_filename: file.filename,
-          source_file_key: uploaded.id,
-          source_url: uploaded.url,
-          width: file.width,
+          source: {
+            channels: file.source.channels,
+            format: file.source.format,
+            frames: file.source.frames,
+            height: file.source.height,
+            mime_type: file.source.mimeType,
+            sha256: file.source.sha256,
+            size: file.source.size,
+            width: file.source.width,
+          },
+          upload_idempotency_key: input.idempotencyKey,
         },
-      ])
-      if (!asset) {
-        throw new Error("Catalog media asset was not created.")
+        mime_type: file.mimeType,
+        original_filename: file.filename,
+        source_file_key: uploaded.id,
+        source_url: uploaded.url,
+        width: file.width,
       }
+      const asset = readCatalogMediaAssetMutation(
+        await catalogService.createCatalogMediaAssets([assetPayload]),
+        assetPayload
+      )
       compensation.assetIds.push(asset.id)
       files.push({
         filename: file.filename,
@@ -218,6 +234,25 @@ export const compensateCatalogMediaUpload = async (
   compensation: CatalogMediaUploadCompensation
 ): Promise<void> => {
   let cleanupError: unknown
+  const operation = compensation.operationId
+    ? readCatalogTransactionOperationList(
+        await catalogService.listCatalogAuthoringOperations(
+          { id: compensation.operationId },
+          { take: 2 }
+        )
+      )
+    : null
+  if (
+    compensation.operationId &&
+    (!operation ||
+      operation.id !== compensation.operationId ||
+      operation.status !== "pending")
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "The catalog upload compensation operation could not be verified."
+    )
+  }
   try {
     if (compensation.assetIds.length) {
       await catalogService.deleteCatalogMediaAssets(compensation.assetIds)
@@ -235,25 +270,37 @@ export const compensateCatalogMediaUpload = async (
   try {
     if (compensation.operationId) {
       const cleanupFailed = Boolean(cleanupError)
-      await catalogService.updateCatalogAuthoringOperations([
+      const result = {
+        compensation: {
+          asset_ids: compensation.assetIds,
+          file_ids: compensation.fileIds,
+        },
+      }
+      readCatalogTransactionOperationMutation(
+        await catalogService.updateCatalogAuthoringOperations([
+          {
+            completed_at: new Date(),
+            error_code: cleanupFailed
+              ? "workflow_compensation_failed"
+              : "workflow_compensated",
+            error_detail: cleanupFailed
+              ? "Catalog upload cleanup requires operator reconciliation."
+              : "The catalog upload failed and its created assets were removed.",
+            id: compensation.operationId,
+            result,
+            status: cleanupFailed ? "failed" : "compensated",
+          },
+        ]),
         {
-          completed_at: new Date(),
-          error_code: cleanupFailed
+          ...operation!,
+          errorCode: cleanupFailed
             ? "workflow_compensation_failed"
             : "workflow_compensated",
-          error_detail: cleanupFailed
-            ? "Catalog upload cleanup requires operator reconciliation."
-            : "The catalog upload failed and its created assets were removed.",
           id: compensation.operationId,
-          result: {
-            compensation: {
-              asset_ids: compensation.assetIds,
-              file_ids: compensation.fileIds,
-            },
-          },
+          result,
           status: cleanupFailed ? "failed" : "compensated",
-        },
-      ])
+        }
+      )
     }
   } catch (error) {
     cleanupError ??= error

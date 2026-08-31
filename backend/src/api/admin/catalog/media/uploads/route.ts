@@ -6,6 +6,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
 import { buildCatalogMediaRemoteFilename } from "@/lib/catalog/product-media-upload"
+import { readCatalogMediaUploadOperationResult } from "@/lib/catalog/transaction-persistence-contracts"
 import { normalizeManagedImageUploads } from "@/lib/uploads/image-normalization"
 import { validateManagedImageUploads } from "@/lib/uploads/validation"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
@@ -97,5 +98,9 @@ export const POST = async (
       requestSha256,
     },
   })
-  res.status(201).json({ files: result.files })
+  const persistedFiles = readCatalogMediaUploadOperationResult(
+    { files: result.files },
+    workflowFiles
+  )
+  res.status(201).json({ files: persistedFiles })
 }

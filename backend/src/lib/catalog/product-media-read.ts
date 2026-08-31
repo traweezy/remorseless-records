@@ -2,11 +2,12 @@ import type { Context } from "@medusajs/framework/types"
 import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 
 import type CatalogModuleService from "../../modules/catalog/service"
+import { serializeCatalogProductMediaItem } from "../../modules/catalog/serializers"
 import {
-  serializeCatalogProductMediaItem,
-  type CatalogMediaAssetRecord,
-  type CatalogProductMediaItemRecord,
-} from "../../modules/catalog/serializers"
+  readCatalogMediaAssets,
+  readCatalogProductMediaItems,
+  type CatalogProductMediaItemPersistenceRecord,
+} from "./transaction-persistence-contracts"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
 
@@ -14,12 +15,16 @@ export const listProductMediaItems = async (
   catalogService: CatalogService,
   productId: string,
   sharedContext?: Context<EntityManager>
-): Promise<CatalogProductMediaItemRecord[]> =>
-  (await catalogService.listCatalogProductMediaItems(
-    { product_id: productId },
-    { order: { sort_order: "ASC" } },
-    sharedContext
-  )) as CatalogProductMediaItemRecord[]
+): Promise<CatalogProductMediaItemPersistenceRecord[]> =>
+  readCatalogProductMediaItems(
+    await catalogService.listCatalogProductMediaItems(
+      { product_id: productId },
+      { order: { id: "ASC", sort_order: "ASC" }, take: 101 },
+      sharedContext
+    ),
+    { productId },
+    100
+  )
 
 export const loadProductMediaResponse = async (
   catalogService: CatalogService,
@@ -33,11 +38,18 @@ export const loadProductMediaResponse = async (
   )
   const assetIds = [...new Set(items.map((item) => item.media_asset_id))]
   const assets = assetIds.length
-    ? ((await catalogService.listCatalogMediaAssets(
-        { id: assetIds },
-        {},
-        sharedContext
-      )) as CatalogMediaAssetRecord[])
+    ? readCatalogMediaAssets(
+        await catalogService.listCatalogMediaAssets(
+          { id: assetIds },
+          { take: 101 },
+          sharedContext
+        ),
+        {
+          expectedIds: assetIds,
+          maximumRows: 100,
+          requireExactIds: true,
+        }
+      )
     : []
   const assetsById = new Map(assets.map((asset) => [asset.id, asset]))
 

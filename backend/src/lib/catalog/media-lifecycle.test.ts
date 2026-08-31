@@ -4,15 +4,13 @@ import {
   mutateCatalogMediaLifecycle,
   type CatalogMediaLifecycleInput,
 } from "./media-lifecycle"
+import {
+  catalogMediaAssetFixture,
+  catalogOperationFixture,
+  catalogProductMediaItemFixture,
+} from "./transaction-persistence-fixtures.test-helpers"
 
-const activeAsset = {
-  id: "cmedia_1",
-  lifecycle_status: "active",
-  purge_eligible_at: null,
-  quarantined_at: null,
-  quarantined_by: null,
-  version: 1,
-}
+const activeAsset = catalogMediaAssetFixture()
 
 const serviceFixture = () => {
   const service = {
@@ -32,16 +30,16 @@ const serviceFixture = () => {
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   service.listCatalogProductMediaItems.mockResolvedValue([])
   service.retrieveCatalogMediaAsset.mockResolvedValue(activeAsset)
-  service.createCatalogAuthoringOperations.mockResolvedValue([
-    { id: "catop_1" },
-  ])
-  service.updateCatalogMediaAssets.mockResolvedValue([
-    {
-      ...activeAsset,
-      lifecycle_status: "quarantined",
-      version: 2,
-    },
-  ])
+  service.createCatalogAuthoringOperations.mockImplementation(
+    async ([payload]: Array<Record<string, unknown>>) => [
+      catalogOperationFixture({ id: "catop_1", ...payload }),
+    ]
+  )
+  service.updateCatalogMediaAssets.mockImplementation(
+    async ([payload]: Array<Record<string, unknown>>) => [
+      catalogMediaAssetFixture(payload),
+    ]
+  )
   return service
 }
 
@@ -91,7 +89,7 @@ describe("catalog media lifecycle", () => {
     })
     expect(service.listCatalogProductMediaItems).toHaveBeenCalledWith(
       { media_asset_id: "cmedia_1" },
-      { take: 1 },
+      { take: 2 },
       expect.any(Object)
     )
     expect(service.createCatalogAuthoringOperations).toHaveBeenCalledWith(
@@ -125,7 +123,7 @@ describe("catalog media lifecycle", () => {
   it("rejects linked, stale, and already-quarantined assets", async () => {
     const linkedService = serviceFixture()
     linkedService.listCatalogProductMediaItems.mockResolvedValue([
-      { id: "cpmedia_1" },
+      catalogProductMediaItemFixture(),
     ])
     await expect(
       mutateCatalogMediaLifecycle(linkedService as never, commandFixture())
@@ -146,6 +144,9 @@ describe("catalog media lifecycle", () => {
     quarantinedService.retrieveCatalogMediaAsset.mockResolvedValue({
       ...activeAsset,
       lifecycle_status: "quarantined",
+      purge_eligible_at: "2026-08-25T20:00:00.000Z",
+      quarantined_at: "2026-07-26T20:00:00.000Z",
+      quarantined_by: "user_1",
     })
     await expect(
       mutateCatalogMediaLifecycle(quarantinedService as never, commandFixture())
@@ -164,9 +165,6 @@ describe("catalog media lifecycle", () => {
       quarantined_by: "user_1",
       version: 2,
     })
-    service.updateCatalogMediaAssets.mockResolvedValue([
-      { ...activeAsset, version: 3 },
-    ])
 
     await expect(
       mutateCatalogMediaLifecycle(
@@ -202,7 +200,7 @@ describe("catalog media lifecycle", () => {
     const service = serviceFixture()
     const input = commandFixture()
     service.listCatalogAuthoringOperations.mockResolvedValue([
-      {
+      catalogOperationFixture({
         actor_id: input.actorId,
         aggregate_id: input.assetId,
         command: input.command,
@@ -217,7 +215,7 @@ describe("catalog media lifecycle", () => {
           version: 2,
         },
         status: "succeeded",
-      },
+      }),
     ])
 
     await expect(
@@ -240,7 +238,7 @@ describe("catalog media lifecycle", () => {
     ).rejects.toThrow("cannot be replayed")
 
     service.listCatalogAuthoringOperations.mockResolvedValue([
-      {
+      catalogOperationFixture({
         actor_id: input.actorId,
         aggregate_id: input.assetId,
         command: input.command,
@@ -249,17 +247,36 @@ describe("catalog media lifecycle", () => {
         request_sha256: input.requestSha256,
         result: {},
         status: "succeeded",
-      },
+      }),
     ])
     await expect(
       mutateCatalogMediaLifecycle(service as never, input)
-    ).rejects.toThrow("stored catalog media lifecycle result is invalid")
+    ).rejects.toThrow("transaction persistence boundary")
   })
 
   it("restores the full prior state when a later workflow step fails", async () => {
     const service = serviceFixture()
     const quarantinedAt = new Date("2026-07-01T00:00:00.000Z")
     const purgeEligibleAt = new Date("2026-07-31T00:00:00.000Z")
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      catalogOperationFixture({
+        aggregate_id: "cmedia_1",
+        command: "catalog.media.quarantine",
+        expected_version: 1,
+        id: "catop_1",
+        metadata: { retention_days: 30 },
+      }),
+    ])
+    service.updateCatalogAuthoringOperations.mockResolvedValue([
+      catalogOperationFixture({
+        aggregate_id: "cmedia_1",
+        command: "catalog.media.quarantine",
+        expected_version: 1,
+        id: "catop_1",
+        metadata: { retention_days: 30 },
+        status: "compensated",
+      }),
+    ])
 
     await expect(
       compensateCatalogMediaLifecycle(service as never, {

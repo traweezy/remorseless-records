@@ -173,6 +173,24 @@ hash, exact result, completion state, and stable compensation error. A missing
 detail is a not-found condition; a malformed present row remains an
 unexpected-state incident.
 
+Catalog media and bundle transactions pass through
+`src/lib/catalog/transaction-persistence-contracts.ts`. It validates complete
+media assets and Product-media relationships, File Module upload results,
+bundle profiles and components, inventory provenance, and authoring-operation
+rows with explicit cost bounds and cross-row ownership. Upload replay must
+match the original file count, names, media types, sizes, unique provider IDs,
+and safe URLs. Lifecycle state and quarantine timestamps must remain coherent.
+
+Media relationship replacement, bundle component replacement, and inventory
+link changes validate exact mutation acknowledgements and read back the final
+set before completing. Bundle rollback verifies restored project-owned and
+remote inventory snapshots. Operation completion and compensation require the
+same verified pending identity, actor, aggregate, command, expected version,
+UUID idempotency key, SHA-256 request hash, result, timestamps, and stable
+error; a terminal operation cannot be compensated again. The Product authoring
+view and Media Cleanup routes use the same contracts rather than coercing a
+malformed persistence response into an empty editor or orphan page.
+
 The Store bundle route additionally validates the active project-owned profile,
 every component row and declared mapping, the visible Product/Variant graph,
 and the availability map. A mapping may reference only a Variant on its exact

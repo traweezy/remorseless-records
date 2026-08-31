@@ -6,6 +6,7 @@ import {
   catalogBundleTypeValues,
   serializeCatalogBundleProfile,
 } from "@/modules/catalog/serializers"
+import { readCatalogBundleStatePage } from "@/lib/catalog/transaction-persistence-contracts"
 import type { CatalogService } from "../utils"
 import {
   bundleUpsertSchema,
@@ -48,14 +49,19 @@ export const GET = async (
     filters.is_active = active
   }
 
-  const [bundles, count] =
+  const page = readCatalogBundleStatePage(
     await catalogService.listAndCountCatalogBundleProfiles(filters, {
       skip,
       take,
       order: { created_at: "DESC" },
-    })
+    }),
+    {
+      maximumRows: take,
+      ...(productId === undefined ? {} : { expectedProductId: productId }),
+    }
+  )
   const serialized = await Promise.all(
-    bundles.map(async (bundle) => ({
+    page.rows.map(async (bundle) => ({
       bundle: serializeCatalogBundleProfile(bundle),
       components: await loadBundleComponents(catalogService, bundle.id),
     }))
@@ -63,7 +69,7 @@ export const GET = async (
 
   res.status(200).json({
     bundles: serialized,
-    count,
+    count: page.count,
     offset: skip,
     limit: take,
   })

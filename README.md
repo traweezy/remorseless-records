@@ -1528,6 +1528,16 @@ The list contract is capped at 100 shelves and 200 memberships per shelf so a
 malformed or oversized persistence response cannot become an unbounded Admin
 relationship expansion.
 
+Admin Catalog media and bundle commands validate complete bounded assets,
+Product-media relationships, upload results, bundle profiles/components,
+inventory provenance, and operation records before rendering or reporting
+success. Upload replay must match the original file facts. Relationship and
+inventory changes verify both their exact acknowledgement and final readback;
+rollback and compensation are limited to the same verified pending operation
+and must restore the exact prior snapshots. Product authoring and Media Cleanup
+therefore fail as operational incidents instead of turning corrupt service
+state into plausible defaults, partial media, or a false empty orphan page.
+
 Physical media deletion is deliberately unavailable. The displayed 30-day
 date is only the earliest future review point; no job or route automatically
 deletes the catalog row or File Module object. A future audited purge also

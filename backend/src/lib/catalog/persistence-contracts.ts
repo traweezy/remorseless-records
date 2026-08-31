@@ -449,11 +449,16 @@ export type CatalogBundleInventoryProvenanceBoundary = {
 
 export const readCatalogBundleInventoryProvenance = (
   value: unknown,
-  expectedProfileId: string
+  expectedProfileId: string,
+  maximumRows = 100
 ): CatalogBundleInventoryProvenanceBoundary[] => {
+  const source = serviceRows(value)
+  if (source.length > maximumRows) {
+    return invalidCatalogData()
+  }
   const seenIds = new Set<string>()
   const seenLinks = new Set<string>()
-  return serviceRows(value).map((row) => {
+  return source.map((row) => {
     const id = requiredCatalogIdentifier(row.id)
     const profileId = requiredCatalogIdentifier(row.bundle_profile_id)
     const variantId = requiredCatalogIdentifier(row.bundle_variant_id)

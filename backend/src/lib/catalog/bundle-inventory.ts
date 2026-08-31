@@ -38,13 +38,16 @@ export type CatalogBundleComponentRecord = {
 
 type CatalogService = {
   listCatalogBundleProfiles: (
-    filters: Record<string, unknown>
+    filters: Record<string, unknown>,
+    config?: Record<string, unknown>
   ) => Promise<CatalogBundleProfileRecord[]>
   listCatalogBundleComponents: (
-    filters: Record<string, unknown>
+    filters: Record<string, unknown>,
+    config?: Record<string, unknown>
   ) => Promise<CatalogBundleComponentRecord[]>
   listCatalogBundleInventoryLinks: (
-    filters: Record<string, unknown>
+    filters: Record<string, unknown>,
+    config?: Record<string, unknown>
   ) => Promise<
     Array<{
       id: string
@@ -490,10 +493,14 @@ const readProvenance = async (
     bundleProfileIds.map(async (bundleProfileId) => ({
       bundleProfileId,
       links: readCatalogBundleInventoryProvenance(
-        await catalogService.listCatalogBundleInventoryLinks({
-          bundle_profile_id: bundleProfileId,
-        }),
-        bundleProfileId
+        await catalogService.listCatalogBundleInventoryLinks(
+          {
+            bundle_profile_id: bundleProfileId,
+          },
+          { take: 101 }
+        ),
+        bundleProfileId,
+        100
       ),
     }))
   )
@@ -623,9 +630,10 @@ export const reconcileComponentDerivedBundleInventory = async (
 }> => {
   const catalogService = container.resolve("catalog") as CatalogService
   const profiles = readCatalogBundleProfiles(
-    await catalogService.listCatalogBundleProfiles({
-      product_id: productId,
-    }),
+    await catalogService.listCatalogBundleProfiles(
+      { product_id: productId },
+      { take: 2 }
+    ),
     productId
   )
   const profile = profiles[0]
@@ -654,9 +662,10 @@ export const reconcileComponentDerivedBundleInventory = async (
     profile.inventory_mode === "component_derived" &&
     profile.is_active !== false
       ? readCatalogBundleComponents(
-          await catalogService.listCatalogBundleComponents({
-            bundle_profile_id: profile.id,
-          }),
+          await catalogService.listCatalogBundleComponents(
+            { bundle_profile_id: profile.id },
+            { take: 101 }
+          ),
           profile.id
         )
       : []
@@ -828,9 +837,10 @@ export const syncComponentDerivedBundleInventory = async (
 ): Promise<BundleVariantInventoryPlan[]> => {
   const catalogService = container.resolve("catalog") as CatalogService
   const profiles = readCatalogBundleProfiles(
-    await catalogService.listCatalogBundleProfiles({
-      product_id: productId,
-    }),
+    await catalogService.listCatalogBundleProfiles(
+      { product_id: productId },
+      { take: 2 }
+    ),
     productId
   )
   const profile = profiles[0]
@@ -853,9 +863,10 @@ export const syncComponentDerivedBundleInventory = async (
           metadata: {},
         },
         components: readCatalogBundleComponents(
-          await catalogService.listCatalogBundleComponents({
-            bundle_profile_id: profile.id,
-          }),
+          await catalogService.listCatalogBundleComponents(
+            { bundle_profile_id: profile.id },
+            { take: 101 }
+          ),
           profile.id
         ),
       }

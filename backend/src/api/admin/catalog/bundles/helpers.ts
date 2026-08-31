@@ -13,6 +13,10 @@ import {
   serializeCatalogBundleProfile,
 } from "@/modules/catalog/serializers"
 import { parseResolvedVariantMappings } from "@/lib/catalog/bundle-inventory"
+import {
+  readCatalogBundleComponentStates,
+  readCatalogBundleStateProfiles,
+} from "@/lib/catalog/transaction-persistence-contracts"
 import { sanitizeRichTextHtml } from "@/lib/content/rich-text"
 import { hashCatalogCommand } from "@/modules/catalog/catalog-command"
 import type {
@@ -75,9 +79,13 @@ export const resolveBundleProfile = async (
   catalogService: CatalogService,
   productId: string
 ) => {
-  const bundles = await catalogService.listCatalogBundleProfiles({
-    product_id: productId,
-  })
+  const bundles = readCatalogBundleStateProfiles(
+    await catalogService.listCatalogBundleProfiles(
+      { product_id: productId },
+      { take: 2 }
+    ),
+    productId
+  )
   return bundles.at(0) ?? null
 }
 
@@ -85,9 +93,13 @@ export const loadBundleComponents = async (
   catalogService: CatalogService,
   bundleProfileId: string
 ) => {
-  const components = await catalogService.listCatalogBundleComponents(
-    { bundle_profile_id: bundleProfileId },
-    { order: { sort_order: "ASC" } }
+  const components = readCatalogBundleComponentStates(
+    await catalogService.listCatalogBundleComponents(
+      { bundle_profile_id: bundleProfileId },
+      { order: { id: "ASC", sort_order: "ASC" }, take: 101 }
+    ),
+    bundleProfileId,
+    100
   )
 
   return components.map(serializeCatalogBundleComponent)
@@ -258,7 +270,7 @@ const normalizeInputComponents = async (
 }
 
 const preserveExistingComponents = (
-  components: Awaited<ReturnType<CatalogService["listCatalogBundleComponents"]>>
+  components: CatalogBundleComponentState[]
 ): CatalogBundleMutationInput["components"] =>
   components.map((component) => ({
     id: component.id,
@@ -305,9 +317,14 @@ export const upsertBundleForProduct = async (
 
   const existing = await resolveBundleProfile(catalogService, productId)
   const existingComponents = existing
-    ? await catalogService.listCatalogBundleComponents({
-        bundle_profile_id: existing.id,
-      })
+    ? readCatalogBundleComponentStates(
+        await catalogService.listCatalogBundleComponents(
+          { bundle_profile_id: existing.id },
+          { take: 101 }
+        ),
+        existing.id,
+        100
+      )
     : []
   const existingComponentsCount = existingComponents.length
   validateBundleShape(

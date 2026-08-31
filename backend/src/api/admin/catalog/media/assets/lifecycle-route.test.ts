@@ -4,6 +4,7 @@ import type {
 } from "@medusajs/framework/http"
 
 import { serializeCatalogMediaAsset } from "@/modules/catalog/serializers"
+import { catalogMediaAssetFixture } from "@/lib/catalog/transaction-persistence-fixtures.test-helpers"
 import { mutateCatalogMediaLifecycleWorkflow } from "../../../../../workflows/catalog/mutate-media-lifecycle"
 import { runMediaLifecycleRoute } from "./lifecycle-route"
 
@@ -41,9 +42,9 @@ const requestFixture = (
   actorId: string | null = "user_1"
 ): AuthenticatedMedusaRequest => {
   const catalogService = {
-    retrieveCatalogMediaAsset: jest.fn().mockResolvedValue({
-      id: "cmedia_1",
-    }),
+    retrieveCatalogMediaAsset: jest
+      .fn()
+      .mockResolvedValue(catalogMediaAssetFixture()),
   }
   return {
     auth_context: { actor_id: actorId },

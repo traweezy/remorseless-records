@@ -2,13 +2,15 @@ import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import type { Context } from "@medusajs/framework/types"
 import { MedusaError } from "@medusajs/framework/utils"
 
-import type { CatalogMediaAssetRecord } from "../../modules/catalog/serializers"
 import {
   coerceCatalogJsonRecord,
-  firstCatalogResult,
   toCatalogNullableString,
   toCatalogOptionalInteger,
 } from "./normalization"
+import {
+  readCatalogProductProfile,
+  readCatalogProductProfiles,
+} from "./profile-persistence-contracts"
 import {
   catalogFocalPointSchema,
   catalogProductMediaInputSchema,
@@ -26,6 +28,17 @@ import {
   snapshotCatalogProductMedia,
 } from "./product-media-state"
 import type { CatalogService } from "./reference-resolution"
+import {
+  readCatalogMediaAsset,
+  readCatalogMediaAssetMutation,
+  readCatalogMediaAssets,
+  readCatalogProductMediaOperationResult,
+  readCatalogTransactionOperationList,
+  readCatalogTransactionOperationMutation,
+  readExactCatalogProductMediaItems,
+  type CatalogMediaAssetPersistenceRecord,
+  type CatalogTransactionOperationExpectation,
+} from "./transaction-persistence-contracts"
 
 export {
   catalogFocalPointSchema,
@@ -46,26 +59,32 @@ const findReusableAsset = async (
   catalogService: CatalogService,
   input: CatalogProductMediaInput,
   sharedContext: Context<EntityManager>
-): Promise<CatalogMediaAssetRecord | null> => {
+): Promise<CatalogMediaAssetPersistenceRecord | null> => {
   const sourceFileKey = toCatalogNullableString(input.sourceFileKey)
   if (sourceFileKey) {
-    const matches = await catalogService.listCatalogMediaAssets(
-      { lifecycle_status: "active", source_file_key: sourceFileKey },
-      { take: 1 },
-      sharedContext
+    const matches = readCatalogMediaAssets(
+      await catalogService.listCatalogMediaAssets(
+        { lifecycle_status: "active", source_file_key: sourceFileKey },
+        { take: 2 },
+        sharedContext
+      ),
+      { maximumRows: 1 }
     )
-    return (matches.at(0) as CatalogMediaAssetRecord | undefined) ?? null
+    return matches.at(0) ?? null
   }
   const sourceUrl = toCatalogNullableString(input.sourceUrl)
   if (!sourceUrl) {
     return null
   }
-  const matches = await catalogService.listCatalogMediaAssets(
-    { lifecycle_status: "active", source_url: sourceUrl },
-    { take: 1 },
-    sharedContext
+  const matches = readCatalogMediaAssets(
+    await catalogService.listCatalogMediaAssets(
+      { lifecycle_status: "active", source_url: sourceUrl },
+      { take: 2 },
+      sharedContext
+    ),
+    { maximumRows: 1 }
   )
-  return (matches.at(0) as CatalogMediaAssetRecord | undefined) ?? null
+  return matches.at(0) ?? null
 }
 
 const buildAssetPatch = (
@@ -125,19 +144,19 @@ const resolveMediaAsset = async (
   previous: CatalogProductMediaMutationResult["previous"],
   createdAssetIds: Set<string>,
   sharedContext: Context<EntityManager>
-): Promise<CatalogMediaAssetRecord> => {
+): Promise<CatalogMediaAssetPersistenceRecord> => {
   const mediaAssetId = toCatalogNullableString(input.mediaAssetId)
   const patch = buildAssetPatch(input)
   if (mediaAssetId) {
-    const existing = (await catalogService.retrieveCatalogMediaAsset(
-      mediaAssetId,
-      {},
-      sharedContext
-    )) as CatalogMediaAssetRecord
-    if (
-      existing.lifecycle_status !== undefined &&
-      existing.lifecycle_status !== "active"
-    ) {
+    const existing = readCatalogMediaAsset(
+      await catalogService.retrieveCatalogMediaAsset(
+        mediaAssetId,
+        {},
+        sharedContext
+      ),
+      mediaAssetId
+    )
+    if (existing.lifecycle_status !== "active") {
       throw new MedusaError(
         MedusaError.Types.CONFLICT,
         "Quarantined catalog media cannot be linked or edited."
@@ -147,20 +166,15 @@ const resolveMediaAsset = async (
     if (!Object.keys(patch).length) {
       return existing
     }
-    const updated = await catalogService.updateCatalogMediaAssets(
-      [{ id: existing.id, ...patch, version: existing.version + 1 }],
-      sharedContext
-    )
-    const asset = firstCatalogResult(updated) as
-      | CatalogMediaAssetRecord
-      | undefined
-    if (!asset) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to update catalog media asset."
-      )
+    const expected = {
+      id: existing.id,
+      ...patch,
+      version: existing.version + 1,
     }
-    return asset
+    return readCatalogMediaAssetMutation(
+      await catalogService.updateCatalogMediaAssets([expected], sharedContext),
+      expected
+    )
   }
 
   const reusable = await findReusableAsset(catalogService, input, sharedContext)
@@ -192,19 +206,13 @@ const resolveMediaAsset = async (
       "Each media item requires sourceUrl or mediaAssetId."
     )
   }
-  const created = await catalogService.createCatalogMediaAssets(
-    [createPayload],
-    sharedContext
+  const asset = readCatalogMediaAssetMutation(
+    await catalogService.createCatalogMediaAssets(
+      [createPayload],
+      sharedContext
+    ),
+    createPayload
   )
-  const asset = firstCatalogResult(created) as
-    | CatalogMediaAssetRecord
-    | undefined
-  if (!asset) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Unable to create catalog media asset."
-    )
-  }
   createdAssetIds.add(asset.id)
   return asset
 }
@@ -217,10 +225,13 @@ const resolveProductProfileId = async (
 ): Promise<string | null> => {
   const explicit = toCatalogNullableString(explicitProductProfileId)
   if (explicit) {
-    const profile = await catalogService.retrieveCatalogProductProfile(
-      explicit,
-      {},
-      sharedContext
+    const profile = readCatalogProductProfile(
+      await catalogService.retrieveCatalogProductProfile(
+        explicit,
+        {},
+        sharedContext
+      ),
+      explicit
     )
     if (profile.product_id !== productId) {
       throw new MedusaError(
@@ -230,10 +241,13 @@ const resolveProductProfileId = async (
     }
     return explicit
   }
-  const profiles = await catalogService.listCatalogProductProfiles(
-    { product_id: productId },
-    { take: 1 },
-    sharedContext
+  const profiles = readCatalogProductProfiles(
+    await catalogService.listCatalogProductProfiles(
+      { product_id: productId },
+      { take: 2 },
+      sharedContext
+    ),
+    productId
   )
   return profiles.at(0)?.id ?? null
 }
@@ -276,27 +290,39 @@ export const mutateCatalogProductMedia = async (
   input: CatalogProductMediaMutationInput
 ): Promise<CatalogProductMediaMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
-    const existingOperation = (
+    const operationExpectation: CatalogTransactionOperationExpectation = {
+      actorId: input.actorId,
+      aggregateId: input.aggregateId,
+      command: input.command,
+      expectedVersion: input.expectedVersion,
+      idempotencyKey: input.idempotencyKey,
+      requestSha256: input.requestSha256,
+      status: "pending",
+    }
+    const existingOperation = readCatalogTransactionOperationList(
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
-        { take: 1 },
+        { take: 2 },
         sharedContext
       )
-    )[0]
+    )
     if (existingOperation) {
       const sameCommand =
         existingOperation.command === input.command &&
-        existingOperation.aggregate_id === input.aggregateId &&
-        existingOperation.actor_id === input.actorId &&
-        existingOperation.expected_version === input.expectedVersion &&
-        existingOperation.request_sha256 === input.requestSha256
+        existingOperation.aggregateId === input.aggregateId &&
+        existingOperation.actorId === input.actorId &&
+        existingOperation.expectedVersion === input.expectedVersion &&
+        existingOperation.requestSha256 === input.requestSha256
       if (!sameCommand || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
           "The catalog idempotency key cannot be replayed for this product media command."
         )
       }
-      const result = coerceCatalogJsonRecord(existingOperation.result)
+      const result = readCatalogProductMediaOperationResult(
+        existingOperation.result,
+        input.aggregateId
+      )
       return {
         createdAssetIds: [],
         operationId: existingOperation.id,
@@ -304,10 +330,7 @@ export const mutateCatalogProductMedia = async (
         productId: input.aggregateId,
         replayed: true,
         result,
-        version:
-          typeof result.version === "number"
-            ? result.version
-            : input.expectedVersion,
+        version: result.version,
       }
     }
 
@@ -327,28 +350,25 @@ export const mutateCatalogProductMedia = async (
       input.aggregateId,
       sharedContext
     )
-    const [operation] = await catalogService.createCatalogAuthoringOperations(
-      [
-        {
-          actor_id: input.actorId,
-          aggregate_id: input.aggregateId,
-          command: input.command,
-          expected_version: input.expectedVersion,
-          idempotency_key: input.idempotencyKey,
-          metadata: {},
-          request_sha256: input.requestSha256,
-          result: {},
-          status: "pending",
-        },
-      ],
-      sharedContext
+    const operation = readCatalogTransactionOperationMutation(
+      await catalogService.createCatalogAuthoringOperations(
+        [
+          {
+            actor_id: input.actorId,
+            aggregate_id: input.aggregateId,
+            command: input.command,
+            expected_version: input.expectedVersion,
+            idempotency_key: input.idempotencyKey,
+            metadata: {},
+            request_sha256: input.requestSha256,
+            result: {},
+            status: "pending",
+          },
+        ],
+        sharedContext
+      ),
+      operationExpectation
     )
-    if (!operation) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "The product media command audit record was not created."
-      )
-    }
 
     const primaryByIndex = assertCatalogProductMediaPrimaryShape(input.media)
     const createdAssetIds = new Set<string>()
@@ -391,28 +411,42 @@ export const mutateCatalogProductMedia = async (
         sharedContext
       )
     }
-    if (resolvedItems.length) {
-      await catalogService.createCatalogProductMediaItems(
-        resolvedItems.map(
-          ({ asset, index, media, productProfileId, variantId }) => {
-            const isPrimary = primaryByIndex.get(index) ?? false
-            return {
-              is_primary: isPrimary,
-              media_asset_id: asset.id,
-              metadata: coerceCatalogJsonRecord(media.metadata),
-              product_id: input.aggregateId,
-              product_profile_id: productProfileId,
-              role:
-                media.role ??
-                (variantId ? "variant" : isPrimary ? "primary" : "gallery"),
-              sort_order: media.sortOrder ?? index,
-              variant_id: variantId,
-            }
-          }
+    const itemPayloads = resolvedItems.map(
+      ({ asset, index, media, productProfileId, variantId }) => {
+        const isPrimary = primaryByIndex.get(index) ?? false
+        return {
+          is_primary: isPrimary,
+          media_asset_id: asset.id,
+          metadata: coerceCatalogJsonRecord(media.metadata),
+          product_id: input.aggregateId,
+          product_profile_id: productProfileId,
+          role:
+            media.role ??
+            (variantId ? "variant" : isPrimary ? "primary" : "gallery"),
+          sort_order: media.sortOrder ?? index,
+          variant_id: variantId,
+        }
+      }
+    )
+    if (itemPayloads.length) {
+      readExactCatalogProductMediaItems(
+        await catalogService.createCatalogProductMediaItems(
+          itemPayloads,
+          sharedContext
         ),
-        sharedContext
+        input.aggregateId,
+        itemPayloads
       )
     }
+    readExactCatalogProductMediaItems(
+      await catalogService.listCatalogProductMediaItems(
+        { product_id: input.aggregateId },
+        { order: { id: "ASC", sort_order: "ASC" }, take: 101 },
+        sharedContext
+      ),
+      input.aggregateId,
+      itemPayloads
+    )
 
     return {
       createdAssetIds: [...createdAssetIds],
@@ -435,6 +469,23 @@ export const compensateCatalogProductMediaMutation = async (
   }
 ): Promise<void> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
+    const operation = readCatalogTransactionOperationList(
+      await catalogService.listCatalogAuthoringOperations(
+        { id: input.operationId },
+        { take: 2 },
+        sharedContext
+      )
+    )
+    if (
+      !operation ||
+      operation.id !== input.operationId ||
+      operation.status !== "pending"
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The product media compensation operation could not be verified."
+      )
+    }
     await restoreCatalogProductMediaSnapshot(
       catalogService,
       input.aggregateId,
@@ -448,17 +499,20 @@ export const compensateCatalogProductMediaMutation = async (
         sharedContext
       )
     }
-    await catalogService.updateCatalogAuthoringOperations(
-      [
-        {
-          completed_at: new Date(),
-          error_code: "workflow_compensated",
-          error_detail:
-            "A later workflow step failed; the previous product media state was restored.",
-          id: input.operationId,
-          status: "compensated",
-        },
-      ],
-      sharedContext
+    readCatalogTransactionOperationMutation(
+      await catalogService.updateCatalogAuthoringOperations(
+        [
+          {
+            completed_at: new Date(),
+            error_code: "workflow_compensated",
+            error_detail:
+              "A later workflow step failed; the previous product media state was restored.",
+            id: input.operationId,
+            status: "compensated",
+          },
+        ],
+        sharedContext
+      ),
+      { ...operation, id: input.operationId, status: "compensated" }
     )
   })

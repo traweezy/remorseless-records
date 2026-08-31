@@ -24,6 +24,18 @@ import {
   type CatalogVariantProfileRecord,
 } from "../../modules/catalog/serializers"
 import {
+  readCatalogArtistList,
+  readCatalogProductArtists,
+  readCatalogProductProfiles,
+  readCatalogProductReferences,
+  readCatalogReferenceValueList,
+  readCatalogVariantProfileList,
+} from "./profile-persistence-contracts"
+import {
+  readCatalogBundleComponentStates,
+  readCatalogBundleStateProfiles,
+} from "./transaction-persistence-contracts"
+import {
   buildCatalogAuthoringAudit,
   type CatalogAuthoringAuditItem,
 } from "./authoring-audit"
@@ -636,8 +648,12 @@ export const loadProductAuthoringView = async (
   const variantIds = commerce.variants.map(({ id }) => id)
   const [productProfiles, bundleProfiles, mediaResponse, availabilityResult] =
     await Promise.all([
-      catalogService.listCatalogProductProfiles({ product_id: productId }),
-      catalogService.listCatalogBundleProfiles({ product_id: productId }),
+      catalogService
+        .listCatalogProductProfiles({ product_id: productId }, { take: 2 })
+        .then((value) => readCatalogProductProfiles(value, productId)),
+      catalogService
+        .listCatalogBundleProfiles({ product_id: productId }, { take: 2 })
+        .then((value) => readCatalogBundleStateProfiles(value, productId)),
       loadProductMediaResponse(catalogService, productId),
       loadAvailability(query, variantIds),
     ])
@@ -659,27 +675,40 @@ export const loadProductAuthoringView = async (
     bundleComponents,
   ] = await Promise.all([
     productProfile
-      ? catalogService.listCatalogProductArtists(
-          { product_profile_id: productProfile.id },
-          { order: { sort_order: "ASC" } }
-        )
+      ? catalogService
+          .listCatalogProductArtists(
+            { product_profile_id: productProfile.id },
+            { order: { id: "ASC", sort_order: "ASC" }, take: 101 }
+          )
+          .then((value) => readCatalogProductArtists(value, productProfile.id))
       : Promise.resolve([]),
     productProfile
-      ? catalogService.listCatalogProductReferences(
-          { product_profile_id: productProfile.id },
-          { order: { sort_order: "ASC" } }
-        )
+      ? catalogService
+          .listCatalogProductReferences(
+            { product_profile_id: productProfile.id },
+            { order: { id: "ASC", sort_order: "ASC" }, take: 101 }
+          )
+          .then((value) =>
+            readCatalogProductReferences(value, productProfile.id)
+          )
       : Promise.resolve([]),
     variantIds.length
-      ? catalogService.listCatalogVariantProfiles({
-          variant_id: variantIds,
-        })
+      ? catalogService
+          .listCatalogVariantProfiles(
+            { variant_id: variantIds },
+            { take: variantIds.length + 1 }
+          )
+          .then((value) => readCatalogVariantProfileList(value, variantIds))
       : Promise.resolve([]),
     bundleProfile
-      ? catalogService.listCatalogBundleComponents(
-          { bundle_profile_id: bundleProfile.id },
-          { order: { sort_order: "ASC" } }
-        )
+      ? catalogService
+          .listCatalogBundleComponents(
+            { bundle_profile_id: bundleProfile.id },
+            { order: { id: "ASC", sort_order: "ASC" }, take: 101 }
+          )
+          .then((value) =>
+            readCatalogBundleComponentStates(value, bundleProfile.id, 100)
+          )
       : Promise.resolve([]),
   ])
 
@@ -695,26 +724,42 @@ export const loadProductAuthoringView = async (
   ])
   const [artists, referenceValues] = await Promise.all([
     artistIds.length
-      ? catalogService.listCatalogArtists({ id: artistIds })
+      ? catalogService
+          .listCatalogArtists({ id: artistIds }, { take: artistIds.length + 1 })
+          .then((value) =>
+            readCatalogArtistList(value, {
+              expectedIds: artistIds,
+              maximumRows: artistIds.length,
+            })
+          )
       : Promise.resolve([]),
     referenceIds.length
-      ? catalogService.listCatalogReferenceValues({ id: referenceIds })
+      ? catalogService
+          .listCatalogReferenceValues(
+            { id: referenceIds },
+            { take: referenceIds.length + 1 }
+          )
+          .then((value) =>
+            readCatalogReferenceValueList(value, {
+              expectedIds: referenceIds,
+              maximumRows: referenceIds.length,
+            })
+          )
       : Promise.resolve([]),
   ])
 
   return buildProductAuthoringView({
-    artistAssignments: artistAssignments as CatalogProductArtistRecord[],
-    artists: artists as CatalogArtistRecord[],
+    artistAssignments,
+    artists,
     availabilityByVariantId: availabilityResult.availabilityByVariantId,
     availabilityLoaded: availabilityResult.availabilityLoaded,
-    bundleComponents: bundleComponents as CatalogBundleComponentRecord[],
-    bundleProfiles: bundleProfiles as CatalogBundleProfileRecord[],
+    bundleComponents,
+    bundleProfiles,
     media: mediaResponse.media,
     product,
-    productProfiles: productProfiles as CatalogProductProfileRecord[],
-    referenceAssignments:
-      referenceAssignments as CatalogProductReferenceRecord[],
-    referenceValues: referenceValues as CatalogReferenceValueRecord[],
-    variantProfiles: variantProfiles as CatalogVariantProfileRecord[],
+    productProfiles,
+    referenceAssignments,
+    referenceValues,
+    variantProfiles,
   })
 }

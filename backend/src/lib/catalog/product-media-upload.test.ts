@@ -5,6 +5,10 @@ import {
   performCatalogMediaUpload,
   type CatalogMediaUploadInput,
 } from "./product-media-upload"
+import {
+  catalogMediaAssetFixture,
+  catalogOperationFixture,
+} from "./transaction-persistence-fixtures.test-helpers"
 
 const serviceFixture = () => {
   const service = {
@@ -15,12 +19,33 @@ const serviceFixture = () => {
     updateCatalogAuthoringOperations: jest.fn(),
   }
   service.listCatalogAuthoringOperations.mockResolvedValue([])
-  service.createCatalogAuthoringOperations.mockResolvedValue([
-    { id: "caop_upload_1" },
-  ])
-  service.createCatalogMediaAssets.mockResolvedValue([
-    { id: "cmedia_upload_1" },
-  ])
+  service.createCatalogAuthoringOperations.mockImplementation(
+    async ([payload]: Array<Record<string, unknown>>) => [
+      catalogOperationFixture({ id: "catop_upload_1", ...payload }),
+    ]
+  )
+  service.createCatalogMediaAssets.mockImplementation(
+    async ([payload]: Array<Record<string, unknown>>) => [
+      catalogMediaAssetFixture({ id: "cmedia_upload_1", ...payload }),
+    ]
+  )
+  service.updateCatalogAuthoringOperations.mockImplementation(
+    async ([payload]: Array<Record<string, unknown>>) => [
+      catalogOperationFixture({
+        aggregate_id: commandFixture().idempotencyKey,
+        command: "catalog.product-media.upload",
+        expected_version: 0,
+        id: "catop_upload_1",
+        metadata: {
+          file_sha256s: ["a".repeat(64)],
+          remote_prefix: commandFixture().idempotencyKey,
+          source_file_sha256s: ["c".repeat(64)],
+        },
+        request_sha256: commandFixture().requestSha256,
+        ...payload,
+      }),
+    ]
+  )
   return service
 }
 
@@ -80,7 +105,7 @@ describe("catalog product media upload", () => {
       compensation: {
         assetIds: ["cmedia_upload_1"],
         fileIds: ["file_upload_1"],
-        operationId: "caop_upload_1",
+        operationId: "catop_upload_1",
       },
       mutation: {
         files: [
@@ -93,7 +118,7 @@ describe("catalog product media upload", () => {
             url: "https://media.example/catalog/cover.jpg",
           },
         ],
-        operationId: "caop_upload_1",
+        operationId: "catop_upload_1",
         replayed: false,
       },
     })
@@ -159,16 +184,21 @@ describe("catalog product media upload", () => {
       },
     ]
     service.listCatalogAuthoringOperations.mockResolvedValue([
-      {
+      catalogOperationFixture({
         actor_id: input.actorId,
         aggregate_id: input.idempotencyKey,
         command: "catalog.product-media.upload",
         expected_version: 0,
-        id: "caop_existing",
+        id: "catop_existing",
+        metadata: {
+          file_sha256s: ["a".repeat(64)],
+          remote_prefix: input.idempotencyKey,
+          source_file_sha256s: ["c".repeat(64)],
+        },
         request_sha256: input.requestSha256,
         result: { files },
         status: "succeeded",
-      },
+      }),
     ])
 
     await expect(
@@ -177,7 +207,7 @@ describe("catalog product media upload", () => {
       compensation: null,
       mutation: {
         files,
-        operationId: "caop_existing",
+        operationId: "catop_existing",
         replayed: true,
       },
     })
@@ -234,7 +264,7 @@ describe("catalog product media upload", () => {
       compensation: {
         assetIds: ["cmedia_upload_1"],
         fileIds: ["file_upload_1"],
-        operationId: "caop_upload_1",
+        operationId: "catop_upload_1",
       },
     })
   })
@@ -247,12 +277,25 @@ describe("catalog product media upload", () => {
     fileService.deleteFiles.mockRejectedValue(
       new Error("file provider unavailable")
     )
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      catalogOperationFixture({
+        aggregate_id: commandFixture().idempotencyKey,
+        command: "catalog.product-media.upload",
+        id: "catop_upload_1",
+        metadata: {
+          file_sha256s: ["a".repeat(64)],
+          remote_prefix: commandFixture().idempotencyKey,
+          source_file_sha256s: ["c".repeat(64)],
+        },
+        request_sha256: commandFixture().requestSha256,
+      }),
+    ])
 
     await expect(
       compensateCatalogMediaUpload(service as never, fileService as never, {
         assetIds: ["cmedia_upload_1"],
         fileIds: ["file_upload_1"],
-        operationId: "caop_upload_1",
+        operationId: "catop_upload_1",
       })
     ).rejects.toBe(firstError)
     expect(service.deleteCatalogMediaAssets).toHaveBeenCalledWith([
@@ -262,7 +305,7 @@ describe("catalog product media upload", () => {
     expect(service.updateCatalogAuthoringOperations).toHaveBeenCalledWith([
       expect.objectContaining({
         error_code: "workflow_compensation_failed",
-        id: "caop_upload_1",
+        id: "catop_upload_1",
         result: {
           compensation: {
             asset_ids: ["cmedia_upload_1"],
@@ -277,18 +320,31 @@ describe("catalog product media upload", () => {
   it("marks the operation compensated only after complete cleanup", async () => {
     const service = serviceFixture()
     const fileService = fileServiceFixture()
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      catalogOperationFixture({
+        aggregate_id: commandFixture().idempotencyKey,
+        command: "catalog.product-media.upload",
+        id: "catop_upload_1",
+        metadata: {
+          file_sha256s: ["a".repeat(64)],
+          remote_prefix: commandFixture().idempotencyKey,
+          source_file_sha256s: ["c".repeat(64)],
+        },
+        request_sha256: commandFixture().requestSha256,
+      }),
+    ])
 
     await expect(
       compensateCatalogMediaUpload(service as never, fileService as never, {
         assetIds: ["cmedia_upload_1"],
         fileIds: ["file_upload_1"],
-        operationId: "caop_upload_1",
+        operationId: "catop_upload_1",
       })
     ).resolves.toBeUndefined()
     expect(service.updateCatalogAuthoringOperations).toHaveBeenCalledWith([
       expect.objectContaining({
         error_code: "workflow_compensated",
-        id: "caop_upload_1",
+        id: "catop_upload_1",
         status: "compensated",
       }),
     ])

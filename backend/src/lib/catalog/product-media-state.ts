@@ -2,15 +2,6 @@ import { EntityManager } from "@medusajs/framework/mikro-orm/knex"
 import type { Context } from "@medusajs/framework/types"
 
 import {
-  catalogMediaDerivativeStatusValues,
-  catalogMediaRoleValues,
-  type CatalogMediaAssetRecord,
-  type CatalogMediaDerivativeStatus,
-  type CatalogMediaRole,
-  type CatalogProductMediaItemRecord,
-} from "../../modules/catalog/serializers"
-import { coerceCatalogJsonRecord } from "./normalization"
-import {
   listProductMediaItems,
   loadProductMediaResponse,
 } from "./product-media-read"
@@ -20,31 +11,32 @@ import type {
   CatalogProductMediaSnapshot,
 } from "./product-media-contract"
 import type { CatalogService } from "./reference-resolution"
-
-const toMediaDerivativeStatus = (
-  value: unknown
-): CatalogMediaDerivativeStatus =>
-  catalogMediaDerivativeStatusValues.find((status) => status === value) ??
-  "source_only"
-
-const toMediaRole = (value: unknown): CatalogMediaRole =>
-  catalogMediaRoleValues.find((role) => role === value) ?? "gallery"
+import {
+  readCatalogMediaAssetMutation,
+  readCatalogMediaAssets,
+  readCatalogProductMediaItems,
+  readCatalogProductMediaOperationResult,
+  readCatalogTransactionOperationList,
+  readExactCatalogProductMediaItems,
+  type CatalogMediaAssetPersistenceRecord,
+  type CatalogProductMediaItemPersistenceRecord,
+} from "./transaction-persistence-contracts"
 
 export const catalogMediaAssetState = (
-  asset: CatalogMediaAssetRecord
+  asset: CatalogMediaAssetPersistenceRecord
 ): CatalogMediaAssetState => ({
   alt_text: asset.alt_text,
   byte_size: asset.byte_size,
   caption: asset.caption,
   content_sha256: asset.content_sha256,
   crop_intent: asset.crop_intent,
-  derivative_status: toMediaDerivativeStatus(asset.derivative_status),
-  derivatives: coerceCatalogJsonRecord(asset.derivatives),
+  derivative_status: asset.derivative_status,
+  derivatives: asset.derivatives ?? {},
   focal_x: asset.focal_x,
   focal_y: asset.focal_y,
   height: asset.height,
   id: asset.id,
-  metadata: coerceCatalogJsonRecord(asset.metadata),
+  metadata: asset.metadata ?? {},
   mime_type: asset.mime_type,
   original_filename: asset.original_filename,
   source_file_key: asset.source_file_key,
@@ -54,15 +46,15 @@ export const catalogMediaAssetState = (
 })
 
 const productMediaItemState = (
-  item: CatalogProductMediaItemRecord
+  item: CatalogProductMediaItemPersistenceRecord
 ): CatalogProductMediaItemState => ({
   id: item.id,
   is_primary: item.is_primary,
   media_asset_id: item.media_asset_id,
-  metadata: coerceCatalogJsonRecord(item.metadata),
+  metadata: item.metadata ?? {},
   product_id: item.product_id,
   product_profile_id: item.product_profile_id,
-  role: toMediaRole(item.role),
+  role: item.role,
   sort_order: item.sort_order,
   variant_id: item.variant_id,
 })
@@ -72,23 +64,29 @@ export const resolveCatalogProductMediaVersion = async (
   productId: string,
   sharedContext?: Context<EntityManager>
 ): Promise<number> => {
-  const operations = await catalogService.listCatalogAuthoringOperations(
-    {
-      aggregate_id: productId,
-      command: "catalog.product-media.replace",
-      status: "succeeded",
-    },
-    { order: { created_at: "DESC" }, take: 100 },
-    sharedContext
+  const operation = readCatalogTransactionOperationList(
+    await catalogService.listCatalogAuthoringOperations(
+      {
+        aggregate_id: productId,
+        command: "catalog.product-media.replace",
+        status: "succeeded",
+      },
+      { order: { created_at: "DESC", id: "DESC" }, take: 1 },
+      sharedContext
+    )
   )
-  return operations.reduce((version, operation) => {
-    const result = coerceCatalogJsonRecord(operation.result)
-    const resultVersion =
-      typeof result.version === "number"
-        ? result.version
-        : operation.expected_version + 1
-    return Math.max(version, resultVersion)
-  }, 0)
+  if (!operation) {
+    return 0
+  }
+  if (
+    operation.aggregateId !== productId ||
+    operation.command !== "catalog.product-media.replace" ||
+    operation.status !== "succeeded"
+  ) {
+    throw new Error("The catalog media version operation is inconsistent.")
+  }
+  return readCatalogProductMediaOperationResult(operation.result, productId)
+    .version
 }
 
 export const loadCatalogProductMediaResponse = async (
@@ -109,20 +107,27 @@ export const snapshotCatalogProductMedia = async (
   productId: string,
   sharedContext: Context<EntityManager>
 ): Promise<CatalogProductMediaSnapshot> => {
-  const items = (await listProductMediaItems(
+  const items = await listProductMediaItems(
     catalogService,
     productId,
     sharedContext
-  )) as CatalogProductMediaItemRecord[]
+  )
   const assetIds = [
     ...new Set(items.map(({ media_asset_id }) => media_asset_id)),
   ]
   const assets = assetIds.length
-    ? ((await catalogService.listCatalogMediaAssets(
-        { id: assetIds },
-        {},
-        sharedContext
-      )) as CatalogMediaAssetRecord[])
+    ? readCatalogMediaAssets(
+        await catalogService.listCatalogMediaAssets(
+          { id: assetIds },
+          { take: 101 },
+          sharedContext
+        ),
+        {
+          expectedIds: assetIds,
+          maximumRows: 100,
+          requireExactIds: true,
+        }
+      )
     : []
   return {
     assets: assets.map(catalogMediaAssetState),
@@ -132,7 +137,7 @@ export const snapshotCatalogProductMedia = async (
 
 export const rememberCatalogMediaAsset = (
   snapshot: CatalogProductMediaSnapshot,
-  asset: CatalogMediaAssetRecord
+  asset: CatalogMediaAssetPersistenceRecord
 ): void => {
   if (!snapshot.assets.some(({ id }) => id === asset.id)) {
     snapshot.assets.push(catalogMediaAssetState(asset))
@@ -158,33 +163,60 @@ export const restoreCatalogProductMediaSnapshot = async (
   }
 
   if (snapshot.assets.length) {
-    const existingAssets = await catalogService.listCatalogMediaAssets(
-      { id: snapshot.assets.map(({ id }) => id) },
-      {},
-      sharedContext
+    const expectedIds = snapshot.assets.map(({ id }) => id)
+    const existingAssets = readCatalogMediaAssets(
+      await catalogService.listCatalogMediaAssets(
+        { id: expectedIds },
+        { take: 101 },
+        sharedContext
+      ),
+      { expectedIds, maximumRows: 100 }
     )
     const existingIds = new Set(existingAssets.map(({ id }) => id))
     const updates = snapshot.assets.filter(({ id }) => existingIds.has(id))
     const creates = snapshot.assets.filter(({ id }) => !existingIds.has(id))
     if (updates.length) {
-      await catalogService.updateCatalogMediaAssets(
-        updates as never,
-        sharedContext
-      )
+      for (const update of updates) {
+        readCatalogMediaAssetMutation(
+          await catalogService.updateCatalogMediaAssets(
+            [update],
+            sharedContext
+          ),
+          update
+        )
+      }
     }
     if (creates.length) {
-      await catalogService.createCatalogMediaAssets(
-        creates as never,
-        sharedContext
-      )
+      for (const create of creates) {
+        readCatalogMediaAssetMutation(
+          await catalogService.createCatalogMediaAssets(
+            [create],
+            sharedContext
+          ),
+          create
+        )
+      }
     }
   }
   if (snapshot.items.length) {
-    await catalogService.createCatalogProductMediaItems(
-      snapshot.items as never,
-      sharedContext
+    readExactCatalogProductMediaItems(
+      await catalogService.createCatalogProductMediaItems(
+        snapshot.items,
+        sharedContext
+      ),
+      productId,
+      snapshot.items
     )
   }
+  readExactCatalogProductMediaItems(
+    await catalogService.listCatalogProductMediaItems(
+      { product_id: productId },
+      { order: { id: "ASC", sort_order: "ASC" }, take: 101 },
+      sharedContext
+    ),
+    productId,
+    snapshot.items
+  )
 }
 
 export const deleteCreatedMediaAssetIfOrphaned = async (
@@ -192,10 +224,14 @@ export const deleteCreatedMediaAssetIfOrphaned = async (
   assetId: string,
   sharedContext: Context<EntityManager>
 ): Promise<void> => {
-  const links = await catalogService.listCatalogProductMediaItems(
-    { media_asset_id: assetId },
-    { take: 1 },
-    sharedContext
+  const links = readCatalogProductMediaItems(
+    await catalogService.listCatalogProductMediaItems(
+      { media_asset_id: assetId },
+      { take: 2 },
+      sharedContext
+    ),
+    { mediaAssetId: assetId },
+    1
   )
   if (!links.length) {
     await catalogService.deleteCatalogMediaAssets(assetId, sharedContext)

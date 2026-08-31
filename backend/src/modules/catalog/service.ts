@@ -36,11 +36,20 @@ import {
   type OrphanCatalogMediaQuery,
 } from "./orphan-media-query"
 import { readCatalogOrphanMediaPage } from "../../lib/catalog/persistence-contracts"
-
-const asJsonObject = (value: unknown): JsonObject =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonObject)
-    : {}
+import {
+  assertExactCatalogBundleSnapshot,
+  readCatalogBundleComponentStates,
+  readCatalogBundleInventoryLinks,
+  readCatalogBundleOperationResult,
+  readCatalogBundleProfileMutation,
+  readCatalogBundleStateProfiles,
+  readCatalogMediaAssets,
+  readCatalogTransactionOperationList,
+  readCatalogTransactionOperationMutation,
+  readExactCatalogBundleComponents,
+  readExactCatalogBundleInventoryLinks,
+  type CatalogTransactionOperationExpectation,
+} from "../../lib/catalog/transaction-persistence-contracts"
 
 class CatalogModuleService extends MedusaService({
   CatalogAuthoringOperation,
@@ -94,60 +103,46 @@ class CatalogModuleService extends MedusaService({
       manager.getKnex(),
       input
     )
-    return readCatalogOrphanMediaPage(await countQuery, await rowsQuery)
+    const page = readCatalogOrphanMediaPage(await countQuery, await rowsQuery)
+    return {
+      count: page.count,
+      rows: readCatalogMediaAssets(page.rows, {
+        ...(input.lifecycleStatus === undefined
+          ? {}
+          : { expectedLifecycleStatus: input.lifecycleStatus }),
+        maximumRows: input.limit,
+      }),
+    }
   }
 
   private async snapshotBundle_(
     productId: string,
     sharedContext: Context<EntityManager>
   ): Promise<CatalogBundleStateSnapshot> {
-    const profile = (
+    const profile = readCatalogBundleStateProfiles(
       await this.listCatalogBundleProfiles(
         { product_id: productId },
-        { take: 1 },
+        { take: 2 },
         sharedContext
-      )
-    )[0]
+      ),
+      productId
+    ).at(0)
     if (!profile) {
       return { profile: null, components: [] }
     }
 
-    const components = await this.listCatalogBundleComponents(
-      { bundle_profile_id: profile.id },
-      { order: { sort_order: "ASC" } },
-      sharedContext
+    const components = readCatalogBundleComponentStates(
+      await this.listCatalogBundleComponents(
+        { bundle_profile_id: profile.id },
+        { order: { id: "ASC", sort_order: "ASC" }, take: 101 },
+        sharedContext
+      ),
+      profile.id,
+      100
     )
     return {
-      profile: {
-        id: profile.id,
-        product_id: profile.product_id,
-        product_profile_id: profile.product_profile_id ?? null,
-        bundle_type: profile.bundle_type,
-        inventory_mode: profile.inventory_mode,
-        fulfillment_mode: profile.fulfillment_mode,
-        display_title: profile.display_title ?? null,
-        description_html: profile.description_html ?? null,
-        is_active: profile.is_active,
-        version: profile.version,
-        metadata: asJsonObject(profile.metadata),
-      },
-      components: components.map(
-        (component): CatalogBundleComponentState => ({
-          id: component.id,
-          bundle_profile_id: component.bundle_profile_id,
-          component_product_id: component.component_product_id,
-          component_variant_id: component.component_variant_id ?? null,
-          component_inventory_item_id:
-            component.component_inventory_item_id ?? null,
-          title: component.title ?? null,
-          variant_title: component.variant_title ?? null,
-          sku: component.sku ?? null,
-          quantity: component.quantity,
-          sort_order: component.sort_order,
-          is_required: component.is_required,
-          metadata: asJsonObject(component.metadata),
-        })
-      ),
+      profile,
+      components,
     }
   }
 
@@ -165,6 +160,10 @@ class CatalogModuleService extends MedusaService({
       )
     }
     await this.deleteCatalogBundleProfiles(snapshot.profile.id, sharedContext)
+    assertExactCatalogBundleSnapshot(
+      await this.snapshotBundle_(snapshot.profile.product_id, sharedContext),
+      { components: [], profile: null }
+    )
   }
 
   private async createBundleSnapshot_(
@@ -174,13 +173,24 @@ class CatalogModuleService extends MedusaService({
     if (!snapshot.profile) {
       return
     }
-    await this.createCatalogBundleProfiles([snapshot.profile], sharedContext)
+    readCatalogBundleProfileMutation(
+      await this.createCatalogBundleProfiles([snapshot.profile], sharedContext),
+      snapshot.profile
+    )
     if (snapshot.components.length) {
-      await this.createCatalogBundleComponents(
-        snapshot.components,
-        sharedContext
+      readExactCatalogBundleComponents(
+        await this.createCatalogBundleComponents(
+          snapshot.components,
+          sharedContext
+        ),
+        snapshot.profile.id,
+        snapshot.components
       )
     }
+    assertExactCatalogBundleSnapshot(
+      await this.snapshotBundle_(snapshot.profile.product_id, sharedContext),
+      snapshot
+    )
   }
 
   @InjectTransactionManager()
@@ -188,20 +198,30 @@ class CatalogModuleService extends MedusaService({
     input: CatalogBundleMutationInput,
     @MedusaContext() sharedContext: Context<EntityManager> = {}
   ): Promise<CatalogBundleMutationResult> {
-    const existingOperation = (
+    const operationExpectation: CatalogTransactionOperationExpectation = {
+      actorId: input.actorId,
+      aggregateId: input.aggregateId,
+      command: input.command,
+      expectedVersion: input.expectedVersion,
+      idempotencyKey: input.idempotencyKey,
+      metadata: {},
+      requestSha256: input.requestSha256,
+      status: "pending",
+    }
+    const existingOperation = readCatalogTransactionOperationList(
       await this.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
-        { take: 1 },
+        { take: 2 },
         sharedContext
       )
-    )[0]
+    )
     if (existingOperation) {
       const sameCommand =
         existingOperation.command === input.command &&
-        existingOperation.aggregate_id === input.aggregateId &&
-        existingOperation.actor_id === input.actorId &&
-        existingOperation.expected_version === input.expectedVersion &&
-        existingOperation.request_sha256 === input.requestSha256
+        existingOperation.aggregateId === input.aggregateId &&
+        existingOperation.actorId === input.actorId &&
+        existingOperation.expectedVersion === input.expectedVersion &&
+        existingOperation.requestSha256 === input.requestSha256
       if (!sameCommand) {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
@@ -214,18 +234,17 @@ class CatalogModuleService extends MedusaService({
           "The matching catalog command did not complete. Refresh and retry with a new idempotency key."
         )
       }
-      const result = asJsonObject(existingOperation.result)
+      const result = readCatalogBundleOperationResult(
+        existingOperation.result,
+        input.aggregateId
+      )
       return {
         operationId: existingOperation.id,
         previous: { profile: null, components: [] },
-        profileId:
-          typeof result.profileId === "string" ? result.profileId : null,
+        profileId: result.profileId,
         replayed: true,
         result,
-        version:
-          typeof result.version === "number"
-            ? result.version
-            : input.expectedVersion,
+        version: result.version,
       }
     }
 
@@ -241,28 +260,25 @@ class CatalogModuleService extends MedusaService({
       )
     }
 
-    const [operation] = await this.createCatalogAuthoringOperations(
-      [
-        {
-          idempotency_key: input.idempotencyKey,
-          command: input.command,
-          aggregate_id: input.aggregateId,
-          actor_id: input.actorId,
-          request_sha256: input.requestSha256,
-          expected_version: input.expectedVersion,
-          status: "pending",
-          result: {},
-          metadata: {},
-        },
-      ],
-      sharedContext
+    const operation = readCatalogTransactionOperationMutation(
+      await this.createCatalogAuthoringOperations(
+        [
+          {
+            idempotency_key: input.idempotencyKey,
+            command: input.command,
+            aggregate_id: input.aggregateId,
+            actor_id: input.actorId,
+            request_sha256: input.requestSha256,
+            expected_version: input.expectedVersion,
+            status: "pending",
+            result: {},
+            metadata: {},
+          },
+        ],
+        sharedContext
+      ),
+      operationExpectation
     )
-    if (!operation) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog command audit record was not created."
-      )
-    }
 
     if (!input.profile) {
       await this.deleteBundleSnapshot_(previous, sharedContext)
@@ -283,42 +299,63 @@ class CatalogModuleService extends MedusaService({
         previous.components.map((component) => component.id),
         sharedContext
       )
-    }
-    const [profile] = profileId
-      ? await this.updateCatalogBundleProfiles(
-          [
-            {
-              id: profileId,
-              ...input.profile,
-              version,
-            },
-          ],
+      readExactCatalogBundleComponents(
+        await this.listCatalogBundleComponents(
+          { bundle_profile_id: profileId! },
+          { take: 1 },
           sharedContext
-        )
-      : await this.createCatalogBundleProfiles(
-          [
-            {
-              ...input.profile,
-              version,
-            },
-          ],
-          sharedContext
-        )
-    if (!profile) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "The catalog bundle was not persisted."
+        ),
+        profileId!,
+        []
       )
     }
+    const profilePayload = {
+      ...input.profile,
+      version,
+    }
+    const profile = profileId
+      ? readCatalogBundleProfileMutation(
+          await this.updateCatalogBundleProfiles(
+            [
+              {
+                id: profileId,
+                ...profilePayload,
+              },
+            ],
+            sharedContext
+          ),
+          { id: profileId, ...profilePayload }
+        )
+      : readCatalogBundleProfileMutation(
+          await this.createCatalogBundleProfiles(
+            [
+              {
+                ...profilePayload,
+              },
+            ],
+            sharedContext
+          ),
+          profilePayload
+        )
+    const componentPayloads = input.components.map((component) => ({
+      ...component,
+      bundle_profile_id: profile.id,
+    }))
+    let components: CatalogBundleComponentState[] = []
     if (input.components.length) {
-      await this.createCatalogBundleComponents(
-        input.components.map((component) => ({
-          ...component,
-          bundle_profile_id: profile.id,
-        })),
-        sharedContext
+      components = readExactCatalogBundleComponents(
+        await this.createCatalogBundleComponents(
+          componentPayloads,
+          sharedContext
+        ),
+        profile.id,
+        componentPayloads
       )
     }
+    assertExactCatalogBundleSnapshot(
+      await this.snapshotBundle_(input.aggregateId, sharedContext),
+      { components, profile }
+    )
 
     return {
       operationId: operation.id,
@@ -347,21 +384,41 @@ class CatalogModuleService extends MedusaService({
     },
     @MedusaContext() sharedContext: Context<EntityManager> = {}
   ): Promise<void> {
+    const operation = readCatalogTransactionOperationList(
+      await this.listCatalogAuthoringOperations(
+        { id: input.operationId },
+        { take: 2 },
+        sharedContext
+      )
+    )
+    if (
+      !operation ||
+      operation.id !== input.operationId ||
+      operation.status !== "pending"
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The bundle compensation operation could not be verified."
+      )
+    }
     const current = await this.snapshotBundle_(input.aggregateId, sharedContext)
     await this.deleteBundleSnapshot_(current, sharedContext)
     await this.createBundleSnapshot_(input.previous, sharedContext)
-    await this.updateCatalogAuthoringOperations(
-      [
-        {
-          id: input.operationId,
-          status: "compensated",
-          completed_at: new Date(),
-          error_code: "workflow_compensated",
-          error_detail:
-            "A later workflow step failed; the previous bundle state was restored.",
-        },
-      ],
-      sharedContext
+    readCatalogTransactionOperationMutation(
+      await this.updateCatalogAuthoringOperations(
+        [
+          {
+            id: input.operationId,
+            status: "compensated",
+            completed_at: new Date(),
+            error_code: "workflow_compensated",
+            error_detail:
+              "A later workflow step failed; the previous bundle state was restored.",
+          },
+        ],
+        sharedContext
+      ),
+      { ...operation, id: input.operationId, status: "compensated" }
     )
   }
 
@@ -383,10 +440,14 @@ class CatalogModuleService extends MedusaService({
     links: CatalogBundleInventoryLinkState[],
     @MedusaContext() sharedContext: Context<EntityManager> = {}
   ): Promise<void> {
-    const existing = await this.listCatalogBundleInventoryLinks(
-      { bundle_profile_id: bundleProfileId },
-      {},
-      sharedContext
+    const existing = readCatalogBundleInventoryLinks(
+      await this.listCatalogBundleInventoryLinks(
+        { bundle_profile_id: bundleProfileId },
+        { take: 101 },
+        sharedContext
+      ),
+      bundleProfileId,
+      100
     )
     if (existing.length) {
       await this.deleteCatalogBundleInventoryLinks(
@@ -395,11 +456,24 @@ class CatalogModuleService extends MedusaService({
       )
     }
     if (links.length) {
-      await this.createCatalogBundleInventoryLinks(
-        links.map(({ id: _id, ...link }) => link),
-        sharedContext
+      readExactCatalogBundleInventoryLinks(
+        await this.createCatalogBundleInventoryLinks(
+          links.map(({ id: _id, ...link }) => link),
+          sharedContext
+        ),
+        bundleProfileId,
+        links
       )
     }
+    readExactCatalogBundleInventoryLinks(
+      await this.listCatalogBundleInventoryLinks(
+        { bundle_profile_id: bundleProfileId },
+        { take: 101 },
+        sharedContext
+      ),
+      bundleProfileId,
+      links
+    )
   }
 
   @InjectManager()
@@ -421,7 +495,24 @@ class CatalogModuleService extends MedusaService({
     result: JsonObject,
     @MedusaContext() sharedContext: Context<EntityManager> = {}
   ): Promise<unknown> {
-    return this.updateCatalogAuthoringOperations(
+    const operation = readCatalogTransactionOperationList(
+      await this.listCatalogAuthoringOperations(
+        { id: operationId },
+        { take: 2 },
+        sharedContext
+      )
+    )
+    if (
+      !operation ||
+      operation.id !== operationId ||
+      operation.status !== "pending"
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The catalog operation completion could not be verified."
+      )
+    }
+    const updated = await this.updateCatalogAuthoringOperations(
       [
         {
           id: operationId,
@@ -434,6 +525,13 @@ class CatalogModuleService extends MedusaService({
       ],
       sharedContext
     )
+    readCatalogTransactionOperationMutation(updated, {
+      ...operation,
+      id: operationId,
+      result,
+      status: "succeeded",
+    })
+    return updated
   }
 
   @InjectManager()

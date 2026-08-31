@@ -10,51 +10,29 @@ import {
   type CatalogProductMediaMutationInput,
   type CatalogProductMediaSnapshot,
 } from "./product-media-authoring"
+import {
+  catalogMediaAssetFixture,
+  catalogOperationFixture,
+  catalogProductMediaItemFixture,
+  catalogProductProfileFixture,
+} from "./transaction-persistence-fixtures.test-helpers"
 
 const assetFixture = (
   id = "cmedia_1",
   sourceUrl = "https://media.example/cover.jpg"
 ): CatalogMediaAssetRecord => ({
-  alt_text: "Cover",
-  byte_size: 1_024,
-  caption: null,
-  content_sha256: null,
-  created_at: null,
-  crop_intent: null,
-  derivative_status: "source_only",
-  derivatives: {},
-  focal_x: 0.5,
-  focal_y: 0.5,
-  height: 1_000,
-  id,
-  metadata: {},
-  mime_type: "image/jpeg",
-  original_filename: "cover.jpg",
-  source_file_key: "covers/cover.jpg",
-  source_url: sourceUrl,
-  updated_at: null,
-  version: 1,
-  width: 1_000,
+  ...catalogMediaAssetFixture({ id, source_url: sourceUrl }),
 })
 
 const itemFixture = (
   id = "cpmedia_1",
   mediaAssetId = "cmedia_1"
 ): CatalogProductMediaItemRecord => ({
-  created_at: null,
-  id,
-  is_primary: true,
-  media_asset_id: mediaAssetId,
-  metadata: {},
-  product_id: "prod_1",
-  product_profile_id: "cprof_1",
-  role: "primary",
-  sort_order: 0,
-  updated_at: null,
-  variant_id: null,
+  ...catalogProductMediaItemFixture({ id, media_asset_id: mediaAssetId }),
 })
 
 const serviceFixture = () => {
+  let persistedItems: CatalogProductMediaItemRecord[] = []
   const service = {
     createCatalogAuthoringOperations: jest.fn(),
     createCatalogMediaAssets: jest.fn(),
@@ -77,8 +55,36 @@ const serviceFixture = () => {
   )
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   service.listCatalogMediaAssets.mockResolvedValue([])
-  service.listCatalogProductMediaItems.mockResolvedValue([])
-  service.listCatalogProductProfiles.mockResolvedValue([{ id: "cprof_1" }])
+  service.listCatalogProductMediaItems.mockImplementation(
+    async (filters: Record<string, unknown>) =>
+      filters.media_asset_id
+        ? persistedItems.filter(
+            ({ media_asset_id }) => media_asset_id === filters.media_asset_id
+          )
+        : persistedItems
+  )
+  service.listCatalogProductProfiles.mockResolvedValue([
+    catalogProductProfileFixture(),
+  ])
+  service.createCatalogAuthoringOperations.mockImplementation(
+    async ([payload]: Array<Record<string, unknown>>) => [
+      catalogOperationFixture({ id: "catop_1", ...payload }),
+    ]
+  )
+  service.createCatalogProductMediaItems.mockImplementation(
+    async (payloads: Array<Record<string, unknown>>) => {
+      persistedItems = payloads.map((payload, index) =>
+        catalogProductMediaItemFixture({
+          ...payload,
+          id: `cpmedia_${index + 1}`,
+        })
+      )
+      return persistedItems
+    }
+  )
+  service.deleteCatalogProductMediaItems.mockImplementation(async () => {
+    persistedItems = []
+  })
   return service
 }
 
@@ -132,9 +138,6 @@ describe("catalog product media authoring", () => {
   it("creates a pending operation and owns newly created assets", async () => {
     const service = serviceFixture()
     const createdAsset = assetFixture()
-    service.createCatalogAuthoringOperations.mockResolvedValue([
-      { id: "caop_1" },
-    ])
     service.createCatalogMediaAssets.mockResolvedValue([createdAsset])
 
     const result = await mutateCatalogProductMedia(
@@ -150,7 +153,7 @@ describe("catalog product media authoring", () => {
     expect(result).toEqual(
       expect.objectContaining({
         createdAssetIds: ["cmedia_1"],
-        operationId: "caop_1",
+        operationId: "catop_1",
         productId: "prod_1",
         replayed: false,
         version: 1,
@@ -185,10 +188,11 @@ describe("catalog product media authoring", () => {
   it("clones reusable assets instead of mutating another product's metadata", async () => {
     const service = serviceFixture()
     const reusable = assetFixture("cmedia_shared")
-    const clone = assetFixture("cmedia_clone")
-    service.createCatalogAuthoringOperations.mockResolvedValue([
-      { id: "caop_1" },
-    ])
+    const clone = {
+      ...assetFixture("cmedia_clone"),
+      alt_text: "Product-specific cover text",
+      version: 1,
+    }
     service.listCatalogMediaAssets.mockResolvedValue([reusable])
     service.createCatalogMediaAssets.mockResolvedValue([clone])
 
@@ -220,12 +224,12 @@ describe("catalog product media authoring", () => {
 
   it("never links, edits, or reuses quarantined media", async () => {
     const service = serviceFixture()
-    service.createCatalogAuthoringOperations.mockResolvedValue([
-      { id: "caop_1" },
-    ])
     service.retrieveCatalogMediaAsset.mockResolvedValue({
       ...assetFixture("cmedia_quarantined"),
       lifecycle_status: "quarantined",
+      purge_eligible_at: "2026-09-29T00:00:00.000Z",
+      quarantined_at: "2026-08-30T00:00:00.000Z",
+      quarantined_by: "user_1",
     })
 
     await expect(
@@ -243,7 +247,13 @@ describe("catalog product media authoring", () => {
     service.retrieveCatalogMediaAsset.mockReset()
     service.listCatalogMediaAssets.mockResolvedValue([])
     service.createCatalogMediaAssets.mockResolvedValue([
-      assetFixture("cmedia_active"),
+      {
+        ...assetFixture(
+          "cmedia_active",
+          "https://media.example/quarantined.jpg"
+        ),
+        source_file_key: "file_quarantined",
+      },
     ])
     await mutateCatalogProductMedia(
       service as never,
@@ -259,7 +269,7 @@ describe("catalog product media authoring", () => {
         lifecycle_status: "active",
         source_file_key: "file_quarantined",
       },
-      { take: 1 },
+      { take: 2 },
       expect.any(Object)
     )
   })
@@ -270,7 +280,13 @@ describe("catalog product media authoring", () => {
       async (filters: Record<string, unknown>) =>
         filters.idempotency_key
           ? []
-          : [{ expected_version: 1, result: { version: 2 } }]
+          : [
+              catalogOperationFixture({
+                expected_version: 1,
+                result: { productId: "prod_1", version: 2 },
+                status: "succeeded",
+              }),
+            ]
     )
 
     await expect(
@@ -283,23 +299,23 @@ describe("catalog product media authoring", () => {
     const service = serviceFixture()
     const command = commandFixture()
     service.listCatalogAuthoringOperations.mockResolvedValue([
-      {
+      catalogOperationFixture({
         actor_id: command.actorId,
         aggregate_id: command.aggregateId,
         command: command.command,
         expected_version: command.expectedVersion,
-        id: "caop_1",
+        id: "catop_1",
         request_sha256: command.requestSha256,
         result: { productId: "prod_1", version: 1 },
         status: "succeeded",
-      },
+      }),
     ])
 
     await expect(
       mutateCatalogProductMedia(service as never, command)
     ).resolves.toEqual(
       expect.objectContaining({
-        operationId: "caop_1",
+        operationId: "catop_1",
         replayed: true,
         version: 1,
       })
@@ -353,18 +369,33 @@ describe("catalog product media authoring", () => {
         },
       ],
     }
-    service.listCatalogProductMediaItems.mockImplementation(
-      async (filters: Record<string, unknown>) =>
-        filters.media_asset_id ? [] : [itemFixture("cpmedia_new", "cmedia_new")]
-    )
+    service.listCatalogProductMediaItems
+      .mockResolvedValueOnce([itemFixture("cpmedia_new", "cmedia_new")])
+      .mockResolvedValueOnce([previousItem])
+      .mockResolvedValueOnce([])
     service.listCatalogMediaAssets.mockResolvedValue([
       { ...previousAsset, alt_text: "Changed", version: 2 },
+    ])
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      catalogOperationFixture({ id: "catop_1" }),
+    ])
+    service.updateCatalogMediaAssets.mockImplementation(
+      async ([payload]: Array<Record<string, unknown>>) => [
+        catalogMediaAssetFixture(payload),
+      ]
+    )
+    service.createCatalogProductMediaItems.mockResolvedValue([previousItem])
+    service.updateCatalogAuthoringOperations.mockResolvedValue([
+      catalogOperationFixture({
+        id: "catop_1",
+        status: "compensated",
+      }),
     ])
 
     await compensateCatalogProductMediaMutation(service as never, {
       aggregateId: "prod_1",
       createdAssetIds: ["cmedia_new"],
-      operationId: "caop_1",
+      operationId: "catop_1",
       previous,
     })
 
@@ -388,7 +419,7 @@ describe("catalog product media authoring", () => {
       [
         expect.objectContaining({
           error_code: "workflow_compensated",
-          id: "caop_1",
+          id: "catop_1",
           status: "compensated",
         }),
       ],

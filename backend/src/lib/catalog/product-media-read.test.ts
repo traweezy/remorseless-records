@@ -5,15 +5,28 @@ import type {
 
 import type CatalogModuleService from "../../modules/catalog/service"
 import { loadProductMediaResponse } from "./product-media-read"
+import {
+  catalogMediaAssetFixture,
+  catalogProductMediaItemFixture,
+} from "./transaction-persistence-fixtures.test-helpers"
 
 jest.mock("../../modules/catalog/serializers", () => ({
   catalogMediaDerivativeStatusValues: [
+    "source_only",
     "pending",
+    "processing",
     "ready",
     "failed",
-    "not_required",
   ],
-  catalogMediaRoleValues: ["primary", "gallery", "detail", "variant"],
+  catalogMediaLifecycleStatusValues: ["active", "quarantined"],
+  catalogMediaRoleValues: [
+    "primary",
+    "gallery",
+    "variant",
+    "artist_photo",
+    "news_cover",
+    "open_graph",
+  ],
   serializeCatalogMediaAsset: (asset: CatalogMediaAssetRecord) => asset,
   serializeCatalogProductMediaItem: (
     item: CatalogProductMediaItemRecord,
@@ -31,56 +44,43 @@ const mediaItem = (
   mediaAssetId: string,
   sortOrder: number
 ): CatalogProductMediaItemRecord => ({
-  created_at: null,
+  ...catalogProductMediaItemFixture(),
   id,
   is_primary: sortOrder === 0,
   media_asset_id: mediaAssetId,
-  metadata: {},
-  product_id: "prod_1",
-  product_profile_id: "cprof_1",
   role: sortOrder === 0 ? "primary" : "gallery",
   sort_order: sortOrder,
-  updated_at: null,
-  variant_id: null,
 })
 
 const mediaAsset = (
   id: string,
   sourceUrl: string
 ): CatalogMediaAssetRecord => ({
-  alt_text: null,
-  byte_size: null,
-  caption: null,
-  content_sha256: null,
-  created_at: null,
-  crop_intent: null,
-  derivative_status: "ready",
-  derivatives: {},
-  focal_x: null,
-  focal_y: null,
-  height: null,
-  id,
-  metadata: {},
-  mime_type: "image/jpeg",
-  original_filename: null,
-  source_file_key: null,
-  source_url: sourceUrl,
-  updated_at: null,
-  version: 1,
-  width: null,
+  ...catalogMediaAssetFixture({
+    alt_text: null,
+    byte_size: null,
+    derivative_status: "ready",
+    focal_x: null,
+    focal_y: null,
+    height: null,
+    id,
+    original_filename: null,
+    source_file_key: null,
+    source_url: sourceUrl,
+    width: null,
+  }),
 })
 
 describe("loadProductMediaResponse", () => {
   it("loads all linked assets in one batch and preserves media order", async () => {
     const items = [
-      mediaItem("media_1", "asset_1", 0),
-      mediaItem("media_2", "asset_2", 1),
-      mediaItem("media_3", "asset_missing", 2),
+      mediaItem("cpmedia_1", "cmedia_1", 0),
+      mediaItem("cpmedia_2", "cmedia_2", 1),
     ]
     const service = {
       listCatalogMediaAssets: jest.fn(async () => [
-        mediaAsset("asset_2", "https://example.com/two.jpg"),
-        mediaAsset("asset_1", "https://example.com/one.jpg"),
+        mediaAsset("cmedia_2", "https://example.com/two.jpg"),
+        mediaAsset("cmedia_1", "https://example.com/one.jpg"),
       ]),
       listCatalogProductMediaItems: jest.fn(async () => items),
     } as unknown as CatalogService
@@ -88,20 +88,31 @@ describe("loadProductMediaResponse", () => {
     const response = await loadProductMediaResponse(service, "prod_1")
 
     expect(service.listCatalogMediaAssets).toHaveBeenCalledWith(
-      { id: ["asset_1", "asset_2", "asset_missing"] },
-      {},
+      { id: ["cmedia_1", "cmedia_2"] },
+      { take: 101 },
       undefined
     )
     expect(response.media.map(({ id }) => id)).toEqual([
-      "media_1",
-      "media_2",
-      "media_3",
+      "cpmedia_1",
+      "cpmedia_2",
     ])
     expect(response.media.map(({ asset }) => asset?.id ?? null)).toEqual([
-      "asset_1",
-      "asset_2",
-      null,
+      "cmedia_1",
+      "cmedia_2",
     ])
+  })
+
+  it("rejects a media link whose asset projection is missing", async () => {
+    const service = {
+      listCatalogMediaAssets: jest.fn(async () => []),
+      listCatalogProductMediaItems: jest.fn(async () => [
+        mediaItem("cpmedia_1", "cmedia_missing", 0),
+      ]),
+    } as unknown as CatalogService
+
+    await expect(loadProductMediaResponse(service, "prod_1")).rejects.toThrow(
+      "transaction persistence boundary"
+    )
   })
 
   it("does not issue an empty asset query", async () => {

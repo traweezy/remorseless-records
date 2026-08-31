@@ -112,8 +112,8 @@ describe("POST /admin/catalog/media/uploads", () => {
         filename: "The Album Cover.JPG",
         id: "file_1",
         mediaAssetId: "cmedia_1",
-        mimeType: "image/jpeg",
-        size: 4,
+        mimeType: "image/webp",
+        size: 15,
         url: "https://media.example/catalog/cover.jpg",
       },
     ]

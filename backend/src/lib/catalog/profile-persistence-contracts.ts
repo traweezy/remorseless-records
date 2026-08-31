@@ -265,7 +265,11 @@ export const readCatalogArtist = (
 
 export const readCatalogArtistList = (
   value: unknown,
-  options: { expectedSlug?: string; maximumRows?: number } = {}
+  options: {
+    expectedIds?: readonly string[]
+    expectedSlug?: string
+    maximumRows?: number
+  } = {}
 ): CatalogArtistRecord[] => {
   const source = rows(value)
   if (source.length > (options.maximumRows ?? 500)) {
@@ -273,11 +277,13 @@ export const readCatalogArtistList = (
   }
   const ids = new Set<string>()
   const slugs = new Set<string>()
+  const expectedIds = options.expectedIds ? new Set(options.expectedIds) : null
   return source.map((entry) => {
     const artist = artistRecord(entry)
     if (
       (options.expectedSlug !== undefined &&
         artist.slug !== options.expectedSlug) ||
+      (expectedIds !== null && !expectedIds.has(artist.id)) ||
       ids.has(artist.id) ||
       slugs.has(artist.slug)
     ) {
@@ -356,6 +362,7 @@ export const readCatalogReferenceValue = (
 export const readCatalogReferenceValueList = (
   value: unknown,
   options: {
+    expectedIds?: readonly string[]
     expectedKind?: (typeof catalogReferenceKindValues)[number]
     expectedValue?: string
     maximumRows?: number
@@ -367,13 +374,15 @@ export const readCatalogReferenceValueList = (
   }
   const ids = new Set<string>()
   const naturalKeys = new Set<string>()
+  const expectedIds = options.expectedIds ? new Set(options.expectedIds) : null
   return source.map((entry) => {
     const reference = referenceRecord(entry)
     if (
       (options.expectedKind !== undefined &&
         reference.kind !== options.expectedKind) ||
       (options.expectedValue !== undefined &&
-        reference.value !== options.expectedValue)
+        reference.value !== options.expectedValue) ||
+      (expectedIds !== null && !expectedIds.has(reference.id))
     ) {
       return invalidProfilePersistence()
     }
@@ -614,7 +623,7 @@ export const readExactCatalogProductReferences = (
 
 const variantProfileRecord = (
   value: unknown,
-  expectedVariantId: string
+  expectedVariantId?: string
 ): CatalogVariantProfileRecord => {
   const source = record(value)
   const variantId = identifier(source.variant_id, "variant_")
@@ -655,6 +664,28 @@ export const readCatalogVariantProfiles = (
     return invalidProfilePersistence()
   }
   return source.map((entry) => variantProfileRecord(entry, expectedVariantId))
+}
+
+export const readCatalogVariantProfileList = (
+  value: unknown,
+  expectedVariantIds: readonly string[]
+): CatalogVariantProfileRecord[] => {
+  const source = rows(value)
+  if (source.length > expectedVariantIds.length) {
+    return invalidProfilePersistence()
+  }
+  const expected = new Set(expectedVariantIds)
+  const seenIds = new Set<string>()
+  const seenVariants = new Set<string>()
+  return source.map((entry) => {
+    const profile = variantProfileRecord(entry)
+    if (!expected.has(profile.variant_id)) {
+      return invalidProfilePersistence()
+    }
+    unique(profile.id, seenIds)
+    unique(profile.variant_id, seenVariants)
+    return profile
+  })
 }
 
 export const readCatalogVariantProfileMutation = (
