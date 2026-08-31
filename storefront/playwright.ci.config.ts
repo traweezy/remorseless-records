@@ -21,15 +21,17 @@ export default defineConfig({
   projects: [
     {
       name: "Desktop Chrome checkout",
-      grep: /checkout remains accessible|discography header precedes/,
+      grep: /checkout remains accessible|desktop filters preserve|discography header precedes/,
       use: { ...devices["Desktop Chrome"], browserName: "chromium" },
     },
     {
       name: "Pixel 7",
+      grepInvert: /desktop filters preserve/,
       use: { ...devices["Pixel 7"], browserName: "chromium" },
     },
     {
       name: "iPhone 15 Pro",
+      grepInvert: /desktop filters preserve/,
       use: { ...devices["iPhone 15 Pro"], browserName: "chromium" },
     },
   ],

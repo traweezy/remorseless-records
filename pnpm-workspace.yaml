@@ -141,6 +141,8 @@ patchedDependencies:
   "@medusajs/medusa@2.18.0": patches/@medusajs__medusa@2.18.0.patch
   "@medusajs/workflow-engine-redis@2.18.0": patches/@medusajs__workflow-engine-redis@2.18.0.patch
   "@railway/cli@5.45.0": patches/@railway__cli@5.45.0.patch
+  "@radix-ui/react-select@2.3.7": patches/@radix-ui__react-select@2.3.7.patch
+  "@stripe/stripe-js@9.12.0": patches/@stripe__stripe-js@9.12.0.patch
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
   react-router-dom@6.30.4: patches/react-router-dom@6.30.4.patch

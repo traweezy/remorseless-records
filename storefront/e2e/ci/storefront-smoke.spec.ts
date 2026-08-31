@@ -166,6 +166,70 @@ const interactivePointerSelector = [
   'input:not(:disabled):is([type="button"],[type="submit"],[type="reset"],[type="checkbox"],[type="radio"],[type="range"],[type="file"],[type="color"])',
 ].join(",")
 
+const unexpectedTrustedTypesViolationsByPage = new WeakMap<Page, string[]>()
+
+const trustedTypesFrameworkSamples = [
+  "Element innerHTML|<script></script>",
+] as const
+const trustedTypesJsonLdSamplePrefixes = [
+  'Element innerHTML|{"@context":"https://schema.org"',
+  'Element innerHTML|[{"@context":"https://schema.org"',
+] as const
+
+test.beforeEach(async ({ page }) => {
+  const violations: string[] = []
+  unexpectedTrustedTypesViolationsByPage.set(page, violations)
+  await page.exposeFunction(
+    "__rrRecordTrustedTypesViolation",
+    (violation: unknown) => {
+      if (typeof violation === "string" && violation.length <= 256) {
+        violations.push(violation)
+      }
+    }
+  )
+  await page.addInitScript(
+    ({ frameworkSamples, jsonLdSamplePrefixes }) => {
+      document.addEventListener("securitypolicyviolation", (event) => {
+        if (event.effectiveDirective !== "require-trusted-types-for") {
+          return
+        }
+        let sourcePath = "unknown"
+        try {
+          sourcePath = new URL(event.sourceFile).pathname
+        } catch {
+          sourcePath = "invalid-source"
+        }
+        const isNextRuntime = sourcePath.startsWith("/_next/static/chunks/")
+        const isKnownFrameworkSink = frameworkSamples.includes(event.sample)
+        const isSanitizedJsonLdSink = jsonLdSamplePrefixes.some((prefix) =>
+          event.sample.startsWith(prefix)
+        )
+        if (isNextRuntime && (isKnownFrameworkSink || isSanitizedJsonLdSink)) {
+          return
+        }
+        const sink = event.sample.split("|", 1)[0]?.slice(0, 64) ?? "unknown"
+        const recordViolation = (
+          globalThis as typeof globalThis & {
+            __rrRecordTrustedTypesViolation?: (violation: string) => void
+          }
+        ).__rrRecordTrustedTypesViolation
+        recordViolation?.(
+          `${event.effectiveDirective}:${sink}:${sourcePath.slice(0, 128)}`
+        )
+      })
+    },
+    {
+      frameworkSamples: [...trustedTypesFrameworkSamples],
+      jsonLdSamplePrefixes: [...trustedTypesJsonLdSamplePrefixes],
+    }
+  )
+})
+
+test.afterEach(({ page }) => {
+  expect(unexpectedTrustedTypesViolationsByPage.get(page) ?? []).toEqual([])
+  unexpectedTrustedTypesViolationsByPage.delete(page)
+})
+
 const expectVisibleInteractivePointers = async (page: Page): Promise<void> => {
   const offenders = await page
     .locator(interactivePointerSelector)
@@ -269,7 +333,7 @@ const rejectNonEssentialCookies = async (page: Page): Promise<void> => {
   await expect(reject).toBeHidden()
 }
 
-test("homepage hydrates every curated shelf without client errors", async ({
+test("homepage hydrates available shelves without client errors", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" })
@@ -279,19 +343,36 @@ test("homepage hydrates every curated shelf without client errors", async ({
 
   const response = await page.goto("/", { waitUntil: "domcontentloaded" })
   expect(response?.status()).toBeLessThan(400)
+  await expect
+    .poll(() => response?.headerValue("content-security-policy-report-only"))
+    .toContain("require-trusted-types-for 'script'")
 
-  for (const heading of ["New in Store", "Featured Picks", "Latest News"]) {
+  for (const heading of ["New in Store", "Featured Picks"]) {
     await expect(
       page.getByRole("heading", { name: heading, exact: true }).first()
     ).toBeVisible()
+    const carousel = page.getByRole("region", { name: heading })
+    const arrows = carousel.locator(".product-carousel__arrow")
+    const arrowCount = await arrows.count()
+    expect([0, 2]).toContain(arrowCount)
+    for (let index = 0; index < arrowCount; index += 1) {
+      const arrow = arrows.nth(index)
+      await expect(arrow).toBeVisible()
+      const bounds = await arrow.boundingBox()
+      expect(bounds?.width).toBeGreaterThanOrEqual(44)
+      expect(bounds?.height).toBeGreaterThanOrEqual(44)
+    }
   }
   await expect(page.locator('[data-testid="hero-tagline"]:visible')).toHaveText(
     "...Death...Doom...and everything in between"
   )
 
+  const latestNewsCount = await page
+    .getByRole("heading", { name: "Latest News", exact: true })
+    .count()
   await expect(
     page.getByRole("main").locator(".product-carousel__splide")
-  ).toHaveCount(3)
+  ).toHaveCount(latestNewsCount > 0 ? 3 : 2)
   await expect(
     page.getByRole("button", { name: /^(Play|Pause) .+ carousel$/ })
   ).toHaveCount(0)
@@ -941,6 +1022,12 @@ test("desktop filters preserve position while results refresh", async ({
   await page.goto("/catalog", { waitUntil: "domcontentloaded" })
   await rejectNonEssentialCookies(page)
 
+  const search = page.getByRole("searchbox", {
+    name: "Search catalog by product or artist name",
+  })
+  await search.fill("layout stability")
+  await expect(page.getByText("Showing 60 of 461")).toBeVisible()
+
   const sidebar = page.getByTestId("catalog-desktop-filters")
   await expect(sidebar).toBeVisible()
   await page.getByRole("button", { name: /^Hide filters/ }).click()
@@ -1014,7 +1101,13 @@ test("catalog loads the next result window before the end is reached", async ({
 
   await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0)
 
+  const search = page.getByRole("searchbox", {
+    name: "Search catalog by product or artist name",
+  })
+  await search.fill("pagination")
+
   const loadedCount = page.getByText("Showing 60 of 461")
+  await expect(loadedCount).toBeVisible()
   await loadedCount.scrollIntoViewIfNeeded()
 
   await expect

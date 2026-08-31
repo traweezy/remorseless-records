@@ -5197,6 +5197,50 @@
         ]
       }
     },
+    "/api/security/trusted-types-report": {
+      "post": {
+        "operationId": "storefront_post_api_security_trusted_types_report",
+        "summary": "POST /api/security/trusted-types-report",
+        "tags": [
+          "storefront custom routes"
+        ],
+        "responses": {
+          "2XX": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "A successful custom-route response.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "./api-problems.yaml#/components/headers/RequestId"
+              },
+              "traceparent": {
+                "$ref": "./api-problems.yaml#/components/headers/Traceparent"
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          },
+          "5XX": {
+            "$ref": "./api-problems.yaml#/components/responses/ApiProblemResponse"
+          }
+        },
+        "x-error-contract": {
+          "envelope": "api-problem",
+          "providerFailure": "not-applicable",
+          "unexpectedStatus": 500
+        },
+        "x-route-files": [
+          "storefront/src/app/api/security/trusted-types-report/route.ts"
+        ],
+        "x-services": [
+          "storefront"
+        ]
+      }
+    },
     "/api/telemetry/browser": {
       "post": {
         "operationId": "storefront_post_api_telemetry_browser",
@@ -5604,12 +5648,12 @@
     }
   },
   "x-inventory": {
-    "routeFileCount": 89,
+    "routeFileCount": 90,
     "routeFileCounts": {
       "backend": 58,
-      "storefront": 31
+      "storefront": 32
     },
-    "routeOperationCount": 116,
-    "uniqueOperationCount": 114
+    "routeOperationCount": 117,
+    "uniqueOperationCount": 115
   }
 }

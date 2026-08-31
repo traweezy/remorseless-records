@@ -11,6 +11,9 @@ describe("Storefront security proxy", () => {
     const forwardedPolicy = response.headers.get(
       "x-middleware-request-content-security-policy"
     )
+    const reportOnlyPolicy = response.headers.get(
+      "Content-Security-Policy-Report-Only"
+    )
     const scriptDirective = policy
       ?.split("; ")
       .find((directive) => directive.startsWith("script-src "))
@@ -21,6 +24,12 @@ describe("Storefront security proxy", () => {
     expect(scriptDirective).toContain("'strict-dynamic'")
     expect(scriptDirective).not.toContain("'unsafe-inline'")
     expect(policy).toContain("upgrade-insecure-requests")
+    expect(reportOnlyPolicy).toBe(
+      "trusted-types nextjs nextjs#bundler remorseless-stripe-js; require-trusted-types-for 'script'; report-uri /api/security/trusted-types-report; report-to trusted-types"
+    )
+    expect(response.headers.get("Reporting-Endpoints")).toBe(
+      'trusted-types="/api/security/trusted-types-report"'
+    )
   })
 
   it("does not upgrade local HTTP subresources to HTTPS", () => {
@@ -63,5 +72,8 @@ describe("Storefront security proxy", () => {
       "request_01"
     )
     expect(response.headers.get("Content-Security-Policy")).toBeNull()
+    expect(
+      response.headers.get("Content-Security-Policy-Report-Only")
+    ).toBeNull()
   })
 })

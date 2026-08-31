@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import type { HttpTypes } from "@medusajs/types"
-import { render, screen } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { cleanup, render, screen } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { NewsEntry } from "@/lib/news/contract"
 
@@ -25,6 +25,9 @@ vi.mock("@splidejs/react-splide", () => ({
     return <div data-testid="splide">{children}</div>
   },
   SplideSlide: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SplideTrack: ({ children }: { children: ReactNode }) => (
+    <div data-testid="splide-track">{children}</div>
+  ),
 }))
 vi.mock("@splidejs/splide-extension-auto-scroll", () => ({
   AutoScroll: vi.fn(),
@@ -55,6 +58,10 @@ const entries = [
 ] as NewsEntry[]
 
 describe("homepage carousel sections", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   beforeEach(() => {
     carouselCapture.options.length = 0
     carouselCapture.extensions.length = 0
@@ -77,6 +84,8 @@ describe("homepage carousel sections", () => {
       pauseOnFocus: true,
     })
     expect(carouselCapture.extensions[0]).toHaveProperty("AutoScroll")
+    expect(screen.getByRole("button", { name: "Previous slide" })).toBeVisible()
+    expect(screen.getByRole("button", { name: "Next slide" })).toBeVisible()
     expect(screen.queryByText(/motion/i)).not.toBeInTheDocument()
     screen.getAllByTestId("product-card").forEach((card) => {
       expect(card).toHaveAttribute("data-ribbon", "Featured")
@@ -99,6 +108,8 @@ describe("homepage carousel sections", () => {
       pauseOnFocus: true,
     })
     expect(carouselCapture.extensions[0]).toHaveProperty("AutoScroll")
+    expect(screen.getByRole("button", { name: "Previous slide" })).toBeVisible()
+    expect(screen.getByRole("button", { name: "Next slide" })).toBeVisible()
     expect(screen.queryByText(/motion/i)).not.toBeInTheDocument()
   })
 })

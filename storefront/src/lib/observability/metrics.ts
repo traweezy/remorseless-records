@@ -34,6 +34,10 @@ const browserEvents = meter.createCounter("rr.browser.telemetry.events", {
   description: "Accepted privacy-bounded browser telemetry events",
   unit: "{event}",
 })
+const securityReports = meter.createCounter("rr.security.browser.reports", {
+  description: "Accepted privacy-bounded browser security reports",
+  unit: "{report}",
+})
 
 const statusClass = (status: number): string =>
   Number.isSafeInteger(status) && status >= 100 && status <= 599
@@ -75,6 +79,17 @@ export const recordBrowserTelemetryMetric = (
 ): void => {
   browserEvents.add(1, {
     "browser.telemetry.kind": kind,
+    "service.name": "storefront",
+  })
+}
+
+export const recordBrowserSecurityReportMetric = (
+  directive: "require-trusted-types-for" | "trusted-types" | "unknown",
+  count: number
+): void => {
+  securityReports.add(Math.max(1, Math.min(20, Math.trunc(count))), {
+    "security.report.directive": directive,
+    "security.report.disposition": "report",
     "service.name": "storefront",
   })
 }

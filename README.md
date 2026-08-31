@@ -1486,11 +1486,18 @@ permissions, and dynamic-response no-store defaults. The Storefront creates a
 fresh nonce for every HTML request, forwards it to Next rendering, and returns
 a matching CSP with `strict-dynamic`, `script-src-attr 'none'`, and
 `base-uri 'none'`; production `script-src` does not use `unsafe-inline`.
-Webpack SRI remains enabled for bootstrap assets. Because nonces cannot be
-reused in static HTML, document rendering is dynamic while tagged Backend and
-search data retain explicit caches. Only environment-configured application
-and media origins are permitted; production requires HTTPS, and sample image
-hosts are not allowlisted. Local development may still use HTTP services.
+Webpack SRI remains enabled for bootstrap assets. Documents also carry a
+Trusted Types report-only policy and a same-origin, privacy-bounded reporting
+endpoint; enforcement stays off until staging completes the documented clean
+observation window. Radix Select and Splide no longer depend on HTML-string
+sinks, while the pinned Stripe loader accepts only its exact approved script
+URLs through the named `remorseless-stripe-js` policy. The production build
+fails if the Stripe loader is emitted without that policy. Because nonces
+cannot be reused in static HTML, document rendering is dynamic while tagged
+Backend and search data retain explicit caches. Only environment-configured
+application and media origins are permitted; production requires HTTPS, and
+sample image hosts are not allowlisted. Local development may still use HTTP
+services.
 
 Catalog product images upload through
 `POST /admin/catalog/media/uploads`. This authenticated route requires a UUID

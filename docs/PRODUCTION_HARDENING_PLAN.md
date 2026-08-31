@@ -627,11 +627,28 @@ Unsplash URL through `/_next/image` as HTTP 200 `image/jpeg` with a one-year
 cache policy. The exact GitHub and Railway acceptance below corroborates that
 local proof.
 
-Trusted Types enforcement is not included in this slice. Stripe dynamically
-loads additional approved scripts and documents the need for a compatible
-default policy when Trusted Types are required; Next and every checkout path
-must first pass a report-only staging rollout. That follow-up remains below
-rather than introducing an untested production-enforced policy.
+Trusted Types report-only coverage is now implemented for every Storefront
+document. The response advertises the bounded
+`/api/security/trusted-types-report` collector through `Reporting-Endpoints`
+and sends `require-trusted-types-for 'script'` plus an explicit policy-name
+allowlist without changing the enforced CSP. The collector accepts legacy CSP
+and Reporting API envelopes, rejects cross-site and oversized input, caps
+batches and request rate, and discards document URLs, samples, user-agent data,
+and other browser payload before emitting a count, directive, runtime identity,
+and correlation identifiers.
+
+Local browser discovery removed three dependency-owned sinks instead of adding
+a permissive default policy. Radix Select's static scrollbar CSS now lives in
+the application stylesheet, Splide arrows render as semantic React controls,
+and the pinned Stripe loader creates `remorseless-stripe-js` values for only
+the exact Dahlia script URL with its one supported fraud-signals query variant.
+Contract tests pin both patched packages, and the Storefront post-build verifier
+rejects any Stripe loader bundle that lacks the named policy. React's inert
+script construction and the already-sanitized Next JSON-LD serialization are
+classified as reviewed framework events only when the source is a versioned
+Next client chunk. Enforcement remains intentionally disabled until the same
+matrix passes on staging and the privacy-bounded report stream completes its
+reviewed observation window without an unexplained sink.
 
 Staging acceptance discovery: commit
 `29f2d59666b5571ca53b791a1d8ca06135fa3ca1` passed Root CI `33027448458`,
@@ -2490,9 +2507,11 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       data.
 - [x] Add global Backend/Admin HSTS, CSP, `nosniff`, frame, referrer,
       permissions, and cache headers.
-- [ ] Run Trusted Types in report-only mode across Storefront navigation and
-      checkout, define the narrow Stripe-compatible policy if violations are
-      understood, and enforce only after browser acceptance.
+- [x] Run Trusted Types in report-only mode across Storefront navigation and
+      checkout, collect privacy-bounded reports, remove dependency-owned sinks,
+      and define an exact-URL Stripe policy with source and bundle contracts.
+- [ ] Enforce Trusted Types only after the staging browser matrix and reviewed
+      report-only observation window show no unexplained sink.
 - [x] Add App Router `error.tsx` and `global-error.tsx` boundaries with safe,
       observable recovery UX.
 - [x] Validate strong, distinct JWT, cookie, cart, checkout-BFF, receipt,
@@ -3712,6 +3731,51 @@ retention, deletion, and breach-response policy. Exact Railway inspection also
 found the public staging Meilisearch service domain; removing it changes
 staging service state and remains the explicit environment action recorded in
 the application-security checklist.
+
+## Trusted Types report-only and carousel control hardening
+
+- [x] Send a document-only Trusted Types report-only policy, advertise one
+      same-origin collector, and leave the enforced CSP unchanged.
+- [x] Bound and validate legacy CSP plus Reporting API envelopes while
+      discarding URLs, samples, browser data, and all other unneeded payload
+      fields before metrics or structured logs.
+- [x] Remove the Radix Select and Splide HTML-string sinks, render semantic
+      carousel controls with 44 px mobile and 48 px desktop targets, and keep
+      the controls available as a non-drag interaction.
+- [x] Patch the pinned Stripe loader to create Trusted Script URLs only for its
+      two exact supported URLs, and fail the production build if the named
+      policy is absent from any emitted Stripe loader asset.
+- [x] Keep only exact, source-bounded classifications for the two understood
+      React/Next framework events; reject every other browser violation in the
+      production-artifact acceptance suite.
+
+Complete local acceptance passes the 1,227-file Biome, strict typecheck, API
+contract, IaC, framework-boundary, and repository verifier gate. Storefront
+coverage passes 134 baseline files with 797 tests at 94.24% statements, 86.73%
+branches, 96.02% functions, and 94.24% lines, plus 35 transactional files with
+313 tests at 83.28%, 76.09%, 85.76%, and 83.37%, respectively. All 264 Backend
+suites and 2,007 tests pass at 91.44%, 84.81%, 95.62%, and 91.46%. Both
+production builds pass; the Storefront scan verifies 127 client assets and the
+named Stripe policy.
+
+The final responsive production-artifact matrix passes 54 tests with two
+intentional project exclusions, and the critical Chromium, Firefox, and WebKit
+matrix passes all 21 flows. Mobile Chrome passes all eight Pixel 7 and compact
+phone legal/accessibility route checks without overflow, undersized standalone
+controls, or axe violations; pa11y reports no WCAG 2 AA violations and
+Lighthouse passes all four routes. The final 1,366 px desktop and 412 px Pixel
+7 screenshots were inspected from real production browser rendering at
+`/tmp/remorseless-carousel-desktop-final.png` and
+`/tmp/remorseless-carousel-pixel-7-final.png`; the controls measured 48 px and
+44 px, respectively, and remained visible and unobstructed.
+
+The production audit retains only the three documented ignored moderate
+advisories. Trivy reports zero high/critical dependency or secret findings, and
+the generated CycloneDX/license pair verifies 2,517 components, 2,518
+dependency entries, 16 license groups, and 1,007 production packages. Trusted
+Types enforcement remains blocked on the documented clean staging observation
+window; report-only coverage is the safe rollback-free boundary for this
+slice.
 
 ## Legal, accessibility, and launch acceptance
 

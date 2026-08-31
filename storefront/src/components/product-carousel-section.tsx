@@ -2,14 +2,13 @@
 
 import React, { useCallback, useMemo, type ReactElement } from "react"
 import type { HttpTypes } from "@medusajs/types"
-import { Splide, SplideSlide } from "@splidejs/react-splide"
+import { Splide, SplideSlide, SplideTrack } from "@splidejs/react-splide"
 import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
 
 import ProductCard from "@/components/product-card"
+import { CarouselArrows } from "@/components/ui/carousel-arrows"
 import { SectionHeading } from "@/components/ui/section-heading"
 import { useCarouselAutoScroll } from "@/hooks/use-carousel-auto-scroll"
-
-import "@splidejs/react-splide/css"
 
 type StoreProduct = HttpTypes.StoreProduct
 
@@ -118,12 +117,6 @@ export const ProductCarouselSection = ({
               wheel: false,
               arrows: slides.length > 1,
               trimSpace: false,
-              classes: {
-                arrows: "product-carousel__arrows",
-                arrow: "product-carousel__arrow",
-                prev: "product-carousel__arrow product-carousel__arrow--left",
-                next: "product-carousel__arrow product-carousel__arrow--right",
-              },
               breakpoints: {
                 1800: { perPage: perPageByBreakpoint["1800"] },
                 1440: { perPage: perPageByBreakpoint["1440"] },
@@ -143,23 +136,26 @@ export const ProductCarouselSection = ({
                 : {}),
             }}
             extensions={slides.length > 1 ? { AutoScroll } : {}}
-            hasTrack
+            hasTrack={false}
             onMounted={mountAutoScroll}
             onDestroy={destroyAutoScroll}
           >
-            {filledSlides.map((product, index) => (
-              <SplideSlide
-                key={`${product.id ?? product.handle ?? "product"}-${index}`}
-                className="product-carousel__slide"
-              >
-                <div className="product-carousel__card">
-                  <ProductCard
-                    product={product}
-                    {...(ribbonLabel !== undefined ? { ribbonLabel } : {})}
-                  />
-                </div>
-              </SplideSlide>
-            ))}
+            <SplideTrack>
+              {filledSlides.map((product, index) => (
+                <SplideSlide
+                  key={`${product.id ?? product.handle ?? "product"}-${index}`}
+                  className="product-carousel__slide"
+                >
+                  <div className="product-carousel__card">
+                    <ProductCard
+                      product={product}
+                      {...(ribbonLabel !== undefined ? { ribbonLabel } : {})}
+                    />
+                  </div>
+                </SplideSlide>
+              ))}
+            </SplideTrack>
+            {slides.length > 1 ? <CarouselArrows /> : null}
           </Splide>
         </div>
       </div>

@@ -2,12 +2,23 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildContentSecurityPolicy,
+  buildTrustedTypesReportingEndpoints,
+  buildTrustedTypesReportOnlyPolicy,
   createContentSecurityPolicyNonce,
   parseAllowedOrigin,
   resolveDynamicOrigins,
 } from "@/config/content-security-policy"
 
 describe("content security policy", () => {
+  it("builds a report-only Trusted Types policy with modern and legacy delivery", () => {
+    expect(buildTrustedTypesReportOnlyPolicy()).toBe(
+      "trusted-types nextjs nextjs#bundler remorseless-stripe-js; require-trusted-types-for 'script'; report-uri /api/security/trusted-types-report; report-to trusted-types"
+    )
+    expect(buildTrustedTypesReportingEndpoints()).toBe(
+      'trusted-types="/api/security/trusted-types-report"'
+    )
+  })
+
   it("builds a production nonce policy without inline script execution", () => {
     const policy = buildContentSecurityPolicy({
       environment: {

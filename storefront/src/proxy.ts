@@ -3,6 +3,8 @@ import { NextResponse } from "next/server"
 
 import {
   buildContentSecurityPolicy,
+  buildTrustedTypesReportingEndpoints,
+  buildTrustedTypesReportOnlyPolicy,
   createContentSecurityPolicyNonce,
 } from "@/config/content-security-policy"
 import {
@@ -46,6 +48,14 @@ export const proxy = (request: NextRequest): NextResponse => {
     },
   })
   response.headers.set("Content-Security-Policy", contentSecurityPolicy)
+  response.headers.set(
+    "Content-Security-Policy-Report-Only",
+    buildTrustedTypesReportOnlyPolicy()
+  )
+  response.headers.set(
+    "Reporting-Endpoints",
+    buildTrustedTypesReportingEndpoints()
+  )
   return applyCorrelationToResponse(response, correlation)
 }
 

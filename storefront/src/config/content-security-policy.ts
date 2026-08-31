@@ -22,6 +22,14 @@ type ContentSecurityPolicyOptions = {
 }
 
 const CONTENT_SECURITY_POLICY_NONCE_PATTERN = /^[A-Za-z\d+/_-]{16,128}={0,2}$/
+export const TRUSTED_TYPES_REPORT_ENDPOINT =
+  "/api/security/trusted-types-report"
+export const TRUSTED_TYPES_REPORT_GROUP = "trusted-types"
+export const TRUSTED_TYPES_POLICY_NAMES = [
+  "nextjs",
+  "nextjs#bundler",
+  "remorseless-stripe-js",
+] as const
 
 const unique = (values: Array<string | null>): string[] =>
   Array.from(new Set(values.filter((value): value is string => value !== null)))
@@ -64,6 +72,17 @@ export const resolveDynamicOrigins = (
 
 export const createContentSecurityPolicyNonce = (): string =>
   crypto.randomUUID().replaceAll("-", "")
+
+export const buildTrustedTypesReportOnlyPolicy = (): string =>
+  [
+    `trusted-types ${TRUSTED_TYPES_POLICY_NAMES.join(" ")}`,
+    "require-trusted-types-for 'script'",
+    `report-uri ${TRUSTED_TYPES_REPORT_ENDPOINT}`,
+    `report-to ${TRUSTED_TYPES_REPORT_GROUP}`,
+  ].join("; ")
+
+export const buildTrustedTypesReportingEndpoints = (): string =>
+  `${TRUSTED_TYPES_REPORT_GROUP}="${TRUSTED_TYPES_REPORT_ENDPOINT}"`
 
 export const buildContentSecurityPolicy = ({
   environment = process.env,

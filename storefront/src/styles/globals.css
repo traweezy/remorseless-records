@@ -1,4 +1,20 @@
 @import "tailwindcss";
+@import "@splidejs/react-splide/css" layer(base);
+
+/*
+ * Radix Select normally injects these static rules with dangerouslySetInnerHTML.
+ * Keeping them in the application stylesheet preserves the viewport behavior
+ * without creating a Trusted Types sink at runtime.
+ */
+[data-radix-select-viewport] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar {
+  display: none;
+}
 
 @theme {
   --color-border: hsl(var(--border));
@@ -104,34 +120,38 @@
 
   .product-carousel:hover .product-carousel__arrow {
     opacity: 1;
-    visibility: visible;
   }
 
   .product-carousel__arrows {
     pointer-events: none;
   }
 
-  .product-carousel__arrow {
-    @apply pointer-events-auto absolute top-1/2 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border/30 bg-background/80 text-foreground shadow-[0_20px_32px_-18px_hsl(0_0%_0%/0.55)] backdrop-blur-md transition duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40;
-    opacity: 0;
-    visibility: hidden;
+  .product-carousel .product-carousel__arrow {
+    @apply pointer-events-auto absolute top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/30 bg-background/80 text-foreground shadow-[0_20px_32px_-18px_hsl(0_0%_0%/0.55)] backdrop-blur-md transition duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40;
+    opacity: 0.9;
   }
 
   @media (min-width: 640px) {
-    .product-carousel__arrow {
-      @apply flex;
+    .product-carousel .product-carousel__arrow {
+      @apply h-12 w-12;
     }
   }
 
-  .product-carousel__arrow svg {
+  @media (prefers-reduced-motion: reduce) {
+    .product-carousel .product-carousel__arrow {
+      transition: none;
+    }
+  }
+
+  .product-carousel .product-carousel__arrow svg {
     @apply h-5 w-5;
   }
 
-  .product-carousel__arrow--left {
+  .product-carousel .product-carousel__arrow--left {
     left: clamp(0.75rem, 1.8vw, 2.75rem);
   }
 
-  .product-carousel__arrow--right {
+  .product-carousel .product-carousel__arrow--right {
     right: clamp(0.75rem, 1.8vw, 2.75rem);
   }
 

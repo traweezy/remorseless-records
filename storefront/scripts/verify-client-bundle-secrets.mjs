@@ -25,6 +25,8 @@ const FORBIDDEN_PUBLIC_SEARCH_NAMES = [
   "NEXT_PUBLIC_MEILI_HOST",
   "NEXT_PUBLIC_MEILI_SEARCH_KEY",
 ]
+const STRIPE_SCRIPT_ORIGIN = "js.stripe.com"
+const STRIPE_TRUSTED_TYPES_POLICY = "remorseless-stripe-js"
 
 const environment = {}
 for (const file of ENVIRONMENT_FILES) {
@@ -44,8 +46,20 @@ const files = fs
   .map((entry) => path.join(entry.parentPath, entry.name))
 
 const findings = []
+const stripeLoaderFiles = []
+const untrustedStripeLoaderFiles = []
 for (const file of files) {
   const content = fs.readFileSync(file)
+  if (
+    content.includes(STRIPE_SCRIPT_ORIGIN) &&
+    content.includes("advancedFraudSignals")
+  ) {
+    const relativeFile = path.relative(STATIC_DIRECTORY, file)
+    stripeLoaderFiles.push(relativeFile)
+    if (!content.includes(STRIPE_TRUSTED_TYPES_POLICY)) {
+      untrustedStripeLoaderFiles.push(relativeFile)
+    }
+  }
   for (const name of FORBIDDEN_PUBLIC_SEARCH_NAMES) {
     if (content.includes(name)) {
       findings.push({ file: path.relative(STATIC_DIRECTORY, file), name })
@@ -63,6 +77,18 @@ for (const file of files) {
   }
 }
 
+if (!stripeLoaderFiles.length) {
+  throw new Error(
+    "Stripe.js loader is missing from the Storefront client bundle"
+  )
+}
+
+if (untrustedStripeLoaderFiles.length) {
+  throw new Error(
+    `Stripe.js loader is missing the remorseless-stripe-js Trusted Types policy in: ${untrustedStripeLoaderFiles.join(", ")}`
+  )
+}
+
 if (findings.length) {
   const summary = findings
     .map(({ file, name }) => `${name} in ${file}`)
@@ -73,5 +99,5 @@ if (findings.length) {
 }
 
 console.log(
-  `Client bundle verified: ${files.length} static assets contain no server-only secret or public Meilisearch input.`
+  `Client bundle verified: ${files.length} static assets contain no server-only secret or public Meilisearch input, and the Stripe.js loader uses its Trusted Types policy.`
 )

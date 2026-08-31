@@ -144,6 +144,37 @@ test database. Inspect at least one real rendered screenshot from each changed
 critical surface before sign-off; automated assertions do not replace visual
 review.
 
+### 1.6 Trusted Types report-only acceptance
+
+The Storefront sends `Content-Security-Policy-Report-Only` on document
+responses with `require-trusted-types-for 'script'` and advertises the
+same-origin `/api/security/trusted-types-report` collector. API and static-asset
+responses must not inherit the document-only report policy.
+
+Before considering enforcement:
+
+1. Build the production Storefront and confirm the bundle verifier reports that
+   the Stripe loader uses `remorseless-stripe-js`.
+2. Run `playwright.ci.config.ts` across Desktop Chrome, Pixel 7, and iPhone 15
+   Pro. Exercise Home, hydrated Catalog interactions, carousels, Quick Shop,
+   Cart, Checkout, confirmation, and recovery.
+3. Reject any unexpected `securitypolicyviolation` event. The only reviewed
+   framework classifications are React's inert script construction and the
+   sanitized JSON-LD serialization, and only from a versioned Next client
+   chunk.
+4. Inspect the `rr.security.browser.reports` counter and
+   `security.trusted_types.report` events in staging. Logs may contain only the
+   bounded report count, effective directive, envelope format, runtime
+   identity, and correlation identifiers. They must not contain document or
+   blocked URLs, source samples, line/column data, referrers, or user agents.
+5. Keep enforcement disabled until the reviewed staging observation window has
+   no unexplained sink. Do not add a broad `default` Trusted Types policy to
+   make a violation disappear.
+
+The collector returns `204 No Content`, uses `Cache-Control: no-store`, rejects
+cross-site requests, caps the body at 8 KiB, accepts at most 20 reports per
+batch, and applies a 60-request-per-minute fallback limit.
+
 ---
 
 ## 2. Stripe Payment Element Matrix

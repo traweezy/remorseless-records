@@ -39,15 +39,15 @@ test("inventories every custom route with complete error references", async () =
   )
   assert.equal(
     inventory.filter((entry) => entry.service === "storefront").length,
-    31
+    32
   )
   assert.ok(inventory.every((entry) => entry.methods.length > 0))
 
   const contract = buildContract(inventory)
   assert.equal(contract.openapi, "3.1.0")
-  assert.equal(contract["x-inventory"].routeFileCount, 89)
-  assert.equal(contract["x-inventory"].routeOperationCount, 116)
-  assert.equal(contract["x-inventory"].uniqueOperationCount, 114)
+  assert.equal(contract["x-inventory"].routeFileCount, 90)
+  assert.equal(contract["x-inventory"].routeOperationCount, 117)
+  assert.equal(contract["x-inventory"].uniqueOperationCount, 115)
 
   const operationIds = []
   for (const [routePath, pathItem] of Object.entries(contract.paths)) {

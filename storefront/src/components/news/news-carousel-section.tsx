@@ -1,15 +1,14 @@
 "use client"
 
 import { useCallback, useMemo, type ReactElement } from "react"
-import { Splide, SplideSlide } from "@splidejs/react-splide"
+import { Splide, SplideSlide, SplideTrack } from "@splidejs/react-splide"
 import { AutoScroll } from "@splidejs/splide-extension-auto-scroll"
 
 import NewsCarouselCard from "@/components/news/news-carousel-card"
+import { CarouselArrows } from "@/components/ui/carousel-arrows"
 import { SectionHeading } from "@/components/ui/section-heading"
 import { useCarouselAutoScroll } from "@/hooks/use-carousel-auto-scroll"
 import type { NewsEntry } from "@/lib/news/contract"
-
-import "@splidejs/react-splide/css"
 
 type SectionHeading = {
   leading: string
@@ -109,12 +108,6 @@ export const NewsCarouselSection = ({
               wheel: false,
               arrows: slides.length > 1,
               trimSpace: false,
-              classes: {
-                arrows: "product-carousel__arrows",
-                arrow: "product-carousel__arrow",
-                prev: "product-carousel__arrow product-carousel__arrow--left",
-                next: "product-carousel__arrow product-carousel__arrow--right",
-              },
               breakpoints: {
                 1440: { perPage: perPageByBreakpoint["1440"] },
                 1200: { perPage: perPageByBreakpoint["1200"] },
@@ -132,20 +125,23 @@ export const NewsCarouselSection = ({
                 : {}),
             }}
             extensions={slides.length > 1 ? { AutoScroll } : {}}
-            hasTrack
+            hasTrack={false}
             onMounted={mountAutoScroll}
             onDestroy={destroyAutoScroll}
           >
-            {filledSlides.map((entry, index) => (
-              <SplideSlide
-                key={`${entry.id}-${index}`}
-                className="product-carousel__slide"
-              >
-                <div className="product-carousel__card">
-                  <NewsCarouselCard entry={entry} />
-                </div>
-              </SplideSlide>
-            ))}
+            <SplideTrack>
+              {filledSlides.map((entry, index) => (
+                <SplideSlide
+                  key={`${entry.id}-${index}`}
+                  className="product-carousel__slide"
+                >
+                  <div className="product-carousel__card">
+                    <NewsCarouselCard entry={entry} />
+                  </div>
+                </SplideSlide>
+              ))}
+            </SplideTrack>
+            {slides.length > 1 ? <CarouselArrows /> : null}
           </Splide>
         </div>
       </div>
