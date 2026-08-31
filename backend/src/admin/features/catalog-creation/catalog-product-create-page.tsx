@@ -51,6 +51,7 @@ import {
   buildCatalogProductCreateRequest,
   catalogCreationDraftKey,
   catalogCreationFormSchema,
+  catalogCreationKinds,
   catalogCreationReleaseDatePrecisions,
   createCatalogCreationDefaults,
   createCatalogCreationMerchandiseOfferings,
@@ -110,39 +111,71 @@ const removeDraft = (): void => {
 
 const readInputValue = (
   event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-): string => (event.currentTarget as unknown as { value?: string }).value ?? ""
+): string => event.currentTarget.value
 
-type DataTarget = {
-  checked?: boolean
-  dataset?: Record<string, string | undefined>
-  name?: string
-  type?: string
-  value?: string
-}
+const dataTarget = <T extends HTMLElement>(event: { currentTarget: T }): T =>
+  event.currentTarget
 
-const dataTarget = (event: { currentTarget: EventTarget }): DataTarget =>
-  event.currentTarget as unknown as DataTarget
+const catalogCreationTextFields = [
+  "artistName",
+  "catalogNumber",
+  "credits",
+  "description",
+  "genre",
+  "handle",
+  "label",
+  "material",
+  "merchandiseCare",
+  "merchandiseFit",
+  "merchandiseType",
+  "mysteryDisclaimer",
+  "mysteryPromise",
+  "productType",
+  "releaseDate",
+  "sizeGuide",
+  "title",
+  "tracklist",
+] as const satisfies readonly (keyof CatalogCreationFormValues)[]
 
-type BrowserEnvironment = {
-  cancelAnimationFrame?: (frame: number) => void
-  document?: {
-    getElementById: (id: string) => FocusTarget | null
-  }
-  requestAnimationFrame?: (callback: () => void) => number
-}
+type CatalogCreationTextField = (typeof catalogCreationTextFields)[number]
 
-type FocusTarget = {
-  closest: (selector: string) => { open: boolean } | null
-  focus: (options: { preventScroll: boolean }) => void
-  scrollIntoView: (options: { behavior: "smooth"; block: "center" }) => void
-}
+const isCatalogCreationTextField = (
+  value: string
+): value is CatalogCreationTextField =>
+  catalogCreationTextFields.some((field) => field === value)
 
-type ScrollTarget = {
-  scrollIntoView: (options: {
-    behavior: "auto" | "smooth"
-    block: "start"
-  }) => void
-}
+const isCatalogCreationKind = (
+  value: string | undefined
+): value is CatalogCreationKind =>
+  catalogCreationKinds.some((kind) => kind === value)
+
+const catalogCreationOfferingFields = [
+  "availabilityPolicy",
+  "color",
+  "format",
+  "formatDetail",
+  "priceUsd",
+  "size",
+  "sku",
+  "stockQuantity",
+  "title",
+] as const satisfies readonly (keyof CatalogCreationOffering)[]
+
+const isCatalogCreationOfferingField = (
+  value: string | undefined
+): value is (typeof catalogCreationOfferingFields)[number] =>
+  catalogCreationOfferingFields.some((field) => field === value)
+
+const catalogCreationComponentFields = [
+  "productId",
+  "quantity",
+  "variantId",
+] as const
+
+const isCatalogCreationComponentField = (
+  value: string | undefined
+): value is (typeof catalogCreationComponentFields)[number] =>
+  catalogCreationComponentFields.some((field) => field === value)
 
 const offeringLabel = (kind: CatalogCreationKind): string => {
   if (kind === "merch") {
@@ -363,8 +396,7 @@ const CatalogProductCreatePageContent = memo(() => {
   ])
 
   const focusValidationTarget = useCallback((targetId: string) => {
-    const browser = globalThis as BrowserEnvironment
-    const target = browser.document?.getElementById(targetId)
+    const target = globalThis.document?.getElementById(targetId)
     if (!target) {
       return
     }
@@ -383,15 +415,14 @@ const CatalogProductCreatePageContent = memo(() => {
       return undefined
     }
     pendingFocusTargetRef.current = null
-    const browser = globalThis as BrowserEnvironment
-    if (!browser.requestAnimationFrame || !browser.cancelAnimationFrame) {
+    if (!globalThis.requestAnimationFrame || !globalThis.cancelAnimationFrame) {
       focusValidationTarget(targetId)
       return undefined
     }
-    const frame = browser.requestAnimationFrame(() => {
+    const frame = globalThis.requestAnimationFrame(() => {
       focusValidationTarget(targetId)
     })
-    return () => browser.cancelAnimationFrame?.(frame)
+    return () => globalThis.cancelAnimationFrame(frame)
   }, [focusValidationTarget, step])
 
   const setField = useCallback(
@@ -471,10 +502,10 @@ const CatalogProductCreatePageContent = memo(() => {
         HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
       >
     ) => {
-      setField(
-        dataTarget(event).name as keyof CatalogCreationFormValues,
-        readInputValue(event)
-      )
+      const field = dataTarget(event).name
+      if (isCatalogCreationTextField(field)) {
+        setField(field, readInputValue(event))
+      }
     },
     [setField]
   )
@@ -489,10 +520,8 @@ const CatalogProductCreatePageContent = memo(() => {
 
   const handleKindSelect = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
-      const kind = dataTarget(event).dataset?.kind as
-        | CatalogCreationKind
-        | undefined
-      if (!kind || kind === values.kind) {
+      const kind = dataTarget(event).dataset?.kind
+      if (!isCatalogCreationKind(kind) || kind === values.kind) {
         return
       }
       const nextValues = applyCatalogCreationKind(values, kind)
@@ -514,16 +543,14 @@ const CatalogProductCreatePageContent = memo(() => {
     ) => {
       const target = dataTarget(event)
       const offeringId = target.dataset?.offeringId
-      const field = target.dataset?.offeringField as
-        | keyof CatalogCreationOffering
-        | undefined
-      if (!offeringId || !field) {
+      const field = target.dataset?.offeringField
+      if (!offeringId || !isCatalogCreationOfferingField(field)) {
         return
       }
       const value =
-        target.type === "checkbox"
-          ? (target.checked ?? false)
-          : (target.value ?? "")
+        target instanceof HTMLInputElement && target.type === "checkbox"
+          ? target.checked
+          : target.value
       form.setFieldValue(
         "offerings",
         values.offerings.map((offering) =>
@@ -617,12 +644,8 @@ const CatalogProductCreatePageContent = memo(() => {
     (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const target = dataTarget(event)
       const componentId = target.dataset?.componentId
-      const field = target.dataset?.componentField as
-        | "productId"
-        | "quantity"
-        | "variantId"
-        | undefined
-      if (!componentId || !field) {
+      const field = target.dataset?.componentField
+      if (!componentId || !isCatalogCreationComponentField(field)) {
         return
       }
       const value = target.value ?? ""
@@ -695,8 +718,10 @@ const CatalogProductCreatePageContent = memo(() => {
     pendingFocusTargetRef.current = null
     setStep(nextStep)
     setStepErrors([])
-    const target = pageStartRef.current as unknown as ScrollTarget | null
-    target?.scrollIntoView({ behavior: "smooth", block: "start" })
+    pageStartRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    })
   }, [])
 
   const handleNext = useCallback(() => {

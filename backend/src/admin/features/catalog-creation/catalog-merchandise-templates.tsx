@@ -26,11 +26,7 @@ export const CatalogMerchandiseTemplates =
       [pendingTemplateId]
     )
     const handleChoose = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-      const templateId = (
-        event.currentTarget as unknown as {
-          dataset: { templateId?: string }
-        }
-      ).dataset.templateId
+      const templateId = event.currentTarget.dataset.templateId
       if (
         catalogCreationMerchandiseTemplates.some(
           (template) => template.id === templateId

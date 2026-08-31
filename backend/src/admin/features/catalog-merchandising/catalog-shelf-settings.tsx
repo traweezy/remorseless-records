@@ -35,10 +35,10 @@ type ShelfSettingsChange = (
 ) => void
 
 const readInputValue = (event: ChangeEvent<HTMLInputElement>): string =>
-  (event.currentTarget as unknown as { value?: string }).value ?? ""
+  event.currentTarget.value
 
 const readTextareaValue = (event: ChangeEvent<HTMLTextAreaElement>): string =>
-  (event.currentTarget as unknown as { value?: string }).value ?? ""
+  event.currentTarget.value
 
 type ShelfInputFieldProps = {
   disabled: boolean

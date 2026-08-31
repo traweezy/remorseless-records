@@ -118,6 +118,9 @@ pnpm run qa:lint
 pnpm --filter remorseless-records-storefront run typecheck
 pnpm --filter backend exec tsc --noEmit
 
+# Dashboard DOM compiler context and browser-boundary assertion regression
+pnpm run qa:admin-browser-boundary
+
 # Browser QA dependency resolution and blocked browser-download install scripts
 pnpm run qa:browser-toolchain-security
 ```

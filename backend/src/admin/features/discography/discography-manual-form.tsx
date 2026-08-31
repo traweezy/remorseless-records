@@ -279,9 +279,7 @@ export const discographyEntryMatchesManualInput = (
 
 const discographyDraftStorage = (): Storage | null => {
   try {
-    return (
-      (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null
-    )
+    return globalThis.localStorage ?? null
   } catch {
     return null
   }
@@ -321,9 +319,7 @@ const DiscographyTextField = memo<TextFieldProps>(
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
-        const value = (event.currentTarget as unknown as { value?: unknown })
-          .value
-        field.handleChange(typeof value === "string" ? value : "")
+        field.handleChange(event.currentTarget.value)
       },
       [field]
     )
@@ -381,9 +377,7 @@ const DiscographyListField = memo<ListFieldProps>(
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLTextAreaElement>) => {
-        const value = (event.currentTarget as unknown as { value?: unknown })
-          .value
-        field.handleChange(typeof value === "string" ? value : "")
+        field.handleChange(event.currentTarget.value)
       },
       [field]
     )
@@ -717,10 +711,7 @@ export const DiscographyManualForm = memo<DiscographyManualFormProps>(
     const handleCloseAutoFocus = useCallback(
       (event: Event) => {
         event.preventDefault()
-        const target = restoreFocusRef.current as unknown as {
-          focus?: () => void
-        } | null
-        target?.focus?.()
+        restoreFocusRef.current?.focus()
       },
       [restoreFocusRef]
     )

@@ -529,3 +529,31 @@ three documented ignored moderate findings; Trivy reports zero high/critical
 dependency, misconfiguration, or secret findings. No rendered layout changed,
 so the existing Catalog workspace and audit screenshot evidence remains
 applicable.
+
+### Native browser type boundary — August 31, 2026
+
+The Dashboard compiler now includes the standard DOM and iterable DOM
+libraries alongside ES2023. That matches the code it compiles: Medusa Admin is
+a browser application with native inputs, buttons, file lists, storage,
+location, focus, animation-frame, parser, media-query, and scrolling APIs.
+Previously those browser contracts were absent from the Backend TypeScript
+project, so otherwise ordinary form and focus handlers had accumulated local
+`unknown` assertion bridges.
+
+All 97 production Admin source files now use their native browser types at the
+boundary. Text and file inputs read typed values directly, button data is
+checked before it becomes a domain command, refs invoke their declared element
+methods, and global browser services remain runtime-guarded where server-side
+test execution can omit them. Repository QA verifies both required DOM
+libraries and rejects future double assertions or assertion bridges rooted in
+`globalThis`, an event target, or a React ref.
+
+This is a compile-time and interaction-boundary correction. It does not change
+the Dashboard layout, spacing, copy, control order, or motion, so the existing
+Admin screenshot evidence remains applicable.
+
+Local acceptance passes the 1,236-file repository Biome/policy gate, the
+97-file Admin browser-boundary scan, all 269 Backend suites and 2,027 tests at
+91.44% statements, 84.81% branches, 95.62% functions, and 91.46% lines, both
+strict TypeScript projects, and the complete Backend/Admin production build
+with its frozen 1,085-package server install.

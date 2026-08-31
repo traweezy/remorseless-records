@@ -26,7 +26,7 @@ type ProductLineCardProps = {
 }
 
 const readInputValue = (event: ChangeEvent<HTMLInputElement>): string =>
-  (event.currentTarget as unknown as { value?: string }).value ?? ""
+  event.currentTarget.value
 
 const ProductLineCard = memo<ProductLineCardProps>(
   ({

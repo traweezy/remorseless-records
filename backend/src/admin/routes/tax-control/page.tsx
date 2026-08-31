@@ -28,10 +28,7 @@ import {
   AdminSingleColumnLayout,
 } from "../../components/admin-page"
 import { AdminRetryState } from "../../components/admin-retry-state"
-import {
-  replaceLegacyTaxControlLocation,
-  type ReplaceAdminLocation,
-} from "../../features/operations/operations-routes"
+import { replaceLegacyTaxControlLocation } from "../../features/operations/operations-routes"
 import { useAdminPermissions } from "../../lib/admin-permissions"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 import {
@@ -284,11 +281,7 @@ export const TaxControlPageContent = memo(() => {
     const trigger = transitionTriggerRef.current
     setTransitionDraft(null)
     globalThis.setTimeout(() => {
-      ;(
-        trigger as unknown as {
-          focus: () => void
-        } | null
-      )?.focus()
+      trigger?.focus()
     }, 0)
   }, [])
 
@@ -1114,9 +1107,7 @@ TaxControlPage.displayName = "TaxControlPage"
 
 const LegacyTaxControlPage = memo(() => {
   useEffect(() => {
-    const { location } = globalThis as unknown as {
-      location: ReplaceAdminLocation
-    }
+    const { location } = globalThis
     replaceLegacyTaxControlLocation(location)
   }, [])
 

@@ -37,10 +37,7 @@ import {
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { AdminResponsiveDataTable } from "../../components/admin-responsive-data-table"
 import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation"
-import {
-  replaceLegacyOperationsLocation,
-  type ReplaceAdminLocation,
-} from "../../features/operations/operations-routes"
+import { replaceLegacyOperationsLocation } from "../../features/operations/operations-routes"
 import { useAdminPermissions } from "../../lib/admin-permissions"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 import {
@@ -786,9 +783,7 @@ MediaCleanupPage.displayName = "MediaCleanupPage"
 
 const LegacyMediaCleanupPage = memo(() => {
   useEffect(() => {
-    const { location } = globalThis as unknown as {
-      location: ReplaceAdminLocation
-    }
+    const { location } = globalThis
     replaceLegacyOperationsLocation(location, "media-cleanup")
   }, [])
 

@@ -46,10 +46,6 @@ type MediaRowProps = {
   onRemove: (event: MouseEvent<HTMLButtonElement>) => void
 }
 
-type MediaButtonTarget = {
-  dataset?: Record<string, string | undefined>
-}
-
 const formatBytes = (bytes: number): string =>
   bytes >= 1024 * 1024
     ? `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
@@ -220,15 +216,12 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
     }, [media])
 
     const handleChooseImages = useCallback(() => {
-      ;(inputRef.current as unknown as { click?: () => void } | null)?.click?.()
+      inputRef.current?.click()
     }, [])
 
     const handleUpload = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
-        const input = event.currentTarget as unknown as {
-          files?: ArrayLike<File> | null
-          value: string
-        }
+        const input = event.currentTarget
         const files = Array.from(input.files ?? [])
         input.value = ""
         const validationError = validateUploadSelection(files, media.length)
@@ -282,10 +275,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
 
     const handleAltTextChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
-        const input = event.currentTarget as unknown as {
-          dataset: Record<string, string | undefined>
-          value: string
-        }
+        const input = event.currentTarget
         const mediaId = input.dataset.mediaId
         if (!mediaId) {
           return
@@ -302,9 +292,12 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
 
     const handleMove = useCallback(
       (event: MouseEvent<HTMLButtonElement>) => {
-        const target = event.currentTarget as MediaButtonTarget
+        const target = event.currentTarget
         const mediaId = target.dataset?.mediaId
         const direction = target.dataset?.direction
+        if (direction !== "up" && direction !== "down") {
+          return
+        }
         const index = media.findIndex((item) => item.id === mediaId)
         const destination = direction === "up" ? index - 1 : index + 1
         if (index < 0 || destination < 0 || destination >= media.length) {
@@ -323,7 +316,7 @@ export const CatalogCreationMediaEditor = memo<CatalogCreationMediaProps>(
 
     const handleRemove = useCallback(
       (event: MouseEvent<HTMLButtonElement>) => {
-        const target = event.currentTarget as MediaButtonTarget
+        const target = event.currentTarget
         const mediaId = target.dataset?.mediaId
         if (!mediaId) {
           return

@@ -23,26 +23,6 @@ type FocusRoot = {
   getElementById: (id: string) => FocusableTarget | null
 }
 
-type BeforeUnloadEventLike = {
-  preventDefault: () => void
-  returnValue: string
-}
-
-type AdminBrowserRuntime = {
-  addEventListener?: (
-    type: "beforeunload",
-    listener: (event: BeforeUnloadEventLike) => void
-  ) => void
-  document?: FocusRoot
-  removeEventListener?: (
-    type: "beforeunload",
-    listener: (event: BeforeUnloadEventLike) => void
-  ) => void
-}
-
-const browserRuntime = (): AdminBrowserRuntime =>
-  globalThis as unknown as AdminBrowserRuntime
-
 export const firstAdminFormError = (
   errors: readonly unknown[]
 ): string | undefined => {
@@ -92,7 +72,7 @@ export const normalizeAdminFormIssues = (
 
 export const focusAdminFormTarget = (
   targetId: string | null,
-  root: FocusRoot | undefined = browserRuntime().document
+  root: FocusRoot | undefined = globalThis.document
 ): boolean => {
   if (!targetId || !root) {
     return false
@@ -108,7 +88,7 @@ export const focusAdminFormTarget = (
 
 export const focusFirstAdminFormIssue = (
   issues: readonly AdminFormIssue[],
-  root: FocusRoot | undefined = browserRuntime().document
+  root: FocusRoot | undefined = globalThis.document
 ): boolean => {
   const firstTarget = normalizeAdminFormIssues(issues).find(
     (issue) => issue.targetId !== null
@@ -337,18 +317,17 @@ export const useAdminUnsavedChanges = (
   onBeforeUnload?: () => void
 ): void => {
   useEffect(() => {
-    const browser = browserRuntime()
-    if (!enabled || typeof browser.addEventListener !== "function") {
+    if (!enabled || typeof globalThis.addEventListener !== "function") {
       return undefined
     }
-    const handleBeforeUnload = (event: BeforeUnloadEventLike) => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       onBeforeUnload?.()
       event.preventDefault()
       event.returnValue = message
     }
-    browser.addEventListener("beforeunload", handleBeforeUnload)
+    globalThis.addEventListener("beforeunload", handleBeforeUnload)
     return () =>
-      browser.removeEventListener?.("beforeunload", handleBeforeUnload)
+      globalThis.removeEventListener("beforeunload", handleBeforeUnload)
   }, [enabled, message, onBeforeUnload])
 }
 

@@ -33,10 +33,7 @@ import {
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { AdminStatCard } from "../../components/admin-stat-card"
 import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation"
-import {
-  replaceLegacyOperationsLocation,
-  type ReplaceAdminLocation,
-} from "../../features/operations/operations-routes"
+import { replaceLegacyOperationsLocation } from "../../features/operations/operations-routes"
 import {
   filingBucketFor,
   TAX_FILING_PROFILES,
@@ -378,20 +375,12 @@ export const TaxRecordsPageContent = memo(() => {
 
   const handleStart = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setPreset("custom")
-    setDraftStart(
-      String(
-        (event.currentTarget as unknown as { value?: unknown }).value ?? ""
-      )
-    )
+    setDraftStart(event.currentTarget.value)
   }, [])
 
   const handleEnd = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setPreset("custom")
-    setDraftEnd(
-      String(
-        (event.currentTarget as unknown as { value?: unknown }).value ?? ""
-      )
-    )
+    setDraftEnd(event.currentTarget.value)
   }, [])
 
   const applyPeriod = useCallback(() => {
@@ -400,11 +389,7 @@ export const TaxRecordsPageContent = memo(() => {
   }, [draftEnd, draftStart])
 
   const handleSearch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setDraftSearch(
-      String(
-        (event.currentTarget as unknown as { value?: unknown }).value ?? ""
-      )
-    )
+    setDraftSearch(event.currentTarget.value)
   }, [])
 
   const applySearch = useCallback(() => {
@@ -484,10 +469,7 @@ export const TaxRecordsPageContent = memo(() => {
         format,
         start: period.start,
       })
-      const browser = globalThis as unknown as {
-        location: { assign: (url: string) => void }
-      }
-      browser.location.assign(`/admin/tax-records/export?${searchParams}`)
+      globalThis.location.assign(`/admin/tax-records/export?${searchParams}`)
     },
     [filingState, period]
   )
@@ -1363,9 +1345,7 @@ TaxRecordsPage.displayName = "TaxRecordsPage"
 
 const LegacyTaxRecordsPage = memo(() => {
   useEffect(() => {
-    const { location } = globalThis as unknown as {
-      location: ReplaceAdminLocation
-    }
+    const { location } = globalThis
     replaceLegacyOperationsLocation(location, "tax-records")
   }, [])
 

@@ -522,11 +522,8 @@ const fetchProductAuthoringForms = async ({
 const requestProductAuthoringIssueFocus = (
   issues: readonly AdminFormIssue[]
 ): void => {
-  const browser = globalThis as unknown as {
-    requestAnimationFrame?: (callback: () => void) => number
-  }
-  if (browser.requestAnimationFrame) {
-    browser.requestAnimationFrame(() => focusFirstAdminFormIssue(issues))
+  if (globalThis.requestAnimationFrame) {
+    globalThis.requestAnimationFrame(() => focusFirstAdminFormIssue(issues))
     return
   }
   focusFirstAdminFormIssue(issues)
@@ -2579,9 +2576,7 @@ export const replaceLegacyCatalogAuthoringLocation = (
 
 const ProductAuthoringPage = memo(() => {
   useEffect(() => {
-    const { location } = globalThis as unknown as {
-      location: ReplaceLocation
-    }
+    const { location } = globalThis
     replaceLegacyCatalogAuthoringLocation(location)
   }, [])
 

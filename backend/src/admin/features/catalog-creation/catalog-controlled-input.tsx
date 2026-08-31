@@ -48,8 +48,7 @@ export const CatalogControlledInput = memo<CatalogControlledInputProps>(
     )
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
-        const nextValue = (event.currentTarget as unknown as { value: string })
-          .value
+        const nextValue = event.currentTarget.value
         const match = options.find(
           (option) =>
             normalizeControlledLabel(option.label) ===

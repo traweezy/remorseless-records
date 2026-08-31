@@ -20,19 +20,6 @@ export type AdminResponsiveDataTableProps<TData> = {
   showPagination?: boolean
 }
 
-type BrowserEnvironment = typeof globalThis & {
-  matchMedia?: (query: string) => {
-    matches: boolean
-  }
-}
-
-type ScrollTarget = {
-  scrollIntoView: (options: {
-    behavior: "auto" | "smooth"
-    block: "start"
-  }) => void
-}
-
 const AdminResponsiveDataTableComponent = <TData,>({
   desktopEmptyState,
   instance,
@@ -48,20 +35,18 @@ const AdminResponsiveDataTableComponent = <TData,>({
     }
     previousPageIndexRef.current = instance.pageIndex
 
-    const browserEnvironment = globalThis as BrowserEnvironment
     if (
       !mobileCollectionRef.current ||
-      !browserEnvironment.matchMedia ||
-      browserEnvironment.matchMedia("(min-width: 768px)").matches
+      typeof globalThis.matchMedia !== "function" ||
+      globalThis.matchMedia("(min-width: 768px)").matches
     ) {
       return
     }
 
-    const reduceMotion = browserEnvironment.matchMedia(
+    const reduceMotion = globalThis.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches
-    const scrollTarget = mobileCollectionRef.current as unknown as ScrollTarget
-    scrollTarget.scrollIntoView({
+    mobileCollectionRef.current.scrollIntoView({
       behavior: reduceMotion ? "auto" : "smooth",
       block: "start",
     })

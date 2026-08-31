@@ -3963,6 +3963,32 @@ dependencies, and the Storefront production build with its client-secret and
 Stripe Trusted Types scanner are green. Deployed endpoint and browser evidence
 follows on this section's exact release SHA.
 
+## Admin native browser type boundary
+
+The Backend TypeScript project now declares DOM and iterable DOM libraries for
+the Medusa Dashboard it compiles. Admin inputs, textareas, selects, buttons,
+file lists, refs, focus restoration, scrolling, media queries, animation
+frames, storage, location, document lookup, and HTML parsing use their native
+browser contracts instead of widening through `unknown`. Dataset commands such
+as rich-text actions and News publication intent are narrowed against explicit
+allowlists before entering domain state.
+
+The repository gate scans all 97 production Admin TypeScript files. It requires
+the browser libraries and fails on double assertions or assertion bridges
+rooted in `globalThis`, a React event target, or a ref. This prevents missing
+compiler context from being hidden locally again while preserving runtime
+guards for test or server contexts where a browser service can be absent.
+
+The slice changes types and event-boundary access only. It does not alter
+rendered layout, copy, focus order, or motion, so existing Admin visual
+acceptance remains applicable.
+
+Complete local acceptance passes the 1,236-file repository QA gate, its new
+97-file Admin browser-boundary scan, all 269 Backend suites / 2,027 tests at
+91.44/84.81/95.62/91.46 coverage, both strict TypeScript projects, and the
+complete Backend/Admin production build with a frozen 1,085-package server
+install.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,

@@ -64,12 +64,7 @@ const SwitchReasonField = memo<SwitchReasonFieldProps>(
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLTextAreaElement>) => {
-        const nextValue = (
-          event.currentTarget as unknown as {
-            value?: unknown
-          }
-        ).value
-        field.handleChange(typeof nextValue === "string" ? nextValue : "")
+        field.handleChange(event.currentTarget.value)
       },
       [field]
     )
@@ -120,12 +115,7 @@ const AcknowledgementField = memo<AcknowledgementFieldProps>(({ field }) => {
   const handleBlur = useCallback(() => field.handleBlur(), [field])
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      const nextValue = (
-        event.currentTarget as unknown as {
-          value?: unknown
-        }
-      ).value
-      field.handleChange(typeof nextValue === "string" ? nextValue : "")
+      field.handleChange(event.currentTarget.value)
     },
     [field]
   )

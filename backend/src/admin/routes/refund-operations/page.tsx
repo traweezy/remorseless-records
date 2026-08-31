@@ -37,10 +37,7 @@ import {
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { AdminStatCard } from "../../components/admin-stat-card"
 import { OperationsWorkspaceNavigation } from "../../features/operations/operations-navigation"
-import {
-  replaceLegacyOperationsLocation,
-  type ReplaceAdminLocation,
-} from "../../features/operations/operations-routes"
+import { replaceLegacyOperationsLocation } from "../../features/operations/operations-routes"
 import { useAdminPermissions } from "../../lib/admin-permissions"
 import { getAdminRequestErrorMessage } from "../../lib/admin-request"
 import { refundOperationsQueryOptions } from "./query"
@@ -271,11 +268,7 @@ export const RefundOperationsPageContent = memo(() => {
 
   const handleSearch = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      setSearch(
-        String(
-          (event.currentTarget as unknown as { value?: unknown }).value ?? ""
-        )
-      )
+      setSearch(event.currentTarget.value)
       setPage(0)
     },
     []
@@ -889,9 +882,7 @@ RefundOperationsPage.displayName = "RefundOperationsPage"
 
 const LegacyRefundOperationsPage = memo(() => {
   useEffect(() => {
-    const { location } = globalThis as unknown as {
-      location: ReplaceAdminLocation
-    }
+    const { location } = globalThis
     replaceLegacyOperationsLocation(location, "refunds")
   }, [])
 

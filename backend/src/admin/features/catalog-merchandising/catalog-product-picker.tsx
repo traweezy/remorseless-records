@@ -49,7 +49,7 @@ type CatalogProductPickerProps = {
 }
 
 const readInputValue = (event: ChangeEvent<HTMLInputElement>): string =>
-  (event.currentTarget as unknown as { value?: string }).value ?? ""
+  event.currentTarget.value
 
 export const CatalogProductPicker = memo<CatalogProductPickerProps>(
   ({ currentProduct, currentProductId, disabled = false, onSelect }) => {

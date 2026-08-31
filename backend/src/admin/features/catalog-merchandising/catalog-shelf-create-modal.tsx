@@ -36,7 +36,7 @@ type CreateTextField =
   | "title"
 
 const readInputValue = (event: ChangeEvent<HTMLInputElement>): string =>
-  (event.currentTarget as unknown as { value?: string }).value ?? ""
+  event.currentTarget.value
 
 type CreateInputFieldProps = {
   field: CreateTextField
@@ -122,10 +122,7 @@ export const CatalogShelfCreateModal = memo<CatalogShelfCreateModalProps>(
     const handleCloseAutoFocus = useCallback(
       (event: Event) => {
         event.preventDefault()
-        const trigger = restoreFocusRef.current as unknown as {
-          focus: () => void
-        } | null
-        trigger?.focus()
+        restoreFocusRef.current?.focus()
       },
       [restoreFocusRef]
     )

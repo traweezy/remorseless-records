@@ -99,9 +99,7 @@ const NewsTextField = memo<TextFieldProps>(
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
-        const value = (event.currentTarget as unknown as { value?: unknown })
-          .value
-        field.handleChange(typeof value === "string" ? value : "")
+        field.handleChange(event.currentTarget.value)
       },
       [field]
     )
@@ -163,9 +161,7 @@ const NewsTextareaField = memo<TextareaFieldProps>(
     const handleBlur = useCallback(() => field.handleBlur(), [field])
     const handleChange = useCallback(
       (event: ChangeEvent<HTMLTextAreaElement>) => {
-        const value = (event.currentTarget as unknown as { value?: unknown })
-          .value
-        field.handleChange(typeof value === "string" ? value : "")
+        field.handleChange(event.currentTarget.value)
       },
       [field]
     )
@@ -336,17 +332,11 @@ const CoverFields = memo<CoverFieldsProps>(
       if (!canUploadCover) {
         return
       }
-      const target = inputRef.current as unknown as {
-        click?: () => void
-      } | null
-      target?.click?.()
+      inputRef.current?.click()
     }, [canUploadCover])
     const handleUpload = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
-        const input = event.currentTarget as unknown as {
-          files?: ArrayLike<File> | null
-          value: string
-        }
+        const input = event.currentTarget
         const file = Array.from(input.files ?? [])[0]
         input.value = ""
         if (!canUploadCover || !file) {
@@ -403,9 +393,7 @@ const CoverFields = memo<CoverFieldsProps>(
     )
     const handleAltChange = useCallback(
       (event: ChangeEvent<HTMLInputElement>) => {
-        const value = (event.currentTarget as unknown as { value?: unknown })
-          .value
-        altTextField.handleChange(typeof value === "string" ? value : "")
+        altTextField.handleChange(event.currentTarget.value)
       },
       [altTextField]
     )
@@ -542,34 +530,22 @@ const statusLabel = {
 } as const
 
 const focusFirstInvalid = (): void => {
-  const browser = globalThis as unknown as {
-    document?: {
-      querySelector: (selector: string) => { focus?: () => void } | null
-    }
-    requestAnimationFrame?: (callback: () => void) => number
-  }
-  browser.requestAnimationFrame?.(() => {
-    browser.document?.querySelector('[aria-invalid="true"]')?.focus?.()
+  globalThis.requestAnimationFrame?.(() => {
+    globalThis.document
+      ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      ?.focus()
   })
 }
 
 const focusSchedule = (): void => {
-  const browser = globalThis as unknown as {
-    document?: {
-      getElementById: (id: string) => { focus?: () => void } | null
-    }
-    requestAnimationFrame?: (callback: () => void) => number
-  }
-  browser.requestAnimationFrame?.(() => {
-    browser.document?.getElementById("news-schedule-at")?.focus?.()
+  globalThis.requestAnimationFrame?.(() => {
+    globalThis.document?.getElementById("news-schedule-at")?.focus()
   })
 }
 
 const newsDraftStorage = (): Storage | null => {
   try {
-    return (
-      (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null
-    )
+    return globalThis.localStorage ?? null
   } catch {
     return null
   }
@@ -713,21 +689,19 @@ export const NewsEditor = memo<NewsEditorProps>(
     const handleCloseAutoFocus = useCallback(
       (event: Event) => {
         event.preventDefault()
-        const target = restoreFocusRef.current as unknown as {
-          focus?: () => void
-        } | null
-        target?.focus?.()
+        restoreFocusRef.current?.focus()
       },
       [restoreFocusRef]
     )
     const handleIntent = useCallback(
       (event: React.MouseEvent<HTMLButtonElement>) => {
-        const intent = (
-          event.currentTarget as unknown as {
-            dataset: { intent?: NewsPublicationIntent }
-          }
-        ).dataset.intent
-        if (!intent || busy) {
+        const intent = event.currentTarget.dataset.intent
+        if (
+          (intent !== "draft" &&
+            intent !== "schedule" &&
+            intent !== "publish") ||
+          busy
+        ) {
           return
         }
         intentRef.current = intent

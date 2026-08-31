@@ -38,10 +38,7 @@ import {
 import { AdminRetryState } from "../../components/admin-retry-state"
 import { ContentWorkspaceNavigation } from "../../features/content/content-navigation"
 import { hasDiscographyReadAccess } from "../../features/content/content-permissions"
-import {
-  replaceLegacyContentLocation,
-  type ReplaceContentLocation,
-} from "../../features/content/content-routes"
+import { replaceLegacyContentLocation } from "../../features/content/content-routes"
 import { NewsEditor } from "../../features/news/news-editor"
 import {
   newsEntryMatchesWriteInput,
@@ -124,15 +121,9 @@ const isStatusFilter = (value: string): value is StatusFilter =>
 const isSortValue = (value: string): value is SortValue =>
   sortOptions.some((option) => option.value === value)
 
-type BrowserEnvironment = typeof globalThis & {
-  requestAnimationFrame?: (callback: () => void) => number
-}
-
 const restoreFocus = (target: HTMLButtonElement | null): void => {
-  const browser = globalThis as BrowserEnvironment
-  browser.requestAnimationFrame?.(() => {
-    const focusTarget = target as unknown as { focus?: () => void } | null
-    focusTarget?.focus?.()
+  globalThis.requestAnimationFrame?.(() => {
+    target?.focus()
   })
 }
 
@@ -300,9 +291,7 @@ const NewsAdminPageContent = memo(() => {
   }, [])
   const handleSearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      const value = (event.currentTarget as unknown as { value?: unknown })
-        .value
-      setSearchInput(typeof value === "string" ? value : "")
+      setSearchInput(event.currentTarget.value)
     },
     []
   )
@@ -700,9 +689,7 @@ NewsAdminPage.displayName = "NewsAdminPage"
 
 const LegacyNewsPage = memo(() => {
   useEffect(() => {
-    const { location } = globalThis as unknown as {
-      location: ReplaceContentLocation
-    }
+    const { location } = globalThis
     replaceLegacyContentLocation(location, "news")
   }, [])
 

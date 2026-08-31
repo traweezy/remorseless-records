@@ -76,10 +76,7 @@ const emptyValues = (): VariantCatalogProfileFormValues =>
 
 const readValue = (
   event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-): string => {
-  const value = (event.currentTarget as unknown as { value?: unknown }).value
-  return typeof value === "string" ? value : ""
-}
+): string => event.currentTarget.value
 
 const fieldError = (field: AnyFieldApi): string | undefined =>
   visibleAdminFormFieldError({
@@ -194,15 +191,9 @@ const VariantSwitchField = memo<VariantSwitchFieldProps>(
 
 VariantSwitchField.displayName = "VariantSwitchField"
 
-type MetadataTarget = {
-  dataset?: Record<string, string | undefined>
-  name?: string
-  value?: string
-}
-
-const metadataTarget = (event: {
-  currentTarget: EventTarget
-}): MetadataTarget => event.currentTarget as unknown as MetadataTarget
+const metadataTarget = <T extends HTMLElement>(event: {
+  currentTarget: T
+}): T => event.currentTarget
 
 type VariantMetadataEditorProps = {
   field: AnyFieldApi
@@ -225,8 +216,8 @@ const VariantMetadataEditor = memo<VariantMetadataEditorProps>(
       (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const target = metadataTarget(event)
         const lineId = target.dataset?.lineId
-        const name = target.name as "name" | "value" | undefined
-        if (!lineId || !name) {
+        const { name } = target
+        if (!lineId || (name !== "name" && name !== "value")) {
           return
         }
         updateLines(
@@ -397,11 +388,8 @@ const releaseDateLabel = (value: string | null | undefined): string => {
 }
 
 const requestFocusFirstIssue = (issues: readonly AdminFormIssue[]): void => {
-  const browser = globalThis as unknown as {
-    requestAnimationFrame?: (callback: () => void) => number
-  }
-  if (browser.requestAnimationFrame) {
-    browser.requestAnimationFrame(() => focusFirstAdminFormIssue(issues))
+  if (globalThis.requestAnimationFrame) {
+    globalThis.requestAnimationFrame(() => focusFirstAdminFormIssue(issues))
     return
   }
   focusFirstAdminFormIssue(issues)

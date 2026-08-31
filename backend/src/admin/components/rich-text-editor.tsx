@@ -186,17 +186,10 @@ const HtmlSyncPlugin = memo<HtmlSyncPluginProps>(({ syncedHtmlRef, value }) => {
           root.append($createParagraphNode())
           return
         }
-        const Parser = (
-          globalThis as unknown as {
-            DOMParser: new () => {
-              parseFromString: (
-                source: string,
-                mimeType: string
-              ) => Parameters<typeof $generateNodesFromDOM>[1]
-            }
-          }
-        ).DOMParser
-        const document = new Parser().parseFromString(value, "text/html")
+        const document = new globalThis.DOMParser().parseFromString(
+          value,
+          "text/html"
+        )
         const nodes = $generateNodesFromDOM(editor, document)
         root.append(...(nodes.length ? nodes : [$createParagraphNode()]))
       },
@@ -240,6 +233,9 @@ const toolbarActions: ReadonlyArray<{
   { action: "number", label: "Numbers" },
   { action: "clear", label: "Clear style" },
 ]
+
+const isToolbarAction = (value: string | undefined): value is ToolbarAction =>
+  toolbarActions.some(({ action }) => action === value)
 
 const normalizeLink = (value: string): string | null => {
   const normalized = value.trim()
@@ -292,12 +288,8 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
   )
   const handleToolbarAction = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
-      const action = (
-        event.currentTarget as unknown as {
-          dataset: { action?: ToolbarAction }
-        }
-      ).dataset.action as ToolbarAction | undefined
-      if (!action || disabled) {
+      const action = event.currentTarget.dataset.action
+      if (!isToolbarAction(action) || disabled) {
         return
       }
       if (["bold", "italic", "underline"].includes(action)) {
@@ -347,9 +339,7 @@ const EditorToolbar = memo<EditorToolbarProps>(({ disabled }) => {
   }, [])
   const handleLinkChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      const value = (event.currentTarget as unknown as { value?: unknown })
-        .value
-      setLinkUrl(typeof value === "string" ? value : "")
+      setLinkUrl(event.currentTarget.value)
       setLinkError(null)
     },
     []
