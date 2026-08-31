@@ -5,7 +5,12 @@ import {
   ProductStatus,
 } from "@medusajs/framework/utils"
 
-type JsonRecord = Record<string, unknown>
+import {
+  readProviderDataRecords,
+  type UnknownRecord,
+} from "./provider-boundary/records"
+
+type JsonRecord = UnknownRecord
 type QueryPagination = {
   order?: Record<string, "ASC" | "DESC">
   skip?: number
@@ -18,7 +23,7 @@ export type StoreProductQueryGraph = {
     fields: string[]
     filters?: Record<string, unknown>
     pagination?: QueryPagination
-  }) => Promise<{ data: JsonRecord[] }>
+  }) => Promise<unknown>
 }
 
 export type StoreProductVisibilityContext = {
@@ -30,15 +35,122 @@ export const STORE_PRODUCT_PAGE_LIMIT = 100
 export const STORE_PRODUCT_MAX_CANDIDATES = 3_000
 const STORE_PRODUCT_MAX_SALES_CHANNELS = 8
 const PRODUCT_LINK_CURSOR_PATTERN = /^prodsc_[a-zA-Z0-9]+$/u
+const STORE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$/u
 
-const asString = (value: unknown): string | null =>
-  typeof value === "string" && value.trim().length ? value.trim() : null
+const invalidStoreProductData = (): never => {
+  throw new MedusaError(
+    MedusaError.Types.UNEXPECTED_STATE,
+    "The Store product query returned invalid structured data."
+  )
+}
 
-const uniqueStrings = (values: readonly string[]): string[] =>
-  Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
+const asStoreIdentifier = (value: unknown): string | null =>
+  typeof value === "string" &&
+  value.length > 0 &&
+  value === value.trim() &&
+  STORE_IDENTIFIER_PATTERN.test(value)
+    ? value
+    : null
+
+const requiredStoreIdentifier = (value: unknown): string =>
+  asStoreIdentifier(value) ?? invalidStoreProductData()
+
+const readStoreGraphRows = (value: unknown): JsonRecord[] => {
+  try {
+    return readProviderDataRecords(value, "Store product query")
+  } catch {
+    return invalidStoreProductData()
+  }
+}
+
+const uniqueIdentifiers = (values: readonly string[]): string[] => {
+  if (values.some((value) => !asStoreIdentifier(value))) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Store product identifiers are invalid"
+    )
+  }
+  return Array.from(new Set(values))
+}
+
+export const readStoreProductCandidateIds = (value: unknown): string[] => {
+  const rows = readStoreGraphRows(value)
+  if (rows.length > 1) {
+    return invalidStoreProductData()
+  }
+  return rows.map((row) => requiredStoreIdentifier(row.id))
+}
+
+const readStoreProductRows = <T extends JsonRecord>(
+  value: unknown,
+  expectedProductIds: readonly string[]
+): T[] => {
+  const expected = new Set(expectedProductIds)
+  const seen = new Set<string>()
+  return readStoreGraphRows(value).map((row) => {
+    const id = requiredStoreIdentifier(row.id)
+    if (!expected.has(id) || seen.has(id)) {
+      return invalidStoreProductData()
+    }
+    seen.add(id)
+    return row as T
+  })
+}
+
+const readStoreVisibilityLinks = (
+  value: unknown,
+  expectedProductIds: readonly string[]
+): string[] => {
+  const expected = new Set(expectedProductIds)
+  return readStoreGraphRows(value).map((row) => {
+    const productId = requiredStoreIdentifier(row.product_id)
+    return expected.has(productId) ? productId : invalidStoreProductData()
+  })
+}
+
+type StoreProductPageLink = {
+  id: string
+  productId: string
+}
+
+const readStoreProductPageLinks = (
+  value: unknown,
+  input: {
+    cursor?: string
+    direction: "ASC" | "DESC"
+    maximumRows: number
+  }
+): StoreProductPageLink[] => {
+  const rows = readStoreGraphRows(value)
+  if (rows.length > input.maximumRows) {
+    return invalidStoreProductData()
+  }
+  const seen = new Set<string>()
+  const links = rows.map((row) => {
+    const id = requiredStoreIdentifier(row.id)
+    const productId = requiredStoreIdentifier(row.product_id)
+    if (!PRODUCT_LINK_CURSOR_PATTERN.test(id) || seen.has(id)) {
+      return invalidStoreProductData()
+    }
+    seen.add(id)
+    return { id, productId }
+  })
+  links.forEach((link, index) => {
+    const previousId = index === 0 ? input.cursor : links[index - 1]?.id
+    if (
+      previousId &&
+      (input.direction === "ASC"
+        ? link.id <= previousId
+        : link.id >= previousId)
+    ) {
+      invalidStoreProductData()
+    }
+  })
+  return links
+}
 
 const assertBoundedCandidateIds = (productIds: readonly string[]): string[] => {
-  const uniqueProductIds = uniqueStrings(productIds)
+  const uniqueProductIds = uniqueIdentifiers(productIds)
   if (uniqueProductIds.length > STORE_PRODUCT_MAX_CANDIDATES) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
@@ -51,7 +163,7 @@ const assertBoundedCandidateIds = (productIds: readonly string[]): string[] => {
 export const resolveStoreProductVisibility = (
   req: MedusaStoreRequest
 ): StoreProductVisibilityContext => {
-  const salesChannelIds = uniqueStrings(
+  const salesChannelIds = uniqueIdentifiers(
     req.publishable_key_context?.sales_channel_ids ?? []
   )
   if (!salesChannelIds.length) {
@@ -89,7 +201,7 @@ const listPublishedProductsByIds = async <T extends JsonRecord>({
     return []
   }
 
-  const { data } = await query.graph({
+  const result = await query.graph({
     entity: "product",
     fields: [...fields],
     filters: {
@@ -98,11 +210,9 @@ const listPublishedProductsByIds = async <T extends JsonRecord>({
     },
     pagination: { take: uniqueProductIds.length },
   })
+  const products = readStoreProductRows<T>(result, uniqueProductIds)
   const byId = new Map(
-    data.flatMap((product) => {
-      const id = asString(product.id)
-      return id ? [[id, product as T] as const] : []
-    })
+    products.map((product) => [requiredStoreIdentifier(product.id), product])
   )
 
   return uniqueProductIds.flatMap((id) => {
@@ -123,12 +233,12 @@ export const listVisibleProductsByIds = async <T extends JsonRecord>({
   salesChannelIds: readonly string[]
 }): Promise<T[]> => {
   const uniqueProductIds = assertBoundedCandidateIds(productIds)
-  const uniqueSalesChannelIds = uniqueStrings(salesChannelIds)
+  const uniqueSalesChannelIds = uniqueIdentifiers(salesChannelIds)
   if (!uniqueProductIds.length || !uniqueSalesChannelIds.length) {
     return []
   }
 
-  const { data: links } = await query.graph({
+  const linkResult = await query.graph({
     entity: "product_sales_channel",
     fields: ["product_id"],
     filters: {
@@ -140,9 +250,7 @@ export const listVisibleProductsByIds = async <T extends JsonRecord>({
     },
   })
   const linkedProductIds = new Set(
-    links
-      .map((link) => asString(link.product_id))
-      .filter((id): id is string => Boolean(id))
+    readStoreVisibilityLinks(linkResult, uniqueProductIds)
   )
   const visibleProductIds = uniqueProductIds.filter((id) =>
     linkedProductIds.has(id)
@@ -209,7 +317,7 @@ export const listVisibleProductPage = async <T extends JsonRecord>({
     STORE_PRODUCT_PAGE_LIMIT
   )
   const linkFilters: Record<string, unknown> = {
-    sales_channel_id: uniqueStrings(salesChannelIds),
+    sales_channel_id: uniqueIdentifiers(salesChannelIds),
   }
   if (cursor) {
     linkFilters.id = {
@@ -217,7 +325,7 @@ export const listVisibleProductPage = async <T extends JsonRecord>({
     }
   }
 
-  const { data: links } = await query.graph({
+  const linkResult = await query.graph({
     entity: "product_sales_channel",
     fields: ["id", "product_id"],
     filters: linkFilters,
@@ -226,22 +334,24 @@ export const listVisibleProductPage = async <T extends JsonRecord>({
       take: boundedLimit + 1,
     },
   })
+  const links = readStoreProductPageLinks(linkResult, {
+    ...(cursor ? { cursor } : {}),
+    direction,
+    maximumRows: boundedLimit + 1,
+  })
   const pageLinks = links.slice(0, boundedLimit)
-  const productIds = uniqueStrings(
-    pageLinks.flatMap((link) => {
-      const productId = asString(link.product_id)
-      return productId ? [productId] : []
-    })
+  const productIds = Array.from(
+    new Set(pageLinks.map((link) => link.productId))
   )
   const products = await listPublishedProductsByIds<T>({
     fields,
     productIds,
     query,
   })
-  const lastLinkId = asString(pageLinks.at(-1)?.id)
+  const lastLinkId = pageLinks.at(-1)?.id ?? null
 
   return {
     products,
-    nextCursor: links.length > boundedLimit && lastLinkId ? lastLinkId : null,
+    nextCursor: links.length > boundedLimit ? lastLinkId : null,
   }
 }

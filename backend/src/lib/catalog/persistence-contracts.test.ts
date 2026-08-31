@@ -9,6 +9,7 @@ import {
   readCatalogProductVariantIds,
   readCatalogServiceIds,
   readCatalogStoreDefaults,
+  readCatalogStoreBundleProfiles,
   readCatalogVariantInventoryLinks,
   readCatalogVariantOwnerships,
 } from "./persistence-contracts"
@@ -250,6 +251,43 @@ describe("catalog persistence contracts", () => {
             inventory_mode: "component_derived",
             is_active: true,
             product_id: "prod_other",
+          },
+        ],
+        "prod_01"
+      )
+    ).toThrow(invalidBoundary)
+
+    expect(
+      readCatalogStoreBundleProfiles(
+        [
+          {
+            bundle_type: "selectable",
+            display_title: "Build Your Bundle",
+            id: "cbundle_01",
+            is_active: true,
+            product_id: "prod_01",
+          },
+        ],
+        "prod_01"
+      )
+    ).toEqual([
+      {
+        bundle_type: "selectable",
+        display_title: "Build Your Bundle",
+        id: "cbundle_01",
+        is_active: true,
+        product_id: "prod_01",
+      },
+    ])
+    expect(() =>
+      readCatalogStoreBundleProfiles(
+        [
+          {
+            bundle_type: "broken",
+            display_title: null,
+            id: "cbundle_01",
+            is_active: true,
+            product_id: "prod_01",
           },
         ],
         "prod_01"

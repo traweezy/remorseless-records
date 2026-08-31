@@ -1477,6 +1477,17 @@ Bundle link changes are read back after mutation and are not reported complete
 until both Medusa inventory state and owned provenance match the requested
 plan; failed verification restores and verifies the prior snapshots.
 
+Custom Store catalog reads apply the same fail-closed discipline. Product
+candidate, sales-channel, Product, and keyset-page graph envelopes require
+canonical expected identities and monotonic cursor order. The bundle endpoint
+validates project-owned profiles/components, component-specific Variant
+mappings, public bundle Variant targets, and inventory availability. The
+discography, shelf, related-product, and Product-handle routes validate their
+exact public Product projections; related-product output allowlists only the
+artist/album metadata used for ranking. Corrupt provider data therefore cannot
+become a misleading 404, skipped page row, leaked metadata field, or available
+bundle option.
+
 Physical media deletion is deliberately unavailable. The displayed 30-day
 date is only the earliest future review point; no job or route automatically
 deletes the catalog row or File Module object. A future audited purge also

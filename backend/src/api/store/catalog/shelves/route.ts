@@ -20,6 +20,7 @@ import {
   listVisibleProductsByIds,
   resolveStoreProductVisibility,
 } from "@/lib/store-product-visibility"
+import { readStoreShelfProductProjections } from "@/lib/store-product-projections"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
 type CatalogServiceMethod = (...args: unknown[]) => Promise<unknown>
@@ -52,9 +53,6 @@ const toTimestamp = (value: unknown): number => {
   const timestamp = new Date(value).getTime()
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
-
-const textValue = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() ? value.trim() : null
 
 const callCatalogService = async <T>(
   catalogService: CatalogService,
@@ -133,7 +131,7 @@ export const GET = async (
       ].filter(Boolean)
     )
   )
-  const visibleProducts = candidateIds.length
+  const rawVisibleProducts = candidateIds.length
     ? await listVisibleProductsByIds({
         fields: ["id", "created_at"],
         productIds: candidateIds,
@@ -141,16 +139,12 @@ export const GET = async (
         salesChannelIds,
       })
     : []
+  const visibleProducts = readStoreShelfProductProjections(rawVisibleProducts)
   const visibleProductIds = new Set(
-    visibleProducts
-      .map((product) => textValue(product.id))
-      .filter((id): id is string => Boolean(id))
+    visibleProducts.map((product) => product.id)
   )
   const productCreatedAt = new Map(
-    visibleProducts.flatMap((product) => {
-      const id = textValue(product.id)
-      return id ? [[id, product.created_at] as const] : []
-    })
+    visibleProducts.map((product) => [product.id, product.created_at])
   )
   const membershipsByShelf = new Map<string, CatalogShelfProductRecord[]>()
   memberships.forEach((membership) => {

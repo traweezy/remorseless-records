@@ -5,6 +5,7 @@ import type {
 import { z } from "@medusajs/framework/zod"
 import { MedusaError } from "@medusajs/framework/utils"
 
+import { readStoreDiscographyProductProjections } from "@/lib/store-product-projections"
 import {
   listVisibleProductsByIds,
   resolveStoreProductVisibility,
@@ -66,18 +67,14 @@ export const GET = async (
       )
     )
   )
-  const visibleProducts = await listVisibleProductsByIds<
-    Record<string, unknown> & {
-      handle?: string | null
-      id: string
-      status?: string | null
-    }
-  >({
+  const rawVisibleProducts = await listVisibleProductsByIds({
     fields: ["id", "handle", "status"],
     productIds,
     query,
     salesChannelIds,
   })
+  const visibleProducts =
+    readStoreDiscographyProductProjections(rawVisibleProducts)
   const productsById = new Map(
     visibleProducts.map((product) => [product.id, product])
   )

@@ -5,6 +5,7 @@ import type {
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
+import { readStoreProductHandleProjections } from "@/lib/store-product-projections"
 import {
   decodeStoreProductCursor,
   encodeStoreProductCursor,
@@ -12,13 +13,6 @@ import {
   resolveStoreProductVisibility,
   STORE_PRODUCT_PAGE_LIMIT,
 } from "@/lib/store-product-visibility"
-
-type ProductHandleRecord = Record<string, unknown> & {
-  created_at?: string | null
-  handle?: string | null
-  id?: string | null
-  updated_at?: string | null
-}
 
 const PRODUCT_HANDLE_FIELDS = [
   "id",
@@ -39,9 +33,6 @@ const listQuerySchema = z
   })
   .strict()
 
-const asString = (value: unknown): string | null =>
-  typeof value === "string" && value.trim().length ? value.trim() : null
-
 export const GET = async (
   req: MedusaStoreRequest,
   res: MedusaResponse
@@ -56,29 +47,14 @@ export const GET = async (
 
   const { query, salesChannelIds } = resolveStoreProductVisibility(req)
   const cursor = decodeStoreProductCursor(parsed.data.cursor)
-  const { nextCursor, products } =
-    await listVisibleProductPage<ProductHandleRecord>({
-      ...(cursor ? { cursor } : {}),
-      fields: PRODUCT_HANDLE_FIELDS,
-      limit: parsed.data.limit ?? STORE_PRODUCT_PAGE_LIMIT,
-      query,
-      salesChannelIds,
-    })
-  const handles = products.flatMap((product) => {
-    const handle = asString(product.handle)
-    const id = asString(product.id)
-    if (!handle || !id) {
-      return []
-    }
-    return [
-      {
-        created_at: asString(product.created_at),
-        handle,
-        id,
-        updated_at: asString(product.updated_at),
-      },
-    ]
+  const { nextCursor, products } = await listVisibleProductPage({
+    ...(cursor ? { cursor } : {}),
+    fields: PRODUCT_HANDLE_FIELDS,
+    limit: parsed.data.limit ?? STORE_PRODUCT_PAGE_LIMIT,
+    query,
+    salesChannelIds,
   })
+  const handles = readStoreProductHandleProjections(products)
 
   res.setHeader(
     "Cache-Control",

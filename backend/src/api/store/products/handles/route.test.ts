@@ -99,4 +99,38 @@ describe("GET /store/products/handles", () => {
     ).rejects.toThrow("Invalid product page cursor")
     expect(graph).not.toHaveBeenCalled()
   })
+
+  it("rejects malformed Product fields instead of advancing past them", async () => {
+    const graph = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: [{ id: "prodsc_01AAA", product_id: "prod_1" }],
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            created_at: "not-a-date",
+            handle: "first-release",
+            id: "prod_1",
+            updated_at: null,
+          },
+        ],
+      })
+
+    await expect(
+      GET(
+        {
+          publishable_key_context: {
+            key: "pk_test",
+            sales_channel_ids: ["sc_web"],
+          },
+          query: { limit: "1" },
+          scope: { resolve: jest.fn().mockReturnValue({ graph }) },
+        } as never,
+        {} as never
+      )
+    ).rejects.toThrow(
+      "The Store product projection returned invalid structured data."
+    )
+  })
 })

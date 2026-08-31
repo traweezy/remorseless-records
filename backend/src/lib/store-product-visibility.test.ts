@@ -8,6 +8,7 @@ import {
   encodeStoreProductCursor,
   listVisibleProductPage,
   listVisibleProductsByIds,
+  readStoreProductCandidateIds,
   resolveStoreProductVisibility,
   type StoreProductQueryGraph,
 } from "./store-product-visibility"
@@ -42,6 +43,26 @@ describe("store product visibility", () => {
       } as never)
     ).toEqual({ query, salesChannelIds: ["sc_1", "sc_2"] })
     expect(resolve).toHaveBeenCalledWith(ContainerRegistrationKeys.QUERY)
+  })
+
+  it("validates an exact bounded product candidate envelope", () => {
+    expect(readStoreProductCandidateIds({ data: [{ id: "prod_1" }] })).toEqual([
+      "prod_1",
+    ])
+    expect(readStoreProductCandidateIds({ data: [] })).toEqual([])
+  })
+
+  it.each([
+    undefined,
+    { data: null },
+    { data: [false] },
+    { data: [{}] },
+    { data: [{ id: " prod_1" }] },
+    { data: [{ id: "prod_1" }, { id: "prod_2" }] },
+  ])("rejects malformed or ambiguous product candidates", (value) => {
+    expect(() => readStoreProductCandidateIds(value)).toThrow(
+      "The Store product query returned invalid structured data."
+    )
   })
 
   it("returns only linked published products in candidate order", async () => {
@@ -85,6 +106,50 @@ describe("store product visibility", () => {
       },
       pagination: { take: 2 },
     })
+  })
+
+  it.each([
+    undefined,
+    { data: [null] },
+    { data: [{ product_id: "prod_unexpected" }] },
+    { data: [{ product_id: " prod_1" }] },
+  ])("rejects malformed visibility links", async (value) => {
+    graph.mockResolvedValueOnce(value)
+
+    await expect(
+      listVisibleProductsByIds({
+        fields: ["id"],
+        productIds: ["prod_1"],
+        query,
+        salesChannelIds: ["sc_1"],
+      })
+    ).rejects.toThrow(
+      "The Store product query returned invalid structured data."
+    )
+    expect(graph).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    undefined,
+    { data: [null] },
+    { data: [{ id: "prod_unexpected" }] },
+    { data: [{ id: "prod_1" }, { id: "prod_1" }] },
+    { data: [{ id: " prod_1" }] },
+  ])("rejects malformed published Product rows", async (value) => {
+    graph
+      .mockResolvedValueOnce({ data: [{ product_id: "prod_1" }] })
+      .mockResolvedValueOnce(value)
+
+    await expect(
+      listVisibleProductsByIds({
+        fields: ["id"],
+        productIds: ["prod_1"],
+        query,
+        salesChannelIds: ["sc_1"],
+      })
+    ).rejects.toThrow(
+      "The Store product query returned invalid structured data."
+    )
   })
 
   it("uses an opaque keyset cursor and a bounded published page", async () => {
@@ -138,6 +203,45 @@ describe("store product visibility", () => {
         filters: expect.objectContaining({ status: ProductStatus.PUBLISHED }),
       })
     )
+  })
+
+  it.each([
+    undefined,
+    { data: [null] },
+    { data: [{ id: "prodsc_01AAA" }] },
+    {
+      data: [
+        { id: "prodsc_01AAB", product_id: "prod_1" },
+        { id: "prodsc_01AAA", product_id: "prod_2" },
+      ],
+    },
+    {
+      data: [
+        { id: "prodsc_01AAA", product_id: "prod_1" },
+        { id: "prodsc_01AAA", product_id: "prod_2" },
+      ],
+    },
+    {
+      data: [
+        { id: "prodsc_01AAA", product_id: "prod_1" },
+        { id: "prodsc_01AAB", product_id: "prod_2" },
+        { id: "prodsc_01AAC", product_id: "prod_3" },
+      ],
+    },
+  ])("rejects malformed or over-bound page links", async (value) => {
+    graph.mockResolvedValueOnce(value)
+
+    await expect(
+      listVisibleProductPage({
+        fields: ["id"],
+        limit: 1,
+        query,
+        salesChannelIds: ["sc_1"],
+      })
+    ).rejects.toThrow(
+      "The Store product query returned invalid structured data."
+    )
+    expect(graph).toHaveBeenCalledTimes(1)
   })
 
   it("rejects malformed and non-canonical cursors", () => {

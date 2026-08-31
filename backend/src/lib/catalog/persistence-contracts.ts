@@ -343,6 +343,45 @@ export const readCatalogBundleProfiles = (
   })
 }
 
+export type CatalogStoreBundleProfileBoundary = {
+  bundle_type: "deal" | "fixed" | "mystery" | "selectable"
+  display_title: string | null
+  id: string
+  is_active: boolean
+  product_id: string
+}
+
+export const readCatalogStoreBundleProfiles = (
+  value: unknown,
+  expectedProductId: string
+): CatalogStoreBundleProfileBoundary[] => {
+  const rows = serviceRows(value)
+  if (rows.length > 1) {
+    return invalidCatalogData()
+  }
+  return rows.map((row) => {
+    const bundleType = row.bundle_type
+    const productId = requiredCatalogIdentifier(row.product_id)
+    if (
+      productId !== expectedProductId ||
+      (bundleType !== "deal" &&
+        bundleType !== "fixed" &&
+        bundleType !== "mystery" &&
+        bundleType !== "selectable") ||
+      typeof row.is_active !== "boolean"
+    ) {
+      return invalidCatalogData()
+    }
+    return {
+      bundle_type: bundleType,
+      display_title: nullableCatalogText(row.display_title),
+      id: requiredCatalogIdentifier(row.id),
+      is_active: row.is_active,
+      product_id: productId,
+    }
+  })
+}
+
 export type CatalogBundleComponentBoundary = {
   bundle_profile_id: string
   component_inventory_item_id: string | null

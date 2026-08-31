@@ -5,19 +5,39 @@ import { GET } from "./route"
 describe("GET /store/products/:handle/related", () => {
   it("uses only bounded published products linked to the key sales channel", async () => {
     const target = {
-      categories: [{ handle: "doom" }],
+      categories: [
+        {
+          handle: "doom",
+          id: "pcat_doom",
+          name: "Doom",
+          parent_category: null,
+          parent_category_id: null,
+        },
+      ],
       collection: { id: "collection_1", title: "Collection" },
+      collection_id: "collection_1",
       handle: "target-release",
       id: "prod_target",
       metadata: { artist: "Target Artist" },
+      status: ProductStatus.PUBLISHED,
       title: "Target Artist - Target Release",
     }
     const related = {
-      categories: [{ handle: "death" }],
+      categories: [
+        {
+          handle: "death",
+          id: "pcat_death",
+          name: "Death",
+          parent_category: null,
+          parent_category_id: null,
+        },
+      ],
       collection: { id: "collection_1", title: "Collection" },
+      collection_id: "collection_1",
       handle: "related-release",
       id: "prod_related",
       metadata: { artist: "Another Artist" },
+      status: ProductStatus.PUBLISHED,
       title: "Another Artist - Related Release",
     }
     const graph = jest
@@ -94,5 +114,42 @@ describe("GET /store/products/:handle/related", () => {
         {} as never
       )
     ).rejects.toThrow("Product target-release not found")
+  })
+
+  it("rejects malformed related Product fields instead of returning raw data", async () => {
+    const graph = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [{ id: "prod_target" }] })
+      .mockResolvedValueOnce({ data: [{ product_id: "prod_target" }] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            categories: [],
+            collection: null,
+            collection_id: null,
+            handle: "target-release",
+            id: "prod_target",
+            metadata: { artist: false },
+            status: ProductStatus.PUBLISHED,
+            title: "Target Release",
+          },
+        ],
+      })
+
+    await expect(
+      GET(
+        {
+          params: { handle: "target-release" },
+          publishable_key_context: {
+            key: "pk_test",
+            sales_channel_ids: ["sc_web"],
+          },
+          scope: { resolve: jest.fn().mockReturnValue({ graph }) },
+        } as never,
+        {} as never
+      )
+    ).rejects.toThrow(
+      "The Store product projection returned invalid structured data."
+    )
   })
 })

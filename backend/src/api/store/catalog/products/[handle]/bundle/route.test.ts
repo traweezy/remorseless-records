@@ -26,6 +26,7 @@ describe("GET /store/catalog/products/:handle/bundle", () => {
       listCatalogBundleProfiles: jest.fn().mockResolvedValue([
         {
           bundle_type: "fixed",
+          display_title: null,
           id: "bundle_profile_1",
           is_active: true,
           product_id: "prod_bundle",
@@ -33,7 +34,10 @@ describe("GET /store/catalog/products/:handle/bundle", () => {
       ]),
       listCatalogBundleComponents: jest.fn().mockResolvedValue([
         {
+          bundle_profile_id: "bundle_profile_1",
+          component_inventory_item_id: "iitem_hidden",
           component_product_id: "prod_hidden",
+          component_variant_id: "variant_hidden",
           id: "bundle_component_1",
           is_required: true,
           metadata: {
@@ -52,6 +56,10 @@ describe("GET /store/catalog/products/:handle/bundle", () => {
             ],
           },
           quantity: 1,
+          sku: null,
+          sort_order: 0,
+          title: null,
+          variant_title: null,
         },
       ]),
     }
@@ -126,5 +134,138 @@ describe("GET /store/catalog/products/:handle/bundle", () => {
     expect(JSON.stringify(response)).not.toContain("prod_hidden")
     expect(JSON.stringify(response)).not.toContain("variant_hidden")
     expect(JSON.stringify(response)).not.toContain("hidden-sku")
+  })
+
+  it("rejects malformed bundle persistence rows instead of defaulting them", async () => {
+    const graph = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [{ id: "prod_bundle" }] })
+      .mockResolvedValueOnce({ data: [{ product_id: "prod_bundle" }] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            handle: "public-bundle",
+            id: "prod_bundle",
+            title: "Public Bundle",
+            variants: [{ id: "variant_bundle", title: "Bundle" }],
+          },
+        ],
+      })
+    const catalog = {
+      listCatalogBundleProfiles: jest.fn().mockResolvedValue([
+        {
+          bundle_type: "fixed",
+          display_title: null,
+          id: "bundle_profile_1",
+          is_active: "yes",
+          product_id: "prod_bundle",
+        },
+      ]),
+      listCatalogBundleComponents: jest.fn(),
+    }
+    const resolve = jest.fn((key: string) => {
+      if (key === ContainerRegistrationKeys.QUERY) {
+        return { graph }
+      }
+      if (key === "catalog") {
+        return catalog
+      }
+      throw new Error(`Unexpected dependency: ${key}`)
+    })
+
+    await expect(
+      GET(
+        {
+          params: { handle: "public-bundle" },
+          publishable_key_context: {
+            key: "pk_test",
+            sales_channel_ids: ["sc_web"],
+          },
+          scope: { resolve },
+        } as never,
+        {} as never
+      )
+    ).rejects.toThrow(
+      "The catalog persistence boundary returned invalid structured data."
+    )
+    expect(catalog.listCatalogBundleComponents).not.toHaveBeenCalled()
+  })
+
+  it("rejects mappings to bundle variants outside the visible Product", async () => {
+    const graph = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [{ id: "prod_bundle" }] })
+      .mockResolvedValueOnce({ data: [{ product_id: "prod_bundle" }] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            handle: "public-bundle",
+            id: "prod_bundle",
+            title: "Public Bundle",
+            variants: [{ id: "variant_bundle", title: "Bundle" }],
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ data: [] })
+    const catalog = {
+      listCatalogBundleProfiles: jest.fn().mockResolvedValue([
+        {
+          bundle_type: "fixed",
+          display_title: null,
+          id: "bundle_profile_1",
+          is_active: true,
+          product_id: "prod_bundle",
+        },
+      ]),
+      listCatalogBundleComponents: jest.fn().mockResolvedValue([
+        {
+          bundle_profile_id: "bundle_profile_1",
+          component_inventory_item_id: "iitem_hidden",
+          component_product_id: "prod_hidden",
+          component_variant_id: "variant_hidden",
+          id: "bundle_component_1",
+          is_required: true,
+          metadata: {
+            resolved_variant_mappings: [
+              {
+                bundle_variant_ids: ["variant_other"],
+                component_variants: [
+                  {
+                    inventory_item_id: "iitem_hidden",
+                    sku: "hidden-sku",
+                    variant_id: "variant_hidden",
+                  },
+                ],
+                selection_mode: "exact",
+              },
+            ],
+          },
+          quantity: 1,
+          sku: null,
+          sort_order: 0,
+          title: null,
+          variant_title: null,
+        },
+      ]),
+    }
+    const resolve = jest.fn((key: string) =>
+      key === ContainerRegistrationKeys.QUERY ? { graph } : catalog
+    )
+
+    await expect(
+      GET(
+        {
+          params: { handle: "public-bundle" },
+          publishable_key_context: {
+            key: "pk_test",
+            sales_channel_ids: ["sc_web"],
+          },
+          scope: { resolve },
+        } as never,
+        {} as never
+      )
+    ).rejects.toThrow(
+      "The Store bundle projection returned invalid structured data."
+    )
   })
 })

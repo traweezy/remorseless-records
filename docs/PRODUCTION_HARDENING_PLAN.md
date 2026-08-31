@@ -2952,6 +2952,34 @@ The production audit retains only the three documented ignored moderate
 findings; Trivy reports zero high/critical dependency, misconfiguration, or
 secret findings.
 
+The tenth post-migration boundary tranche closes the custom Store Product-read
+family. Product candidate, sales-channel link, published Product, and keyset
+page graph results now require valid envelopes, canonical expected identities,
+unique rows, bounded results, and strict cursor order. Malformed Product data
+cannot silently become a false not-found, a skipped feed entry, or a cursor that
+advances past corrupt state. Product-handle timestamps, discography links, and
+shelf creation timestamps are validated before serialization. Related-product
+responses are reconstructed from an allowlisted public projection and retain
+only the artist/album metadata used for ranking.
+
+The Store bundle projection validates the project-owned active profile, every
+component invariant and declared mapping, public Product/Variant ownership,
+bundle Variant targets, and the complete availability map. Variant mappings are
+scoped to their exact component Product, so an identical or corrupt cross-
+Product identifier cannot become an available option. Missing channel
+visibility remains unavailable and redacted; malformed persistence or provider
+state fails closed rather than defaulting a quantity, title, type, or mapping.
+
+Ninety-one focused query, projection, route, bundle, persistence, and pagination
+tests pass with strict TypeScript and Biome. Complete local acceptance passes
+the 1,184-file repository QA gate, all 237 Backend suites and 1,648 tests, the
+production Backend/Admin build, frozen packaged install, and Admin bundle
+budget. Backend coverage is 91.35% statements, 84.60% branches, 95.52%
+functions, and 91.39% lines. The Admin main bundle is 1,807,690 gzip bytes and
+total JavaScript is 2,388,398 gzip bytes. The production audit retains only the
+three documented ignored moderate findings; Trivy reports zero high/critical
+dependency, misconfiguration, or secret findings.
+
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
 pnpm policy rather than falling back, and renders stable sorted workspace

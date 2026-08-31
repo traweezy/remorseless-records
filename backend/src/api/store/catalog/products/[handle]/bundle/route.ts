@@ -8,43 +8,42 @@ import {
   ProductStatus,
 } from "@medusajs/framework/utils"
 
+import { parseResolvedVariantMappings } from "@/lib/catalog/bundle-inventory"
 import {
-  parseResolvedVariantMappings,
-  type CatalogBundleComponentRecord,
-} from "@/lib/catalog/bundle-inventory"
+  readCatalogBundleComponents,
+  readCatalogStoreBundleProfiles,
+} from "@/lib/catalog/persistence-contracts"
+import {
+  readStoreBundleAvailability,
+  readStoreBundleProducts,
+} from "@/lib/catalog/store-bundle-contract"
 import {
   listVisibleProductsByIds,
+  readStoreProductCandidateIds,
   resolveStoreProductVisibility,
 } from "@/lib/store-product-visibility"
 
-type JsonRecord = Record<string, unknown>
-type CatalogBundleProfile = {
-  id: string
-  product_id: string
-  bundle_type?: unknown
-  display_title?: unknown
-  is_active?: unknown
-}
 type CatalogService = {
   listCatalogBundleProfiles: (
     filters: Record<string, unknown>
-  ) => Promise<CatalogBundleProfile[]>
+  ) => Promise<unknown>
   listCatalogBundleComponents: (
     filters: Record<string, unknown>
-  ) => Promise<CatalogBundleComponentRecord[]>
+  ) => Promise<unknown>
 }
-
-const isRecord = (value: unknown): value is JsonRecord =>
-  Boolean(value) && typeof value === "object" && !Array.isArray(value)
 
 const asString = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length ? value.trim() : null
 
-const asPositiveInteger = (value: unknown): number =>
-  typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 1
-
 const unique = (values: Array<string | null>): string[] =>
   Array.from(new Set(values.filter((value): value is string => Boolean(value))))
+
+const invalidStoreBundleProjection = (): never => {
+  throw new MedusaError(
+    MedusaError.Types.UNEXPECTED_STATE,
+    "The Store bundle projection returned invalid structured data."
+  )
+}
 
 export const GET = async (
   req: MedusaStoreRequest,
@@ -72,52 +71,67 @@ export const GET = async (
     filters: { handle, status: ProductStatus.PUBLISHED },
     pagination: { take: 1 },
   })
-  const productCandidateId = asString(productCandidateResult.data[0]?.id)
-  const [product] = productCandidateId
-    ? await listVisibleProductsByIds<JsonRecord>({
-        fields: ["id", "handle", "title", "variants.id", "variants.title"],
+  const productCandidateId = readStoreProductCandidateIds(
+    productCandidateResult
+  )[0]
+  const rawProducts = productCandidateId
+    ? await listVisibleProductsByIds({
+        fields: [
+          "id",
+          "handle",
+          "title",
+          "variants.id",
+          "variants.title",
+          "variants.sku",
+        ],
         productIds: [productCandidateId],
         query,
         salesChannelIds,
       })
     : []
-  const productId = asString(product?.id)
+  const [product] = readStoreBundleProducts(
+    rawProducts,
+    productCandidateId ? [productCandidateId] : []
+  )
+  const productId = product?.id
   if (!product || !productId) {
     throw new MedusaError(MedusaError.Types.NOT_FOUND, "Product not found")
   }
 
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const profiles = await catalogService.listCatalogBundleProfiles({
-    product_id: productId,
-  })
-  const profile = profiles.find((candidate) => candidate.is_active !== false)
-  if (!profile) {
+  const profiles = readCatalogStoreBundleProfiles(
+    await catalogService.listCatalogBundleProfiles({
+      product_id: productId,
+    }),
+    productId
+  )
+  const profile = profiles[0]
+  if (!profile?.is_active) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
       "Bundle composition not found"
     )
   }
 
-  const components = (
+  const componentsWithMappings = readCatalogBundleComponents(
     await catalogService.listCatalogBundleComponents({
       bundle_profile_id: profile.id,
-    })
-  ).sort(
-    (left, right) =>
-      Number((left as JsonRecord).sort_order ?? 0) -
-      Number((right as JsonRecord).sort_order ?? 0)
+    }),
+    profile.id
   )
-  const mappingsByComponent = components.map((component) =>
-    parseResolvedVariantMappings(component, "persistence")
-  )
+    .sort((left, right) => left.sort_order - right.sort_order)
+    .map((component) => ({
+      component,
+      mappings: parseResolvedVariantMappings(component, "persistence"),
+    }))
   const componentProductIds = unique(
-    components.map((component) =>
-      asString((component as JsonRecord).component_product_id)
+    componentsWithMappings.map(
+      ({ component }) => component.component_product_id
     )
   )
 
-  const componentProductResult = componentProductIds.length
-    ? await listVisibleProductsByIds<JsonRecord>({
+  const rawComponentProducts = componentProductIds.length
+    ? await listVisibleProductsByIds({
         fields: [
           "id",
           "handle",
@@ -132,35 +146,48 @@ export const GET = async (
       })
     : []
 
-  const componentProductsById = new Map(
-    componentProductResult.flatMap((candidate) => {
-      const id = asString(candidate.id)
-      return id ? [[id, candidate] as const] : []
-    })
+  const componentProducts = readStoreBundleProducts(
+    rawComponentProducts,
+    componentProductIds
   )
-  const variantDetailsById = new Map<string, JsonRecord>()
-  componentProductResult.forEach((candidate) => {
-    const variants = Array.isArray(candidate.variants) ? candidate.variants : []
-    variants.forEach((rawVariant) => {
-      if (!isRecord(rawVariant)) {
-        return
-      }
-      const id = asString(rawVariant.id)
-      if (id) {
-        variantDetailsById.set(id, rawVariant)
+
+  const componentProductsById = new Map(
+    componentProducts.map((candidate) => [candidate.id, candidate])
+  )
+  const variantsByProductId = new Map(
+    componentProducts.map((candidate) => [
+      candidate.id,
+      new Map(candidate.variants.map((variant) => [variant.id, variant])),
+    ])
+  )
+  const bundleVariantTitles = new Map(
+    product.variants.map((variant) => [variant.id, variant.title])
+  )
+  componentsWithMappings.forEach(({ mappings }) => {
+    mappings.forEach((mapping) => {
+      if (
+        mapping.bundleVariantIds.some(
+          (variantId) => !bundleVariantTitles.has(variantId)
+        )
+      ) {
+        invalidStoreBundleProjection()
       }
     })
   })
   const visibleMappedVariantIds = unique(
-    mappingsByComponent.flatMap((mappings) =>
+    componentsWithMappings.flatMap(({ component, mappings }) =>
       mappings.flatMap((mapping) =>
         mapping.componentVariants.flatMap((variant) =>
-          variantDetailsById.has(variant.variantId) ? [variant.variantId] : []
+          variantsByProductId
+            .get(component.component_product_id)
+            ?.has(variant.variantId)
+            ? [variant.variantId]
+            : []
         )
       )
     )
   )
-  const availability = visibleMappedVariantIds.length
+  const rawAvailability = visibleMappedVariantIds.length
     ? await getVariantAvailability(
         query as Parameters<typeof getVariantAvailability>[0],
         {
@@ -168,86 +195,76 @@ export const GET = async (
           sales_channel_id: salesChannelIds[0],
         }
       )
-    : ({} as Record<string, { availability: number | null }>)
-  const bundleVariantTitles = new Map<string, string>()
-  const rawBundleVariants = Array.isArray(product.variants)
-    ? product.variants
-    : []
-  rawBundleVariants.forEach((rawVariant) => {
-    if (!isRecord(rawVariant)) {
-      return
-    }
-    const id = asString(rawVariant.id)
-    if (id) {
-      bundleVariantTitles.set(id, asString(rawVariant.title) ?? "Bundle")
-    }
-  })
+    : {}
+  const availability = readStoreBundleAvailability(
+    rawAvailability,
+    visibleMappedVariantIds
+  )
 
   let unavailableMappingCount = 0
-  const serializedComponents = components.map((component, componentIndex) => {
-    const quantity = asPositiveInteger(component.quantity)
-    const componentProductId = asString(
-      (component as JsonRecord).component_product_id
-    )
-    const componentProduct = componentProductId
-      ? componentProductsById.get(componentProductId)
-      : undefined
-    const mappings = mappingsByComponent[componentIndex] ?? []
-    const availabilityByBundleVariant = mappings.map((mapping) => {
-      const options = mapping.componentVariants.flatMap((variant) => {
-        const detail = variantDetailsById.get(variant.variantId)
-        if (!detail) {
-          return []
+  const serializedComponents = componentsWithMappings.map(
+    ({ component, mappings }, componentIndex) => {
+      const quantity = component.quantity
+      const componentProductId = component.component_product_id
+      const componentProduct = componentProductsById.get(componentProductId)
+      const componentVariants = variantsByProductId.get(componentProductId)
+      const availabilityByBundleVariant = mappings.map((mapping) => {
+        const options = mapping.componentVariants.flatMap((variant) => {
+          const detail = componentVariants?.get(variant.variantId)
+          if (!detail) {
+            return []
+          }
+          const availableQuantity = availability[variant.variantId] ?? null
+          return [
+            {
+              variantId: variant.variantId,
+              title: detail.title,
+              sku: detail.sku ?? variant.sku,
+              availableQuantity,
+              available:
+                typeof availableQuantity === "number" &&
+                availableQuantity >= quantity,
+            },
+          ]
+        })
+        const available =
+          mapping.selectionMode === "any"
+            ? options.some((option) => option.available)
+            : options.length === mapping.componentVariants.length &&
+              options.every((option) => option.available)
+        if (!available) {
+          unavailableMappingCount += 1
         }
-        const availableQuantity =
-          availability[variant.variantId]?.availability ?? null
-        return [
-          {
-            variantId: variant.variantId,
-            title: asString(detail.title) ?? variant.sku ?? "Component",
-            sku: asString(detail.sku) ?? variant.sku,
-            availableQuantity,
-            available:
-              typeof availableQuantity === "number" &&
-              availableQuantity >= quantity,
-          },
-        ]
+        return {
+          bundleVariantIds: mapping.bundleVariantIds,
+          bundleVariantTitles: mapping.bundleVariantIds.map(
+            (variantId) =>
+              bundleVariantTitles.get(variantId) ??
+              invalidStoreBundleProjection()
+          ),
+          selectionMode: mapping.selectionMode,
+          available,
+          options,
+        }
       })
-      const available =
-        mapping.selectionMode === "any"
-          ? options.some((option) => option.available)
-          : options.length === mapping.componentVariants.length &&
-            options.every((option) => option.available)
-      if (!available) {
-        unavailableMappingCount += 1
-      }
-      return {
-        bundleVariantIds: mapping.bundleVariantIds,
-        bundleVariantTitles: mapping.bundleVariantIds.map(
-          (variantId) => bundleVariantTitles.get(variantId) ?? "Bundle"
-        ),
-        selectionMode: mapping.selectionMode,
-        available,
-        options,
-      }
-    })
 
-    return {
-      id: asString(component.id) ?? `component-${componentIndex + 1}`,
-      title:
-        asString((component as JsonRecord).title) ??
-        asString(componentProduct?.title) ??
-        `Item ${componentIndex + 1}`,
-      quantity,
-      required: component.is_required !== false,
-      product: {
-        id: componentProduct ? componentProductId : null,
-        handle: asString(componentProduct?.handle),
-        title: asString(componentProduct?.title),
-      },
-      availabilityByBundleVariant,
+      return {
+        id: component.id,
+        title:
+          component.title ??
+          componentProduct?.title ??
+          `Item ${componentIndex + 1}`,
+        quantity,
+        required: component.is_required,
+        product: {
+          id: componentProduct ? componentProductId : null,
+          handle: componentProduct?.handle ?? null,
+          title: componentProduct?.title ?? null,
+        },
+        availabilityByBundleVariant,
+      }
     }
-  })
+  )
 
   res.setHeader(
     "Cache-Control",
@@ -257,10 +274,9 @@ export const GET = async (
   res.status(200).json({
     bundle: {
       productId,
-      handle,
-      title:
-        asString(profile.display_title) ?? asString(product.title) ?? "Bundle",
-      type: asString(profile.bundle_type) ?? "fixed",
+      handle: product.handle,
+      title: profile.display_title ?? product.title,
+      type: profile.bundle_type,
       componentCount: serializedComponents.length,
       unavailableMappingCount,
       hasUnavailableComponents: unavailableMappingCount > 0,

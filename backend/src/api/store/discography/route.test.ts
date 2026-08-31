@@ -112,4 +112,42 @@ describe("GET /store/discography", () => {
       })
     )
   })
+
+  it("rejects malformed visible Product links instead of publishing them", async () => {
+    const visibleEntry = entry("disc_visible", "prod_visible")
+    const listAndCountDiscographyEntries = jest
+      .fn()
+      .mockResolvedValue([[visibleEntry], 1])
+    const graph = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [{ product_id: "prod_visible" }] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            handle: "visible-release",
+            id: "prod_visible",
+            status: "draft",
+          },
+        ],
+      })
+    const resolve = jest.fn((key: string) =>
+      key === "discography" ? { listAndCountDiscographyEntries } : { graph }
+    )
+
+    await expect(
+      GET(
+        {
+          publishable_key_context: {
+            key: "pk_test",
+            sales_channel_ids: ["sc_web"],
+          },
+          query: {},
+          scope: { resolve },
+        } as never,
+        {} as never
+      )
+    ).rejects.toThrow(
+      "The Store product projection returned invalid structured data."
+    )
+  })
 })

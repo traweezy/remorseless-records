@@ -332,3 +332,19 @@ provenance before completing. Media Cleanup also requires a coherent count and
 unique asset rows, so the Admin cannot render a false empty state from a
 malformed database response. These changes add no operator fields or technical
 decisions; they make existing recovery copy and retry behavior authoritative.
+
+### Store catalog read hardening — August 30, 2026
+
+The customer-facing bundle projection now enforces the same Catalog authority
+shown in Admin. Its active profile, component order and quantities, declared
+Variant mappings, visible Product relationships, and inventory availability
+must all agree. A component Variant cannot be borrowed from another Product,
+and a declared bundle target must exist on the requested public Product. Hidden
+components remain redacted and unavailable; corrupt persistence is surfaced as
+an operational incident instead of being rewritten into a plausible bundle.
+
+This adds no Admin field or client task. It ensures that the bundle composition
+and Product visibility configured through the guided Catalog workflows are the
+exact state customers receive. The related-product endpoint also returns only
+the small artist/album metadata allowlist used for ranking, so unrelated Admin
+metadata cannot cross the Store boundary.

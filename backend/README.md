@@ -118,6 +118,22 @@ routes. Their cacheable responses vary on `x-publishable-api-key`; callers must
 not reuse a response across keys. The product-handle feed is an opaque,
 100-row keyset API rather than an unbounded offset scan.
 
+Those routes treat the query graph as an untrusted runtime boundary. Candidate,
+sales-channel-link, Product, and keyset-page envelopes must contain canonical,
+expected, unique identifiers in the requested order; malformed rows cannot be
+filtered into a false not-found, incomplete page, or cursor that skips data.
+The handle feed also requires valid timestamps. Discography and shelf Product
+references require their exact public fields. Related Products are rebuilt from
+an allowlisted projection, including only the artist/album metadata used for
+ranking rather than returning arbitrary Product metadata.
+
+The Store bundle route additionally validates the active project-owned profile,
+every component row and declared mapping, the visible Product/Variant graph,
+and the availability map. A mapping may reference only a Variant on its exact
+component Product and a bundle Variant on the requested public Product. Missing
+visibility stays safely unavailable; malformed persistence or availability is
+an operational error and never defaults to quantity one or a generic Product.
+
 The Admin build keeps `script-src 'self'` without `unsafe-eval`. A fail-closed
 Vite transform disables Zod's empty-`Function` capability probe in direct and
 prebundled Dashboard copies, and the post-build package step rejects any Admin
