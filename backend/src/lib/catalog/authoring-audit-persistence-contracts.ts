@@ -30,18 +30,88 @@ const invalidAuditPersistence = (): never => {
   )
 }
 
-export const readCatalogAuthoringAuditService = <T>(
-  value: unknown,
-  requiredMethods: readonly string[]
-): T => {
+type CatalogAuthoringAuditListConfig = {
+  order: { id: "ASC" }
+  skip: number
+  take: number
+}
+
+export type CatalogAuthoringAuditProductService = {
+  listAndCountProducts: (
+    filters: Record<string, unknown>,
+    config: CatalogAuthoringAuditListConfig & { relations: string[] }
+  ) => Promise<unknown>
+}
+
+export type CatalogAuthoringAuditCatalogService = {
+  listAndCountCatalogBundleProfiles: (
+    filters: Record<string, unknown>,
+    config: CatalogAuthoringAuditListConfig
+  ) => Promise<unknown>
+  listAndCountCatalogProductProfiles: (
+    filters: Record<string, unknown>,
+    config: CatalogAuthoringAuditListConfig
+  ) => Promise<unknown>
+  listAndCountCatalogReferenceValues: (
+    filters: Record<string, unknown>,
+    config: CatalogAuthoringAuditListConfig
+  ) => Promise<unknown>
+}
+
+const readServiceMethod = (
+  service: UnknownRecord,
+  name: string
+): ((...args: unknown[]) => unknown) => {
+  const method = service[name]
+  return typeof method === "function"
+    ? (...args) => Reflect.apply(method, service, args)
+    : invalidAuditPersistence()
+}
+
+export const readCatalogAuthoringAuditProductService = (
+  value: unknown
+): CatalogAuthoringAuditProductService => {
   const service = asUnknownRecord(value)
-  if (
-    !service ||
-    requiredMethods.some((method) => typeof service[method] !== "function")
-  ) {
+  if (!service) {
     return invalidAuditPersistence()
   }
-  return value as T
+  const listAndCountProducts = readServiceMethod(
+    service,
+    "listAndCountProducts"
+  )
+  return {
+    listAndCountProducts: async (filters, config) =>
+      await listAndCountProducts(filters, config),
+  }
+}
+
+export const readCatalogAuthoringAuditCatalogService = (
+  value: unknown
+): CatalogAuthoringAuditCatalogService => {
+  const service = asUnknownRecord(value)
+  if (!service) {
+    return invalidAuditPersistence()
+  }
+  const listAndCountCatalogBundleProfiles = readServiceMethod(
+    service,
+    "listAndCountCatalogBundleProfiles"
+  )
+  const listAndCountCatalogProductProfiles = readServiceMethod(
+    service,
+    "listAndCountCatalogProductProfiles"
+  )
+  const listAndCountCatalogReferenceValues = readServiceMethod(
+    service,
+    "listAndCountCatalogReferenceValues"
+  )
+  return {
+    listAndCountCatalogBundleProfiles: async (filters, config) =>
+      await listAndCountCatalogBundleProfiles(filters, config),
+    listAndCountCatalogProductProfiles: async (filters, config) =>
+      await listAndCountCatalogProductProfiles(filters, config),
+    listAndCountCatalogReferenceValues: async (filters, config) =>
+      await listAndCountCatalogReferenceValues(filters, config),
+  }
 }
 
 const identifier = (value: unknown, prefix: string): string =>

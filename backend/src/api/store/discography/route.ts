@@ -5,7 +5,10 @@ import type {
 import { z } from "@medusajs/framework/zod"
 import { MedusaError } from "@medusajs/framework/utils"
 
-import { readStoreDiscographyProductProjections } from "@/lib/store-product-projections"
+import {
+  readStoreDiscographyProductProjection,
+  readStoreDiscographyProductProjections,
+} from "@/lib/store-product-projections"
 import { readStoreDiscographyPage } from "@/lib/store-module-projections"
 import {
   listVisibleProductsByIds,
@@ -64,6 +67,7 @@ export const GET = async (
     )
   )
   const rawVisibleProducts = await listVisibleProductsByIds({
+    decodeProduct: readStoreDiscographyProductProjection,
     fields: ["id", "handle", "status"],
     productIds,
     query,

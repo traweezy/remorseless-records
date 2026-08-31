@@ -16,7 +16,10 @@ import {
   listVisibleProductsByIds,
   resolveStoreProductVisibility,
 } from "@/lib/store-product-visibility"
-import { readStoreShelfProductProjections } from "@/lib/store-product-projections"
+import {
+  readStoreShelfProductProjection,
+  readStoreShelfProductProjections,
+} from "@/lib/store-product-projections"
 import {
   readStoreShelfMemberships,
   readStoreShelfPage,
@@ -116,6 +119,7 @@ export const GET = async (
   )
   const rawVisibleProducts = candidateIds.length
     ? await listVisibleProductsByIds({
+        decodeProduct: readStoreShelfProductProjection,
         fields: ["id", "created_at"],
         productIds: candidateIds,
         query,

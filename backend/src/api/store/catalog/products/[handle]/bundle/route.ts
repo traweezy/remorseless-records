@@ -15,6 +15,7 @@ import {
 } from "@/lib/catalog/persistence-contracts"
 import {
   readStoreBundleAvailability,
+  readStoreBundleProduct,
   readStoreBundleProducts,
 } from "@/lib/catalog/store-bundle-contract"
 import {
@@ -76,6 +77,7 @@ export const GET = async (
   )[0]
   const rawProducts = productCandidateId
     ? await listVisibleProductsByIds({
+        decodeProduct: readStoreBundleProduct,
         fields: [
           "id",
           "handle",
@@ -132,6 +134,7 @@ export const GET = async (
 
   const rawComponentProducts = componentProductIds.length
     ? await listVisibleProductsByIds({
+        decodeProduct: readStoreBundleProduct,
         fields: [
           "id",
           "handle",

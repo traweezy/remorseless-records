@@ -8,6 +8,7 @@ import {
   getTotalVariantAvailability,
   Modules,
 } from "@medusajs/framework/utils"
+import { z } from "zod"
 
 import {
   buildDiscographyProjection,
@@ -23,29 +24,49 @@ import type DiscographyModuleService from "@/modules/discography/service"
 type CatalogService = InstanceType<typeof CatalogModuleService>
 type DiscographyService = InstanceType<typeof DiscographyModuleService>
 
-type ProductImageRecord = {
-  url?: string | null
-}
+const identifierSchema = z.string().trim().min(1).max(255)
+const nullableShortTextSchema = z.string().max(5_000).nullable().optional()
+const jsonRecordSchema = z
+  .record(z.string().min(1).max(255), z.unknown())
+  .refine((record) => Object.keys(record).length <= 200)
 
-type ProductVariantRecord = {
-  allow_backorder?: boolean | null
-  id: string
-  inventory_quantity?: number | null
-  manage_inventory?: boolean | null
-  title?: string | null
-}
+const productImageRecordSchema = z.object({
+  url: z.string().max(2_048).nullable().optional(),
+})
 
-type ProductRecord = {
-  collection?: { title?: string | null } | null
-  handle?: string | null
-  id: string
-  images?: ProductImageRecord[] | null
-  metadata?: Record<string, unknown> | null
-  status?: string | null
-  thumbnail?: string | null
-  title?: string | null
-  variants?: ProductVariantRecord[] | null
-}
+const productVariantRecordSchema = z.object({
+  allow_backorder: z.boolean().nullable().optional(),
+  id: identifierSchema,
+  inventory_quantity: z.number().finite().nullable().optional(),
+  manage_inventory: z.boolean().nullable().optional(),
+  title: nullableShortTextSchema,
+})
+
+const productRecordSchema = z.object({
+  collection: z
+    .object({ title: nullableShortTextSchema })
+    .nullable()
+    .optional(),
+  handle: z.string().max(255).nullable().optional(),
+  id: identifierSchema,
+  images: z.array(productImageRecordSchema).max(250).nullable().optional(),
+  metadata: jsonRecordSchema.nullable().optional(),
+  status: z.string().max(64).nullable().optional(),
+  thumbnail: z.string().max(2_048).nullable().optional(),
+  title: nullableShortTextSchema,
+  variants: z
+    .array(productVariantRecordSchema)
+    .max(250)
+    .refine(
+      (variants) =>
+        new Set(variants.map(({ id }) => id)).size === variants.length
+    )
+    .nullable()
+    .optional(),
+})
+
+type ProductRecord = z.infer<typeof productRecordSchema>
+type ProductVariantRecord = z.infer<typeof productVariantRecordSchema>
 
 type ProductService = {
   listAndCountProducts: (
@@ -59,51 +80,68 @@ type ProductService = {
   ) => Promise<[ProductRecord[], number]>
 }
 
-type CatalogProductProfileRecord = {
-  id: string
-  label_id?: string | null
-  metadata?: Record<string, unknown> | null
-  product_id: string
-  product_type_id?: string | null
-  release_date?: Date | string | null
-  release_title?: string | null
-  release_year?: number | null
-  search_keywords?: string[] | null
-}
+const catalogProductProfileRecordSchema = z.object({
+  id: identifierSchema,
+  label_id: identifierSchema.nullable().optional(),
+  metadata: jsonRecordSchema.nullable().optional(),
+  product_id: identifierSchema,
+  product_type_id: identifierSchema.nullable().optional(),
+  release_date: z.union([z.date(), z.iso.datetime()]).nullable().optional(),
+  release_title: nullableShortTextSchema,
+  release_year: z.number().int().min(1_000).max(9_999).nullable().optional(),
+  search_keywords: z.array(z.string().max(255)).max(500).nullable().optional(),
+})
 
-type CatalogReferenceValueRecord = {
-  id: string
-  is_active?: boolean | null
-  kind: string
-  label: string
-  value: string
-}
+const catalogReferenceValueRecordSchema = z.object({
+  id: identifierSchema,
+  is_active: z.boolean().nullable().optional(),
+  kind: z.string().trim().min(1).max(64),
+  label: z.string().trim().min(1).max(5_000),
+  value: z.string().trim().min(1).max(255),
+})
 
-type CatalogProductArtistRecord = {
-  display_name: string
-  id: string
-  product_profile_id: string
-  sort_order?: number | null
-}
+const catalogProductArtistRecordSchema = z.object({
+  display_name: z.string().trim().min(1).max(5_000),
+  id: identifierSchema,
+  product_profile_id: identifierSchema,
+  sort_order: z.number().int().nonnegative().nullable().optional(),
+})
 
-type CatalogProductReferenceRecord = {
-  id: string
-  kind: string
-  product_profile_id: string
-  reference_value_id: string
-  sort_order?: number | null
-}
+const catalogProductReferenceRecordSchema = z.object({
+  id: identifierSchema,
+  kind: z.string().trim().min(1).max(64),
+  product_profile_id: identifierSchema,
+  reference_value_id: identifierSchema,
+  sort_order: z.number().int().nonnegative().nullable().optional(),
+})
 
-type CatalogVariantProfileRecord = {
-  availability_status?: string | null
-  id: string
-  variant_id: string
-}
+const catalogVariantProfileRecordSchema = z.object({
+  availability_status: z.string().max(64).nullable().optional(),
+  id: identifierSchema,
+  variant_id: identifierSchema,
+})
+
+type CatalogProductProfileRecord = z.infer<
+  typeof catalogProductProfileRecordSchema
+>
+type CatalogReferenceValueRecord = z.infer<
+  typeof catalogReferenceValueRecordSchema
+>
+type CatalogProductArtistRecord = z.infer<
+  typeof catalogProductArtistRecordSchema
+>
+type CatalogProductReferenceRecord = z.infer<
+  typeof catalogProductReferenceRecordSchema
+>
+type CatalogVariantProfileRecord = z.infer<
+  typeof catalogVariantProfileRecordSchema
+>
 
 const MAXIMUM_SOURCE_RECORDS = 100_000
 
 export const listAll = async <T>(
   fetchPage: (skip: number, take: number) => Promise<unknown>,
+  decodeRecord: (record: unknown) => T,
   identity?: (record: T) => string
 ): Promise<T[]> => {
   const results: T[] = []
@@ -124,7 +162,14 @@ export const listAll = async <T>(
         "Discography source pagination returned invalid structured data."
       )
     }
-    const items = value[0] as T[]
+    let items: T[]
+    try {
+      items = value[0].map(decodeRecord)
+    } catch {
+      throw new Error(
+        "Discography source pagination returned invalid record data."
+      )
+    }
     const count = value[1] as number
     const stableCount: number = expectedCount ?? count
     expectedCount = stableCount
@@ -232,6 +277,7 @@ export default async function buildDiscographyFromProducts({
             take,
           }
         ),
+      (record) => productRecordSchema.parse(record),
       ({ id }) => id
     ),
     listAll<CatalogProductProfileRecord>(
@@ -240,6 +286,7 @@ export default async function buildDiscographyFromProducts({
           {},
           { order: { id: "ASC" }, skip, take }
         ),
+      (record) => catalogProductProfileRecordSchema.parse(record),
       ({ id }) => id
     ),
     listAll<CatalogReferenceValueRecord>(
@@ -248,6 +295,7 @@ export default async function buildDiscographyFromProducts({
           {},
           { order: { id: "ASC" }, skip, take }
         ),
+      (record) => catalogReferenceValueRecordSchema.parse(record),
       ({ id }) => id
     ),
     listAll<CatalogProductArtistRecord>(
@@ -256,6 +304,7 @@ export default async function buildDiscographyFromProducts({
           {},
           { order: { id: "ASC" }, skip, take }
         ),
+      (record) => catalogProductArtistRecordSchema.parse(record),
       ({ id }) => id
     ),
     listAll<CatalogProductReferenceRecord>(
@@ -264,6 +313,7 @@ export default async function buildDiscographyFromProducts({
           {},
           { order: { id: "ASC" }, skip, take }
         ),
+      (record) => catalogProductReferenceRecordSchema.parse(record),
       ({ id }) => id
     ),
     listAll<CatalogVariantProfileRecord>(
@@ -272,6 +322,7 @@ export default async function buildDiscographyFromProducts({
           {},
           { order: { id: "ASC" }, skip, take }
         ),
+      (record) => catalogVariantProfileRecordSchema.parse(record),
       ({ id }) => id
     ),
     loadAllDiscographyProjectionRecords((skip, take) =>

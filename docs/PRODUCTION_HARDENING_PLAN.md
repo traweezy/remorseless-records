@@ -3900,6 +3900,35 @@ files / 313 tests at 83.37/76.02/85.81/83.46. Seven focused Backend suites pass
 projects pass, and both production builds complete with the client secret and
 Stripe Trusted Types scanner green.
 
+## Admin response and Store product projection boundaries
+
+The legacy catalog authoring and merchandising workspaces now use the shared
+Admin SDK request client instead of direct generic `fetch` wrappers. Every
+request inherits the existing timeout, caller-cancellation, HTTP error, and
+invalid-response handling. Products, variants, profiles, artists, references,
+bundles, shelves, shelf products, lists, and lifecycle acknowledgements are
+projected through bounded Zod contracts that reject invalid enums, timestamps,
+counts, foreign shelf identities, and duplicate record identities. Mutation
+bodies are also passed as structured SDK data instead of manually serialized
+JSON strings.
+
+Discography rebuild pagination now decodes every Product and catalog record
+before identity or projection work. The catalog authoring audit reconstructs
+explicit callable service adapters after verifying every required method,
+rather than returning an unchecked caller-selected generic type. Store product
+visibility likewise requires each route to provide its exact row decoder, so
+bundle, shelf, related-product, handle, and discography rows are validated and
+allowlisted before they leave the shared visibility boundary. The old generic
+row assertion is gone, and projection-specific failures retain their stable
+error contract.
+
+Complete local acceptance passes the 1,235-file repository QA gate and all 269
+Backend suites / 2,027 tests at 91.44/84.81/95.62/91.46 coverage. Twelve focused
+Backend suites pass 110 tests, strict Backend and Storefront TypeScript pass,
+and the Backend production build completes with the frozen packaged-server
+dependency install. These changes alter data decoding only; rendered layout and
+interaction behavior are unchanged.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,

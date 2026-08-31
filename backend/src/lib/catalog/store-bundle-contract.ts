@@ -69,6 +69,41 @@ export type StoreBundleProduct = {
   variants: StoreBundleVariant[]
 }
 
+export const readStoreBundleProduct = (
+  product: UnknownRecord
+): StoreBundleProduct => {
+  const id = requiredIdentifier(product.id)
+  const seenVariants = new Set<string>()
+  const variants = records(
+    product.variants,
+    "Store bundle Product variants"
+  ).map((variant) => {
+    const variantId = requiredIdentifier(variant.id)
+    if (seenVariants.has(variantId)) {
+      return invalidStoreBundleData()
+    }
+    seenVariants.add(variantId)
+    const rawSku = variant.sku
+    const sku =
+      rawSku === null || rawSku === undefined ? null : text(rawSku, 500)
+    if (rawSku !== null && rawSku !== undefined && !sku) {
+      return invalidStoreBundleData()
+    }
+    return {
+      id: variantId,
+      sku,
+      title: requiredText(variant.title, 500),
+    }
+  })
+
+  return {
+    handle: requiredText(product.handle, 200),
+    id,
+    title: requiredText(product.title, 500),
+    variants,
+  }
+}
+
 export const readStoreBundleProducts = (
   value: unknown,
   expectedProductIds: readonly string[]
@@ -76,41 +111,13 @@ export const readStoreBundleProducts = (
   const expected = expectedIdentifiers(expectedProductIds)
   const seenProducts = new Set<string>()
   return records(value, "Store bundle products").map((product) => {
-    const id = requiredIdentifier(product.id)
+    const projection = readStoreBundleProduct(product)
+    const { id } = projection
     if (!expected.has(id) || seenProducts.has(id)) {
       return invalidStoreBundleData()
     }
     seenProducts.add(id)
-
-    const seenVariants = new Set<string>()
-    const variants = records(
-      product.variants,
-      "Store bundle Product variants"
-    ).map((variant) => {
-      const variantId = requiredIdentifier(variant.id)
-      if (seenVariants.has(variantId)) {
-        return invalidStoreBundleData()
-      }
-      seenVariants.add(variantId)
-      const rawSku = variant.sku
-      const sku =
-        rawSku === null || rawSku === undefined ? null : text(rawSku, 500)
-      if (rawSku !== null && rawSku !== undefined && !sku) {
-        return invalidStoreBundleData()
-      }
-      return {
-        id: variantId,
-        sku,
-        title: requiredText(variant.title, 500),
-      }
-    })
-
-    return {
-      handle: requiredText(product.handle, 200),
-      id,
-      title: requiredText(product.title, 500),
-      variants,
-    }
+    return projection
   })
 }
 

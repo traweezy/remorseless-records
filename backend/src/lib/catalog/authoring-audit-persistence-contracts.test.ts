@@ -3,11 +3,12 @@ import {
   assertCatalogAuthoringAuditRelationships,
   CATALOG_AUTHORING_AUDIT_MAXIMUM_RECORDS,
   loadAllCatalogAuthoringAuditRecords,
+  readCatalogAuthoringAuditCatalogService,
   readCatalogAuthoringAuditBundlePage,
   readCatalogAuthoringAuditProductPage,
+  readCatalogAuthoringAuditProductService,
   readCatalogAuthoringAuditProfilePage,
   readCatalogAuthoringAuditReferencePage,
-  readCatalogAuthoringAuditService,
   type CatalogAuthoringAuditProductPersistenceRecord,
 } from "./authoring-audit-persistence-contracts"
 
@@ -55,13 +56,18 @@ const bundle = (overrides: Record<string, unknown> = {}) => ({
 describe("catalog authoring audit persistence contracts", () => {
   it("requires every service method before starting the audit", () => {
     expect(
-      readCatalogAuthoringAuditService<{ list: () => void }>(
-        { list: () => undefined },
-        ["list"]
-      )
-    ).toMatchObject({ list: expect.any(Function) })
+      readCatalogAuthoringAuditProductService({
+        listAndCountProducts: () => undefined,
+      })
+    ).toMatchObject({ listAndCountProducts: expect.any(Function) })
+    expect(() => readCatalogAuthoringAuditProductService({})).toThrow(
+      "authoring audit persistence boundary"
+    )
     expect(() =>
-      readCatalogAuthoringAuditService({}, ["listAndCountProducts"])
+      readCatalogAuthoringAuditCatalogService({
+        listAndCountCatalogBundleProfiles: () => undefined,
+        listAndCountCatalogProductProfiles: () => undefined,
+      })
     ).toThrow("authoring audit persistence boundary")
   })
 

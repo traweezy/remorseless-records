@@ -5,7 +5,10 @@ import type {
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
-import { readStoreProductHandleProjections } from "@/lib/store-product-projections"
+import {
+  readStoreProductHandleProjection,
+  readStoreProductHandleProjections,
+} from "@/lib/store-product-projections"
 import {
   decodeStoreProductCursor,
   encodeStoreProductCursor,
@@ -49,6 +52,7 @@ export const GET = async (
   const cursor = decodeStoreProductCursor(parsed.data.cursor)
   const { nextCursor, products } = await listVisibleProductPage({
     ...(cursor ? { cursor } : {}),
+    decodeProduct: readStoreProductHandleProjection,
     fields: PRODUCT_HANDLE_FIELDS,
     limit: parsed.data.limit ?? STORE_PRODUCT_PAGE_LIMIT,
     query,

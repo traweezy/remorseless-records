@@ -50,6 +50,15 @@ export type StoreProductHandleProjection = {
   updated_at: string | null
 }
 
+export const readStoreProductHandleProjection = (
+  product: UnknownRecord
+): StoreProductHandleProjection => ({
+  created_at: nullableTimestamp(product.created_at),
+  handle: requiredText(product.handle, 200),
+  id: requiredIdentifier(product.id),
+  updated_at: nullableTimestamp(product.updated_at),
+})
+
 export const readStoreProductHandleProjections = (
   value: unknown
 ): StoreProductHandleProjection[] => {
@@ -61,17 +70,13 @@ export const readStoreProductHandleProjections = (
   }
   const seen = new Set<string>()
   return records.map((record) => {
-    const id = requiredIdentifier(record.id)
+    const projection = readStoreProductHandleProjection(record)
+    const { id } = projection
     if (seen.has(id)) {
       return invalidStoreProductProjection()
     }
     seen.add(id)
-    return {
-      created_at: nullableTimestamp(record.created_at),
-      handle: requiredText(record.handle, 200),
-      id,
-      updated_at: nullableTimestamp(record.updated_at),
-    }
+    return projection
   })
 }
 
@@ -96,21 +101,28 @@ export type StoreDiscographyProductProjection = {
   status: typeof ProductStatus.PUBLISHED
 }
 
+export const readStoreDiscographyProductProjection = (
+  product: UnknownRecord
+): StoreDiscographyProductProjection => {
+  if (product.status !== ProductStatus.PUBLISHED) {
+    return invalidStoreProductProjection()
+  }
+  return {
+    handle: requiredText(product.handle, 200),
+    id: requiredIdentifier(product.id),
+    status: ProductStatus.PUBLISHED,
+  }
+}
+
 export const readStoreDiscographyProductProjections = (
   value: unknown
 ): StoreDiscographyProductProjection[] => {
   const seen = new Set<string>()
   return records(value, "Store discography Products").map((product) => {
-    const id = requiredIdentifier(product.id)
+    const projection = readStoreDiscographyProductProjection(product)
+    const { id } = projection
     assertUniqueProductId(id, seen)
-    if (product.status !== ProductStatus.PUBLISHED) {
-      return invalidStoreProductProjection()
-    }
-    return {
-      handle: requiredText(product.handle, 200),
-      id,
-      status: ProductStatus.PUBLISHED,
-    }
+    return projection
   })
 }
 
@@ -119,18 +131,25 @@ export type StoreShelfProductProjection = {
   id: string
 }
 
+export const readStoreShelfProductProjection = (
+  product: UnknownRecord
+): StoreShelfProductProjection => {
+  const createdAt = readIsoTimestamp(product.created_at)
+  if (!createdAt) {
+    return invalidStoreProductProjection()
+  }
+  return { created_at: createdAt, id: requiredIdentifier(product.id) }
+}
+
 export const readStoreShelfProductProjections = (
   value: unknown
 ): StoreShelfProductProjection[] => {
   const seen = new Set<string>()
   return records(value, "Store shelf Products").map((product) => {
-    const id = requiredIdentifier(product.id)
+    const projection = readStoreShelfProductProjection(product)
+    const { id } = projection
     assertUniqueProductId(id, seen)
-    const createdAt = readIsoTimestamp(product.created_at)
-    if (!createdAt) {
-      return invalidStoreProductProjection()
-    }
-    return { created_at: createdAt, id }
+    return projection
   })
 }
 
@@ -221,48 +240,55 @@ const relatedCategory = (
   }
 }
 
+export const readStoreRelatedProductProjection = (
+  product: UnknownRecord
+): StoreRelatedProductProjection => {
+  const id = requiredIdentifier(product.id)
+  if (product.status !== ProductStatus.PUBLISHED) {
+    return invalidStoreProductProjection()
+  }
+  const collectionId = nullableIdentifier(product.collection_id)
+  const rawCollection = product.collection
+  const collectionRecord =
+    rawCollection === null || rawCollection === undefined
+      ? null
+      : (asUnknownRecord(rawCollection) ?? invalidStoreProductProjection())
+  const collection = collectionRecord
+    ? {
+        id: requiredIdentifier(collectionRecord.id),
+        title: requiredText(collectionRecord.title, 500),
+      }
+    : null
+  if (collectionId && collection && collection.id !== collectionId) {
+    return invalidStoreProductProjection()
+  }
+  const categories = records(
+    product.categories,
+    "Store related Product categories"
+  ).map(relatedCategory)
+  const categoryIds = new Set(categories.map((category) => category.id))
+  if (categoryIds.size !== categories.length) {
+    return invalidStoreProductProjection()
+  }
+  return {
+    categories,
+    collection,
+    collection_id: collectionId,
+    handle: requiredText(product.handle, 200),
+    id,
+    metadata: relatedMetadata(product.metadata),
+    status: ProductStatus.PUBLISHED,
+    title: requiredText(product.title, 500),
+  }
+}
+
 export const readStoreRelatedProductProjections = (
   value: unknown
 ): StoreRelatedProductProjection[] => {
   const seen = new Set<string>()
   return records(value, "Store related Products").map((product) => {
-    const id = requiredIdentifier(product.id)
-    assertUniqueProductId(id, seen)
-    if (product.status !== ProductStatus.PUBLISHED) {
-      return invalidStoreProductProjection()
-    }
-    const collectionId = nullableIdentifier(product.collection_id)
-    const rawCollection = product.collection
-    const collectionRecord =
-      rawCollection === null || rawCollection === undefined
-        ? null
-        : (asUnknownRecord(rawCollection) ?? invalidStoreProductProjection())
-    const collection = collectionRecord
-      ? {
-          id: requiredIdentifier(collectionRecord.id),
-          title: requiredText(collectionRecord.title, 500),
-        }
-      : null
-    if (collectionId && collection && collection.id !== collectionId) {
-      return invalidStoreProductProjection()
-    }
-    const categories = records(
-      product.categories,
-      "Store related Product categories"
-    ).map(relatedCategory)
-    const categoryIds = new Set(categories.map((category) => category.id))
-    if (categoryIds.size !== categories.length) {
-      return invalidStoreProductProjection()
-    }
-    return {
-      categories,
-      collection,
-      collection_id: collectionId,
-      handle: requiredText(product.handle, 200),
-      id,
-      metadata: relatedMetadata(product.metadata),
-      status: ProductStatus.PUBLISHED,
-      title: requiredText(product.title, 500),
-    }
+    const projection = readStoreRelatedProductProjection(product)
+    assertUniqueProductId(projection.id, seen)
+    return projection
   })
 }

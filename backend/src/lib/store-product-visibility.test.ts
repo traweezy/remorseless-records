@@ -15,6 +15,14 @@ import {
 
 const graph = jest.fn()
 const query = { graph } as StoreProductQueryGraph
+const decodeProduct = (
+  product: Record<string, unknown>
+): Record<string, unknown> & { id: string } => {
+  if (typeof product.id !== "string") {
+    throw new Error("invalid product")
+  }
+  return { ...product, id: product.id }
+}
 
 describe("store product visibility", () => {
   beforeEach(() => {
@@ -79,6 +87,7 @@ describe("store product visibility", () => {
 
     await expect(
       listVisibleProductsByIds({
+        decodeProduct,
         fields: ["id", "handle"],
         productIds: ["prod_1", "prod_2", "prod_3"],
         query,
@@ -118,6 +127,7 @@ describe("store product visibility", () => {
 
     await expect(
       listVisibleProductsByIds({
+        decodeProduct,
         fields: ["id"],
         productIds: ["prod_1"],
         query,
@@ -142,6 +152,7 @@ describe("store product visibility", () => {
 
     await expect(
       listVisibleProductsByIds({
+        decodeProduct,
         fields: ["id"],
         productIds: ["prod_1"],
         query,
@@ -176,6 +187,7 @@ describe("store product visibility", () => {
     await expect(
       listVisibleProductPage({
         cursor: decodedCursor,
+        decodeProduct,
         fields: ["id", "handle"],
         limit: 2,
         query,
@@ -233,6 +245,7 @@ describe("store product visibility", () => {
 
     await expect(
       listVisibleProductPage({
+        decodeProduct,
         fields: ["id"],
         limit: 1,
         query,

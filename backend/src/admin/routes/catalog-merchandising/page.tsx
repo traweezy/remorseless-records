@@ -25,7 +25,10 @@ import {
 import { AdminPageHeader } from "../../components/admin-page"
 import { AdminPermissionBoundary } from "../../components/admin-permission-boundary"
 import { ConfirmAction } from "../../components/confirm-action"
-import { getAdminRequestErrorMessage } from "../../lib/admin-request"
+import {
+  getAdminRequestErrorMessage,
+  requestAdminJson,
+} from "../../lib/admin-request"
 import { catalogMerchandisingWorkspaceActions } from "../../features/catalog-permissions"
 import {
   CatalogShelfCreateModal,
@@ -46,6 +49,9 @@ import {
   catalogShelfValidationIssues,
 } from "../../features/catalog-merchandising/catalog-merchandising-form"
 import {
+  emptyShelfResponseSchema,
+  shelfListResponseSchema,
+  shelfResponseSchema,
   type AdminProduct,
   type CreateShelfState,
   type ShelfFormState,
@@ -129,36 +135,6 @@ const toDateTimeInput = (value: string | null | undefined): string => {
   }
 
   return date.toISOString().slice(0, 16)
-}
-
-const extractErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const body = (await response.json()) as { message?: string; error?: string }
-    return body.message ?? body.error ?? response.statusText
-  } catch {
-    return response.statusText
-  }
-}
-
-const fetchJson = async <T,>(url: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(url, {
-    credentials: "include",
-    ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(init?.headers ?? {}),
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response))
-  }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return (await response.json()) as T
 }
 
 const toShelfForm = (response: ShelfResponse | null): ShelfFormState => {
@@ -281,9 +257,10 @@ const CatalogMerchandisingPageContent = memo(() => {
   )
 
   const refreshShelves = useCallback(async () => {
-    const response = await fetchJson<{ shelves: ShelfResponse[] }>(
-      "/admin/catalog/shelves?limit=100&archived=all"
-    )
+    const response = await requestAdminJson({
+      path: "/admin/catalog/shelves?limit=100&archived=all",
+      schema: shelfListResponseSchema,
+    })
     setShelves(response.shelves ?? [])
   }, [])
 
@@ -309,9 +286,10 @@ const CatalogMerchandisingPageContent = memo(() => {
       setLoading(true)
       setError(null)
       try {
-        const response = await fetchJson<ShelfResponse>(
-          `/admin/catalog/shelves/${shelfId}`
-        )
+        const response = await requestAdminJson({
+          path: `/admin/catalog/shelves/${shelfId}`,
+          schema: shelfResponseSchema,
+        })
         setPickedProducts(new Map())
         shelfForm.reset(toShelfForm(response), { keepDefaultValues: true })
         setFormIssues([])
@@ -506,16 +484,15 @@ const CatalogMerchandisingPageContent = memo(() => {
           endsAt: toNullable(line.endsAt),
         })),
       }
-      const response = await fetchJson<ShelfResponse>(
-        `/admin/catalog/shelves/${selectedShelfId}`,
-        {
-          method: "PUT",
-          body: JSON.stringify({
-            ...payload,
-            idempotencyKey: idempotencyKeyFor(saveRequest, payload),
-          }),
-        }
-      )
+      const response = await requestAdminJson({
+        body: {
+          ...payload,
+          idempotencyKey: idempotencyKeyFor(saveRequest, payload),
+        },
+        method: "PUT",
+        path: `/admin/catalog/shelves/${selectedShelfId}`,
+        schema: shelfResponseSchema,
+      })
 
       saveRequest.current = null
       await refreshShelves()
@@ -526,9 +503,10 @@ const CatalogMerchandisingPageContent = memo(() => {
         err instanceof Error ? err.message : "Unable to save shelf"
       setReconciling(true)
       try {
-        const snapshot = await fetchJson<ShelfResponse>(
-          `/admin/catalog/shelves/${selectedShelfId}`
-        )
+        const snapshot = await requestAdminJson({
+          path: `/admin/catalog/shelves/${selectedShelfId}`,
+          schema: shelfResponseSchema,
+        })
         const snapshotForm = toShelfForm(snapshot)
         if (catalogShelfFingerprint(snapshotForm) === desiredFingerprint) {
           saveRequest.current = null
@@ -580,16 +558,15 @@ const CatalogMerchandisingPageContent = memo(() => {
         isActive: true,
         products: [],
       }
-      const response = await fetchJson<ShelfResponse>(
-        "/admin/catalog/shelves",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            ...payload,
-            idempotencyKey: idempotencyKeyFor(createRequest, payload),
-          }),
-        }
-      )
+      const response = await requestAdminJson({
+        body: {
+          ...payload,
+          idempotencyKey: idempotencyKeyFor(createRequest, payload),
+        },
+        method: "POST",
+        path: "/admin/catalog/shelves",
+        schema: shelfResponseSchema,
+      })
 
       createRequest.current = null
       await refreshShelves()
@@ -615,15 +592,17 @@ const CatalogMerchandisingPageContent = memo(() => {
     setError(null)
     setNotice(null)
     try {
-      await fetchJson(`/admin/catalog/shelves/${selectedShelfId}`, {
-        method: "DELETE",
-        body: JSON.stringify({
+      await requestAdminJson({
+        body: {
           expectedVersion: formState.version,
           idempotencyKey: idempotencyKeyFor(archiveRequest, {
             expectedVersion: formState.version,
             shelfId: selectedShelfId,
           }),
-        }),
+        },
+        method: "DELETE",
+        path: `/admin/catalog/shelves/${selectedShelfId}`,
+        schema: emptyShelfResponseSchema,
       })
       archiveRequest.current = null
       await refreshShelves()
@@ -659,12 +638,14 @@ const CatalogMerchandisingPageContent = memo(() => {
         expectedVersion: formState.version,
         shelfId: selectedShelfId,
       }
-      await fetchJson(`/admin/catalog/shelves/${selectedShelfId}/restore`, {
-        method: "POST",
-        body: JSON.stringify({
+      await requestAdminJson({
+        body: {
           expectedVersion: formState.version,
           idempotencyKey: idempotencyKeyFor(restoreRequest, payload),
-        }),
+        },
+        method: "POST",
+        path: `/admin/catalog/shelves/${selectedShelfId}/restore`,
+        schema: shelfResponseSchema,
       })
       restoreRequest.current = null
       await refreshShelves()

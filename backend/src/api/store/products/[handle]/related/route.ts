@@ -5,6 +5,7 @@ import type {
 import { MedusaError, ProductStatus } from "@medusajs/framework/utils"
 
 import {
+  readStoreRelatedProductProjection,
   readStoreRelatedProductProjections,
   type StoreRelatedProductProjection,
 } from "@/lib/store-product-projections"
@@ -188,6 +189,7 @@ export const GET = async (
   const targetId = readStoreProductCandidateIds(targetCandidateResult)[0]
   const rawTargetProducts = targetId
     ? await listVisibleProductsByIds({
+        decodeProduct: readStoreRelatedProductProjection,
         fields: PRODUCT_SELECT,
         productIds: [targetId],
         query,
@@ -203,6 +205,7 @@ export const GET = async (
   }
 
   const { products: rawCandidates } = await listVisibleProductPage({
+    decodeProduct: readStoreRelatedProductProjection,
     direction: "DESC",
     fields: PRODUCT_SELECT,
     limit: MAX_RELATED_CANDIDATES,

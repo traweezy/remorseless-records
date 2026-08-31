@@ -47,6 +47,25 @@ import {
   shouldLoadBundleProductOptions,
   type ProductOptionStatus,
 } from "../../features/catalog-authoring/product-option-loading"
+import {
+  adminProductListResponseSchema,
+  adminProductResponseSchema,
+  bundleResponseSchema,
+  catalogArtistListResponseSchema,
+  catalogReferenceListResponseSchema,
+  emptyAdminResponseSchema,
+  productProfileResponseSchema,
+  variantProfileResponseSchema,
+  type AdminProduct,
+  type AdminProductListResponse,
+  type AdminVariant,
+  type BundleResponse,
+  type CatalogArtist,
+  type CatalogReferenceValue,
+  type CatalogVariantProfile,
+  type ProductProfileResponse,
+} from "../../features/catalog-authoring/catalog-authoring-response"
+import { requestAdminJson } from "../../lib/admin-request"
 
 const productStatuses = ["draft", "published", "proposed", "rejected"] as const
 const referenceKinds = [
@@ -92,156 +111,6 @@ type BundleFulfillmentMode = (typeof bundleFulfillmentModes)[number]
 type ValueChangeEvent = {
   target?: EventTarget | null
   currentTarget?: EventTarget | null
-}
-
-type JsonRecord = Record<string, unknown>
-
-type AdminVariant = {
-  id: string
-  title?: string | null
-  sku?: string | null
-  manage_inventory?: boolean | null
-  inventory_quantity?: number | null
-  options?:
-    | Record<string, string>
-    | Array<{
-        option?: { title?: string | null } | null
-        value?: string | null
-      }>
-    | null
-  prices?: Array<{
-    id?: string
-    currency_code?: string | null
-    amount?: number | null
-  }> | null
-  calculated_price?: {
-    currency_code?: string | null
-    calculated_amount?: number | null
-    original_amount?: number | null
-  } | null
-}
-
-type AdminProduct = {
-  id: string
-  title?: string | null
-  handle?: string | null
-  status?: string | null
-  description?: string | null
-  thumbnail?: string | null
-  created_at?: string | null
-  updated_at?: string | null
-  variants?: AdminVariant[] | null
-}
-
-type AdminProductListResponse = {
-  count?: number
-  products: AdminProduct[]
-}
-
-type CatalogArtist = {
-  id: string
-  name: string
-  slug: string
-  sortName: string | null
-}
-
-type CatalogReferenceValue = {
-  id: string
-  kind: ReferenceKind
-  label: string
-  value: string
-  isActive: boolean
-}
-
-type CatalogProductProfile = {
-  id: string
-  productId: string
-  releaseTitle: string | null
-  labelId: string | null
-  productTypeId: string | null
-  releaseDate: string | null
-  releaseYear: number | null
-  descriptionHtml: string | null
-  searchKeywords: string[]
-  tracklist: unknown[]
-  credits: JsonRecord
-  pressingNotes: JsonRecord
-  merchDetails: JsonRecord
-  version: number
-  metadata: JsonRecord
-}
-
-type CatalogProductArtist = {
-  id?: string
-  artistId: string | null
-  displayName: string
-  role: string
-  sortOrder: number
-}
-
-type CatalogProductReference = {
-  id?: string
-  referenceValueId: string
-  kind: ReferenceKind
-  sortOrder: number
-}
-
-type CatalogVariantProfile = {
-  id?: string
-  variantId: string
-  productProfileId: string | null
-  formatId: string | null
-  formatDetailId: string | null
-  formatLabel: string | null
-  formatDetailLabel: string | null
-  displayLabel: string | null
-  availabilityStatus: AvailabilityStatus
-  preorderReleaseDate: string | null
-  backorderAllowed: boolean
-  backorderNote: string | null
-  imageUrl: string | null
-  version: number
-}
-
-type CatalogBundleProfile = {
-  id: string
-  productId: string
-  productProfileId: string | null
-  bundleType: BundleType
-  inventoryMode: BundleInventoryMode
-  fulfillmentMode: BundleFulfillmentMode
-  displayTitle: string | null
-  descriptionHtml: string | null
-  isActive: boolean
-  version: number
-}
-
-type CatalogBundleComponent = {
-  id?: string
-  componentProductId: string
-  componentVariantId: string | null
-  componentInventoryItemId: string | null
-  title: string | null
-  variantTitle: string | null
-  sku: string | null
-  quantity: number
-  sortOrder: number
-  isRequired: boolean
-}
-
-type ProductProfileResponse = {
-  profile: CatalogProductProfile | null
-  artists: CatalogProductArtist[]
-  references: CatalogProductReference[]
-}
-
-type VariantProfileResponse = {
-  profile: CatalogVariantProfile | null
-}
-
-type BundleResponse = {
-  bundle: CatalogBundleProfile | null
-  components: CatalogBundleComponent[]
 }
 
 type ProductFormState = {
@@ -402,46 +271,6 @@ const toPrettyJson = (value: unknown, fallback: unknown): string => {
   } catch {
     return JSON.stringify(fallback, null, 2)
   }
-}
-
-const extractErrorMessage = async (
-  response: Response
-): Promise<string | null> => {
-  const data = await response.json().catch(() => null)
-  if (!data || typeof data !== "object") {
-    return null
-  }
-  const message = (data as { message?: unknown }).message
-  if (typeof message === "string") {
-    return message
-  }
-  const error = (data as { error?: unknown }).error
-  if (typeof error === "string") {
-    return error
-  }
-  return null
-}
-
-const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(path, {
-    credentials: "include",
-    ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(init?.headers ?? {}),
-    },
-  })
-
-  if (!response.ok) {
-    const message = await extractErrorMessage(response)
-    throw new Error(message ?? `${path} returned ${response.status}`)
-  }
-
-  if (response.status === 204) {
-    return {} as T
-  }
-
-  return (await response.json()) as T
 }
 
 const buildKey = (prefix: string): string =>
@@ -660,17 +489,22 @@ const fetchProductAuthoringForms = async ({
   references: CatalogReferenceValue[]
 }): Promise<ProductAuthoringForms> => {
   const [profileResponse, bundleResponse] = await Promise.all([
-    fetchJson<ProductProfileResponse>(
-      `/admin/catalog/products/${product.id}/profile`
-    ),
-    fetchJson<BundleResponse>(`/admin/catalog/products/${product.id}/bundle`),
+    requestAdminJson({
+      path: `/admin/catalog/products/${product.id}/profile`,
+      schema: productProfileResponseSchema,
+    }),
+    requestAdminJson({
+      path: `/admin/catalog/products/${product.id}/bundle`,
+      schema: bundleResponseSchema,
+    }),
   ])
   const variantResponses = await Promise.all(
     (product.variants ?? []).map(async (variant) => ({
       variantId: variant.id,
-      response: await fetchJson<VariantProfileResponse>(
-        `/admin/catalog/variants/${variant.id}/profile`
-      ),
+      response: await requestAdminJson({
+        path: `/admin/catalog/variants/${variant.id}/profile`,
+        schema: variantProfileResponseSchema,
+      }),
     }))
   )
   return {
@@ -841,18 +675,20 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
 
     const refreshProducts = useCallback(async (): Promise<AdminProduct[]> => {
       if (productId) {
-        const requested = await fetchJson<{ product: AdminProduct }>(
-          getPrimaryProductLoadPath(productId)
-        )
+        const requested = await requestAdminJson({
+          path: getPrimaryProductLoadPath(productId),
+          schema: adminProductResponseSchema,
+        })
         setProducts((currentProducts) =>
           mergeExactProduct(requested.product, currentProducts)
         )
         return [requested.product]
       }
 
-      const response = await fetchJson<AdminProductListResponse>(
-        getCatalogProductOptionPath()
-      )
+      const response: AdminProductListResponse = await requestAdminJson({
+        path: getCatalogProductOptionPath(),
+        schema: adminProductListResponseSchema,
+      })
       const listedProducts = response.products ?? []
       setProducts(listedProducts)
       setProductOptionStatus("ready")
@@ -867,16 +703,18 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
       setProductOptionStatus("loading")
       setProductOptionsError(null)
       try {
-        const firstPage = await fetchJson<AdminProductListResponse>(
-          getCatalogProductOptionPath()
-        )
+        const firstPage = await requestAdminJson({
+          path: getCatalogProductOptionPath(),
+          schema: adminProductListResponseSchema,
+        })
         const remainingPages = await Promise.all(
           getRemainingProductOptionOffsets(
             firstPage.count ?? firstPage.products.length
           ).map((offset) =>
-            fetchJson<AdminProductListResponse>(
-              getCatalogProductOptionPath(offset)
-            )
+            requestAdminJson({
+              path: getCatalogProductOptionPath(offset),
+              schema: adminProductListResponseSchema,
+            })
           )
         )
         const productOptions = [
@@ -902,12 +740,14 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
       references: CatalogReferenceValue[]
     }> => {
       const [artistResponse, referenceResponse] = await Promise.all([
-        fetchJson<{ artists: CatalogArtist[] }>(
-          "/admin/catalog/artists?limit=500"
-        ),
-        fetchJson<{ values: CatalogReferenceValue[] }>(
-          "/admin/catalog/reference-values?limit=500&active=true"
-        ),
+        requestAdminJson({
+          path: "/admin/catalog/artists?limit=500",
+          schema: catalogArtistListResponseSchema,
+        }),
+        requestAdminJson({
+          path: "/admin/catalog/reference-values?limit=500&active=true",
+          schema: catalogReferenceListResponseSchema,
+        }),
       ])
       const nextArtists = artistResponse.artists ?? []
       const nextReferences = referenceResponse.values ?? []
@@ -1227,13 +1067,12 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
           status: productForm.status,
           description: toNullable(productForm.description),
         }
-        await fetchJson<{ product: AdminProduct }>(
-          `/admin/products/${selectedProduct.id}`,
-          {
-            method: "POST",
-            body: JSON.stringify(productPayload),
-          }
-        )
+        await requestAdminJson({
+          body: productPayload,
+          method: "POST",
+          path: `/admin/products/${selectedProduct.id}`,
+          schema: adminProductResponseSchema,
+        })
 
         const artistLines = profileForm.artists.filter(
           (artist) =>
@@ -1290,86 +1129,82 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
             sortOrder: index,
           })),
         }
-        const profileResponse = await fetchJson<ProductProfileResponse>(
-          `/admin/catalog/products/${selectedProduct.id}/profile`,
-          {
-            method: "PUT",
-            body: JSON.stringify(profilePayload),
-          }
-        )
+        const profileResponse = await requestAdminJson({
+          body: profilePayload,
+          method: "PUT",
+          path: `/admin/catalog/products/${selectedProduct.id}/profile`,
+          schema: productProfileResponseSchema,
+        })
 
         for (const variantProfile of variantProfiles) {
-          await fetchJson<VariantProfileResponse>(
-            `/admin/catalog/variants/${variantProfile.variantId}/profile`,
-            {
-              method: "PUT",
-              body: JSON.stringify({
-                idempotencyKey: crypto.randomUUID(),
-                expectedVersion: variantProfile.version,
-                productProfileId: profileResponse.profile?.id ?? undefined,
-                formatId: toNullable(variantProfile.formatId),
-                format: variantProfile.formatId
-                  ? undefined
-                  : {
-                      label: toNullable(variantProfile.formatLabel),
-                    },
-                formatDetailId: toNullable(variantProfile.formatDetailId),
-                formatDetail: variantProfile.formatDetailId
-                  ? undefined
-                  : {
-                      label: toNullable(variantProfile.formatDetailLabel),
-                    },
-                displayLabel: toNullable(variantProfile.displayLabel),
-                availabilityStatus: variantProfile.availabilityStatus,
-                preorderReleaseDate: toNullable(
-                  variantProfile.preorderReleaseDate
-                ),
-                backorderAllowed: variantProfile.backorderAllowed,
-                backorderNote: toNullable(variantProfile.backorderNote),
-                imageUrl: toNullable(variantProfile.imageUrl),
-              }),
-            }
-          )
+          await requestAdminJson({
+            body: {
+              availabilityStatus: variantProfile.availabilityStatus,
+              backorderAllowed: variantProfile.backorderAllowed,
+              backorderNote: toNullable(variantProfile.backorderNote),
+              displayLabel: toNullable(variantProfile.displayLabel),
+              expectedVersion: variantProfile.version,
+              format: variantProfile.formatId
+                ? undefined
+                : {
+                    label: toNullable(variantProfile.formatLabel),
+                  },
+              formatDetail: variantProfile.formatDetailId
+                ? undefined
+                : {
+                    label: toNullable(variantProfile.formatDetailLabel),
+                  },
+              formatDetailId: toNullable(variantProfile.formatDetailId),
+              formatId: toNullable(variantProfile.formatId),
+              idempotencyKey: crypto.randomUUID(),
+              imageUrl: toNullable(variantProfile.imageUrl),
+              preorderReleaseDate: toNullable(
+                variantProfile.preorderReleaseDate
+              ),
+              productProfileId: profileResponse.profile?.id ?? undefined,
+            },
+            method: "PUT",
+            path: `/admin/catalog/variants/${variantProfile.variantId}/profile`,
+            schema: variantProfileResponseSchema,
+          })
         }
 
         if (bundleForm.enabled) {
-          await fetchJson<BundleResponse>(
-            `/admin/catalog/products/${selectedProduct.id}/bundle`,
-            {
-              method: "PUT",
-              body: JSON.stringify({
-                productProfileId: profileResponse.profile?.id ?? undefined,
-                idempotencyKey: crypto.randomUUID(),
-                expectedVersion: bundleVersion,
-                bundleType: bundleForm.bundleType,
-                inventoryMode: bundleForm.inventoryMode,
-                fulfillmentMode: bundleForm.fulfillmentMode,
-                displayTitle: toNullable(bundleForm.displayTitle),
-                descriptionHtml: toNullable(bundleForm.descriptionHtml),
-                isActive: bundleForm.isActive,
-                components: bundleComponentLines.map((component, index) => ({
-                  componentProductId: component.componentProductId,
-                  componentVariantId: toNullable(component.componentVariantId),
-                  title: toNullable(component.title),
-                  variantTitle: toNullable(component.variantTitle),
-                  sku: toNullable(component.sku),
-                  quantity: Number.parseInt(component.quantity, 10) || 1,
-                  sortOrder: index,
-                })),
-              }),
-            }
-          )
+          await requestAdminJson({
+            body: {
+              bundleType: bundleForm.bundleType,
+              components: bundleComponentLines.map((component, index) => ({
+                componentProductId: component.componentProductId,
+                componentVariantId: toNullable(component.componentVariantId),
+                quantity: Number.parseInt(component.quantity, 10) || 1,
+                sku: toNullable(component.sku),
+                sortOrder: index,
+                title: toNullable(component.title),
+                variantTitle: toNullable(component.variantTitle),
+              })),
+              descriptionHtml: toNullable(bundleForm.descriptionHtml),
+              displayTitle: toNullable(bundleForm.displayTitle),
+              expectedVersion: bundleVersion,
+              fulfillmentMode: bundleForm.fulfillmentMode,
+              idempotencyKey: crypto.randomUUID(),
+              inventoryMode: bundleForm.inventoryMode,
+              isActive: bundleForm.isActive,
+              productProfileId: profileResponse.profile?.id ?? undefined,
+            },
+            method: "PUT",
+            path: `/admin/catalog/products/${selectedProduct.id}/bundle`,
+            schema: bundleResponseSchema,
+          })
         } else {
-          await fetchJson(
-            `/admin/catalog/products/${selectedProduct.id}/bundle`,
-            {
-              method: "DELETE",
-              body: JSON.stringify({
-                idempotencyKey: crypto.randomUUID(),
-                expectedVersion: bundleVersion,
-              }),
-            }
-          )
+          await requestAdminJson({
+            body: {
+              expectedVersion: bundleVersion,
+              idempotencyKey: crypto.randomUUID(),
+            },
+            method: "DELETE",
+            path: `/admin/catalog/products/${selectedProduct.id}/bundle`,
+            schema: emptyAdminResponseSchema,
+          })
         }
 
         const [refreshedProducts, refreshedCatalog] = await Promise.all([

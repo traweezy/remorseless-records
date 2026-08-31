@@ -81,9 +81,14 @@ export const readStoreProductCandidateIds = (value: unknown): string[] => {
   return rows.map((row) => requiredStoreIdentifier(row.id))
 }
 
-const readStoreProductRows = <T extends JsonRecord>(
+export type StoreProductDecoder<T extends JsonRecord & { id: string }> = (
+  row: JsonRecord
+) => T
+
+const readStoreProductRows = <T extends JsonRecord & { id: string }>(
   value: unknown,
-  expectedProductIds: readonly string[]
+  expectedProductIds: readonly string[],
+  decodeProduct: StoreProductDecoder<T>
 ): T[] => {
   const expected = new Set(expectedProductIds)
   const seen = new Set<string>()
@@ -93,7 +98,18 @@ const readStoreProductRows = <T extends JsonRecord>(
       return invalidStoreProductData()
     }
     seen.add(id)
-    return row as T
+    let product: T
+    try {
+      product = decodeProduct(row)
+    } catch (error: unknown) {
+      if (error instanceof MedusaError) {
+        throw error
+      }
+      return invalidStoreProductData()
+    }
+    return requiredStoreIdentifier(product.id) === id
+      ? product
+      : invalidStoreProductData()
   })
 }
 
@@ -187,11 +203,15 @@ export const resolveStoreProductVisibility = (
   }
 }
 
-const listPublishedProductsByIds = async <T extends JsonRecord>({
+const listPublishedProductsByIds = async <
+  T extends JsonRecord & { id: string },
+>({
+  decodeProduct,
   fields,
   productIds,
   query,
 }: {
+  decodeProduct: StoreProductDecoder<T>
   fields: readonly string[]
   productIds: readonly string[]
   query: StoreProductQueryGraph
@@ -210,7 +230,7 @@ const listPublishedProductsByIds = async <T extends JsonRecord>({
     },
     pagination: { take: uniqueProductIds.length },
   })
-  const products = readStoreProductRows<T>(result, uniqueProductIds)
+  const products = readStoreProductRows(result, uniqueProductIds, decodeProduct)
   const byId = new Map(
     products.map((product) => [requiredStoreIdentifier(product.id), product])
   )
@@ -221,12 +241,16 @@ const listPublishedProductsByIds = async <T extends JsonRecord>({
   })
 }
 
-export const listVisibleProductsByIds = async <T extends JsonRecord>({
+export const listVisibleProductsByIds = async <
+  T extends JsonRecord & { id: string },
+>({
+  decodeProduct,
   fields,
   productIds,
   query,
   salesChannelIds,
 }: {
+  decodeProduct: StoreProductDecoder<T>
   fields: readonly string[]
   productIds: readonly string[]
   query: StoreProductQueryGraph
@@ -256,7 +280,8 @@ export const listVisibleProductsByIds = async <T extends JsonRecord>({
     linkedProductIds.has(id)
   )
 
-  return listPublishedProductsByIds<T>({
+  return listPublishedProductsByIds({
+    decodeProduct,
     fields,
     productIds: visibleProductIds,
     query,
@@ -297,8 +322,11 @@ export const decodeStoreProductCursor = (
   return decoded
 }
 
-export const listVisibleProductPage = async <T extends JsonRecord>({
+export const listVisibleProductPage = async <
+  T extends JsonRecord & { id: string },
+>({
   cursor,
+  decodeProduct,
   direction = "ASC",
   fields,
   limit,
@@ -306,6 +334,7 @@ export const listVisibleProductPage = async <T extends JsonRecord>({
   salesChannelIds,
 }: {
   cursor?: string
+  decodeProduct: StoreProductDecoder<T>
   direction?: "ASC" | "DESC"
   fields: readonly string[]
   limit: number
@@ -343,7 +372,8 @@ export const listVisibleProductPage = async <T extends JsonRecord>({
   const productIds = Array.from(
     new Set(pageLinks.map((link) => link.productId))
   )
-  const products = await listPublishedProductsByIds<T>({
+  const products = await listPublishedProductsByIds({
+    decodeProduct,
     fields,
     productIds,
     query,

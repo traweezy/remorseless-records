@@ -1,7 +1,5 @@
 import { Modules } from "@medusajs/framework/utils"
 
-import type CatalogModuleService from "@/modules/catalog/service"
-
 import {
   buildCatalogAuthoringAudit,
   type CatalogAuthoringAuditBundle,
@@ -13,26 +11,13 @@ import {
 import {
   assertCatalogAuthoringAuditRelationships,
   loadAllCatalogAuthoringAuditRecords,
+  readCatalogAuthoringAuditCatalogService,
   readCatalogAuthoringAuditBundlePage,
   readCatalogAuthoringAuditProductPage,
+  readCatalogAuthoringAuditProductService,
   readCatalogAuthoringAuditProfilePage,
   readCatalogAuthoringAuditReferencePage,
-  readCatalogAuthoringAuditService,
 } from "./authoring-audit-persistence-contracts"
-
-type CatalogService = InstanceType<typeof CatalogModuleService>
-
-type ProductService = {
-  listAndCountProducts: (
-    filters: Record<string, unknown>,
-    config: {
-      order: { id: "ASC" }
-      relations: string[]
-      skip: number
-      take: number
-    }
-  ) => Promise<unknown>
-}
 
 type ServiceContainer = {
   resolve: (key: string) => unknown
@@ -41,17 +26,11 @@ type ServiceContainer = {
 export const loadCatalogAuthoringAudit = async (
   container: ServiceContainer
 ): Promise<CatalogAuthoringAuditReport> => {
-  const productService = readCatalogAuthoringAuditService<ProductService>(
-    container.resolve(Modules.PRODUCT),
-    ["listAndCountProducts"]
+  const productService = readCatalogAuthoringAuditProductService(
+    container.resolve(Modules.PRODUCT)
   )
-  const catalogService = readCatalogAuthoringAuditService<CatalogService>(
-    container.resolve("catalog"),
-    [
-      "listAndCountCatalogBundleProfiles",
-      "listAndCountCatalogProductProfiles",
-      "listAndCountCatalogReferenceValues",
-    ]
+  const catalogService = readCatalogAuthoringAuditCatalogService(
+    container.resolve("catalog")
   )
 
   const [productRecords, profileRecords, referenceRecords, bundleRecords] =
