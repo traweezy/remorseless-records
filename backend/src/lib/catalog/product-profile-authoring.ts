@@ -7,7 +7,6 @@ import { sanitizeRichTextHtml } from "../content/rich-text"
 import {
   coerceCatalogJsonList,
   coerceCatalogJsonRecord,
-  firstCatalogResult,
   normalizeCatalogList,
   toCatalogNullableString,
   toCatalogOptionalDate,
@@ -31,6 +30,17 @@ import {
   snapshotCatalogProductProfile,
   toCatalogReferenceKind,
 } from "./product-profile-state"
+import {
+  readCatalogProductArtists,
+  readCatalogProductProfileMutation,
+  readCatalogProductReferences,
+  readExactCatalogProductArtists,
+  readExactCatalogProductReferences,
+  readProductProfileOperationResult,
+  readProfileOperationList,
+  readProfileOperationMutation,
+  type ProfileOperationExpectation,
+} from "./profile-persistence-contracts"
 import {
   resolveOrCreateCatalogArtist,
   resolveOrCreateCatalogReferenceValue,
@@ -120,10 +130,13 @@ const replaceArtists = async (
   createdArtistIds: Set<string>,
   sharedContext: Context<EntityManager>
 ): Promise<void> => {
-  const existing = await catalogService.listCatalogProductArtists(
-    { product_profile_id: profileId },
-    {},
-    sharedContext
+  const existing = readCatalogProductArtists(
+    await catalogService.listCatalogProductArtists(
+      { product_profile_id: profileId },
+      { take: 101 },
+      sharedContext
+    ),
+    profileId
   )
   if (existing.length) {
     await catalogService.deleteCatalogProductArtists(
@@ -166,8 +179,21 @@ const replaceArtists = async (
     })
   }
   if (payloads.length) {
-    await catalogService.createCatalogProductArtists(payloads, sharedContext)
+    readExactCatalogProductArtists(
+      await catalogService.createCatalogProductArtists(payloads, sharedContext),
+      profileId,
+      payloads
+    )
   }
+  readExactCatalogProductArtists(
+    await catalogService.listCatalogProductArtists(
+      { product_profile_id: profileId },
+      { order: { sort_order: "ASC", id: "ASC" }, take: 101 },
+      sharedContext
+    ),
+    profileId,
+    payloads
+  )
 }
 
 const replaceReferences = async (
@@ -177,10 +203,13 @@ const replaceReferences = async (
   createdReferenceValueIds: Set<string>,
   sharedContext: Context<EntityManager>
 ): Promise<void> => {
-  const existing = await catalogService.listCatalogProductReferences(
-    { product_profile_id: profileId },
-    {},
-    sharedContext
+  const existing = readCatalogProductReferences(
+    await catalogService.listCatalogProductReferences(
+      { product_profile_id: profileId },
+      { take: 101 },
+      sharedContext
+    ),
+    profileId
   )
   if (existing.length) {
     await catalogService.deleteCatalogProductReferences(
@@ -220,8 +249,24 @@ const replaceReferences = async (
     })
   }
   if (payloads.length) {
-    await catalogService.createCatalogProductReferences(payloads, sharedContext)
+    readExactCatalogProductReferences(
+      await catalogService.createCatalogProductReferences(
+        payloads,
+        sharedContext
+      ),
+      profileId,
+      payloads
+    )
   }
+  readExactCatalogProductReferences(
+    await catalogService.listCatalogProductReferences(
+      { product_profile_id: profileId },
+      { order: { sort_order: "ASC", id: "ASC" }, take: 101 },
+      sharedContext
+    ),
+    profileId,
+    payloads
+  )
 }
 
 const buildProfilePatch = ({
@@ -303,49 +348,75 @@ export const mutateCatalogProductProfile = async (
   input: CatalogProductProfileMutationInput
 ): Promise<CatalogProductProfileMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
-    const existingOperation = (
+    const operationExpectation: ProfileOperationExpectation = {
+      actorId: input.actorId,
+      aggregateId: input.aggregateId,
+      command: input.command,
+      expectedVersion: input.expectedVersion,
+      idempotencyKey: input.idempotencyKey,
+      requestSha256: input.requestSha256,
+      status: "pending",
+    }
+    const existingOperation = readProfileOperationList(
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
-        { take: 1 },
+        { take: 2 },
         sharedContext
       )
-    )[0]
+    )
     if (existingOperation) {
       const sameCommand =
         existingOperation.command === input.command &&
-        existingOperation.aggregate_id === input.aggregateId &&
-        existingOperation.actor_id === input.actorId &&
-        existingOperation.expected_version === input.expectedVersion &&
-        existingOperation.request_sha256 === input.requestSha256
+        existingOperation.aggregateId === input.aggregateId &&
+        existingOperation.actorId === input.actorId &&
+        existingOperation.expectedVersion === input.expectedVersion &&
+        existingOperation.idempotencyKey === input.idempotencyKey &&
+        existingOperation.requestSha256 === input.requestSha256
       if (!sameCommand || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
           "The catalog idempotency key cannot be replayed for this product profile command."
         )
       }
-      const result = coerceCatalogJsonRecord(existingOperation.result)
-      const profileId =
-        typeof result.profileId === "string" ? result.profileId : null
-      if (!profileId) {
+      const result = readProductProfileOperationResult(existingOperation.result)
+      if (
+        result.productId !== input.aggregateId ||
+        result.version !== input.expectedVersion + 1
+      ) {
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          "The completed product profile command has no profile result."
+          "The completed product profile command result did not match the requested write."
+        )
+      }
+      const retained = await resolveCatalogProductProfile(
+        catalogService,
+        input.aggregateId,
+        sharedContext
+      )
+      if (
+        !retained ||
+        retained.id !== result.profileId ||
+        retained.version !== result.version
+      ) {
+        throw new MedusaError(
+          MedusaError.Types.UNEXPECTED_STATE,
+          "The completed product profile command no longer has its exact response."
         )
       }
       return {
-        created: false,
+        actorId: input.actorId,
+        created: result.created,
         createdArtistIds: [],
         createdReferenceValueIds: [],
         operationId: existingOperation.id,
         previous: { artists: [], profile: null, references: [] },
         productId: input.aggregateId,
-        profileId,
+        profileId: result.profileId,
+        idempotencyKey: input.idempotencyKey,
         replayed: true,
-        result,
-        version:
-          typeof result.version === "number"
-            ? result.version
-            : input.expectedVersion,
+        requestSha256: input.requestSha256,
+        result: existingOperation.result,
+        version: result.version,
       }
     }
 
@@ -362,28 +433,25 @@ export const mutateCatalogProductProfile = async (
       )
     }
 
-    const [operation] = await catalogService.createCatalogAuthoringOperations(
-      [
-        {
-          actor_id: input.actorId,
-          aggregate_id: input.aggregateId,
-          command: input.command,
-          expected_version: input.expectedVersion,
-          idempotency_key: input.idempotencyKey,
-          metadata: {},
-          request_sha256: input.requestSha256,
-          result: {},
-          status: "pending",
-        },
-      ],
-      sharedContext
+    const operation = readProfileOperationMutation(
+      await catalogService.createCatalogAuthoringOperations(
+        [
+          {
+            actor_id: input.actorId,
+            aggregate_id: input.aggregateId,
+            command: input.command,
+            expected_version: input.expectedVersion,
+            idempotency_key: input.idempotencyKey,
+            metadata: {},
+            request_sha256: input.requestSha256,
+            result: {},
+            status: "pending",
+          },
+        ],
+        sharedContext
+      ),
+      operationExpectation
     )
-    if (!operation) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "The product profile command audit record was not created."
-      )
-    }
 
     const createdArtistIds = new Set<string>()
     const createdReferenceValueIds = new Set<string>()
@@ -424,13 +492,12 @@ export const mutateCatalogProductProfile = async (
           [payload],
           sharedContext
         )
-    const saved = firstCatalogResult(savedResult)
-    if (!saved) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to save catalog product profile."
-      )
-    }
+    const saved = readCatalogProductProfileMutation(savedResult, {
+      fields: payload,
+      ...(previous.profile ? { id: previous.profile.id } : {}),
+      productId: input.aggregateId,
+      version: currentVersion + 1,
+    })
     if (input.patch.artists !== undefined) {
       await replaceArtists(
         catalogService,
@@ -451,6 +518,7 @@ export const mutateCatalogProductProfile = async (
     }
 
     return {
+      actorId: input.actorId,
       created: previous.profile === null,
       createdArtistIds: [...createdArtistIds],
       createdReferenceValueIds: [...createdReferenceValueIds],
@@ -458,7 +526,9 @@ export const mutateCatalogProductProfile = async (
       previous,
       productId: input.aggregateId,
       profileId: saved.id,
+      idempotencyKey: input.idempotencyKey,
       replayed: false,
+      requestSha256: input.requestSha256,
       result: {},
       version: currentVersion + 1,
     }
@@ -475,6 +545,23 @@ export const compensateCatalogProductProfileMutation = async (
   }
 ): Promise<void> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
+    const operation = readProfileOperationList(
+      await catalogService.listCatalogAuthoringOperations(
+        { id: input.operationId },
+        { take: 2 },
+        sharedContext
+      )
+    )
+    if (
+      !operation ||
+      operation.id !== input.operationId ||
+      operation.status !== "pending"
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The product profile compensation operation could not be verified."
+      )
+    }
     await restoreCatalogProductProfileSnapshot(
       catalogService,
       input.aggregateId,
@@ -495,17 +582,25 @@ export const compensateCatalogProductProfileMutation = async (
         sharedContext
       )
     }
-    await catalogService.updateCatalogAuthoringOperations(
-      [
-        {
-          completed_at: new Date(),
-          error_code: "workflow_compensated",
-          error_detail:
-            "A later workflow step failed; the previous product profile state was restored.",
-          id: input.operationId,
-          status: "compensated",
-        },
-      ],
-      sharedContext
+    readProfileOperationMutation(
+      await catalogService.updateCatalogAuthoringOperations(
+        [
+          {
+            completed_at: new Date(),
+            error_code: "workflow_compensated",
+            error_detail:
+              "A later workflow step failed; the previous product profile state was restored.",
+            id: input.operationId,
+            status: "compensated",
+          },
+        ],
+        sharedContext
+      ),
+      {
+        ...operation,
+        id: input.operationId,
+        result: operation.result,
+        status: "compensated",
+      }
     )
   })

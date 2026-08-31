@@ -420,8 +420,8 @@ class CatalogModuleService extends MedusaService({
     operationId: string,
     result: JsonObject,
     @MedusaContext() sharedContext: Context<EntityManager> = {}
-  ): Promise<void> {
-    await this.updateCatalogAuthoringOperations(
+  ): Promise<unknown> {
+    return this.updateCatalogAuthoringOperations(
       [
         {
           id: operationId,
@@ -441,7 +441,7 @@ class CatalogModuleService extends MedusaService({
     operationId: string,
     result: JsonObject,
     @MedusaContext() sharedContext: Context<EntityManager> = {}
-  ): Promise<void> {
+  ): Promise<unknown> {
     return this.completeCatalogAuthoringOperation_(
       operationId,
       result,

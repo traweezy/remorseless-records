@@ -9,11 +9,15 @@ import type {
   CatalogReferenceValueRecord,
   JsonRecord,
 } from "../../modules/catalog/serializers"
+import { slugifyCatalogValue, toCatalogNullableString } from "./normalization"
 import {
-  firstCatalogResult,
-  slugifyCatalogValue,
-  toCatalogNullableString,
-} from "./normalization"
+  readCatalogArtist,
+  readCatalogArtistList,
+  readCatalogArtistMutation,
+  readCatalogReferenceValue,
+  readCatalogReferenceValueList,
+  readCatalogReferenceValueMutation,
+} from "./profile-persistence-contracts"
 
 export type CatalogService = InstanceType<typeof CatalogModuleService>
 
@@ -33,13 +37,19 @@ export const resolveOrCreateCatalogArtist = async (
 ): Promise<CatalogResolution<CatalogArtistRecord>> => {
   const artistId = toCatalogNullableString(input.artistId)
   if (artistId) {
+    const record = readCatalogArtist(
+      await catalogService.retrieveCatalogArtist(artistId, {}, sharedContext),
+      artistId
+    )
+    if (!record) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        "The selected catalog artist was not found."
+      )
+    }
     return {
       created: false,
-      record: (await catalogService.retrieveCatalogArtist(
-        artistId,
-        {},
-        sharedContext
-      )) as CatalogArtistRecord,
+      record,
     }
   }
 
@@ -49,32 +59,36 @@ export const resolveOrCreateCatalogArtist = async (
   }
 
   const slug = slugifyCatalogValue(name, "artist")
-  const existing = await catalogService.listCatalogArtists(
-    { slug },
-    {},
-    sharedContext
+  const existing = readCatalogArtistList(
+    await catalogService.listCatalogArtists(
+      { slug },
+      { take: 2 },
+      sharedContext
+    ),
+    { expectedSlug: slug, maximumRows: 1 }
   )
-  const match = existing.at(0) as CatalogArtistRecord | undefined
+  const match = existing.at(0)
   if (match) {
     return { created: false, record: match }
   }
 
-  const created = await catalogService.createCatalogArtists(
-    [
-      {
-        name,
-        slug,
-        sort_name: name,
-        metadata: input.metadata ?? {},
-      },
-    ],
-    sharedContext
+  const payload = {
+    bio: null,
+    image_url: null,
+    location: null,
+    metadata: input.metadata ?? {},
+    name,
+    slug,
+    sort_name: name,
+  }
+  const created = readCatalogArtistMutation(
+    await catalogService.createCatalogArtists([payload], sharedContext),
+    { fields: payload }
   )
 
   return {
     created: true,
-    record:
-      (firstCatalogResult(created) as CatalogArtistRecord | undefined) ?? null,
+    record: created,
   }
 }
 
@@ -99,11 +113,20 @@ export const resolveOrCreateCatalogReferenceValue = async (
 ): Promise<CatalogResolution<CatalogReferenceValueRecord>> => {
   const referenceValueId = toCatalogNullableString(input.referenceValueId)
   if (referenceValueId) {
-    const record = (await catalogService.retrieveCatalogReferenceValue(
-      referenceValueId,
-      {},
-      sharedContext
-    )) as CatalogReferenceValueRecord
+    const record = readCatalogReferenceValue(
+      await catalogService.retrieveCatalogReferenceValue(
+        referenceValueId,
+        {},
+        sharedContext
+      ),
+      referenceValueId
+    )
+    if (!record) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        "The selected catalog reference value was not found."
+      )
+    }
     if (input.kind && record.kind !== input.kind) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
@@ -130,36 +153,36 @@ export const resolveOrCreateCatalogReferenceValue = async (
 
   const value =
     toCatalogNullableString(input.value) ?? slugifyCatalogValue(label, kind)
-  const existing = await catalogService.listCatalogReferenceValues(
-    { kind, value },
-    {},
-    sharedContext
+  const existing = readCatalogReferenceValueList(
+    await catalogService.listCatalogReferenceValues(
+      { kind, value },
+      { take: 2 },
+      sharedContext
+    ),
+    { expectedKind: kind, expectedValue: value, maximumRows: 1 }
   )
-  const match = existing.at(0) as CatalogReferenceValueRecord | undefined
+  const match = existing.at(0)
   if (match) {
     return { created: false, record: match }
   }
 
-  const created = await catalogService.createCatalogReferenceValues(
-    [
-      {
-        kind,
-        label,
-        value,
-        rank: 0,
-        is_active: true,
-        metadata: input.metadata ?? {},
-      },
-    ],
-    sharedContext
+  const payload = {
+    description: null,
+    is_active: true,
+    kind,
+    label,
+    metadata: input.metadata ?? {},
+    rank: 0,
+    value,
+  }
+  const created = readCatalogReferenceValueMutation(
+    await catalogService.createCatalogReferenceValues([payload], sharedContext),
+    { fields: payload }
   )
 
   return {
     created: true,
-    record:
-      (firstCatalogResult(created) as
-        | CatalogReferenceValueRecord
-        | undefined) ?? null,
+    record: created,
   }
 }
 

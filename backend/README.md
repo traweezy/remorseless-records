@@ -155,6 +155,24 @@ at most 200 memberships for each shelf. Command completion and replay require
 the same audit-row identity, actor, aggregate, request hash, result, shelf
 identity, next version, and archive state before returning success.
 
+Admin artist, controlled-reference, Product-profile, and Variant-profile paths
+pass through `src/lib/catalog/profile-persistence-contracts.ts`. The boundary
+validates canonical IDs, safe HTTP(S) media, bounded text and recursive JSON,
+unique natural keys, release/profile invariants, relationship ownership, and
+complete counted pages before serialization. Natural-key resolution requests
+two rows and accepts at most one, while profile and relationship reads use an
+extra sentinel row to detect duplicate or oversized state instead of hiding it
+at the page boundary.
+
+Profile creates, updates, snapshot restores, and relationship replacement
+require exact persistence acknowledgements. Product and Variant response-loss
+replays must match the recorded identity and version still stored. Completion
+and compensation require the same pending operation identity, actor,
+aggregate, command, expected version, UUID idempotency key, SHA-256 request
+hash, exact result, completion state, and stable compensation error. A missing
+detail is a not-found condition; a malformed present row remains an
+unexpected-state incident.
+
 The Store bundle route additionally validates the active project-owned profile,
 every component row and declared mapping, the visible Product/Variant graph,
 and the availability map. A mapping may reference only a Variant on its exact

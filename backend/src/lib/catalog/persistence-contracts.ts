@@ -272,9 +272,16 @@ export const readCatalogCreatedProductVariants = (
   return parsed
 }
 
-export const readCatalogServiceIds = (value: unknown): string[] => {
+export const readCatalogServiceIds = (
+  value: unknown,
+  maximumRows = Number.MAX_SAFE_INTEGER
+): string[] => {
+  const parsedRows = serviceRows(value)
+  if (parsedRows.length > maximumRows) {
+    return invalidCatalogData()
+  }
   const seen = new Set<string>()
-  return serviceRows(value).map((row) => {
+  return parsedRows.map((row) => {
     const id = requiredCatalogIdentifier(row.id)
     assertUniqueIdentifier(id, seen)
     return id

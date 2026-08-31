@@ -4,10 +4,18 @@ import { MedusaError } from "@medusajs/framework/utils"
 
 import {
   coerceCatalogJsonRecord,
-  firstCatalogResult,
   toCatalogNullableString,
   toCatalogOptionalDate,
 } from "./normalization"
+import {
+  readCatalogProductProfile,
+  readCatalogProductProfiles,
+  readCatalogVariantProfileMutation,
+  readProfileOperationList,
+  readProfileOperationMutation,
+  readVariantProfileOperationResult,
+  type ProfileOperationExpectation,
+} from "./profile-persistence-contracts"
 import { deleteCreatedReferenceIfOrphaned } from "./product-profile-state"
 import {
   resolveOrCreateCatalogReferenceValue,
@@ -57,10 +65,13 @@ const resolveProductProfileId = async (
 
   const productProfileId = toCatalogNullableString(input.productProfileId)
   if (productProfileId) {
-    await catalogService.retrieveCatalogProductProfile(
-      productProfileId,
-      {},
-      sharedContext
+    readCatalogProductProfile(
+      await catalogService.retrieveCatalogProductProfile(
+        productProfileId,
+        {},
+        sharedContext
+      ),
+      productProfileId
     )
     return productProfileId
   }
@@ -69,10 +80,13 @@ const resolveProductProfileId = async (
   if (!productId) {
     return undefined
   }
-  const profiles = await catalogService.listCatalogProductProfiles(
-    { product_id: productId },
-    { take: 1 },
-    sharedContext
+  const profiles = readCatalogProductProfiles(
+    await catalogService.listCatalogProductProfiles(
+      { product_id: productId },
+      { take: 2 },
+      sharedContext
+    ),
+    productId
   )
   const profile = profiles.at(0)
   if (!profile) {
@@ -191,48 +205,74 @@ export const mutateCatalogVariantProfile = async (
   input: CatalogVariantProfileMutationInput
 ): Promise<CatalogVariantProfileMutationResult> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
-    const existingOperation = (
+    const operationExpectation: ProfileOperationExpectation = {
+      actorId: input.actorId,
+      aggregateId: input.aggregateId,
+      command: input.command,
+      expectedVersion: input.expectedVersion,
+      idempotencyKey: input.idempotencyKey,
+      requestSha256: input.requestSha256,
+      status: "pending",
+    }
+    const existingOperation = readProfileOperationList(
       await catalogService.listCatalogAuthoringOperations(
         { idempotency_key: input.idempotencyKey },
-        { take: 1 },
+        { take: 2 },
         sharedContext
       )
-    )[0]
+    )
     if (existingOperation) {
       const sameCommand =
         existingOperation.command === input.command &&
-        existingOperation.aggregate_id === input.aggregateId &&
-        existingOperation.actor_id === input.actorId &&
-        existingOperation.expected_version === input.expectedVersion &&
-        existingOperation.request_sha256 === input.requestSha256
+        existingOperation.aggregateId === input.aggregateId &&
+        existingOperation.actorId === input.actorId &&
+        existingOperation.expectedVersion === input.expectedVersion &&
+        existingOperation.idempotencyKey === input.idempotencyKey &&
+        existingOperation.requestSha256 === input.requestSha256
       if (!sameCommand || existingOperation.status !== "succeeded") {
         throw new MedusaError(
           MedusaError.Types.CONFLICT,
           "The catalog idempotency key cannot be replayed for this variant profile command."
         )
       }
-      const result = coerceCatalogJsonRecord(existingOperation.result)
-      const profileId =
-        typeof result.profileId === "string" ? result.profileId : null
-      if (!profileId) {
+      const result = readVariantProfileOperationResult(existingOperation.result)
+      if (
+        result.variantId !== input.aggregateId ||
+        result.version !== input.expectedVersion + 1
+      ) {
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          "The completed variant profile command has no profile result."
+          "The completed variant profile command result did not match the requested write."
+        )
+      }
+      const retained = await resolveCatalogVariantProfile(
+        catalogService,
+        input.aggregateId,
+        sharedContext
+      )
+      if (
+        !retained ||
+        retained.id !== result.profileId ||
+        retained.version !== result.version
+      ) {
+        throw new MedusaError(
+          MedusaError.Types.UNEXPECTED_STATE,
+          "The completed variant profile command no longer has its exact response."
         )
       }
       return {
-        created: false,
+        actorId: input.actorId,
+        created: result.created,
         createdReferenceValueIds: [],
         operationId: existingOperation.id,
         previous: { profile: null },
-        profileId,
+        profileId: result.profileId,
+        idempotencyKey: input.idempotencyKey,
         replayed: true,
-        result,
+        requestSha256: input.requestSha256,
+        result: existingOperation.result,
         variantId: input.aggregateId,
-        version:
-          typeof result.version === "number"
-            ? result.version
-            : input.expectedVersion,
+        version: result.version,
       }
     }
 
@@ -249,28 +289,25 @@ export const mutateCatalogVariantProfile = async (
       )
     }
 
-    const [operation] = await catalogService.createCatalogAuthoringOperations(
-      [
-        {
-          actor_id: input.actorId,
-          aggregate_id: input.aggregateId,
-          command: input.command,
-          expected_version: input.expectedVersion,
-          idempotency_key: input.idempotencyKey,
-          metadata: {},
-          request_sha256: input.requestSha256,
-          result: {},
-          status: "pending",
-        },
-      ],
-      sharedContext
+    const operation = readProfileOperationMutation(
+      await catalogService.createCatalogAuthoringOperations(
+        [
+          {
+            actor_id: input.actorId,
+            aggregate_id: input.aggregateId,
+            command: input.command,
+            expected_version: input.expectedVersion,
+            idempotency_key: input.idempotencyKey,
+            metadata: {},
+            request_sha256: input.requestSha256,
+            result: {},
+            status: "pending",
+          },
+        ],
+        sharedContext
+      ),
+      operationExpectation
     )
-    if (!operation) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "The variant profile command audit record was not created."
-      )
-    }
 
     const createdReferenceValueIds = new Set<string>()
     const productProfileId = await resolveProductProfileId(
@@ -318,21 +355,23 @@ export const mutateCatalogVariantProfile = async (
           [payload],
           sharedContext
         )
-    const saved = firstCatalogResult(savedResult)
-    if (!saved) {
-      throw new MedusaError(
-        MedusaError.Types.UNEXPECTED_STATE,
-        "Unable to save catalog variant profile."
-      )
-    }
+    const saved = readCatalogVariantProfileMutation(savedResult, {
+      fields: payload,
+      ...(previous.profile ? { id: previous.profile.id } : {}),
+      variantId: input.aggregateId,
+      version: currentVersion + 1,
+    })
 
     return {
+      actorId: input.actorId,
       created: previous.profile === null,
       createdReferenceValueIds: [...createdReferenceValueIds],
       operationId: operation.id,
       previous,
       profileId: saved.id,
+      idempotencyKey: input.idempotencyKey,
       replayed: false,
+      requestSha256: input.requestSha256,
       result: {},
       variantId: input.aggregateId,
       version: currentVersion + 1,
@@ -349,6 +388,23 @@ export const compensateCatalogVariantProfileMutation = async (
   }
 ): Promise<void> =>
   catalogService.runCatalogTransaction(async (sharedContext) => {
+    const operation = readProfileOperationList(
+      await catalogService.listCatalogAuthoringOperations(
+        { id: input.operationId },
+        { take: 2 },
+        sharedContext
+      )
+    )
+    if (
+      !operation ||
+      operation.id !== input.operationId ||
+      operation.status !== "pending"
+    ) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "The variant profile compensation operation could not be verified."
+      )
+    }
     await restoreCatalogVariantProfileSnapshot(
       catalogService,
       input.aggregateId,
@@ -362,17 +418,25 @@ export const compensateCatalogVariantProfileMutation = async (
         sharedContext
       )
     }
-    await catalogService.updateCatalogAuthoringOperations(
-      [
-        {
-          completed_at: new Date(),
-          error_code: "workflow_compensated",
-          error_detail:
-            "A later workflow step failed; the previous variant profile state was restored.",
-          id: input.operationId,
-          status: "compensated",
-        },
-      ],
-      sharedContext
+    readProfileOperationMutation(
+      await catalogService.updateCatalogAuthoringOperations(
+        [
+          {
+            completed_at: new Date(),
+            error_code: "workflow_compensated",
+            error_detail:
+              "A later workflow step failed; the previous variant profile state was restored.",
+            id: input.operationId,
+            status: "compensated",
+          },
+        ],
+        sharedContext
+      ),
+      {
+        ...operation,
+        id: input.operationId,
+        result: operation.result,
+        status: "compensated",
+      }
     )
   })

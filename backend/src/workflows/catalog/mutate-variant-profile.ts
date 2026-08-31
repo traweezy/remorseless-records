@@ -13,6 +13,7 @@ import {
   type CatalogVariantProfileMutationInput,
   type CatalogVariantProfileMutationResult,
 } from "@/lib/catalog/variant-profile-authoring"
+import { readProfileOperationMutation } from "@/lib/catalog/profile-persistence-contracts"
 import type CatalogModuleService from "@/modules/catalog/service"
 
 type CatalogService = InstanceType<typeof CatalogModuleService>
@@ -86,9 +87,22 @@ const persistVariantProfileOperationStep = createStep(
   ): Promise<StepResponse<CatalogVariantProfileMutationResult>> => {
     if (!mutation.replayed) {
       const catalogService = container.resolve("catalog") as CatalogService
-      await catalogService.completeCatalogAuthoringOperation(
-        mutation.operationId,
-        mutation.result
+      readProfileOperationMutation(
+        await catalogService.completeCatalogAuthoringOperation(
+          mutation.operationId,
+          mutation.result
+        ),
+        {
+          actorId: mutation.actorId,
+          aggregateId: mutation.variantId,
+          command: "catalog.variant-profile.upsert",
+          expectedVersion: mutation.version - 1,
+          id: mutation.operationId,
+          idempotencyKey: mutation.idempotencyKey,
+          requestSha256: mutation.requestSha256,
+          result: mutation.result,
+          status: "succeeded",
+        }
       )
     }
     return new StepResponse(mutation)

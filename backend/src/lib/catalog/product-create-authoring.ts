@@ -198,8 +198,9 @@ export const completeCatalogProductCreation = async (
   catalogService: CatalogService,
   operationId: string,
   result: CatalogProductCreateResult
-): Promise<void> =>
-  catalogService.completeCatalogAuthoringOperation(operationId, result)
+): Promise<void> => {
+  await catalogService.completeCatalogAuthoringOperation(operationId, result)
+}
 
 export const compensateCatalogProductCreation = async (
   catalogService: CatalogService,

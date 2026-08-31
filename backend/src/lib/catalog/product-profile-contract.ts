@@ -133,6 +133,7 @@ export type CatalogProductProfileSnapshot = {
 }
 
 export type CatalogProductProfileMutationResult = {
+  actorId: string | null
   created: boolean
   createdArtistIds: string[]
   createdReferenceValueIds: string[]
@@ -140,7 +141,9 @@ export type CatalogProductProfileMutationResult = {
   previous: CatalogProductProfileSnapshot
   productId: string
   profileId: string
+  idempotencyKey: string
   replayed: boolean
+  requestSha256: string
   result: JsonRecord
   version: number
 }

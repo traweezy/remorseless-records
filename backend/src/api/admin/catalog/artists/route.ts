@@ -2,6 +2,10 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
+import {
+  readCatalogArtistMutation,
+  readCatalogArtistPage,
+} from "@/lib/catalog/profile-persistence-contracts"
 import { serializeCatalogArtist } from "@/modules/catalog/serializers"
 import {
   coerceJsonRecord,
@@ -10,6 +14,19 @@ import {
   toNullableString,
   type CatalogService,
 } from "../utils"
+
+const httpUrlSchema = z
+  .string()
+  .trim()
+  .max(2_048)
+  .url()
+  .refine((value) => {
+    try {
+      return ["http:", "https:"].includes(new URL(value).protocol)
+    } catch {
+      return false
+    }
+  })
 
 const listQuerySchema = z.object({
   q: z.string().trim().optional(),
@@ -20,12 +37,12 @@ const listQuerySchema = z.object({
 })
 
 const artistCreateSchema = z.object({
-  name: z.string().trim().min(1),
-  slug: z.string().trim().optional().nullable(),
-  sortName: z.string().trim().optional().nullable(),
-  imageUrl: z.string().trim().url().optional().nullable(),
-  bio: z.string().trim().optional().nullable(),
-  location: z.string().trim().optional().nullable(),
+  name: z.string().trim().min(1).max(500),
+  slug: z.string().trim().max(255).optional().nullable(),
+  sortName: z.string().trim().max(500).optional().nullable(),
+  imageUrl: httpUrlSchema.optional().nullable(),
+  bio: z.string().trim().max(50_000).optional().nullable(),
+  location: z.string().trim().max(500).optional().nullable(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
@@ -42,15 +59,17 @@ export const GET = async (
   const sortField = order ?? "name"
   const sortDirection = (direction ?? "asc").toUpperCase() as "ASC" | "DESC"
 
-  const [rawArtists, rawCount] =
+  const { count: rawCount, records: rawArtists } = readCatalogArtistPage(
     await catalogService.listAndCountCatalogArtists(
       {},
       {
         skip: q ? 0 : skip,
-        take: q ? Math.max(take + skip, 500) : take,
+        take: q ? 500 : take,
         order: { [sortField]: sortDirection },
       }
-    )
+    ),
+    q ? 500 : take
+  )
 
   const needle = q?.toLowerCase() ?? null
   const artists = needle
@@ -90,27 +109,19 @@ export const POST = async (
   const catalogService = req.scope.resolve("catalog") as CatalogService
   const baseSlug = slugify(parsed.data.slug ?? parsed.data.name, "artist")
   const slug = await resolveUniqueSlug(catalogService, baseSlug)
-  const createdResult = await catalogService.createCatalogArtists([
-    {
-      name: parsed.data.name.trim(),
-      slug,
-      sort_name: toNullableString(parsed.data.sortName),
-      image_url: toNullableString(parsed.data.imageUrl),
-      bio: toNullableString(parsed.data.bio),
-      location: toNullableString(parsed.data.location),
-      metadata: coerceJsonRecord(parsed.data.metadata),
-    },
-  ])
-  const created = Array.isArray(createdResult)
-    ? createdResult[0]
-    : createdResult
-
-  if (!created) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Unable to create catalog artist"
-    )
+  const payload = {
+    bio: toNullableString(parsed.data.bio),
+    image_url: toNullableString(parsed.data.imageUrl),
+    location: toNullableString(parsed.data.location),
+    metadata: coerceJsonRecord(parsed.data.metadata),
+    name: parsed.data.name.trim(),
+    slug,
+    sort_name: toNullableString(parsed.data.sortName),
   }
+  const created = readCatalogArtistMutation(
+    await catalogService.createCatalogArtists([payload]),
+    { fields: payload }
+  )
 
   res.status(201).json({ artist: serializeCatalogArtist(created) })
 }

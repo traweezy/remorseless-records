@@ -8,6 +8,10 @@ import {
   type CatalogVariantProfileRecord,
 } from "../../modules/catalog/serializers"
 import { coerceCatalogJsonRecord } from "./normalization"
+import {
+  readCatalogVariantProfileMutation,
+  readCatalogVariantProfiles,
+} from "./profile-persistence-contracts"
 import type {
   CatalogVariantProfileSnapshot,
   CatalogVariantProfileState,
@@ -46,10 +50,13 @@ export const resolveCatalogVariantProfile = async (
   variantId: string,
   sharedContext?: Context<EntityManager>
 ) => {
-  const profiles = await catalogService.listCatalogVariantProfiles(
-    { variant_id: variantId },
-    {},
-    sharedContext
+  const profiles = readCatalogVariantProfiles(
+    await catalogService.listCatalogVariantProfiles(
+      { variant_id: variantId },
+      { take: 2 },
+      sharedContext
+    ),
+    variantId
   )
   return profiles.at(0) ?? null
 }
@@ -73,9 +80,7 @@ export const snapshotCatalogVariantProfile = async (
     sharedContext
   )
   return {
-    profile: profile
-      ? profileState(profile as CatalogVariantProfileRecord)
-      : null,
+    profile: profile ? profileState(profile) : null,
   }
 }
 
@@ -104,14 +109,30 @@ export const restoreCatalogVariantProfileSnapshot = async (
   }
   const { id: profileId, ...profileData } = snapshot.profile
   if (current?.id === profileId) {
-    await catalogService.updateCatalogVariantProfiles(
-      [{ id: profileId, ...profileData }] as never,
-      sharedContext
+    readCatalogVariantProfileMutation(
+      await catalogService.updateCatalogVariantProfiles(
+        [{ id: profileId, ...profileData }] as never,
+        sharedContext
+      ),
+      {
+        fields: profileData,
+        id: profileId,
+        variantId,
+        version: snapshot.profile.version,
+      }
     )
     return
   }
-  await catalogService.createCatalogVariantProfiles(
-    [{ id: profileId, ...profileData }] as never,
-    sharedContext
+  readCatalogVariantProfileMutation(
+    await catalogService.createCatalogVariantProfiles(
+      [{ id: profileId, ...profileData }] as never,
+      sharedContext
+    ),
+    {
+      fields: profileData,
+      id: profileId,
+      variantId,
+      version: snapshot.profile.version,
+    }
   )
 }

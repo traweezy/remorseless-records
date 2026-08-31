@@ -414,3 +414,37 @@ production audit retains only the three documented ignored moderate findings;
 Trivy reports zero high/critical dependency or secret findings. No rendered
 layout changed in this server-side tranche, so the prior Merchandising visual
 acceptance remains the applicable screenshot evidence.
+
+### Catalog taxonomy and profile persistence hardening — August 30, 2026
+
+Artist and controlled-reference management keeps the existing searchable
+collection and short detail forms, but every list, detail, create, and update
+now validates the complete persistence response. Missing records produce a
+truthful not-found state; malformed present rows, duplicate natural keys,
+unsafe image schemes, excessive text or metadata, invalid ranks, and mismatched
+write acknowledgements fail as operational incidents instead of being shown as
+successful edits. Search and reuse remain bounded, and deterministic artist
+slug allocation stops after 50 conflicts with plain recovery guidance.
+
+The Product and Variant profile drawers retain the same task-sized fields and
+controlled choices. Their serializable commands now validate the singleton
+profile, exact saved fields and version, artist/reference ownership, exact
+relationship replacement, final readback, snapshots, restores, operation
+creation, completion, replay, and compensation. A response-loss retry is
+accepted only while the exact recorded profile identity and version remain
+stored; compensation is allowed only for the same verified pending operation.
+
+These changes add no new client decisions or technical fields. They make the
+existing pending, conflict, retry, not-found, and incident copy authoritative.
+
+Local acceptance passes 72 focused taxonomy/profile tests, all 250 Backend
+suites and 1,782 tests, strict TypeScript, the 1,201-file repository
+Biome/policy gate, the production Backend/Admin build, frozen packaged install
+with Medusa 2.18.0, and the Admin bundle budget. Backend coverage remains
+91.35% statements, 84.60% branches, 95.52% functions, and 91.39% lines. The
+Admin main bundle is 1,807,431 gzip bytes and total JavaScript is 2,388,023 gzip
+bytes. The production audit retains only the three documented ignored moderate
+findings; Trivy reports zero high/critical dependency, misconfiguration, or
+secret findings. No rendered component or layout changed in this server-side
+tranche, so the previous Product-authoring and controlled-choice screenshot
+evidence remains applicable.

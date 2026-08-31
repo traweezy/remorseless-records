@@ -3,6 +3,10 @@ import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 
 import { rejectCatalogHardDeletion } from "@/lib/catalog/hard-deletion"
+import {
+  readCatalogArtist,
+  readCatalogArtistMutation,
+} from "@/lib/catalog/profile-persistence-contracts"
 import { serializeCatalogArtist } from "@/modules/catalog/serializers"
 import {
   coerceJsonRecord,
@@ -12,13 +16,26 @@ import {
   type CatalogService,
 } from "../../utils"
 
+const httpUrlSchema = z
+  .string()
+  .trim()
+  .max(2_048)
+  .url()
+  .refine((value) => {
+    try {
+      return ["http:", "https:"].includes(new URL(value).protocol)
+    } catch {
+      return false
+    }
+  })
+
 const artistUpdateSchema = z.object({
-  name: z.string().trim().min(1).optional(),
-  slug: z.string().trim().optional().nullable(),
-  sortName: z.string().trim().optional().nullable(),
-  imageUrl: z.string().trim().url().optional().nullable(),
-  bio: z.string().trim().optional().nullable(),
-  location: z.string().trim().optional().nullable(),
+  name: z.string().trim().min(1).max(500).optional(),
+  slug: z.string().trim().max(255).optional().nullable(),
+  sortName: z.string().trim().max(500).optional().nullable(),
+  imageUrl: httpUrlSchema.optional().nullable(),
+  bio: z.string().trim().max(50_000).optional().nullable(),
+  location: z.string().trim().max(500).optional().nullable(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
@@ -35,7 +52,10 @@ export const GET = async (
   }
 
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const artist = await catalogService.retrieveCatalogArtist(id)
+  const artist = readCatalogArtist(
+    await catalogService.retrieveCatalogArtist(id),
+    id
+  )
   if (!artist) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
@@ -70,7 +90,10 @@ export const PUT = async (
   }
 
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const existing = await catalogService.retrieveCatalogArtist(id)
+  const existing = readCatalogArtist(
+    await catalogService.retrieveCatalogArtist(id),
+    id
+  )
   if (!existing) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
@@ -105,18 +128,10 @@ export const PUT = async (
     payload.metadata = coerceJsonRecord(parsed.data.metadata)
   }
 
-  const updatedResult = await catalogService.updateCatalogArtists([
-    { id, ...payload },
-  ])
-  const updated = Array.isArray(updatedResult)
-    ? updatedResult[0]
-    : updatedResult
-  if (!updated) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_FOUND,
-      "Catalog artist not found"
-    )
-  }
+  const updated = readCatalogArtistMutation(
+    await catalogService.updateCatalogArtists([{ id, ...payload }]),
+    { fields: payload, id }
+  )
 
   res.status(200).json({ artist: serializeCatalogArtist(updated) })
 }

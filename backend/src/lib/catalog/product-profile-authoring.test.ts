@@ -9,6 +9,9 @@ import type { CatalogService } from "./reference-resolution"
 type ServiceMock = jest.Mocked<CatalogService>
 
 const serviceFixture = (): ServiceMock => {
+  let operation: Record<string, unknown> | null = null
+  let artists: Record<string, unknown>[] = []
+  let references: Record<string, unknown>[] = []
   const service = {
     createCatalogArtists: jest.fn(),
     createCatalogAuthoringOperations: jest.fn(),
@@ -37,10 +40,56 @@ const serviceFixture = (): ServiceMock => {
 
   service.runCatalogTransaction.mockImplementation((async (task) =>
     task({ manager: {} } as never)) as CatalogService["runCatalogTransaction"])
+  service.createCatalogAuthoringOperations.mockImplementation(
+    async (payloads) =>
+      payloads.map((payload) => {
+        operation = {
+          ...payload,
+          completed_at: null,
+          error_code: null,
+          error_detail: null,
+          id: "catop_1",
+        }
+        return operation
+      }) as never
+  )
+  service.updateCatalogAuthoringOperations.mockImplementation(
+    async (payloads) =>
+      (payloads as Record<string, unknown>[]).map((payload) => {
+        operation = { ...operation, ...payload }
+        return operation
+      }) as never
+  )
+  service.createCatalogProductArtists.mockImplementation(async (payloads) => {
+    artists = payloads.map((payload, index) => ({
+      ...payload,
+      id: typeof payload.id === "string" ? payload.id : `cpart_${index + 1}`,
+    }))
+    return artists as never
+  })
+  service.deleteCatalogProductArtists.mockImplementation(async () => {
+    artists = []
+  })
+  service.listCatalogProductArtists.mockImplementation(
+    async () => artists as never
+  )
+  service.createCatalogProductReferences.mockImplementation(
+    async (payloads) => {
+      references = payloads.map((payload, index) => ({
+        ...payload,
+        id: typeof payload.id === "string" ? payload.id : `cpref_${index + 1}`,
+      }))
+      return references as never
+    }
+  )
+  service.deleteCatalogProductReferences.mockImplementation(async () => {
+    references = []
+  })
+  service.listCatalogProductReferences.mockImplementation(
+    async () => references as never
+  )
   service.listCatalogAuthoringOperations.mockResolvedValue([])
   service.listCatalogProductProfiles.mockResolvedValue([])
-  service.listCatalogProductArtists.mockResolvedValue([])
-  service.listCatalogProductReferences.mockResolvedValue([])
   service.listCatalogVariantProfiles.mockResolvedValue([])
   service.listCatalogArtists.mockResolvedValue([])
   service.listCatalogReferenceValues.mockResolvedValue([])
@@ -79,8 +128,49 @@ const command = {
   patch: {
     releaseTitle: "Album",
   },
-  requestSha256: "request_hash",
+  requestSha256: "a".repeat(64),
 }
+
+const operation = (overrides: Record<string, unknown> = {}) => ({
+  actor_id: command.actorId,
+  aggregate_id: command.aggregateId,
+  command: command.command,
+  completed_at: null,
+  error_code: null,
+  error_detail: null,
+  expected_version: command.expectedVersion,
+  id: "catop_1",
+  idempotency_key: command.idempotencyKey,
+  metadata: {},
+  request_sha256: command.requestSha256,
+  result: {},
+  status: "pending",
+  ...overrides,
+})
+
+const artist = (overrides: Record<string, unknown> = {}) => ({
+  bio: null,
+  id: "artist_1",
+  image_url: null,
+  location: null,
+  metadata: {},
+  name: "Artist",
+  slug: "artist",
+  sort_name: "Artist",
+  ...overrides,
+})
+
+const reference = (overrides: Record<string, unknown> = {}) => ({
+  description: null,
+  id: "cref_1",
+  is_active: true,
+  kind: "genre",
+  label: "Metal",
+  metadata: {},
+  rank: 0,
+  value: "metal",
+  ...overrides,
+})
 
 describe("catalogProductProfileUpsertSchema", () => {
   it("accepts the compatibility payload and bounds collection sizes", () => {
@@ -116,7 +206,7 @@ describe("mutateCatalogProductProfile", () => {
   it("creates a pending, versioned command without completing it early", async () => {
     const service = serviceFixture()
     service.createCatalogAuthoringOperations.mockResolvedValue([
-      { id: "operation_1" },
+      operation(),
     ] as never)
     service.createCatalogProductProfiles.mockResolvedValue([
       profile({ release_title: "Album" }),
@@ -126,7 +216,7 @@ describe("mutateCatalogProductProfile", () => {
       mutateCatalogProductProfile(service, command)
     ).resolves.toMatchObject({
       created: true,
-      operationId: "operation_1",
+      operationId: "catop_1",
       previous: { artists: [], profile: null, references: [] },
       productId: "prod_1",
       profileId: "cprof_1",
@@ -142,6 +232,11 @@ describe("mutateCatalogProductProfile", () => {
           status: "pending",
         }),
       ],
+      expect.anything()
+    )
+    expect(service.listCatalogAuthoringOperations).toHaveBeenCalledWith(
+      { idempotency_key: command.idempotencyKey },
+      { take: 2 },
       expect.anything()
     )
     expect(service.createCatalogProductProfiles).toHaveBeenCalledWith(
@@ -167,25 +262,52 @@ describe("mutateCatalogProductProfile", () => {
     expect(service.createCatalogAuthoringOperations).not.toHaveBeenCalled()
   })
 
+  it("rejects a mismatched pending audit acknowledgement before writing", async () => {
+    const service = serviceFixture()
+    service.createCatalogAuthoringOperations.mockResolvedValue([
+      operation({ request_sha256: "b".repeat(64) }),
+    ] as never)
+
+    await expect(mutateCatalogProductProfile(service, command)).rejects.toThrow(
+      "The catalog profile persistence boundary returned invalid structured data."
+    )
+    expect(service.createCatalogProductProfiles).not.toHaveBeenCalled()
+  })
+
+  it("rejects a Product profile write that does not echo the command", async () => {
+    const service = serviceFixture()
+    service.createCatalogAuthoringOperations.mockResolvedValue([
+      operation(),
+    ] as never)
+    service.createCatalogProductProfiles.mockResolvedValue([
+      profile({ release_title: "Different title" }),
+    ] as never)
+
+    await expect(mutateCatalogProductProfile(service, command)).rejects.toThrow(
+      "The catalog profile persistence boundary returned invalid structured data."
+    )
+  })
+
   it("replays only the exact completed command", async () => {
     const service = serviceFixture()
     service.listCatalogAuthoringOperations.mockResolvedValue([
-      {
-        actor_id: "user_1",
-        aggregate_id: "prod_1",
-        command: "catalog.product-profile.upsert",
-        expected_version: 0,
-        id: "operation_1",
-        request_sha256: "request_hash",
-        result: { profileId: "cprof_1", version: 1 },
+      operation({
+        completed_at: "2026-08-02T00:00:00.000Z",
+        result: {
+          created: true,
+          productId: "prod_1",
+          profileId: "cprof_1",
+          version: 1,
+        },
         status: "succeeded",
-      },
+      }),
     ] as never)
+    service.listCatalogProductProfiles.mockResolvedValue([profile()] as never)
 
     await expect(
       mutateCatalogProductProfile(service, command)
     ).resolves.toMatchObject({
-      operationId: "operation_1",
+      operationId: "catop_1",
       profileId: "cprof_1",
       replayed: true,
       version: 1,
@@ -195,37 +317,55 @@ describe("mutateCatalogProductProfile", () => {
     await expect(
       mutateCatalogProductProfile(service, {
         ...command,
-        requestSha256: "different_hash",
+        requestSha256: "b".repeat(64),
       })
     ).rejects.toThrow("cannot be replayed")
+  })
+
+  it("rejects replay when the retained profile no longer matches the result", async () => {
+    const service = serviceFixture()
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      operation({
+        completed_at: "2026-08-02T00:00:00.000Z",
+        result: {
+          created: true,
+          productId: "prod_1",
+          profileId: "cprof_1",
+          version: 1,
+        },
+        status: "succeeded",
+      }),
+    ] as never)
+    service.listCatalogProductProfiles.mockResolvedValue([
+      profile({ version: 2 }),
+    ] as never)
+
+    await expect(mutateCatalogProductProfile(service, command)).rejects.toThrow(
+      "no longer has its exact response"
+    )
   })
 
   it("tracks newly created artists and references for compensation", async () => {
     const service = serviceFixture()
     service.createCatalogAuthoringOperations.mockResolvedValue([
-      { id: "operation_1" },
+      operation(),
     ] as never)
-    service.createCatalogProductProfiles.mockResolvedValue([profile()] as never)
+    service.createCatalogProductProfiles.mockResolvedValue([
+      profile({ label_id: "cref_label" }),
+    ] as never)
     service.createCatalogArtists.mockResolvedValue([
-      { id: "artist_new", name: "Artist", slug: "artist" },
+      artist({ id: "artist_new" }),
     ] as never)
     service.createCatalogReferenceValues
       .mockResolvedValueOnce([
-        {
-          id: "ref_label",
+        reference({
+          id: "cref_label",
           kind: "label",
           label: "Label",
           value: "label",
-        },
+        }),
       ] as never)
-      .mockResolvedValueOnce([
-        {
-          id: "ref_genre",
-          kind: "genre",
-          label: "Metal",
-          value: "metal",
-        },
-      ] as never)
+      .mockResolvedValueOnce([reference({ id: "cref_genre" })] as never)
 
     await expect(
       mutateCatalogProductProfile(service, {
@@ -238,7 +378,7 @@ describe("mutateCatalogProductProfile", () => {
       })
     ).resolves.toMatchObject({
       createdArtistIds: ["artist_new"],
-      createdReferenceValueIds: ["ref_label", "ref_genre"],
+      createdReferenceValueIds: ["cref_label", "cref_genre"],
     })
     expect(service.createCatalogProductArtists).toHaveBeenCalledWith(
       [
@@ -254,6 +394,34 @@ describe("mutateCatalogProductProfile", () => {
 })
 
 describe("compensateCatalogProductProfileMutation", () => {
+  it("refuses to compensate an operation that is no longer pending", async () => {
+    const service = serviceFixture()
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      operation({
+        completed_at: "2026-08-02T00:00:00.000Z",
+        result: {
+          created: true,
+          productId: "prod_1",
+          profileId: "cprof_1",
+          version: 1,
+        },
+        status: "succeeded",
+      }),
+    ] as never)
+
+    await expect(
+      compensateCatalogProductProfileMutation(service, {
+        aggregateId: "prod_1",
+        createdArtistIds: [],
+        createdReferenceValueIds: [],
+        operationId: "catop_1",
+        previous: { artists: [], profile: null, references: [] },
+      })
+    ).rejects.toThrow("compensation operation could not be verified")
+    expect(service.deleteCatalogProductProfiles).not.toHaveBeenCalled()
+    expect(service.updateCatalogAuthoringOperations).not.toHaveBeenCalled()
+  })
+
   it("restores the complete prior aggregate and removes owned orphans", async () => {
     const service = serviceFixture()
     const previousProfile = profile({ release_title: "Before", version: 3 })
@@ -271,7 +439,7 @@ describe("compensateCatalogProductProfileMutation", () => {
       kind: "genre" as const,
       metadata: {},
       product_profile_id: "cprof_1",
-      reference_value_id: "ref_existing",
+      reference_value_id: "cref_existing",
       sort_order: 0,
     }
     service.listCatalogProductProfiles.mockImplementation(
@@ -279,18 +447,43 @@ describe("compensateCatalogProductProfileMutation", () => {
         "product_id" in filters ? ([profile({ version: 4 })] as never) : []
     )
     service.listCatalogProductArtists
-      .mockResolvedValueOnce([{ id: "current_artist_assignment" }] as never)
+      .mockResolvedValueOnce([
+        {
+          ...previousArtist,
+          id: "cpart_current",
+        },
+      ] as never)
       .mockResolvedValueOnce([])
     service.listCatalogProductReferences
-      .mockResolvedValueOnce([{ id: "current_reference_assignment" }] as never)
+      .mockResolvedValueOnce([
+        {
+          ...previousReference,
+          id: "cpref_current",
+        },
+      ] as never)
       .mockResolvedValue([])
     service.listCatalogVariantProfiles.mockResolvedValue([])
+    service.listCatalogAuthoringOperations.mockResolvedValue([
+      operation(),
+    ] as never)
+    service.updateCatalogProductProfiles.mockResolvedValue([
+      previousProfile,
+    ] as never)
+    service.updateCatalogAuthoringOperations.mockResolvedValue([
+      operation({
+        completed_at: "2026-08-02T00:00:00.000Z",
+        error_code: "workflow_compensated",
+        error_detail:
+          "A later workflow step failed; the previous product profile state was restored.",
+        status: "compensated",
+      }),
+    ] as never)
 
     await compensateCatalogProductProfileMutation(service, {
       aggregateId: "prod_1",
       createdArtistIds: ["artist_new"],
-      createdReferenceValueIds: ["ref_new"],
-      operationId: "operation_1",
+      createdReferenceValueIds: ["cref_new"],
+      operationId: "catop_1",
       previous: {
         artists: [previousArtist],
         profile: {
@@ -335,14 +528,14 @@ describe("compensateCatalogProductProfileMutation", () => {
       expect.anything()
     )
     expect(service.deleteCatalogReferenceValues).toHaveBeenCalledWith(
-      "ref_new",
+      "cref_new",
       expect.anything()
     )
     expect(service.updateCatalogAuthoringOperations).toHaveBeenCalledWith(
       [
         expect.objectContaining({
           error_code: "workflow_compensated",
-          id: "operation_1",
+          id: "catop_1",
           status: "compensated",
         }),
       ],

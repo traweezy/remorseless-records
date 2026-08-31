@@ -35,6 +35,13 @@ paths = [
 ]
 
 [[rules.allowlists]]
+description = "Ignore the synthetic catalog-profile idempotency fixture"
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^87960e90-348f-4a5d-a195-546b6d1e540f$''']
+paths = ['''^backend/src/lib/catalog/profile-persistence-contracts\.test\.ts$''']
+
+[[rules.allowlists]]
 description = "Ignore synthetic content-authoring idempotency fixtures"
 condition = "AND"
 regexTarget = "secret"

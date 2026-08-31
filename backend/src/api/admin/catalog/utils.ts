@@ -12,6 +12,7 @@ import {
   toCatalogOptionalDate,
   toCatalogOptionalInteger,
 } from "@/lib/catalog/normalization"
+import { readCatalogArtistList } from "@/lib/catalog/profile-persistence-contracts"
 import {
   readCatalogEntityIds,
   readCatalogVariantOwnerships,
@@ -54,22 +55,22 @@ export const resolveUniqueSlug = async (
   excludeId?: string
 ): Promise<string> => {
   const normalizedBase = baseSlug.trim() || "catalog"
-  let candidate = normalizedBase
-  let suffix = 1
-
-  while (suffix < 50) {
-    const existing = await catalogService.listCatalogArtists({
-      slug: candidate,
-    })
+  for (let suffix = 0; suffix < 50; suffix += 1) {
+    const candidate =
+      suffix === 0 ? normalizedBase : `${normalizedBase}-${suffix}`
+    const existing = readCatalogArtistList(
+      await catalogService.listCatalogArtists({ slug: candidate }, { take: 2 }),
+      { expectedSlug: candidate, maximumRows: 1 }
+    )
     const collision = existing.find((artist) => artist.id !== excludeId)
     if (!collision) {
       return candidate
     }
-    candidate = `${normalizedBase}-${suffix}`
-    suffix += 1
   }
-
-  return `${normalizedBase}-${Date.now()}`
+  throw new MedusaError(
+    MedusaError.Types.CONFLICT,
+    "Unable to allocate a unique artist slug. Choose a more specific slug."
+  )
 }
 
 const getQuery = (req: MedusaRequest): QueryGraph =>

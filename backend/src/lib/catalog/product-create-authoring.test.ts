@@ -66,12 +66,15 @@ const mutationFixture = (
   variantId: string,
   index: number
 ): CatalogVariantProfileMutationResult => ({
+  actorId: "user_1",
   created: true,
   createdReferenceValueIds: [`reference_${index}`],
   operationId: `operation_${index}`,
   previous: { profile: null },
   profileId: `variant_profile_${index}`,
+  idempotencyKey: "00000000-0000-4000-8000-000000000001",
   replayed: false,
+  requestSha256: "a".repeat(64),
   result: {},
   variantId,
   version: 1,

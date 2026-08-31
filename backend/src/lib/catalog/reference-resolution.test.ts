@@ -15,13 +15,34 @@ const serviceFixture = (): jest.Mocked<CatalogService> =>
     retrieveCatalogReferenceValue: jest.fn(),
   }) as unknown as jest.Mocked<InstanceType<typeof CatalogModuleService>>
 
+const artist = (overrides: Record<string, unknown> = {}) => ({
+  bio: null,
+  id: "artist_1",
+  image_url: null,
+  location: null,
+  metadata: {},
+  name: "Artist",
+  slug: "artist",
+  sort_name: "Artist",
+  ...overrides,
+})
+
+const reference = (overrides: Record<string, unknown> = {}) => ({
+  description: null,
+  id: "cref_1",
+  is_active: true,
+  kind: "format",
+  label: "Compact Disc",
+  metadata: {},
+  rank: 0,
+  value: "cd",
+  ...overrides,
+})
+
 describe("catalog reference resolution", () => {
   it("retrieves explicit artist IDs without creating a duplicate", async () => {
     const service = serviceFixture()
-    service.retrieveCatalogArtist.mockResolvedValue({
-      id: "artist_1",
-      name: "Artist",
-    } as never)
+    service.retrieveCatalogArtist.mockResolvedValue(artist() as never)
 
     await expect(
       resolveOrCreateCatalogArtist(service, { artistId: "artist_1" })
@@ -36,7 +57,12 @@ describe("catalog reference resolution", () => {
   it("reuses an artist by canonical slug before creating", async () => {
     const service = serviceFixture()
     service.listCatalogArtists.mockResolvedValue([
-      { id: "artist_existing", name: "Déjà Vu", slug: "deja-vu" },
+      artist({
+        id: "artist_existing",
+        name: "Déjà Vu",
+        slug: "deja-vu",
+        sort_name: "Déjà Vu",
+      }),
     ] as never)
 
     await expect(
@@ -47,7 +73,7 @@ describe("catalog reference resolution", () => {
     })
     expect(service.listCatalogArtists).toHaveBeenCalledWith(
       { slug: "deja-vu" },
-      {},
+      { take: 2 },
       undefined
     )
     expect(service.createCatalogArtists).not.toHaveBeenCalled()
@@ -57,7 +83,12 @@ describe("catalog reference resolution", () => {
     const service = serviceFixture()
     service.listCatalogArtists.mockResolvedValue([])
     service.createCatalogArtists.mockResolvedValue([
-      { id: "artist_new", name: "New Artist", slug: "new-artist" },
+      artist({
+        id: "artist_new",
+        name: "New Artist",
+        slug: "new-artist",
+        sort_name: "New Artist",
+      }),
     ] as never)
 
     await expect(
@@ -71,12 +102,7 @@ describe("catalog reference resolution", () => {
   it("reuses controlled reference values by kind and canonical value", async () => {
     const service = serviceFixture()
     service.listCatalogReferenceValues.mockResolvedValue([
-      {
-        id: "ref_existing",
-        kind: "format",
-        label: "Compact Disc",
-        value: "cd",
-      },
+      reference({ id: "cref_existing", value: "CD" }),
     ] as never)
 
     await expect(
@@ -87,11 +113,11 @@ describe("catalog reference resolution", () => {
       })
     ).resolves.toMatchObject({
       created: false,
-      record: { id: "ref_existing" },
+      record: { id: "cref_existing" },
     })
     expect(service.listCatalogReferenceValues).toHaveBeenCalledWith(
       { kind: "format", value: "CD" },
-      {},
+      { take: 2 },
       undefined
     )
   })
@@ -100,12 +126,12 @@ describe("catalog reference resolution", () => {
     const service = serviceFixture()
     service.listCatalogReferenceValues.mockResolvedValue([])
     service.createCatalogReferenceValues.mockResolvedValue([
-      {
-        id: "ref_new",
+      reference({
+        id: "cref_new",
         kind: "genre",
         label: "Death Metal",
         value: "death-metal",
-      },
+      }),
     ] as never)
 
     await expect(
@@ -115,7 +141,7 @@ describe("catalog reference resolution", () => {
       })
     ).resolves.toMatchObject({
       created: true,
-      record: { id: "ref_new" },
+      record: { id: "cref_new" },
     })
     await expect(
       resolveOrCreateCatalogReferenceValue(service, {
@@ -128,27 +154,23 @@ describe("catalog reference resolution", () => {
   it("rejects explicit values with the wrong kind or archived state", async () => {
     const service = serviceFixture()
     service.retrieveCatalogReferenceValue
-      .mockResolvedValueOnce({
-        id: "ref_genre",
-        is_active: true,
-        kind: "genre",
-      } as never)
-      .mockResolvedValueOnce({
-        id: "ref_archived",
-        is_active: false,
-        kind: "format",
-      } as never)
+      .mockResolvedValueOnce(
+        reference({ id: "cref_genre", kind: "genre" }) as never
+      )
+      .mockResolvedValueOnce(
+        reference({ id: "cref_archived", is_active: false }) as never
+      )
 
     await expect(
       resolveOrCreateCatalogReferenceValue(service, {
         kind: "format",
-        referenceValueId: "ref_genre",
+        referenceValueId: "cref_genre",
       })
     ).rejects.toThrow("is not a format")
     await expect(
       resolveOrCreateCatalogReferenceValue(service, {
         kind: "format",
-        referenceValueId: "ref_archived",
+        referenceValueId: "cref_archived",
       })
     ).rejects.toThrow("archived")
   })

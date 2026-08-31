@@ -246,6 +246,21 @@ restore, and media quarantine or restore paths. Inventory-item unlinking remains
 available because it removes a relationship rather than physically deleting a
 catalog entity.
 
+Catalog taxonomy and Product/Variant profile authoring also fail closed at the
+module-service boundary. Artist and controlled-value lists, detail reads, and
+create/update acknowledgements must contain complete, bounded, canonical rows;
+an absent detail becomes a real not-found response while a malformed present
+row is treated as an operational failure. Natural-key lookups read at most two
+rows so duplicate slugs or controlled values cannot be silently reused.
+
+Profile commands validate the singleton profile, every artist/reference
+relationship, the exact saved fields and next version, and the final bounded
+relationship set inside the serializable transaction. A response-loss replay
+returns only the recorded profile identity/version when that exact state is
+still retained. Workflow completion and compensation must acknowledge the same
+audit row, actor, command, expected version, idempotency key, request hash,
+result, and terminal state before Admin reports success.
+
 ```mermaid
 flowchart TD
   Login[Administrator signs in] --> Roles[Medusa resolves assigned roles]

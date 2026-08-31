@@ -3065,10 +3065,54 @@ is 2,388,187 gzip bytes. The production audit retains only the three documented
 ignored moderate findings; Trivy reports zero high/critical dependency or
 secret findings.
 
+Exact staging acceptance for the shelf tranche: source head
+`1b22391200b715a64cb4a8ea85241abf1e0d0074` passed Root CI `33351485972`,
+Backend CI `33351486033`, and Storefront CI `33351486101`. Railway released
+Backend deployment `b20711b8-2de4-4657-87b1-9c7e7958f695` at `SUCCESS` with
+image digest
+`sha256:f4f565de3b4d606557926eddcee2817660326f264a3b44da8fcdd358c63e81e7`.
+
 The preceding content tranche also exposed one generic-key false positive for
 a synthetic UUID shared by two content-authoring tests. The Gitleaks exception
 is limited to that exact value and those exact test paths; the pinned 8.30.1
 full-history scan still inspects all 885 commits and reports zero findings.
+
+The fourteenth post-migration boundary tranche closes the Admin Catalog
+taxonomy and Product/Variant profile persistence family. Artist and controlled
+reference pages, detail reads, natural-key resolution, and create/update
+acknowledgements require bounded complete rows, canonical unique identities,
+safe HTTP(S) media, bounded text and recursive JSON, valid kinds/ranks, and
+exact echoed fields. Missing details remain distinct from malformed present
+data. Natural-key queries request two rows and reject ambiguity rather than
+silently reusing one duplicate.
+
+Product and Variant authoring validate singleton profile state, exact saved
+fields and next versions, relation ownership and uniqueness, exact relation
+creation, final readback, snapshots, restores, and orphan checks. Relationship
+queries request a sentinel row beyond the 100-row command limit so oversized
+state cannot hide at pagination. Pending, succeeded, and compensated audit
+rows preserve the exact actor, aggregate, command, expected version,
+idempotency key, request SHA-256, result, timestamps, and terminal error.
+Response-loss replay additionally requires the recorded profile identity and
+version to remain stored; compensation refuses any operation that is no longer
+pending.
+
+Seventy-two focused contract, route, resolution, authoring, replay,
+compensation, restore, and cost-bound tests pass with strict TypeScript and
+Biome. Complete local acceptance passes the 1,201-file repository QA gate, all
+250 Backend suites and 1,782 tests, the production Backend/Admin build, frozen
+packaged install with Medusa 2.18.0, and the Admin bundle budget. Backend
+coverage remains 91.35% statements, 84.60% branches, 95.52% functions, and
+91.39% lines. The Admin main bundle is 1,807,431 gzip bytes and total JavaScript
+is 2,388,023 gzip bytes. The production audit retains only the three documented
+ignored moderate findings; Trivy reports zero high/critical dependency,
+misconfiguration, or secret findings. The remaining dated boundary-hardening
+item stays open for unrelated provider and service families.
+
+The staged Gitleaks scan classified the contract test's synthetic UUID as a
+generic key because of its `idempotencyKey` label. The exception is limited to
+that exact value and exact test path; it does not suppress other UUIDs, paths,
+or rules.
 
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed

@@ -94,12 +94,15 @@ export type CatalogVariantProfileSnapshot = {
 }
 
 export type CatalogVariantProfileMutationResult = {
+  actorId: string | null
   created: boolean
   createdReferenceValueIds: string[]
   operationId: string
   previous: CatalogVariantProfileSnapshot
   profileId: string
+  idempotencyKey: string
   replayed: boolean
+  requestSha256: string
   result: JsonRecord
   variantId: string
   version: number

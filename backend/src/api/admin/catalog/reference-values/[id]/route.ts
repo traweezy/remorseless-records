@@ -4,6 +4,10 @@ import { z } from "zod"
 
 import { rejectCatalogHardDeletion } from "@/lib/catalog/hard-deletion"
 import {
+  readCatalogReferenceValue,
+  readCatalogReferenceValueMutation,
+} from "@/lib/catalog/profile-persistence-contracts"
+import {
   catalogReferenceKindValues,
   serializeCatalogReferenceValue,
 } from "@/modules/catalog/serializers"
@@ -16,10 +20,10 @@ import {
 
 const referenceUpdateSchema = z.object({
   kind: z.enum(catalogReferenceKindValues).optional(),
-  label: z.string().trim().min(1).optional(),
-  value: z.string().trim().optional().nullable(),
-  description: z.string().trim().optional().nullable(),
-  rank: z.number().int().optional(),
+  label: z.string().trim().min(1).max(500).optional(),
+  value: z.string().trim().max(500).optional().nullable(),
+  description: z.string().trim().max(10_000).optional().nullable(),
+  rank: z.number().int().min(0).max(1_000_000).optional(),
   isActive: z.boolean().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 })
@@ -37,7 +41,10 @@ export const GET = async (
   }
 
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const value = await catalogService.retrieveCatalogReferenceValue(id)
+  const value = readCatalogReferenceValue(
+    await catalogService.retrieveCatalogReferenceValue(id),
+    id
+  )
   if (!value) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
@@ -72,7 +79,10 @@ export const PUT = async (
   }
 
   const catalogService = req.scope.resolve("catalog") as CatalogService
-  const existing = await catalogService.retrieveCatalogReferenceValue(id)
+  const existing = readCatalogReferenceValue(
+    await catalogService.retrieveCatalogReferenceValue(id),
+    id
+  )
   if (!existing) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
@@ -110,18 +120,10 @@ export const PUT = async (
     payload.metadata = coerceJsonRecord(parsed.data.metadata)
   }
 
-  const updatedResult = await catalogService.updateCatalogReferenceValues([
-    { id, ...payload },
-  ])
-  const updated = Array.isArray(updatedResult)
-    ? updatedResult[0]
-    : updatedResult
-  if (!updated) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_FOUND,
-      "Catalog reference value not found"
-    )
-  }
+  const updated = readCatalogReferenceValueMutation(
+    await catalogService.updateCatalogReferenceValues([{ id, ...payload }]),
+    { fields: payload, id }
+  )
 
   res.status(200).json({ value: serializeCatalogReferenceValue(updated) })
 }
