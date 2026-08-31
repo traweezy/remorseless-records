@@ -58,4 +58,78 @@ describe("discography projection reconciliation", () => {
       ],
     })
   })
+
+  it("preserves an operator archive when a release remains projected", () => {
+    expect(
+      planDiscographyProjectionSync(
+        [{ product_id: "prod_returned", title: "Returned", version: 1 }],
+        [
+          {
+            archived_at: "2026-08-01T00:00:00.000Z",
+            id: "disc_returned",
+            product_id: "prod_returned",
+            source_mode: "catalog_product",
+            version: 4,
+          },
+        ],
+        new Date("2026-08-31T05:00:00.000Z")
+      ).updates
+    ).toEqual([
+      {
+        id: "disc_returned",
+        product_id: "prod_returned",
+        title: "Returned",
+        version: 5,
+      },
+    ])
+  })
+
+  it.each([
+    [
+      "duplicate projected Product links",
+      [
+        { product_id: "prod_1", version: 1 },
+        { product_id: "prod_1", version: 1 },
+      ],
+      [],
+    ],
+    [
+      "duplicate persisted Product links",
+      [],
+      [
+        {
+          id: "disc_1",
+          product_id: "prod_1",
+          source_mode: "catalog_product",
+          version: 1,
+        },
+        {
+          id: "disc_2",
+          product_id: "prod_1",
+          source_mode: "catalog_product",
+          version: 1,
+        },
+      ],
+    ],
+    [
+      "versions that cannot advance safely",
+      [],
+      [
+        {
+          id: "disc_1",
+          product_id: "prod_1",
+          source_mode: "catalog_product",
+          version: Number.MAX_SAFE_INTEGER,
+        },
+      ],
+    ],
+  ])("rejects %s", (_label, projected, existing) => {
+    expect(() =>
+      planDiscographyProjectionSync(
+        projected,
+        existing,
+        new Date("2026-08-31T05:00:00.000Z")
+      )
+    ).toThrow()
+  })
 })

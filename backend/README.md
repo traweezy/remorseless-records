@@ -876,11 +876,17 @@ native grant is a response prerequisite rather than a conditional link-only
 capability.
 
 The reconciliation command validates the complete Product projection before a
-serializable write. It updates existing linked rows, creates missing rows,
-archives linked rows no longer present in the projection, and retains every
-manual record. An operator-archived linked record is not silently restored by a
-later reconciliation. The final parity check requires exactly one linked row
-per projected Product ID and no active stale linked rows:
+serializable write. Source pagination requires stable exact counts and rejects
+short, drifting, malformed, or oversized pages. The module then loads
+Discography in stable 250-row pages with a 25,000-row ceiling, rejects duplicate
+IDs, Product IDs, and handles across pages, and validates every projected field.
+It updates existing linked rows, creates missing rows, archives linked rows no
+longer present in the projection, and retains every manual record. An
+operator-archived linked record is not silently restored by a later
+reconciliation. Mutations run in bounded 100-row batches; each returned record
+must match its requested Product, complete field set, archive state, and next
+version. A final transactional readback preserves every prior identity, accepts
+only the exact expected linked set, and requires the expected total count:
 
 ```bash
 pnpm --filter backend discography:build

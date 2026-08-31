@@ -31,6 +31,35 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const SHA256 = /^[a-f0-9]{64}$/u
 const HTTP_PROTOCOLS = new Set(["http:", "https:"])
 
+export const DISCOGRAPHY_PROJECTION_MAXIMUM_RECORDS = 25_000
+export const DISCOGRAPHY_PROJECTION_PAGE_SIZE = 250
+
+export type DiscographyProjectionPersistenceEntry = {
+  album: string
+  artist: string
+  availability: (typeof discographyAvailabilityValues)[number]
+  catalog_number: string | null
+  collection_title: string | null
+  cover_alt_text: string | null
+  cover_url: string | null
+  formats: string[]
+  genres: string[]
+  product_handle: string
+  product_id: string
+  release_date: string | null
+  release_year: number | null
+  source_mode: "catalog_product"
+  tags: string[]
+  title: string
+  version: number
+}
+
+export type DiscographyProjectionRecordExpectation =
+  DiscographyProjectionPersistenceEntry & {
+    archived_at: string | null
+    id?: string
+  }
+
 const invalidContentPersistence = (): never => {
   throw new MedusaError(
     MedusaError.Types.UNEXPECTED_STATE,
@@ -350,6 +379,242 @@ export const readAdminDiscographyMutation = (
   return entry.version === expected.version
     ? entry
     : invalidContentPersistence()
+}
+
+const DISCOGRAPHY_PROJECTION_KEYS = [
+  "album",
+  "artist",
+  "availability",
+  "catalog_number",
+  "collection_title",
+  "cover_alt_text",
+  "cover_url",
+  "formats",
+  "genres",
+  "product_handle",
+  "product_id",
+  "release_date",
+  "release_year",
+  "source_mode",
+  "tags",
+  "title",
+  "version",
+] as const
+
+const toDiscographyProjectionEntry = (
+  record: DiscographyEntryRecord
+): DiscographyProjectionPersistenceEntry => {
+  if (
+    record.source_mode !== "catalog_product" ||
+    record.product_id === null ||
+    record.product_handle === null ||
+    record.formats === null ||
+    record.genres === null ||
+    record.tags === null
+  ) {
+    return invalidContentPersistence()
+  }
+  return {
+    album: record.album,
+    artist: record.artist,
+    availability: record.availability,
+    catalog_number: record.catalog_number,
+    collection_title: record.collection_title,
+    cover_alt_text: record.cover_alt_text,
+    cover_url: record.cover_url,
+    formats: record.formats,
+    genres: record.genres,
+    product_handle: record.product_handle,
+    product_id: record.product_id,
+    release_date: nullableTimestamp(record.release_date),
+    release_year: record.release_year,
+    source_mode: record.source_mode,
+    tags: record.tags,
+    title: record.title,
+    version: record.version,
+  }
+}
+
+export const readDiscographyProjectionInput = (
+  value: unknown,
+  maximumRows = DISCOGRAPHY_PROJECTION_MAXIMUM_RECORDS
+): DiscographyProjectionPersistenceEntry[] => {
+  if (!Array.isArray(value) || value.length > maximumRows) {
+    return invalidContentPersistence()
+  }
+  const productIds = new Set<string>()
+  const productHandles = new Set<string>()
+  return value.map((candidate, index) => {
+    const source = requiredRecord(candidate)
+    exactKeys(source, DISCOGRAPHY_PROJECTION_KEYS)
+    const entry = toDiscographyProjectionEntry(
+      readAdminDiscographyEntry(
+        {
+          ...source,
+          archived_at: null,
+          id: `disc_projection_input_${index}`,
+        },
+        `disc_projection_input_${index}`
+      ) ?? invalidContentPersistence()
+    )
+    if (
+      entry.version !== 1 ||
+      productIds.has(entry.product_id) ||
+      productHandles.has(entry.product_handle)
+    ) {
+      return invalidContentPersistence()
+    }
+    productIds.add(entry.product_id)
+    productHandles.add(entry.product_handle)
+    return entry
+  })
+}
+
+const sameDiscographyProjectionRecord = (
+  actual: DiscographyEntryRecord,
+  expected: DiscographyProjectionRecordExpectation
+): boolean => {
+  const normalized = toDiscographyProjectionEntry(actual)
+  return (
+    (expected.id === undefined || actual.id === expected.id) &&
+    normalized.album === expected.album &&
+    normalized.artist === expected.artist &&
+    normalized.availability === expected.availability &&
+    normalized.catalog_number === expected.catalog_number &&
+    normalized.collection_title === expected.collection_title &&
+    normalized.cover_alt_text === expected.cover_alt_text &&
+    normalized.cover_url === expected.cover_url &&
+    JSON.stringify(normalized.formats) === JSON.stringify(expected.formats) &&
+    JSON.stringify(normalized.genres) === JSON.stringify(expected.genres) &&
+    normalized.product_handle === expected.product_handle &&
+    normalized.product_id === expected.product_id &&
+    normalized.release_date === expected.release_date &&
+    normalized.release_year === expected.release_year &&
+    normalized.source_mode === expected.source_mode &&
+    JSON.stringify(normalized.tags) === JSON.stringify(expected.tags) &&
+    normalized.title === expected.title &&
+    normalized.version === expected.version &&
+    nullableTimestamp(actual.archived_at) === expected.archived_at
+  )
+}
+
+export const readDiscographyProjectionMutationBatch = (
+  value: unknown,
+  expected: readonly DiscographyProjectionRecordExpectation[]
+): DiscographyEntryRecord[] => {
+  const mutationRecords = records(value)
+  if (mutationRecords.length !== expected.length) {
+    return invalidContentPersistence()
+  }
+  const byIdentity = new Map(
+    expected.map((entry) => [entry.id ?? entry.product_id, entry])
+  )
+  if (byIdentity.size !== expected.length) {
+    return invalidContentPersistence()
+  }
+  const seen = new Set<string>()
+  const recordIds = new Set<string>()
+  const productIds = new Set<string>()
+  return mutationRecords.map((candidate) => {
+    const entry =
+      readAdminDiscographyEntry(candidate) ?? invalidContentPersistence()
+    const key = byIdentity.has(entry.id) ? entry.id : entry.product_id
+    if (
+      key === null ||
+      seen.has(key) ||
+      recordIds.has(entry.id) ||
+      (entry.product_id !== null && productIds.has(entry.product_id))
+    ) {
+      return invalidContentPersistence()
+    }
+    const expectation = byIdentity.get(key)
+    if (!expectation || !sameDiscographyProjectionRecord(entry, expectation)) {
+      return invalidContentPersistence()
+    }
+    seen.add(key)
+    recordIds.add(entry.id)
+    if (entry.product_id !== null) {
+      productIds.add(entry.product_id)
+    }
+    return entry
+  })
+}
+
+export const loadAllDiscographyProjectionRecords = async (
+  listPage: (skip: number, take: number) => Promise<unknown>
+): Promise<DiscographyEntryRecord[]> => {
+  const loaded: DiscographyEntryRecord[] = []
+  const ids = new Set<string>()
+  const productIds = new Set<string>()
+  const productHandles = new Set<string>()
+  let expectedCount: number | null = null
+
+  while (expectedCount === null || loaded.length < expectedCount) {
+    const page = readAdminDiscographyPage(
+      await listPage(loaded.length, DISCOGRAPHY_PROJECTION_PAGE_SIZE),
+      DISCOGRAPHY_PROJECTION_PAGE_SIZE
+    )
+    expectedCount ??= page.count
+    const expectedPageLength = Math.min(
+      DISCOGRAPHY_PROJECTION_PAGE_SIZE,
+      expectedCount - loaded.length
+    )
+    if (
+      expectedCount > DISCOGRAPHY_PROJECTION_MAXIMUM_RECORDS ||
+      page.count !== expectedCount ||
+      expectedPageLength < 0 ||
+      page.records.length !== expectedPageLength
+    ) {
+      return invalidContentPersistence()
+    }
+    for (const entry of page.records) {
+      if (ids.has(entry.id)) {
+        return invalidContentPersistence()
+      }
+      ids.add(entry.id)
+      if (entry.product_id !== null) {
+        if (productIds.has(entry.product_id)) {
+          return invalidContentPersistence()
+        }
+        productIds.add(entry.product_id)
+      }
+      if (entry.product_handle !== null) {
+        if (productHandles.has(entry.product_handle)) {
+          return invalidContentPersistence()
+        }
+        productHandles.add(entry.product_handle)
+      }
+      loaded.push(entry)
+    }
+  }
+  return loaded.length === expectedCount ? loaded : invalidContentPersistence()
+}
+
+export const assertExactDiscographyProjectionRecords = (
+  recordsToValidate: readonly DiscographyEntryRecord[],
+  expected: readonly DiscographyProjectionRecordExpectation[]
+): void => {
+  if (recordsToValidate.length !== expected.length) {
+    invalidContentPersistence()
+  }
+  const byIdentity = new Map(
+    recordsToValidate.map((entry) => [entry.id, entry] as const)
+  )
+  if (byIdentity.size !== recordsToValidate.length) {
+    invalidContentPersistence()
+  }
+  const expectedIds = new Set<string>()
+  for (const expectation of expected) {
+    const expectedId: string = expectation.id ?? invalidContentPersistence()
+    if (expectedIds.has(expectedId)) {
+      invalidContentPersistence()
+    }
+    expectedIds.add(expectedId)
+    const actual = byIdentity.get(expectedId)
+    if (!actual || !sameDiscographyProjectionRecord(actual, expectation)) {
+      invalidContentPersistence()
+    }
+  }
 }
 
 export type AdminDiscographyProductProjection = {

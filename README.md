@@ -1415,6 +1415,13 @@ Product remains readable as label history without sending a customer to a 404.
 The Storefront revalidates this read model every 60 seconds to bound lifecycle
 staleness without fetching the full Discography for every visitor.
 
+Rebuild source reads require exact stable page counts. The serializable
+replacement validates every projected field and complete stored row, rejects
+duplicate IDs/Product links/handles and unsafe version increments, preserves an
+operator archive for a Product that remains projected, and writes in bounded
+batches. No create, update, or stale-link archive is accepted until its complete
+acknowledgement and the final exact linked-row readback both match the plan.
+
 Application startup is intentionally read-only. It does not migrate or seed
 the database, discover or persist secrets, change bucket policy, or rebuild
 search. Railway executes the fail-closed backend release command before

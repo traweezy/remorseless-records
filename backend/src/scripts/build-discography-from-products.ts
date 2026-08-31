@@ -16,6 +16,7 @@ import {
   type DiscographyProjectionSource,
   type DiscographyProjectionVariant,
 } from "@/lib/catalog/discography-projection"
+import { loadAllDiscographyProjectionRecords } from "@/lib/content/persistence-contracts"
 import type CatalogModuleService from "@/modules/catalog/service"
 import type DiscographyModuleService from "@/modules/discography/service"
 
@@ -50,6 +51,7 @@ type ProductService = {
   listAndCountProducts: (
     filters?: Record<string, unknown>,
     config?: {
+      order?: Record<string, "ASC" | "DESC">
       relations?: string[]
       skip?: number
       take?: number
@@ -79,11 +81,13 @@ type CatalogReferenceValueRecord = {
 
 type CatalogProductArtistRecord = {
   display_name: string
+  id: string
   product_profile_id: string
   sort_order?: number | null
 }
 
 type CatalogProductReferenceRecord = {
+  id: string
   kind: string
   product_profile_id: string
   reference_value_id: string
@@ -92,30 +96,62 @@ type CatalogProductReferenceRecord = {
 
 type CatalogVariantProfileRecord = {
   availability_status?: string | null
+  id: string
   variant_id: string
 }
 
-type ExistingDiscographyRecord = {
-  archived_at?: Date | string | null
-  id: string
-  product_id?: string | null
-  source_mode?: string | null
-}
+const MAXIMUM_SOURCE_RECORDS = 100_000
 
-const listAll = async <T>(
-  fetchPage: (skip: number, take: number) => Promise<[T[], number]>
+export const listAll = async <T>(
+  fetchPage: (skip: number, take: number) => Promise<unknown>,
+  identity?: (record: T) => string
 ): Promise<T[]> => {
   const results: T[] = []
+  const identities = new Set<string>()
   const take = 200
-  let skip = 0
-  while (true) {
-    const [items, count] = await fetchPage(skip, take)
-    results.push(...items)
-    skip += items.length
-    if (!items.length || skip >= count) {
-      return results
+  let expectedCount: number | null = null
+  while (expectedCount === null || results.length < expectedCount) {
+    const value = await fetchPage(results.length, take)
+    if (
+      !Array.isArray(value) ||
+      value.length !== 2 ||
+      !Array.isArray(value[0]) ||
+      !Number.isSafeInteger(value[1]) ||
+      value[1] < 0 ||
+      value[1] > MAXIMUM_SOURCE_RECORDS
+    ) {
+      throw new Error(
+        "Discography source pagination returned invalid structured data."
+      )
     }
+    const items = value[0] as T[]
+    const count = value[1] as number
+    const stableCount: number = expectedCount ?? count
+    expectedCount = stableCount
+    const expectedPageLength = Math.min(take, stableCount - results.length)
+    if (
+      count !== stableCount ||
+      expectedPageLength < 0 ||
+      items.length !== expectedPageLength
+    ) {
+      throw new Error(
+        "Discography source pagination changed during the rebuild."
+      )
+    }
+    if (identity) {
+      for (const item of items) {
+        const key = identity(item)
+        if (!key || identities.has(key)) {
+          throw new Error(
+            "Discography source pagination returned duplicate identities."
+          )
+        }
+        identities.add(key)
+      }
+    }
+    results.push(...items)
   }
+  return results
 }
 
 const groupBy = <T>(
@@ -186,33 +222,64 @@ export default async function buildDiscographyFromProducts({
     variantProfiles,
     existingEntries,
   ] = await Promise.all([
-    listAll<ProductRecord>((skip, take) =>
-      productService.listAndCountProducts(
+    listAll<ProductRecord>(
+      (skip, take) =>
+        productService.listAndCountProducts(
+          {},
+          {
+            order: { id: "ASC" },
+            relations: ["collection", "images", "variants"],
+            skip,
+            take,
+          }
+        ),
+      ({ id }) => id
+    ),
+    listAll<CatalogProductProfileRecord>(
+      (skip, take) =>
+        catalogService.listAndCountCatalogProductProfiles(
+          {},
+          { order: { id: "ASC" }, skip, take }
+        ),
+      ({ id }) => id
+    ),
+    listAll<CatalogReferenceValueRecord>(
+      (skip, take) =>
+        catalogService.listAndCountCatalogReferenceValues(
+          {},
+          { order: { id: "ASC" }, skip, take }
+        ),
+      ({ id }) => id
+    ),
+    listAll<CatalogProductArtistRecord>(
+      (skip, take) =>
+        catalogService.listAndCountCatalogProductArtists(
+          {},
+          { order: { id: "ASC" }, skip, take }
+        ),
+      ({ id }) => id
+    ),
+    listAll<CatalogProductReferenceRecord>(
+      (skip, take) =>
+        catalogService.listAndCountCatalogProductReferences(
+          {},
+          { order: { id: "ASC" }, skip, take }
+        ),
+      ({ id }) => id
+    ),
+    listAll<CatalogVariantProfileRecord>(
+      (skip, take) =>
+        catalogService.listAndCountCatalogVariantProfiles(
+          {},
+          { order: { id: "ASC" }, skip, take }
+        ),
+      ({ id }) => id
+    ),
+    loadAllDiscographyProjectionRecords((skip, take) =>
+      discographyService.listAndCountDiscographyEntries(
         {},
-        {
-          relations: ["collection", "images", "variants"],
-          skip,
-          take,
-        }
+        { order: { id: "ASC" }, skip, take }
       )
-    ),
-    listAll<CatalogProductProfileRecord>((skip, take) =>
-      catalogService.listAndCountCatalogProductProfiles({}, { skip, take })
-    ),
-    listAll<CatalogReferenceValueRecord>((skip, take) =>
-      catalogService.listAndCountCatalogReferenceValues({}, { skip, take })
-    ),
-    listAll<CatalogProductArtistRecord>((skip, take) =>
-      catalogService.listAndCountCatalogProductArtists({}, { skip, take })
-    ),
-    listAll<CatalogProductReferenceRecord>((skip, take) =>
-      catalogService.listAndCountCatalogProductReferences({}, { skip, take })
-    ),
-    listAll<CatalogVariantProfileRecord>((skip, take) =>
-      catalogService.listAndCountCatalogVariantProfiles({}, { skip, take })
-    ),
-    listAll<ExistingDiscographyRecord>((skip, take) =>
-      discographyService.listAndCountDiscographyEntries({}, { skip, take })
     ),
   ])
 
@@ -394,9 +461,12 @@ export default async function buildDiscographyFromProducts({
 
   const result =
     await discographyService.replaceWithCatalogProjection(projection)
-  const rebuiltEntries = await listAll<ExistingDiscographyRecord>(
+  const rebuiltEntries = await loadAllDiscographyProjectionRecords(
     (skip, take) =>
-      discographyService.listAndCountDiscographyEntries({}, { skip, take })
+      discographyService.listAndCountDiscographyEntries(
+        {},
+        { order: { id: "ASC" }, skip, take }
+      )
   )
   const rebuiltProductIds = rebuiltEntries
     .filter(

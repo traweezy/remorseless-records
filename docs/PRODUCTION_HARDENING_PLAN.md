@@ -3479,6 +3479,45 @@ lines. The Admin main bundle is 1,807,782 gzip bytes and total JavaScript is
 documented ignored moderate findings; Trivy reports zero high/critical
 dependency, misconfiguration, or secret findings.
 
+## Discography projection persistence hardening
+
+- [x] Replace the unbounded 10,000-row replacement read with stable, exact
+      250-row pagination and a 25,000-row fail-closed ceiling.
+- [x] Validate the complete catalog projection, including exact keys, canonical
+      Product identities, unique handles, release date/year coherence, media,
+      bounded lists, availability, source mode, and initial version.
+- [x] Reject duplicate stored identities/Product links/handles, invalid archive
+      timestamps, unsafe version increments, count drift, short pages, and
+      malformed counted tuples before writing.
+- [x] Preserve explicit operator archives for Products that remain projected,
+      create missing links, and archive only active stale links.
+- [x] Write updates, creates, and archives in bounded 100-row batches and require
+      complete exact acknowledgements for every requested record.
+- [x] Re-read the full Discography inside the serializable transaction and
+      verify the exact linked set, versions, archive states, total count, and
+      preservation of every pre-existing identity before reporting success.
+- [x] Make rebuild source pagination reject malformed, oversized, short, or
+      drifting pages and apply the strict Discography reader to both plan and
+      completion snapshots.
+
+The projection boundary treats both generated module-service results and the
+rebuild payload as runtime input. Manual history is never included in catalog
+mutation batches. Existing catalog rows remain identity-stable, newly created
+rows are bound back to their exact Product IDs, and a successful return means
+the complete final linked projection—not only the write counts—matches the
+transaction plan.
+
+Thirty-four focused projection, transactional service, content-contract, and
+rebuild-pagination tests pass. Complete local acceptance passes the 1,214-file
+repository QA gate, all 259 Backend suites and 1,866 tests, both strict
+TypeScript checks, the production Backend/Admin build, frozen packaged install
+with Medusa 2.18.0, and the Admin bundle budget. Backend coverage remains
+91.29% statements, 84.60% branches, 95.55% functions, and 91.33% lines. The
+Admin main bundle is 1,808,228 gzip bytes and total JavaScript is 2,388,963 gzip
+bytes. The production dependency audit retains only the three documented
+ignored moderate findings; Trivy reports zero high/critical dependency,
+misconfiguration, or secret findings.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,
