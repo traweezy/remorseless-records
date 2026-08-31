@@ -16,6 +16,11 @@ import {
 import { TAX_RATE_LOOKUP_MONITOR_POSTAL_CODE } from "../../../lib/constants"
 import { syncTaxRateIoQuota } from "../../../lib/tax-control/quota"
 import type TaxControlModuleService from "../../../modules/tax-control/service"
+import {
+  taxProviderAuditListFrom,
+  taxQuoteEvidenceCountFrom,
+  taxQuoteEvidenceListFrom,
+} from "../../../modules/tax-control/persistence-contracts"
 
 type UnknownRecord = Record<string, unknown>
 
@@ -50,16 +55,7 @@ const evidenceSnapshot = async ({
   logger: Logger
   service: TaxControlModuleService
 }) => {
-  const [
-    [, tracked],
-    [, prepared],
-    [, succeeded],
-    [, refunds],
-    [, needsAttention],
-    incidents,
-    [pendingRefundIncidents, pendingRefundReversals],
-    refundEvidence,
-  ] = await Promise.all([
+  const results = await Promise.all([
     service.listAndCountTaxQuoteEvidences({}, { take: 1 }),
     service.listAndCountTaxQuoteEvidences({ status: "prepared" }, { take: 1 }),
     service.listAndCountTaxQuoteEvidences({ status: "succeeded" }, { take: 1 }),
@@ -87,6 +83,27 @@ const evidenceSnapshot = async ({
       }
     ),
   ])
+  const [, tracked] = taxQuoteEvidenceCountFrom(results[0])
+  const [, prepared] = taxQuoteEvidenceCountFrom(results[1])
+  const [, succeeded] = taxQuoteEvidenceCountFrom(results[2])
+  const [, refunds] = taxQuoteEvidenceCountFrom(results[3])
+  const [, needsAttention] = taxQuoteEvidenceCountFrom(results[4])
+  const incidents = taxQuoteEvidenceListFrom(
+    results[5],
+    25,
+    "The tax control incident query returned invalid stored state."
+  )
+  const [pendingRefundIncidents, pendingRefundReversals] =
+    taxQuoteEvidenceCountFrom(
+      results[6],
+      25,
+      "The pending tax refund query returned invalid stored state."
+    )
+  const refundEvidence = taxQuoteEvidenceListFrom(
+    results[7],
+    REFUND_LEDGER_QUERY_LIMIT,
+    "The tax refund ledger query returned invalid stored state."
+  )
 
   let refundLedgerAvailable = true
   let refundLedgerMismatches: ReturnType<typeof buildRefundLedgerMismatches> =
@@ -140,7 +157,7 @@ const evidenceSnapshot = async ({
           : Promise.resolve({ data: [] }),
       ])
       refundLedgerMismatches = buildRefundLedgerMismatches({
-        evidence: refundEvidence as RefundEvidenceRecord[],
+        evidence: refundEvidence satisfies RefundEvidenceRecord[],
         paymentRecords: [...orders.data, ...carts.data],
       })
     } catch (caught) {
@@ -239,9 +256,14 @@ export const taxControlSnapshot = async (container: MedusaContainer) => {
     evidenceSnapshot({ container, logger, service }),
   ])
   const remaining = quota?.remaining ?? null
+  const parsedAudits = taxProviderAuditListFrom(
+    audits,
+    25,
+    "The tax provider audit history returned invalid stored state."
+  )
 
   return {
-    audits: audits.map((audit) => ({
+    audits: parsedAudits.map((audit) => ({
       actorId: audit.actor_id,
       acknowledgementVersion: audit.acknowledgement_version,
       createdAt: dateString(audit.created_at),

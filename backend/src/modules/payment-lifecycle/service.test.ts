@@ -67,9 +67,11 @@ const serviceHarness = (
           callback(manager)
       ),
     },
-    createStripeLifecycleEvents: jest.fn(async (input: unknown[]) => [
-      input[0],
-    ]),
+    createStripeLifecycleEvents: jest.fn(
+      async ([input]: [Record<string, unknown>]) => [
+        { id: "stripelinevt_01EVENT", ...input },
+      ]
+    ),
     listStripeLifecycleEvents: jest.fn(async () => []),
     retrieveStripeLifecycleEvent: jest.fn(async () => record),
     updateStripeLifecycleEvents: jest.fn(
@@ -79,6 +81,29 @@ const serviceHarness = (
 }
 
 describe("Payment lifecycle service persistence boundaries", () => {
+  it("creates exactly one complete receipt and rejects ambiguous acknowledgements", async () => {
+    const service = serviceHarness()
+
+    await expect(
+      service.recordStripeLifecycleEvent(receiptInput())
+    ).resolves.toMatchObject({
+      lifecycleEvent: {
+        id: "stripelinevt_01EVENT",
+        provider_event_id: "evt_01EVENT",
+        status: "received",
+      },
+      replayed: false,
+    })
+
+    service.createStripeLifecycleEvents.mockResolvedValue([
+      persistedRecord(),
+      persistedRecord({ id: "stripelinevt_02EVENT" }),
+    ])
+    await expect(
+      service.recordStripeLifecycleEvent(receiptInput())
+    ).rejects.toMatchObject({ type: MedusaError.Types.UNEXPECTED_STATE })
+  })
+
   it("returns an exact persisted replay without writing", async () => {
     const service = serviceHarness()
     service.listStripeLifecycleEvents.mockResolvedValue([persistedRecord()])
@@ -102,6 +127,19 @@ describe("Payment lifecycle service persistence boundaries", () => {
     await expect(
       service.recordStripeLifecycleEvent(receiptInput())
     ).rejects.toMatchObject({ type: MedusaError.Types.CONFLICT })
+    expect(service.createStripeLifecycleEvents).not.toHaveBeenCalled()
+  })
+
+  it("rejects an ambiguous provider event replay query", async () => {
+    const service = serviceHarness()
+    service.listStripeLifecycleEvents.mockResolvedValue([
+      persistedRecord(),
+      persistedRecord({ id: "stripelinevt_02EVENT" }),
+    ])
+
+    await expect(
+      service.recordStripeLifecycleEvent(receiptInput())
+    ).rejects.toMatchObject({ type: MedusaError.Types.UNEXPECTED_STATE })
     expect(service.createStripeLifecycleEvents).not.toHaveBeenCalled()
   })
 
@@ -143,6 +181,31 @@ describe("Payment lifecycle service persistence boundaries", () => {
 
     service.updateStripeLifecycleEvents.mockResolvedValue([
       persistedRecord({ attempt_count: 2, status: "processing" }),
+    ])
+    await expect(
+      service.markStripeLifecycleEventProcessing("stripelinevt_01EVENT")
+    ).rejects.toMatchObject({ type: MedusaError.Types.UNEXPECTED_STATE })
+  })
+
+  it("rejects immutable drift and multiple processing acknowledgements", async () => {
+    const service = serviceHarness(persistedRecord({ attempt_count: 2 }))
+    service.updateStripeLifecycleEvents.mockImplementation(
+      async ([update]: [Record<string, unknown>]) => [
+        { ...persistedRecord({ amount_minor: 2_501 }), ...update },
+      ]
+    )
+
+    await expect(
+      service.markStripeLifecycleEventProcessing("stripelinevt_01EVENT")
+    ).rejects.toMatchObject({ type: MedusaError.Types.UNEXPECTED_STATE })
+
+    service.updateStripeLifecycleEvents.mockResolvedValue([
+      persistedRecord({ attempt_count: 3, status: "processing" }),
+      persistedRecord({
+        attempt_count: 3,
+        id: "stripelinevt_02EVENT",
+        status: "processing",
+      }),
     ])
     await expect(
       service.markStripeLifecycleEventProcessing("stripelinevt_01EVENT")

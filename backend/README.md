@@ -679,6 +679,19 @@ operation, reason, and attempt fields, and terminal errors never copy provider
 messages or response payloads. These reconciliation paths are read-only and do
 not create refunds, disputes, payments, or Tax transactions.
 
+Tax financial state is accepted only through complete, bounded persistence
+contracts. Singleton PaymentIntent, calculation, control, audit, and quota
+queries request two rows and reject ambiguity; quote-evidence pages reject
+duplicate IDs, PaymentIntent IDs, or calculation IDs. Every create or update
+must acknowledge exactly one fully validated record with the requested
+immutable and mutable fields, and quote, control, and transition writes are
+re-read inside their transaction before success is returned. Provider/mode,
+calculation, currency, generation, amount, timestamp, association status, UUID,
+and bounded JSON metadata invariants are enforced without coercion. The hourly
+reconciler requests 101 records, validates the complete queue, processes at
+most 100, and reports the extra row as a real backlog instead of guessing from
+an exactly-full page.
+
 An authenticated Medusa Admin can review readiness, quota, exact paginated
 checkout impact, payment evidence, and immutable tax-decision history at
 **Settings → Tax control**. It presents **Do not collect tax**, **Collect using

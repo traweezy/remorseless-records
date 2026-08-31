@@ -233,8 +233,15 @@ and monetary value before hashing; malformed rows cannot disappear into the
 same fingerprint as an absent row. Quote extraction likewise accepts only
 complete record arrays, explicit finite rates from 0% through 100%, and one
 consistent provider generation. Payment binding requires one complete pending
-Stripe session, at most one result from each one-row evidence query, and a
-validated evidence-persistence acknowledgement before returning success.
+Stripe session, at most one result from each evidence identity query, and a
+validated evidence-persistence acknowledgement before returning success. Each
+identity lookup requests two rows so a broken uniqueness assumption is visible
+instead of hidden by `take: 1`. Evidence creation, replay verification,
+lifecycle updates, quota synchronization, and collection-mode transitions
+accept only one complete write acknowledgement and exact final state. Quote,
+control, and transition paths re-read the committed record before returning;
+any missing row, extra row, malformed timestamp or identifier, immutable-field
+drift, metadata corruption, or mismatched readback fails the transaction.
 For an already-prepared checkout only, the backend validates the complete
 current subject first and then accepts either its hardened fingerprint or the
 exact prior projection. This compatibility path cannot create a new legacy

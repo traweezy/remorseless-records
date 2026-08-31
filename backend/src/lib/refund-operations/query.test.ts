@@ -6,10 +6,15 @@ import { buildRefundOperationsSnapshot } from "./query"
 const evidenceFixture = (id = "taxevidence_01") => ({
   amount_minor: 2_000,
   association_status: "committed",
+  calculation_id: null,
   cart_id: "cart_01",
+  collection_mode: "collect",
   currency_code: "usd",
+  fingerprint: "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789",
+  generation: 2,
   id,
   last_verified_at: "2026-07-26T15:00:00.000Z",
+  linked_at: "2026-07-26T14:00:00.000Z",
   metadata: {
     refund_amount_minor: 500,
     refund_tax_transaction_ids: [],
@@ -20,6 +25,7 @@ const evidenceFixture = (id = "taxevidence_01") => ({
   payment_intent_id: "pi_test",
   provider: "taxrate_io",
   status: "partially_refunded",
+  tax_transaction_id: null,
 })
 
 const orderFixture = () => ({

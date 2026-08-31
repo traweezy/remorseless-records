@@ -848,6 +848,10 @@ rollout gates are recorded in
 [`docs/adr/0002-stripe-tax-medusa-authority.md`](docs/adr/0002-stripe-tax-medusa-authority.md).
 The audited collect/disabled operating mode and frozen-decision model are in
 [`docs/adr/0007-audited-tax-collection-mode.md`](docs/adr/0007-audited-tax-collection-mode.md).
+Financial persistence fails closed on ambiguous tax/payment identities,
+malformed rows, partial or multiple write acknowledgements, immutable-field
+drift, and mismatched transactional readbacks; the detailed invariants and
+incident response are documented with the tax-control runbook.
 The full test and incident procedures are in
 [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK.md) and
 [`docs/CHECKOUT_OPERATIONS.md`](docs/CHECKOUT_OPERATIONS.md). Tax-provider

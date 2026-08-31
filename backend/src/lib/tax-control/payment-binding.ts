@@ -16,6 +16,11 @@ import {
   verifyAndLinkStripePayment,
 } from "./stripe-payment-binding-client"
 import type TaxControlModuleService from "../../modules/tax-control/service"
+import {
+  taxQuoteEvidenceFrom,
+  taxQuoteEvidenceListFrom,
+  type TaxQuoteEvidenceRecord,
+} from "../../modules/tax-control/persistence-contracts"
 
 const PROCESSABLE_SESSION_STATUSES = new Set([
   "authorized",
@@ -31,23 +36,21 @@ const text = (value: unknown): string =>
 const taxEvidenceFrom = (
   value: unknown,
   context: string
-): UnknownRecord | null => {
-  let records: UnknownRecord[]
+): TaxQuoteEvidenceRecord | null => {
   try {
-    records = readRecordArray(value, { context })
+    return (
+      taxQuoteEvidenceListFrom(
+        value,
+        1,
+        `${context} returned invalid stored state.`
+      ).at(0) ?? null
+    )
   } catch {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
-      "Tax evidence could not be verified. Try again."
+      "Tax evidence returned an ambiguous result or invalid stored state."
     )
   }
-  if (records.length > 1) {
-    throw new MedusaError(
-      MedusaError.Types.UNEXPECTED_STATE,
-      "Tax evidence returned an ambiguous result."
-    )
-  }
-  return records[0] ?? null
 }
 
 const minorUnits = (value: string): number => {
@@ -155,7 +158,7 @@ export const bindCheckoutTaxToPayment = async ({
 
   const existingEvidenceResult: unknown = await service.listTaxQuoteEvidences(
     { payment_intent_id: paymentIntentId },
-    { take: 1 }
+    { take: 2 }
   )
   const existingEvidence = taxEvidenceFrom(
     existingEvidenceResult,
@@ -165,7 +168,7 @@ export const bindCheckoutTaxToPayment = async ({
     const calculationEvidenceResult: unknown =
       await service.listTaxQuoteEvidences(
         { calculation_id: quote.calculationId },
-        { take: 1 }
+        { take: 2 }
       )
     const calculationEvidence = taxEvidenceFrom(
       calculationEvidenceResult,
@@ -229,9 +232,26 @@ export const bindCheckoutTaxToPayment = async ({
       "Tax evidence persistence returned an invalid result."
     )
   }
+  let persistedEvidence: TaxQuoteEvidenceRecord
+  try {
+    persistedEvidence = taxQuoteEvidenceFrom(recorded.evidence)
+  } catch {
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      "Tax evidence persistence returned an invalid result."
+    )
+  }
   if (
     typeof recorded.replayed !== "boolean" ||
-    !text(asRecord(recorded.evidence)?.id)
+    persistedEvidence.amount_minor !== amountMinor ||
+    persistedEvidence.calculation_id !== quote.calculationId ||
+    persistedEvidence.cart_id !== cartId ||
+    persistedEvidence.collection_mode !== quote.collectionMode ||
+    persistedEvidence.currency_code !== validation.currencyCode ||
+    persistedEvidence.fingerprint !== quote.fingerprint ||
+    persistedEvidence.generation !== quote.generation ||
+    persistedEvidence.payment_intent_id !== paymentIntentId ||
+    persistedEvidence.provider !== quote.provider
   ) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,

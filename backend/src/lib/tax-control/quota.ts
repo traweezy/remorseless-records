@@ -10,6 +10,12 @@ import {
   TAXRATE_IO_QUOTA_REDIS_KEY,
 } from "../../modules/tax-control/constants"
 import type TaxControlModuleService from "../../modules/tax-control/service"
+import {
+  taxProviderQuotaListFrom,
+  taxProviderQuotaMatches,
+  taxProviderQuotaMutationFrom,
+  type TaxProviderQuotaRecord,
+} from "../../modules/tax-control/persistence-contracts"
 import type { TaxRateIoQuota } from "../../modules/tax-rate-provider/clients/taxrate-io"
 import {
   parsePersistedTaxRateIoQuota,
@@ -56,6 +62,17 @@ const validPersistedQuota = (value: unknown): PersistedTaxRateIoQuota => {
     )
   }
   return parsed
+}
+
+const exactQuota = (
+  actual: TaxProviderQuotaRecord,
+  expected: TaxProviderQuotaRecord,
+  message: string
+): TaxProviderQuotaRecord => {
+  if (!taxProviderQuotaMatches(actual, expected)) {
+    throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, message)
+  }
+  return actual
 }
 
 const redisClient = async (logger: Logger): Promise<RedisClientType | null> => {
@@ -128,9 +145,12 @@ export const persistTaxRateIoQuota = async ({
   source: "checkout_lookup" | "manual_refresh"
 }) => {
   const validatedQuota = validQuota(quota)
-  const existing = await service.listTaxProviderQuotas(
-    { provider: "taxrate_io" },
-    { take: 1 }
+  const existing = taxProviderQuotaListFrom(
+    await service.listTaxProviderQuotas(
+      { provider: "taxrate_io" },
+      { take: 2 }
+    ),
+    1
   )
   const observedAt = new Date(validatedQuota.observedAt)
   const payload = {
@@ -144,18 +164,24 @@ export const persistTaxRateIoQuota = async ({
     usage: validatedQuota.usage,
     usage_percent: validatedQuota.usagePercent,
   }
-  const updateExisting = async (current: (typeof existing)[number]) => {
-    const currentObservedAt = new Date(current.observed_at)
-    if (
-      Number.isFinite(currentObservedAt.getTime()) &&
-      currentObservedAt > observedAt
-    ) {
+  const updateExisting = async (current: TaxProviderQuotaRecord) => {
+    if (current.observed_at > observedAt) {
       return current
     }
-    const [updated] = await service.updateTaxProviderQuotas([
-      { ...payload, id: current.id },
-    ])
-    return updated ?? current
+    const expected: TaxProviderQuotaRecord = {
+      ...current,
+      ...payload,
+      id: current.id,
+      provider: "taxrate_io",
+    }
+    const updated = taxProviderQuotaMutationFrom(
+      await service.updateTaxProviderQuotas([{ ...payload, id: current.id }])
+    )
+    return exactQuota(
+      updated,
+      expected,
+      "The persisted TaxRate.io quota update does not match the snapshot."
+    )
   }
   const current = existing[0]
   if (current) {
@@ -163,8 +189,14 @@ export const persistTaxRateIoQuota = async ({
   }
 
   try {
-    const [created] = await service.createTaxProviderQuotas([payload])
-    return created ?? null
+    const created = taxProviderQuotaMutationFrom(
+      await service.createTaxProviderQuotas([payload])
+    )
+    return exactQuota(
+      created,
+      { ...payload, id: created.id, provider: "taxrate_io" },
+      "The persisted TaxRate.io quota creation does not match the snapshot."
+    )
   } catch (error) {
     if (
       !MedusaError.isMedusaError(error) ||
@@ -172,9 +204,12 @@ export const persistTaxRateIoQuota = async ({
     ) {
       throw error
     }
-    const concurrent = await service.listTaxProviderQuotas(
-      { provider: "taxrate_io" },
-      { take: 1 }
+    const concurrent = taxProviderQuotaListFrom(
+      await service.listTaxProviderQuotas(
+        { provider: "taxrate_io" },
+        { take: 2 }
+      ),
+      1
     )
     const winner = concurrent[0]
     if (!winner) {
@@ -212,9 +247,12 @@ export const syncTaxRateIoQuota = async ({
     }
   }
 
-  const persisted = await service.listTaxProviderQuotas(
-    { provider: "taxrate_io" },
-    { order: { observed_at: "DESC" }, take: 1 }
+  const persisted = taxProviderQuotaListFrom(
+    await service.listTaxProviderQuotas(
+      { provider: "taxrate_io" },
+      { order: { observed_at: "DESC" }, take: 2 }
+    ),
+    1
   )
   return persisted[0] ? validPersistedQuota(persisted[0]) : null
 }

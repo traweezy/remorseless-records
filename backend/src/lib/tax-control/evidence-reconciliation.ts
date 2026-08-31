@@ -1,9 +1,6 @@
-import type {
-  TaxCollectionMode,
-  TaxProviderName,
-  TaxQuoteEvidenceStatus,
-} from "../../modules/tax-control/constants"
+import type { TaxQuoteEvidenceStatus } from "../../modules/tax-control/constants"
 import type TaxControlModuleService from "../../modules/tax-control/service"
+import { taxQuoteEvidenceListFrom } from "../../modules/tax-control/persistence-contracts"
 import {
   createStripeEvidenceReader,
   type StripeEvidenceAssociation,
@@ -14,12 +11,6 @@ import {
   type StripeEvidenceReader,
   type StripeEvidenceRetryEvent,
 } from "./stripe-evidence-client"
-
-type EvidenceRecord = {
-  collection_mode: TaxCollectionMode
-  payment_intent_id: string
-  provider: TaxProviderName | null
-}
 
 type ReconcileTaxEvidenceResult = {
   associationStatus: string
@@ -138,12 +129,14 @@ export const reconcileTaxQuoteEvidence = async ({
     throw new Error("A valid Stripe PaymentIntent ID is required.")
   }
 
-  const evidence = (
+  const evidence = taxQuoteEvidenceListFrom(
     await service.listTaxQuoteEvidences(
       { payment_intent_id: paymentIntentId },
-      { take: 1 }
-    )
-  )[0] as EvidenceRecord | undefined
+      { take: 2 }
+    ),
+    1,
+    "Tax evidence reconciliation returned invalid stored state."
+  ).at(0)
   if (!evidence) {
     return {
       associationStatus: "not_tracked",

@@ -13,6 +13,7 @@ import {
   type TaxQuoteEvidenceStatus,
 } from "../modules/tax-control/constants"
 import type TaxControlModuleService from "../modules/tax-control/service"
+import { taxQuoteEvidenceListFrom } from "../modules/tax-control/persistence-contracts"
 
 const RECONCILIATION_LIMIT = 100
 const RECONCILABLE_STATUSES: TaxQuoteEvidenceStatus[] = [
@@ -35,13 +36,18 @@ export default async function reconcileTaxEvidenceJob(
   const logger = container.resolve<Logger>("logger")
   const service = container.resolve<TaxControlModuleService>("tax_control")
   const locking = container.resolve<ILockingModule>(Modules.LOCKING)
-  const evidence = await service.listTaxQuoteEvidences(
-    { status: RECONCILABLE_STATUSES },
-    {
-      order: { last_verified_at: "ASC" },
-      take: RECONCILIATION_LIMIT,
-    }
+  const candidates = taxQuoteEvidenceListFrom(
+    await service.listTaxQuoteEvidences(
+      { status: RECONCILABLE_STATUSES },
+      {
+        order: { last_verified_at: "ASC" },
+        take: RECONCILIATION_LIMIT + 1,
+      }
+    ),
+    RECONCILIATION_LIMIT + 1,
+    "The tax evidence reconciliation queue returned invalid stored state."
   )
+  const evidence = candidates.slice(0, RECONCILIATION_LIMIT)
   const client = new Stripe(STRIPE_API_KEY, {
     appInfo: {
       name: "remorseless-records-medusa",
@@ -87,7 +93,7 @@ export default async function reconcileTaxEvidenceJob(
   }
 
   const summary = {
-    capped: evidence.length === RECONCILIATION_LIMIT,
+    capped: candidates.length > RECONCILIATION_LIMIT,
     failed,
     inspected: evidence.length,
     needsAttention,

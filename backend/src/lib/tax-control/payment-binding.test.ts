@@ -1,9 +1,34 @@
 import type Stripe from "stripe"
 
 import type TaxControlModuleService from "../../modules/tax-control/service"
+import type { TaxQuoteEvidenceRecord } from "../../modules/tax-control/persistence-contracts"
 import { bindCheckoutTaxToPayment } from "./payment-binding"
 
 const fingerprint = "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789"
+const observedAt = new Date("2026-08-31T04:30:00.000Z")
+
+const evidenceFixture = (
+  overrides: Partial<TaxQuoteEvidenceRecord> = {}
+): TaxQuoteEvidenceRecord => ({
+  amount_minor: 1_080,
+  association_status: null,
+  calculation_id: "taxcalc_test",
+  cart_id: "cart_01TEST",
+  collection_mode: "collect",
+  currency_code: "usd",
+  fingerprint,
+  generation: 2,
+  id: "taxevidence_test",
+  last_verified_at: observedAt,
+  linked_at: observedAt,
+  metadata: {},
+  order_id: null,
+  payment_intent_id: "pi_test",
+  provider: "stripe_tax",
+  status: "prepared",
+  tax_transaction_id: null,
+  ...overrides,
+})
 
 const cartFixture = ({
   collectionMode = "collect",
@@ -128,18 +153,45 @@ const calculationFixture = (
 const serviceFixture = ({
   evidence = [],
 }: {
-  evidence?: Array<Record<string, unknown>>
+  evidence?: TaxQuoteEvidenceRecord[]
 } = {}) => {
   const service = {
     listTaxQuoteEvidences: jest.fn(async (filters: Record<string, unknown>) =>
       evidence.filter((item) =>
-        Object.entries(filters).every(([key, value]) => item[key] === value)
+        Object.entries(filters).every(
+          ([key, value]) =>
+            (item as unknown as Record<string, unknown>)[key] === value
+        )
       )
     ),
-    recordTaxQuoteEvidence: jest.fn(async () => ({
-      evidence: { id: "taxevidence_test" },
-      replayed: false,
-    })),
+    recordTaxQuoteEvidence: jest.fn(
+      async (input: {
+        amountMinor: number
+        calculationId: string | null
+        cartId: string
+        collectionMode: "collect" | "disabled"
+        currencyCode: string
+        fingerprint: string
+        generation: number
+        paymentIntentId: string
+        provider: "stripe_tax" | "taxrate_io" | null
+        status: TaxQuoteEvidenceRecord["status"]
+      }) => ({
+        evidence: evidenceFixture({
+          amount_minor: input.amountMinor,
+          calculation_id: input.calculationId,
+          cart_id: input.cartId,
+          collection_mode: input.collectionMode,
+          currency_code: input.currencyCode as "usd",
+          fingerprint: input.fingerprint,
+          generation: input.generation,
+          payment_intent_id: input.paymentIntentId,
+          provider: input.provider,
+          status: input.status,
+        }),
+        replayed: false,
+      })
+    ),
   }
   return service as unknown as TaxControlModuleService
 }
@@ -222,10 +274,10 @@ describe("bindCheckoutTaxToPayment", () => {
     })
     const service = serviceFixture({
       evidence: [
-        {
+        evidenceFixture({
           calculation_id: "taxcalc_test",
           payment_intent_id: "pi_test",
-        },
+        }),
       ],
     })
 
@@ -275,10 +327,10 @@ describe("bindCheckoutTaxToPayment", () => {
     const client = stripeFixture()
     const service = serviceFixture({
       evidence: [
-        {
+        evidenceFixture({
           calculation_id: "taxcalc_test",
           payment_intent_id: "pi_another",
-        },
+        }),
       ],
     })
 
@@ -311,8 +363,8 @@ describe("bindCheckoutTaxToPayment", () => {
     const client = stripeFixture()
     const service = serviceFixture({
       evidence: [
-        { payment_intent_id: "pi_test" },
-        { payment_intent_id: "pi_test" },
+        evidenceFixture(),
+        evidenceFixture({ id: "taxevidence_other" }),
       ],
     })
 

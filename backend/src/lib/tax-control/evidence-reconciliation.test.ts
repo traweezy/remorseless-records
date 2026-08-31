@@ -1,7 +1,34 @@
 import type Stripe from "stripe"
 
 import type TaxControlModuleService from "../../modules/tax-control/service"
+import type { TaxQuoteEvidenceRecord } from "../../modules/tax-control/persistence-contracts"
 import { reconcileTaxQuoteEvidence } from "./evidence-reconciliation"
+
+const observedAt = new Date("2026-08-31T04:30:00.000Z")
+const fingerprint = "abcdefghijklmnopqrstuvwxyzABCDEFG_0123456789"
+
+const evidenceFixture = (
+  overrides: Partial<TaxQuoteEvidenceRecord> = {}
+): TaxQuoteEvidenceRecord => ({
+  amount_minor: 1_080,
+  association_status: null,
+  calculation_id: "taxcalc_test",
+  cart_id: "cart_01CART",
+  collection_mode: "collect",
+  currency_code: "usd",
+  fingerprint,
+  generation: 2,
+  id: "taxevidence_test",
+  last_verified_at: observedAt,
+  linked_at: observedAt,
+  metadata: {},
+  order_id: null,
+  payment_intent_id: "pi_test",
+  provider: "stripe_tax",
+  status: "prepared",
+  tax_transaction_id: null,
+  ...overrides,
+})
 
 const paymentIntent = (
   overrides: Partial<Stripe.PaymentIntent> = {}
@@ -37,13 +64,9 @@ const association = (
   }) as Stripe.Tax.Association
 
 const serviceFixture = ({
-  evidence = {
-    collection_mode: "collect",
-    payment_intent_id: "pi_test",
-    provider: "stripe_tax",
-  },
+  evidence = evidenceFixture(),
 }: {
-  evidence?: Record<string, unknown> | null
+  evidence?: TaxQuoteEvidenceRecord | null
 } = {}) =>
   ({
     listTaxQuoteEvidences: jest.fn(async () => (evidence ? [evidence] : [])),
@@ -402,11 +425,11 @@ describe("reconcileTaxQuoteEvidence", () => {
 
   it("does not query Stripe Tax for TaxRate.io evidence", async () => {
     const service = serviceFixture({
-      evidence: {
+      evidence: evidenceFixture({
         collection_mode: "collect",
-        payment_intent_id: "pi_test",
         provider: "taxrate_io",
-      },
+        calculation_id: null,
+      }),
     })
     const client = stripeFixture({
       intent: paymentIntent({
@@ -434,11 +457,11 @@ describe("reconcileTaxQuoteEvidence", () => {
 
   it("tracks disabled refunds and disputes without expecting a tax association", async () => {
     const service = serviceFixture({
-      evidence: {
+      evidence: evidenceFixture({
         collection_mode: "disabled",
-        payment_intent_id: "pi_test",
         provider: null,
-      },
+        calculation_id: null,
+      }),
     })
     const client = stripeFixture({
       intent: paymentIntent({

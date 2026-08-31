@@ -3154,6 +3154,13 @@ dependency, misconfiguration, or secret findings. This server-side tranche
 does not change rendered layout, so the previous Product-authoring, bundle, and
 Media Cleanup screenshot evidence remains applicable.
 
+Exact staging acceptance for the media/bundle transaction tranche: source head
+`85d6f548e9de61dd655b1a078e0f8a2d52b0af8b` passed Root CI `33355179119`,
+Backend CI `33355179110`, and Storefront CI `33355179107`. Railway released
+Backend deployment `efadaaa1-cf90-4435-a37e-859c7afc6ba1` at `SUCCESS` with
+image digest
+`sha256:52e16bac1cc6eaa2301bef07a3846c6348d16c8e4d6f2fb191d2caba9c440115`.
+
 The sixteenth post-migration boundary tranche closes the Catalog authoring
 audit and release-readiness persistence family. The Admin audit route,
 operator command, and complete Product authoring-view release check now share a
@@ -3187,6 +3194,17 @@ staging execution remains an after-deploy acceptance check inside the service
 network.
 This server-side tranche changes no rendered layout, so the existing Catalog
 workspace and authoring audit screenshot evidence remains applicable.
+
+Exact staging acceptance for the authoring-audit/readiness tranche: source head
+`605420e2f4a611653ef1b73cf1c9d6a24bfc63c2` passed Root CI `33356129860`,
+Backend CI `33356129833`, and Storefront CI `33356129812`. Railway released
+Backend deployment `03330403-bf30-4ba7-b91d-c4334a5dc7df` at `SUCCESS` with
+image digest
+`sha256:853d37489321c156be45f76b65341d7570ee1a4337de952611baf03db2bcb7b6`.
+Backend `/live`, `/ready`, and `/api/health` each returned HTTP 200, `ok`, and
+that exact SHA. Two bounded Railway SSH attempts did not establish a command
+session, so the read-only live-catalog command remains explicitly pending
+rather than being represented as successful acceptance evidence.
 
 The custom Medusa packager now selects the exact Backend lockfile importer and
 fails if it cannot do so, executes pnpm without a shell, rejects malformed
@@ -3419,6 +3437,47 @@ misconfiguration, or secret finding. The exact unavailable-state markup was
 rendered in headed Chromium against production Admin CSS and inspected at
 1,600×1,000 and 760×900 with clear hierarchy, contained wrapping, and no
 horizontal overflow.
+
+## Financial persistence and reconciliation hardening
+
+- [x] Validate every Stripe lifecycle receipt and full state transition before
+      accepting a replay or write acknowledgement.
+- [x] Reject duplicate PaymentIntent, Stripe Tax calculation, quote-evidence,
+      control-audit, and quota singleton results by querying beyond one row.
+- [x] Validate complete tax control, audit, quote-evidence, and quota records,
+      including exact identifiers, provider/mode relationships, generations,
+      amounts, timestamps, statuses, UUIDs, and bounded JSON metadata.
+- [x] Require exactly one full mutation acknowledgement and compare every
+      persisted field for quote creation/reverification, evidence lifecycle,
+      provider transition, audit creation, control update, and quota writes.
+- [x] Re-read quote, lifecycle, control, and audit state before transactional
+      success, rejecting stale replay after a later tax transition.
+- [x] Apply the same contracts to checkout payment binding, Stripe evidence
+      reconciliation, Admin counts/incidents/history, refund operations, quota
+      synchronization, and the hourly reconciliation queue.
+- [x] Validate direct module inputs before persistence access and keep provider,
+      customer, address, payment metadata, and raw error payloads out of errors
+      and logs.
+
+The financial persistence boundary does not coerce database values or trust a
+generated service method's return shape. It accepts only canonical USD quote
+evidence, requires a Stripe Tax calculation exactly when the recorded provider
+is Stripe Tax, preserves the selected provider while collection is disabled,
+and keeps an old idempotency replay valid only while its audited target remains
+the active control generation. The hourly job requests one row beyond its
+100-record work limit, validates the entire returned set, and reports a real
+backlog only when that additional row exists.
+
+Eighty focused financial persistence, lifecycle, payment-binding,
+reconciliation, quota, and refund-operation tests pass. Complete local
+acceptance passes the 1,212-file repository QA gate, all 257 Backend suites and
+1,850 tests, strict TypeScript, the production Backend/Admin build, frozen
+packaged install with Medusa 2.18.0, and the Admin bundle budget. Backend
+coverage is 91.29% statements, 84.60% branches, 95.55% functions, and 91.33%
+lines. The Admin main bundle is 1,807,782 gzip bytes and total JavaScript is
+2,388,421 gzip bytes. The production dependency audit retains only the three
+documented ignored moderate findings; Trivy reports zero high/critical
+dependency, misconfiguration, or secret findings.
 
 ## Legal, accessibility, and launch acceptance
 

@@ -62,6 +62,56 @@ const lifecycleRecordFrom = (
   }
 }
 
+const lifecycleRecordsFrom = (
+  value: unknown,
+  maximumRows: number,
+  message: string
+): StripeLifecycleRecord[] => {
+  if (!Array.isArray(value) || value.length > maximumRows) {
+    throw unexpectedLifecycleState(message)
+  }
+  return value.map((entry) => lifecycleRecordFrom(entry, message))
+}
+
+const lifecycleMutationFrom = (
+  value: unknown,
+  message: string
+): StripeLifecycleRecord => {
+  const records = lifecycleRecordsFrom(value, 1, message)
+  if (records.length !== 1) {
+    throw unexpectedLifecycleState(message)
+  }
+  return records[0]!
+}
+
+const sameDate = (left: Date | null, right: Date | null): boolean =>
+  left?.getTime() === right?.getTime()
+
+const lifecycleStateMatches = (
+  actual: StripeLifecycleRecord,
+  expected: StripeLifecycleRecord
+): boolean =>
+  actual.amount_minor === expected.amount_minor &&
+  actual.attempt_count === expected.attempt_count &&
+  actual.charge_id === expected.charge_id &&
+  actual.currency_code === expected.currency_code &&
+  sameDate(actual.event_created_at, expected.event_created_at) &&
+  actual.event_type === expected.event_type &&
+  actual.id === expected.id &&
+  actual.last_error_code === expected.last_error_code &&
+  actual.livemode === expected.livemode &&
+  metadataMatches(actual.metadata, expected.metadata) &&
+  sameDate(actual.next_retry_at, expected.next_retry_at) &&
+  actual.object_id === expected.object_id &&
+  actual.order_id === expected.order_id &&
+  actual.payment_intent_id === expected.payment_intent_id &&
+  sameDate(actual.processed_at, expected.processed_at) &&
+  sameDate(actual.processing_started_at, expected.processing_started_at) &&
+  actual.provider_event_id === expected.provider_event_id &&
+  actual.provider_object_status === expected.provider_object_status &&
+  sameDate(actual.received_at, expected.received_at) &&
+  actual.status === expected.status
+
 const metadataContains = (
   existing: Record<string, unknown>,
   expected: Record<string, unknown>
@@ -86,13 +136,15 @@ class PaymentLifecycleModuleService extends MedusaService({
     @MedusaContext() sharedContext: Context<EntityManager> = {}
   ) {
     const receipt = receiptInputFrom(input)
-    const existing = (
+    const existing = lifecycleRecordsFrom(
       await this.listStripeLifecycleEvents(
         { provider_event_id: receipt.providerEventId },
-        { take: 1 },
+        { take: 2 },
         sharedContext
-      )
-    )[0]
+      ),
+      1,
+      "The stored Stripe lifecycle receipt query is invalid."
+    ).at(0)
     if (existing) {
       const persisted = lifecycleRecordFrom(
         existing,
@@ -108,46 +160,48 @@ class PaymentLifecycleModuleService extends MedusaService({
     }
 
     const receivedAt = new Date()
-    const [created] = await this.createStripeLifecycleEvents(
-      [
-        {
-          amount_minor: receipt.amountMinor,
-          attempt_count: 0,
-          charge_id: receipt.chargeId,
-          currency_code: receipt.currencyCode,
-          event_created_at: receipt.eventCreatedAt,
-          event_type: receipt.eventType,
-          last_error_code: null,
-          livemode: receipt.livemode,
-          metadata: {},
-          next_retry_at: null,
-          object_id: receipt.objectId,
-          order_id: null,
-          payment_intent_id: receipt.paymentIntentId,
-          processed_at: null,
-          processing_started_at: null,
-          provider_event_id: receipt.providerEventId,
-          provider_object_status: receipt.providerObjectStatus,
-          received_at: receivedAt,
-          status: "received",
-        },
-      ],
-      sharedContext
+    const created = lifecycleMutationFrom(
+      await this.createStripeLifecycleEvents(
+        [
+          {
+            amount_minor: receipt.amountMinor,
+            attempt_count: 0,
+            charge_id: receipt.chargeId,
+            currency_code: receipt.currencyCode,
+            event_created_at: receipt.eventCreatedAt,
+            event_type: receipt.eventType,
+            last_error_code: null,
+            livemode: receipt.livemode,
+            metadata: {},
+            next_retry_at: null,
+            object_id: receipt.objectId,
+            order_id: null,
+            payment_intent_id: receipt.paymentIntentId,
+            processed_at: null,
+            processing_started_at: null,
+            provider_event_id: receipt.providerEventId,
+            provider_object_status: receipt.providerObjectStatus,
+            received_at: receivedAt,
+            status: "received",
+          },
+        ],
+        sharedContext
+      ),
+      "The Stripe lifecycle receipt was not persisted exactly once."
     )
-    if (!created) {
-      throw unexpectedLifecycleState(
-        "The Stripe lifecycle receipt was not persisted."
-      )
-    }
-    const persisted = lifecycleRecordFrom(
-      created,
-      "The persisted Stripe lifecycle receipt is invalid."
-    )
+    const persisted = created
     if (
       persisted.status !== "received" ||
       persisted.attempt_count !== 0 ||
       persisted.provider_event_id !== receipt.providerEventId ||
       persisted.received_at.getTime() !== receivedAt.getTime() ||
+      persisted.provider_object_status !== receipt.providerObjectStatus ||
+      persisted.last_error_code !== null ||
+      persisted.next_retry_at !== null ||
+      persisted.order_id !== null ||
+      persisted.processed_at !== null ||
+      persisted.processing_started_at !== null ||
+      !metadataMatches(persisted.metadata, {}) ||
       !stripeLifecycleReceiptMatches(persisted, receipt)
     ) {
       throw unexpectedLifecycleState(
@@ -197,35 +251,31 @@ class PaymentLifecycleModuleService extends MedusaService({
     }
 
     const processingStartedAt = new Date()
-    const [updated] = await this.updateStripeLifecycleEvents(
-      [
-        {
-          attempt_count: attemptCount,
-          id: eventId,
-          last_error_code: null,
-          next_retry_at: null,
-          processing_started_at: processingStartedAt,
-          status: "processing",
-        },
-      ],
-      sharedContext
-    )
-    if (!updated) {
-      throw unexpectedLifecycleState(
-        "The Stripe lifecycle processing state was not persisted."
-      )
-    }
-    const next = lifecycleRecordFrom(
-      updated,
-      "The persisted Stripe lifecycle processing state is invalid."
+    const next = lifecycleMutationFrom(
+      await this.updateStripeLifecycleEvents(
+        [
+          {
+            attempt_count: attemptCount,
+            id: eventId,
+            last_error_code: null,
+            next_retry_at: null,
+            processing_started_at: processingStartedAt,
+            status: "processing",
+          },
+        ],
+        sharedContext
+      ),
+      "The Stripe lifecycle processing state was not persisted exactly once."
     )
     if (
-      next.id !== eventId ||
-      next.status !== "processing" ||
-      next.attempt_count !== attemptCount ||
-      next.last_error_code !== null ||
-      next.next_retry_at !== null ||
-      next.processing_started_at?.getTime() !== processingStartedAt.getTime()
+      !lifecycleStateMatches(next, {
+        ...persisted,
+        attempt_count: attemptCount,
+        last_error_code: null,
+        next_retry_at: null,
+        processing_started_at: processingStartedAt,
+        status: "processing",
+      })
     ) {
       throw unexpectedLifecycleState(
         "The persisted Stripe lifecycle processing state does not match the request."
@@ -286,39 +336,35 @@ class PaymentLifecycleModuleService extends MedusaService({
       ...completion.metadata,
     }
     const processedAt = new Date()
-    const [updated] = await this.updateStripeLifecycleEvents(
-      [
-        {
-          id: completion.id,
-          last_error_code: null,
-          metadata,
-          next_retry_at: null,
-          order_id: completion.orderId ?? persisted.order_id,
-          processed_at: processedAt,
-          provider_object_status: completion.providerObjectStatus,
-          status: completion.status,
-        },
-      ],
-      sharedContext
-    )
-    if (!updated) {
-      throw unexpectedLifecycleState(
-        "The Stripe lifecycle completion state was not persisted."
-      )
-    }
-    const next = lifecycleRecordFrom(
-      updated,
-      "The persisted Stripe lifecycle completion state is invalid."
+    const next = lifecycleMutationFrom(
+      await this.updateStripeLifecycleEvents(
+        [
+          {
+            id: completion.id,
+            last_error_code: null,
+            metadata,
+            next_retry_at: null,
+            order_id: completion.orderId ?? persisted.order_id,
+            processed_at: processedAt,
+            provider_object_status: completion.providerObjectStatus,
+            status: completion.status,
+          },
+        ],
+        sharedContext
+      ),
+      "The Stripe lifecycle completion state was not persisted exactly once."
     )
     if (
-      next.id !== completion.id ||
-      next.status !== completion.status ||
-      next.last_error_code !== null ||
-      next.next_retry_at !== null ||
-      next.processed_at?.getTime() !== processedAt.getTime() ||
-      next.provider_object_status !== completion.providerObjectStatus ||
-      next.order_id !== (completion.orderId ?? persisted.order_id) ||
-      !metadataMatches(next.metadata, metadata)
+      !lifecycleStateMatches(next, {
+        ...persisted,
+        last_error_code: null,
+        metadata,
+        next_retry_at: null,
+        order_id: completion.orderId ?? persisted.order_id,
+        processed_at: processedAt,
+        provider_object_status: completion.providerObjectStatus,
+        status: completion.status,
+      })
     ) {
       throw unexpectedLifecycleState(
         "The persisted Stripe lifecycle completion state does not match the request."
@@ -373,31 +419,27 @@ class PaymentLifecycleModuleService extends MedusaService({
         "The Stripe lifecycle retry state is invalid."
       )
     }
-    const [updated] = await this.updateStripeLifecycleEvents(
-      [
-        {
-          id: eventId,
-          last_error_code: failureCode,
-          next_retry_at: nextRetryAt,
-          status: "failed",
-        },
-      ],
-      sharedContext
-    )
-    if (!updated) {
-      throw unexpectedLifecycleState(
-        "The Stripe lifecycle failure state was not persisted."
-      )
-    }
-    const next = lifecycleRecordFrom(
-      updated,
-      "The persisted Stripe lifecycle failure state is invalid."
+    const next = lifecycleMutationFrom(
+      await this.updateStripeLifecycleEvents(
+        [
+          {
+            id: eventId,
+            last_error_code: failureCode,
+            next_retry_at: nextRetryAt,
+            status: "failed",
+          },
+        ],
+        sharedContext
+      ),
+      "The Stripe lifecycle failure state was not persisted exactly once."
     )
     if (
-      next.id !== eventId ||
-      next.status !== "failed" ||
-      next.last_error_code !== failureCode ||
-      next.next_retry_at?.getTime() !== nextRetryAt.getTime()
+      !lifecycleStateMatches(next, {
+        ...persisted,
+        last_error_code: failureCode,
+        next_retry_at: nextRetryAt,
+        status: "failed",
+      })
     ) {
       throw unexpectedLifecycleState(
         "The persisted Stripe lifecycle failure state does not match the request."

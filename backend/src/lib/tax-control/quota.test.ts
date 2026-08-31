@@ -15,10 +15,20 @@ const quota = (observedAt: string) => ({
   usagePercent: 25,
 })
 
-const record = (observedAt: string) => ({
+const record = (
+  observedAt: string,
+  overrides: Record<string, unknown> = {}
+) => ({
   id: "taxquota_01",
+  metadata: {},
   observed_at: new Date(observedAt),
   provider: "taxrate_io",
+  quota: 100,
+  remaining: 75,
+  source: "checkout_lookup",
+  usage: 25,
+  usage_percent: 25,
+  ...overrides,
 })
 
 describe("TaxRate.io quota persistence", () => {
@@ -52,7 +62,7 @@ describe("TaxRate.io quota persistence", () => {
         service,
         source: "checkout_lookup",
       })
-    ).resolves.toBe(current)
+    ).resolves.toEqual(current)
     expect(service.updateTaxProviderQuotas).not.toHaveBeenCalled()
   })
 
@@ -71,12 +81,14 @@ describe("TaxRate.io quota persistence", () => {
         service,
         source: "checkout_lookup",
       })
-    ).resolves.toBe(updated)
+    ).resolves.toEqual(updated)
   })
 
   it("re-reads and updates the winner of a first-write race", async () => {
     const winner = record("2026-07-26T12:00:00.000Z")
-    const updated = record("2026-07-26T12:05:00.000Z")
+    const updated = record("2026-07-26T12:05:00.000Z", {
+      source: "manual_refresh",
+    })
     const service = {
       createTaxProviderQuotas: jest.fn(async () => {
         throw new MedusaError(MedusaError.Types.DUPLICATE_ERROR, "duplicate")
@@ -94,7 +106,7 @@ describe("TaxRate.io quota persistence", () => {
         service,
         source: "manual_refresh",
       })
-    ).resolves.toBe(updated)
+    ).resolves.toEqual(updated)
     expect(service.updateTaxProviderQuotas).toHaveBeenCalledTimes(1)
   })
 
@@ -102,13 +114,9 @@ describe("TaxRate.io quota persistence", () => {
     const service = {
       listTaxProviderQuotas: jest.fn(async () => [
         {
-          observed_at: new Date("2026-07-26T12:00:00.000Z"),
-          provider: "taxrate_io",
-          quota: "100",
-          remaining: "75",
-          source: "manual_refresh",
-          usage: "25",
-          usage_percent: "25",
+          ...record("2026-07-26T12:00:00.000Z", {
+            source: "manual_refresh",
+          }),
         },
       ]),
     } as unknown as TaxControlModuleService

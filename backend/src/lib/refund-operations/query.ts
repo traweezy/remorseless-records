@@ -5,10 +5,13 @@ import type {
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 import type TaxControlModuleService from "../../modules/tax-control/service"
+import {
+  taxQuoteEvidenceCountFrom,
+  type TaxQuoteEvidenceRecord,
+} from "../../modules/tax-control/persistence-contracts"
 import { readNonNegativeSafeInteger } from "../provider-boundary/primitives"
 import {
   asUnknownRecord,
-  readCountedRecordPage,
   readProviderDataRecords,
   readRecordArray,
   type UnknownRecord,
@@ -92,7 +95,7 @@ const hasRefundSignal = (value: unknown): boolean => {
 const loadEvidence = async (
   service: TaxControlModuleService
 ): Promise<{ evidence: unknown[]; truncated: boolean }> => {
-  const evidence: unknown[] = []
+  const evidence: TaxQuoteEvidenceRecord[] = []
   while (evidence.length < MAX_EVIDENCE) {
     const skip = evidence.length
     const take = Math.min(PAGE_SIZE, MAX_EVIDENCE - skip)
@@ -104,10 +107,23 @@ const loadEvidence = async (
         take,
       }
     )
-    const { count, records: page } = readCountedRecordPage(
+    const [page, count] = taxQuoteEvidenceCountFrom(
       pageResult,
-      "Refund evidence query"
+      take,
+      "Refund evidence query returned malformed structured data."
     )
+    const knownIds = new Set(evidence.map((record) => record.id))
+    const knownIntents = new Set(
+      evidence.map((record) => record.payment_intent_id)
+    )
+    if (
+      page.some(
+        (record) =>
+          knownIds.has(record.id) || knownIntents.has(record.payment_intent_id)
+      )
+    ) {
+      throw new Error("Refund evidence query returned duplicate pagination.")
+    }
     evidence.push(...page)
     if (
       count < evidence.length ||
