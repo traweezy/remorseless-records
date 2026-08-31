@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test"
 
+import {
+  ciMedusaFixtureWebServer,
+  ciStorefrontProviderEnv,
+} from "./playwright.ci-provider"
+
 const baseURL = "http://127.0.0.1:3000"
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
 
@@ -35,10 +40,14 @@ export default defineConfig({
       use: { ...devices["iPhone 15 Pro"], browserName: "chromium" },
     },
   ],
-  webServer: {
-    command: "pnpm run start --hostname 127.0.0.1 --port 3000",
-    url: `${baseURL}/live`,
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  webServer: [
+    ciMedusaFixtureWebServer,
+    {
+      command: "pnpm run start --hostname 127.0.0.1 --port 3000",
+      env: ciStorefrontProviderEnv,
+      url: `${baseURL}/live`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
 })

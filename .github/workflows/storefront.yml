@@ -267,7 +267,14 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.base_ref == 'master' || vars.ENABLE_STOREFRONT_E2E == 'true' }}
     needs: [build]
     env:
+      CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
+      CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://127.0.0.1:4010
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+      NEXT_PUBLIC_MEDUSA_URL: http://127.0.0.1:4010
       NEXT_PUBLIC_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
     permissions:
       contents: read
     steps:
@@ -287,6 +294,23 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Start deterministic Medusa fixture
+        shell: bash
+        run: |
+          fixture_log="${RUNNER_TEMP}/ci-medusa-fixture.log"
+          node storefront/scripts/ci-medusa-fixture.mjs > "$fixture_log" 2>&1 &
+          fixture_pid=$!
+          echo "CI_MEDUSA_FIXTURE_PID=${fixture_pid}" >> "$GITHUB_ENV"
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error --max-time 2 \
+              "${CI_MEDUSA_FIXTURE_URL}/live" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          tail -n 50 "$fixture_log"
+          exit 1
 
       - name: Build storefront
         run: pnpm --filter remorseless-records-storefront run build
@@ -308,6 +332,15 @@ jobs:
           path: storefront/test-results
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Stop deterministic Medusa fixture
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ "${CI_MEDUSA_FIXTURE_PID:-}" =~ ^[0-9]+$ ]]; then
+            kill "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+            wait "${CI_MEDUSA_FIXTURE_PID}" 2>/dev/null || true
+          fi
 
   accessibility:
     name: Accessibility (pa11y)

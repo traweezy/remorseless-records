@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test"
 
+import {
+  ciMedusaFixtureWebServer,
+  ciStorefrontProviderEnv,
+} from "./playwright.ci-provider"
+
 const baseURL = "http://127.0.0.1:3000"
 const criticalFlowPattern =
   /homepage hydrates|cart drawer stays usable|adding from quick shop|desktop filters preserve position|music release detail exposes|checkout remains accessible/
@@ -35,10 +40,14 @@ export default defineConfig({
       use: { ...devices["Desktop Safari"], browserName: "webkit" },
     },
   ],
-  webServer: {
-    command: "pnpm run start --hostname 127.0.0.1 --port 3000",
-    url: `${baseURL}/live`,
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  webServer: [
+    ciMedusaFixtureWebServer,
+    {
+      command: "pnpm run start --hostname 127.0.0.1 --port 3000",
+      env: ciStorefrontProviderEnv,
+      url: `${baseURL}/live`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
 })

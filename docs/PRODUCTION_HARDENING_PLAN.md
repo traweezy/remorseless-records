@@ -3989,6 +3989,46 @@ Complete local acceptance passes the 1,236-file repository QA gate, its new
 complete Backend/Admin production build with a frozen 1,085-package server
 install.
 
+## Deterministic pre-deploy provider acceptance
+
+Storefront CI previously built its local Next server with the live staging
+Backend URL. That became a cyclic gate when a Backend catalog correction was
+ready to release: Railway correctly waited for GitHub checks, Browser Smoke
+tested the previous Backend deployment, and the resulting browser failure kept
+Railway from deploying the correction. The four failed mobile journeys in
+Storefront CI run `33374906692` were this release-control defect, not a new
+Storefront rendering regression; every other job in the run, including
+accessibility and Lighthouse, passed.
+
+Browser Smoke now starts a loopback-only deterministic Medusa read fixture
+before `next build`. The fixture owns one music release and the exact Product,
+Product-handle, shelf, collection, region, discography, and news projections
+used by the responsive and cross-browser journeys. It requires one fixed
+non-secret CI publishable key, accepts only `GET` and `HEAD`, sends no-store and
+defensive response headers, bounds its server timeouts, and fails closed for
+unknown routes. Both Playwright configurations also declare the fixture as a
+web server so local runs cannot accidentally fall back to staging.
+
+The repository gate tests the fixture responses and pins the workflow plus both
+Playwright configurations to it. Live provider health remains a separate
+post-deploy requirement: the staging operations monitor must authenticate to
+the exact Railway Backend and reject empty or malformed Products, handles,
+shelves, memberships, or discography. This separation preserves both a
+deterministic pre-deploy artifact gate and an authoritative live synthetic
+check without weakening Railway's `checkSuites` hold.
+
+Local acceptance passes the 1,239-file repository gate, the three fixture and
+release-wiring tests, strict Storefront TypeScript, and the production
+Storefront build with all 127 client assets clear of server secrets. The
+responsive Chromium matrix passes 54 journeys with two intentional project
+exclusions, and the critical Chromium, Firefox, and WebKit matrix passes all 21
+journeys. The browser rerun also removed an existing mobile pagination race:
+the test now accepts automatic advancement beyond the first 60 results and
+proves the offset-60 request plus a monotonic loaded count instead of requiring
+one transient label. Storefront coverage remains 94.25/86.65/96.02/94.24
+across 134 baseline files and 797 tests, and 83.37/76.02/85.81/83.46 across 35
+transactional files and 313 tests.
+
 ## Legal, accessibility, and launch acceptance
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,

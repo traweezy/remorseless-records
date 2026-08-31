@@ -123,13 +123,34 @@ pnpm run qa:admin-browser-boundary
 
 # Browser QA dependency resolution and blocked browser-download install scripts
 pnpm run qa:browser-toolchain-security
+
+# Deterministic Medusa fixture endpoints and Browser Smoke release wiring
+pnpm run qa:storefront-provider-fixture
 ```
 
 ### 1.5 Critical browser matrix
 
-Build the Storefront with production-like local environment values, then run:
+Pre-deploy Browser Smoke must use the loopback-only deterministic Medusa
+fixture in `storefront/scripts/ci-medusa-fixture.mjs`. The fixture exposes only
+the bounded read projections required to render Home, Product detail, Catalog,
+and Discography; it rejects missing publishable keys, mutations, and unknown
+routes. Both CI Playwright configurations start it automatically when it is not
+already available. The Storefront CI job starts it before `next build` so no
+client-bundled provider URL can silently point at staging.
+
+Build with the fixture environment and production-like non-provider values,
+then run both browser matrices:
 
 ```bash
+CI_MEDUSA_FIXTURE_URL=http://127.0.0.1:4010 \
+CI_MEDUSA_PUBLISHABLE_KEY=pk_ci_storefront_fixture_20260831 \
+MEDUSA_BACKEND_URL=http://127.0.0.1:4010 \
+NEXT_PUBLIC_MEDUSA_URL=http://127.0.0.1:4010 \
+NEXT_PUBLIC_MEDUSA_BACKEND_URL=http://127.0.0.1:4010 \
+NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_ci_storefront_fixture_20260831 \
+pnpm --filter remorseless-records-storefront run build
+pnpm --filter remorseless-records-storefront run test:e2e \
+  --config=playwright.ci.config.ts
 pnpm --filter remorseless-records-storefront run test:e2e:critical
 ```
 
@@ -146,6 +167,12 @@ application auth coverage. That suite is destructive and requires a dedicated
 test database. Inspect at least one real rendered screenshot from each changed
 critical surface before sign-off; automated assertions do not replace visual
 review.
+
+This deterministic gate is intentionally separate from staging acceptance.
+After Railway deploys the exact green SHA, the staging operations monitor must
+still exercise the live authenticated Product-handle and catalog-shelf
+projections. A local fixture pass is never evidence that the deployed provider
+is healthy.
 
 ### 1.6 Trusted Types report-only acceptance
 

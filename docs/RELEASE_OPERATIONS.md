@@ -42,6 +42,16 @@ Browser navigation gates must wait for an explicit rendered contract after
 the Storefront deliberately maintains background cache, telemetry, and
 reconnection activity that can keep the network active after the page is ready.
 
+Pre-deploy Browser Smoke uses the loopback-only deterministic Medusa fixture,
+including during `next build`. It must not call the current staging Backend:
+Railway waits for GitHub checks, so testing an unreleased Backend correction
+against the previous live deployment creates a cyclic release gate. The local
+fixture proves the Storefront production artifact and browser contracts; it
+does not replace post-deploy acceptance. After both exact-SHA Railway services
+are healthy, the staging operations monitor must make authenticated bounded
+reads of the live Product list, Product-handle feed, merchandising shelves,
+and discography projection and require non-empty catalog membership.
+
 Do not begin another slice while any exact-SHA staging gate is unresolved.
 
 ## Abuse-control and trusted-proxy operations

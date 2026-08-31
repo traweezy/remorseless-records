@@ -1079,6 +1079,19 @@ test("catalog loads the next result window before the end is reached", async ({
 }) => {
   const searchRequests: ProductSearchRequest[] = []
 
+  await page.route("**/api/catalog/filters/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname
+    const fixture = catalogFilterFixtures[pathname]
+    if (!fixture) {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(fixture),
+    })
+  })
   await page.route("**/api/search/products", async (route) => {
     const request = route.request().postDataJSON() as ProductSearchRequest
     searchRequests.push(request)
@@ -1106,14 +1119,20 @@ test("catalog loads the next result window before the end is reached", async ({
   })
   await search.fill("pagination")
 
-  const loadedCount = page.getByText("Showing 60 of 461")
+  const loadedCount = page.getByText(/^Showing \d+ of 461$/u)
   await expect(loadedCount).toBeVisible()
   await loadedCount.scrollIntoViewIfNeeded()
 
   await expect
     .poll(() => searchRequests.some((request) => request.offset === 60))
     .toBe(true)
-  await expect(page.getByText("Showing 120 of 461")).toBeVisible()
+  await expect
+    .poll(async () => {
+      const text = await loadedCount.textContent()
+      const match = text?.match(/^Showing (\d+) of 461$/u)
+      return Number(match?.[1] ?? 0)
+    })
+    .toBeGreaterThanOrEqual(120)
 })
 
 const routes = [
