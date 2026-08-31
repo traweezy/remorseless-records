@@ -313,6 +313,7 @@ export const TaxControlTransitionPrompt = memo<TaxControlTransitionPromptProps>(
         <form.Field children={renderReasonField} name="reason" />
 
         <AdminFormErrorSummary
+          headingLevel="h3"
           issues={formIssues}
           title="Review this tax decision"
         />

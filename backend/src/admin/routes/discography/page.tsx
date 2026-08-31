@@ -529,10 +529,10 @@ const DiscographyAdminPageContent = memo(() => {
                 <Tabs.Trigger value="active">Active</Tabs.Trigger>
                 <Tabs.Trigger value="archived">Archived</Tabs.Trigger>
               </Tabs.List>
-              <Tabs.Content className="sr-only" value="active">
+              <Tabs.Content className="sr-only" tabIndex={-1} value="active">
                 Active discography releases
               </Tabs.Content>
-              <Tabs.Content className="sr-only" value="archived">
+              <Tabs.Content className="sr-only" tabIndex={-1} value="archived">
                 Archived discography releases
               </Tabs.Content>
             </Tabs>

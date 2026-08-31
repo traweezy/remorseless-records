@@ -1,0 +1,26 @@
+diff --git a/dist/index.js b/dist/index.js
+index e524ed8fc1f0c2dff6a9b812e8fefaf3b26c60fb..06bd12311c50d46298353b1dbbb500c9d548b04b 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -137,7 +137,7 @@ var PopoverTrigger = React.forwardRef(
+         type: "button",
+         "aria-haspopup": "dialog",
+         "aria-expanded": context.open,
+-        "aria-controls": context.contentId,
++        "aria-controls": context.open ? context.contentId : void 0,
+         "data-state": getState(context.open),
+         ...triggerProps,
+         ref: composedTriggerRef,
+diff --git a/dist/index.mjs b/dist/index.mjs
+index bcd719c3ff36578007361e9146865b288cdb07b6..9bc3c76bb9351a9169963c9177a1788df13900b5 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -88,7 +88,7 @@ var PopoverTrigger = React.forwardRef(
+         type: "button",
+         "aria-haspopup": "dialog",
+         "aria-expanded": context.open,
+-        "aria-controls": context.contentId,
++        "aria-controls": context.open ? context.contentId : void 0,
+         "data-state": getState(context.open),
+         ...triggerProps,
+         ref: composedTriggerRef,

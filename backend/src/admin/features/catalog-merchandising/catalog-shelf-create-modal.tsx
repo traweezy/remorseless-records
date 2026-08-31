@@ -141,7 +141,11 @@ export const CatalogShelfCreateModal = memo<CatalogShelfCreateModalProps>(
             <div className="mb-5 flex justify-end">
               <AdminFormSaveState state={saveState} />
             </div>
-            <AdminFormErrorSummary className="mb-5" issues={issues} />
+            <AdminFormErrorSummary
+              className="mb-5"
+              headingLevel="h3"
+              issues={issues}
+            />
             <div className="grid gap-4 md:grid-cols-2">
               <CreateInputField
                 field="title"

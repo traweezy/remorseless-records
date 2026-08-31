@@ -1,5 +1,5 @@
 diff --git a/dist/app.js b/dist/app.js
-index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d4c8ad2e9 100644
+index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..483de42137568d9bb22e3586ea14eaa4cf438fc8 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -111811,17 +111811,25 @@ var init_layout_composer = __esm({
@@ -31,7 +31,42 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
          const validSectionIds2 = new Set(layout?.sections.map((s) => s.id) ?? []);
          const entriesBySection2 = buildDisplayEntries(
            rawEntries,
-@@ -116865,36 +116873,7 @@ var init_product_list_table_actions = __esm({
+@@ -113123,7 +113131,7 @@ var init_action_menu = __esm({
+       children
+     }) => {
+       const direction = useDocumentDirection();
+-      const inner = children ?? /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(import_ui17.IconButton, { size: "small", variant, children: /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(import_icons10.EllipsisHorizontal, {}) });
++      const inner = children ?? /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(import_ui17.IconButton, { "aria-label": "Open actions", size: "small", variant, children: /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(import_icons10.EllipsisHorizontal, {}) });
+       return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)(import_ui17.DropdownMenu, { dir: direction, children: [
+         /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(import_ui17.DropdownMenu.Trigger, { asChild: true, children: inner }),
+         /* @__PURE__ */ (0, import_jsx_runtime32.jsx)(import_ui17.DropdownMenu.Content, { children: groups.map((group, index) => {
+@@ -116319,7 +116327,7 @@ var init_data_table_order_by = __esm({
+         });
+       };
+       return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_ui33.DropdownMenu, { dir: direction, children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(import_ui33.DropdownMenu.Trigger, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(import_ui33.IconButton, { size: "small", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(import_icons24.DescendingSorting, {}) }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(import_ui33.DropdownMenu.Trigger, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(import_ui33.IconButton, { "aria-label": "Sort results", size: "small", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(import_icons24.DescendingSorting, {}) }) }),
+         /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_ui33.DropdownMenu.Content, { className: "z-[1]", align: "end", children: [
+           /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
+             import_ui33.DropdownMenu.RadioGroup,
+@@ -116431,6 +116439,7 @@ var init_data_table_search = __esm({
+       return /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
+         import_ui34.Input,
+         {
++          "aria-label": placeholderText,
+           autoComplete: "off",
+           name: "q",
+           type: "search",
+@@ -116634,7 +116643,7 @@ var init_data_table_root = __esm({
+                             cell.getContext()
+                           );
+                           const isTabableLink = isFirstCell && !!to;
+-                          const shouldRenderAsLink = !!to && !isSelectCell;
++                          const shouldRenderAsLink = !!to && !isSelectCell && cell.column.id !== "actions";
+                           return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
+                             import_ui35.Table.Cell,
+                             {
+@@ -116865,36 +116874,7 @@ var init_product_list_table_actions = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next32.useTranslation)();
@@ -68,7 +103,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
        return /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(
          ActionMenu,
          {
-@@ -116918,16 +116897,7 @@ var init_product_list_table_actions = __esm({
+@@ -116918,16 +116898,7 @@ var init_product_list_table_actions = __esm({
                    }
                  ]
                }
@@ -86,7 +121,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
            ]
          }
        );
-@@ -117626,7 +117596,6 @@ var init_product_list_table = __esm({
+@@ -117626,7 +117597,6 @@ var init_product_list_table = __esm({
            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Heading, { level: "h1", children: t5("products.domain") }),
            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "flex items-center justify-center gap-x-2", children: [
              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: `export${location.search}`, children: t5("actions.export") }) }),
@@ -94,7 +129,15 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_ui41.Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(import_react_router_dom26.Link, { to: "create", children: t5("actions.create") }) })
            ] })
          ] }),
-@@ -123459,7 +123428,6 @@ var init_configurable_product_list_table = __esm({
+@@ -117664,6 +117634,7 @@ var init_product_list_table = __esm({
+           ...base,
+           columnHelper2.display({
+             id: "actions",
++            header: () => /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("span", { className: "sr-only", children: "Actions" }),
+             cell: ({ row }) => {
+               return /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(ProductActions, { product: row.original });
+             }
+@@ -123459,7 +123430,6 @@ var init_configurable_product_list_table = __esm({
              heading: t5("products.domain"),
              actions: [
                { label: t5("actions.export"), to: `export${location.search}` },
@@ -102,7 +145,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
                { label: t5("actions.create"), to: "create" }
              ]
            }
-@@ -134419,35 +134387,9 @@ var init_product_general_section = __esm({
+@@ -134419,35 +134389,9 @@ var init_product_general_section = __esm({
        product
      }) => {
        const { t: t5 } = (0, import_react_i18next88.useTranslation)();
@@ -138,7 +181,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
        return /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)(import_ui99.Container, { className: "divide-y p-0", children: [
          /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
            /* @__PURE__ */ (0, import_jsx_runtime136.jsx)(import_ui99.Heading, { children: product.title }),
-@@ -134476,16 +134418,7 @@ var init_product_general_section = __esm({
+@@ -134476,16 +134420,7 @@ var init_product_general_section = __esm({
                          }
                        ]
                      }
@@ -156,7 +199,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
                  ]
                }
              )
-@@ -135147,8 +135080,6 @@ var init_product_variant_section = __esm({
+@@ -135147,8 +135082,6 @@ var init_product_variant_section = __esm({
      useColumns4 = (product) => {
        const { t: t5 } = (0, import_react_i18next93.useTranslation)();
        const navigate = (0, import_react_router_dom38.useNavigate)();
@@ -165,7 +208,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
        const [searchParams] = (0, import_react_router_dom38.useSearchParams)();
        const tableSearchParams = (0, import_react140.useMemo)(() => {
          const filtered = new URLSearchParams();
-@@ -135159,23 +135090,6 @@ var init_product_variant_section = __esm({
+@@ -135159,23 +135092,6 @@ var init_product_variant_section = __esm({
          }
          return filtered;
        }, [searchParams]);
@@ -189,7 +232,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
        const optionColumns = (0, import_react140.useMemo)(() => {
          if (!product?.options) {
            return [];
-@@ -135232,13 +135146,6 @@ var init_product_variant_section = __esm({
+@@ -135232,13 +135148,6 @@ var init_product_variant_section = __esm({
                }
              }
            ];
@@ -203,7 +246,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
            const inventoryItemsCount = variant.inventory_items?.length || 0;
            switch (inventoryItemsCount) {
              case 0:
-@@ -135271,9 +135178,9 @@ var init_product_variant_section = __esm({
+@@ -135271,9 +135180,9 @@ var init_product_variant_section = __esm({
                });
              }
            }
@@ -215,7 +258,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
        );
        const getInventory = (0, import_react140.useCallback)(
          (variant) => {
-@@ -141169,29 +141076,8 @@ var init_loader5 = __esm({
+@@ -141169,29 +141078,8 @@ var init_loader5 = __esm({
  // src/routes/product-variants/product-variant-detail/components/variant-general-section/variant-general-section.tsx
  function VariantGeneralSection({ variant }) {
    const { t: t5 } = (0, import_react_i18next124.useTranslation)();
@@ -245,7 +288,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
    return /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)(import_ui133.Container, { className: "divide-y p-0", children: [
      /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { className: "flex items-center justify-between px-6 py-4", children: [
        /* @__PURE__ */ (0, import_jsx_runtime183.jsxs)("div", { children: [
-@@ -141224,16 +141110,7 @@ function VariantGeneralSection({ variant }) {
+@@ -141224,16 +141112,7 @@ function VariantGeneralSection({ variant }) {
                    }
                  ]
                }
@@ -263,7 +306,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
            ]
          }
        ) })
-@@ -218597,14 +218474,6 @@ function getRouteMap({
+@@ -218597,14 +218476,6 @@ function getRouteMap({
                    path: "",
                    lazy: () => Promise.resolve().then(() => (init_product_list2(), product_list_exports)),
                    children: [
@@ -278,7 +321,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
                      {
                        path: "export",
                        lazy: () => Promise.resolve().then(() => (init_product_export2(), product_export_exports))
-@@ -221160,9 +221029,10 @@ var init_dashboard_app = __esm({
+@@ -221160,9 +221031,10 @@ var init_dashboard_app = __esm({
        }
        /**
         * Returns widgets for a given base zone grouped by layout section.
@@ -292,7 +335,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
         */
        getWidgetsForSections(route, sections) {
          const result = {};
-@@ -221170,7 +221040,9 @@ var init_dashboard_app = __esm({
+@@ -221170,7 +221042,9 @@ var init_dashboard_app = __esm({
            if (!zone.startsWith(route)) {
              continue;
            }
@@ -303,7 +346,7 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
            const mainSection = sections.includes("main") ? "main" : sections[0];
            const section = suffix || mainSection;
            if (!result[section]) {
-@@ -221180,6 +221052,7 @@ var init_dashboard_app = __esm({
+@@ -221180,6 +221054,7 @@ var init_dashboard_app = __esm({
              const sourceId = ext.widgetId ?? `${zone}:${i}`;
              result[section].push({
                Component: ext.Component,
@@ -311,6 +354,53 @@ index c954aa5b0d99edecab81c0da09c3dbc5ba2a652c..c34a94da5dc636e65ccbcfad4886f60d
                // The id intentionally omits the section so a widget keeps its
                // identity (and saved preference) when its zone moves to a different
                // section of the same route.
+diff --git a/dist/chunk-7TWTWTDT.mjs b/dist/chunk-7TWTWTDT.mjs
+index 5cd0631a4956c01cd1b2cfb9884ba5fc872bdc46..6c4fda8951dfc7ef93f46a44525f6b215fdb1dfc 100644
+--- a/dist/chunk-7TWTWTDT.mjs
++++ b/dist/chunk-7TWTWTDT.mjs
+@@ -55,6 +55,7 @@ var DataTableSearch = ({
+   return /* @__PURE__ */ jsx(
+     Input,
+     {
++      "aria-label": placeholderText,
+       autoComplete: "off",
+       name: "q",
+       type: "search",
+@@ -233,7 +234,7 @@ var DataTableRoot = ({
+                         cell.getContext()
+                       );
+                       const isTabableLink = isFirstCell && !!to;
+-                      const shouldRenderAsLink = !!to && !isSelectCell;
++                      const shouldRenderAsLink = !!to && !isSelectCell && cell.column.id !== "actions";
+                       return /* @__PURE__ */ jsx3(
+                         Table.Cell,
+                         {
+diff --git a/dist/chunk-HQKGZADC.mjs b/dist/chunk-HQKGZADC.mjs
+index dc03eeee9046413b7ce3d07eb2c2849dfa3ebd37..ca288289d16d24234350d67080f15ef81529262a 100644
+--- a/dist/chunk-HQKGZADC.mjs
++++ b/dist/chunk-HQKGZADC.mjs
+@@ -68,7 +68,7 @@ var DataTableOrderBy = ({
+     });
+   };
+   return /* @__PURE__ */ jsxs(DropdownMenu, { dir: direction, children: [
+-    /* @__PURE__ */ jsx(DropdownMenu.Trigger, { asChild: true, children: /* @__PURE__ */ jsx(IconButton, { size: "small", children: /* @__PURE__ */ jsx(DescendingSorting, {}) }) }),
++    /* @__PURE__ */ jsx(DropdownMenu.Trigger, { asChild: true, children: /* @__PURE__ */ jsx(IconButton, { "aria-label": "Sort results", size: "small", children: /* @__PURE__ */ jsx(DescendingSorting, {}) }) }),
+     /* @__PURE__ */ jsxs(DropdownMenu.Content, { className: "z-[1]", align: "end", children: [
+       /* @__PURE__ */ jsx(
+         DropdownMenu.RadioGroup,
+diff --git a/dist/chunk-OZPB6JBL.mjs b/dist/chunk-OZPB6JBL.mjs
+index 05649d580083c5d28a1d9c75c8907e6b7e655c96..f735fd72ae22e34e92ce52c53e703134f50771c2 100644
+--- a/dist/chunk-OZPB6JBL.mjs
++++ b/dist/chunk-OZPB6JBL.mjs
+@@ -16,7 +16,7 @@ var ActionMenu = ({
+   children
+ }) => {
+   const direction = useDocumentDirection();
+-  const inner = children ?? /* @__PURE__ */ jsx(IconButton, { size: "small", variant, children: /* @__PURE__ */ jsx(EllipsisHorizontal, {}) });
++  const inner = children ?? /* @__PURE__ */ jsx(IconButton, { "aria-label": "Open actions", size: "small", variant, children: /* @__PURE__ */ jsx(EllipsisHorizontal, {}) });
+   return /* @__PURE__ */ jsxs(DropdownMenu, { dir: direction, children: [
+     /* @__PURE__ */ jsx(DropdownMenu.Trigger, { asChild: true, children: inner }),
+     /* @__PURE__ */ jsx(DropdownMenu.Content, { children: groups.map((group, index) => {
 diff --git a/dist/chunk-QIJSUXW3.mjs b/dist/chunk-QIJSUXW3.mjs
 index 1f0ae3f83bfd827fe091e934bbcb62337dc0f998..b4ad11f79eddb01888148f6c3453c2fa72de7c06 100644
 --- a/dist/chunk-QIJSUXW3.mjs
@@ -589,7 +679,7 @@ index a22703f8d12bb735ac61a3d63cf54bd3dc2eaa7a..5c90bfd6682ba45d93d4e11168c68e41
    const getInventory = useCallback(
      (variant) => {
 diff --git a/dist/product-list-KFP2GKHN.mjs b/dist/product-list-KFP2GKHN.mjs
-index 28522b73fefac055a0ab3031851587f77e65e7d8..42604281f4e8afdb7930f434917c0cd5024a69a8 100644
+index 28522b73fefac055a0ab3031851587f77e65e7d8..2cd31c7e8cf3c4acc751721c82d4155fff327dc0 100644
 --- a/dist/product-list-KFP2GKHN.mjs
 +++ b/dist/product-list-KFP2GKHN.mjs
 @@ -84,7 +84,6 @@ import "./chunk-LYZ7OUA3.mjs";
@@ -672,7 +762,15 @@ index 28522b73fefac055a0ab3031851587f77e65e7d8..42604281f4e8afdb7930f434917c0cd5
          /* @__PURE__ */ jsx2(Button, { size: "small", variant: "secondary", asChild: true, children: /* @__PURE__ */ jsx2(Link, { to: "create", children: t("actions.create") }) })
        ] })
      ] }),
-@@ -371,7 +330,6 @@ var ConfigurableProductListTable = () => {
+@@ -282,6 +241,7 @@ var useColumns = () => {
+       ...base,
+       columnHelper.display({
+         id: "actions",
++        header: () => /* @__PURE__ */ jsx2("span", { className: "sr-only", children: "Actions" }),
+         cell: ({ row }) => {
+           return /* @__PURE__ */ jsx2(ProductActions, { product: row.original });
+         }
+@@ -371,7 +331,6 @@ var ConfigurableProductListTable = () => {
          heading: t("products.domain"),
          actions: [
            { label: t("actions.export"), to: `export${location.search}` },
@@ -749,6 +847,32 @@ index 736e26e394ddf9ae9c9e04637cba9f12bde0a01d..e8c799ff5cd5c25a2feabceff2c2c4ea
            ]
          }
        ) })
+diff --git a/src/components/common/action-menu/action-menu.tsx b/src/components/common/action-menu/action-menu.tsx
+index 1c1a8180222bae4279fa60e23703a76c2437316f..5b06cc2c6c87624d164458aa4c4486a542a7684a 100644
+--- a/src/components/common/action-menu/action-menu.tsx
++++ b/src/components/common/action-menu/action-menu.tsx
+@@ -41,7 +41,7 @@ export const ActionMenu = ({
+ }: ActionMenuProps) => {
+   const direction = useDocumentDirection()
+   const inner = children ?? (
+-    <IconButton size="small" variant={variant}>
++    <IconButton aria-label="Open actions" size="small" variant={variant}>
+       <EllipsisHorizontal />
+     </IconButton>
+   )
+diff --git a/src/components/filtering/order-by/order-by.tsx b/src/components/filtering/order-by/order-by.tsx
+index 20111880b52dc6de18727d963f3c6f274b6c791f..8d4987f622a9e8a884d39b5600e9250b71aeb13c 100644
+--- a/src/components/filtering/order-by/order-by.tsx
++++ b/src/components/filtering/order-by/order-by.tsx
+@@ -104,7 +104,7 @@ export const OrderBy = ({ keys }: OrderByProps) => {
+   return (
+     <DropdownMenu dir={direction}>
+       <DropdownMenu.Trigger asChild>
+-        <IconButton size="small">
++        <IconButton aria-label="Sort results" size="small">
+           <ArrowUpDown />
+         </IconButton>
+       </DropdownMenu.Trigger>
 diff --git a/src/components/layout-composer/layout-composer.tsx b/src/components/layout-composer/layout-composer.tsx
 index 875804e3e17da3e2e8fe9c3ef4934a58e3c34840..7e551fcee196a05b2c6ef964039c154571f817e2 100644
 --- a/src/components/layout-composer/layout-composer.tsx
@@ -807,6 +931,45 @@ index 46df4afa1bfdfd04a282cf54b40d401aa271365e..4cdbc3376933f41d35e0d21b6b924aff
    widgetId: string
  }
  export type SectionWidgetMap = Record<string, WidgetRenderEntry[]>
+diff --git a/src/components/table/data-table/data-table-order-by/data-table-order-by.tsx b/src/components/table/data-table/data-table-order-by/data-table-order-by.tsx
+index f446d8287bc2d59fbe31e472f5806337eeb72c77..a30c59aa3b57c5bdaea3d50cd10d848b09a66673 100644
+--- a/src/components/table/data-table/data-table-order-by/data-table-order-by.tsx
++++ b/src/components/table/data-table/data-table-order-by/data-table-order-by.tsx
+@@ -102,7 +102,7 @@ export const DataTableOrderBy = <TData,>({
+   return (
+     <DropdownMenu dir={direction}>
+       <DropdownMenu.Trigger asChild>
+-        <IconButton size="small">
++        <IconButton aria-label="Sort results" size="small">
+           <DescendingSorting />
+         </IconButton>
+       </DropdownMenu.Trigger>
+diff --git a/src/components/table/data-table/data-table-root/data-table-root.tsx b/src/components/table/data-table/data-table-root/data-table-root.tsx
+index a6ea006960c9098063ccbcfcc8221eda5d49c4e9..cf73f76ca876b0cfc94952ffc8f6fa68dae1d8af 100644
+--- a/src/components/table/data-table/data-table-root/data-table-root.tsx
++++ b/src/components/table/data-table/data-table-root/data-table-root.tsx
+@@ -256,7 +256,8 @@ export const DataTableRoot = <TData,>({
+                       )
+ 
+                       const isTabableLink = isFirstCell && !!to
+-                      const shouldRenderAsLink = !!to && !isSelectCell
++                      const shouldRenderAsLink =
++                        !!to && !isSelectCell && cell.column.id !== "actions"
+ 
+                       return (
+                         <Table.Cell
+diff --git a/src/components/table/data-table/data-table-search/data-table-search.tsx b/src/components/table/data-table/data-table-search/data-table-search.tsx
+index a648dbcedd365a4bb72c95f63efe998d17ab92a3..0d52fe6203f2efb9c384f48d8cb76955ae74a04b 100644
+--- a/src/components/table/data-table/data-table-search/data-table-search.tsx
++++ b/src/components/table/data-table/data-table-search/data-table-search.tsx
+@@ -48,6 +48,7 @@ export const DataTableSearch = ({
+ 
+   return (
+     <Input
++      aria-label={placeholderText}
+       autoComplete="off"
+       name="q"
+       type="search"
 diff --git a/src/dashboard-app/dashboard-app.tsx b/src/dashboard-app/dashboard-app.tsx
 index 5f57c65d6cbc055d0fffec8ab3d289c279a14900..c2b622d9d9ec03eeee9f2b592087dba70f9b16ee 100644
 --- a/src/dashboard-app/dashboard-app.tsx
@@ -1196,7 +1359,7 @@ index 407eb26cb0ab6b39d0be1d7bc7056a279c19e7eb..7ad03dc34067bf714089bea4e56fbf34
      />
    )
 diff --git a/src/routes/products/product-list/components/product-list-table/product-list-table.tsx b/src/routes/products/product-list/components/product-list-table/product-list-table.tsx
-index 0d9c1b8b2602ef58fbfe66dc2a208f05622b092a..abc15915cf2a9fd1638fd1f2788e69a37fea62c5 100644
+index 0d9c1b8b2602ef58fbfe66dc2a208f05622b092a..6adaac98b63fdbf5c26f816141fe0c54c21a1997 100644
 --- a/src/routes/products/product-list/components/product-list-table/product-list-table.tsx
 +++ b/src/routes/products/product-list/components/product-list-table/product-list-table.tsx
 @@ -61,9 +61,6 @@ export const ProductListTable = () => {
@@ -1209,3 +1372,11 @@ index 0d9c1b8b2602ef58fbfe66dc2a208f05622b092a..abc15915cf2a9fd1638fd1f2788e69a3
            <Button size="small" variant="secondary" asChild>
              <Link to="create">{t("actions.create")}</Link>
            </Button>
+@@ -104,6 +101,7 @@ const useColumns = () => {
+       ...base,
+       columnHelper.display({
+         id: "actions",
++        header: () => <span className="sr-only">Actions</span>,
+         cell: ({ row }) => {
+           return <ProductActions product={row.original} />
+         },

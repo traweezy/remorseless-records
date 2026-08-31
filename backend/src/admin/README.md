@@ -35,6 +35,10 @@ dialogs route by route:
   route's purpose-built card/list presentation on mobile, and one controlled
   table instance across both surfaces. Routes still own validated server
   queries, columns, mobile content, empty-state copy, and mutation safeguards.
+- `components/admin-focus-visibility.ts` protects keyboard focus from
+  project-owned sticky action bars. Page-level permission boundaries install
+  the listener once and recenter only a genuinely obscured target, with no
+  smooth motion.
 
 Tax Control is the first form/confirmation consumer. Its task-first flow puts
 the collect/disabled decision before provider diagnostics, validates the exact
@@ -48,12 +52,30 @@ that distinguish an initial load from a recoverable failure. New custom forms
 and routes should extend these components instead of copying their
 accessibility wiring.
 
-The Tax Control collecting, disable-confirmation, and disabled states were
-validated in the real built Admin through graphical Chromium at 3,200 x 1,280.
-The project-owned workspace had no horizontal overflow, and its scoped axe run
-reported 24 passed rules with zero violations or incomplete checks. The vendor
-Admin shell remains outside that scoped result and keeps its own upstream
-navigation accessibility backlog.
+The complete compiled-Admin acceptance matrix covers 12 critical route and
+dialog states at 760, 800, 1,440, and 1,920 CSS pixels. This includes the
+guided Product validation and offerings steps, existing Product authoring,
+native Products plus the Catalog workspace, Merchandising, News, Discography,
+Tax Control, Media Cleanup, Refund Operations, and Tax Records. Every case must
+produce zero axe violations, zero incomplete checks, no document overflow,
+valid labels and ARIA relationships, 24-pixel minimum targets, reduced-motion
+compliance, and a visible unobscured keyboard-focus sequence.
+
+The acceptance run found shared vendor issues rather than hiding them behind a
+custom-route scope. Pinned Medusa UI and Dashboard patches name search, action,
+and sort controls, mark decorative search icons as hidden, remove an action
+cell from a row-wide link, and preserve the prior Product-create, delete, and
+widget-placement boundaries. Pinned React 18 Radix Dialog, Popover, and Select
+patches omit `aria-controls` while their controlled content is unmounted.
+Repository QA verifies these exact corrections so an upstream change cannot
+silently remove them.
+
+Run `pnpm --filter backend run build` followed by
+`pnpm run qa:admin:accessibility`. The harness serves the real production
+bundle with GET-only fixtures and rejects writes. It stores screenshots in
+`/tmp/remorseless-admin-accessibility`; changed surfaces still require visual
+inspection. Product authoring was also validated in headed Helium and inspected
+through a real `flameshot` desktop capture.
 
 The staging-configured Storefront production build and complete local
 Playwright matrix pass with 53 tests passed, two intentionally skipped, and

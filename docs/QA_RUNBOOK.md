@@ -121,6 +121,9 @@ pnpm --filter backend exec tsc --noEmit
 # Dashboard DOM compiler context and browser-boundary assertion regression
 pnpm run qa:admin-browser-boundary
 
+# Admin matrix wiring, keyboard guard, semantics, and dependency patch drift
+pnpm run qa:admin-accessibility-boundary
+
 # Browser QA dependency resolution and blocked browser-download install scripts
 pnpm run qa:browser-toolchain-security
 
@@ -128,7 +131,52 @@ pnpm run qa:browser-toolchain-security
 pnpm run qa:storefront-provider-fixture
 ```
 
-### 1.5 Critical browser matrix
+### 1.5 Admin accessibility and visual matrix
+
+Build the actual Medusa Admin bundle before running its browser acceptance:
+
+```bash
+pnpm --filter backend run build
+pnpm run qa:admin:accessibility
+```
+
+The matrix serves only the compiled Admin bundle and intercepts its GET and
+OPTIONS requests with bounded, deterministic fixtures. Any mutation request is
+rejected. Its 12 cases cover guided Product validation and offerings, existing
+Product authoring, the native Product list and Catalog workspace,
+Merchandising and its creation dialog, News and Discography creation dialogs,
+Tax Control, Media Cleanup, Refund Operations, and Tax Records. Viewports cover
+760-pixel narrow/mobile, 800-pixel 200%-equivalent, 1,440-pixel laptop, and
+1,920-pixel wide layouts.
+
+Every case must report zero axe violations and zero incomplete axe checks. The
+gate also fails for missing landmarks/headings, route mismatch, document
+overflow, unnamed controls, dangling `aria-controls`, positive tab order,
+undersized interactive targets, motion under reduced-motion emulation, missing
+or obscured focus, browser errors, or failed responses. Screenshots and the
+JSON summary are written to `/tmp/remorseless-admin-accessibility` by default.
+Inspect the changed surfaces; passing assertions do not prove visual hierarchy.
+
+For a real graphical-desktop check, run one important route in headed mode,
+capture the desktop, and inspect the resulting image:
+
+```bash
+DISPLAY=:0 ADMIN_ACCEPTANCE_HEADFUL=1 ADMIN_ACCEPTANCE_HOLD_MS=45000 \
+ADMIN_ACCEPTANCE_HEIGHT=900 \
+ADMIN_ACCEPTANCE_ROUTE=/app/catalog/products/product_acceptance \
+ADMIN_ACCEPTANCE_SCREENSHOT=/tmp/remorseless-admin-accessibility/admin-headful.png \
+ADMIN_ACCEPTANCE_WIDTH=1440 node qa/admin-visual-acceptance.mjs
+
+DISPLAY=:0 flameshot full -p /tmp/admin-accessibility-final-desktop.png
+```
+
+If no graphical session or `flameshot` is available, record that limitation and
+inspect the Puppeteer screenshots as fallback; do not describe the result as a
+real desktop screenshot. The acceptance fixture is for rendering and
+accessibility only. It is not staging health evidence and must never be changed
+to issue writes.
+
+### 1.6 Critical browser matrix
 
 Pre-deploy Browser Smoke must use the loopback-only deterministic Medusa
 fixture in `storefront/scripts/ci-medusa-fixture.mjs`. The fixture exposes only
@@ -174,7 +222,7 @@ still exercise the live authenticated Product-handle and catalog-shelf
 projections. A local fixture pass is never evidence that the deployed provider
 is healthy.
 
-### 1.6 Trusted Types report-only acceptance
+### 1.7 Trusted Types report-only acceptance
 
 The Storefront sends `Content-Security-Policy-Report-Only` on document
 responses with `require-trusted-types-for 'script'` and advertises the

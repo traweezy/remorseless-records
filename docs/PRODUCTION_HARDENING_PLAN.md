@@ -3424,10 +3424,37 @@ heartbeats; no synthetic evidence or manual destructive cleanup is permitted.
 - [x] Add focused component/interaction coverage for each objective and pass
       the complete Backend lint, strict typecheck, tests, coverage, API/RBAC,
       and production Admin build gates before the section push.
-- [ ] Complete keyboard-only, screen-reader, 200% zoom, focus, contrast,
+- [x] Complete keyboard-only, screen-reader, 200% zoom, focus, contrast,
       target-size, reduced-motion, mobile, laptop, and wide-screen validation.
-- [ ] Capture and inspect real desktop screenshots of all critical Admin form
+- [x] Capture and inspect real desktop screenshots of all critical Admin form
       states, then update the client and support guides with task walkthroughs.
+
+The August 31 final Admin acceptance runs the exact compiled Medusa Admin with
+GET-only authenticated fixtures across 12 critical route and dialog states.
+The 760-, 800-, 1,440-, and 1,920-pixel cases cover narrow/mobile,
+200%-equivalent, laptop, and wide layouts. All cases return zero axe violations,
+zero incomplete checks, zero failed responses, no document overflow, no
+unnamed or undersized controls, no dangling ARIA relationships, no
+reduced-motion animation, and visible unobscured keyboard focus. Product
+authoring was also opened in headed Helium and inspected from a real graphical
+desktop screenshot captured with `flameshot`.
+
+The pass corrected shared search/action/sort accessible names, decorative icon
+semantics, nested heading levels, hidden tab stops, stale Radix
+`aria-controls`, opaque sticky action surfaces, and keyboard focus hidden by
+sticky bars. Those vendor corrections are pinned patches and a new repository
+boundary verifier makes their loss fail the standard QA gate. The client guide
+now includes keyboard, zoom, narrow-screen, and privacy-safe recovery guidance;
+`docs/ADMIN_SUPPORT_GUIDE.md` supplies task-specific retry, escalation, and
+mutation-authority decisions.
+
+Final local gates pass the 1,247-file repository QA check, all 272 Backend
+suites and 2,037 tests at 91.46/84.87/95.62/91.48 coverage, both Storefront
+coverage groups with 169 suites and 1,110 tests, both strict compilers, both
+production builds, the Admin bundle budget, and the React Router
+production-artifact verifier. The dependency audit retains only the three
+documented ignored moderate findings. The Admin's largest JavaScript bundle is
+1,809,126 gzip bytes and total JavaScript is 2,389,710 gzip bytes.
 
 The August 30 second-pass audit makes the guided Catalog creation workflow the
 canonical native Product-list create destination and adds current-catalog

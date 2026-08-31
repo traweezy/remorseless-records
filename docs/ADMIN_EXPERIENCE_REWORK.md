@@ -557,3 +557,51 @@ Local acceptance passes the 1,236-file repository Biome/policy gate, the
 91.44% statements, 84.81% branches, 95.62% functions, and 91.46% lines, both
 strict TypeScript projects, and the complete Backend/Admin production build
 with its frozen 1,085-package server install.
+
+### Complete Admin accessibility and support acceptance — August 31, 2026
+
+The final browser matrix serves the exact compiled Medusa Admin with
+deterministic authenticated GET fixtures and rejects every write. Twelve cases
+cover guided Product validation and offerings, existing Product authoring,
+the native Product list and Catalog workspace, Merchandising and its creation
+dialog, News and Discography creation dialogs, Tax Control, Media Cleanup,
+Refund Operations, and Tax Records. The viewports are 760 pixels for narrow
+dialogs and mobile workflows, 800 pixels for 200%-equivalent content, 1,440
+pixels for common laptops, and 1,920 pixels for wide operational tables.
+
+All 12 cases pass with zero axe violations, zero incomplete checks, zero failed
+responses, and no route mismatch or document overflow. Custom acceptance also
+proves labels and names, minimum 24-pixel targets, valid `aria-controls`, no
+positive tab indexes, reduced-motion behavior, and visible unobscured keyboard
+focus. Product authoring was run in headed graphical Helium and the whole real
+desktop was captured with `flameshot`; the rendered page had clear hierarchy,
+no clipping, and no sticky-control overlap. Matrix screenshots remain temporary
+evidence under `/tmp/remorseless-admin-accessibility`, not repository assets.
+
+The exercise found and corrected cross-cutting defects: Medusa search icons
+were exposed as unnamed images, table search/action/sort controls lacked stable
+names, an action cell sat inside a row-wide link, nested summaries skipped
+heading levels, hidden tab panels remained keyboard stops, closed React 18
+Radix controls referenced unmounted content, translucent sticky bars made
+contrast indeterminate, and sticky action bars could cover the focused field.
+The final implementation uses pinned Medusa UI, Dashboard, and narrowly scoped
+Radix patches plus a page-level focus-visibility guard. Repository QA verifies
+the matrix inventory and every patched boundary so dependency drift fails
+before browser sign-off.
+
+The [Admin client guide](ADMIN_CLIENT_GUIDE.md) now documents navigation,
+keyboard, 200% zoom, narrow-screen behavior, task walkthroughs, and safe save
+recovery. The new [Admin support guide](ADMIN_SUPPORT_GUIDE.md) adds
+privacy-minimized first response, idempotent retry and conflict decisions,
+workspace-specific mutation authority, and an escalation package that excludes
+tokens, provider payloads, payment data, customer data, and raw form content.
+
+Final local acceptance passes the 1,247-file Biome and repository-policy gate,
+all 272 Backend suites and 2,037 tests at 91.46% statements, 84.87% branches,
+95.62% functions, and 91.48% lines, both Storefront coverage groups with 169
+suites and 1,110 tests, both strict TypeScript projects, and both production
+builds. The built Admin contains 330 JavaScript assets; its largest bundle is
+1,809,126 gzip bytes and total JavaScript is 2,389,710 gzip bytes, within the
+enforced budgets. The production dependency audit retains only the three
+documented ignored moderate findings, and the React Router production-artifact
+backport verifier passes.

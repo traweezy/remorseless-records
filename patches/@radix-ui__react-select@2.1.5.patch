@@ -1,0 +1,26 @@
+diff --git a/dist/index.js b/dist/index.js
+index 486fc4eda7eb102faf619e685743dc68bb70f7e3..a2411b57f061319b7dc5e2cfae8f31776bca1950 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -236,7 +236,7 @@ var SelectTrigger = React.forwardRef(
+       {
+         type: "button",
+         role: "combobox",
+-        "aria-controls": context.contentId,
++        "aria-controls": context.open ? context.contentId : void 0,
+         "aria-expanded": context.open,
+         "aria-required": context.required,
+         "aria-autocomplete": "none",
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 0ff1d62eb6c44e8c7d32fec01987976ec40e1667..4e3ae4ec332e23e989820f0e3c50061f8cd83280 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -169,7 +169,7 @@ var SelectTrigger = React.forwardRef(
+       {
+         type: "button",
+         role: "combobox",
+-        "aria-controls": context.contentId,
++        "aria-controls": context.open ? context.contentId : void 0,
+         "aria-expanded": context.open,
+         "aria-required": context.required,
+         "aria-autocomplete": "none",

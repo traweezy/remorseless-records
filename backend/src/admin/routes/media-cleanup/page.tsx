@@ -709,10 +709,14 @@ export const MediaCleanupPageContent = memo(() => {
                 <Tabs.Trigger value="active">Needs review</Tabs.Trigger>
                 <Tabs.Trigger value="quarantined">Quarantined</Tabs.Trigger>
               </Tabs.List>
-              <Tabs.Content className="sr-only" value="active">
+              <Tabs.Content className="sr-only" tabIndex={-1} value="active">
                 Unlinked media that needs review
               </Tabs.Content>
-              <Tabs.Content className="sr-only" value="quarantined">
+              <Tabs.Content
+                className="sr-only"
+                tabIndex={-1}
+                value="quarantined"
+              >
                 Media held safely in quarantine
               </Tabs.Content>
             </Tabs>

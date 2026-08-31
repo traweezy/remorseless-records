@@ -774,7 +774,7 @@ const VariantCatalogProfileWidgetContent =
                 ))}
               </datalist>
 
-              <AdminFormErrorSummary issues={issues} />
+              <AdminFormErrorSummary headingLevel="h3" issues={issues} />
               {mutation.isError ? (
                 <AdminRetryState
                   message={getAdminRequestErrorMessage(

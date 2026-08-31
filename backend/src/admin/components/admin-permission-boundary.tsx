@@ -5,6 +5,7 @@ import { Alert, Container, Skeleton, Text } from "@medusajs/ui"
 
 import type { AdminPolicyAction } from "../../lib/admin-permissions"
 import { useAdminPermissions } from "../lib/admin-permissions"
+import { useAdminFocusVisibility } from "./admin-focus-visibility"
 import { AdminPageHeader, AdminSingleColumnLayout } from "./admin-page"
 import { AdminRetryState } from "./admin-retry-state"
 
@@ -18,6 +19,7 @@ export type AdminPermissionBoundaryProps = {
 
 export const AdminPermissionBoundary = memo<AdminPermissionBoundaryProps>(
   ({ actions, children, match = "all", surface = "page", workspace }) => {
+    useAdminFocusVisibility(surface === "page")
     const permissions = useAdminPermissions()
     const requiredActions = Array.isArray(actions) ? actions : [actions]
     const allowed =

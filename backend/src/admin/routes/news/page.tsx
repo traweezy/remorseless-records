@@ -513,10 +513,10 @@ const NewsAdminPageContent = memo(() => {
                 <Tabs.Trigger value="active">Active</Tabs.Trigger>
                 <Tabs.Trigger value="archived">Archived</Tabs.Trigger>
               </Tabs.List>
-              <Tabs.Content className="sr-only" value="active">
+              <Tabs.Content className="sr-only" tabIndex={-1} value="active">
                 Active news posts
               </Tabs.Content>
-              <Tabs.Content className="sr-only" value="archived">
+              <Tabs.Content className="sr-only" tabIndex={-1} value="archived">
                 Archived news posts
               </Tabs.Content>
             </Tabs>

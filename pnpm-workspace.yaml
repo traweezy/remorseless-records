@@ -147,6 +147,10 @@ patchedDependencies:
   "@remix-run/router@1.23.3": patches/@remix-run__router@1.23.3.patch
   "@rokmohar/medusa-plugin-meilisearch@1.4.3": patches/@rokmohar__medusa-plugin-meilisearch@1.4.3.patch
   react-router-dom@6.30.4: patches/react-router-dom@6.30.4.patch
+  '@medusajs/ui@4.2.0': patches/@medusajs__ui@4.2.0.patch
+  '@radix-ui/react-popover@1.1.5': patches/@radix-ui__react-popover@1.1.5.patch
+  '@radix-ui/react-select@2.1.5': patches/@radix-ui__react-select@2.1.5.patch
+  '@radix-ui/react-dialog@1.1.5': patches/@radix-ui__react-dialog@1.1.5.patch
 
 minimumReleaseAgeExclude:
   - "@railway/cli@5.45.0"

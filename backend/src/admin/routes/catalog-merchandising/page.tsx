@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ArchiveBox } from "@medusajs/icons"
-import { Button, Container, Heading, Text } from "@medusajs/ui"
+import { Button, Container, Heading, Text, clx } from "@medusajs/ui"
 import { useForm, useStore } from "@tanstack/react-form"
 import { useQuery } from "@tanstack/react-query"
 
@@ -863,8 +863,11 @@ const CatalogMerchandisingPageContent = memo(() => {
                   </Text>
                   <AdminFormSaveState state={saveState} />
                 </div>
-                <AdminTaskNavigation items={merchandisingTasks} />
-                <AdminFormErrorSummary issues={formIssues} />
+                <AdminTaskNavigation
+                  className={createOpen ? "invisible" : ""}
+                  items={merchandisingTasks}
+                />
+                <AdminFormErrorSummary headingLevel="h3" issues={formIssues} />
               </div>
 
               {selectedShelf.shelf.archivedAt ? (
@@ -919,7 +922,12 @@ const CatalogMerchandisingPageContent = memo(() => {
               />
             </fieldset>
 
-            <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-md border border-ui-border-base bg-ui-bg-base/95 p-4 shadow-elevation-flyout backdrop-blur sm:flex-row sm:items-center sm:justify-between motion-reduce:backdrop-blur-none">
+            <div
+              className={clx(
+                "sticky bottom-4 z-10 flex flex-col gap-3 rounded-md border border-ui-border-base bg-ui-bg-base p-4 shadow-elevation-flyout sm:flex-row sm:items-center sm:justify-between",
+                createOpen && "invisible"
+              )}
+            >
               <div>
                 <Text className="font-medium" size="small">
                   {selectedShelf.shelf.title}

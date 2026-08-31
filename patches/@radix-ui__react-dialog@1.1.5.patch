@@ -1,0 +1,26 @@
+diff --git a/dist/index.js b/dist/index.js
+index 3aafdf686d78a4a657e13bf4a5225c46e4c129a8..4d7a0d4c5b776d46a97b8ef797ab62008c1d5e69 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -118,7 +118,7 @@ var DialogTrigger = React.forwardRef(
+         type: "button",
+         "aria-haspopup": "dialog",
+         "aria-expanded": context.open,
+-        "aria-controls": context.contentId,
++        "aria-controls": context.open ? context.contentId : void 0,
+         "data-state": getState(context.open),
+         ...triggerProps,
+         ref: composedTriggerRef,
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 0b6f7a3309025806e02498879271d9d2be4bf5dc..3d35947bf4dec1e60a824d849d635125c0a9f476 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -66,7 +66,7 @@ var DialogTrigger = React.forwardRef(
+         type: "button",
+         "aria-haspopup": "dialog",
+         "aria-expanded": context.open,
+-        "aria-controls": context.contentId,
++        "aria-controls": context.open ? context.contentId : void 0,
+         "data-state": getState(context.open),
+         ...triggerProps,
+         ref: composedTriggerRef,

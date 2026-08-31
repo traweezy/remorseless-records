@@ -132,6 +132,7 @@ AdminFormIssueLink.displayName = "AdminFormIssueLink"
 
 export type AdminFormErrorSummaryProps = {
   className?: string
+  headingLevel?: "h2" | "h3"
   issues: readonly AdminFormIssue[]
   onFocusIssue?: (issue: AdminFormIssue) => void
   title?: string
@@ -140,6 +141,7 @@ export type AdminFormErrorSummaryProps = {
 export const AdminFormErrorSummary = memo<AdminFormErrorSummaryProps>(
   ({
     className,
+    headingLevel = "h2",
     issues,
     onFocusIssue,
     title = "Check the highlighted fields",
@@ -167,7 +169,7 @@ export const AdminFormErrorSummary = memo<AdminFormErrorSummaryProps>(
 
     return (
       <Alert className={className} role="alert" variant="error">
-        <Heading level="h3">{title}</Heading>
+        <Heading level={headingLevel}>{title}</Heading>
         <Text className="mt-1 text-ui-fg-subtle" size="small">
           Nothing has been saved. Correct the following details and try again.
         </Text>
@@ -276,12 +278,13 @@ export type AdminTaskNavigationItem = {
 }
 
 export type AdminTaskNavigationProps = {
+  className?: string
   items: readonly AdminTaskNavigationItem[]
   label?: string
 }
 
 export const AdminTaskNavigation = memo<AdminTaskNavigationProps>(
-  ({ items, label = "Jump to an editing task" }) => {
+  ({ className, items, label = "Jump to an editing task" }) => {
     const links = useMemo(
       () =>
         items.map((item) => (
@@ -298,7 +301,10 @@ export const AdminTaskNavigation = memo<AdminTaskNavigationProps>(
     return (
       <nav
         aria-label={label}
-        className="sticky top-0 z-10 rounded-md border border-ui-border-base bg-ui-bg-base/95 p-3 shadow-elevation-card-rest backdrop-blur motion-reduce:backdrop-blur-none"
+        className={clx(
+          "sticky top-0 z-10 rounded-md border border-ui-border-base bg-ui-bg-base/95 p-3 shadow-elevation-card-rest backdrop-blur motion-reduce:backdrop-blur-none",
+          className
+        )}
       >
         <Text className="mb-2 text-ui-fg-subtle" size="xsmall" weight="plus">
           {label}

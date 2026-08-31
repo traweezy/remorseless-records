@@ -127,6 +127,7 @@ export const CatalogCheckboxField = memo<CheckboxFieldProps>(
     return (
       <div className="flex min-h-8 items-center gap-2">
         <Checkbox
+          aria-label={label}
           checked={checked}
           className="!size-6 shrink-0"
           disabled={disabled}

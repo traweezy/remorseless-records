@@ -4,8 +4,14 @@ This guide covers the project-owned Medusa Admin workspaces used for ordinary
 store operations. Medusa's native Products, Orders, inventory, pricing, and
 fulfillment screens remain the source of truth for their native data.
 
+For recovery decisions, privacy-safe evidence, and escalation, use the
+[Medusa Admin support guide](ADMIN_SUPPORT_GUIDE.md).
+
 ## Before editing
 
+- Use the **Catalog**, **Content**, and **Operations** navigation by the task
+  you are completing. Product price and inventory changes and all order
+  mutations stay in Medusa's native screens.
 - A visible save status says whether the screen is unchanged, has unsaved
   changes, is saving, is checking the server, or failed.
 - Long editors include task links that jump to the exact section without
@@ -19,6 +25,19 @@ fulfillment screens remain the source of truth for their native data.
 - Retrying the same failed action is safe. Writes carry an idempotency key and
   edits carry the version that was loaded. When a response is lost, supported
   editors check the server before asking for another save.
+
+## Keyboard, zoom, and narrow screens
+
+- `Tab` and `Shift+Tab` move through controls; `Enter` or `Space` activates the
+  focused button; `Escape` closes a dialog and returns focus to its opener.
+- Task links move to the relevant form section without clearing fields. After
+  validation, the summary and focus identify the first item to correct.
+- At 200% zoom or on a narrow screen, tables become cards or keep their own
+  horizontal scrolling. The whole page must not scroll sideways.
+- Reduced-motion settings are respected. A project-owned sticky save bar will
+  not hide the focused control; the page recenters it when necessary.
+- Search fields and clear actions have spoken labels. Decorative search icons
+  are intentionally ignored by screen readers.
 
 ## Catalog
 
@@ -161,3 +180,8 @@ evidence incidents without rewriting historical decisions.
    the intended change. Stale data is never silently overwritten.
 5. Use the relevant operations runbook when the screen reports a provider,
    payment, storage, or evidence incident.
+
+Do not copy browser storage, auth tokens, customer information, payment data,
+provider payloads, or raw form contents into a support ticket. The
+[Admin support guide](ADMIN_SUPPORT_GUIDE.md) lists the safe escalation
+evidence.

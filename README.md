@@ -6,6 +6,7 @@ Brutal maximalist commerce experience for extreme music: MedusaJS v2 backend, Ne
 
 - [Architecture](#architecture)
 - [Medusa Admin Client Guide](docs/ADMIN_CLIENT_GUIDE.md)
+- [Medusa Admin Support Guide](docs/ADMIN_SUPPORT_GUIDE.md)
 - [News Publishing: Plain-English Guide](#news-publishing-plain-english-guide)
 - [Admin Access Control: Plain-English Guide](#admin-access-control-plain-english-guide)
 - [Shopping Cart: Plain-English Guide](#shopping-cart-plain-english-guide)

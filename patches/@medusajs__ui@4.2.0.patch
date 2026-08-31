@@ -1,0 +1,52 @@
+diff --git a/dist/cjs/blocks/data-table/components/data-table-search.js b/dist/cjs/blocks/data-table/components/data-table-search.js
+index ad1ab13fca64a5c5872dffe7768ffbddaf7f6dc3..ff63136618a8bf9f5992744d3a70a33dd8585635 100644
+--- a/dist/cjs/blocks/data-table/components/data-table-search.js
++++ b/dist/cjs/blocks/data-table/components/data-table-search.js
+@@ -23,7 +23,7 @@ const DataTableSearch = (props) => {
+     }
+     return (React.createElement(input_1.Input, { size: "small", type: "search", value: instance.getSearch(), onChange: (e) => instance.onSearchChange(e.target.value), className: (0, clx_1.clx)({
+             "pr-[calc(15px+2px+8px)]": instance.isLoading,
+-        }, className), ...rest }));
++        }, className), ...rest, "aria-label": rest["aria-label"] ?? rest.placeholder ?? "Search table" }));
+ };
+ exports.DataTableSearch = DataTableSearch;
+ DataTableSearch.displayName = "DataTable.Search";
+diff --git a/dist/cjs/components/input/input.js b/dist/cjs/components/input/input.js
+index f58e986689e39dd2761f71e8d75c0edbffb5a38b..25bc21654040a432e9e7295df1afa8ee54bd644c 100644
+--- a/dist/cjs/components/input/input.js
++++ b/dist/cjs/components/input/input.js
+@@ -42,7 +42,7 @@ size = "base", ...props }, ref) => {
+         isSearch && (React.createElement("div", { className: (0, clx_1.clx)("text-ui-fg-muted pointer-events-none absolute bottom-0 left-0 flex items-center justify-center", {
+                 "h-8 w-8": size === "base",
+                 "h-7 w-7": size === "small",
+-            }), role: "img" },
++            }), "aria-hidden": true },
+             React.createElement(icons_1.MagnifyingGlassMini, null))),
+         isPassword && (React.createElement("div", { className: (0, clx_1.clx)("absolute bottom-0 right-0 flex items-center justify-center border-l", {
+                 "h-8 w-8": size === "base",
+diff --git a/dist/esm/blocks/data-table/components/data-table-search.js b/dist/esm/blocks/data-table/components/data-table-search.js
+index 0cd5c7c17497fa5ce8dcce28c7b2a8016870acf4..8b10959489c6914f83471422b8d039824878c23b 100644
+--- a/dist/esm/blocks/data-table/components/data-table-search.js
++++ b/dist/esm/blocks/data-table/components/data-table-search.js
+@@ -19,7 +19,7 @@ const DataTableSearch = (props) => {
+     }
+     return (React.createElement(Input, { size: "small", type: "search", value: instance.getSearch(), onChange: (e) => instance.onSearchChange(e.target.value), className: clx({
+             "pr-[calc(15px+2px+8px)]": instance.isLoading,
+-        }, className), ...rest }));
++        }, className), ...rest, "aria-label": rest["aria-label"] ?? rest.placeholder ?? "Search table" }));
+ };
+ DataTableSearch.displayName = "DataTable.Search";
+ const DataTableSearchSkeleton = () => {
+diff --git a/dist/esm/components/input/input.js b/dist/esm/components/input/input.js
+index 18c6a7e2667e7da56ff845ebcc150e82553403be..2372cfa99e07b87df7ec4a662998096c3185e4d9 100644
+--- a/dist/esm/components/input/input.js
++++ b/dist/esm/components/input/input.js
+@@ -37,7 +37,7 @@ size = "base", ...props }, ref) => {
+         isSearch && (React.createElement("div", { className: clx("text-ui-fg-muted pointer-events-none absolute bottom-0 left-0 flex items-center justify-center", {
+                 "h-8 w-8": size === "base",
+                 "h-7 w-7": size === "small",
+-            }), role: "img" },
++            }), "aria-hidden": true },
+             React.createElement(MagnifyingGlassMini, null))),
+         isPassword && (React.createElement("div", { className: clx("absolute bottom-0 right-0 flex items-center justify-center border-l", {
+                 "h-8 w-8": size === "base",

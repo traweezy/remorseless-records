@@ -1455,7 +1455,10 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
                     <AdminFormSaveState state={saveState} />
                   </div>
                   <AdminTaskNavigation items={productAuthoringTasks} />
-                  <AdminFormErrorSummary issues={formIssues} />
+                  <AdminFormErrorSummary
+                    headingLevel="h3"
+                    issues={formIssues}
+                  />
                 </div>
 
                 <div className="min-w-0 space-y-8 p-5">
@@ -2156,7 +2159,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
                                   }
                                 />
                               </div>
-                              <label className="flex items-center gap-2 text-sm text-ui-fg-base">
+                              <label className="flex min-h-6 items-center gap-2 text-sm text-ui-fg-base">
                                 <input
                                   type="checkbox"
                                   checked={line.backorderAllowed}
@@ -2196,7 +2199,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <Heading level="h3">Bundle</Heading>
-                      <label className="flex items-center gap-2 text-sm text-ui-fg-base">
+                      <label className="flex min-h-6 items-center gap-2 text-sm text-ui-fg-base">
                         <input
                           type="checkbox"
                           checked={bundleForm.enabled}
@@ -2270,7 +2273,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
                               ))}
                             </select>
                           </div>
-                          <label className="flex items-end gap-2 pb-2 text-sm text-ui-fg-base">
+                          <label className="flex min-h-6 items-end gap-2 pb-2 text-sm text-ui-fg-base">
                             <input
                               type="checkbox"
                               checked={bundleForm.isActive}
@@ -2505,7 +2508,7 @@ const ProductAuthoringWorkspaceContent = memo<ProductAuthoringWorkspaceProps>(
                     ) : null}
                   </section>
 
-                  <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-md border border-ui-border-base bg-ui-bg-base/95 p-4 shadow-elevation-flyout backdrop-blur sm:flex-row sm:items-center sm:justify-between motion-reduce:backdrop-blur-none">
+                  <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-md border border-ui-border-base bg-ui-bg-base p-4 shadow-elevation-flyout sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <Text className="font-medium" size="small">
                         Product authoring

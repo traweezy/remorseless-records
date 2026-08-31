@@ -64,6 +64,12 @@ describe("Admin form contract", () => {
     expect(markup).toContain("Choose a publication status.")
     expect(markup).toContain('role="alert"')
     expect(markup).toContain('type="button"')
+    expect(markup).toContain("<h2")
+
+    const nestedMarkup = renderToStaticMarkup(
+      <AdminFormErrorSummary headingLevel="h3" issues={issues()} />
+    )
+    expect(nestedMarkup).toContain("<h3")
   })
 
   it("focuses and centers the first issue with a field target", () => {
@@ -94,6 +100,7 @@ describe("Admin form contract", () => {
   it("renders a keyboard-visible task navigation landmark", () => {
     const markup = renderToStaticMarkup(
       <AdminTaskNavigation
+        className="invisible"
         items={[
           { href: "#product", label: "Product" },
           { href: "#variants", label: "Variants" },
@@ -103,6 +110,7 @@ describe("Admin form contract", () => {
     expect(markup).toContain("Jump to an editing task")
     expect(markup).toContain('href="#product"')
     expect(markup).toContain('href="#variants"')
+    expect(markup).toContain("invisible")
   })
 
   it("returns a confirmed mutation result", async () => {
