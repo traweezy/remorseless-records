@@ -9,8 +9,6 @@ import {
   REDIS_URL,
   RESEND_API_KEY,
   RESEND_FROM_EMAIL,
-  SENDGRID_API_KEY,
-  SENDGRID_FROM_EMAIL,
   SHOULD_DISABLE_ADMIN,
   STORE_CORS,
   STRIPE_API_KEY,
@@ -200,8 +198,10 @@ const medusaConfig = {
               acl: false,
               cache_control: 'public, max-age=31536000, immutable',
               download_file_duration: 3600,
+              request_timeout_ms: 15000,
               additional_client_config: {
                 forcePathStyle: true,
+                maxAttempts: 2,
               },
             }
           }] : [{
@@ -248,7 +248,7 @@ const medusaConfig = {
         ],
       },
     }] : []),
-    ...(SENDGRID_API_KEY && SENDGRID_FROM_EMAIL || RESEND_API_KEY && RESEND_FROM_EMAIL ? [{
+    ...(RESEND_API_KEY && RESEND_FROM_EMAIL ? [{
       key: Modules.NOTIFICATION,
       resolve: '@medusajs/notification',
       options: {
@@ -260,15 +260,6 @@ const medusaConfig = {
               channels: ['feed'],
             },
           },
-          ...(SENDGRID_API_KEY && SENDGRID_FROM_EMAIL ? [{
-            resolve: '@medusajs/notification-sendgrid',
-            id: 'sendgrid',
-            options: {
-              channels: ['email'],
-              api_key: SENDGRID_API_KEY,
-              from: SENDGRID_FROM_EMAIL,
-            }
-          }] : []),
           ...(RESEND_API_KEY && RESEND_FROM_EMAIL ? [{
             resolve: './src/modules/email-notifications',
             id: 'resend',

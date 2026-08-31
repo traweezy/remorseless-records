@@ -38,6 +38,7 @@ describe("product query helpers", () => {
     const options = productDetailQueryOptions(handle)
     expect(productDetailQueryKey(handle)).toEqual(["product", handle])
     expect(options.queryKey).toEqual(["product", handle])
+    expect(options.meta).toEqual({ persist: true })
     await expect(options.queryFn()).resolves.toEqual(product)
 
     fetchSpy.mockRestore()
@@ -108,6 +109,8 @@ describe("product query helpers", () => {
       categories: [],
       variants: [],
     })
+
+    expect(options).not.toHaveProperty("meta")
 
     await expect(options.queryFn()).resolves.toEqual(response)
     expect(mockedSearchProductsBrowser).toHaveBeenCalledWith({

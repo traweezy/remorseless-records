@@ -5,8 +5,19 @@ import {
   stripeOrderDescription,
   stripeOrderMetadata,
   stripePaymentReferencesFromOrder,
+  StripeOrderSyncError,
   syncStripeOrderReferences,
 } from "./order-sync"
+
+const orderAnnotation = {
+  description: "Remorseless Records order #1042",
+  metadata: {
+    commerce_platform: "medusa",
+    medusa_order_id: "order_01",
+    medusa_order_number: "1042",
+    storefront: "remorseless-records",
+  },
+}
 
 describe("Stripe order sync", () => {
   it("extracts and deduplicates official Stripe payment references", () => {
@@ -217,11 +228,13 @@ describe("Stripe order sync", () => {
 
   it("annotates both the PaymentIntent and an existing Charge", async () => {
     const updatePaymentIntent = jest.fn().mockResolvedValue({
+      ...orderAnnotation,
       id: "pi_valid123",
       latest_charge: "ch_valid123",
       object: "payment_intent",
     })
     const updateCharge = jest.fn().mockResolvedValue({
+      ...orderAnnotation,
       id: "ch_valid123",
       object: "charge",
     })
@@ -246,25 +259,24 @@ describe("Stripe order sync", () => {
       })
     ).resolves.toBe(1)
 
-    const annotation = {
-      description: "Remorseless Records order #1042",
-      metadata: {
-        commerce_platform: "medusa",
-        medusa_order_id: "order_01",
-        medusa_order_number: "1042",
-        storefront: "remorseless-records",
-      },
-    }
     expect(updatePaymentIntent).toHaveBeenCalledWith(
       "pi_valid123",
-      annotation,
-      {
+      orderAnnotation,
+      expect.objectContaining({
         idempotencyKey: "rr-order-sync:order_01:pi_valid123:intent:v1",
-      }
+        maxNetworkRetries: 0,
+        timeout: expect.any(Number),
+      })
     )
-    expect(updateCharge).toHaveBeenCalledWith("ch_valid123", annotation, {
-      idempotencyKey: "rr-order-sync:order_01:pi_valid123:charge:v1",
-    })
+    expect(updateCharge).toHaveBeenCalledWith(
+      "ch_valid123",
+      orderAnnotation,
+      expect.objectContaining({
+        idempotencyKey: "rr-order-sync:order_01:pi_valid123:charge:v1",
+        maxNetworkRetries: 0,
+        timeout: expect.any(Number),
+      })
+    )
   })
 
   it.each([
@@ -281,6 +293,7 @@ describe("Stripe order sync", () => {
         charges: { update: jest.fn() },
         paymentIntents: {
           update: jest.fn().mockResolvedValue({
+            ...orderAnnotation,
             id: "pi_valid123",
             object: "payment_intent",
           }),
@@ -293,6 +306,7 @@ describe("Stripe order sync", () => {
         charges: { update: jest.fn().mockResolvedValue(false) },
         paymentIntents: {
           update: jest.fn().mockResolvedValue({
+            ...orderAnnotation,
             id: "pi_valid123",
             latest_charge: "ch_valid123",
             object: "payment_intent",
@@ -352,6 +366,126 @@ describe("Stripe order sync", () => {
             status: null,
           },
         ],
+      })
+    ).rejects.toThrow("Stripe order sync input is invalid")
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it("retries one transient update with the same idempotency key", async () => {
+    const updatePaymentIntent = jest
+      .fn()
+      .mockRejectedValueOnce({
+        statusCode: 503,
+        headers: { "stripe-should-retry": "true" },
+      })
+      .mockResolvedValue({
+        ...orderAnnotation,
+        id: "pi_valid123",
+        latest_charge: null,
+        object: "payment_intent",
+      })
+    const onRetry = jest.fn()
+
+    await expect(
+      syncStripeOrderReferences({
+        client: {
+          charges: { update: jest.fn() },
+          paymentIntents: { update: updatePaymentIntent },
+        },
+        onRetry,
+        orderId: "order_01",
+        orderNumber: "1042",
+        references: [
+          {
+            amount: 24.99,
+            currencyCode: "usd",
+            livemode: false,
+            paymentIntentId: "pi_valid123",
+            status: "succeeded",
+          },
+        ],
+      })
+    ).resolves.toBe(1)
+
+    expect(updatePaymentIntent).toHaveBeenCalledTimes(2)
+    const firstOptions = updatePaymentIntent.mock.calls[0]?.[2]
+    const secondOptions = updatePaymentIntent.mock.calls[1]?.[2]
+    expect(firstOptions).toEqual(
+      expect.objectContaining({
+        idempotencyKey: "rr-order-sync:order_01:pi_valid123:intent:v1",
+        maxNetworkRetries: 0,
+      })
+    )
+    expect(secondOptions).toEqual(
+      expect.objectContaining({
+        idempotencyKey: firstOptions?.idempotencyKey,
+        maxNetworkRetries: 0,
+      })
+    )
+    expect(secondOptions?.timeout).toBeLessThanOrEqual(firstOptions?.timeout)
+    expect(onRetry).toHaveBeenCalledWith({
+      attempt: 2,
+      operation: "update_intent",
+      reason: "status",
+      totalAttempts: 2,
+    })
+  })
+
+  it("does not retry rate limits and redacts provider failures", async () => {
+    const leakedMessage = "customer@example.test sk_live_leaked"
+    const updatePaymentIntent = jest.fn().mockRejectedValue({
+      message: leakedMessage,
+      statusCode: 429,
+    })
+
+    const result = syncStripeOrderReferences({
+      client: {
+        charges: { update: jest.fn() },
+        paymentIntents: { update: updatePaymentIntent },
+      },
+      orderId: "order_01",
+      orderNumber: "1042",
+      references: [
+        {
+          amount: null,
+          currencyCode: null,
+          livemode: false,
+          paymentIntentId: "pi_valid123",
+          status: null,
+        },
+      ],
+    })
+
+    await expect(result).rejects.toMatchObject<StripeOrderSyncError>({
+      code: "provider_unavailable",
+      message: "Stripe order sync failed (provider_unavailable).",
+      name: "StripeOrderSyncError",
+    })
+    await expect(result).rejects.not.toThrow(leakedMessage)
+    expect(updatePaymentIntent).toHaveBeenCalledTimes(1)
+  })
+
+  it("fails closed when the shared deadline is invalid", async () => {
+    const update = jest.fn()
+
+    await expect(
+      syncStripeOrderReferences({
+        client: {
+          charges: { update },
+          paymentIntents: { update },
+        },
+        orderId: "order_01",
+        orderNumber: "1042",
+        references: [
+          {
+            amount: null,
+            currencyCode: null,
+            livemode: false,
+            paymentIntentId: "pi_valid123",
+            status: null,
+          },
+        ],
+        timeoutMs: 0,
       })
     ).rejects.toThrow("Stripe order sync input is invalid")
     expect(update).not.toHaveBeenCalled()

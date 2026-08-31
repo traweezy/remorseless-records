@@ -17,6 +17,31 @@ type QueryProviderProps = {
   readonly children: ReactNode
 }
 
+export const LEGACY_QUERY_CACHE_KEY = "REACT_QUERY_OFFLINE_CACHE"
+export const PUBLIC_QUERY_CACHE_KEY = "RR_PUBLIC_QUERY_CACHE_V2"
+export const PUBLIC_QUERY_CACHE_BUSTER = "explicit-public-persistence-v1"
+export const PUBLIC_QUERY_CACHE_MAX_AGE_MS = 15 * 60_000
+
+type QueryPersistenceMeta = Record<string, unknown> | undefined
+
+export const hasExplicitPublicPersistence = (
+  meta: QueryPersistenceMeta
+): boolean => meta?.persist === true
+
+export const removeLegacyQueryCache = (
+  storage: Pick<Storage, "removeItem">
+): void => {
+  storage.removeItem(LEGACY_QUERY_CACHE_KEY)
+}
+
+const browserStorage = (): Storage | null => {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
 const createQueryClient = () =>
   new QueryClient({
     defaultOptions: {
@@ -60,12 +85,29 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
     }
   }, [])
 
+  useEffect(() => {
+    const storage = browserStorage()
+    if (!storage) {
+      return
+    }
+    try {
+      removeLegacyQueryCache(storage)
+    } catch {
+      // Browser privacy modes may deny persistence; memory caching still works.
+    }
+  }, [])
+
   const persister = useMemo(() => {
     if (typeof window === "undefined") {
       return undefined
     }
-
-    return createSyncStoragePersister({ storage: window.localStorage })
+    const storage = browserStorage()
+    return storage
+      ? createSyncStoragePersister({
+          key: PUBLIC_QUERY_CACHE_KEY,
+          storage,
+        })
+      : undefined
   }, [])
 
   const devtools =
@@ -90,10 +132,13 @@ export const QueryProvider = ({ children }: QueryProviderProps) => {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{
+        buster: PUBLIC_QUERY_CACHE_BUSTER,
+        maxAge: PUBLIC_QUERY_CACHE_MAX_AGE_MS,
         persister,
         dehydrateOptions: {
           shouldDehydrateQuery: (query) =>
-            query.meta?.persist !== false && defaultShouldDehydrateQuery(query),
+            hasExplicitPublicPersistence(query.meta) &&
+            defaultShouldDehydrateQuery(query),
         },
       }}
     >

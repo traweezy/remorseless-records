@@ -84,11 +84,7 @@ export const resolveOperationalCapabilities = (
     allPresent(
       environment.RESEND_API_KEY,
       environment.RESEND_FROM_EMAIL ?? environment.RESEND_FROM
-    ) ||
-      allPresent(
-        environment.SENDGRID_API_KEY,
-        environment.SENDGRID_FROM_EMAIL ?? environment.SENDGRID_FROM
-      )
+    )
   ),
   capability(
     "payment_lifecycle",

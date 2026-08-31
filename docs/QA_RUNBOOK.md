@@ -163,8 +163,10 @@ review.
 - During rotation, exercise Backend verification through
   `CHECKOUT_BFF_SECRET_PREVIOUS` and `PUBLIC_FORM_BFF_SECRET_PREVIOUS`, and
   Storefront receipt verification through
-  `CHECKOUT_RECEIPT_SECRET_PREVIOUS`. Remove prior keys after their documented
-  drain windows.
+  `CHECKOUT_RECEIPT_SECRET_PREVIOUS`. Exercise the lifecycle endpoint with both
+  `STRIPE_LIFECYCLE_WEBHOOK_SECRET` and
+  `STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS`; the two secrets must be distinct.
+  Remove prior keys after their documented drain windows.
 - Verify every key/object is test mode before continuing. Do not use real card
   details or a live Stripe object.
 - Start backend and listen for Stripe webhooks:

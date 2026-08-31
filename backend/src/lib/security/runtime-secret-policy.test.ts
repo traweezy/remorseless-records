@@ -19,6 +19,9 @@ describe("validateBackendRuntimeSecrets", () => {
           CHECKOUT_BFF_SECRET_PREVIOUS: strongSecret("checkout-previous"),
           PUBLIC_FORM_BFF_SECRET_PREVIOUS: strongSecret("public-form-previous"),
           STRIPE_LIFECYCLE_WEBHOOK_SECRET: strongSecret("stripe-lifecycle"),
+          STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS: strongSecret(
+            "stripe-lifecycle-previous"
+          ),
         },
         isProduction: true,
       })
@@ -55,6 +58,19 @@ describe("validateBackendRuntimeSecrets", () => {
     expect(() =>
       validateBackendRuntimeSecrets({ environment, isProduction: true })
     ).toThrow("JWT_SECRET and COOKIE_SECRET must use distinct values")
+
+    expect(() =>
+      validateBackendRuntimeSecrets({
+        environment: {
+          ...productionEnvironment(),
+          STRIPE_LIFECYCLE_WEBHOOK_SECRET: strongSecret("lifecycle"),
+          STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS: strongSecret("lifecycle"),
+        },
+        isProduction: true,
+      })
+    ).toThrow(
+      "STRIPE_LIFECYCLE_WEBHOOK_SECRET and STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS must use distinct values"
+    )
   })
 
   it("does not impose production requirements on build and test commands", () => {

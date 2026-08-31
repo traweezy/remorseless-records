@@ -1,0 +1,178 @@
+diff --git a/dist/services/s3-file.d.ts b/dist/services/s3-file.d.ts
+index c106e63a7e033feac558585075000c2326b69ecb..0ce2110218592e65c7d4d3c72833e6b66c0736b6 100644
+--- a/dist/services/s3-file.d.ts
++++ b/dist/services/s3-file.d.ts
+@@ -18,6 +18,7 @@ interface S3FileServiceConfig {
+     cacheControl?: string;
+     downloadFileDuration?: number;
+     additionalClientConfig?: Record<string, any>;
++    requestTimeoutMs: number;
+     acl?: ObjectCannedACL | false;
+ }
+ export declare class S3FileService extends AbstractFileProviderService {
+@@ -27,6 +28,7 @@ export declare class S3FileService extends AbstractFileProviderService {
+     protected client_: S3Client;
+     constructor({ logger }: InjectedDependencies, options: S3FileServiceOptions);
+     protected getClient(): S3Client;
++    protected send(command: Parameters<S3Client["send"]>[0]): Promise<unknown>;
+     /**
+      * Resolves the ACL to use for an upload. Returns undefined if ACLs are
+      * disabled (config_.acl === false), which causes the SDK to omit the
+diff --git a/dist/services/s3-file.js b/dist/services/s3-file.js
+index 5012c3161b0906c4674cf687e1f0f5cb16cd8d73..a6d6c09d05ac028080c27a67fe366a31e7b98551 100644
+--- a/dist/services/s3-file.js
++++ b/dist/services/s3-file.js
+@@ -35,6 +35,8 @@ function decodeFileContent(content, mimeType) {
+         : Buffer.from(content, "binary");
+ }
+ const DEFAULT_UPLOAD_EXPIRATION_DURATION_SECONDS = 60 * 60;
++const DEFAULT_REQUEST_TIMEOUT_MS = 15 * 1000;
++const MAX_REQUEST_TIMEOUT_MS = 120 * 1000;
+ class S3FileService extends utils_1.AbstractFileProviderService {
+     constructor({ logger }, options) {
+         super();
+@@ -43,6 +45,12 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+             (!options.access_key_id || !options.secret_access_key)) {
+             throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `Access key ID and secret access key are required when using access key authentication`);
+         }
++        const requestTimeoutMs = options.request_timeout_ms ?? DEFAULT_REQUEST_TIMEOUT_MS;
++        if (!Number.isSafeInteger(requestTimeoutMs) ||
++            requestTimeoutMs <= 0 ||
++            requestTimeoutMs > MAX_REQUEST_TIMEOUT_MS) {
++            throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `S3 request timeout must be an integer between 1 and ${MAX_REQUEST_TIMEOUT_MS} milliseconds`);
++        }
+         this.config_ = {
+             fileUrl: options.file_url,
+             accessKeyId: options.access_key_id,
+@@ -56,6 +64,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+             cacheControl: options.cache_control ?? "public, max-age=31536000",
+             downloadFileDuration: options.download_file_duration ?? 60 * 60,
+             additionalClientConfig: options.additional_client_config ?? {},
++            requestTimeoutMs,
+             acl: options.acl ?? undefined,
+         };
+         this.logger_ = logger;
+@@ -78,6 +87,17 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+         };
+         return new client_s3_1.S3Client(config);
+     }
++    async send(command) {
++        try {
++            return await this.client_.send(command, {
++                abortSignal: AbortSignal.timeout(this.config_.requestTimeoutMs),
++            });
++        }
++        catch {
++            this.logger_.error(`S3 file provider request failed.`);
++            throw new utils_1.MedusaError(utils_1.MedusaError.Types.UNEXPECTED_STATE, `Object storage request failed.`);
++        }
++    }
+     /**
+      * Resolves the ACL to use for an upload. Returns undefined if ACLs are
+      * disabled (config_.acl === false), which causes the SDK to omit the
+@@ -127,13 +147,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+                 "original-filename": encodeURIComponent(file.filename),
+             },
+         });
+-        try {
+-            await this.client_.send(command);
+-        }
+-        catch (e) {
+-            this.logger_.error(e);
+-            throw e;
+-        }
++        await this.send(command);
+         const encodedKey = fileKey
+             .split("/")
+             .map(encodeURIComponent)
+@@ -150,7 +164,9 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+         const parsedFilename = path_1.default.parse(fileData.filename);
+         const fileKey = `${this.config_.prefix}${parsedFilename.name}-${(0, ulid_1.ulid)()}${parsedFilename.ext}`;
+         const pass = new stream_1.PassThrough();
++        const abortController = new AbortController();
+         const upload = new lib_storage_1.Upload({
++            abortController,
+             client: this.client_,
+             params: {
+                 ACL: this.resolveAcl(fileData.access),
+@@ -168,10 +184,18 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+             .split("/")
+             .map(encodeURIComponent)
+             .join("/");
+-        const promise = upload.done().then(() => ({
++        const timeout = setTimeout(() => abortController.abort(), this.config_.requestTimeoutMs);
++        const promise = upload
++            .done()
++            .then(() => ({
+             url: `${this.config_.fileUrl}/${encodedKey}`,
+             key: fileKey,
+-        }));
++        }))
++            .catch(() => {
++            this.logger_.error(`S3 file provider request failed.`);
++            throw new utils_1.MedusaError(utils_1.MedusaError.Types.UNEXPECTED_STATE, `Object storage request failed.`);
++        })
++            .finally(() => clearTimeout(timeout));
+         return {
+             writeStream: pass,
+             promise,
+@@ -180,12 +204,11 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+         };
+     }
+     async delete(files) {
+-        try {
+-            /**
+-             * Bulk delete files
+-             */
+-            if (Array.isArray(files)) {
+-                await this.client_.send(new client_s3_1.DeleteObjectsCommand({
++        /**
++         * Bulk delete files
++         */
++        if (Array.isArray(files)) {
++            await this.send(new client_s3_1.DeleteObjectsCommand({
+                     Bucket: this.config_.bucket,
+                     Delete: {
+                         Objects: files.map((file) => ({
+@@ -193,18 +216,13 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+                         })),
+                         Quiet: true,
+                     },
+-                }));
+-            }
+-            else {
+-                await this.client_.send(new client_s3_1.DeleteObjectCommand({
++            }));
++        }
++        else {
++            await this.send(new client_s3_1.DeleteObjectCommand({
+                     Bucket: this.config_.bucket,
+                     Key: files.fileKey,
+-                }));
+-            }
+-        }
+-        catch (e) {
+-            // TODO: Rethrow depending on the error (eg. a file not found error is fine, but a failed request should be rethrown)
+-            this.logger_.error(e);
++            }));
+         }
+     }
+     async getPresignedDownloadUrl(fileData) {
+@@ -246,7 +264,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+             throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `No fileKey provided`);
+         }
+         const fileKey = file.fileKey;
+-        const response = await this.client_.send(new client_s3_1.GetObjectCommand({
++        const response = await this.send(new client_s3_1.GetObjectCommand({
+             Key: fileKey,
+             Bucket: this.config_.bucket,
+         }));
+@@ -257,7 +275,7 @@ class S3FileService extends utils_1.AbstractFileProviderService {
+             throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `No fileKey provided`);
+         }
+         const fileKey = file.fileKey;
+-        const response = await this.client_.send(new client_s3_1.GetObjectCommand({
++        const response = await this.send(new client_s3_1.GetObjectCommand({
+             Key: fileKey,
+             Bucket: this.config_.bucket,
+         }));

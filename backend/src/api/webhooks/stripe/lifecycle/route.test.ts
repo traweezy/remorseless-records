@@ -11,6 +11,7 @@ import { createStripeLifecyclePost, POST } from "./route"
 
 jest.mock("../../../../lib/constants", () => ({
   STRIPE_LIFECYCLE_WEBHOOK_SECRET: "whsec_lifecycle_unit_test",
+  STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS: undefined,
 }))
 
 const secret = "whsec_lifecycle_unit_test"
@@ -168,6 +169,27 @@ describe("POST /webhooks/stripe/lifecycle", () => {
     expect(request.eventBus.emit).not.toHaveBeenCalled()
     expect(state.status).toBe(200)
     expect(state.body).toEqual({ received: true, replayed: true })
+  })
+
+  it("accepts the bounded previous secret during rotation", async () => {
+    const previousSecret = "whsec_lifecycle_previous_unit_test"
+    const signed = signedPayload()
+    const previousSignature = Stripe.webhooks.generateTestHeaderString({
+      payload: signed.payload,
+      secret: previousSecret,
+    })
+    const request = requestFixture({
+      payload: signed.payload,
+      signature: previousSignature,
+    })
+    const { res, state } = responseFixture()
+
+    await createStripeLifecyclePost(secret, previousSecret)(request.req, res)
+
+    expect(state.status).toBe(200)
+    expect(
+      request.lifecycleService.recordStripeLifecycleEvent
+    ).toHaveBeenCalledTimes(1)
   })
 
   it("records a retryable failure when the async queue is unavailable", async () => {

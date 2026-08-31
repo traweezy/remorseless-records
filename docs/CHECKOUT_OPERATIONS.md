@@ -643,16 +643,20 @@ maintenance event rather than a zero-downtime key overlap.
 
 `STRIPE_LIFECYCLE_WEBHOOK_SECRET` belongs only to
 `POST /webhooks/stripe/lifecycle` and must not reuse
-`STRIPE_WEBHOOK_SECRET`. During rotation, let Stripe overlap the old and new
-endpoint secret for its supported grace window, verify signed test delivery,
-then expire the old secret.
+`STRIPE_WEBHOOK_SECRET`. During rotation, deploy the new current key with the
+old key in `STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS`, deliver one signed test
+event with each key, wait for old instances and in-flight delivery to drain,
+then remove the previous key. Startup rejects a previous key equal to any
+current runtime secret.
 
 For Stripe webhook-secret rotation:
 
 1. Create/rotate the test endpoint in Stripe.
-2. Update the backend secret and deploy in a coordinated cutover.
-3. Deliver a signed test event and observe `2xx`.
-4. Remove the former endpoint/secret only after no in-flight delivery remains.
+2. For the lifecycle endpoint, deploy current and previous keys together; for
+   Medusa's official payment endpoint, use a coordinated single-key cutover.
+3. Deliver signed test events for every accepted key and observe `2xx`.
+4. Remove the former endpoint/previous key only after no in-flight delivery
+   remains.
 5. Never log either secret.
 
 ## Payment Method Configuration changes

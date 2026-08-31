@@ -733,7 +733,8 @@ receive them.
 
 Only `NEXT_PUBLIC_STRIPE_PK` is browser-safe. `STRIPE_API_KEY`,
 `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIFECYCLE_WEBHOOK_SECRET`,
-`CHECKOUT_BFF_SECRET`, `CHECKOUT_RECEIPT_SECRET`, and
+its optional previous rotation key, `CHECKOUT_BFF_SECRET`,
+`CHECKOUT_RECEIPT_SECRET`, and
 `PUBLIC_FORM_BFF_SECRET` are server-only. Staging must use `pk_test_` /
 `sk_test_` credentials and a non-live Payment Method Configuration.
 
@@ -748,7 +749,11 @@ PaymentIntent and its existing Charge with idempotent Stripe updates.
 The subscriber rejects ambiguous order projections, malformed Stripe payment
 rows, conflicting duplicate PaymentIntent references, overlong idempotency
 keys, and mismatched Stripe write acknowledgements. It retries instead of
-reporting a partial annotation as successful.
+reporting a partial annotation as successful. All PaymentIntent and Charge
+updates share one eight-second deadline, disable Stripe SDK retries, and permit
+only one eligible transient retry with the same idempotency key. Rate limits do
+not retry, returned annotations are checked exactly, and provider diagnostics
+are replaced with fixed errors.
 
 The Medusa order detail screen includes a **Stripe payments** widget showing
 amount, status, test/live mode, and a mode-correct Dashboard deep link. This
@@ -847,6 +852,10 @@ All responses are non-cacheable. Mutations enforce same-origin request headers,
 small strict JSON schemas, bounded upstream timeouts, and Redis-backed rate
 limits. Browser response schemas are validated again with Zod. Checkout queries
 and client secrets are explicitly excluded from persisted TanStack Query data.
+Persistence is fail-closed: only public product-detail and catalog-definition
+queries marked `persist: true` use the versioned 15-minute browser cache.
+Free-form search, cart, checkout, receipt, and mutation data remain in memory,
+and startup removes the former default-on cache key.
 
 Implementation decisions are recorded in
 [`docs/adr/0001-checkout-payment-authority.md`](docs/adr/0001-checkout-payment-authority.md).
@@ -1112,6 +1121,7 @@ Key variables (non-empty values required for full functionality):
 | `STRIPE_API_KEY`                                         | Stripe secret key (_sk\_..._)                                                  |
 | `STRIPE_WEBHOOK_SECRET`                                  | Endpoint secret for Medusa's official `/hooks/payment/stripe_stripe` webhook   |
 | `STRIPE_LIFECYCLE_WEBHOOK_SECRET`                        | Separate secret for the refund/dispute lifecycle endpoint                      |
+| `STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS`               | Optional former lifecycle secret accepted only during a bounded rotation       |
 | `STRIPE_PAYMENT_METHOD_CONFIGURATION`                    | Active Stripe `pmc_...` limited to card, Link, Apple Pay, and Google Pay       |
 | `CHECKOUT_BFF_SECRET`                                    | Shared 32+ character HMAC key; identical on backend and storefront             |
 | `CHECKOUT_BFF_SECRET_PREVIOUS`                           | Optional former BFF key accepted only during a coordinated rotation            |
@@ -1181,6 +1191,7 @@ BACKEND_PUBLIC_URL=http://localhost:9000
 STRIPE_API_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_LIFECYCLE_WEBHOOK_SECRET=whsec_...
+STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS=
 STRIPE_PAYMENT_METHOD_CONFIGURATION=pmc_...
 CHECKOUT_BFF_SECRET=replace-with-at-least-32-random-characters
 CHECKOUT_BFF_SECRET_PREVIOUS=
@@ -1459,6 +1470,9 @@ the provider ID `minio` for existing database records, uses path-style
 requests, and relies on infrastructure-managed bucket policy. `MINIO_ENDPOINT`
 is the API origin without a path; `MINIO_FILE_URL` may override the public
 bucket/CDN base. The release storage check performs `HeadBucket` only.
+The pinned provider aborts direct requests and streams after 15 seconds, caps
+AWS SDK attempts at two, returns fixed redacted failures, and propagates delete
+errors into catalog compensation instead of swallowing them.
 
 Backend `GET /live` reports process liveness. Backend `GET /ready` checks
 PostgreSQL, Redis, Meilisearch, and object storage using bounded timeouts and

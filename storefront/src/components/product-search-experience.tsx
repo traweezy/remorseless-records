@@ -888,6 +888,7 @@ const ProductSearchExperience = ({
     queryFn: ({ signal }) => fetchCatalogFilterOptions("genres", { signal }),
     initialData: { options: initialFilterDefinitions.genres },
     initialDataUpdatedAt: 0,
+    meta: { persist: true },
     staleTime: 15 * 60_000,
     retry: 1,
   })
@@ -896,6 +897,7 @@ const ProductSearchExperience = ({
     queryFn: ({ signal }) => fetchCatalogFilterOptions("formats", { signal }),
     initialData: { options: initialFilterDefinitions.formats },
     initialDataUpdatedAt: 0,
+    meta: { persist: true },
     staleTime: 15 * 60_000,
     retry: 1,
   })
@@ -905,6 +907,7 @@ const ProductSearchExperience = ({
       fetchCatalogFilterOptions("product-types", { signal }),
     initialData: { options: initialFilterDefinitions.productTypes },
     initialDataUpdatedAt: 0,
+    meta: { persist: true },
     staleTime: 15 * 60_000,
     retry: 1,
   })
@@ -915,6 +918,7 @@ const ProductSearchExperience = ({
       ? { range: initialFilterDefinitions.priceRange }
       : undefined,
     initialDataUpdatedAt: 0,
+    meta: { persist: true },
     staleTime: 15 * 60_000,
     retry: 1,
   })

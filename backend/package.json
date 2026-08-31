@@ -73,7 +73,6 @@
     "@medusajs/js-sdk": "2.18.0",
     "@medusajs/medusa": "^2.18.0",
     "@medusajs/notification": "^2.18.0",
-    "@medusajs/notification-sendgrid": "^2.18.0",
     "@medusajs/payment": "^2.18.0",
     "@medusajs/payment-stripe": "^2.18.0",
     "@medusajs/tax": "^2.18.0",

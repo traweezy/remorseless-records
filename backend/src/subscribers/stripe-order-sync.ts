@@ -121,6 +121,11 @@ export default async function stripeOrderSyncHandler({
   })
   const synchronizedCount = await syncStripeOrderReferences({
     client: stripe as StripeOrderSyncClient,
+    onRetry: (event) => {
+      logger.warn(
+        `[stripe-order-sync] Stripe annotation retry scheduled (${event.operation}, ${event.reason}, attempt ${event.attempt}/${event.totalAttempts}).`
+      )
+    },
     orderId,
     orderNumber,
     references,

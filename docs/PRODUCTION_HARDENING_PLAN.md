@@ -2497,9 +2497,10 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       observable recovery UX.
 - [x] Validate strong, distinct JWT, cookie, cart, checkout-BFF, receipt,
       public-form, and configured webhook secrets at production startup.
-- [ ] Document and exercise remaining JWT and direct Stripe webhook rotation;
-      cart, checkout-BFF, receipt, and public-form prior-key verification is
-      implemented and bounded.
+- [ ] Complete the live JWT/session-invalidating and official Medusa Stripe
+      webhook rotation drills. Cart, checkout-BFF, receipt, public-form, and
+      lifecycle-webhook prior-key verification is implemented and bounded;
+      lifecycle startup also rejects a reused prior key.
 - [x] Remove persistent bootstrap Admin credentials from normal Backend
       runtime.
 - [x] Move all generic abuse controls to Redis-backed atomic rate limits.
@@ -2514,11 +2515,14 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       remove them from browser configuration and client bundles.
 - [ ] Remove any public Meilisearch domain if exact service inspection finds
       one; browser-direct search is not part of the accepted architecture.
+      The 2026-08-31 Railway inspection found the active
+      `meilisearch-staging-d201.up.railway.app` service domain, so removal is an
+      explicit staging environment change rather than an unverified code item.
 - [x] Replace the all-product handles scan with bounded keyset pagination,
       published-status filtering, and publishable-key sales-channel filtering.
 - [x] Verify every public helper applies published-status and publishable-key
       sales-channel boundaries.
-- [ ] Add outbound deadlines, cancellation, bounded retries, and redacted
+- [x] Add outbound deadlines, cancellation, bounded retries, and redacted
       provider errors for content, search, email, Stripe, tax, storage,
       contact, and privacy calls. Contact/privacy Backend and Resend deadlines
       are complete. Storefront news, discography, merchandising-shelf,
@@ -2548,10 +2552,21 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
       retries are disabled, each eligible transient GET can retry once, rate
       limits remain single-attempt, response shapes are validated before
       persistence, and retry/error telemetry cannot copy provider payloads. The
-      other provider families remain.
+      Stripe order annotation now shares one eight-second deadline, disables
+      nested SDK retries, preserves idempotency keys across one eligible
+      transient retry, rejects rate-limit retries, validates exact returned
+      annotations, and emits only fixed retry metadata. The pinned Medusa S3
+      adapter now aborts requests and streams, limits SDK attempts, redacts
+      provider failures, and propagates delete failures for compensation.
+      Unused SendGrid support was removed after staging proved Resend is the
+      sole configured email provider, closing the remaining project-owned
+      provider families.
 - [x] Harden malformed cookie decoding so invalid percent encoding cannot throw
       outside the parser boundary.
-- [ ] Make browser query persistence opt-in for any PII-bearing data.
+- [x] Make browser query persistence opt-in. Only explicitly declared public
+      product-detail and catalog-definition queries can reach the new bounded
+      cache; free-form search, cart, checkout, receipt, and mutation data do
+      not opt in, and the former default-on cache key is removed on startup.
 
 ## Upload and media hardening
 
@@ -3647,6 +3662,56 @@ Admin bundle measures 1,808,081 gzip bytes for its main file and 2,388,159 gzip
 bytes total. The production dependency audit retains only the three documented
 ignored moderate findings; Trivy reports zero high/critical dependency,
 misconfiguration, or secret findings.
+
+## Application provider and browser-persistence hardening
+
+- [x] Change TanStack Query persistence from default-on to explicit opt-in,
+      isolate the new public-only cache behind a versioned key and 15-minute
+      maximum age, and remove the legacy cache without depending on storage
+      availability.
+- [x] Persist only public product-detail and catalog-definition queries; keep
+      free-form search terms, cart identity/state, checkout contact/address,
+      receipt grants/data, and mutations in memory.
+- [x] Give Stripe order/Charge annotations one shared deadline and one
+      application-owned transient retry while keeping SDK retries disabled and
+      the same idempotency key across attempts.
+- [x] Validate returned Stripe descriptions, metadata, object identities, and
+      Charge linkage before acknowledging synchronization, and replace provider
+      diagnostics with fixed coded failures.
+- [x] Accept one distinct previous lifecycle-webhook secret during a bounded
+      rotation window while new deliveries use the current secret; cover the
+      prior-key path and duplicate-secret startup rejection.
+- [x] Remove unused SendGrid configuration and dependencies after exact
+      staging inspection proved Resend is the sole configured email provider.
+- [x] Patch the pinned Medusa S3 provider reproducibly so every direct request
+      and upload stream has cancellation, SDK attempts are bounded, provider
+      errors are redacted, and failed deletes propagate into compensation.
+- [x] Pin the installed S3 package version and runtime source/behavior contract
+      with adversarial tests so a dependency refresh cannot silently restore
+      raw logging or swallowed deletion failures.
+
+Local acceptance passes 47 focused Backend tests across six suites and nine
+focused Storefront tests across two files, the 1,222-file QA and format gates,
+264 Backend suites with 2,007 tests, 131 Storefront baseline files with 789
+tests, and 35 Storefront transactional files with 313 tests. Backend coverage
+is 91.44% statements, 84.81% branches, 95.62% functions, and 91.46% lines;
+Storefront baseline coverage is 94.22%, 86.73%, 96%, and 94.22%, respectively,
+while transactional coverage is 83.28%, 76.09%, 85.76%, and 83.37%. The
+production Backend/Admin build and frozen packaged install pass with the
+patched S3 provider and without SendGrid. The 330-file Admin bundle measures
+1,807,795 gzip bytes for its main file and 2,388,226 gzip bytes total. The
+production dependency audit retains only the three documented ignored moderate
+findings; Trivy reports zero high/critical dependency, misconfiguration, or
+secret findings.
+
+Privacy-request persistence intentionally remains policy-gated: the current
+route delivers the request to the monitored privacy mailbox with a generated
+request ID but does not create another long-lived PII copy. Add a protected
+audit store only after counsel/client approves its fields, access rules,
+retention, deletion, and breach-response policy. Exact Railway inspection also
+found the public staging Meilisearch service domain; removing it changes
+staging service state and remains the explicit environment action recorded in
+the application-security checklist.
 
 ## Legal, accessibility, and launch acceptance
 

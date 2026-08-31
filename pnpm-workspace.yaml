@@ -136,6 +136,7 @@ auditConfig:
 
 patchedDependencies:
   "@medusajs/dashboard@2.18.0": patches/@medusajs__dashboard@2.18.0.patch
+  "@medusajs/file-s3@2.18.0": patches/@medusajs__file-s3@2.18.0.patch
   "@medusajs/framework@2.18.0": patches/@medusajs__framework@2.18.0.patch
   "@medusajs/medusa@2.18.0": patches/@medusajs__medusa@2.18.0.patch
   "@medusajs/workflow-engine-redis@2.18.0": patches/@medusajs__workflow-engine-redis@2.18.0.patch
@@ -197,7 +198,6 @@ minimumReleaseAgeExclude:
   - "@medusajs/medusa@2.18.0"
   - "@medusajs/modules-sdk@2.18.0"
   - "@medusajs/notification-local@2.18.0"
-  - "@medusajs/notification-sendgrid@2.18.0"
   - "@medusajs/notification@2.18.0"
   - "@medusajs/orchestration@2.18.0"
   - "@medusajs/order@2.18.0"

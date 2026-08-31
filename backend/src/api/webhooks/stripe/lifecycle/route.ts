@@ -3,7 +3,10 @@ import type { IEventBusModuleService } from "@medusajs/framework/types"
 import { Modules } from "@medusajs/framework/utils"
 import Stripe from "stripe"
 
-import { STRIPE_LIFECYCLE_WEBHOOK_SECRET } from "../../../../lib/constants"
+import {
+  STRIPE_LIFECYCLE_WEBHOOK_SECRET,
+  STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS,
+} from "../../../../lib/constants"
 import { sendApiProblem } from "../../../../lib/http/correlation"
 import { recordOperationalIncident } from "../../../../lib/health/incidents"
 import { observeOperation } from "../../../../lib/observability/operation-telemetry"
@@ -53,9 +56,19 @@ const respondProblem = (
 }
 
 export const createStripeLifecyclePost =
-  (webhookSecret: string | undefined) =>
+  (
+    webhookSecret: string | undefined,
+    previousWebhookSecret?: string | undefined
+  ) =>
   async (req: MedusaRequest, res: MedusaResponse): Promise<void> => {
-    if (!webhookSecret) {
+    const webhookSecrets = Array.from(
+      new Set(
+        [webhookSecret, previousWebhookSecret]
+          .map((candidate) => candidate?.trim())
+          .filter((candidate): candidate is string => Boolean(candidate))
+      )
+    )
+    if (!webhookSecrets.length) {
       respondProblem(req, res, {
         code: "lifecycle_webhook_unavailable",
         title: "Payment lifecycle webhook is unavailable",
@@ -82,9 +95,20 @@ export const createStripeLifecyclePost =
     }
 
     let event: Stripe.Event
-    try {
-      event = Stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
-    } catch {
+    const verifiedEvent = webhookSecrets.reduce<Stripe.Event | null>(
+      (current, candidate) => {
+        if (current) {
+          return current
+        }
+        try {
+          return Stripe.webhooks.constructEvent(rawBody, signature, candidate)
+        } catch {
+          return null
+        }
+      },
+      null
+    )
+    if (!verifiedEvent) {
       respondProblem(req, res, {
         code: "invalid_webhook",
         title: "Invalid payment lifecycle webhook",
@@ -93,6 +117,7 @@ export const createStripeLifecyclePost =
       })
       return
     }
+    event = verifiedEvent
 
     let projected: ReturnType<typeof projectStripeLifecycleEvent>
     try {
@@ -168,4 +193,7 @@ export const createStripeLifecyclePost =
     }
   }
 
-export const POST = createStripeLifecyclePost(STRIPE_LIFECYCLE_WEBHOOK_SECRET)
+export const POST = createStripeLifecyclePost(
+  STRIPE_LIFECYCLE_WEBHOOK_SECRET,
+  STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS
+)

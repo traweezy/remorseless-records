@@ -21,6 +21,7 @@ export const productDetailQueryKey = (handle: string) =>
   ["product", handle] as const
 
 export const productDetailQueryOptions = (handle: string) => ({
+  meta: { persist: true },
   queryKey: productDetailQueryKey(handle),
   queryFn: async (): Promise<StoreProduct> => {
     const response = await fetch(`/api/products/${handle}`, {

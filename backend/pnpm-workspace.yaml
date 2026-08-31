@@ -174,7 +174,6 @@ minimumReleaseAgeExclude:
   - "@medusajs/medusa@2.18.0"
   - "@medusajs/modules-sdk@2.18.0"
   - "@medusajs/notification-local@2.18.0"
-  - "@medusajs/notification-sendgrid@2.18.0"
   - "@medusajs/notification@2.18.0"
   - "@medusajs/orchestration@2.18.0"
   - "@medusajs/order@2.18.0"

@@ -18,6 +18,10 @@ const MAX_IDENTIFIER_LENGTH = 255
 const MAX_IDEMPOTENCY_KEY_LENGTH = 255
 const MAX_REFERENCES = 25
 const MAX_STATUS_LENGTH = 64
+const MAX_ATTEMPTS = 2
+const MAX_REQUEST_TIMEOUT_MS = 30_000
+const DEFAULT_REQUEST_TIMEOUT_MS = 8_000
+const RETRY_DELAY_MS = 100
 
 export type StripePaymentReference = {
   amount: number | null
@@ -39,7 +43,7 @@ export type StripeOrderSyncClient = {
         description: string
         metadata: Record<string, string>
       },
-      options: { idempotencyKey: string }
+      options: StripeOrderSyncRequestOptions
     ) => Promise<unknown>
   }
   paymentIntents: {
@@ -49,8 +53,36 @@ export type StripeOrderSyncClient = {
         description: string
         metadata: Record<string, string>
       },
-      options: { idempotencyKey: string }
+      options: StripeOrderSyncRequestOptions
     ) => Promise<unknown>
+  }
+}
+
+type StripeOrderSyncRequestOptions = {
+  idempotencyKey: string
+  maxNetworkRetries: 0
+  timeout: number
+}
+
+export type StripeOrderSyncErrorCode =
+  | "deadline_exceeded"
+  | "provider_rejected"
+  | "provider_unavailable"
+
+export type StripeOrderSyncRetryEvent = {
+  attempt: number
+  operation: "update_charge" | "update_intent"
+  reason: "status" | "transport"
+  totalAttempts: number
+}
+
+export class StripeOrderSyncError extends Error {
+  readonly code: StripeOrderSyncErrorCode
+
+  constructor(code: StripeOrderSyncErrorCode) {
+    super(`Stripe order sync failed (${code}).`)
+    this.code = code
+    this.name = "StripeOrderSyncError"
   }
 }
 
@@ -63,6 +95,9 @@ export class StripeOrderProjectionError extends Error {
 
 const projectionError = (): StripeOrderProjectionError =>
   new StripeOrderProjectionError()
+
+const syncError = (code: StripeOrderSyncErrorCode): StripeOrderSyncError =>
+  new StripeOrderSyncError(code)
 
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null
@@ -331,14 +366,160 @@ const assertSyncInput = ({
   }
 }
 
+const retryableStatus = (statusCode: number): boolean =>
+  statusCode === 408 ||
+  statusCode === 409 ||
+  statusCode === 425 ||
+  statusCode >= 500
+
+const syncErrorFrom = (error: unknown): StripeOrderSyncError => {
+  if (error instanceof StripeOrderSyncError) {
+    return error
+  }
+  const record = asUnknownRecord(error)
+  const raw = asUnknownRecord(record?.raw)
+  const detail = asUnknownRecord(raw?.detail)
+  if (record?.code === "ETIMEDOUT" || detail?.code === "ETIMEDOUT") {
+    return syncError("deadline_exceeded")
+  }
+  const statusCode = record?.statusCode
+  if (typeof statusCode === "number" && Number.isInteger(statusCode)) {
+    return syncError(
+      statusCode === 429 || retryableStatus(statusCode)
+        ? "provider_unavailable"
+        : "provider_rejected"
+    )
+  }
+  return syncError("provider_unavailable")
+}
+
+const retryReasonFrom = (
+  error: unknown
+): StripeOrderSyncRetryEvent["reason"] | null => {
+  if (error instanceof StripeOrderSyncError) {
+    return null
+  }
+  const record = asUnknownRecord(error)
+  const raw = asUnknownRecord(record?.raw)
+  const detail = asUnknownRecord(raw?.detail)
+  const headers = asUnknownRecord(record?.headers)
+  const retryHeader = headers?.["stripe-should-retry"]
+  if (retryHeader === "false") {
+    return null
+  }
+  if (
+    record?.code === "ETIMEDOUT" ||
+    detail?.code === "ETIMEDOUT" ||
+    record?.type === "StripeConnectionError"
+  ) {
+    return "transport"
+  }
+  const statusCode = record?.statusCode
+  if (
+    typeof statusCode !== "number" ||
+    !Number.isInteger(statusCode) ||
+    statusCode === 429
+  ) {
+    return null
+  }
+  return retryHeader === "true" || retryableStatus(statusCode) ? "status" : null
+}
+
+const timeoutFrom = (value: number): number => {
+  if (
+    !Number.isSafeInteger(value) ||
+    value <= 0 ||
+    value > MAX_REQUEST_TIMEOUT_MS
+  ) {
+    throw new Error("Stripe order sync input is invalid.")
+  }
+  return value
+}
+
+const requestOptions = ({
+  deadlineAt,
+  idempotencyKey,
+}: {
+  deadlineAt: number
+  idempotencyKey: string
+}): StripeOrderSyncRequestOptions => {
+  const remainingMs = Math.ceil(deadlineAt - Date.now())
+  if (remainingMs <= 0) {
+    throw syncError("deadline_exceeded")
+  }
+  return {
+    idempotencyKey,
+    maxNetworkRetries: 0,
+    timeout: remainingMs,
+  }
+}
+
+const waitForRetry = async (deadlineAt: number): Promise<void> => {
+  if (deadlineAt - Date.now() <= RETRY_DELAY_MS) {
+    throw syncError("deadline_exceeded")
+  }
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, RETRY_DELAY_MS)
+  })
+}
+
+const requestWithRetry = async <T>({
+  deadlineAt,
+  idempotencyKey,
+  onRetry,
+  operation,
+  request,
+}: {
+  deadlineAt: number
+  idempotencyKey: string
+  onRetry?: (event: StripeOrderSyncRetryEvent) => void
+  operation: StripeOrderSyncRetryEvent["operation"]
+  request: (options: StripeOrderSyncRequestOptions) => Promise<T>
+}): Promise<T> => {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await request(requestOptions({ deadlineAt, idempotencyKey }))
+    } catch (error) {
+      const reason = retryReasonFrom(error)
+      if (attempt === MAX_ATTEMPTS || reason === null) {
+        throw syncErrorFrom(error)
+      }
+      onRetry?.({
+        attempt: attempt + 1,
+        operation,
+        reason,
+        totalAttempts: MAX_ATTEMPTS,
+      })
+      await waitForRetry(deadlineAt)
+    }
+  }
+  throw syncError("provider_unavailable")
+}
+
+const hasAnnotation = (
+  value: UnknownRecord,
+  annotation: { description: string; metadata: Record<string, string> }
+): boolean => {
+  const metadata = asUnknownRecord(value.metadata)
+  return (
+    value.description === annotation.description &&
+    metadata !== null &&
+    Object.entries(annotation.metadata).every(
+      ([key, expected]) => metadata[key] === expected
+    )
+  )
+}
+
 const chargeIdFrom = (
   value: unknown,
-  paymentIntentId: string
+  paymentIntentId: string,
+  annotation: { description: string; metadata: Record<string, string> }
 ): string | null => {
   const paymentIntent = asUnknownRecord(value)
   if (
     paymentIntent?.object !== "payment_intent" ||
     paymentIntent.id !== paymentIntentId ||
+    !hasAnnotation(paymentIntent, annotation) ||
     !Object.hasOwn(paymentIntent, "latest_charge")
   ) {
     throw new Error("Stripe order sync acknowledgement is invalid.")
@@ -360,44 +541,69 @@ const chargeIdFrom = (
 
 const assertChargeAcknowledgement = (
   value: unknown,
-  chargeId: string
+  chargeId: string,
+  annotation: { description: string; metadata: Record<string, string> }
 ): void => {
   const charge = asUnknownRecord(value)
-  if (charge?.object !== "charge" || charge.id !== chargeId) {
+  if (
+    charge?.object !== "charge" ||
+    charge.id !== chargeId ||
+    !hasAnnotation(charge, annotation)
+  ) {
     throw new Error("Stripe order sync acknowledgement is invalid.")
   }
 }
 
 export const syncStripeOrderReferences = async ({
   client,
+  onRetry,
   orderId,
   orderNumber,
   references,
+  timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
 }: {
   client: StripeOrderSyncClient
+  onRetry?: (event: StripeOrderSyncRetryEvent) => void
   orderId: string
   orderNumber: string
   references: StripePaymentReference[]
+  timeoutMs?: number
 }): Promise<number> => {
   assertSyncInput({ orderId, orderNumber, references })
+  const deadlineAt = Date.now() + timeoutFrom(timeoutMs)
   const metadata = stripeOrderMetadata({ orderId, orderNumber })
   const description = stripeOrderDescription(orderNumber)
+  const annotation = { description, metadata }
 
   for (const reference of references) {
     const idempotencyPrefix = `rr-order-sync:${orderId}:${reference.paymentIntentId}`
-    const paymentIntent = await client.paymentIntents.update(
+    const paymentIntent = await requestWithRetry({
+      deadlineAt,
+      idempotencyKey: `${idempotencyPrefix}:intent:v1`,
+      ...(onRetry ? { onRetry } : {}),
+      operation: "update_intent",
+      request: (options) =>
+        client.paymentIntents.update(
+          reference.paymentIntentId,
+          annotation,
+          options
+        ),
+    })
+    const chargeId = chargeIdFrom(
+      paymentIntent,
       reference.paymentIntentId,
-      { description, metadata },
-      { idempotencyKey: `${idempotencyPrefix}:intent:v1` }
+      annotation
     )
-    const chargeId = chargeIdFrom(paymentIntent, reference.paymentIntentId)
     if (chargeId) {
-      const charge = await client.charges.update(
-        chargeId,
-        { description, metadata },
-        { idempotencyKey: `${idempotencyPrefix}:charge:v1` }
-      )
-      assertChargeAcknowledgement(charge, chargeId)
+      const charge = await requestWithRetry({
+        deadlineAt,
+        idempotencyKey: `${idempotencyPrefix}:charge:v1`,
+        ...(onRetry ? { onRetry } : {}),
+        operation: "update_charge",
+        request: (options) =>
+          client.charges.update(chargeId, annotation, options),
+      })
+      assertChargeAcknowledgement(charge, chargeId, annotation)
     }
   }
 

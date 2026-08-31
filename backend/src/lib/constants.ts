@@ -151,18 +151,11 @@ export const COOKIE_SECRET = assertValue(
 )
 
 /**
- * (optional) Resend API Key and from Email - do not set if using SendGrid
+ * (optional) Resend API key and sender for transactional email
  */
 export const RESEND_API_KEY = process.env.RESEND_API_KEY
 export const RESEND_FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM
-
-/**
- * (optionl) SendGrid API Key and from Email - do not set if using Resend
- */
-export const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
-export const SENDGRID_FROM_EMAIL =
-  process.env.SENDGRID_FROM_EMAIL || process.env.SENDGRID_FROM
 
 /**
  * (optional) Stripe provider credentials and payment-method configuration
@@ -171,6 +164,8 @@ export const STRIPE_API_KEY = process.env.STRIPE_API_KEY
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET
 export const STRIPE_LIFECYCLE_WEBHOOK_SECRET =
   process.env.STRIPE_LIFECYCLE_WEBHOOK_SECRET
+export const STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS =
+  process.env.STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS
 export const STRIPE_PAYMENT_METHOD_CONFIGURATION =
   process.env.STRIPE_PAYMENT_METHOD_CONFIGURATION
 

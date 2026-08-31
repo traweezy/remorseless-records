@@ -223,7 +223,11 @@ validation while selecting Zod's CSP-compatible non-JIT parser path.
 Production uses Medusa's official `@medusajs/file-s3` provider in
 S3-compatible path-style mode. The provider keeps the historical `minio` ID so
 existing file records remain valid. The bucket and public-read policy are
-provisioned outside application startup.
+provisioned outside application startup. The pinned provider has a reproducible
+local hardening patch: direct requests and upload streams abort after 15
+seconds, AWS SDK attempts are capped at two, provider diagnostics are replaced
+with a fixed error, and failed deletes propagate so workflow compensation can
+record the incident instead of reporting false cleanup success.
 
 A deliberate staging write/read/delete canary is available, but never runs
 during deploy:
@@ -482,6 +486,7 @@ Refund/dispute lifecycle evidence is an additive integration with a separate
 optional secret:
 
 - `STRIPE_LIFECYCLE_WEBHOOK_SECRET`
+- `STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS` during a bounded overlap only
 
 When configured, Stripe sends the refund/dispute allowlist to
 `POST /webhooks/stripe/lifecycle`. The route stores only opaque IDs, status,
@@ -528,6 +533,14 @@ stripe listen \
 
 Use that process's different signing secret as
 `STRIPE_LIFECYCLE_WEBHOOK_SECRET`.
+
+During rotation, configure the new endpoint key as
+`STRIPE_LIFECYCLE_WEBHOOK_SECRET` and the prior key as
+`STRIPE_LIFECYCLE_WEBHOOK_SECRET_PREVIOUS`. Both verify inbound deliveries,
+but startup rejects equal or reused secrets. Send a signed test event with each
+key, wait for Stripe's in-flight delivery window to drain, then remove the
+previous key. The ordinary Medusa payment webhook still requires a coordinated
+single-key cutover and its own test delivery.
 
 ## Checkout reconciliation
 
