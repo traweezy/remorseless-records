@@ -339,6 +339,47 @@ Expected safety behavior:
 - A changed revision disables payment and preserves the old frame only while
   Medusa prepares the replacement session.
 
+## Executable checkout reliability matrix
+
+The checkout matrix is a release contract, not a collection of manual notes.
+`pnpm run qa:commerce-reliability` verifies that every row below retains an
+executable assertion and that the retained staging evidence remains linked.
+`pnpm run qa:checkout-recovery` independently inspects the installed Medusa
+2.18 cart/payment implementation for the cart lock, order-link guard, payment
+and refund row locks, and provider idempotency keys on which concurrent-tab
+safety depends.
+
+| Objective | Deterministic local evidence | Retained staging evidence |
+| --- | --- | --- |
+| Exact amount and currency | Payment preparation proves official-provider cent rounding, stale amount rejection, bounded totals, and explicit disabled-tax binding. | July 25 amount matrix and August 29 response-loss order matched cart, payment collection/session, PaymentIntent, charge, capture, receipt, and tax evidence. |
+| Successful payment | Completion revalidates revision, shipping, tax, and payment before creating the order response. | July 25 created one PaymentIntent, charge, order, and receipt; August 30 independently repeated the one-to-one message reconciliation. |
+| 3DS / authentication | A definite authentication failure remains retryable and cannot call cart completion; the return route strips provider parameters into recovery. | July 25 reached Stripe `requires_action` with no order, and the hosted next action remained the only authentication surface. |
+| Declines and invalid card input | Safe-copy assertions cover generic decline, insufficient funds, expired card, incorrect CVC, ambiguous provider errors, and inline validation. | July 25 exercised the official Stripe test PaymentMethods and created no order or receipt for declines. |
+| Browser close after confirmation | Recovery converts only an authoritative completed status into confirmation; the scheduled job completes one old authorized cart once and holds a durable attempt marker. | The accepted scheduler and response-loss windows proved one order/charge maximum and no repeat completion. |
+| Lost completion response | The BFF re-reads authoritative status after a timeout/reset, confirms a durable order, and otherwise returns a recovery-only state. The Payment section never invites a retry after Stripe confirmation becomes ambiguous. | August 29's fault proxy discarded the first successful completion response; status recovery found the one durable order without a second completion call. |
+| Duplicate submit | A synchronous browser ref blocks the second paid or free submit before Stripe or Medusa is called. | July 25's concurrent completion exercise produced one order and one charge. |
+| Two tabs / concurrency | The installed Medusa contract retains a per-cart completion lock, order-cart recheck, payment row locks, and provider idempotency keys. | July 25 sent two concurrent completion requests; only one authoritative order existed afterward. |
+| Processing and delayed recovery | Recovery polls bounded safe states, never routes a processing/finalizing result back to payment, and grants a signed receipt only after Backend confirmation. | August 29 scheduler/lifecycle exercises covered delay, replay, queue failure, stale recovery, and terminal convergence. |
+| Receipt and return lifecycle | Provider query parameters are stripped, the cart clears only after authoritative completion, and the signed receipt is host-only, HttpOnly, path-scoped, and expires after 30 minutes. | July 25 verified the receipt grant and cart clearing; August 30 reconciled the rendered receipt and delivered test email with the same order. |
+
+Focused local section gate:
+
+```bash
+pnpm run qa:checkout-recovery
+pnpm run qa:commerce-reliability
+pnpm --filter remorseless-records-storefront exec vitest run \
+  src/features/checkout src/app/api/checkout src/app/checkout
+pnpm --filter backend test -- --runTestsByPath \
+  src/lib/checkout/reconciliation.test.ts \
+  src/jobs/reconcile-checkout-payments.test.ts
+```
+
+On September 1, 2026, this gate passed 24 Storefront checkout files / 210
+tests and the complete focused Backend commerce slice described in the refund
+runbook. A matrix row may be called complete only while both repository
+verifiers, the focused suites, strict typechecks, and the retained test-mode
+evidence remain green. This does not approve production payment traffic.
+
 ## Stripe/Medusa reference synchronization
 
 The `order.placed` subscriber copies only operational references:

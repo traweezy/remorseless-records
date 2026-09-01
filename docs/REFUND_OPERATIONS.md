@@ -166,6 +166,13 @@ The tax sub-status is intentionally separate:
 - **Needs review**: the reversal audit failed, was truncated, or returned an
   association error.
 
+The Admin's **Tax handling** field distinguishes **Tax collection off** from
+**Not linked yet**. Explicit disabled-mode evidence is terminal for the tax
+part of reconciliation: a matched Medusa/Stripe refund can be **Verified** with
+**Tax not collected** and must not wait for a provider reversal that should
+never exist. Only genuinely absent or legacy-incomplete evidence is
+**Not linked yet**.
+
 ## Exception runbooks
 
 ### Stripe reports more refunded than Medusa
@@ -308,6 +315,58 @@ Before a production refund feature release:
 - the Admin page is checked with keyboard, reduced motion, desktop Chrome, and
   a real Chrome mobile-device profile; and
 - no irreversible sandbox refund is created without explicit approval.
+
+### Executable matrix evidence
+
+The repository enforces this matrix with
+`pnpm run qa:commerce-reliability`. The verifier currently binds 36 named
+checkout/refund objectives to their exact executable assertions, checks the
+installed concurrency/idempotency boundary through
+`pnpm run qa:checkout-recovery`, and fails CI if an assertion or its retained
+staging evidence disappears.
+
+| Refund objective | Executable result |
+| --- | --- |
+| No refund | Payments without a refund or dispute signal remain outside the queue. |
+| Partial, full, and repeated partial | Medusa amounts/counts must exactly equal Stripe evidence; each successful Stripe Tax refund needs its own reversal ID. |
+| Stripe Tax | A matching refund is verified only after all expected reversal sources commit. |
+| TaxRate.io | Medusa/Stripe totals reconcile without inventing a provider-side reversal. |
+| Tax collection off | Explicit disabled evidence reports **Tax collection off** / **Tax not collected** and can verify without a provider or reversal. |
+| Pending and `requires_action` | The case remains **Processing**, tells the operator to wait, and never suggests another refund. |
+| Failed and canceled | The case becomes **Needs attention** with explicit no-blind-retry guidance. |
+| Direct Stripe refund | Stripe-ahead mismatch says **Do not refund again**. |
+| Medusa ahead | The mismatch says **Do not retry yet** until provider state is final. |
+| Dispute overlap | Dispute state has highest priority and pauses additional refunds. |
+| Checkout compensation without order | The case stays visible as **Checkout recovery** and the cart recipient remains available for one idempotent notice. |
+| Notification replay | One provider idempotency key is derived per unique Medusa refund ID; duplicate IDs and malformed amounts fail the complete batch. |
+| Signed lifecycle recovery | Invalid signatures, immutable replay conflicts, queue failure, stale processing, non-PaymentIntent refunds, and terminal replays converge without moving money. |
+
+Focused local section gate:
+
+```bash
+pnpm run qa:checkout-recovery
+pnpm run qa:commerce-reliability
+pnpm --filter backend test -- --runTestsByPath \
+  src/lib/refund-operations/notification.test.ts \
+  src/lib/refund-operations/projection.test.ts \
+  src/lib/refund-operations/query.test.ts \
+  src/subscribers/refund-issued.test.ts \
+  src/api/webhooks/stripe/lifecycle/route.test.ts \
+  src/lib/payment-lifecycle/process-stripe-event.test.ts \
+  src/modules/payment-lifecycle/service.test.ts \
+  src/jobs/reconcile-stripe-lifecycle-events.test.ts \
+  src/lib/tax-control/evidence-reconciliation.test.ts \
+  src/lib/tax-control/refund-ledger.test.ts
+```
+
+On September 1, 2026, the complete focused Backend matrix passed 16 suites /
+171 tests. Retained August 29 Stripe test-mode evidence separately proves
+signed delivery, exact replay, delayed and out-of-order events, a recovered
+queue failure, two successful partial refunds, and a genuine dispute. Full,
+failed, canceled, `requires_action`, TaxRate.io, Stripe Tax, disabled-tax, and
+Medusa-ledger variants are deterministic because creating an irreversible
+sandbox refund merely to repeat those branches is not an accepted validation
+shortcut. No production payment or refund is authorized by this evidence.
 
 ## Official references
 

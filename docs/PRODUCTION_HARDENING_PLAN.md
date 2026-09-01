@@ -2207,15 +2207,48 @@ Exact-SHA staging acceptance passed on August 29, 2026:
       completion is re-read and does not make a second completion attempt.
 - [x] Exercise the same response-loss recovery against a disposable Stripe
       test-mode checkout in staging and verify one PaymentIntent and one order.
-- [ ] Complete the exact-amount, success, 3DS, decline, browser-close,
+- [x] Complete the exact-amount, success, 3DS, decline, browser-close,
       response-loss, duplicate-submit, concurrency, and recovery matrix in
       `docs/CHECKOUT_OPERATIONS.md`.
 - [x] Verify confirmation email, receipt, Medusa order, Stripe PaymentIntent,
       and tax evidence agree.
-- [ ] Complete the refund and dispute reconciliation matrix in
+- [x] Complete the refund and dispute reconciliation matrix in
       `docs/REFUND_OPERATIONS.md`.
 - [ ] Keep all payment traffic in Stripe test mode until a separate production
       change is approved.
+
+Local matrix closure passed on September 1, 2026 at application commit
+`a8b7bd2a647cdf560f41a90e0b1b31426cf697dc`:
+
+- The audit found and fixed one cross-feature correctness defect: evidence for
+  a completed checkout with `collection_mode=disabled` and no provider was
+  correctly reconciled by the tax ledger but Refund Operations labeled it
+  **Not linked yet**. It now has explicit `disabled` / `not_collected`
+  contracts, can reach **Verified** when Medusa and Stripe agree, and renders
+  **Tax collection off** / **Tax not collected** without waiting for a tax
+  provider reversal that must not exist.
+- A new root `qa:commerce-reliability` contract binds 36 checkout/refund
+  objectives to exact executable assertions and retained test-mode evidence.
+  Root CI runs it independently, while `qa:checkout-recovery` continues to
+  inspect installed Medusa 2.18 cart/payment locks, order-link guards, row
+  locks, and provider idempotency keys.
+- The focused Storefront checkout slice passed 24 files / 210 tests. The
+  focused Backend checkout/refund/lifecycle/tax slice passed 16 suites / 171
+  tests. The full Backend suite passed 273 suites / 2,051 tests. Storefront
+  coverage passed 137 baseline files / 818 tests and 36 transactional files /
+  321 tests; baseline coverage was 94.25% statements, 86.65% branches, 96.03%
+  functions, and 94.25% lines.
+- Repository QA, Biome format/check, both strict typechecks, both production
+  builds, the client-bundle secret scan, and the production dependency audit
+  passed. The Storefront build used the same distinct non-secret runtime
+  fixtures as CI and deliberately unavailable provider endpoints; the bounded
+  build fallbacks completed without copying server secrets into 130 static
+  assets.
+- The matrix combines deterministic branch coverage with the retained July 25
+  and August 29/30 Stripe test-mode exercises. It does not create a redundant
+  irreversible sandbox refund merely to repeat full, failed, canceled, or
+  provider-specific branches, and it authorizes no production payment,
+  refund, tax, email, or traffic change.
 
 Exact-SHA staging acceptance passed on August 29, 2026 at
 `77fd8f954ceba4cc0755f31447d8e3831bccc445`:
