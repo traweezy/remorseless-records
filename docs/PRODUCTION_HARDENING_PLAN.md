@@ -2915,14 +2915,13 @@ floating support images, and the exact production cost/domain approval packet.
       archive extractor and verifies immutable release digests itself.
 - [ ] Scan final runtime images, generate image-linked SBOM/provenance, and sign
       or attest the deployed artifacts.
-- [ ] Move hardened-runner egress from audit mode to an explicit allowlist after
+- [x] Move hardened-runner egress from audit mode to an explicit allowlist after
       observing required endpoints.
 - [x] Add a real dependency cooling window and keep only narrowly justified
       security exceptions.
-- [ ] Update or replace the pinned Shai-Hulud detector action when an upstream
-      release declares a supported Node 24 action runtime; GitHub currently
-      forces its deprecated Node 20 action runtime onto Node 24 and annotates
-      all three otherwise-successful workflows.
+- [x] Update the pinned Shai-Hulud detector to the upstream release that
+      declares a supported Node 24 action runtime and retain its fail-closed
+      scan controls.
 - [ ] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
       Stripe, AWS SDK, and other outdated dependency families.
 
@@ -3517,11 +3516,11 @@ production-only pnpm audit and Trivy source scan remained clean of
 high/critical findings. Automated security fixes are now enabled as the owned
 remediation boundary for future supported updates.
 
-CI discovery: pinned Shai-Hulud detector `v2.1.0` passed in Root, Backend, and
-Storefront CI, but GitHub annotated each run because the action still declares
-the deprecated Node 20 action runtime and is being forced onto Node 24. This is
-not a current scan failure, but it is retained as explicit supply-chain
-maintenance rather than suppressing the platform warning.
+CI closure on 2026-09-01 replaces the historical Shai-Hulud `v2.1.0` Node 20
+runtime with the exact `v2.2.0` commit whose action metadata declares Node 24.
+Root, Backend, and Storefront keep explicit critical-finding and lockfile scan
+controls, and the repository verifier prevents a stale action or runtime from
+returning silently.
 
 ## Observability and operations
 
@@ -4412,6 +4411,31 @@ production audit reports only the three documented ignored moderate findings
 and no unreviewed moderate, high, or critical finding. This section changes
 dependency resolution and packaging only, not rendered UI, so screenshot
 validation was not applicable.
+
+## CI runtime and egress boundary closure
+
+All five workflows that use Harden-Runner now pin the mature v2.21.0 commit and
+enforce deny-by-default egress. Root, Backend, and Storefront security jobs are
+limited to GitHub action delivery and storage, Node and pnpm package delivery,
+and their exact security-tool services. The two scheduled monitors add only the
+single staging Railway hostname required for bounded health/catalog reads and
+GitHub's issue API. No workflow retains audit mode.
+
+The allowlists were derived from successful audit runs `33501919188`,
+`33501919166`, `33501919132`, `33497796533`, and `33497931380`, then expanded
+only for GitHub's documented cold action/cache paths. Root Trivy explicitly
+uses `ghcr.io/aquasecurity/trivy-db`, so a cold vulnerability database fetch
+cannot fall through to Trivy's default Google mirror outside the reviewed
+boundary. DNS-over-HTTPS endpoints are forbidden to preserve the network
+policy's hostname visibility.
+
+`scripts/security/ci-runtime-security-policy.json` is the source of truth for
+the reviewed action identities, Node runtimes, observation runs, Trivy source,
+and per-workflow endpoint sets. `pnpm run qa:ci-runtime-security` rejects stale
+pins, audit mode, endpoint broadening, unreviewed hardened workflows, a missing
+Shai-Hulud control, or Trivy source drift. Focused policy tests and the complete
+repository QA gate pass locally. This slice changes workflow execution only,
+not a rendered UI surface, so screenshot validation was not applicable.
 
 ## Legal, accessibility, and launch acceptance
 

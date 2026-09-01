@@ -1655,14 +1655,19 @@ weekly schedule):
 - **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, Biome, semantic typecheck, baseline plus transactional coverage, and a production build. Pushes and `master` release pull requests also require non-destructive responsive Playwright smoke tests, the critical Chromium/Firefox/WebKit guest-commerce matrix, the 14-scenario legal/commerce launch matrix, pa11y, and a six-route repeated Lighthouse gate with private artifacts; ordinary `staging` pull requests can opt into those browser gates with repository variables.
 - **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, and a retained CycloneDX SBOM plus production-license inventory.
 
-Actions are hardened with `step-security/harden-runner` and pinned to immutable
-commits. Trivy ignores generated `.medusa` output. Root CI retains the verified
-SBOM and license inventory for 30 days. Five Medusa Admin packages omit license
-metadata from their published manifests; the verifier permits only those exact
-packages because the authoritative Medusa monorepo is MIT-licensed, and fails
-if any other production package lacks license metadata. Dependency Review runs
-when a pull request supplies a base/head diff. Keep `.env` files local (ignored
-by git) and rotate any secrets that were previously committed.
+The three security jobs and both scheduled staging monitors run
+`step-security/harden-runner` with deny-by-default egress, reviewed endpoint
+allowlists, and immutable action commits. A repository policy test fails on
+audit mode, endpoint broadening, unreviewed hardened workflows, stale security
+action pins, or loss of the Shai-Hulud scan controls. Trivy ignores generated
+`.medusa` output and resolves its vulnerability database only from the reviewed
+GHCR source. Root CI retains the verified SBOM and license inventory for 30
+days. Five Medusa Admin packages omit license metadata from their published
+manifests; the verifier permits only those exact packages because the
+authoritative Medusa monorepo is MIT-licensed, and fails if any other
+production package lacks license metadata. Dependency Review runs when a pull
+request supplies a base/head diff. Keep `.env` files local (ignored by git) and
+rotate any secrets that were previously committed.
 
 ## Release and Branch Workflow
 

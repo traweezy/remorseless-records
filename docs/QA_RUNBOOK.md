@@ -153,6 +153,9 @@ pnpm run qa:browser-toolchain-security
 # Strict seven-day dependency cooling and reviewed security exceptions
 pnpm run qa:dependency-supply-chain
 
+# Deny-by-default CI egress and reviewed Node 24 security actions
+pnpm run qa:ci-runtime-security
+
 # Revalidate every locked package against the active supply-chain policy
 pnpm install --frozen-lockfile
 
@@ -170,6 +173,15 @@ range or copy an exception into a nested workspace to make an install pass.
 Choose the newest mature release instead. The only current cooling exception
 is the exact locally hardened Railway CLI release; the only audit ignores are
 the three behaviorally verified React Router 6 backports required by Medusa.
+
+The CI runtime-security gate covers every workflow that invokes Harden-Runner.
+It binds all five jobs to the reviewed v2.21.0 commit, requires block mode and
+the exact per-workflow endpoint sets, rejects DNS-over-HTTPS escape endpoints,
+and proves no other workflow retains audit mode. Root, Backend, and Storefront
+also require the reviewed Shai-Hulud v2.2.0 Node 24 action and its fail-closed
+lockfile controls. Root Trivy scans use only
+`ghcr.io/aquasecurity/trivy-db`; do not re-enable the default registry mirror
+without reviewing and testing the resulting egress expansion.
 
 ### 1.5 Disposable PostgreSQL and Redis integration
 

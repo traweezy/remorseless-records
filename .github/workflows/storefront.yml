@@ -72,17 +72,27 @@ jobs:
       contents: read
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
-          # When you are comfortable, change to `egress-policy: block` to hard-enforce. 
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >-
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            api.github.com:443
+            github.com:443
+            nodejs.org:443
+            objects.githubusercontent.com:443
+            registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Shai-Hulud 2.0 Detector
-        uses: gensecaihq/Shai-Hulud-2.0-Detector@e42b26d04fb7a7a9872e6b9f449f65f9b36aba98 # v2.1.0
+        uses: gensecaihq/Shai-Hulud-2.0-Detector@2755f94762bf5012bc7be82c93e172eabbcd0802 # v2.2.0
         with:
           fail-on-critical: true
+          scan-lockfiles: true
+          scan-node-modules: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
@@ -101,6 +111,8 @@ jobs:
 
       - name: Verify dependency supply-chain policy
         run: pnpm run qa:dependency-supply-chain
+      - name: Verify CI runtime security policy
+        run: pnpm run qa:ci-runtime-security
       - name: Dependency audit
         run: pnpm audit --prod --audit-level=moderate
       - name: Verify React Router security backports
