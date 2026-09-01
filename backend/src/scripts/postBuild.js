@@ -183,6 +183,14 @@ const readPnpmConfigBoolean = (name, fallback) => {
   return value
 }
 
+const readPnpmConfigNonNegativeInteger = (name) => {
+  const value = readPnpmConfigValue(name)
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new TypeError(`pnpm ${name} must be a non-negative integer.`)
+  }
+  return value
+}
+
 const readPnpmAllowBuilds = () => {
   const values = readPnpmConfigObject("allowBuilds") ?? {}
   for (const [dependency, approved] of Object.entries(values)) {
@@ -268,6 +276,17 @@ const allowBuilds = {
 const minimumReleaseAgeExclude = Array.from(
   new Set(readPnpmConfigArray("minimumReleaseAgeExclude"))
 )
+const minimumReleaseAge = readPnpmConfigNonNegativeInteger("minimumReleaseAge")
+const minimumReleaseAgeStrict = readPnpmConfigBoolean(
+  "minimumReleaseAgeStrict",
+  true
+)
+const minimumReleaseAgeIgnoreMissingTime = readPnpmConfigBoolean(
+  "minimumReleaseAgeIgnoreMissingTime",
+  false
+)
+const trustLockfile = readPnpmConfigBoolean("trustLockfile", false)
+const blockExoticSubdeps = readPnpmConfigBoolean("blockExoticSubdeps", true)
 const hoistPattern = readPnpmConfigArray("hoistPattern")
 const packageExtensions = readPnpmConfigObject("packageExtensions")
 const resolvePeersFromWorkspaceRoot = readPnpmConfigBoolean(
@@ -282,12 +301,17 @@ createNewRegularFile(
   MEDUSA_WORKSPACE_YAML,
   renderPnpmWorkspaceConfig({
     allowBuilds,
+    blockExoticSubdeps,
     hoistPattern,
+    minimumReleaseAge,
     minimumReleaseAgeExclude,
+    minimumReleaseAgeIgnoreMissingTime,
+    minimumReleaseAgeStrict,
     overrides,
     packageExtensions,
     resolvePeersFromWorkspaceRoot,
     patchedDependencies,
+    trustLockfile,
   }),
   0o644
 )

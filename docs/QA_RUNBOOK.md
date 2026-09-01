@@ -150,9 +150,26 @@ pnpm run qa:admin-accessibility-boundary
 # Browser QA dependency resolution and blocked browser-download install scripts
 pnpm run qa:browser-toolchain-security
 
+# Strict seven-day dependency cooling and reviewed security exceptions
+pnpm run qa:dependency-supply-chain
+
+# Revalidate every locked package against the active supply-chain policy
+pnpm install --frozen-lockfile
+
 # Deterministic Medusa fixture endpoints and Browser Smoke release wiring
 pnpm run qa:storefront-provider-fixture
 ```
+
+The cooling gate covers the root, Backend, Storefront, and generated Backend
+server policies. It requires strict seven-day release aging, rejects missing
+registry publication times and exotic transitive sources, and forces frozen
+lockfile revalidation. Reviewed exceptions live only in
+`scripts/security/dependency-supply-chain-policy.json` and must use exact
+selectors with regular, non-symlink evidence files. Do not add a broad package
+range or copy an exception into a nested workspace to make an install pass.
+Choose the newest mature release instead. The only current cooling exception
+is the exact locally hardened Railway CLI release; the only audit ignores are
+the three behaviorally verified React Router 6 backports required by Medusa.
 
 ### 1.5 Disposable PostgreSQL and Redis integration
 

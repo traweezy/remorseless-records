@@ -53,6 +53,8 @@ jobs:
           skip-dirs: node_modules
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Verify dependency supply-chain policy
+        run: pnpm run qa:dependency-supply-chain
       - name: Verify release branch policy
         run: pnpm run qa:release-policy
       - name: Verify Railway deployment contract

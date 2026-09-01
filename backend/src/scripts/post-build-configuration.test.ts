@@ -63,8 +63,12 @@ describe("post-build configuration", () => {
   it("renders stable sorted policy while preserving explicit denials", () => {
     const config = {
       allowBuilds: { sharp: true, puppeteer: false, esbuild: true },
+      blockExoticSubdeps: true,
       hoistPattern: ["*", "!@types/react"],
+      minimumReleaseAge: 10_080,
       minimumReleaseAgeExclude: ["z@1", "a@1"],
+      minimumReleaseAgeIgnoreMissingTime: false,
+      minimumReleaseAgeStrict: true,
       overrides: { z: "2.0.0", a: "1.0.0" },
       packageExtensions: {
         z: { peerDependencies: { react: "*" } },
@@ -75,17 +79,56 @@ describe("post-build configuration", () => {
         a: "patches/a.patch",
       },
       resolvePeersFromWorkspaceRoot: false,
+      trustLockfile: false,
     }
 
     const rendered = renderPnpmWorkspaceConfig(config)
     expect(renderPnpmWorkspaceConfig(config)).toBe(rendered)
     expect(rendered).toContain('  "puppeteer": false')
+    expect(rendered).toContain("minimumReleaseAge: 10080")
+    expect(rendered).toContain("minimumReleaseAgeStrict: true")
+    expect(rendered).toContain("minimumReleaseAgeIgnoreMissingTime: false")
+    expect(rendered).toContain("trustLockfile: false")
+    expect(rendered).toContain("blockExoticSubdeps: true")
     expect(rendered.indexOf('  "a": "1.0.0"')).toBeLessThan(
       rendered.indexOf('  "z": "2.0.0"')
     )
     expect(rendered.indexOf('  - "a@1"')).toBeLessThan(
       rendered.indexOf('  - "z@1"')
     )
+  })
+
+  it("rejects weakened generated supply-chain policy", () => {
+    const config = {
+      allowBuilds: {},
+      blockExoticSubdeps: true,
+      hoistPattern: [],
+      minimumReleaseAge: 1440,
+      minimumReleaseAgeExclude: [],
+      minimumReleaseAgeIgnoreMissingTime: false,
+      minimumReleaseAgeStrict: true,
+      overrides: {},
+      packageExtensions: {},
+      patchedDependencies: {},
+      resolvePeersFromWorkspaceRoot: false,
+      trustLockfile: false,
+    }
+
+    expect(() => renderPnpmWorkspaceConfig(config)).toThrow("minimumReleaseAge")
+    expect(() =>
+      renderPnpmWorkspaceConfig({
+        ...config,
+        minimumReleaseAge: 10_080,
+        trustLockfile: true,
+      })
+    ).toThrow("trustLockfile")
+    expect(() =>
+      renderPnpmWorkspaceConfig({
+        ...config,
+        blockExoticSubdeps: false,
+        minimumReleaseAge: 10_080,
+      })
+    ).toThrow("blockExoticSubdeps")
   })
 
   it("rejects a canonical patch path outside the reviewed workspace", () => {

@@ -124,14 +124,31 @@ navigation, redirect handling, link handling, and blocked custom hydration
 constructors. pnpm 11 also fails installation if either exact patch stops
 applying.
 
-The audit also reports high-severity
-[GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg)
-against legacy CommonJS `brace-expansion@2.1.2`. Its official bounded-output
-fix from 5.0.8 is backported in
-`patches/brace-expansion@2.1.2.patch`; consumers that support the current API
-resolve directly to 5.0.8. The GHSA is ignored only because pnpm cannot
-recognize that source backport, and installation fails if the patch no longer
-applies.
+The exception contract is machine-readable in
+`scripts/security/dependency-supply-chain-policy.json`. The repository gate
+requires those exact three advisory ids, exact patched package selectors, and
+regular non-symlink evidence files. No `brace-expansion` advisory is ignored:
+the affected dependency ranges resolve to fixed 2.1.4 or 5.0.9 artifacts.
+
+## Dependency publication cooling
+
+The root, Backend, and Storefront pnpm workspaces explicitly enforce the
+[pnpm release-age settings](https://pnpm.io/settings/dependency-resolution)
+with a strict seven-day window. Missing publication timestamps fail closed,
+frozen lockfiles are reverified, and exotic transitive dependency sources are
+blocked in line with pnpm's
+[supply-chain guidance](https://pnpm.io/supply-chain-security). The generated
+Backend production workspace preserves the same settings and rejects weaker
+values.
+
+Of the former 152 exact release-age exclusions, 151 were already older than
+seven days and were removed. Biome 2.5.11 and Sharp 0.35.4 were not mature at
+the time of enforcement, so the repository uses the newest eligible releases,
+2.5.10 and 0.35.3. The sole remaining exact cooling exception is
+`@railway/cli@5.45.0`, whose release installer is locally patched to validate
+reviewed immutable SHA-256 asset digests. `pnpm run
+qa:dependency-supply-chain` binds that exception and the three audit ignores
+to their evidence in all three CI workflows.
 
 ## Deliberate major-version holds
 
@@ -140,7 +157,6 @@ upstream contract:
 
 | Dependency            | Available     | Hold reason                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | --------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ESLint / `@eslint/js` | 10.8 / 10.0.1 | The [ESLint 10 guide](https://eslint.org/docs/latest/use/migrate-to-10.0.0) is compatible with the repository’s flat config, but the latest `eslint-plugin-jsx-a11y` 6.10.2 declares support only through ESLint 9. ESLint remains at 9.39.5 to keep the accessibility gate supported.                                                                                                                                              |
 | TypeScript            | 7.0.2         | TypeScript 7 has no stable programmatic API for embedded tools, and [typescript-eslint supports only TypeScript `<6.1`](https://typescript-eslint.io/users/dependency-versions/). TypeScript 6.0.2 was also tested, but Medusa UI 4.2.0 pins `cva@1.0.0-beta.1`, whose peer range is `<6`. TypeScript remains at 5.9.3. Deprecated `baseUrl` usage was removed so the local configuration is ready for a later supported migration. |
 | React (backend admin) | 19.2.8        | The storefront remains on React 19.2.8. Medusa dashboard 2.18 and draft-order 2.18 publish React/React DOM 18.3.1 contracts, so the separately built backend admin uses React 18.3.1 and matching type packages instead of forcing the storefront runtime into it.                                                                                                                                                                  |
 | MikroORM              | 7.1.7         | Medusa 2.18.0’s published `@medusajs/deps` package pins all MikroORM packages exactly to 6.6.14. The [MikroORM 7 guide](https://mikro-orm.io/docs/upgrading-v6-to-v7) also introduces native ESM, decorator-package changes, query semantics, and persistence behavior changes. The framework-owned pin is retained.                                                                                                                |
@@ -152,7 +168,8 @@ The migration is complete only after:
 
 1. `pnpm install --frozen-lockfile` and `pnpm peers check`
 2. lint, strict typecheck, unit/coverage, and production builds
-3. dependency audit, React Router backport verification, and hook validation
+3. dependency cooling, audit, React Router backport verification, and hook
+   validation
 4. Playwright device/browser smoke validation
 5. successful GitHub Actions and Railway staging deployments
 6. post-deploy route and API smoke checks

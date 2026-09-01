@@ -369,6 +369,9 @@ Flows graph to register during packaged startup.
 one frozen production-only pnpm install. The packager requires the exact
 Backend lockfile importer, preserves explicit build-script denials such as
 `puppeteer: false`, invokes pnpm without a shell, and fails on malformed policy.
+It also preserves the strict seven-day release-age window, fails when registry
+publication time is unavailable, revalidates the frozen lockfile, and blocks
+exotic transitive sources. The renderer rejects any weaker generated value.
 Generated bootstrap, lock, workspace, and patch files are regular non-symlink
 files created without replacing an existing path. Patch sources must remain
 inside the reviewed workspace and may not collide by filename. Do not bypass

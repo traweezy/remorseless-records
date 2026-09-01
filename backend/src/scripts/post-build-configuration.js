@@ -131,13 +131,38 @@ const rewriteLockfile = (source, importerKey) => {
 
 const renderPnpmWorkspaceConfig = ({
   allowBuilds,
+  blockExoticSubdeps,
   hoistPattern,
+  minimumReleaseAge,
   minimumReleaseAgeExclude,
+  minimumReleaseAgeIgnoreMissingTime,
+  minimumReleaseAgeStrict,
   overrides,
   packageExtensions,
   resolvePeersFromWorkspaceRoot,
   patchedDependencies,
+  trustLockfile,
 }) => {
+  if (minimumReleaseAge !== 10_080) {
+    throw new TypeError("pnpm minimumReleaseAge must be exactly one week.")
+  }
+  for (const [name, { actual, expected }] of Object.entries({
+    blockExoticSubdeps: { actual: blockExoticSubdeps, expected: true },
+    minimumReleaseAgeIgnoreMissingTime: {
+      actual: minimumReleaseAgeIgnoreMissingTime,
+      expected: false,
+    },
+    minimumReleaseAgeStrict: {
+      actual: minimumReleaseAgeStrict,
+      expected: true,
+    },
+    trustLockfile: { actual: trustLockfile, expected: false },
+  })) {
+    if (actual !== expected) {
+      throw new TypeError(`pnpm ${name} must be ${expected}.`)
+    }
+  }
+
   const lines = ["packages:", '  - "."']
 
   if (hoistPattern.length > 0) {
@@ -149,7 +174,13 @@ const renderPnpmWorkspaceConfig = ({
 
   lines.push(
     "",
-    `resolvePeersFromWorkspaceRoot: ${yamlScalar(resolvePeersFromWorkspaceRoot)}`
+    `resolvePeersFromWorkspaceRoot: ${yamlScalar(resolvePeersFromWorkspaceRoot)}`,
+    "",
+    `minimumReleaseAge: ${yamlScalar(minimumReleaseAge)}`,
+    `minimumReleaseAgeStrict: ${yamlScalar(minimumReleaseAgeStrict)}`,
+    `minimumReleaseAgeIgnoreMissingTime: ${yamlScalar(minimumReleaseAgeIgnoreMissingTime)}`,
+    `trustLockfile: ${yamlScalar(trustLockfile)}`,
+    `blockExoticSubdeps: ${yamlScalar(blockExoticSubdeps)}`
   )
 
   if (packageExtensions && Object.keys(packageExtensions).length > 0) {

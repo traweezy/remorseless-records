@@ -2917,7 +2917,7 @@ floating support images, and the exact production cost/domain approval packet.
       or attest the deployed artifacts.
 - [ ] Move hardened-runner egress from audit mode to an explicit allowlist after
       observing required endpoints.
-- [ ] Add a real dependency cooling window and keep only narrowly justified
+- [x] Add a real dependency cooling window and keep only narrowly justified
       security exceptions.
 - [ ] Update or replace the pinned Shai-Hulud detector action when an upstream
       release declares a supported Node 24 action runtime; GitHub currently
@@ -4371,6 +4371,47 @@ server install and the Storefront scanner proving 130 client assets contain no
 server-only secret or public Meilisearch input. These changes affect decoding
 and failure behavior only; they do not alter rendered layout or interaction
 behavior, so no new visual screenshot was required for this section.
+
+## Dependency supply-chain cooling closure
+
+All three pnpm workspace entry points now enforce an explicit seven-day
+(`10080` minute) release-age window. Strict resolution is enabled, missing
+registry publication times fail closed, frozen lockfiles are rechecked rather
+than trusted implicitly, and exotic transitive Git/tarball sources are
+blocked. The Backend packager carries the same values into
+`.medusa/server/pnpm-workspace.yaml` and refuses to render a weakened policy,
+so the production-only install cannot silently shed the repository controls.
+
+The previous `minimumReleaseAgeExclude` inventory contained 152 exact
+selectors. Registry publication-time review showed that 151 had already aged
+past the full window and needed no exception. The remaining exception is the
+exact `@railway/cli@5.45.0` release: it cannot float, and its downloader is
+locally patched to verify reviewed immutable release digests before archive
+extraction. Biome 2.5.11 and Sharp 0.35.4 were still inside the window, so they
+were moved to the newest mature releases, 2.5.10 and 0.35.3, instead of being
+added as bypasses.
+
+`scripts/security/dependency-supply-chain-policy.json` is the reviewed
+exception manifest. Its verifier rejects non-exact cooling selectors, missing
+evidence, policy weakening, configuration drift across workspaces, unreviewed
+audit ignores, or removal of the required CI checks. The three remaining pnpm
+audit ignores are limited to the Medusa-compatible React Router 6 backports;
+each is tied to exact patched packages and the production-artifact behavioral
+verifier. Root, Backend, and Storefront security jobs all execute both policy
+checks.
+
+Local acceptance passed the frozen 1,822-entry root install, the focused
+policy and Backend packager suites, all 273 Backend suites / 2,065 tests at
+91.58% statements, 85.31% branches, 95.78% functions, and 91.58% lines, all
+139 Storefront baseline files / 828 tests at 94.37%, 86.06%, 95.83%, and
+94.39%, and all 36 Storefront transactional files / 322 tests at 83.73%,
+76.50%, 85.81%, and 83.86%. Both production builds passed. The generated
+Backend server performed a policy-verified frozen install of 1,085 production
+packages, and the Storefront scanner verified 130 client assets. The
+production audit reports only the three documented ignored moderate findings
+and no unreviewed moderate, high, or critical finding. This section changes
+dependency resolution and packaging only, not rendered UI, so screenshot
+validation was not applicable.
 
 ## Legal, accessibility, and launch acceptance
 
