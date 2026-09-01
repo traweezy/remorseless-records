@@ -149,6 +149,11 @@ describe("external scheduler observation", () => {
     )
     assert.match(workflow, /issues: write/u)
     assert.match(workflow, /--max-time 10/u)
+    assert.match(workflow, /title=Staging scheduler alert[\s\S]*?exit 0/u)
+    assert.doesNotMatch(
+      workflow,
+      /title=Staging scheduler alert[\s\S]*?exit 1/u
+    )
     assert.doesNotMatch(workflow, /RAILWAY_(?:API_)?TOKEN/u)
     assert.doesNotMatch(workflow, /production/u)
   })

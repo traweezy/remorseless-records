@@ -160,7 +160,9 @@ jobs:
               gh issue create --repo "${GITHUB_REPOSITORY}" \
                 --title "${title}" --body-file "${report}"
             fi
-            exit 1
+            printf '%s\n' \
+              '::warning title=Staging scheduler alert::The sanitized alert was delivered to the owned GitHub issue.'
+            exit 0
           fi
 
           if [[ "${status}" == "healthy" && -n "${issue_number}" ]]; then

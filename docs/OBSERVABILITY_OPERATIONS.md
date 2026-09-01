@@ -46,8 +46,12 @@ text.
   contains only the Web Vital name/rating/rounded value or an already-normalized
   framework error digest and boundary scope.
 
-An alert observation is expected to make the monitor job fail after the issue
-is reconciled. It must still upload and deliver the real sanitized
+An alert observation is expected to leave the owned issue open or updated and
+add a fixed GitHub Actions warning after the issue is reconciled. The monitor
+job remains successful when that delivery succeeds: scheduled workflows share
+the current default-branch SHA, and Railway otherwise mistakes an operational
+alert for failed release CI. Evaluation, artifact, or issue-delivery defects
+still fail the job. The monitor must upload and deliver the real sanitized
 `observation.md`; `steps.evaluate.outputs.artifact_path` is a directory, not a
 file. The issue step appends the fixed report filename before reading it. The
 `observation_evaluation_failed` fallback is reserved for a genuinely missing

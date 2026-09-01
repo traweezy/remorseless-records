@@ -53,12 +53,15 @@ reads of the live Product list, Product-handle feed, merchandising shelves,
 and discography projection and require non-empty catalog membership.
 
 An intentional incident latch can keep the operations monitor in `alert` after
-the latest heartbeat and every dependency recover. That run must fail closed,
-retain its sanitized JSON/Markdown evidence, and comment the exact report on
-the owned alert issue. A generic `observation_evaluation_failed` comment while
-the artifact contains a valid report is a release-control defect; fix and rerun
-the monitor before accepting the observation evidence. Never clear the latch
-to make the run green.
+the latest heartbeat and every dependency recover. That observation must fail
+closed, retain its sanitized JSON/Markdown evidence, and comment the exact
+report on the owned alert issue. After successful issue delivery, the scheduled
+monitor job itself stays green so Railway cannot conflate an operational alert
+on the current default-branch SHA with release CI. A generic
+`observation_evaluation_failed` comment while the artifact contains a valid
+report is a release-control defect; fix and rerun the monitor before accepting
+the observation evidence. Never clear the latch to make the observation
+healthy.
 
 Do not begin another slice while any exact-SHA staging gate is unresolved.
 

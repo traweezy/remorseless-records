@@ -295,7 +295,9 @@ jobs:
             else
               gh issue create --repo "${GITHUB_REPOSITORY}" --title "${title}" --body-file "${report}"
             fi
-            exit 1
+            printf '%s\n' \
+              '::warning title=Staging operations alert::The sanitized alert was delivered to the owned GitHub issue.'
+            exit 0
           fi
           if [[ -n "${issue_number}" ]]; then
             gh issue comment "${issue_number}" --repo "${GITHUB_REPOSITORY}" --body-file "${report}"
