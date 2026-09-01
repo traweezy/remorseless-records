@@ -96,8 +96,8 @@ describe("GET /store/news", () => {
       ],
     ],
     [
-      "cover artwork without alternative text",
-      [[newsEntry({ cover_url: "https://media.example/news.jpg" })], 1],
+      "alternative text without cover artwork",
+      [[newsEntry({ cover_alt_text: "Unused" })], 1],
     ],
   ])("rejects %s", async (_label, value) => {
     const listAndCountNewsEntries = jest.fn().mockResolvedValue(value)
@@ -106,6 +106,27 @@ describe("GET /store/news", () => {
       GET(request(listAndCountNewsEntries) as never, {} as never)
     ).rejects.toThrow(
       "The Store module projection returned invalid structured data."
+    )
+  })
+
+  it("provides accessible alternative text for legacy cover artwork", async () => {
+    const listAndCountNewsEntries = jest
+      .fn()
+      .mockResolvedValue([
+        [newsEntry({ cover_url: "https://media.example/news.jpg" })],
+        1,
+      ])
+    const json = jest.fn()
+    const status = jest.fn().mockReturnValue({ json })
+
+    await GET(request(listAndCountNewsEntries) as never, { status } as never)
+
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entries: [
+          expect.objectContaining({ coverAltText: "Update cover artwork" }),
+        ],
+      })
     )
   })
 })

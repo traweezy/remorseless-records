@@ -195,6 +195,23 @@ describe("Store module projections", () => {
     expect(readStoreNewsDetail([], "missing", now)).toBeNull()
   })
 
+  it("provides accessible alternative text for legacy News covers", () => {
+    expect(
+      readStoreNewsPage(
+        [
+          [
+            newsEntry({
+              cover_alt_text: null,
+              cover_url: "https://media.example/news.jpg",
+            }),
+          ],
+          1,
+        ],
+        now
+      ).records[0]?.cover_alt_text
+    ).toBe("Update cover artwork")
+  })
+
   it.each([
     [
       "a future publication",
@@ -202,6 +219,7 @@ describe("Store module projections", () => {
     ],
     ["an archived row", [[newsEntry({ archived_at: now })], 1]],
     ["a malformed URL", [[newsEntry({ cover_url: "javascript:x" })], 1]],
+    ["alternative text without a cover", [[newsEntry({ cover_url: null })], 1]],
     ["duplicate slugs", [[newsEntry(), newsEntry({ id: "news_2" })], 2]],
   ])("rejects %s", (_label, value) => {
     expect(() => readStoreNewsPage(value, now)).toThrow(INVALID_PROJECTION)

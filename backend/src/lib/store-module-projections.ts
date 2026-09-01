@@ -18,6 +18,7 @@ import {
   discographySourceModeValues,
 } from "@/modules/discography/serializers"
 import type { NewsEntryRecord } from "@/modules/news/serializers"
+import { resolveNewsCoverAlternativeText } from "@/modules/news/cover-alternative-text"
 
 import {
   readIsoTimestamp,
@@ -403,6 +404,7 @@ const readNewsEntry = (record: UnknownRecord, now: Date): NewsEntryRecord => {
   if (!STORE_SLUG.test(slug)) {
     return invalidStoreModuleProjection()
   }
+  const title = requiredText(record.title, 300)
   const content = requiredText(record.content, 200_000)
   if (
     sanitizeRichTextHtml(content) !== content ||
@@ -411,10 +413,15 @@ const readNewsEntry = (record: UnknownRecord, now: Date): NewsEntryRecord => {
     return invalidStoreModuleProjection()
   }
   const coverUrl = httpUrl(record.cover_url)
-  const coverAltText = nullableText(record.cover_alt_text, 500)
-  if ((coverUrl === null) !== (coverAltText === null)) {
+  const storedCoverAltText = nullableText(record.cover_alt_text, 500)
+  if (coverUrl === null && storedCoverAltText !== null) {
     return invalidStoreModuleProjection()
   }
+  const coverAltText = resolveNewsCoverAlternativeText(
+    title,
+    coverUrl,
+    storedCoverAltText
+  )
   return {
     archived_at: null,
     author: nullableText(record.author, 500),
@@ -430,7 +437,7 @@ const readNewsEntry = (record: UnknownRecord, now: Date): NewsEntryRecord => {
     slug,
     status,
     tags: stringList(record.tags, 50, 100),
-    title: requiredText(record.title, 300),
+    title,
     updated_at: requiredTimestamp(record.updated_at),
     version: boundedInteger(record.version, 1, Number.MAX_SAFE_INTEGER),
   }

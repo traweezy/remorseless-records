@@ -106,11 +106,18 @@ describe("Admin content persistence contracts", () => {
     ],
     ["an invalid slug", [[news({ slug: " Update " })], 1]],
     [
-      "cover artwork without alternative text",
-      [[news({ cover_alt_text: null })], 1],
+      "alternative text without cover artwork",
+      [[news({ cover_url: null })], 1],
     ],
   ])("rejects %s", (_label, value) => {
     expect(() => readAdminNewsPage(value, 25)).toThrow(INVALID_PERSISTENCE)
+  })
+
+  it("provides accessible alternative text for legacy News covers", () => {
+    expect(
+      readAdminNewsPage([[news({ cover_alt_text: null })], 1], 25).records[0]
+        ?.cover_alt_text
+    ).toBe("Update cover artwork")
   })
 
   it("requires an exact singleton News slug lookup", () => {

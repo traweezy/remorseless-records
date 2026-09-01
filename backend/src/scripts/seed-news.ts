@@ -26,6 +26,7 @@ type NewsSeedPayload = {
   status: "published"
   published_at: Date
   tags: string[]
+  cover_alt_text: string
   cover_url: string
   seo_title: string
   seo_description: string
@@ -147,6 +148,7 @@ export default async function seedNewsScript({
     status: "published",
     published_at: new Date(now - index * 86400000),
     tags: entry.tags,
+    cover_alt_text: `${entry.title} cover artwork`,
     cover_url: entry.cover_url,
     seo_title: entry.seo_title,
     seo_description: entry.seo_description,

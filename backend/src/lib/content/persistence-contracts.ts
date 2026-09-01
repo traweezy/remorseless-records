@@ -15,6 +15,7 @@ import {
   type NewsEntryDTO,
   type NewsEntryRecord,
 } from "@/modules/news/serializers"
+import { resolveNewsCoverAlternativeText } from "@/modules/news/cover-alternative-text"
 
 import {
   readIsoTimestamp,
@@ -251,13 +252,23 @@ export const readAdminNewsEntry = (
   if (!SLUG.test(slug)) {
     return invalidContentPersistence()
   }
-  const cover = validateCover(record.cover_url, record.cover_alt_text)
+  const title = requiredText(record.title, 300)
+  const coverUrl = httpUrl(record.cover_url)
+  const storedCoverAltText = nullableText(record.cover_alt_text, 500)
+  if (coverUrl === null && storedCoverAltText !== null) {
+    return invalidContentPersistence()
+  }
+  const coverAltText = resolveNewsCoverAlternativeText(
+    title,
+    coverUrl,
+    storedCoverAltText
+  )
   return {
     archived_at: archivedAt,
     author: nullableText(record.author, 500),
     content,
-    cover_alt_text: cover.altText,
-    cover_url: cover.url,
+    cover_alt_text: coverAltText,
+    cover_url: coverUrl,
     created_at: requiredTimestamp(record.created_at),
     excerpt: nullableText(record.excerpt, 1_000),
     id,
@@ -267,7 +278,7 @@ export const readAdminNewsEntry = (
     slug,
     status,
     tags: stringList(record.tags, 50, 100),
-    title: requiredText(record.title, 300),
+    title,
     updated_at: requiredTimestamp(record.updated_at),
     version: boundedInteger(record.version, 1),
   }
