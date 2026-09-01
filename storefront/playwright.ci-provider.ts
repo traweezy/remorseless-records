@@ -19,6 +19,11 @@ export const ciStorefrontProviderEnv = {
   CI_MEDUSA_FIXTURE_URL: ciMedusaFixtureBaseURL,
   CI_MEDUSA_PUBLISHABLE_KEY: ciMedusaPublishableKey,
   MEDUSA_BACKEND_URL: ciMedusaFixtureBaseURL,
+  // Never inherit repository-level staging search credentials in pre-deploy
+  // browsers. An unavailable loopback endpoint exercises the deterministic
+  // Medusa catalog fallback without fetching staging media through local Next.
+  MEILISEARCH_HOST: "http://127.0.0.1:7700",
+  MEILISEARCH_SEARCH_KEY: "ci-launch-search-key-20260831",
   NEXT_PUBLIC_MEDUSA_BACKEND_URL: ciMedusaFixtureBaseURL,
   NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ciMedusaPublishableKey,
   NEXT_PUBLIC_MEDUSA_URL: ciMedusaFixtureBaseURL,

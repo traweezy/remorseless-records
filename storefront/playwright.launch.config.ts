@@ -34,15 +34,7 @@ export default defineConfig({
     ciMedusaFixtureWebServer,
     {
       command: "pnpm run start --hostname 127.0.0.1 --port 3000",
-      env: {
-        ...ciStorefrontProviderEnv,
-        // Never inherit repository-level staging search credentials here. An
-        // unavailable loopback endpoint exercises the app's deterministic
-        // Medusa catalog fallback without contacting staging or loading its
-        // media through the local Next image optimizer.
-        MEILISEARCH_HOST: "http://127.0.0.1:7700",
-        MEILISEARCH_SEARCH_KEY: "ci-launch-search-key-20260831",
-      },
+      env: ciStorefrontProviderEnv,
       url: `${baseURL}/live`,
       reuseExistingServer: false,
       timeout: 120_000,

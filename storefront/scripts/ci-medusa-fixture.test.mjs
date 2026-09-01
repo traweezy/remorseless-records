@@ -119,13 +119,29 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
     workflow.match(/  e2e:[\s\S]*?\n  accessibility:/u)?.[0] ?? "",
     /secrets\.MEDUSA_BACKEND_URL/u
   )
+  for (const jobName of ["e2e", "lighthouse"]) {
+    const nextJob = jobName === "e2e" ? "accessibility" : undefined
+    const jobPattern = nextJob
+      ? new RegExp(`  ${jobName}:[\\s\\S]*?\\n  ${nextJob}:`, "u")
+      : new RegExp(`  ${jobName}:[\\s\\S]*$`, "u")
+    const job = workflow.match(jobPattern)?.[0] ?? ""
+    assert.match(job, /MEILISEARCH_HOST: http:\/\/127\.0\.0\.1:7700/u)
+    assert.match(job, /MEILISEARCH_SEARCH_KEY: ci-launch-search-key-20260831/u)
+  }
   assert.match(ciConfig, /ciMedusaFixtureWebServer/u)
   assert.match(criticalConfig, /ciMedusaFixtureWebServer/u)
   assert.match(launchConfig, /ciMedusaFixtureWebServer/u)
-  assert.match(launchConfig, /MEILISEARCH_HOST: "http:\/\/127\.0\.0\.1:7700"/u)
   assert.doesNotMatch(
     launchConfig,
     /process\.env\.MEILISEARCH_(?:HOST|SEARCH_KEY)/u
+  )
+  assert.match(
+    providerConfig,
+    /MEILISEARCH_HOST: "http:\/\/127\.0\.0\.1:7700"/u
+  )
+  assert.match(
+    providerConfig,
+    /MEILISEARCH_SEARCH_KEY: "ci-launch-search-key-20260831"/u
   )
   for (const secretName of [
     "CART_COOKIE_SECRET",
