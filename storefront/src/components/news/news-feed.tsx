@@ -7,17 +7,16 @@ import { NewsCardSkeleton } from "@/components/news/news-card-skeleton"
 import { Alert } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription } from "@/components/ui/empty"
-import { NEWS_PAGE_SIZE, type NewsEntry } from "@/lib/news/contract"
+import {
+  NEWS_PAGE_SIZE,
+  type NewsEntry,
+  parseNewsListResponse,
+} from "@/lib/news/contract"
 
 type NewsFeedProps = {
   initialEntries: NewsEntry[]
   totalCount: number
   pageSize?: number
-}
-
-type NewsFeedResponse = {
-  entries: NewsEntry[]
-  count: number
 }
 
 const NewsFeed = memo<NewsFeedProps>(
@@ -68,8 +67,22 @@ const NewsFeed = memo<NewsFeedProps>(
           throw new Error(`Failed to load news (${response.status})`)
         }
 
-        const payload = (await response.json()) as NewsFeedResponse
-        const nextEntries = payload.entries ?? []
+        const rawPayload: unknown = await response.json()
+        const payload = parseNewsListResponse(rawPayload, {
+          limit: pageSize,
+          offset,
+        })
+        const existingIds = new Set(entries.map((entry) => entry.id))
+        const existingSlugs = new Set(entries.map((entry) => entry.slug))
+        if (
+          payload.entries.some(
+            (entry) =>
+              existingIds.has(entry.id) || existingSlugs.has(entry.slug)
+          )
+        ) {
+          throw new Error("News response contains duplicate entries")
+        }
+        const nextEntries = payload.entries
         const nextOffset = offset + nextEntries.length
         const nextTotal =
           typeof payload.count === "number" ? payload.count : total
@@ -83,7 +96,7 @@ const NewsFeed = memo<NewsFeedProps>(
         window.clearTimeout(timeout)
         setLoading(false)
       }
-    }, [hasMore, loading, offset, pageSize, total])
+    }, [entries, hasMore, loading, offset, pageSize, total])
 
     const handleIntersect = useCallback(
       (observed: IntersectionObserverEntry[]) => {

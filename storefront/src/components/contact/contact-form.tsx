@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/pill-dropdown"
 import { Textarea } from "@/components/ui/textarea"
 import { siteMetadata } from "@/config/site"
+import { readPublicErrorMessage } from "@/lib/http/public-error"
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
@@ -74,8 +75,10 @@ const ContactForm = () => {
           body: JSON.stringify(value),
         })
         if (!response.ok) {
-          const payload = (await response.json()) as { message?: string }
-          throw new Error(payload.message ?? "Failed to send message")
+          const payload: unknown = await response.json().catch(() => null)
+          throw new Error(
+            readPublicErrorMessage(payload, "Failed to send message")
+          )
         }
         setStatus("success")
         form.reset()

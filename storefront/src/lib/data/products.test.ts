@@ -101,13 +101,10 @@ describe("products data layer", () => {
     expect(errorSpy).toHaveBeenCalled()
   })
 
-  it("loads collection products across pages and filters empty handles", async () => {
-    const validFirst = faker.helpers
-      .slugify(faker.music.songName())
-      .toLowerCase()
-    const validSecond = faker.helpers
-      .slugify(faker.music.songName())
-      .toLowerCase()
+  it("loads collection products across bounded pages", async () => {
+    const handles = Array.from({ length: 51 }, (_, index) =>
+      faker.helpers.slugify(`${faker.music.songName()} ${index}`).toLowerCase()
+    )
     const regionId = faker.string.uuid()
     const collectionId = faker.string.uuid()
     const collectionHandle = faker.helpers
@@ -117,13 +114,13 @@ describe("products data layer", () => {
     const productList = vi
       .fn<() => Promise<unknown>>()
       .mockResolvedValueOnce({
-        products: [
-          { id: faker.string.uuid(), handle: validFirst },
-          { id: faker.string.uuid(), handle: "" },
-        ],
+        products: handles.slice(0, 50).map((handle) => ({
+          id: faker.string.uuid(),
+          handle,
+        })),
       })
       .mockResolvedValueOnce({
-        products: [{ id: faker.string.uuid(), handle: validSecond }],
+        products: [{ id: faker.string.uuid(), handle: handles[50] }],
       })
       .mockResolvedValueOnce({
         products: [],
@@ -147,11 +144,8 @@ describe("products data layer", () => {
     const { getCollectionProductsByHandle } = await import(
       "@/lib/data/products"
     )
-    const products = await getCollectionProductsByHandle(collectionHandle, 2)
-    expect(products.map((product) => product.handle)).toEqual([
-      validFirst,
-      validSecond,
-    ])
+    const products = await getCollectionProductsByHandle(collectionHandle, 51)
+    expect(products.map((product) => product.handle)).toEqual(handles)
   })
 
   it("collects all product handles with updatedAt metadata", async () => {
@@ -255,6 +249,22 @@ describe("products data layer", () => {
     await expect(getProductsByCollection(faker.string.uuid())).resolves.toEqual(
       []
     )
+  })
+
+  it("rejects duplicate product identities at the shared boundary", async () => {
+    const { readStoreProductListResponse } = await import(
+      "@/lib/products/response-contract"
+    )
+    const product = { id: "prod_duplicate", handle: "duplicate" }
+
+    expect(() =>
+      readStoreProductListResponse({ products: [product, product] })
+    ).toThrow("duplicate")
+    expect(() =>
+      readStoreProductListResponse({
+        products: [{ id: "prod_invalid", handle: "invalid", variants: [42] }],
+      })
+    ).toThrow("invalid")
   })
 
   it("returns null/empty values when product loaders throw", async () => {

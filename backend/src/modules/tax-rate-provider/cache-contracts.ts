@@ -26,7 +26,8 @@ const REFERENCE_PATTERN = /^[A-Za-z0-9_-]+$/
 
 const parseJson = (value: string): unknown => {
   try {
-    return JSON.parse(value)
+    const parsed: unknown = JSON.parse(value)
+    return parsed
   } catch {
     return undefined
   }

@@ -128,7 +128,8 @@ const parseMetadataValue = (value: string): unknown => {
     return ""
   }
   try {
-    return JSON.parse(trimmed) as unknown
+    const parsed: unknown = JSON.parse(trimmed)
+    return parsed
   } catch {
     return trimmed
   }

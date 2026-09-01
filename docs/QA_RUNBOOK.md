@@ -141,6 +141,9 @@ pnpm --filter backend exec tsc --noEmit
 # Dashboard DOM compiler context and browser-boundary assertion regression
 pnpm run qa:admin-browser-boundary
 
+# Parsed provider/persistence values must remain unknown until decoded
+pnpm run qa:storefront-response-boundary
+
 # Admin matrix wiring, keyboard guard, semantics, and dependency patch drift
 pnpm run qa:admin-accessibility-boundary
 

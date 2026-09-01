@@ -78,7 +78,8 @@ export const fetchInternalCheckoutStatus = async (
     throw new CheckoutStatusUnavailableError()
   }
 
-  const parsed = statusSchema.safeParse(await response.json().catch(() => null))
+  const payload: unknown = await response.json().catch(() => null)
+  const parsed = statusSchema.safeParse(payload)
   if (!parsed.success) {
     throw new CheckoutStatusUnavailableError(
       "Checkout status response was invalid"

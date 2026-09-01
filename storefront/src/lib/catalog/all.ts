@@ -2,11 +2,10 @@ import { unstable_cache } from "next/cache"
 
 import { getAllProductHandles, PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
+import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { resolveRegionId } from "@/lib/regions"
 import type { ProductSearchHit } from "@/types/product"
-
-import type { HttpTypes } from "@medusajs/types"
 
 const CATALOG_CACHE_KEY = "full-catalog-hits-v2"
 const FULL_CATALOG_MAX_PRODUCTS = 1_000
@@ -29,19 +28,22 @@ export const getFullCatalogHits = unstable_cache(
         const productIds = handleRecords
           .slice(index, index + FULL_CATALOG_BATCH_SIZE)
           .map((record) => record.id)
-        const { products } =
-          await fetchMedusaStoreRead<HttpTypes.StoreProductListResponse>(
-            "/store/products",
-            {
-              method: "GET",
-              query: {
-                fields: PRODUCT_LIST_FIELDS,
-                id: productIds,
-                limit: productIds.length,
-                region_id: regionId,
-              },
-            }
-          )
+        const rawResponse: unknown = await fetchMedusaStoreRead<unknown>(
+          "/store/products",
+          {
+            method: "GET",
+            query: {
+              fields: PRODUCT_LIST_FIELDS,
+              id: productIds,
+              limit: productIds.length,
+              region_id: regionId,
+            },
+          }
+        )
+        const { products } = readStoreProductListResponse(
+          rawResponse,
+          productIds.length
+        )
 
         products.forEach((product) => {
           if (

@@ -46,7 +46,8 @@ export const fetchCatalogFilterOptions = async (
       `Catalog ${kind} filters failed with status ${response.status}.`
     )
   }
-  return { options: parseFilterOptions(await response.json()) }
+  const payload: unknown = await response.json()
+  return { options: parseFilterOptions(payload) }
 }
 
 export const fetchCatalogPriceRange = async (options?: {

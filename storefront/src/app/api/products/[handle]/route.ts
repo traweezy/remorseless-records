@@ -1,10 +1,10 @@
-import type { HttpTypes } from "@medusajs/types"
 import type { NextRequest } from "next/server"
 import { z } from "zod"
 
 import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
 import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { resolveRegionId } from "@/lib/regions"
 import {
   enforceRateLimit,
@@ -48,19 +48,19 @@ export const GET = async (
 
     const handle = parsedHandle.data
     const regionId = await resolveRegionId(_request)
-    const { products } =
-      await correlatedMedusaFetch<HttpTypes.StoreProductListResponse>(
-        _request,
-        "/store/products",
-        {
-          query: {
-            handle,
-            limit: 1,
-            fields: PRODUCT_DETAIL_FIELDS,
-            region_id: regionId,
-          },
-        }
-      )
+    const rawResponse: unknown = await correlatedMedusaFetch<unknown>(
+      _request,
+      "/store/products",
+      {
+        query: {
+          handle,
+          limit: 1,
+          fields: PRODUCT_DETAIL_FIELDS,
+          region_id: regionId,
+        },
+      }
+    )
+    const { products } = readStoreProductListResponse(rawResponse, 1)
 
     const product = products[0]
 

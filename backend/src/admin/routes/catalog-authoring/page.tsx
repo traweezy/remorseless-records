@@ -258,7 +258,8 @@ const parseJson = (value: string, fallback: unknown): unknown => {
     return fallback
   }
   try {
-    return JSON.parse(trimmed)
+    const parsed: unknown = JSON.parse(trimmed)
+    return parsed
   } catch {
     throw new Error("Structured JSON fields must contain valid JSON.")
   }

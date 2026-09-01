@@ -234,7 +234,8 @@ const parseCompleted = (value: string | null) => {
     return null
   }
   try {
-    const parsed = completedRecordSchema.safeParse(JSON.parse(value))
+    const payload: unknown = JSON.parse(value)
+    const parsed = completedRecordSchema.safeParse(payload)
     if (!parsed.success) {
       throw new CartIdempotencyStoreError()
     }

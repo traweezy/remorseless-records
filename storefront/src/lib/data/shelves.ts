@@ -87,7 +87,8 @@ const fetchCatalogShelves = async (): Promise<
       return null
     }
 
-    const parsed = responseSchema.safeParse(await response.json())
+    const payload: unknown = await response.json()
+    const parsed = responseSchema.safeParse(payload)
     if (!parsed.success) {
       console.error("[catalog-shelves] Invalid shelf response")
       return null

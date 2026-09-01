@@ -59,6 +59,19 @@ describe("product query helpers", () => {
     fetchSpy.mockRestore()
   })
 
+  it("rejects malformed product detail payloads", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ product: { handle: "missing-id" } }),
+    } as Response)
+
+    await expect(
+      productDetailQueryOptions("missing-id").queryFn()
+    ).rejects.toThrow("Store product response is invalid")
+
+    fetchSpy.mockRestore()
+  })
+
   it("builds stable normalized search query keys", () => {
     const key = productSearchQueryKey({
       query: "  doom  ",

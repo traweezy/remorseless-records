@@ -5,45 +5,23 @@ import { z } from "zod"
 import { runtimeEnv } from "@/config/env"
 import { fetchObservedProviderRead } from "@/lib/http/provider-read.server"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
+import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { resolveRegionId } from "@/lib/regions"
 
 type StoreProduct = HttpTypes.StoreProduct
-
-const isStoreProduct = (value: unknown): value is StoreProduct => {
-  if (!value || typeof value !== "object") {
-    return false
-  }
-
-  const handle = (value as { handle?: unknown }).handle
-  return typeof handle === "string"
-}
-
-const extractProductsFromResponse = (response: unknown): StoreProduct[] => {
-  if (!response || typeof response !== "object") {
-    return []
-  }
-
-  const products = (response as { products?: unknown }).products
-  if (!Array.isArray(products)) {
-    return []
-  }
-
-  return products.filter(isStoreProduct)
-}
 
 const listProducts = async (
   query: HttpTypes.StoreProductListParams
 ): Promise<StoreProduct[]> => {
   const regionId = query.region_id ?? (await resolveRegionId())
-  const response =
-    await fetchMedusaStoreRead<HttpTypes.StoreProductListResponse>(
-      "/store/products",
-      {
-        method: "GET",
-        query: { ...query, region_id: regionId },
-      }
-    )
-  return extractProductsFromResponse(response)
+  const response: unknown = await fetchMedusaStoreRead<unknown>(
+    "/store/products",
+    {
+      method: "GET",
+      query: { ...query, region_id: regionId },
+    }
+  )
+  return readStoreProductListResponse(response, query.limit ?? 200).products
 }
 
 export const PRODUCT_LIST_FIELDS = [
@@ -356,7 +334,8 @@ export const getAllProductHandles = unstable_cache(
         if (!response.ok) {
           throw new Error(`Product handle feed failed with ${response.status}`)
         }
-        const parsed = productHandlePageSchema.safeParse(await response.json())
+        const payload: unknown = await response.json()
+        const parsed = productHandlePageSchema.safeParse(payload)
         if (!parsed.success) {
           throw new Error("Product handle feed returned an invalid response")
         }

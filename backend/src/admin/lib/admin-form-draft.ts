@@ -80,7 +80,8 @@ export const readAdminFormDraft = <T>({
     return null
   }
   try {
-    const envelope = adminFormDraftEnvelopeSchema.parse(JSON.parse(stored))
+    const payload: unknown = JSON.parse(stored)
+    const envelope = adminFormDraftEnvelopeSchema.parse(payload)
     if (Date.parse(envelope.expiresAt) <= validatedNow(now).getTime()) {
       storage.removeItem(key)
       return null

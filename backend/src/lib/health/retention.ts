@@ -158,7 +158,8 @@ const parseSnapshot = (value: string | null): RetentionSnapshot | null => {
     return null
   }
   try {
-    const parsed = retentionSnapshotSchema.safeParse(JSON.parse(value))
+    const payload: unknown = JSON.parse(value)
+    const parsed = retentionSnapshotSchema.safeParse(payload)
     return parsed.success ? parsed.data : null
   } catch {
     return null

@@ -574,7 +574,8 @@ export const readManagedMediaState = (value: unknown): ManagedMediaState => {
 const loadState = async (statePath: string): Promise<ManagedMediaState> => {
   try {
     const raw = await fs.readFile(statePath, "utf8")
-    return readManagedMediaState(JSON.parse(raw))
+    const parsed: unknown = JSON.parse(raw)
+    return readManagedMediaState(parsed)
   } catch (error: unknown) {
     const code =
       error && typeof error === "object" && "code" in error

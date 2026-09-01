@@ -62,9 +62,8 @@ export const linkCheckoutTax = async (
     throw new CheckoutTaxLinkError()
   }
 
-  const parsed = responseSchema.safeParse(
-    await response.json().catch(() => null)
-  )
+  const payload: unknown = await response.json().catch(() => null)
+  const parsed = responseSchema.safeParse(payload)
   if (!parsed.success) {
     throw new CheckoutTaxLinkError("Checkout tax binding response was invalid")
   }

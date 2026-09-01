@@ -154,7 +154,8 @@ const parseSnapshot = (value: string | null) => {
     return { invalid: false, snapshot: null }
   }
   try {
-    const parsed = schedulerSnapshotSchema.safeParse(JSON.parse(value))
+    const payload: unknown = JSON.parse(value)
+    const parsed = schedulerSnapshotSchema.safeParse(payload)
     return parsed.success
       ? { invalid: false, snapshot: parsed.data }
       : { invalid: true, snapshot: null }

@@ -3,11 +3,10 @@ import { unstable_cache } from "next/cache"
 import { toProviderRequestError } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
 import { fetchMedusaStoreRead } from "@/lib/medusa/read-client"
-import type { BundleComposition } from "@/types/bundle"
-
-type BundleCompositionResponse = {
-  bundle: BundleComposition
-}
+import {
+  bundleCompositionResponseSchema,
+  type BundleComposition,
+} from "@/types/bundle"
 
 const fetchBundleComposition = async (
   handle: string,
@@ -15,14 +14,17 @@ const fetchBundleComposition = async (
 ): Promise<BundleComposition | null> => {
   try {
     const path = `/store/catalog/products/${encodeURIComponent(handle)}/bundle`
-    const response = request
-      ? await correlatedMedusaFetch<BundleCompositionResponse>(request, path, {
+    const rawResponse: unknown = request
+      ? await correlatedMedusaFetch<unknown>(request, path, {
           method: "GET",
         })
-      : await fetchMedusaStoreRead<BundleCompositionResponse>(path, {
+      : await fetchMedusaStoreRead<unknown>(path, {
           method: "GET",
         })
-    return response.bundle.componentCount > 0 ? response.bundle : null
+    const response = bundleCompositionResponseSchema.parse(rawResponse)
+    return response.bundle && response.bundle.componentCount > 0
+      ? response.bundle
+      : null
   } catch (error) {
     const providerError = toProviderRequestError(error)
     console.error("[bundle] Failed to load composition", {

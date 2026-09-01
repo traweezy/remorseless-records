@@ -24,10 +24,7 @@ describe("getFullCatalogHits", () => {
     const secondProductId = faker.string.uuid()
 
     const list = vi.fn().mockResolvedValueOnce({
-      products: [
-        { id: firstProductId, handle: validHandle },
-        { id: secondProductId, handle: "" },
-      ],
+      products: [{ id: firstProductId, handle: validHandle }],
     })
     const mapStoreProductToSearchHit = vi.fn().mockReturnValue(mappedHit)
 
@@ -40,7 +37,8 @@ describe("getFullCatalogHits", () => {
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
-    vi.doMock("@/lib/data/products", () => ({
+    vi.doMock("@/lib/data/products", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("@/lib/data/products")>()),
       getAllProductHandles: vi.fn().mockResolvedValue([
         { handle: validHandle, id: firstProductId, updatedAt: null },
         { handle: "missing", id: secondProductId, updatedAt: null },
@@ -72,7 +70,8 @@ describe("getFullCatalogHits", () => {
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue("region_us"),
     }))
-    vi.doMock("@/lib/data/products", () => ({
+    vi.doMock("@/lib/data/products", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("@/lib/data/products")>()),
       getAllProductHandles: vi
         .fn()
         .mockRejectedValue(new Error("handle feed failed")),
@@ -89,9 +88,11 @@ describe("getFullCatalogHits", () => {
 
   it("continues through full batches and stops on a short page", async () => {
     const regionId = faker.string.uuid()
-    const firstBatch = Array.from({ length: 100 }, () => ({
+    const firstBatch = Array.from({ length: 100 }, (_, index) => ({
       id: faker.string.uuid(),
-      handle: faker.helpers.slugify(faker.music.songName()).toLowerCase(),
+      handle: `${faker.helpers
+        .slugify(faker.music.songName())
+        .toLowerCase()}-${index}`,
     }))
     const firstHandleRecords = firstBatch.map((product) => ({
       handle: product.handle,
@@ -127,7 +128,8 @@ describe("getFullCatalogHits", () => {
     vi.doMock("@/lib/regions", () => ({
       resolveRegionId: vi.fn().mockResolvedValue(regionId),
     }))
-    vi.doMock("@/lib/data/products", () => ({
+    vi.doMock("@/lib/data/products", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("@/lib/data/products")>()),
       getAllProductHandles: vi
         .fn()
         .mockResolvedValue([

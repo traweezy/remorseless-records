@@ -8,6 +8,7 @@ import {
 import type { QueryClient } from "@tanstack/react-query"
 import { useCallback, useRef } from "react"
 
+import { readStoreProductDetailResponse } from "@/lib/products/response-contract"
 import { searchProductsBrowser } from "@/lib/search/browser"
 import type {
   ProductSearchRequest,
@@ -33,8 +34,8 @@ export const productDetailQueryOptions = (handle: string) => ({
       throw new Error(`Failed to load product (status ${response.status})`)
     }
 
-    const payload = (await response.json()) as { product: StoreProduct }
-    return payload.product
+    const rawPayload: unknown = await response.json()
+    return readStoreProductDetailResponse(rawPayload)
   },
 })
 

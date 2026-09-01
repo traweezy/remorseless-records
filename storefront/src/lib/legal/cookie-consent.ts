@@ -66,7 +66,8 @@ const tryParseCookiePreferences = (
   }
 
   try {
-    const parsed = asUnknownRecord(JSON.parse(value))
+    const payload: unknown = JSON.parse(value)
+    const parsed = asUnknownRecord(payload)
     if (!parsed) {
       return null
     }

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import type { HttpTypes } from "@medusajs/types"
 import { z } from "zod"
 
 import { PRODUCT_DETAIL_FIELDS } from "@/lib/data/products"
 import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { resolveRegionId } from "@/lib/regions"
 import {
@@ -60,19 +60,19 @@ export async function POST(request: Request) {
     const regionId = await resolveRegionId(request)
     const hydrated = await Promise.all(
       normalizedHandles.map(async (handle) => {
-        const { products } =
-          await correlatedMedusaFetch<HttpTypes.StoreProductListResponse>(
-            request,
-            "/store/products",
-            {
-              query: {
-                fields: PRODUCT_DETAIL_FIELDS,
-                handle,
-                limit: 1,
-                region_id: regionId,
-              },
-            }
-          )
+        const rawResponse: unknown = await correlatedMedusaFetch<unknown>(
+          request,
+          "/store/products",
+          {
+            query: {
+              fields: PRODUCT_DETAIL_FIELDS,
+              handle,
+              limit: 1,
+              region_id: regionId,
+            },
+          }
+        )
+        const { products } = readStoreProductListResponse(rawResponse, 1)
         const product = products[0]
         if (!product) {
           return null

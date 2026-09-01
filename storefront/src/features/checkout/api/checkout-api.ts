@@ -299,7 +299,8 @@ const fallbackProblem = (
 
 const parseJson = async (response: Response): Promise<unknown> => {
   try {
-    return await response.json()
+    const payload: unknown = await response.json()
+    return payload
   } catch {
     return null
   }

@@ -11,7 +11,8 @@ import {
   NEWS_PAGE_SIZE,
   type NewsEntry,
   type NewsListResponse,
-  type NewsStatus,
+  parseNewsEntryResponse,
+  parseNewsListResponse,
 } from "@/lib/news/contract"
 
 export {
@@ -22,24 +23,6 @@ export {
   type NewsStatus,
 } from "@/lib/news/contract"
 
-type NewsApiEntry = {
-  id: string
-  title: string
-  slug: string
-  excerpt: string | null
-  content: string
-  author: string | null
-  status: NewsStatus
-  publishedAt: string | null
-  tags?: string[]
-  coverUrl: string | null
-  coverAltText?: string | null
-  seoTitle: string | null
-  seoDescription: string | null
-  createdAt?: string | null
-  updatedAt?: string | null
-}
-
 const normalizeText = (value: string | null | undefined): string | null => {
   if (!value) {
     return null
@@ -48,7 +31,7 @@ const normalizeText = (value: string | null | undefined): string | null => {
   return trimmed.length ? trimmed : null
 }
 
-const normalizeEntry = (entry: NewsApiEntry): NewsEntry => ({
+const normalizeEntry = (entry: NewsEntry): NewsEntry => ({
   id: entry.id,
   title: entry.title,
   slug: entry.slug,
@@ -107,18 +90,12 @@ export const fetchNewsEntries = async ({
       return { entries: [], count: 0, offset, limit }
     }
 
-    const payload = (await response.json()) as {
-      entries?: NewsApiEntry[]
-      count?: number
-      offset?: number
-      limit?: number
-    }
+    const rawPayload: unknown = await response.json()
+    const payload = parseNewsListResponse(rawPayload, { limit, offset })
 
     return {
-      entries: (payload.entries ?? []).map(normalizeEntry),
-      count: typeof payload.count === "number" ? payload.count : 0,
-      offset: typeof payload.offset === "number" ? payload.offset : offset,
-      limit: typeof payload.limit === "number" ? payload.limit : limit,
+      ...payload,
+      entries: payload.entries.map(normalizeEntry),
     }
   } catch (error) {
     const providerError = toProviderRequestError(error)
@@ -167,7 +144,8 @@ export const fetchNewsEntryBySlug = async (
       return null
     }
 
-    const payload = (await response.json()) as { entry?: NewsApiEntry | null }
+    const rawPayload: unknown = await response.json()
+    const payload = parseNewsEntryResponse(rawPayload)
     return payload.entry ? normalizeEntry(payload.entry) : null
   } catch (error) {
     console.error("[news] Failed to fetch entry", {

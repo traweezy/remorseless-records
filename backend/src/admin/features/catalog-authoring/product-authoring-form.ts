@@ -45,7 +45,7 @@ const jsonTextSchema = (shape: "array" | "object") =>
     .max(200_000)
     .superRefine((value, context) => {
       try {
-        const parsed = JSON.parse(value) as unknown
+        const parsed: unknown = JSON.parse(value)
         const valid =
           shape === "array"
             ? Array.isArray(parsed)

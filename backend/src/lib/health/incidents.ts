@@ -79,7 +79,8 @@ const parseIncident = (
     return null
   }
   try {
-    const parsed = incidentSnapshotSchema.safeParse(JSON.parse(value))
+    const payload: unknown = JSON.parse(value)
+    const parsed = incidentSnapshotSchema.safeParse(payload)
     return parsed.success ? parsed.data : null
   } catch {
     return null

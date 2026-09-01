@@ -93,7 +93,8 @@ export const uploadCatalogCreationMedia = async (
     if (!response.ok) {
       throw new Error(await uploadErrorMessage(response))
     }
-    return uploadResponseSchema.parse(await response.json()).files
+    const payload: unknown = await response.json()
+    return uploadResponseSchema.parse(payload).files
   } catch (error) {
     if (timedOut) {
       throw new Error("The image upload took too long. Try again.", {

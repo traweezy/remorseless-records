@@ -1312,7 +1312,8 @@ export const parseCatalogCreationDraft = (
     return null
   }
   try {
-    const parsed = storedDraftSchema.parse(JSON.parse(serialized))
+    const payload: unknown = JSON.parse(serialized)
+    const parsed = storedDraftSchema.parse(payload)
     if (parsed.expiresAt <= now) {
       return null
     }

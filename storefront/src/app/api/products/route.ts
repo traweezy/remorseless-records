@@ -1,10 +1,10 @@
-import type { HttpTypes } from "@medusajs/types"
 import { z } from "zod"
 
 import { mapStoreProductToSearchHit } from "@/lib/products/transformers"
 import { PRODUCT_LIST_FIELDS } from "@/lib/data/products"
 import { providerProblem } from "@/lib/http/provider-boundary"
 import { correlatedMedusaFetch } from "@/lib/medusa/correlated-client"
+import { readStoreProductListResponse } from "@/lib/products/response-contract"
 import { resolveRegionId } from "@/lib/regions"
 import { SEARCH_MAX_LIMIT, SEARCH_MAX_RESULT_WINDOW } from "@/lib/search/search"
 import {
@@ -86,12 +86,12 @@ export const GET = async (request: Request) => {
       }
     }
 
-    const { products, count } =
-      await correlatedMedusaFetch<HttpTypes.StoreProductListResponse>(
-        request,
-        "/store/products",
-        { query: options }
-      )
+    const rawResponse: unknown = await correlatedMedusaFetch<unknown>(
+      request,
+      "/store/products",
+      { query: options }
+    )
+    const { products, count } = readStoreProductListResponse(rawResponse, limit)
 
     const hits = products.map(mapStoreProductToSearchHit)
     const filteredHits = inStockOnly

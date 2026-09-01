@@ -1,8 +1,33 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import type { BundleComposition } from "@/types/bundle"
+
 import { getCartBundleComposition } from "./bundle-client"
 
 const fetchMock = vi.fn<typeof fetch>()
+const bundleFixture = (): BundleComposition => ({
+  productId: "prod_01ABC",
+  handle: "title-with-space",
+  title: "Title with space",
+  type: "physical",
+  componentCount: 1,
+  unavailableMappingCount: 0,
+  hasUnavailableComponents: false,
+  components: [
+    {
+      id: "component_01ABC",
+      title: "Record",
+      quantity: 1,
+      required: true,
+      product: {
+        id: "prod_record",
+        handle: "record",
+        title: "Record",
+      },
+      availabilityByBundleVariant: [],
+    },
+  ],
+})
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -11,11 +36,7 @@ afterEach(() => {
 
 describe("cart bundle client", () => {
   it("loads an encoded bundle through the same-origin BFF", async () => {
-    const bundle = {
-      components: [],
-      id: "bundle_01ABC",
-      product_id: "prod_01ABC",
-    }
+    const bundle = bundleFixture()
     vi.stubGlobal("fetch", fetchMock)
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ bundle }), {
@@ -59,6 +80,17 @@ describe("cart bundle client", () => {
   it("maps an unhealthy BFF response to neutral client copy", async () => {
     vi.stubGlobal("fetch", fetchMock)
     fetchMock.mockResolvedValue(new Response(null, { status: 503 }))
+
+    await expect(getCartBundleComposition("bundle")).rejects.toThrow(
+      "Unable to load bundle contents."
+    )
+  })
+
+  it("rejects a malformed successful BFF response", async () => {
+    vi.stubGlobal("fetch", fetchMock)
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ bundle: { componentCount: 1 } }))
+    )
 
     await expect(getCartBundleComposition("bundle")).rejects.toThrow(
       "Unable to load bundle contents."

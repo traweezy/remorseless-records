@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache"
+import { z } from "zod"
 
 import { runtimeEnv } from "@/config/env"
 import { toProviderRequestError } from "@/lib/http/provider-boundary"
@@ -69,6 +70,109 @@ type DiscographyApiEntry = {
   availability: DiscographyAvailability
   coverUrl: string | null
   coverAltText: string | null
+}
+
+const nullableDiscographyText = (maximum: number) =>
+  z
+    .string()
+    .max(maximum)
+    .nullable()
+    .transform((value) => {
+      const trimmed = value?.trim() ?? ""
+      return trimmed.length > 0 ? trimmed : null
+    })
+
+const discographyApiEntrySchema = z
+  .object({
+    id: z.string().trim().min(1).max(200),
+    title: z.string().trim().min(1).max(500),
+    artist: z.string().max(500),
+    album: z.string().max(500),
+    productId: nullableDiscographyText(200).optional(),
+    productHandle: nullableDiscographyText(200),
+    sourceMode: z.enum(["catalog_product", "manual"]),
+    linkHealth: z.enum([
+      "healthy",
+      "missing",
+      "not_applicable",
+      "unknown",
+      "unpublished",
+    ]),
+    collectionTitle: nullableDiscographyText(500),
+    catalogNumber: nullableDiscographyText(200),
+    releaseDate: z.string().trim().datetime().nullable(),
+    releaseYear: z.number().int().min(1000).max(9999).nullable(),
+    formats: z.array(z.string().max(200)).max(100),
+    genres: z.array(z.string().max(200)).max(100),
+    tags: z.array(z.string().max(200)).max(100),
+    availability: z.enum([
+      "in_print",
+      "out_of_print",
+      "preorder",
+      "digital_only",
+      "unknown",
+    ]),
+    coverUrl: nullableDiscographyText(2_048),
+    coverAltText: nullableDiscographyText(1_000),
+    archivedAt: z.string().trim().datetime().nullable().optional(),
+    lastSyncedAt: z.string().trim().datetime().nullable().optional(),
+    version: z.number().int().min(1).max(1_000_000_000).optional(),
+    createdAt: z.string().trim().datetime().nullable().optional(),
+    updatedAt: z.string().trim().datetime().nullable().optional(),
+  })
+  .strict()
+
+const discographyPageSchema = z
+  .object({
+    entries: z.array(discographyApiEntrySchema).max(200),
+    count: z.number().int().min(0).max(1_000_000),
+    offset: z.number().int().min(0).max(1_000_000).optional(),
+    limit: z.number().int().min(1).max(200).optional(),
+  })
+  .strict()
+
+const parseDiscographyPage = (
+  value: unknown,
+  expected: { limit: number; offset: number }
+): { entries: DiscographyApiEntry[]; count: number } => {
+  const payload = discographyPageSchema.parse(value)
+  const responseOffset = payload.offset ?? expected.offset
+  const responseLimit = payload.limit ?? expected.limit
+  if (
+    responseOffset !== expected.offset ||
+    responseLimit !== expected.limit ||
+    payload.entries.length > responseLimit ||
+    payload.count < responseOffset + payload.entries.length
+  ) {
+    throw new Error("Discography response pagination is inconsistent")
+  }
+  const ids = payload.entries.map((entry) => entry.id)
+  if (new Set(ids).size !== ids.length) {
+    throw new Error("Discography response contains duplicate entries")
+  }
+
+  return {
+    count: payload.count,
+    entries: payload.entries.map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      artist: entry.artist,
+      album: entry.album,
+      productHandle: entry.productHandle,
+      sourceMode: entry.sourceMode,
+      linkHealth: entry.linkHealth,
+      collectionTitle: entry.collectionTitle,
+      catalogNumber: entry.catalogNumber,
+      releaseDate: entry.releaseDate,
+      releaseYear: entry.releaseYear,
+      formats: entry.formats,
+      genres: entry.genres,
+      tags: entry.tags,
+      availability: entry.availability,
+      coverUrl: entry.coverUrl,
+      coverAltText: entry.coverAltText,
+    })),
+  }
 }
 
 const FORMAT_PATTERNS = [
@@ -259,13 +363,18 @@ const fetchDiscographyEntries = async (): Promise<DiscographyEntry[]> => {
         return []
       }
 
-      const payload = (await response.json()) as {
-        entries?: DiscographyApiEntry[]
-        count?: number
+      const rawPayload: unknown = await response.json()
+      const payload = parseDiscographyPage(rawPayload, { limit, offset })
+      const entries = payload.entries
+      const existingIds = new Set(collected.map((entry) => entry.id))
+      if (entries.some((entry) => existingIds.has(entry.id))) {
+        throw new Error("Discography response repeated an entry")
       }
-      const entries = payload.entries ?? []
       collected.push(...entries)
-      total = typeof payload.count === "number" ? payload.count : total
+      if (total !== null && payload.count !== total) {
+        throw new Error("Discography response changed its total count")
+      }
+      total = payload.count
       offset += entries.length
 
       if (!entries.length || (total !== null && offset >= total)) {

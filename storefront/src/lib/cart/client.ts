@@ -141,9 +141,8 @@ const requestJson = async (
   }
 
   if (!response.ok) {
-    const payload = errorResponseFrom(
-      await response.json().catch(() => undefined)
-    )
+    const rawPayload: unknown = await response.json().catch(() => undefined)
+    const payload = errorResponseFrom(rawPayload)
     const retryAfter = retryAfterSecondsFrom(
       response.headers.get("Retry-After")
     )
@@ -157,7 +156,8 @@ const requestJson = async (
     )
   }
 
-  return response.json() as Promise<unknown>
+  const payload: unknown = await response.json()
+  return payload
 }
 
 const requestCart = async (

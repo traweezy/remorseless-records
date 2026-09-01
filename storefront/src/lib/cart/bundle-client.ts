@@ -1,8 +1,7 @@
-import type { BundleComposition } from "@/types/bundle"
-
-type BundleResponse = {
-  bundle: BundleComposition | null
-}
+import {
+  bundleCompositionResponseSchema,
+  type BundleComposition,
+} from "@/types/bundle"
 
 export const getCartBundleComposition = async (
   handle: string,
@@ -22,5 +21,10 @@ export const getCartBundleComposition = async (
     throw new Error("Unable to load bundle contents.")
   }
 
-  return ((await response.json()) as BundleResponse).bundle
+  const payload: unknown = await response.json()
+  const parsed = bundleCompositionResponseSchema.safeParse(payload)
+  if (!parsed.success) {
+    throw new Error("Unable to load bundle contents.")
+  }
+  return parsed.data.bundle
 }

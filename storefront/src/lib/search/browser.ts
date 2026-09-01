@@ -46,5 +46,6 @@ export const searchProductsBrowser = async (
     throw new Error(`Catalog search failed with status ${response.status}.`)
   }
 
-  return parseSearchResponse(await response.json())
+  const payload: unknown = await response.json()
+  return parseSearchResponse(payload)
 }

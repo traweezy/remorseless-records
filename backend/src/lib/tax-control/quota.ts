@@ -36,7 +36,8 @@ const parseQuota = (value: string | null): TaxRateIoQuota | null => {
   }
 
   try {
-    return parseTaxRateIoQuotaSnapshot(JSON.parse(value))
+    const parsed: unknown = JSON.parse(value)
+    return parseTaxRateIoQuotaSnapshot(parsed)
   } catch {
     return null
   }

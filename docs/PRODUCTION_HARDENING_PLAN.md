@@ -2901,7 +2901,7 @@ floating support images, and the exact production cost/domain approval packet.
       and formatting in local hooks, package scripts, and CI.
 - [x] Keep both strict `tsc --noEmit` gates alongside Biome because semantic
       TypeScript checking remains a separate compiler responsibility.
-- [ ] Continue boundary hardening from the pre-migration debt baseline of 97
+- [x] Complete boundary hardening from the pre-migration debt baseline of 97
       unsafe assignments, 34 member accesses, and 15 unsafe arguments.
 - [x] Remove the two CodeQL-reported post-build file rewrite races with
       same-descriptor, no-follow regular-file updates and symlink regression
@@ -4328,6 +4328,49 @@ with `observation.md`, and its repository test prevents the ambiguous parameter
 expansion from returning. Exact workflow acceptance and the no-recurrence
 observation window remain open; the catalog/runtime corrections themselves are
 accepted.
+
+## Production parsed-response boundary closure
+
+The dated ESLint unsafe-TypeScript baseline is now closed at the production
+boundary rather than recreated as a second linter beside Biome. Every
+production Backend and Storefront TypeScript file is scanned for explicit
+`any`, double assertions, asserted `Response.json()` or `JSON.parse()` values,
+direct parsed-value decoder arguments, and unbounded parsed-value returns.
+Decoded JSON is first held as `unknown`, then validated or projected. The gate
+is part of `qa:lint` and currently covers 713 production files; tests and
+fixtures remain governed by strict TypeScript and Biome without being confused
+with runtime provider trust boundaries.
+
+News list/detail payloads now enforce bounded fields, publication state,
+timestamps, unique ids/slugs, exact requested pagination, and an application
+allowlist that discards persistence metadata. Discography pages enforce bounded
+enums, timestamps, totals, stable counts, and unique identities across pages.
+Bundle composition validates every nested identity, quantity, component,
+availability option, declared count, and derived unavailable state. Product
+list/detail reads validate bounded records, nested runtime shapes, counts, and
+unique ids/handles before Storefront BFF, cache, search, quick-view, or prefetch
+consumers receive them. Public form errors retain only a bounded message or
+Problem detail and otherwise use neutral fallback copy.
+
+The closure also routes every remaining persisted JSON, health snapshot,
+checkout response, Admin draft/upload response, filter/search response, tax
+cache value, and migration checkpoint through an explicit `unknown` boundary
+before its existing decoder. Focused response, route, cache, checkout, and
+Admin regression tests, both strict TypeScript projects, and the production
+boundary verifier pass. The product decoder is isolated in a client-safe shared
+contract so browser query consumers cannot pull `server-only` data adapters
+into their bundle.
+
+Complete local acceptance passed the 1,270-file repository Biome, policy, and
+strict TypeScript gate; all 273 Backend suites / 2,064 tests at 91.58%
+statements, 85.31% branches, 95.78% functions, and 91.58% lines; all 139
+Storefront baseline files / 828 tests at 94.37%, 86.06%, 95.83%, and 94.39%;
+and all 36 transactional files / 322 tests at 83.73%, 76.50%, 85.81%, and
+83.86%. Both production builds pass, including the frozen 1,085-package Backend
+server install and the Storefront scanner proving 130 client assets contain no
+server-only secret or public Meilisearch input. These changes affect decoding
+and failure behavior only; they do not alter rendered layout or interaction
+behavior, so no new visual screenshot was required for this section.
 
 ## Legal, accessibility, and launch acceptance
 

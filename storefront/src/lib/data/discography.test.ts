@@ -169,7 +169,7 @@ describe("getDiscographyEntries", () => {
                 linkHealth: "not_applicable",
                 collectionTitle: null,
                 catalogNumber: null,
-                releaseDate: "not-a-date",
+                releaseDate: null,
                 releaseYear: null,
                 formats: ["12-inch", "k7", "compact disc", faker.lorem.word()],
                 genres: [faker.music.genre()],
@@ -253,5 +253,51 @@ describe("getDiscographyEntries", () => {
 
     expect(entries[0]?.productHandle).toBe("private-release")
     expect(entries[0]?.productPath).toBeNull()
+  })
+
+  it("fails closed when the provider repeats an entry identity", async () => {
+    const medusaBackendUrl = faker.internet.url()
+    const medusaPublishableKey = faker.string.alphanumeric(16)
+    const entry = {
+      id: faker.string.uuid(),
+      title: "Repeated release",
+      artist: "Repeated artist",
+      album: "Repeated release",
+      productHandle: null,
+      sourceMode: "manual",
+      linkHealth: "not_applicable",
+      collectionTitle: null,
+      catalogNumber: null,
+      releaseDate: null,
+      releaseYear: 2026,
+      formats: ["CD"],
+      genres: [],
+      tags: [],
+      availability: "in_print",
+      coverUrl: null,
+      coverAltText: null,
+    }
+
+    vi.doMock("next/cache", () => ({
+      unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => fn,
+    }))
+    vi.doMock("@/config/env", () => ({
+      runtimeEnv: { medusaBackendUrl, medusaPublishableKey },
+    }))
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({ entries: [entry, entry], count: 2, limit: 200 }),
+    } as Response)
+
+    const { getDiscographyEntries } = await import("@/lib/data/discography")
+    await expect(getDiscographyEntries()).resolves.toEqual([])
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[discography] Failed to load discography",
+      { failure: "unavailable" }
+    )
   })
 })

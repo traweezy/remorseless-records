@@ -103,7 +103,8 @@ export const uploadNewsCover = async (
     if (!response.ok) {
       throw new Error(await uploadFailureMessage(response))
     }
-    const parsed = managedUploadResponseSchema.safeParse(await response.json())
+    const payload: unknown = await response.json()
+    const parsed = managedUploadResponseSchema.safeParse(payload)
     if (!parsed.success) {
       throw new Error("The server returned an invalid cover upload response.")
     }
