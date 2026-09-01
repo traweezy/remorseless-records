@@ -30,7 +30,12 @@ const refundCase = ({
   stripeRefundAmountMinor: 500,
   stripeRefundCount: 1,
   stripeStatuses: ["succeeded"],
-  taxStatus: provider === "stripe_tax" ? "verified" : "not_applicable",
+  taxStatus:
+    provider === "stripe_tax"
+      ? "verified"
+      : provider === "disabled"
+        ? "not_collected"
+        : "not_applicable",
 })
 
 const cases = [
@@ -51,6 +56,12 @@ const cases = [
     provider: "taxrate_io",
     reasonLabels: [],
     status: "processing",
+  }),
+  refundCase({
+    displayId: 44,
+    provider: "disabled",
+    reasonLabels: ["Tax collection off"],
+    status: "verified",
   }),
 ]
 
@@ -105,7 +116,19 @@ describe("refund operations UI state", () => {
     expect(isStatusFilter("processing")).toBe(true)
     expect(isStatusFilter("refunded")).toBe(false)
     expect(isProviderFilter("stripe_tax")).toBe(true)
+    expect(isProviderFilter("disabled")).toBe(true)
     expect(isProviderFilter("stripe")).toBe(false)
+  })
+
+  it("filters explicit tax-disabled cases separately from untracked evidence", () => {
+    expect(
+      filterRefundCases({
+        cases,
+        provider: "disabled",
+        search: "",
+        status: "all",
+      })
+    ).toEqual([cases[3]])
   })
 
   it("uses an explicit label when no order was created", () => {

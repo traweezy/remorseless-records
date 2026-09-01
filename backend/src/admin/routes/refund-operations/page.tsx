@@ -77,6 +77,9 @@ const statusColor = (status: RefundCaseStatus): "green" | "orange" | "red" =>
       : "green"
 
 const providerLabel = (provider: RefundProvider): string => {
+  if (provider === "disabled") {
+    return "Tax collection off"
+  }
   if (provider === "stripe_tax") {
     return "Stripe Tax"
   }
@@ -87,6 +90,9 @@ const providerLabel = (provider: RefundProvider): string => {
 }
 
 const taxStatusLabel = (status: RefundTaxStatus): string => {
+  if (status === "not_collected") {
+    return "Tax not collected"
+  }
   if (status === "not_applicable") {
     return "Not required"
   }
@@ -215,7 +221,7 @@ const CaseCard = memo<CaseCardProps>(({ canOpenOrder, refundCase }) => (
         </dd>
       </div>
       <div>
-        <dt className="txt-compact-xsmall text-ui-fg-subtle">Provider</dt>
+        <dt className="txt-compact-xsmall text-ui-fg-subtle">Tax handling</dt>
         <dd className="txt-compact-small mt-0.5">
           {providerLabel(refundCase.provider)}
         </dd>
@@ -659,13 +665,16 @@ export const RefundOperationsPageContent = memo(() => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="refund-provider">Tax provider</Label>
+                <Label htmlFor="refund-provider">Tax handling</Label>
                 <Select value={provider} onValueChange={handleProvider}>
                   <Select.Trigger className="mt-1" id="refund-provider">
                     <Select.Value />
                   </Select.Trigger>
                   <Select.Content>
-                    <Select.Item value="all">All providers</Select.Item>
+                    <Select.Item value="all">All tax handling</Select.Item>
+                    <Select.Item value="disabled">
+                      Tax collection off
+                    </Select.Item>
                     <Select.Item value="stripe_tax">Stripe Tax</Select.Item>
                     <Select.Item value="taxrate_io">TaxRate.io</Select.Item>
                     <Select.Item value="untracked">Not linked yet</Select.Item>

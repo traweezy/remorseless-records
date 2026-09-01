@@ -77,6 +77,8 @@ jobs:
         run: pnpm run qa:dashboard-product-deletion
       - name: Verify checkout recovery idempotency boundary
         run: pnpm run qa:checkout-recovery
+      - name: Verify commerce reliability matrix
+        run: pnpm run qa:commerce-reliability
       - name: Verify external scheduler observation boundary
         run: pnpm run qa:scheduler-observation
       - name: Verify React Router security backports

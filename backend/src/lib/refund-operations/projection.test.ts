@@ -2,13 +2,15 @@ import { projectRefundCases, summarizeRefundCases } from "./projection"
 
 type EvidenceOverrides = {
   associationStatus?: string
+  collectionMode?: "collect" | "disabled"
   metadata?: Record<string, unknown>
-  provider?: "stripe_tax" | "taxrate_io"
+  provider?: "stripe_tax" | "taxrate_io" | null
   status?: string
 }
 
 const evidenceFixture = ({
   associationStatus = "committed",
+  collectionMode = "collect",
   metadata = {
     refund_amount_minor: 500,
     refund_tax_missing_sources: [],
@@ -22,6 +24,7 @@ const evidenceFixture = ({
   amount_minor: 2_000,
   association_status: associationStatus,
   cart_id: "cart_01",
+  collection_mode: collectionMode,
   currency_code: "usd",
   id: "taxevidence_01",
   last_verified_at: "2026-07-26T15:00:00.000Z",
@@ -109,6 +112,115 @@ describe("refund operations projection", () => {
       taxStatus: "not_applicable",
     })
   })
+
+  it("verifies a matched refund when tax collection was disabled", () => {
+    const refundCase = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          associationStatus: "not_applicable",
+          collectionMode: "disabled",
+          metadata: {
+            collection_mode: "disabled",
+            refund_amount_minor: 500,
+            stripe_refund_count: 1,
+            stripe_refund_statuses: [{ status: "succeeded" }],
+          },
+          provider: null,
+        }),
+      ],
+      orders: [orderFixture()],
+    })[0]
+
+    expect(refundCase).toMatchObject({
+      provider: "disabled",
+      status: "verified",
+      taxStatus: "not_collected",
+    })
+    expect(refundCase?.nextAction).toContain(
+      "Medusa, Stripe, and the applicable tax evidence agree"
+    )
+  })
+
+  it("verifies full and repeated partial refunds from exact ledgers", () => {
+    const full = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          metadata: {
+            refund_amount_minor: 2_000,
+            refund_tax_missing_sources: [],
+            refund_tax_transaction_ids: ["tax_txn_full"],
+            stripe_refund_count: 1,
+            stripe_refund_statuses: [{ status: "succeeded" }],
+          },
+          status: "refunded",
+        }),
+      ],
+      orders: [orderFixture({ refunds: [{ amount: 20 }] })],
+    })[0]
+    const repeatedPartial = projectRefundCases({
+      evidence: [
+        evidenceFixture({
+          metadata: {
+            refund_amount_minor: 500,
+            refund_tax_missing_sources: [],
+            refund_tax_transaction_ids: ["tax_txn_first", "tax_txn_second"],
+            stripe_refund_count: 2,
+            stripe_refund_statuses: [
+              { status: "succeeded" },
+              { status: "succeeded" },
+            ],
+          },
+        }),
+      ],
+      orders: [orderFixture({ refunds: [{ amount: 2 }, { amount: 3 }] })],
+    })[0]
+
+    expect(full).toMatchObject({
+      medusaRefundAmountMinor: 2_000,
+      medusaRefundCount: 1,
+      status: "verified",
+      stripeRefundAmountMinor: 2_000,
+      stripeRefundCount: 1,
+      taxStatus: "verified",
+    })
+    expect(repeatedPartial).toMatchObject({
+      medusaRefundAmountMinor: 500,
+      medusaRefundCount: 2,
+      status: "verified",
+      stripeRefundAmountMinor: 500,
+      stripeRefundCount: 2,
+      taxStatus: "verified",
+    })
+  })
+
+  it.each(["pending", "requires_action"] as const)(
+    "keeps a %s provider refund in processing without suggesting a retry",
+    (stripeStatus) => {
+      const refundCase = projectRefundCases({
+        evidence: [
+          evidenceFixture({
+            associationStatus: "not_applicable",
+            metadata: {
+              refund_amount_minor: 500,
+              stripe_refund_count: 1,
+              stripe_refund_statuses: [{ status: stripeStatus }],
+            },
+            provider: "taxrate_io",
+          }),
+        ],
+        orders: [orderFixture()],
+      })[0]
+
+      expect(refundCase).toMatchObject({
+        status: "processing",
+        stripeStatuses: [stripeStatus],
+        taxStatus: "not_applicable",
+      })
+      expect(refundCase?.nextAction).toContain(
+        "Wait for Stripe and the automatic verification job"
+      )
+    }
+  )
 
   it("keeps a missing Stripe Tax reversal in processing", () => {
     const refundCase = projectRefundCases({

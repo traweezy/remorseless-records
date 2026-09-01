@@ -2,12 +2,17 @@ export type RefundCaseStatus = "action_required" | "processing" | "verified"
 
 export type RefundTaxStatus =
   | "attention"
+  | "not_collected"
   | "not_applicable"
   | "pending"
   | "untracked"
   | "verified"
 
-export type RefundProvider = "stripe_tax" | "taxrate_io" | "untracked"
+export type RefundProvider =
+  | "disabled"
+  | "stripe_tax"
+  | "taxrate_io"
+  | "untracked"
 
 export type StripeRefundStatus =
   | "canceled"

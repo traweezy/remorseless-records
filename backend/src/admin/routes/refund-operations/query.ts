@@ -10,10 +10,16 @@ const refundCaseStatusSchema = z.enum([
   "verified",
 ])
 
-const refundProviderSchema = z.enum(["stripe_tax", "taxrate_io", "untracked"])
+const refundProviderSchema = z.enum([
+  "disabled",
+  "stripe_tax",
+  "taxrate_io",
+  "untracked",
+])
 
 const refundTaxStatusSchema = z.enum([
   "attention",
+  "not_collected",
   "not_applicable",
   "pending",
   "untracked",

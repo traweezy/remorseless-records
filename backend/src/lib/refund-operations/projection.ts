@@ -60,6 +60,12 @@ const paymentIntentIdFrom = (payment: UnknownRecord): string | null => {
 }
 
 const providerFrom = (evidence: UnknownRecord | null): RefundProvider => {
+  if (
+    text(evidence?.collection_mode) === "disabled" &&
+    !text(evidence?.provider)
+  ) {
+    return "disabled"
+  }
   const provider = text(evidence?.provider)
   return provider === "stripe_tax" || provider === "taxrate_io"
     ? provider
@@ -96,6 +102,9 @@ const taxStatusFrom = ({
   provider: RefundProvider
   stripeStatuses: StripeRefundStatus[]
 }): RefundTaxStatus => {
+  if (provider === "disabled") {
+    return "not_collected"
+  }
   if (provider === "taxrate_io") {
     return "not_applicable"
   }

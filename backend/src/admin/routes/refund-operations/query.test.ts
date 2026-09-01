@@ -84,6 +84,24 @@ describe("refund operations query", () => {
     ).toThrow()
   })
 
+  it("accepts an explicit tax-disabled refund contract", () => {
+    expect(
+      refundOperationsSnapshotSchema.parse({
+        ...validSnapshot,
+        cases: [
+          {
+            ...validSnapshot.cases[0],
+            provider: "disabled",
+            taxStatus: "not_collected",
+          },
+        ],
+      }).cases[0]
+    ).toMatchObject({
+      provider: "disabled",
+      taxStatus: "not_collected",
+    })
+  })
+
   it("uses the shared request boundary and forwards Query cancellation", async () => {
     jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot)
     const options = refundOperationsQueryOptions()

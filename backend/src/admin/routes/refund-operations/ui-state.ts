@@ -15,6 +15,7 @@ export const isStatusFilter = (value: string): value is StatusFilter =>
 
 export const isProviderFilter = (value: string): value is ProviderFilter =>
   value === "all" ||
+  value === "disabled" ||
   value === "stripe_tax" ||
   value === "taxrate_io" ||
   value === "untracked"

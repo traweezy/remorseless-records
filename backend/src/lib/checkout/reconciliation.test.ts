@@ -152,6 +152,26 @@ describe("checkout payment reconciliation", () => {
     }
   )
 
+  it("recovers one authorized cart after the browser closes before completion", async () => {
+    const fixture = services({ carts: [cart()] })
+
+    const first = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      createAttemptId: () => "attempt_browser_closed",
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    })
+    const second = await reconcileCheckoutPayments({
+      ...fixture,
+      config,
+      now: new Date("2026-07-25T12:05:00.000Z"),
+    })
+
+    expect(first).toMatchObject({ attempted: 1, completed: 1, failed: 0 })
+    expect(second).toMatchObject({ attempted: 0, completed: 0 })
+    expect(fixture.completeCart).toHaveBeenCalledTimes(1)
+  })
+
   it.each([
     [
       "pending payment",

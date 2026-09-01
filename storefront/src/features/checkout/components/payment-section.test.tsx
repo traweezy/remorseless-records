@@ -311,6 +311,78 @@ describe("PaymentSection", () => {
     ).not.toBeInTheDocument()
   })
 
+  it.each(["api_connection_error", "api_error"] as const)(
+    "enters recovery when Stripe returns an ambiguous %s",
+    async (type) => {
+      const checkout = checkoutFixture()
+      const onComplete = vi.fn(() => Promise.resolve(completion))
+      const onRecovery = vi.fn()
+      stripeMocks.confirmPayment.mockResolvedValue({ error: { type } })
+
+      render(
+        <PaymentSection
+          checkout={checkout}
+          isPreparing={false}
+          prepareError={null}
+          onPrepare={vi.fn(() => Promise.resolve(checkout))}
+          onComplete={onComplete}
+          onConfirmed={vi.fn()}
+          onRecovery={onRecovery}
+        />
+      )
+
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Place order — $24.99",
+        })
+      )
+
+      await waitFor(() => {
+        expect(onRecovery).toHaveBeenCalledOnce()
+      })
+      expect(onComplete).not.toHaveBeenCalled()
+      expect(screen.getByText(/do not pay again/i)).toBeInTheDocument()
+    }
+  )
+
+  it("keeps a definite authentication failure retryable without completing", async () => {
+    const checkout = checkoutFixture()
+    const onComplete = vi.fn(() => Promise.resolve(completion))
+    const onRecovery = vi.fn()
+    stripeMocks.confirmPayment.mockResolvedValue({
+      error: {
+        code: "payment_intent_authentication_failure",
+        type: "card_error",
+      },
+    })
+
+    render(
+      <PaymentSection
+        checkout={checkout}
+        isPreparing={false}
+        prepareError={null}
+        onPrepare={vi.fn(() => Promise.resolve(checkout))}
+        onComplete={onComplete}
+        onConfirmed={vi.fn()}
+        onRecovery={onRecovery}
+      />
+    )
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Place order — $24.99",
+      })
+    )
+
+    expect(
+      await screen.findByText(
+        "Authentication was not completed. Try again or use another method."
+      )
+    ).toBeInTheDocument()
+    expect(onComplete).not.toHaveBeenCalled()
+    expect(onRecovery).not.toHaveBeenCalled()
+  })
+
   it("does not loop payment preparation after an error", async () => {
     const onPrepare = vi.fn(() => Promise.reject(new Error("offline")))
 
