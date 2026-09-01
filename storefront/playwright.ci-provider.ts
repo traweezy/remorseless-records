@@ -13,10 +13,14 @@ export const ciMedusaFixtureWebServer = {
 } as const
 
 export const ciStorefrontProviderEnv = {
+  CART_COOKIE_SECRET: "ci-runtime-cart-cookie-20260827-alpha",
+  CHECKOUT_BFF_SECRET: "ci-runtime-checkout-bff-20260827-bravo",
+  CHECKOUT_RECEIPT_SECRET: "ci-runtime-checkout-receipt-20260827-charlie",
   CI_MEDUSA_FIXTURE_URL: ciMedusaFixtureBaseURL,
   CI_MEDUSA_PUBLISHABLE_KEY: ciMedusaPublishableKey,
   MEDUSA_BACKEND_URL: ciMedusaFixtureBaseURL,
   NEXT_PUBLIC_MEDUSA_BACKEND_URL: ciMedusaFixtureBaseURL,
   NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ciMedusaPublishableKey,
   NEXT_PUBLIC_MEDUSA_URL: ciMedusaFixtureBaseURL,
+  PUBLIC_FORM_BFF_SECRET: "ci-runtime-public-form-bff-20260827-delta",
 } as const
