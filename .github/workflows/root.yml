@@ -79,6 +79,8 @@ jobs:
         run: pnpm run qa:checkout-recovery
       - name: Verify commerce reliability matrix
         run: pnpm run qa:commerce-reliability
+      - name: Verify tax golden matrix
+        run: pnpm run qa:tax-golden-matrix
       - name: Verify external scheduler observation boundary
         run: pnpm run qa:scheduler-observation
       - name: Verify React Router security backports

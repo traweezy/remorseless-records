@@ -218,6 +218,51 @@ describe("reconcileTaxQuoteEvidence", () => {
     )
   })
 
+  it("records a full refund only when its Stripe Tax reversal is committed", async () => {
+    const service = serviceFixture()
+    const client = stripeFixture({
+      intent: paymentIntent({
+        latest_charge: {
+          amount_refunded: 1_080,
+          disputed: false,
+          id: "ch_test",
+          object: "charge",
+        } as Stripe.Charge,
+      }),
+      taxAssociation: association([
+        {
+          committed: { transaction: "tax_sale" },
+          source: "pi_test",
+          status: "committed",
+        },
+        {
+          committed: { transaction: "tax_refundfull" },
+          source: "re_test",
+          status: "committed",
+        },
+      ]),
+    })
+
+    await expect(
+      reconcileTaxQuoteEvidence({
+        client,
+        paymentIntentId: "pi_test",
+        service,
+      })
+    ).resolves.toMatchObject({
+      associationStatus: "committed",
+      status: "refunded",
+    })
+    expect(service.updateTaxQuoteEvidenceLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          refund_amount_minor: 1_080,
+          refund_tax_transaction_ids: ["tax_refundfull"],
+        }),
+      })
+    )
+  })
+
   it("keeps refunded evidence eligible until its tax reversal appears", async () => {
     const client = stripeFixture({
       intent: paymentIntent({

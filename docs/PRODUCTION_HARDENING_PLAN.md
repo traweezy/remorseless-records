@@ -2549,6 +2549,67 @@ the keyboard-reachable readiness refresh with zero Axe or layout findings. No
 provider call, checkout, payment, refund, tax transaction, or production state
 was created or changed during this local acceptance.
 
+Exact staging acceptance for default-off revision
+`f4edb6b924c5bac03d95c33ea9f165772d7ac3d0` passed Root CI
+`33495704000`, Backend CI `33495703926`, and Storefront CI `33495703912`.
+Railway Backend deployment `c0189b38-c283-46be-8a58-1452a25f51c8`
+succeeded with image digest
+`sha256:95dea6c3210367ab032d887cf78383230ed18eaea5ff9258369b707d1cf19d3c`.
+Its release phase applied `Migration20260901100000` successfully. The
+unchanged Storefront event `36cd6501-d87a-485c-b8d5-05a25bbd8b3c` correctly
+reported `SKIPPED` because no watched source changed.
+
+Backend `/live`, `/ready`, and `/api/health`, plus Storefront `/live`,
+`/ready`, `/api/healthcheck`, `/`, and `/catalog`, returned HTTP 200. The
+current Backend emitted successful checkout-reconciliation heartbeats for the
+exact SHA, with the latest observed run scanning 64 candidates and completing
+with zero eligible, attempted, failed, held-for-review, capped, or
+unreleased-lock state. Scheduler and aggregate operations health returned 503
+solely for the authoritative `scheduler_incident_latched` reason from prior
+revision `039600387dd7ebafdd5093ed9574faddf92cbca1`; dependencies, retention,
+operational incidents, Redis availability, and the current heartbeat were
+healthy. The latch remains untouched until its 24-hour observation window
+expires.
+
+A bounded exact-deployment review found 210 informational build records, 352
+runtime records, and 38 HTTP records. Railway retried one transient build
+service-availability response before the successful build; the sole
+error-level runtime record was the successful release-prepare command banner.
+The HTTP records contained 32 successful responses and the six expected
+scheduler/operations 503 responses caused only by the retained latch. No
+application build, migration, startup, scheduler, or request failure appeared.
+
+Deterministic tax golden-matrix hardening now binds 17 named objectives to
+executable tests and an independent Root CI contract. Provider mapping covers
+`tax.golden.taxable`, `tax.golden.nontaxable`, `tax.golden.mixed`,
+`tax.golden.shipping_taxed`, `tax.golden.discounted`, and
+`tax.discount.adjusted_minor_units`; raw Stripe Tax and TaxRate.io response
+validation, quote-only comparison, disabled no-provider behavior, the three-way
+amount invariant, committed sale transactions, `tax.refund.partial_reversal`,
+`tax.refund.full_reversal`, per-refund reversals, and filing projection are also
+required. The matrix uses validated provider response fixtures and creates no
+external provider object or customer payment. The tax-control runbook now
+separates this deterministic release gate from the disposable sandbox
+procedure, specifies privacy-safe retained evidence, and preserves every
+approval, test-mode, metered-lookup, and production boundary. The filing-record
+and tax-control runbooks were audited against the current Connecticut DRS, New
+York Tax Department, Pennsylvania Department of Revenue/code, Stripe, and
+Medusa primary references on September 1, 2026; the Root contract now prevents
+their purpose, jurisdiction, quality, disabled-mode, export, filing, retention,
+or limitation sections from being silently removed. External sandbox evidence
+remains open until the controlled state-changing exercise is run.
+
+Local deterministic-matrix acceptance passed on September 1, 2026. Seven
+focused suites cover provider boundaries, quote mapping, adjustment, binding,
+transaction, reversal, and filing projection with 103 passing tests. The
+complete Backend contains 273 passing suites / 2,064 tests with 91.61%
+statement, 85.31% branch, 95.78% function, and 91.61% line coverage. Repository
+QA (including the new
+`qa:tax-golden-matrix` contract), Biome format/check, both strict typechecks,
+and the Backend/Admin production build pass. Storefront source did not change;
+its immediately preceding 137-file / 818-test baseline and 36-file / 321-test
+transactional coverage gates remain the accepted local evidence.
+
 - [x] Add a durable `collect` / `disabled` tax collection mode separate from
       the selected provider, using an expand-only migration and preserving the
       current provider for later re-enablement.
@@ -2603,7 +2664,9 @@ was created or changed during this local acceptance.
       entries on writes, apply deterministic least-recently-used eviction, and
       rate-limit key-free capacity telemetry.
 - [ ] Configure a reviewed monitoring ZIP before enabling paid quota probes.
-- [ ] Complete the filing-record and tax-control runbooks.
+- [x] Complete the filing-record and tax-control runbooks and bind their
+      required operating, filing, retention, limitation, and official-reference
+      sections to the tax golden-matrix Root contract.
 - [ ] Request separate approval before live registrations or a production tax
       provider change.
 

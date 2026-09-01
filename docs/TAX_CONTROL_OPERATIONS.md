@@ -426,6 +426,66 @@ review all checkouts created during the incident window, and re-enable
 collection only through the audited Admin transition after provider readiness
 and owner approval.
 
+## Deterministic golden matrix
+
+Run `pnpm run qa:tax-golden-matrix` before every tax release. The root contract
+binds each named objective to an executable Backend assertion and is an
+independent Root CI gate. Its provider fixtures use validated Stripe Tax and
+TaxRate.io response shapes but make no external request and create no
+PaymentIntent, charge, refund, or Tax transaction.
+
+| Objective | Required proof |
+| --- | --- |
+| Taxable | Stripe's item tax in minor units becomes the exact Medusa item rate. |
+| Non-taxable | A provider-returned zero remains a collecting-provider zero, not disabled collection or missing evidence. |
+| Mixed | Taxable and non-taxable items retain distinct provider results in one quote. |
+| Shipping-taxed | Shipping tax is derived from the reviewed discounted shipping amount and remains a shipping tax line. |
+| Discounted | The amount sent to Stripe is the post-adjustment amount, so tax is not calculated from the undiscounted catalog price. |
+| Provider comparison | Stripe Tax and TaxRate.io quotes can be compared at the quote layer without creating a customer payment. |
+| Payment binding | Medusa payable amount, Stripe PaymentIntent amount, and Stripe Tax calculation total agree before the tax hook is linked. |
+| Sale evidence | A successful Stripe-taxed payment has one committed sale Tax transaction. |
+| Refund evidence | Partial, full, and repeated partial refunds each have the expected committed reversal; a missing reversal remains pending. |
+| Filing projection | Full refund allocation is exact; amount-only partial allocation remains an explicit estimate for review. |
+
+This matrix is deterministic release evidence, not proof of the current
+provider account configuration, registrations, tax classifications, or live
+jurisdiction outcome.
+
+## Sandbox golden matrix
+
+Use one disposable Stripe sandbox and the reviewed TaxRate.io monitoring ZIP.
+Stripe Tax must have sandbox tax settings and at least one sandbox registration
+before a taxable result is expected. Keep Stripe in test mode and use catalog
+tax codes that the business and tax professional approved for testing.
+
+1. Record an opaque run ID, application source SHA, Backend deployment ID,
+   provider account mode, registration state, currency, and UTC start time.
+2. Use fresh carts for taxable, non-taxable, mixed, shipping-taxed, discounted,
+   full-refund, and repeated-partial-refund cases. Never reuse a prepared quote
+   across matrix cases.
+3. Before confirmation, retain the Medusa item/shipping amounts, provider quote
+   identity, tax amounts, payable total, and Stripe PaymentIntent amount. Do not
+   retain customer names, email addresses, or street addresses in the artifact.
+4. For Stripe Tax, prove the PaymentIntent is test-mode, the linked calculation
+   matches the evidence record, all three amounts agree, and the successful
+   payment association contains a committed sale Tax transaction.
+5. Refund only through Medusa. For full and repeated partial refunds, retain
+   each Stripe refund ID and its distinct committed Tax reversal. Associations
+   can settle asynchronously, so poll only through the bounded reconciliation
+   reader and keep a pending result open until the hourly objective expires.
+6. Compare the same reviewed destination and merchandise scenario through a
+   quote-only Stripe Tax calculation and one metered TaxRate.io lookup. Do not
+   create or confirm a PaymentIntent for the comparison. Record both results;
+   do not treat agreement as tax advice or silently choose a provider.
+7. Run `pnpm run qa:tax-golden-matrix`, the complete Backend/Storefront gates,
+   and the read-only staging health/log acceptance. Attach redacted evidence to
+   the hardening record and remove any temporary harness and fixture customer.
+
+Stop the run on live-mode evidence, an unapproved registration or tax code,
+provider mismatch, expired calculation, amount mismatch, missing reversal,
+unexpected provider cost, or any request that would touch production. Do not
+repeat a state-changing case solely to make an evidence artifact look newer.
+
 ## Required validation before production
 
 - Migrations apply cleanly and are backed up/rollback-reviewed.

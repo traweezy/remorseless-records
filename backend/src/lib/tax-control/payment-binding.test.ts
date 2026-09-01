@@ -223,7 +223,7 @@ const stripeFixture = ({
 }
 
 describe("bindCheckoutTaxToPayment", () => {
-  it("links one exact Stripe calculation and persists evidence", async () => {
+  it("enforces the Medusa, PaymentIntent, and Stripe Tax three-way amount invariant before linking", async () => {
     const client = stripeFixture()
     const service = serviceFixture()
 
