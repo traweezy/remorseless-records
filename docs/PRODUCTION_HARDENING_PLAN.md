@@ -7,61 +7,61 @@ supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active handoff — August 31, 2026 at 20:06 EDT
+## Active handoff — August 31, 2026 at 23:15 EDT
 
-The complete local **Legal, accessibility, and launch acceptance**
-implementation is in the working tree and is awaiting its final repository
-gate, commit, push, and exact-SHA staging acceptance. The pre-existing untracked
-`Default/` directory is unrelated user content and must remain unread,
-untouched, and unstaged.
+The locally implemented **Legal, accessibility, and launch acceptance** slice
+is complete and accepted on staging. The accepted application revision is
+`8e904890e949f9833cff4f1adaf9ff13f1512a73`; this documentation closure is the
+only remaining repository change. The pre-existing untracked `Default/`
+directory is unrelated user content and must remain unread, untouched, and
+unstaged.
 
-Implemented behavior now includes:
+The launch implementation includes exact paid/free checkout disclosures,
+server-initial consent controls, a privacy-request BFF with accessible recovery,
+a deterministic 14-scenario launch matrix, 21 critical cross-browser journeys,
+Pa11y, and a six-route three-run-median Lighthouse gate. The catalog intent
+refresh correction is accepted at `255903be923ef054c1362c9ce77e975084e30392`.
+The Admin accessibility/support slice remains accepted at
+`7a82faf07f6d0ca144f45d9e9d17af35f33e3e9a`.
 
-- one reusable paid/free checkout disclosure immediately before submission,
-  associated with its button and showing the exact charge, tax/shipping state,
-  processing window, and Terms, Privacy, Shipping, and Returns links;
-- server-initial cookie preferences, analytics-consent-gated Web Vitals,
-  consent-controlled Bandcamp, and fresh-context browser proof for accept,
-  reject, granular choice, persistence, and revocation;
-- strict privacy-request response decoding, an accessible validation/focus and
-  retry path, and an announced non-PII Backend request reference;
-- a deterministic 14-scenario launch matrix spanning commerce, checkout,
-  confirmation, recovery, privacy, cookies, content, 320-pixel reflow, reduced
-  motion, keyboard focus, axe complete/manual-review results, runtime errors,
-  target size, overflow, and ARIA integrity;
-- a six-route, three-run-median Lighthouse gate with Core Web Vital,
-  performance, accessibility, best-practice, SEO, byte, script, and request
-  budgets retained as private CI artifacts; and
-- a smaller initial catalog boundary: Stripe and Quick Shop load only when
-  needed, global drawer/scroll motion is CSS-based, the hero requests a
-  responsive LCP image, and the catalog median performance score improved from
-  0.79 to 0.81 in the final full matrix without relaxing the 0.80 floor.
+The final application revision restores accessible News covers for six legacy
+published records that predate mandatory alternative text. Store and Admin
+read boundaries derive a deterministic title-based fallback, while new Admin
+writes remain strict and the seed path persists authored alternative text.
+Backend CI `33464166082`, Storefront CI `33464166101`, and Root CI
+`33464166091` passed on the exact SHA. Backend Railway deployment
+`1690f323-3358-47e7-b668-701a973ec2e4` reached `SUCCESS` with image digest
+`sha256:c5cda97578e78a96478396db869df428c5214be60e650e647500a1df2293dbbe`;
+the unchanged Storefront correctly skipped deployment and remains accepted at
+deployment `fe3169b7-b737-4bf8-80cb-29fba7a99736`, image digest
+`sha256:09a69d66f49d710fa21ff83a6ce9ea443e44a08dbfe7af0de7c933ded2dd8a05`.
 
-Current local evidence is green: 136 Storefront baseline files / 806 tests at
-94.25% statements, 86.65% branches, 96.03% functions, and 94.25% lines; 35
-transactional files / 313 tests at 83.39/76.02/85.81/83.48; the production
-build and 130-asset client-secret/Stripe Trusted Types verifier; 14 launch
-journeys; 21 Chromium/Firefox/WebKit critical journeys; 34 Pixel 7/compact-phone
-public-route audits with zero tiny-text warnings; and all 18 Lighthouse reports
-across six routes. Median Lighthouse performance scores were Home 0.87,
-Catalog 0.81, Product 0.89, Cart 0.85, Checkout 0.83, and Privacy 0.84, with
-accessibility 1.00 everywhere and every Core Web Vital/resource assertion
-green. A real graphical desktop catalog screenshot was captured with
-Flameshot and inspected, along with the automated launch and mobile captures.
+Local acceptance is green: the Backend passed 273 suites / 2,044 tests at
+91.46% statements, 84.87% branches, 95.62% functions, and 91.48% lines; the
+Storefront passed 136 baseline files / 810 tests at
+94.25/86.65/96.03/94.25 and 35 transactional files / 313 tests at
+83.39/76.02/85.81/83.48. Strict TypeScript, Biome, production builds, frozen
+packaged-server installation, 54 responsive journeys with two expected skips,
+14 launch journeys, 21 Chromium/Firefox/WebKit critical journeys, Pa11y, and
+Lighthouse all passed. Real graphical desktop captures of Product, Terms,
+cart, checkout, confirmation, and recovery were inspected in addition to the
+earlier Admin and Storefront Catalog captures.
 
-The previous Admin accessibility/support slice remains commit
-`7a82faf07f6d0ca144f45d9e9d17af35f33e3e9a`. Before accepting the current
-slice, push its new exact SHA, require all GitHub checks and affected Railway
-deployments to reach `SUCCESS`, inspect exact-deployment logs, and run
-live/readiness plus representative Storefront commerce/privacy probes. The
-deliberate 24-hour `scheduler_incident_latched` operations reason remains open
-and must never be cleared manually or with synthetic state.
+Live acceptance returned HTTP 200 for both `/live` and `/ready` pairs,
+Storefront `/news`, Backend `/store/news`, and Storefront `/api/news`. Both News
+APIs returned all six visible entries with non-empty cover alternatives. The
+20-minute acceptance window contained zero Backend or Storefront HTTP 5xx
+responses and no News/projection failure; Railway's only Backend error-level
+record was its `$ node ./scripts/release-prepare.mjs` command banner.
 
-Local automation does **not** close qualified-counsel approval, staff training,
-monitored support/privacy mailbox ownership, named launch sign-offs,
-production-environment approval, or restore-drill evidence. Complete the
-remaining real graphical-desktop captures for checkout, Product, cart,
-content/legal, confirmation, and recovery before final production sign-off.
+Production remains blocked by the unchecked operational and approval items in
+this plan: qualified legal/tax/client approval; staffed support and privacy
+ownership plus training; named launch sign-offs; the real Stripe/tax/refund
+matrices; the full scheduler no-recurrence window; production infrastructure,
+least-privilege roles, private service exposure, backups/PITR and timed restore
+drills; final runtime supply-chain evidence; and production monitoring/change
+approval. The deliberate `scheduler_incident_latched` reason remains open and
+must never be cleared manually or with synthetic state.
 
 ## Operating contract
 
@@ -94,14 +94,14 @@ content/legal, confirmation, and recovery before final production sign-off.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest application-changing staging SHA accepted:
-  `4b8908e2f5942b64c4c6a91cf1401be6162042c7`.
+  `8e904890e949f9833cff4f1adaf9ff13f1512a73`.
 - Latest documentation-bearing staging SHA accepted:
-  `4b8908e2f5942b64c4c6a91cf1401be6162042c7`.
+  `f620c6ee9678903863d723c165631437572ce968`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `1fc9e657-9f9c-42db-bb1d-4fd29ee417f2` (`SUCCESS`).
+  `1690f323-3358-47e7-b668-701a973ec2e4` (`SUCCESS`).
 - Application acceptance Storefront deployment:
-  `e089254d-b479-4588-8b46-f13fedaf0529`
+  `fe3169b7-b737-4bf8-80cb-29fba7a99736`
   (`SUCCESS`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
@@ -4205,12 +4205,67 @@ accepted.
       catalog, Product, cart, content/legal, privacy, confirmation, and
       recovery, plus real graphical-desktop Admin and Storefront Catalog
       captures.
-- [ ] Complete the remaining real graphical-desktop Storefront captures for
+- [x] Complete the remaining real graphical-desktop Storefront captures for
       checkout, Product, cart, content/legal, confirmation, and recovery.
 - [x] Complete repeated Lighthouse budgets and production-like local
       performance testing across six representative routes.
 - [ ] Obtain named business, legal, tax, support, security, and
       production-change sign-offs.
+
+Final local graphical acceptance used the production Storefront build, the
+loopback-only deterministic Medusa boundary, and a headed Chromium window on
+the active desktop. Product, Terms, populated cart, ready free checkout,
+confirmation, and recovery were each captured with Flameshot and inspected at
+`/tmp/remorseless-storefront-desktop-{product,terms,cart,checkout,confirmation,recovery}.png`.
+The six surfaces retained readable hierarchy, complete primary actions, and no
+visible clipping, overlay collision, or horizontal document overflow. These
+manual desktop captures complement the 14-case launch screenshots and browser
+assertions; they do not replace them.
+
+### Final launch and News compatibility acceptance — August 31, 2026
+
+The launch gate was corrected without weakening its assertions. Initial launch
+revision `9e6e8b7` introduced the complete matrix; `48a473e` isolated browser
+acceptance from live providers; `5ff20fe` kept the external operations monitor
+out of the release check suite; `014a751` reduced catalog startup work but
+exposed a stale mobile filter definition; and `255903b` refreshed that
+definition on intent. The accepted Storefront revision passed Root CI
+`33462146850`, Backend CI `33462146807`, and Storefront CI `33462146792`.
+Railway Storefront deployment `fe3169b7-b737-4bf8-80cb-29fba7a99736`
+succeeded with image digest
+`sha256:09a69d66f49d710fa21ff83a6ce9ea443e44a08dbfe7af0de7c933ded2dd8a05`.
+
+Final News compatibility revision
+`8e904890e949f9833cff4f1adaf9ff13f1512a73` preserves authored cover
+alternative text and derives `<title> cover artwork` only for legacy records
+that have a cover but no stored alternative. Admin and Store reads normalize
+those legacy rows; alternative text without a cover still fails closed, every
+new Admin write remains strict, and the seed path persists authored text. The
+focused 64-test boundary suite, strict Backend TypeScript, repository Biome
+gate, full 273-suite / 2,044-test Backend coverage gate, and Backend/Admin
+production build all passed locally.
+
+The exact revision passed Backend CI `33464166082`, Storefront CI
+`33464166101`, and Root CI `33464166091`. Storefront CI passed 54 responsive
+journeys with two expected skips, 14 launch journeys, all 21 critical journeys
+across Chromium, Firefox, and WebKit, and Pa11y on `/about`, `/accessibility`,
+`/cookies`, and `/terms`. Lighthouse artifact
+`storefront-lighthouse-33464166101` has artifact ID `9784491753`, SHA-256
+`307dd7563a9458496411c1bab8f28a40821e1ab0f7dacf18b69bb7a8f117c6f0`,
+and 37 files.
+
+Railway Backend deployment `1690f323-3358-47e7-b668-701a973ec2e4`
+succeeded with image digest
+`sha256:c5cda97578e78a96478396db869df428c5214be60e650e647500a1df2293dbbe`
+and active instance `ddedcd4b-ed77-46b7-b4cf-857c3a7087f4`. The unchanged
+Storefront deployment correctly reported `SKIPPED` with no watched-file
+changes. Backend `/live` and `/ready`, Storefront `/live`, `/ready`, and
+`/news`, Backend `/store/news`, and Storefront `/api/news` returned HTTP 200.
+Both News APIs returned all six visible entries and proved every cover had
+non-empty alternative text. A bounded 20-minute Railway log review found zero
+Backend or Storefront HTTP 5xx responses and zero News/projection failures.
+The sole Backend error-level record was Railway's successful release-prepare
+command banner, not an application failure.
 
 ## Production release gate
 

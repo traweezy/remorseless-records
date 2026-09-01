@@ -162,9 +162,12 @@ scheduled time has already passed and would make the post immediately visible.
 The public list and detail endpoints return only unarchived published posts and
 scheduled posts whose publication time has arrived. Store results normalize
 their public status to `published`, sanitize stored rich HTML on the server,
-use stable ordering, and paginate. The Storefront revalidates the News feed
-every five minutes, so an administrative visibility change has a bounded cache
-window without requiring a database read for every visitor.
+use stable ordering, and paginate. Legacy covers created before alternative
+text became mandatory receive a deterministic title-based fallback at both the
+Store and Admin read boundaries. New Admin writes still require authored
+alternative text, and the seed path persists it. The Storefront revalidates the
+News feed every five minutes, so an administrative visibility change has a
+bounded cache window without requiring a database read for every visitor.
 
 ## Admin Access Control: Plain-English Guide
 

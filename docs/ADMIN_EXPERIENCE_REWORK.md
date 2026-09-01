@@ -131,6 +131,9 @@ a persistent task summary instead of an oversized Drawer.
 - Make archive/restore consequences clear and recoverable.
 - Preview titles, excerpts, cover alternatives, schedule, shelf copy, and
   product order before publishing.
+- Keep cover alternative text mandatory on every new News write while showing
+  a title-based accessible fallback for legacy covers created before that
+  requirement existed.
 - Keep search, filters, selected items, and save state visible when choosing
   products for a shelf.
 
