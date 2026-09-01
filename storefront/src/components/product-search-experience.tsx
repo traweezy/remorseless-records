@@ -32,7 +32,6 @@ import {
   Search,
   X,
 } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { CollectionFilterTrigger } from "@/components/ui/collection-filter-trigger"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -253,13 +252,6 @@ type ProductSearchExperienceProps = {
   initialFilterDefinitions?: CatalogFilterDefinitions
 }
 
-const CARD_MOTION_PROPS = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { duration: 0.15, ease: "easeOut" },
-} as const
-
 const SORT_OPTIONS: [
   PillDropdownOption<ProductSortOption>,
   ...Array<PillDropdownOption<ProductSortOption>>,
@@ -355,9 +347,9 @@ const FilterCheckboxList = ({
         variant="unstyled"
         size="auto"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
+        className="flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
         aria-expanded={isOpen}
-        aria-controls={controlsId}
+        aria-controls={isOpen ? controlsId : undefined}
       >
         <span>{title}</span>
         <ChevronDown
@@ -367,69 +359,63 @@ const FilterCheckboxList = ({
           )}
         />
       </Button>
-      <AnimatePresence initial={false}>
-        {isOpen ? (
-          <motion.div
-            key="content"
-            id={controlsId}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="mt-1 flex flex-col gap-1.5">
-              {options.map(({ value, label, count }) => {
-                const normalizedValue = normalizeValue(value)
-                if (!normalizedValue.length) {
-                  return null
-                }
-                const checked = selected.includes(normalizedValue)
-                const valueId = normalizedValue
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, "-")
-                  .replace(/^-|-$/g, "")
-                const checkboxId = `${idPrefix}-${titleId}-${valueId}`
+      {isOpen ? (
+        <div
+          key="content"
+          id={controlsId}
+          className="animate-in overflow-hidden fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none"
+        >
+          <div className="mt-1 flex flex-col gap-1.5">
+            {options.map(({ value, label, count }) => {
+              const normalizedValue = normalizeValue(value)
+              if (!normalizedValue.length) {
+                return null
+              }
+              const checked = selected.includes(normalizedValue)
+              const valueId = normalizedValue
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-|-$/g, "")
+              const checkboxId = `${idPrefix}-${titleId}-${valueId}`
 
-                return (
-                  <label
-                    key={normalizedValue}
-                    htmlFor={checkboxId}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.18rem] leading-relaxed text-muted-foreground transition hover:text-foreground",
-                      variant === "chip"
-                        ? cn(
-                            "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
-                            checked &&
-                              "border-destructive bg-destructive/20 text-destructive"
-                          )
-                        : cn(
-                            "hover:text-destructive",
-                            checked && "text-destructive"
-                          )
-                    )}
-                  >
-                    <span className="flex min-w-0 flex-1 items-center gap-2">
-                      <Checkbox
-                        id={checkboxId}
-                        checked={checked}
-                        onCheckedChange={() => onToggle(normalizedValue)}
-                        size="compact"
-                        className="border-border/60 bg-background/70 data-[state=checked]:border-destructive data-[state=checked]:bg-destructive focus-visible:ring-destructive/60"
-                      />
-                      <span className="min-w-0 text-foreground">{label}</span>
-                    </span>
-                    <span className="shrink-0 tabular-nums text-[0.7rem] text-muted-foreground/80">
-                      <span className="sr-only">Catalog total: </span>
-                      {count}
-                    </span>
-                  </label>
-                )
-              })}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+              return (
+                <label
+                  key={normalizedValue}
+                  htmlFor={checkboxId}
+                  className={cn(
+                    "flex cursor-pointer items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-[0.7rem] uppercase tracking-[0.18rem] leading-relaxed text-muted-foreground transition hover:text-foreground",
+                    variant === "chip"
+                      ? cn(
+                          "border border-border/60 bg-background/60 hover:border-destructive/70 hover:text-destructive",
+                          checked &&
+                            "border-destructive bg-destructive/20 text-destructive"
+                        )
+                      : cn(
+                          "hover:text-destructive",
+                          checked && "text-destructive"
+                        )
+                  )}
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <Checkbox
+                      id={checkboxId}
+                      checked={checked}
+                      onCheckedChange={() => onToggle(normalizedValue)}
+                      size="compact"
+                      className="border-border/60 bg-background/70 data-[state=checked]:border-destructive data-[state=checked]:bg-destructive focus-visible:ring-destructive/60"
+                    />
+                    <span className="min-w-0 text-foreground">{label}</span>
+                  </span>
+                  <span className="shrink-0 tabular-nums text-[0.7rem] text-muted-foreground/80">
+                    <span className="sr-only">Catalog total: </span>
+                    {count}
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -564,7 +550,7 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
           onClick={handleToggle}
           className="flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-[0.3rem] text-muted-foreground transition hover:text-foreground"
           aria-expanded={isOpen}
-          aria-controls={controlsId}
+          aria-controls={isOpen ? controlsId : undefined}
         >
           <span>Price</span>
           <ChevronDown
@@ -575,126 +561,118 @@ const PriceRangeFilter = memo<PriceRangeFilterProps>(
             aria-hidden
           />
         </Button>
-        <AnimatePresence initial={false}>
-          {isOpen ? (
-            <motion.div
-              id={controlsId}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.18, ease: "easeInOut" }}
-              className="overflow-hidden"
-            >
-              <form className="space-y-4 px-2" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 text-xs font-semibold tabular-nums">
-                    <output
-                      className="rounded-full border border-border/70 bg-background px-3 py-1.5 text-foreground"
-                      aria-label="Selected minimum price"
-                    >
-                      {formatPrice(sliderValues[0], bounds.currency)}
-                    </output>
-                    <span
-                      className="h-px min-w-4 flex-1 bg-border/70"
-                      aria-hidden
-                    />
-                    <output
-                      className="rounded-full border border-border/70 bg-background px-3 py-1.5 text-foreground"
-                      aria-label="Selected maximum price"
-                    >
-                      {formatPrice(sliderValues[1], bounds.currency)}
-                    </output>
-                  </div>
-                  <Slider
-                    value={sliderValues}
-                    min={sliderMinimum}
-                    max={sliderMaximum}
-                    step={sliderStep}
-                    minStepsBetweenThumbs={0}
-                    onValueChange={handleSliderChange}
-                    thumbLabels={["Minimum price", "Maximum price"]}
-                    getValueText={(value) =>
-                      formatPrice(value, bounds.currency)
-                    }
+        {isOpen ? (
+          <div
+            id={controlsId}
+            className="animate-in overflow-hidden fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none"
+          >
+            <form className="space-y-4 px-2" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 text-xs font-semibold tabular-nums">
+                  <output
+                    className="rounded-full border border-border/70 bg-background px-3 py-1.5 text-foreground"
+                    aria-label="Selected minimum price"
+                  >
+                    {formatPrice(sliderValues[0], bounds.currency)}
+                  </output>
+                  <span
+                    className="h-px min-w-4 flex-1 bg-border/70"
+                    aria-hidden
                   />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <label
-                    htmlFor={`${idPrefix}-price-minimum`}
-                    className="space-y-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground sm:tracking-[0.18rem]"
+                  <output
+                    className="rounded-full border border-border/70 bg-background px-3 py-1.5 text-foreground"
+                    aria-label="Selected maximum price"
                   >
-                    <span>Minimum</span>
-                    <InputGroup className="min-h-11 rounded-lg border-border/70 bg-background px-3 shadow-none">
-                      <InputGroupAddon aria-hidden>$</InputGroupAddon>
-                      <InputGroupInput
-                        id={`${idPrefix}-price-minimum`}
-                        value={draftMin}
-                        onChange={handleMinimumChange}
-                        onFocus={handleInputFocus}
-                        className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
-                        inputMode="decimal"
-                        type="number"
-                        min={sliderMinimum}
-                        max={sliderMaximum}
-                        placeholder={priceInputValue(sliderMinimum)}
-                        step="0.01"
-                        aria-label="Minimum price in dollars"
-                        aria-invalid={Boolean(error)}
-                        aria-describedby={error ? errorId : undefined}
-                      />
-                    </InputGroup>
-                  </label>
-                  <label
-                    htmlFor={`${idPrefix}-price-maximum`}
-                    className="space-y-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground sm:tracking-[0.18rem]"
-                  >
-                    <span>Maximum</span>
-                    <InputGroup className="min-h-11 rounded-lg border-border/70 bg-background px-3 shadow-none">
-                      <InputGroupAddon aria-hidden>$</InputGroupAddon>
-                      <InputGroupInput
-                        id={`${idPrefix}-price-maximum`}
-                        value={draftMax}
-                        onChange={handleMaximumChange}
-                        onFocus={handleInputFocus}
-                        className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
-                        inputMode="decimal"
-                        type="number"
-                        min={sliderMinimum}
-                        max={sliderMaximum}
-                        placeholder={priceInputValue(sliderMaximum)}
-                        step="0.01"
-                        aria-label="Maximum price in dollars"
-                        aria-invalid={Boolean(error)}
-                        aria-describedby={error ? errorId : undefined}
-                      />
-                    </InputGroup>
-                  </label>
+                    {formatPrice(sliderValues[1], bounds.currency)}
+                  </output>
                 </div>
-                <p
-                  id={errorId}
-                  className="min-h-4 text-[0.7rem] text-destructive"
-                  aria-live="polite"
+                <Slider
+                  value={sliderValues}
+                  min={sliderMinimum}
+                  max={sliderMaximum}
+                  step={sliderStep}
+                  minStepsBetweenThumbs={0}
+                  onValueChange={handleSliderChange}
+                  thumbLabels={["Minimum price", "Maximum price"]}
+                  getValueText={(value) => formatPrice(value, bounds.currency)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label
+                  htmlFor={`${idPrefix}-price-minimum`}
+                  className="space-y-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground sm:tracking-[0.18rem]"
                 >
-                  {error}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button type="submit" variant="filled" size="compact">
-                    Apply
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outlined"
-                    size="compact"
-                    onClick={handleClear}
-                    disabled={!draftMin.length && !draftMax.length}
-                  >
-                    Clear
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+                  <span>Minimum</span>
+                  <InputGroup className="min-h-11 rounded-lg border-border/70 bg-background px-3 shadow-none">
+                    <InputGroupAddon aria-hidden>$</InputGroupAddon>
+                    <InputGroupInput
+                      id={`${idPrefix}-price-minimum`}
+                      value={draftMin}
+                      onChange={handleMinimumChange}
+                      onFocus={handleInputFocus}
+                      className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
+                      inputMode="decimal"
+                      type="number"
+                      min={sliderMinimum}
+                      max={sliderMaximum}
+                      placeholder={priceInputValue(sliderMinimum)}
+                      step="0.01"
+                      aria-label="Minimum price in dollars"
+                      aria-invalid={Boolean(error)}
+                      aria-describedby={error ? errorId : undefined}
+                    />
+                  </InputGroup>
+                </label>
+                <label
+                  htmlFor={`${idPrefix}-price-maximum`}
+                  className="space-y-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground sm:tracking-[0.18rem]"
+                >
+                  <span>Maximum</span>
+                  <InputGroup className="min-h-11 rounded-lg border-border/70 bg-background px-3 shadow-none">
+                    <InputGroupAddon aria-hidden>$</InputGroupAddon>
+                    <InputGroupInput
+                      id={`${idPrefix}-price-maximum`}
+                      value={draftMax}
+                      onChange={handleMaximumChange}
+                      onFocus={handleInputFocus}
+                      className="min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none"
+                      inputMode="decimal"
+                      type="number"
+                      min={sliderMinimum}
+                      max={sliderMaximum}
+                      placeholder={priceInputValue(sliderMaximum)}
+                      step="0.01"
+                      aria-label="Maximum price in dollars"
+                      aria-invalid={Boolean(error)}
+                      aria-describedby={error ? errorId : undefined}
+                    />
+                  </InputGroup>
+                </label>
+              </div>
+              <p
+                id={errorId}
+                className="min-h-4 text-[0.7rem] text-destructive"
+                aria-live="polite"
+              >
+                {error}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="submit" variant="filled" size="compact">
+                  Apply
+                </Button>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="compact"
+                  onClick={handleClear}
+                  disabled={!draftMin.length && !draftMax.length}
+                >
+                  Clear
+                </Button>
+              </div>
+            </form>
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -750,7 +728,7 @@ const FilterSidebar = ({
           variant="unstyled"
           size="auto"
           onClick={onClear}
-          className="cursor-pointer text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground transition hover:text-foreground sm:tracking-[0.24rem]"
+          className="min-h-6 cursor-pointer px-1 text-[0.7rem] uppercase tracking-[0.14rem] text-muted-foreground transition hover:text-foreground sm:tracking-[0.24rem]"
         >
           Reset
         </Button>
@@ -1291,12 +1269,25 @@ const ProductSearchExperience = ({
         ? lastPage.nextOffset
         : undefined,
     ...(isInitialSearch
-      ? { initialData: { pages: [initialResponse], pageParams: [0] } }
+      ? {
+          initialData: { pages: [initialResponse], pageParams: [0] },
+        }
       : {}),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
     retry: 1,
   })
+  const hasRefreshedInitialSearch = useRef(false)
+  useEffect(() => {
+    if (!isInitialSearch || hasRefreshedInitialSearch.current) {
+      return
+    }
+    hasRefreshedInitialSearch.current = true
+    // A server fallback can be empty because the search provider was
+    // transiently unavailable. Refresh after hydration so provider recovery
+    // cannot replace server text during React's initial reconciliation.
+    void searchQuery.refetch()
+  }, [isInitialSearch, searchQuery.refetch])
 
   const searchPages = useMemo(
     () => searchQuery.data?.pages ?? (isInitialSearch ? [initialResponse] : []),
@@ -1825,61 +1816,59 @@ const ProductSearchExperience = ({
                   className="relative"
                   style={{ height: virtualizer.getTotalSize() }}
                 >
-                  <AnimatePresence initial={false}>
-                    {virtualItems.map((virtualRow: VirtualItem) => {
-                      const rowIndex = virtualRow.index
-                      const startIndex = rowIndex * columns
-                      const rowReactKey =
-                        deferredResults[startIndex]?.id ??
-                        (virtualRow as { key?: number }).key ??
-                        virtualRow.index
+                  {virtualItems.map((virtualRow: VirtualItem) => {
+                    const rowIndex = virtualRow.index
+                    const startIndex = rowIndex * columns
+                    const rowReactKey =
+                      deferredResults[startIndex]?.id ??
+                      (virtualRow as { key?: number }).key ??
+                      virtualRow.index
 
-                      return (
+                    return (
+                      <div
+                        key={rowReactKey}
+                        data-index={virtualRow.index}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: rowHeight,
+                          transform: `translateY(${virtualRow.start}px)`,
+                          paddingBottom: rowGap,
+                          boxSizing: "border-box",
+                        }}
+                      >
                         <div
-                          key={rowReactKey}
-                          data-index={virtualRow.index}
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            height: rowHeight,
-                            transform: `translateY(${virtualRow.start}px)`,
-                            paddingBottom: rowGap,
-                            boxSizing: "border-box",
-                          }}
+                          className="grid h-full gap-6"
+                          style={gridTemplateStyle}
                         >
-                          <div
-                            className="grid h-full gap-6"
-                            style={gridTemplateStyle}
-                          >
-                            {Array.from({ length: columns }).map(
-                              (_, columnIdx) => {
-                                const globalIndex = startIndex + columnIdx
-                                const product = deferredResults[globalIndex]
+                          {Array.from({ length: columns }).map(
+                            (_, columnIdx) => {
+                              const globalIndex = startIndex + columnIdx
+                              const product = deferredResults[globalIndex]
 
-                                if (product) {
-                                  return (
-                                    <motion.div
-                                      key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
-                                      {...CARD_MOTION_PROPS}
-                                    >
-                                      <ProductCard
-                                        product={product}
-                                        onMediaLoad={scheduleVirtualizerMeasure}
-                                      />
-                                    </motion.div>
-                                  )
-                                }
-
-                                return <div key={`spacer-${globalIndex}`} />
+                              if (product) {
+                                return (
+                                  <div
+                                    key={`${product.id}-${product.handle ?? product.id}-${globalIndex}`}
+                                    className="animate-in fade-in slide-in-from-bottom-1 duration-150 motion-reduce:animate-none"
+                                  >
+                                    <ProductCard
+                                      product={product}
+                                      onMediaLoad={scheduleVirtualizerMeasure}
+                                    />
+                                  </div>
+                                )
                               }
-                            )}
-                          </div>
+
+                              return <div key={`spacer-${globalIndex}`} />
+                            }
+                          )}
                         </div>
-                      )
-                    })}
-                  </AnimatePresence>
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div

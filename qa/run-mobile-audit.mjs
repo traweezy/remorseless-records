@@ -66,6 +66,33 @@ const devices = [
 
 const toUrl = (route) => new URL(route, baseUrl).toString()
 
+const waitForRenderedPage = async (page, target) => {
+  const response = await page.goto(target, {
+    waitUntil: "domcontentloaded",
+    timeout: 45_000,
+  })
+
+  await page.waitForSelector("main", {
+    visible: true,
+    timeout: 15_000,
+  })
+  await page.evaluate(async () => {
+    await document.fonts.ready
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    )
+  })
+
+  // Catalog recovery and observability requests may continue after the page is
+  // usable. Give them a bounded opportunity to settle without making global
+  // network idleness a prerequisite for layout and accessibility acceptance.
+  await page
+    .waitForNetworkIdle({ idleTime: 500, timeout: 5_000 })
+    .catch(() => undefined)
+
+  return response
+}
+
 const routeSlug = (route) =>
   route === "/"
     ? "home"
@@ -182,10 +209,7 @@ const run = async () => {
 
         const label = `${device.name} ${route}`
         try {
-          const response = await page.goto(toUrl(route), {
-            waitUntil: "networkidle2",
-            timeout: 45_000,
-          })
+          const response = await waitForRenderedPage(page, toUrl(route))
           const status = response?.status() ?? 0
           if (status >= 400 || status === 0) {
             failures.push(`${label}: HTTP ${status || "unknown"}`)

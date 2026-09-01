@@ -187,23 +187,31 @@ export const getHomepageProducts = unstable_cache(
   { revalidate: 600, tags: ["products"] }
 )
 
-export const getProductByHandle = unstable_cache(
+const getProductByHandleCached = unstable_cache(
   async (handle: string): Promise<StoreProduct | null> => {
-    try {
-      const products = await listProducts({
-        handle,
-        limit: 1,
-        fields: PRODUCT_DETAIL_FIELDS,
-      } satisfies HttpTypes.StoreProductListParams)
-      return products[0] ?? null
-    } catch {
-      console.error("[getProductByHandle] Failed to load product")
-      return null
-    }
+    const products = await listProducts({
+      handle,
+      limit: 1,
+      fields: PRODUCT_DETAIL_FIELDS,
+    } satisfies HttpTypes.StoreProductListParams)
+    return products[0] ?? null
   },
-  ["product-by-handle"],
+  ["product-by-handle-v2"],
   { revalidate: 300, tags: ["products"] }
 )
+
+export const getProductByHandle = async (
+  handle: string
+): Promise<StoreProduct | null> => {
+  try {
+    return await getProductByHandleCached(handle)
+  } catch {
+    // Keep transient provider failures outside the persistent Next cache. A
+    // genuine empty response may be cached, but an outage must be retried.
+    console.error("[getProductByHandle] Failed to load product")
+    return null
+  }
+}
 
 export const getProductsByCollection = unstable_cache(
   async (collectionId: string, limit: number = 8): Promise<StoreProduct[]> => {

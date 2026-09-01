@@ -1649,7 +1649,7 @@ We run three pipelines for `staging` and `master` pushes/pull requests (plus a
 weekly schedule):
 
 - **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build, and an enforced Admin JavaScript bundle budget.
-- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, baseline plus transactional coverage, and a production build. Pushes and `master` release pull requests also require non-destructive Pixel/iPhone Playwright smoke tests, the critical Chromium/Firefox/WebKit guest-commerce matrix, pa11y, and Lighthouse; ordinary `staging` pull requests can opt into those browser gates with repository variables.
+- **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, Biome, semantic typecheck, baseline plus transactional coverage, and a production build. Pushes and `master` release pull requests also require non-destructive responsive Playwright smoke tests, the critical Chromium/Firefox/WebKit guest-commerce matrix, the 14-scenario legal/commerce launch matrix, pa11y, and a six-route repeated Lighthouse gate with private artifacts; ordinary `staging` pull requests can opt into those browser gates with repository variables.
 - **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, and a retained CycloneDX SBOM plus production-license inventory.
 
 Actions are hardened with `step-security/harden-runner` and pinned to immutable
@@ -1683,10 +1683,18 @@ Full runbook with detailed steps lives in [`docs/QA_RUNBOOK.md`](docs/QA_RUNBOOK
 - `pnpm exec biome check --error-on-warnings .` plus `pnpm --filter remorseless-records-storefront run typecheck` and `pnpm --filter backend exec tsc --noEmit` before commits.
 - Monorepo check shortcut: `pnpm run qa:lint` (Biome, repository policy verifiers, and both strict compiler checks).
 - Critical desktop browser matrix: `pnpm --filter remorseless-records-storefront run test:e2e:critical` after the Storefront production build.
+- Launch acceptance matrix: `pnpm run qa:storefront:launch` after the same
+  deterministic-fixture production build. Inspect its commerce, checkout,
+  privacy, consent, content, reflow, reduced-motion, and focus screenshots.
 - Reindex search after catalog bulk changes: `pnpm --filter backend run search:sync` (use `pnpm --filter backend run search:check` to compare Medusa vs. Meilisearch counts).
 - Keyboard and screen-reader sweeps on header, Quick Shop, PDP, cart, checkout,
   recovery, and confirmation. Document in the runbook checklist.
-- Lighthouse (desktop + mobile) on `/`, `/catalog`, a typed detail route (`/music-release/{slug}`, `/bundle/{slug}`, or `/merch/{slug}`), and the legacy `/cart` drawer entry targeting LCP < 2.5s and A11y ≥ 95. Exercise the drawer interactions separately in Playwright.
+- Lighthouse runs three samples each on `/`, `/catalog`, a representative
+  typed Product, the legacy `/cart` drawer entry, `/checkout`, and `/privacy`.
+  The gate enforces median performance/accessibility/best-practice/SEO, FCP,
+  LCP, TBT, CLS, byte, script, and request-count budgets and retains reports as
+  private CI artifacts. Exercise drawer and form interactions separately in
+  Playwright.
 - Stripe success, 3DS, decline, processing-error, duplicate, response-loss,
   browser-close, webhook, recovery, and receipt-TTL cases in test mode only.
 - Automated bundle: `QA_BASE_URL=<deployed url> pnpm run qa:ci` (runs

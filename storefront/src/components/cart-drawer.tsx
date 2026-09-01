@@ -13,7 +13,6 @@ import Drawer, {
   DrawerHeading,
   DrawerTitle,
 } from "@/components/ui/drawer"
-import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatAmount } from "@/lib/money"
 import { useCart } from "@/providers/cart-provider"
@@ -147,7 +146,7 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
               </div>
             </div>
 
-            <div className="shrink-0 space-y-4 border-t border-border/60 bg-background/98 px-4 py-5 sm:px-6">
+            <div className="shrink-0 space-y-4 border-t border-border/60 bg-background px-4 py-5 sm:px-6">
               <dl className="space-y-2.5 text-sm text-muted-foreground">
                 <div className="flex items-center justify-between gap-4">
                   <dt>Subtotal</dt>
@@ -171,8 +170,7 @@ export const CartDrawer = memo<CartDrawerProps>(({ open, onOpenChange }) => {
                     {tax ?? "Calculated at checkout"}
                   </dd>
                 </div>
-                <Separator className="border-border/60" />
-                <div className="flex items-center justify-between gap-4 text-base font-semibold text-foreground">
+                <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-2 text-base font-semibold text-foreground">
                   <dt>{totalsAreFinal ? "Total" : "Current total"}</dt>
                   <dd>{currentTotal ?? "—"}</dd>
                 </div>

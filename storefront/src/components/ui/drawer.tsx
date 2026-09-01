@@ -1,11 +1,5 @@
 "use client"
 
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type Transition,
-} from "framer-motion"
 import { X } from "lucide-react"
 import { Dialog as SheetPrimitive, VisuallyHidden } from "radix-ui"
 
@@ -33,79 +27,47 @@ const Drawer = ({
   maxWidthClassName = "max-w-[448px]",
   children,
 }: DrawerProps) => {
-  const prefersReducedMotion = useReducedMotion()
-
-  const easeOutExpo = [0.4, 0, 0.2, 1] as const
-  const easeInSharp = [0.4, 0, 1, 1] as const
-
-  const overlayTransition: Transition = prefersReducedMotion
-    ? { duration: 0.18, ease: easeOutExpo }
-    : { duration: 0.3, ease: easeOutExpo }
-
-  const panelTransition: Transition = prefersReducedMotion
-    ? { duration: 0.24, ease: easeOutExpo }
-    : { type: "spring", damping: 30, stiffness: 300, mass: 0.8 }
-
-  const panelExitTransition: Transition = prefersReducedMotion
-    ? { duration: 0.18, ease: easeInSharp }
-    : { duration: 0.26, ease: easeInSharp }
-
   const sidePosition = side === "left" ? "left-0" : "right-0"
   const sideBorder = side === "left" ? "border-r" : "border-l"
   const sideRadius = side === "left" ? "sm:rounded-r-2xl" : "sm:rounded-l-2xl"
-  const closedX = side === "left" ? "-100%" : "100%"
+  const sideMotion =
+    side === "left"
+      ? "data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
+      : "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right"
 
   return (
     <SheetPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <AnimatePresence initial={false}>
-        {open ? (
-          <SheetPrimitive.Portal forceMount>
-            <SheetPrimitive.Overlay asChild forceMount>
-              <motion.div
-                className={cn(
-                  "fixed inset-0 z-40 bg-black/80 backdrop-blur-sm",
-                  overlayClassName
-                )}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={overlayTransition}
-              />
-            </SheetPrimitive.Overlay>
+      <SheetPrimitive.Portal>
+        <SheetPrimitive.Overlay asChild>
+          <div
+            className={cn(
+              "fixed inset-0 z-40 bg-black/80 backdrop-blur-sm duration-200 data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out motion-reduce:animate-none",
+              overlayClassName
+            )}
+          />
+        </SheetPrimitive.Overlay>
 
-            <SheetPrimitive.Content asChild forceMount>
-              <motion.aside
-                className={cn(
-                  "fixed inset-y-0 z-50 flex h-full w-full flex-col border-border/60 bg-background/95 shadow-glow",
-                  sidePosition,
-                  sideBorder,
-                  sideRadius,
-                  maxWidthClassName,
-                  panelClassName
-                )}
-                initial="closed"
-                animate={open ? "open" : "closed"}
-                exit="closed"
-                variants={{
-                  open: { x: 0, opacity: 1, transition: panelTransition },
-                  closed: {
-                    x: prefersReducedMotion ? 0 : closedX,
-                    opacity: prefersReducedMotion ? 0 : 1,
-                    transition: panelExitTransition,
-                  },
-                }}
-              >
-                {ariaLabel ? (
-                  <VisuallyHidden.Root>
-                    <SheetPrimitive.Title>{ariaLabel}</SheetPrimitive.Title>
-                  </VisuallyHidden.Root>
-                ) : null}
-                {children}
-              </motion.aside>
-            </SheetPrimitive.Content>
-          </SheetPrimitive.Portal>
-        ) : null}
-      </AnimatePresence>
+        <SheetPrimitive.Content asChild>
+          <aside
+            className={cn(
+              "fixed inset-y-0 z-50 flex h-full w-full flex-col border-border/60 bg-background shadow-glow duration-300 data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out motion-reduce:animate-none",
+              sidePosition,
+              sideBorder,
+              sideRadius,
+              sideMotion,
+              maxWidthClassName,
+              panelClassName
+            )}
+          >
+            {ariaLabel ? (
+              <VisuallyHidden.Root>
+                <SheetPrimitive.Title>{ariaLabel}</SheetPrimitive.Title>
+              </VisuallyHidden.Root>
+            ) : null}
+            {children}
+          </aside>
+        </SheetPrimitive.Content>
+      </SheetPrimitive.Portal>
     </SheetPrimitive.Root>
   )
 }

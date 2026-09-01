@@ -31,7 +31,8 @@ export const CheckoutSection = memo<CheckoutSectionProps>(
       as="section"
       variant="panel"
       aria-labelledby={`checkout-step-${step}`}
-      className={cn(disabled && "opacity-60")}
+      aria-disabled={disabled || undefined}
+      className={cn(disabled && "border-border/50")}
     >
       <CardHeader className="flex flex-col items-start gap-4 space-y-0 sm:flex-row sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">

@@ -102,6 +102,7 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
     "storefront/playwright.critical.config.ts",
     "utf8"
   )
+  const lighthouseConfig = fs.readFileSync("lighthouse/lhci.config.js", "utf8")
 
   assert.match(workflow, /CI_MEDUSA_FIXTURE_URL: http:\/\/127\.0\.0\.1:4010/u)
   assert.match(workflow, /Start deterministic Medusa fixture/u)
@@ -112,4 +113,12 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
   )
   assert.match(ciConfig, /ciMedusaFixtureWebServer/u)
   assert.match(criticalConfig, /ciMedusaFixtureWebServer/u)
+  assert.match(
+    workflow.match(/  lighthouse:[\s\S]*$/u)?.[0] ?? "",
+    /Start deterministic Medusa fixture/u
+  )
+  assert.match(lighthouseConfig, /numberOfRuns: configuredRuns/u)
+  assert.match(lighthouseConfig, /largest-contentful-paint/u)
+  assert.match(lighthouseConfig, /resource-summary:total:count/u)
+  assert.match(lighthouseConfig, /target: "filesystem"/u)
 })

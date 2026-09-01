@@ -8,6 +8,7 @@ export const ZOD_STRICT_CSP_BOOTSTRAP =
 const ZodStrictCspBootstrap = ({ nonce }: ZodStrictCspBootstrapProps) => (
   <script
     id="zod-strict-csp-bootstrap"
+    suppressHydrationWarning
     {...(nonce ? { nonce } : {})}
     dangerouslySetInnerHTML={{ __html: ZOD_STRICT_CSP_BOOTSTRAP }}
   />

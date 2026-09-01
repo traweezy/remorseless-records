@@ -80,7 +80,7 @@ const HomePage = async (): Promise<ReactElement> => {
       <HeroSection />
 
       <div className="mt-24">
-        <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-24 px-4 sm:px-6">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-24 px-4 sm:px-6">
           <ProductCarouselSection
             heading={splitHeading(newest.title)}
             description={newest.description}
@@ -100,7 +100,7 @@ const HomePage = async (): Promise<ReactElement> => {
             description="Dispatches from the label: drops, studio notes, and archive dispatches."
             entries={latestNews}
           />
-        </main>
+        </div>
       </div>
       <JsonLd id="homepage-featured" data={featuredListJsonLd} />
     </div>

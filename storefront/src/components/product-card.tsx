@@ -1,13 +1,13 @@
 "use client"
 
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type MouseEvent } from "react"
 
 import type { HttpTypes } from "@medusajs/types"
 import { ShoppingCart } from "lucide-react"
 
-import { ProductQuickView } from "@/components/product-quick-view"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +34,11 @@ import type {
   RelatedProductSummary,
   StockStatus,
 } from "@/types/product"
+
+const loadProductQuickView = () => import("@/components/product-quick-view")
+const ProductQuickView = dynamic(() =>
+  loadProductQuickView().then((module) => module.ProductQuickView)
+)
 
 type StoreProduct = HttpTypes.StoreProduct
 type ProductCardSource = StoreProduct | ProductSearchHit | RelatedProductSummary
@@ -500,6 +505,11 @@ export const ProductCard = ({
     prefetchProductDetail()
   }
 
+  const triggerQuickShopPrefetch = () => {
+    triggerPrefetch()
+    void loadProductQuickView()
+  }
+
   const handleQuickShop = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
@@ -550,11 +560,13 @@ export const ProductCard = ({
           className="block h-full focus:outline-none"
           preloadOffset={280}
         >
-          <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-background/80 shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition md:hover:-translate-y-1 md:hover:border-border/60 md:hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
+          <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-surface shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition md:hover:-translate-y-1 md:hover:border-border/60 md:hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">
             {badge ? (
               <div className="product-card__corner">
                 <span className="sr-only">Collection: </span>
-                <span>{badge.toUpperCase()}</span>
+                <span className="product-card__corner-ribbon">
+                  {badge.toUpperCase()}
+                </span>
               </div>
             ) : null}
             {isUnavailable ? (
@@ -582,7 +594,7 @@ export const ProductCard = ({
                 </span>
               </div>
             ) : null}
-            <div className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-surface/95">
+            <div className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-surface">
               <div className="relative z-10 aspect-square overflow-hidden bg-card">
                 {resolvedThumbnail ? (
                   <Image
@@ -609,10 +621,11 @@ export const ProductCard = ({
                     variant="filled"
                     className={cn(
                       "pointer-events-auto inline-flex items-center gap-2 rounded-full px-6 py-2 text-xs uppercase tracking-[0.3rem] shadow-glow focus-visible:ring-2 focus-visible:ring-destructive/70",
-                      !canQuickShop && "cursor-not-allowed opacity-60"
+                      !canQuickShop && "cursor-not-allowed"
                     )}
                     onClick={handleQuickShop}
-                    onFocus={triggerPrefetch}
+                    onFocus={triggerQuickShopPrefetch}
+                    onPointerEnter={triggerQuickShopPrefetch}
                     aria-label={`Quick shop ${summary.album ?? summary.title}`}
                     disabled={!canQuickShop}
                   >
@@ -647,7 +660,7 @@ export const ProductCard = ({
                     <Badge
                       key={`${summary.id}-${label}`}
                       variant="outline"
-                      className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-foreground sm:tracking-[0.22rem]"
+                      className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-foreground sm:tracking-[0.22rem]"
                     >
                       <span className="text-center leading-none">
                         {label.toUpperCase()}
@@ -657,7 +670,7 @@ export const ProductCard = ({
                   {hiddenFormatCount > 0 ? (
                     <Badge
                       variant="outline"
-                      className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background/85 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-foreground sm:tracking-[0.22rem]"
+                      className="flex min-h-[1.75rem] items-center justify-center rounded-full border-border/40 bg-background px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12rem] text-foreground sm:tracking-[0.22rem]"
                       aria-label={`${hiddenFormatCount} more formats`}
                     >
                       +{hiddenFormatCount}
@@ -676,12 +689,14 @@ export const ProductCard = ({
         </SmartLink>
       </div>
 
-      <ProductQuickView
-        handle={handle}
-        open={quickShopOpen}
-        onOpenChange={setQuickShopOpen}
-        {...(initialProduct ? { initialProduct } : {})}
-      />
+      {quickShopOpen ? (
+        <ProductQuickView
+          handle={handle}
+          open
+          onOpenChange={setQuickShopOpen}
+          {...(initialProduct ? { initialProduct } : {})}
+        />
+      ) : null}
     </>
   )
 }

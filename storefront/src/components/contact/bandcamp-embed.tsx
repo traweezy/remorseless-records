@@ -1,6 +1,12 @@
 "use client"
 
-import { memo, useCallback, useSyncExternalStore } from "react"
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { Music2 } from "lucide-react"
 
 import { useCookieConsent } from "@/components/legal/cookie-consent-provider"
@@ -64,6 +70,7 @@ type BandcampEmbedProps = {
 }
 
 const BandcampEmbed = memo<BandcampEmbedProps>(({ className }) => {
+  const [hasMounted, setHasMounted] = useState(false)
   const { isHydrated, preferences, saveSelection } = useCookieConsent()
   const compactPlayer = useSyncExternalStore(
     subscribeToCompactPlayer,
@@ -78,7 +85,11 @@ const BandcampEmbed = memo<BandcampEmbedProps>(({ className }) => {
     })
   }, [preferences.analytics, saveSelection])
 
-  if (!isHydrated) {
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  if (!hasMounted || !isHydrated) {
     return (
       <div
         className={className}
@@ -123,7 +134,10 @@ const BandcampEmbed = memo<BandcampEmbedProps>(({ className }) => {
   }
 
   return (
-    <Card variant="inset" className={cn("overflow-hidden p-0", className)}>
+    <Card
+      variant="inset"
+      className={cn("flex flex-col overflow-hidden p-0", className)}
+    >
       <iframe
         title="Featured Remorseless Records release on Bandcamp"
         src={buildBandcampEmbedUrl(compactPlayer ? "small" : "large")}
@@ -134,9 +148,15 @@ const BandcampEmbed = memo<BandcampEmbedProps>(({ className }) => {
         loading="lazy"
         allow="encrypted-media"
         referrerPolicy="strict-origin-when-cross-origin"
+      />
+      <a
+        href={bandcampAlbumUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex min-h-11 items-center justify-center border-t border-border/60 px-4 text-sm font-semibold text-foreground underline decoration-destructive underline-offset-4"
       >
-        <a href={bandcampAlbumUrl}>Listen on Bandcamp</a>
-      </iframe>
+        Open on Bandcamp
+      </a>
     </Card>
   )
 })

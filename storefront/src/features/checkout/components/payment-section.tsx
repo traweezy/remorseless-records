@@ -6,7 +6,7 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js"
-import { loadStripe } from "@stripe/stripe-js"
+import { loadStripe } from "@stripe/stripe-js/pure"
 import type {
   Appearance,
   Stripe,
@@ -15,7 +15,15 @@ import type {
   StripePaymentElementChangeEvent,
 } from "@stripe/stripe-js"
 import { Lock } from "lucide-react"
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -25,6 +33,7 @@ import type {
   CheckoutApiError,
 } from "@/features/checkout/api/checkout-api"
 import { CheckoutProblem } from "@/features/checkout/components/checkout-problem"
+import { CheckoutDisclosure } from "@/features/checkout/components/checkout-disclosure"
 import {
   safeStripeErrorMessage,
   stripeResultNeedsReconciliation,
@@ -103,6 +112,7 @@ const PaymentElementForm = memo<PaymentElementFormProps>(
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isComplete, setIsComplete] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
+    const disclosureId = useId()
     const submissionLockRef = useRef(false)
     const hasBeenReadyRef = useRef(false)
 
@@ -310,10 +320,12 @@ const PaymentElementForm = memo<PaymentElementFormProps>(
           />
         </div>
 
+        <CheckoutDisclosure checkout={checkout} id={disclosureId} />
         <Button
           type="submit"
           size="lg"
           className="w-full"
+          aria-describedby={disclosureId}
           disabled={
             !stripe ||
             !elements ||
@@ -351,6 +363,7 @@ export const PaymentSection = memo<PaymentSectionProps>(
     onRecovery,
   }) => {
     const preparedRevisionRef = useRef<string | null>(null)
+    const freeOrderDisclosureId = useId()
     const [localPrepareError, setLocalPrepareError] = useState<string | null>(
       null
     )
@@ -469,10 +482,12 @@ export const PaymentSection = memo<PaymentSectionProps>(
             message={freeOrderError}
             title="Order was not confirmed"
           />
+          <CheckoutDisclosure checkout={checkout} id={freeOrderDisclosureId} />
           <Button
             type="button"
             size="lg"
             className="w-full"
+            aria-describedby={freeOrderDisclosureId}
             disabled={isFreeSubmitting}
             onClick={() => void submitFreeOrder()}
           >

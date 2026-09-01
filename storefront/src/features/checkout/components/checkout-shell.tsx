@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import SmartLink from "@/components/ui/smart-link"
-import { legalConfig, legalRoutes } from "@/config/legal"
 import {
   CheckoutApiError,
   type CheckoutAddressPayload,
@@ -83,7 +82,7 @@ const CheckoutSkeleton = memo(() => (
 CheckoutSkeleton.displayName = "CheckoutSkeleton"
 
 const EmptyCheckout = memo(() => (
-  <div className="mx-auto flex w-full max-w-3xl flex-1 items-center px-4 py-16 sm:px-6">
+  <div className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-3xl flex-1 items-center px-4 py-16 sm:px-6">
     <Empty className="w-full py-16">
       <PackageOpen
         className="h-12 w-12 text-destructive"
@@ -253,7 +252,7 @@ export const CheckoutShell = memo(() => {
 
   if (!checkout) {
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-1 items-center px-4 py-16 sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-3xl flex-1 items-center px-4 py-16 sm:px-6">
         <CheckoutProblem
           className="w-full"
           title="Checkout could not be loaded"
@@ -407,38 +406,6 @@ export const CheckoutShell = memo(() => {
                 </p>
               )}
             </CheckoutSection>
-
-            <p className="px-2 text-center text-xs leading-5 text-muted-foreground">
-              By placing your order, you agree to our{" "}
-              <SmartLink
-                href={legalRoutes.terms}
-                className="inline-flex min-h-6 items-center text-foreground underline underline-offset-4"
-              >
-                terms
-              </SmartLink>
-              . Review our{" "}
-              <SmartLink
-                href={legalRoutes.shipping}
-                className="inline-flex min-h-6 items-center text-foreground underline underline-offset-4"
-              >
-                shipping
-              </SmartLink>{" "}
-              and{" "}
-              <SmartLink
-                href={legalRoutes.returns}
-                className="inline-flex min-h-6 items-center text-foreground underline underline-offset-4"
-              >
-                return
-              </SmartLink>{" "}
-              policies. Need help?{" "}
-              <a
-                href={`mailto:${legalConfig.supportEmail}`}
-                className="inline-flex min-h-6 items-center text-foreground underline underline-offset-4"
-              >
-                {legalConfig.supportEmail}
-              </a>
-              .
-            </p>
           </div>
 
           <CheckoutSummary

@@ -351,8 +351,8 @@ export const DeliveryAddressForm = memo<DeliveryAddressFormProps>(
           Apartment, suite, or unit
         </Button>
 
-        {showAddress2 ? (
-          <div id="checkout-address-line-2">
+        <div id="checkout-address-line-2" hidden={!showAddress2}>
+          {showAddress2 ? (
             <form.Field name="address_2">
               {(field) => (
                 <CheckoutTextField
@@ -363,8 +363,8 @@ export const DeliveryAddressForm = memo<DeliveryAddressFormProps>(
                 />
               )}
             </form.Field>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         <form.Field
           name="city"
@@ -496,7 +496,11 @@ export const DeliveryAddressForm = memo<DeliveryAddressFormProps>(
           )}
         </form.Field>
 
-        <Button type="submit" className="w-full sm:w-auto" disabled={isPending}>
+        <Button
+          type="submit"
+          className="h-auto min-h-11 w-full whitespace-normal px-4 py-3 text-center leading-5 tracking-[0.12rem] sm:w-auto sm:px-6 sm:tracking-[0.3rem]"
+          disabled={isPending}
+        >
           {isPending ? "Saving delivery…" : "Continue to delivery method"}
         </Button>
       </form>

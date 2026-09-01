@@ -7,73 +7,61 @@ supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active handoff — August 31, 2026 at 08:46 EDT
+## Active handoff — August 31, 2026 at 20:06 EDT
 
-Stop point: no Storefront launch-acceptance implementation was started. The
-working tree is clean except for the pre-existing untracked `Default/`
-directory, which is unrelated user content and must remain unread, untouched,
-and unstaged.
+The complete local **Legal, accessibility, and launch acceptance**
+implementation is in the working tree and is awaiting its final repository
+gate, commit, push, and exact-SHA staging acceptance. The pre-existing untracked
+`Default/` directory is unrelated user content and must remain unread,
+untouched, and unstaged.
 
-The completed Admin accessibility/support slice is commit
-`7a82faf07f6d0ca144f45d9e9d17af35f33e3e9a` on `staging`. Root CI run
-`33392299754`, Backend CI run `33392299776`, and Storefront CI run
-`33392299802` are complete and green. Storefront acceptance includes security,
-Biome, CodeQL, strict typecheck/Trivy, secret scan, coverage, production build,
-pa11y, Lighthouse, and responsive/cross-browser Playwright Browser Smoke.
+Implemented behavior now includes:
 
-Railway has registered the exact same SHA as Backend deployment
-`f61cd05d-4fa0-4de9-88ef-4ebb7112fa14` and Storefront deployment
-`11143ddb-5be4-4a87-b167-7c594f2120a6`. Both advanced to `BUILDING` on the
-exact SHA after GitHub checks completed and still reported their deployment as
-stopped during the build. The next session must watch both to `SUCCESS`, prove
-their commit hash is still the exact SHA,
-inspect exact-deployment build/runtime logs, and run Backend and Storefront
-live/readiness plus representative route probes before accepting this slice.
-The deliberate 24-hour `scheduler_incident_latched` operations reason remains
-open and must never be cleared manually or with synthetic state.
+- one reusable paid/free checkout disclosure immediately before submission,
+  associated with its button and showing the exact charge, tax/shipping state,
+  processing window, and Terms, Privacy, Shipping, and Returns links;
+- server-initial cookie preferences, analytics-consent-gated Web Vitals,
+  consent-controlled Bandcamp, and fresh-context browser proof for accept,
+  reject, granular choice, persistence, and revocation;
+- strict privacy-request response decoding, an accessible validation/focus and
+  retry path, and an announced non-PII Backend request reference;
+- a deterministic 14-scenario launch matrix spanning commerce, checkout,
+  confirmation, recovery, privacy, cookies, content, 320-pixel reflow, reduced
+  motion, keyboard focus, axe complete/manual-review results, runtime errors,
+  target size, overflow, and ARIA integrity;
+- a six-route, three-run-median Lighthouse gate with Core Web Vital,
+  performance, accessibility, best-practice, SEO, byte, script, and request
+  budgets retained as private CI artifacts; and
+- a smaller initial catalog boundary: Stripe and Quick Shop load only when
+  needed, global drawer/scroll motion is CSS-based, the hero requests a
+  responsive LCP image, and the catalog median performance score improved from
+  0.79 to 0.81 in the final full matrix without relaxing the 0.80 floor.
 
-After that promotion closes, resume the complete **Legal, accessibility, and
-launch acceptance** local slice. The read-only audit identified these exact
-implementation gaps; no code change for them has been made yet:
+Current local evidence is green: 136 Storefront baseline files / 806 tests at
+94.25% statements, 86.65% branches, 96.03% functions, and 94.25% lines; 35
+transactional files / 313 tests at 83.39/76.02/85.81/83.48; the production
+build and 130-asset client-secret/Stripe Trusted Types verifier; 14 launch
+journeys; 21 Chromium/Firefox/WebKit critical journeys; 34 Pixel 7/compact-phone
+public-route audits with zero tiny-text warnings; and all 18 Lighthouse reports
+across six routes. Median Lighthouse performance scores were Home 0.87,
+Catalog 0.81, Product 0.89, Cart 0.85, Checkout 0.83, and Privacy 0.84, with
+accessibility 1.00 everywhere and every Core Web Vital/resource assertion
+green. A real graphical desktop catalog screenshot was captured with
+Flameshot and inspected, along with the automated launch and mobile captures.
 
-- Move a reusable checkout disclosure immediately before both paid and free
-  order submission. Associate it with the submit control and disclose the
-  exact charged total, current tax/shipping total state, processing window,
-  and Terms, Privacy, Shipping, and Returns links. Remove the less-direct
-  duplicate disclosure below the whole checkout flow.
-- Prove the pre-consent browser boundary. Web-vital telemetry currently mounts
-  unconditionally, while the public policy describes analytics as optional;
-  gate optional telemetry on analytics consent or explicitly reclassify it
-  only after counsel approval. Verify cookies, local/session storage, external
-  requests, Bandcamp loading, accept/reject/customize, persistence, and
-  revocation in a fresh browser context.
-- Preserve the Backend privacy request's bounded opaque request ID through the
-  Storefront BFF and show it in an accessible success status. Add a focused
-  error summary/focus path, neutral redacted errors, retry coverage, and a
-  browser journey that proves the monitored-delivery contract without storing
-  request PII in artifacts.
-- Replace the fragmented static-page checks with a deterministic Storefront
-  launch matrix covering home, catalog, Product detail, cart, checkout contact
-  and validation states, payment disclosure/error state, confirmation,
-  recovery, privacy form, cookie preferences, and content/legal pages. Fail on
-  axe violations **and incomplete/manual-review results**, console/runtime or
-  response errors, unnamed controls, invalid ARIA, positive tab order,
-  undersized targets, horizontal overflow, ineffective reduced-motion, and
-  hidden or obscured keyboard focus.
-- Expand Lighthouse beyond the current four static paths. Use repeat runs and
-  enforce performance, accessibility, best-practice, SEO, Core Web Vital, and
-  resource-size/count budgets for representative production-like commerce
-  routes; retain private CI artifacts instead of relying only on temporary
-  public upload links.
-- Capture and inspect real graphical-desktop screenshots for responsive
-  checkout, catalog, Product, cart, content, privacy/cookie, confirmation, and
-  recovery states. Keep automated screenshots as regression evidence but do
-  not treat them as the required real-desktop review.
-- Update this plan, `docs/QA_RUNBOOK.md`,
-  `docs/LEGAL_COMPLIANCE_RUNBOOK.md`, and support/checkout operating guidance
-  with exact local evidence before the next push. Counsel, training, monitored
-  support ownership, and named launch sign-offs remain external gates and must
-  not be marked complete from local automation.
+The previous Admin accessibility/support slice remains commit
+`7a82faf07f6d0ca144f45d9e9d17af35f33e3e9a`. Before accepting the current
+slice, push its new exact SHA, require all GitHub checks and affected Railway
+deployments to reach `SUCCESS`, inspect exact-deployment logs, and run
+live/readiness plus representative Storefront commerce/privacy probes. The
+deliberate 24-hour `scheduler_incident_latched` operations reason remains open
+and must never be cleared manually or with synthetic state.
+
+Local automation does **not** close qualified-counsel approval, staff training,
+monitored support/privacy mailbox ownership, named launch sign-offs,
+production-environment approval, or restore-drill evidence. Complete the
+remaining real graphical-desktop captures for checkout, Product, cart,
+content/legal, confirmation, and recovery before final production sign-off.
 
 ## Operating contract
 
@@ -4200,17 +4188,27 @@ accepted.
 
 - [ ] Obtain qualified counsel/client approval for all legal page copy,
       jurisdiction coverage, retention periods, and operating procedures.
-- [ ] Verify checkout disclosures immediately before payment.
-- [ ] Validate that only necessary cookies operate before consent.
-- [ ] Verify privacy requests end to end and staff the monitored support
-      channels.
+- [x] Verify exact-total checkout disclosures immediately before paid and free
+      order submission.
+- [x] Validate that only necessary cookies operate before consent and that
+      optional telemetry/embeds follow stored consent and revocation.
+- [x] Verify the signed privacy request path end to end through the Storefront
+      BFF and expose only the opaque request reference to the customer.
+- [ ] Staff and monitor the privacy/support delivery channels, and complete an
+      operator response rehearsal without placing request PII in artifacts.
 - [ ] Train support staff on shipping delay, cancellation, return, refund,
       dispute, privacy, and accessibility procedures.
-- [ ] Complete keyboard, focus, screen-reader, contrast, target-size, reduced
+- [x] Complete automated keyboard, focus, screen-reader semantics, contrast,
+      target-size, reduced
       motion, and error-summary validation.
-- [ ] Capture real desktop screenshots for the responsive checkout, catalog,
-      product, cart, content, Admin, and recovery matrices.
-- [ ] Complete Lighthouse budgets and production-like performance testing.
+- [x] Capture and inspect automated real-browser screenshots for checkout,
+      catalog, Product, cart, content/legal, privacy, confirmation, and
+      recovery, plus real graphical-desktop Admin and Storefront Catalog
+      captures.
+- [ ] Complete the remaining real graphical-desktop Storefront captures for
+      checkout, Product, cart, content/legal, confirmation, and recovery.
+- [x] Complete repeated Lighthouse budgets and production-like local
+      performance testing across six representative routes.
 - [ ] Obtain named business, legal, tax, support, security, and
       production-change sign-offs.
 

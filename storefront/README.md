@@ -66,6 +66,9 @@ pnpm --filter remorseless-records-storefront run typecheck
 pnpm --filter remorseless-records-storefront run test:coverage
 pnpm --filter remorseless-records-storefront run build
 pnpm --filter remorseless-records-storefront run test:e2e:critical
+pnpm run qa:storefront:launch
+pnpm run qa:mobile
+pnpm run qa:lighthouse
 ```
 
 The local application listens on `http://localhost:3000`.
@@ -159,9 +162,10 @@ rejects HTTP image origins; local development may still use them.
 Route and root error boundaries expose neutral recovery copy, focus the error
 heading, report only a validated framework digest through the credentialless
 same-origin telemetry boundary, and support retry or a plain home navigation
-even when the router itself failed. Web Vitals report only the fixed metric
-name, rating, and rounded value; routes, users, sessions, and browser identity
-are excluded. Cookie-consent parsing
+even when the router itself failed. Web Vitals mount only after analytics
+consent and report only the fixed metric name, rating, and rounded value;
+routes, users, sessions, and browser identity are excluded. Cookie-consent
+parsing
 contains malformed percent encoding and rejects oversized values.
 
 The proxy also validates or creates `X-Request-Id` and W3C `traceparent`
@@ -201,6 +205,8 @@ pnpm run qa:lint
 pnpm run qa:storefront:coverage
 pnpm --filter remorseless-records-storefront run build
 pnpm --filter remorseless-records-storefront run test:e2e:critical
+pnpm run qa:storefront:launch
+QA_LIGHTHOUSE_RUNS=3 pnpm run qa:lighthouse
 ```
 
 `test:coverage` keeps the high-coverage application baseline and then runs a
@@ -217,8 +223,18 @@ The Storefront does not expose a customer account/authentication surface; do
 not count the database-reset starter-template account suite as application
 coverage.
 
+`qa:storefront:launch` runs 14 deterministic scenarios for legal/content,
+commerce, checkout disclosure and focus, confirmation/recovery, privacy,
+consent, 320-pixel reflow, reduced motion, complete axe review, runtime errors,
+ARIA, target size, and overflow. `qa:lighthouse` runs Home, Catalog, a typed
+Product, Cart, Checkout, and Privacy three times by default, enforces median
+Core Web Vital/category/resource budgets, and writes filesystem reports for
+private CI artifact retention. Keep the deterministic Medusa fixture running
+during the build and both browser gates.
+
 Responsive changes must also be verified with the Playwright device projects
-and a real browser screenshot as described in `tmp/STARTUP.md`.
+and a real graphical-desktop screenshot as described in
+[`docs/QA_RUNBOOK.md`](../docs/QA_RUNBOOK.md).
 
 ## Tax decision presentation
 

@@ -13,8 +13,8 @@ const checkboxVariants = cva(
   {
     variants: {
       size: {
-        default: "h-4 w-4",
-        compact: "h-3.5 w-3.5",
+        default: "h-6 w-6",
+        compact: "h-6 w-6",
       },
     },
     defaultVariants: {

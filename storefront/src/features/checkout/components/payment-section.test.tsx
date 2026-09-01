@@ -32,8 +32,20 @@ vi.mock("@/config/env.client", () => ({
   },
 }))
 
-vi.mock("@stripe/stripe-js", () => ({
+vi.mock("@stripe/stripe-js/pure", () => ({
   loadStripe: vi.fn(() => Promise.resolve({})),
+}))
+
+vi.mock("@/components/ui/smart-link", () => ({
+  default: ({
+    children,
+    href,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }))
 
 vi.mock("@stripe/react-stripe-js", async () => {
@@ -177,6 +189,13 @@ describe("PaymentSection", () => {
     const button = await screen.findByRole("button", {
       name: "Place order — $24.99",
     })
+    expect(button).toHaveAccessibleDescription(
+      expect.stringContaining("Submitting authorizes a $24.99 payment now.")
+    )
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute(
+      "href",
+      "/terms"
+    )
     const form = button.closest("form")
     if (!form) {
       throw new Error("Expected payment form")
@@ -343,6 +362,11 @@ describe("PaymentSection", () => {
     )
 
     const button = screen.getByRole("button", { name: "Place free order" })
+    expect(button).toHaveAccessibleDescription(
+      expect.stringContaining(
+        "Submitting places this order with $0.00 due now."
+      )
+    )
     fireEvent.click(button)
     fireEvent.click(button)
 

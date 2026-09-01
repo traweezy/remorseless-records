@@ -13,13 +13,13 @@ import {
 import { cn } from "@/lib/ui/cn"
 
 const filledButtonClasses =
-  "bg-destructive text-destructive-foreground shadow-[0_10px_30px_-20px_hsla(0,70%,50%,0.75)] [&:not([data-disabled=true]):hover]:bg-destructive/60 [&:not([data-disabled=true]):hover]:shadow-[0_16px_40px_-22px_hsla(0,70%,50%,0.85)]"
+  "bg-destructive text-destructive-foreground shadow-[0_10px_30px_-20px_hsla(0,70%,50%,0.75)] [&:not([data-disabled=true]):hover]:bg-destructive [&:not([data-disabled=true]):hover]:brightness-110 [&:not([data-disabled=true]):hover]:shadow-[0_16px_40px_-22px_hsla(0,70%,50%,0.85)]"
 
 const outlinedButtonClasses =
   "border border-destructive/70 bg-transparent text-destructive [&:not([data-disabled=true]):hover]:border-destructive [&:not([data-disabled=true]):hover]:bg-destructive/10 [&:not([data-disabled=true]):hover]:text-foreground"
 
 const buttonVariants = cva(
-  "inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold uppercase tracking-[0.16rem] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 ring-offset-background sm:tracking-[0.3rem] [&:not([data-disabled=true]):active]:translate-y-[1px]",
+  "inline-flex cursor-pointer select-none items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold uppercase tracking-[0.16rem] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:border-border data-[disabled=true]:bg-muted data-[disabled=true]:text-muted-foreground data-[disabled=true]:shadow-none ring-offset-background sm:tracking-[0.3rem] [&:not([data-disabled=true]):active]:translate-y-[1px]",
   {
     variants: {
       variant: {

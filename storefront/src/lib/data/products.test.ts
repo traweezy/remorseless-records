@@ -60,6 +60,47 @@ describe("products data layer", () => {
     )
   })
 
+  it("does not cache transient product read failures", async () => {
+    const handle = faker.helpers.slugify(faker.music.songName()).toLowerCase()
+    const regionId = faker.string.uuid()
+    const list = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("provider unavailable"))
+      .mockResolvedValueOnce({
+        products: [{ id: faker.string.uuid(), handle }],
+      })
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    vi.doMock("next/cache", () => ({
+      unstable_cache: (fn: (...args: never[]) => Promise<unknown>) => {
+        let hasCachedValue = false
+        let cachedValue: unknown
+        return async (...args: never[]) => {
+          if (hasCachedValue) {
+            return cachedValue
+          }
+          cachedValue = await fn(...args)
+          hasCachedValue = true
+          return cachedValue
+        }
+      },
+    }))
+    vi.doMock("@/lib/medusa/read-client", () => ({
+      fetchMedusaStoreRead: list,
+    }))
+    vi.doMock("@/lib/regions", () => ({
+      resolveRegionId: vi.fn().mockResolvedValue(regionId),
+    }))
+
+    const { getProductByHandle } = await import("@/lib/data/products")
+    await expect(getProductByHandle(handle)).resolves.toBeNull()
+    await expect(getProductByHandle(handle)).resolves.toMatchObject({ handle })
+    expect(list).toHaveBeenCalledTimes(2)
+    expect(errorSpy).toHaveBeenCalled()
+  })
+
   it("loads collection products across pages and filters empty handles", async () => {
     const validFirst = faker.helpers
       .slugify(faker.music.songName())

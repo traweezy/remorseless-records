@@ -46,13 +46,15 @@
     "qa:a11y": "node qa/run-pa11y.cjs",
     "qa:mobile": "node qa/run-mobile-audit.mjs",
     "qa:admin:accessibility": "node qa/run-admin-accessibility-matrix.mjs",
+    "qa:storefront:launch": "pnpm --filter remorseless-records-storefront run test:e2e:launch",
     "qa:lighthouse": "lhci autorun --config=./lighthouse/lhci.config.js",
     "qa:ci": "pnpm run qa:lint && pnpm run qa:mobile && pnpm run qa:a11y && pnpm run qa:lighthouse",
     "prepare": "if [ \"$CI\" = \"true\" ] || [ \"$NODE_ENV\" = \"production\" ]; then exit 0; fi; lefthook install"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.11",
+    "@axe-core/playwright": "4.13.0",
     "@axe-core/puppeteer": "4.12.1",
+    "@biomejs/biome": "2.5.11",
     "@lhci/cli": "0.15.1",
     "@railway/cli": "5.45.0",
     "esbuild": "^0.28.1",

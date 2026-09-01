@@ -1,11 +1,15 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useState } from "react"
 
-import CookiePreferencesEditor from "@/components/legal/cookie-preferences-editor"
 import { useCookieConsent } from "@/components/legal/cookie-consent-provider"
 import { Button } from "@/components/ui/button"
 import SmartLink from "@/components/ui/smart-link"
+
+const CookiePreferencesEditor = dynamic(
+  () => import("@/components/legal/cookie-preferences-editor")
+)
 
 const CookieConsentBanner = () => {
   const { isHydrated, hasStoredPreferences, acceptAll, rejectNonEssential } =

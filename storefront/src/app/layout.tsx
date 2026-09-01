@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Bebas_Neue, Inter, JetBrains_Mono, Teko } from "next/font/google"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { Suspense } from "react"
 
 import "@/styles/globals.css"
@@ -14,9 +14,13 @@ import JsonLd from "@/components/json-ld"
 import ZodStrictCspBootstrap from "@/components/zod-strict-csp-bootstrap"
 import CookieConsentBanner from "@/components/legal/cookie-consent-banner"
 import { CookieConsentProvider } from "@/components/legal/cookie-consent-provider"
-import WebVitalsReporter from "@/components/web-vitals-reporter"
+import ConsentAwareWebVitalsReporter from "@/components/consent-aware-web-vitals-reporter"
 import { siteMetadata } from "@/config/site"
 import { organizationJsonLd, webSiteJsonLd } from "@/lib/seo/structured-data"
+import {
+  COOKIE_PREFERENCES_COOKIE_NAME,
+  parseCookiePreferences,
+} from "@/lib/legal/cookie-consent"
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -121,7 +125,14 @@ type RootLayoutProps = {
 }
 
 const RootLayout = async ({ children }: RootLayoutProps) => {
-  const nonce = (await headers()).get("x-nonce") ?? undefined
+  const [requestHeaders, cookieStore] = await Promise.all([
+    headers(),
+    cookies(),
+  ])
+  const nonce = requestHeaders.get("x-nonce") ?? undefined
+  const initialCookiePreferences = parseCookiePreferences(
+    cookieStore.get(COOKIE_PREFERENCES_COOKIE_NAME)?.value
+  )
 
   return (
     <html
@@ -141,24 +152,33 @@ const RootLayout = async ({ children }: RootLayoutProps) => {
           "min-h-screen bg-background text-foreground antialiased overflow-x-hidden",
         ].join(" ")}
       >
-        <WebVitalsReporter />
         <QueryProvider>
           <CartProvider>
-            <CookieConsentProvider>
-              <Suspense fallback={null}>
-                <div className="relative flex min-h-screen flex-col bg-background">
+            <CookieConsentProvider
+              initialPreferences={initialCookiePreferences}
+            >
+              <ConsentAwareWebVitalsReporter />
+              <div className="relative flex min-h-screen flex-col bg-background">
+                <Suspense
+                  fallback={
+                    <div
+                      className="relative h-16 w-full shrink-0 border-b border-border/40 bg-background/80"
+                      aria-hidden="true"
+                    />
+                  }
+                >
                   <SiteHeader />
-                  <main
-                    id="main-content"
-                    tabIndex={-1}
-                    className="flex-1 min-h-0 flex flex-col"
-                  >
-                    {children}
-                  </main>
-                  <SiteFooter />
-                  <BackToTopButton />
-                </div>
-              </Suspense>
+                </Suspense>
+                <main
+                  id="main-content"
+                  tabIndex={-1}
+                  className="flex-1 min-h-0 flex flex-col"
+                >
+                  {children}
+                </main>
+                <SiteFooter />
+                <BackToTopButton />
+              </div>
               <CookieConsentBanner />
             </CookieConsentProvider>
           </CartProvider>

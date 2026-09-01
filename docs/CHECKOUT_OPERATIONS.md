@@ -63,6 +63,25 @@ If checkout says **Tax not collected**, verify the exact disabled tax-line code
 and mode metadata before treating the presentation as authoritative. Never
 infer disabled mode from a provider returning a legitimate zero rate.
 
+## Customer submission disclosure and deferred payment loading
+
+The paid and free checkout paths render the same disclosure immediately before
+their submit control. It states the exact amount that action will charge,
+current shipping and tax presentation (including controlled **Tax not
+collected**), the fulfillment processing window, and direct Terms, Privacy,
+Shipping, and Returns links. The submit button references the disclosure with
+accessible description semantics. Treat a missing, stale, duplicated, or
+non-associated disclosure as a release-blocking checkout defect.
+
+An empty or otherwise non-payable checkout must not load Stripe.js. The
+Payment Element imports Stripe's pure loader only when a prepared payable
+checkout requires it. Both the default and pure loader distributions are
+repository-patched to permit only the pinned Stripe script URLs through the
+`remorseless-stripe-js` Trusted Types policy, and the production bundle verifier
+checks the emitted loader chunk. If Stripe appears on an empty checkout, stop
+the release and inspect the payment-section boundary; do not make the script
+global to hide a timing issue.
+
 ## Fail-closed checkout data boundary
 
 Storefront payment preparation, checkout projection/revision, tax identity,

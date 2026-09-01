@@ -24,6 +24,13 @@ const schema = z
   .strict()
 
 const FORM_BACKEND_TIMEOUT_MS = 8_000
+const MAX_BACKEND_SUCCESS_BYTES = 4_096
+const backendSuccessSchema = z
+  .object({
+    ok: z.literal(true),
+    request_id: z.string().uuid(),
+  })
+  .strict()
 
 type PrivacyRequestPostDependencies = {
   backendBase: string
@@ -143,5 +150,37 @@ export const createPrivacyRequestPost =
       })
     }
 
-    return jsonApiResponse({ ok: true })
+    let responseBody: string
+    try {
+      responseBody = await response.text()
+    } catch {
+      responseBody = ""
+    }
+
+    if (responseBody.length > MAX_BACKEND_SUCCESS_BYTES) {
+      responseBody = ""
+    }
+
+    let parsedResponse: unknown = null
+    try {
+      parsedResponse = JSON.parse(responseBody)
+    } catch {
+      parsedResponse = null
+    }
+
+    const success = backendSuccessSchema.safeParse(parsedResponse)
+    if (!success.success) {
+      return jsonApiProblem({
+        request,
+        status: 502,
+        code: "privacy_request_upstream_invalid",
+        title: "Privacy request service returned an invalid response",
+        detail: "Unable to confirm privacy request submission right now.",
+      })
+    }
+
+    return jsonApiResponse({
+      ok: true,
+      requestId: success.data.request_id,
+    })
   }

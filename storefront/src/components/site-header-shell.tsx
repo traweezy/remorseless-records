@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { Menu, ShoppingCart } from "lucide-react"
 
 import CartDrawer from "@/components/cart-drawer"
+import { useCookieConsent } from "@/components/legal/cookie-consent-provider"
 import { Button } from "@/components/ui/button"
 import Drawer, { DrawerCloseButton } from "@/components/ui/drawer"
 import SmartLink from "@/components/ui/smart-link"
@@ -14,20 +15,6 @@ import { formatAmount } from "@/lib/money"
 import { useUIStore } from "@/lib/store/ui"
 import { cn } from "@/lib/ui/cn"
 import { useCart } from "@/providers/cart-provider"
-
-const deferEffectUpdate = (callback: () => void): (() => void) => {
-  let cancelled = false
-  const timeout = window.setTimeout(() => {
-    if (!cancelled) {
-      callback()
-    }
-  }, 0)
-
-  return () => {
-    cancelled = true
-    window.clearTimeout(timeout)
-  }
-}
 
 const NAV_LINKS = [
   { href: "/catalog", label: "Catalog" },
@@ -38,7 +25,6 @@ const NAV_LINKS = [
 
 const SiteHeaderShell = () => {
   const pathname = usePathname()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [isMenuOpen, setMenuOpen] = useState(false)
   const [scrollProgress, setScrollProgress] = useState(0)
@@ -47,6 +33,8 @@ const SiteHeaderShell = () => {
     setCartOpen: state.setCartOpen,
   }))
   const { cart, itemCount, refreshCart } = useCart()
+  const { hasStoredPreferences, isHydrated: isConsentHydrated } =
+    useCookieConsent()
 
   const prefetchCart = useCallback(() => {
     void refreshCart({ silent: true })
@@ -54,6 +42,25 @@ const SiteHeaderShell = () => {
   const openCart = useCallback(() => {
     setCartOpen(true)
   }, [setCartOpen])
+  const handleCartOpenChange = useCallback(
+    (open: boolean) => {
+      setCartOpen(open)
+      if (open || typeof window === "undefined") {
+        return
+      }
+      const url = new URL(window.location.href)
+      if (url.searchParams.get("cart") !== "1") {
+        return
+      }
+      url.searchParams.delete("cart")
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`
+      )
+    },
+    [setCartOpen]
+  )
   const openMenu = useCallback(() => {
     setMenuOpen(true)
   }, [])
@@ -131,20 +138,12 @@ const SiteHeaderShell = () => {
   useEffect(() => {
     if (typeof window === "undefined") return
     const shouldOpenCart = searchParams?.get("cart") === "1"
-    if (!shouldOpenCart) {
+    if (!shouldOpenCart || !isConsentHydrated || !hasStoredPreferences) {
       return
     }
 
-    const cleanup = deferEffectUpdate(() => setCartOpen(true))
-
-    if (shouldOpenCart) {
-      const url = new URL(window.location.href)
-      url.searchParams.delete("cart")
-      router.replace(`${url.pathname}${url.search}${url.hash}`)
-    }
-
-    return cleanup
-  }, [router, searchParams, setCartOpen])
+    setCartOpen(true)
+  }, [hasStoredPreferences, isConsentHydrated, searchParams, setCartOpen])
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg relative">
@@ -206,7 +205,7 @@ const SiteHeaderShell = () => {
             </span>
             {hasItems ? (
               <span
-                className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold leading-none text-white"
+                className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold leading-none text-destructive-foreground"
                 aria-hidden
               >
                 {itemCount > 99 ? "99+" : itemCount}
@@ -264,7 +263,7 @@ const SiteHeaderShell = () => {
                   className="inline-flex items-center justify-between rounded-full border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.22rem] text-muted-foreground transition hover:border-destructive hover:text-destructive sm:tracking-[0.3rem]"
                 >
                   <span>Cart</span>
-                  <span className="max-w-[9rem] truncate rounded-full bg-destructive px-3 py-1 text-xs text-white">
+                  <span className="max-w-[9rem] truncate rounded-full bg-destructive px-3 py-1 text-xs text-destructive-foreground">
                     {cartLabel}
                   </span>
                 </button>
@@ -286,7 +285,7 @@ const SiteHeaderShell = () => {
           }}
         />
       </div>
-      <CartDrawer open={isCartOpen} onOpenChange={setCartOpen} />
+      <CartDrawer open={isCartOpen} onOpenChange={handleCartOpenChange} />
     </header>
   )
 }

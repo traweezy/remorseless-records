@@ -1,34 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
-import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import BackToTopButton from "@/components/back-to-top-button"
 
-const motionPreferences = vi.hoisted(() => ({
-  reduced: false,
-}))
+const motionPreferences = { reduced: false }
 const scrollToMock = vi.fn()
-
-vi.mock("framer-motion", () => ({
-  AnimatePresence: ({ children }: { children: ReactNode }) => children,
-  motion: {
-    div: ({
-      children,
-      initial: _initial,
-      animate: _animate,
-      exit: _exit,
-      transition: _transition,
-      ...props
-    }: {
-      children: ReactNode
-      initial?: unknown
-      animate?: unknown
-      exit?: unknown
-      transition?: unknown
-    }) => <div {...props}>{children}</div>,
-  },
-  useReducedMotion: () => motionPreferences.reduced,
-}))
 
 const setViewport = ({
   scrollY,
@@ -59,6 +35,9 @@ describe("BackToTopButton", () => {
     setViewport({ scrollY: 0, scrollHeight: 2_000 })
     scrollToMock.mockReset()
     vi.stubGlobal("scrollTo", scrollToMock)
+    vi.stubGlobal("matchMedia", () => ({
+      matches: motionPreferences.reduced,
+    }))
   })
 
   afterEach(cleanup)

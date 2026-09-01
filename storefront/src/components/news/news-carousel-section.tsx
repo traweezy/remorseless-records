@@ -95,7 +95,8 @@ export const NewsCarouselSection = ({
             className="product-carousel__splide"
             aria-label={`${heading.leading} ${heading.highlight}`}
             options={{
-              type: "loop",
+              type: "slide",
+              rewind: true,
               pagination: false,
               drag: true,
               perPage: perPageByBreakpoint.default,

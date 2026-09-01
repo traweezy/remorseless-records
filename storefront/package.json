@@ -22,6 +22,7 @@
     "test:e2e": "playwright test",
     "test:e2e:critical": "playwright test --config=playwright.critical.config.ts",
     "test:e2e:cross-browser": "playwright test --config=playwright.cross-browser.config.ts",
+    "test:e2e:launch": "playwright test --config=playwright.launch.config.ts",
     "test:e2e:headed": "playwright test --headed",
     "analyze": "ANALYZE=true next build"
   },

@@ -15,6 +15,7 @@ type PrivacyPayload = {
 const traceId = "0123456789abcdef0123456789abcdef"
 const timestamp = 1_800_000_000
 const secret = ["privacy", "form", "unit", "test", "key"].join("-").repeat(2)
+const upstreamRequestId = "8f42db79-1539-47f2-a0d7-2bf0d620bc88"
 
 const createRequest = (payload: PrivacyPayload): Request =>
   new Request("https://storefront.test/api/privacy-request", {
@@ -62,7 +63,7 @@ describe("privacy request route", () => {
   it("forwards a body-bound, purpose-bound proof to Backend", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
-        JSON.stringify({ ok: true, request_id: crypto.randomUUID() }),
+        JSON.stringify({ ok: true, request_id: upstreamRequestId }),
         {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -74,7 +75,10 @@ describe("privacy request route", () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({ ok: true })
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      requestId: upstreamRequestId,
+    })
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     expect(fetchImpl.mock.calls[0]?.[0]).toEqual(
       new URL("https://backend.test/store/privacy-request")
@@ -138,6 +142,44 @@ describe("privacy request route", () => {
       status: 502,
     })
     expect(JSON.stringify(problem)).not.toContain(providerDetail)
+  })
+
+  it("rejects malformed Backend success responses without inventing a reference", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, request_id: "not-an-id" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    )
+
+    const response = await createHandler(fetchImpl)(
+      createRequest(validPayload())
+    )
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "privacy_request_upstream_invalid",
+      detail: "Unable to confirm privacy request submission right now.",
+      status: 502,
+    })
+  })
+
+  it("bounds oversized Backend success responses", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ value: "x".repeat(4_096) }))
+      )
+
+    const response = await createHandler(fetchImpl)(
+      createRequest(validPayload())
+    )
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "privacy_request_upstream_invalid",
+      status: 502,
+    })
   })
 
   it("distinguishes an upstream timeout without exposing its error", async () => {

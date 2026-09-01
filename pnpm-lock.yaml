@@ -90,13 +90,16 @@ patchedDependencies:
   '@railway/cli@5.45.0': e750da8ae428a1a70d636258993473c16eb9956825b4ac9eb3057807e19ebf75
   '@remix-run/router@1.23.3': cba02de04f5a5945f782a22652c0c6f20c7ad475ef713b567f9ad611c3dc4f60
   '@rokmohar/medusa-plugin-meilisearch@1.4.3': cf9d879ce3e7d0ef5b3d4cc4207d53a5629d93bdb141423df6d9c56f044cec1e
-  '@stripe/stripe-js@9.12.0': 8b908413183e74c2b9477d421416f45f54a50aee4981eb93845fca46e65ab120
+  '@stripe/stripe-js@9.12.0': 114bc55302bdb00b68090bf7915ab94c9f3cae89f69afe5453367948a14fc0cb
   react-router-dom@6.30.4: b68c27113138b12cb3983d1999ab34dcddcd39b2631b472795f2644c2b8c91af
 
 importers:
 
   .:
     devDependencies:
+      '@axe-core/playwright':
+        specifier: 4.13.0
+        version: 4.13.0(playwright-core@1.62.0)
       '@axe-core/puppeteer':
         specifier: 4.12.1
         version: 4.12.1(puppeteer@25.3.0(proxy-agent@8.0.2(supports-color@8.1.1))(supports-color@8.1.1)(yauzl@2.10.0))
@@ -391,10 +394,10 @@ importers:
         version: 0.5.3
       '@stripe/react-stripe-js':
         specifier: ^6.8.0
-        version: 6.8.0(@stripe/stripe-js@9.12.0(patch_hash=8b908413183e74c2b9477d421416f45f54a50aee4981eb93845fca46e65ab120))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 6.8.0(@stripe/stripe-js@9.12.0(patch_hash=114bc55302bdb00b68090bf7915ab94c9f3cae89f69afe5453367948a14fc0cb))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@stripe/stripe-js':
         specifier: ^9.12.0
-        version: 9.12.0(patch_hash=8b908413183e74c2b9477d421416f45f54a50aee4981eb93845fca46e65ab120)
+        version: 9.12.0(patch_hash=114bc55302bdb00b68090bf7915ab94c9f3cae89f69afe5453367948a14fc0cb)
       '@tanstack/pacer':
         specifier: ^0.21.1
         version: 0.21.1
@@ -762,6 +765,11 @@ packages:
   '@aws/lambda-invoke-store@0.3.0':
     resolution: {integrity: sha512-sl4Bm6yiMNYrZKkqqDFWN0UfnWhlS8ivKxrYl+6t0gCLrqr8y3B2IqZZbFRkfaVVp7C/baApyh71P+LeE1A2sQ==}
     engines: {node: '>=18.0.0'}
+
+  '@axe-core/playwright@4.13.0':
+    resolution: {integrity: sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@axe-core/puppeteer@4.12.1':
     resolution: {integrity: sha512-AO2UX/lYGDIaKL39uk0gIWOQLdzBvoGIsxGWwIW6ZQ2X5Tsb10xszJHGTL5V505I0HwHRuMOZsGC/dZwHMSY6A==}
@@ -5647,6 +5655,10 @@ packages:
     resolution: {integrity: sha512-s7iGf5GaVMxEG0ENN9x+xTr7GFZCb1ZP/1uATUpCEK2X78nDB3RwbtFCo9pGAf9ru+VwoQ464DkaLEeRM08wJA==}
     engines: {node: '>=4'}
 
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
+    engines: {node: '>=4'}
+
   axios-retry@3.9.1:
     resolution: {integrity: sha512-8PJDLJv7qTTMMwdnbMvrLYuvB47M81wRtxQmEdV5w4rgbTXTt+vtPkXwajOfOdSyv/wZICJOC+/UhXH4aQ/R+w==}
 
@@ -10189,6 +10201,11 @@ snapshots:
       tslib: 2.8.1
 
   '@aws/lambda-invoke-store@0.3.0': {}
+
+  '@axe-core/playwright@4.13.0(playwright-core@1.62.0)':
+    dependencies:
+      axe-core: 4.13.0
+      playwright-core: 1.62.0
 
   '@axe-core/puppeteer@4.12.1(puppeteer@25.3.0(proxy-agent@8.0.2(supports-color@8.1.1))(supports-color@8.1.1)(yauzl@2.10.0))':
     dependencies:
@@ -14762,14 +14779,14 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@stripe/react-stripe-js@6.8.0(@stripe/stripe-js@9.12.0(patch_hash=8b908413183e74c2b9477d421416f45f54a50aee4981eb93845fca46e65ab120))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@stripe/react-stripe-js@6.8.0(@stripe/stripe-js@9.12.0(patch_hash=114bc55302bdb00b68090bf7915ab94c9f3cae89f69afe5453367948a14fc0cb))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@stripe/stripe-js': 9.12.0(patch_hash=8b908413183e74c2b9477d421416f45f54a50aee4981eb93845fca46e65ab120)
+      '@stripe/stripe-js': 9.12.0(patch_hash=114bc55302bdb00b68090bf7915ab94c9f3cae89f69afe5453367948a14fc0cb)
       prop-types: 15.8.1
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  '@stripe/stripe-js@9.12.0(patch_hash=8b908413183e74c2b9477d421416f45f54a50aee4981eb93845fca46e65ab120)': {}
+  '@stripe/stripe-js@9.12.0(patch_hash=114bc55302bdb00b68090bf7915ab94c9f3cae89f69afe5453367948a14fc0cb)': {}
 
   '@swc/core-darwin-arm64@1.15.46':
     optional: true
@@ -15614,6 +15631,8 @@ snapshots:
   axe-core@4.11.4: {}
 
   axe-core@4.12.1: {}
+
+  axe-core@4.13.0: {}
 
   axios-retry@3.9.1:
     dependencies:

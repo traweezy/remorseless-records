@@ -99,6 +99,9 @@ Cookie controls are managed at `/cookies` and via first-visit banner:
   - Reject non-essential
   - Save granular preferences
 - Consent is persisted in cookie + local storage with timestamp metadata.
+- Browser Web Vitals and Bandcamp embeds remain disabled until their respective
+  analytics or marketing preference is granted. Rejecting or revoking consent
+  prevents those optional paths from loading on the next render/navigation.
 
 ---
 
@@ -119,9 +122,10 @@ Apply retention rules from policy and counsel guidance; update policy text if re
 ## 6. Launch Gate Checklist
 
 - [ ] All legal page copy approved by counsel/client.
-- [ ] Checkout disclosures verified before payment action.
-- [ ] Cookie default behavior validated (necessary only before consent).
-- [ ] Privacy request submissions verified end-to-end.
+- [x] Checkout disclosures verified before paid and free payment action.
+- [x] Cookie default behavior validated (necessary only before consent).
+- [x] Privacy request submission and opaque-reference propagation verified
+      end-to-end through deterministic local browser acceptance.
 - [ ] Shipping delay and refund operational playbooks trained with support staff.
 - [ ] Contact methods monitored and staffed.
 
@@ -129,30 +133,36 @@ Apply retention rules from policy and counsel guidance; update policy text if re
 
 ## 7. Current Local Acceptance Handoff (August 31, 2026)
 
-No legal/launch implementation was changed during the final audit session.
-The next local slice must close these testable gaps before requesting counsel
-or client sign-off:
+The locally testable implementation is complete:
 
-1. Put the exact amount and policy/fulfillment disclosure immediately before
-   every paid or free order submit control and bind it with accessible
-   description semantics.
-2. Gate optional Web Vitals telemetry on analytics consent, then use a fresh
-   browser profile to prove that no optional cookie, storage entry, external
-   request, or Bandcamp frame operates before consent. Exercise accept,
-   reject, granular selection, persistence, and later revocation.
-3. Return the Backend privacy request's opaque request ID through the
-   Storefront and present it in a focused, announced success state. Exercise
-   validation, redacted failure/retry, signed Storefront-to-Backend delivery,
-   and the monitored mailbox procedure without putting customer data in test
-   reports or screenshots.
-4. Run one deterministic launch matrix across commerce, recovery, content,
-   privacy, and cookie states for keyboard order, visible/unobscured focus,
-   error summaries, screen-reader semantics, WCAG 2.2 AA contrast and
-   24-pixel targets, 320-pixel reflow, reduced motion, and runtime errors.
-5. Run repeated production-like Lighthouse checks with explicit Core Web
-   Vital and resource budgets, and inspect real graphical-desktop screenshots
-   for every representative customer journey.
+1. Paid and free order controls have an accessible immediately preceding
+   disclosure with the exact charge, tax/shipping state, processing window,
+   and Terms, Privacy, Shipping, and Returns links.
+2. Optional Web Vitals require analytics consent, optional Bandcamp content
+   requires marketing consent, and a fresh-context browser journey proves
+   accept, reject, customize, persistence, and revocation without optional
+   pre-consent storage or third-party requests.
+3. The Storefront strictly decodes the Backend privacy response, preserves the
+   bounded opaque request ID, announces it without PII, focuses actionable
+   validation errors, and keeps provider failures neutral and retryable.
+4. Fourteen deterministic launch scenarios cover commerce, confirmation,
+   recovery, privacy, cookies, legal/content, 320-pixel reflow, reduced motion,
+   keyboard focus, axe complete/manual-review results, ARIA, target size,
+   overflow, console/runtime errors, and failed responses.
+5. Lighthouse runs three samples per route across Home, Catalog, one typed
+   Product, Cart, Checkout, and Privacy. It enforces median performance,
+   accessibility, best-practice, SEO where indexable, FCP, LCP, TBT, CLS,
+   bytes, scripts, and request-count budgets and retains private artifacts.
 
-Qualified counsel must still approve policy wording, jurisdiction scope,
-retention, consumer-request deadlines, and operating procedures. Automated
-acceptance proves implementation behavior; it does not provide legal approval.
+Local evidence includes 14/14 launch journeys, 21/21 Chromium/Firefox/WebKit
+critical journeys, 34/34 Pixel 7 and compact-phone public-route audits, the
+production build and client-bundle verifier, and inspected automated plus real
+graphical-desktop screenshots. See `docs/QA_RUNBOOK.md` for commands and
+artifact locations.
+
+The monitored privacy/support mailbox, operator response rehearsal, staff
+training, and the remaining real graphical-desktop customer-journey captures
+are still open. Qualified counsel must approve policy wording, jurisdiction
+scope, retention, consumer-request deadlines, and operating procedures.
+Automated acceptance proves implementation behavior; it does not provide legal
+approval.

@@ -254,7 +254,7 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
             >
               <Card
                 variant="panel"
-                className="space-y-4 bg-surface/95 p-4 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)] sm:p-6"
+                className="space-y-4 bg-surface p-4 shadow-[0_32px_60px_-40px_rgba(0,0,0,0.8)] sm:p-6"
               >
                 <div className="space-y-2">
                   <h1 className="break-words font-display text-3xl uppercase tracking-[0.12rem] text-foreground sm:text-5xl sm:tracking-[0.3rem]">
@@ -319,7 +319,7 @@ export const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                       key={`track-${index}`}
                       className="flex items-baseline gap-3"
                     >
-                      <span className="text-xs font-mono uppercase tracking-[0.35rem] text-muted-foreground/70">
+                      <span className="text-xs font-mono uppercase tracking-[0.35rem] text-muted-foreground">
                         {(index + 1).toString().padStart(2, "0")}
                       </span>
                       <span>{entry}</span>

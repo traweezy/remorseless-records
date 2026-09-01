@@ -40,6 +40,94 @@ index 6cc871879991ec49b69e08a93ecef06ae77dc8f1..12843cad35b9341a5ef380da2de2630a
    var headOrBody = document.head || document.body;
  
    if (!headOrBody) {
+diff --git a/dist/pure.js b/dist/pure.js
+index 7a793a9..6915707 100644
+--- a/dist/pure.js
++++ b/dist/pure.js
+@@ -37,6 +37,30 @@ var isStripeJSURL = function isStripeJSURL(url) {
+   return V3_URL_REGEX.test(url) || STRIPE_JS_URL_REGEX.test(url);
+ };
+ 
++var stripeTrustedTypesPolicy = null;
++
++var createStripeScriptURL = function createStripeScriptURL(url) {
++  var trustedTypesFactory = window.trustedTypes;
++
++  if (!trustedTypesFactory) {
++    return url;
++  }
++
++  if (!stripeTrustedTypesPolicy) {
++    stripeTrustedTypesPolicy = trustedTypesFactory.createPolicy('remorseless-stripe-js', {
++      createScriptURL: function createScriptURL(candidate) {
++        if (candidate !== STRIPE_JS_URL && candidate !== STRIPE_JS_URL + '?advancedFraudSignals=false') {
++          throw new TypeError('Stripe.js URL is not trusted');
++        }
++
++        return candidate;
++      }
++    });
++  }
++
++  return stripeTrustedTypesPolicy.createScriptURL(url);
++};
++
+ var findScript = function findScript() {
+   var scripts = document.querySelectorAll("script[src^=\"".concat(ORIGIN, "\"]"));
+ 
+@@ -52,7 +76,7 @@ var findScript = function findScript() {
+ var injectScript = function injectScript(params) {
+   var queryString = params && !params.advancedFraudSignals ? '?advancedFraudSignals=false' : '';
+   var script = document.createElement('script');
+-  script.src = "".concat(STRIPE_JS_URL).concat(queryString);
++  script.src = createStripeScriptURL("".concat(STRIPE_JS_URL).concat(queryString));
+   var headOrBody = document.head || document.body;
+ 
+   if (!headOrBody) {
+diff --git a/dist/pure.mjs b/dist/pure.mjs
+index 1e49238..1184398 100644
+--- a/dist/pure.mjs
++++ b/dist/pure.mjs
+@@ -33,6 +33,30 @@ var isStripeJSURL = function isStripeJSURL(url) {
+   return V3_URL_REGEX.test(url) || STRIPE_JS_URL_REGEX.test(url);
+ };
+ 
++var stripeTrustedTypesPolicy = null;
++
++var createStripeScriptURL = function createStripeScriptURL(url) {
++  var trustedTypesFactory = window.trustedTypes;
++
++  if (!trustedTypesFactory) {
++    return url;
++  }
++
++  if (!stripeTrustedTypesPolicy) {
++    stripeTrustedTypesPolicy = trustedTypesFactory.createPolicy('remorseless-stripe-js', {
++      createScriptURL: function createScriptURL(candidate) {
++        if (candidate !== STRIPE_JS_URL && candidate !== STRIPE_JS_URL + '?advancedFraudSignals=false') {
++          throw new TypeError('Stripe.js URL is not trusted');
++        }
++
++        return candidate;
++      }
++    });
++  }
++
++  return stripeTrustedTypesPolicy.createScriptURL(url);
++};
++
+ var findScript = function findScript() {
+   var scripts = document.querySelectorAll("script[src^=\"".concat(ORIGIN, "\"]"));
+ 
+@@ -48,7 +72,7 @@ var findScript = function findScript() {
+ var injectScript = function injectScript(params) {
+   var queryString = params && !params.advancedFraudSignals ? '?advancedFraudSignals=false' : '';
+   var script = document.createElement('script');
+-  script.src = "".concat(STRIPE_JS_URL).concat(queryString);
++  script.src = createStripeScriptURL("".concat(STRIPE_JS_URL).concat(queryString));
+   var headOrBody = document.head || document.body;
+ 
+   if (!headOrBody) {
 diff --git a/dist/index.mjs b/dist/index.mjs
 index 12d96d860179158021dad63275f0151152fc5818..7561fb566d0641e4f576a2558a05ce1cb3adb167 100644
 --- a/dist/index.mjs

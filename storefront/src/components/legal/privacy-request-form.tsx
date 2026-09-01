@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 
@@ -36,6 +36,29 @@ const privacyRequestSchema = z
 
 type PrivacyRequestValues = z.infer<typeof privacyRequestSchema>
 
+const privacyRequestResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    requestId: z.string().uuid(),
+  })
+  .strict()
+
+type PrivacyRequestField = keyof PrivacyRequestValues
+type ValidationIssue = {
+  field: PrivacyRequestField
+  label: string
+  message: string
+}
+
+const fieldLabels: Record<PrivacyRequestField, string> = {
+  name: "Name",
+  email: "Email",
+  requestType: "Request type",
+  details: "Details",
+  orderId: "Order ID",
+  honeypot: "Website",
+}
+
 const defaultValues: PrivacyRequestValues = {
   name: "",
   email: "",
@@ -45,32 +68,87 @@ const defaultValues: PrivacyRequestValues = {
   honeypot: "",
 }
 
+const requestTypeOptions: [
+  PillDropdownOption<PrivacyRequestValues["requestType"]>,
+  ...Array<PillDropdownOption<PrivacyRequestValues["requestType"]>>,
+] = [
+  { value: "access", label: "Access data" },
+  { value: "delete", label: "Delete data" },
+  { value: "correct", label: "Correct data" },
+  { value: "optout", label: "Opt-out request" },
+  { value: "other", label: "Other" },
+]
+
+const validationIssuesFor = (
+  values: PrivacyRequestValues
+): ValidationIssue[] => {
+  const parsed = privacyRequestSchema.safeParse(values)
+  if (parsed.success) {
+    return []
+  }
+
+  const seen = new Set<PrivacyRequestField>()
+  return parsed.error.issues.flatMap((issue) => {
+    const field = issue.path[0]
+    if (typeof field !== "string" || !(field in fieldLabels)) {
+      return []
+    }
+    const typedField = field as PrivacyRequestField
+    if (typedField === "honeypot" || seen.has(typedField)) {
+      return []
+    }
+    seen.add(typedField)
+    return [
+      {
+        field: typedField,
+        label: fieldLabels[typedField],
+        message: issue.message,
+      },
+    ]
+  })
+}
+
+const fieldErrorMessage = (error: unknown): string | undefined => {
+  if (typeof error === "string") {
+    return error
+  }
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message
+  }
+  return undefined
+}
+
 const PrivacyRequestForm = () => {
   const [status, setStatus] = useState<
-    "idle" | "submitting" | "success" | "error"
+    "idle" | "validation" | "submitting" | "success" | "error"
   >("idle")
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  const requestTypeOptions: [
-    PillDropdownOption<PrivacyRequestValues["requestType"]>,
-    ...Array<PillDropdownOption<PrivacyRequestValues["requestType"]>>,
-  ] = [
-    { value: "access", label: "Access data" },
-    { value: "delete", label: "Delete data" },
-    { value: "correct", label: "Correct data" },
-    { value: "optout", label: "Opt-out request" },
-    { value: "other", label: "Other" },
-  ]
+  const [requestId, setRequestId] = useState<string | null>(null)
+  const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>(
+    []
+  )
+  const resultRef = useRef<HTMLDivElement>(null)
 
   const form = useForm({
     defaultValues,
+    validators: { onSubmit: privacyRequestSchema },
+    onSubmitInvalid: ({ value }) => {
+      setRequestId(null)
+      setValidationIssues(validationIssuesFor(value))
+      setStatus("validation")
+    },
     onSubmit: async ({ value }) => {
       if (value.honeypot && value.honeypot.trim().length) {
         return
       }
 
       setStatus("submitting")
-      setErrorMessage(null)
+      setRequestId(null)
+      setValidationIssues([])
 
       try {
         const response = await fetch("/api/privacy-request", {
@@ -79,28 +157,42 @@ const PrivacyRequestForm = () => {
           body: JSON.stringify(value),
         })
 
+        const payload: unknown = await response.json().catch(() => null)
         if (!response.ok) {
-          const payload = (await response.json().catch(() => ({}))) as {
-            message?: string
-            error?: string
-          }
-          throw new Error(
-            payload.message ?? payload.error ?? "Unable to submit request"
-          )
+          throw new Error("Unable to submit request")
         }
 
+        const parsedResponse = privacyRequestResponseSchema.safeParse(payload)
+        if (!parsedResponse.success) {
+          throw new Error("Unable to confirm request submission")
+        }
+
+        setRequestId(parsedResponse.data.requestId)
         setStatus("success")
         form.reset()
-      } catch (error) {
+      } catch {
         setStatus("error")
-        setErrorMessage(
-          error instanceof Error ? error.message : "Unable to submit request"
-        )
       }
     },
   })
 
   const disabled = useMemo(() => status === "submitting", [status])
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>): void => {
+      event.preventDefault()
+      void form.handleSubmit()
+    },
+    [form]
+  )
+  const focusField = useCallback((field: PrivacyRequestField): void => {
+    document.getElementById(field)?.focus()
+  }, [])
+
+  useEffect(() => {
+    if (["validation", "success", "error"].includes(status)) {
+      resultRef.current?.focus({ preventScroll: false })
+    }
+  }, [status])
 
   return (
     <Card
@@ -108,10 +200,7 @@ const PrivacyRequestForm = () => {
       variant="panel"
       className="space-y-4 p-6"
       noValidate
-      onSubmit={(event) => {
-        event.preventDefault()
-        void form.handleSubmit()
-      }}
+      onSubmit={handleSubmit}
     >
       <HoneypotField
         value={form.state.values.honeypot ?? ""}
@@ -129,7 +218,7 @@ const PrivacyRequestForm = () => {
           }}
         >
           {(field) => {
-            const error = field.state.meta.errors[0]
+            const error = fieldErrorMessage(field.state.meta.errors[0])
             const errorId = `${field.name}-error`
             return (
               <Field>
@@ -158,7 +247,7 @@ const PrivacyRequestForm = () => {
           }}
         >
           {(field) => {
-            const error = field.state.meta.errors[0]
+            const error = fieldErrorMessage(field.state.meta.errors[0])
             const errorId = `${field.name}-error`
             return (
               <Field>
@@ -189,7 +278,7 @@ const PrivacyRequestForm = () => {
         }}
       >
         {(field) => {
-          const error = field.state.meta.errors[0]
+          const error = fieldErrorMessage(field.state.meta.errors[0])
           const errorId = `${field.name}-error`
           return (
             <Field>
@@ -235,7 +324,7 @@ const PrivacyRequestForm = () => {
         }}
       >
         {(field) => {
-          const error = field.state.meta.errors[0]
+          const error = fieldErrorMessage(field.state.meta.errors[0])
           const errorId = `${field.name}-error`
           return (
             <Field>
@@ -266,19 +355,66 @@ const PrivacyRequestForm = () => {
         >
           {status === "submitting" ? "Submitting..." : "Submit privacy request"}
         </Button>
-        {status === "success" ? (
-          <span className="text-sm text-foreground">
-            Request submitted. We respond from {siteMetadata.contact.email}{" "}
-            within 5 business days.
-          </span>
-        ) : null}
-        {status === "error" && errorMessage ? (
-          <span className="text-sm text-destructive">
-            Something went wrong. Please try again or email{" "}
-            {siteMetadata.contact.email}.
-          </span>
-        ) : null}
       </div>
+
+      {status === "validation" ? (
+        <div
+          ref={resultRef}
+          role="alert"
+          aria-labelledby="privacy-validation-title"
+          tabIndex={-1}
+          className="space-y-2 rounded-2xl border border-destructive/60 bg-background p-4 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <h3 id="privacy-validation-title" className="font-semibold">
+            Check your privacy request
+          </h3>
+          <ul className="space-y-1">
+            {validationIssues.map((issue) => (
+              <li key={issue.field}>
+                <button
+                  type="button"
+                  className="inline-flex min-h-6 items-center text-left text-foreground decoration-destructive underline underline-offset-4"
+                  onClick={() => focusField(issue.field)}
+                >
+                  {issue.label}: {issue.message}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {status === "success" && requestId ? (
+        <div
+          ref={resultRef}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          tabIndex={-1}
+          className="rounded-2xl border border-border/60 bg-background/70 p-4 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Request submitted. Reference ID: <strong>{requestId}</strong>. We
+          respond from {siteMetadata.contact.email} within 5 business days.
+        </div>
+      ) : null}
+
+      {status === "error" ? (
+        <div
+          ref={resultRef}
+          role="alert"
+          aria-labelledby="privacy-submit-error-title"
+          tabIndex={-1}
+          className="rounded-2xl border border-destructive/60 bg-background p-4 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <h3 id="privacy-submit-error-title" className="font-semibold">
+            Request was not submitted
+          </h3>
+          <p>
+            Try again without changing the request, or email{" "}
+            {siteMetadata.contact.email}. No reference ID was issued.
+          </p>
+        </div>
+      ) : null}
     </Card>
   )
 }

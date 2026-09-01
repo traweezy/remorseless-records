@@ -35,6 +35,7 @@ const CookieConsentContext = createContext<CookieConsentContextValue | null>(
 
 type CookieConsentProviderProps = {
   children: ReactNode
+  initialPreferences: CookiePreferences | null
 }
 
 type CookieConsentSnapshot = {
@@ -125,11 +126,20 @@ const subscribeToCookieConsent = (onStoreChange: () => void): (() => void) => {
 
 export const CookieConsentProvider = ({
   children,
+  initialPreferences,
 }: CookieConsentProviderProps) => {
+  const serverSnapshot = useMemo<CookieConsentSnapshot>(
+    () => ({
+      isHydrated: true,
+      hasStoredPreferences: Boolean(initialPreferences),
+      preferences: initialPreferences ?? getDefaultCookiePreferences(),
+    }),
+    [initialPreferences]
+  )
   const snapshot = useSyncExternalStore(
     subscribeToCookieConsent,
     getSnapshot,
-    () => SERVER_SNAPSHOT
+    () => serverSnapshot
   )
 
   const persistPreferences = useCallback((next: CookiePreferences) => {
