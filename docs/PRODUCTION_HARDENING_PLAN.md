@@ -2895,7 +2895,7 @@ floating support images, and the exact production cost/domain approval packet.
 - [x] Raise Redis client branch/function coverage from the current low level.
 - [x] Add Backend coverage enforcement of at least 80% for core and critical
       paths.
-- [ ] Add disposable PostgreSQL/Redis integration, migration, API-contract,
+- [x] Add disposable PostgreSQL/Redis integration, migration, API-contract,
       payment failure/retry, and queue recovery tests.
 - [x] Replace ESLint and Prettier with one pinned root Biome policy for linting
       and formatting in local hooks, package scripts, and CI.
@@ -2925,6 +2925,34 @@ floating support images, and the exact production cost/domain approval packet.
       all three otherwise-successful workflows.
 - [ ] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
       Stripe, AWS SDK, and other outdated dependency families.
+
+Disposable integration closure on 2026-09-01 adds a release-blocking Backend
+CI job backed by official PostgreSQL 18.6 and Redis 8.10.1 images pinned to
+tested versions and immutable multi-platform digests. The Backend build now
+depends on both unit and integration jobs. A repository boundary verifier
+prevents drift in the image pins, test objectives, CI dependency, root command,
+loopback bindings, and cleanup behavior.
+
+The local orchestrator uses only a named disposable Compose project, binds its
+ports to loopback, injects non-production credentials with payment providers
+disabled, and always removes containers, network, and ephemeral volumes. It
+also handles interrupts so partial startup cannot silently leave services
+running. The real Medusa runner applies every core and custom migration, boots
+the application, proves `/live`, `/ready`, and `/api/health`, verifies the
+audited tax-off safe default, persists and retries an idempotent payment
+failure, serializes distributed locks, and proves lock release/reacquisition.
+
+Exact local acceptance passed all 4 real-infrastructure tests, 5 focused
+payment and queue suites / 41 tests, and 3 generated API-contract tests in one
+run. Compose health checks passed and the final project inventory was empty.
+No shared, staging, or production database, Redis service, provider, payment,
+or queue was read or mutated.
+
+Complete local section acceptance also passed the 1,265-file repository
+Biome, policy, format, and strict TypeScript gate; all 273 Backend suites /
+2,064 tests at 91.61% statements, 85.31% branches, 95.78% functions, and
+91.61% lines; and the production Backend/Admin build with its frozen
+1,085-package server install.
 
 Quality-depth closure on 2026-08-30 preserves the original Storefront coverage
 baseline while adding a separate transactional suite for cart, checkout, BFF

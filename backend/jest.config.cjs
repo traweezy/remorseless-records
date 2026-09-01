@@ -16,7 +16,12 @@ module.exports = {
     },
   },
   testEnvironment: "node",
-  testPathIgnorePatterns: ["/node_modules/", "/.medusa/", "/dist/"],
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/.medusa/",
+    "/dist/",
+    "/integration-tests/",
+  ],
   modulePathIgnorePatterns: ["<rootDir>/.medusa/", "<rootDir>/dist/"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",

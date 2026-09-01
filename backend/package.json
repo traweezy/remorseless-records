@@ -44,6 +44,7 @@
     "money:migrate-major": "ts-node --swc ./src/cli/migrate-monetary-units.ts",
     "test": "jest --runInBand --passWithNoTests",
     "test:coverage": "jest --runInBand --passWithNoTests --coverage",
+    "test:integration": "tsc --project tsconfig.integration.json --noEmit && node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.integration.config.cjs --runInBand --forceExit && REDIS_URL= jest --runInBand src/modules/payment-lifecycle/service.test.ts src/lib/payment-lifecycle/process-stripe-event.test.ts src/api/webhooks/stripe/lifecycle/route.test.ts src/jobs/reconcile-stripe-lifecycle-events.test.ts src/jobs/reconcile-checkout-payments.test.ts",
     "lint": "pnpm --dir .. exec biome check --error-on-warnings backend/src"
   },
   "dependencies": {

@@ -151,7 +151,39 @@ pnpm run qa:browser-toolchain-security
 pnpm run qa:storefront-provider-fixture
 ```
 
-### 1.5 Admin accessibility and visual matrix
+### 1.5 Disposable PostgreSQL and Redis integration
+
+Run the application boundary against fresh, local-only services:
+
+```bash
+pnpm run qa:disposable-integration
+```
+
+The orchestrator starts PostgreSQL 18.6 and Redis 8.10.1 from version- and
+digest-pinned official images. Host ports bind only to loopback and default to
+`55432` and `56379`; set `RR_INTEGRATION_POSTGRES_PORT` and
+`RR_INTEGRATION_REDIS_PORT` to distinct non-privileged ports when those values
+are occupied. The command supplies disposable credentials and blank payment
+provider secrets itself. Never redirect it to a shared, staging, or production
+service.
+
+The gate applies the complete Medusa and custom migration chain, boots the real
+API, verifies liveness/readiness/dependency health, proves tax collection still
+defaults off, exercises persisted payment idempotency/failure/retry behavior,
+and verifies Redis lock serialization and recovery. It then runs the focused
+payment/queue regression suites and checks the generated API contract. The
+Backend CI build depends on the equivalent service-container job.
+
+Success or failure tears down the named Compose project, its network, and its
+ephemeral volumes. An interrupt is trapped so partial startup is cleaned too.
+After an interrupted host session, confirm no residue remains with:
+
+```bash
+docker compose --project-name remorseless-records-integration \
+  --file compose.integration.yml ps --all
+```
+
+### 1.6 Admin accessibility and visual matrix
 
 Build the actual Medusa Admin bundle before running its browser acceptance:
 
@@ -196,7 +228,7 @@ real desktop screenshot. The acceptance fixture is for rendering and
 accessibility only. It is not staging health evidence and must never be changed
 to issue writes.
 
-### 1.6 Critical browser matrix
+### 1.7 Critical browser matrix
 
 Pre-deploy Browser Smoke must use the loopback-only deterministic Medusa
 fixture in `storefront/scripts/ci-medusa-fixture.mjs`. The fixture exposes only
@@ -242,7 +274,7 @@ still exercise the live authenticated Product-handle and catalog-shelf
 projections. A local fixture pass is never evidence that the deployed provider
 is healthy.
 
-### 1.7 Storefront launch acceptance
+### 1.8 Storefront launch acceptance
 
 Run the deterministic launch matrix after the production build:
 
@@ -275,7 +307,7 @@ Checkout 0.83, and Privacy 0.84. The isolated local browser host required the
 documented no-sandbox escape hatch because user namespaces were unavailable;
 GitHub-hosted release jobs continue to use their normal sandbox.
 
-### 1.8 Trusted Types report-only acceptance
+### 1.9 Trusted Types report-only acceptance
 
 The Storefront sends `Content-Security-Policy-Report-Only` on document
 responses with `require-trusted-types-for 'script'` and advertises the
