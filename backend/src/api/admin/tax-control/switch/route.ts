@@ -79,10 +79,10 @@ export const POST = async (
           parsed.data.targetProvider === "stripe_tax"
             ? await resolveStripeTaxReadiness({ logger })
             : resolveTaxRateIoReadiness(remaining)
-        if (!readiness.ready) {
+        if (!readiness.configured || !readiness.ready) {
           throw new MedusaError(
             MedusaError.Types.INVALID_DATA,
-            `${parsed.data.targetProvider} is not ready: ${readiness.message}`
+            `${parsed.data.targetProvider} is not available: ${readiness.message}`
           )
         }
       }

@@ -39,6 +39,10 @@ export type ResolveStripeTaxReadinessOptions = {
   timeoutMs?: number
 }
 
+export type ResolveTaxRateIoReadinessOptions = {
+  apiKey?: string
+}
+
 const STRIPE_TAX_READINESS_TIMEOUT_MS = 8_000
 
 const check = (
@@ -49,9 +53,10 @@ const check = (
 ): ReadinessCheck => ({ detail, id, label, ready })
 
 export const resolveTaxRateIoReadiness = (
-  remaining: number | null
+  remaining: number | null,
+  { apiKey = TAX_RATE_LOOKUP_API_KEY }: ResolveTaxRateIoReadinessOptions = {}
 ): ProviderReadiness => {
-  const configured = Boolean(TAX_RATE_LOOKUP_API_KEY.trim())
+  const configured = Boolean(apiKey.trim())
   const quotaAvailable = remaining === null || remaining > 0
   const checks = [
     check(

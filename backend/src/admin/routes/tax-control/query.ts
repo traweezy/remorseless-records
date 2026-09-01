@@ -136,12 +136,32 @@ const readinessCheckSchema: z.ZodType<ReadinessCheck> = z.object({
   ready: z.boolean(),
 })
 
-const providerReadinessSchema = z.object({
+const providerReadinessShape = {
   checks: z.array(readinessCheckSchema),
   configured: z.boolean(),
   message: nonEmptyTextSchema,
   ready: z.boolean(),
-})
+} as const
+
+const enforceProviderReadiness = (
+  readiness: ProviderReadiness,
+  context: z.RefinementCtx
+): void => {
+  if (readiness.ready && !readiness.configured) {
+    context.addIssue({
+      code: "custom",
+      message: "An unconfigured tax provider cannot be ready.",
+      path: ["ready"],
+    })
+  }
+  if (readiness.ready && readiness.checks.some((check) => !check.ready)) {
+    context.addIssue({
+      code: "custom",
+      message: "A ready tax provider cannot contain a failed check.",
+      path: ["checks"],
+    })
+  }
+}
 
 export const taxControlSnapshotSchema: z.ZodType<TaxControlSnapshot> = z.object(
   {
@@ -216,24 +236,30 @@ export const taxControlSnapshotSchema: z.ZodType<TaxControlSnapshot> = z.object(
       preparedCheckouts: nonnegativeIntegerSchema,
     }),
     providers: z.object({
-      stripeTax: providerReadinessSchema.extend({
-        accountMode: z.enum(["live", "sandbox", "unknown"]),
-        activeRegistrationCount: nonnegativeIntegerSchema,
-        missingFields: z.array(nonEmptyTextSchema),
-      }),
-      taxRateIo: providerReadinessSchema.extend({
-        manualRefreshConfigured: z.boolean(),
-        quota: z
-          .object({
-            observedAt: nullableTextSchema,
-            quota: nonnegativeIntegerSchema,
-            remaining: nonnegativeIntegerSchema,
-            source: nonEmptyTextSchema,
-            usage: nonnegativeIntegerSchema,
-            usagePercent: z.number().nonnegative(),
-          })
-          .nullable(),
-      }),
+      stripeTax: z
+        .object({
+          ...providerReadinessShape,
+          accountMode: z.enum(["live", "sandbox", "unknown"]),
+          activeRegistrationCount: nonnegativeIntegerSchema,
+          missingFields: z.array(nonEmptyTextSchema),
+        })
+        .superRefine(enforceProviderReadiness),
+      taxRateIo: z
+        .object({
+          ...providerReadinessShape,
+          manualRefreshConfigured: z.boolean(),
+          quota: z
+            .object({
+              observedAt: nullableTextSchema,
+              quota: nonnegativeIntegerSchema,
+              remaining: nonnegativeIntegerSchema,
+              source: nonEmptyTextSchema,
+              usage: nonnegativeIntegerSchema,
+              usagePercent: z.number().nonnegative(),
+            })
+            .nullable(),
+        })
+        .superRefine(enforceProviderReadiness),
     }),
   }
 )

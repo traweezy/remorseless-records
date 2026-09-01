@@ -12,6 +12,15 @@ credentials, or changing Stripe settings. Use the audited **Do not collect
 tax** choice so every new quote, payment, order, refund, and workpaper retains
 one coherent decision.
 
+Tax collection initializes **off**. A new control stores an explicit disabled
+decision before any provider is used; the migration from the earlier implicit
+collecting default records one audited system transition only when the control
+is still generation one and has no operator history. The Admin never treats a
+provider name as proof that the integration exists:
+TaxRate.io is unavailable without `TAX_RATE_LOOKUP_API_KEY`, and Stripe Tax is
+unavailable without `STRIPE_API_KEY`. A provider remains unselectable until all
+of its runtime and account readiness checks pass.
+
 ## Admin workflow
 
 Open **Settings → Tax control** in Medusa Admin. The page shows:
@@ -20,8 +29,10 @@ Open **Settings → Tax control** in Medusa Admin. The page shows:
   change and reason;
 - three plain choices: **Do not collect tax**, **Collect using TaxRate.io**,
   and **Collect using Stripe Tax**;
-- readiness rows for both providers, using plain **Ready** or **Missing**
-  labels;
+- an environment-level configuration banner when no provider is available or
+  the currently selected provider cannot run;
+- provider status using **Ready**, **Needs setup**, or **Unavailable**, plus
+  readiness rows using plain **Ready** or **Missing** labels;
 - TaxRate.io's most recently returned usage/quota inside its provider card;
 - decision-locked checkouts split between collecting and not collecting, plus
   payments completing, with the exact definition beside each number;
@@ -35,8 +46,12 @@ and the deliberate metered quota refresh additionally require
 `tax_control:update`; a read-only operator sees status and evidence without
 those controls. Direct API requests are checked by the same backend policies.
 
-The current collection choice has a neutral **Current** label. Provider choices
-stay disabled until their setup is ready. Every change opens one confirmation
+The current collection choice has a neutral **Current** label. An unconfigured
+provider is labeled **Unavailable** and cannot be selected; a configured but
+incomplete provider is labeled **Needs setup** and also remains disabled. The
+backend repeats the same configuration and readiness checks under the
+distributed transition lock, so a stale or modified browser cannot bypass the
+guard. Every change opens one confirmation
 dialog containing the frozen-decision impact and an audit reason; no backend
 state changes before confirmation. A change requires a reason of at least ten
 characters, the current generation, a UUID idempotency key, and an
@@ -111,6 +126,18 @@ customer tax calculation.
    $0.00 decision instead of being repriced.
 
 ## Provider readiness
+
+| Provider | Minimum environment configuration | Selectable when |
+| --- | --- | --- |
+| TaxRate.io | `TAX_RATE_LOOKUP_API_KEY` | The key exists and the latest provider quota is not exhausted. |
+| Stripe Tax | `STRIPE_API_KEY` and reviewed `STRIPE_TAX_SHIPPING_TAX_CODE` | The key/account mode, settings, head office, provider, exclusive behavior, product/shipping tax codes, and an active registration all pass. |
+
+Adding a secret does not turn collection on. Restart the Backend so it loads
+the new environment, refresh Tax Control, confirm the provider says **Ready**,
+and then use the audited re-enable workflow. Removing or invalidating a secret
+does not silently select another provider; an active unavailable provider is a
+fail-closed incident and the Admin tells the operator to restore configuration
+or deliberately turn collection off.
 
 TaxRate.io is ready only with a configured API key and remaining provider
 quota. The displayed numbers come from TaxRate.io; the application does not

@@ -10,7 +10,7 @@ const TaxProviderControl = model.define(
   {
     id: model.id({ prefix: "taxctrl" }).primaryKey(),
     active_provider: model.enum([...taxProviderNames]).default("taxrate_io"),
-    collection_mode: model.enum([...taxCollectionModes]).default("collect"),
+    collection_mode: model.enum([...taxCollectionModes]).default("disabled"),
     generation: model.number().default(1),
     last_switched_by: model.text().nullable(),
     last_switch_reason: model.text().nullable(),

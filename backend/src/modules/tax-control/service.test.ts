@@ -244,9 +244,24 @@ describe("tax control service persistence boundaries", () => {
     )
 
     await expect(service.ensureTaxProviderControl()).resolves.toMatchObject({
+      active_provider: "taxrate_io",
+      collection_mode: "disabled",
       generation: 1,
       id: "taxctrl_default",
     })
+    expect(service.createTaxProviderControls).toHaveBeenNthCalledWith(
+      1,
+      [
+        {
+          active_provider: "taxrate_io",
+          collection_mode: "disabled",
+          generation: 1,
+          id: "taxctrl_default",
+          metadata: {},
+        },
+      ],
+      expect.any(Object)
+    )
 
     service.retrieveTaxProviderControl.mockRejectedValueOnce(
       new MedusaError(MedusaError.Types.NOT_FOUND, "missing")

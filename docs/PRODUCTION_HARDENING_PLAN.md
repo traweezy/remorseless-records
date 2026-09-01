@@ -2528,6 +2528,27 @@ exact source SHA `68a0b40639219898f6c6f8588a1f61fe9f736984`:
 
 ## Tax readiness
 
+- [x] Default new and untouched tax controls to audited disabled mode, expose
+      environment availability separately from provider readiness, disable
+      unavailable choices in Admin, and repeat the configuration guard at the
+      locked backend transition boundary.
+- [x] Show a prominent fail-closed banner when an active provider becomes
+      unavailable and a safe off-state banner when neither provider is
+      configured; distinguish **Unavailable**, **Needs setup**, and **Ready**.
+
+Local configuration-safety acceptance passed on September 1, 2026. Five
+focused suites contain 39 passing readiness, transition, initialization,
+Admin contract, and UI-state tests. The complete Backend contains 273 passing
+suites / 2,057 tests with 91.61% statement, 85.31% branch, 95.78% function,
+and 91.61% line coverage. Root Biome/policy/typecheck gates, both Storefront
+coverage matrices, the Backend/Admin production build, and all 12 rendered
+Admin accessibility cases pass. A real headful browser plus desktop screenshot
+verified both unavailable provider cards, named environment-variable guidance,
+disabled provider and metered-refresh actions, the safe off-state banner, and
+the keyboard-reachable readiness refresh with zero Axe or layout findings. No
+provider call, checkout, payment, refund, tax transaction, or production state
+was created or changed during this local acceptance.
+
 - [x] Add a durable `collect` / `disabled` tax collection mode separate from
       the selected provider, using an expand-only migration and preserving the
       current provider for later re-enablement.

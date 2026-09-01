@@ -133,6 +133,12 @@ Open **Settings → Tax control**. Choose the operating decision first:
 - **Collect using Stripe Tax** uses address-aware Stripe calculations after
   account and registration checks pass.
 
+Tax collection starts off. A provider with missing Backend credentials is
+clearly marked **Unavailable** and cannot be selected. **Needs setup** means a
+credential exists but the remaining readiness checks are incomplete. Adding
+configuration never enables collection by itself; a ready provider still
+requires the audited Admin confirmation.
+
 Every change requires a concrete audit reason. Turning collection off also
 requires the exact displayed acknowledgement. Existing prepared checkouts and
 completed orders keep their historical decision. See

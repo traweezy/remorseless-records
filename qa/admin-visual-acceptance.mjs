@@ -26,6 +26,8 @@ const holdMs = Number(process.env.ADMIN_ACCEPTANCE_HOLD_MS ?? "0")
 const settleMs = Number(process.env.ADMIN_ACCEPTANCE_SETTLE_MS ?? "3000")
 const clickText = process.env.ADMIN_ACCEPTANCE_CLICK ?? ""
 const setup = process.env.ADMIN_ACCEPTANCE_SETUP ?? ""
+const taxConfiguration =
+  process.env.ADMIN_ACCEPTANCE_TAX_CONFIGURATION ?? "ready"
 const axeInclude = process.env.ADMIN_ACCEPTANCE_AXE_INCLUDE ?? "main"
 const browserExecutable =
   process.env.ADMIN_ACCEPTANCE_BROWSER?.trim() ||
@@ -43,6 +45,12 @@ if (!route.startsWith("/app/") || route.includes("..")) {
   await staticServer?.close()
   throw new TypeError(
     "ADMIN_ACCEPTANCE_ROUTE must be an Admin application path."
+  )
+}
+if (!["ready", "unconfigured"].includes(taxConfiguration)) {
+  await staticServer?.close()
+  throw new TypeError(
+    "ADMIN_ACCEPTANCE_TAX_CONFIGURATION must be ready or unconfigured."
   )
 }
 if (
@@ -566,6 +574,35 @@ const fixtureFor = (url) => {
       message: "Ready",
       ready: true,
     }
+    const unconfiguredTaxRateIo = {
+      checks: [
+        {
+          detail: "Set TAX_RATE_LOOKUP_API_KEY.",
+          id: "api_key",
+          label: "API key",
+          ready: false,
+        },
+      ],
+      configured: false,
+      message: "TaxRate.io is not configured.",
+      ready: false,
+    }
+    const unconfiguredStripeTax = {
+      accountMode: "unknown",
+      activeRegistrationCount: 0,
+      checks: [
+        {
+          detail: "Set STRIPE_API_KEY for this environment.",
+          id: "api_key",
+          label: "Stripe key",
+          ready: false,
+        },
+      ],
+      configured: false,
+      message: "Stripe is not configured.",
+      missingFields: [],
+      ready: false,
+    }
     return {
       audits: [],
       control: {
@@ -600,22 +637,31 @@ const fixtureFor = (url) => {
       },
       providers: {
         stripeTax: {
-          ...ready,
-          accountMode: "sandbox",
-          activeRegistrationCount: 1,
-          missingFields: [],
+          ...(taxConfiguration === "unconfigured"
+            ? unconfiguredStripeTax
+            : {
+                ...ready,
+                accountMode: "sandbox",
+                activeRegistrationCount: 1,
+                missingFields: [],
+              }),
         },
         taxRateIo: {
-          ...ready,
+          ...(taxConfiguration === "unconfigured"
+            ? unconfiguredTaxRateIo
+            : ready),
           manualRefreshConfigured: true,
-          quota: {
-            observedAt: timestamp,
-            quota: 1000,
-            remaining: 920,
-            source: "fixture",
-            usage: 80,
-            usagePercent: 8,
-          },
+          quota:
+            taxConfiguration === "unconfigured"
+              ? null
+              : {
+                  observedAt: timestamp,
+                  quota: 1000,
+                  remaining: 920,
+                  source: "fixture",
+                  usage: 80,
+                  usagePercent: 8,
+                },
         },
       },
     }
@@ -763,6 +809,14 @@ try {
     await page.waitForSelector("#catalog-create-title")
     await clickButton("Continue")
     await page.waitForSelector('[role="alert"]')
+  }
+  if (setup === "tax-provider-availability") {
+    await page.evaluate(() => {
+      document
+        .querySelector('section[aria-label^="TaxRate.io"]')
+        ?.scrollIntoView({ block: "center" })
+    })
+    await new Promise((resolve) => setTimeout(resolve, 1_000))
   }
   if (clickText) {
     await clickButton(clickText)

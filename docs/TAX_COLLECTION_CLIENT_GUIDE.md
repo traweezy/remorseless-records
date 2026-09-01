@@ -13,6 +13,13 @@ refreshed checkouts:
    connected Stripe account, registrations, defaults, and shipping code are
    ready.
 
+Tax collection starts off. If a provider's Backend environment variables are
+missing, its card says **Unavailable**, its selection button is disabled, and
+the page explains what must be configured. **Needs setup** means the runtime
+credential exists but another readiness check still fails. Adding credentials
+never turns collection on automatically; return here and make the audited
+choice only after the provider says **Ready**.
+
 The setting does not decide whether tax is legally owed. It does not register
 or close a tax account, change a filing frequency, classify a sale as exempt,
 or file/pay a return. The store owner remains responsible for those decisions
@@ -44,7 +51,9 @@ its payment decision is frozen. Completed orders and receipts never change.
 ## Turn collection on
 
 1. Choose **Collect using TaxRate.io** or **Collect using Stripe Tax**.
-2. If the button is unavailable, complete the missing readiness rows first.
+2. If the card says **Unavailable**, ask engineering to add the named Backend
+   environment variables and restart the service. If it says **Needs setup**,
+   complete the missing readiness rows first.
 3. Review the frozen-checkout impact and enter the reason.
 4. Confirm the provider choice.
 5. Verify the current status says **Collecting tax** and history contains one

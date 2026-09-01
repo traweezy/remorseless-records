@@ -4,6 +4,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MouseEvent,
@@ -45,7 +46,9 @@ import {
 } from "./query"
 import {
   collectionChoiceLabel,
+  providerAvailabilityLabel,
   providerLabel,
+  taxConfigurationNotice,
   taxControlTransitionWasApplied,
   type CollectionMode,
   type ProviderName,
@@ -130,6 +133,10 @@ const ProviderCard = memo<ProviderCardProps>(
     saving,
     selectedForReenable,
   }) => {
+    const availabilityLabel = useMemo(
+      () => providerAvailabilityLabel(readiness),
+      [readiness]
+    )
     const handleSwitch = useCallback(
       (event: MouseEvent<HTMLButtonElement>) => {
         onSwitch(provider, event.currentTarget)
@@ -159,8 +166,16 @@ const ProviderCard = memo<ProviderCardProps>(
             {selectedForReenable ? (
               <StatusBadge color="blue">Selected for re-enable</StatusBadge>
             ) : null}
-            <StatusBadge color={readiness.ready ? "green" : "orange"}>
-              {readiness.ready ? "Ready" : "Needs setup"}
+            <StatusBadge
+              color={
+                readiness.ready
+                  ? "green"
+                  : readiness.configured
+                    ? "orange"
+                    : "red"
+              }
+            >
+              {availabilityLabel}
             </StatusBadge>
           </div>
         </div>
@@ -168,6 +183,13 @@ const ProviderCard = memo<ProviderCardProps>(
         <Text size="small" className="mt-4">
           {readiness.message}
         </Text>
+        {!readiness.configured ? (
+          <Alert className="mt-4" role="status" variant="warning">
+            This provider is unavailable in this Backend environment. Add its
+            required environment variables, restart the Backend, and refresh
+            this page before it can be selected.
+          </Alert>
+        ) : null}
         <dl className="mt-4 flex flex-col divide-y divide-ui-border-base">
           {readiness.checks.map((item) => (
             <div
@@ -212,14 +234,19 @@ const ProviderCard = memo<ProviderCardProps>(
             <>
               <Button
                 aria-describedby={`tax-provider-${provider}-description`}
-                disabled={!readiness.ready || saving}
+                disabled={!readiness.configured || !readiness.ready || saving}
                 onClick={handleSwitch}
                 type="button"
                 variant="secondary"
               >
                 Collect using {name}
               </Button>
-              {!readiness.ready ? (
+              {!readiness.configured ? (
+                <Text size="xsmall" className="mt-2 text-ui-fg-warning">
+                  Unavailable until its Backend environment configuration is
+                  complete.
+                </Text>
+              ) : !readiness.ready ? (
                 <Text size="xsmall" className="mt-2 text-ui-fg-subtle">
                   Complete the missing setup before switching.
                 </Text>
@@ -304,7 +331,7 @@ export const TaxControlPageContent = memo(() => {
           provider === "stripe_tax"
             ? snapshot.providers.stripeTax
             : snapshot.providers.taxRateIo
-        if (!readiness.ready) {
+        if (!readiness.configured || !readiness.ready) {
           return
         }
       }
@@ -477,6 +504,15 @@ export const TaxControlPageContent = memo(() => {
     activeProvider === "stripe_tax"
       ? snapshot.providers.stripeTax
       : snapshot.providers.taxRateIo
+  const providerReadiness = {
+    stripe_tax: snapshot.providers.stripeTax,
+    taxrate_io: snapshot.providers.taxRateIo,
+  } as const
+  const configurationNotice = taxConfigurationNotice({
+    activeProvider,
+    collectionMode,
+    providers: providerReadiness,
+  })
   const activeCalculationBasis = !collectingTax
     ? "$0.00 decision without a provider lookup"
     : activeProvider === "stripe_tax"
@@ -516,6 +552,33 @@ export const TaxControlPageContent = memo(() => {
           title="Tax control"
         />
 
+        {configurationNotice === "active_provider_unavailable" ? (
+          <Alert className="mt-5" role="alert" variant="error">
+            Tax collection is on, but {providerLabel(activeProvider)} is not
+            currently ready in this environment. New tax calculations fail
+            closed. Restore the missing configuration or deliberately turn tax
+            collection off before accepting new checkouts.
+          </Alert>
+        ) : configurationNotice === "no_provider_available" ? (
+          <Alert className="mt-5" role="status" variant="info">
+            Tax collection is off and no provider is available in this
+            environment. Provider choices stay disabled until their Backend
+            environment variables and readiness checks are complete.
+          </Alert>
+        ) : null}
+        {configurationNotice ? (
+          <div className="mt-3">
+            <Button
+              isLoading={taxControlQuery.isFetching}
+              onClick={retryLoad}
+              type="button"
+              variant="secondary"
+            >
+              Refresh provider status
+            </Button>
+          </div>
+        ) : null}
+
         <section
           aria-label={`Current tax collection decision: ${collectionChoiceLabel(
             collectionMode,
@@ -542,7 +605,9 @@ export const TaxControlPageContent = memo(() => {
                 {collectingTax ? "Provider" : "Provider when re-enabled"}
               </Text>
               <Text size="small" weight="plus" className="mt-1">
-                {providerLabel(activeProvider)}
+                {!collectingTax && !selectedProviderReadiness.ready
+                  ? "Choose a ready provider below"
+                  : providerLabel(activeProvider)}
               </Text>
             </div>
             <div>
@@ -587,7 +652,7 @@ export const TaxControlPageContent = memo(() => {
             </Text>
             <Text size="small" className="mt-1">
               {snapshot.control.lastSwitchReason ??
-                "Initial tax control configuration; no change has been recorded."}
+                "Safe default: tax collection starts off until a configured provider is deliberately enabled."}
             </Text>
           </div>
         </section>
@@ -735,7 +800,9 @@ export const TaxControlPageContent = memo(() => {
             readiness={snapshot.providers.taxRateIo}
             saving={saving}
             selectedForReenable={
-              !collectingTax && activeProvider === "taxrate_io"
+              !collectingTax &&
+              activeProvider === "taxrate_io" &&
+              snapshot.providers.taxRateIo.ready
             }
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -751,6 +818,7 @@ export const TaxControlPageContent = memo(() => {
                 <Button
                   disabled={
                     refreshingQuota ||
+                    !snapshot.providers.taxRateIo.configured ||
                     !snapshot.providers.taxRateIo.manualRefreshConfigured
                   }
                   isLoading={refreshingQuota}
@@ -825,7 +893,9 @@ export const TaxControlPageContent = memo(() => {
             readiness={snapshot.providers.stripeTax}
             saving={saving}
             selectedForReenable={
-              !collectingTax && activeProvider === "stripe_tax"
+              !collectingTax &&
+              activeProvider === "stripe_tax" &&
+              snapshot.providers.stripeTax.ready
             }
           >
             <div className="grid gap-3 sm:grid-cols-2">

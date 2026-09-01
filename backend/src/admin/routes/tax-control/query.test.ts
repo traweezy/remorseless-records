@@ -149,6 +149,41 @@ describe("tax control query boundary", () => {
     ).toThrow()
   })
 
+  it("rejects impossible provider availability states", () => {
+    expect(() =>
+      taxControlSnapshotSchema.parse({
+        ...validSnapshot,
+        providers: {
+          ...validSnapshot.providers,
+          taxRateIo: {
+            ...validSnapshot.providers.taxRateIo,
+            configured: false,
+            ready: true,
+          },
+        },
+      })
+    ).toThrow("unconfigured tax provider")
+    expect(() =>
+      taxControlSnapshotSchema.parse({
+        ...validSnapshot,
+        providers: {
+          ...validSnapshot.providers,
+          taxRateIo: {
+            ...validSnapshot.providers.taxRateIo,
+            checks: [
+              {
+                detail: "A required setting is missing.",
+                id: "api_key",
+                label: "API key",
+                ready: false,
+              },
+            ],
+          },
+        },
+      })
+    ).toThrow("failed check")
+  })
+
   it("forwards Query cancellation and uses a bounded freshness window", async () => {
     jest.mocked(requestAdminJson).mockResolvedValue(validSnapshot)
     const options = taxControlQueryOptions()

@@ -1,6 +1,8 @@
 import {
   collectionChoiceLabel,
+  providerAvailabilityLabel,
   providerLabel,
+  taxConfigurationNotice,
   taxControlTransitionIssues,
   taxControlTransitionFormSchema,
   taxControlTransitionWasApplied,
@@ -11,6 +13,50 @@ describe("tax control UI state", () => {
   it("uses merchant-facing provider names", () => {
     expect(providerLabel("taxrate_io")).toBe("TaxRate.io")
     expect(providerLabel("stripe_tax")).toBe("Stripe Tax")
+  })
+
+  it("distinguishes unavailable providers from incomplete setup", () => {
+    expect(providerAvailabilityLabel({ configured: false, ready: false })).toBe(
+      "Unavailable"
+    )
+    expect(providerAvailabilityLabel({ configured: true, ready: false })).toBe(
+      "Needs setup"
+    )
+    expect(providerAvailabilityLabel({ configured: true, ready: true })).toBe(
+      "Ready"
+    )
+  })
+
+  it("flags an unavailable active provider and a disabled empty environment", () => {
+    const unavailableProviders = {
+      stripe_tax: { configured: false, ready: false },
+      taxrate_io: { configured: false, ready: false },
+    } as const
+
+    expect(
+      taxConfigurationNotice({
+        activeProvider: "taxrate_io",
+        collectionMode: "collect",
+        providers: unavailableProviders,
+      })
+    ).toBe("active_provider_unavailable")
+    expect(
+      taxConfigurationNotice({
+        activeProvider: "taxrate_io",
+        collectionMode: "disabled",
+        providers: unavailableProviders,
+      })
+    ).toBe("no_provider_available")
+    expect(
+      taxConfigurationNotice({
+        activeProvider: "taxrate_io",
+        collectionMode: "disabled",
+        providers: {
+          ...unavailableProviders,
+          stripe_tax: { configured: true, ready: true },
+        },
+      })
+    ).toBeNull()
   })
 
   it("normalizes and bounds the tax-control audit reason", () => {

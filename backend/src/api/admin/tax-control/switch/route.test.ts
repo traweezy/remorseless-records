@@ -189,10 +189,28 @@ describe("POST /admin/tax-control/switch", () => {
     const { res } = responseFixture()
 
     await expect(POST(fixture.req, res)).rejects.toThrow(
-      "stripe_tax is not ready"
+      "stripe_tax is not available"
     )
     expect(fixture.service.transitionTaxControl).not.toHaveBeenCalled()
     expect(snapshotMock).not.toHaveBeenCalled()
+  })
+
+  it("refuses an unconfigured provider even if a malformed probe claims ready", async () => {
+    stripeReadinessMock.mockResolvedValue({
+      ...ready,
+      accountMode: "unknown",
+      activeRegistrationCount: 0,
+      configured: false,
+      missingFields: [],
+      message: "Stripe is not configured.",
+    })
+    const fixture = requestFixture()
+    const { res } = responseFixture()
+
+    await expect(POST(fixture.req, res)).rejects.toThrow(
+      "stripe_tax is not available"
+    )
+    expect(fixture.service.transitionTaxControl).not.toHaveBeenCalled()
   })
 
   it("refreshes TaxRate.io quota before evaluating that provider", async () => {

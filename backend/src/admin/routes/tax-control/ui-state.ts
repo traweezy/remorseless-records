@@ -11,8 +11,36 @@ export const collectionModes = ["collect", "disabled"] as const
 
 export type CollectionMode = (typeof collectionModes)[number]
 
+type ProviderAvailability = {
+  configured: boolean
+  ready: boolean
+}
+
 export const providerLabel = (provider: ProviderName): string =>
   provider === "stripe_tax" ? "Stripe Tax" : "TaxRate.io"
+
+export const providerAvailabilityLabel = ({
+  configured,
+  ready,
+}: ProviderAvailability): "Needs setup" | "Ready" | "Unavailable" =>
+  ready ? "Ready" : configured ? "Needs setup" : "Unavailable"
+
+export const taxConfigurationNotice = ({
+  activeProvider,
+  collectionMode,
+  providers,
+}: {
+  activeProvider: ProviderName
+  collectionMode: CollectionMode
+  providers: Record<ProviderName, ProviderAvailability>
+}): "active_provider_unavailable" | "no_provider_available" | null => {
+  if (collectionMode === "collect" && !providers[activeProvider].ready) {
+    return "active_provider_unavailable"
+  }
+  return Object.values(providers).some((provider) => provider.ready)
+    ? null
+    : "no_provider_available"
+}
 
 const transitionReasonSchema = z
   .string()

@@ -6,7 +6,10 @@ jest.mock("../constants", () => ({
   TAX_RATE_LOOKUP_API_KEY: "",
 }))
 
-import { resolveStripeTaxReadiness } from "./readiness"
+import {
+  resolveStripeTaxReadiness,
+  resolveTaxRateIoReadiness,
+} from "./readiness"
 
 const settings = {
   defaults: {
@@ -47,6 +50,29 @@ const clientWith = ({
       settings: { retrieve },
     },
   }) as unknown as StripeTaxReadinessClient
+
+describe("TaxRate.io readiness", () => {
+  it("is unavailable without the provider API key", () => {
+    expect(resolveTaxRateIoReadiness(null, { apiKey: "" })).toMatchObject({
+      configured: false,
+      message: "TaxRate.io is not configured.",
+      ready: false,
+    })
+  })
+
+  it("requires both configuration and remaining quota", () => {
+    expect(
+      resolveTaxRateIoReadiness(null, { apiKey: "taxrate_test_key" })
+    ).toMatchObject({ configured: true, ready: true })
+    expect(
+      resolveTaxRateIoReadiness(0, { apiKey: "taxrate_test_key" })
+    ).toMatchObject({
+      configured: true,
+      message: "TaxRate.io reports no remaining lookups.",
+      ready: false,
+    })
+  })
+})
 
 describe("Stripe Tax readiness", () => {
   it("returns an unconfigured result without contacting Stripe", async () => {

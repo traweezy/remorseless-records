@@ -261,7 +261,7 @@ class TaxControlModuleService extends MedusaService({
               {
                 id: TAX_CONTROL_ID,
                 active_provider: "taxrate_io",
-                collection_mode: "collect",
+                collection_mode: "disabled",
                 generation: 1,
                 metadata: {},
               },
@@ -273,7 +273,7 @@ class TaxControlModuleService extends MedusaService({
           created,
           {
             active_provider: "taxrate_io",
-            collection_mode: "collect",
+            collection_mode: "disabled",
             generation: 1,
             id: TAX_CONTROL_ID,
             last_switch_reason: null,
