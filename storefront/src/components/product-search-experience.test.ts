@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { mapHitToSummary } from "@/components/product-search-experience"
+import {
+  mapHitToSummary,
+  shouldRefreshInitialSearch,
+} from "@/components/product-search-experience"
+import type { ProductSearchResponse } from "@/lib/search/search"
 import type { ProductSearchHit } from "@/types/product"
 
 const searchHit: ProductSearchHit = {
@@ -41,5 +45,36 @@ describe("mapHitToSummary", () => {
       variantTitles: ["12-inch vinyl"],
       formats: ["Vinyl"],
     })
+  })
+})
+
+describe("shouldRefreshInitialSearch", () => {
+  const response = (hits: ProductSearchHit[], total = hits.length) =>
+    ({
+      hits,
+      total,
+      offset: 0,
+      facets: {
+        genres: {},
+        metalGenres: {},
+        format: {},
+        categories: {},
+        variants: {},
+        productTypes: {},
+        availabilityStates: {},
+        stockStatuses: {},
+        bundleTypes: {},
+      },
+      hasMore: false,
+    }) satisfies ProductSearchResponse
+
+  it("keeps valid server-rendered catalog results fresh on hydration", () => {
+    expect(shouldRefreshInitialSearch(true, response([searchHit]))).toBe(false)
+  })
+
+  it("retries only an empty unfiltered server response", () => {
+    expect(shouldRefreshInitialSearch(true, response([]))).toBe(true)
+    expect(shouldRefreshInitialSearch(false, response([]))).toBe(false)
+    expect(shouldRefreshInitialSearch(true, response([], 1))).toBe(false)
   })
 })

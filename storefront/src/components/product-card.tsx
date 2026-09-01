@@ -314,51 +314,6 @@ export const ProductCard = ({
   )
 
   useEffect(() => {
-    if (!handle) {
-      return
-    }
-
-    const node = cardRef.current
-    if (!node) {
-      return
-    }
-
-    const prefetch = () => {
-      if (shouldBlockPrefetch()) {
-        return
-      }
-      prefetchProductDetail()
-    }
-
-    if (typeof window === "undefined") {
-      return
-    }
-
-    if (!("IntersectionObserver" in window)) {
-      prefetch()
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            prefetch()
-            observer.disconnect()
-          }
-        })
-      },
-      { rootMargin: "240px" }
-    )
-
-    observer.observe(node)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [handle, prefetchProductDetail])
-
-  useEffect(() => {
     if (!onMediaLoad) {
       return
     }
@@ -558,6 +513,7 @@ export const ProductCard = ({
         <SmartLink
           href={productHref}
           className="block h-full focus:outline-none"
+          enableProximity={false}
           preloadOffset={280}
         >
           <Card className="relative flex h-full flex-col overflow-visible rounded-[1.75rem] border-2 border-border/60 bg-surface shadow-[0_22px_55px_-32px_rgba(0,0,0,0.75)] transition md:hover:-translate-y-1 md:hover:border-border/60 md:hover:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)] focus-within:-translate-y-1 focus-within:border-border/60 focus-within:shadow-[0_28px_70px_-40px_rgba(0,0,0,0.7)]">

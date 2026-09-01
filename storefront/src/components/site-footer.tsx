@@ -118,7 +118,7 @@ const SiteFooter = () => {
                     ) : (
                       <SmartLink
                         href={link.href}
-                        nativePrefetch
+                        enableProximity={false}
                         className={footerLinkClassName}
                       >
                         <SocialIcon path={link.iconPath} />

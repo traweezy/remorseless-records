@@ -246,6 +246,14 @@ export const mapHitToSummary = (hit: ProductSearchHit): ProductSearchHit => {
   }
 }
 
+export const shouldRefreshInitialSearch = (
+  isInitialSearch: boolean,
+  initialResponse: ProductSearchResponse
+): boolean =>
+  isInitialSearch &&
+  initialResponse.hits.length === 0 &&
+  initialResponse.total === 0
+
 type ProductSearchExperienceProps = {
   initialResponse: ProductSearchResponse
   initialSort?: ProductSortOption
@@ -865,7 +873,6 @@ const ProductSearchExperience = ({
     queryKey: ["catalog-filter-options", "genres"],
     queryFn: ({ signal }) => fetchCatalogFilterOptions("genres", { signal }),
     initialData: { options: initialFilterDefinitions.genres },
-    initialDataUpdatedAt: 0,
     meta: { persist: true },
     staleTime: 15 * 60_000,
     retry: 1,
@@ -874,7 +881,6 @@ const ProductSearchExperience = ({
     queryKey: ["catalog-filter-options", "formats"],
     queryFn: ({ signal }) => fetchCatalogFilterOptions("formats", { signal }),
     initialData: { options: initialFilterDefinitions.formats },
-    initialDataUpdatedAt: 0,
     meta: { persist: true },
     staleTime: 15 * 60_000,
     retry: 1,
@@ -884,7 +890,6 @@ const ProductSearchExperience = ({
     queryFn: ({ signal }) =>
       fetchCatalogFilterOptions("product-types", { signal }),
     initialData: { options: initialFilterDefinitions.productTypes },
-    initialDataUpdatedAt: 0,
     meta: { persist: true },
     staleTime: 15 * 60_000,
     retry: 1,
@@ -895,11 +900,52 @@ const ProductSearchExperience = ({
     initialData: initialFilterDefinitions.priceRange
       ? { range: initialFilterDefinitions.priceRange }
       : undefined,
-    initialDataUpdatedAt: 0,
     meta: { persist: true },
     staleTime: 15 * 60_000,
     retry: 1,
   })
+  const refreshMissingFilterDefinitions = useCallback(() => {
+    const refreshes: Array<Promise<unknown>> = []
+
+    if (
+      !genreDefinitionsQuery.data.options.length &&
+      !genreDefinitionsQuery.isFetching
+    ) {
+      refreshes.push(genreDefinitionsQuery.refetch())
+    }
+    if (
+      !formatDefinitionsQuery.data.options.length &&
+      !formatDefinitionsQuery.isFetching
+    ) {
+      refreshes.push(formatDefinitionsQuery.refetch())
+    }
+    if (
+      !productTypeDefinitionsQuery.data.options.length &&
+      !productTypeDefinitionsQuery.isFetching
+    ) {
+      refreshes.push(productTypeDefinitionsQuery.refetch())
+    }
+    if (!priceRangeQuery.data?.range && !priceRangeQuery.isFetching) {
+      refreshes.push(priceRangeQuery.refetch())
+    }
+
+    if (refreshes.length) {
+      void Promise.allSettled(refreshes)
+    }
+  }, [
+    formatDefinitionsQuery.data.options.length,
+    formatDefinitionsQuery.isFetching,
+    formatDefinitionsQuery.refetch,
+    genreDefinitionsQuery.data.options.length,
+    genreDefinitionsQuery.isFetching,
+    genreDefinitionsQuery.refetch,
+    priceRangeQuery.data?.range,
+    priceRangeQuery.isFetching,
+    priceRangeQuery.refetch,
+    productTypeDefinitionsQuery.data.options.length,
+    productTypeDefinitionsQuery.isFetching,
+    productTypeDefinitionsQuery.refetch,
+  ])
   const normalizedGenreFilters = useMemo(
     () =>
       genreDefinitionsQuery.data.options
@@ -997,11 +1043,16 @@ const ProductSearchExperience = ({
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [desktopFiltersVisible, setDesktopFiltersVisible] = useState(true)
-  const openMobileFilters = useCallback(() => setMobileFiltersOpen(true), [])
-  const toggleDesktopFilters = useCallback(
-    () => setDesktopFiltersVisible((visible) => !visible),
-    []
-  )
+  const openMobileFilters = useCallback(() => {
+    refreshMissingFilterDefinitions()
+    setMobileFiltersOpen(true)
+  }, [refreshMissingFilterDefinitions])
+  const toggleDesktopFilters = useCallback(() => {
+    if (!desktopFiltersVisible) {
+      refreshMissingFilterDefinitions()
+    }
+    setDesktopFiltersVisible((visible) => !visible)
+  }, [desktopFiltersVisible, refreshMissingFilterDefinitions])
   const [pacedQuery, setPacedQuery] = useState("")
   const measureScheduledRef = useRef(false)
   const queryDebouncer = useMemo(
@@ -1279,7 +1330,10 @@ const ProductSearchExperience = ({
   })
   const hasRefreshedInitialSearch = useRef(false)
   useEffect(() => {
-    if (!isInitialSearch || hasRefreshedInitialSearch.current) {
+    if (
+      !shouldRefreshInitialSearch(isInitialSearch, initialResponse) ||
+      hasRefreshedInitialSearch.current
+    ) {
       return
     }
     hasRefreshedInitialSearch.current = true
@@ -1287,7 +1341,7 @@ const ProductSearchExperience = ({
     // transiently unavailable. Refresh after hydration so provider recovery
     // cannot replace server text during React's initial reconciliation.
     void searchQuery.refetch()
-  }, [isInitialSearch, searchQuery.refetch])
+  }, [initialResponse, isInitialSearch, searchQuery.refetch])
 
   const searchPages = useMemo(
     () => searchQuery.data?.pages ?? (isInitialSearch ? [initialResponse] : []),
@@ -1552,6 +1606,8 @@ const ProductSearchExperience = ({
           <aside
             id={`${filterInstanceId}-desktop-sidebar`}
             className="hidden lg:block lg:w-60 lg:flex-shrink-0"
+            onFocusCapture={refreshMissingFilterDefinitions}
+            onPointerEnter={refreshMissingFilterDefinitions}
           >
             <div
               className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl"
