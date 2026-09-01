@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   mapHitToSummary,
+  shouldRefreshFilterDefinitionOnIntent,
   shouldRefreshInitialSearch,
 } from "@/components/product-search-experience"
 import type { ProductSearchResponse } from "@/lib/search/search"
@@ -76,5 +77,17 @@ describe("shouldRefreshInitialSearch", () => {
     expect(shouldRefreshInitialSearch(true, response([]))).toBe(true)
     expect(shouldRefreshInitialSearch(false, response([]))).toBe(false)
     expect(shouldRefreshInitialSearch(true, response([], 1))).toBe(false)
+  })
+})
+
+describe("shouldRefreshFilterDefinitionOnIntent", () => {
+  it("refreshes every definition on first intent to replace partial server data", () => {
+    expect(shouldRefreshFilterDefinitionOnIntent(false, true, false)).toBe(true)
+  })
+
+  it("retries only missing or errored definitions after first intent", () => {
+    expect(shouldRefreshFilterDefinitionOnIntent(true, true, false)).toBe(false)
+    expect(shouldRefreshFilterDefinitionOnIntent(true, false, false)).toBe(true)
+    expect(shouldRefreshFilterDefinitionOnIntent(true, true, true)).toBe(true)
   })
 })

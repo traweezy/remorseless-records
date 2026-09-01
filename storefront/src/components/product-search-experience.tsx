@@ -254,6 +254,12 @@ export const shouldRefreshInitialSearch = (
   initialResponse.hits.length === 0 &&
   initialResponse.total === 0
 
+export const shouldRefreshFilterDefinitionOnIntent = (
+  hasRefreshedOnIntent: boolean,
+  hasData: boolean,
+  isError: boolean
+): boolean => !hasRefreshedOnIntent || !hasData || isError
+
 type ProductSearchExperienceProps = {
   initialResponse: ProductSearchResponse
   initialSort?: ProductSortOption
@@ -904,28 +910,50 @@ const ProductSearchExperience = ({
     staleTime: 15 * 60_000,
     retry: 1,
   })
-  const refreshMissingFilterDefinitions = useCallback(() => {
+  const hasRefreshedFilterDefinitionsOnIntent = useRef(false)
+  const refreshFilterDefinitionsOnIntent = useCallback(() => {
+    const hasRefreshedOnIntent = hasRefreshedFilterDefinitionsOnIntent.current
+    hasRefreshedFilterDefinitionsOnIntent.current = true
     const refreshes: Array<Promise<unknown>> = []
 
     if (
-      !genreDefinitionsQuery.data.options.length &&
+      shouldRefreshFilterDefinitionOnIntent(
+        hasRefreshedOnIntent,
+        genreDefinitionsQuery.data.options.length > 0,
+        genreDefinitionsQuery.isError
+      ) &&
       !genreDefinitionsQuery.isFetching
     ) {
       refreshes.push(genreDefinitionsQuery.refetch())
     }
     if (
-      !formatDefinitionsQuery.data.options.length &&
+      shouldRefreshFilterDefinitionOnIntent(
+        hasRefreshedOnIntent,
+        formatDefinitionsQuery.data.options.length > 0,
+        formatDefinitionsQuery.isError
+      ) &&
       !formatDefinitionsQuery.isFetching
     ) {
       refreshes.push(formatDefinitionsQuery.refetch())
     }
     if (
-      !productTypeDefinitionsQuery.data.options.length &&
+      shouldRefreshFilterDefinitionOnIntent(
+        hasRefreshedOnIntent,
+        productTypeDefinitionsQuery.data.options.length > 0,
+        productTypeDefinitionsQuery.isError
+      ) &&
       !productTypeDefinitionsQuery.isFetching
     ) {
       refreshes.push(productTypeDefinitionsQuery.refetch())
     }
-    if (!priceRangeQuery.data?.range && !priceRangeQuery.isFetching) {
+    if (
+      shouldRefreshFilterDefinitionOnIntent(
+        hasRefreshedOnIntent,
+        Boolean(priceRangeQuery.data?.range),
+        priceRangeQuery.isError
+      ) &&
+      !priceRangeQuery.isFetching
+    ) {
       refreshes.push(priceRangeQuery.refetch())
     }
 
@@ -934,15 +962,19 @@ const ProductSearchExperience = ({
     }
   }, [
     formatDefinitionsQuery.data.options.length,
+    formatDefinitionsQuery.isError,
     formatDefinitionsQuery.isFetching,
     formatDefinitionsQuery.refetch,
     genreDefinitionsQuery.data.options.length,
+    genreDefinitionsQuery.isError,
     genreDefinitionsQuery.isFetching,
     genreDefinitionsQuery.refetch,
     priceRangeQuery.data?.range,
+    priceRangeQuery.isError,
     priceRangeQuery.isFetching,
     priceRangeQuery.refetch,
     productTypeDefinitionsQuery.data.options.length,
+    productTypeDefinitionsQuery.isError,
     productTypeDefinitionsQuery.isFetching,
     productTypeDefinitionsQuery.refetch,
   ])
@@ -1044,15 +1076,15 @@ const ProductSearchExperience = ({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [desktopFiltersVisible, setDesktopFiltersVisible] = useState(true)
   const openMobileFilters = useCallback(() => {
-    refreshMissingFilterDefinitions()
+    refreshFilterDefinitionsOnIntent()
     setMobileFiltersOpen(true)
-  }, [refreshMissingFilterDefinitions])
+  }, [refreshFilterDefinitionsOnIntent])
   const toggleDesktopFilters = useCallback(() => {
     if (!desktopFiltersVisible) {
-      refreshMissingFilterDefinitions()
+      refreshFilterDefinitionsOnIntent()
     }
     setDesktopFiltersVisible((visible) => !visible)
-  }, [desktopFiltersVisible, refreshMissingFilterDefinitions])
+  }, [desktopFiltersVisible, refreshFilterDefinitionsOnIntent])
   const [pacedQuery, setPacedQuery] = useState("")
   const measureScheduledRef = useRef(false)
   const queryDebouncer = useMemo(
@@ -1606,8 +1638,8 @@ const ProductSearchExperience = ({
           <aside
             id={`${filterInstanceId}-desktop-sidebar`}
             className="hidden lg:block lg:w-60 lg:flex-shrink-0"
-            onFocusCapture={refreshMissingFilterDefinitions}
-            onPointerEnter={refreshMissingFilterDefinitions}
+            onFocusCapture={refreshFilterDefinitionsOnIntent}
+            onPointerEnter={refreshFilterDefinitionsOnIntent}
           >
             <div
               className="sticky top-24 h-[calc(100vh-7rem)] overflow-y-auto bg-background/90 px-4 py-5 scrollbar-metal supports-[backdrop-filter]:backdrop-blur-xl"
