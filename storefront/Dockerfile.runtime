@@ -1,0 +1,30 @@
+ARG NODE_IMAGE=node:26.5.0-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb
+
+FROM ${NODE_IMAGE}
+
+ARG REVISION
+LABEL org.opencontainers.image.description="Remorseless Records Next.js storefront"
+LABEL org.opencontainers.image.revision="${REVISION}"
+LABEL org.opencontainers.image.source="https://github.com/traweezy/remorseless-records"
+
+ENV COMMIT_SHA="${REVISION}" \
+    HOSTNAME=0.0.0.0 \
+    NEXT_TELEMETRY_DISABLED=1 \
+    NODE_ENV=production \
+    PORT=3000
+
+WORKDIR /app/storefront
+
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    /usr/local/bin/npm \
+    /usr/local/bin/npx
+
+COPY --chown=node:node storefront/.next/standalone/ /app/
+COPY --chown=node:node storefront/.next/static/ ./.next/static/
+COPY --chown=node:node storefront/public/ ./public/
+
+USER node
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]

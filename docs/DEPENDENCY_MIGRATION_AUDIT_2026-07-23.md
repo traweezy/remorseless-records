@@ -192,3 +192,22 @@ The migration is complete only after:
 4. Playwright device/browser smoke validation
 5. successful GitHub Actions and Railway staging deployments
 6. post-deploy route and API smoke checks
+
+## Runtime image supply-chain follow-up (2026-09-02)
+
+The locally accepted runtime images hold the application runtime at the reviewed
+Node 26.5.0 Bookworm slim multi-platform digest rather than resolving a moving
+base tag. Final layers remove npm and npx because the applications do not need
+a package manager after build. This also removes eight fixed high/critical
+findings discovered entirely in the base image's npm dependency tree without
+adding an ignore.
+
+The candidate release workflow pins Docker Buildx setup 4.3.0, login 4.6.0,
+build-push 7.3.0, GitHub attest 4.2.2, and Trivy action 0.36.0 to reviewed exact
+commits. Trivy itself is explicitly 0.70.0 and uses only the reviewed GHCR
+database. `scripts/security/runtime-image-policy.json` is the machine-readable
+identity source. Fresh Trivy 0.70.0 scans found zero fixed HIGH/CRITICAL
+vulnerabilities in both final local images, and digest-bound CycloneDX records
+verified for both subjects. Exact-SHA GitHub workflow acceptance and the later
+Railway artifact cutover remain pending; see `NEXT_SESSION_HANDOFF.md` before
+changing any pin.

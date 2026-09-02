@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { buildReleasePreparePlan } from "../backend/scripts/lib/release-prepare.mjs"
+import {
+  buildReleasePreparePlan,
+  buildRuntimeReleasePreparePlan,
+} from "../backend/scripts/lib/release-prepare.mjs"
 
 const environment = {
   DATABASE_MIGRATION_URL:
@@ -82,5 +85,55 @@ test("rejects ambiguous enforcement values", () => {
         nodePath: "/usr/bin/node",
       }),
     /must be true, false, 1, or 0/u
+  )
+})
+
+test("builds a package-manager-free runtime image release plan", () => {
+  const plan = buildRuntimeReleasePreparePlan({
+    environment: {
+      ...environment,
+      COMMIT_SHA: "abcdef1234567890",
+    },
+    nodePath: "/usr/local/bin/node",
+    now: new Date("2026-09-01T12:34:56.789Z"),
+    serverRoot: "/app",
+  })
+
+  assert.equal(plan.length, 4)
+  assert.ok(plan.every((step) => step.command === "/usr/local/bin/node"))
+  assert.deepEqual(plan[0]?.args, [
+    "/app/node_modules/@medusajs/cli/cli.js",
+    "db:migrate",
+  ])
+  assert.deepEqual(plan[2]?.args, [
+    "/app/node_modules/@medusajs/cli/cli.js",
+    "exec",
+    "./src/scripts/check-object-storage.js",
+  ])
+  assert.equal(
+    plan[3]?.environment.MEILISEARCH_CANDIDATE_INDEX,
+    "products_build_20260901t123456789z_abcdef123456"
+  )
+  assert.ok(
+    plan.every(
+      (step) =>
+        !step.args.some((argument) => argument.includes("postgresql://"))
+    )
+  )
+})
+
+test("rejects invalid runtime search candidate indexes", () => {
+  assert.throws(
+    () =>
+      buildRuntimeReleasePreparePlan({
+        environment: {
+          ...environment,
+          MEILISEARCH_CANDIDATE_INDEX: "products/stable",
+        },
+        nodePath: "/usr/local/bin/node",
+        now: new Date("2026-09-01T12:34:56.789Z"),
+        serverRoot: "/app",
+      }),
+    /must match products_build_/u
   )
 })

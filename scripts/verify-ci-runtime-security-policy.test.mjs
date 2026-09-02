@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import { describe, it } from "node:test"
 
 import {
@@ -11,6 +12,16 @@ const endpoints = [
   "*.blob.core.windows.net:443",
   "api.github.com:443",
 ]
+const manifest = JSON.parse(
+  readFileSync(
+    new URL("./security/ci-runtime-security-policy.json", import.meta.url),
+    "utf8"
+  )
+)
+const runtimeWorkflow = readFileSync(
+  new URL("../.github/workflows/runtime-images.yml", import.meta.url),
+  "utf8"
+)
 const workflow = `jobs:
   security:
     steps:
@@ -57,6 +68,18 @@ describe("CI runtime security policy", () => {
         "staging-monitor"
       )
     )
+    const runtimePolicy = manifest.workflows.find(
+      ({ path }) => path === ".github/workflows/runtime-images.yml"
+    )
+    assert.ok(runtimePolicy)
+    assert.doesNotThrow(() =>
+      validateWorkflowRuntimeSecurity(
+        runtimeWorkflow,
+        runtimePolicy.allowedEndpoints,
+        runtimePolicy.profile,
+        runtimePolicy.securityJobCount
+      )
+    )
   })
 
   it("rejects audit mode, stale pins, and endpoint broadening", () => {
@@ -99,55 +122,18 @@ describe("CI runtime security policy", () => {
   })
 
   it("rejects unreviewed manifest actions and DNS-over-HTTPS endpoints", () => {
-    const manifest = {
-      hardenRunner: {
-        commit: "05e31511f85b41b11d1cf0ef85d0992719546e2c",
-        publishedAt: "2026-08-15T05:52:25.000Z",
-        repository: "step-security/harden-runner",
-        runtime: "node24",
-        version: "v2.21.0",
-      },
-      shaiHuludDetector: {
-        commit: "2755f94762bf5012bc7be82c93e172eabbcd0802",
-        publishedAt: "2026-08-07T20:19:45.000Z",
-        repository: "gensecaihq/Shai-Hulud-2.0-Detector",
-        runtime: "node24",
-        version: "v2.2.0",
-      },
-      trivyDatabaseRepository: "ghcr.io/aquasecurity/trivy-db",
-      observedRuns: [1, 2, 3, 4, 5],
-      workflows: [
-        {
-          path: ".github/workflows/root.yml",
-          profile: "ci-security",
-          allowedEndpoints: ["dns.google:443"],
-        },
-        {
-          path: ".github/workflows/backend.yml",
-          profile: "ci-security",
-          allowedEndpoints: endpoints,
-        },
-        {
-          path: ".github/workflows/storefront.yml",
-          profile: "ci-security",
-          allowedEndpoints: endpoints,
-        },
-        {
-          path: ".github/workflows/staging-operations-monitor.yml",
-          profile: "staging-monitor",
-          allowedEndpoints: endpoints,
-        },
-        {
-          path: ".github/workflows/staging-scheduler-monitor.yml",
-          profile: "staging-monitor",
-          allowedEndpoints: endpoints,
-        },
-      ],
-    }
+    assert.doesNotThrow(() => validateCiRuntimeManifest(manifest))
 
-    assert.throws(() => validateCiRuntimeManifest(manifest))
-    manifest.workflows[0].allowedEndpoints = endpoints
-    manifest.hardenRunner.runtime = "node20"
-    assert.throws(() => validateCiRuntimeManifest(manifest))
+    const dnsBroadened = structuredClone(manifest)
+    dnsBroadened.workflows[0].allowedEndpoints = ["dns.google:443"]
+    assert.throws(() => validateCiRuntimeManifest(dnsBroadened))
+
+    const staleRuntime = structuredClone(manifest)
+    staleRuntime.hardenRunner.runtime = "node20"
+    assert.throws(() => validateCiRuntimeManifest(staleRuntime))
+
+    const missingSecurityJob = structuredClone(manifest)
+    missingSecurityJob.workflows[3].securityJobCount = 1
+    assert.throws(() => validateCiRuntimeManifest(missingSecurityJob))
   })
 })

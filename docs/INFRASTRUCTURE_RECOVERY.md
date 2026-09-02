@@ -1,6 +1,6 @@
 # Infrastructure, data protection, and recovery
 
-Last reviewed: 2026-08-30
+Last reviewed: 2026-09-01
 
 This runbook defines the production approval packet and the recovery contract
 for PostgreSQL, media, Redis, and Meilisearch. It does not authorize creating a
@@ -25,6 +25,45 @@ Meilisearch have Railway public domains. Current support-service sources are:
 The floating and unpinned sources are not an accepted production baseline.
 Changing them is intentionally deferred until a backup and restore drill can
 protect the upgrade.
+
+Backend and Storefront still use GitHub source/Railpack builds. The repository
+contains an in-progress contract for GHCR runtime candidates, but no Railway
+service currently consumes one; see `NEXT_SESSION_HANDOFF.md`.
+
+## Application image source and rollback
+
+An application image is production-eligible only when its SHA tag resolves to
+the recorded OCI digest, its Trivy high/critical gate is clean, and GitHub
+verifies both provenance and CycloneDX attestations for this repository. A
+moving tag such as `latest`, `staging`, or `master` is not release evidence.
+
+Railway Pro may pull a private registry image with a registry credential. If
+GHCR packages remain private, use a dedicated read-only package credential
+stored only in Railway; never use a broad personal token, print it, or place it
+in GitHub/repository files. Making a package public is a separate visibility
+decision and must not be performed as an implementation side effect.
+
+Before changing a service from GitHub source to an image source:
+
+1. record the current successful Railway deployment and source SHA as the
+   rollback target;
+2. verify the candidate digest and both GitHub attestations independently;
+3. verify the image exposes the same port, non-root identity, health paths,
+   environment contract, resource limits, and graceful-shutdown behavior;
+4. change Backend pre-deploy to
+   `node ./scripts/runtime-release-prepare.mjs` and retain its distinct
+   migration/runtime database authorities;
+5. deploy by immutable digest or unique SHA tag, then record Railway's exact
+   deployment ID and resolved digest;
+6. require both `/live` and dependency-aware `/ready`, representative catalog
+   and checkout-safe reads, release-preparation logs, and bounded error-log
+   review; and
+7. prove rollback to the prior accepted source/image without a destructive
+   database reversal.
+
+Do not remove the Railpack source configuration, registry credential, or prior
+rollback reference until that acceptance is complete. An image publication by
+itself does not authorize a Railway source change.
 
 ## Production approval packet
 

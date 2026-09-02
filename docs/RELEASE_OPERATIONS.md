@@ -65,6 +65,42 @@ healthy.
 
 Do not begin another slice while any exact-SHA staging gate is unresolved.
 
+## Immutable runtime image candidates
+
+The Runtime Images workflow validates Backend and Storefront images on
+`staging` without publishing them. Only an exact `master` ref may publish an
+immutable GHCR SHA tag. Manual dispatch does not broaden that rule. Each
+published subject must have all of the following on the same digest:
+
+- a passing non-root/package-manager-free runtime contract;
+- zero fixed high or critical Trivy findings under the reviewed policy;
+- a retained CycloneDX SBOM and schema-checked image record;
+- GitHub build-provenance attestation; and
+- GitHub CycloneDX SBOM attestation pushed to the registry.
+
+Verify before any deployment source change:
+
+```bash
+gh attestation verify \
+  'oci://ghcr.io/traweezy/remorseless-records-backend@sha256:<digest>' \
+  --repo traweezy/remorseless-records
+gh attestation verify \
+  'oci://ghcr.io/traweezy/remorseless-records-storefront@sha256:<digest>' \
+  --repo traweezy/remorseless-records
+```
+
+Railway currently builds both applications from GitHub source with Railpack.
+Publishing an image therefore does not prove the Railway deployment is that
+image. Keep the hardening-plan deployed-artifact item open until a separately
+approved source cutover deploys the verified digests and completes exact-SHA
+health, readiness, route, log, and rollback acceptance.
+
+When testing an image source in a controlled environment, Backend pre-deploy
+must use `node ./scripts/runtime-release-prepare.mjs`; the source-build command
+`pnpm --filter backend --silent run release:prepare` is not present in the
+package-manager-free image. Never weaken the database role split, storage
+check, or versioned search rebuild during that change.
+
 ## Abuse-control and trusted-proxy operations
 
 Storefront and Backend generic abuse controls share Redis fixed-window

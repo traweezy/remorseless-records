@@ -19,6 +19,8 @@ const experimentalConfig: NonNullable<NextConfig["experimental"]> = {
 }
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: path.resolve(currentDir, ".."),
   reactStrictMode: true,
   poweredByHeader: false,
   env: {

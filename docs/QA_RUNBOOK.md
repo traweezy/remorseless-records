@@ -156,6 +156,9 @@ pnpm run qa:dependency-supply-chain
 # Deny-by-default CI egress and reviewed Node 24 security actions
 pnpm run qa:ci-runtime-security
 
+# Runtime Dockerfile, action pin, image/SBOM, and attestation boundaries
+pnpm run qa:runtime-images
+
 # Revalidate every locked package against the active supply-chain policy
 pnpm install --frozen-lockfile
 
@@ -175,15 +178,63 @@ is the exact locally hardened Railway CLI release; the only audit ignores are
 the three behaviorally verified React Router 6 backports required by Medusa.
 
 The CI runtime-security gate covers every workflow that invokes Harden-Runner.
-It binds all five jobs to the reviewed v2.21.0 commit, requires block mode and
-the exact per-workflow endpoint sets, rejects DNS-over-HTTPS escape endpoints,
-and proves no other workflow retains audit mode. Root, Backend, and Storefront
-also require the reviewed Shai-Hulud v2.2.0 Node 24 action and its fail-closed
-lockfile controls. Root Trivy scans use only
+It binds all six workflows to the reviewed v2.21.0 commit, requires block mode
+and the exact per-workflow endpoint sets, rejects DNS-over-HTTPS escape
+endpoints, and proves no other workflow retains audit mode. Root, Backend,
+Storefront, and Runtime Images also require the reviewed Shai-Hulud v2.2.0 Node
+24 action and its fail-closed lockfile controls. Root Trivy scans use only
 `ghcr.io/aquasecurity/trivy-db`; do not re-enable the default registry mirror
 without reviewing and testing the resulting egress expansion.
 
-### 1.5 Disposable PostgreSQL and Redis integration
+### 1.5 Runtime image acceptance
+
+Build the application artifacts before their final images:
+
+```bash
+pnpm --filter backend run build
+pnpm --filter remorseless-records-storefront run build
+
+candidate_revision="$(git rev-parse HEAD)"
+docker build --file backend/Dockerfile.runtime \
+  --build-arg "REVISION=${candidate_revision}" \
+  --tag remorseless-records-backend:runtime-local .
+docker build --file storefront/Dockerfile.runtime \
+  --build-arg "REVISION=${candidate_revision}" \
+  --tag remorseless-records-storefront:runtime-local .
+```
+
+The final image must run as UID 1000 on Node 26.5.0, expose its expected
+health port, contain no npm/npx executable, and carry the source/revision OCI
+labels. Backend must contain Medusa CLI, the observability preload, and
+`scripts/runtime-release-prepare.mjs`. Storefront must contain `server.js`,
+`.next/static`, and `public`.
+
+Scan each exact image with Trivy 0.70.0, the reviewed GHCR database,
+vulnerability scanning only, `ignore-unfixed`, `CRITICAL,HIGH`, and exit code
+1. Then generate CycloneDX output and validate it against the exact image
+record with:
+
+```bash
+node scripts/write-runtime-image-record.mjs \
+  --service backend \
+  --revision "${candidate_revision}" \
+  --digest 'sha256:<64 lowercase hex characters>' \
+  --output /tmp/backend.image.json
+node scripts/verify-runtime-image-artifacts.mjs \
+  /tmp/backend.image.json /tmp/backend.cdx.json
+```
+
+Use a fresh private `/tmp` directory for each run. Do not commit SBOMs, image
+records, Trivy caches, or image archives. The same contract applies to
+Storefront with `--service storefront`.
+
+For Storefront container smoke, inject only the documented non-production
+32-byte secret fixtures and require `/live`. `/ready` is dependency-aware and
+must return 503 if no Backend is available; use the deterministic Medusa
+fixture when a 200 readiness assertion is required. No visual UI changed in
+this image-only slice, so a screenshot is not required.
+
+### 1.6 Disposable PostgreSQL and Redis integration
 
 Run the application boundary against fresh, local-only services:
 
@@ -215,7 +266,7 @@ docker compose --project-name remorseless-records-integration \
   --file compose.integration.yml ps --all
 ```
 
-### 1.6 Admin accessibility and visual matrix
+### 1.7 Admin accessibility and visual matrix
 
 Build the actual Medusa Admin bundle before running its browser acceptance:
 
@@ -260,7 +311,7 @@ real desktop screenshot. The acceptance fixture is for rendering and
 accessibility only. It is not staging health evidence and must never be changed
 to issue writes.
 
-### 1.7 Critical browser matrix
+### 1.8 Critical browser matrix
 
 Pre-deploy Browser Smoke must use the loopback-only deterministic Medusa
 fixture in `storefront/scripts/ci-medusa-fixture.mjs`. The fixture exposes only
@@ -306,7 +357,7 @@ still exercise the live authenticated Product-handle and catalog-shelf
 projections. A local fixture pass is never evidence that the deployed provider
 is healthy.
 
-### 1.8 Storefront launch acceptance
+### 1.9 Storefront launch acceptance
 
 Run the deterministic launch matrix after the production build:
 
@@ -339,7 +390,7 @@ Checkout 0.83, and Privacy 0.84. The isolated local browser host required the
 documented no-sandbox escape hatch because user namespaces were unavailable;
 GitHub-hosted release jobs continue to use their normal sandbox.
 
-### 1.9 Trusted Types report-only acceptance
+### 1.10 Trusted Types report-only acceptance
 
 The Storefront sends `Content-Security-Policy-Report-Only` on document
 responses with `require-trusted-types-for 'script'` and advertises the

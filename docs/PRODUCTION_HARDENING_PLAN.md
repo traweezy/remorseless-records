@@ -2915,6 +2915,13 @@ floating support images, and the exact production cost/domain approval packet.
       archive extractor and verifies immutable release digests itself.
 - [ ] Scan final runtime images, generate image-linked SBOM/provenance, and sign
       or attest the deployed artifacts.
+      Local candidate acceptance completed on 2026-09-02: digest-pinned
+      non-root Backend and Storefront images, package-manager-free release
+      execution, zero fixed HIGH/CRITICAL Trivy findings, digest-bound
+      CycloneDX records, immutable action policy, and least-privilege GitHub
+      validation/publication jobs are present in the repository slice.
+      Exact-SHA CI acceptance, GitHub-hosted attestations, and the later
+      Railway image-source cutover remain. See `NEXT_SESSION_HANDOFF.md`.
 - [x] Move hardened-runner egress from audit mode to an explicit allowlist after
       observing required endpoints.
 - [x] Add a real dependency cooling window and keep only narrowly justified
@@ -4436,6 +4443,54 @@ pins, audit mode, endpoint broadening, unreviewed hardened workflows, a missing
 Shai-Hulud control, or Trivy source drift. Focused policy tests and the complete
 repository QA gate pass locally. This slice changes workflow execution only,
 not a rendered UI surface, so screenshot validation was not applicable.
+
+## Locally accepted runtime artifact boundary
+
+Local candidate acceptance completed on 2026-09-02 for the runtime-artifact
+slice. The repository emits a Next.js
+standalone server, packages the generated Medusa server and Storefront into
+Node 26.5.0 images pinned by multi-platform digest, runs both as UID 1000,
+removes npm/npx from final layers, and adds exact OCI source/revision identity.
+Backend carries a direct Node release runner so database migration/link
+synchronization, object-storage readiness, and versioned search rebuild remain
+available without pnpm.
+
+The candidate workflow and policy bind immutable Buildx setup, login, build,
+attest, and Trivy action commits; Trivy 0.70.0; the reviewed GHCR vulnerability
+database; deny-by-default egress; high/critical failure; CycloneDX output;
+exact image records; and provenance/SBOM attestations. Validation and
+publication are mutually exclusive jobs. Validation has read-only repository
+authority; publication additionally requires the `master` ref and receives
+write permissions only in that job. Focused runtime policy tests pass 7/7,
+release-plan tests pass 6/6, and the expanded six-workflow egress policy tests
+pass 4/4.
+
+The first image scan found eight fixed high/critical issues only in npm shipped
+by the base image. The final images omit npm and npx instead of suppressing
+those findings. Fresh production artifacts produced Backend image
+`sha256:954da9673f481cb152559eb2e4bc32920c5a6f9868ffacdbf49b061a661ea58d`
+and Storefront image
+`sha256:b8040b0989e6a91d0ecff2d99cde70c9f434222836ccc7c2968f3e826e428b7c`.
+Both passed non-root, Node 26.5.0, package-manager-free, filesystem, label, and
+health contracts. Trivy 0.70.0 with its 2026-09-02 GHCR database found zero
+fixed HIGH/CRITICAL vulnerabilities; the digest-bound CycloneDX records
+verified with 1,183 Backend components and 122 Storefront components.
+
+Complete lint/type/policy checks, Backend and Storefront coverage, disposable
+PostgreSQL/Redis integration, frozen install, the production dependency audit,
+both production builds, 54 responsive Browser Smoke journeys, and all 18
+six-route Lighthouse samples passed locally. The fixture correction that
+restores non-empty discography data is included. `sanitize-html` 2.17.7 also
+closes the newly published `GHSA-g8qq-57p8-ggw5` finding without a cooling
+exception.
+
+Local evidence does not replace GitHub's YAML/expression parser, Runtime Images
+CI, or exact-SHA staging acceptance; require those independently for each
+candidate. Railway remains on source-built Railpack artifacts, so this is not
+closure of the deployed-artifact requirement. The evidence, risks, and remote
+acceptance order are recorded in
+`NEXT_SESSION_HANDOFF.md`. No rendered UI changed, so screenshot validation is
+not applicable.
 
 ## Legal, accessibility, and launch acceptance
 

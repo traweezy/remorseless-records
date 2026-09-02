@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "nodeImage": "node:26.5.0-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb",
+  "repository": "https://github.com/traweezy/remorseless-records",
+  "trivy": {
+    "repository": "aquasecurity/trivy-action",
+    "commit": "ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "version": "v0.36.0",
+    "scannerVersion": "v0.70.0",
+    "databaseRepository": "ghcr.io/aquasecurity/trivy-db"
+  },
+  "actions": {
+    "attest": {
+      "repository": "actions/attest",
+      "version": "v4.2.2",
+      "commit": "1e69f48acb82d1966a394da916b4c1698aa569d6"
+    },
+    "buildPush": {
+      "repository": "docker/build-push-action",
+      "version": "v7.3.0",
+      "commit": "53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
+    },
+    "login": {
+      "repository": "docker/login-action",
+      "version": "v4.6.0",
+      "commit": "dbcb813823bdd20940b903addbd779551569679f"
+    },
+    "setupBuildx": {
+      "repository": "docker/setup-buildx-action",
+      "version": "v4.3.0",
+      "commit": "37fe631027851001ddb9b187196cc803df7f5f0e"
+    }
+  },
+  "services": {
+    "backend": {
+      "dockerfile": "backend/Dockerfile.runtime",
+      "image": "ghcr.io/traweezy/remorseless-records-backend",
+      "port": 9000,
+      "workdir": "/app"
+    },
+    "storefront": {
+      "dockerfile": "storefront/Dockerfile.runtime",
+      "image": "ghcr.io/traweezy/remorseless-records-storefront",
+      "port": 3000,
+      "workdir": "/app/storefront"
+    }
+  },
+  "workflow": ".github/workflows/runtime-images.yml"
+}

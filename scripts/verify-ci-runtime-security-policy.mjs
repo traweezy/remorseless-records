@@ -33,7 +33,7 @@ const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
 
 const leadingWidth = (line) => line.match(/^\s*/u)?.[0].length ?? 0
 
-const extractActionStep = (source, repository) => {
+const extractActionSteps = (source, repository, expectedCount) => {
   const lines = source.split(/\r?\n/u)
   const pattern = new RegExp(
     `^(\\s*)uses:\\s+${escapeRegExp(repository)}@([0-9a-f]{40})\\s+#\\s+(\\S+)\\s*$`,
@@ -52,19 +52,27 @@ const extractActionStep = (source, repository) => {
         ]
       : []
   })
-  assert.equal(matches.length, 1, `${repository} must appear exactly once`)
-  const match = matches[0]
-  const stepIndent = match.usesIndent - 2
-  const endIndex = lines.findIndex(
-    (line, index) =>
-      index > match.index &&
-      line.trim().startsWith("- ") &&
-      leadingWidth(line) === stepIndent
+  assert.equal(
+    matches.length,
+    expectedCount,
+    `${repository} must appear exactly ${expectedCount} time(s)`
   )
-  return {
-    ...match,
-    block: lines.slice(match.index, endIndex === -1 ? lines.length : endIndex),
-  }
+  return matches.map((match) => {
+    const stepIndent = match.usesIndent - 2
+    const endIndex = lines.findIndex(
+      (line, index) =>
+        index > match.index &&
+        line.trim().startsWith("- ") &&
+        leadingWidth(line) === stepIndent
+    )
+    return {
+      ...match,
+      block: lines.slice(
+        match.index,
+        endIndex === -1 ? lines.length : endIndex
+      ),
+    }
+  })
 }
 
 const readStepScalar = (block, key) => {
@@ -117,12 +125,24 @@ export const validateCiRuntimeManifest = (manifest) => {
     assert.ok(Number.isSafeInteger(runId) && runId > 0)
   )
   assert.ok(
-    Array.isArray(manifest.workflows) && manifest.workflows.length === 5
+    Array.isArray(manifest.workflows) && manifest.workflows.length === 6
   )
 
+  const expectedSecurityJobCounts = new Map([
+    [".github/workflows/root.yml", 1],
+    [".github/workflows/backend.yml", 1],
+    [".github/workflows/storefront.yml", 1],
+    [".github/workflows/runtime-images.yml", 2],
+    [".github/workflows/staging-operations-monitor.yml", 1],
+    [".github/workflows/staging-scheduler-monitor.yml", 1],
+  ])
   const paths = manifest.workflows.map((workflow) => {
     assert.equal(typeof workflow.path, "string")
     assert.match(workflow.profile, /^(?:ci-security|staging-monitor)$/u)
+    assert.equal(
+      workflow.securityJobCount,
+      expectedSecurityJobCounts.get(workflow.path)
+    )
     assert.ok(!isAbsolute(workflow.path))
     const absolutePath = resolve(root, workflow.path)
     const canonicalRelative = relative(root, realpathSync(absolutePath))
@@ -154,6 +174,7 @@ export const validateCiRuntimeManifest = (manifest) => {
     ".github/workflows/root.yml",
     ".github/workflows/backend.yml",
     ".github/workflows/storefront.yml",
+    ".github/workflows/runtime-images.yml",
     ".github/workflows/staging-operations-monitor.yml",
     ".github/workflows/staging-scheduler-monitor.yml",
   ])
@@ -162,40 +183,54 @@ export const validateCiRuntimeManifest = (manifest) => {
 export const validateWorkflowRuntimeSecurity = (
   source,
   expectedEndpoints,
-  profile = "ci-security"
+  profile = "ci-security",
+  securityJobCount = 1
 ) => {
   assert.doesNotMatch(source, /egress-policy:\s+audit/u)
-  const hardenRunner = extractActionStep(
+  const hardenRunners = extractActionSteps(
     source,
-    reviewedActions.hardenRunner.repository
+    reviewedActions.hardenRunner.repository,
+    securityJobCount
   )
-  assertAction(hardenRunner, reviewedActions.hardenRunner)
-  assert.equal(readStepScalar(hardenRunner.block, "egress-policy"), "block")
-  assert.deepEqual(readEndpointBlock(hardenRunner.block), expectedEndpoints)
+  hardenRunners.forEach((hardenRunner, index) => {
+    assertAction(hardenRunner, reviewedActions.hardenRunner)
+    assert.equal(readStepScalar(hardenRunner.block, "egress-policy"), "block")
+    assert.deepEqual(readEndpointBlock(hardenRunner.block), expectedEndpoints)
 
-  const checkoutLineIndex = source
-    .split(/\r?\n/u)
-    .findIndex(
-      (line, index) =>
-        index > hardenRunner.index && line.includes("uses: actions/checkout@")
+    const nextHardenRunnerIndex =
+      hardenRunners[index + 1]?.index ?? Number.POSITIVE_INFINITY
+    const checkoutLineIndex = source
+      .split(/\r?\n/u)
+      .findIndex(
+        (line, lineIndex) =>
+          lineIndex > hardenRunner.index &&
+          lineIndex < nextHardenRunnerIndex &&
+          line.includes("uses: actions/checkout@")
+      )
+    assert.ok(
+      checkoutLineIndex > hardenRunner.index,
+      "Harden-Runner must execute before each security job checkout"
     )
-  assert.ok(
-    checkoutLineIndex > hardenRunner.index,
-    "Harden-Runner must execute before the security job checkout"
-  )
+  })
 
   if (profile === "ci-security") {
-    const shaiHulud = extractActionStep(
+    const shaiHuludSteps = extractActionSteps(
       source,
-      reviewedActions.shaiHuludDetector.repository
+      reviewedActions.shaiHuludDetector.repository,
+      securityJobCount
     )
-    assertAction(shaiHulud, reviewedActions.shaiHuludDetector)
-    assert.equal(readStepScalar(shaiHulud.block, "fail-on-critical"), "true")
-    assert.equal(readStepScalar(shaiHulud.block, "scan-lockfiles"), "true")
-    assert.equal(readStepScalar(shaiHulud.block, "scan-node-modules"), "false")
+    shaiHuludSteps.forEach((shaiHulud) => {
+      assertAction(shaiHulud, reviewedActions.shaiHuludDetector)
+      assert.equal(readStepScalar(shaiHulud.block, "fail-on-critical"), "true")
+      assert.equal(readStepScalar(shaiHulud.block, "scan-lockfiles"), "true")
+      assert.equal(
+        readStepScalar(shaiHulud.block, "scan-node-modules"),
+        "false"
+      )
+    })
     assert.equal(
       source.match(/run:\s+pnpm run qa:ci-runtime-security/gu)?.length,
-      1
+      securityJobCount
     )
     return
   }
@@ -211,7 +246,8 @@ export const verifyCiRuntimeSecurityPolicy = () => {
     validateWorkflowRuntimeSecurity(
       readFileSync(join(root, workflow.path), "utf8"),
       workflow.allowedEndpoints,
-      workflow.profile
+      workflow.profile,
+      workflow.securityJobCount
     )
   }
 
@@ -255,8 +291,12 @@ export const verifyCiRuntimeSecurityPolicy = () => {
     /pnpm run qa:ci-runtime-security/u
   )
 
+  const hardenedJobCount = manifest.workflows.reduce(
+    (total, workflow) => total + workflow.securityJobCount,
+    0
+  )
   console.info(
-    `CI runtime security verified: ${manifest.workflows.length} blocked egress jobs, two exact Node 24 security actions, and one fixed Trivy database source.`
+    `CI runtime security verified: ${hardenedJobCount} blocked-egress jobs across ${manifest.workflows.length} workflows, two exact Node 24 action identities, and one fixed Trivy database source.`
   )
 }
 

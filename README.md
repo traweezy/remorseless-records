@@ -1648,26 +1648,43 @@ flowchart LR
 
 ## CI Pipelines
 
-We run three pipelines for `staging` and `master` pushes/pull requests (plus a
-weekly schedule):
+We run three application/repository pipelines for `staging` and `master`
+pushes/pull requests (plus a weekly schedule), and one runtime-image pipeline
+for long-lived branch pushes:
 
 - **Backend CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, lint, typecheck, unit tests, CodeQL, build, and an enforced Admin JavaScript bundle budget.
 - **Storefront CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, Biome, semantic typecheck, baseline plus transactional coverage, and a production build. Pushes and `master` release pull requests also require non-destructive responsive Playwright smoke tests, the critical Chromium/Firefox/WebKit guest-commerce matrix, the 14-scenario legal/commerce launch matrix, pa11y, and a six-route repeated Lighthouse gate with private artifacts; ordinary `staging` pull requests can opt into those browser gates with repository variables.
 - **Root CI**: dependency review, security (Shai-Hulud detector, Trivy FS scan, pnpm audit), secret scan, and a retained CycloneDX SBOM plus production-license inventory.
+- **Runtime Images**: builds the generated Medusa server and Next.js standalone
+  output into digest-pinned, non-root, package-manager-free images. Staging
+  validates and retains the exact image/SBOM records without publishing;
+  approved `master` candidates publish immutable SHA tags to GHCR and attach
+  GitHub provenance plus CycloneDX SBOM attestations.
 
-The three security jobs and both scheduled staging monitors run
+The three application security jobs, the Runtime Images job, and both
+scheduled staging monitors run
 `step-security/harden-runner` with deny-by-default egress, reviewed endpoint
 allowlists, and immutable action commits. A repository policy test fails on
 audit mode, endpoint broadening, unreviewed hardened workflows, stale security
 action pins, or loss of the Shai-Hulud scan controls. Trivy ignores generated
 `.medusa` output and resolves its vulnerability database only from the reviewed
-GHCR source. Root CI retains the verified SBOM and license inventory for 30
-days. Five Medusa Admin packages omit license metadata from their published
+GHCR source. Root CI retains the verified filesystem SBOM and license
+inventory for 30 days. The Runtime Images pipeline separately binds each
+container SBOM to its OCI digest and rejects fixed high/critical findings.
+Railway still deploys source-built Railpack artifacts until the separately
+reviewed registry-source cutover in
+[`docs/RELEASE_OPERATIONS.md`](docs/RELEASE_OPERATIONS.md); do not claim the
+running staging artifact is attested before that cutover. Five Medusa Admin
+packages omit license metadata from their published
 manifests; the verifier permits only those exact packages because the
 authoritative Medusa monorepo is MIT-licensed, and fails if any other
 production package lacks license metadata. Dependency Review runs when a pull
 request supplies a base/head diff. Keep `.env` files local (ignored by git) and
 rotate any secrets that were previously committed.
+
+The runtime-image rollout evidence and exact acceptance checklist are recorded
+in
+[`docs/NEXT_SESSION_HANDOFF.md`](docs/NEXT_SESSION_HANDOFF.md).
 
 ## Release and Branch Workflow
 

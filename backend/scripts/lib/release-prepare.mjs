@@ -12,11 +12,7 @@ const parseRequiredSplit = (value) => {
   throw new Error("DATABASE_ROLE_SPLIT_REQUIRED must be true, false, 1, or 0.")
 }
 
-export const buildReleasePreparePlan = ({
-  environment,
-  nodePath,
-  pnpmPath = "pnpm",
-}) => {
+const buildDatabaseEnvironments = (environment) => {
   const runtimeUrl = environment.DATABASE_URL?.trim()
   const configuredMigrationUrl = environment.DATABASE_MIGRATION_URL?.trim()
   if (!runtimeUrl) {
@@ -34,6 +30,7 @@ export const buildReleasePreparePlan = ({
       "A distinct DATABASE_MIGRATION_URL is required when the database role split is enforced."
     )
   }
+
   const migrationUrl = configuredMigrationUrl || runtimeUrl
   const runtimeEnvironment = { ...environment, DATABASE_URL: runtimeUrl }
   delete runtimeEnvironment.DATABASE_MIGRATION_URL
@@ -42,6 +39,44 @@ export const buildReleasePreparePlan = ({
     DATABASE_URL: migrationUrl,
   }
   delete migrationEnvironment.DATABASE_MIGRATION_URL
+
+  return { migrationEnvironment, runtimeEnvironment }
+}
+
+const candidateIndexPattern = /^products_build_[a-z0-9_-]+$/u
+
+const buildCandidateIndex = ({ environment, now }) => {
+  const configuredIndex = environment.MEILISEARCH_CANDIDATE_INDEX?.trim()
+  const revision = (
+    environment.RAILWAY_GIT_COMMIT_SHA ??
+    environment.COMMIT_SHA ??
+    environment.GITHUB_SHA ??
+    "local"
+  )
+    .toLowerCase()
+    .replace(/[^a-z0-9]/gu, "")
+    .slice(0, 12)
+  const timestamp = now.toISOString().toLowerCase().replace(/[-:.]/gu, "")
+  const candidateIndex =
+    configuredIndex ??
+    `products_build_${timestamp}_${revision.length > 0 ? revision : "local"}`
+
+  if (!candidateIndexPattern.test(candidateIndex)) {
+    throw new Error(
+      "MEILISEARCH_CANDIDATE_INDEX must match products_build_[a-z0-9_-]+."
+    )
+  }
+
+  return candidateIndex
+}
+
+export const buildReleasePreparePlan = ({
+  environment,
+  nodePath,
+  pnpmPath = "pnpm",
+}) => {
+  const { migrationEnvironment, runtimeEnvironment } =
+    buildDatabaseEnvironments(environment)
 
   return [
     {
@@ -69,6 +104,48 @@ export const buildReleasePreparePlan = ({
       args: ["./scripts/run-search-prepare.js"],
       command: nodePath,
       environment: runtimeEnvironment,
+      label: "search preparation",
+    },
+  ]
+}
+
+export const buildRuntimeReleasePreparePlan = ({
+  environment,
+  nodePath,
+  now,
+  serverRoot,
+}) => {
+  const { migrationEnvironment, runtimeEnvironment } =
+    buildDatabaseEnvironments(environment)
+  const cliPath = `${serverRoot}/node_modules/@medusajs/cli/cli.js`
+  const candidateIndex = buildCandidateIndex({ environment, now })
+
+  return [
+    {
+      args: [cliPath, "db:migrate"],
+      command: nodePath,
+      environment: migrationEnvironment,
+      label: "database migrations",
+    },
+    {
+      args: [cliPath, "db:sync-links"],
+      command: nodePath,
+      environment: migrationEnvironment,
+      label: "database link synchronization",
+    },
+    {
+      args: [cliPath, "exec", "./src/scripts/check-object-storage.js"],
+      command: nodePath,
+      environment: runtimeEnvironment,
+      label: "object storage readiness",
+    },
+    {
+      args: [cliPath, "exec", "./src/scripts/reindex-meilisearch.js"],
+      command: nodePath,
+      environment: {
+        ...runtimeEnvironment,
+        MEILISEARCH_CANDIDATE_INDEX: candidateIndex,
+      },
       label: "search preparation",
     },
   ]
