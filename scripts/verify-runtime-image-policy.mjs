@@ -158,6 +158,7 @@ export const validateRuntimeWorkflowSource = (source) => {
       "postgresql://postgres:postgres@127.0.0.1:5432/remorseless",
     ],
     ["JWT_SECRET", "ci-runtime-backend-jwt-20260902"],
+    ["MEILISEARCH_ADMIN_KEY", "ci-runtime-admin-key-20260902"],
     ["STORE_CORS", "http://127.0.0.1:3000"],
   ]) {
     assert.equal(
@@ -176,6 +177,7 @@ export const validateRuntimeWorkflowSource = (source) => {
   for (const endpoint of [
     "fonts.googleapis.com:443",
     "fonts.gstatic.com:443",
+    "production.cloudfront.docker.com:443",
   ]) {
     assert.equal(
       sourceLines.filter((line) => line.trim() === endpoint).length,

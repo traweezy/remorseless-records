@@ -28,6 +28,7 @@ env:
   COOKIE_SECRET: ci-runtime-backend-cookie-20260902
   DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/remorseless
   JWT_SECRET: ci-runtime-backend-jwt-20260902
+  MEILISEARCH_ADMIN_KEY: ci-runtime-admin-key-20260902
   MEDUSA_BACKEND_URL: http://127.0.0.1:4010
   MEILISEARCH_HOST: http://127.0.0.1:7700
   MEILISEARCH_SEARCH_KEY: ci-runtime-search-key-20260901
@@ -85,6 +86,7 @@ jobs:
             objects.githubusercontent.com:443
             pkg-containers.githubusercontent.com:443
             production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
             registry-1.docker.io:443
             registry.npmjs.org:443
             release-assets.githubusercontent.com:443
@@ -303,6 +305,7 @@ jobs:
             objects.githubusercontent.com:443
             pkg-containers.githubusercontent.com:443
             production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
             registry-1.docker.io:443
             registry.npmjs.org:443
             release-assets.githubusercontent.com:443
