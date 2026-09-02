@@ -2,33 +2,55 @@
 
 Last updated: 2026-09-02
 
-This document records the local acceptance boundary for the runtime-image
-hardening slice. Local evidence does not establish GitHub exact-SHA acceptance
-or prove which artifact Railway is running; verify those separately with the
-sequence below.
+This document records the local and GitHub acceptance boundary for the
+runtime-image hardening slice. GitHub image evidence does not prove which
+artifact Railway is running; verify Railway separately with the sequence below.
 
 ## Repository state
 
 - Branch: `staging`
-- Local validation base SHA:
-  `1689969cd0b3546c6d54e1efc0d6def0e79a7e28`
-- Root CI run `33504622716` and Backend CI run `33504622709` passed that SHA.
-  Storefront CI run `33504622686` failed because the deterministic discography
-  fixture used a date-only value and the `/catalog` three-sample median total
-  blocking time was 372.5 ms against the unchanged 350 ms budget. Both failures
-  are corrected and pass locally in this worktree.
+- Runtime-image acceptance base SHA:
+  `ead91c5954581cda886d2e135ff1496f8aa5d886`
+- Local `staging` contains the continuation commit below and awaits one bounded
+  push to `origin/staging`. Unrelated untracked `Default/` user data remains
+  outside this work and must stay untouched.
+- Root CI run `33626579282`, Backend CI run `33626579337`, and Runtime Images
+  run `33626579333` passed the exact current SHA. Runtime image publication was
+  skipped on `staging` as required.
+- Storefront CI run `33626579305` passed security, secret scanning, lint,
+  typecheck, Trivy, CodeQL, both coverage suites, the production build,
+  responsive and launch Playwright suites, Chromium/Firefox/WebKit journeys,
+  and pa11y. Its only failing job is Lighthouse; the single controlled rerun
+  still exceeded the unchanged `/catalog` total-blocking-time budget.
 - Scheduled staging operations and scheduler monitors continue to pass on the
-  committed SHA. No production environment exists and no production state was
-  changed.
+  previously deployed SHA. The current SHA has not completed the release gate,
+  so do not treat those monitor results as acceptance for it. No production
+  environment exists and no production state was changed.
 - Dependabot PR `#6` proposes only the Backend manifest half of the
-  `sanitize-html` 2.17.7 update and fails its frozen install. This worktree
-  upgrades both direct consumers, updates the shared lockfile, and proves the
-  compatibility path. Do not merge the incomplete PR over this work.
+  `sanitize-html` 2.17.7 update and fails its frozen install. Commit
+  `5af1abf2821836111bac56704ac56d7f8322a08d` upgrades both direct consumers,
+  updates the shared lockfile, and proves the compatibility path. Do not merge
+  the incomplete PR over this work.
 - `Default/` is unrelated untracked user data. Do not read, modify, stage, or
   commit it.
 - Railway remains on the existing staging source/Railpack configuration. No
   service source, credential, package visibility, domain, or traffic setting
   changed in this slice.
+
+The completed commits on `staging` are:
+
+- `402c10111c144d407d4c75168ef69588d6768371` restores the deterministic
+  discography fixture;
+- `5af1abf2821836111bac56704ac56d7f8322a08d` upgrades the sanitizer;
+- `7dbee18a3fff3ef16821ac89a2c45a8d94e950b9` adds the immutable runtime-image
+  pipeline;
+- `d2ee4b2a589bc327deaefe6d48b3140d928e636b` adds runtime build fixtures;
+- `870545543fe2fde5b94021b6f6691289543f0b32` completes runtime build
+  dependencies; and
+- `ead91c5954581cda886d2e135ff1496f8aa5d886` initializes the private runtime
+  evidence directory before SBOM generation; and
+- `9a410faadb1054dd0a5b847486a0bfc3a81b521e` defers product-detail response
+  validation until the intent-driven request resolves.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -149,20 +171,85 @@ New runtime files in the containing change set:
 
 The local image labels use the validation base SHA while containing the
 pre-commit candidate worktree. They are local validation evidence only, not
-release artifacts. GitHub must rebuild and record definitive images against an
-exact candidate commit SHA.
+release artifacts. The exact-SHA GitHub rebuild below supersedes them as the
+definitive runtime-image validation evidence for this slice.
+
+## Exact-SHA GitHub evidence
+
+Runtime Images run `33626579333` rebuilt both images at
+`ead91c5954581cda886d2e135ff1496f8aa5d886`. Backend job `100235640807` and
+Storefront job `100235640612` built, smoked, scanned, and retained private
+evidence successfully. Publication job `100235641535` skipped without registry
+login or publication. The retained artifacts expire on 2026-10-02:
+
+- `runtime-image-backend-ead91c5954581cda886d2e135ff1496f8aa5d886`
+  (112,297 bytes); and
+- `runtime-image-storefront-ead91c5954581cda886d2e135ff1496f8aa5d886`
+  (48,645 bytes).
+
+Storefront CI remains the only incomplete exact-SHA gate. The previous green
+comparison run is `33499795322` at
+`b48385ad1b76545fd99b7727d4c11aa815e6b8a3`; its three `/catalog` total blocking
+times were 367, 334.5, and 289 ms (334.5 ms median). Attempt 2 of current run
+`33626579305` measured 450, 368.5, and 350.5 ms (368.5 ms median) against the
+350 ms limit. Its performance scores were 0.82, 0.76, and 0.80 against the 0.80
+minimum. Do not lower either threshold or repeatedly rerun the unchanged SHA.
+
+Retained Lighthouse artifact `storefront-lighthouse-33626579305` has artifact
+ID `9845805549` and expires on 2026-09-16. A local diagnostic copy was extracted
+under `/tmp/remorseless-lighthouse-IcdObH`; this temporary path may not survive
+the next session. The reports show:
+
+- the two large React/React DOM framework chunks have the same hashes and byte
+  sizes as the last green run;
+- the current catalog DOM is only 219 elements, so excessive DOM size is not
+  the cause;
+- the current run attributes one 96 ms long task to the layout chunk, alongside
+  route-dependent React hydration tasks; and
+- the new product response validator is eagerly bundled through
+  `src/lib/query/products.ts` into shared chunk `555`, which grew from 18,705 to
+  20,486 uncompressed bytes. This is the leading optimization candidate, not
+  yet a proven sole cause.
+
+The continuation candidate defers `readStoreProductDetailResponse` with a
+dynamic import inside the product-detail query function. Invalid provider
+payloads still fail closed after a request resolves, while initial catalog
+rendering no longer loads or parses the validator. The production build emits
+the validator as a separate 1,949-byte async chunk and reduces shared chunk
+`555` from 20,486 to 18,780 uncompressed bytes, close to its last-green size.
+
+Local continuation evidence:
+
+- the focused product-query suite passed 8/8 tests, including malformed
+  response rejection;
+- repository policy/static QA and both strict TypeScript checks passed;
+- Storefront coverage passed 139 files / 829 tests at 94.37% statements and
+  86.06% branches, plus 36 files / 322 transactional tests at 83.73%
+  statements and 76.50% branches;
+- the deterministic production build passed and the client scanner verified
+  131 assets;
+- focused `/catalog` Lighthouse passed at 0.85 performance in all three samples
+  with 101, 90, and 68 ms total blocking time;
+- the complete six-route Lighthouse gate passed all 18 samples. Median total
+  blocking time was 12 ms Home, 85 ms Catalog, 25 ms Product, 17 ms Cart,
+  68 ms Checkout, and 36 ms Privacy; and
+- the critical guest-commerce browser matrix passed all 21 Chromium, Firefox,
+  and WebKit journeys, including quick shop and Product detail.
+
+No rendered UI changed, so graphical screenshot validation is not applicable.
 
 ## Remote acceptance sequence
 
-1. Require Root, Backend, Storefront, and Runtime Images CI on the exact
-   candidate SHA. GitHub's workflow parser is the final YAML/expression
-   validation because local `actionlint` had no selected asdf version during
-   local acceptance.
-2. Confirm staging Runtime Images builds, smokes, scans, and retains evidence
-   without logging in or publishing a GHCR package. Recheck that the incomplete
-   Dependabot PR is superseded before closing it.
-3. Observe the normal exact-SHA Railway staging deployments and bounded health,
-   catalog, and log checks. Do not change Railway's source model in this slice.
+1. Commit these handoff updates with a Conventional Commit body, push the local
+   commits only to `origin/staging`, and require Root, Backend, Storefront, and
+   Runtime Images CI on the new exact SHA. Do not use repeated reruns as
+   acceptance evidence.
+2. Confirm Runtime Images again builds, smokes, scans, and retains evidence
+   without logging in or publishing a GHCR package. Recheck that incomplete
+   Dependabot PR `#6` is superseded before closing it.
+3. Only after every exact-SHA check is green, observe the normal Railway staging
+   deployments and run bounded health, catalog, and redacted log checks. Do not
+   change Railway's source model in this slice.
 
 ## Railway and GHCR cutover boundary
 

@@ -208,6 +208,9 @@ commits. Trivy itself is explicitly 0.70.0 and uses only the reviewed GHCR
 database. `scripts/security/runtime-image-policy.json` is the machine-readable
 identity source. Fresh Trivy 0.70.0 scans found zero fixed HIGH/CRITICAL
 vulnerabilities in both final local images, and digest-bound CycloneDX records
-verified for both subjects. Exact-SHA GitHub workflow acceptance and the later
-Railway artifact cutover remain pending; see `NEXT_SESSION_HANDOFF.md` before
-changing any pin.
+verified for both subjects. Runtime Images run `33626579333` passed both image
+jobs on exact SHA `ead91c5954581cda886d2e135ff1496f8aa5d886` and skipped
+publication on `staging` as required. Full exact-SHA release acceptance remains
+pending on the Storefront Lighthouse gate, and the later Railway artifact
+cutover remains separate; see `NEXT_SESSION_HANDOFF.md` before changing any
+pin.
