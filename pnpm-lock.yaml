@@ -31,7 +31,7 @@ overrides:
   diff: ^4.0.4
   esbuild: ^0.28.1
   fast-xml-parser: ^5.8.0
-  fast-uri: ^3.1.5
+  fast-uri: 3.1.6
   fdir: ^6.5.0
   follow-redirects: ^1.16.0
   flatted: ^3.4.2
@@ -57,7 +57,7 @@ overrides:
   posthog-node: ^5.46.1
   postcss: ^8.5.23
   protobufjs: ^7.6.5
-  qs: ^6.15.2
+  qs: 6.15.3
   react-router: 6.30.4
   react-router-dom: 6.30.4
   rollup: ^4.60.4
@@ -91,6 +91,7 @@ patchedDependencies:
   '@remix-run/router@1.23.3': cba02de04f5a5945f782a22652c0c6f20c7ad475ef713b567f9ad611c3dc4f60
   '@rokmohar/medusa-plugin-meilisearch@1.4.3': cf9d879ce3e7d0ef5b3d4cc4207d53a5629d93bdb141423df6d9c56f044cec1e
   '@stripe/stripe-js@9.12.0': 114bc55302bdb00b68090bf7915ab94c9f3cae89f69afe5453367948a14fc0cb
+  qs@6.15.3: 3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b
   react-router-dom@6.30.4: b68c27113138b12cb3983d1999ab34dcddcd39b2631b472795f2644c2b8c91af
 
 importers:
@@ -6559,8 +6560,8 @@ packages:
   fast-sha256@1.3.0:
     resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
 
-  fast-uri@3.1.5:
-    resolution: {integrity: sha512-gHwA1O9LDIcKunMKhObS/HimwtehO1nPUECKAu5TpKgaO19fcWEl4bliWe1jWxVFvIXztJjjQ4L8XQ1EU9f7Jw==}
+  fast-uri@3.1.6:
+    resolution: {integrity: sha512-7Ical1vFEMr0onbVzEDIreM22I4khW+fzyQPwvAFWBp1iwdshSZRsL4jjRvPG9JP1uiqMHRto+YU6R2/CzDz5Q==}
 
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
@@ -11748,7 +11749,7 @@ snapshots:
       match-sorter: 6.3.4
       motion: 11.18.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       qrcode: 1.5.4
-      qs: 6.15.3
+      qs: 6.15.3(patch_hash=3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b)
       radix-ui: 1.1.2(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-country-flag: 3.1.0(react@18.3.1)
@@ -11931,7 +11932,7 @@ snapshots:
   '@medusajs/js-sdk@2.18.0':
     dependencies:
       fetch-event-stream: 0.1.6
-      qs: 6.15.3
+      qs: 6.15.3(patch_hash=3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b)
 
   '@medusajs/link-modules@2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))':
     dependencies:
@@ -12019,7 +12020,7 @@ snapshots:
       jsonwebtoken: 9.0.3
       multer: 2.2.0
       node-schedule: 2.1.1
-      qs: 6.15.3
+      qs: 6.15.3(patch_hash=3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b)
       request-ip: 3.3.0
       slugify: 1.6.9
       uuid: 11.1.1
@@ -15548,7 +15549,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.5
+      fast-uri: 3.1.6
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -15772,7 +15773,7 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.4.24
       on-finished: 2.4.1
-      qs: 6.15.3
+      qs: 6.15.3(patch_hash=3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b)
       raw-body: 2.5.3
       type-is: 1.6.18
       unpipe: 1.0.0
@@ -16576,7 +16577,7 @@ snapshots:
       parseurl: 1.3.3
       path-to-regexp: 0.1.13
       proxy-addr: 2.0.7
-      qs: 6.15.3
+      qs: 6.15.3(patch_hash=3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b)
       range-parser: 1.2.1
       safe-buffer: 5.2.1
       send: 0.19.2(supports-color@8.1.1)
@@ -16609,7 +16610,7 @@ snapshots:
 
   fast-sha256@1.3.0: {}
 
-  fast-uri@3.1.5: {}
+  fast-uri@3.1.6: {}
 
   fastq@1.20.1:
     dependencies:
@@ -18787,7 +18788,7 @@ snapshots:
       pngjs: 5.0.0
       yargs: 15.4.1
 
-  qs@6.15.3:
+  qs@6.15.3(patch_hash=3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b):
     dependencies:
       es-define-property: 1.0.1
       side-channel: 1.1.1
@@ -19578,11 +19579,11 @@ snapshots:
   stripe@15.12.0:
     dependencies:
       '@types/node': 26.1.1
-      qs: 6.15.3
+      qs: 6.15.3(patch_hash=3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b)
 
   stripe@19.1.0(@types/node@26.1.1):
     dependencies:
-      qs: 6.15.3
+      qs: 6.15.3(patch_hash=3b9d3bca24e747d98cc611e8b1fed08b633e44cea0955030edce743cf6995b7b)
     optionalDependencies:
       '@types/node': 26.1.1
 

@@ -27,6 +27,17 @@
       ]
     },
     {
+      "id": "GHSA-4mjr-xmp4-gh2g",
+      "affectedPackages": ["qs@6.15.3"],
+      "reason": "The fixed qs release is still inside the mandatory cooling window; the exact upstream callable guard is backported and its public parse-to-stringify behavior is exercised through both application dependency paths.",
+      "evidence": [
+        "patches/qs@6.15.3.patch",
+        "backend/patches/qs@6.15.3.patch",
+        "storefront/patches/qs@6.15.3.patch",
+        "scripts/verify-qs-security.mjs"
+      ]
+    },
+    {
       "id": "GHSA-jjmj-jmhj-qwj2",
       "affectedPackages": [
         "@remix-run/router@1.23.3",
@@ -50,6 +61,17 @@
         "patches/@remix-run__router@1.23.3.patch",
         "patches/react-router-dom@6.30.4.patch",
         "scripts/verify-react-router-security.mjs"
+      ]
+    },
+    {
+      "id": "GHSA-x5fp-wj9c-mxmx",
+      "affectedPackages": ["qs@6.15.3"],
+      "reason": "The fixed qs release is still inside the mandatory cooling window; the exact upstream bracket-array limit check is backported and its rejection boundary is exercised through both application dependency paths.",
+      "evidence": [
+        "patches/qs@6.15.3.patch",
+        "backend/patches/qs@6.15.3.patch",
+        "storefront/patches/qs@6.15.3.patch",
+        "scripts/verify-qs-security.mjs"
       ]
     }
   ]

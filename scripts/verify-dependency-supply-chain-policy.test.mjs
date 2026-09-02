@@ -102,8 +102,10 @@ describe("dependency supply-chain policy", () => {
       auditIgnores: [
         ...[
           "GHSA-337j-9hxr-rhxg",
+          "GHSA-4mjr-xmp4-gh2g",
           "GHSA-jjmj-jmhj-qwj2",
           "GHSA-wrjc-x8rr-h8h6",
+          "GHSA-x5fp-wj9c-mxmx",
         ].map((id) => ({
           id,
           affectedPackages: ["react-router-dom@6.30.4"],

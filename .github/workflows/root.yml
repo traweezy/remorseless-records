@@ -105,6 +105,8 @@ jobs:
         run: pnpm run qa:scheduler-observation
       - name: Verify React Router security backports
         run: pnpm run qa:react-router-security
+      - name: Verify qs security backports
+        run: pnpm run qa:qs-security
 
   supply-chain-artifacts:
     name: SBOM & Production Licenses

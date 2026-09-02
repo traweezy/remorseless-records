@@ -12,8 +12,14 @@ const policyPath = join(
 )
 const expectedAuditIgnores = [
   "GHSA-337j-9hxr-rhxg",
+  "GHSA-4mjr-xmp4-gh2g",
   "GHSA-jjmj-jmhj-qwj2",
   "GHSA-wrjc-x8rr-h8h6",
+  "GHSA-x5fp-wj9c-mxmx",
+]
+const expectedStorefrontAuditIgnores = [
+  "GHSA-4mjr-xmp4-gh2g",
+  "GHSA-x5fp-wj9c-mxmx",
 ]
 
 const parseYamlScalar = (source) => {
@@ -202,6 +208,10 @@ export const verifyDependencySupplyChainPolicy = () => {
     readYamlList(backendWorkspace, "ignoreGhsas").sort(),
     [...auditIds].sort()
   )
+  assert.deepEqual(
+    readYamlList(storefrontWorkspace, "ignoreGhsas").sort(),
+    [...expectedStorefrontAuditIgnores].sort()
+  )
 
   const packageJson = JSON.parse(
     readFileSync(join(root, "package.json"), "utf8")
@@ -232,6 +242,7 @@ export const verifyDependencySupplyChainPolicy = () => {
     const workflow = readFileSync(join(root, workflowPath), "utf8")
     assert.match(workflow, /pnpm run qa:dependency-supply-chain/u)
     assert.match(workflow, /pnpm run qa:react-router-security/u)
+    assert.match(workflow, /pnpm run qa:qs-security/u)
   }
 
   const postBuild = readFileSync(
