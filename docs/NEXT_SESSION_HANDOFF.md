@@ -11,11 +11,12 @@ artifact Railway is running; verify Railway separately with the sequence below.
 - Branch: `staging`
 - Latest exact runtime-image validation SHA:
   `61fd86889a4adca23e1e9704e11c889a1fd986a9`
-- Implementation head `61fd86889a4adca23e1e9704e11c889a1fd986a9`
-  is pushed to `origin/staging`. This handoff update is documentation-only and
-  does not supersede that SHA as application/runtime acceptance evidence.
-  Unrelated untracked `Default/` user data remains outside this work and must
-  stay untouched.
+- Implementation head `61fd86889a4adca23e1e9704e11c889a1fd986a9` and
+  documentation head `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` are pushed
+  to `origin/staging`. The documentation-only head does not supersede the
+  runtime-image evidence, but it is the accepted Backend source deployment
+  because Railway rebuilt the current source head after the earlier security
+  deployment was superseded.
 - Runtime Images run `33688896070` passed both services at the exact accepted
   SHA; Backend job `100442798263` and Storefront job `100442798721` succeeded,
   while publication job `100442800014` skipped on `staging` as required.
@@ -23,21 +24,21 @@ artifact Railway is running; verify Railway separately with the sequence below.
   `33688896038` all passed at the exact accepted SHA. Storefront included
   Security & Audit, CodeQL, typecheck/Trivy, lint, secret scan, unit, build,
   Browser Smoke, pa11y, and Lighthouse.
-- Scheduled staging operations and scheduler monitors continue to pass on the
-  previously deployed SHA. CI acceptance is complete for the current SHA, but
-  its Railway deployment and runtime observations have not been verified; do
-  not treat older monitor results as runtime acceptance for it. No production
-  environment exists and no production state was changed.
-- Dependabot PR `#6` proposes only the Backend manifest half of the
-  `sanitize-html` 2.17.7 update and fails its frozen install. Commit
+- Manual staging operations run `33692222542` and scheduler run `33692224408`
+  passed after the exact Backend deployment. Their retained, sanitized
+  observations report healthy dependencies, catalog projections, Redis, job
+  heartbeat, retention state, and incident state. No production environment
+  exists and no production state was changed.
+- Dependabot PR `#6` is closed. It proposed only the Backend manifest half of
+  the `sanitize-html` 2.17.7 update, while commit
   `5af1abf2821836111bac56704ac56d7f8322a08d` upgrades both direct consumers,
-  updates the shared lockfile, and proves the compatibility path. Do not merge
-  the incomplete PR over this work.
+  updates the shared lockfile, and proves the compatibility path.
 - `Default/` is unrelated untracked user data. Do not read, modify, stage, or
   commit it.
-- Railway remains on the existing staging source/Railpack configuration. No
-  service source, credential, package visibility, domain, or traffic setting
-  changed in this slice.
+- Railway remains on the existing staging source/Railpack configuration. A
+  source-preserving Backend redeploy pulled the already-green current GitHub
+  head; no service source, credential, package visibility, domain, traffic, or
+  production setting changed.
 
 The completed commits on `staging` are:
 
@@ -60,7 +61,9 @@ The completed commits on `staging` are:
 - `d17a4b5282813dc0d028b27cd6c181015d67244c` records the transitive advisory
   response and the first post-remediation acceptance plan; and
 - `61fd86889a4adca23e1e9704e11c889a1fd986a9` calibrates Lighthouse's hosted
-  runner CPU slowdown without changing any assertion budget.
+  runner CPU slowdown without changing any assertion budget; and
+- `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` records exact CI and retained
+  runtime-image acceptance before the staging runtime observation.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -327,16 +330,56 @@ could not launch its sandbox under the workstation's AppArmor user-namespace
 policy. The container-only `LHCI_CHROME_NO_SANDBOX=1` escape hatch was not used;
 the sandboxed GitHub result above is the final performance evidence.
 
-## Remote acceptance sequence
+## Staging runtime acceptance
 
-1. Observe the normal Railway staging deployments for the accepted
-   implementation and run bounded health, catalog, scheduler, operations, and
-   redacted-log checks. Do not change Railway's source model, credentials,
-   domains, or traffic in that observation slice.
-2. Recheck that incomplete Dependabot PR `#6` is superseded before closing it;
-   do not merge its Backend-only sanitizer manifest change over the accepted
-   shared-lockfile update.
-3. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
+Documentation head `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` passed Root
+run `33690449881`, Backend run `33690449926`, Storefront run `33690449894`,
+and Runtime Images run `33690449837`. Runtime publication remained skipped on
+`staging`.
+
+Railway correctly skipped that documentation-only push for both watched source
+trees. The earlier Backend security deployment had been superseded before
+Railway accepted it, so the source-preserving `redeploy --from-source` path
+rebuilt the already-green current GitHub head without changing the configured
+source. Backend deployment `75650cfc-d897-46bb-b83c-b10aab077fc1` reached
+`SUCCESS` at exact SHA `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6`.
+Storefront deployment `3ab9b285-50ac-40cd-a777-4b9afd1948e4` was already
+`SUCCESS` at exact implementation SHA
+`61fd86889a4adca23e1e9704e11c889a1fd986a9`.
+
+Post-deploy acceptance passed:
+
+- Backend `/live`, `/ready`, `/health/scheduler`, and `/health/operations`
+  returned 200 at the exact Backend SHA. Storefront `/live`, `/ready`, `/`, and
+  `/catalog` returned 200 at the exact Storefront SHA.
+- Manual operations run `33692222542` reported 461 Products, one bounded
+  handle, 442 discography entries, three shelves, and 25 shelf memberships.
+  All dependency and capability checks were `ok`; retention was healthy and
+  no incident latch remained.
+- Manual scheduler run `33692224408` reported a healthy reconciliation
+  heartbeat 105 seconds old, Redis `ok`, and no alert reason. Internal Redis
+  latency was 2.208 ms in the scheduler observation and 4.816 ms in the
+  operations observation.
+- Railway reported about 19.9 MB current Redis process memory and negligible
+  CPU. Redis `INFO` reported 7.7 MB logical usage, 14.2 MB peak usage, zero
+  evictions, and zero rejected connections. A bounded five-second sample added
+  zero error replies, evictions, or rejected connections.
+- The Storefront non-mutating cart read returned `cart: null`; the bounded
+  catalog search returned one of 461 hits. Exact-request completion events for
+  Backend readiness, Storefront readiness, cart, and search matched response
+  trace IDs, service/environment, status, method, and deployed SHA. They
+  contained none of the forbidden path, URL, query, header, body, stack, or
+  user-agent fields.
+- Exact-deployment runtime logs contained zero Redis/rate-limit failure
+  matches, and Railway HTTP logs contained zero 429 or 503 responses for both
+  accepted deployments.
+
+Dependabot PR `#6` was rechecked and is already closed. Its Backend-only
+manifest edit is superseded by the accepted shared-lockfile sanitizer update.
+
+## Remaining work
+
+1. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
    backport with mature 6.16.0 and remove both audit ignores, all three patch
    copies, and `qa:qs-security` together. Run the complete local and exact-SHA
    acceptance matrices again.

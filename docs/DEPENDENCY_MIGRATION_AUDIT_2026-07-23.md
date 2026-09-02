@@ -254,5 +254,12 @@ Root run `33688896124`, Backend run `33688896267`, Storefront run
 `33688896038`, and Runtime Images run `33688896070` subsequently passed at
 exact SHA `61fd86889a4adca23e1e9704e11c889a1fd986a9`. Both runtime-image jobs
 rebuilt, smoked, scanned, and retained private evidence; publication again
-skipped without registry login. The later Railway artifact cutover remains
-separate; see `NEXT_SESSION_HANDOFF.md` before changing any pin.
+skipped without registry login. Backend source deployment
+`75650cfc-d897-46bb-b83c-b10aab077fc1` subsequently reached `SUCCESS` at
+documentation head `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6`, which contains
+the accepted remediation, and Storefront source deployment
+`3ab9b285-50ac-40cd-a777-4b9afd1948e4` reached `SUCCESS` at implementation SHA
+`61fd86889a4adca23e1e9704e11c889a1fd986a9`. Bounded health, catalog, cart,
+search, scheduler, operations, Redis, HTTP-status, and redacted-log acceptance
+passed. The later immutable GHCR-to-Railway artifact cutover remains separate;
+see `NEXT_SESSION_HANDOFF.md` before changing any pin.
