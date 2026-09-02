@@ -76,6 +76,8 @@
         "api.github.com:443",
         "auth.docker.io:443",
         "check.trivy.dev:443",
+        "fonts.googleapis.com:443",
+        "fonts.gstatic.com:443",
         "ghcr.io:443",
         "github.com:443",
         "nodejs.org:443",

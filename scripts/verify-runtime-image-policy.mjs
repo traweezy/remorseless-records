@@ -114,6 +114,7 @@ const verifyDockerfile = (service, source, policy) => {
 
 export const validateRuntimeWorkflowSource = (source) => {
   const policy = expectedPolicy
+  const sourceLines = source.split(/\r?\n/u)
   const validateJob = extractWorkflowJob(source, "validate")
   const publishJob = extractWorkflowJob(source, "publish")
 
@@ -147,7 +148,40 @@ export const validateRuntimeWorkflowSource = (source) => {
     source.match(/build-args: REVISION=\$\{\{ github\.sha \}\}/gu)?.length,
     2
   )
+  for (const [name, value] of [
+    ["ADMIN_CORS", "http://127.0.0.1:3000"],
+    ["AUTH_CORS", "http://127.0.0.1:3000"],
+    ["BACKEND_PUBLIC_URL", "http://127.0.0.1:9000"],
+    ["COOKIE_SECRET", "ci-runtime-backend-cookie-20260902"],
+    [
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@127.0.0.1:5432/remorseless",
+    ],
+    ["JWT_SECRET", "ci-runtime-backend-jwt-20260902"],
+    ["STORE_CORS", "http://127.0.0.1:3000"],
+  ]) {
+    assert.equal(
+      sourceLines.filter((line) => line === `  ${name}: ${value}`).length,
+      1
+    )
+  }
+  assert.equal(source.match(/build_node_environment: test/gu)?.length, 2)
+  assert.equal(source.match(/build_node_environment: production/gu)?.length, 2)
+  assert.equal(
+    source.match(/NODE_ENV: \$\{\{ matrix\.build_node_environment \}\}/gu)
+      ?.length,
+    2
+  )
   assert.doesNotMatch(source, /build-args:[^\n]*secrets\./u)
+  for (const endpoint of [
+    "fonts.googleapis.com:443",
+    "fonts.gstatic.com:443",
+  ]) {
+    assert.equal(
+      sourceLines.filter((line) => line.trim() === endpoint).length,
+      2
+    )
+  }
   assert.equal(source.match(/ignore-unfixed: true/gu)?.length, 2)
   assert.equal(source.match(/severity: CRITICAL,HIGH/gu)?.length, 2)
   assert.equal(source.match(/exit-code: 1/gu)?.length, 2)

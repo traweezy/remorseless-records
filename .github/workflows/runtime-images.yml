@@ -16,12 +16,18 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  ADMIN_CORS: http://127.0.0.1:3000
+  AUTH_CORS: http://127.0.0.1:3000
+  BACKEND_PUBLIC_URL: http://127.0.0.1:9000
   CART_COOKIE_SECRET: ci-runtime-cart-cookie-20260827-alpha
   CHECKOUT_BFF_SECRET: ci-runtime-checkout-bff-20260827-bravo
   CHECKOUT_RECEIPT_SECRET: ci-runtime-checkout-receipt-20260827-charlie
   CI: true
   CI_MEDUSA_FIXTURE_URL: http://127.0.0.1:4010
   CI_MEDUSA_PUBLISHABLE_KEY: pk_ci_storefront_fixture_20260831
+  COOKIE_SECRET: ci-runtime-backend-cookie-20260902
+  DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/remorseless
+  JWT_SECRET: ci-runtime-backend-jwt-20260902
   MEDUSA_BACKEND_URL: http://127.0.0.1:4010
   MEILISEARCH_HOST: http://127.0.0.1:7700
   MEILISEARCH_SEARCH_KEY: ci-runtime-search-key-20260901
@@ -34,6 +40,7 @@ env:
   NEXT_TELEMETRY_DISABLED: 1
   NODE_ENV: production
   PUBLIC_FORM_BFF_SECRET: ci-runtime-public-form-bff-20260827-delta
+  STORE_CORS: http://127.0.0.1:3000
 
 jobs:
   validate:
@@ -49,10 +56,12 @@ jobs:
         include:
           - service: backend
             build_command: pnpm --filter backend run build
+            build_node_environment: test
             dockerfile: backend/Dockerfile.runtime
             image_name: ghcr.io/traweezy/remorseless-records-backend
           - service: storefront
             build_command: pnpm --filter remorseless-records-storefront run build
+            build_node_environment: production
             dockerfile: storefront/Dockerfile.runtime
             image_name: ghcr.io/traweezy/remorseless-records-storefront
     env:
@@ -68,6 +77,8 @@ jobs:
             api.github.com:443
             auth.docker.io:443
             check.trivy.dev:443
+            fonts.googleapis.com:443
+            fonts.gstatic.com:443
             ghcr.io:443
             github.com:443
             nodejs.org:443
@@ -128,6 +139,8 @@ jobs:
           exit 1
 
       - name: Build application artifact
+        env:
+          NODE_ENV: ${{ matrix.build_node_environment }}
         run: ${{ matrix.build_command }}
 
       - name: Stop deterministic Medusa fixture
@@ -261,10 +274,12 @@ jobs:
         include:
           - service: backend
             build_command: pnpm --filter backend run build
+            build_node_environment: test
             dockerfile: backend/Dockerfile.runtime
             image_name: ghcr.io/traweezy/remorseless-records-backend
           - service: storefront
             build_command: pnpm --filter remorseless-records-storefront run build
+            build_node_environment: production
             dockerfile: storefront/Dockerfile.runtime
             image_name: ghcr.io/traweezy/remorseless-records-storefront
     env:
@@ -280,6 +295,8 @@ jobs:
             api.github.com:443
             auth.docker.io:443
             check.trivy.dev:443
+            fonts.googleapis.com:443
+            fonts.gstatic.com:443
             ghcr.io:443
             github.com:443
             nodejs.org:443
@@ -340,6 +357,8 @@ jobs:
           exit 1
 
       - name: Build application artifact
+        env:
+          NODE_ENV: ${{ matrix.build_node_environment }}
         run: ${{ matrix.build_command }}
 
       - name: Stop deterministic Medusa fixture
