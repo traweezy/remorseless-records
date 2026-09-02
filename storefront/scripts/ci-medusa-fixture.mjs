@@ -104,7 +104,7 @@ const fixtureDiscography = {
       linkHealth: "healthy",
       collectionTitle: null,
       catalogNumber: "RR-CI-001",
-      releaseDate: "2026-08-31",
+      releaseDate: "2026-08-31T00:00:00.000Z",
       releaseYear: 2026,
       formats: ["CD"],
       genres: ["Death Metal", "Grind"],

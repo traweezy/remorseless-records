@@ -78,6 +78,10 @@ test("serves deterministic authenticated catalog projections", async () => {
     const discography = await discographyResponse.json()
     assert.equal(discography.count, 1)
     assert.equal(discography.entries[0].linkHealth, "healthy")
+    assert.equal(
+      new Date(discography.entries[0].releaseDate).toISOString(),
+      discography.entries[0].releaseDate
+    )
   })
 })
 
