@@ -486,6 +486,10 @@ jobs:
       NEXT_PUBLIC_MEDUSA_URL: http://127.0.0.1:4010
       NEXT_PUBLIC_BASE_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      # The hosted runner benchmarks as a low-end desktop. Lighthouse's
+      # documented 2x calibration preserves the mid-tier-mobile target that
+      # the 4x local default models on a high-end development workstation.
+      QA_LIGHTHOUSE_CPU_SLOWDOWN: "2"
     permissions:
       contents: read
     steps:

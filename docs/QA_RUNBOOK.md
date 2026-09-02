@@ -108,6 +108,16 @@ The default matrix runs Home, Catalog, the representative
 focused diagnostic run. Do not replace the required three-run release median
 with a single cold sample.
 
+The local default uses Lighthouse's 4x CPU slowdown for a high-end development
+workstation. GitHub's hosted runner reports a roughly 2,300 CPU benchmark index
+and therefore sets `QA_LIGHTHOUSE_CPU_SLOWDOWN=2`, following Lighthouse's
+documented low-end-desktop calibration for the same mid-tier-mobile target.
+This is host calibration, not a budget override: all category and metric limits
+below remain identical. Retain reports and compare `environment.benchmarkIndex`
+before changing the multiplier for another runner class. The accepted range is
+1 through 20; invalid values fail before collection starts. See Lighthouse's
+[CPU throttling guidance](https://github.com/GoogleChrome/lighthouse/blob/main/docs/throttling.md#cpu-throttling).
+
 Enforced median budgets are:
 
 | Metric                    | Budget                         |

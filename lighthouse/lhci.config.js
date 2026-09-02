@@ -11,6 +11,9 @@ const paths = configuredPaths.length
   ? configuredPaths
   : ["/", "/catalog", productPath, "/cart", "/checkout", "/privacy"]
 const disableChromeSandbox = process.env.LHCI_CHROME_NO_SANDBOX === "1"
+const configuredCpuSlowdownMultiplier = Number(
+  process.env.QA_LIGHTHOUSE_CPU_SLOWDOWN ?? "4"
+)
 const configuredRuns = Number.parseInt(
   process.env.QA_LIGHTHOUSE_RUNS ?? "3",
   10
@@ -21,6 +24,15 @@ if (
   configuredRuns > 5
 ) {
   throw new Error("QA_LIGHTHOUSE_RUNS must be an integer from 1 through 5")
+}
+if (
+  !Number.isFinite(configuredCpuSlowdownMultiplier) ||
+  configuredCpuSlowdownMultiplier < 1 ||
+  configuredCpuSlowdownMultiplier > 20
+) {
+  throw new Error(
+    "QA_LIGHTHOUSE_CPU_SLOWDOWN must be a number from 1 through 20"
+  )
 }
 
 const medianMaximum = (maxNumericValue) => [
@@ -53,13 +65,16 @@ module.exports = {
       url: Array.from(new Set(paths)).map((path) =>
         new URL(path, baseUrl).toString()
       ),
-      ...(disableChromeSandbox
-        ? {
-            settings: {
+      settings: {
+        throttling: {
+          cpuSlowdownMultiplier: configuredCpuSlowdownMultiplier,
+        },
+        ...(disableChromeSandbox
+          ? {
               chromeFlags: "--no-sandbox --disable-setuid-sandbox",
-            },
-          }
-        : {}),
+            }
+          : {}),
+      },
     },
     assert: {
       assertMatrix: [

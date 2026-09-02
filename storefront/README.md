@@ -229,8 +229,11 @@ consent, 320-pixel reflow, reduced motion, complete axe review, runtime errors,
 ARIA, target size, and overflow. `qa:lighthouse` runs Home, Catalog, a typed
 Product, Cart, Checkout, and Privacy three times by default, enforces median
 Core Web Vital/category/resource budgets, and writes filesystem reports for
-private CI artifact retention. Keep the deterministic Medusa fixture running
-during the build and both browser gates.
+private CI artifact retention. Local runs use Lighthouse's 4x CPU slowdown;
+the lower-power hosted runner uses the documented 2x calibration through
+`QA_LIGHTHOUSE_CPU_SLOWDOWN` so both environments model a mid-tier mobile CPU
+without changing any assertion budget. Keep the deterministic Medusa fixture
+running during the build and both browser gates.
 
 Responsive changes must also be verified with the Playwright device projects
 and a real graphical-desktop screenshot as described in

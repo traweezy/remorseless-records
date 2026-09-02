@@ -1,11 +1,37 @@
 import assert from "node:assert/strict"
 import fs from "node:fs"
+import { createRequire } from "node:module"
+import path from "node:path"
 import test from "node:test"
 
 import {
   createCiMedusaFixtureServer,
   defaultCiMedusaPublishableKey,
 } from "./ci-medusa-fixture.mjs"
+
+const rootRequire = createRequire(import.meta.url)
+const lighthouseConfigPath = path.resolve("lighthouse/lhci.config.js")
+
+const loadLighthouseConfig = (cpuSlowdown) => {
+  const previousValue = process.env.QA_LIGHTHOUSE_CPU_SLOWDOWN
+  if (cpuSlowdown === undefined) {
+    delete process.env.QA_LIGHTHOUSE_CPU_SLOWDOWN
+  } else {
+    process.env.QA_LIGHTHOUSE_CPU_SLOWDOWN = cpuSlowdown
+  }
+  delete rootRequire.cache[lighthouseConfigPath]
+
+  try {
+    return rootRequire(lighthouseConfigPath)
+  } finally {
+    if (previousValue === undefined) {
+      delete process.env.QA_LIGHTHOUSE_CPU_SLOWDOWN
+    } else {
+      process.env.QA_LIGHTHOUSE_CPU_SLOWDOWN = previousValue
+    }
+    delete rootRequire.cache[lighthouseConfigPath]
+  }
+}
 
 const withFixture = async (callback) => {
   const fixture = createCiMedusaFixtureServer({ port: 0 })
@@ -99,6 +125,25 @@ test("fails closed for unsupported methods and routes", async () => {
   })
 })
 
+test("calibrates Lighthouse CPU slowdown without changing budgets", () => {
+  const localConfig = loadLighthouseConfig(undefined)
+  const hostedRunnerConfig = loadLighthouseConfig("2")
+
+  assert.equal(
+    localConfig.ci.collect.settings.throttling.cpuSlowdownMultiplier,
+    4
+  )
+  assert.equal(
+    hostedRunnerConfig.ci.collect.settings.throttling.cpuSlowdownMultiplier,
+    2
+  )
+  assert.deepEqual(localConfig.ci.assert, hostedRunnerConfig.ci.assert)
+  assert.throws(
+    () => loadLighthouseConfig("0"),
+    /QA_LIGHTHOUSE_CPU_SLOWDOWN must be a number from 1 through 20/u
+  )
+})
+
 test("pins Browser Smoke to the local fixture before deployment", () => {
   const workflow = fs.readFileSync(".github/workflows/storefront.yml", "utf8")
   const ciConfig = fs.readFileSync("storefront/playwright.ci.config.ts", "utf8")
@@ -159,7 +204,16 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
     workflow.match(/  lighthouse:[\s\S]*$/u)?.[0] ?? "",
     /Start deterministic Medusa fixture/u
   )
+  assert.match(
+    workflow.match(/  lighthouse:[\s\S]*$/u)?.[0] ?? "",
+    /QA_LIGHTHOUSE_CPU_SLOWDOWN: "2"/u
+  )
   assert.match(lighthouseConfig, /numberOfRuns: configuredRuns/u)
+  assert.match(
+    lighthouseConfig,
+    /cpuSlowdownMultiplier: configuredCpuSlowdownMultiplier/u
+  )
+  assert.match(lighthouseConfig, /QA_LIGHTHOUSE_CPU_SLOWDOWN/u)
   assert.match(lighthouseConfig, /largest-contentful-paint/u)
   assert.match(lighthouseConfig, /resource-summary:total:count/u)
   assert.match(lighthouseConfig, /target: "filesystem"/u)
