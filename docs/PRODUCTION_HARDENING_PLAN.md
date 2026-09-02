@@ -1,67 +1,57 @@
 # Production Hardening Plan
 
-Last verified: August 31, 2026
+Last verified: September 2, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active handoff — August 31, 2026 at 23:15 EDT
+## Active handoff — September 2, 2026
 
-The locally implemented **Legal, accessibility, and launch acceptance** slice
-is complete and accepted on staging. The accepted application revision is
-`8e904890e949f9833cff4f1adaf9ff13f1512a73`; this documentation closure is the
-only remaining repository change. The pre-existing untracked `Default/`
-directory is unrelated user content and must remain unread, untouched, and
-unstaged.
+The runtime-image, dependency-advisory, and staging source-deployment slice is
+complete. Runtime-image acceptance SHA
+`61fd86889a4adca23e1e9704e11c889a1fd986a9` passed Root, Backend,
+Storefront, and Runtime Images CI. Runtime-image publication correctly remained
+disabled on `staging`; both candidates were built, smoked, scanned, and bound
+to retained CycloneDX evidence without registry login.
 
-The launch implementation includes exact paid/free checkout disclosures,
-server-initial consent controls, a privacy-request BFF with accessible recovery,
-a deterministic 14-scenario launch matrix, 21 critical cross-browser journeys,
-Pa11y, and a six-route three-run-median Lighthouse gate. The catalog intent
-refresh correction is accepted at `255903be923ef054c1362c9ce77e975084e30392`.
-The Admin accessibility/support slice remains accepted at
-`7a82faf07f6d0ca144f45d9e9d17af35f33e3e9a`.
+Railway continues to use the existing GitHub source/Railpack model. Backend
+deployment `75650cfc-d897-46bb-b83c-b10aab077fc1` reached `SUCCESS` at
+`d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6`, which contains the accepted
+security remediation. Storefront deployment
+`3ab9b285-50ac-40cd-a777-4b9afd1948e4` reached `SUCCESS` at the runtime-image
+acceptance SHA. Both health/readiness pairs, Backend scheduler/operations,
+Storefront root/catalog, bounded search, and non-mutating cart reads passed.
+Manual operations run `33692222542` and scheduler run `33692224408` reported
+healthy dependencies, Redis, reconciliation, retention, catalog projections,
+and zero incident latches. Exact-request logs matched response trace IDs and
+contained no forbidden request data; exact deployment logs contained zero
+unexpected 429/503 or Redis/rate-limit failures.
 
-The final application revision restores accessible News covers for six legacy
-published records that predate mandatory alternative text. Store and Admin
-read boundaries derive a deterministic title-based fallback, while new Admin
-writes remain strict and the seed path persists authored alternative text.
-Backend CI `33464166082`, Storefront CI `33464166101`, and Root CI
-`33464166091` passed on the exact SHA. Backend Railway deployment
-`1690f323-3358-47e7-b668-701a973ec2e4` reached `SUCCESS` with image digest
-`sha256:c5cda97578e78a96478396db869df428c5214be60e650e647500a1df2293dbbe`;
-the unchanged Storefront correctly skipped deployment and remains accepted at
-deployment `fe3169b7-b737-4bf8-80cb-29fba7a99736`, image digest
-`sha256:09a69d66f49d710fa21ff83a6ce9ea443e44a08dbfe7af0de7c933ded2dd8a05`.
+Documentation commit `1a6c54ee2244909bab93993fe064ac97158e4e26` passed Root run
+`33692951882`, Backend run `33692951868`, Storefront run `33692951918`, and
+Runtime Images run `33692951875`; both Railway services correctly skipped it
+because watched source files were unchanged. Dependabot PR `#6` is closed and
+superseded by the accepted shared-lockfile sanitizer update. The pre-existing
+untracked `Default/` directory is unrelated user content and must remain
+unread, untouched, and unstaged.
 
-Local acceptance is green: the Backend passed 273 suites / 2,044 tests at
-91.46% statements, 84.87% branches, 95.62% functions, and 91.48% lines; the
-Storefront passed 136 baseline files / 810 tests at
-94.25/86.65/96.03/94.25 and 35 transactional files / 313 tests at
-83.39/76.02/85.81/83.48. Strict TypeScript, Biome, production builds, frozen
-packaged-server installation, 54 responsive journeys with two expected skips,
-14 launch journeys, 21 Chromium/Firefox/WebKit critical journeys, Pa11y, and
-Lighthouse all passed. Real graphical desktop captures of Product, Terms,
-cart, checkout, confirmation, and recovery were inspected in addition to the
-earlier Admin and Storefront Catalog captures.
-
-Live acceptance returned HTTP 200 for both `/live` and `/ready` pairs,
-Storefront `/news`, Backend `/store/news`, and Storefront `/api/news`. Both News
-APIs returned all six visible entries with non-empty cover alternatives. The
-20-minute acceptance window contained zero Backend or Storefront HTTP 5xx
-responses and no News/projection failure; Railway's only Backend error-level
-record was its `$ node ./scripts/release-prepare.mjs` command banner.
+The next repository action for this slice is time-gated: replace the verified
+`qs` 6.15.3 backport with 6.16.0 no earlier than
+`2026-09-05T23:50:15.803Z`, then remove its two audit ignores, all three patch
+copies, and the temporary verifier in one change. The immutable GHCR
+publication/attestation and Railway image-source cutover remain a separate
+reviewed release decision; no source, credential, visibility, domain, traffic,
+or production setting changed.
 
 Production remains blocked by the unchecked operational and approval items in
 this plan: qualified legal/tax/client approval; staffed support and privacy
-ownership plus training; named launch sign-offs; the real Stripe/tax/refund
-matrices; the full scheduler no-recurrence window; production infrastructure,
-least-privilege roles, private service exposure, backups/PITR and timed restore
-drills; final runtime supply-chain evidence; and production monitoring/change
-approval. The deliberate `scheduler_incident_latched` reason remains open and
-must never be cleared manually or with synthetic state.
+ownership plus training; named launch sign-offs; real Stripe/tax/refund
+matrices; production infrastructure, least-privilege roles, private service
+exposure, backups/PITR and timed restore drills; published and attested runtime
+artifacts; and production monitoring/change approval. No production
+environment exists.
 
 ## Operating contract
 
@@ -93,16 +83,17 @@ must never be cleared manually or with synthetic state.
 
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
-- Latest application-changing staging SHA accepted:
-  `8e904890e949f9833cff4f1adaf9ff13f1512a73`.
-- Latest documentation-bearing staging SHA accepted:
-  `f620c6ee9678903863d723c165631437572ce968`.
+- Latest implementation/runtime-image validation SHA accepted:
+  `61fd86889a4adca23e1e9704e11c889a1fd986a9`.
+- Latest documentation-only staging SHA accepted before this update:
+  `1a6c54ee2244909bab93993fe064ac97158e4e26`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `1690f323-3358-47e7-b668-701a973ec2e4` (`SUCCESS`).
+  `75650cfc-d897-46bb-b83c-b10aab077fc1` (`SUCCESS`,
+  `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6`).
 - Application acceptance Storefront deployment:
-  `fe3169b7-b737-4bf8-80cb-29fba7a99736`
-  (`SUCCESS`).
+  `3ab9b285-50ac-40cd-a777-4b9afd1948e4` (`SUCCESS`,
+  `61fd86889a4adca23e1e9704e11c889a1fd986a9`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -2913,15 +2904,17 @@ floating support images, and the exact production cost/domain approval packet.
       package-manager install.
 - [ ] Remove the Railway CLI package patch when upstream uses a non-vulnerable
       archive extractor and verifies immutable release digests itself.
-- [ ] Scan final runtime images, generate image-linked SBOM/provenance, and sign
-      or attest the deployed artifacts.
-      Local candidate acceptance completed on 2026-09-02: digest-pinned
-      non-root Backend and Storefront images, package-manager-free release
-      execution, zero fixed HIGH/CRITICAL Trivy findings, digest-bound
-      CycloneDX records, immutable action policy, and least-privilege GitHub
-      validation/publication jobs are present in the repository slice.
-      Exact-SHA CI acceptance, GitHub-hosted attestations, and the later
-      Railway image-source cutover remain. See `NEXT_SESSION_HANDOFF.md`.
+- [ ] Publish final runtime images, attach image-linked SBOM/provenance
+      attestations, and deploy the verified immutable artifacts.
+      Local and exact-SHA staging candidate acceptance completed on 2026-09-02:
+      digest-pinned non-root Backend and Storefront images,
+      package-manager-free release execution, zero fixed HIGH/CRITICAL Trivy
+      findings, digest-bound CycloneDX records, immutable action policy, and
+      least-privilege GitHub validation/publication jobs are present and green.
+      Publication and attestations correctly skipped on `staging`. Source-built
+      Railway acceptance is complete; approved `master` publication, digest
+      verification, Railway image-source cutover, and rollback proof remain.
+      See `NEXT_SESSION_HANDOFF.md`.
 - [x] Move hardened-runner egress from audit mode to an explicit allowlist after
       observing required endpoints.
 - [x] Add a real dependency cooling window and keep only narrowly justified
@@ -4400,24 +4393,24 @@ added as bypasses.
 `scripts/security/dependency-supply-chain-policy.json` is the reviewed
 exception manifest. Its verifier rejects non-exact cooling selectors, missing
 evidence, policy weakening, configuration drift across workspaces, unreviewed
-audit ignores, or removal of the required CI checks. The three remaining pnpm
-audit ignores are limited to the Medusa-compatible React Router 6 backports;
-each is tied to exact patched packages and the production-artifact behavioral
-verifier. Root, Backend, and Storefront security jobs all execute both policy
-checks.
+audit ignores, or removal of the required CI checks. Five pnpm audit ignores
+remain: three are limited to the Medusa-compatible React Router 6 backports,
+and two are limited to the behaviorally verified `qs` 6.15.3 backport until
+6.16.0 completes the mandatory cooling window. Root, Backend, and Storefront
+security jobs execute the matching policy and behavioral checks.
 
 Local acceptance passed the frozen 1,822-entry root install, the focused
-policy and Backend packager suites, all 273 Backend suites / 2,065 tests at
+policy and Backend packager suites, all 273 Backend suites / 2,066 tests at
 91.58% statements, 85.31% branches, 95.78% functions, and 91.58% lines, all
-139 Storefront baseline files / 828 tests at 94.37%, 86.06%, 95.83%, and
+139 Storefront baseline files / 829 tests at 94.37%, 86.06%, 95.83%, and
 94.39%, and all 36 Storefront transactional files / 322 tests at 83.73%,
 76.50%, 85.81%, and 83.86%. Both production builds passed. The generated
 Backend server performed a policy-verified frozen install of 1,085 production
-packages, and the Storefront scanner verified 130 client assets. The
-production audit reports only the three documented ignored moderate findings
-and no unreviewed moderate, high, or critical finding. This section changes
-dependency resolution and packaging only, not rendered UI, so screenshot
-validation was not applicable.
+packages, and the Storefront scanner verified 131 client assets. The
+production audit reports only the five documented, behaviorally patched
+findings and no unreviewed moderate, high, or critical finding. This section
+changes dependency resolution and packaging only, not rendered UI, so
+screenshot validation was not applicable.
 
 ## CI runtime and egress boundary closure
 
@@ -4444,7 +4437,7 @@ Shai-Hulud control, or Trivy source drift. Focused policy tests and the complete
 repository QA gate pass locally. This slice changes workflow execution only,
 not a rendered UI surface, so screenshot validation was not applicable.
 
-## Locally accepted runtime artifact boundary
+## Accepted runtime artifact candidate boundary
 
 Local candidate acceptance completed on 2026-09-02 for the runtime-artifact
 slice. The repository emits a Next.js
@@ -4461,7 +4454,7 @@ database; deny-by-default egress; high/critical failure; CycloneDX output;
 exact image records; and provenance/SBOM attestations. Validation and
 publication are mutually exclusive jobs. Validation has read-only repository
 authority; publication additionally requires the `master` ref and receives
-write permissions only in that job. Focused runtime policy tests pass 7/7,
+write permissions only in that job. Focused runtime policy tests pass 8/8,
 release-plan tests pass 6/6, and the expanded six-workflow egress policy tests
 pass 4/4.
 
@@ -4484,13 +4477,20 @@ restores non-empty discography data is included. `sanitize-html` 2.17.7 also
 closes the newly published `GHSA-g8qq-57p8-ggw5` finding without a cooling
 exception.
 
-Local evidence does not replace GitHub's YAML/expression parser, Runtime Images
-CI, or exact-SHA staging acceptance; require those independently for each
-candidate. Railway remains on source-built Railpack artifacts, so this is not
-closure of the deployed-artifact requirement. The evidence, risks, and remote
-acceptance order are recorded in
-`NEXT_SESSION_HANDOFF.md`. No rendered UI changed, so screenshot validation is
-not applicable.
+Exact-SHA Runtime Images run `33688896070` independently rebuilt, smoked,
+scanned, and retained both candidates at
+`61fd86889a4adca23e1e9704e11c889a1fd986a9`; its publication job skipped on
+`staging` without registry login. Root run `33688896124`, Backend run
+`33688896267`, and Storefront run `33688896038` also passed. Railway source
+deployments and the complete bounded health/catalog/cart/search/scheduler/
+operations/Redis/log matrix subsequently passed, as recorded in
+`NEXT_SESSION_HANDOFF.md`.
+
+Railway remains on source-built Railpack artifacts, so this is not closure of
+the deployed-image requirement. Publishing and attesting immutable images is a
+`master`-only action; changing Railway to consume them requires a separately
+approved registry-access model, exact-digest deployment, and rollback proof.
+No rendered UI changed, so screenshot validation was not applicable.
 
 ## Legal, accessibility, and launch acceptance
 

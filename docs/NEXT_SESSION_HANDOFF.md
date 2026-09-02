@@ -11,12 +11,14 @@ artifact Railway is running; verify Railway separately with the sequence below.
 - Branch: `staging`
 - Latest exact runtime-image validation SHA:
   `61fd86889a4adca23e1e9704e11c889a1fd986a9`
-- Implementation head `61fd86889a4adca23e1e9704e11c889a1fd986a9` and
-  documentation head `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` are pushed
-  to `origin/staging`. The documentation-only head does not supersede the
-  runtime-image evidence, but it is the accepted Backend source deployment
-  because Railway rebuilt the current source head after the earlier security
-  deployment was superseded.
+- Implementation/runtime-image acceptance SHA
+  `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
+  `origin/staging`. Backend source deployment acceptance is documented at
+  `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` because Railway rebuilt that
+  documentation head after the earlier security deployment was superseded.
+  Documentation-only commit `1a6c54ee2244909bab93993fe064ac97158e4e26`
+  subsequently passed all four workflows and correctly skipped both Railway
+  services. Documentation commits do not supersede the runtime-image evidence.
 - Runtime Images run `33688896070` passed both services at the exact accepted
   SHA; Backend job `100442798263` and Storefront job `100442798721` succeeded,
   while publication job `100442800014` skipped on `staging` as required.
@@ -63,7 +65,9 @@ The completed commits on `staging` are:
 - `61fd86889a4adca23e1e9704e11c889a1fd986a9` calibrates Lighthouse's hosted
   runner CPU slowdown without changing any assertion budget; and
 - `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` records exact CI and retained
-  runtime-image acceptance before the staging runtime observation.
+  runtime-image acceptance before the staging runtime observation; and
+- `1a6c54ee2244909bab93993fe064ac97158e4e26` records the completed staging
+  source-deployment and operational acceptance.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -337,6 +341,13 @@ run `33690449881`, Backend run `33690449926`, Storefront run `33690449894`,
 and Runtime Images run `33690449837`. Runtime publication remained skipped on
 `staging`.
 
+The subsequent runtime-acceptance handoff commit
+`1a6c54ee2244909bab93993fe064ac97158e4e26` passed Root run
+`33692951882`, Backend run `33692951868`, Storefront run `33692951918`, and
+Runtime Images run `33692951875`. Runtime publication again remained skipped,
+and both Railway services reported `SKIPPED` with `No changes to watched
+files`.
+
 Railway correctly skipped that documentation-only push for both watched source
 trees. The earlier Backend security deployment had been superseded before
 Railway accepted it, so the source-preserving `redeploy --from-source` path
@@ -377,7 +388,7 @@ Post-deploy acceptance passed:
 Dependabot PR `#6` was rechecked and is already closed. Its Backend-only
 manifest edit is superseded by the accepted shared-lockfile sanitizer update.
 
-## Remaining work
+## Remaining work for this slice
 
 1. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
    backport with mature 6.16.0 and remove both audit ignores, all three patch

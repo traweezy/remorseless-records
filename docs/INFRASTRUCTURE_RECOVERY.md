@@ -1,6 +1,6 @@
 # Infrastructure, data protection, and recovery
 
-Last reviewed: 2026-09-01
+Last reviewed: 2026-09-02
 
 This runbook defines the production approval packet and the recovery contract
 for PostgreSQL, media, Redis, and Meilisearch. It does not authorize creating a
@@ -10,7 +10,7 @@ reviewed operations.
 
 ## Current staging inventory
 
-The read-only inventory on 2026-08-30 found one Railway environment,
+The read-only inventory, rechecked on 2026-09-02, found one Railway environment,
 `staging`, with Backend, Storefront, PostgreSQL, Redis, MinIO, MinIO Console,
 and Meilisearch. PostgreSQL and Redis have no HTTP service domain, but their TCP
 proxy state still requires an explicit network review. MinIO, its Console, and
@@ -27,8 +27,9 @@ Changing them is intentionally deferred until a backup and restore drill can
 protect the upgrade.
 
 Backend and Storefront still use GitHub source/Railpack builds. The repository
-contains an in-progress contract for GHCR runtime candidates, but no Railway
-service currently consumes one; see `NEXT_SESSION_HANDOFF.md`.
+contains a locally and GitHub-validated contract for GHCR runtime candidates,
+but no Railway service currently consumes one and staging publication remains
+disabled by design; see `NEXT_SESSION_HANDOFF.md`.
 
 ## Application image source and rollback
 
