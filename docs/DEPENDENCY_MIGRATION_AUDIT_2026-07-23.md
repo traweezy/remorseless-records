@@ -249,6 +249,10 @@ verified for both subjects. Runtime Images run `33685237476` passed both image
 jobs on exact SHA `f3b71a6482ce941ad253672983547c494caa8d56` and skipped
 publication on `staging` as required. The same SHA's application workflows
 stopped at newly published dependency advisories; locally accepted remediation
-commit `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` awaits exact-SHA CI. The later
-Railway artifact cutover remains separate; see `NEXT_SESSION_HANDOFF.md`
-before changing any pin.
+commit `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` closed those audit failures.
+Root run `33688896124`, Backend run `33688896267`, Storefront run
+`33688896038`, and Runtime Images run `33688896070` subsequently passed at
+exact SHA `61fd86889a4adca23e1e9704e11c889a1fd986a9`. Both runtime-image jobs
+rebuilt, smoked, scanned, and retained private evidence; publication again
+skipped without registry login. The later Railway artifact cutover remains
+separate; see `NEXT_SESSION_HANDOFF.md` before changing any pin.

@@ -10,21 +10,23 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Latest exact runtime-image validation SHA:
-  `f3b71a6482ce941ad253672983547c494caa8d56`
-- Local `staging` contains security commit
-  `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` plus this handoff update and
-  awaits one bounded push to `origin/staging`. Unrelated untracked `Default/`
-  user data remains outside this work and must stay untouched.
-- Runtime Images run `33685237476` passed both services at exact SHA
-  `f3b71a6482ce941ad253672983547c494caa8d56`; publication skipped on `staging`
-  as required.
-- Root run `33685237504`, Backend run `33685237499`, and Storefront run
-  `33685237549` failed only their initial dependency-audit job after six new
-  advisories were published on 2026-09-02. Downstream checks correctly skipped.
-  Do not rerun that unchanged SHA.
+  `61fd86889a4adca23e1e9704e11c889a1fd986a9`
+- Implementation head `61fd86889a4adca23e1e9704e11c889a1fd986a9`
+  is pushed to `origin/staging`. This handoff update is documentation-only and
+  does not supersede that SHA as application/runtime acceptance evidence.
+  Unrelated untracked `Default/` user data remains outside this work and must
+  stay untouched.
+- Runtime Images run `33688896070` passed both services at the exact accepted
+  SHA; Backend job `100442798263` and Storefront job `100442798721` succeeded,
+  while publication job `100442800014` skipped on `staging` as required.
+- Root run `33688896124`, Backend run `33688896267`, and Storefront run
+  `33688896038` all passed at the exact accepted SHA. Storefront included
+  Security & Audit, CodeQL, typecheck/Trivy, lint, secret scan, unit, build,
+  Browser Smoke, pa11y, and Lighthouse.
 - Scheduled staging operations and scheduler monitors continue to pass on the
-  previously deployed SHA. The current SHA has not completed the release gate,
-  so do not treat those monitor results as acceptance for it. No production
+  previously deployed SHA. CI acceptance is complete for the current SHA, but
+  its Railway deployment and runtime observations have not been verified; do
+  not treat older monitor results as runtime acceptance for it. No production
   environment exists and no production state was changed.
 - Dependabot PR `#6` proposes only the Backend manifest half of the
   `sanitize-html` 2.17.7 update and fails its frozen install. Commit
@@ -52,14 +54,19 @@ The completed commits on `staging` are:
 - `9a410faadb1054dd0a5b847486a0bfc3a81b521e` defers product-detail response
   validation until the intent-driven request resolves;
 - `f3b71a6482ce941ad253672983547c494caa8d56` records the first exact-SHA
-  continuation evidence; and
+  continuation evidence;
 - `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` upgrades mature `fast-uri` and
-  behaviorally backports the two `qs` fixes still inside the cooling window.
+  behaviorally backports the two `qs` fixes still inside the cooling window;
+- `d17a4b5282813dc0d028b27cd6c181015d67244c` records the transitive advisory
+  response and the first post-remediation acceptance plan; and
+- `61fd86889a4adca23e1e9704e11c889a1fd986a9` calibrates Lighthouse's hosted
+  runner CPU slowdown without changing any assertion budget.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
 
 - `README.md`
+- `.github/workflows/storefront.yml`
 - `backend/package.json`
 - `backend/scripts/lib/release-prepare.mjs`
 - `backend/src/lib/content/rich-text.test.ts`
@@ -68,6 +75,7 @@ runtime-image implementation, documentation, and fixture/security corrections:
 - `docs/PRODUCTION_HARDENING_PLAN.md`
 - `docs/QA_RUNBOOK.md`
 - `docs/RELEASE_OPERATIONS.md`
+- `lighthouse/lhci.config.js`
 - `package.json`
 - `pnpm-lock.yaml`
 - `scripts/release-prepare.test.mjs`
@@ -143,7 +151,7 @@ New runtime files in the containing change set:
 - `pnpm run qa:lint`: passed, including Biome, both strict TypeScript checks,
   database release boundaries, runtime-image policy, CI egress policy, and all
   repository contract verifiers after the final code and documentation edits.
-- Runtime policy: 7/7 focused tests plus static verifier passed.
+- Runtime policy: 8/8 focused tests plus static verifier passed.
 - CI runtime-security policy: 4/4 focused tests plus the six-workflow verifier
   passed; the Runtime Images workflow contains two separately hardened jobs.
 - Release-plan policy: 6/6 focused tests passed.
@@ -256,28 +264,82 @@ Local continuation evidence:
 
 No rendered UI changed, so graphical screenshot validation is not applicable.
 
-Runtime Images run `33685237476` then passed both Backend and Storefront at
-exact SHA `f3b71a6482ce941ad253672983547c494caa8d56`, including builds, smoke tests,
-HIGH/CRITICAL scans, SBOMs, and private evidence retention. Publication skipped
-as required. Root run `33685237504`, Backend run `33685237499`, and Storefront
-run `33685237549` did not reach their application gates because the live pnpm
-audit database began reporting four new `fast-uri` advisories and two new `qs`
-advisories. Commit `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` is the locally
-accepted remediation; it has no exact-SHA GitHub result yet.
+The final exact-SHA acceptance is
+`61fd86889a4adca23e1e9704e11c889a1fd986a9`:
+
+- Root CI run `33688896124`: passed.
+- Backend CI run `33688896267`: passed all security, CodeQL, lint, typecheck,
+  Trivy, disposable PostgreSQL/Redis integration, unit, and build jobs.
+- Runtime Images run `33688896070`: Backend job `100442798263` and Storefront
+  job `100442798721` passed their build, smoke, HIGH/CRITICAL scan, SBOM, and
+  private-retention boundaries. Publication job `100442800014` skipped without
+  registry login or publication.
+- Storefront CI run `33688896038`: passed every job. Browser Smoke job
+  `100444772383`, pa11y job `100444772464`, and Lighthouse job `100444772456`
+  all succeeded.
+
+The retained runtime-image artifacts expire on 2026-10-02:
+
+- `runtime-image-backend-61fd86889a4adca23e1e9704e11c889a1fd986a9`,
+  artifact ID `9869317979`, 112,342 bytes; and
+- `runtime-image-storefront-61fd86889a4adca23e1e9704e11c889a1fd986a9`,
+  artifact ID `9869287830`, 48,646 bytes.
+
+Retained Lighthouse artifact `storefront-lighthouse-33688896038` has artifact
+ID `9869655887`, is 4,255,428 bytes, and expires on
+`2026-09-16T22:22:50Z`. A diagnostic copy was extracted to
+`/tmp/remorseless-lighthouse-61fd868-xJXRJQ`; the temporary path may not survive
+the next session. All 18 reports record the intended 2x CPU slowdown. Their CPU
+benchmark indexes span 2,234.5 through 2,447.5, confirming the hosted runner is
+in the low-end-desktop class for which Lighthouse documents 2x as the
+mid-tier-mobile calibration.
+
+The exact median performance/TBT results were:
+
+| Route | Performance | TBT |
+| --- | ---: | ---: |
+| Home | 0.86 | 23 ms |
+| Catalog | 0.86 | 113 ms |
+| Product | 0.88 | 48 ms |
+| Cart | 0.87 | 47 ms |
+| Checkout | 0.89 | 110 ms |
+| Privacy | 0.87 | 39 ms |
+
+Every route scored 1.00 for accessibility and best practices. SEO scored 1.00
+except Privacy at 0.92 and noindex Checkout at 0.61, both within the existing
+route-specific contract. No assertion threshold, route, run count, or median
+aggregation changed.
+
+The original 4x failure at Storefront run `33686733429` remains diagnostic
+evidence rather than an application regression. Its median hosted-runner
+benchmark index was about 2,300 while the accepted local 4x run was about
+4,500; identical payload sizes took roughly twice the main-thread time on the
+hosted runner. The calibration test proves that the 4x local and 2x hosted
+configurations share the exact same assertion matrix and reject multipliers
+outside 1 through 20.
+
+Local `pnpm run qa:lint` passed twice, including both strict TypeScript checks
+and the new 4/4 Storefront fixture/config tests. The pre-push hook also passed
+Storefront baseline coverage at 94.37% statements and 86.06% branches plus the
+transactional scope at 83.73% statements and 76.50% branches. A new local
+Lighthouse collection was not run because the only installed Chrome binary
+could not launch its sandbox under the workstation's AppArmor user-namespace
+policy. The container-only `LHCI_CHROME_NO_SANDBOX=1` escape hatch was not used;
+the sandboxed GitHub result above is the final performance evidence.
 
 ## Remote acceptance sequence
 
-1. Commit these handoff updates with a Conventional Commit body, push security
-   commit `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` and the documentation commit
-   only to `origin/staging`, and require Root, Backend, Storefront, and Runtime
-   Images CI on the new exact SHA. Do not use repeated reruns as acceptance
-   evidence.
-2. Confirm Runtime Images again builds, smokes, scans, and retains evidence
-   without logging in or publishing a GHCR package. Recheck that incomplete
-   Dependabot PR `#6` is superseded before closing it.
-3. Only after every exact-SHA check is green, observe the normal Railway staging
-   deployments and run bounded health, catalog, and redacted log checks. Do not
-   change Railway's source model in this slice.
+1. Observe the normal Railway staging deployments for the accepted
+   implementation and run bounded health, catalog, scheduler, operations, and
+   redacted-log checks. Do not change Railway's source model, credentials,
+   domains, or traffic in that observation slice.
+2. Recheck that incomplete Dependabot PR `#6` is superseded before closing it;
+   do not merge its Backend-only sanitizer manifest change over the accepted
+   shared-lockfile update.
+3. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
+   backport with mature 6.16.0 and remove both audit ignores, all three patch
+   copies, and `qa:qs-security` together. Run the complete local and exact-SHA
+   acceptance matrices again.
 
 ## Railway and GHCR cutover boundary
 
