@@ -17,6 +17,7 @@ describe("rich-text sanitization", () => {
     '<script>alert("xss")</script><p>Safe</p>',
     '<img src=x onerror="alert(1)"><p>Safe</p>',
     '<svg><a xlink:href="javascript:alert(1)">bad</a></svg><p>Safe</p>',
+    '<svg><animate attributeName="href" values="https://safe.example;javascript:alert(1)"></animate></svg><p>Safe</p>',
     '<iframe srcdoc="<script>alert(1)</script>"></iframe><p>Safe</p>',
     "<math><mtext><option><style><img src=x onerror=alert(1)></style></option></mtext></math><p>Safe</p>",
   ])("removes executable markup from %s", (input) => {

@@ -151,6 +151,24 @@ reviewed immutable SHA-256 asset digests. `pnpm run
 qa:dependency-supply-chain` binds that exception and the three audit ignores
 to their evidence in all three CI workflows.
 
+## `sanitize-html` advisory remediation (2026-09-02)
+
+GitHub published `GHSA-g8qq-57p8-ggw5` after the runtime-image work began.
+Backend and Storefront now pin `sanitize-html` 2.17.7, the first patched
+release, instead of 2.17.5. Version 2.17.7 was published on 2026-08-13, so it
+passes the seven-day cooling policy without an exception. Both rich-text
+regression suites include the SVG animation URI-list vector while retaining
+their narrower tag allowlists.
+
+The patched package moves to ESM-only `htmlparser2` 12 and requires Node
+22.12 or newer. The repository and runtime images already use Node 26;
+Backend unit and coverage commands now use Jest's existing VM-modules runtime
+so the production dependency is exercised rather than mocked or downgraded.
+The frozen install, both sanitizer suites, complete Backend and Storefront
+coverage, production builds, and `pnpm audit --prod --audit-level=moderate`
+pass. The audit now reports only the three separately documented and
+behaviorally patched React Router findings.
+
 ## Deliberate major-version holds
 
 These are not forgotten upgrades. Each latest major conflicts with an active
