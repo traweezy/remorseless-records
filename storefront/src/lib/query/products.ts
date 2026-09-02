@@ -8,7 +8,6 @@ import {
 import type { QueryClient } from "@tanstack/react-query"
 import { useCallback, useRef } from "react"
 
-import { readStoreProductDetailResponse } from "@/lib/products/response-contract"
 import { searchProductsBrowser } from "@/lib/search/browser"
 import type {
   ProductSearchRequest,
@@ -35,6 +34,9 @@ export const productDetailQueryOptions = (handle: string) => ({
     }
 
     const rawPayload: unknown = await response.json()
+    const { readStoreProductDetailResponse } = await import(
+      "@/lib/products/response-contract"
+    )
     return readStoreProductDetailResponse(rawPayload)
   },
 })
