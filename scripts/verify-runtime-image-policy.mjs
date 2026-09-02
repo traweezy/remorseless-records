@@ -188,6 +188,12 @@ export const validateRuntimeWorkflowSource = (source) => {
   assert.equal(source.match(/severity: CRITICAL,HIGH/gu)?.length, 2)
   assert.equal(source.match(/exit-code: 1/gu)?.length, 2)
   assert.equal(source.match(/format: cyclonedx/gu)?.length, 2)
+  assert.equal(
+    source.match(
+      /- name: Prepare private runtime image evidence directory\n\s+shell: bash\n\s+run: install -d -m 0700 artifacts/gu
+    )?.length,
+    2
+  )
   assert.match(publishJob, /run: docker push "\$\{IMAGE_REF\}"/u)
   assert.match(
     publishJob,
@@ -214,6 +220,14 @@ export const validateRuntimeWorkflowSource = (source) => {
     assert.ok(
       runtimeSmokeIndex >= 0 && runtimeSmokeIndex < serviceBranchIndex,
       "Common runtime identity smoke must execute before service branching."
+    )
+    const evidenceDirectoryIndex = job.indexOf(
+      "run: install -d -m 0700 artifacts"
+    )
+    const sbomIndex = job.indexOf("format: cyclonedx")
+    assert.ok(
+      evidenceDirectoryIndex >= 0 && evidenceDirectoryIndex < sbomIndex,
+      "The private evidence directory must exist before SBOM generation."
     )
   }
   for (const environmentName of [

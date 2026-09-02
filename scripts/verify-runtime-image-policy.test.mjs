@@ -115,3 +115,12 @@ test("rejects a publication path that skips smoke or exact-image push", () => {
   assert.notEqual(skippedPush, workflowSource)
   assert.throws(() => validateRuntimeWorkflowSource(skippedPush))
 })
+
+test("rejects SBOM generation before private evidence initialization", () => {
+  const missingEvidenceDirectory = workflowSource.replace(
+    "      - name: Prepare private runtime image evidence directory\n        shell: bash\n        run: install -d -m 0700 artifacts\n\n",
+    ""
+  )
+  assert.notEqual(missingEvidenceDirectory, workflowSource)
+  assert.throws(() => validateRuntimeWorkflowSource(missingEvidenceDirectory))
+})

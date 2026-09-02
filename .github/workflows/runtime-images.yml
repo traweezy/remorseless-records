@@ -228,6 +228,10 @@ jobs:
           exit-code: 1
           format: table
 
+      - name: Prepare private runtime image evidence directory
+        shell: bash
+        run: install -d -m 0700 artifacts
+
       - name: Create runtime image CycloneDX SBOM
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
@@ -457,6 +461,10 @@ jobs:
             exit 1
           fi
           echo "digest=${image_digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare private runtime image evidence directory
+        shell: bash
+        run: install -d -m 0700 artifacts
 
       - name: Create runtime image CycloneDX SBOM
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
