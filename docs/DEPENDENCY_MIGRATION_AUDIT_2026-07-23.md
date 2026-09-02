@@ -148,8 +148,10 @@ the time of enforcement, so the repository uses the newest eligible releases,
 2.5.10 and 0.35.3. The sole remaining exact cooling exception is
 `@railway/cli@5.45.0`, whose release installer is locally patched to validate
 reviewed immutable SHA-256 asset digests. `pnpm run
-qa:dependency-supply-chain` binds that exception and the three audit ignores
-to their evidence in all three CI workflows.
+qa:dependency-supply-chain` binds that exception and the five current audit
+ignores to their evidence in all three CI workflows. Three ignores cover the
+React Router backport and two cover the separately verified `qs` backport
+described below.
 
 ## `sanitize-html` advisory remediation (2026-09-02)
 
@@ -166,8 +168,43 @@ Backend unit and coverage commands now use Jest's existing VM-modules runtime
 so the production dependency is exercised rather than mocked or downgraded.
 The frozen install, both sanitizer suites, complete Backend and Storefront
 coverage, production builds, and `pnpm audit --prod --audit-level=moderate`
-pass. The audit now reports only the three separately documented and
-behaviorally patched React Router findings.
+passed at the time of this correction. Later same-day advisories and their
+remediation are recorded below.
+
+## `fast-uri` and `qs` advisory remediation (2026-09-02)
+
+GitHub published four high-severity `fast-uri` advisories
+([GHSA-5jgf-p345-68v8](https://github.com/advisories/GHSA-5jgf-p345-68v8),
+[GHSA-f65p-4m7j-42xc](https://github.com/advisories/GHSA-f65p-4m7j-42xc),
+[GHSA-fph4-wmhf-6fwf](https://github.com/advisories/GHSA-fph4-wmhf-6fwf), and
+[GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp))
+and two moderate-severity `qs` advisories
+([GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx)
+and [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g))
+after exact-SHA acceptance had started.
+`fast-uri` 3.1.6 was published on 2026-08-23 and already satisfied the strict
+seven-day cooling window, so every workspace now pins that release. This
+eliminates all four host-confusion and SSRF findings without an exception or
+audit ignore.
+
+`qs` 6.16.0 was published on 2026-08-29T23:50:15.803Z and was still inside the
+cooling window. The repository therefore retains exact 6.15.3 and backports
+only the two upstream security changes: the
+[`arrayLimit` fix](https://github.com/ljharb/qs/commit/8859c37470e11b42b547b275e4e9bd0bc8cc5464)
+for comma-split values under bracket-push keys, and the
+[`constructor.isBuffer` fix](https://github.com/ljharb/qs/commit/e83d321ffafb38cf210683ac31714fce6ce1c6c6)
+that calls the property only when it is a function. Identical patches are
+present for root, Backend, and Storefront standalone installs. `pnpm run
+qa:qs-security` verifies patch parity, both public exploit regressions through
+each application dependency path, the in-limit parser behavior, and real
+Buffer serialization.
+
+The two version-based pnpm audit findings are ignored only alongside that
+machine-readable patch evidence. The strict cooling window is unchanged and no
+new cooling exception was added. Once 6.16.0 has cooled on
+2026-09-05T23:50:15.803Z, replace the backport with the release and remove both
+GHSA ignores, all patch copies, and the temporary verifier in one reviewed
+change.
 
 ## Deliberate major-version holds
 
@@ -187,8 +224,8 @@ The migration is complete only after:
 
 1. `pnpm install --frozen-lockfile` and `pnpm peers check`
 2. lint, strict typecheck, unit/coverage, and production builds
-3. dependency cooling, audit, React Router backport verification, and hook
-   validation
+3. dependency cooling, audit, React Router and `qs` backport verification, and
+   hook validation
 4. Playwright device/browser smoke validation
 5. successful GitHub Actions and Railway staging deployments
 6. post-deploy route and API smoke checks
@@ -208,9 +245,10 @@ commits. Trivy itself is explicitly 0.70.0 and uses only the reviewed GHCR
 database. `scripts/security/runtime-image-policy.json` is the machine-readable
 identity source. Fresh Trivy 0.70.0 scans found zero fixed HIGH/CRITICAL
 vulnerabilities in both final local images, and digest-bound CycloneDX records
-verified for both subjects. Runtime Images run `33626579333` passed both image
-jobs on exact SHA `ead91c5954581cda886d2e135ff1496f8aa5d886` and skipped
-publication on `staging` as required. Full exact-SHA release acceptance remains
-pending on the Storefront Lighthouse gate, and the later Railway artifact
-cutover remains separate; see `NEXT_SESSION_HANDOFF.md` before changing any
-pin.
+verified for both subjects. Runtime Images run `33685237476` passed both image
+jobs on exact SHA `f3b71a6482ce941ad253672983547c494caa8d56` and skipped
+publication on `staging` as required. The same SHA's application workflows
+stopped at newly published dependency advisories; locally accepted remediation
+commit `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` awaits exact-SHA CI. The later
+Railway artifact cutover remains separate; see `NEXT_SESSION_HANDOFF.md`
+before changing any pin.

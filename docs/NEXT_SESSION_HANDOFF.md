@@ -9,19 +9,19 @@ artifact Railway is running; verify Railway separately with the sequence below.
 ## Repository state
 
 - Branch: `staging`
-- Runtime-image acceptance base SHA:
-  `ead91c5954581cda886d2e135ff1496f8aa5d886`
-- Local `staging` contains the continuation commit below and awaits one bounded
-  push to `origin/staging`. Unrelated untracked `Default/` user data remains
-  outside this work and must stay untouched.
-- Root CI run `33626579282`, Backend CI run `33626579337`, and Runtime Images
-  run `33626579333` passed the exact current SHA. Runtime image publication was
-  skipped on `staging` as required.
-- Storefront CI run `33626579305` passed security, secret scanning, lint,
-  typecheck, Trivy, CodeQL, both coverage suites, the production build,
-  responsive and launch Playwright suites, Chromium/Firefox/WebKit journeys,
-  and pa11y. Its only failing job is Lighthouse; the single controlled rerun
-  still exceeded the unchanged `/catalog` total-blocking-time budget.
+- Latest exact runtime-image validation SHA:
+  `f3b71a6482ce941ad253672983547c494caa8d56`
+- Local `staging` contains security commit
+  `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` plus this handoff update and
+  awaits one bounded push to `origin/staging`. Unrelated untracked `Default/`
+  user data remains outside this work and must stay untouched.
+- Runtime Images run `33685237476` passed both services at exact SHA
+  `f3b71a6482ce941ad253672983547c494caa8d56`; publication skipped on `staging`
+  as required.
+- Root run `33685237504`, Backend run `33685237499`, and Storefront run
+  `33685237549` failed only their initial dependency-audit job after six new
+  advisories were published on 2026-09-02. Downstream checks correctly skipped.
+  Do not rerun that unchanged SHA.
 - Scheduled staging operations and scheduler monitors continue to pass on the
   previously deployed SHA. The current SHA has not completed the release gate,
   so do not treat those monitor results as acceptance for it. No production
@@ -46,11 +46,15 @@ The completed commits on `staging` are:
   pipeline;
 - `d2ee4b2a589bc327deaefe6d48b3140d928e636b` adds runtime build fixtures;
 - `870545543fe2fde5b94021b6f6691289543f0b32` completes runtime build
-  dependencies; and
+  dependencies;
 - `ead91c5954581cda886d2e135ff1496f8aa5d886` initializes the private runtime
-  evidence directory before SBOM generation; and
+  evidence directory before SBOM generation;
 - `9a410faadb1054dd0a5b847486a0bfc3a81b521e` defers product-detail response
-  validation until the intent-driven request resolves.
+  validation until the intent-driven request resolves;
+- `f3b71a6482ce941ad253672983547c494caa8d56` records the first exact-SHA
+  continuation evidence; and
+- `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` upgrades mature `fast-uri` and
+  behaviorally backports the two `qs` fixes still inside the cooling window.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -121,6 +125,17 @@ New runtime files in the containing change set:
   `GHSA-g8qq-57p8-ggw5` without a cooling exception. Both sanitizer suites cover
   the SVG animation URI-list vector. Backend unit/coverage scripts use Jest's
   VM-modules runtime for the patched release's ESM-only `htmlparser2` 12 tree.
+- `fast-uri` is pinned to mature 3.1.6, closing four high-severity host
+  confusion/SSRF advisories without an audit ignore or cooling exception.
+- `qs` remains exactly 6.15.3 while 6.16.0 completes the mandatory seven-day
+  cooling window. The two upstream security hunks are copied identically into
+  the root, Backend, and Storefront workspaces. The verifier exercises the
+  bracket/comma `arrayLimit` rejection and hostile `constructor.isBuffer`
+  parse-to-stringify round trip through both application dependency paths.
+  Only the two corresponding GHSA records are ignored, with machine-readable
+  evidence. Replace this backport with 6.16.0 no earlier than
+  2026-09-05T23:50:15.803Z, then remove both ignores, all three patch copies,
+  and `qa:qs-security` in the same change.
 
 ## Local acceptance evidence
 
@@ -147,11 +162,14 @@ New runtime files in the containing change set:
 - The six-route Lighthouse gate passed all 18 samples without changing a
   threshold. `/catalog` median total blocking time was 91 ms; every route scored
   1.00 for accessibility and best practices.
-- Backend and Storefront production builds passed with `sanitize-html` 2.17.7.
+- Backend and Storefront production builds passed with `sanitize-html` 2.17.7,
+  `fast-uri` 3.1.6, and the patched `qs` 6.15.3 graph.
   The client-bundle scanner found no server-only secret or public Meilisearch
-  input in 130 Storefront assets.
-- `pnpm audit --prod --audit-level=moderate` passed with only the three existing,
-  documented, behaviorally patched React Router findings ignored.
+  input in 131 Storefront assets.
+- `pnpm audit --prod --audit-level=moderate` passed with five documented,
+  behaviorally patched findings ignored: the three existing React Router
+  records and the two new exact-version `qs` records. The four `fast-uri`
+  findings are eliminated by the 3.1.6 upgrade.
 - Fresh local runtime image candidates:
   - Backend:
     `sha256:954da9673f481cb152559eb2e4bc32920c5a6f9868ffacdbf49b061a661ea58d`
@@ -187,8 +205,8 @@ login or publication. The retained artifacts expire on 2026-10-02:
 - `runtime-image-storefront-ead91c5954581cda886d2e135ff1496f8aa5d886`
   (48,645 bytes).
 
-Storefront CI remains the only incomplete exact-SHA gate. The previous green
-comparison run is `33499795322` at
+The original Storefront Lighthouse diagnosis remains useful historical
+evidence. The previous green comparison run is `33499795322` at
 `b48385ad1b76545fd99b7727d4c11aa815e6b8a3`; its three `/catalog` total blocking
 times were 367, 334.5, and 289 ms (334.5 ms median). Attempt 2 of current run
 `33626579305` measured 450, 368.5, and 350.5 ms (368.5 ms median) against the
@@ -238,12 +256,22 @@ Local continuation evidence:
 
 No rendered UI changed, so graphical screenshot validation is not applicable.
 
+Runtime Images run `33685237476` then passed both Backend and Storefront at
+exact SHA `f3b71a6482ce941ad253672983547c494caa8d56`, including builds, smoke tests,
+HIGH/CRITICAL scans, SBOMs, and private evidence retention. Publication skipped
+as required. Root run `33685237504`, Backend run `33685237499`, and Storefront
+run `33685237549` did not reach their application gates because the live pnpm
+audit database began reporting four new `fast-uri` advisories and two new `qs`
+advisories. Commit `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` is the locally
+accepted remediation; it has no exact-SHA GitHub result yet.
+
 ## Remote acceptance sequence
 
-1. Commit these handoff updates with a Conventional Commit body, push the local
-   commits only to `origin/staging`, and require Root, Backend, Storefront, and
-   Runtime Images CI on the new exact SHA. Do not use repeated reruns as
-   acceptance evidence.
+1. Commit these handoff updates with a Conventional Commit body, push security
+   commit `56d42bbdd50be90e431ced71b8c6c74bf4d62cb0` and the documentation commit
+   only to `origin/staging`, and require Root, Backend, Storefront, and Runtime
+   Images CI on the new exact SHA. Do not use repeated reruns as acceptance
+   evidence.
 2. Confirm Runtime Images again builds, smokes, scans, and retains evidence
    without logging in or publishing a GHCR package. Recheck that incomplete
    Dependabot PR `#6` is superseded before closing it.
