@@ -10,12 +10,12 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `c72942c1734858f15dd178b71a1e7401fa4da27a`. It includes the accepted Next.js
-  16.3.3 build split and the Storefront's five-package TanStack Query 5.102.7
-  patch cohort. Complete local, exact-SHA CI, runtime-image, and Railway
-  staging evidence is recorded below.
+  `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a`. It includes the accepted Next.js
+  16.3.3 build split, the Storefront's five-package TanStack Query 5.102.7
+  patch cohort, and the shared Redis 6.2.1 client cohort. Complete local,
+  exact-SHA CI, runtime-image, and Railway staging evidence is recorded below.
 - Latest exact runtime-image validation SHA:
-  `c72942c1734858f15dd178b71a1e7401fa4da27a`
+  `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a`
 - Implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -23,8 +23,13 @@ artifact Railway is running; verify Railway separately with the sequence below.
   documentation head after the earlier security deployment was superseded.
   Documentation-only commits `1a6c54ee2244909bab93993fe064ac97158e4e26`
   and `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d` subsequently passed all four
-  workflows and correctly skipped both Railway services. Documentation commits
-  do not supersede the runtime-image evidence.
+  workflows and correctly skipped both Railway services. Documentation commit
+  `d4d89dca4a634d48ff4fd047d0e4502bbec25604` also passed Root run
+  `33746614907`, Backend run `33746614970`, Storefront run `33746615170`, and
+  Runtime Images run `33746614902`; both Railway services correctly skipped
+  it through Backend deployment `284bf79d-633c-4fdc-a29a-7a24f0660ec7` and
+  Storefront deployment `66a85fa4-977c-4a56-8343-7008c817ba37`.
+  Documentation commits do not supersede runtime-image evidence.
 - Runtime Images run `33688896070` passed both services at the exact accepted
   SHA; Backend job `100442798263` and Storefront job `100442798721` succeeded,
   while publication job `100442800014` skipped on `staging` as required.
@@ -91,7 +96,11 @@ The completed commits on `staging` are:
   `next start` plus standalone-output pairing; and
 - `c72942c1734858f15dd178b71a1e7401fa4da27a` updates the five Storefront
   TanStack Query runtime/persistence packages to the cooled 5.102.7 patch line
-  and records local compatibility evidence.
+  and records local compatibility evidence; and
+- `d4d89dca4a634d48ff4fd047d0e4502bbec25604` records the complete Query
+  exact-SHA CI, runtime-image, Railway, and staging observation evidence; and
+- `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a` updates the shared Backend and
+  Storefront Redis client graph to the cooled 6.2.1 patch line.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -556,6 +565,77 @@ one Railway-classified error line that is a command echo with no application
 event: Backend's Node release command and Storefront's `$ next start` banner.
 No production state was changed.
 
+## Redis 6.2.1 staging acceptance
+
+The isolated shared-client cohort updates Backend Redis from `^6.1.0` to
+`^6.2.1`, Storefront Redis from `6.1.0` to `6.2.1`, and the lockfile's Redis
+client family to one coherent 6.2.1 graph. The target was published on
+2026-08-11 and passed the strict seven-day cooling policy. The official 6.2.0
+and 6.2.1 release notes were audited. Their cluster raw-command routing change
+does not affect this repository because both services use standalone
+`createClient` connections and no `createCluster` call or raw cluster dispatch.
+
+Local acceptance passed:
+
+- frozen install, peer dependency, supply-chain, production-audit, full QA,
+  and both strict typecheck gates;
+- 38 focused Backend tests across seven suites and 31 focused Storefront tests
+  across five files;
+- 273 Backend suites / 2,066 tests at 91.58% statements and 85.31% branches;
+- 139 Storefront baseline files / 829 tests at 94.37% statements and 86.06%
+  branches, plus 36 transactional files / 322 tests at 83.73% statements and
+  76.50% branches;
+- both production builds, including all 55 Storefront routes and the clean
+  131-asset client-secret scan; and
+- a clean second critical-browser run with all 21 Chromium, Firefox, and
+  WebKit journeys passing.
+
+The local disposable integration harness could start healthy PostgreSQL and
+Redis containers through the system Docker daemon, but the host could not
+reach either published port or bridge address. Medusa initialization therefore
+ended in `ECONNRESET` before application assertions. The cleanly canceled
+harness removed its containers and volumes. The exact GitHub Backend workflow
+then ran the same disposable PostgreSQL/Redis integration successfully in
+1 minute 11 seconds, providing fresh authoritative integration evidence rather
+than treating the local host-network failure as a product result. No rendered
+UI changed, so desktop screenshot validation does not apply.
+
+Exact implementation SHA `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a`
+passed Root run `33748819712`, Backend run `33748819667`, Storefront run
+`33748819653`, and Runtime Images run `33748819721`. Backend disposable
+integration job `100628118781` passed. Runtime-image Backend job
+`100627413136` and Storefront job `100627413005` passed; publication job
+`100627414097` skipped on `staging`. Retained artifacts expire on 2026-10-03:
+
+- Backend artifact `9890797507`, digest
+  `sha256:c0a1dec223f397380827677836fe69438111bd06b1a6581d043e0f5cf58c6a78`,
+  with 1,183 CycloneDX components; and
+- Storefront artifact `9890764444`, digest
+  `sha256:91ff507f4fe8b52fb4b00fea4898e3ba00293bf57ee4aff67a6d04228077027b`,
+  with 122 CycloneDX components.
+
+Storefront Lighthouse artifact `9891148715`, launch-acceptance artifact
+`9891102795`, and coverage artifact `9890883027` expire on 2026-09-17.
+Temporary downloaded runtime evidence is under
+`/tmp/remorseless-redis-runtime-evidence.mCpEh3`, and smoke evidence is under
+`/tmp/remorseless-redis-smoke.W1CPTJ`; neither path may be committed.
+
+Railway Backend deployment `ca459698-3a86-42de-a255-d9b27b2e7d46` and
+Storefront deployment `dacc90f7-ea9d-4088-93cc-17a72d638704` both reached
+`SUCCESS` at the exact SHA, with source-image digests
+`sha256:679b4fa5b3f99d22dae5b7b87130b139aa90344fa639f9a388d72be0cbc3e3bb`
+and
+`sha256:1d3a62eb6823fd715e2f2cfa5b5d6345d6c080969f5b63ec9c50470dec905f78`.
+Both health/readiness pairs, Backend scheduler/operations, Storefront
+root/catalog, security headers, and live AVIF optimization passed. Exact logs
+contained zero HTTP 4xx/5xx records, application error events, Trusted Types
+reports, `AppRender.fetch` diagnostics, standalone warnings, or forbidden
+completion fields. Pre-readiness Backend Redis capture recorded seven startup
+packet drops through 11:35:57Z; after readiness it recorded 334 Redis network
+records, 710 packets, and 151,558 bytes with zero drop causes. Storefront
+recorded 12 post-readiness Redis network records, 13 packets, and 1,139 bytes
+with zero drop causes. No production state was changed.
+
 ## Remaining work for this slice
 
 1. After the report-only observation window reaches
@@ -570,6 +650,11 @@ No production state was changed.
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
+4. Continue cooled isolated cohorts with TanStack Form 1.33.5, Resend 6.24.0,
+   PostHog 5.51.3, UI/test patches, and exact GitHub Action commit updates.
+   Redis 6.2.1 is complete. Keep Pacer 0.22.0, Stripe, AWS SDK,
+   OpenTelemetry, and Medusa in their separately reviewed compatibility
+   cohorts.
 
 ## Railway and GHCR cutover boundary
 

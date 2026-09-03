@@ -326,6 +326,64 @@ reports, standalone warnings, or `AppRender.fetch` diagnostics. All bounded
 completion events matched the exact SHA and contained no forbidden request
 fields.
 
+## Redis client patch update (2026-09-03)
+
+The direct Backend and Storefront Redis clients move from 6.1.0 to the cooled
+6.2.1 patch line, and the shared lockfile resolves `redis`, `@redis/client`,
+Bloom, JSON, Search, and TimeSeries to one coherent 6.2.1 family. Redis 6.2.1
+was published on 2026-08-11, so no cooling exception was required.
+
+The official 6.2.0 and 6.2.1 release changes were audited for cluster raw
+command routing, sentinel behavior, stale socket listeners, credentials,
+redirect handling, and RESP3 double decoding. The repository uses standalone
+`createClient` connections in both applications, with no `createCluster` call
+or raw cluster dispatch, so the cluster routing compatibility change requires
+no application migration. The remaining lifecycle and correctness fixes are
+compatible with the existing reconnect, readiness, rate-limit, cache, and
+session consumers.
+
+Local acceptance passed frozen install, peer and supply-chain policy checks,
+the production audit, full QA, both strict typechecks, 38 focused Backend tests,
+31 focused Storefront tests, both coverage suites, and both production builds.
+Backend passed 273 suites / 2,066 tests at 91.58% statements and 85.31%
+branches. Storefront passed 139 baseline files / 829 tests at 94.37% statements
+and 86.06% branches, plus 36 transactional files / 322 tests at 83.73%
+statements and 76.50% branches. The Storefront build completed 55 routes and a
+clean 131-asset secret scan; the clean confirmation browser run passed all 21
+critical Chromium, Firefox, and WebKit journeys.
+
+The local disposable integration attempt exposed a Docker host-network issue:
+healthy PostgreSQL and Redis containers were unreachable through either their
+published ports or bridge addresses, and Medusa initialization ended in
+`ECONNRESET` before application assertions. The canceled harness cleaned up
+its containers and volumes. Exact GitHub Backend job `100628118781` then ran
+the same disposable PostgreSQL/Redis integration successfully in 1 minute 11
+seconds, providing fresh authoritative integration proof. No rendered UI
+changed, so graphical screenshot validation is not applicable.
+
+Exact SHA `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a` passed Root run
+`33748819712`, Backend run `33748819667`, Storefront run `33748819653`, and
+Runtime Images run `33748819721`. Backend runtime artifact `9890797507` binds
+1,183 CycloneDX components to digest
+`sha256:c0a1dec223f397380827677836fe69438111bd06b1a6581d043e0f5cf58c6a78`;
+Storefront artifact `9890764444` binds 122 components to digest
+`sha256:91ff507f4fe8b52fb4b00fea4898e3ba00293bf57ee4aff67a6d04228077027b`.
+Both artifacts expire on 2026-10-03, and publication correctly skipped on
+`staging`.
+
+Railway Backend deployment `ca459698-3a86-42de-a255-d9b27b2e7d46` and
+Storefront deployment `dacc90f7-ea9d-4088-93cc-17a72d638704` both reached
+`SUCCESS` at the exact SHA, with source-image digests
+`sha256:679b4fa5b3f99d22dae5b7b87130b139aa90344fa639f9a388d72be0cbc3e3bb`
+and
+`sha256:1d3a62eb6823fd715e2f2cfa5b5d6345d6c080969f5b63ec9c50470dec905f78`.
+Health/readiness, scheduler/operations, root/catalog, security headers, and a
+live AVIF optimization request passed. Exact logs contained zero HTTP 4xx/5xx
+records or application errors. After readiness, Backend recorded 334 Redis
+network records / 710 packets / 151,558 bytes and Storefront recorded 12
+network records / 13 packets / 1,139 bytes, both with zero packet-drop causes.
+No production state was changed.
+
 ## Isolated compatibility upgrade plan — 2026-09-03
 
 `pnpm outdated --recursive --format json` was reviewed against registry publish
@@ -343,7 +401,7 @@ families must not be bundled into its lockfile diff.
 | 5 | Stripe | Update `stripe` 22.6.0 separately from the browser pair. Its release pins a new API version and changes connection-error behavior. Update `@stripe/react-stripe-js` 6.8.2 with `@stripe/stripe-js` 9.14.0 only after rebasing or removing the exact Trusted Types loader patch, then rerun checkout, 3DS, response-loss, webhook, refund, CSP, and three-engine browser matrices. |
 | 6 | AWS SDK | Update the S3 client to 3.1119.0 with its compatible core graph. Recheck the locally patched abort/timeout behavior, MinIO path-style requests, release `HeadBucket`, upload compensation, media backup, and runtime image scan before removing any core override. |
 | 7 | OpenTelemetry | Move the experimental SDK and matching instrumentations as one compatibility set: SDK Node 0.221.0 and the corresponding Redis, ioredis, Knex, PostgreSQL, and runtime packages. Keep stable API/trace packages on their compatible line; prove preload ordering, shutdown, redaction, trace correlation, RED metrics, and provider-disabled startup. |
-| 8 | Small runtime and tool patches | Use separate low-risk commits for Redis 6.2.1, Resend 6.24.0, PostHog 5.51.3, UI/test patches, and exact GitHub Action commit updates. Preserve functional email, rate-limit, analytics, browser, coverage, immutable-action, and egress-policy tests for the component changed. |
+| 8 | Small runtime and tool patches | Redis 6.2.1 is complete with local, exact-SHA CI, runtime-image, Railway, and staging acceptance. Continue separate low-risk commits for Resend 6.24.0, PostHog 5.51.3, UI/test patches, and exact GitHub Action commit updates. Preserve functional email, rate-limit, analytics, browser, coverage, immutable-action, and egress-policy tests for the component changed. |
 
 MikroORM 7, Awilix 13, the Meilisearch plugin 2, TanStack Table 9, Motion 13,
 JSDOM 30, TypeScript 7, and Backend React 19 remain migration projects rather

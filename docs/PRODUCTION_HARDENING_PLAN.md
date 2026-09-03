@@ -46,13 +46,13 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted dependency head
-`c72942c1734858f15dd178b71a1e7401fa4da27a` moves the Storefront's five
-TanStack Query runtime/persistence packages together from 5.101.4 to mature
-5.102.7. The Backend/Admin 5.64.2 graph remains isolated and unchanged. Full
-local acceptance, all four exact-SHA GitHub workflows, both runtime-image
-validations, and both Railway staging deployments passed. Query 5.102.8 stays
-outside this cohort until its cooling window ends at
-`2026-09-03T16:06:57.089Z`.
+`6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a` includes the accepted Storefront
+TanStack Query 5.102.7 cohort and updates both direct Redis clients plus the
+shared Redis graph to mature 6.2.1. The Backend/Admin Query 5.64.2 graph remains
+isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
+workflows, both runtime-image validations, and both Railway staging deployments
+passed for each cohort. Query 5.102.8 stays outside its reviewed cohort until
+its cooling window ends at `2026-09-03T16:06:57.089Z`.
 
 The next time-gated security observations are the Trusted Types staging window
 after `2026-09-03T22:08:00Z`, `qs` 6.16.0 after
@@ -4032,6 +4032,55 @@ Storefront, and Runtime Images runs `33744311233`, `33744311279`,
 `83071db0-cd2f-49a6-b957-1cd6b8d44bfa` both reached `SUCCESS` at that SHA.
 Exact health/readiness, Backend scheduler/operations, Storefront root/catalog,
 security-header, AVIF, structured-event, and bounded error-log checks passed.
+
+## Redis client 6.2.1 compatibility
+
+- [x] Move both direct Redis clients and the shared Redis package family from
+      6.1.0 to one coherent, cooled 6.2.1 graph.
+- [x] Audit upstream cluster routing, sentinel, socket listener, credential,
+      redirect, and RESP3 changes against every repository Redis call site.
+- [x] Confirm both services use standalone `createClient` connections with no
+      affected `createCluster` or raw cluster dispatch path.
+- [x] Pass frozen install, peer, supply-chain, audit, full QA, typecheck,
+      focused tests, coverage, production-build, and browser gates locally.
+- [x] Accept the exact implementation SHA in all GitHub workflows, runtime
+      image validations, Railway staging deployments, and live Redis traffic.
+
+Local acceptance passed 38 focused Backend tests and 31 focused Storefront
+tests. Backend passed 273 suites / 2,066 tests at 91.58% statements and 85.31%
+branches. Storefront passed 139 baseline files / 829 tests at 94.37% statements
+and 86.06% branches, plus 36 transactional files / 322 tests at 83.73%
+statements and 76.50% branches. Both production builds passed, including all
+55 Storefront routes and the clean 131-asset client-secret scan. A clean
+confirmation run passed all 21 critical Chromium, Firefox, and WebKit journeys.
+No application or rendered UI source changed, so graphical screenshot
+validation was not applicable.
+
+The local disposable integration attempt reached healthy containers through
+the system Docker daemon but could not reach their published ports or bridge
+addresses from the host. Medusa initialization ended in `ECONNRESET` before
+application assertions, and the canceled harness removed its containers and
+volumes. Exact Backend CI job `100628118781` ran the same disposable
+PostgreSQL/Redis integration successfully in 1 minute 11 seconds, providing
+fresh authoritative integration evidence.
+
+Exact SHA `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a` passed Root, Backend,
+Storefront, and Runtime Images runs `33748819712`, `33748819667`,
+`33748819653`, and `33748819721`. Runtime artifacts `9890797507` and
+`9890764444` bind the exact revision to Backend digest
+`sha256:c0a1dec223f397380827677836fe69438111bd06b1a6581d043e0f5cf58c6a78`
+with 1,183 CycloneDX components and Storefront digest
+`sha256:91ff507f4fe8b52fb4b00fea4898e3ba00293bf57ee4aff67a6d04228077027b`
+with 122 components.
+
+Railway Backend deployment `ca459698-3a86-42de-a255-d9b27b2e7d46` and
+Storefront deployment `dacc90f7-ea9d-4088-93cc-17a72d638704` both reached
+`SUCCESS` at the exact SHA. Exact health/readiness, Backend
+scheduler/operations, Storefront root/catalog, security-header, AVIF,
+structured-event, and bounded error-log checks passed. After readiness,
+Backend recorded 334 Redis network records / 710 packets / 151,558 bytes and
+Storefront recorded 12 network records / 13 packets / 1,139 bytes, with zero
+packet-drop causes for either service. No production state was changed.
 
 ## Trusted Types report-only and carousel control hardening
 
