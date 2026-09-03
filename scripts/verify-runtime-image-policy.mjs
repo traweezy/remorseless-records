@@ -169,6 +169,12 @@ export const validateRuntimeWorkflowSource = (source) => {
   assert.equal(source.match(/build_node_environment: test/gu)?.length, 2)
   assert.equal(source.match(/build_node_environment: production/gu)?.length, 2)
   assert.equal(
+    source.match(
+      /build_command: pnpm --filter remorseless-records-storefront run build:runtime/gu
+    )?.length,
+    2
+  )
+  assert.equal(
     source.match(/NODE_ENV: \$\{\{ matrix\.build_node_environment \}\}/gu)
       ?.length,
     2
@@ -332,10 +338,21 @@ export const verifyRuntimeImagePolicy = () => {
     join(root, "storefront/next.config.ts"),
     "utf8"
   )
+  assert.match(nextConfig, /process\.env\.STOREFRONT_BUILD_OUTPUT/u)
+  assert.match(nextConfig, /storefrontBuildOutput !== undefined/u)
   assert.match(nextConfig, /output: "standalone"/u)
   assert.match(
     nextConfig,
     /outputFileTracingRoot: path\.resolve\(currentDir, "\.\."\)/u
+  )
+  assert.match(nextConfig, /\.\.\.buildOutputConfig/u)
+
+  const storefrontPackageJson = JSON.parse(
+    readFileSync(join(root, "storefront/package.json"), "utf8")
+  )
+  assert.equal(
+    storefrontPackageJson.scripts?.["build:runtime"],
+    "STOREFRONT_BUILD_OUTPUT=standalone pnpm run build"
   )
 
   validateRuntimeWorkflowSource(

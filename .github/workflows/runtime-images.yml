@@ -61,7 +61,7 @@ jobs:
             dockerfile: backend/Dockerfile.runtime
             image_name: ghcr.io/traweezy/remorseless-records-backend
           - service: storefront
-            build_command: pnpm --filter remorseless-records-storefront run build
+            build_command: pnpm --filter remorseless-records-storefront run build:runtime
             build_node_environment: production
             dockerfile: storefront/Dockerfile.runtime
             image_name: ghcr.io/traweezy/remorseless-records-storefront
@@ -284,7 +284,7 @@ jobs:
             dockerfile: backend/Dockerfile.runtime
             image_name: ghcr.io/traweezy/remorseless-records-backend
           - service: storefront
-            build_command: pnpm --filter remorseless-records-storefront run build
+            build_command: pnpm --filter remorseless-records-storefront run build:runtime
             build_node_environment: production
             dockerfile: storefront/Dockerfile.runtime
             image_name: ghcr.io/traweezy/remorseless-records-storefront

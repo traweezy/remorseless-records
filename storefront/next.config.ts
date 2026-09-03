@@ -7,6 +7,22 @@ import { validateStorefrontRuntimeSecrets } from "./src/config/runtime-secret-po
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const isDevelopment = process.env.NODE_ENV === "development"
+const storefrontBuildOutput = process.env.STOREFRONT_BUILD_OUTPUT
+if (
+  storefrontBuildOutput !== undefined &&
+  storefrontBuildOutput !== "standalone"
+) {
+  throw new Error(
+    "STOREFRONT_BUILD_OUTPUT must be omitted or set to standalone."
+  )
+}
+const buildOutputConfig: NextConfig =
+  storefrontBuildOutput === "standalone"
+    ? {
+        output: "standalone",
+        outputFileTracingRoot: path.resolve(currentDir, ".."),
+      }
+    : {}
 validateStorefrontRuntimeSecrets({
   isProduction: process.env.NODE_ENV === "production",
 })
@@ -19,8 +35,7 @@ const experimentalConfig: NonNullable<NextConfig["experimental"]> = {
 }
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  outputFileTracingRoot: path.resolve(currentDir, ".."),
+  ...buildOutputConfig,
   reactStrictMode: true,
   poweredByHeader: false,
   env: {

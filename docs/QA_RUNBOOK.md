@@ -202,7 +202,7 @@ Build the application artifacts before their final images:
 
 ```bash
 pnpm --filter backend run build
-pnpm --filter remorseless-records-storefront run build
+pnpm --filter remorseless-records-storefront run build:runtime
 
 candidate_revision="$(git rev-parse HEAD)"
 docker build --file backend/Dockerfile.runtime \
@@ -212,6 +212,12 @@ docker build --file storefront/Dockerfile.runtime \
   --build-arg "REVISION=${candidate_revision}" \
   --tag remorseless-records-storefront:runtime-local .
 ```
+
+The ordinary Storefront `build` command deliberately produces the server
+artifact consumed by `next start` in source-based Railway deployments. Only
+`build:runtime` sets `STOREFRONT_BUILD_OUTPUT=standalone`; use it before the
+Storefront runtime Docker build so `server.js` exists without introducing the
+unsupported `next start` plus standalone pairing.
 
 The final image must run as UID 1000 on Node 26.5.0, expose its expected
 health port, contain no npm/npx executable, and carry the source/revision OCI

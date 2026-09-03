@@ -124,3 +124,12 @@ test("rejects SBOM generation before private evidence initialization", () => {
   assert.notEqual(missingEvidenceDirectory, workflowSource)
   assert.throws(() => validateRuntimeWorkflowSource(missingEvidenceDirectory))
 })
+
+test("rejects a Storefront runtime image built without standalone output", () => {
+  const defaultBuild = workflowSource.replaceAll(
+    "pnpm --filter remorseless-records-storefront run build:runtime",
+    "pnpm --filter remorseless-records-storefront run build"
+  )
+  assert.notEqual(defaultBuild, workflowSource)
+  assert.throws(() => validateRuntimeWorkflowSource(defaultBuild))
+})

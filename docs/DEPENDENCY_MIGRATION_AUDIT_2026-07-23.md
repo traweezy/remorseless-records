@@ -242,6 +242,18 @@ or coverage failure. No suppression was added; exact-deployment runtime logs
 remain a required staging acceptance check so any recurring telemetry noise is
 measured rather than hidden.
 
+The first exact 16.3.3 staging deployment emitted no recurrence of that
+telemetry diagnostic, but Railway classified Next's warning that `next start`
+does not support `output: "standalone"` as two error-level application logs.
+The deployment served healthy traffic, but acceptance stopped rather than
+normalizing the warning. Default Storefront builds now omit standalone output
+and remain paired with `next start`; the dedicated `build:runtime` command sets
+`STOREFRONT_BUILD_OUTPUT=standalone` only for the immutable runtime-image
+workflow. Invalid selector values fail the build, and repository policy binds
+both validation and publication jobs to the explicit runtime command. Local
+acceptance proved the default server plus the copied standalone layout,
+including `/live`, the public logo, and AVIF optimization.
+
 ## Isolated compatibility upgrade plan — 2026-09-03
 
 `pnpm outdated --recursive --format json` was reviewed against registry publish
