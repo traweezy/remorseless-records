@@ -36,7 +36,7 @@ packageExtensions:
     peerDependenciesMeta:
       "@types/react":
         optional: true
-  "next@16.2.12":
+  "next@16.3.3":
     peerDependencies:
       "@types/react": "*"
       "@types/react-dom": "*"

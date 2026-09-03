@@ -49,7 +49,7 @@ packageExtensions:
   "puppeteer-core@>=24.43.1 <26.0.0":
     dependencies:
       proxy-agent: 8.0.2
-  "next@16.2.12":
+  "next@16.3.3":
     peerDependencies:
       "@types/react": "*"
       "@types/react-dom": "*"

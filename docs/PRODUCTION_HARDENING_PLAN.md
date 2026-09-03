@@ -2935,8 +2935,18 @@ floating support images, and the exact production cost/domain approval packet.
 - [x] Update the pinned Shai-Hulud detector to the upstream release that
       declares a supported Node 24 action runtime and retain its fail-closed
       scan controls.
-- [ ] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
+- [x] Plan isolated compatibility upgrades for Medusa, Next.js, TanStack,
       Stripe, AWS SDK, and other outdated dependency families.
+
+The September 3 registry audit and official release review now define eight
+isolated cohorts in `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`: Next.js
+security, the time-gated `qs` cleanup, coordinated Medusa 2.19/Admin framework,
+TanStack, server/browser Stripe, AWS SDK, OpenTelemetry, and small runtime/tool
+patches. Each owns a separate lockfile diff, full local gate, exact-SHA CI, and
+watched-service staging acceptance. Major framework/runtime changes are not
+mixed. The first cohort upgrades the Storefront from Next.js 16.2.12 to the
+mature 16.3.3 security release; 16.3.4 remains cooling until
+`2026-09-07T20:00:51.381Z`.
 
 Disposable integration closure on 2026-09-01 adds a release-blocking Backend
 CI job backed by official PostgreSQL 18.6 and Redis 8.10.1 images pinned to
