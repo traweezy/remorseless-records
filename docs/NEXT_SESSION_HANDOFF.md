@@ -1,6 +1,6 @@
 # Next-session handoff
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 This document records the local and GitHub acceptance boundary for the
 runtime-image hardening slice. GitHub image evidence does not prove which
@@ -16,9 +16,10 @@ artifact Railway is running; verify Railway separately with the sequence below.
   `origin/staging`. Backend source deployment acceptance is documented at
   `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` because Railway rebuilt that
   documentation head after the earlier security deployment was superseded.
-  Documentation-only commit `1a6c54ee2244909bab93993fe064ac97158e4e26`
-  subsequently passed all four workflows and correctly skipped both Railway
-  services. Documentation commits do not supersede the runtime-image evidence.
+  Documentation-only commits `1a6c54ee2244909bab93993fe064ac97158e4e26`
+  and `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d` subsequently passed all four
+  workflows and correctly skipped both Railway services. Documentation commits
+  do not supersede the runtime-image evidence.
 - Runtime Images run `33688896070` passed both services at the exact accepted
   SHA; Backend job `100442798263` and Storefront job `100442798721` succeeded,
   while publication job `100442800014` skipped on `staging` as required.
@@ -31,6 +32,13 @@ artifact Railway is running; verify Railway separately with the sequence below.
   observations report healthy dependencies, catalog projections, Redis, job
   heartbeat, retention state, and incident state. No production environment
   exists and no production state was changed.
+- External scheduler alert and no-recurrence acceptance is complete. Real
+  incident issue `#5` stayed open through the 24-hour incident latch and closed
+  only after scheduled run `33523928277` observed a healthy endpoint on
+  September 1. All 15 recorded monitor runs through `33720902233` succeeded.
+  Manual run `33692224408` retained sanitized artifact `9870456138` through
+  October 2, and a September 3 live read remained healthy with no incident or
+  alert reason.
 - Dependabot PR `#6` is closed. It proposed only the Backend manifest half of
   the `sanitize-html` 2.17.7 update, while commit
   `5af1abf2821836111bac56704ac56d7f8322a08d` upgrades both direct consumers,
@@ -67,7 +75,9 @@ The completed commits on `staging` are:
 - `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` records exact CI and retained
   runtime-image acceptance before the staging runtime observation; and
 - `1a6c54ee2244909bab93993fe064ac97158e4e26` records the completed staging
-  source-deployment and operational acceptance.
+  source-deployment and operational acceptance; and
+- `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d` synchronizes the final exact-SHA
+  CI, runtime-image, and Railway skip evidence.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -347,6 +357,14 @@ The subsequent runtime-acceptance handoff commit
 Runtime Images run `33692951875`. Runtime publication again remained skipped,
 and both Railway services reported `SKIPPED` with `No changes to watched
 files`.
+
+Documentation synchronization commit
+`060af53115ed1ae85d2f8d02d6fd0590c8e6a02d` passed Root run `33697084457`,
+Backend run `33697084383`, Storefront run `33697084465`, and Runtime Images run
+`33697084399`. Runtime publication again remained skipped. Railway Backend
+record `1febc79e-2123-49e1-8f09-40528305899b` and Storefront record
+`66e56b45-5aa5-4157-b905-7f62e94e97dd` both reported `SKIPPED` with `No changes
+to watched files`.
 
 Railway correctly skipped that documentation-only push for both watched source
 trees. The earlier Backend security deployment had been superseded before

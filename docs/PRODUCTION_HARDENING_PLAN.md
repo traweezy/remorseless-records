@@ -1,13 +1,13 @@
 # Production Hardening Plan
 
-Last verified: September 2, 2026
+Last verified: September 3, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active handoff — September 2, 2026
+## Active handoff — September 3, 2026
 
 The runtime-image, dependency-advisory, and staging source-deployment slice is
 complete. Runtime-image acceptance SHA
@@ -29,13 +29,21 @@ and zero incident latches. Exact-request logs matched response trace IDs and
 contained no forbidden request data; exact deployment logs contained zero
 unexpected 429/503 or Redis/rate-limit failures.
 
-Documentation commit `1a6c54ee2244909bab93993fe064ac97158e4e26` passed Root run
-`33692951882`, Backend run `33692951868`, Storefront run `33692951918`, and
-Runtime Images run `33692951875`; both Railway services correctly skipped it
+Documentation commit `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d` passed Root run
+`33697084457`, Backend run `33697084383`, Storefront run `33697084465`, and
+Runtime Images run `33697084399`; both Railway services correctly skipped it
 because watched source files were unchanged. Dependabot PR `#6` is closed and
 superseded by the accepted shared-lockfile sanitizer update. The pre-existing
 untracked `Default/` directory is unrelated user content and must remain
 unread, untouched, and unstaged.
+
+External scheduler alert and no-recurrence acceptance is complete. Real issue
+`#5` remained open through the 24-hour incident latch and closed only after
+scheduled run `33523928277` observed healthy recovery. All 15 recorded monitor
+runs from that recovery through `33720902233` succeeded. Manual run
+`33692224408` retained sanitized artifact `9870456138` through October 2, and a
+September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
+no incident latch, and no alert reason.
 
 The next repository action for this slice is time-gated: replace the verified
 `qs` 6.15.3 backport with 6.16.0 no earlier than
@@ -86,7 +94,7 @@ environment exists.
 - Latest implementation/runtime-image validation SHA accepted:
   `61fd86889a4adca23e1e9704e11c889a1fd986a9`.
 - Latest documentation-only staging SHA accepted before this update:
-  `1a6c54ee2244909bab93993fe064ac97158e4e26`.
+  `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
   `75650cfc-d897-46bb-b83c-b10aab077fc1` (`SUCCESS`,
@@ -2186,7 +2194,7 @@ Exact-SHA staging acceptance passed on August 29, 2026:
       before tuning the scheduled-workflow lock.
 - [x] Observe the accepted structured job duration, event-loop delay,
       lock-wait/release, scan, and cap fields in staging.
-- [ ] Add external BullMQ/Redis alerts and retain a no-recurrence observation
+- [x] Add external BullMQ/Redis alerts and retain a no-recurrence observation
       window for the hardened scheduler.
 - [x] Prove every scheduled money-moving job is idempotent and stalled-job
       recovery cannot duplicate a charge, completion, order, refund, or email.
@@ -2315,12 +2323,17 @@ SHA `151f635374adc0d0bdf337ccdf90876d1f2dbce4`:
   `#3` at `21:03:45Z`, and retained its independent redacted artifact for the
   same 30-day policy.
 
-The 24-hour no-recurrence window therefore runs through
-`2026-08-30T21:03:45Z`. The external workflow polls every ten minutes, retains
-daily/manual/alert evidence, and will reopen the exact issue on Redis failure,
-missing or stale heartbeat, incident latch, invalid response, or source error.
-The checklist item remains open until that full window completes without an
-unrecovered alert or scheduler incident.
+The external workflow polls every ten minutes and retains daily, manual, and
+alert evidence. Forced issue `#3` proved alert creation and healthy closure.
+Real incident issue `#5` then stayed open through repeated degraded observations
+and the complete 24-hour latch, closing only after scheduled run `33523928277`
+observed healthy recovery on September 1 at `15:09:15Z`. All 15 recorded runs
+from that recovery through scheduled run `33720902233` succeeded. Manual run
+`33692224408` retained sanitized artifact `9870456138` through October 2 with
+Redis `ok` at 2.208 ms, a completed heartbeat, no incident, and no alert reason.
+A live read at `2026-09-03T08:39:50.622Z` remained healthy with Redis at
+2.032 ms, a 110.531-second-old completed heartbeat, no incident, and no reasons.
+The alert lifecycle, retained evidence, and no-recurrence window are complete.
 
 Staging Stripe lifecycle configuration acceptance passed on August 29, 2026
 at exact source SHA `bbb1b53922ef8552fdefd6ad7e815959488bda83`:

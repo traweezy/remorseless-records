@@ -574,8 +574,20 @@ The worker started 79 ms later, completed in 159.645 ms, observed 21.660 ms
 maximum event-loop delay and 2.136 ms lock wait, released the owned lock, and
 scanned all 1,306 candidates below the 2,000 limit. Eligible, attempted,
 completed, and failed counts were zero; no cap or full-window condition fired.
-The exact deployment contained no missing-lock or stalled-job record. External
-BullMQ/Redis alerts and a retained no-recurrence window remain required.
+The exact deployment contained no missing-lock or stalled-job record.
+
+External BullMQ/Redis alert and no-recurrence acceptance completed on
+September 3, 2026. Real incident issue `#5` stayed open while the 24-hour
+incident latch was present and closed only after scheduled run `33523928277`
+observed a healthy endpoint on September 1 at `15:09:15Z`. All 15 recorded
+monitor executions from that recovery through scheduled run `33720902233`
+succeeded. Manual run `33692224408` retained sanitized artifact `9870456138`
+through October 2; it records Redis `ok` at 2.208 ms, a completed heartbeat,
+no incident, and no alert reason. A live read at `2026-09-03T08:39:50.622Z`
+remained healthy with Redis at 2.032 ms, a 110.531-second-old completed
+heartbeat, no incident, and no reasons. Alert creation, repeated degraded
+comments, healthy recovery closure, evidence retention, and the
+recurrence-free window are therefore proven without synthetic Redis mutation.
 
 ## Incident: amount or currency mismatch
 
