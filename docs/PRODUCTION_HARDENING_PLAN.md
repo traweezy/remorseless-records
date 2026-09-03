@@ -45,13 +45,21 @@ runs from that recovery through `33720902233` succeeded. Manual run
 September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
-The next repository action for this slice is time-gated: replace the verified
-`qs` 6.15.3 backport with 6.16.0 no earlier than
-`2026-09-05T23:50:15.803Z`, then remove its two audit ignores, all three patch
-copies, and the temporary verifier in one change. The immutable GHCR
-publication/attestation and Railway image-source cutover remain a separate
-reviewed release decision; no source, credential, visibility, domain, traffic,
-or production setting changed.
+The current locally accepted dependency candidate moves the Storefront's five
+TanStack Query runtime/persistence packages together from 5.101.4 to mature
+5.102.7. The Backend/Admin 5.64.2 graph remains isolated and unchanged. Full
+QA, type, coverage, production-build, responsive Chromium, and three-engine
+critical-flow gates pass; exact-SHA CI and Railway acceptance remain. Query
+5.102.8 stays outside this cohort until its cooling window ends at
+`2026-09-03T16:06:57.089Z`.
+
+The next time-gated security observations are the Trusted Types staging window
+after `2026-09-03T22:08:00Z`, `qs` 6.16.0 after
+`2026-09-05T23:50:15.803Z`, and Next.js 16.3.4 after
+`2026-09-07T20:00:51.381Z`. The immutable GHCR publication/attestation and
+Railway image-source cutover remain a separate reviewed release decision; no
+source, credential, visibility, domain, traffic, or production setting
+changed.
 
 Production remains blocked by the unchecked operational and approval items in
 this plan: qualified legal/tax/client approval; staffed support and privacy
@@ -3992,6 +4000,29 @@ retention, deletion, and breach-response policy. Exact Railway inspection also
 found the public staging Meilisearch service domain; removing it changes
 staging service state and remains the explicit environment action recorded in
 the application-security checklist.
+
+## TanStack Query patch compatibility
+
+- [x] Move the five Storefront Query runtime and persistence packages together
+      from 5.101.4 to the cooled 5.102.7 patch line.
+- [x] Confirm the Storefront resolves one coherent 5.102.7 Query graph while
+      preserving Medusa's isolated Backend/Admin 5.64.2 graph.
+- [x] Audit the upstream compatibility delta and repository call sites for
+      removed experimental methods, query resets, prefetch, cache mutation,
+      suspense, hydration, and persistence behavior.
+- [x] Pass frozen install, peer, supply-chain, audit, full QA, typecheck,
+      focused tests, coverage, production-build, and browser gates locally.
+- [ ] Accept the exact implementation SHA in all GitHub workflows and the
+      resulting Railway staging deployments before closing the cohort.
+
+Local acceptance passed 16 focused persistence/prefetch tests, 139 baseline
+files / 829 tests, and 36 transactional files / 322 tests. Coverage remained
+94.37% statements and 86.06% branches for the baseline, and 83.73% statements
+and 76.50% branches for transactional paths. The production build completed
+all 55 routes and the 131-asset secret scan. Responsive Chromium passed 54
+journeys with two intentional skips; the Chromium, Firefox, and WebKit
+critical matrix passed all 21 flows. No application or rendered UI source
+changed, so graphical screenshot validation was not applicable.
 
 ## Trusted Types report-only and carousel control hardening
 

@@ -270,6 +270,38 @@ startup warning, `AppRender.fetch` diagnostic, Trusted Types report, or HTTP
 `$ next start` command echo as one error-level line; it has no application
 event or error code and predates this upgrade.
 
+## TanStack Query patch update (2026-09-03)
+
+The Storefront's five Query runtime and persistence packages move together
+from 5.101.4 to 5.102.7. The target was published on
+`2026-08-27T08:33:25.188Z` and passed the strict seven-day cooling window
+without an exception. The newer 5.102.8 release remains excluded until
+`2026-09-03T16:06:57.089Z`; it is not silently folded into this already
+reviewed cohort.
+
+The upstream
+[5.101.4-to-5.102.7 comparison](https://github.com/TanStack/query/compare/v5.101.4...v5.102.7)
+includes fixes for settled retryer retention, thenable callbacks, observer
+notification stability, programmatic suspense resolution, matched query
+resets, disabled-observer stale timers, falsy error-boundary values, and
+partial dehydrated state. Repository usage was checked for the removed
+experimental before/after/prefetch methods; none are used. Supported
+`setQueryData`, `fetchQuery`, `prefetchQuery`, and
+`PersistQueryClientProvider` call sites remain covered. Medusa's isolated
+Backend/Admin Query 5.64.2 graph is framework-owned and unchanged.
+
+Local acceptance passed the frozen install, peer check, dependency
+supply-chain policy, production audit, full repository QA gate, strict
+Storefront typecheck, 16 focused persistence/prefetch tests, and the 55-route
+production build with a clean 131-asset secret scan. Baseline coverage passed
+139 files / 829 tests at 94.37% statements and 86.06% branches;
+transactional coverage passed 36 files / 322 tests at 83.73% statements and
+76.50% branches. Responsive Chromium passed 54 journeys with two intentional
+skips, and the critical Chromium, Firefox, and WebKit matrix passed all 21
+flows. No rendered UI changed, so graphical screenshot validation is not
+applicable. Exact-SHA CI and Railway acceptance remain required before this
+cohort is final.
+
 ## Isolated compatibility upgrade plan — 2026-09-03
 
 `pnpm outdated --recursive --format json` was reviewed against registry publish
@@ -283,7 +315,7 @@ families must not be bundled into its lockfile diff.
 | 1 | Next.js | Complete the 16.3.3 critical security update above. Re-evaluate 16.3.4 only after its cooling expiry and rerun the image, nonce/CSP, Trusted Types, production-build, responsive browser, accessibility, and Lighthouse gates. |
 | 2 | `qs` | Replace 6.15.3 with 6.16.0 no earlier than `2026-09-05T23:50:15.803Z`; remove both advisory ignores, all three patch copies, and the temporary verifier in the same commit. |
 | 3 | Medusa | Move every Backend and Storefront `@medusajs/*` package together from 2.18.0 to 2.19.0. The official [2.19 release](https://github.com/medusajs/medusa/releases/tag/v2.19.0) is a breaking Admin migration to Vite 7.3.6 and React Router 7.18.2. Audit removed SDK Product Option methods, `Response.json()` and `defer()` usage, `UIMatch.loaderData`, cart/order wildcard totals, every Medusa patch, Admin browser/a11y contracts, migrations, and complete checkout/refund/tax behavior before staging. |
-| 4 | TanStack | Update the five Query persistence/runtime packages together to 5.102.7. Keep Form 1.33.5 and Pacer 0.22.0 in separate commits because forms own validation/focus behavior and Pacer is a pre-1.0 minor. Hold Table 9 for an explicit API migration instead of forcing it into a patch cohort. |
+| 4 | TanStack | The five Query persistence/runtime packages are locally accepted at 5.102.7; exact-SHA CI and Railway acceptance remain. Keep Form 1.33.5 and Pacer 0.22.0 in separate commits because forms own validation/focus behavior and Pacer is a pre-1.0 minor. Hold Table 9 for an explicit API migration instead of forcing it into a patch cohort. |
 | 5 | Stripe | Update `stripe` 22.6.0 separately from the browser pair. Its release pins a new API version and changes connection-error behavior. Update `@stripe/react-stripe-js` 6.8.2 with `@stripe/stripe-js` 9.14.0 only after rebasing or removing the exact Trusted Types loader patch, then rerun checkout, 3DS, response-loss, webhook, refund, CSP, and three-engine browser matrices. |
 | 6 | AWS SDK | Update the S3 client to 3.1119.0 with its compatible core graph. Recheck the locally patched abort/timeout behavior, MinIO path-style requests, release `HeadBucket`, upload compensation, media backup, and runtime image scan before removing any core override. |
 | 7 | OpenTelemetry | Move the experimental SDK and matching instrumentations as one compatibility set: SDK Node 0.221.0 and the corresponding Redis, ioredis, Knex, PostgreSQL, and runtime packages. Keep stable API/trace packages on their compatible line; prove preload ordering, shutdown, redaction, trace correlation, RED metrics, and provider-disabled startup. |

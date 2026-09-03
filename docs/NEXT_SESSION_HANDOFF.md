@@ -13,6 +13,11 @@ artifact Railway is running; verify Railway separately with the sequence below.
   `8d5d73e2fd80617de575ea269211816f7142f852`. It includes the mature Next.js
   16.3.3 security update and the supported split between Railway's default
   server artifact and the immutable image's explicit standalone artifact.
+- Current local candidate: the Storefront's five TanStack Query runtime and
+  persistence packages move together from 5.101.4 to cooled 5.102.7. Complete
+  local QA, coverage, build, and browser acceptance is recorded below; the
+  accepted implementation head must not advance until exact-SHA CI and
+  Railway staging checks pass.
 - Latest exact runtime-image validation SHA:
   `8d5d73e2fd80617de575ea269211816f7142f852`
 - Implementation/runtime-image acceptance SHA
@@ -487,17 +492,47 @@ event or error code and is not a Next/runtime failure. No production state was
 changed. No rendered UI changed, so desktop screenshot validation does not
 apply.
 
+## TanStack Query 5.102.7 local candidate
+
+The isolated Storefront cohort updates `@tanstack/react-query`, its devtools,
+both persistence packages, and the storage persister from 5.101.4 to 5.102.7.
+The target passed the seven-day cooling policy. Query 5.102.8 remains outside
+the cohort until `2026-09-03T16:06:57.089Z`, and the Medusa-owned Backend/Admin
+5.64.2 graph remains unchanged. The Storefront uses none of the removed
+experimental before/after/prefetch methods.
+
+Local acceptance passed:
+
+- frozen pnpm 11.17.0 install, peer dependency check, supply-chain policy, and
+  production audit with only the five documented moderate exceptions;
+- the complete repository QA gate and strict Storefront typecheck;
+- 16 focused cache/persistence/prefetch tests;
+- baseline coverage across 139 files / 829 tests at 94.37% statements and
+  86.06% branches, plus 36 transactional files / 322 tests at 83.73%
+  statements and 76.50% branches;
+- the 55-route production build and 131-asset client-secret scan;
+- 54 responsive Chromium journeys with two intentional skips; and
+- all 21 critical journeys in Chromium, Firefox, and WebKit.
+
+No rendered UI changed, so desktop screenshot validation does not apply.
+Exact-SHA Root, Backend, Storefront, and Runtime Images runs plus resulting
+Railway staging acceptance remain required.
+
 ## Remaining work for this slice
 
-1. After the report-only observation window reaches
+1. Accept the TanStack Query implementation commit in all four exact-SHA
+   GitHub workflows and validate every Railway service deployment triggered by
+   the shared lockfile change. Record the immutable run, deployment, digest,
+   health, route, and bounded-log evidence here.
+2. After the report-only observation window reaches
    `2026-09-03T22:08:00Z`, rerun real staging browser coverage and inspect the
    complete Trusted Types report window before deciding whether enforcement is
    eligible. Do not enable enforcement from empty short-window logs alone.
-2. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
+3. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
    backport with mature 6.16.0 and remove both audit ignores, all three patch
    copies, and `qa:qs-security` together. Run the complete local and exact-SHA
    acceptance matrices again.
-3. Re-evaluate Next.js 16.3.4 no earlier than
+4. Re-evaluate Next.js 16.3.4 no earlier than
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
