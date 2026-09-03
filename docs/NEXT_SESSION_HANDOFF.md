@@ -9,8 +9,12 @@ artifact Railway is running; verify Railway separately with the sequence below.
 ## Repository state
 
 - Branch: `staging`
+- Current accepted implementation head:
+  `8d5d73e2fd80617de575ea269211816f7142f852`. It includes the mature Next.js
+  16.3.3 security update and the supported split between Railway's default
+  server artifact and the immutable image's explicit standalone artifact.
 - Latest exact runtime-image validation SHA:
-  `61fd86889a4adca23e1e9704e11c889a1fd986a9`
+  `8d5d73e2fd80617de575ea269211816f7142f852`
 - Implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -77,7 +81,13 @@ The completed commits on `staging` are:
 - `1a6c54ee2244909bab93993fe064ac97158e4e26` records the completed staging
   source-deployment and operational acceptance; and
 - `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d` synchronizes the final exact-SHA
-  CI, runtime-image, and Railway skip evidence.
+  CI, runtime-image, and Railway skip evidence; and
+- `cd16721148fc11791a8bfcdfed844a1070526b2c` upgrades the Storefront to the
+  mature Next.js 16.3.3 critical security release and records the isolated
+  compatibility cohorts; and
+- `8d5d73e2fd80617de575ea269211816f7142f852` separates the source-server and
+  runtime-image build targets after exact staging logs exposed the unsupported
+  `next start` plus standalone-output pairing.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -406,12 +416,91 @@ Post-deploy acceptance passed:
 Dependabot PR `#6` was rechecked and is already closed. Its Backend-only
 manifest edit is superseded by the accepted shared-lockfile sanitizer update.
 
+## Next.js 16.3.3 staging acceptance
+
+The isolated framework cohort moved the Storefront from Next.js 16.2.12 to
+16.3.3. This is the newest release outside the strict seven-day cooling window
+and contains the reviewed critical RCE fixes, including the AVIF optimizer path
+used by the Storefront. Next.js 16.3.4 remains in cooling until
+`2026-09-07T20:00:51.381Z`.
+
+Implementation commit `cd16721148fc11791a8bfcdfed844a1070526b2c` passed Root
+run `33737713954`, Backend run `33737713948`, Storefront run `33737713947`, and
+Runtime Images run `33737713943`. Backend deployment
+`5c71182a-3def-48a6-a9db-922771f0ebb0` succeeded with image digest
+`sha256:367e192147b0137b4a3c185973763d8bf3050801634ca490d06ae0739ffa4d61`.
+Initial Storefront deployment `8f3a3f14-39e7-4186-b07f-0966dc71e63c` served
+healthy traffic but was not accepted: exact logs showed Next's unsupported
+`next start` plus `output: "standalone"` warning as an error-level record.
+
+Corrective commit `8d5d73e2fd80617de575ea269211816f7142f852`
+keeps ordinary builds on the server artifact used by source-based Railway
+deployments and adds a fail-closed `build:runtime` command for standalone image
+artifacts. Policy test 9/9 binds both image workflow paths to that command.
+Local default-server and copied-standalone smokes passed `/live`, the public
+logo, and AVIF optimization. Docker Desktop was unavailable locally, so no
+local image was created; exact-SHA Runtime Images run `33740171294` is the
+authoritative container build, runtime smoke, HIGH/CRITICAL scan, SBOM, and
+retention evidence.
+
+All corrective exact-SHA workflows passed:
+
+- Root `33740171303`;
+- Backend `33740171288`;
+- Storefront `33740171301`, including unit coverage, build, responsive and
+  three-engine browser flows, launch acceptance, pa11y, and Lighthouse; and
+- Runtime Images `33740171294`, with successful Backend job `100599981110` and
+  Storefront job `100599981486`; publication job `100599982855` skipped on
+  `staging` as required.
+
+Retained runtime evidence expires on 2026-10-03:
+
+- Backend artifact `9887480253`, image digest
+  `sha256:8563ce7ff64affa39f12495c3de99d015cd9c0b13692b0e1c05ca68912a31ff4`,
+  with 1,183 CycloneDX components; and
+- Storefront artifact `9887454050`, image digest
+  `sha256:58cffaae3636afbb551bcbde75a4a47feeb13a854c4c57a53e837297804883a8`,
+  with 122 CycloneDX components.
+
+Storefront Lighthouse artifact `9887872729` and launch-acceptance artifact
+`9887799740` expire on 2026-09-17. Temporary downloaded runtime evidence is
+under `/tmp/remorseless-next-runtime-evidence.D1Eo1q` and must not be
+committed.
+
+Railway correctly skipped unchanged Backend deployment
+`316d8cd5-3388-4bb0-bd9f-688b1d0bf463`. Corrected Storefront deployment
+`e95043ae-6b4a-41c3-9816-e6606e51cbf4` succeeded at the exact SHA with image
+digest
+`sha256:d863e3780da48f88b98a60d8e83408078d070452b7cd15bfa8f457a2330e3ec0`.
+Post-deploy `/live`, `/ready`, `/`, and `/catalog` returned 200; readiness
+reported Backend and Redis `ok`; nonce CSP, HSTS, and Trusted Types report-only
+headers remained present. The live optimizer returned 24,570 bytes as
+`image/avif` with its sandboxed response CSP.
+
+Exact-deployment logs contain zero unsupported-start warnings,
+`AppRender.fetch` diagnostics, Trusted Types violation reports, or HTTP 4xx/5xx
+records. Five bounded completion events matched the exact SHA,
+service/environment, GET/200 status, request IDs, and trace IDs without
+forbidden request details. Railway classifies the package runner's pre-existing
+`$ next start` command echo as one error-level line; it has no application
+event or error code and is not a Next/runtime failure. No production state was
+changed. No rendered UI changed, so desktop screenshot validation does not
+apply.
+
 ## Remaining work for this slice
 
-1. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
+1. After the report-only observation window reaches
+   `2026-09-03T22:08:00Z`, rerun real staging browser coverage and inspect the
+   complete Trusted Types report window before deciding whether enforcement is
+   eligible. Do not enable enforcement from empty short-window logs alone.
+2. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
    backport with mature 6.16.0 and remove both audit ignores, all three patch
    copies, and `qa:qs-security` together. Run the complete local and exact-SHA
    acceptance matrices again.
+3. Re-evaluate Next.js 16.3.4 no earlier than
+   `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
+   Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
+   `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
 
 ## Railway and GHCR cutover boundary
 

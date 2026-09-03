@@ -254,6 +254,22 @@ both validation and publication jobs to the explicit runtime command. Local
 acceptance proved the default server plus the copied standalone layout,
 including `/live`, the public logo, and AVIF optimization.
 
+Corrective commit `8d5d73e2fd80617de575ea269211816f7142f852`
+subsequently passed Root run `33740171303`, Backend run `33740171288`,
+Storefront run `33740171301`, and Runtime Images run `33740171294` at the
+exact SHA. Both runtime-image validations rebuilt, smoked, scanned, and
+retained evidence successfully; publication skipped on `staging`. Railway
+correctly skipped Backend deployment `316d8cd5-3388-4bb0-bd9f-688b1d0bf463`
+and accepted Storefront deployment
+`e95043ae-6b4a-41c3-9816-e6606e51cbf4`. The deployed Storefront reports the
+correct revision from `/live` and `/ready`, has healthy Backend and Redis
+checks, serves root and catalog, and returns a real `image/avif` response under
+the sandboxed optimizer policy. Exact-deployment logs contain no unsupported
+startup warning, `AppRender.fetch` diagnostic, Trusted Types report, or HTTP
+4xx/5xx record. Railway still classifies the package runner's historical
+`$ next start` command echo as one error-level line; it has no application
+event or error code and predates this upgrade.
+
 ## Isolated compatibility upgrade plan — 2026-09-03
 
 `pnpm outdated --recursive --format json` was reviewed against registry publish

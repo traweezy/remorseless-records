@@ -2948,6 +2948,17 @@ mixed. The first cohort upgrades the Storefront from Next.js 16.2.12 to the
 mature 16.3.3 security release; 16.3.4 remains cooling until
 `2026-09-07T20:00:51.381Z`.
 
+The accepted Next.js cohort ends at corrective SHA
+`8d5d73e2fd80617de575ea269211816f7142f852`. All four exact-SHA workflows
+passed, including the explicit standalone runtime-image build and the default
+server build used by Railway. Storefront deployment
+`e95043ae-6b4a-41c3-9816-e6606e51cbf4` reports the exact revision, healthy
+Backend/Redis readiness, valid CSP and Trusted Types report-only headers, and
+working AVIF optimization. Runtime logs contain no unsupported standalone
+startup warning, `AppRender.fetch` diagnostic, Trusted Types violation report,
+or HTTP error. See `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md` and
+`NEXT_SESSION_HANDOFF.md` for the complete evidence boundary.
+
 Disposable integration closure on 2026-09-01 adds a release-blocking Backend
 CI job backed by official PostgreSQL 18.6 and Redis 8.10.1 images pinned to
 tested versions and immutable multi-platform digests. The Backend build now
