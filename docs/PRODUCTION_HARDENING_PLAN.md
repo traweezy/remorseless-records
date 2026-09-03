@@ -45,12 +45,13 @@ runs from that recovery through `33720902233` succeeded. Manual run
 September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
-The current locally accepted dependency candidate moves the Storefront's five
+The accepted dependency head
+`c72942c1734858f15dd178b71a1e7401fa4da27a` moves the Storefront's five
 TanStack Query runtime/persistence packages together from 5.101.4 to mature
 5.102.7. The Backend/Admin 5.64.2 graph remains isolated and unchanged. Full
-QA, type, coverage, production-build, responsive Chromium, and three-engine
-critical-flow gates pass; exact-SHA CI and Railway acceptance remain. Query
-5.102.8 stays outside this cohort until its cooling window ends at
+local acceptance, all four exact-SHA GitHub workflows, both runtime-image
+validations, and both Railway staging deployments passed. Query 5.102.8 stays
+outside this cohort until its cooling window ends at
 `2026-09-03T16:06:57.089Z`.
 
 The next time-gated security observations are the Trusted Types staging window
@@ -4012,7 +4013,7 @@ the application-security checklist.
       suspense, hydration, and persistence behavior.
 - [x] Pass frozen install, peer, supply-chain, audit, full QA, typecheck,
       focused tests, coverage, production-build, and browser gates locally.
-- [ ] Accept the exact implementation SHA in all GitHub workflows and the
+- [x] Accept the exact implementation SHA in all GitHub workflows and the
       resulting Railway staging deployments before closing the cohort.
 
 Local acceptance passed 16 focused persistence/prefetch tests, 139 baseline
@@ -4023,6 +4024,14 @@ all 55 routes and the 131-asset secret scan. Responsive Chromium passed 54
 journeys with two intentional skips; the Chromium, Firefox, and WebKit
 critical matrix passed all 21 flows. No application or rendered UI source
 changed, so graphical screenshot validation was not applicable.
+
+Exact SHA `c72942c1734858f15dd178b71a1e7401fa4da27a` passed Root, Backend,
+Storefront, and Runtime Images runs `33744311233`, `33744311279`,
+`33744311259`, and `33744311304`. Railway Backend deployment
+`23338f13-c4d2-4299-a4f2-9655a662a958` and Storefront deployment
+`83071db0-cd2f-49a6-b957-1cd6b8d44bfa` both reached `SUCCESS` at that SHA.
+Exact health/readiness, Backend scheduler/operations, Storefront root/catalog,
+security-header, AVIF, structured-event, and bounded error-log checks passed.
 
 ## Trusted Types report-only and carousel control hardening
 

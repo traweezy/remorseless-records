@@ -10,16 +10,12 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `8d5d73e2fd80617de575ea269211816f7142f852`. It includes the mature Next.js
-  16.3.3 security update and the supported split between Railway's default
-  server artifact and the immutable image's explicit standalone artifact.
-- Current local candidate: the Storefront's five TanStack Query runtime and
-  persistence packages move together from 5.101.4 to cooled 5.102.7. Complete
-  local QA, coverage, build, and browser acceptance is recorded below; the
-  accepted implementation head must not advance until exact-SHA CI and
-  Railway staging checks pass.
+  `c72942c1734858f15dd178b71a1e7401fa4da27a`. It includes the accepted Next.js
+  16.3.3 build split and the Storefront's five-package TanStack Query 5.102.7
+  patch cohort. Complete local, exact-SHA CI, runtime-image, and Railway
+  staging evidence is recorded below.
 - Latest exact runtime-image validation SHA:
-  `8d5d73e2fd80617de575ea269211816f7142f852`
+  `c72942c1734858f15dd178b71a1e7401fa4da27a`
 - Implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -92,7 +88,10 @@ The completed commits on `staging` are:
   compatibility cohorts; and
 - `8d5d73e2fd80617de575ea269211816f7142f852` separates the source-server and
   runtime-image build targets after exact staging logs exposed the unsupported
-  `next start` plus standalone-output pairing.
+  `next start` plus standalone-output pairing; and
+- `c72942c1734858f15dd178b71a1e7401fa4da27a` updates the five Storefront
+  TanStack Query runtime/persistence packages to the cooled 5.102.7 patch line
+  and records local compatibility evidence.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -492,7 +491,7 @@ event or error code and is not a Next/runtime failure. No production state was
 changed. No rendered UI changed, so desktop screenshot validation does not
 apply.
 
-## TanStack Query 5.102.7 local candidate
+## TanStack Query 5.102.7 staging acceptance
 
 The isolated Storefront cohort updates `@tanstack/react-query`, its devtools,
 both persistence packages, and the storage persister from 5.101.4 to 5.102.7.
@@ -515,24 +514,59 @@ Local acceptance passed:
 - all 21 critical journeys in Chromium, Firefox, and WebKit.
 
 No rendered UI changed, so desktop screenshot validation does not apply.
-Exact-SHA Root, Backend, Storefront, and Runtime Images runs plus resulting
-Railway staging acceptance remain required.
+
+Exact implementation SHA `c72942c1734858f15dd178b71a1e7401fa4da27a`
+passed Root run `33744311233`, Backend run `33744311279`, Storefront run
+`33744311259`, and Runtime Images run `33744311304`. Runtime-image Backend job
+`100613177609` and Storefront job `100613177853` passed; publication job
+`100613178896` skipped on `staging` as required. Retained artifacts expire on
+2026-10-03:
+
+- Backend artifact `9889106275`, digest
+  `sha256:b21c0cc59e0c67322f2633562b0db94664808b084589532464b3e55cb55260d9`,
+  with 1,183 CycloneDX components; and
+- Storefront artifact `9889072350`, digest
+  `sha256:da86338ce948f3011535ad1fbdc87b98c6191d3b64c5cad9d09b2576fb2b2aae`,
+  with 122 CycloneDX components.
+
+Storefront Lighthouse artifact `9889478136` and launch-acceptance artifact
+`9889444876` expire on 2026-09-17. Temporary downloaded runtime evidence is
+under `/tmp/remorseless-query-runtime-evidence.gwnUQV`, and smoke evidence is
+under `/tmp/remorseless-query-smoke.MC7KrC`; neither path may be committed.
+
+Railway Backend deployment `23338f13-c4d2-4299-a4f2-9655a662a958` reached
+`SUCCESS` with source-image digest
+`sha256:e4d463395074c5b9135e3caff7bc1dea1f16a836f0f1a90c8d92685797c5361c`.
+Storefront deployment `83071db0-cd2f-49a6-b957-1cd6b8d44bfa` reached
+`SUCCESS` with digest
+`sha256:40f7eda9c15c7c68f7e2987210886f99418fda76aa4f60fa67ec2bb9ddcd6904`.
+Both `/live` and `/ready` routes returned 200 and the exact SHA. Backend
+readiness passed database, Redis, search, object storage, and every configured
+capability; scheduler and operations health returned 200. Storefront readiness
+passed Backend and Redis; root and catalog returned 200. Nonce CSP, HSTS,
+Trusted Types report-only, and `nosniff` headers remained present. A live image
+optimizer request returned a valid 7,027-byte AVIF under its sandboxed CSP.
+
+The exact-deployment bounded review found zero HTTP 4xx/5xx records, zero
+application error events, zero forbidden completion fields, and no Trusted
+Types report, `AppRender.fetch` diagnostic, or standalone-output warning.
+Every reviewed completion event was a GET/200 record with the exact SHA,
+service, environment, request ID, trace ID, and span ID. Each deployment has
+one Railway-classified error line that is a command echo with no application
+event: Backend's Node release command and Storefront's `$ next start` banner.
+No production state was changed.
 
 ## Remaining work for this slice
 
-1. Accept the TanStack Query implementation commit in all four exact-SHA
-   GitHub workflows and validate every Railway service deployment triggered by
-   the shared lockfile change. Record the immutable run, deployment, digest,
-   health, route, and bounded-log evidence here.
-2. After the report-only observation window reaches
+1. After the report-only observation window reaches
    `2026-09-03T22:08:00Z`, rerun real staging browser coverage and inspect the
    complete Trusted Types report window before deciding whether enforcement is
    eligible. Do not enable enforcement from empty short-window logs alone.
-3. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
+2. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
    backport with mature 6.16.0 and remove both audit ignores, all three patch
    copies, and `qa:qs-security` together. Run the complete local and exact-SHA
    acceptance matrices again.
-4. Re-evaluate Next.js 16.3.4 no earlier than
+3. Re-evaluate Next.js 16.3.4 no earlier than
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
