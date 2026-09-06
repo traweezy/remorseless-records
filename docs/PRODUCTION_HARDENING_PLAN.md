@@ -1,16 +1,16 @@
 # Production Hardening Plan
 
-Last verified: September 3, 2026
+Last verified: September 6, 2026
 
 This is the authoritative launch-readiness backlog for Remorseless Records. It
 supersedes the local `tmp/HARDENING_NEXT_STEPS.md` working note. Detailed
 operating procedures remain in the linked runbooks and ADRs; this document
 tracks what is still required before production traffic is approved.
 
-## Active handoff — September 3, 2026
+## Active handoff — September 6, 2026
 
-The runtime-image, dependency-advisory, and staging source-deployment slice is
-complete. Runtime-image acceptance SHA
+The original runtime-image, dependency-advisory, and staging source-deployment
+slice is complete. Its runtime-image acceptance SHA
 `61fd86889a4adca23e1e9704e11c889a1fd986a9` passed Root, Backend,
 Storefront, and Runtime Images CI. Runtime-image publication correctly remained
 disabled on `staging`; both candidates were built, smoked, scanned, and bound
@@ -45,18 +45,20 @@ runs from that recovery through `33720902233` succeeded. Manual run
 September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
-The accepted dependency head
-`6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a` includes the accepted Storefront
-TanStack Query 5.102.7 cohort and updates both direct Redis clients plus the
-shared Redis graph to mature 6.2.1. The Backend/Admin Query 5.64.2 graph remains
+The accepted implementation head
+`5b6588fc9ae7f9ed8854f202dd129753f149a82a` includes the accepted Storefront
+TanStack Query 5.102.7 cohort, both direct Redis clients and the shared Redis
+6.2.1 graph, upstream `qs` 6.16.0, and Storefront Trusted Types enforcement.
+The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
-passed for each cohort. Query 5.102.8 stays outside its reviewed cohort until
-its cooling window ends at `2026-09-03T16:06:57.089Z`.
+passed for each cohort. Query 5.102.8 was not folded into the reviewed 5.102.7
+cohort; any later update still requires isolated compatibility acceptance.
 
-The next time-gated security observations are the Trusted Types staging window
-after `2026-09-03T22:08:00Z` and Next.js 16.3.4 after
-`2026-09-07T20:00:51.381Z`. The cooled `qs` 6.16.0 cleanup is complete. The
+The Trusted Types report-only window and deployed browser observation are
+complete, and non-development documents now enforce the three named policies.
+The cooled `qs` 6.16.0 cleanup is complete. Next.js 16.3.4 remains time-gated
+until `2026-09-07T20:00:51.381Z`. The
 immutable GHCR publication/attestation and
 Railway image-source cutover remain a separate reviewed release decision; no
 source, credential, visibility, domain, traffic, or production setting
@@ -101,16 +103,16 @@ environment exists.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `61fd86889a4adca23e1e9704e11c889a1fd986a9`.
-- Latest documentation-only staging SHA accepted before this update:
+  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`.
+- Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `75650cfc-d897-46bb-b83c-b10aab077fc1` (`SUCCESS`,
-  `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6`).
+  `4c546c93-6530-43bd-bf1e-a7d488ceb7e5` (`SUCCESS`,
+  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`).
 - Application acceptance Storefront deployment:
-  `3ab9b285-50ac-40cd-a777-4b9afd1948e4` (`SUCCESS`,
-  `61fd86889a4adca23e1e9704e11c889a1fd986a9`).
+  `021c17af-b8a9-429c-b653-86f30a111971` (`SUCCESS`,
+  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -710,9 +712,9 @@ Contract tests pin both patched packages, and the Storefront post-build verifier
 rejects any Stripe loader bundle that lacks the named policy. React's inert
 script construction and the already-sanitized Next JSON-LD serialization are
 classified as reviewed framework events only when the source is a versioned
-Next client chunk. Enforcement remains intentionally disabled until the same
-matrix passes on staging and the privacy-bounded report stream completes its
-reviewed observation window without an unexplained sink.
+Next client chunk. The September 6 continuation completed the staging matrix
+and reviewed report-only window, then enabled enforcement as recorded in
+"Trusted Types enforcement and deployed-browser acceptance" below.
 
 Staging acceptance discovery: commit
 `29f2d59666b5571ca53b791a1d8ca06135fa3ca1` passed Root CI `33027448458`,
@@ -2696,7 +2698,7 @@ transactional coverage gates remain the accepted local evidence.
 - [x] Run Trusted Types in report-only mode across Storefront navigation and
       checkout, collect privacy-bounded reports, remove dependency-owned sinks,
       and define an exact-URL Stripe policy with source and bundle contracts.
-- [ ] Enforce Trusted Types only after the staging browser matrix and reviewed
+- [x] Enforce Trusted Types only after the staging browser matrix and reviewed
       report-only observation window show no unexplained sink.
 - [x] Add App Router `error.tsx` and `global-error.tsx` boundaries with safe,
       observable recovery UX.
@@ -4123,9 +4125,54 @@ The production audit retains only the three documented ignored moderate
 advisories. Trivy reports zero high/critical dependency or secret findings, and
 the generated CycloneDX/license pair verifies 2,517 components, 2,518
 dependency entries, 16 license groups, and 1,007 production packages. Trusted
-Types enforcement remains blocked on the documented clean staging observation
-window; report-only coverage is the safe rollback-free boundary for this
-slice.
+Types enforcement remained blocked at this original slice's boundary. The
+September 6 continuation below completed the observation and enforcement.
+
+## Trusted Types enforcement and deployed-browser acceptance
+
+The September 6 review covered the accepted Storefront's report-only window
+from `2026-09-03T22:08:00Z`, its successor `qs` deployment, and the deployed
+responsive browser matrix. No Trusted Types report was received. The
+non-development CSP now requires Trusted Types for script sinks and permits
+only `nextjs`, `nextjs#bundler`, and `remorseless-stripe-js`. Development stays
+report-only; the reporting policy and bounded collector remain enabled for
+regression evidence and rollback. No permissive default policy was added.
+
+The browser harness now accepts an HTTPS deployed target and waits for
+document loading before cookie consent. All local browser configurations
+launch the installed Next CLI directly, and Playwright is pinned to 1.62.0.
+This preserves one dependency graph for isolated retry workers; a repository
+contract prevents package-runner launches from recreating the nested graph.
+
+Local QA, strict typechecks, all 829 baseline and 322 transactional Storefront
+tests, the 55-route production build and 131-asset security scan passed.
+Enforced-policy browser coverage passed 54 responsive tests (two expected
+skips) and 21 critical Chromium/Firefox/WebKit tests. At final SHA
+`5b6588fc9ae7f9ed8854f202dd129753f149a82a`, Root `34040381745`, Backend
+`34040381816`, Storefront `34040381772`, and Runtime Images `34040381770`
+all passed, including launch, pa11y, Lighthouse, image scanning, and
+digest-bound CycloneDX evidence. Publication skipped on staging.
+
+Railway Backend `4c546c93-6530-43bd-bf1e-a7d488ceb7e5` and Storefront
+`021c17af-b8a9-429c-b653-86f30a111971` reached `SUCCESS` at that SHA. Both
+health/readiness pairs, Backend scheduler/operations/catalog projections,
+Storefront root/catalog, enforced and report-only CSP headers, and a real
+AVIF response passed. The fresh Backend heartbeat completed at
+`2026-09-06T15:10:00.076Z` with zero failures. The deployed browser matrix
+passed 54 tests with two expected skips and no Trusted Types reports.
+
+The deployed matrix intercepts selected catalog/cart/payment responses and
+does not establish real payment-provider acceptance. Its fixture prefetches
+produced four 404s; navigation/teardown produced client disconnects and four
+Next stream-cancellation events with digest `2234947129`, also present in
+the prior report-only deployment. No HTTP 5xx or new sink report appeared.
+These diagnostics remain visible and are not described as a clean zero-error
+window. Exact deployment digests, artifact expiry, coverage, and the bounded
+log review are recorded in `NEXT_SESSION_HANDOFF.md`. `QA_RUNBOOK.md` section
+1.10 describes regression acceptance and rollback preserving reporting.
+
+No rendered UI changed, so a new desktop layout screenshot was not required.
+No production state changed.
 
 ## Catalog and notification persistence boundary hardening
 

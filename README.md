@@ -1491,11 +1491,14 @@ fresh nonce for every HTML request, forwards it to Next rendering, and returns
 a matching CSP with `strict-dynamic`, `script-src-attr 'none'`, and
 `base-uri 'none'`; production `script-src` does not use `unsafe-inline`.
 Webpack SRI remains enabled for bootstrap assets. Documents also carry a
-Trusted Types report-only policy and a same-origin, privacy-bounded reporting
-endpoint; enforcement stays off until staging completes the documented clean
-observation window. Radix Select and Splide no longer depend on HTML-string
-sinks, while the pinned Stripe loader accepts only its exact approved script
-URLs through the named `remorseless-stripe-js` policy. The production build
+Trusted Types policy that enforces `require-trusted-types-for 'script'` outside
+development and permits only `nextjs`, `nextjs#bundler`, and
+`remorseless-stripe-js`; no broad `default` policy is allowed. The report-only
+header and same-origin, privacy-bounded reporting endpoint remain enabled for
+regression monitoring and rollback. Development retains reporting without
+enforcement. Radix Select and Splide no longer depend on HTML-string sinks,
+while the pinned Stripe loader accepts only its exact approved script URLs
+through the named `remorseless-stripe-js` policy. The production build
 fails if the Stripe loader is emitted without that policy. Because nonces
 cannot be reused in static HTML, document rendering is dynamic while tagged
 Backend and search data retain explicit caches. Only environment-configured

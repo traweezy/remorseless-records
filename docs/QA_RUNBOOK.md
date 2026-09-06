@@ -406,32 +406,57 @@ Checkout 0.83, and Privacy 0.84. The isolated local browser host required the
 documented no-sandbox escape hatch because user namespaces were unavailable;
 GitHub-hosted release jobs continue to use their normal sandbox.
 
-### 1.10 Trusted Types report-only acceptance
+### 1.10 Trusted Types enforcement and regression acceptance
 
-The Storefront sends `Content-Security-Policy-Report-Only` on document
-responses with `require-trusted-types-for 'script'` and advertises the
-same-origin `/api/security/trusted-types-report` collector. API and static-asset
-responses must not inherit the document-only report policy.
+The Storefront enforces Trusted Types on document responses whenever
+`NODE_ENV` is not `development`. `Content-Security-Policy` must contain
+`trusted-types nextjs nextjs#bundler remorseless-stripe-js` and
+`require-trusted-types-for 'script'`. Development retains reporting without
+enforcement. The same directives remain in
+`Content-Security-Policy-Report-Only`, with the same-origin
+`/api/security/trusted-types-report` collector and `Reporting-Endpoints`
+header, for regression monitoring and rollback. API and static-asset responses
+must not inherit these document-only policies. Implementation revision
+`5b6588fc9ae7f9ed8854f202dd129753f149a82a` and its observation and acceptance
+evidence are recorded in [the session handoff](NEXT_SESSION_HANDOFF.md).
 
-Before considering enforcement:
+For each relevant release:
 
 1. Build the production Storefront and confirm the bundle verifier reports that
-   the Stripe loader uses `remorseless-stripe-js`.
+   the Stripe loader uses `remorseless-stripe-js`. Check an HTML response from
+   the candidate artifact for both enforced directives, the report-only
+   policy, and the reporting endpoint.
 2. Run `playwright.ci.config.ts` across Desktop Chrome, Pixel 7, and iPhone 15
    Pro. Exercise Home, hydrated Catalog interactions, carousels, Quick Shop,
-   Cart, Checkout, confirmation, and recovery.
-3. Reject any unexpected `securitypolicyviolation` event. The only reviewed
-   framework classifications are React's inert script construction and the
-   sanitized JSON-LD serialization, and only from a versioned Next client
-   chunk.
+   Cart, Checkout, confirmation, and recovery. Set `PLAYWRIGHT_BASE_URL` to the
+   HTTPS staging origin to validate the deployed artifact; omit it for the
+   local production artifact and deterministic Medusa fixture. The browser
+   scenarios intercept payment/provider responses and do not establish real
+   payment-provider acceptance; perform the separate test-mode payment matrix
+   in section 2 when that boundary changes.
+3. Reject unexpected `securitypolicyviolation` events and investigate blocked
+   script/HTML sinks or runtime errors. The listener retains only the reviewed
+   classifications for React's inert script construction and sanitized JSON-LD
+   serialization from a versioned Next client chunk. Those classifications do
+   not authorize a broken journey or a new sink. Do not add a broad `default`
+   Trusted Types policy or expand the named policies to hide a regression.
 4. Inspect the `rr.security.browser.reports` counter and
    `security.trusted_types.report` events in staging. Logs may contain only the
    bounded report count, effective directive, envelope format, runtime
    identity, and correlation identifiers. They must not contain document or
    blocked URLs, source samples, line/column data, referrers, or user agents.
-5. Keep enforcement disabled until the reviewed staging observation window has
-   no unexplained sink. Do not add a broad `default` Trusted Types policy to
-   make a violation disappear.
+5. Record the candidate revision, deployment identity, browser results, and
+   bounded log-observation window in the handoff. Investigate any unexplained
+   report before accepting the release.
+
+If enforcement breaks a supported journey, revert the enforcement-only change
+in `storefront/src/config/content-security-policy.ts` (introduced by
+`53cecd4`), together with its enforcement assertions. Preserve the nonce CSP,
+named-policy integrations, report-only header, collector, and privacy limits.
+Rebuild and deploy the rollback to staging, rerun the affected browser journey,
+and verify reporting remains present while the enforced Trusted Types
+directives are absent. Record the regression and a clean observation window
+before re-enabling enforcement.
 
 The collector returns `204 No Content`, uses `Cache-Control: no-store`, rejects
 cross-site requests, caps the body at 8 KiB, accepts at most 20 reports per

@@ -1,6 +1,6 @@
 # Next-session handoff
 
-Last updated: 2026-09-03
+Last updated: 2026-09-06
 
 This document records the local and GitHub acceptance boundary for the
 runtime-image hardening slice. GitHub image evidence does not prove which
@@ -10,13 +10,14 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a`. It includes the accepted Next.js
+  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`. It includes the accepted Next.js
   16.3.3 build split, the Storefront's five-package TanStack Query 5.102.7
-  patch cohort, and the shared Redis 6.2.1 client cohort. Complete local,
+  patch cohort, the shared Redis 6.2.1 client cohort, upstream `qs` 6.16.0,
+  and Storefront Trusted Types enforcement. Complete local,
   exact-SHA CI, runtime-image, and Railway staging evidence is recorded below.
 - Latest exact runtime-image validation SHA:
-  `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a`
-- Implementation/runtime-image acceptance SHA
+  `5b6588fc9ae7f9ed8854f202dd129753f149a82a`
+- Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
   `d7e5d43013a89af434f767cda0c6d2bd6ec4d9f6` because Railway rebuilt that
@@ -30,11 +31,13 @@ artifact Railway is running; verify Railway separately with the sequence below.
   it through Backend deployment `284bf79d-633c-4fdc-a29a-7a24f0660ec7` and
   Storefront deployment `66a85fa4-977c-4a56-8343-7008c817ba37`.
   Documentation commits do not supersede runtime-image evidence.
-- Runtime Images run `33688896070` passed both services at the exact accepted
-  SHA; Backend job `100442798263` and Storefront job `100442798721` succeeded,
+- Original Runtime Images run `33688896070` passed both services at
+  `61fd86889a4adca23e1e9704e11c889a1fd986a9`; Backend job `100442798263`
+  and Storefront job `100442798721` succeeded,
   while publication job `100442800014` skipped on `staging` as required.
-- Root run `33688896124`, Backend run `33688896267`, and Storefront run
-  `33688896038` all passed at the exact accepted SHA. Storefront included
+- Original Root run `33688896124`, Backend run `33688896267`, and Storefront
+  run `33688896038` all passed at `61fd86889a4adca23e1e9704e11c889a1fd986a9`.
+  Storefront included
   Security & Audit, CodeQL, typecheck/Trivy, lint, secret scan, unit, build,
   Browser Smoke, pa11y, and Lighthouse.
 - Manual staging operations run `33692222542` and scheduler run `33692224408`
@@ -100,7 +103,18 @@ The completed commits on `staging` are:
 - `d4d89dca4a634d48ff4fd047d0e4502bbec25604` records the complete Query
   exact-SHA CI, runtime-image, Railway, and staging observation evidence; and
 - `6df5cbb2d0dcd111b87ed7cf0b2c03015f336e1a` updates the shared Backend and
-  Storefront Redis client graph to the cooled 6.2.1 patch line.
+  Storefront Redis client graph to the cooled 6.2.1 patch line; and
+- `5ea7a53` normalizes unset pnpm configuration values in the Backend
+  packager without weakening the dependency policy; and
+- `58ed443` replaces the temporary `qs` backport with upstream 6.16.0; and
+- `0ab0f2c` supports HTTPS deployed browser targets and waits for document
+  loading before the cookie-consent interaction; and
+- `64a06a7` pins Playwright 1.62.0 and preserves its installed dependency
+  graph when starting the CI browser server; and
+- `53cecd4` enforces the three named Trusted Types policies outside
+  development while retaining report-only telemetry; and
+- `5b6588f` applies the installed Next CLI launch to every local browser
+  configuration and verifies that contract.
 
 The containing change set updates the following tracked files for the
 runtime-image implementation, documentation, and fixture/security corrections:
@@ -175,15 +189,12 @@ New runtime files in the containing change set:
   VM-modules runtime for the patched release's ESM-only `htmlparser2` 12 tree.
 - `fast-uri` is pinned to mature 3.1.6, closing four high-severity host
   confusion/SSRF advisories without an audit ignore or cooling exception.
-- `qs` remains exactly 6.15.3 while 6.16.0 completes the mandatory seven-day
-  cooling window. The two upstream security hunks are copied identically into
-  the root, Backend, and Storefront workspaces. The verifier exercises the
-  bracket/comma `arrayLimit` rejection and hostile `constructor.isBuffer`
-  parse-to-stringify round trip through both application dependency paths.
-  Only the two corresponding GHSA records are ignored, with machine-readable
-  evidence. Replace this backport with 6.16.0 no earlier than
-  2026-09-05T23:50:15.803Z, then remove both ignores, all three patch copies,
-  and `qa:qs-security` in the same change.
+- Root, Backend, and Storefront now pin upstream `qs` 6.16.0 after its
+  seven-day cooling window ended at `2026-09-05T23:50:15.803Z`. Both audit
+  ignores, all three patch copies, the temporary verifier, and its exceptions
+  were removed together. Direct checks through both application paths pass
+  the former bracket/comma `arrayLimit` and hostile `constructor.isBuffer`
+  regressions on the upstream release.
 
 ## Local acceptance evidence
 
@@ -191,13 +202,13 @@ New runtime files in the containing change set:
 - `pnpm run qa:lint`: passed, including Biome, both strict TypeScript checks,
   database release boundaries, runtime-image policy, CI egress policy, and all
   repository contract verifiers after the final code and documentation edits.
-- Runtime policy: 8/8 focused tests plus static verifier passed.
+- Runtime policy: 9/9 focused tests plus static verifier passed.
 - CI runtime-security policy: 4/4 focused tests plus the six-workflow verifier
   passed; the Runtime Images workflow contains two separately hardened jobs.
 - Release-plan policy: 6/6 focused tests passed.
-- Backend coverage: 273 suites / 2,066 tests passed; 91.58% statements, 85.31%
+- Backend coverage: 273 suites / 2,067 tests passed; 91.58% statements, 85.31%
   branches, 95.78% functions, and 91.58% lines.
-- Storefront baseline coverage passed at 94.37% statements, 86.06% branches,
+- Storefront baseline coverage passed at 94.37% statements, 86.07% branches,
   95.83% functions, and 94.39% lines. The transactional suite passed 36 files /
   322 tests at 83.73% statements and 76.50% branches.
 - Disposable integration passed all 4 PostgreSQL/Redis tests, 5 payment/queue
@@ -211,13 +222,12 @@ New runtime files in the containing change set:
   threshold. `/catalog` median total blocking time was 91 ms; every route scored
   1.00 for accessibility and best practices.
 - Backend and Storefront production builds passed with `sanitize-html` 2.17.7,
-  `fast-uri` 3.1.6, and the patched `qs` 6.15.3 graph.
+  `fast-uri` 3.1.6, and the upstream `qs` 6.16.0 graph.
   The client-bundle scanner found no server-only secret or public Meilisearch
   input in 131 Storefront assets.
-- `pnpm audit --prod --audit-level=moderate` passed with five documented,
-  behaviorally patched findings ignored: the three existing React Router
-  records and the two new exact-version `qs` records. The four `fast-uri`
-  findings are eliminated by the 3.1.6 upgrade.
+- `pnpm audit --prod --audit-level=moderate` passed with only the three
+  documented, behaviorally patched React Router findings ignored. The four
+  `fast-uri` findings are eliminated by the 3.1.6 upgrade.
 - Fresh local runtime image candidates:
   - Backend:
     `sha256:954da9673f481cb152559eb2e4bc32920c5a6f9868ffacdbf49b061a661ea58d`
@@ -636,21 +646,134 @@ records, 710 packets, and 151,558 bytes with zero drop causes. Storefront
 recorded 12 post-readiness Redis network records, 13 packets, and 1,139 bytes
 with zero drop causes. No production state was changed.
 
+## Upstream `qs` 6.16.0 acceptance (September 6)
+
+Commit `58ed4431d044716c525128fcae7435517ba3a588` completed the cooled
+upstream replacement and removal of the temporary patch/ignore/verifier
+inventory. The Backend packager also normalizes pnpm's unset configuration
+sentinels before enforcing its existing supply-chain policy.
+
+Root run `34037759330`, Backend run `34037759320`, Storefront run
+`34037759382`, and Runtime Images run `34037759290` passed at that SHA.
+Runtime jobs `101498850210` and `101498850256` retained the following
+digest-bound artifacts through October 6; publication skipped on staging:
+
+- Backend artifact `9990762074`, 1,183 CycloneDX components, image digest
+  `sha256:0b822be2b3159f2e17273a695d55732581237fb62ff334d6e81310214ee799b2`;
+- Storefront artifact `9990745819`, 122 CycloneDX components, image digest
+  `sha256:41b7238872bc8d36dd198047a14635c5c5593272d7de0ea243f0e781d87e7b20`.
+
+Railway accepted Backend deployment `21bc65d7-1017-4f5c-8056-4bfa6163f2e1`
+with source-image digest
+`sha256:6954f99423a0fc009a4490446a29f8e5c3938fe46d2448b6c740f4147755e069`
+and Storefront deployment `b582be69-3f3e-470f-99a7-3f98ce1b1e0a` with
+digest `sha256:180538638412e5c2e51cb387d168a736696f449624e14aeb58c8efa2c2d7e4dc`.
+Both health/readiness pairs, scheduler and operations health, root/catalog,
+security headers, and AVIF passed. The initial operational observation had
+no application errors, Trusted Types reports, or forbidden completion fields.
+The later browser observation and its navigation-cancellation diagnostics are
+recorded separately below.
+
+## Trusted Types enforcement acceptance (September 6)
+
+The reviewed report-only observation covered the accepted Redis Storefront
+deployment `dacc90f7-ea9d-4088-93cc-17a72d638704` from
+`2026-09-03T22:08:00Z` through the September 6 `qs` deployment, followed by
+the `qs` deployment's browser observation. Neither deployment emitted a
+Trusted Types report. The deployed responsive matrix passed 54 tests with two
+intentional project exclusions before enforcement was enabled.
+
+Non-development documents now enforce `require-trusted-types-for 'script'`
+with only `nextjs`, `nextjs#bundler`, and `remorseless-stripe-js` permitted.
+Development remains report-only. Reporting headers, the bounded collector,
+nonce CSP, and exact Stripe script-URL policy remain present. The rollback
+procedure is in `QA_RUNBOOK.md` section 1.10.
+
+The deployed test mode requires an HTTPS `PLAYWRIGHT_BASE_URL`; omitting it
+retains the local deterministic provider. Cookie-consent interaction waits
+for document loading so it does not race hydration. Playwright is pinned to
+1.62.0, and all local browser configurations start the installed Next CLI
+directly. This prevents a package-runner launch from creating a second
+dependency graph that isolated retry workers could import. The repository
+fixture contract covers all four configurations.
+
+Local acceptance passed the frozen install, complete 1,282-file repository
+QA gate, 139 Storefront baseline files / 829 tests at
+94.37/86.07/95.83/94.39 coverage, and 36 transactional files / 322 tests at
+83.73/76.50/85.81/83.86. The production build generated all 55 routes and
+verified 131 client assets. With enforcement active, responsive browser
+coverage passed 54 tests with two expected skips, and critical Chromium,
+Firefox, and WebKit coverage passed all 21 tests.
+
+Final implementation SHA `5b6588fc9ae7f9ed8854f202dd129753f149a82a` passed
+Root run `34040381745`, Backend run `34040381816`, Storefront run
+`34040381772`, and Runtime Images run `34040381770`. Storefront CI included
+responsive, launch, three-engine critical, pa11y, and six-route Lighthouse
+acceptance. Runtime jobs `101505930367` and `101505930416` passed; publication
+job `101505931082` skipped on staging. Retained image evidence:
+
+- Backend artifact `9991527148`, expires `2026-10-06T14:52:55Z`, 1,183
+  CycloneDX components, digest
+  `sha256:29268b27194ae287fb49014233efb746dd02506455f9aee8d32b8836856cf14b`;
+- Storefront artifact `9991513851`, expires `2026-10-06T14:52:01Z`, 122
+  CycloneDX components, digest
+  `sha256:97216f62efd290ed2a3dce4481ebd16fe2915aca931006dd424e68a5a15facb5`.
+
+Both images passed runtime/health/identity contracts and the fixed
+HIGH/CRITICAL scan. The private downloaded evidence is under
+`/tmp/remorseless-tt-runtime-evidence.OZrFeu`; do not commit it.
+
+Railway accepted both services at the implementation SHA:
+
+- Backend deployment `4c546c93-6530-43bd-bf1e-a7d488ceb7e5`, source-image
+  digest `sha256:f082ff7bb4936e1eced43bd6d6ec09a3d91bd2a20f2bb713bb7c3bf281bdaac7`;
+- Storefront deployment `021c17af-b8a9-429c-b653-86f30a111971`, source-image
+  digest `sha256:5b74d798a8630f57f2ad094c344e90aacfe472316350bd25ba66d4793b4b3946`.
+
+Both services return the exact SHA from `/live` and `/ready`. Backend's
+dependency/capability, scheduler, operations, retention, and incident checks
+are healthy. The fresh scheduler heartbeat at `2026-09-06T15:10:00.076Z`
+completed on the exact SHA with zero failures. The `15:10:13Z` operations
+observation verified 461 products, one bounded handle, 442 discography
+entries, and three shelves with 25 memberships. Backend's 345-record runtime
+sweep contained 23 completion events and no failure events or forbidden
+fields; the 34-request HTTP sweep was entirely 200. Its only error-level
+entry was the release command echo. Storefront's Backend/Redis checks, root,
+and catalog return 200.
+HTML responses contain enforced Trusted Types plus report-only reporting,
+nonce CSP, HSTS, MIME, frame, referrer, permissions, and correlation headers.
+A live optimizer request returned HTTP 200 with a 7,837-byte `image/avif`
+response under its sandboxed CSP.
+
+The deployed enforced-policy matrix passed 54 tests with two expected skips
+in 1.2 minutes. It exercises the deployed browser artifact while intercepting
+selected catalog/cart/payment responses; it does not replace real Stripe,
+tax, refund, or payment-provider acceptance. No Trusted Types report,
+`AppRender.fetch` diagnostic, or standalone-output warning appeared. Reviewed
+completion events contain only the allowed runtime/correlation fields.
+
+The browser observation is not a zero-error-log claim: fixture product
+prefetches generated four 404s, and browser navigation/teardown generated
+Railway 499 client-disconnect records plus four Next stream-cancellation
+events with digest `2234947129` ("The destination stream closed early.").
+The same digest occurred 13 times during the prior report-only deployment's
+browser runs, and Next's installed source identifies this as its stream
+close/cancellation handler. There were no HTTP 5xx responses or new Trusted
+Types sink reports. Keep these diagnostics visible; do not suppress them or
+describe the complete browser window as error-free. Fully consumed root and
+catalog requests after the matrix also passed.
+
+No rendered UI changed in this implementation, so a new desktop layout
+screenshot was not required. Existing `Default/` data remains untouched.
+No production state changed.
+
 ## Remaining work for this slice
 
-1. After the report-only observation window reaches
-   `2026-09-03T22:08:00Z`, rerun real staging browser coverage and inspect the
-   complete Trusted Types report window before deciding whether enforcement is
-   eligible. Do not enable enforcement from empty short-window logs alone.
-2. No earlier than `2026-09-05T23:50:15.803Z`, replace the `qs` 6.15.3
-   backport with mature 6.16.0 and remove both audit ignores, all three patch
-   copies, and `qa:qs-security` together. Run the complete local and exact-SHA
-   acceptance matrices again.
-3. Re-evaluate Next.js 16.3.4 no earlier than
+1. Re-evaluate Next.js 16.3.4 no earlier than
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
-4. Continue cooled isolated cohorts with TanStack Form 1.33.5, Resend 6.24.0,
+2. Continue cooled isolated cohorts with TanStack Form 1.33.5, Resend 6.24.0,
    PostHog 5.51.3, UI/test patches, and exact GitHub Action commit updates.
    Redis 6.2.1 is complete. Keep Pacer 0.22.0, Stripe, AWS SDK,
    OpenTelemetry, and Medusa in their separately reviewed compatibility
