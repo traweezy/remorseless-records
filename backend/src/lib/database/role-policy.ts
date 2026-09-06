@@ -3,12 +3,20 @@ import type { DatabaseConnectionTransport } from "./connection-policy"
 export type DatabaseRoleProfile = "backup" | "migration" | "runtime"
 
 export type DatabaseRoleFacts = {
+  backupWrite: boolean
   bypassRls: boolean
   createDatabase: boolean
   createRole: boolean
+  databaseCreate: boolean
   defaultAdministrator: boolean
+  effectiveReadAllData: boolean
+  membershipAdmin: boolean
+  ownsObjects: boolean
+  privilegedMembership: boolean
   readAllData: boolean
+  reachablePrivilegedRole: boolean
   replication: boolean
+  schemaCreate: boolean
   superuser: boolean
   tls: boolean
   transport: DatabaseConnectionTransport
@@ -22,6 +30,9 @@ const privilegedAttributeErrors = (facts: DatabaseRoleFacts): string[] => [
   ...(facts.createRole ? ["createrole"] : []),
   ...(facts.replication ? ["replication"] : []),
   ...(facts.bypassRls ? ["bypassrls"] : []),
+  ...(facts.reachablePrivilegedRole ? ["reachable_privileged_role"] : []),
+  ...(facts.privilegedMembership ? ["privileged_membership"] : []),
+  ...(facts.membershipAdmin ? ["membership_admin"] : []),
 ]
 
 export const evaluateDatabaseRole = (
@@ -49,9 +60,26 @@ export const evaluateDatabaseRole = (
   if (profile === "backup") {
     if (!facts.readAllData) {
       errors.push("backup_missing_pg_read_all_data")
+    } else if (!facts.effectiveReadAllData) {
+      errors.push("backup_missing_effective_pg_read_all_data")
     }
     if (facts.writeAllData) {
       errors.push("backup_has_pg_write_all_data")
+    }
+    if (facts.backupWrite) {
+      errors.push("backup_has_write_privileges")
+    }
+  }
+
+  if (profile !== "migration") {
+    if (facts.databaseCreate) {
+      errors.push(`${profile}_has_database_create`)
+    }
+    if (facts.schemaCreate) {
+      errors.push(`${profile}_has_schema_create`)
+    }
+    if (facts.ownsObjects) {
+      errors.push(`${profile}_has_object_ownership`)
     }
   }
 
