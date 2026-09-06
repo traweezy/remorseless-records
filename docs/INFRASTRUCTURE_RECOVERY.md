@@ -406,6 +406,80 @@ orders or payments from Redis. AOF every-second durability permits about one
 second of infrastructure-state loss; application reconciliation must close
 that window from PostgreSQL and Stripe.
 
+### Read-only capacity and persistence audit
+
+Use `pnpm run data:redis:audit -- --help` for the observation contract. Supply
+the reviewed endpoint and independently verified Railway service/container
+memory ceiling through the operator's secret environment:
+
+```bash
+REDIS_AUDIT_URL='<reviewed-redis-url>' \
+REDIS_SERVICE_MEMORY_LIMIT_BYTES='<approved-service-limit-in-bytes>' \
+  pnpm run data:redis:audit
+```
+
+This command never applies settings, scans keys, reads values, resets counters,
+or requests broader ACL grants. It uses the existing pinned Redis client,
+RESP2, no reconnect/offline queue, and an explicit five-second total deadline
+(`REDIS_AUDIT_TIMEOUT_MS`: 100–30,000 ms). Cancellation closes both an in-flight
+TCP/TLS handshake and an established socket. External endpoints require
+`rediss://` with certificate verification; plaintext is restricted to literal
+loopback or Railway private hostnames. Only database zero is accepted because
+the observation is server-wide. URL options/fragments and command arguments
+other than `--help` are rejected.
+
+For Redis 7+, the exact [CONFIG GET](https://redis.io/docs/latest/commands/config-get/)
+allowlist is `maxmemory`, `maxmemory-policy`, `appendonly`, `appendfsync`,
+`save`, and `no-appendfsync-on-rewrite`. Permission denial fails closed; do not
+substitute `CONFIG GET *`, which could expose secrets. The six
+[INFO](https://redis.io/docs/latest/commands/info/) sections are `server`,
+`memory`, `persistence`, `stats`, `replication`, and `keyspace`. Returned
+configuration must agree with INFO's overlapping values. Missing, duplicate,
+malformed, oversized, or unsafe numeric fields cannot produce healthy output.
+Accepted INFO sections are capped at 64 KiB/1,024 lines; these are post-parse
+validation limits, not a hard wire-buffer limit in the Redis client. Connect
+only to the reviewed service.
+
+`REDIS_SERVICE_MEMORY_LIMIT_BYTES` must be an explicit decimal byte count
+between 16 MiB and 16 TiB. INFO's `total_system_memory` is deliberately ignored:
+host RAM is not evidence of the service allocation. The exact 70% maxmemory
+ceiling is checked without floating-point rounding. Counted memory subtracts
+Redis's [buffers excluded from eviction accounting](https://redis.io/docs/latest/develop/reference/eviction/)
+from `used_memory`; observed RSS at or above 90% of the declared service limit
+is an additional repository headroom warning, not a guarantee below that
+threshold. Fragmentation, fork duration and prior copy-on-write sizes remain
+observations for capacity review, not a replacement for a load test.
+
+The audit degrades unbounded/over-budget memory, reached maxmemory, unsafe
+eviction, non-standalone/non-primary targets, loading, persistence failures,
+disabled AOF or RDB schedules, and a mismatch from the reviewed `everysec`
+policy. `no-appendfsync-on-rewrite=yes` is also rejected: it can relax
+[AOF synchronization](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
+during a rewrite. Background saves/rewrites, delayed-fsync counters and the
+last-save timestamp are reported without inventing a backup-freshness or RPO
+guarantee. AOF-only fields are absent from Redis when disabled and are reported
+as `null`, not fabricated success.
+
+Exit 0 means this bounded policy observation is healthy; exit 2 returns fixed
+degradation reasons; exit 1 emits only a fixed unavailable event. Output has
+numeric/enum metrics, duration and a credential-free endpoint fingerprint, not
+credentials, raw server errors, paths, hostnames, database names or key names.
+Eviction/rejected-connection counters are historical since server start/reset;
+they neither prove a sustained zero-error SLO nor count all OOM write errors.
+Do not reset them to obtain a passing audit.
+
+Healthy output does not prove a persistent volume, restart recovery,
+queue/stalled-job reconciliation, backup retention, p95 latency, production
+capacity or launch approval. The existing capacity/persistence rollout item
+remains open until the controlled change and timed operational drill pass.
+
+`pnpm run qa:redis-capacity` exercises parsing, policy, actual client protocol,
+redaction, deadlines and socket cleanup with enforced 80% helper coverage.
+`qa:redis-capacity:integration` is part of the existing disposable Backend
+integration gate; it accepts only the explicit loopback fixture and uses an
+independent command allowlist. It verifies that the persistence-disabled
+test service is degraded without changing its configuration or reading keys.
+
 ## Meilisearch recovery
 
 PostgreSQL Products are authoritative. A version-matched Meilisearch snapshot

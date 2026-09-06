@@ -67,8 +67,43 @@ assert.equal(
 )
 assert.equal(
   packageManifest.scripts?.["qa:disposable-integration:services"],
-  "pnpm --filter backend run test:integration && pnpm run qa:postgres-recovery:integration && pnpm run qa:api-contract"
+  "pnpm --filter backend run test:integration && pnpm run qa:postgres-recovery:integration && pnpm run qa:redis-capacity:integration && pnpm run qa:api-contract"
 )
+assert.equal(
+  packageManifest.scripts?.["qa:redis-capacity:integration"],
+  "node --test scripts/redis-capacity-audit.integration.test.mjs"
+)
+assert.ok(
+  packageManifest.scripts?.["qa:database-release-boundary"]?.includes(
+    "pnpm run qa:redis-capacity"
+  ),
+  "Redis capacity unit/CLI coverage gate lost"
+)
+for (const marker of [
+  "--test-coverage-lines=80",
+  "--test-coverage-branches=80",
+  "--test-coverage-functions=80",
+  "scripts/redis-capacity-audit.test.mjs",
+  "scripts/redis-audit-client.test.mjs",
+  "scripts/redis-audit-cli.test.mjs",
+])
+  assert.ok(
+    packageManifest.scripts?.["qa:redis-capacity"]?.includes(marker),
+    `Redis audit coverage requirement lost: ${marker}`
+  )
+const redisAuditTest = await read(
+  "scripts/redis-capacity-audit.integration.test.mjs"
+)
+for (const marker of [
+  'environment.INTEGRATION_TESTS_ENABLED !== "1"',
+  "const allowedCommands = new Set(expectedCommands.map(JSON.stringify))",
+  "if (!allowedCommands.has(JSON.stringify(command)))",
+  'assert.ok(report.reasons.includes("aof_disabled"))',
+])
+  assert.ok(
+    redisAuditTest.includes(marker),
+    `Redis read-only fixture guard lost: ${marker}`
+  )
 assert.equal(
   packageManifest.scripts?.["qa:postgres-recovery:integration"],
   "node --test scripts/postgres-recovery.integration.test.mjs"

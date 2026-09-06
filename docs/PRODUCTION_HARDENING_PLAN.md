@@ -46,12 +46,12 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted implementation head
-`2354e7544c77c0c23f1486b9e3ef43e0740d51a9` includes Storefront Query 5.102.8,
+`94d914a12bfc2f25952517ada9167c4d393e20f1` includes Storefront Query 5.102.8,
 both direct Redis clients and the shared Redis 6.2.1 graph, upstream `qs`
 6.16.0, Storefront Trusted Types enforcement, and the accepted combined
 Form/Resend/PostHog/Pacer/Virtual/Sonner, AWS/Stripe/OpenTelemetry, and
-UI/parser/image/tooling cohorts, plus the recovery safeguards and deployed
-browser synchronization correction.
+UI/parser/image/tooling cohorts, plus the recovery safeguards, deployed
+browser synchronization correction and bounded PostgreSQL recovery execution.
 The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
@@ -122,16 +122,16 @@ environment exists.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`.
+  `94d914a12bfc2f25952517ada9167c4d393e20f1`.
 - Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `f0a7645b-cf89-4eff-906e-cdf150472b12` (`SUCCESS`,
-  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`).
+  `f3a2ce11-24c5-4874-8814-a46275905c7a` (`SUCCESS`,
+  `94d914a12bfc2f25952517ada9167c4d393e20f1`).
 - Application acceptance Storefront deployment:
-  `bf2f9773-1784-4f93-adba-c2791079bfc8` (`SUCCESS`,
-  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`).
+  `8d08d7c0-8c5f-4a8a-8f89-7b17f206d612` (`SUCCESS`,
+  `94d914a12bfc2f25952517ada9167c4d393e20f1`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -2851,6 +2851,10 @@ Both commands explicitly reported that no files or database records changed.
 - [ ] Set and test a capacity-aware Redis memory ceiling and compatible
       persistence/eviction policy; staging currently reports `maxmemory=0` and
       `noeviction` with zero evictions and zero server latency events.
+- [x] Implement a credential-safe, read-only Redis capacity/persistence audit
+      with explicit service-memory input, fixed configuration/INFO reads,
+      bounded deadlines, real socket cancellation and disposable integration
+      coverage. This does not apply settings or close the operational item.
 - [ ] Pin Redis, PostgreSQL, MinIO, and Meilisearch images by tested version and
       immutable digest; remove floating `latest` tags.
 - [ ] Enable `pg_stat_statements`, slow-query logging, I/O timing, and relevant
@@ -4264,9 +4268,9 @@ client 499s, with no HTTP 5xx; known stream cancellations remain visible.
 Final acceptance notes stay local for the next substantive batch instead of
 triggering a documentation-only checkpoint push.
 
-## PostgreSQL recovery execution boundary
+## Accepted PostgreSQL recovery execution boundary
 
-The subsequent PostgreSQL recovery execution batch groups deadline/cancellation,
+The PostgreSQL recovery execution batch groups deadline/cancellation,
 credential-safe subprocess handling, strict CLI/libpq parsing, private verified
 restore snapshots, and catalog-based target inventory. No provider, role,
 credential, or live database change is included. Seventeen guarded PostgreSQL
@@ -4274,8 +4278,51 @@ integration cases pass and now run with the existing disposable CI gate;
 helper coverage is 95.50% lines / 95.20% branches / 95.65% functions. A local
 synthetic archive round trip and non-empty retry rejection pass. See
 `NEXT_SESSION_HANDOFF.md` for measured fixture evidence and
-`INFRASTRUCTURE_RECOVERY.md` for operational limitations. The grouped change
-still requires its own final local and exact-SHA remote acceptance.
+`INFRASTRUCTURE_RECOVERY.md` for operational limitations.
+
+One commit/push at `94d914a12bfc2f25952517ada9167c4d393e20f1` delivered
+15 files, 1,668 insertions and 261 deletions. Full local QA passed 1,305 files,
+both strict typechecks and 75 database-release tests. Exact-SHA Root
+`34060201112`, Backend `34060201115`, Storefront `34060201117`, and Runtime
+Images `34060201130` all passed. Backend retained 2,146 unit tests and 89
+disposable integration cases plus three API contracts. Storefront retained
+857 baseline tests and its 322-test transactional subset; CI browser matrices
+passed 81 responsive cases (two skips), 14 launch cases and 48 three-engine
+critical cases. Sandbox-enabled pa11y, all 18 Lighthouse reports and unchanged
+image-security gates passed; publication skipped. Both exact-SHA image/SBOM
+records independently verify. Artifact IDs, separate Railway source digests
+and detailed measurements are recorded in the handoff.
+
+Both Railway services reached `SUCCESS` on the exact SHA. Live acceptance
+includes healthy dependencies/operations/catalog, fresh Backend heartbeat
+`2026-09-06T21:30:00.221Z`, Storefront HTML/security/Trusted Types/AVIF and
+independently correlated request/trace/deployment logs. Deployed browser
+acceptance passed 75 cases with eight expected skips and zero retries. Bounded
+HTTP-error samples contain the deliberate guard 400s, 13 browser-fixture 404s
+and 94 client 499s, without HTTP 5xx; known stream-cancellation/root-span noise
+remains visible. No live backup/restore, provider or database-role cutover is
+claimed. Final acceptance notes stay local for the next substantive batch;
+there is no documentation-only checkpoint push.
+
+## Redis capacity and persistence observation boundary
+
+The grouped audit-tooling batch makes the documented Redis memory and
+persistence policy executable without changing live settings. It uses explicit
+service-memory input, exact read-only configuration/INFO commands, validated
+numeric/enum reports, credential-safe failures and real TCP/TLS cancellation.
+The 61 focused tests pass with 100% helper lines/functions and 98.90% branches
+under an enforced 80% gate; eight real pinned-Redis read-only integration tests
+are wired into Backend CI. A synthetic noeviction/AOF drill retained its marker
+after rejected OOM writes and SIGKILL/restart following acknowledged fsync;
+healthy audit recovery took 637 ms on this small local fixture. Its owned
+container and volume were removed. This does not close production capacity,
+durable-volume, queue reconciliation, RPO/RTO or live rollout requirements.
+
+Root QA over 1,312 files, strict typechecks, frozen install and both application
+builds pass. The existing CI fixture supplies local Storefront build secrets;
+no application secret or environment file changed. Detailed scope and
+limitations are in `INFRASTRUCTURE_RECOVERY.md`, and local evidence is in the
+handoff. Exact-SHA remote acceptance follows the single grouped push.
 
 ## TanStack Form patch compatibility
 

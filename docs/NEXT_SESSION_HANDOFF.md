@@ -10,16 +10,18 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`. It includes the accepted Next.js
+  `94d914a12bfc2f25952517ada9167c4d393e20f1`. It includes the accepted Next.js
   16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
   the AWS/Stripe/OpenTelemetry, UI/parser/image/tooling, and recovery batches.
   Complete local, exact-SHA CI, runtime-image, and Railway staging evidence is recorded
-  below, including the deployed test-only hydration correction.
+  below, including the deployed test-only hydration correction and the bounded
+  PostgreSQL backup/restore execution batch.
 - Latest exact runtime-image validation SHA:
-  `2354e7544c77c0c23f1486b9e3ef43e0740d51a9`
-- The prior recovery release's acceptance notes are carried in the next
-  substantive PostgreSQL execution batch; no documentation-only push was made.
+  `94d914a12bfc2f25952517ada9167c4d393e20f1`
+- The prior recovery release's acceptance notes shipped with this substantive
+  PostgreSQL execution batch. Its final acceptance notes remain local for the
+  next substantive batch; no documentation-only push was made.
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -1142,9 +1144,9 @@ and that 400, without HTTP 5xx. Neither runtime sample showed Trusted Types
 errors or credential-assignment signals. This remains bounded evidence, not
 a zero-error-log assertion or real provider/backup/role-cutover acceptance.
 
-### PostgreSQL recovery execution batch
+### Accepted PostgreSQL recovery execution batch
 
-The next grouped change completes the PostgreSQL backup/restore execution
+The grouped change completes the PostgreSQL backup/restore execution
 boundary without dependencies, application features, database grants, or
 provider changes. Both CLIs now have credential-free help, strict argument and
 libpq option validation, a cancellable overall deadline, bounded child output,
@@ -1173,8 +1175,118 @@ archive trust, endpoint-alias limitations, concurrent-writer exclusion, and
 the possibility of a committed restore after a timeout/lost response.
 Full root QA passes across 1,305 files with both strict typechecks. Frozen
 installation and peers pass; the audit retains only the existing three
-behaviorally patched moderate ignores, without new exceptions. Exact-SHA
-remote release acceptance is pending for this batch.
+behaviorally patched moderate ignores, without new exceptions.
+
+One commit and one push delivered 15 files, 1,668 insertions and 261 deletions
+at `94d914a12bfc2f25952517ada9167c4d393e20f1`. Root `34060201112`, Backend
+`34060201115`, Storefront `34060201117`, and Runtime Images `34060201130`
+all passed on that exact SHA. Backend retained 277 suites / 2,146 unit tests
+at 91.83% statements/lines, 85.76% branches and 95.80% functions; disposable
+integration passed 31 + 41 + 17 cases, with three additional API-contract
+tests. Backend/Admin builds completed in 13.82/32.18 seconds. Storefront
+passed 142 files / 857 baseline tests and its 36-file / 322-test transactional
+subset. CI responsive, launch and three-engine critical browser matrices
+passed 81 (two existing skips), 14 and 48 cases. Sandbox-enabled pa11y and all
+Lighthouse assertions passed without changing policy or budgets. The 18
+independently inspected reports have no runtime errors, performance medians
+0.86–0.88, accessibility/best practices 1.00, and worst median LCP 4,221 ms,
+TBT 87 ms and CLS 0.000282. Existing Checkout/Privacy SEO exceptions remain.
+Route grouping uses requested URLs because `/cart` intentionally redirects
+to `/?cart=1`.
+
+Both private runtime-image records/SBOMs independently verify the exact SHA;
+high/critical scan gates passed and publication skipped:
+
+- Backend artifact `9997265591`, 1,166 components, digest
+  `sha256:762e5a4ecf2afcb1dc9272a98a0782d3adbfcfa15834572c59fa476d84b9439b`;
+- Storefront artifact `9997248903`, 122 components, digest
+  `sha256:e4c9fc5a32bd212a451d955fbeaa1e7a67472c2f8eb769f670fc083e11ad3704`.
+
+Evidence is at `/tmp/remorseless-runtime-94d914a.pU1vaf`, including Lighthouse
+artifact `9997417155`. These validation images are not Railway source images.
+Railway Backend `f3a2ce11-24c5-4874-8814-a46275905c7a` and Storefront
+`8d08d7c0-8c5f-4a8a-8f89-7b17f206d612` both reached `SUCCESS` on the exact
+SHA, with respective source digests
+`sha256:3fc5a5118c4a7b6bd61cb47651126f7774c770a196c2053153ec81f65889bba0`
+and `sha256:3dd80b72dc93bd0d5baaf6af04b03f4ce608d48bfee7feb5db07716f136a8449`.
+
+At `2026-09-06T21:30:14Z`, Backend liveness/readiness, scheduler and operations
+were healthy with all four dependencies/seven capabilities OK. The completed
+exact-SHA heartbeat was fresh at `21:30:00.221Z`, with no incident or alert
+reason. Catalog counts remained 461 products, 442 discography entries, one
+returned handle and three shelves with 25 memberships. Retention snapshots
+remain healthy but were not newly run. The native `not_allowed` guard 400
+matched response request/trace headers and exact-SHA runtime completion:
+request `45a9d2cc-b74a-4e8b-b4fd-a24ee3f10852`, trace
+`08f077eb592627cbc2ccebb0dc7fbee7`, duration 2.823 ms. Railway HTTP request
+`su73gbk_SxaJGn-JyCLmYg` independently matches that Backend deployment.
+
+Storefront exact-SHA liveness/readiness, complete Home/Catalog HTML, security
+and Trusted Types headers, and the actual 7,027-byte AVIF optimizer passed.
+Its `invalid_query` guard 400 matched body/headers and exact-SHA runtime logs:
+request `2999f987-d657-478e-914f-39021a50a674`, trace
+`301f4d5403ae29883b9504eb98720bf6`. Railway HTTP request
+`r2L_RIQlRmSKHo2UO8poTA` independently matches the Storefront deployment.
+Deployed browser acceptance passed 75 cases with eight expected skips, zero
+retries and a 1.9-minute runtime across three Chromium device projects.
+Artifacts are at `/tmp/remorseless-94d914a-deployed-browser.opvPOF`; the
+existing local-gallery, desktop-header and intercepted-Stripe boundaries
+remain unchanged.
+
+The uncapped acceptance log samples retain 332 Backend runtime rows and only
+the deliberately triggered 400 in its HTTP-error filter. Storefront retained
+324 runtime rows, 11 known stream cancellations, three existing Next root-span
+diagnostics, 13 fixture product-not-found events and the deliberate guard 400.
+Its 108 HTTP-error rows contain 94 client 499s, 13 fixture 404s and that 400,
+with no HTTP 5xx. All 404 paths match the browser's synthetic pagination or
+Pathologist handles during deployed browser validation (these requests span
+`21:26:48Z`–`21:28:05Z`); filter fixtures intercept search but leave
+intent-driven product-detail prefetches
+unmocked. Neither runtime sample showed Trusted Types errors or
+credential-assignment signals. This is bounded evidence, not a zero-error-log
+assertion or real payment-provider, backup/PITR or role-cutover acceptance.
+Final acceptance notes remain local until the next substantive batch.
+
+### Redis capacity and persistence observation batch
+
+The next grouped batch adds a read-only Redis capacity/persistence CLI, strict
+credential-free evidence parsing, socket-level cancellation, and fixture
+coverage without dependency or live configuration changes. Explicit service
+memory input replaces any inference from host RAM. The audit checks the
+documented 70% ceiling, standalone writer/noeviction policy, AOF/RDB settings
+and status, current counted memory/RSS, and historical eviction/rejection
+counters. It never reads application keys, widens ACLs, or applies settings.
+The runbook distinguishes bounded policy evidence from volume/recovery/SLO
+acceptance and documents the accepted-response rather than wire-buffer cap.
+
+Local validation passes 61 focused cases at 100% helper lines/functions and
+98.90% branches (80% enforced), plus eight read-only tests against the real
+pinned Redis 8.10.1 fixture. Real RESP2 tests prove the exact command allowlist,
+one connection, denied-command/error redaction, and signal/deadline cleanup.
+Review reproduced a pending TLS handshake surviving ordinary client destroy;
+an underlying socket AbortSignal fixes it, with real peer-closure regressions
+for both timeout and external abort. DNS TLS endpoints also receive SNI while
+certificate verification remains mandatory.
+
+A separate synthetic local drill used one owned 256 MiB container with 8 MiB
+maxmemory, noeviction, AOF everysec and a `60 1` RDB schedule. Five 1 MiB fill
+keys fit; further fill and a 16 MiB write failed OOM without evicting the marker
+(evictions 0 to 0). Only the five owned fill keys were deleted. Same-connection
+`WAITAOF 1 0 5000` returned `[1,0]` in 995 ms. The marker survived SIGKILL and
+restart; it was recovered in 505 ms and a healthy CLI audit completed in
+637 ms from the start of the kill call. These are small-fixture measurements
+of an acknowledged write, not general RPO/RTO or crash-window-loss guarantees.
+The owned container/anonymous volume were removed and its port released.
+
+Frozen installation, the unchanged dependency policy, full root QA over 1,312
+files, both strict typechecks and application builds pass. Backend/Admin
+builds took 6.56/15.91 seconds; Storefront compiled in 5.7 seconds and its
+131-asset secret/Trusted Types bundle scan passed. The initial Storefront
+build correctly rejected an inadequate local secret; the successful rerun
+used the existing CI-only secret/provider fixtures, without modifying `.env`
+or live credentials. Existing fixture search/category fallbacks remain
+visible and are not claimed as live provider evidence. Final exact-SHA CI,
+runtime images and staging acceptance still follow the grouped push.
 
 ### Remaining release work
 
