@@ -180,4 +180,104 @@ describe("semantic checkout API client", () => {
     await vi.advanceTimersByTimeAsync(25_000)
     await completion
   })
+
+  for (const [name, read] of [
+    ["checkout", getCheckout],
+    ["shipping options", getCheckoutShippingOptions],
+  ] as const) {
+    it(`cancels ${name} reads without exposing caller abort reasons`, async () => {
+      const controller = new AbortController()
+      let requestSignal: AbortSignal | null | undefined
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          (_input: RequestInfo | URL, init?: RequestInit) =>
+            new Promise<Response>((_resolve, reject) => {
+              requestSignal = init?.signal
+              requestSignal?.addEventListener("abort", () =>
+                reject(new DOMException("transport aborted", "AbortError"))
+              )
+            })
+        )
+      )
+      const result = expect(
+        read({ signal: controller.signal })
+      ).rejects.toMatchObject({
+        name: "AbortError",
+        message: "Checkout request canceled.",
+      })
+      controller.abort(new Error("private caller detail"))
+      expect(requestSignal?.aborted).toBe(true)
+      await result
+    })
+
+    it(`never starts pre-canceled ${name} reads`, async () => {
+      const fetchMock = vi.fn()
+      vi.stubGlobal("fetch", fetchMock)
+      await expect(
+        read({ signal: AbortSignal.abort(new Error("private reason")) })
+      ).rejects.toMatchObject({
+        name: "AbortError",
+        message: "Checkout request canceled.",
+      })
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it(`retains the 12 second deadline for ${name} with caller cancellation`, async () => {
+      vi.useFakeTimers()
+      const controller = new AbortController()
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          (_input: RequestInfo | URL, init?: RequestInit) =>
+            new Promise<Response>((_resolve, reject) => {
+              init?.signal?.addEventListener("abort", () =>
+                reject(new DOMException("aborted", "AbortError"))
+              )
+            })
+        )
+      )
+      const result = expect(
+        read({ signal: controller.signal })
+      ).rejects.toMatchObject({
+        problem: { status: 504, code: "recovery_required" },
+      })
+      await vi.advanceTimersByTimeAsync(12_000)
+      await result
+      expect(controller.signal.aborted).toBe(false)
+    })
+  }
+
+  it("discards a response body resolved after caller cancellation", async () => {
+    const controller = new AbortController()
+    let resolveBody!: (value: unknown) => void
+    const body = new Promise<unknown>((resolve) => {
+      resolveBody = resolve
+    })
+    let bodyStarted!: () => void
+    const readingBody = new Promise<void>((resolve) => {
+      bodyStarted = resolve
+    })
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => {
+            bodyStarted()
+            return body
+          },
+        } as Response)
+      )
+    )
+    const result = expect(
+      getCheckout({ signal: controller.signal })
+    ).rejects.toMatchObject({
+      name: "AbortError",
+    })
+    await readingBody
+    controller.abort()
+    resolveBody({ checkout })
+    await result
+  })
 })

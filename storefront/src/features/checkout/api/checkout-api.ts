@@ -313,6 +313,7 @@ const request = async <TSchema extends z.ZodType>(
     method?: "GET" | "POST" | "PUT"
     body?: unknown
     timeoutMs?: number
+    signal?: AbortSignal
   } = {}
 ): Promise<z.infer<TSchema>> => {
   const controller = new AbortController()
@@ -320,8 +321,12 @@ const request = async <TSchema extends z.ZodType>(
     () => controller.abort(),
     options.timeoutMs ?? CHECKOUT_REQUEST_TIMEOUT_MS
   )
+  const signal = options.signal
+    ? AbortSignal.any([controller.signal, options.signal])
+    : controller.signal
 
   try {
+    signal.throwIfAborted()
     const response = await fetch(path, {
       method: options.method ?? "GET",
       cache: "no-store",
@@ -332,12 +337,13 @@ const request = async <TSchema extends z.ZodType>(
           ? {}
           : { "content-type": "application/json" }),
       },
-      signal: controller.signal,
+      signal,
       ...(options.body === undefined
         ? {}
         : { body: JSON.stringify(options.body) }),
     })
     const payload = await parseJson(response)
+    signal.throwIfAborted()
 
     if (!response.ok) {
       const parsedProblem = checkoutProblemSchema.safeParse(payload)
@@ -364,6 +370,11 @@ const request = async <TSchema extends z.ZodType>(
     }
     return parsed.data
   } catch (error: unknown) {
+    if (options.signal?.aborted) {
+      // Query cancellation is not a customer-visible checkout failure. Never
+      // propagate a caller-supplied abort reason into the error surface.
+      throw new DOMException("Checkout request canceled.", "AbortError")
+    }
     if (error instanceof CheckoutApiError) {
       throw error
     }
@@ -388,8 +399,16 @@ const request = async <TSchema extends z.ZodType>(
   }
 }
 
-export const getCheckout = async (): Promise<CheckoutProjection | null> => {
-  const response = await request("/api/checkout", checkoutEnvelopeSchema)
+type CheckoutReadOptions = { signal?: AbortSignal }
+
+export const getCheckout = async (
+  options: CheckoutReadOptions = {}
+): Promise<CheckoutProjection | null> => {
+  const response = await request(
+    "/api/checkout",
+    checkoutEnvelopeSchema,
+    options
+  )
   return response.checkout
 }
 
@@ -415,12 +434,13 @@ export const saveCheckoutDelivery = async (
   return response.checkout
 }
 
-export const getCheckoutShippingOptions = async (): Promise<
-  CheckoutShippingOption[]
-> => {
+export const getCheckoutShippingOptions = async (
+  options: CheckoutReadOptions = {}
+): Promise<CheckoutShippingOption[]> => {
   const response = await request(
     "/api/checkout/shipping-options",
-    shippingOptionsEnvelopeSchema
+    shippingOptionsEnvelopeSchema,
+    options
   )
   return response.shippingOptions
 }

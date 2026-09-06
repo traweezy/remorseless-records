@@ -1,7 +1,7 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 
 import {
   CheckoutApiError,
@@ -15,10 +15,7 @@ import {
   type CheckoutContactPayload,
   type CheckoutDeliveryPayload,
 } from "@/features/checkout/api/checkout-api"
-import type {
-  CheckoutProjection,
-  CheckoutShippingOption,
-} from "@/features/checkout/types/checkout"
+import type { CheckoutProjection } from "@/features/checkout/types/checkout"
 
 export const CHECKOUT_QUERY_KEY = ["checkout", "active"] as const
 export const CHECKOUT_SHIPPING_OPTIONS_QUERY_KEY = [
@@ -60,36 +57,68 @@ export const preservePreparedPayment = (
 export const useCheckout = () => {
   const queryClient = useQueryClient()
 
+  const cancelCheckoutReads = useCallback(
+    () =>
+      Promise.all([
+        queryClient.cancelQueries({ queryKey: CHECKOUT_QUERY_KEY }),
+        queryClient.cancelQueries({
+          queryKey: CHECKOUT_SHIPPING_OPTIONS_QUERY_KEY,
+        }),
+      ]),
+    [queryClient]
+  )
+
   const setCheckout = useCallback(
-    (checkout: CheckoutProjection | null): void => {
+    async (checkout: CheckoutProjection | null): Promise<void> => {
+      // Focus/reconnect can start another read during a write. Cancel again
+      // before publishing its authoritative projection, not only at onMutate.
+      await cancelCheckoutReads()
       queryClient.setQueryData<CheckoutProjection | null>(
         CHECKOUT_QUERY_KEY,
         (current) =>
           checkout ? preservePreparedPayment(current, checkout) : null
       )
     },
-    [queryClient]
+    [cancelCheckoutReads, queryClient]
   )
 
   const applyProblemProjection = useCallback(
-    (error: unknown): void => {
+    async (error: unknown): Promise<void> => {
       if (
         error instanceof CheckoutApiError &&
         error.problem.checkout !== undefined
       ) {
-        setCheckout(error.problem.checkout)
+        await setCheckout(error.problem.checkout)
       }
     },
     [setCheckout]
   )
 
+  const resumeShippingReads = useCallback((): void => {
+    void queryClient.invalidateQueries(
+      { queryKey: CHECKOUT_SHIPPING_OPTIONS_QUERY_KEY },
+      { cancelRefetch: false }
+    )
+  }, [queryClient])
+
+  const checkoutMutationOptions = useMemo(
+    () => ({
+      ...mutationOptions,
+      onMutate: cancelCheckoutReads,
+      onSettled: resumeShippingReads,
+    }),
+    [cancelCheckoutReads, resumeShippingReads]
+  )
+
   const checkoutQuery = useQuery({
     queryKey: CHECKOUT_QUERY_KEY,
-    queryFn: async () =>
-      preservePreparedPayment(
+    queryFn: async ({ signal }) => {
+      const checkout = await getCheckout({ signal })
+      return preservePreparedPayment(
         queryClient.getQueryData<CheckoutProjection | null>(CHECKOUT_QUERY_KEY),
-        await getCheckout()
-      ),
+        checkout
+      )
+    },
     staleTime: 0,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: true,
@@ -104,7 +133,7 @@ export const useCheckout = () => {
   })
 
   const contactMutation = useMutation({
-    ...mutationOptions,
+    ...checkoutMutationOptions,
     mutationKey: ["checkout", "contact"],
     mutationFn: (payload: CheckoutContactPayload) =>
       saveCheckoutContact(payload),
@@ -113,25 +142,20 @@ export const useCheckout = () => {
   })
 
   const deliveryMutation = useMutation({
-    ...mutationOptions,
+    ...checkoutMutationOptions,
     mutationKey: ["checkout", "delivery"],
     mutationFn: (payload: CheckoutDeliveryPayload) =>
       saveCheckoutDelivery(payload),
-    onSuccess: async (checkout) => {
-      setCheckout(checkout)
-      queryClient.removeQueries({
-        queryKey: CHECKOUT_SHIPPING_OPTIONS_QUERY_KEY,
-      })
-      await queryClient.invalidateQueries({
-        queryKey: CHECKOUT_SHIPPING_OPTIONS_QUERY_KEY,
-      })
-    },
+    onSuccess: setCheckout,
     onError: applyProblemProjection,
   })
 
   const shippingOptionsQuery = useQuery({
-    queryKey: CHECKOUT_SHIPPING_OPTIONS_QUERY_KEY,
-    queryFn: getCheckoutShippingOptions,
+    queryKey: [
+      ...CHECKOUT_SHIPPING_OPTIONS_QUERY_KEY,
+      checkoutQuery.data?.revision ?? null,
+    ],
+    queryFn: ({ signal }) => getCheckoutShippingOptions({ signal }),
     enabled: Boolean(checkoutQuery.data?.cart.deliveryAddress),
     staleTime: 0,
     retry: 1,
@@ -139,7 +163,7 @@ export const useCheckout = () => {
   })
 
   const shippingMutation = useMutation({
-    ...mutationOptions,
+    ...checkoutMutationOptions,
     mutationKey: ["checkout", "shipping-method"],
     mutationFn: (optionId: string) => saveCheckoutShippingMethod(optionId),
     onSuccess: setCheckout,
@@ -147,7 +171,7 @@ export const useCheckout = () => {
   })
 
   const paymentMutation = useMutation({
-    ...mutationOptions,
+    ...checkoutMutationOptions,
     mutationKey: ["checkout", "payment-session"],
     mutationFn: (revision: string) => prepareCheckoutPayment(revision),
     onSuccess: setCheckout,
@@ -155,9 +179,10 @@ export const useCheckout = () => {
   })
 
   const completionMutation = useMutation({
-    ...mutationOptions,
+    ...checkoutMutationOptions,
     mutationKey: ["checkout", "complete"],
     mutationFn: (revision: string) => completeCheckout(revision),
+    onSuccess: cancelCheckoutReads,
     onError: applyProblemProjection,
   })
 
@@ -175,8 +200,7 @@ export const useCheckout = () => {
     setCheckout,
     contactMutation,
     deliveryMutation,
-    shippingOptions:
-      (shippingOptionsQuery.data as CheckoutShippingOption[] | undefined) ?? [],
+    shippingOptions: shippingOptionsQuery.data ?? [],
     shippingOptionsError: shippingOptionsQuery.error,
     isLoadingShippingOptions: shippingOptionsQuery.isPending,
     refreshShippingOptions: shippingOptionsQuery.refetch,

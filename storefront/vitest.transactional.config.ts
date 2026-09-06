@@ -15,7 +15,7 @@ export default defineConfig({
     environment: "jsdom",
     include: [
       "src/app/api/{cart,checkout}/**/*.test.ts",
-      "src/features/checkout/{api,components,lib,schemas,server}/**/*.test.{ts,tsx}",
+      "src/features/checkout/{api,components,hooks,lib,schemas,server}/**/*.test.{ts,tsx}",
       "src/lib/{cart,redis}/**/*.test.ts",
     ],
     setupFiles: ["./src/test/setup.ts"],
@@ -26,7 +26,7 @@ export default defineConfig({
       all: true,
       include: [
         "src/app/api/{cart,checkout}/**/*.ts",
-        "src/features/checkout/{api,lib,schemas,server}/**/*.ts",
+        "src/features/checkout/{api,hooks,lib,schemas,server}/**/*.ts",
         "src/features/checkout/components/{checkout-error-summary,checkout-problem,checkout-summary,payment-section}.tsx",
         "src/lib/{cart,redis}/**/*.ts",
       ],

@@ -132,7 +132,7 @@ export const CheckoutShell = memo(() => {
       activeCart: Awaited<ReturnType<typeof updateItem>>
     ): Promise<void> => {
       if (!activeCart?.items?.length) {
-        setCheckout(null)
+        await setCheckout(null)
         return
       }
       await refreshCheckout()
