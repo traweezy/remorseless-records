@@ -39,8 +39,10 @@ const ProductGallery = ({ images, title }: ProductGalleryProps) => {
   )
 
   const showPrevious = useCallback(() => {
-    setActiveIndex((current) => Math.max(0, current - 1))
-  }, [])
+    setActiveIndex((current) =>
+      Math.max(0, Math.min(current, sanitized.length - 1) - 1)
+    )
+  }, [sanitized.length])
 
   const showNext = useCallback(() => {
     setActiveIndex((current) =>
