@@ -655,8 +655,9 @@ held; this batch does not waive the separate Medusa migration.
 
 ## UI, parser, image, and test/build tooling batch — 2026-09-06
 
-The next planned shared resolution groups 15 direct upgrades, including the
-native image/parser boundaries and the UI regression work discovered during
+The shared resolution at `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe` groups
+15 direct upgrades, including native image/parser boundaries and the UI
+regression work discovered during
 review. Publication times below come from official registry metadata; every
 target is past the unchanged seven-day cooling window. No audit exception,
 build-script permission, or unreviewed major migration is included. Strict
@@ -665,8 +666,8 @@ all 85 new package records against official age/integrity metadata (youngest
 8.51 days) and finds no unrelated dependency-edge changes. All 75 protected
 Medusa/React 18/CSV 5.6/unused-helper records and all 16 patches are unchanged.
 Five same-version peer metadata changes only reflect the intended PostCSS
-override normalization. Runtime-image and exact-SHA deployment acceptance
-remain pending.
+override normalization. The two logical implementation/dependency commits
+were pushed together; exact-SHA CI and both runtime-image validations pass.
 
 | Family | Reviewed targets | Compatibility and acceptance boundary |
 | ------ | ---------------- | ------------------------------------- |
@@ -729,8 +730,48 @@ Standalone pa11y cannot launch the installed Chromium sandbox on this
 workstation: all four configured paths fail before navigation with the
 existing AppArmor/user-namespace limitation. The separate mobile/Lighthouse
 runners are not claimed as local passes. No sandbox bypass or host-policy
-change was made; exact-SHA sandboxed GitHub pa11y and Lighthouse remain
-required before release acceptance.
+change was made. Exact-SHA sandboxed GitHub pa11y subsequently passed all
+four configured pages with zero issues/review findings. Lighthouse passed
+all unchanged assertions across 18 reports (three runs on six routes):
+performance medians 0.87–0.88, accessibility/best practices 1.00, and SEO
+1.00 except Privacy 0.92 and the intentionally noindex Checkout 0.61.
+Worst median LCP was 4,107 ms, TBT 103 ms, and CLS 0.000282 under the existing
+hosted-runner calibration. There were no Lighthouse runtime errors; the
+expected cart redirect warning remains.
+
+### Exact-SHA CI and deployment evidence
+
+Root `34056277576`, Backend `34056277609`, Storefront `34056277617`, and
+Runtime Images `34056277606` all passed for `497a52a`. CI retained 275 Backend
+suites / 2,099 tests plus integration groups of 4 and 41; Storefront retained
+142 files / 857 baseline and 36 files / 322 transactional tests. Its browser
+gates passed 81 responsive cases with two existing skips, 48 critical cases,
+and 14 launch cases, without retries. Both image records and their bound
+CycloneDX SBOMs independently verify the exact revision:
+
+- Backend artifact `9996103442`: 1,166 components, digest
+  `sha256:9e992201a0e5048ce38427e94799dfcf4f217b640001b84eb9c66ac38a76ad65`;
+- Storefront artifact `9996080119`: 122 components, digest
+  `sha256:9050d076e15d15b93a391b0ae0133ed01c0453657d3ce70b78d7ab3e7760dfe0`.
+
+The unchanged high/critical scan gates passed and publication skipped.
+These are validation images, not the Railway source-build images.
+Railway Backend deployment `8a8eca56-5cce-41c8-a0a7-e8e7f422dd87` and
+Storefront deployment `2f6f68b5-5538-44e2-a6d3-120fd79dd406` both reached
+`SUCCESS` on the exact SHA. Their separate source-image digests are
+`sha256:1f179f8fcdeabe262e0cc1caac18ca2fd2f0289f35b71d0e9e24ff637434aed4`
+and `sha256:6d0a389052a5f570ec9c32213af3b10b295841da7a28d7711607342c3fd6c235`.
+Backend acceptance includes all four health routes, four dependencies/seven
+capabilities, a fresh completed exact-SHA scheduler heartbeat at
+`2026-09-06T20:14:00.126Z`, and matching request/trace/runtime/HTTP records for
+a deliberate guarded 400. The uncapped bounded HTTP sample contained 73
+successful 200s plus that deliberate 400, without unexpected failures.
+Storefront health, complete Home/Catalog HTML, security/Trusted Types headers,
+and a real 7,027-byte AVIF optimizer response passed. Its deliberate
+`invalid_query` 400 also matched both body/header IDs and the exact-SHA
+runtime event. Final deployed browser and bounded-log results are retained
+in `NEXT_SESSION_HANDOFF.md`, including the test-only hydration correction;
+local fixtures do not constitute real payment-provider acceptance.
 
 Hold Medusa UI 4.2.1: integrity-verified runtime files and patch inputs are
 unchanged, while its sole effective change pulls icons 2.19.0 across the

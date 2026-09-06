@@ -1,6 +1,6 @@
 # Infrastructure, data protection, and recovery
 
-Last reviewed: 2026-09-02
+Last reviewed: 2026-09-06
 
 This runbook defines the production approval packet and the recovery contract
 for PostgreSQL, media, Redis, and Meilisearch. It does not authorize creating a
@@ -149,10 +149,31 @@ and search readiness. Roll out in this order:
    fails closed if the migration URL is removed or equals the runtime URL; and
 8. only then revoke the old superuser URL from Backend.
 
-The auditor never prints a role name or connection string. It verifies the
-absence of cluster-wide attributes and default-admin use, rejects
-`pg_read_all_data`/`pg_write_all_data` outside the reviewed backup profile, and
-proves negotiated TLS for a public connection.
+The auditor never prints role/database names, connection strings, or raw
+driver errors. Its single read-only catalog query checks the original session
+login, any narrowed current role, roles reachable through `SET ROLE`, and
+inherited privileges. It rejects cluster attributes, default-admin use,
+dangerous predefined memberships, and role-membership administration rights.
+Runtime/backup identities also fail on database or schema `CREATE` and object
+ownership, including effective inherited/reachable ownership. A migration
+identity may retain the owner/schema authority needed for DDL, but not cluster
+or membership-administration rights.
+
+The backup profile requires usable inherited `pg_read_all_data`, not merely
+an inert membership; it rejects table/column/sequence/large-object write
+privileges. The other profiles reject predefined read/write-all memberships.
+Tests distinguish `INHERIT`, `SET`, and `ADMIN OPTION`, preserve legitimate
+runtime DML and migrator ownership, and prove that an initially narrowed
+`SET ROLE` cannot conceal a privileged login. Query and connection deadlines
+remain 30 and 10 seconds. Public connections must prove negotiated TLS, and
+connect/query/close failures cannot produce an accepted result.
+
+These are bounded catalog capability checks, not a complete authorization
+certification: separately review executable `SECURITY DEFINER` functions,
+extensions, application-specific capabilities, default privileges, and future
+grants. Role-audit tests create only transactionally rolled-back fixtures on
+the explicitly guarded disposable local PostgreSQL service. Passing them does
+not perform the staging role cutover or satisfy its operational evidence.
 
 ## PostgreSQL transport
 
@@ -240,24 +261,54 @@ MEDIA_BACKUP_OUTPUT_DIR='/absolute/private/evidence' \
   pnpm run data:media:backup
 ```
 
-The dry-run prints a direction-specific confirmation. Apply only after review:
+The dry-run prints a direction-specific confirmation and the additional
+content-verification read budget: two downloads per current source object,
+totalling twice its bytes, excluding the mirror transfer itself. Review the
+GET/request and egress costs before choosing an explicit planned-content byte
+budget. Client metadata requests, retries, and buffered read-ahead add overhead;
+this budget is not a hard provider-billing or wire-byte ceiling. Apply only
+after review:
 
 ```bash
 MEDIA_BACKUP_SOURCE='source/catalog' \
 MEDIA_BACKUP_TARGET='offsite/catalog' \
 MEDIA_BACKUP_OUTPUT_DIR='/absolute/private/evidence' \
 MEDIA_BACKUP_CONFIRM='<dry-run-confirmation>' \
+MEDIA_BACKUP_VERIFY_MAX_BYTES='<reviewed-total-verification-download-bytes>' \
   pnpm run data:media:backup -- --apply
 ```
 
-The command rejects MinIO Client releases older than the checksum feature,
-never uses `--remove`, adds SHA-256 checksums to copied objects, and requires
-every current source key and byte size to match the target. It preserves and
-counts target-only objects instead of deleting safe history. Its private
-`0600` evidence manifest contains the exact client release, credential-free
-endpoint IDs, source and target inventory SHA-256 values, object counts, byte
-total, and duration. Use the same boundary from the off-site bucket to a
-disposable restore bucket for the weekly restore drill.
+The command rejects old clients, overlapping literal source/target paths,
+unsafe object paths, and insufficient verification budgets before the mutating
+mirror. Operators must still ensure different aliases do not resolve to the
+same underlying location. It never uses `--remove` and preserves target-only
+objects. [`mc mirror --checksum SHA256`](https://docs.min.io/aistor/reference/cli/mc-mirror/#--checksum)
+adds an upload checksum; it does not independently prove retained target
+content. After matching keys and sizes, the helper streams each source and
+target through [`mc cat`](https://docs.min.io/aistor/reference/cli/mc-cat/),
+computes SHA-256, and rejects same-size corruption, truncated or oversized
+reads, and unsuccessful reader exits. ETags are not treated as content hashes.
+
+Verification is sequential with bounded streaming memory, an explicit planned
+content-download budget, at most 10,000 source objects by default, and a
+ten-minute overall content-read deadline. `MEDIA_BACKUP_VERIFY_MAX_OBJECTS`
+may be reviewed up to 100,000 and `MEDIA_BACKUP_VERIFY_TIMEOUT_MS` up to one
+hour. Individual listing/mirror commands have a ten-minute deadline and bounded output.
+Cancellation kills active content readers and waits for process closure;
+provider stderr and raw object names are not emitted. A failed or cancelled
+verification writes no successful manifest and does not roll back an already
+performed mirror. Investigate the partial copy before rerunning.
+
+The private `0600` schema-version-2 manifest includes client version, endpoint
+fingerprints, canonical key/size inventory hashes, a combined key/size/content
+hash, verified object/read-byte counts, and total/verification durations. A
+version-1 manifest only established key/size inventory parity and is not
+content-verified evidence. No object bytes are retained locally. Use the same
+boundary from off-site storage to a disposable restore bucket for the weekly
+drill. Keep the source quiescent for a consistent current-state copy: sequential
+reads do not establish an atomic multi-object snapshot or prevent subsequent
+changes. The helper's local tests use synthetic streams and disposable fake
+client processes; they do not complete an off-site operational drill.
 Version ID history still requires bucket replication and separate provider
 evidence; the mirror manifest intentionally does not claim to protect it.
 

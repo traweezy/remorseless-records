@@ -10,14 +10,14 @@ artifact Railway is running; verify Railway separately with the sequence below.
 
 - Branch: `staging`
 - Current accepted implementation head:
-  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`. It includes the accepted Next.js
+  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`. It includes the accepted Next.js
   16.3.3 build split, Redis 6.2.1, upstream `qs` 6.16.0, Trusted Types
   enforcement, the Form/Resend/PostHog/Pacer/Query/Virtual/Sonner batch, and
-  the AWS/Stripe/OpenTelemetry batch. Complete local, exact-SHA CI,
-  runtime-image, and Railway staging evidence is recorded below. The next
-  UI/parser/image/tooling batch does not yet supersede this deployed revision.
+  the AWS/Stripe/OpenTelemetry and UI/parser/image/tooling batches. Complete
+  local, exact-SHA CI, runtime-image, and Railway staging evidence is recorded
+  below, including the deployed test-only hydration correction.
 - Latest exact runtime-image validation SHA:
-  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`
+  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`
 - Original implementation/runtime-image acceptance SHA
   `61fd86889a4adca23e1e9704e11c889a1fd986a9` is pushed to
   `origin/staging`. Backend source deployment acceptance is documented at
@@ -928,14 +928,15 @@ These are bounded staging observations and injected/intercepted compatibility
 checks, not real storage writes, payments, tax/refunds, webhook delivery, or
 telemetry-export acceptance. No production or image-source cutover occurred.
 
-### Next UI, parser, image, and tooling batch
+### Accepted UI, parser, image, and tooling batch
 
-The next shared frozen graph groups 15 reviewed direct upgrades: Lucide,
+The shared frozen graph groups 15 reviewed direct upgrades: Lucide,
 Motion/Framer Motion, Zustand/Immer, the owned CSV parser, Sharp, PostCSS,
 esbuild, Biome, Vitest/coverage, Testing Library, and Playwright. The dependency
 audit records exact versions, official publication/cooling evidence, preserved
 patches and framework-owned holds. The UI corrections are committed at
-`ec66bb99618a170be8dd4e0a3f5e8f10833827db`; this next batch is not yet deployed.
+`ec66bb99618a170be8dd4e0a3f5e8f10833827db`; both logical commits were pushed
+together and deployed at `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`.
 
 The actual CSV-parser/import checks pass 28/28 on 7.0.2; four of those checks
 failed on 7.0.1. Hostile headers become own data properties without prototype
@@ -967,8 +968,13 @@ lint/typecheck/security, strict frozen installation, and peer checks pass.
 Standalone pa11y fails before navigation because this workstation cannot
 launch the installed Chromium sandbox under its AppArmor/user-namespace
 policy. Separate mobile/Lighthouse runs are not claimed as local passes;
-no sandbox bypass or host change was used. Require the exact-SHA sandboxed
-GitHub accessibility and Lighthouse gates before accepting the next revision.
+no sandbox bypass or host change was used. Exact-SHA sandboxed GitHub pa11y
+subsequently passed all four pages with zero issues/review findings, and
+Lighthouse passed all unchanged assertions across 18 reports. Performance
+medians were 0.87–0.88 and accessibility/best practices were 1.00; SEO was
+1.00 except Privacy 0.92 and intentionally noindex Checkout 0.61. Worst median
+LCP was 4,107 ms, TBT 103 ms, and CLS 0.000282 with the existing runner
+calibration. There were no runtime errors; the expected cart redirect remains.
 
 The final rebuilt Admin passes 12/12 under Node 26.5.0 with
 `ADMIN_ACCEPTANCE_BASE_URL` unset, zero axe violations/incomplete checks,
@@ -977,13 +983,106 @@ Merchandising Chromium screenshots at 760–1,920 px show no visible regression;
 artifacts are at `/tmp/remorseless-tooling-admin-node265.SYThuV`. These remain
 deterministic local fixtures, not live Admin or provider acceptance.
 
+Root `34056277576`, Backend `34056277609`, Storefront `34056277617`, and
+Runtime Images `34056277606` passed on the exact revision. The unchanged
+high/critical image-scan gates passed, publication skipped, and both image
+records independently match their CycloneDX SBOM and source SHA:
+
+- Backend artifact `9996103442`, 1,166 components:
+  `sha256:9e992201a0e5048ce38427e94799dfcf4f217b640001b84eb9c66ac38a76ad65`;
+- Storefront artifact `9996080119`, 122 components:
+  `sha256:9050d076e15d15b93a391b0ae0133ed01c0453657d3ce70b78d7ab3e7760dfe0`.
+
+These are validation images, not Railway source images. Railway Backend
+deployment `8a8eca56-5cce-41c8-a0a7-e8e7f422dd87` succeeded with source digest
+`sha256:1f179f8fcdeabe262e0cc1caac18ca2fd2f0289f35b71d0e9e24ff637434aed4`;
+Storefront deployment `2f6f68b5-5538-44e2-a6d3-120fd79dd406` succeeded with
+`sha256:6d0a389052a5f570ec9c32213af3b10b295841da7a28d7711607342c3fd6c235`.
+Both services expose the exact accepted SHA. Backend's four health routes,
+four dependencies, seven capabilities, and operations projections passed;
+its fresh completed heartbeat at `2026-09-06T20:14:00.126Z` scanned 62,
+attempted/failed zero, released its lock, and had no incident or cap. The
+bounded uncapped HTTP sample contained 73 successful 200s plus the deliberate
+guard 400. Its exact request/trace/runtime/HTTP correlation passed. Retention
+snapshots remained healthy but were not newly run.
+
+Storefront `/live`, `/ready`, complete Home/Catalog HTML, security headers and
+the three exact Trusted Types policies passed. The actual optimizer returned
+a 7,027-byte AVIF. A deliberate `invalid_query` 400 with request
+`ff2942d6-fb74-4bd5-9c34-9cca6471364d` and trace
+`7451b44f34ad4a0d9c1c7e7ac34295fa` matched no-store headers, body correlation,
+and its exact-SHA runtime event.
+
+The first deployed browser run produced 72 passes, eight expected skips, and
+three failures in the new cart/calendar test, including configured retries.
+Retained traces show Enter dispatched about 206 ms before the cart provider's
+mount-time GET: the test interacted before hydration. A test-only correction
+waits for that existing intercepted GET and document load, and retries the
+SVG-presence assertion without weakening behavior checks. Against unchanged
+deployed `497a52a`, the corrected local harness passed 75 cases with eight
+expected skips and zero retries in 1.8 minutes. A further five repetitions on
+each of the three Chromium device projects passed all 15 cases without retry.
+The full result remains at `/tmp/remorseless-497a52-deployed-corrected.cEJvAz`,
+the repetitions at `/tmp/remorseless-497a52-cart-repeat.epGZ9p`, and original
+failures at `/tmp/remorseless-497a52-deployed-browser.egTm85`. The correction
+ships with the recovery batch, not as a standalone checkpoint push. Six skips
+are local-gallery-only cases and two are pre-existing desktop-header skips;
+the six Stripe cases intercept a local provider fixture. These are not live
+payment tests or three different browser engines.
+
+The post-matrix bounded runtime sample contained 886 uncapped rows: 45 known
+destination-stream cancellations, each matching digest `2025024551`, 24
+fixture product-not-found events, and two deliberate invalid-query 400s.
+Two startup Next.js unexpected-root-span diagnostics and a command banner
+were also logged at error level; they are retained rather than suppressed.
+The preceding `c20efbe` deployment also retained that root-span diagnostic.
+The separate uncapped HTTP-error sample contained 116 client cancellations
+(499), 24 fixture 404s, and those two 400s; no HTTP 5xx was observed. This is
+not a zero-error-log claim; cancellation noise remains visible.
+
+### Next recovery-preparation batch
+
+The next combined batch changes recovery tooling only, without dependency
+updates, provider grants, role cutovers, or live backup/restore drills. It also
+contains the bounded deployed-browser hydration synchronization correction.
+Root QA passes across 1,299 files; Backend coverage passes 277 suites / 2,146
+tests at 91.83% statements/lines, 85.72% branches, and 95.80% functions.
+Backend/Admin builds complete in 6.59/16.17 seconds. Corrected deployed-browser
+validation passes as recorded above; the combined recovery batch still needs
+its own exact-SHA remote acceptance. Frozen installation and peers pass;
+the only audit findings are the existing three behaviorally patched moderate
+ignores, without new exceptions.
+
+Media verification now compares streamed SHA-256 content from both source and
+target, with an explicit planned-content budget (twice source bytes, excluding
+the mirror and metadata/retry/read-ahead overhead), object cap, deadline, and
+cancellation that kills and reaps active readers. The private version-2 manifest records
+content-verification evidence; version 1 only proved inventory parity.
+The helper rejects corruption/truncation and unsuccessful readers, retains no
+object bytes, and exposes operator guidance through `--help`. It is not an
+atomic snapshot, version-history backup, or rollback after a partial mirror.
+The 29 media tests pass; helper coverage is 97.60% lines, 92.56% branches, and
+100% functions. These are synthetic-stream/disposable-client checks, not an
+off-site drill or evidence of available credentials and budget.
+
+Database-role auditing now considers session/current identities, inherited
+privileges, and reachable `SET ROLE` capabilities, including membership
+administration and backup write restrictions. The focused suite passes 56
+tests at 100% coverage, and 27 tests pass on disposable PostgreSQL 18.6.
+Seven old unit failures and an old SQL false acceptance were reproduced.
+Small-fixture `EXPLAIN` measured 1.805 ms planning / 1.237 ms execution; this
+is not a production benchmark. These bounded checks do not certify all
+`SECURITY DEFINER` functions, extensions, future/default grants, or application
+authorization. Scope and rollout prerequisites remain in
+`INFRASTRUCTURE_RECOVERY.md`; no live role change has been performed.
+
 ### Remaining release work
 
 1. Re-evaluate Next.js 16.3.4 no earlier than
    `2026-09-07T20:00:51.381Z`. Keep it isolated from the `qs`, Medusa, TanStack,
    Stripe, AWS SDK, OpenTelemetry, and small-patch cohorts documented in
    `DEPENDENCY_MIGRATION_AUDIT_2026-07-23.md`.
-2. Finish the next UI/parser/image/tooling batch's exact-SHA CI, image, and
+2. Finish the combined recovery-preparation batch's exact-SHA CI, image, and
    staging gates. Ship implementation and evidence
    together; do not add documentation-only checkpoint pushes. Keep Medusa
    changes subject to their separate migration review; batching is not

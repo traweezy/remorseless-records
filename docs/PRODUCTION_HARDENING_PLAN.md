@@ -46,20 +46,23 @@ September 3 live read remained healthy with Redis `ok`, a completed heartbeat,
 no incident latch, and no alert reason.
 
 The accepted implementation head
-`c20efbebed1ef328388ced0f99edd8ac3dacc7ed` includes Storefront Query 5.102.8,
+`497a52a8c2aced3ba62e1e08e4c733bbe78b23fe` includes Storefront Query 5.102.8,
 both direct Redis clients and the shared Redis 6.2.1 graph, upstream `qs`
 6.16.0, Storefront Trusted Types enforcement, and the accepted combined
-Form/Resend/PostHog/Pacer/Virtual/Sonner and AWS/Stripe/OpenTelemetry cohorts.
+Form/Resend/PostHog/Pacer/Virtual/Sonner, AWS/Stripe/OpenTelemetry, and
+UI/parser/image/tooling cohorts.
 The Backend/Admin Query 5.64.2 graph remains
 isolated and unchanged. Full local acceptance, all four exact-SHA GitHub
 workflows, both runtime-image validations, and both Railway staging deployments
 passed for the combined batch after each family's compatibility review.
-The next UI/parser/image/tooling batch has passed local unit, build, browser,
-and policy gates plus headed desktop inspection; exact-SHA remote acceptance
-remains pending. Standalone pa11y cannot launch the workstation's Chromium
-sandbox, so local mobile/Lighthouse passes are not claimed. Keep the sandbox
-enabled and require the sandboxed GitHub accessibility/performance gates.
-It does not yet supersede the accepted deployment revision.
+The UI/parser/image/tooling batch passed local gates, headed desktop
+inspection, exact-SHA CI/image checks, and Railway staging acceptance. The
+deployed cart/calendar test needed a hydration synchronization correction;
+the corrected local harness passed 75 cases with eight expected skips and
+zero retries against unchanged deployed `497a52a`, plus 15 repeated cases.
+Standalone pa11y cannot launch the workstation's Chromium sandbox, so local
+mobile/Lighthouse passes are not claimed. The exact-SHA sandboxed GitHub
+accessibility/performance gates passed without weakening sandbox or budgets.
 
 Medusa 2.19.0 is separately blocked by its [Enterprise license](https://raw.githubusercontent.com/medusajs/medusa/v2.19.0/ENTERPRISE-LICENSE.md):
 listed RBAC/SSO materials, including policies, permission checks, and compiled
@@ -118,16 +121,16 @@ environment exists.
 - Git branches: `staging` is the default/integration branch; `master` is the
   protected production-candidate branch. Retired `main` was deleted.
 - Latest implementation/runtime-image validation SHA accepted:
-  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`.
+  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`.
 - Original documentation-only staging acceptance:
   `060af53115ed1ae85d2f8d02d6fd0590c8e6a02d`.
 - Railway project: `store`; only the `staging` environment exists.
 - Application acceptance Backend deployment:
-  `6de89656-1d77-4c0e-9e35-5ec12c0a53b4` (`SUCCESS`,
-  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`).
+  `8a8eca56-5cce-41c8-a0a7-e8e7f422dd87` (`SUCCESS`,
+  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`).
 - Application acceptance Storefront deployment:
-  `7dd9459c-4ea7-4ec5-ac03-8e403745e4d5` (`SUCCESS`,
-  `c20efbebed1ef328388ced0f99edd8ac3dacc7ed`).
+  `2f6f68b5-5538-44e2-a6d3-120fd79dd406` (`SUCCESS`,
+  `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`).
 - Backend and Storefront `/live` and `/ready` checks return HTTP 200.
 - The public storefront route/API smoke matrix passes. `/products`
   intentionally redirects to `/catalog`.
@@ -4154,15 +4157,15 @@ These checks do not establish real storage/payment/tax/refund/webhook or
 telemetry-export acceptance. No production changes or image-source cutover
 were performed.
 
-### Next UI, parser, image, and tooling batch
+### Accepted UI, parser, image, and tooling batch
 
-Fifteen reviewed direct upgrades share the next frozen graph, preserving all
+Fifteen reviewed direct upgrades share the accepted frozen graph, preserving all
 16 patches and the protected Medusa/React 18/CSV 5.6.0 records. Exact targets,
 seven-day cooling evidence, native-image/license considerations, and remaining
 framework migration holds are recorded in the dependency audit. UI commit
 `ec66bb99618a170be8dd4e0a3f5e8f10833827db` restores controlled Drawer focus and
-fixes gallery navigation after the last image fails. This cohort has not yet
-passed its own exact-SHA CI, runtime-image, or staging acceptance.
+fixes gallery navigation after the last image fails. It shipped together with
+the dependency commit at `497a52a8c2aced3ba62e1e08e4c733bbe78b23fe`.
 
 Actual-parser/import tests pass 28/28 on csv-parse 7.0.2 after four failures on
 7.0.1. Grouped-column prototype regressions exercise upstream behavior, not
@@ -4187,6 +4190,57 @@ base URL unset, zero axe violations/incomplete checks, findings, review codes,
 or errors. Five inspected Product/News/Merchandising Chromium screenshots at
 760–1,920 px show no visible regression. Artifact paths are in the handoff;
 these are local fixtures, not live-provider or production acceptance.
+
+All four exact-SHA workflows passed: Root `34056277576`, Backend `34056277609`,
+Storefront `34056277617`, Runtime Images `34056277606`. Sandbox-enabled pa11y
+passed four pages with no findings; Lighthouse passed all assertions across
+18 reports under the unchanged calibration/budgets. Both image records and
+bound SBOMs verify the exact revision; scan gates passed and publication
+skipped. Both Railway source deployments succeeded separately with exact-SHA
+health, fresh Backend scheduler heartbeat, catalog/operations, Storefront
+HTML/headers/AVIF, and correlated guarded API checks. Artifact IDs, image
+digests, deployment IDs, and request/trace evidence are in the handoff.
+
+The first deployed browser run had 72 passes, eight expected skips and three
+cart/calendar failures caused by pre-hydration interaction. Its corrected
+test-only harness passed 75 cases/eight skips with zero retries, then all 15
+repetitions across three Chromium device projects, against unchanged deployed
+`497a52a`. The correction ships with the recovery batch. The final uncapped
+Storefront error sample contains 116 client 499s, 24 fixture 404s, and two
+deliberate 400s, without HTTP 5xx; 45 known destination-stream cancellations
+remain visible in runtime logs with digest `2025024551`. This does not assert
+zero error logging or real payment-provider acceptance.
+
+### Next recovery-preparation batch
+
+Media checksum verification and database-role auditing form the next combined
+tooling batch alongside the deployed-browser hydration synchronization fix;
+dependencies remain unchanged. Root QA passes 1,299 files, Backend coverage
+passes 277 suites / 2,146 tests (91.83% statements/lines, 85.72% branches,
+95.80% functions), and Backend/Admin builds pass in 6.59/16.17 seconds.
+Corrected browser-harness validation passes; exact-SHA remote acceptance for
+the combined recovery batch remains pending. No provider grants, role cutover,
+or live backup/restore drill is claimed.
+
+Media verification reads both source and target through bounded streaming
+SHA-256 checks, with an explicit two-times-source-byte planned-content budget
+(excluding mirror, metadata/retry/read-ahead overhead), object cap, deadline,
+and active-reader cancellation/reaping. A private
+version-2 manifest proves content parity where version 1 proved only inventory
+parity; no object bytes are retained. The 29 media tests pass with helper
+coverage 97.60% lines / 92.56% branches / 100% functions. These tests do not
+establish atomic snapshots, version history, remote rollback, or an off-site
+operational drill.
+
+Role auditing covers session/current identities, inherited and reachable-role
+privileges, membership administration, and backup write restrictions. All 56
+focused tests pass at 100% coverage plus 27 disposable PostgreSQL 18.6 cases,
+after seven old unit failures and a false-accepting old SQL case were
+reproduced. The small-fixture query measured 1.805 ms planning / 1.237 ms
+execution, not production latency. `SECURITY DEFINER`, extensions, future and
+default grants, and application-specific capabilities still require separate
+review. `INFRASTRUCTURE_RECOVERY.md` retains the operational approval and
+rollout boundaries; passing local tests is not a least-privilege cutover.
 
 ## TanStack Form patch compatibility
 
