@@ -709,9 +709,14 @@ signed by the current key; email remains the durable receipt.
 
 Production startup rejects missing, placeholder, shorter-than-32-byte, or
 reused JWT, cookie, cart, checkout, receipt, public-form, and configured webhook
-secrets. Medusa does not provide dual-key JWT/cookie verification in this
-version, so rotating those two secrets is an explicit session-invalidating
-maintenance event rather than a zero-downtime key overlap.
+secrets. This repository configures one JWT secret and one cookie-signing
+secret, without a previous-key overlap. Rotating only the JWT secret rejects
+old bearer tokens but does not invalidate existing cookie sessions: Medusa
+checks the stored session authentication context before bearer authentication.
+To invalidate both, rotate both secrets as an explicit maintenance event,
+drain all old instances, and verify that both a pre-rotation bearer token and
+a pre-rotation session cookie are rejected. Confirm that fresh sign-in works;
+do not treat a JWT-only check as a completed session-invalidating drill.
 
 `STRIPE_LIFECYCLE_WEBHOOK_SECRET` belongs only to
 `POST /webhooks/stripe/lifecycle` and must not reuse
@@ -726,10 +731,24 @@ For Stripe webhook-secret rotation:
 1. Create/rotate the test endpoint in Stripe.
 2. For the lifecycle endpoint, deploy current and previous keys together; for
    Medusa's official payment endpoint, use a coordinated single-key cutover.
-3. Deliver signed test events for every accepted key and observe `2xx`.
+3. Deliver signed test events for every accepted key. For the lifecycle
+   endpoint, signature verification precedes its acknowledgement. Medusa's
+   official payment endpoint acknowledges successful enqueueing with `200`;
+   its subscriber verifies the signature asynchronously. A `2xx` from that
+   endpoint alone does not prove that a key was accepted or a payment was
+   processed. Confirm the expected downstream result for a controlled test
+   event and verify that a former-key-only event is rejected by the provider
+   without advancing payment processing after cutover. Inspect only redacted
+   processing evidence; do not log payloads, signatures, or secrets.
 4. Remove the former endpoint/previous key only after no in-flight delivery
    remains.
 5. Never log either secret.
+
+The installed Medusa 2.18 route contract tests preserve this enqueue/processing
+boundary and its `200` success / `400` enqueue-failure behavior. Enqueue failures
+return fixed public text, never a transport or container error message. These
+local compatibility checks do not replace a live rotation drill or prove that
+old deployed instances and queued deliveries have drained.
 
 ## Payment Method Configuration changes
 

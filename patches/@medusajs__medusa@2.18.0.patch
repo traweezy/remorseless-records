@@ -48,6 +48,21 @@ index e957a37097d4d2cc826f376005d04b024d00d1cf..b4695cd07a667f2331b9c122c5231891
      res.status(200).json({ product: (0, helpers_1.remapProductResponse)(product) });
  };
  exports.POST = POST;
+diff --git a/dist/api/hooks/payment/[provider]/route.js b/dist/api/hooks/payment/[provider]/route.js
+--- a/dist/api/hooks/payment/[provider]/route.js
++++ b/dist/api/hooks/payment/[provider]/route.js
+@@ -22,8 +22,9 @@ const POST = async (req, res) => {
+             attempts: options.webhook_retries || 3,
+         });
+     }
+-    catch (err) {
+-        res.status(400).send(`Webhook Error: ${err.message}`);
++    catch {
++        // Queue failures can contain private transport or container details.
++        res.status(400).send("Webhook Error: Unable to enqueue payment webhook.");
+         return;
+     }
+     res.sendStatus(200);
 diff --git a/dist/loaders/index.d.ts b/dist/loaders/index.d.ts
 index 3b57398422d468f92fb954f9a6e6c6ae55e9e687..f72712a2284c836292d2b83ad86e93cabccc1479 100644
 --- a/dist/loaders/index.d.ts

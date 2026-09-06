@@ -79,7 +79,7 @@ patchedDependencies:
   '@medusajs/dashboard@2.18.0': bd6b14b68f0947be8238b045c16ce7826b02ca28ac2697aa3f463197276d40c4
   '@medusajs/file-s3@2.18.0': 0e576ccc0725c31c3cd90592ab35f72145e1e5fd57a2193184357f95c8e73886
   '@medusajs/framework@2.18.0': f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1
-  '@medusajs/medusa@2.18.0': 10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee
+  '@medusajs/medusa@2.18.0': d1cd3a23eb54d0d63383688f02c0a628f2f16eff8c635f4cf679ed93ffcaa76e
   '@medusajs/ui@4.2.0': 5d9cdcbe604e9df8c43bcbd4b2bd326d7076c065aa9bbbf4fcf51911b1a64e81
   '@medusajs/utils@2.18.0': 19c4f9bc6ebba8af918e8ca6cfe9f010f6fd2afd8259481ff836394d35a33f4c
   '@medusajs/workflow-engine-redis@2.18.0': 7f5fc7004b0b5b8180edc268245e27d5d02d709f7a6fae86c5e68d5ff41a33df
@@ -207,7 +207,7 @@ importers:
         version: 2.18.0
       '@medusajs/medusa':
         specifier: ^2.18.0
-        version: 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(3801a8200edd0e928b619b3579eaa7c6)
+        version: 2.18.0(patch_hash=d1cd3a23eb54d0d63383688f02c0a628f2f16eff8c635f4cf679ed93ffcaa76e)(3801a8200edd0e928b619b3579eaa7c6)
       '@medusajs/notification':
         specifier: ^2.18.0
         version: 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
@@ -11793,7 +11793,7 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3)
 
-  '@medusajs/medusa@2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(3801a8200edd0e928b619b3579eaa7c6)':
+  '@medusajs/medusa@2.18.0(patch_hash=d1cd3a23eb54d0d63383688f02c0a628f2f16eff8c635f4cf679ed93ffcaa76e)(3801a8200edd0e928b619b3579eaa7c6)':
     dependencies:
       '@inquirer/checkbox': 2.5.0
       '@inquirer/confirm': 2.0.17
@@ -12051,7 +12051,7 @@ snapshots:
       ulid: 2.4.0
     optionalDependencies:
       '@medusajs/core-flows': 2.18.0(@medusajs/framework@2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3))
-      '@medusajs/medusa': 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(3801a8200edd0e928b619b3579eaa7c6)
+      '@medusajs/medusa': 2.18.0(patch_hash=d1cd3a23eb54d0d63383688f02c0a628f2f16eff8c635f4cf679ed93ffcaa76e)(3801a8200edd0e928b619b3579eaa7c6)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -14348,7 +14348,7 @@ snapshots:
     dependencies:
       '@medusajs/admin-sdk': 2.18.0
       '@medusajs/framework': 2.18.0(patch_hash=f6165df7404f897a38f8273ceca54454c149d81f36a77544d050ec410fdfa6b1)(@medusajs/cli@2.18.0(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@26.1.1)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.23.1)(yaml@2.9.0))(zod@4.4.3)
-      '@medusajs/medusa': 2.18.0(patch_hash=10763c3d3f3c59419f829f49397343c1d81bc759031c9e21f5204f210001a3ee)(3801a8200edd0e928b619b3579eaa7c6)
+      '@medusajs/medusa': 2.18.0(patch_hash=d1cd3a23eb54d0d63383688f02c0a628f2f16eff8c635f4cf679ed93ffcaa76e)(3801a8200edd0e928b619b3579eaa7c6)
       '@medusajs/ui': 4.2.0(patch_hash=5d9cdcbe604e9df8c43bcbd4b2bd326d7076c065aa9bbbf4fcf51911b1a64e81)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@tanstack/react-query': 5.64.2(react@18.3.1)
       awilix: 8.0.1
