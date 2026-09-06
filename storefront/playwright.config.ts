@@ -73,7 +73,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: "pnpm run start",
+    command: "node node_modules/next/dist/bin/next start",
     url: process.env.NEXT_PUBLIC_BASE_URL,
     //   reuseExistingServer: !process.env.CI,
   },

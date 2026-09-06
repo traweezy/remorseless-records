@@ -147,6 +147,10 @@ test("calibrates Lighthouse CPU slowdown without changing budgets", () => {
 test("pins Browser Smoke to the local fixture before deployment", () => {
   const workflow = fs.readFileSync(".github/workflows/storefront.yml", "utf8")
   const ciConfig = fs.readFileSync("storefront/playwright.ci.config.ts", "utf8")
+  const defaultConfig = fs.readFileSync(
+    "storefront/playwright.config.ts",
+    "utf8"
+  )
   const criticalConfig = fs.readFileSync(
     "storefront/playwright.critical.config.ts",
     "utf8"
@@ -187,8 +191,15 @@ test("pins Browser Smoke to the local fixture before deployment", () => {
   )
   assert.match(ciConfig, /require an HTTPS PLAYWRIGHT_BASE_URL/u)
   assert.match(ciConfig, /deployedBaseURL\s*\? \{\}/u)
-  assert.match(ciConfig, /node node_modules\/next\/dist\/bin\/next start/u)
-  assert.doesNotMatch(ciConfig, /command: "pnpm run start/u)
+  for (const config of [
+    ciConfig,
+    criticalConfig,
+    launchConfig,
+    defaultConfig,
+  ]) {
+    assert.match(config, /node node_modules\/next\/dist\/bin\/next start/u)
+    assert.doesNotMatch(config, /command: "pnpm run start/u)
+  }
   assert.equal(packageJson.devDependencies["@playwright/test"], "1.62.0")
   assert.match(criticalConfig, /ciMedusaFixtureWebServer/u)
   assert.match(launchConfig, /ciMedusaFixtureWebServer/u)
