@@ -213,6 +213,14 @@ docker build --file storefront/Dockerfile.runtime \
   --tag remorseless-records-storefront:runtime-local .
 ```
 
+The Backend build wrapper resolves the already-installed Medusa CLI and runs
+it with the current Node executable. It must not launch `pnpm exec medusa`
+from the nested Backend workspace: pnpm 11 can implicitly install a different
+graph there. Missing CLI, failed compilation, and incomplete artifacts fail
+closed; the generated runtime's post-build install remains frozen against
+the root lockfile. `qa:medusa-build-toolchain` exercises these launcher cases.
+Use the Node version in `.nvmrc` for local builds and gates.
+
 The ordinary Storefront `build` command deliberately produces the server
 artifact consumed by `next start` in source-based Railway deployments. Only
 `build:runtime` sets `STOREFRONT_BUILD_OUTPUT=standalone`; use it before the

@@ -1,10 +1,16 @@
 import assert from "node:assert/strict"
 import { lstat, rm } from "node:fs/promises"
+import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
 
 const backendRoot = dirname(dirname(fileURLToPath(import.meta.url)))
+const backendRequire = createRequire(join(backendRoot, "package.json"))
+const medusaCli = backendRequire.resolve("@medusajs/cli/cli.js")
+const cliArtifact = await lstat(medusaCli)
+assert.equal(cliArtifact.isSymbolicLink(), false, "Medusa CLI is a symlink")
+assert.equal(cliArtifact.isFile(), true, "Medusa CLI is not a regular file")
 const medusaOutput = join(backendRoot, ".medusa")
 const requiredArtifacts = [
   join(medusaOutput, "server", "package.json"),
@@ -38,7 +44,8 @@ const run = (command, args) => {
   )
 }
 
-run("pnpm", ["exec", "medusa", "build"])
+// pnpm exec can auto-install a nested workspace when invoked from Backend.
+run(process.execPath, [medusaCli, "build"])
 
 for (const artifactPath of requiredArtifacts) {
   const artifact = await lstat(artifactPath)

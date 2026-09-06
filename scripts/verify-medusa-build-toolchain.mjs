@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
 import { readFile, realpath } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
@@ -28,6 +29,15 @@ const typescript = frameworkRequire("typescript")
 assert.equal(typescript.version, "5.9.3")
 assert.equal(typeof typescript.getParsedCommandLineOfConfigFile, "function")
 
+execFileSync(
+  process.execPath,
+  [
+    "--test",
+    join(import.meta.dirname, "verify-medusa-build-toolchain.test.mjs"),
+  ],
+  { cwd: repositoryRoot, stdio: "inherit" }
+)
+
 console.log(
-  "Medusa build toolchain verified: Framework resolves the complete TypeScript 5.9.3 compiler and the fail-closed build wrapper."
+  "Medusa build toolchain verified: Framework resolves TypeScript 5.9.3 and compilation launches the installed CLI without package-manager auto-installation."
 )
